@@ -79,8 +79,8 @@ class CriticalCssBeaconFilterTest : public RewriteTestBase {
     // they exist.
     CriticalCssBeaconFilter::InitStats(statistics());
     filter_ = new CriticalCssBeaconFilter(rewrite_driver());
-    rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
     rewrite_driver()->AddFilters();
+    rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
 
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
                                   kStyleA, 100);
@@ -261,6 +261,28 @@ TEST_F(CriticalCssBeaconFilterTest, ExtantPCache) {
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(kHtmlTemplate, opt.c_str(), "");
   ValidateExpected("already_beaconed", input_html, output_html);
+}
+
+class CriticalCssBeaconWithCombinerFilterTest
+    : public CriticalCssBeaconFilterTest {
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kCombineCss);
+    CriticalCssBeaconFilterTest::SetUp();
+  }
+};
+
+TEST_F(CriticalCssBeaconWithCombinerFilterTest, Interaction) {
+  // Make sure that beacon insertion interacts with combine CSS properly.
+  GoogleString css = StrCat(CssLinkHref("a.css"), CssLinkHref("b.css"));
+  GoogleString combined_css = CssLinkHref(
+      Encode(kTestDomain, "cf", "0",
+             Encode("", "cc", "0", MultiUrl("a.css", "b.css"), "css"), "css"));
+  GoogleString input_html = StringPrintf(
+      kHtmlTemplate, css.c_str(), "");
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, combined_css.c_str(),
+      BeaconScriptFor("\".sec h1#id\",\"a\",\"div ul > li\",\"p\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
 }  // namespace

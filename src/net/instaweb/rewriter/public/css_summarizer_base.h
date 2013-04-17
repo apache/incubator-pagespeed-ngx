@@ -68,7 +68,10 @@ class CssSummarizerBase : public RewriteFilter {
     kSummaryResourceCreationFailed,
 
     // Fetch result unusable, either error or not cacheable.
-    kSummaryInputUnavailable
+    kSummaryInputUnavailable,
+
+    // Slot got removed by an another optimization.
+    kSummarySlotRemoved,
   };
 
   struct SummaryInfo {
@@ -145,7 +148,6 @@ class CssSummarizerBase : public RewriteFilter {
   // Like RenderSummary, but called in cases where we're unable to render a
   // summary for some reason (including not being able to compute one).
   // Note: not called when we're canceled due to disable_further_processing.
-  // TODO(morlovich): Fix that, and test with combine_css.
   //
   // Like with RenderSummary, this corresponds to entry [pos] in the summary
   // table, and elements points to the <link> or <style> containing CSS,
@@ -161,6 +163,13 @@ class CssSummarizerBase : public RewriteFilter {
   // It's called from a context which allows HTML parser state access.  You can
   // insert things at end of document by constructing an HtmlNode* using the
   // factories in HtmlParse and calling InjectSummaryData(element).
+  //
+  // Note that the timing of this can vary widely --- it can occur during
+  // initial parse, during the render phase, or even at RenderDone, so
+  // implementors should not make assumptions about what other filters may have
+  // done to the DOM.
+  //
+  // Base version does nothing.
   virtual void SummariesDone();
 
   // Inject summary data at the end of the document.  Intended to be called from
@@ -186,13 +195,14 @@ class CssSummarizerBase : public RewriteFilter {
     return summaries_.at(pos);
   }
 
-  // Overrides of the filter APIs. You should call through to this class's
+  // Overrides of the filter APIs. You MUST call through to this class's
   // implementations if you override them.
   virtual void StartDocumentImpl();
   virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndElementImpl(HtmlElement* element);
+  virtual void RenderDone();
 
   virtual RewriteContext* MakeRewriteContext();
 
@@ -233,6 +243,10 @@ class CssSummarizerBase : public RewriteFilter {
   scoped_ptr<AbstractMutex> progress_lock_;
   int outstanding_rewrites_;  // guarded by progress_lock_
   bool saw_end_of_document_;  // guarded by progress_lock_
+  // Lists indexes into summaries_ vector that got canceled due to
+  // disable_further_processing. It's written to in the Rewrite thread,
+  // and then pulled into summaries_ from an HTML thread.
+  std::vector<int> canceled_summaries_;  // guarded by progress_lock_
 
   HtmlElement* style_element_;  // The element we are in, or NULL.
   HtmlElement* injection_point_;  // Preferred location for InjectSummaryData

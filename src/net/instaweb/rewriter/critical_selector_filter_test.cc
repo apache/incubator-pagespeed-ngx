@@ -384,6 +384,34 @@ TEST_F(CriticalSelectorWithRewriteCssFilterTest, ProperlyUsedOptimized) {
                           LoadRestOfCss(optimized_css), "</body>"));
 }
 
+class CriticalSelectorWithCombinerFilterTest
+    : public CriticalSelectorFilterTest {
+ protected:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kCombineCss);
+    CriticalSelectorFilterTest::SetUp();
+  }
+};
+
+TEST_F(CriticalSelectorWithCombinerFilterTest, Interaction) {
+  GoogleString css = StrCat(
+      CssLinkHref("a.css"),
+      CssLinkHref("b.css"));
+
+  // Only one <style> element since combine_css ran before us.
+  GoogleString critical_css =
+      "<style>div,*::first-letter{display:block}"  // from a.css
+      "@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString combined_url = Encode(kTestDomain, "cc", "0",
+                                     MultiUrl("a.css", "b.css"), "css");
+
+  ValidateExpected("with_combiner",
+                   css,
+                   StrCat(critical_css,
+                          LoadRestOfCss(CssLinkHref(combined_url))));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

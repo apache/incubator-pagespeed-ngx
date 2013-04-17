@@ -1246,6 +1246,7 @@ void RewriteContext::Start() {
         metadata_log_info->set_num_disabled_rewrites(
             metadata_log_info->num_disabled_rewrites() + 1);
       }
+      Cancel();
       RetireRewriteForHtml(false /* no rendering*/);
       return;
     }
@@ -2052,6 +2053,9 @@ void RewriteContext::Render() {
 }
 
 void RewriteContext::WillNotRender() {
+}
+
+void RewriteContext::Cancel() {
 }
 
 void RewriteContext::Propagate(bool render_slots) {

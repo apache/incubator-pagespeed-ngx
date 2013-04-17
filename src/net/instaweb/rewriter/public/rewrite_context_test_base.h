@@ -342,6 +342,7 @@ class CombiningFilter : public RewriteFilter {
                    OutputResourcePtr output);
     virtual void Render();
     virtual void WillNotRender();
+    virtual void Cancel();
     void DisableRemovedSlots(CachedResult* partition);
     virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
     virtual const char* id() const { return kFilterId; }
@@ -377,6 +378,7 @@ class CombiningFilter : public RewriteFilter {
   int num_rewrites() const { return num_rewrites_; }
   int num_render() const { return num_render_; }
   int num_will_not_render() const { return num_will_not_render_; }
+  int num_cancel() const { return num_cancel_; }
 
   void ClearStats() { num_rewrites_ = 0; }
   int64 rewrite_delay_ms() const { return rewrite_delay_ms_; }
@@ -407,6 +409,7 @@ class CombiningFilter : public RewriteFilter {
   int num_rewrites_;
   int num_render_;
   int num_will_not_render_;
+  int num_cancel_;
   int64 rewrite_delay_ms_;
 
   // If this is non-NULL, the actual rewriting will block until this is

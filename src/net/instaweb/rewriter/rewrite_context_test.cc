@@ -2530,6 +2530,29 @@ TEST_F(RewriteContextTest, NestedChained) {
             rewritten_contents);
 }
 
+TEST_F(RewriteContextTest, Cancel) {
+  // Make sure Cancel is called properly when disable_further_processing()
+  // is invoked.
+  RewriteDriver* driver = rewrite_driver();
+  CombiningFilter* combining_filter1 =
+      new CombiningFilter(driver, mock_scheduler(), 0 /* no delay*/);
+  CombiningFilter* combining_filter2 =
+      new CombiningFilter(driver, mock_scheduler(), 0 /* no delay*/);
+  driver->AppendRewriteFilter(combining_filter1);
+  driver->AppendRewriteFilter(combining_filter2);
+  server_context()->ComputeSignature(options());
+  InitResources();
+  GoogleString combined_url =
+      Encode(kTestDomain, CombiningFilter::kFilterId, "0",
+             MultiUrl("a.css", "b.css"), "css");
+
+  ValidateExpected("cancel", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+                   CssLinkHref(combined_url));
+  EXPECT_EQ(0, combining_filter1->num_cancel());
+  // Element getting deleted disables further processing.
+  EXPECT_EQ(1, combining_filter2->num_cancel());
+}
+
 TEST_F(RewriteContextTest, WillNotRewrite) {
   // Make sure WillNotRewrite is called properly when filter misses the
   // deadline.

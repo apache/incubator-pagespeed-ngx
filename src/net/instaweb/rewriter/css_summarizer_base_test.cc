@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -74,6 +75,8 @@ class MinifyExcerptFilter : public CssSummarizerBase {
         return "ResourceError";
       case kSummaryInputUnavailable:
         return "FetchError";
+      case kSummarySlotRemoved:
+        return "SlotRemoved";
     }
   };
 
@@ -160,6 +163,7 @@ class CssSummarizerBaseTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    rewrite_driver()->AddFilters();
     filter_ = new MinifyExcerptFilter(rewrite_driver());
     rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
     server_context()->ComputeSignature(options());
@@ -371,6 +375,27 @@ TEST_F(CssSummarizerBaseTest, EnclosedBody) {
                "<noscript><body>no script body</body></noscript>", "</html>");
   EXPECT_STREQ(expected, output_buffer_);
   EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+class CssSummarizerBaseWithCombinerFilterTest : public CssSummarizerBaseTest {
+ protected:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kCombineCss);
+    CssSummarizerBaseTest::SetUp();
+    SetHtmlMimetype();  // no <link />, just <link>
+  }
+};
+
+TEST_F(CssSummarizerBaseWithCombinerFilterTest, Interaction) {
+  SetResponseWithDefaultHeaders("a2.css", kContentTypeCss,
+                                 "span { display: inline; }", 100);
+  GoogleString combined_url = Encode(kTestDomain, "cc", "0",
+                                     MultiUrl("a.css", "a2.css"), "css");
+
+  Parse("with_combine", StrCat(CssLinkHref("a.css"), CssLinkHref("a2.css")));
+  EXPECT_EQ(StrCat("<html>\n", CssLinkHref(combined_url),
+                   "\n<!--OK/div{displa|SlotRemoved/|--></html>"),
+            output_buffer_);
 }
 
 }  // namespace

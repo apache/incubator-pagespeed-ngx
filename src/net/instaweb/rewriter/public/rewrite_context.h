@@ -424,6 +424,11 @@ class RewriteContext {
   // invocations.
   virtual void WillNotRender();
 
+  // This method is invoked (in Rewrite thread) if this context got canceled
+  // due to an earlier filter sharing a slot with it having called
+  // set_disable_further_processing. Default implementation does nothing.
+  virtual void Cancel();
+
   // This final set of protected methods can be optionally overridden
   // by subclasses.
 

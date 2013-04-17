@@ -86,6 +86,7 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
  protected:
   virtual void Render();
   virtual void WillNotRender();
+  virtual void Cancel();
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs);
   virtual void RewriteSingle(const ResourcePtr& input,
@@ -187,6 +188,11 @@ void CssSummarizerBase::Context::WillNotRender() {
   filter_->WillNotRenderSummary(pos_, element_, text_);
 }
 
+void CssSummarizerBase::Context::Cancel() {
+  ScopedMutex hold(filter_->progress_lock_.get());
+  filter_->canceled_summaries_.push_back(pos_);
+}
+
 void CssSummarizerBase::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
@@ -281,11 +287,13 @@ void CssSummarizerBase::Clear() {
   style_element_ = NULL;
   injection_point_ = NULL;
   summaries_.clear();
+  canceled_summaries_.clear();
 }
 
 void CssSummarizerBase::StartDocumentImpl() {
   // TODO(morlovich): we hold on to the summaries_ memory too long; refine this
   // once the data type is refined.
+  DCHECK(canceled_summaries_.empty());
   Clear();
 }
 
@@ -378,6 +386,31 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
   }
 }
 
+void CssSummarizerBase::RenderDone() {
+  bool should_report_all_done = false;
+
+  {
+    ScopedMutex hold(progress_lock_.get());
+    // Transfer from canceled_summaries_ to summaries_.
+    for (int i = 0, n = canceled_summaries_.size(); i < n; ++i) {
+      int pos = canceled_summaries_[i];
+      summaries_[pos].state = kSummarySlotRemoved;
+    }
+
+    if (!canceled_summaries_.empty()) {
+      outstanding_rewrites_ -= canceled_summaries_.size();
+      if (outstanding_rewrites_ == 0) {
+        should_report_all_done = true;
+      }
+    }
+    canceled_summaries_.clear();
+  }
+
+  if (should_report_all_done) {
+    ReportSummariesDone();
+  }
+}
+
 void CssSummarizerBase::ReportSummariesDone() {
   if (DebugMode()) {
     GoogleString comment = "Summary computation status for ";
@@ -402,6 +435,10 @@ void CssSummarizerBase::ReportSummariesDone() {
         case kSummaryInputUnavailable:
           StrAppend(&comment,
                     "Fetch failed or resource not publicly cacheable\n");
+          break;
+        case kSummarySlotRemoved:
+          StrAppend(&comment,
+                    "Resource removed by another filter\n");
           break;
       }
     }

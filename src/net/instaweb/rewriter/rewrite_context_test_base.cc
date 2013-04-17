@@ -183,6 +183,7 @@ CombiningFilter::CombiningFilter(RewriteDriver* driver,
       num_rewrites_(0),
       num_render_(0),
       num_will_not_render_(0),
+      num_cancel_(0),
       rewrite_delay_ms_(rewrite_delay_ms),
       rewrite_block_on_(NULL),
       rewrite_signal_on_(NULL),
@@ -289,6 +290,10 @@ void CombiningFilter::Context::Render() {
 
 void CombiningFilter::Context::WillNotRender() {
   ++filter_->num_will_not_render_;
+}
+
+void CombiningFilter::Context::Cancel() {
+  ++filter_->num_cancel_;
 }
 
 void CombiningFilter::Context::DisableRemovedSlots(CachedResult* partition) {
