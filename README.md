@@ -101,17 +101,6 @@ In every server block where pagespeed is enabled add:
     location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
     location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
 
-If you're proxying, you may want to strip off the `Accept-Encoding` header.
-This makes the upstream send html uncompressed to pagespeed.  Because pagespeed
-needs the html uncompressed in order to rewrite it, if you leave the
-`Accept-Encoding` header on, the upstream will probably send a gzipped response
-that pagespeed has to ungzip, process, and then gzip.  If your proxy is out over
-the open internet this may be a good idea to save bandwidth, but in the common
-case where your proxy is on a nearby server or even the same server gzipping
-will just slow things down:
-
-    proxy_set_header Accept-Encoding "";
-
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
