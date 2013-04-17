@@ -112,8 +112,10 @@ X-Page-Speed: 1.4.0.0-2729
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
-Most mod_pagespeed configuration directives work in ngx_pagespeed after a small
-adjustment: replace '"ModPagespeed"' with '"pagespeed "':
+When reading the [mod_pagespeed
+documentation](https://developers.google.com/speed/docs/mod_pagespeed/using_mod),
+keep in mind that you need to make a small adjustment to configuration
+directives: replace '"ModPagespeed"' with '"pagespeed "':
 
     mod_pagespeed.conf:
       ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
