@@ -116,6 +116,7 @@ Hasher* NgxRewriteDriverFactory::NewHasher() {
 }
 
 UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
+  CHECK(false) << "Nothing should still be using DefaultUrlFetcher()";
   return NULL;
 }
 
