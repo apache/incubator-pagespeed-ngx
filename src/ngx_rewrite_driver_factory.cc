@@ -23,9 +23,10 @@
 #include "log_message_handler.h"
 #include "ngx_message_handler.h"
 #include "ngx_rewrite_options.h"
-#include "ngx_thread_system.h"
 #include "ngx_server_context.h"
+#include "ngx_thread_system.h"
 #include "ngx_url_async_fetcher.h"
+#include "pthread_shared_mem.h"
 
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -39,10 +40,10 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
-#include "pthread_shared_mem.h"
+#include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
-#include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -176,9 +177,14 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   caches_->SetupCaches(server_context);
 
-  // TODO(oschaaf): see the property cache setup in the apache rewrite
-  // driver factory
   server_context->set_enable_property_cache(true);
+  PropertyCache* pcache = server_context->page_property_cache();
+  if (pcache->GetCohort(RewriteDriver::kBeaconCohort) == NULL) {
+    pcache->AddCohort(RewriteDriver::kBeaconCohort);
+  }
+  if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
+    pcache->AddCohort(RewriteDriver::kDomCohort);
+  }
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
@@ -378,6 +384,8 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   NgxServerContext::InitStats(statistics);
   SystemCaches::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 
   statistics->AddVariable(kShutdownCount);
 }
