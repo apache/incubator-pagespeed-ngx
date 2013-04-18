@@ -1208,7 +1208,7 @@ DeviceProperties* ServerContext::NewDeviceProperties() {
 }
 
 void ServerContext::DeleteCacheOnDestruction(CacheInterface* cache) {
-  factory_->DeleteOnDestruction(cache);
+  factory_->TakeOwnership(cache);
 }
 
 }  // namespace net_instaweb

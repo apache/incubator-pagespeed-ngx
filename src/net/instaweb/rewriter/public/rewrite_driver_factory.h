@@ -274,7 +274,7 @@ class RewriteDriverFactory {
 
   // Queues an object for deletion at the last phase of RewriteDriverFactory
   // destruction.
-  template<class T> void DeleteOnDestruction(T* obj) {
+  template<class T> void TakeOwnership(T* obj) {
     defer_cleanup(new RewriteDriverFactory::Deleter<T>(obj));
   }
 

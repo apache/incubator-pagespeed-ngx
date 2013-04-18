@@ -99,24 +99,6 @@ void SystemCaches::ShutDown(MessageHandler* message_handler) {
       p->second->GlobalCleanup(message_handler);
     }
   }
-
-  for (PathCacheMap::iterator p = path_cache_map_.begin(),
-           e = path_cache_map_.end(); p != e; ++p) {
-    SystemCachePath* cache = p->second;
-    factory_->DeleteOnDestruction(cache);
-  }
-
-  for (MemcachedMap::iterator p = memcached_map_.begin(),
-           e = memcached_map_.end(); p != e; ++p) {
-    CacheInterface* memcached = p->second;
-    factory_->DeleteOnDestruction(memcached);
-  }
-
-  for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
-           e = metadata_shm_caches_.end(); p != e; ++p) {
-    MetadataShmCacheInfo* cache_info = p->second;
-    factory_->DeleteOnDestruction(cache_info);
-  }
 }
 
 SystemCachePath* SystemCaches::GetCache(SystemRewriteOptions* config) {
@@ -127,6 +109,7 @@ SystemCachePath* SystemCaches::GetCache(SystemRewriteOptions* config) {
   if (result.second) {
     iter->second =
         new SystemCachePath(path, config, factory_, shared_mem_runtime_);
+    factory_->TakeOwnership(iter->second);
   }
   return iter->second;
 }
@@ -136,7 +119,7 @@ AprMemCache* SystemCaches::NewAprMemCache(const GoogleString& spec) {
       new AprMemCache(spec, thread_limit_, &cache_hasher_,
                       factory_->statistics(), factory_->timer(),
                       factory_->message_handler());
-  factory_->DeleteOnDestruction(mem_cache);
+  factory_->TakeOwnership(mem_cache);
   return mem_cache;
 }
 
@@ -168,7 +151,7 @@ CacheInterface* SystemCaches::GetMemcached(SystemRewriteOptions* config) {
                                    factory_->thread_system()));
         }
         memcached = new AsyncCache(mem_cache, memcached_pool_.get());
-        factory_->DeleteOnDestruction(memcached);
+        factory_->TakeOwnership(memcached);
       } else {
         memcached = mem_cache;
       }
@@ -178,11 +161,12 @@ CacheInterface* SystemCaches::GetMemcached(SystemRewriteOptions* config) {
 #if CACHE_STATISTICS
       memcached = new CacheStats(kMemcached, memcached,
                                  factory_->timer(), factory_->statistics());
-      factory_->DeleteOnDestruction(memcached);
+      factory_->TakeOwnership(memcached);
 #endif
       CacheBatcher* batcher = new CacheBatcher(
           memcached, factory_->thread_system()->NewMutex(),
           factory_->statistics());
+      factory_->TakeOwnership(batcher);
       if (num_threads != 0) {
         batcher->set_max_parallel_lookups(num_threads);
       }
@@ -218,6 +202,7 @@ bool SystemCaches::CreateShmMetadataCache(
       return false;
     } else {
       cache_info = new MetadataShmCacheInfo;
+      factory_->TakeOwnership(cache_info);
       cache_info->cache_backend =
           new SharedMemCache<64>(
               shared_mem_runtime_,
@@ -228,7 +213,7 @@ bool SystemCaches::CreateShmMetadataCache(
               entries,  /* entries per sector */
               blocks /* blocks per sector*/,
               factory_->message_handler());
-      factory_->DeleteOnDestruction(cache_info->cache_backend);
+      factory_->TakeOwnership(cache_info->cache_backend);
       // We can't set cache_info->cache_to_use yet since statistics aren't ready
       // yet. It will happen in ::RootInit().
       result.first->second = cache_info;
@@ -392,7 +377,7 @@ void SystemCaches::RootInit() {
       cache_info->cache_to_use =
           new CacheStats(kShmCache, cache_info->cache_backend,
                          factory_->timer(), factory_->statistics());
-      factory_->DeleteOnDestruction(cache_info->cache_to_use);
+      factory_->TakeOwnership(cache_info->cache_to_use);
     } else {
       factory_->message_handler()->Message(
           kWarning, "Unable to initialize shared memory cache: %s.",
