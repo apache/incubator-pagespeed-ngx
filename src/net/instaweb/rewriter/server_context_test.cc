@@ -53,7 +53,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/resource_manager_testing_peer.h"
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -221,7 +220,7 @@ class ServerContextTest : public RewriteTestBase {
     EXPECT_EQ(output->full_name().EncodeIdName(), name_key);
     // Make sure the resource hasn't already been created (and lock it for
     // creation). We do need to give it a hash for fetching to do anything.
-    ResourceManagerTestingPeer::SetHash(output.get(), "42");
+    output->SetHash("42");
     EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(output));
     EXPECT_FALSE(output->IsWritten());
 
@@ -256,7 +255,7 @@ class ServerContextTest : public RewriteTestBase {
     }
 
     // Write some data
-    ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
+    ASSERT_TRUE(output->has_hash());
     EXPECT_EQ(kRewrittenResource, output->kind());
     EXPECT_TRUE(rewrite_driver()->Write(
         ResourceVector(), contents, &kContentTypeText, "utf-8", output.get()));

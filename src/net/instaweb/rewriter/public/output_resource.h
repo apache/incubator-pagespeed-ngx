@@ -232,7 +232,6 @@ class OutputResource : public Resource {
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
 
  private:
-  friend class ResourceManagerTestingPeer;
   friend class RewriteDriver;
   friend class ServerContext;
   friend class ServerContextTest;
