@@ -244,9 +244,7 @@ pagespeed.MpsConsole = function() {
       'gridlines': {
         'color': '#F2F2F2'
       },
-      'baseline': {
-        'color': '#E5E5E5'
-      }
+      'baselineColor': '#E5E5E5'
     },
     'vAxis': {
       'minValue': 0,
@@ -257,9 +255,7 @@ pagespeed.MpsConsole = function() {
       'gridlines': {
         'color': '#F2F2F2'
       },
-      'baseline': {
-        'color': '#E5E5E5'
-      }
+      'baselineColor': '#E5E5E5'
     },
     'chartArea': {
       'left': 60,

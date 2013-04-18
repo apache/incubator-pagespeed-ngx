@@ -84,6 +84,8 @@ extern const char* HTML_mod_pagespeed_console_body;
 namespace {
 
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
+const char kTempStatisticsGraphsHandler[] =
+    "mod_pagespeed_temp_statistics_graphs";
 const char kConsoleHandler[] = "mod_pagespeed_console";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
@@ -970,6 +972,9 @@ apr_status_t instaweb_handler(request_rec* request) {
       request_handler_str == kGlobalStatisticsHandler) {
     ret = instaweb_statistics_handler(request, server_context, factory,
                                       message_handler);
+  // TODO(sligocki): Merge this into kConsoleHandler.
+  } else if (request_handler_str == kTempStatisticsGraphsHandler) {
+    ret = instaweb_statistics_graphs_handler(request, config, message_handler);
   } else if (request_handler_str == kConsoleHandler) {
     GoogleString output;
     StringWriter writer(&output);
