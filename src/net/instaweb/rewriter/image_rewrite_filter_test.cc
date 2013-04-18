@@ -2268,7 +2268,18 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
   EXPECT_EQ(85, img_options->jpeg_quality);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+  EXPECT_FALSE(ctx.use_small_screen_quality());
+
+  // Mobile UA
+  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality_for_small_screens(70);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(70, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.use_small_screen_quality());
 }
 
 TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
@@ -2366,7 +2377,18 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
   EXPECT_EQ(85, img_options->webp_quality);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+  EXPECT_FALSE(ctx.use_small_screen_quality());
+
+  // Mobile UA
+  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality_for_small_screens(70);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(70, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.use_small_screen_quality());
 }
 
 void SetNumberOfScans(int num_scans, int num_scans_small_screen,
@@ -2466,7 +2488,14 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
   SetNumberOfScans(DO_NOT_SET, DO_NOT_SET, res_ptr, options(), rewrite_driver(),
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(8, img_options->jpeg_num_progressive_scans);
-  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+  EXPECT_FALSE(ctx.use_small_screen_quality());
+
+  // Mobile UA
+  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  SetNumberOfScans(DO_NOT_SET, 2, res_ptr, options(), rewrite_driver(),
+                   &image_rewrite_filter, &ctx, &img_options);
+  EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
+  EXPECT_TRUE(ctx.use_small_screen_quality());
 }
 
 TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {

@@ -285,9 +285,15 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
 void ImageUrlEncoder::SetSmallScreen(const RewriteDriver& driver,
     ResourceContext* context) {
   int width = 0, height = 0;
-  if (driver.device_properties()->GetScreenResolution(&width, &height) &&
-      width * height <= kSmallScreenSizeThresholdArea) {
-    context->set_use_small_screen_quality(true);
+  if (driver.device_properties()->GetScreenResolution(&width, &height)) {
+    if (width * height <= kSmallScreenSizeThresholdArea) {
+      context->set_use_small_screen_quality(true);
+    }
+  } else {
+    // If we did not find the screen resolution in kKnownScreenDimensions,
+    // default to the IsMobile() check to set the small screen quality.
+    context->set_use_small_screen_quality(
+        driver.device_properties()->IsMobile());
   }
 }
 
