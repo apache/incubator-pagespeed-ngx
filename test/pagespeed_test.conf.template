@@ -47,8 +47,8 @@ http {
     server_name mpd.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
-    pagespeed MapProxyDomain mpd.example.com/pss_images
-                             http://ref.pssdemos.com/filter/images;
+    pagespeed MapProxyDomain mpd.example.com/gstatic_images
+                             http://www.gstatic.com/psa/static;
   }
 
   # These two vhosts are for testing the experiment framework (Furious).
@@ -408,8 +408,8 @@ http {
 
     # Establish a proxy mapping where the current server proxies an image
     # stored on ref.pssdemos.com.
-    pagespeed MapProxyDomain localhost:@@PRIMARY_PORT@@/pss_images
-                             http://ref.pssdemos.com/filter/images;
+    pagespeed MapProxyDomain localhost:@@PRIMARY_PORT@@/gstatic_images
+                             http://www.gstatic.com/psa/static;
 
     location /ngx_pagespeed_statistics {
       allow 127.0.0.1;

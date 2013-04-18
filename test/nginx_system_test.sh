@@ -675,9 +675,8 @@ start_test MapProxyDomain
 # depends on MapProxyDomain in pagespeed_test.conf.template
 URL=$EXAMPLE_ROOT/proxy_external_resource.html
 echo Rewrite HTML with reference to a proxyable image.
-fetch_until -save -recursive $URL \
-    'grep -c pss_images/xPuzzle\.jpg\.pagespeed\.ic' 1
-check_file_size "$OUTDIR/xPuzzle*" -lt 60000
+fetch_until -save -recursive $URL?ModPagespeedFilters=-inline_images \
+    'grep -c 1.gif.pagespeed' 1
 
 # To make sure that we can reconstruct the proxied content by going back
 # to the origin, we must avoid hitting the output cache.
@@ -687,19 +686,19 @@ check_file_size "$OUTDIR/xPuzzle*" -lt 60000
 # virtual host attached to a different cache.
 #
 # With the proper hash, we'll get a long cache lifetime.
-SECONDARY_HOST="http://mpd.example.com/pss_images"
-PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/xPuzzle*)"
+SECONDARY_HOST="http://mpd.example.com/gstatic_images"
+PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/*1.gif.pagespeed*)"
 WGET_ARGS="--save-headers"
 
-echo $PROXIED_IMAGE expecting one year cache.
+start_test $PROXIED_IMAGE expecting one year cache.
 http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
     "grep -c max-age=31536000" 1
 
 # With the wrong hash, we'll get a short cache lifetime (and also no output
 # cache hit.
 WRONG_HASH="0"
-PROXIED_IMAGE="$SECONDARY_HOST/xPuzzle.jpg.pagespeed.ic.$WRONG_HASH.jpg"
-echo Fetching $PROXIED_IMAGE expecting short private cache.
+PROXIED_IMAGE="$SECONDARY_HOST/1.gif.pagespeed.ce.$WRONG_HASH.jpg"
+start_test Fetching $PROXIED_IMAGE expecting short private cache.
 http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
     "grep -c max-age=300,private" 1
 
@@ -989,7 +988,7 @@ start_test Connection refused handling
 
 # Monitor the log starting now.  tail -F will catch log rotations.
 FETCHER_REFUSED_PATH=$TEMPDIR/instaweb_fetcher_refused.$$
-rm $FETCHER_REFUSED_PATH
+rm -f $FETCHER_REFUSED_PATH
 LOG="$TEST_TMP/error.log"
 echo LOG = $LOG
 tail --sleep-interval=0.1 -F $LOG > $FETCHER_REFUSED_PATH &
