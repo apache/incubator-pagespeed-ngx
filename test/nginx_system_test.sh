@@ -490,9 +490,11 @@ fetch_until $URL 'fgrep -c file.exception.ssp.css' 1
 # happens both before and after.
 start_test "Reload config"
 
-check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
+check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
+  -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
-check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
+check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
+  -O /dev/null
 
 start_test ModPagespeedLoadFromFileMatch
 URL=$TEST_ROOT/load_from_file_match/index.html?ModPagespeedFilters=inline_css
