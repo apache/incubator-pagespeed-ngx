@@ -50,10 +50,10 @@ class SystemCachePath {
   ~SystemCachePath();
 
   // Per-process in-memory LRU, with any stats/thread safety wrappers, or NULL.
-  CacheInterface* lru_cache() { return lru_cache_.get(); }
+  CacheInterface* lru_cache() { return lru_cache_; }
 
   // Per-machine file cache with any stats wrappers.
-  CacheInterface* file_cache() { return file_cache_.get(); }
+  CacheInterface* file_cache() { return file_cache_; }
 
   NamedLockManager* lock_manager() { return lock_manager_; }
 
@@ -74,8 +74,8 @@ class SystemCachePath {
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
   NamedLockManager* lock_manager_;
   FileCache* file_cache_backend_;  // owned by file_cache_
-  scoped_ptr<CacheInterface> lru_cache_;
-  scoped_ptr<CacheInterface> file_cache_;
+  CacheInterface* lru_cache_;
+  CacheInterface* file_cache_;
 };
 
 // CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether
@@ -86,4 +86,3 @@ class SystemCachePath {
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
-

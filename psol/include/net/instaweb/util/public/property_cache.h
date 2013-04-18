@@ -105,8 +105,8 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AbstractMutex;
-class LogRecord;
 class PropertyValueProtobuf;
 class PropertyPage;
 class Statistics;
@@ -208,6 +208,7 @@ class PropertyCache {
 
   typedef std::vector<const Cohort*> CohortVector;
 
+  // Does not take ownership of the cache, timer, stats, or threads objects.
   PropertyCache(const GoogleString& cache_key_prefix,
                 CacheInterface* cache, Timer* timer,
                 Statistics* stats, ThreadSystem* threads);
@@ -301,9 +302,42 @@ class PropertyCache {
   DISALLOW_COPY_AND_ASSIGN(PropertyCache);
 };
 
+// Abstract interface for implementing a PropertyPage.
+class AbstractPropertyPage {
+ public:
+  virtual ~AbstractPropertyPage();
+  // Gets a property given the property name.  The property can then be
+  // mutated, prior to the PropertyPage being written back to the cache.
+  virtual PropertyValue* GetProperty(
+      const PropertyCache::Cohort* cohort,
+      const StringPiece& property_name) const = 0;
+
+  // Updates the value of a property, tracking stability & discarding
+  // writes when the existing data is more up-to-date.
+  virtual void UpdateValue(
+     const PropertyCache::Cohort* cohort, const StringPiece& property_name,
+     const StringPiece& value) = 0;
+
+  // Updates a Cohort of properties into the cache.  It is a
+  // programming error (dcheck-fail) to Write a PropertyPage that
+  // was not read first.  It is fine to Write after a failed Read.
+  virtual void WriteCohort(const PropertyCache::Cohort* cohort) = 0;
+
+  // This function returns the cache state for a given cohort.
+  virtual CacheInterface::KeyState GetCacheState(
+     const PropertyCache::Cohort* cohort) = 0;
+
+  // Deletes a property given the property name.
+  virtual void DeleteProperty(const PropertyCache::Cohort* cohort,
+                              const StringPiece& property_name) = 0;
+
+  virtual const GoogleString& key() const = 0;
+};
+
+
 // Holds the property values associated with a single key.  See more
 // extensive comment for PropertyPage above.
-class PropertyPage {
+class PropertyPage : public AbstractPropertyPage {
  public:
   virtual ~PropertyPage();
 
@@ -369,12 +403,13 @@ class PropertyPage {
 
   const GoogleString& key() const { return key_; }
 
-  LogRecord* log_record() {
+  AbstractLogRecord* log_record() {
     return request_context_->log_record();
   }
 
   // Adds logs for the given PropertyPage to the specified cohort info index.
-  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index) {}
+  virtual void LogPageCohortInfo(AbstractLogRecord* log_record,
+                                 int cohort_index) {}
 
   // Read the property page from cache.
   void Read(const PropertyCache::CohortVector& cohort_list);
@@ -422,13 +457,13 @@ class PropertyPage {
   typedef std::map<GoogleString, PropertyValue*> PropertyMap;
 
   struct PropertyMapStruct {
-    PropertyMapStruct(LogRecord* log, int index)
+    PropertyMapStruct(AbstractLogRecord* log, int index)
         : has_deleted_property(false),
           log_record(log),
           cohort_index(index) {}
     PropertyMap pmap;
     bool has_deleted_property;
-    LogRecord* log_record;
+    AbstractLogRecord* log_record;
     int cohort_index;
     CacheInterface::KeyState cache_state;
   };

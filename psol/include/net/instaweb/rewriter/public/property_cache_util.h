@@ -40,41 +40,39 @@ enum PropertyCacheDecodeResult {
   kPropertyCacheDecodeOk
 };
 
-// Decodes a protobuf of type T from the property named 'property_name'
-// in the cohort 'cohort_name' in the driver's property cache, and makes
-// sure it has not exceeded its TTL of 'cache_ttl_ms'. Passing in 'cache_ttl_ms'
-// of -1 will disable the check.
+// Returns PropertyValue object for given cohort and property name,
+// setting *status and returning NULL if any errors were found.
+const PropertyValue* DecodeFromPropertyCacheHelper(
+    const PropertyCache* cache,
+    const PropertyPage* page,
+    StringPiece cohort_name,
+    StringPiece property_name,
+    int64 cache_ttl_ms,
+    PropertyCacheDecodeResult* status);
+
+// Decodes a protobuf of type T from the property named 'property_name' in the
+// cohort 'cohort_name' in the given property cache, and makes sure it has not
+// exceeded its TTL of 'cache_ttl_ms' (a value of -1 will disable this check).
 //
 // *status will denote the decoding state; if it's kPropertyCacheDecodeOk
 // then a pointer to a freshly allocated decoded proto is returned; otherwise
 // NULL is returned.
 template<typename T>
-T* DecodeFromPropertyCache(RewriteDriver* driver,
+T* DecodeFromPropertyCache(const PropertyCache* cache,
+                           const PropertyPage* page,
                            StringPiece cohort_name,
                            StringPiece property_name,
                            int64 cache_ttl_ms,
                            PropertyCacheDecodeResult* status) {
-  scoped_ptr<T> result;
-  const PropertyCache* cache = driver->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
-  PropertyPage* page = driver->property_page();
-  if (cohort == NULL || page == NULL) {
-    *status = kPropertyCacheDecodeNotFound;
+  const PropertyValue* property_value =
+      DecodeFromPropertyCacheHelper(cache, page, cohort_name, property_name,
+                                    cache_ttl_ms, status);
+  if (property_value == NULL) {
+    // *status set by helper
     return NULL;
   }
 
-  PropertyValue* property_value = page->GetProperty(cohort, property_name);
-  if (property_value == NULL || !property_value->has_value()) {
-    *status = kPropertyCacheDecodeNotFound;
-    return NULL;
-  }
-
-  if ((cache_ttl_ms != -1) && cache->IsExpired(property_value, cache_ttl_ms)) {
-    *status = kPropertyCacheDecodeExpired;
-    return NULL;
-  }
-
-  result.reset(new T);
+  scoped_ptr<T> result(new T);
   ArrayInputStream input(property_value->value().data(),
                          property_value->value().size());
   if (!result->ParseFromZeroCopyStream(&input)) {
@@ -86,57 +84,45 @@ T* DecodeFromPropertyCache(RewriteDriver* driver,
   return result.release();
 }
 
+// Wrapper version of the above function that gets the property cache and the
+// property page from the given driver.
+template<typename T>
+T* DecodeFromPropertyCache(RewriteDriver* driver,
+                           StringPiece cohort_name,
+                           StringPiece property_name,
+                           int64 cache_ttl_ms,
+                           PropertyCacheDecodeResult* status) {
+  return DecodeFromPropertyCache<T>(
+      driver->server_context()->page_property_cache(),
+      driver->property_page(),
+      cohort_name,
+      property_name,
+      cache_ttl_ms,
+      status);
+}
+
 enum PropertyCacheUpdateResult {
   kPropertyCacheUpdateNotFound,  // can't find existing value to update
   kPropertyCacheUpdateEncodeError,
   kPropertyCacheUpdateOk
 };
 
+PropertyCacheUpdateResult UpdateInPropertyCache(
+    const protobuf::MessageLite& value, const PropertyCache* cache,
+    StringPiece cohort_name, StringPiece property_name, bool write_cohort,
+    PropertyPage* page);
+
 // Updates the property 'property_name' in cohort 'cohort_name' of the property
 // cache managed by the rewrite driver with the new value of the proto T.
 // If 'write_cohort' is true, will also additionally write out the cohort
 // to the cache backing.
-template<typename T>
-PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
-                                                RewriteDriver* driver,
-                                                StringPiece cohort_name,
-                                                StringPiece property_name,
-                                                bool write_cohort) {
+inline PropertyCacheUpdateResult UpdateInPropertyCache(
+    const protobuf::MessageLite& value, RewriteDriver* driver,
+    StringPiece cohort_name, StringPiece property_name, bool write_cohort) {
   const PropertyCache* cache = driver->server_context()->page_property_cache();
   PropertyPage* page = driver->property_page();
   return UpdateInPropertyCache(
       value, cache, cohort_name, property_name, write_cohort, page);
-}
-
-template<typename T>
-PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
-                                                const PropertyCache* cache,
-                                                StringPiece cohort_name,
-                                                StringPiece property_name,
-                                                bool write_cohort,
-                                                PropertyPage* page) {
-  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
-  if (cohort == NULL || page == NULL) {
-    return kPropertyCacheUpdateNotFound;
-  }
-
-  PropertyValue* property_value = page->GetProperty(cohort, property_name);
-  if (property_value == NULL) {
-    return kPropertyCacheUpdateNotFound;
-  }
-
-  GoogleString buf;
-  if (!value.SerializeToString(&buf)) {
-    return kPropertyCacheUpdateEncodeError;
-  }
-
-  page->UpdateValue(cohort, property_name, buf);
-
-  if (write_cohort) {
-    page->WriteCohort(cohort);
-  }
-
-  return kPropertyCacheUpdateOk;
 }
 
 }  // namespace net_instaweb

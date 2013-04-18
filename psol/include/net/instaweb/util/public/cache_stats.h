@@ -22,7 +22,6 @@
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -40,7 +39,7 @@ class Variable;
 // can be measured independently.
 class CacheStats : public CacheInterface {
  public:
-  // Takes ownership of the cache.
+  // Doees not takes ownership of the cache, timer, or statistics.
   CacheStats(StringPiece prefix,
              CacheInterface* cache,
              Timer* timer,
@@ -55,7 +54,7 @@ class CacheStats : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
-  virtual CacheInterface* Backend() { return cache_.get(); }
+  virtual CacheInterface* Backend() { return cache_; }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
 
   virtual bool IsHealthy() const {
@@ -71,7 +70,7 @@ class CacheStats : public CacheInterface {
   class StatsCallback;
   friend class StatsCallback;
 
-  scoped_ptr<CacheInterface> cache_;
+  CacheInterface* cache_;
   Timer* timer_;
   Histogram* get_count_histogram_;
   Histogram* hit_latency_us_histogram_;

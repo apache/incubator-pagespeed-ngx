@@ -36,6 +36,7 @@ class HtmlIEDirectiveNode;
 class HtmlParse;
 class Writer;
 
+// Filter that serializes HTML to a Writer stream.
 class HtmlWriterFilter : public HtmlFilter {
  public:
   explicit HtmlWriterFilter(HtmlParse* html_parse);

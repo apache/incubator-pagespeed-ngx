@@ -63,6 +63,7 @@ class BoolOrError {
 };
 
 class MessageHandler;
+class Timer;
 class Writer;
 
 // Provides abstract file system interface.  This isolation layer helps us:
@@ -293,6 +294,7 @@ class FileSystem {
   // <blink> If you use this function, your lock becomes "best-effort". </blink>
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
                                          int64 timeout_millis,
+                                         const Timer* timer,
                                          MessageHandler* handler) {
     return TryLock(lock_name, handler);
   }

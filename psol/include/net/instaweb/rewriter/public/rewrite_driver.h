@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -51,11 +52,14 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AbstractMutex;
+class AbstractPropertyPage;
 class AddInstrumentationFilter;
 class AsyncFetch;
 class CacheUrlAsyncFetcher;
 class CommonFilter;
+class CriticalCssResult;
 class CriticalLineInfo;
 class CriticalSelectorSet;
 class DebugFilter;
@@ -68,7 +72,6 @@ class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
 class LoggingFilter;
-class LogRecord;
 class MessageHandler;
 class OutputResource;
 class PropertyPage;
@@ -175,9 +178,9 @@ class RewriteDriver : public HtmlParse {
   static void Initialize();
   static void Terminate();
 
-  // Adds a server context enabling the rewriting of
-  // resources. This will replace any previous resource managers.
-  void SetResourceManager(ServerContext* resource_manager);
+  // Sets a server context enabling the rewriting of
+  // resources. This will replace any previous server context.
+  void SetServerContext(ServerContext* server_context);
 
   // Returns true if we may cache extend Css, Images, PDFs, or Scripts
   // respectively.
@@ -186,7 +189,6 @@ class RewriteDriver : public HtmlParse {
   bool MayCacheExtendPdfs() const;
   bool MayCacheExtendScripts() const;
 
-  void RememberResource(const StringPiece& url, const ResourcePtr& resource);
   const GoogleString& user_agent() const { return user_agent_; }
 
   void SetUserAgent(const StringPiece& user_agent_string);
@@ -329,6 +331,9 @@ class RewriteDriver : public HtmlParse {
   // will not be called.  If the callback -is- called, then this should be the
   // 'final word' on this request, whether it was called with success=true or
   // success=false.
+  //
+  // Note that if the request headers have not yet been set on the driver then
+  // they'll be taken from the fetch.
   bool FetchResource(const StringPiece& url, AsyncFetch* fetch);
 
   // Initiates an In-Place Resource Optimization (IPRO) fetch (A resource which
@@ -345,6 +350,9 @@ class RewriteDriver : public HtmlParse {
   // async_fetch->Done(false) will be called and async_fetch->status_code()
   // will be CacheUrlAsyncFetcher::kNotInCacheStatus (to distinguish this
   // from a different reason for failure, like kRecentFetchNotCacheable).
+  //
+  // Note that if the request headers have not yet been set on the driver then
+  // they'll be taken from the fetch.
   void FetchInPlaceResource(const GoogleUrl& gurl, bool proxy_mode,
                             AsyncFetch* async_fetch);
 
@@ -554,6 +562,9 @@ class RewriteDriver : public HtmlParse {
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.
   const GoogleUrl& base_url() const { return base_url_; }
+
+  // The URL that was requested if FetchResource was called.
+  StringPiece fetch_url() const { return fetch_url_; }
 
   // Returns the decoded version of base_gurl() in case it was encoded by a
   // non-default UrlNamer (for the default UrlNamer this returns the same value
@@ -830,10 +841,22 @@ class RewriteDriver : public HtmlParse {
   void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
   const GoogleString& client_id() const { return client_id_; }
 
-  PropertyPage* property_page() const { return property_page_; }
-  void set_property_page(PropertyPage* page);  // Takes ownership of page.
+  // Returns the property page which contains the cached properties associated
+  // with the current URL.
+  PropertyPage* property_page() const;
+  // Returns the property page which contains the cached properties associated
+  // with the current URL and fallback URL (i.e. without query params). This
+  // should be used where a property is interested in fallback values if
+  // actual values are not present.
+  AbstractPropertyPage* fallback_property_page() const {
+    return fallback_property_page_;
+  }
+  // Takes ownership of page.
+  void set_property_page(PropertyPage* page);
+  // Takes ownership of page.
+  void set_fallback_property_page(FallbackPropertyPage* page);
   // Does not take the ownership of the page.
-  void set_unowned_property_page(PropertyPage* page);
+  void set_unowned_fallback_property_page(FallbackPropertyPage* page);
 
   // Used by ImageRewriteFilter for identifying critical images.
   const CriticalLineInfo* critical_line_info() const;
@@ -841,6 +864,11 @@ class RewriteDriver : public HtmlParse {
   // Inserts the critical images present on the requested html page. It takes
   // the ownership of critical_line_info.
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
+
+  CriticalCssResult* critical_css_result() const;
+  // Sets the Critical CSS rules info in the driver and the ownership of
+  // the rules stays with the driver.
+  void set_critical_css_result(CriticalCssResult* critical_css_rules);
 
   // Used by ImageRewriteFilter for identifying critical images.
   CriticalImagesInfo* critical_images_info() const {
@@ -935,9 +963,9 @@ class RewriteDriver : public HtmlParse {
   // be used in subsequent request.
   void SaveOriginalHeaders(const ResponseHeaders& response_headers);
 
-  // log_record() always returns a pointer to a valid LogRecord, owned by the
-  // rewrite_driver's request context.
-  LogRecord* log_record();
+  // log_record() always returns a pointer to a valid AbstractLogRecord, owned
+  // by the rewrite_driver's request context.
+  AbstractLogRecord* log_record();
 
   // Determines whether the system is healthy enough to rewrite resources.
   // Currently, systems get sick based on the health of the metadata cache.
@@ -1098,7 +1126,7 @@ class RewriteDriver : public HtmlParse {
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
   CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
 
-  // Log statistics to the LogRecord.
+  // Log statistics to the AbstractLogRecord.
   void LogStats();
 
   // Only the first base-tag is significant for a document -- any subsequent
@@ -1212,6 +1240,10 @@ class RewriteDriver : public HtmlParse {
   // of the original (un-rewritten) resource.
   GoogleUrl decoded_base_url_;
 
+  // This is the URL that is being fetched in a fetch path (not valid in HTML
+  // path).
+  GoogleString fetch_url_;
+
   GoogleString user_agent_;
 
   LazyBool should_skip_parsing_;
@@ -1293,10 +1325,6 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;
   scoped_ptr<UrlLeftTrimFilter> url_trim_filter_;
 
-  // Maps encoded URLs to output URLs.
-  typedef std::map<GoogleString, ResourcePtr> ResourceMap;
-  ResourceMap resource_map_;
-
   // Maps rewrite context partition keys to the context responsible for
   // rewriting them, in case a URL occurs more than once.
   typedef std::map<GoogleString, RewriteContext*> PrimaryRewriteContextMap;
@@ -1332,8 +1360,9 @@ class RewriteDriver : public HtmlParse {
   // Stores the AbstractClientState object associated with the client, if any.
   scoped_ptr<AbstractClientState> client_state_;
 
-  // Stores any cached properties associated with the current URL.
-  PropertyPage* property_page_;
+  // Stores any cached properties associated with the current URL and fallback
+  // URL (i.e. without query params).
+  FallbackPropertyPage* fallback_property_page_;
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
@@ -1345,6 +1374,8 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical image info for the current URL.
   scoped_ptr<CriticalImagesInfo> critical_images_info_;
+
+  scoped_ptr<CriticalCssResult> critical_css_result_;
 
   // We lazy-initialize critical_selector_info_ from the finder.
   bool critical_selector_info_computed_;

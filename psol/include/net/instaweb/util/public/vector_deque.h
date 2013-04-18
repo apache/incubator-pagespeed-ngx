@@ -24,6 +24,8 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 
+namespace net_instaweb {
+
 // Simple implementation of deque using a vector which we double in
 // capacity whenever we need to make room.  This alternative to
 // std::deque is perhaps a little more fragmentious to memory
@@ -188,5 +190,7 @@ template<class T> class VectorDeque {
 
   DISALLOW_COPY_AND_ASSIGN(VectorDeque);
 };
+
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_VECTOR_DEQUE_H_

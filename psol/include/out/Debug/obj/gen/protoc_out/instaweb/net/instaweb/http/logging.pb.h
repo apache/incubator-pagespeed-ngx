@@ -23,6 +23,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
 #include "net/instaweb/rewriter/image_types.pb.h"
+#include "net/instaweb/util/enums.pb.h"
 // @@protoc_insertion_point(includes)
 
 namespace net_instaweb {
@@ -50,6 +51,7 @@ class ResourceUrlInfo;
 class ImageStats;
 class RewriteStatusCount;
 class RewriterStats;
+class DeviceInfo;
 class LoggingInfo;
 
 enum BlinkInfo_BlinkRequestFlow {
@@ -59,11 +61,12 @@ enum BlinkInfo_BlinkRequestFlow {
   BlinkInfo_BlinkRequestFlow_BLINK_CACHE_MISS_TRIGGERED_REWRITE = 4,
   BlinkInfo_BlinkRequestFlow_FOUND_MALFORMED_HTML = 5,
   BlinkInfo_BlinkRequestFlow_FOUND_LAST_STATUS_CODE_NON_OK = 6,
-  BlinkInfo_BlinkRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD = 7
+  BlinkInfo_BlinkRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD = 7,
+  BlinkInfo_BlinkRequestFlow_BLINK_BLACKLISTED = 8
 };
 bool BlinkInfo_BlinkRequestFlow_IsValid(int value);
 const BlinkInfo_BlinkRequestFlow BlinkInfo_BlinkRequestFlow_BlinkRequestFlow_MIN = BlinkInfo_BlinkRequestFlow_BLINK_CACHE_HIT;
-const BlinkInfo_BlinkRequestFlow BlinkInfo_BlinkRequestFlow_BlinkRequestFlow_MAX = BlinkInfo_BlinkRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD;
+const BlinkInfo_BlinkRequestFlow BlinkInfo_BlinkRequestFlow_BlinkRequestFlow_MAX = BlinkInfo_BlinkRequestFlow_BLINK_BLACKLISTED;
 const int BlinkInfo_BlinkRequestFlow_BlinkRequestFlow_ARRAYSIZE = BlinkInfo_BlinkRequestFlow_BlinkRequestFlow_MAX + 1;
 
 enum BlinkInfo_UserAgent {
@@ -84,11 +87,12 @@ enum FlushEarlyResourceInfo_ResourceType {
   FlushEarlyResourceInfo_ResourceType_PAGESPEED = 1,
   FlushEarlyResourceInfo_ResourceType_NON_PAGESPEED = 2,
   FlushEarlyResourceInfo_ResourceType_PRIVATE_CACHEABLE = 3,
-  FlushEarlyResourceInfo_ResourceType_DEFERJS_SCRIPT = 4
+  FlushEarlyResourceInfo_ResourceType_DEFERJS_SCRIPT = 4,
+  FlushEarlyResourceInfo_ResourceType_PUBLIC_CACHEABLE = 5
 };
 bool FlushEarlyResourceInfo_ResourceType_IsValid(int value);
 const FlushEarlyResourceInfo_ResourceType FlushEarlyResourceInfo_ResourceType_ResourceType_MIN = FlushEarlyResourceInfo_ResourceType_UNKNOWN_TYPE;
-const FlushEarlyResourceInfo_ResourceType FlushEarlyResourceInfo_ResourceType_ResourceType_MAX = FlushEarlyResourceInfo_ResourceType_DEFERJS_SCRIPT;
+const FlushEarlyResourceInfo_ResourceType FlushEarlyResourceInfo_ResourceType_ResourceType_MAX = FlushEarlyResourceInfo_ResourceType_PUBLIC_CACHEABLE;
 const int FlushEarlyResourceInfo_ResourceType_ResourceType_ARRAYSIZE = FlushEarlyResourceInfo_ResourceType_ResourceType_MAX + 1;
 
 enum FlushEarlyResourceInfo_ContentType {
@@ -114,31 +118,6 @@ bool CacheHtmlLoggingInfo_CacheHtmlRequestFlow_IsValid(int value);
 const CacheHtmlLoggingInfo_CacheHtmlRequestFlow CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MIN = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_HIT;
 const CacheHtmlLoggingInfo_CacheHtmlRequestFlow CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MAX = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD;
 const int CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_ARRAYSIZE = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MAX + 1;
-
-enum RewriterInfo_RewriterApplicationStatus {
-  RewriterInfo_RewriterApplicationStatus_UNKNOWN_STATUS = 0,
-  RewriterInfo_RewriterApplicationStatus_APPLIED_OK = 1,
-  RewriterInfo_RewriterApplicationStatus_NOT_APPLIED = 2,
-  RewriterInfo_RewriterApplicationStatus_PROPERTY_NOT_FOUND = 3,
-  RewriterInfo_RewriterApplicationStatus_INPUT_URL_INVALID = 4,
-  RewriterInfo_RewriterApplicationStatus_REPLACE_FAILED = 5
-};
-bool RewriterInfo_RewriterApplicationStatus_IsValid(int value);
-const RewriterInfo_RewriterApplicationStatus RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_MIN = RewriterInfo_RewriterApplicationStatus_UNKNOWN_STATUS;
-const RewriterInfo_RewriterApplicationStatus RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_MAX = RewriterInfo_RewriterApplicationStatus_REPLACE_FAILED;
-const int RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_ARRAYSIZE = RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_MAX + 1;
-
-enum RewriterStats_RewriterHtmlStatus {
-  RewriterStats_RewriterHtmlStatus_UNKNOWN_STATUS = 0,
-  RewriterStats_RewriterHtmlStatus_ACTIVE = 1,
-  RewriterStats_RewriterHtmlStatus_DISABLED = 2,
-  RewriterStats_RewriterHtmlStatus_PROPERTY_CACHE_MISS = 3,
-  RewriterStats_RewriterHtmlStatus_USER_AGENT_NOT_SUPPORTED = 4
-};
-bool RewriterStats_RewriterHtmlStatus_IsValid(int value);
-const RewriterStats_RewriterHtmlStatus RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_MIN = RewriterStats_RewriterHtmlStatus_UNKNOWN_STATUS;
-const RewriterStats_RewriterHtmlStatus RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_MAX = RewriterStats_RewriterHtmlStatus_USER_AGENT_NOT_SUPPORTED;
-const int RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_ARRAYSIZE = RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_MAX + 1;
 
 // ===================================================================
 
@@ -364,6 +343,7 @@ class BlinkInfo : public ::google::protobuf::MessageLite {
   static const BlinkRequestFlow FOUND_MALFORMED_HTML = BlinkInfo_BlinkRequestFlow_FOUND_MALFORMED_HTML;
   static const BlinkRequestFlow FOUND_LAST_STATUS_CODE_NON_OK = BlinkInfo_BlinkRequestFlow_FOUND_LAST_STATUS_CODE_NON_OK;
   static const BlinkRequestFlow FOUND_CONTENT_LENGTH_OVER_THRESHOLD = BlinkInfo_BlinkRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD;
+  static const BlinkRequestFlow BLINK_BLACKLISTED = BlinkInfo_BlinkRequestFlow_BLINK_BLACKLISTED;
   static inline bool BlinkRequestFlow_IsValid(int value) {
     return BlinkInfo_BlinkRequestFlow_IsValid(value);
   }
@@ -1180,6 +1160,7 @@ class FlushEarlyResourceInfo : public ::google::protobuf::MessageLite {
   static const ResourceType NON_PAGESPEED = FlushEarlyResourceInfo_ResourceType_NON_PAGESPEED;
   static const ResourceType PRIVATE_CACHEABLE = FlushEarlyResourceInfo_ResourceType_PRIVATE_CACHEABLE;
   static const ResourceType DEFERJS_SCRIPT = FlushEarlyResourceInfo_ResourceType_DEFERJS_SCRIPT;
+  static const ResourceType PUBLIC_CACHEABLE = FlushEarlyResourceInfo_ResourceType_PUBLIC_CACHEABLE;
   static inline bool ResourceType_IsValid(int value) {
     return FlushEarlyResourceInfo_ResourceType_IsValid(value);
   }
@@ -1599,12 +1580,33 @@ class RewriteResourceInfo : public ::google::protobuf::MessageLite {
   inline bool is_blacklisted() const;
   inline void set_is_blacklisted(bool value);
   
-  // optional int32 original_resource_url_index = 5;
+  // optional int32 original_resource_url_index = 5 [default = -1];
   inline bool has_original_resource_url_index() const;
   inline void clear_original_resource_url_index();
   static const int kOriginalResourceUrlIndexFieldNumber = 5;
   inline ::google::protobuf::int32 original_resource_url_index() const;
   inline void set_original_resource_url_index(::google::protobuf::int32 value);
+  
+  // optional int32 original_size = 6 [default = 0];
+  inline bool has_original_size() const;
+  inline void clear_original_size();
+  static const int kOriginalSizeFieldNumber = 6;
+  inline ::google::protobuf::int32 original_size() const;
+  inline void set_original_size(::google::protobuf::int32 value);
+  
+  // optional int32 optimized_size = 7 [default = 0];
+  inline bool has_optimized_size() const;
+  inline void clear_optimized_size();
+  static const int kOptimizedSizeFieldNumber = 7;
+  inline ::google::protobuf::int32 optimized_size() const;
+  inline void set_optimized_size(::google::protobuf::int32 value);
+  
+  // optional bool is_recompressed = 8 [default = false];
+  inline bool has_is_recompressed() const;
+  inline void clear_is_recompressed();
+  static const int kIsRecompressedFieldNumber = 8;
+  inline bool is_recompressed() const;
+  inline void set_is_recompressed(bool value);
   
   // @@protoc_insertion_point(class_scope:net_instaweb.RewriteResourceInfo)
  private:
@@ -1618,15 +1620,24 @@ class RewriteResourceInfo : public ::google::protobuf::MessageLite {
   inline void clear_has_is_blacklisted();
   inline void set_has_original_resource_url_index();
   inline void clear_has_original_resource_url_index();
+  inline void set_has_original_size();
+  inline void clear_has_original_size();
+  inline void set_has_optimized_size();
+  inline void clear_has_optimized_size();
+  inline void set_has_is_recompressed();
+  inline void clear_has_is_recompressed();
   
   bool is_inlined_;
   bool is_critical_;
   bool has_pagespeed_no_defer_;
   bool is_blacklisted_;
   ::google::protobuf::int32 original_resource_url_index_;
+  ::google::protobuf::int32 original_size_;
+  ::google::protobuf::int32 optimized_size_;
+  bool is_recompressed_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto_impl();
@@ -1708,18 +1719,48 @@ class ImageRewriteResourceInfo : public ::google::protobuf::MessageLite {
   inline ::google::protobuf::int32 low_res_size() const;
   inline void set_low_res_size(::google::protobuf::int32 value);
   
+  // optional .net_instaweb.ImageType original_image_type = 3 [default = IMAGE_UNKNOWN];
+  inline bool has_original_image_type() const;
+  inline void clear_original_image_type();
+  static const int kOriginalImageTypeFieldNumber = 3;
+  inline net_instaweb::ImageType original_image_type() const;
+  inline void set_original_image_type(net_instaweb::ImageType value);
+  
+  // optional .net_instaweb.ImageType optimized_image_type = 4 [default = IMAGE_UNKNOWN];
+  inline bool has_optimized_image_type() const;
+  inline void clear_optimized_image_type();
+  static const int kOptimizedImageTypeFieldNumber = 4;
+  inline net_instaweb::ImageType optimized_image_type() const;
+  inline void set_optimized_image_type(net_instaweb::ImageType value);
+  
+  // optional bool is_resized = 5 [default = false];
+  inline bool has_is_resized() const;
+  inline void clear_is_resized();
+  static const int kIsResizedFieldNumber = 5;
+  inline bool is_resized() const;
+  inline void set_is_resized(bool value);
+  
   // @@protoc_insertion_point(class_scope:net_instaweb.ImageRewriteResourceInfo)
  private:
   inline void set_has_is_low_res_src_inserted();
   inline void clear_has_is_low_res_src_inserted();
   inline void set_has_low_res_size();
   inline void clear_has_low_res_size();
+  inline void set_has_original_image_type();
+  inline void clear_has_original_image_type();
+  inline void set_has_optimized_image_type();
+  inline void clear_has_optimized_image_type();
+  inline void set_has_is_resized();
+  inline void clear_has_is_resized();
   
-  bool is_low_res_src_inserted_;
   ::google::protobuf::int32 low_res_size_;
+  int original_image_type_;
+  bool is_low_res_src_inserted_;
+  bool is_resized_;
+  int optimized_image_type_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto_impl();
@@ -1785,23 +1826,6 @@ class RewriterInfo : public ::google::protobuf::MessageLite {
   
   // nested types ----------------------------------------------------
   
-  typedef RewriterInfo_RewriterApplicationStatus RewriterApplicationStatus;
-  static const RewriterApplicationStatus UNKNOWN_STATUS = RewriterInfo_RewriterApplicationStatus_UNKNOWN_STATUS;
-  static const RewriterApplicationStatus APPLIED_OK = RewriterInfo_RewriterApplicationStatus_APPLIED_OK;
-  static const RewriterApplicationStatus NOT_APPLIED = RewriterInfo_RewriterApplicationStatus_NOT_APPLIED;
-  static const RewriterApplicationStatus PROPERTY_NOT_FOUND = RewriterInfo_RewriterApplicationStatus_PROPERTY_NOT_FOUND;
-  static const RewriterApplicationStatus INPUT_URL_INVALID = RewriterInfo_RewriterApplicationStatus_INPUT_URL_INVALID;
-  static const RewriterApplicationStatus REPLACE_FAILED = RewriterInfo_RewriterApplicationStatus_REPLACE_FAILED;
-  static inline bool RewriterApplicationStatus_IsValid(int value) {
-    return RewriterInfo_RewriterApplicationStatus_IsValid(value);
-  }
-  static const RewriterApplicationStatus RewriterApplicationStatus_MIN =
-    RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_MIN;
-  static const RewriterApplicationStatus RewriterApplicationStatus_MAX =
-    RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_MAX;
-  static const int RewriterApplicationStatus_ARRAYSIZE =
-    RewriterInfo_RewriterApplicationStatus_RewriterApplicationStatus_ARRAYSIZE;
-  
   // accessors -------------------------------------------------------
   
   // optional string id = 1;
@@ -1815,12 +1839,12 @@ class RewriterInfo : public ::google::protobuf::MessageLite {
   inline ::std::string* mutable_id();
   inline ::std::string* release_id();
   
-  // optional .net_instaweb.RewriterInfo.RewriterApplicationStatus status = 2;
+  // optional .net_instaweb.RewriterApplication.Status status = 2;
   inline bool has_status() const;
   inline void clear_status();
   static const int kStatusFieldNumber = 2;
-  inline ::net_instaweb::RewriterInfo_RewriterApplicationStatus status() const;
-  inline void set_status(::net_instaweb::RewriterInfo_RewriterApplicationStatus value);
+  inline ::net_instaweb::RewriterApplication_Status status() const;
+  inline void set_status(::net_instaweb::RewriterApplication_Status value);
   
   // optional .net_instaweb.FlushEarlyResourceInfo flush_early_resource_info = 3;
   inline bool has_flush_early_resource_info() const;
@@ -2117,12 +2141,12 @@ class RewriteStatusCount : public ::google::protobuf::MessageLite {
   
   // accessors -------------------------------------------------------
   
-  // optional int32 application_status = 1;
+  // optional .net_instaweb.RewriterApplication.Status application_status = 1;
   inline bool has_application_status() const;
   inline void clear_application_status();
   static const int kApplicationStatusFieldNumber = 1;
-  inline ::google::protobuf::int32 application_status() const;
-  inline void set_application_status(::google::protobuf::int32 value);
+  inline ::net_instaweb::RewriterApplication_Status application_status() const;
+  inline void set_application_status(::net_instaweb::RewriterApplication_Status value);
   
   // optional int32 count = 2;
   inline bool has_count() const;
@@ -2138,7 +2162,7 @@ class RewriteStatusCount : public ::google::protobuf::MessageLite {
   inline void set_has_count();
   inline void clear_has_count();
   
-  ::google::protobuf::int32 application_status_;
+  int application_status_;
   ::google::protobuf::int32 count_;
   
   mutable int _cached_size_;
@@ -2208,22 +2232,6 @@ class RewriterStats : public ::google::protobuf::MessageLite {
   
   // nested types ----------------------------------------------------
   
-  typedef RewriterStats_RewriterHtmlStatus RewriterHtmlStatus;
-  static const RewriterHtmlStatus UNKNOWN_STATUS = RewriterStats_RewriterHtmlStatus_UNKNOWN_STATUS;
-  static const RewriterHtmlStatus ACTIVE = RewriterStats_RewriterHtmlStatus_ACTIVE;
-  static const RewriterHtmlStatus DISABLED = RewriterStats_RewriterHtmlStatus_DISABLED;
-  static const RewriterHtmlStatus PROPERTY_CACHE_MISS = RewriterStats_RewriterHtmlStatus_PROPERTY_CACHE_MISS;
-  static const RewriterHtmlStatus USER_AGENT_NOT_SUPPORTED = RewriterStats_RewriterHtmlStatus_USER_AGENT_NOT_SUPPORTED;
-  static inline bool RewriterHtmlStatus_IsValid(int value) {
-    return RewriterStats_RewriterHtmlStatus_IsValid(value);
-  }
-  static const RewriterHtmlStatus RewriterHtmlStatus_MIN =
-    RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_MIN;
-  static const RewriterHtmlStatus RewriterHtmlStatus_MAX =
-    RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_MAX;
-  static const int RewriterHtmlStatus_ARRAYSIZE =
-    RewriterStats_RewriterHtmlStatus_RewriterHtmlStatus_ARRAYSIZE;
-  
   // accessors -------------------------------------------------------
   
   // optional string id = 1;
@@ -2237,12 +2245,12 @@ class RewriterStats : public ::google::protobuf::MessageLite {
   inline ::std::string* mutable_id();
   inline ::std::string* release_id();
   
-  // optional .net_instaweb.RewriterStats.RewriterHtmlStatus html_status = 2;
+  // optional .net_instaweb.RewriterHtmlApplication.Status html_status = 2;
   inline bool has_html_status() const;
   inline void clear_html_status();
   static const int kHtmlStatusFieldNumber = 2;
-  inline ::net_instaweb::RewriterStats_RewriterHtmlStatus html_status() const;
-  inline void set_html_status(::net_instaweb::RewriterStats_RewriterHtmlStatus value);
+  inline ::net_instaweb::RewriterHtmlApplication_Status html_status() const;
+  inline void set_html_status(::net_instaweb::RewriterHtmlApplication_Status value);
   
   // repeated .net_instaweb.RewriteStatusCount status_counts = 3;
   inline int status_counts_size() const;
@@ -2280,6 +2288,179 @@ class RewriterStats : public ::google::protobuf::MessageLite {
   
   void InitAsDefaultInstance();
   static RewriterStats* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class DeviceInfo : public ::google::protobuf::MessageLite {
+ public:
+  DeviceInfo();
+  virtual ~DeviceInfo();
+  
+  DeviceInfo(const DeviceInfo& from);
+  
+  inline DeviceInfo& operator=(const DeviceInfo& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  static const DeviceInfo& default_instance();
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const DeviceInfo* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+  
+  void Swap(DeviceInfo* other);
+  
+  // implements Message ----------------------------------------------
+  
+  DeviceInfo* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const DeviceInfo& from);
+  void MergeFrom(const DeviceInfo& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::std::string GetTypeName() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // optional int32 device_type = 1;
+  inline bool has_device_type() const;
+  inline void clear_device_type();
+  static const int kDeviceTypeFieldNumber = 1;
+  inline ::google::protobuf::int32 device_type() const;
+  inline void set_device_type(::google::protobuf::int32 value);
+  
+  // optional bool supports_image_inlining = 2;
+  inline bool has_supports_image_inlining() const;
+  inline void clear_supports_image_inlining();
+  static const int kSupportsImageInliningFieldNumber = 2;
+  inline bool supports_image_inlining() const;
+  inline void set_supports_image_inlining(bool value);
+  
+  // optional bool supports_lazyload_images = 3;
+  inline bool has_supports_lazyload_images() const;
+  inline void clear_supports_lazyload_images();
+  static const int kSupportsLazyloadImagesFieldNumber = 3;
+  inline bool supports_lazyload_images() const;
+  inline void set_supports_lazyload_images(bool value);
+  
+  // optional bool supports_critical_images_beacon = 4;
+  inline bool has_supports_critical_images_beacon() const;
+  inline void clear_supports_critical_images_beacon();
+  static const int kSupportsCriticalImagesBeaconFieldNumber = 4;
+  inline bool supports_critical_images_beacon() const;
+  inline void set_supports_critical_images_beacon(bool value);
+  
+  // optional bool supports_deferjs = 5;
+  inline bool has_supports_deferjs() const;
+  inline void clear_supports_deferjs();
+  static const int kSupportsDeferjsFieldNumber = 5;
+  inline bool supports_deferjs() const;
+  inline void set_supports_deferjs(bool value);
+  
+  // optional bool supports_webp = 6;
+  inline bool has_supports_webp() const;
+  inline void clear_supports_webp();
+  static const int kSupportsWebpFieldNumber = 6;
+  inline bool supports_webp() const;
+  inline void set_supports_webp(bool value);
+  
+  // optional bool supports_webplossless_alpha = 7;
+  inline bool has_supports_webplossless_alpha() const;
+  inline void clear_supports_webplossless_alpha();
+  static const int kSupportsWebplosslessAlphaFieldNumber = 7;
+  inline bool supports_webplossless_alpha() const;
+  inline void set_supports_webplossless_alpha(bool value);
+  
+  // optional bool is_bot = 8;
+  inline bool has_is_bot() const;
+  inline void clear_is_bot();
+  static const int kIsBotFieldNumber = 8;
+  inline bool is_bot() const;
+  inline void set_is_bot(bool value);
+  
+  // optional bool supports_split_html = 9;
+  inline bool has_supports_split_html() const;
+  inline void clear_supports_split_html();
+  static const int kSupportsSplitHtmlFieldNumber = 9;
+  inline bool supports_split_html() const;
+  inline void set_supports_split_html(bool value);
+  
+  // optional bool can_preload_resources = 10;
+  inline bool has_can_preload_resources() const;
+  inline void clear_can_preload_resources();
+  static const int kCanPreloadResourcesFieldNumber = 10;
+  inline bool can_preload_resources() const;
+  inline void set_can_preload_resources(bool value);
+  
+  // @@protoc_insertion_point(class_scope:net_instaweb.DeviceInfo)
+ private:
+  inline void set_has_device_type();
+  inline void clear_has_device_type();
+  inline void set_has_supports_image_inlining();
+  inline void clear_has_supports_image_inlining();
+  inline void set_has_supports_lazyload_images();
+  inline void clear_has_supports_lazyload_images();
+  inline void set_has_supports_critical_images_beacon();
+  inline void clear_has_supports_critical_images_beacon();
+  inline void set_has_supports_deferjs();
+  inline void clear_has_supports_deferjs();
+  inline void set_has_supports_webp();
+  inline void clear_has_supports_webp();
+  inline void set_has_supports_webplossless_alpha();
+  inline void clear_has_supports_webplossless_alpha();
+  inline void set_has_is_bot();
+  inline void clear_has_is_bot();
+  inline void set_has_supports_split_html();
+  inline void clear_has_supports_split_html();
+  inline void set_has_can_preload_resources();
+  inline void clear_has_can_preload_resources();
+  
+  ::google::protobuf::int32 device_type_;
+  bool supports_image_inlining_;
+  bool supports_lazyload_images_;
+  bool supports_critical_images_beacon_;
+  bool supports_deferjs_;
+  bool supports_webp_;
+  bool supports_webplossless_alpha_;
+  bool is_bot_;
+  bool supports_split_html_;
+  bool can_preload_resources_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_net_2finstaweb_2fhttp_2flogging_2eproto();
+  friend void protobuf_ShutdownFile_net_2finstaweb_2fhttp_2flogging_2eproto();
+  
+  void InitAsDefaultInstance();
+  static DeviceInfo* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -2521,6 +2702,14 @@ class LoggingInfo : public ::google::protobuf::MessageLite {
   inline ::net_instaweb::CriticalCssInfo* mutable_critical_css_info();
   inline ::net_instaweb::CriticalCssInfo* release_critical_css_info();
   
+  // optional .net_instaweb.DeviceInfo device_info = 24;
+  inline bool has_device_info() const;
+  inline void clear_device_info();
+  static const int kDeviceInfoFieldNumber = 24;
+  inline const ::net_instaweb::DeviceInfo& device_info() const;
+  inline ::net_instaweb::DeviceInfo* mutable_device_info();
+  inline ::net_instaweb::DeviceInfo* release_device_info();
+  
   // @@protoc_insertion_point(class_scope:net_instaweb.LoggingInfo)
  private:
   inline void set_has_timing_info();
@@ -2565,6 +2754,8 @@ class LoggingInfo : public ::google::protobuf::MessageLite {
   inline void clear_has_image_stats();
   inline void set_has_critical_css_info();
   inline void clear_has_critical_css_info();
+  inline void set_has_device_info();
+  inline void clear_has_device_info();
   
   ::net_instaweb::TimingInfo* timing_info_;
   ::net_instaweb::BlinkInfo* blink_info_;
@@ -2588,10 +2779,11 @@ class LoggingInfo : public ::google::protobuf::MessageLite {
   ::net_instaweb::CacheHtmlLoggingInfo* cache_html_logging_info_;
   ::net_instaweb::ImageStats* image_stats_;
   ::net_instaweb::CriticalCssInfo* critical_css_info_;
+  ::net_instaweb::DeviceInfo* device_info_;
   ::google::protobuf::int32 num_css_critical_images_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(23 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(24 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto_impl();
@@ -3965,7 +4157,7 @@ inline void RewriteResourceInfo::set_is_blacklisted(bool value) {
   is_blacklisted_ = value;
 }
 
-// optional int32 original_resource_url_index = 5;
+// optional int32 original_resource_url_index = 5 [default = -1];
 inline bool RewriteResourceInfo::has_original_resource_url_index() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
@@ -3976,7 +4168,7 @@ inline void RewriteResourceInfo::clear_has_original_resource_url_index() {
   _has_bits_[0] &= ~0x00000010u;
 }
 inline void RewriteResourceInfo::clear_original_resource_url_index() {
-  original_resource_url_index_ = 0;
+  original_resource_url_index_ = -1;
   clear_has_original_resource_url_index();
 }
 inline ::google::protobuf::int32 RewriteResourceInfo::original_resource_url_index() const {
@@ -3985,6 +4177,72 @@ inline ::google::protobuf::int32 RewriteResourceInfo::original_resource_url_inde
 inline void RewriteResourceInfo::set_original_resource_url_index(::google::protobuf::int32 value) {
   set_has_original_resource_url_index();
   original_resource_url_index_ = value;
+}
+
+// optional int32 original_size = 6 [default = 0];
+inline bool RewriteResourceInfo::has_original_size() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void RewriteResourceInfo::set_has_original_size() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void RewriteResourceInfo::clear_has_original_size() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void RewriteResourceInfo::clear_original_size() {
+  original_size_ = 0;
+  clear_has_original_size();
+}
+inline ::google::protobuf::int32 RewriteResourceInfo::original_size() const {
+  return original_size_;
+}
+inline void RewriteResourceInfo::set_original_size(::google::protobuf::int32 value) {
+  set_has_original_size();
+  original_size_ = value;
+}
+
+// optional int32 optimized_size = 7 [default = 0];
+inline bool RewriteResourceInfo::has_optimized_size() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void RewriteResourceInfo::set_has_optimized_size() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void RewriteResourceInfo::clear_has_optimized_size() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void RewriteResourceInfo::clear_optimized_size() {
+  optimized_size_ = 0;
+  clear_has_optimized_size();
+}
+inline ::google::protobuf::int32 RewriteResourceInfo::optimized_size() const {
+  return optimized_size_;
+}
+inline void RewriteResourceInfo::set_optimized_size(::google::protobuf::int32 value) {
+  set_has_optimized_size();
+  optimized_size_ = value;
+}
+
+// optional bool is_recompressed = 8 [default = false];
+inline bool RewriteResourceInfo::has_is_recompressed() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void RewriteResourceInfo::set_has_is_recompressed() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void RewriteResourceInfo::clear_has_is_recompressed() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void RewriteResourceInfo::clear_is_recompressed() {
+  is_recompressed_ = false;
+  clear_has_is_recompressed();
+}
+inline bool RewriteResourceInfo::is_recompressed() const {
+  return is_recompressed_;
+}
+inline void RewriteResourceInfo::set_is_recompressed(bool value) {
+  set_has_is_recompressed();
+  is_recompressed_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -4033,6 +4291,74 @@ inline ::google::protobuf::int32 ImageRewriteResourceInfo::low_res_size() const 
 inline void ImageRewriteResourceInfo::set_low_res_size(::google::protobuf::int32 value) {
   set_has_low_res_size();
   low_res_size_ = value;
+}
+
+// optional .net_instaweb.ImageType original_image_type = 3 [default = IMAGE_UNKNOWN];
+inline bool ImageRewriteResourceInfo::has_original_image_type() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void ImageRewriteResourceInfo::set_has_original_image_type() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void ImageRewriteResourceInfo::clear_has_original_image_type() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void ImageRewriteResourceInfo::clear_original_image_type() {
+  original_image_type_ = 0;
+  clear_has_original_image_type();
+}
+inline net_instaweb::ImageType ImageRewriteResourceInfo::original_image_type() const {
+  return static_cast< net_instaweb::ImageType >(original_image_type_);
+}
+inline void ImageRewriteResourceInfo::set_original_image_type(net_instaweb::ImageType value) {
+  GOOGLE_DCHECK(net_instaweb::ImageType_IsValid(value));
+  set_has_original_image_type();
+  original_image_type_ = value;
+}
+
+// optional .net_instaweb.ImageType optimized_image_type = 4 [default = IMAGE_UNKNOWN];
+inline bool ImageRewriteResourceInfo::has_optimized_image_type() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void ImageRewriteResourceInfo::set_has_optimized_image_type() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void ImageRewriteResourceInfo::clear_has_optimized_image_type() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void ImageRewriteResourceInfo::clear_optimized_image_type() {
+  optimized_image_type_ = 0;
+  clear_has_optimized_image_type();
+}
+inline net_instaweb::ImageType ImageRewriteResourceInfo::optimized_image_type() const {
+  return static_cast< net_instaweb::ImageType >(optimized_image_type_);
+}
+inline void ImageRewriteResourceInfo::set_optimized_image_type(net_instaweb::ImageType value) {
+  GOOGLE_DCHECK(net_instaweb::ImageType_IsValid(value));
+  set_has_optimized_image_type();
+  optimized_image_type_ = value;
+}
+
+// optional bool is_resized = 5 [default = false];
+inline bool ImageRewriteResourceInfo::has_is_resized() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void ImageRewriteResourceInfo::set_has_is_resized() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void ImageRewriteResourceInfo::clear_has_is_resized() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void ImageRewriteResourceInfo::clear_is_resized() {
+  is_resized_ = false;
+  clear_has_is_resized();
+}
+inline bool ImageRewriteResourceInfo::is_resized() const {
+  return is_resized_;
+}
+inline void ImageRewriteResourceInfo::set_is_resized(bool value) {
+  set_has_is_resized();
+  is_resized_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -4097,7 +4423,7 @@ inline ::std::string* RewriterInfo::release_id() {
   }
 }
 
-// optional .net_instaweb.RewriterInfo.RewriterApplicationStatus status = 2;
+// optional .net_instaweb.RewriterApplication.Status status = 2;
 inline bool RewriterInfo::has_status() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -4111,11 +4437,11 @@ inline void RewriterInfo::clear_status() {
   status_ = 0;
   clear_has_status();
 }
-inline ::net_instaweb::RewriterInfo_RewriterApplicationStatus RewriterInfo::status() const {
-  return static_cast< ::net_instaweb::RewriterInfo_RewriterApplicationStatus >(status_);
+inline ::net_instaweb::RewriterApplication_Status RewriterInfo::status() const {
+  return static_cast< ::net_instaweb::RewriterApplication_Status >(status_);
 }
-inline void RewriterInfo::set_status(::net_instaweb::RewriterInfo_RewriterApplicationStatus value) {
-  GOOGLE_DCHECK(::net_instaweb::RewriterInfo_RewriterApplicationStatus_IsValid(value));
+inline void RewriterInfo::set_status(::net_instaweb::RewriterApplication_Status value) {
+  GOOGLE_DCHECK(::net_instaweb::RewriterApplication_Status_IsValid(value));
   set_has_status();
   status_ = value;
 }
@@ -4319,7 +4645,7 @@ inline void ImageStats::set_num_inlined_img_tags(::google::protobuf::int32 value
 
 // RewriteStatusCount
 
-// optional int32 application_status = 1;
+// optional .net_instaweb.RewriterApplication.Status application_status = 1;
 inline bool RewriteStatusCount::has_application_status() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -4333,10 +4659,11 @@ inline void RewriteStatusCount::clear_application_status() {
   application_status_ = 0;
   clear_has_application_status();
 }
-inline ::google::protobuf::int32 RewriteStatusCount::application_status() const {
-  return application_status_;
+inline ::net_instaweb::RewriterApplication_Status RewriteStatusCount::application_status() const {
+  return static_cast< ::net_instaweb::RewriterApplication_Status >(application_status_);
 }
-inline void RewriteStatusCount::set_application_status(::google::protobuf::int32 value) {
+inline void RewriteStatusCount::set_application_status(::net_instaweb::RewriterApplication_Status value) {
+  GOOGLE_DCHECK(::net_instaweb::RewriterApplication_Status_IsValid(value));
   set_has_application_status();
   application_status_ = value;
 }
@@ -4425,7 +4752,7 @@ inline ::std::string* RewriterStats::release_id() {
   }
 }
 
-// optional .net_instaweb.RewriterStats.RewriterHtmlStatus html_status = 2;
+// optional .net_instaweb.RewriterHtmlApplication.Status html_status = 2;
 inline bool RewriterStats::has_html_status() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -4439,11 +4766,11 @@ inline void RewriterStats::clear_html_status() {
   html_status_ = 0;
   clear_has_html_status();
 }
-inline ::net_instaweb::RewriterStats_RewriterHtmlStatus RewriterStats::html_status() const {
-  return static_cast< ::net_instaweb::RewriterStats_RewriterHtmlStatus >(html_status_);
+inline ::net_instaweb::RewriterHtmlApplication_Status RewriterStats::html_status() const {
+  return static_cast< ::net_instaweb::RewriterHtmlApplication_Status >(html_status_);
 }
-inline void RewriterStats::set_html_status(::net_instaweb::RewriterStats_RewriterHtmlStatus value) {
-  GOOGLE_DCHECK(::net_instaweb::RewriterStats_RewriterHtmlStatus_IsValid(value));
+inline void RewriterStats::set_html_status(::net_instaweb::RewriterHtmlApplication_Status value) {
+  GOOGLE_DCHECK(::net_instaweb::RewriterHtmlApplication_Status_IsValid(value));
   set_has_html_status();
   html_status_ = value;
 }
@@ -4471,6 +4798,230 @@ RewriterStats::status_counts() const {
 inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::RewriteStatusCount >*
 RewriterStats::mutable_status_counts() {
   return &status_counts_;
+}
+
+// -------------------------------------------------------------------
+
+// DeviceInfo
+
+// optional int32 device_type = 1;
+inline bool DeviceInfo::has_device_type() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void DeviceInfo::set_has_device_type() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void DeviceInfo::clear_has_device_type() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void DeviceInfo::clear_device_type() {
+  device_type_ = 0;
+  clear_has_device_type();
+}
+inline ::google::protobuf::int32 DeviceInfo::device_type() const {
+  return device_type_;
+}
+inline void DeviceInfo::set_device_type(::google::protobuf::int32 value) {
+  set_has_device_type();
+  device_type_ = value;
+}
+
+// optional bool supports_image_inlining = 2;
+inline bool DeviceInfo::has_supports_image_inlining() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void DeviceInfo::set_has_supports_image_inlining() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void DeviceInfo::clear_has_supports_image_inlining() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void DeviceInfo::clear_supports_image_inlining() {
+  supports_image_inlining_ = false;
+  clear_has_supports_image_inlining();
+}
+inline bool DeviceInfo::supports_image_inlining() const {
+  return supports_image_inlining_;
+}
+inline void DeviceInfo::set_supports_image_inlining(bool value) {
+  set_has_supports_image_inlining();
+  supports_image_inlining_ = value;
+}
+
+// optional bool supports_lazyload_images = 3;
+inline bool DeviceInfo::has_supports_lazyload_images() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void DeviceInfo::set_has_supports_lazyload_images() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void DeviceInfo::clear_has_supports_lazyload_images() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void DeviceInfo::clear_supports_lazyload_images() {
+  supports_lazyload_images_ = false;
+  clear_has_supports_lazyload_images();
+}
+inline bool DeviceInfo::supports_lazyload_images() const {
+  return supports_lazyload_images_;
+}
+inline void DeviceInfo::set_supports_lazyload_images(bool value) {
+  set_has_supports_lazyload_images();
+  supports_lazyload_images_ = value;
+}
+
+// optional bool supports_critical_images_beacon = 4;
+inline bool DeviceInfo::has_supports_critical_images_beacon() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void DeviceInfo::set_has_supports_critical_images_beacon() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void DeviceInfo::clear_has_supports_critical_images_beacon() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void DeviceInfo::clear_supports_critical_images_beacon() {
+  supports_critical_images_beacon_ = false;
+  clear_has_supports_critical_images_beacon();
+}
+inline bool DeviceInfo::supports_critical_images_beacon() const {
+  return supports_critical_images_beacon_;
+}
+inline void DeviceInfo::set_supports_critical_images_beacon(bool value) {
+  set_has_supports_critical_images_beacon();
+  supports_critical_images_beacon_ = value;
+}
+
+// optional bool supports_deferjs = 5;
+inline bool DeviceInfo::has_supports_deferjs() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void DeviceInfo::set_has_supports_deferjs() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void DeviceInfo::clear_has_supports_deferjs() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void DeviceInfo::clear_supports_deferjs() {
+  supports_deferjs_ = false;
+  clear_has_supports_deferjs();
+}
+inline bool DeviceInfo::supports_deferjs() const {
+  return supports_deferjs_;
+}
+inline void DeviceInfo::set_supports_deferjs(bool value) {
+  set_has_supports_deferjs();
+  supports_deferjs_ = value;
+}
+
+// optional bool supports_webp = 6;
+inline bool DeviceInfo::has_supports_webp() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void DeviceInfo::set_has_supports_webp() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void DeviceInfo::clear_has_supports_webp() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void DeviceInfo::clear_supports_webp() {
+  supports_webp_ = false;
+  clear_has_supports_webp();
+}
+inline bool DeviceInfo::supports_webp() const {
+  return supports_webp_;
+}
+inline void DeviceInfo::set_supports_webp(bool value) {
+  set_has_supports_webp();
+  supports_webp_ = value;
+}
+
+// optional bool supports_webplossless_alpha = 7;
+inline bool DeviceInfo::has_supports_webplossless_alpha() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void DeviceInfo::set_has_supports_webplossless_alpha() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void DeviceInfo::clear_has_supports_webplossless_alpha() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void DeviceInfo::clear_supports_webplossless_alpha() {
+  supports_webplossless_alpha_ = false;
+  clear_has_supports_webplossless_alpha();
+}
+inline bool DeviceInfo::supports_webplossless_alpha() const {
+  return supports_webplossless_alpha_;
+}
+inline void DeviceInfo::set_supports_webplossless_alpha(bool value) {
+  set_has_supports_webplossless_alpha();
+  supports_webplossless_alpha_ = value;
+}
+
+// optional bool is_bot = 8;
+inline bool DeviceInfo::has_is_bot() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void DeviceInfo::set_has_is_bot() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void DeviceInfo::clear_has_is_bot() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void DeviceInfo::clear_is_bot() {
+  is_bot_ = false;
+  clear_has_is_bot();
+}
+inline bool DeviceInfo::is_bot() const {
+  return is_bot_;
+}
+inline void DeviceInfo::set_is_bot(bool value) {
+  set_has_is_bot();
+  is_bot_ = value;
+}
+
+// optional bool supports_split_html = 9;
+inline bool DeviceInfo::has_supports_split_html() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void DeviceInfo::set_has_supports_split_html() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void DeviceInfo::clear_has_supports_split_html() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void DeviceInfo::clear_supports_split_html() {
+  supports_split_html_ = false;
+  clear_has_supports_split_html();
+}
+inline bool DeviceInfo::supports_split_html() const {
+  return supports_split_html_;
+}
+inline void DeviceInfo::set_supports_split_html(bool value) {
+  set_has_supports_split_html();
+  supports_split_html_ = value;
+}
+
+// optional bool can_preload_resources = 10;
+inline bool DeviceInfo::has_can_preload_resources() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void DeviceInfo::set_has_can_preload_resources() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void DeviceInfo::clear_has_can_preload_resources() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void DeviceInfo::clear_can_preload_resources() {
+  can_preload_resources_ = false;
+  clear_has_can_preload_resources();
+}
+inline bool DeviceInfo::can_preload_resources() const {
+  return can_preload_resources_;
+}
+inline void DeviceInfo::set_can_preload_resources(bool value) {
+  set_has_can_preload_resources();
+  can_preload_resources_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -5132,6 +5683,39 @@ inline ::net_instaweb::CriticalCssInfo* LoggingInfo::release_critical_css_info()
   clear_has_critical_css_info();
   ::net_instaweb::CriticalCssInfo* temp = critical_css_info_;
   critical_css_info_ = NULL;
+  return temp;
+}
+
+// optional .net_instaweb.DeviceInfo device_info = 24;
+inline bool LoggingInfo::has_device_info() const {
+  return (_has_bits_[0] & 0x00800000u) != 0;
+}
+inline void LoggingInfo::set_has_device_info() {
+  _has_bits_[0] |= 0x00800000u;
+}
+inline void LoggingInfo::clear_has_device_info() {
+  _has_bits_[0] &= ~0x00800000u;
+}
+inline void LoggingInfo::clear_device_info() {
+  if (device_info_ != NULL) device_info_->::net_instaweb::DeviceInfo::Clear();
+  clear_has_device_info();
+}
+inline const ::net_instaweb::DeviceInfo& LoggingInfo::device_info() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return device_info_ != NULL ? *device_info_ : *default_instance().device_info_;
+#else
+  return device_info_ != NULL ? *device_info_ : *default_instance_->device_info_;
+#endif
+}
+inline ::net_instaweb::DeviceInfo* LoggingInfo::mutable_device_info() {
+  set_has_device_info();
+  if (device_info_ == NULL) device_info_ = new ::net_instaweb::DeviceInfo;
+  return device_info_;
+}
+inline ::net_instaweb::DeviceInfo* LoggingInfo::release_device_info() {
+  clear_has_device_info();
+  ::net_instaweb::DeviceInfo* temp = device_info_;
+  device_info_ = NULL;
   return temp;
 }
 

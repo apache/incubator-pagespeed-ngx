@@ -459,6 +459,22 @@ class FlushEarlyRenderInfo : public ::google::protobuf::MessageLite {
   inline bool updated() const;
   inline void set_updated(bool value);
   
+  // repeated string public_cacheable_url = 4;
+  inline int public_cacheable_url_size() const;
+  inline void clear_public_cacheable_url();
+  static const int kPublicCacheableUrlFieldNumber = 4;
+  inline const ::std::string& public_cacheable_url(int index) const;
+  inline ::std::string* mutable_public_cacheable_url(int index);
+  inline void set_public_cacheable_url(int index, const ::std::string& value);
+  inline void set_public_cacheable_url(int index, const char* value);
+  inline void set_public_cacheable_url(int index, const char* value, size_t size);
+  inline ::std::string* add_public_cacheable_url();
+  inline void add_public_cacheable_url(const ::std::string& value);
+  inline void add_public_cacheable_url(const char* value);
+  inline void add_public_cacheable_url(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& public_cacheable_url() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_public_cacheable_url();
+  
   // @@protoc_insertion_point(class_scope:net_instaweb.FlushEarlyRenderInfo)
  private:
   inline void set_has_charset();
@@ -468,10 +484,11 @@ class FlushEarlyRenderInfo : public ::google::protobuf::MessageLite {
   
   ::google::protobuf::RepeatedPtrField< ::std::string> private_cacheable_url_;
   ::std::string* charset_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> public_cacheable_url_;
   bool updated_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fflush_5fearly_2eproto_impl();
@@ -1168,6 +1185,50 @@ inline bool FlushEarlyRenderInfo::updated() const {
 inline void FlushEarlyRenderInfo::set_updated(bool value) {
   set_has_updated();
   updated_ = value;
+}
+
+// repeated string public_cacheable_url = 4;
+inline int FlushEarlyRenderInfo::public_cacheable_url_size() const {
+  return public_cacheable_url_.size();
+}
+inline void FlushEarlyRenderInfo::clear_public_cacheable_url() {
+  public_cacheable_url_.Clear();
+}
+inline const ::std::string& FlushEarlyRenderInfo::public_cacheable_url(int index) const {
+  return public_cacheable_url_.Get(index);
+}
+inline ::std::string* FlushEarlyRenderInfo::mutable_public_cacheable_url(int index) {
+  return public_cacheable_url_.Mutable(index);
+}
+inline void FlushEarlyRenderInfo::set_public_cacheable_url(int index, const ::std::string& value) {
+  public_cacheable_url_.Mutable(index)->assign(value);
+}
+inline void FlushEarlyRenderInfo::set_public_cacheable_url(int index, const char* value) {
+  public_cacheable_url_.Mutable(index)->assign(value);
+}
+inline void FlushEarlyRenderInfo::set_public_cacheable_url(int index, const char* value, size_t size) {
+  public_cacheable_url_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* FlushEarlyRenderInfo::add_public_cacheable_url() {
+  return public_cacheable_url_.Add();
+}
+inline void FlushEarlyRenderInfo::add_public_cacheable_url(const ::std::string& value) {
+  public_cacheable_url_.Add()->assign(value);
+}
+inline void FlushEarlyRenderInfo::add_public_cacheable_url(const char* value) {
+  public_cacheable_url_.Add()->assign(value);
+}
+inline void FlushEarlyRenderInfo::add_public_cacheable_url(const char* value, size_t size) {
+  public_cacheable_url_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+FlushEarlyRenderInfo::public_cacheable_url() const {
+  return public_cacheable_url_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+FlushEarlyRenderInfo::mutable_public_cacheable_url() {
+  return &public_cacheable_url_;
 }
 
 

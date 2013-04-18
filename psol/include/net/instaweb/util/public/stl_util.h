@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STL_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STL_UTIL_H_
 
-#include "base/stl_util.h"
+// TODO(jmarantz): Remove this forwarding header and change all references.
+#include "pagespeed/kernel/base/stl_util.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STL_UTIL_H_

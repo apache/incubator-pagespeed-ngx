@@ -58,7 +58,8 @@ class MockPropertyPage : public PropertyPage {
   // PropertyPage has LogPageCohortInfo with empty body. Property Cache Read
   // function calls LogPageCohortInfo to do log job. In order to test it,
   // implementation is added here.
-  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index) {
+  virtual void LogPageCohortInfo(AbstractLogRecord* log_record,
+                                 int cohort_index) {
     log_record->SetDeviceAndCacheTypeForCohortInfo(
         cohort_index, kMockDeviceType, kMockCacheType);
   }

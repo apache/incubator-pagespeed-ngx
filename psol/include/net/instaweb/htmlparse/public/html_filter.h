@@ -28,6 +28,8 @@ class HtmlDirectiveNode;
 class HtmlElement;
 class HtmlIEDirectiveNode;
 
+// Base-class used to register for HTML Parser Callbacks.  Derive from this
+// class and register with HtmlParse::AddFilter to use the HTML Parser.
 class HtmlFilter {
  public:
   HtmlFilter();
@@ -74,8 +76,17 @@ class HtmlFilter {
   // the wire to its destination and it's too late to mutate.  Flush
   // is initiated by an application calling HttpParse::Flush().
   //
-  // Flush() is called after all other handlers during a HttpParse::Flush().
+  // Flush() is called after all other handlers during a HttpParse::Flush(),
+  // except RenderDone(), which (if in use) happens after Flush().
   virtual void Flush() = 0;
+
+  // Notifies a filter that an asynchronous rewrite & render computation
+  // phase has finished. This is not used by HtmlParse itself, but only by
+  // RewriteDriver for pre-render filters. Happens after the corresponding
+  // flush, for every flush window. Default implementation does nothing.
+  // TODO(morlovich): Push this down into CommonFilter and convert all the
+  // pre-render filters to inherit off it.
+  virtual void RenderDone();
 
   // Invoked by rewrite driver where all filters should determine whether
   // they are enabled for this request.

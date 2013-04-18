@@ -803,7 +803,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // Use a temp to minimize the amount of time we hold the
     // initiate_mutex_ lock, so that the parent thread doesn't get
     // blocked trying to initiate fetches.
-    scoped_ptr<SerfFetchPool> xfer_fetches(NULL);
+    scoped_ptr<SerfFetchPool> xfer_fetches;
     {
       ScopedMutex lock(initiate_mutex_.get());
       // We must do this checking under the initiate_mutex_ lock.

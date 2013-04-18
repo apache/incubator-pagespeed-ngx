@@ -38,14 +38,15 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "third_party/instaweb/util/fast_wildcard_group.h"
-#include "third_party/instaweb/util/wildcard.h"
+#include "pagespeed/kernel/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
 class GoogleUrl;
 class Hasher;
 class MessageHandler;
+class RequestHeaders;
 
 // Defines a set of customizations that can be applied to any Rewrite.  There
 // are multiple categories of customizations:
@@ -191,6 +192,7 @@ class RewriteOptions {
     kCacheSmallImagesUnrewritten,
     kClientDomainRewrite,
     kCombineAcrossPaths,
+    kCompressMetadataCache,
     kCriticalImagesBeaconEnabled,
     kCriticalLineConfig,
     kCssFlattenMaxBytes,
@@ -210,6 +212,8 @@ class RewriteOptions {
     kEnableBlinkHtmlChangeDetection,
     kEnableBlinkHtmlChangeDetectionLogging,
     kEnableDeferJsExperimental,
+    kEnableFlushEarlyCriticalCss,
+    kEnableFixReflow,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
     kEnableLazyLoadHighResImages,
@@ -257,6 +261,7 @@ class RewriteOptions {
     kJsPreserveURLs,
     kLazyloadImagesAfterOnload,
     kLazyloadImagesBlankUrl,
+    kLogBackgroundRewrite,
     kLogRewriteTiming,
     kLogUrlIndices,
     kLowercaseHtmlNames,
@@ -274,6 +279,7 @@ class RewriteOptions {
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
+    kNonCacheablesForCachePartialHtml,
     kObliviousPagespeedUrls,
     kOverrideBlinkCacheTimeMs,
     kOverrideCachingTtlMs,
@@ -293,6 +299,8 @@ class RewriteOptions {
     kRunningFurious,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
+    kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
+    kUseFallbackPropertyCacheValues,
     kUseSmartDiffInBlink,
     kXModPagespeedHeaderValue,
     kXPsaBlockingRewrite,
@@ -1346,6 +1354,13 @@ class RewriteOptions {
     set_option(x, &test_instant_fetch_rewrite_deadline_);
   }
 
+  void set_test_only_prioritize_critical_css_dont_apply_original_css(bool x) {
+    set_option(x, &test_only_prioritize_critical_css_dont_apply_original_css_);
+  }
+  bool test_only_prioritize_critical_css_dont_apply_original_css() const {
+    return test_only_prioritize_critical_css_dont_apply_original_css_.value();
+  }
+
   int domain_shard_count() const { return domain_shard_count_.value(); }
   // The argument is int64 to allow it to be set from the http header or url
   // query param and int64_query_params_ only allows setting of 64 bit values.
@@ -1437,6 +1452,13 @@ class RewriteOptions {
   }
   bool combine_across_paths() const { return combine_across_paths_.value(); }
 
+  void set_log_background_rewrites(bool x) {
+    set_option(x, &log_background_rewrites_);
+  }
+  bool log_background_rewrites() const {
+    return log_background_rewrites_.value();
+  }
+
   void set_log_rewrite_timing(bool x) {
     set_option(x, &log_rewrite_timing_);
   }
@@ -1484,6 +1506,13 @@ class RewriteOptions {
   }
   bool enable_blink_critical_line() const {
     return enable_blink_critical_line_.value();
+  }
+
+  void set_enable_flush_early_critical_css(bool x) {
+    set_option(x, &enable_flush_early_critical_css_);
+  }
+  bool enable_flush_early_critical_css() const {
+    return enable_flush_early_critical_css_.value();
   }
 
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
@@ -1781,6 +1810,13 @@ class RewriteOptions {
     return use_smart_diff_in_blink_.value();
   }
 
+  void set_use_fallback_property_cache_values(bool x) {
+    set_option(x, &use_fallback_property_cache_values_);
+  }
+  bool use_fallback_property_cache_values() const {
+    return use_fallback_property_cache_values_.value();
+  }
+
   void set_enable_lazyload_in_blink(bool x) {
     set_option(x, &enable_lazyload_in_blink_);
   }
@@ -2005,6 +2041,20 @@ class RewriteOptions {
     return allow_logging_urls_in_log_record_.value();
   }
 
+  void set_non_cacheables_for_cache_partial_html(const StringPiece& p) {
+    set_option(p.as_string(), &non_cacheables_for_cache_partial_html_);
+  }
+  const GoogleString& non_cacheables_for_cache_partial_html() const {
+    return non_cacheables_for_cache_partial_html_.value();
+  }
+
+  void set_enable_fix_reflow(bool x) {
+    set_option(x, &enable_fix_reflow_);
+  }
+  bool enable_fix_reflow() const {
+    return enable_fix_reflow_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -2119,19 +2169,11 @@ class RewriteOptions {
     insert_result.first->second->Allow(wildcard);
   }
 
-  bool IsRejectedUrl(const GoogleString& url) const {
-    return IsRejectedRequest(kRejectedRequestUrlKeyName, url);
-  }
+  // Determine if the request url needs to be declined based on the url,
+  // request headers and rewrite options.
+  bool IsRequestDeclined(const GoogleString& url,
+                         const RequestHeaders* request_headers) const;
 
-  bool IsRejectedRequest(const StringPiece& header_name,
-                         const StringPiece& value) const {
-    FastWildcardGroupMap::const_iterator it = rejected_request_map_.find(
-        header_name);
-    if (it != rejected_request_map_.end()) {
-      return it->second->Match(value, false);
-    }
-    return false;
-  }
   // Make an identical copy of these options and return it.  This does
   // *not* copy the signature, and the returned options are not in
   // a frozen state.
@@ -2573,6 +2615,25 @@ class RewriteOptions {
 
   FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
 
+  // Helper functions to check if given header need to be blocked.
+  bool HasRejectedHeader(const StringPiece& header_name,
+                         const RequestHeaders* request_headers) const;
+
+  bool IsRejectedUrl(const GoogleString& url) const {
+    return IsRejectedRequest(kRejectedRequestUrlKeyName, url);
+  }
+
+  bool IsRejectedRequest(const StringPiece& header_name,
+                         const StringPiece& value) const {
+    FastWildcardGroupMap::const_iterator it = rejected_request_map_.find(
+        header_name);
+    if (it != rejected_request_map_.end()) {
+      return it->second->Match(value, false);
+    }
+    return false;
+  }
+
+
   // A family of urls for which prioritize_visible_content filter can be
   // applied.  url_pattern represents the actual set of urls,
   // cache_time_ms is the duration for which the cacheable portions of pages of
@@ -2879,6 +2940,7 @@ class RewriteOptions {
   // when IPRO of JS is enabled.
   Option<bool> in_place_preemptive_rewrite_javascript_;
   Option<bool> combine_across_paths_;
+  Option<bool> log_background_rewrites_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> log_url_indices_;
   Option<bool> lowercase_html_names_;
@@ -2891,6 +2953,8 @@ class RewriteOptions {
   Option<bool> serve_stale_if_fetch_error_;
   // Whether blink critical line flow should be enabled.
   Option<bool> enable_blink_critical_line_;
+  // Whether to flush the inlined critical css rules early.
+  Option<bool> enable_flush_early_critical_css_;
   // When default_cache_html_ is false (default) we do not cache
   // input HTML which lacks Cache-Control headers. But, when set true,
   // we will cache those inputs for the implicit lifetime just like we
@@ -2962,6 +3026,11 @@ class RewriteOptions {
 
   // Test-only flag to get fetch deadlines to trigger instantly.
   Option<bool> test_instant_fetch_rewrite_deadline_;
+
+  // Indicates whether the prioritize_critical_css filter should invoke its
+  // JavaScript function to load all the "hidden" CSS files at onload.
+  // Intended for testing only.
+  Option<bool> test_only_prioritize_critical_css_dont_apply_original_css_;
 
   // Enables blocking rewrite of html. RewriteDriver provides a flag
   // fully_rewrite_on_flush which makes sure that all rewrites are done before
@@ -3049,6 +3118,8 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_logging_;
   // Use smart diff to detect publisher changes in html in blink.
   Option<bool> use_smart_diff_in_blink_;
+  // Use fallback values from property cache.
+  Option<bool> use_fallback_property_cache_values_;
   // Don't force disable lazyload in blink;
   Option<bool> enable_lazyload_in_blink_;
   // Enable Prioritizing of scripts in defer javascript.
@@ -3110,6 +3181,12 @@ class RewriteOptions {
 
   // Whether to allow logging urls as part of LogRecord.
   Option<bool> allow_logging_urls_in_log_record_;
+
+  // Non cacheables used when partial HTML is cached.
+  Option<GoogleString> non_cacheables_for_cache_partial_html_;
+
+  // Fix reflows due to defer js.
+  Option<bool> enable_fix_reflow_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

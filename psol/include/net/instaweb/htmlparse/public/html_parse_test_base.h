@@ -33,6 +33,7 @@
 
 namespace net_instaweb {
 
+// Shared infrastructure for unit-testing the HTML parser.
 class HtmlParseTestBaseNoAlloc : public testing::Test {
  protected:
   static const char kTestDomain[];

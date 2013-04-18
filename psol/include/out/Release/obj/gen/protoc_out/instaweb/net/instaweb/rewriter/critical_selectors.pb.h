@@ -32,10 +32,101 @@ void protobuf_AssignDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eprot
 void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
 
 class CriticalSelectorSet;
+class CriticalSelectorSet_BeaconResponse;
 class CriticalSelectorSummarizedCss;
 class CriticalSelectorSummarizedCss_ResourceSummary;
 
 // ===================================================================
+
+class CriticalSelectorSet_BeaconResponse : public ::google::protobuf::MessageLite {
+ public:
+  CriticalSelectorSet_BeaconResponse();
+  virtual ~CriticalSelectorSet_BeaconResponse();
+  
+  CriticalSelectorSet_BeaconResponse(const CriticalSelectorSet_BeaconResponse& from);
+  
+  inline CriticalSelectorSet_BeaconResponse& operator=(const CriticalSelectorSet_BeaconResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  static const CriticalSelectorSet_BeaconResponse& default_instance();
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const CriticalSelectorSet_BeaconResponse* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+  
+  void Swap(CriticalSelectorSet_BeaconResponse* other);
+  
+  // implements Message ----------------------------------------------
+  
+  CriticalSelectorSet_BeaconResponse* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const CriticalSelectorSet_BeaconResponse& from);
+  void MergeFrom(const CriticalSelectorSet_BeaconResponse& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::std::string GetTypeName() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // repeated string selectors = 1;
+  inline int selectors_size() const;
+  inline void clear_selectors();
+  static const int kSelectorsFieldNumber = 1;
+  inline const ::std::string& selectors(int index) const;
+  inline ::std::string* mutable_selectors(int index);
+  inline void set_selectors(int index, const ::std::string& value);
+  inline void set_selectors(int index, const char* value);
+  inline void set_selectors(int index, const char* value, size_t size);
+  inline ::std::string* add_selectors();
+  inline void add_selectors(const ::std::string& value);
+  inline void add_selectors(const char* value);
+  inline void add_selectors(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& selectors() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_selectors();
+  
+  // @@protoc_insertion_point(class_scope:net_instaweb.CriticalSelectorSet.BeaconResponse)
+ private:
+  
+  ::google::protobuf::RepeatedPtrField< ::std::string> selectors_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
+  friend void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
+  
+  void InitAsDefaultInstance();
+  static CriticalSelectorSet_BeaconResponse* default_instance_;
+};
+// -------------------------------------------------------------------
 
 class CriticalSelectorSet : public ::google::protobuf::MessageLite {
  public:
@@ -88,6 +179,8 @@ class CriticalSelectorSet : public ::google::protobuf::MessageLite {
   
   // nested types ----------------------------------------------------
   
+  typedef CriticalSelectorSet_BeaconResponse BeaconResponse;
+  
   // accessors -------------------------------------------------------
   
   // repeated string critical_selectors = 1;
@@ -106,13 +199,26 @@ class CriticalSelectorSet : public ::google::protobuf::MessageLite {
   inline const ::google::protobuf::RepeatedPtrField< ::std::string>& critical_selectors() const;
   inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_critical_selectors();
   
+  // repeated .net_instaweb.CriticalSelectorSet.BeaconResponse selector_set_history = 3;
+  inline int selector_set_history_size() const;
+  inline void clear_selector_set_history();
+  static const int kSelectorSetHistoryFieldNumber = 3;
+  inline const ::net_instaweb::CriticalSelectorSet_BeaconResponse& selector_set_history(int index) const;
+  inline ::net_instaweb::CriticalSelectorSet_BeaconResponse* mutable_selector_set_history(int index);
+  inline ::net_instaweb::CriticalSelectorSet_BeaconResponse* add_selector_set_history();
+  inline const ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalSelectorSet_BeaconResponse >&
+      selector_set_history() const;
+  inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalSelectorSet_BeaconResponse >*
+      mutable_selector_set_history();
+  
   // @@protoc_insertion_point(class_scope:net_instaweb.CriticalSelectorSet)
  private:
   
   ::google::protobuf::RepeatedPtrField< ::std::string> critical_selectors_;
+  ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalSelectorSet_BeaconResponse > selector_set_history_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto_impl();
@@ -367,6 +473,54 @@ class CriticalSelectorSummarizedCss : public ::google::protobuf::MessageLite {
 
 // ===================================================================
 
+// CriticalSelectorSet_BeaconResponse
+
+// repeated string selectors = 1;
+inline int CriticalSelectorSet_BeaconResponse::selectors_size() const {
+  return selectors_.size();
+}
+inline void CriticalSelectorSet_BeaconResponse::clear_selectors() {
+  selectors_.Clear();
+}
+inline const ::std::string& CriticalSelectorSet_BeaconResponse::selectors(int index) const {
+  return selectors_.Get(index);
+}
+inline ::std::string* CriticalSelectorSet_BeaconResponse::mutable_selectors(int index) {
+  return selectors_.Mutable(index);
+}
+inline void CriticalSelectorSet_BeaconResponse::set_selectors(int index, const ::std::string& value) {
+  selectors_.Mutable(index)->assign(value);
+}
+inline void CriticalSelectorSet_BeaconResponse::set_selectors(int index, const char* value) {
+  selectors_.Mutable(index)->assign(value);
+}
+inline void CriticalSelectorSet_BeaconResponse::set_selectors(int index, const char* value, size_t size) {
+  selectors_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* CriticalSelectorSet_BeaconResponse::add_selectors() {
+  return selectors_.Add();
+}
+inline void CriticalSelectorSet_BeaconResponse::add_selectors(const ::std::string& value) {
+  selectors_.Add()->assign(value);
+}
+inline void CriticalSelectorSet_BeaconResponse::add_selectors(const char* value) {
+  selectors_.Add()->assign(value);
+}
+inline void CriticalSelectorSet_BeaconResponse::add_selectors(const char* value, size_t size) {
+  selectors_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+CriticalSelectorSet_BeaconResponse::selectors() const {
+  return selectors_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+CriticalSelectorSet_BeaconResponse::mutable_selectors() {
+  return &selectors_;
+}
+
+// -------------------------------------------------------------------
+
 // CriticalSelectorSet
 
 // repeated string critical_selectors = 1;
@@ -411,6 +565,31 @@ CriticalSelectorSet::critical_selectors() const {
 inline ::google::protobuf::RepeatedPtrField< ::std::string>*
 CriticalSelectorSet::mutable_critical_selectors() {
   return &critical_selectors_;
+}
+
+// repeated .net_instaweb.CriticalSelectorSet.BeaconResponse selector_set_history = 3;
+inline int CriticalSelectorSet::selector_set_history_size() const {
+  return selector_set_history_.size();
+}
+inline void CriticalSelectorSet::clear_selector_set_history() {
+  selector_set_history_.Clear();
+}
+inline const ::net_instaweb::CriticalSelectorSet_BeaconResponse& CriticalSelectorSet::selector_set_history(int index) const {
+  return selector_set_history_.Get(index);
+}
+inline ::net_instaweb::CriticalSelectorSet_BeaconResponse* CriticalSelectorSet::mutable_selector_set_history(int index) {
+  return selector_set_history_.Mutable(index);
+}
+inline ::net_instaweb::CriticalSelectorSet_BeaconResponse* CriticalSelectorSet::add_selector_set_history() {
+  return selector_set_history_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalSelectorSet_BeaconResponse >&
+CriticalSelectorSet::selector_set_history() const {
+  return selector_set_history_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalSelectorSet_BeaconResponse >*
+CriticalSelectorSet::mutable_selector_set_history() {
+  return &selector_set_history_;
 }
 
 // -------------------------------------------------------------------

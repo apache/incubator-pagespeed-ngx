@@ -8,8 +8,8 @@
 
 // Version Information
 
-#define MOD_PAGESPEED_VERSION 1,4,0,0
-#define MOD_PAGESPEED_VERSION_STRING "1.4.0.0"
+#define MOD_PAGESPEED_VERSION 1,5,27,1
+#define MOD_PAGESPEED_VERSION_STRING "1.5.27.1"
 
 // Branding Information
 
@@ -22,7 +22,7 @@
 
 // Changelist Information
 
-#define LASTCHANGE_STRING "2729"
+#define LASTCHANGE_STRING "2845"
 
 namespace net_instaweb {
 

@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_cache.h"
@@ -32,7 +31,7 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class AprMemCache;
-class AsyncCache;
+class CacheInterface;
 class MessageHandler;
 class NamedLockManager;
 class QueuedWorkerPool;
@@ -121,7 +120,7 @@ class SystemCaches {
     MetadataShmCacheInfo() : cache_backend(NULL) {}
 
     // Note that the fields may be NULL if e.g. initialization failed.
-    scoped_ptr<CacheInterface> cache_to_use;  // may be CacheStats or such.
+    CacheInterface* cache_to_use;  // may be CacheStats or such.
     MetadataShmCache* cache_backend;
   };
 
@@ -188,7 +187,6 @@ class SystemCaches {
   MemcachedMap memcached_map_;
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
-  std::vector<AsyncCache*> async_caches_;
 
   // Map of any shared memory metadata caches we have + their CacheStats
   // wrappers. These are named explicitly to make configuration comprehensible.
@@ -205,4 +203,3 @@ class SystemCaches {
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHES_H_
-

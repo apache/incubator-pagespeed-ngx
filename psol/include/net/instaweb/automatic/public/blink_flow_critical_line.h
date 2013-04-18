@@ -27,10 +27,10 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AsyncFetch;
 class BlinkCriticalLineData;
 class BlinkCriticalLineDataFinder;
-class LogRecord;
 class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
@@ -154,7 +154,7 @@ class BlinkFlowCriticalLine {
   AsyncFetch* base_fetch_;
   // Blink needs its own log record since it needs to log even after the main
   // log record is written out when the request processing is finished.
-  scoped_ptr<LogRecord> blink_log_record_;
+  scoped_ptr<AbstractLogRecord> blink_log_record_;
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
   ServerContext* manager_;

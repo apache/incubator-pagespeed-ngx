@@ -59,20 +59,6 @@ class SplitVariable : public Variable {
   DISALLOW_COPY_AND_ASSIGN(SplitVariable);
 };
 
-class SplitConsoleStatisticsLogger : public ConsoleStatisticsLogger {
- public:
-  // a and b may be NULL. Does not take ownership of either 'a' or 'b'.
-  SplitConsoleStatisticsLogger(ConsoleStatisticsLogger* a,
-                               ConsoleStatisticsLogger* b);
-  virtual ~SplitConsoleStatisticsLogger();
-  virtual void UpdateAndDumpIfRequired();
-
- private:
-  ConsoleStatisticsLogger* a_;
-  ConsoleStatisticsLogger* b_;
-  DISALLOW_COPY_AND_ASSIGN(SplitConsoleStatisticsLogger);
-};
-
 // A histogram that forwards writes to two other Histogram objects,
 // but reads only from one.
 class SplitHistogram : public Histogram {
@@ -154,13 +140,18 @@ class SplitStatistics
 
   virtual ~SplitStatistics();
 
+  virtual ConsoleStatisticsLogger* console_logger() {
+    // console_logger() is only used for read access, so just provide the
+    // local version.
+    return local_->console_logger();
+  }
+
  protected:
   virtual SplitVariable* NewVariable(const StringPiece& name, int index);
   virtual SplitVariable* NewGlobalVariable(const StringPiece& name, int index);
   virtual SplitHistogram* NewHistogram(const StringPiece& name);
   virtual SplitTimedVariable* NewTimedVariable(const StringPiece& name,
                                                int index);
-  // TODO(morlovich): implement console_logger().
 
  private:
   ThreadSystem* thread_system_;

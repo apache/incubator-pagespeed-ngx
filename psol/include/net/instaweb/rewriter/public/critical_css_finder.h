@@ -55,6 +55,17 @@ class CriticalCssFinder {
   virtual bool UpdateCache(RewriteDriver* driver,
                            const CriticalCssResult& result);
 
+  // Collects the critical CSS rules from the property cache and updates the
+  // same in the rewrite driver. The ownership of the ruleset stays with the
+  // driver.
+  virtual void UpdateCriticalCssInfoInDriver(RewriteDriver* driver);
+
+  // Gets the critical CSS rules from the driver if they are present. Otherwise
+  // calls UpdateCriticalCssInfoInDriver() to populate the ruleset in the driver
+  // and returns the rules. The ownership of the CriticalCssResult is not
+  // released and it stays with the driver.
+  virtual CriticalCssResult* GetCriticalCss(RewriteDriver* driver);
+
   virtual const char* GetCohort() const = 0;
 
  protected:

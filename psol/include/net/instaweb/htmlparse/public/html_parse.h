@@ -48,9 +48,40 @@ class Timer;
 
 typedef std::set <const HtmlEvent*> ConstHtmlEventSet;
 
-// TODO(jmarantz): rename HtmlParse to HtmlContext.  The actual
-// parsing occurs in HtmlLexer, and this class is dominated by methods
-// to manipulate DOM as it streams through.
+// Streaming Html Parser API.  Callbacks defined in HtmlFilter are
+// called on each parser token.
+//
+// Any number of filters can be added to the Html Parser; they are
+// organized in a chain.  Each filter processes a stream of SAX events
+// (HtmlEvent), interspersed by Flushes.  The filter operates on the
+// sequence of events between flushes (a flush-window), and the system
+// passes the (possibly mutated) event-stream to the next filter.
+//
+// An HTML Event is a lexical token provided by the parser, including:
+//     begin document
+//     end document
+//     begin element
+//     end element
+//     whitespace
+//     characters
+//     cdata
+//     comment
+//
+// The parser retains the sequence of events as a data structure:
+// list<HtmlEvent>.  HtmlEvents are sent to filters (HtmlFilter), as follows:
+//   foreach filter in filter-chain
+//     foreach event in flush-window
+//       apply filter to event
+//
+// Filters may mutate the event streams as they are being processed,
+// and these mutations be seen by downstream filters.  The filters can
+// mutate any event that has not been flushed.  Supported mutations include:
+//   - Removing an HTML element whose begin/end tags are both within
+//     the flush window.  This will also remove any nested elements.
+//   - Removing other HTML events
+//   - Inserting new elements (automatically inserts begin/end events)
+//     before or after "current" event
+//   - Inserting new events, before or after "current" event
 class HtmlParse {
  public:
   explicit HtmlParse(MessageHandler* message_handler);

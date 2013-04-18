@@ -22,6 +22,8 @@
 namespace net_instaweb {
 struct ContentType;
 
+// Holds an HTML Doctype declaration, providing a parsing mechanism and queries
+// for properties.
 class DocType {
  public:
   DocType() : doctype_(UNKNOWN) {}

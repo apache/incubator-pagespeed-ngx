@@ -112,19 +112,16 @@ class LocalStorageCacheFilter : public RewriteFilter {
                                   HtmlElement* element,
                                   InlineState* state);
 
-  // Tell the LSC to add its attributes to the given element: pagespeed_lsc_url
-  // (if not already added [has_url is false]), pagespeed_lsc_hash, and, if the
-  // resource has an expiry time [in cached], pagespeed_lsc_expiry. This is a
-  // no-op if LSC is disabled.
+  // Tell the LSC to add its attributes to the given element:
+  // pagespeed_lsc_hash and, if the resource has an expiry time [in cached],
+  // pagespeed_lsc_expiry. This is a no-op if LSC is disabled.
   // url is the URL of the resource being rewritten.
   // cached is the result of the resource rewrite.
-  // has_url is true if the element already has an url so don't add it again.
   // driver is the request's context.
   // element is the element to update.
   // Returns true if the element was updated.
   static bool AddLscAttributes(const StringPiece url,
                                const CachedResult& cached,
-                               bool has_url,
                                RewriteDriver* driver,
                                HtmlElement* element);
 

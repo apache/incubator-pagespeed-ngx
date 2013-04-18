@@ -20,43 +20,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
 
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "gtest/gtest.h"
-
-namespace net_instaweb {
-
-GoogleString GTestSrcDir();
-GoogleString GTestTempDir();
-
-}  // namespace net_instaweb
-
-namespace testing {
-namespace internal {
-
-// Allows EXPECT_STREQ to be used on StringPiece.
-inline GTEST_API_ AssertionResult CmpHelperSTREQ(
-    const char* expected_expression,
-    const char* actual_expression,
-    const StringPiece& expected,
-    const StringPiece& actual) {
-  return CmpHelperSTREQ(expected_expression, actual_expression,
-                        expected.as_string().c_str(),
-                        actual.as_string().c_str());
-}
-
-// Allows EXPECT_STRNE to be used on StringPiece.
-inline GTEST_API_ AssertionResult CmpHelperSTRNE(
-    const char* expected_expression,
-    const char* actual_expression,
-    const StringPiece& expected,
-    const StringPiece& actual) {
-  return CmpHelperSTRNE(expected_expression, actual_expression,
-                        expected.as_string().c_str(),
-                        actual.as_string().c_str());
-}
-
-}  // namespace internal
-}  // namespace testing
+// TODO(jmarantz): Remove this forwarding header and update references.
+#include "pagespeed/kernel/base/gtest.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_

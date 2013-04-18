@@ -21,10 +21,13 @@
 
 #include <cstddef>
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 typedef struct z_stream_s z_stream;
 
 namespace net_instaweb {
+
+class Writer;
 
 class GzipInflater {
  public:
@@ -62,6 +65,14 @@ class GzipInflater {
 
   // Was an error encountered during inflating?
   bool error() const { return error_; }
+
+  // Deflates a stringpiece, writing output to Writer.  Returns false
+  // if there was some kind of failure, though none are expected.
+  static bool Deflate(StringPiece in, Writer* writer);
+
+  // Inflates a stringpiece, writing output to Writer.  Returns false
+  // if there was some kind of failure, such as a corrupt input.
+  static bool Inflate(StringPiece in, Writer* writer);
 
  private:
   friend class GzipInflaterTestPeer;

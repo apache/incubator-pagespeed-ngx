@@ -24,7 +24,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "third_party/instaweb/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/util/fast_wildcard_group.h"
 
 namespace net_instaweb {
 class HtmlCommentNode;
@@ -73,9 +73,7 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
   };
 
   explicit RemoveCommentsFilter(HtmlParse* html_parse)
-      : html_parse_(html_parse),
-        options_(NULL) {
-  }
+      : html_parse_(html_parse) {}
 
   // RemoveCommentsFilter takes ownership of the passed in
   // OptionsInterface instance. It is ok for OptionsInterface to be

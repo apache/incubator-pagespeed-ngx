@@ -70,6 +70,12 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_use_shared_mem_locking(bool x) {
     set_option(x, &use_shared_mem_locking_);
   }
+  bool compress_metadata_cache() const {
+    return compress_metadata_cache_.value();
+  }
+  void set_compress_metadata_cache(bool x) {
+    set_option(x, &compress_metadata_cache_);
+  }
   bool statistics_enabled() const {
     return statistics_enabled_.value();
   }
@@ -184,6 +190,7 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<bool> statistics_enabled_;
   Option<bool> statistics_logging_enabled_;
   Option<bool> use_shared_mem_locking_;
+  Option<bool> compress_metadata_cache_;
 
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;

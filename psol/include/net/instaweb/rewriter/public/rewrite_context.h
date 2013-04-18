@@ -47,6 +47,7 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 class Statistics;
+class Variable;
 class Writer;
 
 // A RewriteContext is all the contextual information required to
@@ -93,6 +94,8 @@ class RewriteContext {
  public:
   typedef std::vector<InputInfo*> InputInfoStarVector;
   static const char kNumDeadlineAlarmInvocations[];
+  static const char kNumDistributedRewriteSuccesses[];
+  static const char kNumDistributedRewriteFailures[];
   // Used to pass the result of the metadata cache lookups. Recipient must
   // take ownership.
   struct CacheLookupResult {
@@ -240,6 +243,15 @@ class RewriteContext {
 
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
+
+  // Returns true if this context will prevent any attempt at distributing a
+  // rewrite (although its nested context still may be distributed). See
+  // ShouldDistributeRewrite for more detail on when a rewrite should be
+  // distributed.
+  bool block_distribute_rewrite() const { return block_distribute_rewrite_; }
+  void set_block_distribute_rewrite(const bool x) {
+    block_distribute_rewrite_ = x;
+  }
 
   const ResourceContext* resource_context() const {
     return resource_context_.get();
@@ -400,6 +412,23 @@ class RewriteContext {
   // were actually optimized successfully.
   virtual void Render();
 
+  // Notifies the subclass that the filter will not be able to render its
+  // output to the containing HTML document, because it wasn't ready in time.
+  // Note that neither Render() nor WillNotRender() may be called in case
+  // this rewrite got canceled due to disable_further_processing(), or in case
+  // Partition() failed. This is called from the HTML thread, but should only be
+  // used for read access, and subclasss implementations are required to be
+  // reasonably quick since it's called with rewrite_mutex() held. It's called
+  // after any earlier contexts in filter order had completed their rendering,
+  // if any, but with no order guarantees with respect to other WillNotRender()
+  // invocations.
+  virtual void WillNotRender();
+
+  // This method is invoked (in Rewrite thread) if this context got canceled
+  // due to an earlier filter sharing a slot with it having called
+  // set_disable_further_processing. Default implementation does nothing.
+  virtual void Cancel();
+
   // This final set of protected methods can be optionally overridden
   // by subclasses.
 
@@ -438,6 +467,15 @@ class RewriteContext {
   // this method to preload inputs in a different manner, and may delay
   // calling of base version until that is complete.
   virtual void StartFetchReconstruction();
+
+  // Determines if the given rewrite should be distributed. This is based on
+  // whether distributed servers have been configured, if the current filter is
+  // configured to be distributed, if a distributed fetcher is in place, and if
+  // distribution has been explicitly disabled for this context.
+  bool ShouldDistributeRewrite() const;
+
+  // Dispatches the rewrite to another task with a distributed fetcher.
+  void DistributeRewrite();
 
   // Makes the rest of a fetch run in background, not producing
   // a result or invoking callbacks. Will arrange for appropriate
@@ -526,20 +564,18 @@ class RewriteContext {
   virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {}
 
  private:
+  class DistributedRewriteCallback;
+  class DistributedRewriteFetch;
   class OutputCacheCallback;
   class LookupMetadataForOutputResourceCallback;
-  friend class OutputCacheCallback;
   class HTTPCacheCallback;
-  friend class HTTPCacheCallback;
   class ResourceCallbackUtils;
-  friend class ResourceCallbackUtils;
   class ResourceFetchCallback;
   class ResourceReconstructCallback;
   class ResourceRevalidateCallback;
-  friend class ResourceRevalidateCallback;
   class InvokeRewriteFunction;
-  friend class InvokeRewriteFunction;
   class RewriteFreshenCallback;
+  friend class RewriteDriver;
 
   typedef std::set<RewriteContext*> ContextSet;
 
@@ -596,6 +632,12 @@ class RewriteContext {
   // Input fetches done for async rewrite initiations should fail fast to help
   // avoid having multiple concurrent processes attempt the same rewrite.
   void FetchInputs();
+
+  // Callback to a distributed rewrite fetch. Queued to run in the high-priority
+  // thread. Fetch path: If the fetch succeeded then the rest of the flow is
+  // skipped and that result is used, otherwise the original resource is fetched
+  // and returned, bypassing rewriting.
+  void DistributeRewriteDone(bool success);
 
   // Generally a RewriteContext is waiting for one or more
   // asynchronous events to take place.  Activate is called
@@ -828,6 +870,16 @@ class RewriteContext {
   // An optional request trace associated with this context. May be NULL.
   // Always owned externally.
   RequestTrace* dependent_request_trace_;
+
+  // Set true if this rewrite context should be blocked from distributing its
+  // rewrite.
+  bool block_distribute_rewrite_;
+
+  // Stores the resulting headers and content of a distributed rewrite.
+  scoped_ptr<DistributedRewriteFetch> distributed_fetch_;
+
+  Variable* const num_distributed_rewrite_failures_;
+  Variable* const num_distributed_rewrite_successes_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

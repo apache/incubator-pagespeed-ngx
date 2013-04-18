@@ -33,6 +33,7 @@ class Stylesheet;
 
 namespace net_instaweb {
 
+class HtmlElement;
 class RewriteDriver;
 class Statistics;
 class Variable;
@@ -58,9 +59,12 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   virtual const char* id() const { return "cb"; }
 
  protected:
+  virtual bool MustSummarize(HtmlElement* element) const;
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const;
   virtual void SummariesDone();
+
+  virtual void DetermineEnabled();
 
  private:
   static void FindSelectorsFromRuleset(const Css::Ruleset& ruleset,

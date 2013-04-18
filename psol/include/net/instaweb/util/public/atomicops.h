@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_ATOMICOPS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_ATOMICOPS_H_
 
-#include "base/atomicops.h"
-
+// TODO(jmarantz): Remove this forwarding header and change all references.
+#include "pagespeed/kernel/util/atomic_int32.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_ATOMICOPS_H_

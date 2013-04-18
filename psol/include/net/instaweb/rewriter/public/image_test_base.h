@@ -50,7 +50,7 @@ class ImageTestBase : public testing::Test {
 
   typedef scoped_ptr<Image> ImagePtr;
 
-  ImageTestBase() : timer_(0), file_system_(&timer_) {}
+  ImageTestBase() : timer_(0) {}
   virtual ~ImageTestBase();
 
   // We use the output_type (ultimate expected output type after image

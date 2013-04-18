@@ -34,7 +34,7 @@
 
 namespace net_instaweb {
 
-class LogRecord;
+class AbstractLogRecord;
 class MessageHandler;
 class Variable;
 
@@ -154,7 +154,7 @@ class AsyncFetch : public Writer {
 
   // Returns a pointer to a log record that wraps this fetch's logging
   // info.
-  virtual LogRecord* log_record();
+  virtual AbstractLogRecord* log_record();
 
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) = 0;
