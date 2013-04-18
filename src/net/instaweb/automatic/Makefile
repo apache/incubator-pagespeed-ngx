@@ -193,6 +193,8 @@ INCLUDE_PATH = \
     -I$(MOD_PAGESPEED_ROOT) \
     -I$(MOD_PAGESPEED_ROOT)/third_party/chromium/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/gflags/gen/$(INCLUDE_ARCH)/include \
+    -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/src \
+    -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/gen/$(INCLUDE_ARCH)/include \
     -I$(MOD_PAGESPEED_ROOT)/third_party/protobuf/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/re2/src
 OBJS          = $(OUTPUT_DIR)/static_rewriter_main.o \

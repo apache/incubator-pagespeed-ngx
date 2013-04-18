@@ -56,6 +56,7 @@
       ],
       'dependencies': [
         'base',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
     }

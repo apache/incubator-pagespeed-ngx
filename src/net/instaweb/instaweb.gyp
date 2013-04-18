@@ -657,6 +657,9 @@
       'sources': [
         'rewriter/rewrite_filter_names.gperf',
       ],
+      'dependencies': [
+        '<(DEPTH)/pagespeed/kernel.gyp:util',
+      ],
       'includes': [
         'gperf.gypi',
       ],
@@ -666,6 +669,9 @@
       'variables': {
         'instaweb_gperf_subdir': 'net/instaweb/rewriter',
       },
+      'dependencies': [
+        '<(DEPTH)/pagespeed/kernel.gyp:util',
+      ],
       'sources': [
         'rewriter/rewrite_option_names.gperf',
       ],
