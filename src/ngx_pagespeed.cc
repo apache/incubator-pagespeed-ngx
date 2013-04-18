@@ -1350,6 +1350,7 @@ ps_initiate_property_cache_lookup(
 
   net_instaweb::ProxyFetchPropertyCallback* client_callback = NULL;
   net_instaweb::ProxyFetchPropertyCallback* property_callback = NULL;
+  net_instaweb::ProxyFetchPropertyCallback* fallback_property_callback = NULL;
   net_instaweb::PropertyCache* page_property_cache =
       server_context->page_property_cache();
   net_instaweb::PropertyCache* client_property_cache =
@@ -1369,13 +1370,29 @@ ps_initiate_property_cache_lookup(
     GoogleString page_key = server_context->GetPagePropertyCacheKey(
         request_url.Spec(), options, device_type_suffix);
     property_callback = new net_instaweb::ProxyFetchPropertyCallback(
-        net_instaweb::ProxyFetchPropertyCallback::kPagePropertyCache,
+        net_instaweb::ProxyFetchPropertyCallback::kPropertyCachePage,
         page_property_cache, page_key, device_type,
         callback_collector.get(), mutex);
     callback_collector->AddCallback(property_callback);
     added_callback = true;
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;
+    }
+    // Trigger property cache lookup for the requests which contains query param
+    // as cache key without query params. The result of this lookup will be used
+    // if actual property page does not contains property value.
+    if (options != NULL &&
+        options->use_fallback_property_cache_values() &&
+        request_url.has_query()) {
+      GoogleString fallback_page_key =
+          server_context->GetFallbackPagePropertyCacheKey(
+              request_url.AllExceptQuery(), options, device_type_suffix);
+      fallback_property_callback = new net_instaweb::ProxyFetchPropertyCallback(
+          net_instaweb::ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
+          page_property_cache, fallback_page_key, device_type,
+          callback_collector.get(),
+          server_context->thread_system()->NewMutex());
+      callback_collector->AddCallback(fallback_property_callback);
     }
   }
 
@@ -1388,7 +1405,7 @@ ps_initiate_property_cache_lookup(
         net_instaweb::AbstractMutex* mutex =
             server_context->thread_system()->NewMutex();
         client_callback = new net_instaweb::ProxyFetchPropertyCallback(
-            net_instaweb::ProxyFetchPropertyCallback::kClientPropertyCache,
+            net_instaweb::ProxyFetchPropertyCallback::kClientPropertyCachePage,
             client_property_cache, client_id,
             net_instaweb::UserAgentMatcher::kEndOfDeviceType,
             callback_collector.get(), mutex);
@@ -1401,6 +1418,9 @@ ps_initiate_property_cache_lookup(
   // All callbacks need to be registered before Reads to avoid race.
   if (property_callback != NULL) {
     page_property_cache->Read(property_callback);
+  }
+  if (fallback_property_callback != NULL) {
+    page_property_cache->Read(fallback_property_callback);
   }
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);
