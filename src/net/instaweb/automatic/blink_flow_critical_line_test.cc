@@ -531,6 +531,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
       const GoogleUrl& request_url,
       RewriteOptions* options,
       AsyncFetch* async_fetch,
+      const bool requires_blink_cohort,
       bool* added_page_property_callback) {
     GoogleString key_base(request_url.Spec().as_string());
     if (options != NULL) {
@@ -546,7 +547,8 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
       *added_page_property_callback = true;
     }
     return ProxyInterface::InitiatePropertyCacheLookup(
-        is_resource_fetch, request_url, options, async_fetch);
+        is_resource_fetch, request_url, options, async_fetch,
+        requires_blink_cohort, added_page_property_callback);
   }
 
   const GoogleString& key() const { return key_; }
@@ -1790,10 +1792,10 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
+  // No lookup for BlinkCriticalLineData.
   // 1 Miss for original plain text,
-  // 1 Miss for BlinkCriticalLineData,
   // 1 Miss for DomCohort.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.

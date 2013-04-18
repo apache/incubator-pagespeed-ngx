@@ -29,6 +29,7 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -86,7 +87,8 @@ class ProxyInterface : public UrlAsyncFetcher {
       const GoogleUrl& request_url,
       RewriteOptions* options,
       AsyncFetch* async_fetch,
-      bool* added_page_property_callback = NULL);
+      const bool requires_blink_cohort,
+      bool* added_page_property_callback);
 
  private:
   friend class ProxyInterfaceTest;
@@ -98,6 +100,8 @@ class ProxyInterface : public UrlAsyncFetcher {
                     const GoogleUrl& requested_url,
                     AsyncFetch* async_fetch,
                     MessageHandler* handler);
+
+  PropertyCache::CohortVector GetCohortList(bool requires_blink_cohort) const;
 
   // If the URL and port are for this server, don't proxy those (to avoid
   // infinite fetching loops). This might be the favicon or something...

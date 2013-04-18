@@ -138,6 +138,14 @@ class BeaconPropertyCallback : public PropertyPage {
         critical_css_selector_set_(critical_css_selector_set) {
   }
 
+  const PropertyCache::CohortVector CohortList() {
+    PropertyCache::CohortVector cohort_list;
+    cohort_list.push_back(
+         server_context_->page_property_cache()->GetCohort(
+             RewriteDriver::kBeaconCohort));
+    return cohort_list;
+  }
+
   virtual ~BeaconPropertyCallback() {}
 
   virtual void Done(bool success) {
@@ -793,11 +801,14 @@ bool ServerContext::HandleBeacon(StringPiece params,
         url_query_param.Spec(),
         *options_hash_param,
         device_type_suffix);
-    page_property_cache()->Read(new BeaconPropertyCallback(
+
+    BeaconPropertyCallback* beacon_property_cb = new BeaconPropertyCallback(
         this, key, request_context,
         html_critical_images_set.release(),
         css_critical_images_set.release(),
-        critical_css_selector_set.release()));
+        critical_css_selector_set.release());
+    page_property_cache()->ReadWithCohorts(beacon_property_cb->CohortList(),
+                                           beacon_property_cb);
   }
 
   return status;

@@ -442,6 +442,10 @@ void FlushEarlyContentWriterFilter::EndElement(HtmlElement* element) {
         element->AttributeValue(HtmlName::kDataPagespeedFlushStyle);
     GoogleString css_output = ComputeFlushEarlyCriticalCss(style_id);
     int64 size = css_output.size();
+    if (insert_close_script_) {
+      WriteToOriginalWriter("})()</script>");
+      insert_close_script_ = false;
+    }
     WriteToOriginalWriter(css_output);
     is_flushing_critical_style_element_ = false;
     css_output_content_.clear();

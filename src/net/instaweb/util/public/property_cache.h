@@ -224,6 +224,9 @@ class PropertyCache {
   void ReadWithCohorts(const CohortVector& cohort_list,
                        PropertyPage* property_page) const;
 
+  // Returns all the cohorts from cache.
+  const CohortVector GetAllCohorts() const { return cohort_list_; }
+
   // Determines whether a value that was read is reasonably stable.
   bool IsStable(const PropertyValue* property) const {
     return property->IsStable(mutations_per_1000_writes_threshold_);

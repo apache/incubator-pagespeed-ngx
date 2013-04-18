@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
@@ -44,7 +45,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -311,6 +311,7 @@ ProxyFetchPropertyCallbackCollector*
     const GoogleUrl& request_url,
     RewriteOptions* options,
     AsyncFetch* async_fetch,
+    const bool requires_blink_cohort,
     bool* added_page_property_callback) {
   RequestContextPtr request_ctx = async_fetch->request_context();
   DCHECK(request_ctx.get() != NULL);
@@ -395,12 +396,22 @@ ProxyFetchPropertyCallbackCollector*
   }
 
   // All callbacks need to be registered before Reads to avoid race.
+  PropertyCache::CohortVector cohort_list;
+  if (requires_blink_cohort) {
+    cohort_list = GetCohortList(true);
+  } else {
+    cohort_list = GetCohortList(false);
+  }
+
   if (property_callback != NULL) {
-    page_property_cache->Read(property_callback);
+    page_property_cache->ReadWithCohorts(cohort_list, property_callback);
   }
+
   if (fallback_property_callback != NULL) {
-    page_property_cache->Read(fallback_property_callback);
+    page_property_cache->ReadWithCohorts(cohort_list,
+                                         fallback_property_callback);
   }
+
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);
   }
@@ -412,6 +423,26 @@ ProxyFetchPropertyCallbackCollector*
     callback_collector.reset(NULL);
   }
   return callback_collector.release();
+}
+
+PropertyCache::CohortVector ProxyInterface::GetCohortList(
+    bool requires_blink_cohort) const {
+  PropertyCache* page_property_cache = server_context_->page_property_cache();
+  const PropertyCache::CohortVector cohort_list =
+      page_property_cache->GetAllCohorts();
+  if (requires_blink_cohort) {
+    return cohort_list;
+  }
+
+  PropertyCache::CohortVector cohort_list_without_blink;
+  for (int i = 0, m = cohort_list.size(); i < m; ++i) {
+    if (cohort_list[i]->name() ==
+        BlinkCriticalLineDataFinder::kBlinkCohort) {
+      continue;
+    }
+    cohort_list_without_blink.push_back(cohort_list[i]);
+  }
+  return cohort_list_without_blink;
 }
 
 void ProxyInterface::ProxyRequestCallback(
@@ -486,13 +517,25 @@ void ProxyInterface::ProxyRequestCallback(
     }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
-    bool is_blink_request = BlinkUtil::IsBlinkRequest(
+    const bool is_blink_request = BlinkUtil::IsBlinkRequest(
         *request_url, async_fetch, options, user_agent, server_context_,
         RewriteOptions::kPrioritizeVisibleContent);
-    bool apply_blink_critical_line =
+    const bool apply_blink_critical_line =
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
                                                     options);
     bool page_callback_added = false;
+
+    // Whether it's a cache html request should not change despite the fact
+    // a new driver is created later on.
+    const bool is_cache_html_request = BlinkUtil::IsBlinkRequest(
+        *request_url, async_fetch, options,
+        user_agent, server_context_,
+        RewriteOptions::kCachePartialHtml);
+
+    const bool requires_blink_cohort =
+        (is_blink_request && apply_blink_critical_line) ||
+        is_cache_html_request;
+
     // Ownership of "property_callback" is eventually assumed by either
     // CacheHtmlFlow or ProxyFetch.
     ProxyFetchPropertyCallbackCollector* property_callback =
@@ -500,7 +543,9 @@ void ProxyInterface::ProxyRequestCallback(
                                     *request_url,
                                     options,
                                     async_fetch,
+                                    requires_blink_cohort,
                                     &page_callback_added);
+
     if (options != NULL) {
       server_context_->ComputeSignature(options);
       {
@@ -556,13 +601,10 @@ void ProxyInterface::ProxyRequestCallback(
       driver->set_request_headers(async_fetch->request_headers());
       // TODO(mmohabey): Factor out the below checks so that they are not
       // repeated in BlinkUtil::IsBlinkRequest().
+
       if (driver->options() != NULL && driver->options()->enabled() &&
           property_callback != NULL &&
           driver->options()->IsAllowed(url_string)) {
-        bool is_cache_html_request = BlinkUtil::IsBlinkRequest(
-            *request_url, async_fetch, driver->options(),
-            driver->user_agent().c_str(), server_context_,
-            RewriteOptions::kCachePartialHtml);
         if (is_cache_html_request) {
           cache_html_flow_requests_->IncBy(1);
           CacheHtmlFlow::Start(url_string,

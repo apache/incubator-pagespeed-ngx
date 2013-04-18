@@ -784,8 +784,12 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsLinkDisabledTag) {
       "<!DOCTYPE html>"
       "<html>"
       "<head>"
+      "<link type=\"text/css\" rel=\"stylesheet\" "
+      "href=\"a.css.pagespeed.cf.xxxx.css\">"
       "<style data-pagespeed-flush-style=\"123\">b_used {color: blue }"
       "</style>\n"
+      "<link type=\"text/css\" rel=\"stylesheet\""
+      "href=\"d.css.pagespeed.cf.xxxx.css\" pagespeed_size=\"1000\"/>"
       "</head>"
       "<body>"
       "<style data-pagespeed-flush-style=\"345\">c_used {color: cyan }"
@@ -796,11 +800,16 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsLinkDisabledTag) {
       "<link id=\"%s\" href=\"data:text/css;base64*\" rel=\"stylesheet\" />"
       "<script type=\"text/javascript\">"
       "document.getElementById(\"%s\").disabled=true;</script>";
+  const char kImagePrefetchScriptTag[] =
+      "<script type=\"text/javascript\">"
+      "(function(){new Image().src=\"%s*\";})()</script>";
 
   GoogleString html_output = StrCat(
+      StringPrintf(kImagePrefetchScriptTag, "a.css"),
       StringPrintf(kCssRulesLinkTag, "123", "123"),
+      StringPrintf(kImagePrefetchScriptTag, "d.css"),
       StringPrintf(kCssRulesLinkTag, "345", "345"),
-      StringPrintf(kPrefetchScript, 2));
+      StringPrintf(kPrefetchScript, 4));
 
   Clear();
   rewrite_driver()->SetUserAgent("prefetch_image_tag");

@@ -36,6 +36,7 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -105,6 +106,8 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
     SetupCohort(page_property_cache(), RewriteDriver::kDomCohort);
+    SetupCohort(page_property_cache(),
+                BlinkCriticalLineDataFinder::kBlinkCohort);
     SetupCohort(server_context_->client_property_cache(),
                 ClientState::kClientStateCohort);
     options->ClearSignatureForTesting();
@@ -219,7 +222,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     callback.set_request_headers(&request_headers);
     scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
         proxy_interface_->InitiatePropertyCacheLookup(
-        false, gurl, options(), &callback));
+        false, gurl, options(), &callback, false, NULL));
     EXPECT_NE(static_cast<ProxyFetchPropertyCallbackCollector*>(NULL),
               callback_collector.get());
     PropertyPage* page = callback_collector->property_page();
@@ -3034,7 +3037,7 @@ TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsage) {
   callback.set_request_headers(&request_headers);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback));
+          false, gurl, options(), &callback, false, NULL));
 
   FallbackPropertyPage* fallback_page =
       callback_collector->fallback_property_page();
@@ -3044,7 +3047,7 @@ TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsage) {
   // Read from fallback value.
   GoogleUrl new_gurl("http://www.test.com/?withquery=different");
   callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-      false, new_gurl, options(), &callback));
+      false, new_gurl, options(), &callback, false, NULL));
   fallback_page = callback_collector->fallback_property_page();
   EXPECT_FALSE(fallback_page->actual_property_page()->GetProperty(
       cohort, kPropertyName)->has_value());
@@ -3055,9 +3058,29 @@ TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsage) {
   options()->ClearSignatureForTesting();
   options()->set_use_fallback_property_cache_values(false);
   callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-        false, new_gurl, options(), &callback));
+        false, new_gurl, options(), &callback, false, NULL));
   EXPECT_FALSE(callback_collector->fallback_property_page()->GetProperty(
       cohort, kPropertyName)->has_value());
+}
+
+TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {
+  GoogleUrl gurl("http://www.test.com/");
+  StringAsyncFetch callback(
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
+  RequestHeaders request_headers;
+  callback.set_request_headers(&request_headers);
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+      proxy_interface_->InitiatePropertyCacheLookup(
+          false, gurl, options(), &callback, false, NULL));
+
+  PropertyPage* page = callback_collector->property_page();
+  const PropertyPageInfo& page_info =
+      page->log_record()->logging_info()->property_page_info();
+  EXPECT_NE(0, page_info.cohort_info_size());
+  for (int i = 0; i < page_info.cohort_info_size(); ++i) {
+    const PropertyCohortInfo& info = page_info.cohort_info(i);
+    EXPECT_STRNE(info.name(), BlinkCriticalLineDataFinder::kBlinkCohort);
+  }
 }
 
 TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
