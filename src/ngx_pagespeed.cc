@@ -1282,6 +1282,136 @@ bool is_pagespeed_subrequest(ngx_http_request_t* r) {
   return (user_agent.find(kModPagespeedSubrequestUserAgent) != user_agent.npos);
 }
 
+
+// TODO(jud): Reuse the version in proxy_interface.cc.
+bool UrlMightHavePropertyCacheEntry(const net_instaweb::GoogleUrl& url) {
+  const net_instaweb::ContentType* type =
+      net_instaweb::NameExtensionToContentType(url.LeafSansQuery());
+  if (type == NULL) {
+    return true;  // http://www.example.com/  -- no extension; could be HTML.
+  }
+
+  // Use a complete switch-statement rather than type()->IsHtmlLike()
+  // so that every time we add a new content-type we make an explicit
+  // decision about whether it should induce a pcache read.
+  //
+  // TODO(jmarantz): currently this returns false for ".txt".  Thus we will
+  // do no optimizations relying on property-cache on HTML files ending with
+  // ".txt".  We should determine whether this is the right thing or not.
+  switch (type->type()) {
+    case net_instaweb::ContentType::kHtml:
+    case net_instaweb::ContentType::kXhtml:
+    case net_instaweb::ContentType::kCeHtml:
+      return true;
+    case net_instaweb::ContentType::kJavascript:
+    case net_instaweb::ContentType::kCss:
+    case net_instaweb::ContentType::kText:
+    case net_instaweb::ContentType::kXml:
+    case net_instaweb::ContentType::kPng:
+    case net_instaweb::ContentType::kGif:
+    case net_instaweb::ContentType::kJpeg:
+    case net_instaweb::ContentType::kSwf:
+    case net_instaweb::ContentType::kWebp:
+    case net_instaweb::ContentType::kIco:
+    case net_instaweb::ContentType::kPdf:
+    case net_instaweb::ContentType::kOther:
+    case net_instaweb::ContentType::kJson:
+    case net_instaweb::ContentType::kVideo:
+    case net_instaweb::ContentType::kOctetStream:
+      return false;
+  }
+  LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()
+              << "; " << type->mime_type() << "; " << type->file_extension();
+  return false;
+}
+
+// TODO(jud): Reuse ProxyInterface::InitiatePropertyCacheLookup.
+net_instaweb::ProxyFetchPropertyCallbackCollector*
+ps_initiate_property_cache_lookup(
+    net_instaweb::ServerContext* server_context,
+    bool is_resource_fetch,
+    const net_instaweb::GoogleUrl& request_url,
+    net_instaweb::RewriteOptions* options,
+    net_instaweb::AsyncFetch* async_fetch,
+    bool* added_page_property_callback) {
+  net_instaweb::RequestContextPtr request_ctx = async_fetch->request_context();
+
+  StringPiece user_agent = async_fetch->request_headers()->Lookup1(
+      net_instaweb::HttpAttributes::kUserAgent);
+  net_instaweb::UserAgentMatcher::DeviceType device_type =
+      server_context->user_agent_matcher()->GetDeviceTypeForUA(user_agent);
+
+  scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
+      callback_collector(new net_instaweb::ProxyFetchPropertyCallbackCollector(
+          server_context, request_url.Spec(), request_ctx, options,
+          device_type));
+  bool added_callback = false;
+  net_instaweb::PropertyPageStarVector property_callbacks;
+
+  net_instaweb::ProxyFetchPropertyCallback* client_callback = NULL;
+  net_instaweb::ProxyFetchPropertyCallback* property_callback = NULL;
+  net_instaweb::PropertyCache* page_property_cache =
+      server_context->page_property_cache();
+  net_instaweb::PropertyCache* client_property_cache =
+      server_context->client_property_cache();
+  if (!is_resource_fetch &&
+      server_context->page_property_cache()->enabled() &&
+      UrlMightHavePropertyCacheEntry(request_url) &&
+      async_fetch->request_headers()->method() ==
+      net_instaweb::RequestHeaders::kGet) {
+    if (options != NULL) {
+      server_context->ComputeSignature(options);
+    }
+    net_instaweb::AbstractMutex* mutex =
+        server_context->thread_system()->NewMutex();
+    const StringPiece& device_type_suffix =
+        net_instaweb::UserAgentMatcher::DeviceTypeSuffix(device_type);
+    GoogleString page_key = server_context->GetPagePropertyCacheKey(
+        request_url.Spec(), options, device_type_suffix);
+    property_callback = new net_instaweb::ProxyFetchPropertyCallback(
+        net_instaweb::ProxyFetchPropertyCallback::kPagePropertyCache,
+        page_property_cache, page_key, device_type,
+        callback_collector.get(), mutex);
+    callback_collector->AddCallback(property_callback);
+    added_callback = true;
+    if (added_page_property_callback != NULL) {
+      *added_page_property_callback = true;
+    }
+  }
+
+  // Initiate client property cache lookup.
+  if (async_fetch != NULL) {
+    const char* client_id = async_fetch->request_headers()->Lookup1(
+        net_instaweb::HttpAttributes::kXGooglePagespeedClientId);
+    if (client_id != NULL) {
+      if (client_property_cache->enabled()) {
+        net_instaweb::AbstractMutex* mutex =
+            server_context->thread_system()->NewMutex();
+        client_callback = new net_instaweb::ProxyFetchPropertyCallback(
+            net_instaweb::ProxyFetchPropertyCallback::kClientPropertyCache,
+            client_property_cache, client_id,
+            net_instaweb::UserAgentMatcher::kEndOfDeviceType,
+            callback_collector.get(), mutex);
+        callback_collector->AddCallback(client_callback);
+        added_callback = true;
+      }
+    }
+  }
+
+  // All callbacks need to be registered before Reads to avoid race.
+  if (property_callback != NULL) {
+    page_property_cache->Read(property_callback);
+  }
+  if (client_callback != NULL) {
+    client_property_cache->Read(client_callback);
+  }
+
+  if (!added_callback) {
+    callback_collector.reset(NULL);
+  }
+  return callback_collector.release();
+}
+
 // Set us up for processing a request.
 CreateRequestContext::Response ps_create_request_context(
     ngx_http_request_t* r, bool is_resource_fetch) {
@@ -1426,8 +1556,12 @@ CreateRequestContext::Response ps_create_request_context(
     }
   }
 
-  // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
-  // have the propery cache in nginx.
+  bool page_callback_added = false;
+  scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
+      property_callback(ps_initiate_property_cache_lookup(
+          cfg_s->server_context,
+          is_resource_fetch, url, options, ctx->base_fetch,
+          &page_callback_added));
 
   if (is_resource_fetch) {
     // TODO(jefftk): Set using_spdy appropriately.  See
@@ -1455,7 +1589,7 @@ CreateRequestContext::Response ps_create_request_context(
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
         url_string, ctx->base_fetch, ctx->driver,
-        NULL /* property_callback */,
+        property_callback.release(),
         NULL /* original_content_fetch */);
   }
 
