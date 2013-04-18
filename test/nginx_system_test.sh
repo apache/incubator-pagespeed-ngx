@@ -141,7 +141,6 @@ PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 PAGESPEED_EXPECTED_FAILURES="
   ~compression is enabled for rewritten JS.~
   ~convert_meta_tags~
-  ~insert_dns_prefetch~
   ~In-place resource optimization~
 "
 

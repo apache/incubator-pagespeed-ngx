@@ -177,9 +177,9 @@ and then eventually:
       In-place resource optimization
       In-place resource optimization
       In-place resource optimization
+      compression is enabled for rewritten JS.
       convert_meta_tags
-      insert_dns_prefetch
-      insert_dns_prefetch
+      compression is enabled for rewritten JS.
     FAIL.
     With serf fetcher setup.
 
@@ -191,7 +191,6 @@ Each of these failed tests is a known issue:
    - If you're running a version of nginx without etag support (pre-1.3.3) you
      won't see this issue, which is fine.
  - [convert_meta_tags](https://github.com/pagespeed/ngx_pagespeed/issues/56)
- - [insert_dns_prefetch](https://github.com/pagespeed/ngx_pagespeed/issues/114)
 
 If it fails with:
 
