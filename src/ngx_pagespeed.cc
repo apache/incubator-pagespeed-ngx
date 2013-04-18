@@ -2117,7 +2117,7 @@ ngx_int_t ps_statistics_handler(
     // Default values for start_time, end_time, and granularity_ms in case the
     // query does not include these parameters.
     start_time = 0;
-    end_time = statistics->console_logger()->timer()->NowMs();
+    end_time = server_context->timer()->NowMs();
     // Granularity is the difference in ms between data points. If it is not
     // specified by the query, the default value is 3000 ms, the same as the
     // default logging granularity.

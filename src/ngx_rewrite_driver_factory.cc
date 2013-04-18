@@ -38,10 +38,10 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
+#include "net/instaweb/util/public/posix_timer.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -89,7 +89,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false) {
-  timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   set_message_handler(ngx_message_handler_);
@@ -102,9 +101,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
-  delete timer_;
-  timer_ = NULL;
-
   ShutDown();
 
   CHECK(uninitialized_server_contexts_.empty() || is_root_process_);
@@ -162,11 +158,11 @@ MessageHandler* NgxRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 FileSystem* NgxRewriteDriverFactory::DefaultFileSystem() {
-  return new StdioFileSystem(timer_);
+  return new StdioFileSystem();
 }
 
 Timer* NgxRewriteDriverFactory::DefaultTimer() {
-  return new GoogleTimer;
+  return new PosixTimer;
 }
 
 NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
