@@ -144,7 +144,7 @@ but we can take a shortcut and do this the easy way, without gyp, because we
 don't need any dependencies:
 
 ```bash
-$ svn checkout https://modpagespeed.googlecode.com/svn/trunk/ mod_pagespeed
+$ svn checkout https://modpagespeed.googlecode.com/svn/tags/1.5.27.1/ mod_pagespeed
 ```
 
 Then run:
