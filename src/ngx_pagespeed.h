@@ -19,6 +19,17 @@
 #ifndef NGX_PAGESPEED_H_
 #define NGX_PAGESPEED_H_
 
+// We might be compiled with syslog.h, which #defines LOG_INFO and LOG_WARNING
+// as ints.  But logging.h assumes they're usable as names, within their
+// namespace, so we need to #undef them before including logging.h
+#ifdef LOG_INFO
+#undef LOG_INFO
+#endif
+#ifdef LOG_WARNING
+#undef LOG_WARNING
+#endif
+#include "base/logging.h"
+
 extern "C" {
   #include <ngx_core.h>
   #include <ngx_http.h>
