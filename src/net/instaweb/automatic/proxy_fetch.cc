@@ -197,7 +197,7 @@ bool ProxyFetchPropertyCallback::IsCacheValid(int64 write_timestamp_ms) const {
 }
 
 void ProxyFetchPropertyCallback::Done(bool success) {
-  collector_->Done(this, success);
+  collector_->Done(this);
 }
 
 void ProxyFetchPropertyCallback::LogPageCohortInfo(
@@ -218,7 +218,6 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
       device_type_(device_type),
       detached_(false),
       done_(false),
-      success_(true),
       proxy_fetch_(NULL),
       post_lookup_task_vector_(new std::vector<Function*>),
       options_(options),
@@ -276,7 +275,7 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
 // ProxyInterfaceTest.PropCacheNoWritesIfNonHtmlDelayedCache.
 
 void ProxyFetchPropertyCallbackCollector::Done(
-    ProxyFetchPropertyCallback* callback, bool success) {
+    ProxyFetchPropertyCallback* callback) {
   ServerContext* resource_manager = NULL;
   ProxyFetch* fetch = NULL;
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
@@ -286,7 +285,6 @@ void ProxyFetchPropertyCallbackCollector::Done(
     ScopedMutex lock(mutex_.get());
     pending_callbacks_.erase(callback);
     property_pages_[callback->page_type()] = callback;
-    success_ &= success;
 
     if (pending_callbacks_.empty()) {
       resource_manager = server_context_;
@@ -345,7 +343,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
       do_delete = detached_;
     }
     if (fetch != NULL) {
-      fetch->PropertyCacheComplete(success_, this);  // deletes this.
+      fetch->PropertyCacheComplete(this);  // deletes this.
     } else if (do_delete) {
       UpdateStatusCodeInPropertyCache();
       delete this;
@@ -366,7 +364,7 @@ void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
     ready = done_;
   }
   if (ready) {
-    proxy_fetch->PropertyCacheComplete(success_, this);  // deletes this.
+    proxy_fetch->PropertyCacheComplete(this);  // deletes this.
   }
 }
 
@@ -756,7 +754,7 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 }
 
 void ProxyFetch::PropertyCacheComplete(
-    bool success, ProxyFetchPropertyCallbackCollector* callback_collector) {
+    ProxyFetchPropertyCallbackCollector* callback_collector) {
   driver_->TracePrintf("PropertyCache lookup completed");
   ScopedMutex lock(mutex_.get());
 

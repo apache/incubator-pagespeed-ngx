@@ -226,7 +226,7 @@ class ProxyFetchPropertyCallbackCollector {
   bool IsCacheValid(int64 write_timestamp_ms) const;
 
   // Called by a ProxyFetchPropertyCallback when the former is complete.
-  void Done(ProxyFetchPropertyCallback* callback, bool success);
+  void Done(ProxyFetchPropertyCallback* callback);
 
   // Updates the status code of response in property cache.
   void UpdateStatusCodeInPropertyCache();
@@ -247,7 +247,6 @@ class ProxyFetchPropertyCallbackCollector {
   UserAgentMatcher::DeviceType device_type_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
-  bool success_;              // protected by mutex_; accessed after quiescence.
   ProxyFetch* proxy_fetch_;   // protected by mutex_.
   // protected by mutex_.
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector_;
@@ -322,7 +321,7 @@ class ProxyFetch : public SharedAsyncFetch {
   // Called by ProxyFetchPropertyCallbackCollector when all property-cache
   // fetches are complete.  This function takes ownership of collector.
   virtual void PropertyCacheComplete(
-      bool success, ProxyFetchPropertyCallbackCollector* collector);
+      ProxyFetchPropertyCallbackCollector* collector);
 
   // Returns the AbstractClientState object carried by the property cache
   // callback collector, if any. Returns NULL if no AbstractClientState
