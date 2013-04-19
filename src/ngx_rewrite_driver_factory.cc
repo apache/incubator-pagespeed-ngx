@@ -94,8 +94,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
   set_message_handler(ngx_message_handler_);
   set_html_parse_message_handler(ngx_html_parse_message_handler_);
 
-  // TODO(oschaaf): determine a sensible limit
-  int thread_limit = 2;
+  // see https://code.google.com/p/modpagespeed/issues/detail?id=672
+  int thread_limit = 1;
   caches_.reset(
       new SystemCaches(this, shared_mem_runtime_.get(), thread_limit));
 }
