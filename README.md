@@ -1,4 +1,4 @@
-# ngx_pagespeed
+![ngx_pagespeed](https://lh6.googleusercontent.com/-qufedJIJq7Y/UXEvVYxyYvI/AAAAAAAADo8/JHDFQhs91_c/s401/04_ngx_pagespeed.png)
 
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
@@ -34,9 +34,11 @@ optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
 ## How to build
 
 Because nginx does not support dynamic loading of modules, you need to compile
-nginx from source to add ngx_pagespeed.
+nginx from source to add ngx_pagespeed. Alternatively, if you're using Tengine you can [install ngx_pagespeed without
+recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_pagespeed-with-Tengine).
 
-1. Install dependencies:
+1. Install [mod_pagespeed binary](https://developers.google.com/speed/docs/mod_pagespeed/download), or follow [from source instructions](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
+2. Install dependencies:
 
    ```bash
    # These are for RedHat, CentOS, and Fedora.
@@ -46,14 +48,14 @@ nginx from source to add ngx_pagespeed.
    $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
    ```
 
-2. Check out ngx_pagespeed:
+3. Check out ngx_pagespeed:
 
    ```bash
    $ cd ~
    $ git clone https://github.com/pagespeed/ngx_pagespeed.git
    ```
 
-3. Download and build nginx:
+4. Download and build nginx:
 
    ```bash
    $ # check http://nginx.org/en/download.html for the latest version
@@ -76,33 +78,29 @@ the error message, then send it to the [mailing
 list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
 have a look at it.
 
-This will use a binary distribution of the PageSpeed Optimization Library
-(PSOL).  If you would like to build PSOL from source there's [a more involved
-process](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
-
-If you're using Tengine you can [install ngx_pagespeed without
-recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_pagespeed-with-Tengine).
 
 ## How to use
 
 In your `nginx.conf`, add to the main or server block:
 
-    pagespeed on;
+```nginx
+pagespeed on;
 
-    # needs to exist and be writable by nginx
-    pagespeed FileCachePath /var/ngx_pagespeed_cache;
+# needs to exist and be writable by nginx
+pagespeed FileCachePath /var/ngx_pagespeed_cache;
+```
 
 In every server block where pagespeed is enabled add:
 
-    #  Ensure requests for pagespeed optimized resources go to the pagespeed
-    #  handler and no extraneous headers get set.
-    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
-      add_header "" "";
-    }
-    location ~ "^/ngx_pagespeed_static/" { }
-    location ~ "^/ngx_pagespeed_beacon$" { }
-    location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
-    location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
+```apache
+#  Ensure requests for pagespeed optimized resources go to the pagespeed
+#  handler and no extraneous headers get set.
+location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { add_header "" ""; }
+location ~ "^/ngx_pagespeed_static/" { }
+location ~ "^/ngx_pagespeed_beacon$" { }
+location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
+location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
+```
 
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
@@ -118,7 +116,7 @@ urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 When reading the [mod_pagespeed
 documentation](https://developers.google.com/speed/docs/mod_pagespeed/using_mod),
 keep in mind that you need to make a small adjustment to configuration
-directives: replace '"ModPagespeed"' with '"pagespeed "':
+directives: replace **ModPagespeed** with **pagespeed**:
 
     mod_pagespeed.conf:
       ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
