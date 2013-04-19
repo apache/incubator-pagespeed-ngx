@@ -199,7 +199,7 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   MessageHandler* message_handler_;
   Statistics* statistics_;  // Needed so we can dump the stats contained here.
   // file_system_ and timer_ are owned by someone who called the constructor
-  // (usually Apache's ResourceManager).
+  // (usually Apache's ServerContext).
   FileSystem* file_system_;
   Timer* timer_;    // Used to retrieve timestamps
   const int64 update_interval_ms_;

@@ -218,21 +218,21 @@ const char ServerContext::kCacheKeyResourceNamePrefix[] = "rname/";
 // alters them.
 const char ServerContext::kResourceEtagValue[] = "W/\"0\"";
 
-class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
+class ReadAsyncHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
  public:
-  ResourceManagerHttpCallback(
+  ReadAsyncHttpCacheCallback(
       Resource::NotCacheablePolicy not_cacheable_policy,
       Resource::AsyncCallback* resource_callback,
       ServerContext* resource_manager,
       const RequestContextPtr& request_context);
-  virtual ~ResourceManagerHttpCallback();
+  virtual ~ReadAsyncHttpCacheCallback();
   virtual void Done(HTTPCache::FindResult find_result);
 
  private:
   Resource::AsyncCallback* resource_callback_;
   ServerContext* server_context_;
   Resource::NotCacheablePolicy not_cacheable_policy_;
-  DISALLOW_COPY_AND_ASSIGN(ResourceManagerHttpCallback);
+  DISALLOW_COPY_AND_ASSIGN(ReadAsyncHttpCacheCallback);
 };
 
 class GlobalOptionsRewriteDriverPool : public RewriteDriverPool {
@@ -554,7 +554,7 @@ void ServerContext::RefreshIfImminentlyExpiring(
   }
 }
 
-ResourceManagerHttpCallback::ResourceManagerHttpCallback(
+ReadAsyncHttpCacheCallback::ReadAsyncHttpCacheCallback(
     Resource::NotCacheablePolicy not_cacheable_policy,
     Resource::AsyncCallback* resource_callback,
     ServerContext* resource_manager,
@@ -567,10 +567,10 @@ ResourceManagerHttpCallback::ResourceManagerHttpCallback(
       not_cacheable_policy_(not_cacheable_policy) {
 }
 
-ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
+ReadAsyncHttpCacheCallback::~ReadAsyncHttpCacheCallback() {
 }
 
-void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
+void ReadAsyncHttpCacheCallback::Done(HTTPCache::FindResult find_result) {
   ResourcePtr resource(resource_callback_->resource());
   MessageHandler* handler = server_context_->message_handler();
 
@@ -644,8 +644,8 @@ void ServerContext::ReadAsync(
     RefreshIfImminentlyExpiring(resource.get(), message_handler_);
     callback->Done(false /* lock_failure */, true /* resource_ok */);
   } else if (resource->UseHttpCache()) {
-    ResourceManagerHttpCallback* resource_manager_callback =
-        new ResourceManagerHttpCallback(not_cacheable_policy,
+    ReadAsyncHttpCacheCallback* resource_manager_callback =
+        new ReadAsyncHttpCacheCallback(not_cacheable_policy,
                                         callback,
                                         this,
                                         request_context);

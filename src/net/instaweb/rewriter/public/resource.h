@@ -17,11 +17,11 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 //         jmarantz@google.com (Joshua Marantz)
 //
-// Resources are created by a ResourceManager.  Input resources are
+// Resources are created by a RewriteDriver.  Input resources are
 // read from URLs or the file system.  Output resources are constructed
 // programatically, usually by transforming one or more existing
 // resources.  Both input and output resources inherit from this class
-// so they can be used interchangably in successive rewrite passes.
+// so they can be used interchangeably in successive rewrite passes.
 
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_H_
@@ -234,9 +234,9 @@ class Resource : public RefCounted<Resource> {
   virtual ~Resource();
   REFCOUNT_FRIEND_DECLARATION(Resource);
   friend class ServerContext;
+  friend class ReadAsyncHttpCacheCallback;  // uses LoadAndCallback
   friend class RewriteDriver;  // for ReadIfCachedWithStatus
   friend class UrlReadAsyncFetchCallback;
-  friend class ResourceManagerHttpCallback;
 
   // Load the resource asynchronously, storing ResponseHeaders and
   // contents in object.  Calls 'callback' when finished.  The

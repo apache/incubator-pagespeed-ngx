@@ -512,7 +512,7 @@ class ServerContext {
   // and NewRewriteDriver, but not via NewUnmanagedRewriteDriver.
   size_t num_active_rewrite_drivers();
 
-  // A ResourceManager may be created in one phase, and later populated
+  // A ServerContext may be created in one phase, and later populated
   // with all its dependencies.  This populates the worker threads and
   // a RewriteDriver used just for quickly decoding (but not serving) URLs.
   void InitWorkersAndDecodingDriver();

@@ -612,7 +612,7 @@ class RewriteDriver : public HtmlParse {
 
   // Provides a mechanism for a RewriteContext to notify a
   // RewriteDriver that it is complete, to allow the RewriteDriver
-  // to delete itself or return it back to a free pool in the ResourceManager.
+  // to delete itself or return it back to a free pool in the ServerContext.
   //
   // This will also call back into RewriteContext::Propagate, letting it
   // know whether the context is still attached to the HTML DOM
@@ -628,7 +628,7 @@ class RewriteDriver : public HtmlParse {
   void ReportSlowRewrites(int num);
 
   // If there are not outstanding references to this RewriteDriver,
-  // delete it or recycle it to a free pool in the ResourceManager.
+  // delete it or recycle it to a free pool in the ServerContext.
   // If this is a fetch, calling this also signals to the system that you
   // are no longer interested in its results.
   void Cleanup();

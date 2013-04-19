@@ -60,7 +60,7 @@ class ResourceNamer {
   // Note: there is no need at this time to decode the name key.
 
   // Eventual length of name. Gets eventual hash length from passed in hasher.
-  // Needed by ResourceManager to check that filenames aren't too long.
+  // Needed by RewriteDriver to check that filenames aren't too long.
   int EventualSize(const Hasher& hasher) const;
 
   // Simple getters

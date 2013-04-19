@@ -291,7 +291,7 @@ class ServerContextTest : public RewriteTestBase {
                   ".pagespeed.jm.0.js");
   }
 
-  // Accessor for ResourceManager field; also cleans up
+  // Accessor for ServerContext field; also cleans up
   // deferred_release_rewrite_drivers_.
   void EnableRewriteDriverCleanupMode(bool s) {
     server_context()->trying_to_cleanup_rewrite_drivers_ = s;
@@ -574,7 +574,7 @@ TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
 
 // Check that we can origin-map a domain referenced from an HTML file
 // to 'localhost', but rewrite-map it to 'cdn.com'.  This was not working
-// earlier because ResourceManager::CreateInputResource was mapping to the
+// earlier because RewriteDriver::CreateInputResource was mapping to the
 // rewrite domain, preventing us from finding the origin-mapping when
 // fetching the URL.
 TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
@@ -1324,7 +1324,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   EXPECT_EQ(1, expirations_->Get());
 }
 
-class ResourceManagerShardedTest : public ServerContextTest {
+class ServerContextShardedTest : public ServerContextTest {
  protected:
   virtual void SetUp() {
     ServerContextTest::SetUp();
@@ -1333,7 +1333,7 @@ class ResourceManagerShardedTest : public ServerContextTest {
   }
 };
 
-TEST_F(ResourceManagerShardedTest, TestNamed) {
+TEST_F(ServerContextShardedTest, TestNamed) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   OutputResourcePtr output_resource(
@@ -1480,7 +1480,7 @@ TEST_F(ServerContextTest, WriteChecksInputVector) {
 }
 
 TEST_F(ServerContextTest, ShutDownAssumptions) {
-  // The code in ResourceManager::ShutDownWorkers assumes that some potential
+  // The code in ServerContext::ShutDownWorkers assumes that some potential
   // interleaving of operations are safe. Since they are pretty unlikely
   // in practice, this test exercises them.
   RewriteDriver* driver =
@@ -1675,9 +1675,9 @@ class ThreadAlternatingCache : public CacheInterface {
 
 // Hooks up an instances of a ThreadAlternatingCache as the http cache
 // on server_context()
-class ResourceManagerTestThreadedCache : public ServerContextTest {
+class ServerContextTestThreadedCache : public ServerContextTest {
  public:
-  ResourceManagerTestThreadedCache()
+  ServerContextTestThreadedCache()
       : threads_(Platform::CreateThreadSystem()),
         cache_backend_(new LRUCache(100000)),
         cache_(new ThreadAlternatingCache(
@@ -1707,7 +1707,7 @@ class ResourceManagerTestThreadedCache : public ServerContextTest {
 
 }  // namespace
 
-TEST_F(ResourceManagerTestThreadedCache, RepeatedFetches) {
+TEST_F(ServerContextTestThreadedCache, RepeatedFetches) {
   // Test of a crash scenario where we were aliasing resources between
   // many slots due to repeated rewrite handling, and then doing fetches on
   // all copies, which is not safe as the cache might be threaded (as it is in

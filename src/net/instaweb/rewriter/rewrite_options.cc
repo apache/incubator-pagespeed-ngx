@@ -1467,7 +1467,7 @@ void RewriteOptions::AddProperties() {
   // signature-computation which makes sense from the perspective
   // of metadata cache, however it makes Signature() useless for
   // determining equivalence of RewriteOptions.  This equivalence
-  // is needed in ResourceManager::NewRewriteDriver to determine
+  // is needed in ServerContext::NewRewriteDriver to determine
   // whether the drivers in the freelist are still applicable, or
   // whether options have changed.
   //

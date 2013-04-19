@@ -808,7 +808,7 @@ class RewriteContext::FetchContext {
     // It's very tempting to log the output URL here, but it's not safe to do
     // so, as OutputResource::UrlEvenIfHashNotSet can write to the hash,
     // which may race against normal setting of the hash in
-    // ResourceManager::Write called off low-priority thread.
+    // RewriteDriver::Write called off low-priority thread.
     num_deadline_alarm_invocations_->Add(1);
     ResourcePtr input(rewrite_context_->slot(0)->resource());
     handler_->Message(

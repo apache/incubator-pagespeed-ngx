@@ -141,7 +141,7 @@ RewriteTestBase::~RewriteTestBase() {
 }
 
 // The Setup/Constructor split is designed so that test subclasses can
-// add options prior to calling ResourceManagerTestBase::SetUp().
+// add options prior to calling RewriteTestBase::SetUp().
 void RewriteTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
   rewrite_driver_ = MakeDriver(server_context_, options_);

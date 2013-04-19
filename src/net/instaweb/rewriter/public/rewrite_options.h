@@ -2498,7 +2498,7 @@ class RewriteOptions {
     // anything.  This is because we generally initialize
     // RewriteOptions from only one thread, and thereafter do only
     // reads.  However, one exception is the cache-invalidation
-    // timestamp in the global_options for Apache ResourceManagers,
+    // timestamp in the global_options for Apache ServerContexts,
     // which can be written from any thread handling a request,
     // particularly with the Worker MPM.  So we install a real RWLock*
     // for Apache's global_options.

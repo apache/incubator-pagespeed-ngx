@@ -251,9 +251,9 @@ class RewriteDriverFactory {
   void AddCreatedDirectory(const GoogleString& dir);
 
   // Creates a new empty RewriteOptions object, with no default settings.
-  // Note that InitResourceManager() will copy the factory's default_options()
-  // into the server context's global_options(), but this method just provides
-  // a blank set of options.
+  // Generally configurations go factory's default_options() ->
+  // ServerContext::global_options() -> RewriteDriveFactory,
+  // but this method just provides a blank set of options.
   virtual RewriteOptions* NewRewriteOptions();
 
   // Creates a new empty RewriteOptions object meant for use for
@@ -313,10 +313,10 @@ class RewriteDriverFactory {
   virtual void StopCacheActivity();
   StringPiece filename_prefix();
 
-  // Used by subclasses to indicate that a ResourceManager has been
+  // Used by subclasses to indicate that a ServerContext has been
   // terminated.  Returns true if this was the last server context
   // known to this factory.
-  bool TerminateServerContext(ServerContext* rm);
+  bool TerminateServerContext(ServerContext* server_context);
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_

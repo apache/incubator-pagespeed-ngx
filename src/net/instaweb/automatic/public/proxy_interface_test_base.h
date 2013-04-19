@@ -188,10 +188,6 @@ class BackgroundFetchCheckingUrlAsyncFetcher : public UrlAsyncFetcher {
   DISALLOW_COPY_AND_ASSIGN(BackgroundFetchCheckingUrlAsyncFetcher);
 };
 
-// TODO(morlovich): This currently relies on ResourceManagerTestBase to help
-// setup fetchers; and also indirectly to prevent any rewrites from timing out
-// (as it runs the tests with real scheduler but mock timer). It would probably
-// be better to port this away to use TestRewriteDriverFactory directly.
 class ProxyInterfaceTestBase : public RewriteTestBase {
  public:
   void TestHeadersSetupRace();

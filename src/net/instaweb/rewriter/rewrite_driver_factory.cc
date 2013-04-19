@@ -442,57 +442,56 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 }
 
 ServerContext* RewriteDriverFactory::CreateServerContext() {
-  ServerContext* resource_manager = NewServerContext();
-  InitServerContext(resource_manager);
-  return resource_manager;
+  ServerContext* server_context = NewServerContext();
+  InitServerContext(server_context);
+  return server_context;
 }
 
-void RewriteDriverFactory::InitServerContext(
-    ServerContext* resource_manager) {
+void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   ScopedMutex lock(server_context_mutex_.get());
 
-  resource_manager->ComputeSignature(resource_manager->global_options());
-  resource_manager->set_scheduler(scheduler());
-  if (resource_manager->statistics() == NULL) {
-    resource_manager->set_statistics(statistics());
+  server_context->ComputeSignature(server_context->global_options());
+  server_context->set_scheduler(scheduler());
+  if (server_context->statistics() == NULL) {
+    server_context->set_statistics(statistics());
   }
-  if (resource_manager->rewrite_stats() == NULL) {
-    resource_manager->set_rewrite_stats(rewrite_stats());
+  if (server_context->rewrite_stats() == NULL) {
+    server_context->set_rewrite_stats(rewrite_stats());
   }
-  SetupCaches(resource_manager);
-  if (resource_manager->lock_manager() == NULL) {
-    resource_manager->set_lock_manager(lock_manager());
+  SetupCaches(server_context);
+  if (server_context->lock_manager() == NULL) {
+    server_context->set_lock_manager(lock_manager());
   }
-  if (!resource_manager->has_default_system_fetcher()) {
-    resource_manager->set_default_system_fetcher(ComputeUrlAsyncFetcher());
+  if (!server_context->has_default_system_fetcher()) {
+    server_context->set_default_system_fetcher(ComputeUrlAsyncFetcher());
   }
-  if (!resource_manager->has_default_distributed_fetcher()) {
+  if (!server_context->has_default_distributed_fetcher()) {
     UrlAsyncFetcher* fetcher = ComputeDistributedFetcher();
     if (fetcher != NULL) {
-      resource_manager->set_default_distributed_fetcher(fetcher);
+      server_context->set_default_distributed_fetcher(fetcher);
     }
   }
-  resource_manager->set_url_namer(url_namer());
-  resource_manager->set_user_agent_matcher(user_agent_matcher());
-  resource_manager->set_filename_encoder(filename_encoder());
-  resource_manager->set_file_system(file_system());
-  resource_manager->set_filename_prefix(filename_prefix_);
-  resource_manager->set_hasher(hasher());
-  resource_manager->set_message_handler(message_handler());
-  resource_manager->set_static_asset_manager(static_asset_manager());
-  PropertyCache* pcache = resource_manager->page_property_cache();
-  resource_manager->set_critical_css_finder(DefaultCriticalCssFinder());
-  resource_manager->set_critical_images_finder(DefaultCriticalImagesFinder());
-  resource_manager->set_critical_selector_finder(
+  server_context->set_url_namer(url_namer());
+  server_context->set_user_agent_matcher(user_agent_matcher());
+  server_context->set_filename_encoder(filename_encoder());
+  server_context->set_file_system(file_system());
+  server_context->set_filename_prefix(filename_prefix_);
+  server_context->set_hasher(hasher());
+  server_context->set_message_handler(message_handler());
+  server_context->set_static_asset_manager(static_asset_manager());
+  PropertyCache* pcache = server_context->page_property_cache();
+  server_context->set_critical_css_finder(DefaultCriticalCssFinder());
+  server_context->set_critical_images_finder(DefaultCriticalImagesFinder());
+  server_context->set_critical_selector_finder(
       DefaultCriticalSelectorFinder());
-  resource_manager->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
-  resource_manager->set_blink_critical_line_data_finder(
+  server_context->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
+  server_context->set_blink_critical_line_data_finder(
       DefaultBlinkCriticalLineDataFinder(pcache));
-  resource_manager->set_cache_html_info_finder(
+  server_context->set_cache_html_info_finder(
       DefaultCacheHtmlInfoFinder(pcache));
-  resource_manager->set_hostname(hostname_);
-  resource_manager->InitWorkersAndDecodingDriver();
-  server_contexts_.insert(resource_manager);
+  server_context->set_hostname(hostname_);
+  server_context->InitWorkersAndDecodingDriver();
+  server_contexts_.insert(server_context);
 }
 
 void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(
@@ -607,14 +606,14 @@ void RewriteDriverFactory::StopCacheActivity() {
   // Similarly stop metadata cache writes.
   for (ServerContextSet::iterator p = server_contexts_.begin();
        p != server_contexts_.end(); ++p) {
-    ServerContext* resource_manager = *p;
-    resource_manager->set_shutting_down();
+    ServerContext* server_context = *p;
+    server_context->set_shutting_down();
   }
 }
 
-bool RewriteDriverFactory::TerminateServerContext(ServerContext* rm) {
+bool RewriteDriverFactory::TerminateServerContext(ServerContext* sc) {
   ScopedMutex lock(server_context_mutex_.get());
-  server_contexts_.erase(rm);
+  server_contexts_.erase(sc);
   return server_contexts_.empty();
 }
 
@@ -631,13 +630,13 @@ void RewriteDriverFactory::ShutDown() {
   // Now get active RewriteDrivers for each manager to wrap up.
   for (ServerContextSet::iterator p = server_contexts_.begin();
        p != server_contexts_.end(); ++p) {
-    ServerContext* resource_manager = *p;
-    resource_manager->ShutDownDrivers();
+    ServerContext* server_context = *p;
+    server_context->ShutDownDrivers();
   }
 
   // Shut down the remaining worker threads, to quiesce the system while
   // leaving the QueuedWorkerPool & QueuedWorkerPool::Sequence objects
-  // live.  The QueuedWorkerPools will be deleted when the ResourceManager
+  // live.  The QueuedWorkerPools will be deleted when the ServerContext
   // is destructed.
   for (int i = 0, n = worker_pools_.size(); i < n; ++i) {
     QueuedWorkerPool* worker_pool = worker_pools_[i];

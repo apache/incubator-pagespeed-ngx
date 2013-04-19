@@ -69,7 +69,8 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
       filter_(filter) {
   // This CHECK is here because RewriteDriver is constructed with its
   // server_context_ == NULL.
-  // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
+  // TODO(sligocki): Construct RewriteDriver with a ServerContext, to avoid
+  // worrying about it not getting initialized.
   CHECK(server_context_ != NULL);
 }
 

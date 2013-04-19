@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 //
-// Output resources are created by a ResourceManager. They must be able to
+// Output resources are created by a RewriteDriver. They must be able to
 // write contents and return their url (so that it can be href'd on a page).
 
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
@@ -86,7 +86,7 @@ class OutputResource : public Resource {
   // Lazily initialize and return creation_lock_.  If the resource is expensive
   // to create, this lock should be held during its creation to avoid multiple
   // rewrites happening at once.  The lock will be unlocked on destruction,
-  // DropCreationLock, or EndWrite (called from ResourceManager::Write)
+  // DropCreationLock, or EndWrite (called from RewriteDriver::Write)
   NamedLock* CreationLock();
 
   // Attempt to obtain a named lock for the resource without blocking.  Return
@@ -185,7 +185,7 @@ class OutputResource : public Resource {
   // without any information filled in (so no url(), or timestamps).
   //
   // The primary use of this method is to let filters store any metadata they
-  // want before calling ResourceManager::Write.
+  // want before calling RewriteDriver::Write.
   // This never returns null.
   // We will DCHECK that the cached result has not been written.
   CachedResult* EnsureCachedResultCreated();
