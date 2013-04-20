@@ -65,7 +65,7 @@ class SuppressPreheadFilterTest : public RewriteTestBase {
     // Disable support no script, so that we don't insert the noscript node and
     // the output is simple.
     options()->set_support_noscript_enabled(false);
-    options()->ComputeSignature(hasher());
+    options()->ComputeSignature();
     RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&writer_);

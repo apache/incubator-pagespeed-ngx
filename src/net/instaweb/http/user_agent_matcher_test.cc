@@ -162,13 +162,16 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
                 "prefetch_image_tag"));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kChromeUserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kIe9UserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelSubresource,
             user_agent_matcher_.GetPrefetchMechanism(
                 "prefetch_link_rel_subresource"));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kSafariUserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
@@ -185,7 +188,7 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kIPhoneUserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kIPadUserAgent));
 }

@@ -197,6 +197,7 @@ const char* kSupportsPrefetchLinkRelSubresource[] = {
 // TODO(mmohabey): Tune this to include more browsers.
 const char* kSupportsPrefetchImageTag[] = {
   "*Chrome/*",
+  "*Safari/*",
   // User agent used only for internal testing
   "prefetch_image_tag",
 };

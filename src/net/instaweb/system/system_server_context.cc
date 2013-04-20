@@ -126,8 +126,7 @@ void SystemServerContext::FlushCacheIfNecessary() {
 }
 
 bool SystemServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
-  return global_options()->UpdateCacheInvalidationTimestampMs(
-      timestamp_ms, lock_hasher());
+  return global_options()->UpdateCacheInvalidationTimestampMs(timestamp_ms);
 }
 
 SystemRewriteOptions* SystemServerContext::system_rewrite_options() {

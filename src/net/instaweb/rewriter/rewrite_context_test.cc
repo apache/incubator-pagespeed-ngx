@@ -109,7 +109,7 @@ class RewriteContextTest : public RewriteContextTestBase {
     // re-fetches resulting in re-inserts rather than inserts.
     AdvanceTimeMs(Timer::kSecondMs);
     options()->set_cache_invalidation_timestamp(timer()->NowMs());
-    options()->ComputeSignature(hasher());
+    options()->ComputeSignature();
   }
 
   void SetCacheInvalidationUrlTimestamp(
@@ -119,7 +119,7 @@ class RewriteContextTest : public RewriteContextTestBase {
     // re-fetches resulting in re-inserts rather than inserts.
     AdvanceTimeMs(Timer::kSecondMs);
     options()->AddUrlCacheInvalidationEntry(url, timer()->NowMs(), is_strict);
-    options()->ComputeSignature(hasher());
+    options()->ComputeSignature();
   }
 
   void FetchAndValidateMetadata(StringPiece input_url,
@@ -541,7 +541,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // successfully rewrite, but we will not need to re-fetch.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kInlineImages);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   ValidateExpected("trimmable_flushed_metadata", input_html, output_html);
   EXPECT_EQ(1, lru_cache()->num_hits());     // resource
   EXPECT_EQ(1, lru_cache()->num_misses());   // metadata
@@ -3986,7 +3986,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   // and are unable to serve the rewritten resource.
   options()->ClearSignatureForTesting();
   options()->set_serve_stale_if_fetch_error(false);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
 
   ClearStats();
   lru_cache()->Delete(rewritten_url);
@@ -4007,7 +4007,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 TEST_F(RewriteContextTest, TestOriginalImplicitCacheTtl) {
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(0);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
 
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
@@ -4055,7 +4055,7 @@ TEST_F(RewriteContextTest, TestModifiedImplicitCacheTtl) {
   options()->ClearSignatureForTesting();
   options()->set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
   options()->set_metadata_cache_staleness_threshold_ms(0);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
 
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
@@ -4122,7 +4122,7 @@ TEST_F(RewriteContextTest, TestModifiedImplicitCacheTtlWith304) {
   options()->ClearSignatureForTesting();
   options()->set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
   options()->set_metadata_cache_staleness_threshold_ms(0);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
 
   const char kPath[] = "test.css";
   const char kDataIn[] = "   data  ";
@@ -4170,7 +4170,7 @@ TEST_F(RewriteContextTest, TestModifiedImplicitCacheTtlWith304) {
   // Modify the implicit cache ttl.
   options()->ClearSignatureForTesting();
   options()->set_implicit_cache_ttl_ms(1000 * Timer::kSecondMs);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   FetcherUpdateDateHeaders();
 
   SetupWaitFetcher();
@@ -4258,7 +4258,7 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
 
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(kTtlMs / 2);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
 
   // Start with non-zero time, and init our resource..
   AdvanceTimeMs(kTtlMs / 2);

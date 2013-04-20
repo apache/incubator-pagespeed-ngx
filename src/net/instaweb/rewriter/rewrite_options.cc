@@ -625,7 +625,8 @@ RewriteOptions::RewriteOptions()
       options_uniqueness_checked_(false),
       need_to_store_experiment_data_(false),
       furious_id_(furious::kFuriousNotSet),
-      furious_percent_(0) {
+      furious_percent_(0),
+      hasher_(kHashBytes) {
   DCHECK(properties_ != NULL)
       << "Call RewriteOptions::Initialize() before construction";
 
@@ -2810,7 +2811,7 @@ void RewriteOptions::ResolveConflicts() {
   ForbidFiltersForPreserveUrl();
 }
 
-void RewriteOptions::ComputeSignature(const Hasher* hasher) {
+void RewriteOptions::ComputeSignature() {
   if (frozen_) {
     return;
   }
@@ -2840,7 +2841,8 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
     // with values overridden from the default.
     OptionBase* option = all_options_[i];
     if (option->is_used_for_signature_computation() && option->was_set()) {
-      StrAppend(&signature_, option->id(), ":", option->Signature(hasher), "_");
+      StrAppend(&signature_, option->id(), ":",
+                option->Signature(hasher()), "_");
     }
   }
   if (javascript_library_identification() != NULL) {
@@ -2874,6 +2876,16 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
   // changes made here make our system strictly more correct than it was before,
   // using an ad-hoc signature in css_filter.cc.
+}
+
+bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
+  DCHECK(frozen_);
+  DCHECK(that.frozen_);
+  return (signature() == that.signature());
+
+  // TODO(jmarantz): move more stuff out of the signature() and into the
+  // IsEqual function.  We might also want to make a second signature so
+  // that IsEqual is not too slow.
 }
 
 GoogleString RewriteOptions::ToString(RewriteLevel level) {
@@ -3286,8 +3298,7 @@ void RewriteOptions::AddUrlCacheInvalidationEntry(
       new UrlCacheInvalidationEntry(url_pattern, timestamp_ms, is_strict));
 }
 
-bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
-                                                        const Hasher* hasher) {
+bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms) {
   DCHECK_LT(0, timestamp_ms);
   bool ret = false;
   ScopedMutex lock(cache_invalidation_timestamp_.mutex());
@@ -3298,7 +3309,7 @@ bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
     Modify();
     if (recompute_signature) {
       signature_.clear();
-      ComputeSignature(hasher);
+      ComputeSignature();
     }
     ret = true;
   }

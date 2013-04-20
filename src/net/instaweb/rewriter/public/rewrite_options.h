@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/enum_set.h"
 #include "net/instaweb/util/public/gtest_prod.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -398,6 +399,9 @@ class RewriteOptions {
   // are changed, either in an Add*Property() call or via
   // options->set_default.
   static const int kOptionsVersion = 13;
+
+  // Number of bytes used for signature hashing.
+  static const int kHashBytes = 20;
 
   // Determines the scope at which an option is evaluated.  In Apache,
   // for example, kDirectoryScope indicates it can be changed via .htaccess
@@ -1301,8 +1305,7 @@ class RewriteOptions {
   //
   // This function ignores requests to move the invalidation timestamp
   // backwards.  It returns true if the timestamp was actually changed.
-  bool UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
-                                          const Hasher* hasher);
+  bool UpdateCacheInvalidationTimestampMs(int64 timestamp_ms);
 
   // How much inactivity of HTML input will result in PSA introducing a flush.
   // Values <= 0 disable the feature.
@@ -2184,7 +2187,7 @@ class RewriteOptions {
   //
   // Computing a signature "freezes" the class instance.  Attempting
   // to modify a RewriteOptions after freezing will DCHECK.
-  void ComputeSignature(const Hasher* hasher);
+  void ComputeSignature();
 
   // Clears the computed signature, unfreezing the options object.
   // Warning: Please note that using this method is extremely risky and should
@@ -2256,6 +2259,14 @@ class RewriteOptions {
   const OptionBaseVector& all_options() const {
     return all_options_;
   }
+
+  // Determines whether this and that are the same.  Uses the signature() to
+  // short-cut most of the deep comparisons, but then compares directly some
+  // options and other fields that are omitted from the signature.
+  bool IsEqual(const RewriteOptions& that) const;
+
+  // Returns the hasher used for signatures and URLs to purge.
+  const Hasher* hasher() const { return &hasher_; }
 
  protected:
   // Type-specific class of Property.  This subclass of PropertyBase
@@ -3245,6 +3256,7 @@ class RewriteOptions {
   FastWildcardGroupMap rejected_request_map_;
 
   GoogleString signature_;
+  MD5Hasher hasher_;  // Used to compute named signatures.
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

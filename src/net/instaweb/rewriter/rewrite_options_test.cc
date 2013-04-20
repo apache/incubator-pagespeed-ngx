@@ -1904,18 +1904,18 @@ TEST_F(RewriteOptionsTest, ComputeSignatureWildcardGroup) {
   // (and all tests that do not depend on Option<GoogleString>'s signature
   // changing with change in value).  But if hasher is used more widely in
   // ComputeSignature we need to revisit the usage of MockHasher here.
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature1 = options_.signature();
   // Tweak allow_resources_ and check that signature changes.
   options_.ClearSignatureForTesting();
   options_.Disallow("http://www.example.com/*");
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature2 = options_.signature();
   EXPECT_NE(signature1, signature2);
   // Tweak retain_comments and check that signature changes.
   options_.ClearSignatureForTesting();
   options_.RetainComment("TEST");
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature3 = options_.signature();
   EXPECT_NE(signature1, signature3);
   EXPECT_NE(signature2, signature3);
@@ -1925,13 +1925,13 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   options_.ClearSignatureForTesting();
   options_.set_css_image_inline_max_bytes(2048);
   options_.set_in_place_rewriting_enabled(false);
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature1 = options_.signature();
 
   // Changing an Option used in signature computation will change the signature.
   options_.ClearSignatureForTesting();
   options_.set_css_image_inline_max_bytes(1024);
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature2 = options_.signature();
   EXPECT_NE(signature1, signature2);
 
@@ -1939,7 +1939,7 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   // signature.
   options_.ClearSignatureForTesting();
   options_.set_in_place_rewriting_enabled(true);
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature3 = options_.signature();
 
   // See the comment in RewriteOptions::RewriteOptions -- we need to leave
@@ -1947,17 +1947,32 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   EXPECT_NE(signature2, signature3);
 }
 
+TEST_F(RewriteOptionsTest, IsEqual) {
+  RewriteOptions a, b;
+  a.ComputeSignature();
+  b.ComputeSignature();
+  EXPECT_TRUE(a.IsEqual(b));
+  a.ClearSignatureForTesting();
+  a.EnableFilter(RewriteOptions::kSpriteImages);
+  a.ComputeSignature();
+  EXPECT_FALSE(a.IsEqual(b));
+  b.ClearSignatureForTesting();
+  b.EnableFilter(RewriteOptions::kSpriteImages);
+  b.ComputeSignature();
+  EXPECT_TRUE(a.IsEqual(b));
+}
+
 TEST_F(RewriteOptionsTest, ComputeSignatureEmptyIdempotent) {
   options_.ClearSignatureForTesting();
   options_.DisallowTroublesomeResources();
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature1 = options_.signature();
   options_.ClearSignatureForTesting();
 
   // Merging in empty RewriteOptions should not change the signature.
   RewriteOptions options2;
   options_.Merge(options2);
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   EXPECT_EQ(signature1, options_.signature());
 }
 
@@ -2017,16 +2032,16 @@ TEST_F(RewriteOptionsTest, UrlCacheInvalidationTest) {
 }
 
 TEST_F(RewriteOptionsTest, UrlCacheInvalidationSignatureTest) {
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature1 = options_.signature();
   options_.ClearSignatureForTesting();
   options_.AddUrlCacheInvalidationEntry("one*", 10L, true);
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature2 = options_.signature();
   EXPECT_EQ(signature1, signature2);
   options_.ClearSignatureForTesting();
   options_.AddUrlCacheInvalidationEntry("two*", 10L, false);
-  options_.ComputeSignature(&hasher_);
+  options_.ComputeSignature();
   GoogleString signature3 = options_.signature();
   EXPECT_NE(signature2, signature3);
 }

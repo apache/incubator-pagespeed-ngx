@@ -315,7 +315,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithInvalidation) {
   int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   options()->set_cache_invalidation_timestamp(now_ms);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   // We expect: identical input a new rname entry (its version # changed),
   // and the output which may not may not auto-advance due to MockTimer
@@ -356,7 +356,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithUrlPatternAllInvalidation) {
   // Set cache invalidation (to now) for all URLs with "a.css" and also
   // invalidate all metadata (the last 'false' argument below).
   options()->AddUrlCacheInvalidationEntry("*a.css*", now_ms, false);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   // We expect: identical input, a new rewrite entry (its version # changed),
   // and the output which may not may not auto-advance due to MockTimer black
@@ -397,7 +397,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithUrlPatternOnlyInvalidation) {
   // Set cache invalidation (to now) for all URLs with "a.css". Does not
   // invalidate any metadata (the last 'true' argument below).
   options()->AddUrlCacheInvalidationEntry("*a.css*", now_ms, true);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   // The output rewritten URL is invalidated, the input is also invalidated, and
   // fetched again.  The rewrite entry does not change, and gets reinserted.
@@ -439,7 +439,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithRewrittenUrlAllInvalidation) {
   // not affected.  Also invalidate all metadata (the last 'false' argument
   // below).
   options()->AddUrlCacheInvalidationEntry(css_minified_url, now_ms, false);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   // We expect:  a new rewrite entry (its version # changed), and identical
   // output.
@@ -480,7 +480,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithRewrittenUrlOnlyInvalidation) {
   // affected.  Does not invalidate any metadata (the last 'true' argument
   // below).
   options()->AddUrlCacheInvalidationEntry(css_minified_url, now_ms, true);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   // We expect:  identical rewrite entry and output.
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -522,7 +522,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithOriginalUrlInvalidation) {
   // immaterial in this test.
   options()->AddUrlCacheInvalidationEntry("http://test.com/a.css", now_ms,
                                           false);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
@@ -624,7 +624,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   options()->set_cache_invalidation_timestamp(now_ms);
-  options()->ComputeSignature(hasher());
+  options()->ComputeSignature();
   EXPECT_TRUE(TryFetchResource(cache_extended_url));
   // We expect: input re-insert, new metadata key
   EXPECT_EQ(1, lru_cache()->num_inserts());

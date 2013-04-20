@@ -253,8 +253,7 @@ bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
   if (SpdyConfig() != NULL) {
     // We need to make sure to update the invalidation timestamp in the
     // SPDY configuration as well, so it also gets any cache flushes.
-    flushed = SpdyConfig()->UpdateCacheInvalidationTimestampMs(
-        timestamp_ms, lock_hasher()) || flushed;
+    flushed |= SpdyConfig()->UpdateCacheInvalidationTimestampMs(timestamp_ms);
   }
   return flushed;
 }

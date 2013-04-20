@@ -229,9 +229,8 @@ class RewriteSingleResourceFilterTest
 
     filter_ = new TestRewriter(rewrite_driver(), GetParam());
     AddRewriteFilter(filter_);
-    AddOtherRewriteFilter(
-        new TestRewriter(other_rewrite_driver(), GetParam()));
-    options()->ComputeSignature(hasher());
+    AddOtherRewriteFilter(new TestRewriter(other_rewrite_driver(), GetParam()));
+    options()->ComputeSignature();
 
     MockResource("a.tst", "good", TtlSec());
     MockResource("bad.tst", "bad", TtlSec());

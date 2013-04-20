@@ -214,8 +214,7 @@ TEST_F(ProxyFetchTest, TestInhibitParsing) {
   NullMessageHandler handler;
   server_context()->global_options()->ClearSignatureForTesting();
   server_context()->global_options()->set_max_html_parse_bytes(0L);
-  server_context()->global_options()->ComputeSignature(
-      server_context()->hasher());
+  server_context()->global_options()->ComputeSignature();
   StringAsyncFetch fetch(
       RequestContext::NewTestRequestContext(
           server_context()->thread_system()));

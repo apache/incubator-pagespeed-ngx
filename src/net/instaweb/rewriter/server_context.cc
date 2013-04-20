@@ -260,7 +260,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       default_system_fetcher_(NULL),
       default_distributed_fetcher_(NULL),
       hasher_(NULL),
-      lock_hasher_(20),
+      lock_hasher_(RewriteOptions::kHashBytes),
       contents_hasher_(21),
       statistics_(NULL),
       filesystem_metadata_cache_(NULL),
@@ -875,9 +875,6 @@ RewriteDriver* ServerContext::NewRewriteDriverFromPool(
   RewriteDriver* rewrite_driver = NULL;
 
   RewriteOptions* options = pool->TargetOptions();
-  // Note that options->signature() takes a reader-lock so it's thread-safe
-  // even if another thread is concurrently handling a cache-flush request.
-  GoogleString expected_signature = options->signature();
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
     while ((rewrite_driver = pool->PopDriver()) != NULL) {
@@ -892,7 +889,7 @@ RewriteDriver* ServerContext::NewRewriteDriverFromPool(
       // signature, and revisit the issue of pulling options out if we
       // find we are having poor hit-rate in the metadata cache during
       // operations.
-      if (rewrite_driver->options()->signature() == expected_signature) {
+      if (rewrite_driver->options()->IsEqual(*options)) {
         break;
       } else {
         delete rewrite_driver;
@@ -1121,7 +1118,7 @@ GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
 }
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {
-  rewrite_options->ComputeSignature(lock_hasher());
+  rewrite_options->ComputeSignature();
 }
 
 bool ServerContext::IsExcludedAttribute(const char* attribute) {

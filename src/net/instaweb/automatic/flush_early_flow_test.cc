@@ -486,7 +486,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     // else our dummy resources are too small and always get inlined.
     rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
     rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
-    rewrite_options->ComputeSignature(hasher());
+    rewrite_options->ComputeSignature();
 
     SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
                                   kCssContent, kHtmlCacheTimeSec * 2);
@@ -825,7 +825,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     // else our dummy resources are too small and always get inlined.
     rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
     rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
-    rewrite_options->ComputeSignature(hasher());
+    rewrite_options->ComputeSignature();
 
     SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"),
                                   kContentTypeJpeg, "image",
@@ -935,7 +935,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
     rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
     rewrite_options->set_pre_connect_url(pre_connect_url);
-    rewrite_options->ComputeSignature(hasher());
+    rewrite_options->ComputeSignature();
 
     SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
                                   kCssContent, kHtmlCacheTimeSec * 2);
@@ -1330,7 +1330,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
   // else our dummy resources are too small and always get inlined.
   rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
   rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
-  rewrite_options->ComputeSignature(hasher());
+  rewrite_options->ComputeSignature();
 
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
                                 kCssContent, kHtmlCacheTimeSec * 2);
@@ -1407,7 +1407,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
   rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
   rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
   rewrite_options->DisableFilter(RewriteOptions::kInlineImages);
-  rewrite_options->ComputeSignature(hasher());
+  rewrite_options->ComputeSignature();
 
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"), kContentTypeJpeg,
                                 "image", kHtmlCacheTimeSec * 2);
@@ -1482,7 +1482,7 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
   // else our dummy resources are too small and always get inlined.
   rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
   rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
-  rewrite_options->ComputeSignature(hasher());
+  rewrite_options->ComputeSignature();
 
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"), kContentTypeJpeg,
                                 "image", kHtmlCacheTimeSec * 2);
@@ -1537,7 +1537,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithLocalStorageDoesNotCrash) {
   rewrite_options->EnableFilter(RewriteOptions::kLocalStorageCache);
   rewrite_options->ForceEnableFilter(RewriteOptions::kInlineImages);
   rewrite_options->ForceEnableFilter(RewriteOptions::kInlineCss);
-  rewrite_options->ComputeSignature(hasher());
+  rewrite_options->ComputeSignature();
 
   // This sequence of requests used to cause a crash earlier. Here, we just test
   // that this server doesn't crash and don't check the output.
