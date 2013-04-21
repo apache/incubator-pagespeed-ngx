@@ -99,6 +99,8 @@ void SharedMemTestBase::TestLarge() {
   for (int i = 0; i < kLarge; i+=4) {
     EXPECT_EQ(i, *IntPtr(seg.get(), i));
   }
+
+  DestroyDefault();
 }
 
 void SharedMemTestBase::TestLargeChild() {
@@ -165,6 +167,7 @@ void SharedMemTestBase::TestCreateTwice() {
 
   seg.reset(CreateDefault());
   EXPECT_EQ('\0', *seg->Base());
+  DestroyDefault();
 }
 
 // Make sure between two kids see the SHM as well.
