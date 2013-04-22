@@ -209,7 +209,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       write_property_cache_dom_cohort_(false),
       rewrites_to_delete_(0),
       should_skip_parsing_(kNotSet),
-      supports_flush_early_(kNotSet),
       response_headers_(NULL),
       request_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
@@ -347,7 +346,6 @@ void RewriteDriver::Clear() {
 
   client_state_.reset(NULL);
   should_skip_parsing_ = kNotSet;
-  supports_flush_early_ = kNotSet;
   pending_async_events_ = 0;
   max_page_processing_delay_ms_ = -1;
   request_headers_ = NULL;
@@ -809,18 +807,6 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
   va_start(argp, fmt);
   trace_context()->TraceVPrintf(fmt, argp);
   va_end(argp);
-}
-
-bool RewriteDriver::SupportsFlushEarly() const {
-  if (supports_flush_early_ == kNotSet) {
-    supports_flush_early_ =
-        (options_->Enabled(RewriteOptions::kFlushSubresources) &&
-        request_headers_ != NULL &&
-        request_headers_->method() == RequestHeaders::kGet &&
-        device_properties_->CanPreloadResources())
-        ? kTrue : kFalse;
-  }
-  return (supports_flush_early_ == kTrue);
 }
 
 void RewriteDriver::AddFilters() {

@@ -103,7 +103,8 @@ class SharedMemCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual const char* Name() const;
+  static GoogleString FormatName();
+  virtual GoogleString Name() const { return FormatName();}
 
   virtual bool IsBlocking() const { return true; }
   virtual bool IsHealthy() const { return true; }

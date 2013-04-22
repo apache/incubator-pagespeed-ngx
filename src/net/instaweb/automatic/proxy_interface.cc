@@ -616,18 +616,15 @@ void ProxyInterface::ProxyRequestCallback(
 
           return;
         }
-
-        if (driver->SupportsFlushEarly()) {
-          FlushEarlyFlow::Start(url_string,
-                                &async_fetch,
-                                driver,
-                                proxy_fetch_factory_.get(),
-                                // Does NOT take ownership of property_callback.
-                                property_callback);
-          // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
-          // but will not begin (FlushEarlyFlwow::FlushEarly) until the
-          // PropertyCache lookup has completed.
-        }
+        // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
+        // but will not begin (FlushEarlyFlwow::FlushEarly) until the
+        // PropertyCache lookup has completed.
+        // Also it does NOT take ownership of property_callback.
+        // FlushEarlyFlow might not start if the request is not GET or if the
+        // useragent is unsupported etc.
+        FlushEarlyFlow::TryStart(url_string, &async_fetch, driver,
+                                 proxy_fetch_factory_.get(),
+                                 property_callback);
       }
       // Takes ownership of property_callback.
       proxy_fetch_factory_->StartNewProxyFetch(

@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -50,7 +51,6 @@ class FallbackCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
-  virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const {
     // We can fulfill our guarantee only if both caches block.
     return (small_object_cache_->IsBlocking() &&
@@ -67,6 +67,11 @@ class FallbackCache : public CacheInterface {
     large_object_cache_->ShutDown();
   }
 
+  virtual GoogleString Name() const {
+    return FormatName(small_object_cache_->Name(), large_object_cache_->Name());
+  }
+  static GoogleString FormatName(StringPiece small, StringPiece large);
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,
@@ -76,7 +81,6 @@ class FallbackCache : public CacheInterface {
   CacheInterface* large_object_cache_;
   int threshold_bytes_;
   MessageHandler* message_handler_;
-  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(FallbackCache);
 };

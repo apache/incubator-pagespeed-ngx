@@ -23,9 +23,8 @@
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -98,8 +97,7 @@ class CompressedCallback : public CacheInterface::Callback {
 }  // namespace
 
 CompressedCache::CompressedCache(CacheInterface* cache, Statistics* stats)
-  : cache_(cache),
-    name_(StrCat("CompressedCache(", cache_->Name(), ")")) {
+    : cache_(cache) {
 #if INCLUDE_HISTOGRAMS
   compressed_cache_savings_ = stats->GetHistogram(kCompressedCacheSavings);
 #endif
@@ -109,6 +107,10 @@ CompressedCache::CompressedCache(CacheInterface* cache, Statistics* stats)
 }
 
 CompressedCache::~CompressedCache() {
+}
+
+GoogleString CompressedCache::FormatName(StringPiece name) {
+  return StrCat("Compressed(", name, ")");
 }
 
 void CompressedCache::InitStats(Statistics* statistics) {

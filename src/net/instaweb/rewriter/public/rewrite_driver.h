@@ -257,8 +257,6 @@ class RewriteDriver : public HtmlParse {
     return server_context()->user_agent_matcher();
   }
 
-  bool SupportsFlushEarly() const;
-
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
   // opportunity to programatically add custom filters beyond those defined
@@ -1247,7 +1245,6 @@ class RewriteDriver : public HtmlParse {
   GoogleString user_agent_;
 
   LazyBool should_skip_parsing_;
-  mutable LazyBool supports_flush_early_;
 
   StringFilterMap resource_filter_map_;
 

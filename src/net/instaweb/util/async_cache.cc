@@ -26,14 +26,13 @@
 #include "net/instaweb/util/public/key_value_codec.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
 AsyncCache::AsyncCache(CacheInterface* cache, QueuedWorkerPool* pool)
-    : cache_(cache),
-      name_(StrCat("AsyncCache using ", cache_->Name())) {
+    : cache_(cache) {
   CHECK(cache->IsBlocking());
   sequence_ = pool->NewSequence();
   sequence_->set_max_queue_size(kMaxQueueSize);
@@ -41,6 +40,10 @@ AsyncCache::AsyncCache(CacheInterface* cache, QueuedWorkerPool* pool)
 
 AsyncCache::~AsyncCache() {
   DCHECK_EQ(0, outstanding_operations());
+}
+
+GoogleString AsyncCache::FormatName(StringPiece cache) {
+  return StrCat("Async(", cache, ")");
 }
 
 void AsyncCache::Get(const GoogleString& key, Callback* callback) {

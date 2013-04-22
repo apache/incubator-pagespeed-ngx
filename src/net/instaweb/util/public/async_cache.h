@@ -24,7 +24,8 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -66,7 +67,8 @@ class AsyncCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
-  virtual const char* Name() const { return name_.c_str(); }
+  static GoogleString FormatName(StringPiece cache);
+  virtual GoogleString Name() const { return FormatName(cache_->Name()); }
   virtual bool IsBlocking() const { return false; }
 
   // Prevent the AsyncCache from issuing any more Gets.  Any subsequent
@@ -110,7 +112,6 @@ class AsyncCache : public CacheInterface {
   void MultiGetReportNotFound(MultiGetRequest* request);
 
   CacheInterface* cache_;
-  GoogleString name_;
   QueuedWorkerPool::Sequence* sequence_;
   AtomicBool stopped_;
   AtomicInt32 outstanding_operations_;

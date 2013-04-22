@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -42,7 +43,8 @@ class CompressedCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual const char* Name() const { return name_.c_str(); }
+  virtual GoogleString Name() const { return FormatName(cache_->Name()); }
+  static GoogleString FormatName(StringPiece cache);
   virtual CacheInterface* Backend() { return cache_; }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsHealthy() const;
@@ -62,7 +64,6 @@ class CompressedCache : public CacheInterface {
 
  private:
   CacheInterface* cache_;
-  GoogleString name_;
   Histogram* compressed_cache_savings_;
   Variable* corrupt_payloads_;
   Variable* original_size_;

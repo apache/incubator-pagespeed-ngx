@@ -29,6 +29,10 @@ namespace net_instaweb {
 ThreadsafeCache::~ThreadsafeCache() {
 }
 
+GoogleString ThreadsafeCache::FormatName(StringPiece name) {
+  return StrCat("ThreadsafeCache(", name, ")");
+}
+
 namespace {
 
 class ThreadsafeCallback : public DelegatingCacheCallback {

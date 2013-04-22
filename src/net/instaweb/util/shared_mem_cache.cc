@@ -200,7 +200,11 @@ SharedMemCache<kBlockSize>::SharedMemCache(
       entries_per_sector_(entries_per_sector),
       blocks_per_sector_(blocks_per_sector),
       handler_(handler) {
-  name_ = StringPrintf("SharedMemCache<%d>", static_cast<int>(kBlockSize));
+}
+
+template<size_t kBlockSize>
+GoogleString SharedMemCache<kBlockSize>::FormatName() {
+  return StringPrintf("SharedMemCache<%d>", static_cast<int>(kBlockSize));
 }
 
 template<size_t kBlockSize>
@@ -556,11 +560,6 @@ void SharedMemCache<kBlockSize>::Delete(const GoogleString& key) {
   }
 
   sector->Unlock();
-}
-
-template<size_t kBlockSize>
-const char* SharedMemCache<kBlockSize>::Name() const {
-  return name_.c_str();
 }
 
 template<size_t kBlockSize>

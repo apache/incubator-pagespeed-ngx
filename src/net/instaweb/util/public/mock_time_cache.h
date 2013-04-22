@@ -27,9 +27,10 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CACHE_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -56,7 +57,8 @@ class MockTimeCache : public CacheInterface {
 
   Scheduler* scheduler() { return scheduler_; }
 
-  virtual const char* Name() const { return name_.c_str(); }
+  virtual GoogleString Name() const { return FormatName(cache_->Name()); }
+  static GoogleString FormatName(StringPiece name);
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsHealthy() const { return cache_->IsHealthy(); }
   virtual void ShutDown() { cache_->ShutDown(); }

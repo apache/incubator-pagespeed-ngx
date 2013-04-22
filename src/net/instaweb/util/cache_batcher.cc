@@ -24,8 +24,8 @@
 #include "net/instaweb/util/public/delegating_cache_callback.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace {
 
@@ -84,7 +84,6 @@ CacheBatcher::CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,
                            Statistics* statistics)
     : cache_(cache),
       mutex_(mutex),
-      name_(StrCat("CacheBatcher using ", cache_->Name())),
       last_batch_size_(-1),
       pending_(0),
       max_parallel_lookups_(kDefaultMaxParallelLookups),
@@ -93,6 +92,17 @@ CacheBatcher::CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,
 }
 
 CacheBatcher::~CacheBatcher() {
+}
+
+GoogleString CacheBatcher::FormatName(StringPiece cache, int parallelism,
+                                      int max) {
+  return StrCat("Batcher(cache=", cache,
+                ",parallelism=", IntegerToString(parallelism),
+                ",max=", IntegerToString(max), ")");
+}
+
+GoogleString CacheBatcher::Name() const {
+  return FormatName(cache_->Name(), max_parallel_lookups_, max_queue_size_);
 }
 
 void CacheBatcher::InitStats(Statistics* statistics) {

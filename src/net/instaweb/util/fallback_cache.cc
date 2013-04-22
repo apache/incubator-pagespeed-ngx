@@ -20,7 +20,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 
@@ -112,12 +111,14 @@ FallbackCache::FallbackCache(CacheInterface* small_object_cache,
     : small_object_cache_(small_object_cache),
       large_object_cache_(large_object_cache),
       threshold_bytes_(threshold_bytes),
-      message_handler_(handler),
-      name_(StrCat("Fallback_", small_object_cache_->Name(), ":",
-                   large_object_cache_->Name())) {
+      message_handler_(handler) {
 }
 
 FallbackCache::~FallbackCache() {
+}
+
+GoogleString FallbackCache::FormatName(StringPiece small, StringPiece large) {
+  return StrCat("Fallback(small=", small, ",large=", large, ")");
 }
 
 void FallbackCache::Get(const GoogleString& key, Callback* callback) {

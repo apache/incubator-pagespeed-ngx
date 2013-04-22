@@ -53,7 +53,6 @@ class CacheStats : public CacheInterface {
   virtual void MultiGet(MultiGetRequest* request);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual const char* Name() const { return name_.c_str(); }
   virtual CacheInterface* Backend() { return cache_; }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
 
@@ -65,6 +64,11 @@ class CacheStats : public CacheInterface {
     shutdown_.set_value(true);
     cache_->ShutDown();
   }
+
+  virtual GoogleString Name() const {
+    return FormatName(prefix_, cache_->Name());
+  }
+  static GoogleString FormatName(StringPiece prefix, StringPiece cache);
 
  private:
   class StatsCallback;
@@ -81,7 +85,7 @@ class CacheStats : public CacheInterface {
   Variable* hits_;
   Variable* inserts_;
   Variable* misses_;
-  GoogleString name_;
+  GoogleString prefix_;
   AtomicBool shutdown_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheStats);

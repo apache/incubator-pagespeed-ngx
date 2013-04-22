@@ -143,6 +143,14 @@ CacheInterface* SystemCaches::GetMemcached(SystemRewriteOptions* config) {
 
       int num_threads = config->memcached_threads();
       if (num_threads != 0) {
+        if (num_threads != 1) {
+          factory_->message_handler()->Message(
+              kWarning, "ModPagespeedMemcachedThreads support for >1 thread "
+              "is not supported yet; changing to 1 thread (was %d)",
+              num_threads);
+          num_threads = 1;
+        }
+
         if (memcached_pool_.get() == NULL) {
           // Note -- we will use the first value of ModPagespeedMemCacheThreads
           // that we see in a VirtualHost, ignoring later ones.

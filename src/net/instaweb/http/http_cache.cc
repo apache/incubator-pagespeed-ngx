@@ -85,7 +85,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
       cache_inserts_(stats->GetVariable(kCacheInserts)),
       cache_deletes_(stats->GetVariable(kCacheDeletes)),
-      name_(StrCat("HTTPCache using backend : ", cache->Name())) {
+      name_(FormatName(cache->Name())) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
   remember_fetch_dropped_ttl_seconds_ = kRememberFetchDroppedTtl;
@@ -93,6 +93,10 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
 }
 
 HTTPCache::~HTTPCache() {}
+
+GoogleString HTTPCache::FormatName(StringPiece cache) {
+  return StrCat("HTTPCache(", cache, ")");
+}
 
 void HTTPCache::SetIgnoreFailurePuts() {
   ignore_failure_puts_.set_value(true);

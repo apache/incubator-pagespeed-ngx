@@ -26,13 +26,13 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class AbstractLogRecord;
-class CacheInterface;
 class Hasher;
 class MessageHandler;
 class RequestHeaders;
@@ -289,7 +289,8 @@ class HTTPCache {
 
   virtual void set_max_cacheable_response_content_length(int64 value);
 
-  virtual const char* Name() const { return name_.c_str(); }
+  virtual GoogleString Name() const { return FormatName(cache_->Name()); }
+  static GoogleString FormatName(StringPiece cache);
 
  protected:
   virtual void PutInternal(const GoogleString& key, int64 start_us,

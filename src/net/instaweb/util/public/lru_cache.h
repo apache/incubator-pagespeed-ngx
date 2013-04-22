@@ -89,7 +89,8 @@ class LRUCache : public CacheInterface {
   // Clear the stats -- note that this will not clear the content.
   void ClearStats();
 
-  virtual const char* Name() const { return "LRUCache"; }
+  static GoogleString FormatName() { return "LRUCache"; }
+  virtual GoogleString Name() const { return FormatName(); }
   virtual bool IsBlocking() const { return true; }
   virtual bool IsHealthy() const { return is_healthy_; }
   virtual void ShutDown() { set_is_healthy(false); }

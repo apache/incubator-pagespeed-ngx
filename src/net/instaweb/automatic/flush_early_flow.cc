@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/device_properties.h"
@@ -310,12 +311,29 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyAsyncFetch);
 };
 
-void FlushEarlyFlow::Start(
+void FlushEarlyFlow::TryStart(
     const GoogleString& url,
     AsyncFetch** base_fetch,
     RewriteDriver* driver,
     ProxyFetchFactory* factory,
     ProxyFetchPropertyCallbackCollector* property_cache_callback) {
+  if (!driver->options()->Enabled(RewriteOptions::kFlushSubresources)) {
+    return;
+  }
+  if (driver->request_headers() == NULL ||
+      driver->request_headers()->method() != RequestHeaders::kGet) {
+    driver->log_record()->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+        RewriterHtmlApplication::DISABLED);
+    return;
+  }
+  if (!driver->device_properties()->CanPreloadResources()) {
+    driver->log_record()->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+        RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
+    return;
+  }
+
   FlushEarlyAsyncFetch* flush_early_fetch = new FlushEarlyAsyncFetch(
       *base_fetch, driver->server_context()->thread_system()->NewMutex(),
       driver->server_context()->message_handler(), url,
@@ -390,6 +408,7 @@ void FlushEarlyFlow::FlushEarly() {
       GetCohort(RewriteDriver::kDomCohort);
   PropertyPage* page = property_cache_callback_->property_page();
   DCHECK(page != NULL);
+  bool property_cache_miss = true;
   if (page != NULL && cohort != NULL) {
     PropertyValue* num_rewritten_resources_property_value = page->GetProperty(
         cohort,
@@ -416,6 +435,7 @@ void FlushEarlyFlow::FlushEarly() {
     PropertyValue* property_value = page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
     if (property_value != NULL && property_value->has_value()) {
+      property_cache_miss = false;
       FlushEarlyInfo flush_early_info;
       ArrayInputStream value(property_value->value().data(),
                              property_value->value().size());
@@ -492,6 +512,9 @@ void FlushEarlyFlow::FlushEarly() {
           }
         }
         driver_->set_flushed_early(true);
+        driver_->log_record()->LogRewriterHtmlStatus(
+            RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+            RewriterHtmlApplication::ACTIVE);
         // Keep driver alive till the FlushEarlyFlow is completed.
         num_requests_flushed_early_->IncBy(1);
 
@@ -503,6 +526,11 @@ void FlushEarlyFlow::FlushEarly() {
       }
     }
   }
+  driver_->log_record()->LogRewriterHtmlStatus(
+      RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+      (property_cache_miss ?
+       RewriterHtmlApplication::PROPERTY_CACHE_MISS :
+       RewriterHtmlApplication::DISABLED));
   flush_early_fetch_->set_flush_early_flow_done(driver_->flushed_early());
   delete this;
 }

@@ -68,13 +68,17 @@ CacheStats::CacheStats(StringPiece prefix,
       hits_(statistics->GetVariable(StrCat(prefix, kHits))),
       inserts_(statistics->GetVariable(StrCat(prefix, kInserts))),
       misses_(statistics->GetVariable(StrCat(prefix, kMisses))),
-      name_(StrCat(prefix, "_with_stats_", cache->Name())) {
+      prefix_(prefix.data(), prefix.size()) {
   get_count_histogram_->SetMaxValue(kGetCountHistogramMaxValue);
   insert_size_bytes_histogram_->SetMaxValue(kSizeHistogramMaxValue);
   lookup_size_bytes_histogram_->SetMaxValue(kSizeHistogramMaxValue);
 }
 
 CacheStats::~CacheStats() {
+}
+
+GoogleString CacheStats::FormatName(StringPiece prefix, StringPiece cache) {
+  return StrCat("Stats(prefix=", prefix, ",cache=", cache, ")");
 }
 
 void CacheStats::InitStats(StringPiece prefix, Statistics* statistics) {

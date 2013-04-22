@@ -99,7 +99,7 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         filter_enabled = device_properties->SupportsImageInlining();
         break;
       case RewriteOptions::kFlushSubresources:
-        filter_enabled = rewrite_driver_->SupportsFlushEarly();
+        filter_enabled = rewrite_driver_->flushed_early();;
         break;
       case RewriteOptions::kCachePartialHtml:
         filter_enabled = rewrite_driver_->flushing_cached_html();

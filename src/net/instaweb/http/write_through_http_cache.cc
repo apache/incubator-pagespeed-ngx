@@ -28,10 +28,8 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -182,9 +180,12 @@ WriteThroughHTTPCache::WriteThroughHTTPCache(CacheInterface* cache1,
     : HTTPCache(cache1, timer, hasher, statistics),
       cache1_(new HTTPCache(cache1, timer, hasher, statistics)),
       cache2_(new HTTPCache(cache2, timer, hasher, statistics)),
-      cache1_size_limit_(kUnlimited),
-      name_(StrCat("WriteThroughHTTPCache using backend 1 : ", cache1->Name(),
-                   " and backend 2 : ", cache2->Name())) {}
+      cache1_size_limit_(kUnlimited) {
+}
+
+GoogleString WriteThroughHTTPCache::FormatName(StringPiece l1, StringPiece l2) {
+  return StrCat("WriteThroughHTTPCache(L1=", l1, ",L2=", l2, ")");
+}
 
 WriteThroughHTTPCache::~WriteThroughHTTPCache() {
 }

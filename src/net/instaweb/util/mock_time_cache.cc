@@ -26,7 +26,6 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -65,10 +64,14 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
 MockTimeCache::MockTimeCache(Scheduler* scheduler, CacheInterface* cache)
     : scheduler_(scheduler),
       cache_(cache),
-      delay_us_(0),
-      name_(StrCat("MockTimeCache using ", cache_->Name())) {}
+      delay_us_(0) {
+}
 
 MockTimeCache::~MockTimeCache() {}
+
+GoogleString MockTimeCache::FormatName(StringPiece name) {
+  return StrCat("MockTimeCache(", name, ")");
+}
 
 void MockTimeCache::Get(const GoogleString& key, Callback* callback) {
   if (delay_us_ == 0) {

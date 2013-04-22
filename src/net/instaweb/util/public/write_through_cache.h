@@ -38,9 +38,8 @@ class WriteThroughCache : public CacheInterface {
   WriteThroughCache(CacheInterface* cache1, CacheInterface* cache2)
       : cache1_(cache1),
         cache2_(cache2),
-        cache1_size_limit_(kUnlimited),
-        name_(StrCat("WriteThroughCache using backend 1 : ", cache1->Name(),
-                     " and backend 2 : ", cache2->Name())) {}
+        cache1_size_limit_(kUnlimited) {
+  }
 
   virtual ~WriteThroughCache();
 
@@ -57,7 +56,6 @@ class WriteThroughCache : public CacheInterface {
 
   CacheInterface* cache1() { return cache1_; }
   CacheInterface* cache2() { return cache2_; }
-  virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const {
     // We can fulfill our guarantee only if both caches block.
     return cache1_->IsBlocking() && cache2_->IsBlocking();
@@ -72,6 +70,11 @@ class WriteThroughCache : public CacheInterface {
     cache2_->ShutDown();
   }
 
+  virtual GoogleString Name() const {
+    return FormatName(cache1_->Name(), cache2_->Name());
+  }
+  static GoogleString FormatName(StringPiece l1, StringPiece l2);
+
  private:
   void PutInCache1(const GoogleString& key, SharedString* value);
   friend class WriteThroughCallback;
@@ -79,7 +82,6 @@ class WriteThroughCache : public CacheInterface {
   CacheInterface* cache1_;
   CacheInterface* cache2_;
   size_t cache1_size_limit_;
-  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(WriteThroughCache);
 };

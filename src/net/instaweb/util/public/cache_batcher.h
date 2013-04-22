@@ -24,7 +24,8 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -80,7 +81,8 @@ class CacheBatcher : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
-  virtual const char* Name() const { return name_.c_str(); }
+  virtual GoogleString Name() const;
+  static GoogleString FormatName(StringPiece cache, int parallelism, int max);
 
   // Note: CacheBatcher cannot do any batching if given a blocking cache,
   // however it is still functional so pass on the bit.
@@ -104,7 +106,6 @@ class CacheBatcher : public CacheInterface {
 
   CacheInterface* cache_;
   scoped_ptr<AbstractMutex> mutex_;
-  GoogleString name_;
   MultiGetRequest queue_;
   int last_batch_size_;
   int pending_;

@@ -423,7 +423,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   FlushEarlyFlowTest()
       : start_time_ms_(0),
         max_age_300_("max-age=300"),
-        request_start_time_ms_(-1) {
+        request_start_time_ms_(-1),
+        set_httponly_cookie_(false) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -471,6 +472,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     headers.Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
     headers.Add(HttpAttributes::kSetCookie, "UA=chrome");
     headers.Add(HttpAttributes::kSetCookie, "path=/");
+    if (set_httponly_cookie_) {
+      headers.Add(HttpAttributes::kSetCookie, "a=1; HttpOnly");
+    }
 
     headers.SetStatusAndReason(HttpStatus::kOK);
     mock_url_fetcher_.SetResponse(kTestDomain, headers, kFlushEarlyHtml);
@@ -983,6 +987,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   GoogleString rewritten_js_url_3_;
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
+  bool set_httponly_cookie_;
 };
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
@@ -996,7 +1001,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   EXPECT_EQ(5, logging_info()->rewriter_stats_size());
   EXPECT_EQ("fs", logging_info()->rewriter_stats(2).id());
   const RewriterStats& stats = logging_info()->rewriter_stats(2);
-  EXPECT_EQ(RewriterHtmlApplication::UNKNOWN_STATUS, stats.html_status());
+  EXPECT_EQ(RewriterHtmlApplication::ACTIVE, stats.html_status());
   EXPECT_EQ(2, stats.status_counts_size());
   const RewriteStatusCount& applied = stats.status_counts(0);
   EXPECT_EQ(RewriterApplication::APPLIED_OK, applied.application_status());
@@ -1004,6 +1009,61 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   const RewriteStatusCount& not_applied = stats.status_counts(1);
   EXPECT_EQ(RewriterApplication::NOT_APPLIED, not_applied.application_status());
   EXPECT_EQ(2, not_applied.count());
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPcacheMiss) {
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_rel_subresource");
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_EQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::PROPERTY_CACHE_MISS, stats.html_status());
+  EXPECT_EQ(0, stats.status_counts_size());
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestDisabled) {
+  // Adding a httponly cookie in the response causes flush early to be disabled
+  // for the second request.
+  set_httponly_cookie_ = true;
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_rel_subresource");
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_EQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::DISABLED, stats.html_status());
+  EXPECT_EQ(0, stats.status_counts_size());
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Replace(HttpAttributes::kUserAgent, "");
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_EQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED,
+            stats.html_status());
+  EXPECT_EQ(0, stats.status_counts_size());
 }
 
 // TODO(rahulbansal): Remove the flakiness and uncomment this.

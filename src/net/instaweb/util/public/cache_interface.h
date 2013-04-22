@@ -159,7 +159,11 @@ class CacheInterface {
   }
 
   // The name of this CacheInterface -- used for logging and debugging.
-  virtual const char* Name() const = 0;
+  //
+  // It is strongly recommended that you provide a static GoogleString
+  // FormatName(...) method for use in formatting the Name() return,
+  // and in testing, e.g. in net/instaweb/system/system_caches_test.cc.
+  virtual GoogleString Name() const = 0;
 
   // If this cache is merely a wrapper around a backend that actually
   // does all the work, returns that backend cache object. Otherwise

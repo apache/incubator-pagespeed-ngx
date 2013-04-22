@@ -1653,7 +1653,7 @@ class ThreadAlternatingCache : public CacheInterface {
     backend_->Delete(key);
   }
 
-  virtual const char* Name() const { return "ThreadAlternatingCache"; }
+  virtual GoogleString Name() const { return "ThreadAlternatingCache"; }
   virtual bool IsBlocking() const { return false; }
   virtual bool IsHealthy() const { return backend_->IsHealthy(); }
   virtual void ShutDown() { backend_->ShutDown(); }

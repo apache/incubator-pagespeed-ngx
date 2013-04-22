@@ -51,7 +51,7 @@ class FlushEarlyFlow {
   static const char kNumFlushEarlyRequestsRedirected[];
   static const char kRedirectPageJs[];
 
-  static void Start(
+  static void TryStart(
       const GoogleString& url,
       AsyncFetch** base_fetch,
       RewriteDriver* driver,
