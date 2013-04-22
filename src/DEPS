@@ -102,7 +102,6 @@ deps = {
   "src/build/internal": From(Var("libpagespeed_deps_root")),
   "src/build/linux": From(Var("libpagespeed_deps_root")),
   "src/build/mac": From(Var("libpagespeed_deps_root")),
-  "src/build/util": From(Var("libpagespeed_deps_root")),
   "src/build/win": From(Var("libpagespeed_deps_root")),
 
   "src/third_party/icu": Var("libpagespeed_svn_root") + "/deps/icu461",

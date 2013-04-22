@@ -25,14 +25,15 @@
           'inputs': [
             # Note:  <(default_lastchange_path) is optional,
             # so it doesn't show up in inputs.
-            '<(DEPTH)/build/lastchange_wrapper.py',
+            '<(DEPTH)/build/lastchange.sh',
           ],
           'outputs': [
             '<(lastchange_out_path).always',
             '<(lastchange_out_path)',
           ],
           'action': [
-            'python', '<@(_inputs)',
+            '/bin/sh', '<@(_inputs)',
+            '<(DEPTH)',
             '-o', '<(lastchange_out_path)',
             '-d', '<(default_lastchange_path)',
           ],
