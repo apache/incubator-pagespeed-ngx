@@ -342,7 +342,7 @@ class FlakyFakeUrlNamer : public FakeUrlNamer {
 class TestRequestContext : public RequestContext {
  public:
   explicit TestRequestContext(LoggingInfo* logging_info)
-      : RequestContext(new NullMutex),
+      : RequestContext(new NullMutex, NULL),
         logging_info_copy_(logging_info) {}
 
   virtual AbstractLogRecord* NewSubordinateLogRecord(
@@ -364,7 +364,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   static const int kHtmlCacheTimeSec = 5000;
 
   CacheHtmlFlowTest() : test_request_context_(TestRequestContextPtr(
-            new TestRequestContext(&cache_html_logging_info_))) {
+      new TestRequestContext(&cache_html_logging_info_))) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
 
@@ -606,8 +606,6 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     AsyncExpectStringAsyncFetch callback(
         expect_success, &sync, rewrite_driver()->request_context());
-    rewrite_driver()->log_record()->SetTimingRequestStartMs(
-        server_context()->timer()->NowMs());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
@@ -662,7 +660,6 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   scoped_ptr<FakeUrlNamer> fake_url_namer_;
   scoped_ptr<FlakyFakeUrlNamer> flaky_fake_url_namer_;
   scoped_ptr<RewriteOptions> options_;
-  int64 start_time_ms_;
   GoogleString start_time_string_;
 
   void SetFetchHtmlResponseWithStatus(const char* url,

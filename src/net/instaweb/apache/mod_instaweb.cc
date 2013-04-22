@@ -364,7 +364,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
   scoped_ptr<RewriteOptions> custom_options;
 
   ApacheRequestContext* apache_request = new ApacheRequestContext(
-      manager->thread_system()->NewMutex(), request);
+      manager->thread_system()->NewMutex(),
+      manager->timer(),
+      request);
   RequestContextPtr request_context(apache_request);
   bool using_spdy = request_context->using_spdy();
   const RewriteOptions* host_options = manager->global_options();

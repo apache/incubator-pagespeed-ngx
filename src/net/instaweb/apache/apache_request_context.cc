@@ -25,9 +25,9 @@
 
 namespace net_instaweb {
 
-ApacheRequestContext::ApacheRequestContext(AbstractMutex* logging_mutex,
-                                           request_rec* req)
-    : RequestContext(logging_mutex),
+ApacheRequestContext::ApacheRequestContext(
+    AbstractMutex* logging_mutex, Timer* timer, request_rec* req)
+    : RequestContext(logging_mutex, timer),
       use_spdy_fetcher_(ModSpdyFetcher::ShouldUseOn(req)),
       local_port_(req->connection->local_addr->port),
       spdy_connection_factory_(NULL) {

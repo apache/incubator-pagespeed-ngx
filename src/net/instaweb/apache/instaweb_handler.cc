@@ -482,7 +482,9 @@ bool handle_as_resource(ApacheServerContext* server_context,
   server_context->FlushCacheIfNecessary();
 
   ApacheRequestContext* apache_request_context = new ApacheRequestContext(
-      server_context->thread_system()->NewMutex(), request);
+      server_context->thread_system()->NewMutex(),
+      server_context->timer(),
+      request);
   apache_request_context->set_url(url);
   RequestContextPtr request_context(apache_request_context);
   bool using_spdy = request_context->using_spdy();
@@ -1011,7 +1013,9 @@ apr_status_t instaweb_handler(request_rec* request) {
       return HTTP_METHOD_NOT_ALLOWED;
     }
     RequestContextPtr request_context(new ApacheRequestContext(
-        server_context->thread_system()->NewMutex(), request));
+        server_context->thread_system()->NewMutex(),
+        server_context->timer(),
+        request));
     StringPiece user_agent = apr_table_get(request->headers_in,
                                            HttpAttributes::kUserAgent);
     server_context->HandleBeacon(data, user_agent, request_context);

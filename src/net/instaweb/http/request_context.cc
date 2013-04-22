@@ -23,12 +23,14 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
-RequestContext::RequestContext(AbstractMutex* logging_mutex)
+RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
     : log_record_(new LogRecord(logging_mutex)),
       using_spdy_(false) {
+  timing_info_.Init(timer);
 }
 
 RequestContext::RequestContext() : using_spdy_(false) {}
@@ -43,7 +45,7 @@ RequestContext::~RequestContext() {
 
 RequestContextPtr RequestContext::NewTestRequestContext(
     ThreadSystem* thread_system) {
-  return RequestContextPtr(new RequestContext(thread_system->NewMutex()));
+  return RequestContextPtr(new RequestContext(thread_system->NewMutex(), NULL));
 }
 
 AbstractLogRecord* RequestContext::NewSubordinateLogRecord(
@@ -58,6 +60,10 @@ void RequestContext::set_root_trace_context(RequestTrace* x) {
 AbstractLogRecord* RequestContext::log_record() {
   DCHECK(log_record_.get() != NULL);
   return log_record_.get();
+}
+
+void RequestContext::PrepareLogRecordForOutput() {
+  log_record()->SetTimingInfo(timing_info_);
 }
 
 void RequestContext::WriteBackgroundRewriteLog() {
@@ -89,6 +95,71 @@ void RequestContext::ReleaseDependentTraceContext(RequestTrace* t) {
   if (t != NULL) {
     delete t;
   }
+}
+
+RequestContext::TimingInfo::TimingInfo()
+    : timer_(NULL),
+      init_ts_ms_(-1),
+      start_ts_ms_(-1),
+      fetch_start_ts_ms_(-1),
+      fetch_first_byte_ms_(0),
+      fetch_header_ms_(0),
+      fetch_elapsed_ms_(0),
+      processing_elapsed_ms_(0) {
+}
+
+void RequestContext::TimingInfo::Init(Timer* timer) {
+  DCHECK(timer_ == NULL);
+  timer_ = timer;
+  init_ts_ms_ = NowMs();
+}
+
+void RequestContext::TimingInfo::RequestStarted() {
+  DCHECK_EQ(-1, start_ts_ms_);
+  start_ts_ms_ = NowMs();
+  VLOG(2) << "RequestStarted: " << start_ts_ms_;
+}
+
+void RequestContext::TimingInfo::RequestFinished() {
+  VLOG(2) << "RequestFinished";
+  // Processing is the time since RequestStarted - fetch time.
+  processing_elapsed_ms_ = GetElapsedMs() - fetch_elapsed_ms();
+}
+
+void RequestContext::TimingInfo::FetchStarted() {
+  if (fetch_start_ts_ms_ > 0) {
+    // It's possible this is called more than once, just ignore subsequent
+    // calls.
+    return;
+  }
+
+  fetch_start_ts_ms_ = NowMs();
+}
+
+void RequestContext::TimingInfo::FetchHeaderReceived() {
+  fetch_header_ms_ = GetElapsedFromFetchStart();
+}
+
+void RequestContext::TimingInfo::FetchFinished() {
+  fetch_elapsed_ms_ = GetElapsedFromFetchStart();
+}
+
+int64 RequestContext::TimingInfo::GetElapsedMs() const {
+  DCHECK_GE(init_ts_ms_, 0);
+  return NowMs() - init_ts_ms_;
+}
+
+int64 RequestContext::TimingInfo::GetElapsedFromFetchStart() {
+  DCHECK_GE(fetch_start_ts_ms_, 0);
+  return NowMs() - fetch_start_ts_ms_;
+}
+
+int64 RequestContext::TimingInfo::NowMs() const {
+  if (timer_ == NULL) {
+    return 0;
+  }
+
+  return timer_->NowMs();
 }
 
 }  // namespace net_instaweb

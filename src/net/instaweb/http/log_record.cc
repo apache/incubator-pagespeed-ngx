@@ -164,47 +164,6 @@ void AbstractLogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
   logging_info()->set_is_original_resource_cacheable(cacheable);
 }
 
-void AbstractLogRecord::SetTimingRequestStartMs(int64 ms) {
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_timing_info()->set_request_start_ms(ms);
-}
-
-void AbstractLogRecord::SetTimingHeaderFetchMs(int64 ms) {
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_timing_info()->set_header_fetch_ms(ms);
-}
-
-void AbstractLogRecord::SetTimingFetchMs(int64 ms) {
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_timing_info()->set_fetch_ms(ms);
-}
-
-int64 AbstractLogRecord::GetTimingFetchMs() {
-  ScopedMutex lock(mutex_.get());
-  if (logging_info()->has_timing_info()) {
-    return logging_info()->timing_info().fetch_ms();
-  } else {
-    return 0;
-  }
-}
-
-void AbstractLogRecord::SetTimingProcessingTimeMs(int64 ms) {
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_timing_info()->set_processing_time_ms(ms);
-}
-
-void AbstractLogRecord::UpdateTimingInfoWithFetchStartTime(
-    int64 start_time_ms) {
-  // Do not log this if it has already been logged.
-  ScopedMutex lock(mutex_.get());
-  TimingInfo* timing_info = logging_info()->mutable_timing_info();
-  if (timing_info->has_request_start_ms() &&
-      !timing_info->has_time_to_start_fetch_ms()) {
-    timing_info->set_time_to_start_fetch_ms(
-        start_time_ms - timing_info->request_start_ms());
-  }
-}
-
 void AbstractLogRecord::SetTimeFromRequestStart(SetTimeFromStartFn fn,
                                                 int64 end_ms) {
   ScopedMutex lock(mutex_.get());

@@ -256,7 +256,8 @@ void SlurpUrl(ApacheServerContext* manager, request_rec* r) {
 
   MessageHandler* handler = manager->message_handler();
   RequestContextPtr request_context(
-      new RequestContext(manager->thread_system()->NewMutex()));
+      new RequestContext(manager->thread_system()->NewMutex(),
+                         manager->timer()));
   StrippingFetch fetch(stripped_url, manager->config()->domain_lawyer(),
                        fetcher, manager->thread_system(), request_context,
                        handler);

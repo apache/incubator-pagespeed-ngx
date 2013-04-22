@@ -567,7 +567,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
 class TestRequestContext : public RequestContext {
  public:
   explicit TestRequestContext(LoggingInfo* logging_info, AbstractMutex* mutex)
-      : RequestContext(mutex),
+      : RequestContext(mutex, NULL),
         logging_info_copy_(logging_info) {}
 
   virtual AbstractLogRecord* NewSubordinateLogRecord(
@@ -919,8 +919,6 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     AsyncExpectStringAsyncFetch callback(
         expect_success, &sync, RequestContextPtr(test_request_context_));
-    rewrite_driver()->log_record()->SetTimingRequestStartMs(
-        server_context()->timer()->NowMs());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
@@ -987,7 +985,6 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   scoped_ptr<FakeUrlNamer> fake_url_namer_;
   scoped_ptr<FlakyFakeUrlNamer> flaky_fake_url_namer_;
   scoped_ptr<RewriteOptions> options_;
-  int64 start_time_ms_;
   GoogleString start_time_string_;
 
   void UnEscapeString(GoogleString* str) {

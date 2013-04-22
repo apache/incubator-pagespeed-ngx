@@ -423,8 +423,9 @@ mkdir $OUTDIR
 IMG_REWRITE=$TEST_ROOT"/webp_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
-check run_wget_with_args --header 'X-PSA-Blocking-Rewrite: psatest' $URL
-check_file_size "$OUTDIR/*webp*" -le 1784   # resized, optimized to webp
+check run_wget_with_args \
+  --header 'X-PSA-Blocking-Rewrite: psatest' --user-agent=webp $URL
+check_file_size "$OUTDIR/*256x192*Puzzle*webp" -le 6516   # resized, webp'd
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
 start_test respect vary user-agent

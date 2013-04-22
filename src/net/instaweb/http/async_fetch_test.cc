@@ -47,7 +47,7 @@ class TestSharedAsyncFetch : public SharedAsyncFetch {
 class AsyncFetchTest : public testing::Test {
  protected:
   AsyncFetchTest()
-      : request_context_(new RequestContext(new NullMutex)),
+      : request_context_(new RequestContext(new NullMutex, NULL)),
         string_fetch_(request_context_) {
   }
 

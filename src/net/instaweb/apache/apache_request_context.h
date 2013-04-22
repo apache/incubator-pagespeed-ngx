@@ -34,10 +34,13 @@ struct spdy_slave_connection_factory;
 namespace net_instaweb {
 
 class AbstractMutex;
+class Timer;
 
 class ApacheRequestContext : public RequestContext {
  public:
-  ApacheRequestContext(AbstractMutex* logging_mutex, request_rec* req);
+  ApacheRequestContext(AbstractMutex* logging_mutex,
+                       Timer* timer,
+                       request_rec* req);
 
   // Captures the original URL of the request, which is used to help
   // authorize domains for fetches we do on behalf of that request.

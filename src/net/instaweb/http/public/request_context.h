@@ -31,6 +31,7 @@ class AbstractMutex;
 class RequestContext;
 class RequestTrace;
 class ThreadSystem;
+class Timer;
 
 typedef RefCountedPtr<RequestContext> RequestContextPtr;
 
@@ -46,7 +47,9 @@ class RequestContext : public RefCounted<RequestContext> {
   // |logging_mutex| will be passed to the request context's AbstractLogRecord,
   // which will take ownership of it. If you will be doing logging in a real
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
-  explicit RequestContext(AbstractMutex* logging_mutex);
+  // |timer| will be passed to the TimingInfo, which will *not* take ownership.
+  // Passing NULL for |timer| is allowed.
+  explicit RequestContext(AbstractMutex* logging_mutex, Timer* timer);
 
   // TODO(marq): Move this test context factory to a test-specific file.
   //             Makes a request context for running tests.
@@ -100,6 +103,11 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
+  // Prepare the AbstractLogRecord for a subsequent call to WriteLog.  This
+  // might include propagating information collected in the RequestContext,
+  // TimingInfo for example, to the underlying logging infrastructure.
+  void PrepareLogRecordForOutput();
+
   // Write the log for background rewriting into disk.
   void WriteBackgroundRewriteLog();
 
@@ -110,6 +118,90 @@ class RequestContext : public RefCounted<RequestContext> {
       bool log_urls,
       bool log_url_indices,
       int max_rewrite_info_log_size);
+
+  // TODO(gee): Track queuing time.
+  class TimingInfo {
+   public:
+    // TODO(gee): Does this need to be thread safe?
+    // Timer is not owned by TimingInfo.
+    TimingInfo();
+
+    // Initialize the TimingInfo with the specified Timer.  Sets a timestamp
+    // from which GetElapsedMs is based.
+    // TODO(gee): This is forced by the RequestContext/GoogleRequestContext
+    void Init(Timer* timer);
+
+    // This should be called when the request "starts", for example in
+    // HTTPServerFetch::Start.  It denotes the request "start time", which all
+    // other timing values are relative to.
+    void RequestStarted();
+
+    // Called when the request is finished, i.e. the response has been sent to
+    // the client.
+    void RequestFinished();
+
+    // Fetch related timing events.
+    // Note:  Only the first call to FetchStarted will have an affect,
+    // subsequent calls are silent no-ops.
+    void FetchStarted();
+    void FetchFirstByteReceived();
+    void FetchHeaderReceived();
+    void FetchFinished();
+
+    // Milliseconds since Init.
+    int64 GetElapsedMs() const;
+
+    // Milliseconds since FetchStarted.
+    int64 GetElapsedFromFetchStart();
+
+    // Methods for retrieving information.
+    int64 init_ts_ms() const {
+      return init_ts_ms_;
+    }
+
+    int64 start_ts_ms() const {
+      return start_ts_ms_;
+    }
+
+    // Milliseconds from request start to fetch start.
+    int64 fetch_start_ms() const { return fetch_start_ts_ms_ - start_ts_ms_; }
+
+    int64 fetch_first_byte_ms() const { return fetch_first_byte_ms_; }
+
+    // Milliseconds from fetch start to head received.
+    int64 fetch_header_ms() const { return fetch_header_ms_; }
+
+    // Milliseconds from fetch start to fetch end.
+    int64 fetch_elapsed_ms() const { return fetch_elapsed_ms_; }
+
+    // Milliseconds spent "processing": end time - start time - fetch time.
+    int64 processing_elapsed_ms() const { return processing_elapsed_ms_; }
+
+   private:
+    int64 NowMs() const;
+
+    Timer* timer_;
+
+    // Timestamps.
+    int64 init_ts_ms_;
+
+    int64 start_ts_ms_;
+
+    int64 fetch_start_ts_ms_;
+
+    // Durations.
+    // TODO(gee): Make all members timestamps?
+    int64 fetch_first_byte_ms_;
+    int64 fetch_header_ms_;
+    int64 fetch_elapsed_ms_;
+
+    int64 processing_elapsed_ms_;
+
+    DISALLOW_COPY_AND_ASSIGN(TimingInfo);
+  };
+
+  const TimingInfo& timing_info() const { return timing_info_; }
+  TimingInfo* mutable_timing_info() { return &timing_info_; }
 
  protected:
   // TODO(gee): Fix this, it sucks.
@@ -123,6 +215,8 @@ class RequestContext : public RefCounted<RequestContext> {
  private:
   // Always non-NULL.
   scoped_ptr<AbstractLogRecord> log_record_;
+
+  TimingInfo timing_info_;
 
   // Logs tracing events associated with the root request.
   scoped_ptr<RequestTrace> root_trace_context_;

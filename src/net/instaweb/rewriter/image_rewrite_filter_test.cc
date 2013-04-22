@@ -162,7 +162,7 @@ class TestRequestContext : public RequestContext {
  public:
   TestRequestContext(LoggingInfo* logging_info,
                      AbstractMutex* mutex)
-      : RequestContext(mutex),
+      : RequestContext(mutex, NULL),
         logging_info_copy_(logging_info) {
   }
 
