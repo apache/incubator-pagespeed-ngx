@@ -37,8 +37,7 @@ Because nginx does not support dynamic loading of modules, you need to compile
 nginx from source to add ngx_pagespeed. Alternatively, if you're using Tengine you can [install ngx_pagespeed without
 recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_pagespeed-with-Tengine).
 
-1. Install [mod_pagespeed binary](https://developers.google.com/speed/docs/mod_pagespeed/download), or follow [from source instructions](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
-2. Install dependencies:
+1. Install dependencies:
 
    ```bash
    # These are for RedHat, CentOS, and Fedora.
@@ -48,14 +47,14 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
    ```
 
-3. Check out ngx_pagespeed:
+2. Check out ngx_pagespeed:
 
    ```bash
    $ cd ~
    $ git clone https://github.com/pagespeed/ngx_pagespeed.git
    ```
 
-4. Download and build nginx:
+3. Download and build nginx:
 
    ```bash
    $ # check http://nginx.org/en/download.html for the latest version
@@ -78,6 +77,8 @@ the error message, then send it to the [mailing
 list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
 have a look at it.
 
+This will use a binary PageSpeed Optimization Library.  If you would rather
+build PSOL from source, [here's how to do that](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
 
 ## How to use
 
