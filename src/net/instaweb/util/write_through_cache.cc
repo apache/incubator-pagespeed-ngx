@@ -79,7 +79,7 @@ class WriteThroughCallback : public CacheInterface::Callback {
 
 GoogleString WriteThroughCache::FormatName(StringPiece cache1,
                                            StringPiece cache2) {
-  return StrCat("WriteThrough(l1=", cache1, ",l2=", cache2, ")");
+  return StrCat("WriteThroughCache(l1=", cache1, ",l2=", cache2, ")");
 }
 
 void WriteThroughCache::Get(const GoogleString& key, Callback* callback) {
