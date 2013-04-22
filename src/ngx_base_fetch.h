@@ -55,7 +55,7 @@ namespace net_instaweb {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+  NgxBaseFetch(ngx_http_request_t* r,
                NgxServerContext* server_context,
                const RequestContextPtr& request_ctx);
   virtual ~NgxBaseFetch();
@@ -102,7 +102,9 @@ class NgxBaseFetch : public AsyncFetch {
   // Lock must be acquired first.
   // Returns:
   //   NGX_DECLINED: nothing to send, short circuit.  Buffer not allocated.
-  //   NGX_OK, NGX_ERROR: success, failure
+  //   NGX_ERROR: failure
+  //   NGX_AGAIN: success
+  //   NGX_OK: done, HandleDone has been called
   // Allocates an nginx buffer, copies our buffer_ contents into it, clears
   // buffer_.
   ngx_int_t CopyBufferToNginx(ngx_chain_t** link_ptr);
@@ -119,11 +121,13 @@ class NgxBaseFetch : public AsyncFetch {
   NgxServerContext* server_context_;
   bool done_called_;
   bool last_buf_sent_;
-  int pipe_fd_;
   // How many active references there are to this fetch. Starts at two,
   // decremented once when Done() is called and once when Release() is called.
   int references_;
   pthread_mutex_t mutex_;
+
+  // set by RequestCollection, cleared by CollectAccumulatedWrites
+  volatile bool flush_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
