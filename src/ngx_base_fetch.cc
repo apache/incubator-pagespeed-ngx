@@ -27,7 +27,7 @@
 
 namespace net_instaweb {
 
-NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
                            NgxServerContext* server_context,
                            const RequestContextPtr& request_ctx)
     : AsyncFetch(request_ctx),
@@ -35,8 +35,8 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
       server_context_(server_context),
       done_called_(false),
       last_buf_sent_(false),
-      pipe_fd_(pipe_fd),
-      references_(2) {
+      references_(2),
+      flush_(false) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
   PopulateRequestHeaders();
 }
@@ -115,7 +115,9 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   if (done_called_ && last_buf_sent_) {
-    return NGX_DECLINED;
+    // OK means HandleDone has been called
+    *link_ptr = NULL;
+    return NGX_OK;
   }
 
   int rc = ngx_psol::string_piece_to_buffer_chain(
@@ -129,49 +131,48 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 
   if (done_called_) {
     last_buf_sent_ = true;
+    return NGX_OK;
   }
 
-  return NGX_OK;
+  return NGX_AGAIN;
 }
 
 // There may also be a race condition if this is called between the last Write()
 // and Done() such that we're sending an empty buffer with last_buf set, which I
 // think nginx will reject.
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
+  ngx_int_t rc = NGX_DECLINED;
+  
   Lock();
-  ngx_int_t rc = CopyBufferToNginx(link_ptr);
+  if (flush_) {
+    rc = CopyBufferToNginx(link_ptr);
+    flush_ = false;
+  }
   Unlock();
-
   if (rc == NGX_DECLINED) {
     *link_ptr = NULL;
-    return NGX_OK;
   }
   return rc;
 }
+
+void NgxBaseFetch::RequestCollection() {
+  Lock();
+  if (flush_) {
+    Unlock();
+    return;
+  }
+  flush_ = true;
+  ngx_psol::ps_base_fetch_signal(request_);
+  Unlock();
+  return;
+}
+
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   Lock();
   const ResponseHeaders* pagespeed_headers = response_headers();
   Unlock();
   return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
-}
-
-void NgxBaseFetch::RequestCollection() {
-  int rc;
-  char c = 'A';  // What byte we write is arbitrary.
-  while (true) {
-    rc = write(pipe_fd_, &c, 1);
-    if (rc == 1) {
-      break;
-    } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-      // TODO(jefftk): is this rare enough that spinning isn't a problem?  Could
-      // we get into a case where the pipe fills up and we spin forever?
-
-    } else {
-      perror("NgxBaseFetch::RequestCollection");
-      break;
-    }
-  }
 }
 
 void NgxBaseFetch::HandleHeadersComplete() {
@@ -189,6 +190,9 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void NgxBaseFetch::Release() {
+  Lock();
+  flush_ = true;
+  Unlock();
   DecrefAndDeleteIfUnreferenced();
 }
 
@@ -202,13 +206,24 @@ void NgxBaseFetch::DecrefAndDeleteIfUnreferenced() {
 void NgxBaseFetch::HandleDone(bool success) {
   // TODO(jefftk): it's possible that instead of locking here we can just modify
   // CopyBufferToNginx to only read done_called_ once.
+
+  if (done_called_ == true) {
+    return;
+  }
+
   Lock();
+  if (done_called_ == true) {
+    Unlock();
+    return;
+  }
+  
   done_called_ = true;
+  if (!flush_) {
+    flush_ = true;
+    ngx_psol::ps_base_fetch_signal(request_);
+  }
+
   Unlock();
-
-  close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
-  pipe_fd_ = -1;
-
   DecrefAndDeleteIfUnreferenced();
 }
 
