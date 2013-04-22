@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
+#include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -146,6 +147,14 @@ void InitDriverWithPropertyCacheValues(
   // RewriteDriver, instead of ServerContext.
   cache_html_driver->server_context()->critical_images_finder()->
       GetHtmlCriticalImages(cache_html_driver);
+
+  // Update Critical CSS rules info in the driver while we have the property
+  // page.
+  CriticalCssFinder* css_finder =
+      cache_html_driver->server_context()->critical_css_finder();
+  if (css_finder != NULL) {
+    css_finder->UpdateCriticalCssInfoInDriver(cache_html_driver);
+  }
 
   cache_html_driver->set_unowned_fallback_property_page(NULL);
 }
