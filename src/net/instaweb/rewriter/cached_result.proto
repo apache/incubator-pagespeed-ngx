@@ -31,7 +31,7 @@ message ImageDim {
 };
 
 // Info about the input resource that was used to create a CachedResult.
-// Next free tag: 9.
+// Next free tag: 10.
 message InputInfo {
   // Generally, URLs of inputs are not kept in the protobufs, only the indices.
   // The intended usage is the URLs of inputs will be used to construct
@@ -66,6 +66,9 @@ message InputInfo {
   // from the headers returned when it was fetched.
   optional int64 expiration_time_ms = 4;
 
+  // For FILE_BASED resources, the file this was loaded from.
+  optional string filename = 5;
+
   // For CACHED resources, we keep track of the original fetch time so we
   // can freshen.
   optional int64 date_ms = 6;
@@ -75,11 +78,13 @@ message InputInfo {
   // has expired from the HTTP cache.
   optional string input_content_hash = 7;
 
-  // For FILE_BASED resources, the file this was loaded from.
-  optional string filename = 5;
-
   // If true, no later filters should process the same input.
   optional bool disable_further_processing = 8 [ default = false ];
+
+  // To support invalidation by exact URL, we keep the URL in the metadata.
+  // This bloats the size a bit, but enables fast invalidation.  Compressing
+  // the metadata cache helps.
+  optional string url = 9;
 }
 
 // The cached result of a rewrite. This is the value of a map where the key

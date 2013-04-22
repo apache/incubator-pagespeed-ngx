@@ -248,6 +248,14 @@ else
   MEMCACHE_COVERAGE_TEST_SED_PATTERN=^\#MEMCACHE_COVERAGE.*\n
 endif
 
+ifeq ($(PURGING_COVERAGE_TEST),1)
+  # remove prefix
+  PURGING_COVERAGE_TEST_SED_PATTERN=^\#PURGING_COVERAGE
+else
+  # remove whole line
+  PURGING_COVERAGE_TEST_SED_PATTERN=^\#PURGING_COVERAGE.*\n
+endif
+
 ifeq ($(SPELING_TEST),1)
   # remove prefix
   SPELING_TEST_SED_PATTERN=^\#SPELING
@@ -352,6 +360,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
 	    -e "s@$(MEMCACHED_TEST_SED_PATTERN)@@" \
 	    -e "s@$(MEMCACHE_COVERAGE_TEST_SED_PATTERN)@@" \
+	    -e "s@$(PURGING_COVERAGE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(FURIOUS_GA_TEST_SED_PATTERN)@@" \
@@ -463,6 +472,7 @@ apache_install_conf :
 	    $(OPT_SLURP_TEST) \
 	    $(OPT_MEMCACHED_TEST) \
 	    $(OPT_MEMCACHE_COVERAGE_TEST) \
+	    $(OPT_PURGING_COVERAGE_TEST) \
 	    $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) \
 	    $(OPT_STRESS_TEST) \
@@ -481,6 +491,7 @@ apache_install_conf :
 	    $(OPT_SLURP_TEST) \
 	    $(OPT_MEMCACHED_TEST) \
 	    $(OPT_MEMCACHE_COVERAGE_TEST) \
+	    $(OPT_PURGING_COVERAGE_TEST) \
 	    $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) \
 	    $(OPT_STRESS_TEST) \

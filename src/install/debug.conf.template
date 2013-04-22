@@ -650,6 +650,8 @@ ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
 #COVERAGE
 #MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
+#PURGING_COVERAGE    ModPagespeedEnableUrlCacheInvalidation on
+#PURGING_COVERAGE    ModPagespeedCompressMetadataCache on
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
 #COVERAGE   ModPagespeedCompressMetadataCache true
 #COVERAGE   ModPagespeedRewriteLevel AllFilters

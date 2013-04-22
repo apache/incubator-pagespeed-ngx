@@ -747,7 +747,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(176, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(177, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -838,6 +838,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableBlinkHtmlChangeDetectionLogging",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging));
+  EXPECT_STREQ("EnableCachePurge",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kEnableCachePurge));
   EXPECT_STREQ("EnableDeferJsExperimental",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableDeferJsExperimental));
@@ -1900,10 +1903,6 @@ TEST_F(RewriteOptionsTest, SetOptionsFromName) {
 // TODO(sriharis):  Add thorough ComputeSignature tests
 
 TEST_F(RewriteOptionsTest, ComputeSignatureWildcardGroup) {
-  // hasher_ is a MockHasher and always returns 0.  This is fine for this test
-  // (and all tests that do not depend on Option<GoogleString>'s signature
-  // changing with change in value).  But if hasher is used more widely in
-  // ComputeSignature we need to revisit the usage of MockHasher here.
   options_.ComputeSignature();
   GoogleString signature1 = options_.signature();
   // Tweak allow_resources_ and check that signature changes.
@@ -2017,10 +2016,16 @@ TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
 TEST_F(RewriteOptionsTest, UrlCacheInvalidationTest) {
   options_.AddUrlCacheInvalidationEntry("one*", 10L, true);
   options_.AddUrlCacheInvalidationEntry("two*", 25L, false);
+  options_.AddUrlCacheInvalidationEntry("four", 40L, false);
+  options_.AddUrlCacheInvalidationEntry("five", 50L, false);
+  options_.AddUrlCacheInvalidationEntry("six", 60L, false);
   RewriteOptions options1;
   options1.AddUrlCacheInvalidationEntry("one*", 20L, true);
   options1.AddUrlCacheInvalidationEntry("three*", 23L, false);
   options1.AddUrlCacheInvalidationEntry("three*", 30L, true);
+  options1.AddUrlCacheInvalidationEntry("four", 39L, false);
+  options1.AddUrlCacheInvalidationEntry("five", 51L, false);
+  options1.AddUrlCacheInvalidationEntry("seven", 70L, false);
   options_.Merge(options1);
   EXPECT_TRUE(options_.IsUrlCacheInvalidationEntriesSorted());
   EXPECT_FALSE(options_.IsUrlCacheValid("one1", 9L));
@@ -2029,6 +2034,14 @@ TEST_F(RewriteOptionsTest, UrlCacheInvalidationTest) {
   EXPECT_FALSE(options_.IsUrlCacheValid("two2", 21L));
   EXPECT_TRUE(options_.IsUrlCacheValid("two2", 26L));
   EXPECT_TRUE(options_.IsUrlCacheValid("three3", 31L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("four", 40L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("four", 41L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("five", 51L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("five", 52L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("six", 60L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("six", 61L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("seven", 70L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("seven", 71L));
 }
 
 TEST_F(RewriteOptionsTest, UrlCacheInvalidationSignatureTest) {

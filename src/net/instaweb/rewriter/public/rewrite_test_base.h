@@ -618,6 +618,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // for this call.
   LoggingInfo* logging_info();
 
+  // Convenience method to extract read-only metadata_cache_info.
+  const MetadataCacheInfo& metadata_cache_info() {
+    return logging_info()->metadata_cache_info();
+  }
+
   // Convenience method for retrieving the computed applied rewriters string
   // from the current request context's log record. Thread-safe.
   GoogleString AppliedRewriterStringFromLog();

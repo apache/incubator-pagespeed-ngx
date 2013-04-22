@@ -342,21 +342,27 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   }
 
   // Checks whether the given input is still unchanged.
-  bool IsInputValid(const InputInfo& input_info) {
+  bool IsInputValid(const InputInfo& input_info, int64 now_ms, bool* purged) {
     switch (input_info.type()) {
       case InputInfo::CACHED: {
         // It is invalid if cacheable inputs have expired or ...
         DCHECK(input_info.has_expiration_time_ms());
+        const RewriteOptions* options = rewrite_context_->Options();
+        if (input_info.has_url()) {
+          if (options->IsUrlPurged(input_info.url(), input_info.date_ms())) {
+            *purged = true;
+            return false;
+          }
+        }
         if (!input_info.has_expiration_time_ms()) {
           return false;
         }
-        int64 ttl_ms = input_info.expiration_time_ms() -
-            rewrite_context_->FindServerContext()->timer()->NowMs();
+        int64 ttl_ms = input_info.expiration_time_ms() - now_ms;
         if (ttl_ms > 0) {
           return true;
-        } else if (rewrite_context_->do_stale_rewrite() &&
-                   ttl_ms + rewrite_context_->Options()->
-                   metadata_cache_staleness_threshold_ms() > 0) {
+        } else if (
+            rewrite_context_->do_stale_rewrite() &&
+            ttl_ms + options->metadata_cache_staleness_threshold_ms() > 0) {
           rewrite_context_->stale_rewrite_ = true;
           return true;
         }
@@ -427,16 +433,20 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
                            InputInfoStarVector* revalidate) {
     bool valid = true;
     *can_revalidate = true;
+    int64 now_ms = rewrite_context_->FindServerContext()->timer()->NowMs();
     for (int j = 0, m = partition->input_size(); j < m; ++j) {
       const InputInfo& input_info = partition->input(j);
-      if (!IsInputValid(input_info)) {
+      bool purged = false;
+      if (!IsInputValid(input_info, now_ms, &purged)) {
         valid = false;
         // We currently do not attempt to re-check file-based resources
         // based on contents; as mtime is a lot more reliable than
         // cache expiration, and permitting 'touch' to force recomputation
         // is potentially useful.
-        if (input_info.has_input_content_hash() && input_info.has_index() &&
-            (input_info.type() == InputInfo::CACHED)) {
+        if (input_info.has_input_content_hash() &&
+            input_info.has_index() &&
+            (input_info.type() == InputInfo::CACHED) &&
+            !purged) {
           revalidate->push_back(partition->mutable_input(j));
         } else {
           *can_revalidate = false;
@@ -451,8 +461,10 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   // Checks whether all the entries in the given partition tables' other
   // dependency table are valid.
   bool IsOtherDependencyValid(const OutputPartitions* partitions) {
+    int64 now_ms = rewrite_context_->FindServerContext()->timer()->NowMs();
     for (int j = 0, m = partitions->other_dependency_size(); j < m; ++j) {
-      if (!IsInputValid(partitions->other_dependency(j))) {
+      bool purged;
+      if (!IsInputValid(partitions->other_dependency(j), now_ms, &purged)) {
         return false;
       }
     }

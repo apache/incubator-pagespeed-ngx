@@ -627,6 +627,9 @@ RewriteOptions::RewriteOptions()
       furious_id_(furious::kFuriousNotSet),
       furious_percent_(0),
       hasher_(kHashBytes) {
+  url_cache_invalidation_map_.set_empty_key("");
+  url_cache_invalidation_map_.set_deleted_key("-");
+
   DCHECK(properties_ != NULL)
       << "Call RewriteOptions::Initialize() before construction";
 
@@ -1007,6 +1010,12 @@ void RewriteOptions::AddProperties() {
       kEnableDeferJsExperimental,
       kDirectoryScope,
       NULL);  // TODO(jmarantz): eliminate experiment or document.
+  AddBaseProperty(
+      false, &RewriteOptions::enable_cache_purge_, "euci",
+      kEnableCachePurge,
+      kServerScope,
+      "Allows individual resources to be flushed; adding some overhead to "
+      "the metadata cache");
   AddBaseProperty(
       false, &RewriteOptions::enable_inline_preview_images_experimental_,
       "eipie", kEnableInlinePreviewImagesExperimental,
@@ -2703,6 +2712,20 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
                      url_cache_invalidation_entries_.end(),
                      RewriteOptions::CompareUrlCacheInvalidationEntry);
 
+  // Merging url_cache_invalidation_map_ is simple: the latest invalidation
+  // wins, which is already the policy in PurgeUrl.
+  //
+  // TODO(jmarantz): this map can be large, and will generally not be changed
+  // in .htaccess files but stay the same across the vhost.  We should share the
+  // map and do copy-on-write.  This should be done in a general way so that
+  // we can also share other potentially large objects in RewriteOptions such as
+  // DomainLawyer and the load-from-file infrastructure.
+  for (UrlCacheInvalidationMap::const_iterator p =
+           src.url_cache_invalidation_map_.begin(),
+           e = src.url_cache_invalidation_map_.end(); p != e; ++p) {
+    PurgeUrl(p->first, p->second);
+  }
+
   // If src's prioritize_visible_content_families_ is non-empty we simply
   // replace this' prioritize_visible_content_families_ with src's.  Naturally,
   // this means that families in this are lost.
@@ -2858,10 +2881,14 @@ void RewriteOptions::ComputeSignature() {
   for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
     const UrlCacheInvalidationEntry& entry =
         *url_cache_invalidation_entries_[i];
-    if (!entry.is_strict) {
+    if (!entry.ignores_metadata_and_pcache) {
       StrAppend(&signature_, entry.ComputeSignature(), "|");
     }
   }
+
+  // Note that we do not include the url_cache_invalidation_map_ in the
+  // signature because we don't want to flush the entire metadata cache
+  // when we flush one entry.  However we do consider it in IsEqual().
 
   // rejected_request_map_ is not added to rewrite options signature as this
   // should not affect rewriting and metadata or property cache lookups.
@@ -2881,11 +2908,18 @@ void RewriteOptions::ComputeSignature() {
 bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
   DCHECK(frozen_);
   DCHECK(that.frozen_);
-  return (signature() == that.signature());
+  if (signature() != that.signature()) {
+    return false;
+  }
 
   // TODO(jmarantz): move more stuff out of the signature() and into the
   // IsEqual function.  We might also want to make a second signature so
   // that IsEqual is not too slow.
+  //
+  // TODO(jmarantz): consider making a second signature for
+  // url_cache_invalidation_map_ and other stuff that we exclude for
+  // the RewriteOptions::signature.
+  return (url_cache_invalidation_map_ == that.url_cache_invalidation_map_);
 }
 
 GoogleString RewriteOptions::ToString(RewriteLevel level) {
@@ -3259,7 +3293,27 @@ void RewriteOptions::UrlValuedAttribute(
   *category = eac.category;
 }
 
+bool RewriteOptions::IsUrlPurged(StringPiece url, int64 time_ms) const {
+  if (!url_cache_invalidation_map_.empty()) {
+    UrlCacheInvalidationMap::const_iterator p =
+        url_cache_invalidation_map_.find(url.as_string());
+    if (p != url_cache_invalidation_map_.end()) {
+      int64 timestamp_ms = p->second;
+      if (time_ms <= timestamp_ms) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms) const {
+  // First check the hashed url map.  If we don't find an invalidation in the
+  // map we can check the wildcards.
+  if (IsUrlPurged(url, time_ms)) {
+    return false;
+  }
+
   int i = 0;
   int n = url_cache_invalidation_entries_.size();
   while (i < n && time_ms > url_cache_invalidation_entries_[i]->timestamp_ms) {
@@ -3282,20 +3336,41 @@ bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms) const {
   return true;
 }
 
-void RewriteOptions::AddUrlCacheInvalidationEntry(
-    StringPiece url_pattern, int64 timestamp_ms, bool is_strict) {
-  if (!url_cache_invalidation_entries_.empty()) {
-    // Check that this Add preserves the invariant that
-    // url_cache_invalidation_entries_ is sorted on timestamp_ms.
-    if (url_cache_invalidation_entries_.back()->timestamp_ms > timestamp_ms) {
-      LOG(DFATAL) << "Timestamp " << timestamp_ms << " is less than the last "
-                  << "timestamp already added: "
-                  << url_cache_invalidation_entries_.back()->timestamp_ms;
-      return;
-    }
+void RewriteOptions::PurgeUrl(StringPiece url, int64 timestamp_ms) {
+  std::pair<UrlCacheInvalidationMap::iterator, bool> insertion =
+      url_cache_invalidation_map_.insert(UrlCacheInvalidationMap::value_type(
+          url.as_string(), timestamp_ms));
+
+  // If there was already a value and this one is newer, replace it.
+  if (!insertion.second && (timestamp_ms > insertion.first->second)) {
+    insertion.first->second = timestamp_ms;
   }
-  url_cache_invalidation_entries_.push_back(
-      new UrlCacheInvalidationEntry(url_pattern, timestamp_ms, is_strict));
+}
+
+void RewriteOptions::AddUrlCacheInvalidationEntry(
+    StringPiece url_pattern, int64 timestamp_ms,
+    bool ignores_metadata_and_pcache) {
+  if (!ignores_metadata_and_pcache &&
+      (url_pattern.find('*') == StringPiece::npos)) {
+    // We could use Wildcard::IsSimple but let's define ? to mean in this
+    // context a literal '?' because query-params are way more common than
+    // single-char matching.
+    PurgeUrl(url_pattern, timestamp_ms);
+  } else {
+    if (!url_cache_invalidation_entries_.empty()) {
+      // Check that this Add preserves the invariant that
+      // url_cache_invalidation_entries_ is sorted on timestamp_ms.
+      if (url_cache_invalidation_entries_.back()->timestamp_ms > timestamp_ms) {
+        LOG(DFATAL) << "Timestamp " << timestamp_ms << " is less than the last "
+                    << "timestamp already added: "
+                    << url_cache_invalidation_entries_.back()->timestamp_ms;
+        return;
+      }
+    }
+    url_cache_invalidation_entries_.push_back(
+        new UrlCacheInvalidationEntry(url_pattern, timestamp_ms,
+                                      ignores_metadata_and_pcache));
+  }
 }
 
 bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms) {

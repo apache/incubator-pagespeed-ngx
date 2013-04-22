@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/util/dense_hash_map.h"
 #include "pagespeed/kernel/util/fast_wildcard_group.h"
 #include "pagespeed/kernel/util/wildcard.h"
 
@@ -213,6 +214,7 @@ class RewriteOptions {
     kEnableBlinkHtmlChangeDetection,
     kEnableBlinkHtmlChangeDetectionLogging,
     kEnableDeferJsExperimental,
+    kEnableCachePurge,
     kEnableFlushEarlyCriticalCss,
     kEnableFixReflow,
     kEnableFlushSubresourcesExperimental,
@@ -1263,13 +1265,33 @@ class RewriteOptions {
   // true.
   bool IsUrlCacheValid(StringPiece url, int64 time_ms) const;
 
+  // Returns true if PurgeCacheUrl has been called on url with a timestamp
+  // earlier than time_ms.  Note: this is not a wildcard check but an
+  // exact lookup.
+  bool IsUrlPurged(StringPiece url, int64 time_ms) const;
+
   // If timestamp_ms greater than or equal to the last timestamp in
   // url_cache_invalidation_entries_, then appends an UrlCacheInvalidationEntry
   // with 'timestamp_ms' and 'url_pattern' to url_cache_invalidation_entries_.
   // Else does nothing.
+  //
+  // Also see PurgeCacheUrl.  AddUrlCacheInvalidationEntry with a non-wildcard
+  // pattern and ignores_metadata_and_pcache==false is equivalent to
+  // PurgeCacheUrl.
+  //
+  // If ignores_metadata_and_pcache is true, metadata is not
+  // invalidated and property cache is invalidated of URLs matching
+  // url_pattern.  If false, metadata cache and property cache entries
+  // may be invalidated, depending on whether there are wildcards in
+  // the pattern, and whether enable_cache_purge() is true.  Note that
+  // HTTP cache invalidation is always exactly for the URLs matching
+  // url_pattern.
   void AddUrlCacheInvalidationEntry(StringPiece url_pattern,
                                     int64 timestamp_ms,
-                                    bool is_strict);
+                                    bool ignores_metadata_and_pcache);
+
+  // Purge a cache entry for an exact URL, not a wildcard.
+  void PurgeUrl(StringPiece url, int64 timestamp_ms);
 
   // Checks if url_cache_invalidation_entries_ is in increasing order of
   // timestamp.  For testing.
@@ -1769,6 +1791,13 @@ class RewriteOptions {
   }
   bool enable_defer_js_experimental() const {
     return enable_defer_js_experimental_.value();
+  }
+
+  void set_enable_cache_purge(bool x) {
+    set_option(x, &enable_cache_purge_);
+  }
+  bool enable_cache_purge() const {
+    return enable_cache_purge_.value();
   }
 
   void set_enable_inline_preview_images_experimental(bool x) {
@@ -2686,18 +2715,18 @@ class RewriteOptions {
   struct UrlCacheInvalidationEntry {
     UrlCacheInvalidationEntry(StringPiece url_pattern_in,
                               int64 timestamp_ms_in,
-                              bool is_strict_in)
+                              bool ignores_metadata_and_pcache_in)
         : url_pattern(url_pattern_in),
           timestamp_ms(timestamp_ms_in),
-          is_strict(is_strict_in) {}
+          ignores_metadata_and_pcache(ignores_metadata_and_pcache_in) {}
 
     UrlCacheInvalidationEntry* Clone() const {
       return new UrlCacheInvalidationEntry(
-          url_pattern.spec(), timestamp_ms, is_strict);
+          url_pattern.spec(), timestamp_ms, ignores_metadata_and_pcache);
     }
 
     GoogleString ComputeSignature() const {
-      if (is_strict) {
+      if (ignores_metadata_and_pcache) {
         return "";
       }
       return StrCat(url_pattern.spec(), "@", Integer64ToString(timestamp_ms));
@@ -2705,17 +2734,19 @@ class RewriteOptions {
 
     GoogleString ToString() const {
       return StrCat(
-          url_pattern.spec(), ", ", (is_strict ? "STRICT" : "REFERENCE"), " @ ",
+          url_pattern.spec(), ", ",
+          (ignores_metadata_and_pcache ? "STRICT" : "REFERENCE"), " @ ",
           Integer64ToString(timestamp_ms));
     }
 
     Wildcard url_pattern;
     int64 timestamp_ms;
-    bool is_strict;
+    bool ignores_metadata_and_pcache;
   };
 
   typedef std::vector<UrlCacheInvalidationEntry*>
       UrlCacheInvalidationEntryVector;
+  typedef dense_hash_map<GoogleString, int64> UrlCacheInvalidationMap;
 
   // Private methods to help add properties to
   // RewriteOptions::properties_.  Subclasses define their own
@@ -2854,9 +2885,12 @@ class RewriteOptions {
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
 
-  // List of URL patterns and timestamp for which it should be invalidated.  In
-  // increasing order of timestamp.
+  // List of URL wildcard patterns and timestamp for which it should be
+  // invalidated.  In increasing order of timestamp.
   UrlCacheInvalidationEntryVector url_cache_invalidation_entries_;
+
+  // Map of exact URLs to be invalidated; no wildcards.
+  UrlCacheInvalidationMap url_cache_invalidation_map_;
 
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
   Option<int64> css_flatten_max_bytes_;
@@ -3021,6 +3055,17 @@ class RewriteOptions {
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
+
+  // Enables the Cache Purge API.  This is not on by default because
+  // it requires saving input URLs to each metadata cache entry to
+  // facilitate fast URL cache invalidation.
+  //
+  // Note that in the absence of this API, purging URLs can still
+  // work, but it will invalidate either the entire metadata cache
+  // (ignores_metadata_and_pcache==false in the call to
+  // AddUrlCacheInvalidationEntry) or will not invalidate the metadata
+  // cache entries at all (ignores_metadata_and_pcache==false).
+  Option<bool> enable_cache_purge_;
 
   // Enables experimental code in inline preview images.
   Option<bool> enable_inline_preview_images_experimental_;

@@ -54,6 +54,7 @@ struct OptionName {
 "EnableBlinkCriticalLine",               RewriteOptions::kEnableBlinkCriticalLine
 "EnableBlinkHtmlChangeDetection",        RewriteOptions::kEnableBlinkHtmlChangeDetection
 "EnableBlinkHtmlChangeDetectionLogging", RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging
+"EnableCachePurge",                      RewriteOptions::kEnableCachePurge
 "EnableDeferJsExperimental",             RewriteOptions::kEnableDeferJsExperimental
 "EnableFixReflow",                       RewriteOptions::kEnableFixReflow,
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
