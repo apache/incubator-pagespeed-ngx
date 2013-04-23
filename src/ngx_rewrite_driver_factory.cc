@@ -71,7 +71,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 }  // namespace
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
-    : SystemRewriteDriverFactory(ngx_thread_system_ = new NgxThreadSystem),
+    : SystemRewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
       shared_mem_runtime_(new ngx::PthreadSharedMem()),
       main_conf_(NULL),
@@ -266,7 +266,7 @@ void NgxRewriteDriverFactory::StartThreads() {
   if (threads_started_) {
     return;
   }
-  ngx_thread_system_->PermitThreadStarting();
+  static_cast<NgxThreadSystem*>(thread_system())->PermitThreadStarting();
   // TODO(jefftk): use a native nginx timer instead of running our own thread.
   // See issue #111.
   SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());
