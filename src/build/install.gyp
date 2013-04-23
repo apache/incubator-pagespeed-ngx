@@ -14,7 +14,7 @@
     ['OS=="linux"', {
       'variables': {
         'version' : '<!(python <(version_py_path) -f <(version_path) -t "@MAJOR@.@MINOR@.@BUILD@.@PATCH@")',
-        'revision' : '<!(<(DEPTH)/build/lastchange.sh <(DEPTH)| cut -d "=" -f 2)',
+        'revision' : '<!(<(DEPTH)/build/lastchange.sh <(DEPTH) -d <(DEPTH)/LASTCHANGE.in | cut -d "=" -f 2)',
         'packaging_files_common': [
           '<(install_path)/common/apt.include',
           '<(install_path)/common/mod-pagespeed/mod-pagespeed.info',

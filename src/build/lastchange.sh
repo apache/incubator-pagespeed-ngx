@@ -26,11 +26,6 @@ shift 1
 DEFAULT_FILE=
 OUT_FILE=/dev/stdout
 
-function usage() {
-  echo "Usage: lastchange.sh svnpath [-d default_file] [-o out_file]"
-  exit 1
-}
-
 while [ $# -ge 2 ]; do
   case $1 in
   -d)
@@ -45,7 +40,9 @@ while [ $# -ge 2 ]; do
     shift 2
     ;;
   *)
-    usage;;
+    echo "Usage: lastchange.sh svnpath [-d default_file] [-o out_file]"
+    exit 1
+    ;;
   esac
 done
 
