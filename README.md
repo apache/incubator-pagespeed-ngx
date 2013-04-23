@@ -7,7 +7,10 @@ This is the [nginx](http://nginx.org/) port of
 contributing to the project, see below. For feedback, questions, and to follow
 the progress of the project:
 
-- [ngx-pagespeed-discuss Google Group](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
+- [ngx-pagespeed-discuss mailing
+  list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
+- [ngx-pagespeed-announce mailing
+  list](https://groups.google.com/forum/#!forum/ngx-pagespeed-announce)
 
 ---
 
