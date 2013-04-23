@@ -40,9 +40,10 @@ extern "C" {
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class NgxServerContext;
 class NgxMessageHandler;
 class NgxRewriteOptions;
+class NgxServerContext;
+class NgxThreadSystem;
 class NgxUrlAsyncFetcher;
 class SharedCircularBuffer;
 class SharedMemRefererStatistics;
@@ -179,6 +180,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   }
 
  private:
+  NgxThreadSystem* ngx_thread_system_;
   Timer* timer_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
 
