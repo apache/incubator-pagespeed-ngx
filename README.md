@@ -65,20 +65,12 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ tar -xvzf nginx-1.3.15.tar.gz
    $ cd nginx-1.3.15/
    $ ./configure --add-module=$HOME/ngx_pagespeed
-   $ make install
+   $ make
+   $ sudo make install
    ```
 
-If `make` fails with `unknown type name ‘off64_t’`,
-add `--with-cc-opt='-DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE -march=i686 -pthread'`
-to `./configure` and try to `make` again.
-
-If `configure` fails with `checking for psol ... not found` then open
-`objs/autoconf.err` and search for `psol`.
-
-If it's not clear what's wrong from
-the error message, then send it to the [mailing
-list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
-have a look at it.
+If this doesn't work see the [build
+troubleshooting](https://github.com/pagespeed/ngx_pagespeed/wiki/Build-Troubleshooting) page.
 
 This will use a binary PageSpeed Optimization Library.  If you would rather
 build PSOL from source, [here's how to do that](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
