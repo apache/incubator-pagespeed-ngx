@@ -330,19 +330,19 @@ typedef void (ApacheServerContext::*AddTimeFn)(int64 delta);
 
 class ScopedTimer {
  public:
-  ScopedTimer(ApacheServerContext* manager, AddTimeFn add_time_fn)
-      : manager_(manager),
+  ScopedTimer(ApacheServerContext* server_context, AddTimeFn add_time_fn)
+      : server_context_(server_context),
         add_time_fn_(add_time_fn),
         start_time_us_(timer_.NowUs()) {
   }
 
   ~ScopedTimer() {
     int64 delta_us = timer_.NowUs() - start_time_us_;
-    (manager_->*add_time_fn_)(delta_us);
+    (server_context_->*add_time_fn_)(delta_us);
   }
 
  private:
-  ApacheServerContext* manager_;
+  ApacheServerContext* server_context_;
   AddTimeFn add_time_fn_;
   AprTimer timer_;
   int64 start_time_us_;
@@ -352,37 +352,37 @@ class ScopedTimer {
 // that we should not handle the request for various reasons.
 // TODO(sligocki): Move most of these checks into non-Apache specific code.
 InstawebContext* build_context_for_request(request_rec* request) {
-  ApacheServerContext* manager =
+  ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
   // Escape ASAP if we're in unplugged mode.
-  if (manager->config()->unplugged()) {
+  if (server_context->config()->unplugged()) {
     return NULL;
   }
   ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
-  ApacheRewriteDriverFactory* factory = manager->apache_factory();
+  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
   ApacheRequestContext* apache_request = new ApacheRequestContext(
-      manager->thread_system()->NewMutex(),
-      manager->timer(),
+      server_context->thread_system()->NewMutex(),
+      server_context->timer(),
       request);
   RequestContextPtr request_context(apache_request);
   bool using_spdy = request_context->using_spdy();
-  const RewriteOptions* host_options = manager->global_options();
-  if (using_spdy && manager->SpdyConfig() != NULL) {
-    host_options = manager->SpdyConfig();
+  const RewriteOptions* host_options = server_context->global_options();
+  if (using_spdy && server_context->SpdyConfig() != NULL) {
+    host_options = server_context->SpdyConfig();
   }
   const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 
-  manager->FlushCacheIfNecessary();
+  server_context->FlushCacheIfNecessary();
 
   if ((directory_options != NULL) && directory_options->modified()) {
     custom_options.reset(factory->NewRewriteOptions());
     custom_options->Merge(*host_options);
     custom_options->Merge(*directory_options);
-    manager->ComputeSignature(custom_options.get());
+    server_context->ComputeSignature(custom_options.get());
     options = custom_options.get();
     use_custom_options = true;
   }
@@ -476,8 +476,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
                                    &response_headers);
     int num_response_attributes = response_headers.NumAttributes();
     ServerContext::OptionsBoolPair query_options_success =
-        manager->GetQueryOptions(&gurl, request_headers.get(),
-                                 &response_headers);
+        server_context->GetQueryOptions(&gurl, request_headers.get(),
+                                        &response_headers);
     if (!query_options_success.second) {
       ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
                     "Request not rewritten because ModPagespeed "
@@ -496,7 +496,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       merged_options->Merge(*query_options.get());
       // Don't run any experiments if we're handling a query params request.
       merged_options->set_running_furious_experiment(false);
-      manager->ComputeSignature(merged_options);
+      server_context->ComputeSignature(merged_options);
       custom_options.reset(merged_options);
       options = merged_options;
 
@@ -580,8 +580,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   InstawebContext* context = new InstawebContext(
-      request, request_headers.release(), *content_type, manager, final_url,
-      request_context, use_custom_options, *options);
+      request, request_headers.release(), *content_type, server_context,
+      final_url, request_context, use_custom_options, *options);
 
   // TODO(sligocki): Move inside PSOL.
   InstawebContext::ContentEncoding encoding = context->content_encoding();
@@ -703,8 +703,8 @@ apr_status_t instaweb_out_filter(ap_filter_t* filter, apr_bucket_brigade* bb) {
     filter->ctx = context;
   }
 
-  ApacheServerContext* manager = context->apache_server_context();
-  ScopedTimer timer(manager, &ApacheServerContext::AddHtmlRewriteTimeUs);
+  ApacheServerContext* server_context = context->apache_server_context();
+  ScopedTimer timer(server_context, &ApacheServerContext::AddHtmlRewriteTimeUs);
 
   apr_status_t return_code = APR_SUCCESS;
   while (!APR_BRIGADE_EMPTY(bb)) {
@@ -880,10 +880,10 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   ApacheRewriteDriverFactory* factory = apache_process_context.factory(server);
   factory->ChildInit();
   for (; server != NULL; server = server->next) {
-    ApacheServerContext* resource_manager =
+    ApacheServerContext* server_context =
         InstawebContext::ServerContextFromServerRec(server);
-    DCHECK(resource_manager != NULL);
-    DCHECK(resource_manager->initialized());
+    DCHECK(server_context != NULL);
+    DCHECK(server_context->initialized());
   }
 }
 
@@ -945,15 +945,15 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   // statistics enabled, if found, do the static initialization of
   // statistics to establish global memory segments.
   Statistics* statistics = NULL;
-  std::set<ApacheServerContext*> managers_covered_;
+  std::set<ApacheServerContext*> server_contexts_covered;
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
-    ApacheServerContext* manager =
+    ApacheServerContext* server_context =
         InstawebContext::ServerContextFromServerRec(server);
-    if (managers_covered_.insert(manager).second) {
-      CHECK(manager);
-      manager->CollapseConfigOverlaysAndComputeSignatures();
-      ApacheConfig* config = manager->config();
+    if (server_contexts_covered.insert(server_context).second) {
+      CHECK(server_context != NULL);
+      server_context->CollapseConfigOverlaysAndComputeSignatures();
+      ApacheConfig* config = server_context->config();
 
       // Escape ASAP if we're in unplugged mode.
       if (config->unplugged()) {
@@ -963,7 +963,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       if (config->enabled()) {
         GoogleString file_cache_path = config->file_cache_path();
         if (file_cache_path.empty()) {
-          manager->message_handler()->Message(
+          server_context->message_handler()->Message(
               kError, "mod_pagespeed is enabled. %s must not be empty:"
               " defn_name=%s"
               " defn_line_number=%d"
@@ -990,7 +990,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       // If config has statistics on and we have per-vhost statistics on
       // as well, then set it up.
       if (config->statistics_enabled() && factory->use_per_vhost_statistics()) {
-        manager->CreateLocalStatistics(statistics);
+        server_context->CreateLocalStatistics(statistics);
       }
     }
   }
@@ -1161,10 +1161,10 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
-  ApacheServerContext* manager = static_cast<ApacheServerContext*>(data);
-  if (manager->PoolDestroyed()) {
-      // When the last manager is destroyed, it's important that we also clean
-      // up the factory, so we don't end up with dangling pointers in case
+  ApacheServerContext* server_context = static_cast<ApacheServerContext*>(data);
+  if (server_context->PoolDestroyed()) {
+      // When the last server context is destroyed, it's important that we also
+      // clean up the factory, so we don't end up with dangling pointers in case
       // we are not unloaded fully on a config check (e.g. on Ubuntu 11).
       apache_process_context.factory_.reset(NULL);
   }
@@ -1172,16 +1172,16 @@ apr_status_t pagespeed_child_exit(void* data) {
 }
 
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
-  ApacheServerContext* manager =
+  ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(server);
-  if (manager == NULL) {
+  if (server_context == NULL) {
     ApacheRewriteDriverFactory* factory = apache_process_context.factory(
         server);
-    manager = factory->MakeApacheServerContext(server);
-    apr_pool_cleanup_register(pool, manager, pagespeed_child_exit,
+    server_context = factory->MakeApacheServerContext(server);
+    apr_pool_cleanup_register(pool, server_context, pagespeed_child_exit,
                               apr_pool_cleanup_null);
   }
-  return manager;
+  return server_context;
 }
 
 const char kBoolHint[] = " on|off";
@@ -1258,9 +1258,9 @@ static const char* CmdOptions(const cmd_parms* cmd, void* data,
     if (cmd->directive->data != NULL) {
       config = static_cast<ApacheConfig*>(cmd->directive->data);
     } else {
-      ApacheServerContext* manager =
+      ApacheServerContext* server_context =
           InstawebContext::ServerContextFromServerRec(cmd->server);
-      config = manager->config();
+      config = server_context->config();
     }
   } else {
     // If we're here, we are inside path-specific configuration, so we should
@@ -1332,9 +1332,9 @@ bool StandardParsingHandled(
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
-  ApacheServerContext* manager =
+  ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(cmd->server);
-  ApacheRewriteDriverFactory* factory = manager->apache_factory();
+  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   MessageHandler* handler = factory->message_handler();
   StringPiece directive(cmd->directive->directive);
   StringPiece prefix(RewriteQuery::kModPagespeed);
@@ -1355,7 +1355,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                         " must start with a slash.", NULL);
     } else {
       config->set_file_cache_path(arg);
-      if (!manager->InitFileCachePath() ||
+      if (!server_context->InitFileCachePath() ||
           !give_apache_user_permissions(factory)) {
         ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                           " does not exist and can't be created.", NULL);

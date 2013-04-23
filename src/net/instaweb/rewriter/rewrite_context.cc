@@ -1872,17 +1872,17 @@ void RewriteContext::PartitionDone(bool result) {
 }
 
 void RewriteContext::WritePartition() {
-  ServerContext* manager = FindServerContext();
+  ServerContext* server_context = FindServerContext();
   // If this was an IPRO rewrite which was forced for uncacheable rewrite, we
   // should not write partition data.
-  if (ok_to_write_output_partitions_ && !manager->shutting_down()) {
+  if (ok_to_write_output_partitions_ && !server_context->shutting_down()) {
     // rewrite_uncacheable() is set in IPRO flow only, therefore there'll be
     // just one slot. If this was uncacheable rewrite, we should skip writing
     // to the metadata cache.
     const bool is_uncacheable_rewrite = rewrite_uncacheable() &&
         !slots_[0]->resource()->IsValidAndCacheable();
     if (!is_uncacheable_rewrite) {
-      CacheInterface* metadata_cache = manager->metadata_cache();
+      CacheInterface* metadata_cache = server_context->metadata_cache();
       GoogleString buf;
       {
 #ifndef NDEBUG

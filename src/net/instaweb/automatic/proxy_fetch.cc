@@ -66,11 +66,12 @@ const char ProxyFetch::kHeadersSetupRaceFlush[] = "HeadersSetupRace:Flush";
 const char ProxyFetch::kHeadersSetupRacePrefix[] = "HeadersSetupRace:";
 const char ProxyFetch::kHeadersSetupRaceWait[] = "HeadersSetupRace:Wait";
 
-ProxyFetchFactory::ProxyFetchFactory(ServerContext* manager)
-    : manager_(manager),
-      timer_(manager->timer()),
-      handler_(manager->message_handler()),
-      outstanding_proxy_fetches_mutex_(manager->thread_system()->NewMutex()) {
+ProxyFetchFactory::ProxyFetchFactory(ServerContext* server_context)
+    : server_context_(server_context),
+      timer_(server_context->timer()),
+      handler_(server_context->message_handler()),
+      outstanding_proxy_fetches_mutex_(
+          server_context->thread_system()->NewMutex()) {
 }
 
 ProxyFetchFactory::~ProxyFetchFactory() {
@@ -92,10 +93,10 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
 
   // Check whether this an encoding of a non-rewritten resource served
   // from a non-transparently proxied domain.
-  UrlNamer* namer = manager_->url_namer();
+  UrlNamer* namer = server_context_->url_namer();
   GoogleString decoded_resource;
   GoogleUrl gurl(url_in), request_origin;
-  DCHECK(!manager_->IsPagespeedResource(gurl))
+  DCHECK(!server_context_->IsPagespeedResource(gurl))
       << "expect ResourceFetch called for pagespeed resources, not ProxyFetch";
 
   bool cross_domain = false;
@@ -126,7 +127,7 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
 
   ProxyFetch* fetch = new ProxyFetch(
       *url_to_fetch, cross_domain, property_callback, async_fetch,
-      original_content_fetch, driver, manager_, timer_, this);
+      original_content_fetch, driver, server_context_, timer_, this);
   if (cross_domain) {
     // If we're proxying resources from a different domain, the host header is
     // likely set to the proxy host rather than the origin host.  Depending on
@@ -276,7 +277,7 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
 
 void ProxyFetchPropertyCallbackCollector::Done(
     ProxyFetchPropertyCallback* callback) {
-  ServerContext* resource_manager = NULL;
+  ServerContext* server_context = NULL;
   ProxyFetch* fetch = NULL;
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   bool do_delete = false;
@@ -287,7 +288,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
     property_pages_[callback->page_type()] = callback;
 
     if (pending_callbacks_.empty()) {
-      resource_manager = server_context_;
+      server_context = server_context_;
       call_post = true;
     }
   }
@@ -296,7 +297,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
     DCHECK(request_context_.get() != NULL);
     request_context_->log_record()->SetTimeToPcacheEnd(
         server_context_->timer()->NowMs());
-    ThreadSynchronizer* sync = resource_manager->thread_synchronizer();
+    ThreadSynchronizer* sync = server_context->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
     sync->Wait(ProxyFetch::kCollectorDetach);
     sync->Wait(ProxyFetch::kCollectorDone);
@@ -446,12 +447,12 @@ ProxyFetch::ProxyFetch(
     AsyncFetch* async_fetch,
     AsyncFetch* original_content_fetch,
     RewriteDriver* driver,
-    ServerContext* manager,
+    ServerContext* server_context,
     Timer* timer,
     ProxyFetchFactory* factory)
     : SharedAsyncFetch(async_fetch),
       url_(url),
-      server_context_(manager),
+      server_context_(server_context),
       timer_(timer),
       cross_domain_(cross_domain),
       claims_html_(false),
@@ -462,7 +463,7 @@ ProxyFetch::ProxyFetch(
       original_content_fetch_(original_content_fetch),
       driver_(driver),
       queue_run_job_created_(false),
-      mutex_(manager->thread_system()->NewMutex()),
+      mutex_(server_context->thread_system()->NewMutex()),
       network_flush_outstanding_(false),
       sequence_(NULL),
       done_outstanding_(false),
@@ -671,7 +672,7 @@ void ProxyFetch::SetupForHtml() {
 }
 
 void ProxyFetch::StartFetch() {
-  factory_->manager_->url_namer()->PrepareRequest(
+  factory_->server_context_->url_namer()->PrepareRequest(
       Options(), &url_, request_headers(), &prepare_success_,
       MakeFunction(this, &ProxyFetch::DoFetch),
       factory_->handler_);

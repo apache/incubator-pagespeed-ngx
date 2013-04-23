@@ -53,7 +53,7 @@ class FileRewriter : public RewriteDriverFactory {
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
-  virtual void SetupCaches(ServerContext* resource_manager);
+  virtual void SetupCaches(ServerContext* server_context);
   virtual Statistics* statistics();
   virtual ServerContext* NewServerContext();
   virtual bool UseBeaconResultsInFilters() const { return false; }

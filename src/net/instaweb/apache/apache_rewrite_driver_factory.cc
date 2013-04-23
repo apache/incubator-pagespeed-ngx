@@ -138,7 +138,7 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
   apr_pool_destroy(pool_);
 
   // We still have registered a pool deleter here, right?  This seems risky...
-  STLDeleteElements(&uninitialized_managers_);
+  STLDeleteElements(&uninitialized_server_contexts_);
 
   shared_mem_statistics_.reset(NULL);
 }
@@ -404,8 +404,9 @@ void ApacheRewriteDriverFactory::RootInit() {
 
   // Let SystemCaches know about the various paths we have in configuration
   // first, as well as the memcached instances.
-  for (ApacheServerContextSet::iterator p = uninitialized_managers_.begin(),
-           e = uninitialized_managers_.end(); p != e; ++p) {
+  for (ApacheServerContextSet::iterator
+           p = uninitialized_server_contexts_.begin(),
+           e = uninitialized_server_contexts_.end(); p != e; ++p) {
     ApacheServerContext* server_context = *p;
     caches_->RegisterConfig(server_context->config());
   }
@@ -427,12 +428,13 @@ void ApacheRewriteDriverFactory::ChildInit() {
 
   caches_->ChildInit();
 
-  for (ApacheServerContextSet::iterator p = uninitialized_managers_.begin(),
-           e = uninitialized_managers_.end(); p != e; ++p) {
+  for (ApacheServerContextSet::iterator
+           p = uninitialized_server_contexts_.begin(),
+           e = uninitialized_server_contexts_.end(); p != e; ++p) {
     ApacheServerContext* server_context = *p;
     server_context->ChildInit();
   }
-  uninitialized_managers_.clear();
+  uninitialized_server_contexts_.clear();
 
   mod_spdy_fetch_controller_.reset(
       new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
@@ -556,9 +558,10 @@ void ApacheRewriteDriverFactory::Terminate() {
 
 ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheServerContext(
     server_rec* server) {
-  ApacheServerContext* rm = new ApacheServerContext(this, server, version_);
-  uninitialized_managers_.insert(rm);
-  return rm;
+  ApacheServerContext* server_context =
+      new ApacheServerContext(this, server, version_);
+  uninitialized_server_contexts_.insert(server_context);
+  return server_context;
 }
 
 ServerContext* ApacheRewriteDriverFactory::NewServerContext() {
@@ -566,9 +569,10 @@ ServerContext* ApacheRewriteDriverFactory::NewServerContext() {
   return NULL;
 }
 
-bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheServerContext* rm) {
-  if (uninitialized_managers_.erase(rm) == 1) {
-    delete rm;
+bool ApacheRewriteDriverFactory::PoolDestroyed(
+    ApacheServerContext* server_context) {
+  if (uninitialized_server_contexts_.erase(server_context) == 1) {
+    delete server_context;
   }
 
   // Returns true if all the ServerContexts known by the factory and its
@@ -577,8 +581,8 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheServerContext* rm) {
   // are partially constructed.  RewriteDriverFactory keeps track of
   // ServerContexts that are already serving requests.  We need to clean
   // all of them out before we can terminate the driver.
-  bool no_active_resource_managers = TerminateServerContext(rm);
-  return (no_active_resource_managers && uninitialized_managers_.empty());
+  bool no_active_server_contexts = TerminateServerContext(server_context);
+  return (no_active_server_contexts && uninitialized_server_contexts_.empty());
 }
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {

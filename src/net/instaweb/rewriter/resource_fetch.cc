@@ -78,11 +78,12 @@ RewriteDriver* ResourceFetch::GetDriver(
 
 void ResourceFetch::StartWithDriver(
     const GoogleUrl& url, CleanupMode cleanup_mode,
-    ServerContext* manager, RewriteDriver* driver, AsyncFetch* async_fetch) {
+    ServerContext* server_context, RewriteDriver* driver,
+    AsyncFetch* async_fetch) {
 
   ResourceFetch* resource_fetch = new ResourceFetch(
-      url, cleanup_mode, driver, manager->timer(),
-      manager->message_handler(), async_fetch);
+      url, cleanup_mode, driver, server_context->timer(),
+      server_context->message_handler(), async_fetch);
 
   if (!driver->FetchResource(url.Spec(), resource_fetch)) {
     resource_fetch->Done(false);
@@ -101,26 +102,27 @@ void ResourceFetch::Start(const GoogleUrl& url,
 }
 
 bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
-                                  ServerContext* manager,
+                                  ServerContext* server_context,
                                   RewriteDriver* driver,
                                   SyncFetcherAdapterCallback* callback) {
   // Here, we do not want the driver to be cleaned up by the ResourceFetch
   // since we will be calling BoundedWaitFor on it!
-  StartWithDriver(url, kDontAutoCleanupDriver, manager, driver, callback);
+  StartWithDriver(url, kDontAutoCleanupDriver, server_context, driver,
+                  callback);
 
   // Wait for resource fetch to complete.
   if (!callback->done()) {
     int64 max_ms = driver->options()->blocking_fetch_timeout_ms();
-    for (int64 start_ms = manager->timer()->NowMs(), now_ms = start_ms;
+    for (int64 start_ms = server_context->timer()->NowMs(), now_ms = start_ms;
          !callback->done() && now_ms - start_ms < max_ms;
-         now_ms = manager->timer()->NowMs()) {
+         now_ms = server_context->timer()->NowMs()) {
       int64 remaining_ms = max_ms - (now_ms - start_ms);
 
       driver->BoundedWaitFor(RewriteDriver::kWaitForCompletion, remaining_ms);
     }
   }
 
-  MessageHandler* message_handler = manager->message_handler();
+  MessageHandler* message_handler = server_context->message_handler();
   bool ok = false;
   if (callback->done()) {
     if (callback->success()) {

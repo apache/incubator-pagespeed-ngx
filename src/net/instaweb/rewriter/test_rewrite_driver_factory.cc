@@ -208,7 +208,7 @@ Timer* TestRewriteDriverFactory::DefaultTimer() {
   return mock_timer_;
 }
 
-void TestRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
+void TestRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   // TODO(jmarantz): Make the cache-ownership semantics consistent between
   // DelayCache and ThreadsafeCache.
   DCHECK(lru_cache_ == NULL);
@@ -220,9 +220,9 @@ void TestRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
   delay_cache_ = new DelayCache(mock_time_cache_.get(), thread_system());
   HTTPCache* http_cache = new HTTPCache(delay_cache_, timer(),
                                         hasher(), statistics());
-  resource_manager->set_http_cache(http_cache);
-  resource_manager->set_metadata_cache(delay_cache_);
-  resource_manager->MakePropertyCaches(delay_cache_);
+  server_context->set_http_cache(http_cache);
+  server_context->set_metadata_cache(delay_cache_);
+  server_context->MakePropertyCaches(delay_cache_);
   TakeOwnership(delay_cache_);
 }
 

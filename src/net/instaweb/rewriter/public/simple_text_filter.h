@@ -51,7 +51,7 @@ class SimpleTextFilter : public RewriteFilter {
     virtual bool RewriteText(const StringPiece& url,
                              const StringPiece& in,
                              GoogleString* out,
-                             ServerContext* resource_manager) = 0;
+                             ServerContext* server_context) = 0;
     virtual HtmlElement::Attribute* FindResourceAttribute(
         HtmlElement* element) = 0;
 

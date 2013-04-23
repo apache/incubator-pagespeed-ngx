@@ -55,7 +55,7 @@ class BlinkFlowCriticalLine {
                     AsyncFetch* base_fetch,
                     RewriteOptions* options,
                     ProxyFetchFactory* factory,
-                    ServerContext* manager,
+                    ServerContext* server_context,
                     ProxyFetchPropertyCallbackCollector* property_callback);
 
   virtual ~BlinkFlowCriticalLine();
@@ -78,7 +78,7 @@ class BlinkFlowCriticalLine {
                         AsyncFetch* base_fetch,
                         RewriteOptions* options,
                         ProxyFetchFactory* factory,
-                        ServerContext* manager,
+                        ServerContext* server_context,
                         ProxyFetchPropertyCallbackCollector* property_callback);
 
   // Sets request start time.
@@ -157,7 +157,7 @@ class BlinkFlowCriticalLine {
   scoped_ptr<AbstractLogRecord> blink_log_record_;
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
-  ServerContext* manager_;
+  ServerContext* server_context_;
   ProxyFetchPropertyCallbackCollector* property_callback_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   BlinkCriticalLineDataFinder* finder_;

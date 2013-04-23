@@ -155,12 +155,12 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
 }  // namespace
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
-                               ServerContext* manager,
+                               ServerContext* server_context,
                                Statistics* stats)
-    : server_context_(manager),
+    : server_context_(server_context),
       fetcher_(NULL),
       timer_(NULL),
-      handler_(manager->message_handler()),
+      handler_(server_context->message_handler()),
       hostname_(hostname.as_string()),
       port_(port),
       all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
@@ -171,7 +171,7 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       cache_html_flow_requests_(
           stats->GetTimedVariable(kCacheHtmlRequestCount)),
       rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)) {
-  proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
+  proxy_fetch_factory_.reset(new ProxyFetchFactory(server_context));
 }
 
 ProxyInterface::~ProxyInterface() {

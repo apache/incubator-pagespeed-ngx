@@ -62,7 +62,7 @@ class Timer;
 // ProxyFetches it creates.
 class ProxyFetchFactory {
  public:
-  explicit ProxyFetchFactory(ServerContext* manager);
+  explicit ProxyFetchFactory(ServerContext* server_context);
   ~ProxyFetchFactory();
 
   // Convenience method that calls CreateNewProxyFetch and then StartFetch() on
@@ -102,7 +102,7 @@ class ProxyFetchFactory {
   void RegisterNewFetch(ProxyFetch* proxy_fetch);
   void RegisterFinishedFetch(ProxyFetch* proxy_fetch);
 
-  ServerContext* manager_;
+  ServerContext* server_context_;
   Timer* timer_;
   MessageHandler* handler_;
 
@@ -161,7 +161,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
 // Tracks a collection of property-cache lookups occuring in parallel.
 class ProxyFetchPropertyCallbackCollector {
  public:
-  ProxyFetchPropertyCallbackCollector(ServerContext* manager,
+  ProxyFetchPropertyCallbackCollector(ServerContext* server_context,
                                       const StringPiece& url,
                                       const RequestContextPtr& req_ctx,
                                       const RewriteOptions* options,
@@ -338,7 +338,7 @@ class ProxyFetch : public SharedAsyncFetch {
              AsyncFetch* async_fetch,
              AsyncFetch* original_content_fetch,
              RewriteDriver* driver,
-             ServerContext* manager,
+             ServerContext* server_context,
              Timer* timer,
              ProxyFetchFactory* factory);
   virtual ~ProxyFetch();

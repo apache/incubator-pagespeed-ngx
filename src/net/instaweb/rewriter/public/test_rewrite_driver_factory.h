@@ -198,7 +198,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual void SetupCaches(ServerContext* resource_manager);
+  virtual void SetupCaches(ServerContext* server_context);
   virtual UrlNamer* DefaultUrlNamer();
   virtual Scheduler* CreateScheduler();
   virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);

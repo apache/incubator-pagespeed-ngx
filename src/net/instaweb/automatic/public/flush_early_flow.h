@@ -100,7 +100,7 @@ class FlushEarlyFlow {
   FlushEarlyAsyncFetch* flush_early_fetch_;
   RewriteDriver* driver_;
   ProxyFetchFactory* factory_;
-  ServerContext* manager_;
+  ServerContext* server_context_;
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
   bool should_flush_early_lazyload_script_;
   MessageHandler* handler_;

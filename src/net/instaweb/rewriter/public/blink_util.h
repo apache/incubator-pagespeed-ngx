@@ -72,7 +72,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
 
 // Checks if blink critical line flow can be applied.
 bool ShouldApplyBlinkFlowCriticalLine(
-    const ServerContext* manager,
+    const ServerContext* server_context,
     const RewriteOptions* options);
 
 // Returns true if json has only miscellaneous(like 'contiguous')

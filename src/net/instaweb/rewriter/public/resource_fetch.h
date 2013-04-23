@@ -106,7 +106,7 @@ class ResourceFetch : public SharedAsyncFetch {
   // the caller, but it's responsible for calling Cleanup() once done with it.
   static void StartWithDriver(const GoogleUrl& url,
                               CleanupMode cleanup_mode,
-                              ServerContext* manager,
+                              ServerContext* server_context,
                               RewriteDriver* driver,
                               AsyncFetch* async_fetch);
 

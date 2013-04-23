@@ -45,7 +45,7 @@ class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.
   static ResourcePtr Make(const StringPiece& url,
-                          ServerContext* resource_manager) {
+                          ServerContext* server_context) {
     ResourcePtr resource;
     const ContentType* type;
     Encoding encoding;
@@ -58,7 +58,7 @@ class DataUrlInputResource : public Resource {
     if (ParseDataUrl(*url_copy, &type, &encoding, &encoded_contents)) {
       resource.reset(new DataUrlInputResource(url_copy, encoding, type,
                                               encoded_contents,
-                                              resource_manager));
+                                              server_context));
     }
     return resource;
   }

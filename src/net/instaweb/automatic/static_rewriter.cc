@@ -108,14 +108,14 @@ FileSystem* FileRewriter::DefaultFileSystem() {
   return new StdioFileSystem;
 }
 
-void FileRewriter::SetupCaches(ServerContext* resource_manager) {
+void FileRewriter::SetupCaches(ServerContext* server_context) {
   LRUCache* lru_cache = new LRUCache(gflags_->lru_cache_size_bytes());
   CacheInterface* cache = new ThreadsafeCache(lru_cache,
                                               thread_system()->NewMutex());
   HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());
-  resource_manager->set_http_cache(http_cache);
-  resource_manager->set_metadata_cache(cache);
-  resource_manager->MakePropertyCaches(cache);
+  server_context->set_http_cache(http_cache);
+  server_context->set_metadata_cache(cache);
+  server_context->MakePropertyCaches(cache);
 }
 
 Statistics* FileRewriter::statistics() {

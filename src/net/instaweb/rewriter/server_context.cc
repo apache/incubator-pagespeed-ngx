@@ -223,7 +223,7 @@ class ReadAsyncHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
   ReadAsyncHttpCacheCallback(
       Resource::NotCacheablePolicy not_cacheable_policy,
       Resource::AsyncCallback* resource_callback,
-      ServerContext* resource_manager,
+      ServerContext* server_context,
       const RequestContextPtr& request_context);
   virtual ~ReadAsyncHttpCacheCallback();
   virtual void Done(HTTPCache::FindResult find_result);
@@ -557,13 +557,13 @@ void ServerContext::RefreshIfImminentlyExpiring(
 ReadAsyncHttpCacheCallback::ReadAsyncHttpCacheCallback(
     Resource::NotCacheablePolicy not_cacheable_policy,
     Resource::AsyncCallback* resource_callback,
-    ServerContext* resource_manager,
+    ServerContext* server_context,
     const RequestContextPtr& request_context)
     : OptionsAwareHTTPCacheCallback(
           resource_callback->resource()->rewrite_options(),
           request_context),
       resource_callback_(resource_callback),
-      server_context_(resource_manager),
+      server_context_(server_context),
       not_cacheable_policy_(not_cacheable_policy) {
 }
 
@@ -644,15 +644,16 @@ void ServerContext::ReadAsync(
     RefreshIfImminentlyExpiring(resource.get(), message_handler_);
     callback->Done(false /* lock_failure */, true /* resource_ok */);
   } else if (resource->UseHttpCache()) {
-    ReadAsyncHttpCacheCallback* resource_manager_callback =
+    ReadAsyncHttpCacheCallback* read_async_http_cache_callback =
         new ReadAsyncHttpCacheCallback(not_cacheable_policy,
-                                        callback,
-                                        this,
-                                        request_context);
+                                       callback,
+                                       this,
+                                       request_context);
     // Don't log timing for background-fetched resources.
-    resource_manager_callback->set_log_timing(!resource->is_background_fetch());
+    read_async_http_cache_callback->set_log_timing(
+        !resource->is_background_fetch());
     http_cache_->Find(resource->url(), message_handler_,
-                      resource_manager_callback);
+                      read_async_http_cache_callback);
   } else {
     resource->LoadAndCallback(not_cacheable_policy, callback,
                               message_handler_);
@@ -969,7 +970,7 @@ void ServerContext::ShutDownDrivers() {
     // the start of this function; this code is relying on redundant
     // BoundedWaitForCompletion and Cleanup being safe when
     // trying_to_cleanup_rewrite_drivers_ is true.
-    // ResourceManagerTest.ShutDownAssumptions() exists to cover this scenario.
+    // ServerContextTest.ShutDownAssumptions() exists to cover this scenario.
     RewriteDriver* active = *i;
     int64 timeout_ms = Timer::kSecondMs;
     if (RunningOnValgrind()) {

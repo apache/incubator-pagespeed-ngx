@@ -494,13 +494,13 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
     InitializeDefaultOptions();
   }
 
-  virtual void SetupCaches(ServerContext* resource_manager) {
-    TestRewriteDriverFactory::SetupCaches(resource_manager);
-    SetupCohort(resource_manager->page_property_cache(),
+  virtual void SetupCaches(ServerContext* server_context) {
+    TestRewriteDriverFactory::SetupCaches(server_context);
+    SetupCohort(server_context->page_property_cache(),
                 RewriteDriver::kDomCohort);
-    SetupCohort(resource_manager->page_property_cache(),
+    SetupCohort(server_context->page_property_cache(),
                 BlinkCriticalLineDataFinder::kBlinkCohort);
-    resource_manager->set_enable_property_cache(true);
+    server_context->set_enable_property_cache(true);
   }
 
  private:
@@ -517,10 +517,10 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
 class ProxyInterfaceWithDelayCache : public ProxyInterface {
  public:
   ProxyInterfaceWithDelayCache(const StringPiece& hostname, int port,
-                               ServerContext* manager, Statistics* stats,
+                               ServerContext* server_context, Statistics* stats,
                                DelayCache* delay_cache)
-      : ProxyInterface(hostname, port, manager, stats),
-        manager_(manager),
+      : ProxyInterface(hostname, port, server_context, stats),
+        server_context_(server_context),
         delay_cache_(delay_cache),
         key_("") {
   }
@@ -535,10 +535,10 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
       bool* added_page_property_callback) {
     GoogleString key_base(request_url.Spec().as_string());
     if (options != NULL) {
-      manager_->ComputeSignature(options);
+      server_context_->ComputeSignature(options);
       key_base = StrCat(request_url.Spec(), "_", options->signature());
     }
-    PropertyCache* pcache = manager_->page_property_cache();
+    PropertyCache* pcache = server_context_->page_property_cache();
     const PropertyCache::Cohort* cohort =
         pcache->GetCohort(BlinkCriticalLineDataFinder::kBlinkCohort);
     key_ = pcache->CacheKey(key_base, cohort);
@@ -554,7 +554,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
   const GoogleString& key() const { return key_; }
 
  private:
-  ServerContext* manager_;
+  ServerContext* server_context_;
   DelayCache* delay_cache_;
   GoogleString key_;
 
@@ -1693,16 +1693,16 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithHeadRequest) {
 /*
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCriticalLineLoadShed) {
   // Make sure things behave when the computation gets load-shed.
-  resource_manager()->low_priority_rewrite_workers()->
+  server_context()->low_priority_rewrite_workers()->
       SetLoadSheddingThreshold(1);
 
   // Wedge the low-priority rewrite queue, so that the blink
   // rewrite gets dropped.
-  WorkerTestBase::SyncPoint sync1(resource_manager()->thread_system());
-  WorkerTestBase::SyncPoint sync2(resource_manager()->thread_system());
+  WorkerTestBase::SyncPoint sync1(server_context()->thread_system());
+  WorkerTestBase::SyncPoint sync2(server_context()->thread_system());
 
   QueuedWorkerPool* work_pool =
-      resource_manager()->low_priority_rewrite_workers();
+      server_context()->low_priority_rewrite_workers();
   work_pool->NewSequence()->Add(new WorkerTestBase::WaitRunFunction(&sync1));
   work_pool->NewSequence()->Add(new WorkerTestBase::WaitRunFunction(&sync2));
 
@@ -1728,7 +1728,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCriticalLineLoadShed) {
   // Unwedge the thread.
   sync1.Notify();
   sync2.Notify();
-  ThreadSynchronizer* ts = resource_manager()->thread_synchronizer();
+  ThreadSynchronizer* ts = server_context()->thread_synchronizer();
   ts->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
   mock_scheduler()->AwaitQuiescence();
 

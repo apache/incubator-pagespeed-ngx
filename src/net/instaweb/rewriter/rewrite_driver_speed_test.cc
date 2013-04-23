@@ -39,16 +39,15 @@ static void BM_RewriteDriverConstruction(int iters) {
   net_instaweb::TestRewriteDriverFactory factory("/tmp", &fetcher,
                                                  &distributed_fetcher);
   net_instaweb::RewriteDriverFactory::InitStats(factory.statistics());
-  net_instaweb::ServerContext* resource_manager =
-      factory.CreateServerContext();
+  net_instaweb::ServerContext* server_context = factory.CreateServerContext();
   for (int i = 0; i < iters; ++i) {
     net_instaweb::RewriteOptions* options = new net_instaweb::RewriteOptions;
     options->SetRewriteLevel(net_instaweb::RewriteOptions::kAllFilters);
     net_instaweb::RewriteDriver* driver =
-        resource_manager->NewCustomRewriteDriver(
+        server_context->NewCustomRewriteDriver(
             options, RequestContext::NewTestRequestContext(
                          factory.thread_system()));
-    resource_manager->ReleaseRewriteDriver(driver);
+    server_context->ReleaseRewriteDriver(driver);
   }
   net_instaweb::RewriteDriverFactory::Terminate();
 }

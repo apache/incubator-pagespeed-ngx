@@ -51,7 +51,7 @@ class Timer;
 class ProxyInterface : public UrlAsyncFetcher {
  public:
   ProxyInterface(const StringPiece& hostname, int port,
-                 ServerContext* manager, Statistics* stats);
+                 ServerContext* server_context, Statistics* stats);
   virtual ~ProxyInterface();
 
   // Initializes statistics variables associated with this class.

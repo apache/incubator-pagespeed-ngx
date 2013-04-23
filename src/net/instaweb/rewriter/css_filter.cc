@@ -561,9 +561,9 @@ void CssFilter::Context::Harvest() {
 
   if (ok) {
     if (rewrite_inline_element_ == NULL) {
-      ServerContext* manager = FindServerContext();
-      manager->MergeNonCachingResponseHeaders(input_resource_,
-                                              output_resource_);
+      ServerContext* server_context = FindServerContext();
+      server_context->MergeNonCachingResponseHeaders(input_resource_,
+                                                     output_resource_);
       ok = driver_->Write(ResourceVector(1, input_resource_),
                           out_text,
                           &kContentTypeCss,

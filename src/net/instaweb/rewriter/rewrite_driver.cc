@@ -909,7 +909,7 @@ void RewriteDriver::AddPreRenderFilters() {
     }
   } else if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
-    // This can only be called once and requires a resource_manager to be set.
+    // This can only be called once and requires a server_context_ to be set.
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssOutlineFilter(this));
   }
@@ -923,7 +923,7 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
-    // once and requires a resource_manager to be set.
+    // once and requires a server_context_ to be set.
     EnableRewriteFilter(RewriteOptions::kCssCombinerId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRewriteCss)) {
@@ -949,7 +949,7 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
-    // This can only be called once and requires a resource_manager to be set.
+    // This can only be called once and requires a server_context_ to be set.
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new JsOutlineFilter(this));
   }
@@ -1540,8 +1540,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual ~CacheCallback() {}
 
   void Find() {
-    ServerContext* resource_manager = driver_->server_context();
-    HTTPCache* http_cache = resource_manager->http_cache();
+    ServerContext* server_context = driver_->server_context();
+    HTTPCache* http_cache = server_context->http_cache();
     http_cache->Find(canonical_url_, handler_, this);
   }
 
@@ -1570,8 +1570,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         // resource object (while the cache somehow decided not to store it).
         content = output_resource_->contents();
         response_headers->CopyFrom(*output_resource_->response_headers());
-        ServerContext* resource_manager = driver_->server_context();
-        HTTPCache* http_cache = resource_manager->http_cache();
+        ServerContext* server_context = driver_->server_context();
+        HTTPCache* http_cache = server_context->http_cache();
         http_cache->Put(canonical_url_, response_headers,
                         content, handler_);
         async_fetch_->Done(async_fetch_->Write(content, handler_));

@@ -636,7 +636,7 @@ void BlinkFlowCriticalLine::Start(
     AsyncFetch* base_fetch,
     RewriteOptions* options,
     ProxyFetchFactory* factory,
-    ServerContext* manager,
+    ServerContext* server_context,
     ProxyFetchPropertyCallbackCollector* property_callback) {
   if (!options->enable_lazyload_in_blink()) {
     // Disable Lazyload Images so that lazyload js is not flushed by
@@ -644,7 +644,7 @@ void BlinkFlowCriticalLine::Start(
     options->DisableFilter(RewriteOptions::kLazyloadImages);
   }
   BlinkFlowCriticalLine* flow = new BlinkFlowCriticalLine(
-      url, base_fetch, options, factory, manager, property_callback);
+      url, base_fetch, options, factory, server_context, property_callback);
   flow->SetStartRequestTimings();
   flow->SetResponseStartTime();
   Function* func = MakeFunction(
@@ -663,7 +663,7 @@ void BlinkFlowCriticalLine::SetStartRequestTimings() {
     if (timing_info.has_request_start_ms()) {
       request_start_time_ms_ = timing_info.request_start_ms();
     } else {
-      request_start_time_ms_ = manager_->timer()->NowMs();
+      request_start_time_ms_ = server_context_->timer()->NowMs();
     }
   }
 }
@@ -704,7 +704,7 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
     AsyncFetch* base_fetch,
     RewriteOptions* options,
     ProxyFetchFactory* factory,
-    ServerContext* manager,
+    ServerContext* server_context,
     ProxyFetchPropertyCallbackCollector* property_callback)
     : url_(url),
       google_url_(url),
@@ -713,16 +713,16 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
           new NullMutex)),
       options_(options),
       factory_(factory),
-      manager_(manager),
+      server_context_(server_context),
       property_callback_(property_callback),
-      finder_(manager->blink_critical_line_data_finder()),
+      finder_(server_context->blink_critical_line_data_finder()),
       request_start_time_ms_(-1),
       time_to_start_blink_flow_critical_line_ms_(-1),
       time_to_critical_line_data_look_up_done_ms_(-1),
       blink_log_helper_(new LogHelper(
           blink_log_record_.get(),
           base_fetch_->request_context()->log_record())) {
-  Statistics* stats = manager_->statistics();
+  Statistics* stats = server_context_->statistics();
   num_blink_html_cache_hits_ = stats->GetTimedVariable(
       kNumBlinkHtmlCacheHits);
   num_blink_shared_fetches_started_ = stats->GetTimedVariable(
@@ -749,7 +749,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
       options_->GetBlinkCacheTimeFor(google_url_), page,
-      manager_->timer()->NowMs(),
+      server_context_->timer()->NowMs(),
       options_->enable_blink_html_change_detection()));
 
   if (blink_critical_line_data_ != NULL &&
@@ -772,7 +772,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataMiss() {
 
 bool BlinkFlowCriticalLine::IsLastResponseCodeInvalid(PropertyPage* page) {
   const PropertyCache::Cohort* cohort =
-    manager_->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
+      server_context_->page_property_cache()->GetCohort(
+          RewriteDriver::kDomCohort);
   if (cohort == NULL) {
     // If dom cohort is not available then we do not want to invalidate cache
     // hits based on response code check.
@@ -838,15 +839,15 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
        kPsaRewriterHeader, blink_log_record_->AppliedRewritersString());
   }
   response_headers->ComputeCaching();
-  response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
+  response_headers->SetDateAndCaching(server_context_->timer()->NowMs(), 0,
                                       ", private, no-cache");
   // If relevant, add the Set-Cookie header for furious experiments.
   if (options_->need_to_store_experiment_data() &&
       options_->running_furious()) {
     int furious_value = options_->furious_id();
-    manager_->furious_matcher()->StoreExperimentData(
+    server_context_->furious_matcher()->StoreExperimentData(
         furious_value, url_,
-        manager_->timer()->NowMs() +
+        server_context_->timer()->NowMs() +
             options_->furious_cookie_duration_ms(),
         response_headers);
   }
@@ -897,7 +898,8 @@ void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
   if (!options_->Enabled(RewriteOptions::kLazyloadImages)) {
     return;
   }
-  StaticAssetManager* static_js__manager = manager_->static_asset_manager();
+  StaticAssetManager* static_js__manager =
+      server_context_->static_asset_manager();
   options_->set_lazyload_images_after_onload(false);
   GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
       options_, static_js__manager);
@@ -909,7 +911,8 @@ void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
   WriteString(critical_html);
-  StaticAssetManager* static_asset_manager = manager_->static_asset_manager();
+  StaticAssetManager* static_asset_manager =
+      server_context_->static_asset_manager();
   WriteString("<script type=\"text/javascript\" src=\"");
   WriteString(static_asset_manager->GetAssetUrl(StaticAssetManager::kBlinkJs,
                                                 options_));
@@ -918,7 +921,7 @@ void BlinkFlowCriticalLine::SendCriticalHtml(
   WriteString("\npagespeed.panelLoaderInit();");
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
-  if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip) &&
+  if (user_ip != NULL && server_context_->factory()->IsDebugClient(user_ip) &&
       options_->enable_blink_debug_dashboard()) {
     WriteString("\npagespeed.panelLoader.setRequestFromInternalIp();");
   }
@@ -949,7 +952,7 @@ void BlinkFlowCriticalLine::SendNonCriticalJson(
 }
 
 void BlinkFlowCriticalLine::WriteString(const StringPiece& str) {
-  base_fetch_->Write(str, manager_->message_handler());
+  base_fetch_->Write(str, server_context_->message_handler());
 }
 
 GoogleString BlinkFlowCriticalLine::GetAddTimingScriptString(
@@ -959,11 +962,11 @@ GoogleString BlinkFlowCriticalLine::GetAddTimingScriptString(
 }
 
 int64 BlinkFlowCriticalLine::GetTimeElapsedFromStartRequest() {
-  return manager_->timer()->NowMs() - request_start_time_ms_;
+  return server_context_->timer()->NowMs() - request_start_time_ms_;
 }
 
 void BlinkFlowCriticalLine::Flush() {
-  base_fetch_->Flush(manager_->message_handler());
+  base_fetch_->Flush(server_context_->message_handler());
 }
 
 void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
@@ -996,8 +999,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     }
     // Don't lazyload images which are present in non-cacheable html.
     options_->DisableFilter(RewriteOptions::kLazyloadImages);
-    manager_->ComputeSignature(options_);
-    driver = manager_->NewCustomRewriteDriver(
+    server_context_->ComputeSignature(options_);
+    driver = server_context_->NewCustomRewriteDriver(
         options_, base_fetch_->request_context());
 
     // Remove any headers that can lead to a 304, since blink can't handle 304s.
@@ -1014,7 +1017,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
       options->ForceEnableFilter(RewriteOptions::kProcessBlinkInBackground);
       options->DisableFilter(RewriteOptions::kServeNonCacheableNonCritical);
       secondary_fetch = new CriticalLineFetch(
-          url_, manager_, options, driver, blink_critical_line_data,
+          url_, server_context_, options, driver, blink_critical_line_data,
           blink_log_record_.release(), blink_log_helper_.release());
     }
     fetch = new AsyncFetchWithHeadersInhibited(
@@ -1025,24 +1028,24 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
     options->ForceEnableFilter(RewriteOptions::kProcessBlinkInBackground);
     fetch = base_fetch_;
-    manager_->ComputeSignature(options_);
-    driver = manager_->NewCustomRewriteDriver(
+    server_context_->ComputeSignature(options_);
+    driver = server_context_->NewCustomRewriteDriver(
         options_, base_fetch_->request_context());
     num_blink_shared_fetches_started_->IncBy(1);
     secondary_fetch = new CriticalLineFetch(
-        url_, manager_, options, driver, NULL, blink_log_record_.release(),
-        blink_log_helper_.release());
+        url_, server_context_, options, driver, NULL,
+        blink_log_record_.release(), blink_log_helper_.release());
   } else {
     // Non 200 status code and Malformed HTML case.
     // TODO(srihari):  Write system tests for this.  This will require a test
     // harness where we can vary the response (status code) for the url being
     // fetched.
-    manager_->ComputeSignature(options_);
-    driver = manager_->NewCustomRewriteDriver(
+    server_context_->ComputeSignature(options_);
+    driver = server_context_->NewCustomRewriteDriver(
         options_, base_fetch_->request_context());
     if (options_->passthrough_blink_for_last_invalid_response_code()) {
-      fetch =
-          new UpdateResponseCodeSharedAyncFetch(base_fetch_, manager_, driver);
+      fetch = new UpdateResponseCodeSharedAyncFetch(
+                      base_fetch_, server_context_, driver);
     } else {
       fetch = base_fetch_;
     }

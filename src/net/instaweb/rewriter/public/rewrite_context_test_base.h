@@ -80,7 +80,7 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
 
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
-                           ServerContext* resource_manager);
+                           ServerContext* server_context);
   virtual HtmlElement::Attribute* FindResourceAttribute(HtmlElement* element);
   virtual OutputResourceKind kind() const { return kind_; }
   virtual const char* id() const { return kFilterId; }
@@ -139,7 +139,7 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
-                           ServerContext* resource_manager) {
+                           ServerContext* server_context) {
     ++num_rewrites_;
     in.CopyToString(out);
     UpperString(out);

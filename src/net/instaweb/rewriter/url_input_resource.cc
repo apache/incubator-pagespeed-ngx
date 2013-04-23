@@ -88,17 +88,17 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
 bool CheckAndUpdateInputInfo(const ResponseHeaders& headers,
                              const HTTPValue& value,
                              const RewriteOptions& options,
-                             const ServerContext& manager,
+                             const ServerContext& server_context,
                              Resource::FreshenCallback* callback) {
   InputInfo* input_info = callback->input_info();
   if (input_info != NULL && input_info->has_input_content_hash() &&
-      IsValidAndCacheableImpl(manager.http_cache(),
+      IsValidAndCacheableImpl(server_context.http_cache(),
                               options.min_resource_cache_time_to_rewrite_ms(),
                               options.respect_vary(),
                               headers)) {
     StringPiece content;
     if (value.ExtractContents(&content)) {
-      GoogleString new_hash = manager.contents_hasher()->Hash(content);
+      GoogleString new_hash = server_context.contents_hasher()->Hash(content);
       // TODO(nikhilmadan): Consider using the Etag / Last-Modified header to
       // validate if the resource has changed instead of computing the hash.
       if (new_hash == input_info->input_content_hash()) {
@@ -422,13 +422,13 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
 class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
  public:
   FreshenHttpCacheCallback(const GoogleString& url,
-                           ServerContext* manager,
+                           ServerContext* server_context,
                            RewriteDriver* driver,
                            const RewriteOptions* options,
                            Resource::FreshenCallback* callback)
       : OptionsAwareHTTPCacheCallback(options, driver->request_context()),
         url_(url),
-        manager_(manager),
+        server_context_(server_context),
         driver_(driver),
         options_(options),
         callback_(callback) {}
@@ -439,14 +439,14 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
     if (find_result == HTTPCache::kNotFound) {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
-          url_, manager_->http_cache(), manager_, driver_, options_,
-          fallback_http_value(), callback_);
-      cb->Fetch(driver_->async_fetcher(), manager_->message_handler());
+          url_, server_context_->http_cache(), server_context_, driver_,
+          options_, fallback_http_value(), callback_);
+      cb->Fetch(driver_->async_fetcher(), server_context_->message_handler());
     } else {
       if (callback_ != NULL) {
         bool success = (find_result == HTTPCache::kFound) &&
             CheckAndUpdateInputInfo(*response_headers(), *http_value(),
-                                    *options_, *manager_, callback_);
+                                    *options_, *server_context_, callback_);
         callback_->Done(true, success);
       }
       driver_->decrement_async_events_count();
@@ -460,12 +460,12 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual bool IsFresh(const ResponseHeaders& headers) {
     int64 date_ms = headers.date_ms();
     int64 expiry_ms = headers.CacheExpirationTimeMs();
-    return !manager_->IsImminentlyExpiring(date_ms, expiry_ms);
+    return !server_context_->IsImminentlyExpiring(date_ms, expiry_ms);
   }
 
  private:
   GoogleString url_;
-  ServerContext* manager_;
+  ServerContext* server_context_;
   RewriteDriver* driver_;
   const RewriteOptions* options_;
   Resource::FreshenCallback* callback_;

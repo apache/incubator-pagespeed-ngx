@@ -25,7 +25,7 @@ class ApacheServerContext;
 
 // Loads the URL based on the fetchers and other infrastructure in the
 // factory.
-void SlurpUrl(ApacheServerContext* manager, request_rec* r);
+void SlurpUrl(ApacheServerContext* server_context, request_rec* r);
 
 }  // namespace net_instaweb
 

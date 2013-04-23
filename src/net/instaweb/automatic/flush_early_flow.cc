@@ -378,11 +378,11 @@ FlushEarlyFlow::FlushEarlyFlow(
       flush_early_fetch_(flush_early_fetch),
       driver_(driver),
       factory_(factory),
-      manager_(driver->server_context()),
+      server_context_(driver->server_context()),
       property_cache_callback_(property_cache_callback),
       should_flush_early_lazyload_script_(false),
       handler_(driver_->server_context()->message_handler()) {
-  Statistics* stats = manager_->statistics();
+  Statistics* stats = server_context_->statistics();
   num_requests_flushed_early_ = stats->GetTimedVariable(
       kNumRequestsFlushedEarly);
   num_resources_flushed_early_ = stats->GetTimedVariable(
@@ -404,7 +404,7 @@ FlushEarlyFlow::~FlushEarlyFlow() {
 
 void FlushEarlyFlow::FlushEarly() {
   const RewriteOptions* options = driver_->options();
-  const PropertyCache::Cohort* cohort = manager_->page_property_cache()->
+  const PropertyCache::Cohort* cohort = server_context_->page_property_cache()->
       GetCohort(RewriteDriver::kDomCohort);
   PropertyPage* page = property_cache_callback_->property_page();
   DCHECK(page != NULL);
@@ -461,7 +461,7 @@ void FlushEarlyFlow::FlushEarly() {
           should_flush_early_lazyload_script_ = true;
         }
 
-        int64 now_ms = manager_->timer()->NowMs();
+        int64 now_ms = server_context_->timer()->NowMs();
         // Clone the RewriteDriver which is used rewrite the HTML that we are
         // trying to flush early.
         RewriteDriver* new_driver = driver_->Clone();
@@ -550,7 +550,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
   if (should_flush_early_lazyload_script_) {
     // Flush Lazyload filter script content.
     StaticAssetManager* static_asset_manager =
-          manager_->static_asset_manager();
+          server_context_->static_asset_manager();
     GoogleString script_content = LazyloadImagesFilter::GetLazyloadJsSnippet(
         driver_->options(), static_asset_manager);
     base_fetch_->Write(StringPrintf(kJavascriptInline,
@@ -574,7 +574,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
   flush_early_driver->decrement_async_events_count();
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(
-      manager_->timer()->NowMs() - start_time_ms);
+      server_context_->timer()->NowMs() - start_time_ms);
   // We delete FlushEarlyFlow first to prevent the race conditon where
   // tests finish before the destructor of FlushEarlyFlow gets called
   // and hence decrement async events on the driver doesn't happen.
@@ -593,7 +593,7 @@ void FlushEarlyFlow::GenerateResponseHeaders(
     response_headers->Add(
         kPsaRewriterHeader, driver_->log_record()->AppliedRewritersString());
   }
-  response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
+  response_headers->SetDateAndCaching(server_context_->timer()->NowMs(), 0,
                                       ", private, no-cache");
 
   if ((driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||

@@ -52,7 +52,7 @@ TrimWhitespaceRewriter::~TrimWhitespaceRewriter() {
 bool TrimWhitespaceRewriter::RewriteText(const StringPiece& url,
                                          const StringPiece& in,
                                          GoogleString* out,
-                                         ServerContext* resource_manager) {
+                                         ServerContext* server_context) {
   LOG(INFO) << "Trimming whitespace.";
   ++num_rewrites_;
   TrimWhitespace(in, out);

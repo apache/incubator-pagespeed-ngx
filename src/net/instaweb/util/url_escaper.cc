@@ -34,13 +34,7 @@ namespace {
 // an escaper.
 //
 // Unfortunately this makes longer filenames because ',' is also used
-// in the filenam encoder.
-//
-// TODO(jmarantz): Pass through '.', and exploit '/' as a legal character
-// in URLs.  This requires redefining the constraints of a 'segment', which
-// currently excludes both '.' and '/' due to rules enforced primarily
-// in net/instaweb/rewriter/resource_manager.cc, but are distributed a bit
-// more widely.
+// in the filename encoder.
 const char kPassThroughChars[] = "._=+-";
 
 // Checks for 'search' at start of 'src'.  If found, appends

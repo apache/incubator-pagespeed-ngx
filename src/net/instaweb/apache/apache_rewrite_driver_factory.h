@@ -58,7 +58,6 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class UrlPollableAsyncFetcher;
-class Writer;
 
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
@@ -268,7 +267,7 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual void SetupCaches(ServerContext* resource_manager);
+  virtual void SetupCaches(ServerContext* server_context);
   virtual NamedLockManager* DefaultLockManager();
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
                                              StringPiece name);
@@ -346,10 +345,10 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // managed by the RewriteDriverFactory.  But in the root Apache process
   // the ServerContexts will never be initialized.  We track these here
   // so that ApacheRewriteDriverFactory::ChildInit can iterate over all
-  // the managers that need to be ChildInit'd, and so that we can free
-  // the managers in the Root process that were never ChildInit'd.
+  // the server contexts that need to be ChildInit'd, and so that we can free
+  // them in the Root process that does not run ChildInit.
   typedef std::set<ApacheServerContext*> ApacheServerContextSet;
-  ApacheServerContextSet uninitialized_managers_;
+  ApacheServerContextSet uninitialized_server_contexts_;
 
   // If true, we'll have a separate statistics object for each vhost
   // (along with a global aggregate), rather than just a single object

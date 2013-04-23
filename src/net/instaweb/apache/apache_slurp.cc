@@ -234,33 +234,34 @@ class StrippingFetch : public StringAsyncFetch {
 
 }  // namespace
 
-void SlurpUrl(ApacheServerContext* manager, request_rec* r) {
+void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
   const char* url =
-      InstawebContext::MakeRequestUrl(*manager->global_options(), r);
+      InstawebContext::MakeRequestUrl(*server_context->global_options(), r);
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       url, r->parsed_uri.query);
 
   // Figure out if we should be using a slurp fetcher rather than the default
   // system fetcher.
-  UrlAsyncFetcher* fetcher = manager->DefaultSystemFetcher();
+  UrlAsyncFetcher* fetcher = server_context->DefaultSystemFetcher();
   scoped_ptr<HttpDumpUrlFetcher> sync_fetcher;
   scoped_ptr<FakeUrlAsyncFetcher> adapter_fetcher;
 
-  ApacheConfig* config = manager->config();
+  ApacheConfig* config = server_context->config();
   if (config->test_proxy() && !config->test_proxy_slurp().empty()) {
     sync_fetcher.reset(new HttpDumpUrlFetcher(
-        config->test_proxy_slurp(), manager->file_system(), manager->timer()));
+        config->test_proxy_slurp(), server_context->file_system(),
+        server_context->timer()));
     adapter_fetcher.reset(new FakeUrlAsyncFetcher(sync_fetcher.get()));
     fetcher = adapter_fetcher.get();
   }
 
-  MessageHandler* handler = manager->message_handler();
+  MessageHandler* handler = server_context->message_handler();
   RequestContextPtr request_context(
-      new RequestContext(manager->thread_system()->NewMutex(),
-                         manager->timer()));
-  StrippingFetch fetch(stripped_url, manager->config()->domain_lawyer(),
-                       fetcher, manager->thread_system(), request_context,
-                       handler);
+      new RequestContext(server_context->thread_system()->NewMutex(),
+                         server_context->timer()));
+  StrippingFetch fetch(stripped_url, server_context->config()->domain_lawyer(),
+                       fetcher, server_context->thread_system(),
+                       request_context, handler);
   ApacheRequestToRequestHeaders(*r, fetch.request_headers());
 
   if (fetch.Fetch()) {
@@ -269,8 +270,8 @@ void SlurpUrl(ApacheServerContext* manager, request_rec* r) {
     // in the fetch we did to write the slurp.
     ApacheWriter apache_writer(r);
     apache_writer.set_disable_downstream_header_filters(true);
-    ChunkingWriter chunking_writer(&apache_writer,
-                                   manager->config()->slurp_flush_limit());
+    ChunkingWriter chunking_writer(
+        &apache_writer, server_context->config()->slurp_flush_limit());
     apache_writer.OutputHeaders(fetch.response_headers());
     chunking_writer.Write(fetch.buffer(), handler);
   } else {
