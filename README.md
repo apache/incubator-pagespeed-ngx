@@ -27,17 +27,18 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
 
    ```bash
    # These are for RedHat, CentOS, and Fedora.
-   $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
+   $ sudo yum install gcc-c++ pcre-dev pcre-devel zlib-devel make
 
    # These are for Debian. Ubuntu will be similar.
-   $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
+   $ sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev
    ```
 
-2. Check out ngx_pagespeed:
+2. Download ngx_pagespeed:
 
    ```bash
    $ cd ~
-   $ git clone https://github.com/pagespeed/ngx_pagespeed.git
+   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/release-1.5.27.1-beta.zip
+   $ unzip release-1.5.27.1-beta.zip
    ```
 
 3. Download and build nginx:
@@ -47,7 +48,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ wget http://nginx.org/download/nginx-1.3.15.tar.gz
    $ tar -xvzf nginx-1.3.15.tar.gz
    $ cd nginx-1.3.15/
-   $ ./configure --add-module=$HOME/ngx_pagespeed
+   $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.5.27.1-beta
    $ make
    $ sudo make install
    ```
