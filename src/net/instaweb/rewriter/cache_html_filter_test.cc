@@ -69,8 +69,8 @@ const char kHtmlInput[] =
 
 const char kExpectedOutput[] =
     "<script>pagespeed.panelLoader.loadCookies([\"helo=world; path=/\"]);</script>"  // NOLINT
-    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"__psa_lt;div CLASS=\\\"An \\t \\r \\n item\\\"__psa_gt;__psa_lt;/div__psa_gt;\",\"xpath\":\"//div[1]\"}}\n);</script>"  // NOLINT
-    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.1\":{\"instance_html\":\"__psa_lt;span class=\\\"Item again\\\"__psa_gt;__psa_lt;/span__psa_gt;\",\"xpath\":\"//div[2]/span[1]\"}}\n);</script>"  // NOLINT
+    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"__psa_lt;div CLASS=\\\"An \\t \\r \\n item\\\"__psa_gt;__psa_lt;/div__psa_gt;\",\"xpath\":\"//div[2]\"}}\n);</script>"  // NOLINT
+    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.1\":{\"instance_html\":\"__psa_lt;span class=\\\"Item again\\\"__psa_gt;__psa_lt;/span__psa_gt;\",\"xpath\":\"//div[3]/span[1]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.2\":{\"instance_html\":\"__psa_lt;span class=\\\"item\\\"__psa_gt;__psa_lt;/span__psa_gt;\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[1]/span[1]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-1.0\":{\"instance_html\":\"__psa_lt;h2 Id=\\\"beforeItems\\\"__psa_gt; This is before Items __psa_lt;/h2__psa_gt;\",\"xpath\":\"//div[@id=\\\"container\\\"]/h2[2]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.3\":{\"instance_html\":\"__psa_lt;div class=\\\"another item here\\\"__psa_gt;__psa_lt;img src=\\\"image1\\\"__psa_gt;__psa_lt;img src=\\\"image2\\\"__psa_gt;__psa_lt;/div__psa_gt;\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"  // NOLINT

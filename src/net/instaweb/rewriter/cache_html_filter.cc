@@ -63,11 +63,7 @@ void CacheHtmlFilter::StartDocument() {
 
 void CacheHtmlFilter::StartElement(HtmlElement* element) {
   if (!num_children_stack_.empty()) {
-    // Don't increment the count for noscript since the cached html doesn't
-    // have it.
-    if (element->keyword() != HtmlName::kNoscript) {
-      num_children_stack_.back()++;
-    }
+    num_children_stack_.back()++;
     num_children_stack_.push_back(0);
   } else if (element->keyword() == HtmlName::kBody) {
     // Start the stack only once body is encountered.
