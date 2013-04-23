@@ -55,8 +55,9 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
 If this doesn't work see the [build
 troubleshooting](https://github.com/pagespeed/ngx_pagespeed/wiki/Build-Troubleshooting) page.
 
-This will use a binary PageSpeed Optimization Library.  If you would rather
-build PSOL from source, [here's how to do that](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
+This will use a binary PageSpeed Optimization Library, but it's also possible to
+[build PSOL from
+source](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
 
 ## How to use
 
