@@ -1,19 +1,5 @@
 ![ngx_pagespeed](https://lh6.googleusercontent.com/-qufedJIJq7Y/UXEvVYxyYvI/AAAAAAAADo8/JHDFQhs91_c/s401/04_ngx_pagespeed.png)
 
-This is the [nginx](http://nginx.org/) port of
-[mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
-
-**ngx_pagespeed is alpha**. If you are interested in test-driving the module, or
-contributing to the project, see below. For feedback, questions, and to follow
-the progress of the project:
-
-- [ngx-pagespeed-discuss mailing
-  list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
-- [ngx-pagespeed-announce mailing
-  list](https://groups.google.com/forum/#!forum/ngx-pagespeed-announce)
-
----
-
 ngx_pagespeed speeds up your site and reduces page load time by automatically
 applying web performance best practices to pages and associated assets (CSS,
 JavaScript, images) without requiring you to modify your existing content or
@@ -27,9 +13,6 @@ workflow. Features include:
 - Cache lifetime extension
 - and
   [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
-
-Nearly all mod_pagespeed features work in ngx_pagespeed; see the ever-shrinking
-[list of missing features](https://github.com/pagespeed/ngx_pagespeed/wiki/List-of-missing-mod_pagespeed-features).
 
 To see ngx_pagespeed in action, with example pages for each of the
 optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
@@ -128,8 +111,17 @@ directives: replace **ModPagespeed** with **pagespeed**:
 
 For more configuration details, see the [differences from mod_pagespeed
 configuration](https://github.com/pagespeed/ngx_pagespeed/wiki/Configuration-differences-from-mod_pagespeed)
-wiki page.
+and <a href="https://github.com/pagespeed/ngx_pagespeed/wiki/Known-Issues">known
+issues</a> wiki pages.
 
 There are extensive system tests which cover most of ngx_pagespeed's
 functionality.  Consider [testing your
 installation](https://github.com/pagespeed/ngx_pagespeed/wiki/Testing).
+
+For feedback, questions, and to follow
+the progress of the project:
+
+- [ngx-pagespeed-discuss mailing
+  list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
+- [ngx-pagespeed-announce mailing
+  list](https://groups.google.com/forum/#!forum/ngx-pagespeed-announce)
