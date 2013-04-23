@@ -177,16 +177,23 @@ const char* kInsertDnsPrefetchBlacklist[] = {
   "*MSIE 8.*",
 };
 
-// Only a few user agents are supported at this point.
-// This is currently used only by kResizeMobileImages and
-// kSquashImagesForMobileScreento deliver smaller images to mobile devices.
+// Whitelist used for doing the IsMobileUserAgent check, which also feeds
+// into the device type used for storing properties in the property cache.
 // We treat tablets like desktops as they have big enough screen (relative
 // to phones).
-// TODO(bolian): Add more mobile user agents.
 const char* kMobileUserAgentWhitelist[] = {
-  "*Android*Mobile Safari*",
-  "*iPhone OS*",
-  "*BlackBerry88*",
+  "*iPhone*",
+  "*BlackBerry*",
+  "*Opera Mobi*",
+  "*Opera Mini*",
+  "*SymbianOS*",
+  "*UP.Browser*",
+  "*J-PHONE*",
+  "*Profile/MIDP*",
+  "*profile/MIDP*",
+  "*portalmmm*",
+  "*DoCoMo*",
+  "*Mozilla*Android*Mobile*",
 };
 
 const char* kSupportsPrefetchLinkRelSubresource[] = {

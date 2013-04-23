@@ -135,6 +135,90 @@ const char kAcceptHeaderValueMobile[] =
 const char kXWapProfile[] = "x-wap-profile";
 const char kXWapProfileHeaderValue[] = "http://foo.bar.xml";
 
+// Desktop User Agent examples.
+const char kBenqUserAgent[] = "BENQ-A500";
+const char kCompalUserAgent[] = "Compal-A618";
+const char kFLYUserAgent[] = "FLY-2040i/BSI AU.Browser/2.0 QO3C1 MMP/1.0";
+const char kLENOVOUserAgent[] =
+    "LENOVO-E307_ENG_RUS_FLY/(2006.05.10)S276/WAP1.2.1";
+const char kSpiceUserAgent[] =
+    "Spice M6800  Opera/9.80 (MTK; Nucleus; U; en-US) Presto/2.4.18 "
+    "Version/10.00";
+const char kYourWapUserAgent[] = "YourWap Ericsson 380/2.63";
+const char kAmoiUserAgent[] = "Amoi 8512/R18.0 NF-Browser/3.3";
+const char kPGUserAgent[] = "PG-1610/R01";
+const char kTIANYUUserAgent[] = "TIANYU-KTOUCH/B2012";
+const char kSCHUserAgent[] = "SCH-U350/1.0 NetFront/3.0.22.2.18 (GUI) MMP/2.0";
+const char kSGHUserAgent[] = "SGH-Z230";
+const char kWinWAPUserAgent[] = "WinWAP/1.3 (1.3.0.0;WinCE;PPC2003)";
+const char kRoverUserAgent[] = "Rover 3.5 (RIM Handheld; Mobitex; OS v. 2.1)";
+const char kiUserAgent[] = "i-mobile318";
+const char kPHILIPSUserAgent[] = "PHILIPS 330 / Obigo Internet Browser 2.0";
+const char kSHARPUserAgent[] = "SHARP-TQ-GX15";
+const char kNECUserAgent[] =
+    "NEC-E122/1.0 TMT-Mobile-Internet-Browser/1.1.14.20 (GUI)";
+const char kAlcatelUserAgent[] =
+    "Alcatel_one_touch_214/1.0 ObigoInternetBrowser/Q03C";
+const char kLGEUserAgent[] = "LGE-CU8188";
+const char kSAGEMUserAgent[] = "SAGEM-942";
+const char kSIEUserAgent[] = "SIE-A40";
+const char kLGUserAgent[] = "LG-B2000";
+const char kMozillaUserAgent[] =
+    "Mozilla/1.22 (compatible; MMEF20; Cellphone; Sony CMD-Z5)";
+
+// Mobile User Agent examples.
+const char kNokiaMobileUserAgent[] =
+    "Nokia6600/1.0 (2.33.0) SymbianOS/7.0s Series60/2.0 "
+    "Profile/MIDP-2.0 Configuration/CLDC-1.0";
+const char kSHARPMobileUserAgent[] =
+    "SHARP-TQ-GX10/0.0 Profile/MIDP-1.0 Configuration/CLDC-1.0 "
+    "UP.Browser/6.1.0.2.129 (GUI) MMP/1.0";
+const char kKWCMobileUserAgent[] =
+    "KWC-E2000/1003 UP.Browser/7.2.6.1.475 (GUI) MMP/2.0";
+const char kSCHMobileUserAgent[] = "SCH-A850 UP.Browser/6.2.3.2 (GUI) MMP/2.0";
+const char kJMobileUserAgent[] = "J-PHONE/3.0/J-SA05";
+const char kALCATELMobileUserAgent[] =
+    "ALCATEL_one_touch_310A/1.0 Profile/MIDP-2.0 "
+    "Configuration/CLDC-1.1 ObigoInternetBrowser/Q03C";
+const char kPanasonicMobileUserAgent[] =
+    "Panasonic-G60/1.0 UP.Browser/6.1.0.6 "
+    "MMP/1.0 UP.Browser/6.1.0.6 (GUI) MMP/1.0";
+const char kSAMSUNGMobileUserAgent[] =
+    "SAMSUNG-B2700/SXIB1 SHP/VPP/R5 NetFront/3.4 SMM-MMS/1.2.0 "
+    "profile/MIDP-2.0 configuration/CLDC-1.1";
+const char kSAGEMMobileUserAgent[] =
+    "SAGEM-my202C/Orange1.0 UP.Browser/5.0.5.6 (GUI)";
+const char kZTEMobileUserAgent[] = "ZTE-C705/1.0 UP.Browser/4.1.27a2";
+const char kOperaMiniMobileUserAgent[] =
+    "Opera/8.01 (J2ME/MIDP; Opera Mini/1.1.4821/hifi/tmobile/uk; "
+    "Motorola V3; en; U; ssr)";
+const char kOperaMobilMobileUserAgent[] =
+    "Opera/9.80 (Android 4.0.4; Linux; Opera Mobi/ADR-1104201100; U; ru) "
+    "Presto/2.7.81 Version/11.00";
+const char kLGEMobileUserAgent[] =
+    "LGE-AX300/1.0 UP.Browser/6.2.3.8 (GUI) MMP/2.0";
+const char kSoftBankMobileUserAgent[] =
+    "SoftBank/1.0/705NK/NKJ001 Series60/3.0 NokiaN73/3.0650 "
+    "Profile/MIDP-2.0 Configuration/CLDC-1.1";
+const char kVodafoneMobileUserAgent[] =
+    "Vodafone/1.0/0Vodafone710/B616 Browser/Obigo-Browser/Q04A "
+    "MMS/Obigo-MMS/Q04A SyncML/HW-SyncML/1.0 Java/QVM/4.1 Profile/MIDP-2.0 "
+    "Configuration/CLDC-1.1";
+const char kSIEMobileUserAgent[] = "SIE-2128/24 UP.Browser/5.0.3.3 (GUI)";
+const char kportalmmmMobileUserAgent[] = "portalmmm/2.0 6120(c100;TB)";
+const char kKDDIMobileUserAgent[] =
+    "KDDI-CA31 UP.Browser/6.2.0.7.3.129 (GUI) MMP/2.0";
+const char kSECMobileUserAgent[] = "SEC-scha310 UP.Browser/4.1.26c3";
+const char kDoCoMoMobileUserAgent[] = "DoCoMo/1.0/D505iS/c20/TB/W20H10";
+const char kLGUPBrowserMobileUserAgent[] =
+    "LG8500/1.0 UP.Browser/6.2.3.9 (GUI) MMP/2.0";
+const char kLGMIDPMobileUserAgent[] =
+    "LG-A225/V100 Obigo/WAP2.0 Profile/MIDP-2.1 Configuration/CLDC-1.1";
+const char kMOTMobileUserAgent[] = "MOT-1.2.0/11.03 UP.Browser/4.1.27a";
+const char kMozillaMobileUserAgent[] =
+    "Mozilla/4.0 (compatible; MSIE 4.01; Windows CE; Smartphone; "
+    "SDA/2.0 Profile/MIDP-2.0 Configuration/CLDC-1.1)";
+
 }  // namespace UserAgentStrings
 }  // namespace net_instaweb
 

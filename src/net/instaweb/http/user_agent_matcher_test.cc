@@ -148,9 +148,6 @@ TEST_F(UserAgentMatcherTest, DoesNotSupportBlink) {
   const RequestHeaders headers;
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkRequestType(
-                UserAgentStrings::kNokiaUserAgent, &headers));
-  EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkRequestType(
                 UserAgentStrings::kOpera5UserAgent, &headers));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkRequestType(
@@ -444,10 +441,57 @@ TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
   EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidChrome21UserAgent));
   EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kIPhoneChrome21UserAgent));
   EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kNokiaMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSHARPMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kKWCMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSCHMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kJMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kALCATELMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kPanasonicMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSAMSUNGMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSAGEMMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kZTEMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kOperaMiniMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kOperaMobilMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kLGEMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSoftBankMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kVodafoneMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSIEMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kportalmmmMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kKDDIMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSECMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kDoCoMoMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kLGUPBrowserMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kLGMIDPMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kMOTMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kMozillaMobileUserAgent));
 
   EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kNexus7ChromeUserAgent));
   EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kIPadUserAgent));
   EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSafariUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kBenqUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kCompalUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kFLYUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kLENOVOUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSpiceUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kYourWapUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kAmoiUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kPGUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kTIANYUUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSCHUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSGHUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kWinWAPUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kRoverUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kiUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kPHILIPSUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSHARPUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kNECUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kAlcatelUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kLGEUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSAGEMUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSIEUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kLGUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kMozillaUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {

@@ -2146,7 +2146,7 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   int screen_height;
   ImageUrlEncoder::GetNormalizedScreenResolution(
       100, 80, &screen_width, &screen_height);
-  rewrite_driver()->SetUserAgent("Android 4 Mobile Safari");
+  rewrite_driver()->SetUserAgent(UserAgentStrings::kAndroidNexusSUserAgent);
 
   TestSquashImagesForMobileScreen(
       rewrite_driver(), screen_width, screen_height);
