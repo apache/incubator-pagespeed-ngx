@@ -1998,8 +1998,14 @@ TEST_F(CssFilterTest, AlternateStylesheet) {
                    StringPrintf(html_format, " StyleSheet alterNATE  ",
                                 new_url.c_str()));
 
-  ValidateNoChanges("alternate_stylesheet_and_more",
-                    StringPrintf(html_format, "  foo stylesheet alternate bar ",
+  ValidateExpected("alternate_stylesheet_and_more",
+                   StringPrintf(html_format, "  foo stylesheet alternate bar ",
+                                "foo.css"),
+                   StringPrintf(html_format, "  foo stylesheet alternate bar ",
+                                new_url.c_str()));
+
+  ValidateNoChanges("alternate_not_stylesheet",
+                    StringPrintf(html_format, "alternate snowflake",
                                  "foo.css"));
 }
 

@@ -250,6 +250,38 @@ TEST_F(CssTagScannerTest, TestHasImport) {
       "@import url('http://foo.com');\n", &message_handler_));
 }
 
+TEST_F(CssTagScannerTest, IsStylesheetOrAlternate) {
+  EXPECT_TRUE(CssTagScanner::IsStylesheetOrAlternate("stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetOrAlternate("canonical stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetOrAlternate(" stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetOrAlternate(" styleSheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetOrAlternate("alternate stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetOrAlternate("stylesheet alternate"));
+  EXPECT_TRUE(
+    CssTagScanner::IsStylesheetOrAlternate("stylesheet alternate canonical"));
+  EXPECT_TRUE(
+    CssTagScanner::IsStylesheetOrAlternate("StyleshEet alternAte canoNical "));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetOrAlternate("alternate"));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetOrAlternate("prev"));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetOrAlternate(""));
+}
+
+TEST_F(CssTagScannerTest, IsStylesheetNotAlternate) {
+  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate("stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate("canonical stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate(" stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate(" styleSheet"));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("alternate stylesheet"));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("stylesheet alternate"));
+  EXPECT_FALSE(
+    CssTagScanner::IsStylesheetNotAlternate("stylesheet alternate canonical"));
+  EXPECT_FALSE(
+    CssTagScanner::IsStylesheetNotAlternate("StyleshEet alternAte canoNical "));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("alternate"));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("prev"));
+  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate(""));
+}
+
 class RewriteDomainTransformerTest : public RewriteTestBase {
  public:
   RewriteDomainTransformerTest()

@@ -392,20 +392,32 @@ bool CssTagScanner::HasUrl(const StringPiece& contents) {
 
 bool CssTagScanner::IsStylesheetOrAlternate(
     const StringPiece& attribute_value) {
+  StringPieceVector values;
+  SplitStringPieceToVector(attribute_value, " ", &values, true);
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    if (StringCaseEqual(values[i], kStylesheet)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool CssTagScanner::IsStylesheetNotAlternate(
+    const StringPiece& attribute_value) {
   bool has_stylesheet = false;
-  bool has_other = false;
+  bool has_alternate = false;
   StringPieceVector values;
   SplitStringPieceToVector(attribute_value, " ", &values, true);
   for (int i = 0, n = values.size(); i < n; ++i) {
     if (StringCaseEqual(values[i], kStylesheet)) {
       has_stylesheet = true;
-    } else if (!StringCaseEqual(values[i], kAlternate)) {
-      has_other = true;
+    } else if (StringCaseEqual(values[i], kAlternate)) {
+      has_alternate = true;
     }
   }
 
-  // Require "stylesheet", ignore "alternate", disallow all other values.
-  return has_stylesheet && !has_other;
+  // Require "stylesheet", and not "alternate".
+  return has_stylesheet && !has_alternate;
 }
 
 RewriteDomainTransformer::RewriteDomainTransformer(
