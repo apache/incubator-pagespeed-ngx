@@ -44,6 +44,21 @@
       ],
     },
     {
+      'target_name': 'jsminify',
+      'type': '<(library)',
+      'sources': [
+        'kernel/js/js_minify.cc',
+      ],
+      # TODO(bmcquade): We should fix the code so this is not needed.
+      'msvs_disabled_warnings': [ 4018 ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'base',
+      ],
+    },
+    {
       'target_name': 'util',
       'type': '<(library)',
       'sources': [

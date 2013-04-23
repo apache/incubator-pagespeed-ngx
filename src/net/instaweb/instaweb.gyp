@@ -1014,7 +1014,7 @@
         'instaweb_util',
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
+        '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -1028,7 +1028,7 @@
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
+        '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'sources': [
         'rewriter/javascript_code_block.cc',
@@ -1331,7 +1331,7 @@
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
+        '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'sources': [
         'automatic/blink_flow_critical_line.cc',

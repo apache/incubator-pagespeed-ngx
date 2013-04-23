@@ -28,8 +28,7 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
-#include "pagespeed/js/js_minify.h"
+#include "pagespeed/kernel/js/js_minify.h"
 
 // Command-line javascript minifier and metadata printer.  Takes a single
 // javascript file as either standard input or a command-line argument, and by

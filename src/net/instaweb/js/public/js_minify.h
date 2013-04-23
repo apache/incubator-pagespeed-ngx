@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_JS_PUBLIC_JS_MINIFY_H_
 #define NET_INSTAWEB_JS_PUBLIC_JS_MINIFY_H_
 
-#include "pagespeed/js/js_minify.h"
+// TODO(jkarlin): Remove this file and fix forwarding references.
+
+#include "pagespeed/kernel/js/js_minify.h"
 
 #endif  // NET_INSTAWEB_JS_PUBLIC_JS_MINIFY_H_

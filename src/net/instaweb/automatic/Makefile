@@ -108,6 +108,7 @@ BASE_LIBS = \
   net/instaweb/libtest_infrastructure.a \
   pagespeed/libbase.a \
   pagespeed/libutil.a \
+  pagespeed/libjsminify.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/css_parser/libcss_parser.a \
@@ -127,7 +128,6 @@ BASE_LIBS = \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_scanline_utils.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_webp_optimizer.a \
-  third_party/libpagespeed/src/pagespeed/js/libpagespeed_jsminify.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_resource_pb.a \
   third_party/libpagespeed/src/pagespeed/proto/libtimeline_pb.a \
