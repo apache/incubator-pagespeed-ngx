@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -73,6 +74,13 @@ void CriticalCssBeaconFilter::InitStats(Statistics* statistics) {
 }
 
 bool CriticalCssBeaconFilter::MustSummarize(HtmlElement* element) const {
+  // Don't summarize alternate stylesheets, they are clearly non-critical.
+  if (element->keyword() == HtmlName::kLink &&
+      CssTagScanner::IsAlternateStylesheet(
+          element->AttributeValue(HtmlName::kRel))) {
+    return false;
+  }
+
   // Don't summarize non-screen-affecting or <noscript> CSS at all; the time we
   // spend doing that is better devoted to summarizing CSS selectors we will
   // actually consider critical.

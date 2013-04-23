@@ -90,8 +90,8 @@ class CssTagScanner {
   // Should be called with element->AttributeValue(HtmlName::kRel) as the arg.
   static bool IsStylesheetOrAlternate(const StringPiece& attribute_value);
 
-  // Does this rel attribute value represent a non-alternate stylesheet?
-  static bool IsStylesheetNotAlternate(const StringPiece& attribute_value);
+  // Does this rel attribute value represent an alternate stylesheet?
+  static bool IsAlternateStylesheet(const StringPiece& attribute_value);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);

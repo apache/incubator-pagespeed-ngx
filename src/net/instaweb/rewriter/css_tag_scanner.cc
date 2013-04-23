@@ -402,8 +402,7 @@ bool CssTagScanner::IsStylesheetOrAlternate(
   return false;
 }
 
-bool CssTagScanner::IsStylesheetNotAlternate(
-    const StringPiece& attribute_value) {
+bool CssTagScanner::IsAlternateStylesheet(const StringPiece& attribute_value) {
   bool has_stylesheet = false;
   bool has_alternate = false;
   StringPieceVector values;
@@ -416,8 +415,7 @@ bool CssTagScanner::IsStylesheetNotAlternate(
     }
   }
 
-  // Require "stylesheet", and not "alternate".
-  return has_stylesheet && !has_alternate;
+  return has_stylesheet && has_alternate;
 }
 
 RewriteDomainTransformer::RewriteDomainTransformer(

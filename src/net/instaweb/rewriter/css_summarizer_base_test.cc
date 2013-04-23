@@ -37,7 +37,8 @@ namespace net_instaweb {
 namespace {
 
 const char kExpectedResult[] =
-    "OK/*{display:|OK/div{displa|ParseError/|FetchError/|ResourceError/|";
+    "OK/*{display:|OK/div{displa/rel=stylesheet|ParseError//rel=stylesheet|"
+    "FetchError//rel=stylesheet|ResourceError/|";
 
 // Extracts first 10 characters of minified form of every stylesheet.
 class MinifyExcerptFilter : public CssSummarizerBase {
@@ -126,7 +127,9 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     for (int i = 0; i < NumStyles(); ++i) {
       const SummaryInfo& sum = GetSummaryForStyle(i);
       StrAppend(&result_, EncodeState(sum.state), "/", sum.data,
-                (sum.is_inside_noscript ? "/noscr" : ""), "|");
+                (sum.is_inside_noscript ? "/noscr" : ""),
+                (sum.rel.empty() ? "" : StrCat("/rel=", sum.rel)),
+                "|");
     }
     InjectSummaryData(driver()->NewCommentNode(NULL, result_));
   }
@@ -248,7 +251,8 @@ TEST_F(CssSummarizerBaseTest, RenderSummary) {
   Parse("link", StrCat(CssLinkHref("a.css"),
                        "<style>* { background: blue; }</style>"));
   EXPECT_STREQ("<html>\n<style>div{displa</style><style>*{backgrou</style>\n"
-               "<!--OK/div{displa|OK/*{backgrou|--></html>", output_buffer_);
+               "<!--OK/div{displa/rel=stylesheet|"
+                   "OK/*{backgrou|--></html>", output_buffer_);
 }
 
 TEST_F(CssSummarizerBaseTest, WillNotRenderSummary) {
@@ -279,10 +283,19 @@ TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWait) {
   CallFetcherCallbacks();
 }
 
+TEST_F(CssSummarizerBaseTest, AlternateHandling) {
+  // CssSummarizerBase itself handles alternate stylesheets, just keeps
+  // the rel around inside the SummaryInfo
+  Parse("alternate", "<link rel=\"stylesheet alternate\" href=\"a.css\">");
+  EXPECT_STREQ("OK/div{displa/rel=stylesheet alternate|", filter_->result());
+}
+
 TEST_F(CssSummarizerBaseTest, NoScriptHandling) {
   Parse("ns", StrCat(CssLinkHref("a.css"),
                      "<noscript>", CssLinkHref("a.css"), "</noscript>"));
-  EXPECT_STREQ("OK/div{displa|OK/div{displa/noscr|", filter_->result());
+  EXPECT_STREQ("OK/div{displa/rel=stylesheet|"
+                   "OK/div{displa/noscr/rel=stylesheet|",
+               filter_->result());
 }
 
 TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
@@ -297,7 +310,8 @@ TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
                "<style pagespeed_no_defer>div {display:none;}</style>"
                "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
                "<style>div{displa</style>\n"
-               "<!--OK/*{backgrou|OK/div{displa|--></html>", output_buffer_);
+               "<!--OK/*{backgrou|OK/div{displa/rel=stylesheet|--></html>",
+               output_buffer_);
 }
 
 TEST_F(CssSummarizerBaseTest, NoBody) {
@@ -394,7 +408,8 @@ TEST_F(CssSummarizerBaseWithCombinerFilterTest, Interaction) {
 
   Parse("with_combine", StrCat(CssLinkHref("a.css"), CssLinkHref("a2.css")));
   EXPECT_EQ(StrCat("<html>\n", CssLinkHref(combined_url),
-                   "\n<!--OK/div{displa|SlotRemoved/|--></html>"),
+                   "\n<!--OK/div{displa/rel=stylesheet|"
+                   "SlotRemoved//rel=stylesheet|--></html>"),
             output_buffer_);
 }
 

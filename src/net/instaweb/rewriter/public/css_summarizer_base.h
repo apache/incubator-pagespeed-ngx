@@ -97,6 +97,9 @@ class CssSummarizerBase : public RewriteFilter {
     // CSS media there were applied to the resource by the HTML.
     GoogleString media_from_html;
 
+    // If it's an external stylesheet, the value of the rel attribute
+    GoogleString rel;
+
     // True if it's a <link rel=stylesheet href=>, false for <style>
     bool is_external;
 
@@ -221,8 +224,9 @@ class CssSummarizerBase : public RewriteFilter {
   void StartInlineRewrite(HtmlElement* style, HtmlCharactersNode* text);
 
   // Starts the asynchronous rewrite process for external CSS referenced by
-  // attribute 'src' of 'link'.
-  void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src);
+  // attribute 'src' of 'link', whose rel attribute is 'rel'.
+  void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src,
+                            StringPiece rel);
 
   // Creates our rewrite context for the given slot and registers it
   // with the summaries_ vector, filling in the SummaryInfo struct in
@@ -233,7 +237,8 @@ class CssSummarizerBase : public RewriteFilter {
                                        bool external,
                                        const ResourceSlotPtr& slot,
                                        const GoogleString& location,
-                                       StringPiece base_for_resources);
+                                       StringPiece base_for_resources,
+                                       StringPiece rel);
 
   ResourceSlot* MakeSlotForInlineCss(const StringPiece& content);
 

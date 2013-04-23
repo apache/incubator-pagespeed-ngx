@@ -350,17 +350,15 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
   switch (element->keyword()) {
     case HtmlName::kLink: {
       // Rewrite an external style.
-      // TODO(morlovich): This is wrong with alternate; current
-      //     CssTagScanner is wrong with title=
       injection_point_ = NULL;
-      if (CssTagScanner::IsStylesheetOrAlternate(
-              element->AttributeValue(HtmlName::kRel))) {
+      StringPiece rel = element->AttributeValue(HtmlName::kRel);
+      if (CssTagScanner::IsStylesheetOrAlternate(rel)) {
         HtmlElement::Attribute* element_href = element->FindAttribute(
             HtmlName::kHref);
         if (element_href != NULL) {
           // If it has a href= attribute
           if (MustSummarize(element)) {
-            StartExternalRewrite(element, element_href);
+            StartExternalRewrite(element, element_href, rel);
           }
         }
       }
@@ -454,13 +452,14 @@ void CssSummarizerBase::StartInlineRewrite(
   Context* context =
       CreateContextAndSummaryInfo(style, false /* not external */,
                                   slot, slot->LocationString(),
-                                  driver_->decoded_base());
+                                  driver_->decoded_base(),
+                                  StringPiece() /* rel, none since inline */);
   context->SetupInlineRewrite(style, text);
   driver_->InitiateRewrite(context);
 }
 
 void CssSummarizerBase::StartExternalRewrite(
-    HtmlElement* link, HtmlElement::Attribute* src) {
+    HtmlElement* link, HtmlElement::Attribute* src, StringPiece rel) {
   // Create the input resource for the slot.
   ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull()));
   if (input_resource.get() == NULL) {
@@ -482,7 +481,7 @@ void CssSummarizerBase::StartExternalRewrite(
   ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
   Context* context = CreateContextAndSummaryInfo(
       link, true /* external*/, slot, input_resource->url() /* location*/,
-      input_resource->url() /* base */);
+      input_resource->url() /* base */, rel);
   context->SetupExternalRewrite(link);
   driver_->InitiateRewrite(context);
 }
@@ -501,7 +500,8 @@ ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
 
 CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(
     const HtmlElement* element, bool external, const ResourceSlotPtr& slot,
-    const GoogleString& location, StringPiece base_for_resources) {
+    const GoogleString& location, StringPiece base_for_resources,
+    StringPiece rel) {
   int id = summaries_.size();
   summaries_.push_back(SummaryInfo());
   SummaryInfo& new_summary = summaries_.back();
@@ -513,6 +513,7 @@ CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(
       media_attribute->DecodedValueOrNull() != NULL) {
     new_summary.media_from_html = media_attribute->DecodedValueOrNull();
   }
+  rel.CopyToString(&new_summary.rel);
   new_summary.is_external = external;
   new_summary.is_inside_noscript = (noscript_element() != NULL);
 

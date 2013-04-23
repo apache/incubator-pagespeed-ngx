@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -284,6 +285,10 @@ void CriticalSelectorFilter::RenderSummary(
     // Optimize summary version for scriptable environment, since noscript
     // environment will eagerly load the whole CSS anyway at the foot of the
     // page.
+    drop_entire_element = true;
+  } else if (summary.is_external &&
+             CssTagScanner::IsAlternateStylesheet(summary.rel)) {
+    // Likewise drop alternate stylesheets, they're non-critical.
     drop_entire_element = true;
   } else if (!all_media.empty()) {
     StringVector relevant_media;

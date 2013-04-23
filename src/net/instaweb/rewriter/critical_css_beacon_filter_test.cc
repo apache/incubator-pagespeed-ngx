@@ -164,6 +164,22 @@ TEST_F(CriticalCssBeaconFilterTest, DontExtractFromNoScript) {
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
+TEST_F(CriticalCssBeaconFilterTest, DontExtractFromAlternate) {
+  GoogleString css = StrCat(CssLinkHref("a.css"),
+                            "<link rel=\"alternate stylesheet\" href=b.css>");
+  GoogleString opt = StrCat(
+      CssLinkHref("a.css"),
+      "<link rel=\"alternate stylesheet\" href=",
+      Encode(kTestDomain, "cf", "0", "b.css", "css"),
+      ">");
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  // Selectors only from a.css, since b.css is alternate.
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, opt.c_str(),
+      BeaconScriptFor("\".sec h1#id\",\"div ul > li\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
+}
+
 TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
   GoogleString css = StrCat(CssLinkHref(kEvilUrl), kInlineStyle);
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");

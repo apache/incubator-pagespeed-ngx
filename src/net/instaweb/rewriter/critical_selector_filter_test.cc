@@ -171,13 +171,34 @@ TEST_F(CriticalSelectorFilterTest, NoScript) {
       "<body><div>Stuff</div></body>");
 
   ValidateExpected(
-      "foo", html,
+      "noscript", html,
       StrCat("<head>", critical_css, "</head>"
              "<body><div>Stuff</div>",
              WrapForJsLoad(css1),
              css2,  // noscript, so not marked for JS load.
              WrapForJsLoad(css3),
              JsLoader(), "</body>"));
+}
+
+TEST_F(CriticalSelectorFilterTest, Alternate) {
+  GoogleString css = StrCat(
+    "<link rel=\"alternate stylesheet\" href=\"a.css\">",
+    CssLinkHref("b.css"));
+
+  GoogleString critical_css =
+    "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+
+  ValidateExpected(
+      "alternate", html,
+      StrCat("<head>", critical_css, "</head>"
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
 }
 
 TEST_F(CriticalSelectorFilterTest, Media) {

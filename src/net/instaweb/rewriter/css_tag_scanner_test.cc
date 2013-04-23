@@ -266,20 +266,20 @@ TEST_F(CssTagScannerTest, IsStylesheetOrAlternate) {
   EXPECT_FALSE(CssTagScanner::IsStylesheetOrAlternate(""));
 }
 
-TEST_F(CssTagScannerTest, IsStylesheetNotAlternate) {
-  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate("stylesheet"));
-  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate("canonical stylesheet"));
-  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate(" stylesheet"));
-  EXPECT_TRUE(CssTagScanner::IsStylesheetNotAlternate(" styleSheet"));
-  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("alternate stylesheet"));
-  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("stylesheet alternate"));
-  EXPECT_FALSE(
-    CssTagScanner::IsStylesheetNotAlternate("stylesheet alternate canonical"));
-  EXPECT_FALSE(
-    CssTagScanner::IsStylesheetNotAlternate("StyleshEet alternAte canoNical "));
-  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("alternate"));
-  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate("prev"));
-  EXPECT_FALSE(CssTagScanner::IsStylesheetNotAlternate(""));
+TEST_F(CssTagScannerTest, IsAlternateStylesheet) {
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet("stylesheet"));
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet("canonical stylesheet"));
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet(" stylesheet"));
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet(" styleSheet"));
+  EXPECT_TRUE(CssTagScanner::IsAlternateStylesheet("alternate stylesheet"));
+  EXPECT_TRUE(CssTagScanner::IsAlternateStylesheet("stylesheet alternate"));
+  EXPECT_TRUE(
+    CssTagScanner::IsAlternateStylesheet("stylesheet alternate canonical"));
+  EXPECT_TRUE(
+    CssTagScanner::IsAlternateStylesheet("StyleshEet alternAte canoNical "));
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet("alternate"));
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet("prev"));
+  EXPECT_FALSE(CssTagScanner::IsAlternateStylesheet(""));
 }
 
 class RewriteDomainTransformerTest : public RewriteTestBase {
