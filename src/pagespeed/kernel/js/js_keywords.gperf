@@ -3,10 +3,10 @@
 // Author: jmarantz@google.com
 
 #include "base/logging.h"
-#include "net/instaweb/js/public/js_keywords.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/js/js_keywords.h"
+#include "pagespeed/kernel/base/string_util.h"
 
-namespace net_instaweb {
+namespace pagespeed {
 %}
 %compare-strncmp
 %define class-name JsKeywordMapper
@@ -20,8 +20,8 @@ namespace net_instaweb {
 
 struct JsKeywordMap {
   const char* name;
-  net_instaweb::JsKeywords::Type keyword;
-  net_instaweb::JsKeywords::Flag flag;
+  pagespeed::JsKeywords::Type keyword;
+  pagespeed::JsKeywords::Flag flag;
 };
 %%
 ### literals

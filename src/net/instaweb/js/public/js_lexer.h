@@ -20,7 +20,7 @@
 #ifndef NET_INSTAWEB_JS_PUBLIC_JS_LEXER_H_
 #define NET_INSTAWEB_JS_PUBLIC_JS_LEXER_H_
 
-#include "net/instaweb/js/public/js_keywords.h"
+#include "pagespeed/kernel/js/js_keywords.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -30,12 +30,12 @@ class JsLexer {
  public:
   JsLexer();
   void Lex(const StringPiece& contents);
-  const char* keyword_string(JsKeywords::Type keyword) {
+  const char* keyword_string(pagespeed::JsKeywords::Type keyword) {
     return keyword_vector_[static_cast<int>(keyword)];
   }
 
   // Grabs the next token from the stream.
-  JsKeywords::Type NextToken(StringPiece* token);
+  pagespeed::JsKeywords::Type NextToken(StringPiece* token);
 
   // Was there an error in the stream?
   bool error() const { return error_; }
@@ -45,8 +45,8 @@ class JsLexer {
   // Lexer state.
   typedef bool (JsLexer::*LexicalPredicate)(uint8 ch, int index);
 
-  JsKeywords::Type IdentifierOrKeyword(const StringPiece& name);
-  JsKeywords::Type NumberOrDot(const StringPiece& number_or_dot);
+  pagespeed::JsKeywords::Type IdentifierOrKeyword(const StringPiece& name);
+  pagespeed::JsKeywords::Type NumberOrDot(const StringPiece& number_or_dot);
 
   // Walks through input text looking for the end of the current token.
   // When predicate(char, index) returns false, the token is over, and
@@ -82,7 +82,7 @@ class JsLexer {
   // lexical context.
   bool ProcessBackslash(uint8 ch);
 
-  JsKeywords::Type ConsumeSlash(StringPiece* token);
+  pagespeed::JsKeywords::Type ConsumeSlash(StringPiece* token);
 
   StringPiece input_;
   int index_;

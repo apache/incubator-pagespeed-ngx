@@ -17,12 +17,16 @@
 // This is based on third_party/libpagespeed/src/pagespeed/js/js_minify.cc by
 // mdsteele@google.com
 
-#ifndef NET_INSTAWEB_JS_PUBLIC_JS_KEYWORDS_H_
-#define NET_INSTAWEB_JS_PUBLIC_JS_KEYWORDS_H_
+#ifndef PAGESPEED_KERNEL_JS_JS_KEYWORDS_H_
+#define PAGESPEED_KERNEL_JS_JS_KEYWORDS_H_
 
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
+  class JsLexer;
+}
+
+namespace pagespeed {
 
 class JsKeywords {
  public:
@@ -110,7 +114,9 @@ class JsKeywords {
   static Type Lookup(const StringPiece& name, Flag* flag);
 
  private:
-  friend class JsLexer;
+  // TODO(jkarlin): Get rid of the net_instaweb namespace once JsLexer is
+  // moved into kernel/js.
+  friend class net_instaweb::JsLexer;
 
   // Limited iterator (not an STL iterator).  Example usage:
   //    for (JsKeywords::Iterator iter; !iter.AtEnd(); iter.Next()) {
@@ -136,6 +142,6 @@ class JsKeywords {
   static int num_keywords();
 };
 
-}  // namespace net_instaweb
+}  // namespace pagespeed
 
-#endif  // NET_INSTAWEB_JS_PUBLIC_JS_KEYWORDS_H_
+#endif  // PAGESPEED_KERNEL_JS_JS_KEYWORDS_H_

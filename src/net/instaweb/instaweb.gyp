@@ -1085,23 +1085,11 @@
       },
     },
     {
-      'target_name': 'instaweb_javascript_gperf',
-      'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/js',
-      },
-      'sources': [
-        'js/js_keywords.gperf',
-      ],
-      'includes': [
-        'gperf.gypi',
-      ]
-    },
-    {
       'target_name': 'instaweb_javascript',
       'type': '<(library)',
       'dependencies': [
         'instaweb_util',
-        'instaweb_javascript_gperf',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_javascript_gperf',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [

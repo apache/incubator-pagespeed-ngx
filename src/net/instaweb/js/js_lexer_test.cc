@@ -27,6 +27,9 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/js/js_keywords.h"
+
+using pagespeed::JsKeywords;
 
 namespace net_instaweb {
 

@@ -35,8 +35,10 @@
 #include <cstring>  // for strchr
 
 #include "base/logging.h"
-#include "net/instaweb/js/public/js_keywords.h"
+#include "pagespeed/kernel/js/js_keywords.h"
 #include "net/instaweb/util/public/string_util.h"
+
+using pagespeed::JsKeywords;
 
 namespace net_instaweb {
 

@@ -56,7 +56,23 @@
       ],
       'dependencies': [
         'base',
+        'pagespeed_javascript_gperf',
       ],
+    },
+    {
+      'target_name': 'pagespeed_javascript_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'kernel/js',
+        'instaweb_root':  '<(DEPTH)/pagespeed',
+      },
+      'sources': [
+        'kernel/js/js_keywords.gperf',
+      ],
+      'includes': [
+        # TODO(jkarlin): Move gperf.gypi to pagespeed/, changing all references
+        # in net/instaweb gyp files.
+        '../net/instaweb/gperf.gypi',
+      ]
     },
     {
       'target_name': 'util',
