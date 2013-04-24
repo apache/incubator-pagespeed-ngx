@@ -45,9 +45,9 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
 
    ```bash
    $ # check http://nginx.org/en/download.html for the latest version
-   $ wget http://nginx.org/download/nginx-1.3.15.tar.gz
-   $ tar -xvzf nginx-1.3.15.tar.gz
-   $ cd nginx-1.3.15/
+   $ wget http://nginx.org/download/nginx-1.4.0.tar.gz
+   $ tar -xvzf nginx-1.4.0.tar.gz
+   $ cd nginx-1.4.0/
    $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.5.27.1-beta
    $ make
    $ sudo make install
