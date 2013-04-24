@@ -991,6 +991,9 @@ class RewriteDriver : public HtmlParse {
              StringPiece charset,
              OutputResource* output);
 
+ protected:
+  virtual void DetermineEnabledFilters();
+
  private:
   friend class RewriteContext;
   friend class RewriteDriverTest;

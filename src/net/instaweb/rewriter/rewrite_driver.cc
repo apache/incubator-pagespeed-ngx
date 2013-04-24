@@ -1925,19 +1925,6 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
 
-  for (FilterList::iterator it = early_pre_render_filters_.begin();
-       it != early_pre_render_filters_.end(); ++it) {
-    HtmlFilter* filter = *it;
-    filter->DetermineEnabled();
-  }
-  for (FilterList::iterator it = pre_render_filters_.begin();
-       it != pre_render_filters_.end(); ++it) {
-    HtmlFilter* filter = *it;
-    filter->DetermineEnabled();
-  }
-  // DetermineEnabled on post render filters is invoked in
-  // HtmlParse::StartParseId
-
   if (debug_filter_ != NULL) {
     debug_filter_->InitParse();
   }
@@ -2890,6 +2877,21 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
                      server_context_->filename_prefix().as_string().c_str());
   }
   return ret;
+}
+
+void RewriteDriver::DetermineEnabledFilters() {
+  for (FilterList::iterator it = early_pre_render_filters_.begin();
+       it != early_pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    filter->DetermineEnabled();
+  }
+  for (FilterList::iterator it = pre_render_filters_.begin();
+       it != pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    filter->DetermineEnabled();
+  }
+  // Call parent DetermineEnabled to setup post render filters.
+  HtmlParse::DetermineEnabledFilters();
 }
 
 void RewriteDriver::ClearDeviceProperties() {
