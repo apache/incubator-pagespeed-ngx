@@ -97,9 +97,6 @@ const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
   RewriteOptions::kImagePreserveURLs,
   RewriteOptions::kImageRecompressionQuality,
   RewriteOptions::kImageResolutionLimitBytes,
-  RewriteOptions::kImageRetainColorProfile,
-  RewriteOptions::kImageRetainColorSampling,
-  RewriteOptions::kImageRetainExifData,
   RewriteOptions::kImageWebpRecompressionQuality,
   RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
   RewriteOptions::kProgressiveJpegMinBytes

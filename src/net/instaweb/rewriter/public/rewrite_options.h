@@ -175,10 +175,6 @@ class RewriteOptions {
 
   // Any new Option added, should have a corresponding enum here and this should
   // be passed in when Add*Property is called in AddProperties().
-  //
-  // TODO(satyanarayana): Deprecate kImageRetainColorProfile,
-  // kImageRetainExifData and kImageRetainColorSampling as they are now
-  // converted to filters.
   enum OptionEnum {
     kAddOptionsToUrls,
     kAllowLoggingUrlsInLogRecord,
@@ -243,9 +239,6 @@ class RewriteOptions {
     kImagePreserveURLs,
     kImageRecompressionQuality,
     kImageResolutionLimitBytes,
-    kImageRetainColorProfile,
-    kImageRetainColorSampling,
-    kImageRetainExifData,
     kImageWebpRecompressionQuality,
     kImageWebpRecompressionQualityForSmallScreens,
     kImageWebpTimeoutMs,
@@ -1647,27 +1640,6 @@ class RewriteOptions {
     set_option(x, &js_preserve_urls_);
   }
 
-  bool image_retain_color_profile() const {
-    return image_retain_color_profile_.value();
-  }
-  void set_image_retain_color_profile(bool x) {
-    set_option(x, &image_retain_color_profile_);
-  }
-
-  bool image_retain_color_sampling() const {
-    return image_retain_color_sampling_.value();
-  }
-  void set_image_retain_color_sampling(bool x) {
-    set_option(x, &image_retain_color_sampling_);
-  }
-
-  bool image_retain_exif_data() const {
-    return image_retain_exif_data_.value();
-  }
-  void set_image_retain_exif_data(bool x) {
-    set_option(x, &image_retain_exif_data_);
-  }
-
   void set_metadata_cache_staleness_threshold_ms(int64 x) {
     set_option(x, &metadata_cache_staleness_threshold_ms_);
   }
@@ -2936,9 +2908,6 @@ class RewriteOptions {
   Option<int64> image_jpeg_recompress_quality_for_small_screens_;
   Option<int64> image_jpeg_num_progressive_scans_;
   Option<int64> image_jpeg_num_progressive_scans_for_small_screens_;
-  Option<bool> image_retain_color_profile_;
-  Option<bool> image_retain_color_sampling_;
-  Option<bool> image_retain_exif_data_;
 
   // Options governing when to retain optimized images vs keep original
   Option<int> image_limit_optimized_percent_;

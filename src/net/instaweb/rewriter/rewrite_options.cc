@@ -1240,21 +1240,6 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
-      false, &RewriteOptions::image_retain_color_profile_, "ircp",
-      kImageRetainColorProfile,
-      kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
-  AddBaseProperty(
-      false, &RewriteOptions::image_retain_color_sampling_, "ircs",
-      kImageRetainColorSampling,
-      kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
-  AddBaseProperty(
-      false, &RewriteOptions::image_retain_exif_data_, "ired",
-      kImageRetainExifData,
-      kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
-  AddBaseProperty(
       "", &RewriteOptions::ga_id_, "ig", kAnalyticsID,
       kDirectoryScope,
       "Google Analytics ID to use on site.");

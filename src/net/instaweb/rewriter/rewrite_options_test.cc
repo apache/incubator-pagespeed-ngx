@@ -747,7 +747,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(177, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(174, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -908,15 +908,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImageResolutionLimitBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageResolutionLimitBytes));
-  EXPECT_STREQ("ImageRetainColorProfile",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageRetainColorProfile));
-  EXPECT_STREQ("ImageRetainColorSampling",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageRetainColorSampling));
-  EXPECT_STREQ("ImageRetainExifData",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageRetainExifData));
   EXPECT_STREQ("ImageRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageRecompressionQuality));
@@ -1153,9 +1144,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ExperimentalFetchFromModSpdy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kExperimentalFetchFromModSpdy));
-  EXPECT_EQ(StringPiece("FetchHttps"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kFetchHttps));
+  EXPECT_STREQ(StringPiece("FetchHttps"),
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kFetchHttps));
   EXPECT_STREQ("FetchProxy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFetcherProxy));
