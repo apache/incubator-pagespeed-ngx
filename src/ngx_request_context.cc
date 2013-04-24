@@ -28,8 +28,9 @@ extern "C" {
 namespace net_instaweb {
 
 NgxRequestContext::NgxRequestContext(AbstractMutex* logging_mutex,
+                                     Timer* timer,
                                      ngx_http_request_t* r)
-    : RequestContext(logging_mutex),
+    : RequestContext(logging_mutex, timer),
       local_port_(-1) {
   // Note that at the time we create a RequestContext we have full
   // access to the nginx internal request structure.  However,
