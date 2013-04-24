@@ -24,8 +24,6 @@ namespace UserAgentStrings {
 // Chrome: http://www.useragentstring.com/pages/Chrome/
 // And there are many more.
 
-
-const char kGenericAndroidUserAgent[] = "Android";
 const char kAndroidHCUserAgent[] =
     "Mozilla/5.0 (Linux; U; Android 3.2; en-us; Sony Tablet S Build/THMAS11000)"
     " AppleWebKit/534.13 (KHTML, like Gecko) Version/4.0 Safari/534.13";
@@ -102,13 +100,6 @@ const char kIPhoneUserAgent[] =
 const char kIPhone4Safari[] =
     "Mozilla/5.0 (iPhone; CPU iPhone OS 5_0_1 like Mac OS X) AppleWebKit/534.46"
     " (KHTML, like Gecko) Version/5.1 Mobile/9A405 Safari/7534.48.3";
-const char kIPadTabletUserAgent[] =
-    "Mozilla/5.0 (iPad; CPU OS 6_1_3 like Mac OS X) AppleWebKit/536.26 (KHTML, "
-    "like Gecko) Version/6.0 Mobile/10B329 Safari/8536.25";
-const char kKindleTabletUserAgent[] =
-    "Mozilla/5.0 (Linux; U; Android 2.3.4; en-us; Kindle Fire "
-    "Build/GINGERBREAD) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 "
-    "Mobile Safari/533.1";
 const char kNokiaUserAgent[] =
     "Nokia2355/1.0 (JN100V0200.nep) UP.Browser/6.2.2.1.c.1.108 (GUI) MMP/2.0";
 const char kOpera5UserAgent[] =
@@ -120,13 +111,6 @@ const char kPSPUserAgent[] =
 const char kSafariUserAgent[] =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.51.22 "
     "(KHTML, like Gecko) Version/5.1.1 Safari/534.51.22";
-const char kSilkDesktopUserAgent[] =
-    "Mozilla/5.0 (PlayStation Vita 2.10) AppleWebKit/536.26 (KHTML, "
-    "like Gecko) Silk/3.2";
-const char kSilkTabletUserAgent[] =
-    "Mozilla/5.0 (Linux; U; Android 2.3.4; en-us; Silk/1.0.22.153_10033210) "
-    "AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1 "
-    "Silk-Accelerated=true";
 const char kOperaMobi9[] =
     "Opera/9.51 Beta (Microsoft Windows; PPC; Opera Mobi/1718; U; en)";
 const char kFirefoxNokiaN800[] =  /* This is a tablet */
@@ -234,113 +218,6 @@ const char kMOTMobileUserAgent[] = "MOT-1.2.0/11.03 UP.Browser/4.1.27a";
 const char kMozillaMobileUserAgent[] =
     "Mozilla/4.0 (compatible; MSIE 4.01; Windows CE; Smartphone; "
     "SDA/2.0 Profile/MIDP-2.0 Configuration/CLDC-1.1)";
-
-static const char *kMobileUserAgents[] = {
-    kOperaMobi9,
-    kAndroidICSUserAgent,
-    kIPhone4Safari,
-    kAndroidICSUserAgent,
-    kAndroidNexusSUserAgent,
-    kAndroidChrome21UserAgent,
-    kIPhoneChrome21UserAgent,
-    kIPhoneUserAgent,
-    kNokiaMobileUserAgent,
-    kSHARPMobileUserAgent,
-    kKWCMobileUserAgent,
-    kSCHMobileUserAgent,
-    kJMobileUserAgent,
-    kALCATELMobileUserAgent,
-    kPanasonicMobileUserAgent,
-    kSAMSUNGMobileUserAgent,
-    kSAGEMMobileUserAgent,
-    kZTEMobileUserAgent,
-    kOperaMiniMobileUserAgent,
-    kOperaMobilMobileUserAgent,
-    kLGEMobileUserAgent,
-    kSoftBankMobileUserAgent,
-    kVodafoneMobileUserAgent,
-    kSIEMobileUserAgent,
-    kportalmmmMobileUserAgent,
-    kKDDIMobileUserAgent,
-    kSECMobileUserAgent,
-    kDoCoMoMobileUserAgent,
-    kLGUPBrowserMobileUserAgent,
-    kLGMIDPMobileUserAgent,
-    kMOTMobileUserAgent,
-    kMozillaMobileUserAgent
-};
-
-static const char* kDesktopUserAgents[] = {
-    "not a mobile",
-    kOpera1101UserAgent,
-    kFirefoxNokiaN800,
-    kSafariUserAgent,
-    kBenqUserAgent,
-    kCompalUserAgent,
-    kFLYUserAgent,
-    kLENOVOUserAgent,
-    kSpiceUserAgent,
-    kYourWapUserAgent,
-    kAmoiUserAgent,
-    kPGUserAgent,
-    kTIANYUUserAgent,
-    kSCHUserAgent,
-    kSGHUserAgent,
-    kWinWAPUserAgent,
-    kRoverUserAgent,
-    kiUserAgent,
-    kPHILIPSUserAgent,
-    kSHARPUserAgent,
-    kNECUserAgent,
-    kAlcatelUserAgent,
-    kLGEUserAgent,
-    kSAGEMUserAgent,
-    kSIEUserAgent,
-    kLGUserAgent,
-    kMozillaUserAgent
-};
-
-static const char* kTabletUserAgents[] = {
-    kGenericAndroidUserAgent,
-    kIPadUserAgent,
-    kKindleTabletUserAgent,
-    kNexus7ChromeUserAgent,
-    kSilkTabletUserAgent
-};
-
-static const char* kImageInliningSupportedUserAgents[] = {
-    "",  // Empty user agent.
-    kAndroidHCUserAgent,
-    kAndroidICSUserAgent,
-    kIe9UserAgent,
-    kChromeUserAgent,
-    kFirefoxUserAgent,
-    kOpera8UserAgent,
-    kSafariUserAgent,
-    kIPhoneUserAgent,
-    kAndroidChrome21UserAgent,
-};
-
-static const char* kSplitHtmlSupportedUserAgents[] = {
-    kChromeUserAgent,
-    kFirefoxUserAgent,
-    kIe9UserAgent,
-    kChromeUserAgent,
-    kFirefoxUserAgent,
-    kSafariUserAgent
-};
-
-static const char* kSplitHtmlUnSupportedUserAgents[] = {
-    kAndroidChrome21UserAgent,
-    kIe6UserAgent,
-    kIe8UserAgent,
-    kFirefox1UserAgent,
-    kNokiaUserAgent,
-    kOpera5UserAgent,
-    kPSPUserAgent,
-    kIe6UserAgent,
-    kFirefox1UserAgent
-};
 
 }  // namespace UserAgentStrings
 }  // namespace net_instaweb

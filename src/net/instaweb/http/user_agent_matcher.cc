@@ -177,23 +177,11 @@ const char* kInsertDnsPrefetchBlacklist[] = {
   "*MSIE 8.*",
 };
 
-// Whitelist used for doing the tablet-user-agent check, which also feeds
+// Whitelist used for doing the IsMobileUserAgent check, which also feeds
 // into the device type used for storing properties in the property cache.
-const char* kTabletUserAgentWhitelist[] = {
-  "*Android*",  // Android tablet has "Android" but not "Mobile". Regexp
-                // checks for UserAgents should first check the mobile
-                // whitelists and blacklists and only then check the tablet
-                // whitelist for correct results.
-  "*iPad*",
-  "*TouchPad*",
-  "*Silk-Accelerated*",
-  "*Kindle Fire*"
-};
-
-// Whitelist used for doing the mobile-user-agent check, which also feeds
-// into the device type used for storing properties in the property cache.
+// We treat tablets like desktops as they have big enough screen (relative
+// to phones).
 const char* kMobileUserAgentWhitelist[] = {
-  "*Mozilla*Android*Mobile*",
   "*iPhone*",
   "*BlackBerry*",
   "*Opera Mobi*",
@@ -204,13 +192,8 @@ const char* kMobileUserAgentWhitelist[] = {
   "*Profile/MIDP*",
   "*profile/MIDP*",
   "*portalmmm*",
-  "*DoCoMo*"
-};
-
-// Blacklist used for doing the mobile-user-agent check.
-const char* kMobileUserAgentBlacklist[] = {
-  "*Mozilla*Android*Silk*Mobile*",
-  "*Mozilla*Android*Kindle Fire*Mobile*"
+  "*DoCoMo*",
+  "*Mozilla*Android*Mobile*",
 };
 
 const char* kSupportsPrefetchLinkRelSubresource[] = {
@@ -285,6 +268,10 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kWebpLosslessAlphaBlacklist); i < n; ++i) {
     supports_webp_lossless_alpha_.Disallow(kWebpLosslessAlphaBlacklist[i]);
   }
+
+  for (int i = 0, n = arraysize(kMobileUserAgentWhitelist); i < n; ++i) {
+    mobile_user_agents_.Allow(kMobileUserAgentWhitelist[i]);
+  }
   for (int i = 0, n = arraysize(kSupportsPrefetchLinkRelSubresource); i < n;
        ++i) {
     supports_prefetch_link_rel_subresource_.Allow(
@@ -301,16 +288,6 @@ UserAgentMatcher::UserAgentMatcher()
   }
   for (int i = 0, n = arraysize(kInsertDnsPrefetchBlacklist); i < n; ++i) {
     supports_dns_prefetch_.Disallow(kInsertDnsPrefetchBlacklist[i]);
-  }
-
-  for (int i = 0, n = arraysize(kMobileUserAgentWhitelist); i < n; ++i) {
-    mobile_user_agents_.Allow(kMobileUserAgentWhitelist[i]);
-  }
-  for (int i = 0, n = arraysize(kMobileUserAgentBlacklist); i < n; ++i) {
-    mobile_user_agents_.Disallow(kMobileUserAgentBlacklist[i]);
-  }
-  for (int i = 0, n = arraysize(kTabletUserAgentWhitelist); i < n; ++i) {
-    tablet_user_agents_.Allow(kTabletUserAgentWhitelist[i]);
   }
   GoogleString known_devices_pattern_string = "(";
   for (int i = 0, n = arraysize(kKnownScreenDimensions); i < n; ++i) {
@@ -448,9 +425,6 @@ UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(
     const StringPiece& user_agent) const {
   if (mobile_user_agents_.Match(user_agent, false)) {
     return kMobile;
-  }
-  if (tablet_user_agents_.Match(user_agent, false)) {
-    return kTablet;
   }
   return kDesktop;
 }

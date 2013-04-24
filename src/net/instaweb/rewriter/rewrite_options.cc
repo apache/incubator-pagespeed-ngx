@@ -2434,15 +2434,17 @@ bool RewriteOptions::Enabled(Filter filter) const {
   return false;
 }
 
+bool RewriteOptions::Forbidden(Filter filter) const {
+  return (forbidden_filters_.IsSet(filter) ||
+          (forbid_all_disabled_filters() && disabled_filters_.IsSet(filter)));
+}
+
 bool RewriteOptions::Forbidden(StringPiece filter_id) const {
   // It's forbidden if it's expressly forbidden or if it's disabled and all
   //  disabled filters are forbidden.
   RewriteOptions::Filter filter = RewriteOptions::LookupFilterById(filter_id);
   // TODO(jmarantz): handle "ce" which is not indexed as a single filter.
-  return ((filter != kEndOfFilters) &&
-          (forbidden_filters_.IsSet(filter) ||
-           (forbid_all_disabled_filters() &&
-            disabled_filters_.IsSet(filter))));
+  return ((filter != kEndOfFilters) && Forbidden(filter));
 }
 
 bool RewriteOptions::HasRejectedHeader(

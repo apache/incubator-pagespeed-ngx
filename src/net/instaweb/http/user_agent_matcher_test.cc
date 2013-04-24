@@ -34,15 +34,6 @@ class UserAgentMatcherTest : public testing::Test {
         UserAgentMatcher::kMobile;
   }
 
-  bool IsDesktopUserAgent(const StringPiece& user_agent) {
-    return user_agent_matcher_.GetDeviceTypeForUA(user_agent) ==
-        UserAgentMatcher::kDesktop;
-  }
-  bool IsTabletUserAgent(const StringPiece& user_agent) {
-    return user_agent_matcher_.GetDeviceTypeForUA(user_agent) ==
-        UserAgentMatcher::kTablet;
-  }
-
   UserAgentMatcher user_agent_matcher_;
 };
 
@@ -72,15 +63,24 @@ TEST_F(UserAgentMatcherTest, IsNotIeTest) {
 }
 
 TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
-  for (int i = 0;
-       i < arraysize(UserAgentStrings::kImageInliningSupportedUserAgents);
-       ++i) {
-    EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
-                    UserAgentStrings::kImageInliningSupportedUserAgents[i]))
-        << "\"" << UserAgentStrings::kImageInliningSupportedUserAgents[i]
-        << "\"" << " not detected as a user agent that supports image inlining";
-  }
-  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining("random user agent"));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kAndroidHCUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kAndroidICSUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kIe9UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kFirefoxUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kOpera8UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kSafariUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kAndroidChrome21UserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsLazyloadImages) {
@@ -409,50 +409,89 @@ TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
 }
 
 TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
-  for (int i = 0;
-       i < arraysize(UserAgentStrings::kSplitHtmlSupportedUserAgents);
-       ++i) {
-    EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
-                    UserAgentStrings::kSplitHtmlSupportedUserAgents[i], false))
-        << "\"" << UserAgentStrings::kSplitHtmlSupportedUserAgents[i]
-        << "\"" << " not detected as a user agent that supports split-html";
-  }
-  // Allow-mobile case.
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kIe9UserAgent, false));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kChromeUserAgent, false));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kFirefoxUserAgent, false));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kSafariUserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kAndroidChrome21UserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
       UserAgentStrings::kAndroidChrome21UserAgent, true));
-  for (int i = 0;
-       i < arraysize(UserAgentStrings::kSplitHtmlUnSupportedUserAgents);
-       ++i) {
-    EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-                    UserAgentStrings::kSplitHtmlUnSupportedUserAgents[i],
-                    false))
-        << "\"" << UserAgentStrings::kSplitHtmlUnSupportedUserAgents[i] << "\""
-        << " detected incorrectly as a user agent that supports split-html";
-  }
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kIe6UserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kIe8UserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kFirefox1UserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kNokiaUserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kOpera5UserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kPSPUserAgent, false));
 }
 
 TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
-  for (int i = 0; i < arraysize(UserAgentStrings::kMobileUserAgents); ++i) {
-    EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kMobileUserAgents[i]))
-        << "\"" << UserAgentStrings::kMobileUserAgents[i] << "\""
-        << " not detected as mobile user agent.";
-  }
-}
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidICSUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidNexusSUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidChrome21UserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kIPhoneChrome21UserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kNokiaMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSHARPMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kKWCMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSCHMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kJMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kALCATELMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kPanasonicMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSAMSUNGMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSAGEMMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kZTEMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kOperaMiniMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kOperaMobilMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kLGEMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSoftBankMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kVodafoneMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSIEMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kportalmmmMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kKDDIMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kSECMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kDoCoMoMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kLGUPBrowserMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kLGMIDPMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kMOTMobileUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kMozillaMobileUserAgent));
 
-TEST_F(UserAgentMatcherTest, IsDesktopUserAgent) {
-  for (int i = 0; i < arraysize(UserAgentStrings::kDesktopUserAgents); ++i) {
-    EXPECT_TRUE(IsDesktopUserAgent(UserAgentStrings::kDesktopUserAgents[i]))
-        << "\"" << UserAgentStrings::kDesktopUserAgents[i] << "\""
-        << " not detected as desktop user agent.";
-  }
-}
-
-TEST_F(UserAgentMatcherTest, IsTabletUserAgent) {
-  for (int i = 0; i < arraysize(UserAgentStrings::kTabletUserAgents); ++i) {
-    EXPECT_TRUE(IsTabletUserAgent(UserAgentStrings::kTabletUserAgents[i]))
-        << "\"" << UserAgentStrings::kTabletUserAgents[i] << "\""
-        << " not detected as tablet user agent.";
-  }
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kNexus7ChromeUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kIPadUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSafariUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kBenqUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kCompalUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kFLYUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kLENOVOUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSpiceUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kYourWapUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kAmoiUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kPGUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kTIANYUUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSCHUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSGHUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kWinWAPUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kRoverUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kiUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kPHILIPSUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSHARPUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kNECUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kAlcatelUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kLGEUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSAGEMUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSIEUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kLGUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kMozillaUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
@@ -460,12 +499,6 @@ TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
       UserAgentStrings::kIe9UserAgent));
   EXPECT_EQ(UserAgentMatcher::kMobile, user_agent_matcher_.GetDeviceTypeForUA(
       UserAgentStrings::kIPhone4Safari));
-  EXPECT_EQ(UserAgentMatcher::kTablet, user_agent_matcher_.GetDeviceTypeForUA(
-      UserAgentStrings::kIPadTabletUserAgent));
-  // Silk-Accelerated is recognized as a tablet UA, whereas Silk is treated as
-  // a desktop UA.
-  EXPECT_EQ(UserAgentMatcher::kDesktop, user_agent_matcher_.GetDeviceTypeForUA(
-      UserAgentStrings::kSilkDesktopUserAgent));
   EXPECT_EQ(UserAgentMatcher::kDesktop, user_agent_matcher_.GetDeviceTypeForUA(
       NULL));
 }

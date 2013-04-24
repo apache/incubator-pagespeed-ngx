@@ -44,6 +44,8 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    // Enable critical selector filter alone so that
+    // testing isn't disrupted by beacon injection.
     rewrite_driver()->AddFilters();
     filter_ = new CriticalSelectorFilter(rewrite_driver());
     rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
