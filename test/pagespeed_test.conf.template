@@ -23,6 +23,11 @@ http {
 
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
+  # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
+  # With this option enabled, the inline image system test will currently fail.
+  # When critical image beaconing is enabled, only critical images are inlined.
+  # In our current system test, we aren't yet sending a beacon to identify the
+  # critical images to be inlined, so we just disable the option here.
   pagespeed CriticalImagesBeaconEnabled false;
 
   server {
