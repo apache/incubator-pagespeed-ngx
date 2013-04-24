@@ -87,7 +87,7 @@ To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
 ```bash
-$ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
+$ curl -I 'http://localhost:8050/some_page/' | grep X-Page-Speed
 X-Page-Speed: 1.4.0.0-2729
 ```
 
