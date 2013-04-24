@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -93,11 +94,14 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   }
 
   virtual void SetUp() {
-    // We setup the options before the upcall so that the
-    // CSS filter is created aware of these.
+    // We don't use the parent class setup, because we want to make sure that
+    // RewriteCss is enabled implicitly by enabling FlattenCssImports.  We
+    // skip to the setup for the parent of our parent class.
+    RewriteTestBase::SetUp();
     options()->EnableFilter(RewriteOptions::kFlattenCssImports);
     options()->EnableFilter(RewriteOptions::kExtendCacheImages);
-    CssRewriteTestBase::SetUp();
+    options()->set_always_rewrite_css(true);
+    rewrite_driver()->AddFilters();
     SetResponseWithDefaultHeaders(kTopCssFile, kContentTypeCss,
                                   kTopCssContents, 100);
     SetResponseWithDefaultHeaders(kOneLevelDownFile1, kContentTypeCss,

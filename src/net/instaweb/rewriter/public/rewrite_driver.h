@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -881,6 +882,21 @@ class RewriteDriver : public HtmlParse {
     critical_images_info_.reset(critical_images_info);
   }
 
+  // Return true if we must prioritize critical selectors, and we should
+  // therefore enable its prerequisite filters as well.
+  bool CriticalSelectorsEnabled() const {
+    return (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
+            server_context()->factory()->UseBeaconResultsInFilters());
+  }
+
+  // Return true if we must flatten css imports, either because the filter is
+  // enabled explicitly or because it is enabled by CriticalSelectorsEnabled.
+  bool FlattenCssImportsEnabled() const {
+    return (options()->Enabled(RewriteOptions::kFlattenCssImports) ||
+            (!options()->Forbidden(RewriteOptions::kFlattenCssImports) &&
+             CriticalSelectorsEnabled()));
+  }
+
   // Returns computed critical selector set for this page, or NULL
   // if not available. Should only be called from HTML-safe thread context.
   // (parser threar or Render() callbacks). The returned value is owned by
@@ -990,9 +1006,6 @@ class RewriteDriver : public HtmlParse {
              const ContentType* type,
              StringPiece charset,
              OutputResource* output);
-
- protected:
-  virtual void DetermineEnabledFilters();
 
  private:
   friend class RewriteContext;

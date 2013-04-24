@@ -421,13 +421,8 @@ class HtmlParse {
 
   virtual void ParseTextInternal(const char* content, int size);
 
-  // Call DetermineEnabled() on each filter. Should be called after
-  // the property cache lookup has finished since some filters depend on
-  // pcache results in their DetermineEnabled implementation. If a subclass has
-  // filters that the base HtmlParse doesn't know about, it should override this
-  // function and call DetermineEnabled on each of its filters, along with
-  // calling the base DetermineEnabledFilters.
-  virtual void DetermineEnabledFilters();
+  // Allow filters to determine whether they are enabled for this request.
+  void DetermineEnabledFilters(FilterVector* filters) const;
 
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
@@ -474,7 +469,6 @@ class HtmlParse {
   GoogleString id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool deleted_current_;
-  bool determine_enabled_filters_called_;
   bool need_sanity_check_;
   bool coalesce_characters_;
   bool need_coalesce_characters_;
@@ -483,6 +477,7 @@ class HtmlParse {
   bool running_filters_;
   int64 parse_start_time_us_;
   Timer* timer_;
+  int first_filter_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlParse);
 };
