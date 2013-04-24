@@ -23,6 +23,8 @@ http {
 
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
+  pagespeed CriticalImagesBeaconEnabled false;
+
   server {
     # Sets up a logical home-page server on
     # max-cacheable-content-length.example.com.  This server is only used to
