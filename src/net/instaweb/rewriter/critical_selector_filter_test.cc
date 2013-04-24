@@ -136,6 +136,24 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
              LoadRestOfCss(css), "</body>"));
 }
 
+TEST_F(CriticalSelectorFilterTest, EmptyBlock) {
+  // Do not insert empty <style> blocks. Our critical selector sets do not
+  // talk about 'i' so this should do nothing..
+  GoogleString css = "<style>i { font-style:italic; }</style>";
+
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+
+  ValidateExpected(
+      "basic", html,
+      StrCat("<head></head>"
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
+}
+
 TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
   rewrite_driver()->SetUserAgent(UserAgentStrings::kIe7UserAgent);
   GoogleString css = StrCat(

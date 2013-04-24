@@ -281,7 +281,10 @@ void CriticalSelectorFilter::RenderSummary(
 
   element->DeleteAttribute(HtmlName::kMedia);
   bool drop_entire_element = false;
-  if (summary.is_inside_noscript) {
+  if (css_to_use->empty()) {
+    // Don't keep empty blocks around.
+    drop_entire_element = true;
+  } else if (summary.is_inside_noscript) {
     // Optimize summary version for scriptable environment, since noscript
     // environment will eagerly load the whole CSS anyway at the foot of the
     // page.
