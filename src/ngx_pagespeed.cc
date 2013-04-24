@@ -42,6 +42,7 @@ extern "C" {
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
+#include "ngx_thread_system.h"
 
 #include "apr_time.h"
 
@@ -590,7 +591,8 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   net_instaweb::NgxRewriteOptions::Initialize();
   net_instaweb::NgxRewriteDriverFactory::Initialize();
 
-  cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+  cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
+      new net_instaweb::NgxThreadSystem());
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }

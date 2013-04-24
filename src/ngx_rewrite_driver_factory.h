@@ -40,9 +40,10 @@ extern "C" {
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class NgxServerContext;
 class NgxMessageHandler;
 class NgxRewriteOptions;
+class NgxServerContext;
+class NgxThreadSystem;
 class NgxUrlAsyncFetcher;
 class SharedCircularBuffer;
 class SharedMemRefererStatistics;
@@ -56,9 +57,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   static const char kStaticAssetPrefix[];
 
-  // main_conf will have only options set in the main block.  It may be NULL,
-  // and we do not take ownership.
-  explicit NgxRewriteDriverFactory();
+  // We take ownership of the thread system.
+  explicit NgxRewriteDriverFactory(NgxThreadSystem* ngx_thread_system);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -179,6 +179,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   }
 
  private:
+  NgxThreadSystem* ngx_thread_system_;
   Timer* timer_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
 
