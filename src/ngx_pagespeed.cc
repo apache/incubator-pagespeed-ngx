@@ -1642,7 +1642,7 @@ CreateRequestContext::Response ps_create_request_context(
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
-        url_string, ctx->base_fetch, ctx->driver,
+        url_string, ctx->base_fetch, driver,
         property_callback.release(),
         NULL /* original_content_fetch */);
   }
