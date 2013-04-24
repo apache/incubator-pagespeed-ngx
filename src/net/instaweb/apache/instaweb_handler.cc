@@ -89,7 +89,6 @@ const char kTempStatisticsGraphsHandler[] =
 const char kConsoleHandler[] = "mod_pagespeed_console";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
-const char kBeaconHandler[] = "mod_pagespeed_beacon";
 const char kLogRequestHeadersHandler[] = "mod_pagespeed_log_request_headers";
 const char kGenerateResponseWithOptionsHandler[] =
     "mod_pagespeed_response_options_handler";
@@ -947,6 +946,44 @@ bool parse_body_from_post(const request_rec* request, GoogleString* data,
   return true;
 }
 
+apr_status_t instaweb_beacon_handler(request_rec* request,
+                                     ApacheServerContext* server_context) {
+  GoogleString data;
+  apr_status_t ret = DECLINED;
+  if (request->method_number == M_GET) {
+    if (!parse_query_params_from_get(request, &data, &ret)) {
+      return ret;
+    }
+  } else if (request->method_number == M_POST) {
+    if (!parse_body_from_post(request, &data, &ret)) {
+      return ret;
+    }
+  } else {
+    return HTTP_METHOD_NOT_ALLOWED;
+  }
+  RequestContextPtr request_context(new ApacheRequestContext(
+      server_context->thread_system()->NewMutex(),
+      server_context->timer(),
+      request));
+  StringPiece user_agent = apr_table_get(request->headers_in,
+                                         HttpAttributes::kUserAgent);
+  server_context->HandleBeacon(data, user_agent, request_context);
+  return HTTP_NO_CONTENT;
+}
+
+bool IsBeaconUrl(const RewriteOptions::BeaconUrl& beacons,
+                 const GoogleUrl& gurl) {
+  // Check if the full path without query parameters equals the beacon URL,
+  // either the http or https version (we're too lazy to check specifically).
+  // This handles both GETs, which include query parameters, and POSTs,
+  // which don't.
+  if (!gurl.is_valid()) {
+    return false;
+  }
+  return (gurl.PathSansQuery() == beacons.http ||
+          gurl.PathSansQuery() == beacons.https);
+}
+
 }  // namespace
 
 bool is_pagespeed_subrequest(request_rec* request) {
@@ -974,9 +1011,11 @@ apr_status_t instaweb_handler(request_rec* request) {
       request_handler_str == kGlobalStatisticsHandler) {
     ret = instaweb_statistics_handler(request, server_context, factory,
                                       message_handler);
+
   // TODO(sligocki): Merge this into kConsoleHandler.
   } else if (request_handler_str == kTempStatisticsGraphsHandler) {
     ret = instaweb_statistics_graphs_handler(request, config, message_handler);
+
   } else if (request_handler_str == kConsoleHandler) {
     GoogleString output;
     StringWriter writer(&output);
@@ -998,28 +1037,6 @@ apr_status_t instaweb_handler(request_rec* request) {
     writer.Write("</pre>", message_handler);
     write_handler_response(output, request);
     ret = OK;
-
-  } else if (request_handler_str == kBeaconHandler) {
-    GoogleString data;
-    if (request->method_number == M_GET) {
-      if (!parse_query_params_from_get(request, &data, &ret)) {
-        return ret;
-      }
-    } else if (request->method_number == M_POST) {
-      if (!parse_body_from_post(request, &data, &ret)) {
-        return ret;
-      }
-    } else {
-      return HTTP_METHOD_NOT_ALLOWED;
-    }
-    RequestContextPtr request_context(new ApacheRequestContext(
-        server_context->thread_system()->NewMutex(),
-        server_context->timer(),
-        request));
-    StringPiece user_agent = apr_table_get(request->headers_in,
-                                           HttpAttributes::kUserAgent);
-    server_context->HandleBeacon(data, user_agent, request_context);
-    ret = HTTP_NO_CONTENT;
 
   } else if (request_handler_str == kLogRequestHeadersHandler) {
     // For testing ModPagespeedCustomFetchHeader.
@@ -1059,11 +1076,13 @@ apr_status_t instaweb_handler(request_rec* request) {
     // Do not try to rewrite our own sub-request.
     if (url != NULL && !is_pagespeed_subrequest(request)) {
       GoogleUrl gurl(url);
-      // Only handle GET request
-      if (request->method_number != M_GET) {
+      // For the beacon accept any method; for all others only allow GETs.
+      if (IsBeaconUrl(server_context->global_options()->beacon_url(), gurl)) {
+        ret = instaweb_beacon_handler(request, server_context);
+      } else if (request->method_number != M_GET) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                      "Not rewriting non-GET request: %d.",
-                      request->method_number);
+                      "Not rewriting non-GET %d of %s",
+                      request->method_number, gurl.spec_c_str());
       } else if (!gurl.is_valid()) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                       "Ignoring invalid URL: %s", gurl.spec_c_str());
@@ -1162,15 +1181,11 @@ apr_status_t save_url_in_note(request_rec *request,
     // TODO(sligocki): Make this robust to custom statistics and beacon URLs.
     StringPiece leaf = gurl.LeafSansQuery();
     if (leaf == kStatisticsHandler || leaf == kConsoleHandler ||
-        leaf == kGlobalStatisticsHandler || leaf == kBeaconHandler ||
-        leaf == kMessageHandler ||
-        (gurl.PathSansLeaf() ==
-         ApacheRewriteDriverFactory::kStaticAssetPrefix)) {
+        leaf == kGlobalStatisticsHandler || leaf == kMessageHandler ||
+        gurl.PathSansLeaf() == ApacheRewriteDriverFactory::kStaticAssetPrefix ||
+        IsBeaconUrl(server_context->global_options()->beacon_url(), gurl) ||
+        server_context->IsPagespeedResource(gurl)) {
       bypass_mod_rewrite = true;
-    } else {
-      if (server_context->IsPagespeedResource(gurl)) {
-        bypass_mod_rewrite = true;
-      }
     }
   }
 

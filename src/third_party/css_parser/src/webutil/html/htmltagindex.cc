@@ -73,8 +73,7 @@ COMPILE_ASSERT('?'&0x20, cQuestion);
 
 HtmlTagIndex::HtmlTagIndex()
   : case_sensitive_fixed_(false),
-    index_max_(kHtmlTagBuiltinMax),
-    custom_tag_map_(NULL) {
+    index_max_(kHtmlTagBuiltinMax) {
   this->SetCaseSensitive(false);
 }
 

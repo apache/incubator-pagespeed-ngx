@@ -576,6 +576,12 @@ ModPagespeedUsePerVHostStatistics on
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters lazyload_images
   ModPagespeedCriticalImagesBeaconEnabled true
+
+  # add_instrumention tests beacon handling with no handler specified, while
+  # here we test it with a handler (that should do nothing).
+  <Location /mod_pagespeed_beacon>
+    SetHandler mod_pagespeed_beacon
+  </Location>
 </VirtualHost>
 
 # Test host for shared memory cache.
@@ -673,9 +679,6 @@ ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #COVERAGE   ModPagespeedJpegRecompressionQuality   -1
 #COVERAGE   ModPagespeedImageLimitOptimizedPercent  100
 #COVERAGE   ModPagespeedImageLimitResizeAreaPercent 100
-#COVERAGE   <Location /mod_pagespeed_beacon>
-#COVERAGE       SetHandler mod_pagespeed_beacon
-#COVERAGE   </Location>
 #COVERAGE   <Location /mod_pagespeed_statistics>
 #COVERAGE       Order allow,deny
 #COVERAGE       Allow from localhost
