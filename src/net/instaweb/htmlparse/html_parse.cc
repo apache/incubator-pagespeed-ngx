@@ -51,6 +51,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       message_handler_(message_handler),
       line_number_(1),
       deleted_current_(false),
+      determine_enabled_filters_called_(false),
       need_sanity_check_(false),
       coalesce_characters_(true),
       need_coalesce_characters_(false),
@@ -58,8 +59,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       log_rewrite_timing_(false),
       running_filters_(false),
       parse_start_time_us_(0),
-      timer_(NULL),
-      first_filter_(0) {
+      timer_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
 }
@@ -195,9 +195,7 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 
 bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
-  for (int i = 0, n = filters_.size(); i < n; ++i) {
-    filters_[i]->DetermineEnabled();
-  }
+  determine_enabled_filters_called_ = false;
   url.CopyToString(&url_);
   GoogleUrl gurl(url);
   url_valid_ = gurl.is_valid();
@@ -250,7 +248,17 @@ void HtmlParse::EndFinishParse() {
 void HtmlParse::ParseTextInternal(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
+    if (!determine_enabled_filters_called_) {
+      determine_enabled_filters_called_ = true;
+      DetermineEnabledFilters();
+    }
     lexer_->Parse(text, size);
+  }
+}
+
+void HtmlParse::DetermineEnabledFilters() {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->DetermineEnabled();
   }
 }
 

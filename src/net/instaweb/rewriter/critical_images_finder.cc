@@ -65,25 +65,33 @@ bool PopulateCriticalImagesFromPropertyValue(
   return critical_images->ParseFromZeroCopyStream(&input);
 }
 
-// Load the value of property_value into the StringSets of critical_images_info.
-bool PopulateCriticalImagesInfoFromPropertyValue(
-    const PropertyValue* property_value,
-    CriticalImagesInfo* critical_images_info) {
+// Create CriticalImagesInfo object from the value of property_value.  NULL if
+// no value is found, or if the property value reflects that no results are
+// available.  Result is owned by caller.
+CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
+    const PropertyValue* property_value) {
   DCHECK(property_value != NULL);
-  DCHECK(critical_images_info != NULL);
   CriticalImages crit_images;
-  if (PopulateCriticalImagesFromPropertyValue(property_value, &crit_images)) {
-    critical_images_info->html_critical_images.clear();
-    critical_images_info->html_critical_images.insert(
-        crit_images.html_critical_images().begin(),
-        crit_images.html_critical_images().end());
-    critical_images_info->css_critical_images.clear();
-    critical_images_info->css_critical_images.insert(
-        crit_images.css_critical_images().begin(),
-        crit_images.css_critical_images().end());
-    return true;
+  if (!PopulateCriticalImagesFromPropertyValue(property_value, &crit_images)) {
+    return NULL;
   }
-  return false;
+  if (crit_images.html_critical_images().size() == 0 &&
+      crit_images.css_critical_images().size() == 0 &&
+      crit_images.html_critical_images_sets().size() == 0 &&
+      crit_images.css_critical_images_sets().size() == 0) {
+    // Note: we check the summary set sizes above first since sometimes the
+    // summaries are populated but individual beacon sets are not.  If nothing
+    // is populated yet then we return NULL (no data) rather than empty sets.
+    return NULL;
+  }
+  CriticalImagesInfo* critical_images_info = new CriticalImagesInfo();
+  critical_images_info->html_critical_images.insert(
+      crit_images.html_critical_images().begin(),
+      crit_images.html_critical_images().end());
+  critical_images_info->css_critical_images.insert(
+      crit_images.css_critical_images().begin(),
+      crit_images.css_critical_images().end());
+  return critical_images_info;
 }
 
 void UpdateCriticalImagesSetInProto(
@@ -179,16 +187,23 @@ void CriticalImagesFinder::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCriticalImagesNotFoundCount);
 }
 
+namespace {
+
+bool IsCriticalImage(const GoogleString& image_url,
+                     const StringSet& critical_images_set) {
+  return (critical_images_set.find(image_url) != critical_images_set.end());
+}
+
+}  // namespace
+
 bool CriticalImagesFinder::IsHtmlCriticalImage(
     const GoogleString& image_url, RewriteDriver* driver) {
-  const StringSet& critical_images_set = GetHtmlCriticalImages(driver);
-  return (critical_images_set.find(image_url) != critical_images_set.end());
+  return IsCriticalImage(image_url, GetHtmlCriticalImages(driver));
 }
 
 bool CriticalImagesFinder::IsCssCriticalImage(
     const GoogleString& image_url, RewriteDriver* driver) {
-  const StringSet& critical_images_set = GetCssCriticalImages(driver);
-  return (critical_images_set.find(image_url) != critical_images_set.end());
+  return IsCriticalImage(image_url, GetCssCriticalImages(driver));
 }
 
 const StringSet& CriticalImagesFinder::GetHtmlCriticalImages(
@@ -240,13 +255,11 @@ StringSet* CriticalImagesFinder::mutable_css_critical_images(
 // between requests.
 void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     RewriteDriver* driver) {
-  const CriticalImagesInfo* driver_info = driver->critical_images_info();
-  // If driver_info is not NULL, then the CriticalImagesInfo has already been
-  // updated, so no need to do anything here.
-  if (driver_info != NULL) {
+  // Don't update critical_images_info if it's already been set.
+  if (driver->critical_images_info() != NULL) {
     return;
   }
-  scoped_ptr<CriticalImagesInfo> info(new CriticalImagesInfo);
+  CriticalImagesInfo* info = NULL;
   PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort =
@@ -256,13 +269,20 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
   if (page != NULL && cohort != NULL) {
     PropertyValue* property_value = page->GetProperty(
         cohort, kCriticalImagesPropertyName);
-    ExtractCriticalImagesFromCache(driver, property_value, true, info.get());
-    driver->log_record()->SetNumHtmlCriticalImages(
-        info->html_critical_images.size());
-    driver->log_record()->SetNumCssCriticalImages(
-        info->css_critical_images.size());
+    info = ExtractCriticalImagesFromCache(driver, property_value);
+    if (info != NULL) {
+      driver->log_record()->SetNumHtmlCriticalImages(
+          info->html_critical_images.size());
+      driver->log_record()->SetNumCssCriticalImages(
+          info->css_critical_images.size());
+    }
   }
-  driver->set_critical_images_info(info.release());
+  // Store an empty CriticalImagesInfo back into the driver if we don't have any
+  // beacon results yet.
+  if (info == NULL) {
+    info = new CriticalImagesInfo;
+  }
+  driver->set_critical_images_info(info);
 }
 
 // TODO(pulkitg): Change all instances of critical_images_set to
@@ -350,15 +370,13 @@ bool CriticalImagesFinder::UpdateCriticalImages(
   return (html_critical_images != NULL || css_critical_images != NULL);
 }
 
-void CriticalImagesFinder::ExtractCriticalImagesFromCache(
+CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
     RewriteDriver* driver,
-    const PropertyValue* property_value,
-    bool track_stats,
-    CriticalImagesInfo* critical_images_info) {
-  DCHECK(critical_images_info != NULL);
+    const PropertyValue* property_value) {
+  CriticalImagesInfo* critical_images_info = NULL;
   // Don't track stats if we are flushing early, since we will already be
   // counting this when we are rewriting the full page.
-  track_stats &= !driver->flushing_early();
+  bool track_stats = !driver->flushing_early();
   const PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   int64 cache_ttl_ms =
@@ -368,18 +386,22 @@ void CriticalImagesFinder::ExtractCriticalImagesFromCache(
     const bool is_valid =
         !page_property_cache->IsExpired(property_value, cache_ttl_ms);
     if (is_valid) {
-      PopulateCriticalImagesInfoFromPropertyValue(property_value,
-                                                  critical_images_info);
+      critical_images_info =
+          CriticalImagesInfoFromPropertyValue(property_value);
       if (track_stats) {
-        critical_images_valid_count_->Add(1);
+        if (critical_images_info == NULL) {
+          critical_images_not_found_count_->Add(1);
+        } else {
+          critical_images_valid_count_->Add(1);
+        }
       }
-      return;
     } else if (track_stats) {
       critical_images_expired_count_->Add(1);
     }
   } else if (track_stats) {
     critical_images_not_found_count_->Add(1);
   }
+  return critical_images_info;
 }
 
 }  // namespace net_instaweb

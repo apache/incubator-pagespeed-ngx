@@ -26,13 +26,11 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 
@@ -65,18 +63,24 @@ const char kStyleEvil[] =
     "div{display:inline}";
 const char kEvilUrl[] = "http://evil.com/d.css";
 
-// Common setup / result generation code for all tests
-class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
+class CriticalCssBeaconFilterTest : public RewriteTestBase {
  public:
-  CriticalCssBeaconFilterTestBase() { }
-  virtual ~CriticalCssBeaconFilterTestBase() { }
+  CriticalCssBeaconFilterTest() { }
+  virtual ~CriticalCssBeaconFilterTest() { }
 
  protected:
-  // Set everything up except for filter configuration.
   virtual void SetUp() {
     RewriteTestBase::SetUp();
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
-    factory()->set_use_beacon_results_in_filters(true);
+    options()->EnableFilter(RewriteOptions::kRewriteCss);
+    options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+    options()->EnableFilter(RewriteOptions::kInlineImportToLink);
+    // TODO(jmaessen): control filter by manipulating configuration options when
+    // they exist.
+    CriticalCssBeaconFilter::InitStats(statistics());
+    filter_ = new CriticalCssBeaconFilter(rewrite_driver());
+    rewrite_driver()->AddFilters();
+    rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
 
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
                                   kStyleA, 100);
@@ -109,46 +113,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     return script;
   }
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(CriticalCssBeaconFilterTestBase);
-};
-
-// Standard test setup enables filter via RewriteOptions.
-class CriticalCssBeaconFilterTest : public CriticalCssBeaconFilterTestBase {
- public:
-  CriticalCssBeaconFilterTest() { }
-  virtual ~CriticalCssBeaconFilterTest() { }
-
- protected:
-  virtual void SetUp() {
-    CriticalCssBeaconFilterTestBase::SetUp();
-    options()->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
-    rewrite_driver()->AddFilters();
-  }
-
-  // Generate an optimized reference for the given leaf css.
-  GoogleString CssLinkHrefOpt(StringPiece leaf) {
-    return CssLinkHref(Encode(kTestDomain, "cf", "0", leaf, "css"));
-  }
-
-  GoogleString BeaconScriptFor(StringPiece selectors) {
-    StaticAssetManager* manager =
-        rewrite_driver()->server_context()->static_asset_manager();
-    GoogleString script = StrCat(
-        "<script src=\"",
-        manager->GetAssetUrl(
-            StaticAssetManager::kCriticalCssBeaconJs, options()),
-        "\"></script><script type=\"text/javascript\">");
-    StrAppend(
-        &script,
-        "pagespeed.criticalCssBeaconInit('",
-        options()->beacon_url().http, "','",
-        kTestDomain, "','0',[", selectors, "]);</script>");
-    return script;
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CriticalCssBeaconFilterTest);
+  CriticalCssBeaconFilter* filter_;  // Owned by rewrite_driver()
 };
 
 TEST_F(CriticalCssBeaconFilterTest, ExtractFromInlineStyle) {
@@ -281,38 +246,9 @@ TEST_F(CriticalCssBeaconFilterTest, EverythingThatParses) {
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
-// This class explicitly only includes the beacon filter and its prerequisites;
-// this lets us test the presence of beacon results without the critical
-// selector filter injecting a lot of stuff in the output.
-class CriticalCssBeaconOnlyTest : public CriticalCssBeaconFilterTestBase {
- public:
-  CriticalCssBeaconOnlyTest() { }
-  virtual ~CriticalCssBeaconOnlyTest() { }
-
- protected:
-  virtual void SetUp() {
-    CriticalCssBeaconFilterTestBase::SetUp();
-    // Need to set up filters that are normally auto-enabled by
-    // kPrioritizeCriticalCss: we're switching on CriticalCssBeaconFilter by
-    // hand so that we don't turn on CriticalSelectorFilter.
-    options()->EnableFilter(RewriteOptions::kRewriteCss);
-    options()->EnableFilter(RewriteOptions::kFlattenCssImports);
-    options()->EnableFilter(RewriteOptions::kInlineImportToLink);
-    CriticalCssBeaconFilter::InitStats(statistics());
-    filter_ = new CriticalCssBeaconFilter(rewrite_driver());
-    rewrite_driver()->AddFilters();
-    rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
-  }
-
- private:
-  CriticalCssBeaconFilter* filter_;  // Owned by rewrite_driver()
-
-  DISALLOW_COPY_AND_ASSIGN(CriticalCssBeaconOnlyTest);
-};
-
 // Right now we never beacon if there's valid pcache data, even if that data
 // corresponds to an earlier version of the page.
-TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
+TEST_F(CriticalCssBeaconFilterTest, ExtantPCache) {
   // Set up and register a beacon finder.
   CriticalSelectorFinder* finder =
       new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics());
@@ -345,7 +281,6 @@ TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
 
 class CriticalCssBeaconWithCombinerFilterTest
     : public CriticalCssBeaconFilterTest {
- public:
   virtual void SetUp() {
     options()->EnableFilter(RewriteOptions::kCombineCss);
     CriticalCssBeaconFilterTest::SetUp();

@@ -497,10 +497,10 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->ParseText(flush_early_info.pre_head());
         new_driver->ParseText(flush_early_info.resource_html());
 
-        const StringSet& css_critical_images = new_driver->server_context()->
-            critical_images_finder()->GetCssCriticalImages(new_driver);
         if (new_driver->options()->
             flush_more_resources_early_if_time_permits()) {
+          const StringSet& css_critical_images = new_driver->server_context()->
+              critical_images_finder()->GetCssCriticalImages(new_driver);
           // Critical images inside css.
           StringSet::iterator it = css_critical_images.begin();
           for (; it != css_critical_images.end(); ++it) {

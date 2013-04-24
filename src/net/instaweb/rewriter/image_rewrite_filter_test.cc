@@ -1633,15 +1633,23 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
+  // With no critical images registered, no images are candidates for inlining.
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, false);
+  // Here and below, -1 results mean "no critical image data reported".
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
+
   // Image not present in critical set should not be inlined.
+  StringSet* critical_images = server_context()->critical_images_finder()->
+      mutable_html_critical_images(rewrite_driver());
+  critical_images->insert(StrCat(kTestDomain, "other_image.png"));
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
   EXPECT_EQ(-1, logging_info()->num_html_critical_images());
   EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 
   // Image present in critical set should be inlined.
-  StringSet* critical_images = server_context()->critical_images_finder()->
-      mutable_html_critical_images(rewrite_driver());
   critical_images->insert(StrCat(kTestDomain, kChefGifFile));
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, true);

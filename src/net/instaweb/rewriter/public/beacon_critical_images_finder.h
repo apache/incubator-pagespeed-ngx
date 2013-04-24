@@ -20,7 +20,9 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -36,7 +38,8 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   virtual ~BeaconCriticalImagesFinder();
 
   virtual bool IsMeaningful(const RewriteDriver* driver) const {
-    return driver->options()->critical_images_beacon_enabled();
+    return (driver->options()->critical_images_beacon_enabled() &&
+            driver->server_context()->factory()->UseBeaconResultsInFilters());
   }
 
   virtual int PercentSeenForCritical() const {
@@ -52,7 +55,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   // this computes the same hash on image_url and checks if it is stored in the
   // critical image set.
   virtual bool IsHtmlCriticalImage(const GoogleString& image_url,
-                               RewriteDriver* driver);
+                                   RewriteDriver* driver);
 
   virtual void ComputeCriticalImages(StringPiece url,
                                      RewriteDriver* driver);

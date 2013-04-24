@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -874,27 +873,19 @@ class RewriteDriver : public HtmlParse {
     return critical_images_info_.get();
   }
 
+  // Indicate whether critical_images_info was set explicitly by a call
+  // to set_critical_images_info.
+  bool critical_images_info_was_set() const {
+    return critical_images_info_was_set_;
+  }
+
   // Inserts the critical images present on the requested html page. It takes
   // ownership of critical_images_info. This should only be called by the
   // CriticalImagesFinder, normal users should just be using the automatic
   // management of critical_images_info that CriticalImagesFinder provides.
   void set_critical_images_info(CriticalImagesInfo* critical_images_info) {
     critical_images_info_.reset(critical_images_info);
-  }
-
-  // Return true if we must prioritize critical selectors, and we should
-  // therefore enable its prerequisite filters as well.
-  bool CriticalSelectorsEnabled() const {
-    return (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
-            server_context()->factory()->UseBeaconResultsInFilters());
-  }
-
-  // Return true if we must flatten css imports, either because the filter is
-  // enabled explicitly or because it is enabled by CriticalSelectorsEnabled.
-  bool FlattenCssImportsEnabled() const {
-    return (options()->Enabled(RewriteOptions::kFlattenCssImports) ||
-            (!options()->Forbidden(RewriteOptions::kFlattenCssImports) &&
-             CriticalSelectorsEnabled()));
+    critical_images_info_was_set_ = true;
   }
 
   // Returns computed critical selector set for this page, or NULL
@@ -1006,6 +997,9 @@ class RewriteDriver : public HtmlParse {
              const ContentType* type,
              StringPiece charset,
              OutputResource* output);
+
+ protected:
+  virtual void DetermineEnabledFilters();
 
  private:
   friend class RewriteContext;
@@ -1387,6 +1381,10 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical image info for the current URL.
   scoped_ptr<CriticalImagesInfo> critical_images_info_;
+
+  // Indicate whether critical_images_info_ has been set explicitly.  This
+  // distinguishes the default NULL value from an explicitly-set NULL value.
+  bool critical_images_info_was_set_;
 
   scoped_ptr<CriticalCssResult> critical_css_result_;
 

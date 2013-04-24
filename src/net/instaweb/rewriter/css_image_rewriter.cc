@@ -65,6 +65,11 @@ CssImageRewriter::CssImageRewriter(CssFilter::Context* root_context,
 
 CssImageRewriter::~CssImageRewriter() {}
 
+bool CssImageRewriter::FlatteningEnabled() const {
+  const RewriteOptions* options = driver_->options();
+  return options->Enabled(RewriteOptions::kFlattenCssImports);
+}
+
 bool CssImageRewriter::RewritesEnabled(
     int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
@@ -147,7 +152,7 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
   const RewriteOptions* options = driver_->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 
-  if (!driver_->FlattenCssImportsEnabled()) {
+  if (!FlatteningEnabled()) {
     // If flattening is disabled completely, mark this hierarchy as having
     // failed flattening, so that later RollUps do the right thing (nothing).
     // This is not something we need to log in the statistics.

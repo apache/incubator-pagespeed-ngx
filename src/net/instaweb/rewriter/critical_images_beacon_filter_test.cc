@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -56,8 +57,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     CriticalImagesBeaconFilter::InitStats(statistics());
     // Enable a filter that uses critical images, which in turn will enable
     // beacon insertion.
+    factory()->set_use_beacon_results_in_filters(true);
     options()->EnableFilter(RewriteOptions::kLazyloadImages);
-    options()->set_critical_images_beacon_enabled(true);
     RewriteTestBase::SetUp();
     https_mode_ = false;
 

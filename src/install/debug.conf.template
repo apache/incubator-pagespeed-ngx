@@ -28,6 +28,10 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 # rewritten before being flushed to the client.
 ModPagespeedBlockingRewriteKey psatest
 
+# By default we test without image beaconing, and use a separate vhost to
+# enable image beaconing explicitly.
+ModPagespeedCriticalImagesBeaconEnabled false
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/max_html_parse_size" >
   ModPagespeedMaxHtmlParseBytes 5000
 </Directory>
@@ -592,6 +596,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/with_shm"
 
   ModPagespeedEnableFilters rewrite_images
+  ModPagespeedCriticalImagesBeaconEnabled false
 </VirtualHost>
 
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
@@ -869,6 +874,7 @@ Listen 127.0.0.2:8085
   ServerName loopbackfetch.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/loopbackfetch/"
+  ModPagespeedCriticalImagesBeaconEnabled false
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:

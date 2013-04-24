@@ -918,11 +918,10 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Allow combining resources from different paths");
   AddBaseProperty(
-      false, &RewriteOptions::critical_images_beacon_enabled_, "cibe",
+      true, &RewriteOptions::critical_images_beacon_enabled_, "cibe",
       kCriticalImagesBeaconEnabled,
-      kDirectoryScope,
-      "Enable inserting client-side critical images detection "
-      "js for image optimization filters.");
+      kDirectoryScope, "Enable insertion of client-side critical "
+      "image detection js for image optimization filters.");
   AddBaseProperty(
       false,
   &RewriteOptions::test_only_prioritize_critical_css_dont_apply_original_css_,
@@ -2406,11 +2405,11 @@ bool RewriteOptions::ParseFromString(const GoogleString& value_string,
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {
-  if (disabled_filters_.IsSet(filter)) {
+  if (disabled_filters_.IsSet(filter) || forbidden_filters_.IsSet(filter)) {
     return false;
   }
-  if (forbidden_filters_.IsSet(filter)) {
-    return false;
+  if (enabled_filters_.IsSet(filter)) {
+    return true;
   }
   switch (level_.value()) {
     case kTestingCoreFilters:
@@ -2432,12 +2431,7 @@ bool RewriteOptions::Enabled(Filter filter) const {
     case kPassThrough:
       break;
   }
-  return enabled_filters_.IsSet(filter);
-}
-
-bool RewriteOptions::Forbidden(Filter filter) const {
-  return (forbidden_filters_.IsSet(filter) ||
-          (forbid_all_disabled_filters() && disabled_filters_.IsSet(filter)));
+  return false;
 }
 
 bool RewriteOptions::Forbidden(StringPiece filter_id) const {
@@ -2445,7 +2439,10 @@ bool RewriteOptions::Forbidden(StringPiece filter_id) const {
   //  disabled filters are forbidden.
   RewriteOptions::Filter filter = RewriteOptions::LookupFilterById(filter_id);
   // TODO(jmarantz): handle "ce" which is not indexed as a single filter.
-  return ((filter != kEndOfFilters) && Forbidden(filter));
+  return ((filter != kEndOfFilters) &&
+          (forbidden_filters_.IsSet(filter) ||
+           (forbid_all_disabled_filters() &&
+            disabled_filters_.IsSet(filter))));
 }
 
 bool RewriteOptions::HasRejectedHeader(

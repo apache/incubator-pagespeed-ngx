@@ -883,6 +883,7 @@ void RewriteDriver::AddPreRenderFilters() {
        rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
        rewrite_options->Enabled(RewriteOptions::kDelayImages)) &&
       rewrite_options->critical_images_beacon_enabled() &&
+      server_context_->factory()->UseBeaconResultsInFilters() &&
       server_context_->page_property_cache()->enabled()) {
     // Inject javascript to detect above-the-fold images. This should be enabled
     // if one of the filters that uses critical image information is enabled,
@@ -892,9 +893,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // because it depends on seeing the original image URLs.
     AppendOwnedPreRenderFilter(new CriticalImagesBeaconFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink) ||
-      (!rewrite_options->Forbidden(RewriteOptions::kInlineImportToLink) &&
-       CriticalSelectorsEnabled())) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
     // If we're converting simple embedded CSS @imports into a href link
     // then we need to do that before any other CSS processing.
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
@@ -928,9 +927,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // once and requires a server_context_ to be set.
     EnableRewriteFilter(RewriteOptions::kCssCombinerId);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kRewriteCss) ||
-      (!rewrite_options->Forbidden(RewriteOptions::kRewriteCss) &&
-       FlattenCssImportsEnabled())) {
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteCss)) {
     // Since AddFilters only applies to the HTML rewrite path, we check here
     // if IPRO preemptive rewrites are disabled and skip the filter if so.
     if (!rewrite_options->css_preserve_urls() ||
@@ -938,17 +935,16 @@ void RewriteDriver::AddPreRenderFilters() {
       EnableRewriteFilter(RewriteOptions::kCssFilterId);
     }
   }
-  if (CriticalSelectorsEnabled()) {
+  if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
+      server_context()->factory()->UseBeaconResultsInFilters()) {
     // Add both the instrumentation and rewriting filter, in that order.
     AppendOwnedPreRenderFilter(new CriticalCssBeaconFilter(this));
     AppendOwnedPreRenderFilter(new CriticalSelectorFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineCss) &&
-      !rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss)) {
+  // TODO(jmaessen): Should prioritizing critical css disable inline css?
+  if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CSS minification and flattening a chance to
-    // run before we decide what counts as "small".  We skip inlining if we're
-    // already going to prioritize critical CSS, as that inlines more
-    // selectively based on actual demand for CSS rules.
+    // run before we decide what counts as "small".
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssInlineFilter(this));
   }
@@ -1930,19 +1926,6 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
 
-  for (FilterList::iterator it = early_pre_render_filters_.begin();
-       it != early_pre_render_filters_.end(); ++it) {
-    HtmlFilter* filter = *it;
-    filter->DetermineEnabled();
-  }
-  for (FilterList::iterator it = pre_render_filters_.begin();
-       it != pre_render_filters_.end(); ++it) {
-    HtmlFilter* filter = *it;
-    filter->DetermineEnabled();
-  }
-  // DetermineEnabled on post render filters is invoked in
-  // HtmlParse::StartParseId
-
   if (debug_filter_ != NULL) {
     debug_filter_->InitParse();
   }
@@ -2895,6 +2878,21 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
                      server_context_->filename_prefix().as_string().c_str());
   }
   return ret;
+}
+
+void RewriteDriver::DetermineEnabledFilters() {
+  for (FilterList::iterator it = early_pre_render_filters_.begin();
+       it != early_pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    filter->DetermineEnabled();
+  }
+  for (FilterList::iterator it = pre_render_filters_.begin();
+       it != pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    filter->DetermineEnabled();
+  }
+  // Call parent DetermineEnabled to setup post render filters.
+  HtmlParse::DetermineEnabledFilters();
 }
 
 void RewriteDriver::ClearDeviceProperties() {

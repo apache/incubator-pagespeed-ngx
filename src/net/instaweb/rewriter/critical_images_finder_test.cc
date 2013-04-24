@@ -73,6 +73,12 @@ const char CriticalImagesFinderMock::kCriticalImagesCohort[] =
 class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
  public:
   virtual CriticalImagesFinder* finder() { return finder_.get(); }
+  bool IsHtmlCriticalImage(const GoogleString& url) {
+    return finder()->IsHtmlCriticalImage(url, rewrite_driver());
+  }
+  bool IsCssCriticalImage(const GoogleString& url) {
+    return finder()->IsCssCriticalImage(url, rewrite_driver());
+  }
 
  protected:
   virtual void SetUp() {
@@ -174,16 +180,17 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
 
   // Calling IsHtmlCriticalImage should update the CriticalImagesInfo in
   // RewriteDriver.
-  finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
+  EXPECT_FALSE(IsHtmlCriticalImage("imageA.jpg"));
   // We should get 1 miss for the critical images value.
   CheckCriticalImageFinderStats(0, 0, 1);
-  EXPECT_EQ(0, logging_info()->num_html_critical_images());
-  EXPECT_EQ(0, logging_info()->num_css_critical_images());
+  // Here and below, -1 results mean "no critical image data reported".
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
   ClearStats();
 
   // Calling IsHtmlCriticalImage again should not update the stats, because the
   // CriticalImagesInfo has already been updated.
-  finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
+  EXPECT_FALSE(IsHtmlCriticalImage("imageA.jpg"));
   CheckCriticalImageFinderStats(0, 0, 0);
   // ClearStats() creates a new request context and hence a new log record. So
   // the critical image counts are not set.
@@ -199,11 +206,11 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   rewrite_driver()->property_page()->WriteCohort(cohort);
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
 
-  // critical_images() is NULL because there is no previous call to
+  // critical_images_info() is NULL because there is no previous call to
   // GetCriticalImages()
   ResetDriver();
   EXPECT_TRUE(rewrite_driver()->critical_images_info() == NULL);
-  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpeg"));
   CheckCriticalImageFinderStats(1, 0, 0);
   EXPECT_EQ(2, logging_info()->num_html_critical_images());
   EXPECT_EQ(1, logging_info()->num_css_critical_images());
@@ -212,19 +219,19 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // GetCriticalImages() updates critical_images set in RewriteDriver().
   EXPECT_TRUE(rewrite_driver()->critical_images_info() != NULL);
   // EXPECT_EQ(2, GetCriticalImages(rewrite_driver()).size());
-  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
-  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageB.jpeg", rewrite_driver()));
-  EXPECT_FALSE(finder()->IsHtmlCriticalImage("imageC.jpeg", rewrite_driver()));
+  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpeg"));
+  EXPECT_TRUE(IsHtmlCriticalImage("imageB.jpeg"));
+  EXPECT_FALSE(IsHtmlCriticalImage("imageC.jpeg"));
 
   // EXPECT_EQ(1, css_critical_images->size());
-  EXPECT_TRUE(finder()->IsCssCriticalImage("imageD.jpeg", rewrite_driver()));
-  EXPECT_FALSE(finder()->IsCssCriticalImage("imageA.jpeg", rewrite_driver()));
+  EXPECT_TRUE(IsCssCriticalImage("imageD.jpeg"));
+  EXPECT_FALSE(IsCssCriticalImage("imageA.jpeg"));
 
   // Reset the driver, read the page and call UpdateCriticalImagesSetInDriver by
   // calling IsHtmlCriticalImage.
   // We read it from cache.
   ResetDriver();
-  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpeg"));
   CheckCriticalImageFinderStats(1, 0, 0);
   EXPECT_EQ(2, logging_info()->num_html_critical_images());
   EXPECT_EQ(1, logging_info()->num_css_critical_images());
@@ -233,19 +240,22 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // Advance to 90% of expiry. We get a hit from cache and must_compute is true.
   AdvanceTimeMs(0.9 * options()->finder_properties_cache_expiration_time_ms());
   ResetDriver();
-  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpeg"));
   CheckCriticalImageFinderStats(1, 0, 0);
   EXPECT_EQ(2, logging_info()->num_html_critical_images());
   EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
 
   ResetDriver();
-  // Advance past expiry, so that the pages expire.
+  // Advance past expiry, so that the pages expire; now no images are critical.
   AdvanceTimeMs(2 * options()->finder_properties_cache_expiration_time_ms());
-  EXPECT_FALSE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  EXPECT_TRUE(rewrite_driver()->critical_images_info() == NULL);
+  EXPECT_FALSE(IsHtmlCriticalImage("imageA.jpeg"));
+  EXPECT_TRUE(rewrite_driver()->critical_images_info() != NULL);
   CheckCriticalImageFinderStats(0, 1, 0);
-  EXPECT_EQ(0, logging_info()->num_html_critical_images());
-  EXPECT_EQ(0, logging_info()->num_css_critical_images());
+  // Here -1 results mean "no valid critical image data" due to expiry.
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 }
 
 TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
@@ -268,10 +278,10 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     rewrite_driver()->property_page()->WriteCohort(cohort);
     ResetDriver();
 
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgA.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgB.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsCssCriticalImage("imgD.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsCssCriticalImage("imgA.jpeg", rewrite_driver()));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgB.jpeg"));
+    EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
+    EXPECT_FALSE(IsCssCriticalImage("imgA.jpeg"));
   }
 
   // Verify that we are only storing NumSetsToKeep() sets.
@@ -292,9 +302,9 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
         rewrite_driver(), critical_images_set, NULL));
     rewrite_driver()->property_page()->WriteCohort(cohort);
     ResetDriver();
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgA.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgB.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsCssCriticalImage("imgD.jpeg", rewrite_driver()));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgB.jpeg"));
+    EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
   }
 
   // Continue writing imgA, but now imgB should be below our threshold.
@@ -306,10 +316,10 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
         rewrite_driver(), critical_images_set, NULL));
     rewrite_driver()->property_page()->WriteCohort(cohort);
     ResetDriver();
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgA.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgB.jpeg", rewrite_driver()));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
     // We didn't write CSS critical images, so imgD should still be critical.
-    EXPECT_TRUE(finder()->IsCssCriticalImage("imgD.jpeg", rewrite_driver()));
+    EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
   }
 
   // Write imgC twice. imgA should still be critical, and C should not.
@@ -321,10 +331,10 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
         rewrite_driver(), critical_images_set, NULL));
     rewrite_driver()->property_page()->WriteCohort(cohort);
     ResetDriver();
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgA.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgB.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgC.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsCssCriticalImage("imgD.jpeg", rewrite_driver()));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgC.jpeg"));
+    EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
   }
 
   // Continue writing imgC, but A should no longer be critical.
@@ -336,10 +346,10 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
         rewrite_driver(), critical_images_set, NULL));
     rewrite_driver()->property_page()->WriteCohort(cohort);
     ResetDriver();
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgA.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgB.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgC.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsCssCriticalImage("imgD.jpeg", rewrite_driver()));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgA.jpeg"));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgC.jpeg"));
+    EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
   }
 
   // And finally, write imgC, making sure it is critical.
@@ -351,10 +361,10 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
         rewrite_driver(), critical_images_set, NULL));
     rewrite_driver()->property_page()->WriteCohort(cohort);
     ResetDriver();
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgA.jpeg", rewrite_driver()));
-    EXPECT_FALSE(finder()->IsHtmlCriticalImage("imgB.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsHtmlCriticalImage("imgC.jpeg", rewrite_driver()));
-    EXPECT_TRUE(finder()->IsCssCriticalImage("imgD.jpeg", rewrite_driver()));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgA.jpeg"));
+    EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
+    EXPECT_TRUE(IsHtmlCriticalImage("imgC.jpeg"));
+    EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
   }
 }
 

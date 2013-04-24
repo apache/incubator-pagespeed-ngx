@@ -264,9 +264,9 @@ DEFINE_string(pre_connect_url, "",
 DEFINE_bool(inline_only_critical_images, true, "Boolean indicating whether "
             "inline_images should inline only critical images or not.");
 
-DEFINE_bool(critical_images_beacon_enabled, false, "Boolean indicating whether "
-            "critical images beacon should be inserted for image rewriting "
-            "filters.");
+DEFINE_bool(critical_images_beacon_enabled, false, "If beaconing is enabled "
+            "via --use_beacon_results_in_filters, then this indicates that the "
+            "critical images beacon should be inserted for image rewriting.");
 
 DEFINE_bool(test_only_prioritize_critical_css_dont_apply_original_css, false,
             "Boolean indicating whether the prioritize_critical_css filter "

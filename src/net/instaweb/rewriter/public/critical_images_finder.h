@@ -85,7 +85,8 @@ class CriticalImagesFinder {
   // Checks whether the requested image is present in the critical set or not.
   // Users of this function should also check IsMeaningful() to see if the
   // implementation of this function returns meaningful results and provide a
-  // default behavior if it does not.
+  // default behavior if it does not.  If no critical set value has been
+  // obtained, returns false (not critical).
   virtual bool IsHtmlCriticalImage(const GoogleString& image_url,
                                    RewriteDriver* driver);
 
@@ -100,7 +101,9 @@ class CriticalImagesFinder {
   // Utility functions for manually setting the critical image sets. These
   // should only be used by unit tests that need to setup a specific set of
   // critical images. For normal users of CriticalImagesFinder, the critical
-  // images will be populated from entries in the property cache.
+  // images will be populated from entries in the property cache.  Note that
+  // these always return a non-NULL StringSet value (implying "beacon result
+  // received").
   StringSet* mutable_html_critical_images(RewriteDriver* driver);
   StringSet* mutable_css_critical_images(RewriteDriver* driver);
 
@@ -142,13 +145,10 @@ class CriticalImagesFinder {
 
   // Extracts the critical images from the given property_value into
   // critical_images_info, after checking if the property value is still valid
-  // using the provided TTL. It also updates stats variables if track_stats is
-  // true.
-  void ExtractCriticalImagesFromCache(
+  // using the provided TTL.  It also updates stats variables.
+  CriticalImagesInfo* ExtractCriticalImagesFromCache(
       RewriteDriver* driver,
-      const PropertyValue* property_value,
-      bool track_stats,
-      CriticalImagesInfo* critical_images_info);
+      const PropertyValue* property_value);
 
  private:
   friend class CriticalImagesFinderTestBase;

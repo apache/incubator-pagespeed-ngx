@@ -1022,7 +1022,6 @@ class RewriteOptions {
   void EnableExtendCacheFilters();
 
   bool Enabled(Filter filter) const;
-  bool Forbidden(Filter filter) const;
   bool Forbidden(StringPiece filter_id) const;
 
   // Returns the set of enabled filters that require JavaScript for execution.
