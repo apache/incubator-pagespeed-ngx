@@ -233,7 +233,10 @@ const char* kSupportsPrefetchLinkScriptTag[] = {
   "prefetch_link_script_tag",
 };
 
-const char* kChromeVersionPattern = "Chrome/(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)";
+// Match either 'CriOS' (iOS Chrome) or 'Chrome'. ':?' marks a non-capturing
+// group.
+const char* kChromeVersionPattern =
+    "(?:Chrome|CriOS)/(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)";
 
 // Device strings must not include wildcards.
 const pair<GoogleString, pair<int, int> > kKnownScreenDimensions[] = {
@@ -425,6 +428,11 @@ bool UserAgentMatcher::IsAndroidUserAgent(const StringPiece& user_agent) const {
   return user_agent.find("Android") != GoogleString::npos;
 }
 
+bool UserAgentMatcher::IsiOSUserAgent(const StringPiece& user_agent) const {
+  return user_agent.find("iPhone") != GoogleString::npos ||
+      user_agent.find("iPad") != GoogleString::npos;
+}
+
 bool UserAgentMatcher::GetChromeBuildNumber(const StringPiece& user_agent,
                                             int* major, int* minor, int* build,
                                             int* patch) const {
@@ -488,15 +496,33 @@ bool UserAgentMatcher::GetScreenResolution(
   return false;
 }
 
+bool UserAgentMatcher::UserAgentExceedsChromeiOSBuildAndPatch(
+    const StringPiece& user_agent, int required_build,
+    int required_patch) const {
+  // Verify if this is an iOS user agent.
+  if (!IsiOSUserAgent(user_agent)) {
+    return false;
+  }
+  return UserAgentExceedsChromeBuildAndPatch(
+      user_agent, required_build, required_patch);
+}
+
 bool UserAgentMatcher::UserAgentExceedsChromeAndroidBuildAndPatch(
+    const StringPiece& user_agent, int required_build,
+    int required_patch) const {
+  // Verify if this is an Android user agent.
+  if (!IsAndroidUserAgent(user_agent)) {
+    return false;
+  }
+  return UserAgentExceedsChromeBuildAndPatch(
+      user_agent, required_build, required_patch);
+}
+
+bool UserAgentMatcher::UserAgentExceedsChromeBuildAndPatch(
     const StringPiece& user_agent, int required_build,
     int required_patch) const {
   // By default user agent sniffing is disabled.
   if (required_build == -1 && required_patch == -1) {
-    return false;
-  }
-  // Verify if this is an Android user agent.
-  if (!IsAndroidUserAgent(user_agent)) {
     return false;
   }
   int major = -1;
@@ -516,5 +542,4 @@ bool UserAgentMatcher::UserAgentExceedsChromeAndroidBuildAndPatch(
 
   return true;
 }
-
 }  // namespace net_instaweb

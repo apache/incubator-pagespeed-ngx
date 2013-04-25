@@ -298,6 +298,19 @@ TEST_F(UserAgentMatcherTest, IsAndroidUserAgentTest) {
       UserAgentStrings::kIe6UserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, IsiOSUserAgentTest) {
+  EXPECT_TRUE(user_agent_matcher_.IsiOSUserAgent(
+      UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.IsiOSUserAgent(
+      UserAgentStrings::kIPadUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.IsiOSUserAgent(
+      UserAgentStrings::kIPodSafari));
+  EXPECT_TRUE(user_agent_matcher_.IsiOSUserAgent(
+      UserAgentStrings::kIPhoneChrome21UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.IsiOSUserAgent(
+      UserAgentStrings::kIe6UserAgent));
+}
+
 TEST_F(UserAgentMatcherTest, ChromeBuildNumberTest) {
   int major = -1;
   int minor = -1;
@@ -310,6 +323,15 @@ TEST_F(UserAgentMatcherTest, ChromeBuildNumberTest) {
   EXPECT_EQ(build, 597);
   EXPECT_EQ(patch, 19);
 
+  // On iOS it's "CriOS", not "Chrome".
+  EXPECT_TRUE(user_agent_matcher_.GetChromeBuildNumber(
+      UserAgentStrings::kIPhoneChrome21UserAgent, &major, &minor, &build,
+      &patch));
+  EXPECT_EQ(major, 21);
+  EXPECT_EQ(minor, 0);
+  EXPECT_EQ(build, 1180);
+  EXPECT_EQ(patch, 82);
+
   EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
       UserAgentStrings::kAndroidHCUserAgent, &major, &minor, &build, &patch));
   EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
@@ -318,6 +340,31 @@ TEST_F(UserAgentMatcherTest, ChromeBuildNumberTest) {
       "Chrome/10.0", &major, &minor, &build, &patch));
   EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
       "Chrome/10.0.1.", &major, &minor, &build, &patch));
+}
+
+TEST_F(UserAgentMatcherTest, ExceedsChromeBuildAndPatchTest) {
+  EXPECT_TRUE(user_agent_matcher_.UserAgentExceedsChromeBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1000, 0));
+  EXPECT_TRUE(user_agent_matcher_.UserAgentExceedsChromeBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1000, 999));
+  EXPECT_TRUE(user_agent_matcher_.UserAgentExceedsChromeBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1180, 82));
+  EXPECT_FALSE(user_agent_matcher_.UserAgentExceedsChromeBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1180, 83));
+  EXPECT_FALSE(user_agent_matcher_.UserAgentExceedsChromeBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1181, 0));
+  EXPECT_FALSE(user_agent_matcher_.UserAgentExceedsChromeBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1181, 83));
+
+  EXPECT_TRUE(user_agent_matcher_.UserAgentExceedsChromeAndroidBuildAndPatch(
+      UserAgentStrings::kAndroidChrome21UserAgent, 1000, 0));
+  EXPECT_FALSE(user_agent_matcher_.UserAgentExceedsChromeAndroidBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1000, 0));
+
+  EXPECT_TRUE(user_agent_matcher_.UserAgentExceedsChromeiOSBuildAndPatch(
+      UserAgentStrings::kIPhoneChrome21UserAgent, 1000, 0));
+  EXPECT_FALSE(user_agent_matcher_.UserAgentExceedsChromeiOSBuildAndPatch(
+      UserAgentStrings::kAndroidChrome21UserAgent, 1000, 0));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsDnsPrefetch) {

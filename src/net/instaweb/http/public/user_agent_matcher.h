@@ -114,6 +114,7 @@ class UserAgentMatcher {
   bool SupportsDnsPrefetch(const StringPiece& user_agent) const;
 
   virtual bool IsAndroidUserAgent(const StringPiece& user_agent) const;
+  virtual bool IsiOSUserAgent(const StringPiece& user_agent) const;
 
   // Returns false if this is not a Chrome user agent, or parsing the
   // string build number fails.
@@ -128,6 +129,14 @@ class UserAgentMatcher {
         const StringPiece& user_agent, int* width, int* height);
 
   bool UserAgentExceedsChromeAndroidBuildAndPatch(
+      const StringPiece& user_agent, int required_build,
+      int required_patch) const;
+
+  bool UserAgentExceedsChromeiOSBuildAndPatch(
+      const StringPiece& user_agent, int required_build,
+      int required_patch) const;
+
+  bool UserAgentExceedsChromeBuildAndPatch(
       const StringPiece& user_agent, int required_build,
       int required_patch) const;
 

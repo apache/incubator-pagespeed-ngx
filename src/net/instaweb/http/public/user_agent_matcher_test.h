@@ -109,6 +109,10 @@ const char kKindleTabletUserAgent[] =
     "Mozilla/5.0 (Linux; U; Android 2.3.4; en-us; Kindle Fire "
     "Build/GINGERBREAD) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 "
     "Mobile Safari/533.1";
+const char kIPodSafari[] =
+    "Mozilla/5.0 (iPod; U; CPU iPhone OS 4_3_3 like Mac OS X; en-us)"
+    " AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2"
+    " Safari/6533.18.5";
 const char kNokiaUserAgent[] =
     "Nokia2355/1.0 (JN100V0200.nep) UP.Browser/6.2.2.1.c.1.108 (GUI) MMP/2.0";
 const char kOpera5UserAgent[] =
@@ -244,6 +248,7 @@ static const char *kMobileUserAgents[] = {
     kAndroidChrome21UserAgent,
     kIPhoneChrome21UserAgent,
     kIPhoneUserAgent,
+    kIPodSafari,
     kNokiaMobileUserAgent,
     kSHARPMobileUserAgent,
     kKWCMobileUserAgent,
@@ -297,12 +302,13 @@ static const char* kDesktopUserAgents[] = {
     kSAGEMUserAgent,
     kSIEUserAgent,
     kLGUserAgent,
-    kMozillaUserAgent
+    kMozillaUserAgent,
 };
 
 static const char* kTabletUserAgents[] = {
     kGenericAndroidUserAgent,
     kIPadUserAgent,
+    kIPadTabletUserAgent,
     kKindleTabletUserAgent,
     kNexus7ChromeUserAgent,
     kSilkTabletUserAgent
