@@ -13,9 +13,13 @@
 // limitations under the License.
 
 #include "pagespeed/kernel/js/js_minify.h"
-#include "testing/gtest/include/gtest/gtest.h"
 
-namespace {
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/js/js_keywords.h"
+
+namespace pagespeed {
 
 // This sample code comes from Douglas Crockford's jsmin example.
 const char* kBeforeCompilation =
@@ -66,8 +70,8 @@ const char* kAfterCompilation =
 
 class JsMinifyTest : public testing::Test {
  protected:
-  void CheckMinification(const base::StringPiece& before,
-                         const base::StringPiece& after) {
+  void CheckMinification(const StringPiece& before,
+                         const StringPiece& after) {
     GoogleString output;
     EXPECT_TRUE(pagespeed::js::MinifyJs(before, &output));
     EXPECT_EQ(after, output);
@@ -77,7 +81,7 @@ class JsMinifyTest : public testing::Test {
     EXPECT_EQ(static_cast<int>(after.size()), output_size);
   }
 
-  void CheckError(const base::StringPiece& input) {
+  void CheckError(const StringPiece& input) {
     GoogleString output;
     EXPECT_FALSE(pagespeed::js::MinifyJs(input, &output));
     EXPECT_TRUE(output.empty());
@@ -279,6 +283,21 @@ TEST_F(JsMinifyTest, ReturnThrowNumber) {
   CheckMinification("return 1;\nthrow 2;", "return 1;throw 2;");
 }
 
+TEST_F(JsMinifyTest, KeywordPrecedesRegex) {
+  // Make sure "typeof /./" sees the first "/" as a regex and not division.
+  // If it thinks it's a division then it will treat the "/    /" as a regex
+  // and not remove the comment.  Do the same for all such keywords.
+  // Example, "typeof /./    /* hi there */;" ->  "typeof/./;"
+  for (JsKeywords::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    if (JsKeywords::CanKeywordPrecedeRegEx(iter.name())) {
+      GoogleString input =
+          net_instaweb::StrCat(iter.name(), " /./   /* hi there */;");
+      GoogleString expected = net_instaweb::StrCat(iter.name(), "/./;");
+      CheckMinification(input, expected);
+    }
+  }
+}
+
 const char kCrashTestString[] =
     "var x = 'asd \\' lse'\n"
     "var y /*comment*/ = /regex/\n"
@@ -388,4 +407,4 @@ TEST_F(JsMinifyTest, CollapsingStringTest) {
     ASSERT_EQ(static_cast<int>(strlen(kCollapsedTestString)), size);
 }
 
-}  // namespace
+}  // namespace pagespeed

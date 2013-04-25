@@ -1624,6 +1624,15 @@ TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
                     kChefWider, kChefWider, false, true);
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     kChefTaller, kChefTaller, false, true);
+
+  const char kChefWidthWithPercentage[] = " width=100% height=1";
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefWidthWithPercentage, kChefWidthWithPercentage,
+                    false, true);
+  const char kChefHeightWithPercentage[] = " width=1 height=%";
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefHeightWithPercentage, kChefHeightWithPercentage,
+                    false, true);
 }
 
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {

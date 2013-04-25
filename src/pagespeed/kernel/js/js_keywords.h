@@ -28,6 +28,8 @@ namespace net_instaweb {
 
 namespace pagespeed {
 
+class JsMinifyTest;
+
 class JsKeywords {
  public:
   enum Type {
@@ -101,22 +103,23 @@ class JsKeywords {
 
   static bool IsAKeyword(Type type) { return type < kNotAKeyword; }
 
+  // Returns true if name is a javascript keyword that can precede a regular
+  // expression. Keywords such as 'return' and 'throw' can precede a regex '/'
+  // but keywords such as 'while' cannot.
+  static bool CanKeywordPrecedeRegEx(const StringPiece& name);
+
   enum Flag {
     kNone,
     kIsValue,
     kIsReservedNonStrict,
-    kIsReservedStrict
+    kIsReservedStrict,
+    kCanPrecedeRegEx  // keywords that can be placed directly before a regex
   };
 
   // Finds a Keyword based on a keyword string.  If not found, returns
   // kNotAKeyword.  Otherwise, this always returns a Type for which
   // IsAKeyword is true.
   static Type Lookup(const StringPiece& name, Flag* flag);
-
- private:
-  // TODO(jkarlin): Get rid of the net_instaweb namespace once JsLexer is
-  // moved into kernel/js.
-  friend class net_instaweb::JsLexer;
 
   // Limited iterator (not an STL iterator).  Example usage:
   //    for (JsKeywords::Iterator iter; !iter.AtEnd(); iter.Next()) {
@@ -135,6 +138,11 @@ class JsKeywords {
 
     // Implicit copy and assign ok.  The members can be safely copied by bits.
   };
+
+ private:
+  // TODO(jkarlin): Get rid of the net_instaweb namespace once JsLexer is
+  // moved into kernel/js.
+  friend class net_instaweb::JsLexer;
 
   // Returns the number of keywords recognized by the Lookup function.  This is
   // used by the Lexer to size the keyword-sring array prior to iterating over

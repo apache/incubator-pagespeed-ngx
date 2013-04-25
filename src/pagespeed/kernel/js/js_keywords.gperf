@@ -25,37 +25,38 @@ struct JsKeywordMap {
 };
 %%
 ### literals
+"false",        JsKeywords::kFalse,           JsKeywords::kIsValue
 "null",         JsKeywords::kNull,            JsKeywords::kIsValue
 "true",         JsKeywords::kTrue,            JsKeywords::kIsValue
-"false",        JsKeywords::kFalse,           JsKeywords::kIsValue
-### keywords
+### keywords that can precede regular expressions
+"case",         JsKeywords::kCase,            JsKeywords::kCanPrecedeRegEx
+"delete",       JsKeywords::kDelete,          JsKeywords::kCanPrecedeRegEx
+"do",           JsKeywords::kDo,              JsKeywords::kCanPrecedeRegEx
+"in",           JsKeywords::kIn,              JsKeywords::kCanPrecedeRegEx
+"instanceof",   JsKeywords::kInstanceof,      JsKeywords::kCanPrecedeRegEx
+"new",          JsKeywords::kNew,             JsKeywords::kCanPrecedeRegEx
+"return",       JsKeywords::kReturn,          JsKeywords::kCanPrecedeRegEx
+"throw",        JsKeywords::kThrow,           JsKeywords::kCanPrecedeRegEx
+"typeof",       JsKeywords::kTypeof,          JsKeywords::kCanPrecedeRegEx
+"void",         JsKeywords::kVoid,            JsKeywords::kCanPrecedeRegEx
+### keywords that can't precede regular expressions
 "break",        JsKeywords::kBreak,           JsKeywords::kNone
-"case",         JsKeywords::kCase,            JsKeywords::kNone
 "catch",        JsKeywords::kCatch,           JsKeywords::kNone
 "const",        JsKeywords::kConst,           JsKeywords::kNone
+"continue",     JsKeywords::kContinue,        JsKeywords::kNone
+"debugger",     JsKeywords::kDebugger,        JsKeywords::kNone
 "default",      JsKeywords::kDefault,         JsKeywords::kNone
+"else",         JsKeywords::kElse,            JsKeywords::kNone
 "finally",      JsKeywords::kFinally,         JsKeywords::kNone
 "for",          JsKeywords::kFor,             JsKeywords::kNone
-"instanceof",   JsKeywords::kInstanceof,      JsKeywords::kNone
-"new",          JsKeywords::kNew,             JsKeywords::kNone
-"var",          JsKeywords::kVar,             JsKeywords::kNone
-"continue",     JsKeywords::kContinue,        JsKeywords::kNone
 "function",     JsKeywords::kFunction,        JsKeywords::kNone
-"return",       JsKeywords::kReturn,          JsKeywords::kNone
-"void",         JsKeywords::kVoid,            JsKeywords::kNone
-"delete",       JsKeywords::kDelete,          JsKeywords::kNone
 "if",           JsKeywords::kIf,              JsKeywords::kNone
-"this",         JsKeywords::kThis,            JsKeywords::kNone
-"do",           JsKeywords::kDo,              JsKeywords::kNone
-"while",        JsKeywords::kWhile,           JsKeywords::kNone
-"else",         JsKeywords::kElse,            JsKeywords::kNone
-"in",           JsKeywords::kIn,              JsKeywords::kNone
 "switch",       JsKeywords::kSwitch,          JsKeywords::kNone
-"throw",        JsKeywords::kThrow,           JsKeywords::kNone
+"this",         JsKeywords::kThis,            JsKeywords::kNone
 "try",          JsKeywords::kTry,             JsKeywords::kNone
-"typeof",       JsKeywords::kTypeof,          JsKeywords::kNone
+"while",        JsKeywords::kWhile,           JsKeywords::kNone
 "with",         JsKeywords::kWith,            JsKeywords::kNone
-"debugger",     JsKeywords::kDebugger,        JsKeywords::kNone
+"var",          JsKeywords::kVar,             JsKeywords::kNone
 ### reserved for future use
 "class",        JsKeywords::kClass,           JsKeywords::kIsReservedNonStrict
 "enum",         JsKeywords::kEnum,            JsKeywords::kIsReservedNonStrict
@@ -110,6 +111,12 @@ JsKeywords::Type JsKeywords::Iterator::keyword() const {
 
 int JsKeywords::num_keywords() {
   return TOTAL_KEYWORDS;
+}
+
+bool JsKeywords::CanKeywordPrecedeRegEx(const StringPiece& name) {
+  Flag flag;
+  Type type = Lookup(name, &flag);
+  return (IsAKeyword(type) && flag == kCanPrecedeRegEx);
 }
 
 }  // namespace net_instaweb

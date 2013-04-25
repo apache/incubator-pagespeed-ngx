@@ -1156,17 +1156,18 @@ void DeleteMatchingImageDimsAfterInline(
     if (GetDimensionAttribute(element, HtmlName::kWidth, &attribute_width)) {
       if (cached->image_file_dims().width() == attribute_width) {
         // Width matches, height must either be absent or match.
-        if (!GetDimensionAttribute(
-                element, HtmlName::kHeight, &attribute_height)) {
+        if (!element->FindAttribute(HtmlName::kHeight)) {
           // No height, just delete width.
           element->DeleteAttribute(HtmlName::kWidth);
-        } else if (cached->image_file_dims().height() == attribute_height) {
+        } else if (GetDimensionAttribute(
+                element, HtmlName::kHeight, &attribute_height) &&
+            cached->image_file_dims().height() == attribute_height) {
           // Both dimensions match, delete both.
           element->DeleteAttribute(HtmlName::kWidth);
           element->DeleteAttribute(HtmlName::kHeight);
         }
       }
-    } else if (
+    } else if (!element->FindAttribute(HtmlName::kWidth) &&
         GetDimensionAttribute(element, HtmlName::kHeight, &attribute_height) &&
         cached->image_file_dims().height() == attribute_height) {
       // No width, matching height

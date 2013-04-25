@@ -285,6 +285,7 @@
         'util/worker_test_base.cc',
         'util/write_through_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/string_util_test.cc',
+        '<(DEPTH)/pagespeed/kernel/js/js_minify_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/re2_test.cc',
