@@ -134,4 +134,8 @@ Timer* PthreadThreadSystem::NewTimer() {
   return new PosixTimer;
 }
 
+int64 PthreadThreadSystem::ThreadId() const {
+  return static_cast<int64>(pthread_self());
+}
+
 }  // namespace net_instaweb

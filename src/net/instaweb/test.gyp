@@ -364,6 +364,7 @@
         'util/mock_scheduler.cc',
         'util/mock_timer.cc',
         'util/mock_time_cache.cc',
+        'util/null_thread_system.cc',
         'util/platform.cc',
         'util/simple_stats.cc',
       ],

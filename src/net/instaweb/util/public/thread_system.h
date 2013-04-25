@@ -133,6 +133,9 @@ class ThreadSystem {
   // TODO(jmarantz): consider removing this and controlling timers separately.
   virtual Timer* NewTimer() = 0;
 
+  // Returns an integer unique to the current thread.
+  virtual int64 ThreadId() const = 0;
+
  private:
   friend class Thread;
   friend class MockThreadSystem;
