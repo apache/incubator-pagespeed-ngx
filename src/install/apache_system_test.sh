@@ -1588,6 +1588,40 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME \
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
 
+  # Test critical CSS beacon injection, beacon return, and computation.  This
+  # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
+  # NOTE: must occur after cache flush, which is why it's in this embedded
+  # block.  The flush removes pre-existing beacon results from the pcache.
+  test_filter \
+    prioritize_critical_css,rewrite_css,inline_import_to_link,flatten_css_imports
+  fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+  check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
+  CALL_PAT=".*criticalCssBeaconInit("
+  SKIP_ARG="[^,]*,"
+  CAPTURE_ARG="'\([^']*\)'.*"
+  BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+  ESCAPED_URL=$( \
+    sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+  OPTIONS_HASH=$( \
+    sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+  BEACON_URL="http://${HOSTNAME}${BEACON_PATH}"
+  BEACON_DATA="url=${ESCAPED_URL}&oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
+  run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
+  # Now make sure we see the correct critical css rules.
+  fetch_until $URL \
+    'grep -c <style>[.]blue{[^}]*}</style>' 1
+  fetch_until $URL \
+    'grep -c <style>[.]big{[^}]*}</style>' 1
+  fetch_until $URL \
+    'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
+  fetch_until -save $URL \
+    'grep -c <style>[.]foo{[^}]*}</style>' 1
+  # The last one should also have the other 3, too.
+  check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+  check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+  check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
+    $FETCH_UNTIL_OUTFILE` = 1 ]
+
   if [ -n "$APACHE_LOG" ]; then
     start_test Encoded absolute urls are not respected
     HOST_NAME="http://absolute_urls.example.com"
@@ -1693,40 +1727,6 @@ fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
 check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
     fgrep -q 'Transfer-Encoding: chunked'
-
-# Test critical CSS beacon injection, beacon return, and computation.  This
-# requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
-# NOTE: must occur after cache flush on a repeat run.  All repeat runs now
-# run the cache flush test.
-test_filter \
-  prioritize_critical_css,rewrite_css,inline_import_to_link,flatten_css_imports
-fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
-check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
-CALL_PAT=".*criticalCssBeaconInit("
-SKIP_ARG="[^,]*,"
-CAPTURE_ARG="'\([^']*\)'.*"
-BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-ESCAPED_URL=$(sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-OPTIONS_HASH=$( \
-  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-BEACON_URL="http://${HOSTNAME}${BEACON_PATH}"
-BEACON_DATA="url=${ESCAPED_URL}&oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
-run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
-# Now make sure we see the correct critical css rules.
-fetch_until $URL \
-  'grep -c <style>[.]blue{[^}]*}</style>' 1
-fetch_until $URL \
-  'grep -c <style>[.]big{[^}]*}</style>' 1
-fetch_until $URL \
-  'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
-fetch_until -save $URL \
-  'grep -c <style>[.]foo{[^}]*}</style>' 1
-
-# The last one should also have the other 3, too.
-check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
-check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
-check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
-  $FETCH_UNTIL_OUTFILE` = 1 ]
 
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to
