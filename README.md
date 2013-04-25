@@ -60,6 +60,9 @@ This will use a binary PageSpeed Optimization Library, but it's also possible to
 [build PSOL from
 source](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
 
+Note: ngx_pagespeed currently doesn't support Windows or MacOS because the
+underlying PSOL library doesn't.
+
 ## How to use
 
 In your `nginx.conf`, add to the main or server block:
