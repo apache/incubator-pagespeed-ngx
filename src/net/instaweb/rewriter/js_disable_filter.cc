@@ -142,10 +142,6 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       // TODO(rahulbansal): Add logging for prioritize scripts
       if (src != NULL) {
         src->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigSrc));
-      } else if (index_ == 0 &&
-                 rewrite_driver_->options()->Enabled(
-                     RewriteOptions::kDeferJavascript)) {
-        return;
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
       if (type != NULL) {

@@ -33,8 +33,12 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/critical_css.pb.h"
+#include "net/instaweb/rewriter/public/critical_css_filter.h"
+#include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
+#include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -52,6 +56,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
@@ -438,6 +443,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
     SetupCohort(page_property_cache(), RewriteDriver::kDomCohort);
+    SetupCohort(page_property_cache(),
+                MockCriticalCssFinder::kCriticalCssCohort);
     options->ClearSignatureForTesting();
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     options->set_in_place_rewriting_enabled(true);
@@ -1659,6 +1666,98 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
 
   EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
                                     true, false, false, false, true), text);
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
+  GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+  const char kInputHtml[] =
+      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+      "<html>"
+      "<head>"
+      "<title>Flush Subresources Early example</title>"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+      "</head>"
+      "<body>"
+      "Hello, mod_pagespeed!"
+      "</body>"
+      "</html>";
+  GoogleString output_html = StringPrintf(
+      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+      "<html>"
+      "<head>"
+      "<link id=\"*\" href=\"data:text/css;base64*\""
+      " rel=\"stylesheet\" />"
+      "%s"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_prefetch_start = Number(new Date());"
+      "window.mod_pagespeed_num_resources_prefetched = 1"
+      "</script>"
+      "<title>Flush Subresources Early example</title>"
+      "<script id=\"psa_flush_style_early\""
+      " pagespeed_no_defer=\"\" type=\"text/javascript\">"
+      "%s</script>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>"
+      "</head>"
+      "<body>%sHello, mod_pagespeed!</body></html>"
+      "<noscript id=\"psa_add_styles\">"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"*1.css*\"></noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">"
+      "%s*"
+      "</script>",
+      StringPrintf(FlushEarlyContentWriterFilter::kDisableLinkTag,
+                   "*").c_str(),
+      CriticalCssFilter::kMoveAndApplyLinkScriptTemplate,
+      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+                   "*", "").c_str(),
+      StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                   redirect_url.c_str()).c_str(),
+      CriticalCssFilter::kAddStylesScript);
+
+  // Setup response to resources.
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
+                                kCssContent, kHtmlCacheTimeSec * 2);
+
+  // Enable FlushSubresourcesFilter filter.
+  RewriteOptions* rewrite_options = server_context()->global_options();
+  rewrite_options->ClearSignatureForTesting();
+  rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
+  // Disabling the inline filters so that the resources get flushed early
+  // else our dummy resources are too small and always get inlined.
+  rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
+  rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascript);
+  // Enable Critical CSS filter.
+  rewrite_options->set_enable_flush_early_critical_css(true);
+  rewrite_options->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
+  rewrite_options->ComputeSignature();
+
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  // Add critical css rules.
+  MockCriticalCssFinder* critical_css_finder =
+      new MockCriticalCssFinder(rewrite_driver(), statistics());
+  server_context()->set_critical_css_finder(critical_css_finder);
+  critical_css_finder->AddCriticalCss("http://test.com/1.css",
+                                      "b {color: black }", 100);
+
+  GoogleString text;
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          UserAgentStrings::kChrome18UserAgent);
+
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_TRUE(Wildcard(output_html).Match(text)) <<
+      "Expected:\n" << output_html << "\nGot:\n" << text;
 }
 
 }  // namespace net_instaweb

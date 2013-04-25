@@ -36,6 +36,8 @@ namespace net_instaweb {
 namespace {
 
 // Provide stub implementation of abstract base class for testing purposes.
+// Note: Not using the implementation from mock_critical_css_finder.h, so that
+// we can test with property cache.
 class MockCriticalCssFinder : public CriticalCssFinder {
  public:
   explicit MockCriticalCssFinder(Statistics* stats)

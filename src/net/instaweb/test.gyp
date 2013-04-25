@@ -167,6 +167,7 @@
         'rewriter/lazyload_images_filter_test.cc',
         'rewriter/local_storage_cache_filter_test.cc',
         'rewriter/meta_tag_filter_test.cc',
+        'rewriter/mock_critical_css_finder.cc',
         'rewriter/mock_resource_callback.cc',
         'rewriter/pedantic_filter_test.cc',
         'rewriter/property_cache_util_test.cc',

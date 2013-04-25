@@ -231,9 +231,9 @@ void CriticalCssFilter::StartDocument() {
 }
 
 void CriticalCssFilter::EndDocument() {
-  if (num_replaced_links_ > 0) {
-    // Comment all the style, link tags so that look-ahead parser cannot find
-    // them.
+  // Don't add link/style tags here, if we are in flushing early driver. We'll
+  // get chance to collect and add them again through flushed early driver.
+  if (num_replaced_links_ > 0 && !driver_->flushing_early()) {
     HtmlElement* noscript_element =
         driver_->NewElement(NULL, HtmlName::kNoscript);
     driver_->AddAttribute(noscript_element, HtmlName::kId, kNoscriptStylesId);

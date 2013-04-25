@@ -26,7 +26,6 @@
 #include "net/instaweb/automatic/public/proxy_interface.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -40,9 +39,9 @@
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
-#include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
+#include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -50,6 +49,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/delay_cache.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
@@ -58,6 +58,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_mutex.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -72,9 +73,10 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class AsyncFetch;
 class Function;
-class GoogleUrl;
 class MessageHandler;
+class ProxyFetchPropertyCallbackCollector;
 
 namespace {
 
@@ -437,59 +439,6 @@ class FlakyFakeUrlNamer : public FakeUrlNamer {
                             const RewriteOptions& options) const {
     return false;
   }
-};
-
-class MockCriticalCssFinder : public CriticalCssFinder {
- public:
-  explicit MockCriticalCssFinder(RewriteDriver* driver, Statistics* stats)
-      : CriticalCssFinder(stats),
-        driver_(driver) {
-  }
-
-  void AddCriticalCss(const StringPiece& url, const StringPiece& rules,
-                      int original_size) {
-    if (critical_css_result_.get() == NULL) {
-      critical_css_result_.reset(new CriticalCssResult());
-    }
-
-    CriticalCssResult_LinkRules* link_rules =
-        critical_css_result_->add_link_rules();
-    link_rules->set_link_url(url.as_string());
-    link_rules->set_critical_rules(rules.as_string());
-    link_rules->set_original_size(original_size);
-  }
-
-  void SetCriticalCssStats(
-      int exception_count, int import_count, int link_count) {
-    if (critical_css_result_.get() == NULL) {
-      critical_css_result_.reset(new CriticalCssResult());
-    }
-
-    critical_css_result_->set_exception_count(exception_count);
-    critical_css_result_->set_import_count(import_count);
-    critical_css_result_->set_link_count(link_count);
-  }
-
-  // Mock to avoid dealing with property cache.
-  CriticalCssResult* GetCriticalCssFromCache(RewriteDriver* driver) {
-    CriticalCssResult* result = critical_css_result_.release();
-    // Add back the rules so the second driver can find it also.
-    AddCriticalCssRules();
-    return result;
-  }
-
-  void AddCriticalCssRules() {
-    AddCriticalCss("http://test.com/a.css", "a_used {color: azure }", 1);
-    AddCriticalCss("http://test.com/b.css", "b_used {color: blue }", 2);
-    AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 3);
-  }
-
-  void ComputeCriticalCss(StringPiece url, RewriteDriver* driver) {}
-  const char* GetCohort() const { return "critical_css"; }
-
- private:
-  RewriteDriver* driver_;
-  scoped_ptr<CriticalCssResult> critical_css_result_;
 };
 
 }  // namespace
@@ -1116,7 +1065,12 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
       statistics());
   server_context_->set_critical_css_finder(critical_css_finder_);
 
-  critical_css_finder_->AddCriticalCssRules();
+  critical_css_finder_->AddCriticalCss("http://test.com/a.css",
+                                       "a_used {color: azure }", 1);
+  critical_css_finder_->AddCriticalCss("http://test.com/b.css",
+                                       "b_used {color: blue }", 2);
+  critical_css_finder_->AddCriticalCss("http://test.com/c.css",
+                                       "c_used {color: cyan }", 3);
 
   const char kInputHtml[] =
       "<html>\n"

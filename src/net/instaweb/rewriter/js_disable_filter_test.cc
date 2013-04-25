@@ -90,14 +90,14 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "</script></head>"
       "<body>",
       kUnrelatedNoscriptTags,
-      "<script></script>"
+      "<script type=\"text/psajs\" orig_index=\"0\"></script>"
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
-      " orig_index=\"0\">hi1</script>",
+      " orig_index=\"1\">hi1</script>",
       kUnrelatedTags, StrCat(
       "<img src=\"abc.jpg\" data-pagespeed-onload=\"foo1('abc');foo2();\" "
       "onload=\"", JsDisableFilter::kElementOnloadCode, "\">"
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
-      " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
+      " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
       "</body>"));
 
@@ -241,11 +241,13 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
       "<script src=\"1.js?a#12296;=en\"></script>");
   const GoogleString expected = StrCat(
       kUnrelatedNoscriptTags,
-      "<script random=\"true\">hi1</script>",
+      "<script random=\"true\" type=\"text/psajs\" orig_index=\"0\">"
+      "hi1</script>",
       kUnrelatedTags,
-      "<script random=\"false\">hi2</script>"
+      "<script random=\"false\" type=\"text/psajs\" orig_index=\"1\">"
+      "hi2</script>"
       "<script pagespeed_orig_src=\"1.js?a#12296;=en\" type=\"text/psajs\""
-      " orig_index=\"0\"></script>");
+      " orig_index=\"2\"></script>");
 
   ValidateExpected("http://example.com/", input_html, expected);
 }
