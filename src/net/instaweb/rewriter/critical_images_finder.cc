@@ -51,7 +51,6 @@ bool PopulateCriticalImagesFromPropertyValue(
   if (!property_value->has_value()) {
     return false;
   }
-
   // Check if we have the placeholder string value, indicating an empty value.
   // This will be stored when we have an empty set of critical images, since the
   // property cache doesn't store empty values.
@@ -75,15 +74,8 @@ CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
   if (!PopulateCriticalImagesFromPropertyValue(property_value, &crit_images)) {
     return NULL;
   }
-  if (crit_images.html_critical_images().size() == 0 &&
-      crit_images.css_critical_images().size() == 0 &&
-      crit_images.html_critical_images_sets().size() == 0 &&
-      crit_images.css_critical_images_sets().size() == 0) {
-    // Note: we check the summary set sizes above first since sometimes the
-    // summaries are populated but individual beacon sets are not.  If nothing
-    // is populated yet then we return NULL (no data) rather than empty sets.
-    return NULL;
-  }
+  // The existence of kEmptyValuePlaceholder should mean that "no data" will be
+  // distinguished from "no critical images" by the above call.
   CriticalImagesInfo* critical_images_info = new CriticalImagesInfo();
   critical_images_info->html_critical_images.insert(
       crit_images.html_critical_images().begin(),
