@@ -239,6 +239,12 @@ class ImageRewriteTest : public RewriteTestBase {
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage(const GoogleString& tag_string,
                     const ContentType& content_type) {
+    // Capture normal headers for comparison. We need to do it now
+    // since the clock -after- rewrite is non-deterministic, but it must be
+    // at the initial value at the time of the rewrite.
+    GoogleString expect_headers;
+    AppendDefaultHeaders(content_type, &expect_headers);
+
     GoogleString src_string;
 
     Histogram* rewrite_latency_ok = statistics()->GetHistogram(
@@ -269,13 +275,15 @@ class ImageRewriteTest : public RewriteTestBase {
     cache_callback.ExpectFound();
 
     // Make sure the headers produced make sense.
-    GoogleString expect_headers;
-    AppendDefaultHeaders(content_type, &expect_headers);
     EXPECT_STREQ(expect_headers, rewritten_headers);
 
     // Also fetch the resource to ensure it can be created dynamically
     ExpectStringAsyncFetch expect_callback(true, CreateRequestContext());
     lru_cache()->Clear();
+
+    // New time --- new timestamp.
+    expect_headers.clear();
+    AppendDefaultHeaders(content_type, &expect_headers);
 
     EXPECT_TRUE(rewrite_driver()->FetchResource(src_string, &expect_callback));
     rewrite_driver()->WaitForCompletion();
@@ -283,7 +291,7 @@ class ImageRewriteTest : public RewriteTestBase {
               expect_callback.response_headers()->status_code()) <<
         "Looking for " << src_string;
     EXPECT_STREQ(rewritten_image, expect_callback.buffer());
-    EXPECT_STREQ(rewritten_headers,
+    EXPECT_STREQ(expect_headers,
                  expect_callback.response_headers()->ToString());
     // Try to fetch from an independent server.
     ServeResourceFromManyContextsWithUA(
@@ -2569,7 +2577,8 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
   GoogleString page_url = StrCat(kTestDomain, "test.html");
   // Store image contents into fetcher.
   AddFileToMockFetcher(initial_image_url, kPuzzleJpgFile,
-                        kContentTypeJpeg, 100);
+                       kContentTypeJpeg, 100);
+  int64 start_time_ms = timer()->NowMs();
   ParseUrl(page_url, kHtmlInput);
 
   StringVector image_urls;
@@ -2586,7 +2595,7 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
   ResponseHeaders* response_headers = expect_callback.response_headers();
   EXPECT_TRUE(response_headers->IsProxyCacheable());
   EXPECT_EQ(Timer::kYearMs,
-            response_headers->CacheExpirationTimeMs() - timer()->NowMs());
+            response_headers->CacheExpirationTimeMs() - start_time_ms);
   // Set a non-webp UA.
   rewrite_driver()->SetUserAgent("");
 
@@ -2611,10 +2620,11 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
              new_hash, ".jpg");
   ASSERT_TRUE(FetchResourceUrl(rewritten_url_new, &content, &response));
   EXPECT_FALSE(response.IsProxyCacheable());
-  // TTL will be 100s because that is the input resource TTL and is lower than
-  // the 300s implicit cache TTL for hash mismatch.
+  // TTL will be 100s since resource creation, because that is the input
+  // resource TTL and is lower than the 300s implicit cache TTL for hash
+  // mismatch.
   EXPECT_EQ(100 * Timer::kSecondMs,
-            response.CacheExpirationTimeMs() - timer()->NowMs());
+            response.CacheExpirationTimeMs() - start_time_ms);
 }
 
 TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
