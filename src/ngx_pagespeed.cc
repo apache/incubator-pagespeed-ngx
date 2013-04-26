@@ -2431,9 +2431,6 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   // Poll for cache flush on every request (polls are rate-limited).
   cfg_s->server_context->FlushCacheIfNecessary();
 
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http pagespeed handler \"%V\"", &r->uri);
-
   switch (ps_create_request_context(
       r, true /* is a resource fetch */)) {
     case CreateRequestContext::kError:
