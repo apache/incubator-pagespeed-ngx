@@ -77,8 +77,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
       StaticAssetManager* static_asset_manager);
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);
-  bool InitNgxUrlAsyncFecther();
-  // Check resolver configed or not.
+  bool InitNgxUrlAsyncFetcher();
+  // Check resolver configured or not.
   bool CheckResolver();
 
   // Release all the resources. It also calls the base class ShutDown to
