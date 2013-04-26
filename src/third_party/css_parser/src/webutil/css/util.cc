@@ -299,8 +299,7 @@ bool MediumAppliesToScreen(const UnicodeText& medium) {
 }  // namespace
 
 bool MediaAppliesToScreen(const StringPiece& media) {
-  std::vector<StringPiece> values;
-  StringPieceUtils::Split(media, ",", &values);
+  std::vector<StringPiece> values = Css::SplitSkippingEmpty(media, ',');
 
   if (values.empty()) return true;
 

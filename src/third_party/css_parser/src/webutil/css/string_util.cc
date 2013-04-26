@@ -82,4 +82,22 @@ bool StringCaseEquals(const UnicodeText& ident, const StringPiece& str) {
           (memcasecmp(str.data(), ident.utf8_data(), str.size()) == 0));
 }
 
+std::vector<StringPiece> SplitSkippingEmpty(StringPiece full, char delim) {
+  std::vector<StringPiece> result;
+
+  StringPiece::size_type begin_index, end_index;
+  begin_index = full.find_first_not_of(delim);
+  while (begin_index != StringPiece::npos) {
+    end_index = full.find_first_of(delim, begin_index);
+    if (end_index == StringPiece::npos) {
+      result.push_back(full.substr(begin_index));
+      break;
+    }
+    result.push_back(full.substr(begin_index, end_index - begin_index));
+    begin_index = full.find_first_not_of(delim, end_index);
+  }
+
+  return result;
+}
+
 }  // namespace Css

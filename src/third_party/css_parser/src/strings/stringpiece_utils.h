@@ -33,14 +33,4 @@ int RemoveWhitespaceContext(StringPiece* text);
 
 }  // namespace strings
 
-namespace StringPieceUtils {
-
-// similar to SplitStringUsing (see strings/split.h).
-// this one returns a vector of pieces in the original string thus eliminating
-// the allocation/copy for each string in the result vector.
-void Split(const StringPiece& full, const char* delim,
-           std::vector<StringPiece>* pieces);
-
-}  // namespace StringPieceUtils
-
 #endif  // STRINGS_STRINGPIECE_UTILS_H_

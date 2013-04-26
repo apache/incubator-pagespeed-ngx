@@ -45,6 +45,8 @@ bool StringCaseEquals(const StringPiece& a, const StringPiece& b);
 // Meant to be used with static ASCII strings, Ex: StringCaseEquals(id, "foo").
 bool StringCaseEquals(const UnicodeText& ident, const StringPiece& str);
 
+std::vector<StringPiece> SplitSkippingEmpty(StringPiece full, char delim);
+
 }  // namespace Css
 
 #endif  // WEBUTIL_CSS_STRING_UTIL_H_

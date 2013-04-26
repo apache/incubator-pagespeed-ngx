@@ -48,39 +48,3 @@ int RemoveWhitespaceContext(StringPiece* text) {
 }
 
 }  // namespace strings
-
-namespace StringPieceUtils {
-
-template <typename DelimType>
-static void SplitInternal(const StringPiece& full, DelimType delim,
-                          std::vector<StringPiece>* result) {
-  StringPiece::size_type begin_index, end_index;
-  begin_index = full.find_first_not_of(delim);
-  while (begin_index != StringPiece::npos) {
-    end_index = full.find_first_of(delim, begin_index);
-    if (end_index == StringPiece::npos) {
-      result->push_back(StringPiece(full.data() + begin_index,
-                                    full.size() - begin_index));
-      return;
-    }
-    result->push_back(StringPiece(full.data() + begin_index,
-                                  end_index - begin_index));
-    begin_index = full.find_first_not_of(delim, end_index);
-  }
-}
-
-
-// the code below is similar to SplitStringUsing in strings/strutil.cc but
-// this one returns a vector of pieces in the original string thus eliminating
-// the allocation/copy for each string in the result vector.
-/* static */
-void Split(const StringPiece& full, const char* delim,
-           std::vector<StringPiece>* result) {
-  if (delim[0] != '\0' && delim[1] == '\0') {
-    SplitInternal(full, delim[0], result);
-  } else {
-    SplitInternal(full, delim, result);
-  }
-}
-
-}  // namespace StringPieceUtils
