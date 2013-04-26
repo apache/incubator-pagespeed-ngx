@@ -396,19 +396,18 @@ ProxyFetchPropertyCallbackCollector*
   }
 
   // All callbacks need to be registered before Reads to avoid race.
-  PropertyCache::CohortVector cohort_list;
-  if (requires_blink_cohort) {
-    cohort_list = GetCohortList(true);
-  } else {
-    cohort_list = GetCohortList(false);
-  }
-
+  PropertyCache::CohortVector cohort_list_without_blink = GetCohortList(false);
   if (property_callback != NULL) {
-    page_property_cache->ReadWithCohorts(cohort_list, property_callback);
+    page_property_cache->ReadWithCohorts(
+        requires_blink_cohort ?
+            GetCohortList(true) : cohort_list_without_blink,
+        property_callback);
   }
 
   if (fallback_property_callback != NULL) {
-    page_property_cache->ReadWithCohorts(cohort_list,
+    // Always read property page with fallback values without blink as there is
+    // no property in BlinkCohort which can used fallback values.
+    page_property_cache->ReadWithCohorts(cohort_list_without_blink,
                                          fallback_property_callback);
   }
 

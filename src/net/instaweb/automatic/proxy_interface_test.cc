@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
@@ -3081,6 +3082,32 @@ TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {
     const PropertyCohortInfo& info = page_info.cohort_info(i);
     EXPECT_STRNE(info.name(), BlinkCriticalLineDataFinder::kBlinkCohort);
   }
+}
+
+TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUpInFallbackPage) {
+  GoogleUrl gurl("http://www.test.com/1.html?a=b");
+  options()->set_use_fallback_property_cache_values(true);
+  StringAsyncFetch callback(
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
+  RequestHeaders request_headers;
+  callback.set_request_headers(&request_headers);
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+      proxy_interface_->InitiatePropertyCacheLookup(
+          false, gurl, options(), &callback, true, NULL));
+  PropertyPage* page = callback_collector->property_page();
+  const PropertyPageInfo& page_info =
+      page->log_record()->logging_info()->property_page_info();
+  EXPECT_NE(0, page_info.cohort_info_size());
+  bool has_fallback_page = false;
+  for (int i = 0; i < page_info.cohort_info_size(); ++i) {
+    const PropertyCohortInfo& info = page_info.cohort_info(i);
+    if (info.cache_type() ==
+        ProxyFetchPropertyCallback::kPropertyCacheFallbackPage) {
+      has_fallback_page = true;
+      EXPECT_STRNE(info.name(), BlinkCriticalLineDataFinder::kBlinkCohort);
+    }
+  }
+  EXPECT_TRUE(has_fallback_page);
 }
 
 TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
