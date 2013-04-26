@@ -23,6 +23,11 @@ http {
 
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
+  # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
+  # With this option enabled, the inline image system test will currently fail.
+  # When critical image beaconing is enabled, only critical images are inlined.
+  # In our current system test, we aren't yet sending a beacon to identify the
+  # critical images to be inlined, so we just disable the option here.
   pagespeed CriticalImagesBeaconEnabled false;
 
   server {
@@ -103,6 +108,18 @@ http {
        pagespeed ImagePreserveURLs Off;
        pagespeed CssPreserveURLs Off;
     }
+  }
+
+  server {
+    # Setup a vhost with the critical image beacon and lazyload filter enabled
+    # to make sure that critical images are not lazyloaded.
+    listen @@SECONDARY_PORT@@;
+    server_name imagebeacon.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters lazyload_images;
+    pagespeed CriticalImagesBeaconEnabled true;
   }
 
   server {
