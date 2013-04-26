@@ -203,7 +203,7 @@ void NgxRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
   caches_->PrintCacheStats(SystemCaches::kIncludeMemcached, out);
 }
 
-bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
+bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetcher() {
   if (ngx_url_async_fetcher_ == NULL) {
     return true;
   }

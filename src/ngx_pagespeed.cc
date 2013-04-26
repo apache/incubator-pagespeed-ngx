@@ -378,7 +378,7 @@ ngx_int_t ps_send_response(ngx_http_request_t *r) {
   // rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DECLINED
   //
   // Pass the optimized content along to later body filters.
-  // From Weibin: This function should be called mutiple times. Store the
+  // From Weibin: This function should be called multiple times. Store the
   // whole file in one chain buffers is too aggressive. It could consume
   // too much memory in busy servers.
 
@@ -2690,7 +2690,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     }
   }
 
-  if (!cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
+  if (!cfg_m->driver_factory->InitNgxUrlAsyncFetcher()) {
     return NGX_ERROR;
   }
   cfg_m->driver_factory->StartThreads();

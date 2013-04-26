@@ -21,7 +21,7 @@
 //    lookup the IP of the domain asynchronously from the DNS server.
 //  - When NgxFetchResolveDone is called, It will create the request and the
 //    connection. Add the write and read event to the epoll structure.
-//  - The read handler parses the response. Add the reponse to the buffer at
+//  - The read handler parses the response. Add the response to the buffer at
 //    last.
 
 #include "ngx_fetch.h"
