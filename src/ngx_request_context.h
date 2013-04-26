@@ -34,10 +34,12 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class Timer;
 
 class NgxRequestContext : public RequestContext {
  public:
   NgxRequestContext(AbstractMutex* logging_mutex,
+                    Timer* timer,
                     ngx_http_request_t* ps_request_context);
 
   // Returns rc as an NgxRequestContext* if it is one and CHECK

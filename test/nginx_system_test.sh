@@ -1405,4 +1405,45 @@ check_not_from "$RESOURCE_HEADERS"  egrep -q 'X-Extra-Header: 1, 1'
 check [ "$(echo "$RESOURCE_HEADERS" | grep -c '^X-Extra-Header: 1')" = 1 ]
 check_from "$RESOURCE_HEADERS"  egrep -q 'Cache-Control: max-age=31536000'
 
+# Test critical CSS beacon injection, beacon return, and computation.  This
+# requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
+# NOTE: must occur after cache flush on a repeat run.  All repeat runs now
+# run the cache flush test.
+test_filter \
+  prioritize_critical_css,rewrite_css,inline_import_to_link,flatten_css_imports
+fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
+CALL_PAT=".*criticalCssBeaconInit("
+SKIP_ARG="[^,]*,"
+CAPTURE_ARG="'\([^']*\)'.*"
+BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+ESCAPED_URL=$(sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+OPTIONS_HASH=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+BEACON_URL="http://${HOSTNAME}${BEACON_PATH}"
+BEACON_DATA="url=${ESCAPED_URL}&oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
+
+# Again, nginx won't sent a Content-Length header on a 204, which hangs wget.
+# So set wget to time out after one second, "--timeout=1", and try only once,
+# "-t 1", and check that we got a 204.
+OUT=$(wget -q  --save-headers -O - -t 1 --timeout=1 \
+      --post-data "$BEACON_DATA" "$BEACON_URL")
+check_from "$OUT" grep '^HTTP/1.1 204'
+
+# Now make sure we see the correct critical css rules.
+fetch_until $URL \
+  'grep -c <style>[.]blue{[^}]*}</style>' 1
+fetch_until $URL \
+  'grep -c <style>[.]big{[^}]*}</style>' 1
+fetch_until $URL \
+  'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
+fetch_until -save $URL \
+  'grep -c <style>[.]foo{[^}]*}</style>' 1
+
+# The last one should also have the other 3, too.
+check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
+  $FETCH_UNTIL_OUTFILE` = 1 ]
+
 check_failures_and_exit
