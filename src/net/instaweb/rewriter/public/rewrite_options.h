@@ -817,7 +817,7 @@ class RewriteOptions {
   // kConvertJpegToWebp, kConvertPngToJpeg, and kConvertToWebpLossless.
   bool ImageOptimizationEnabled() const;
 
-  RewriteOptions();
+  explicit RewriteOptions(ThreadSystem* thread_system);
   virtual ~RewriteOptions();
 
   // Static initialization of members.  Calls to Initialize and
@@ -2184,6 +2184,9 @@ class RewriteOptions {
   // a frozen state.
   virtual RewriteOptions* Clone() const;
 
+  // Make an empty options object of the same type as this.
+  virtual RewriteOptions* NewOptions() const;
+
   // Computes a signature for the RewriteOptions object, including all
   // contained classes (DomainLawyer, FileLoadPolicy, WildCardGroups).
   //
@@ -2269,6 +2272,8 @@ class RewriteOptions {
 
   // Returns the hasher used for signatures and URLs to purge.
   const Hasher* hasher() const { return &hasher_; }
+
+  ThreadSystem* thread_system() const { return thread_system_; }
 
  protected:
   // Type-specific class of Property.  This subclass of PropertyBase
@@ -3272,6 +3277,13 @@ class RewriteOptions {
 
   GoogleString signature_;
   MD5Hasher hasher_;  // Used to compute named signatures.
+
+  // Populating this thread_system now, though the usage of it is not
+  // done yet.
+  //
+  // TODO(jmarantz): Use thread_system to help validate thread-safety of
+  // sharing substructures (e.g. DomainLawyer) across Merge.
+  ThreadSystem* thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

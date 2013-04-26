@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 
 namespace net_instaweb {
 
@@ -56,8 +57,8 @@ class RedirectOnSizeLimitFilterTest : public RewriteTestBase {
     delete rewrite_driver();
     delete other_rewrite_driver();
     output_.clear();
-    options_ = new RewriteOptions();
-    other_options_ = new RewriteOptions();
+    options_ = new RewriteOptions(factory()->thread_system());
+    other_options_ = new RewriteOptions(factory()->thread_system());
     SetupDriver(size_limit);
   }
 

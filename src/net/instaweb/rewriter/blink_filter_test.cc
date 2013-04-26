@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
@@ -90,7 +91,7 @@ class BlinkFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     delete options_;
-    options_ = new RewriteOptions();
+    options_ = new RewriteOptions(factory()->thread_system());
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);
 

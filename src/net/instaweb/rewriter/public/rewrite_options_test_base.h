@@ -20,6 +20,9 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_TEST_BASE_H_
 
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
@@ -28,13 +31,19 @@ namespace net_instaweb {
 template<class OptionsClass>
 class RewriteOptionsTestBase : public testing::Test {
  public:
-  RewriteOptionsTestBase() {
+  RewriteOptionsTestBase()
+      : thread_system_(Platform::CreateThreadSystem()) {
     OptionsClass::Initialize();
   }
 
   ~RewriteOptionsTestBase() {
     OptionsClass::Terminate();
   }
+
+  ThreadSystem* thread_system() { return thread_system_.get(); }
+  OptionsClass* NewOptions() { return new OptionsClass(thread_system()); }
+
+  scoped_ptr<ThreadSystem> thread_system_;
 };
 
 }  // namespace net_instaweb

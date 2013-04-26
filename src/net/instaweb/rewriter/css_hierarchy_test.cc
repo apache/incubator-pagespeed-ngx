@@ -543,7 +543,7 @@ TEST_F(CssHierarchyTest, CompatibleCharset) {
   ExpandHierarchy(&top);
 
   // Construct a resource without a charset.
-  RewriteOptions options;
+  RewriteOptions options(thread_system_.get());
   ResourcePtr resource(new UrlInputResource(NULL, &options, &kContentTypeCss,
                                             top_url().Spec()));
   ResponseHeaders* response_headers = resource->response_headers();
@@ -568,7 +568,7 @@ TEST_F(CssHierarchyTest, IncompatibleCharset) {
   ExpandHierarchy(&top);
 
   // Construct a resource with an incompatible charset.
-  RewriteOptions options;
+  RewriteOptions options(thread_system_.get());
   ResourcePtr resource(new UrlInputResource(NULL, &options, &kContentTypeCss,
                                             top_url().Spec()));
   ResponseHeaders* response_headers = resource->response_headers();

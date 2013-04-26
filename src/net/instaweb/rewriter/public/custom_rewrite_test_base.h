@@ -43,7 +43,7 @@ class CustomRewriteTestBase : public RewriteTestBase {
     }
 
     virtual OptionsClass* NewRewriteOptions() {
-      return new OptionsClass;
+      return new OptionsClass(thread_system());
     }
   };
 
@@ -65,6 +65,10 @@ class CustomRewriteTestBase : public RewriteTestBase {
   }
 
   static void TearDownTestCase() {
+  }
+
+  OptionsClass* NewOptions() {
+    return new OptionsClass(factory()->thread_system());
   }
 
  private:

@@ -586,11 +586,11 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(
 }
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
-  return new ApacheConfig(hostname_identifier_);
+  return new ApacheConfig(hostname_identifier_, thread_system());
 }
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
-  return new ApacheConfig("query");
+  return new ApacheConfig("query", thread_system());
 }
 
 }  // namespace net_instaweb

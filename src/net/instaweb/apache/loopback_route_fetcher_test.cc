@@ -50,8 +50,10 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  public:
   LoopbackRouteFetcherTest()
       : pool_(NULL),
-        loopback_route_fetcher_(&options_, kOwnIp, 42, &reflecting_fetcher_),
-        thread_system_(Platform::CreateThreadSystem()) {}
+        thread_system_(Platform::CreateThreadSystem()),
+        options_(thread_system_.get()),
+        loopback_route_fetcher_(&options_, kOwnIp, 42, &reflecting_fetcher_) {
+  }
 
   static void SetUpTestCase() {
     apr_initialize();
@@ -75,10 +77,10 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
 
   apr_pool_t* pool_;
   GoogleMessageHandler handler_;
-  RewriteOptions options_;
   ReflectingTestFetcher reflecting_fetcher_;
-  LoopbackRouteFetcher loopback_route_fetcher_;
   scoped_ptr<ThreadSystem> thread_system_;
+  RewriteOptions options_;
+  LoopbackRouteFetcher loopback_route_fetcher_;
 };
 
 TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {

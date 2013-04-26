@@ -41,7 +41,8 @@ static void BM_RewriteDriverConstruction(int iters) {
   net_instaweb::RewriteDriverFactory::InitStats(factory.statistics());
   net_instaweb::ServerContext* server_context = factory.CreateServerContext();
   for (int i = 0; i < iters; ++i) {
-    net_instaweb::RewriteOptions* options = new net_instaweb::RewriteOptions;
+    net_instaweb::RewriteOptions* options = new net_instaweb::RewriteOptions(
+        factory.thread_system());
     options->SetRewriteLevel(net_instaweb::RewriteOptions::kAllFilters);
     net_instaweb::RewriteDriver* driver =
         server_context->NewCustomRewriteDriver(

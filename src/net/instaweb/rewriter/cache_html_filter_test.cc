@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -85,7 +86,7 @@ class CacheHtmlFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     delete options_;
-    options_ = new RewriteOptions();
+    options_ = new RewriteOptions(factory()->thread_system());
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
 
     RewriteTestBase::SetUp();

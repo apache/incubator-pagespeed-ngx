@@ -532,7 +532,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
           // write them both back. This should be a rare case and could be
           // optimized a bit if we find that we're spending time here.
           ResponseHeaders tmp_err_resp_headers, tmp_resp_headers;
-          RewriteOptions unused_opts1, unused_opts2;
+          ThreadSystem* thread_system = server_context->thread_system();
+          ApacheConfig unused_opts1(thread_system), unused_opts2(thread_system);
 
           ApacheRequestToResponseHeaders(*request, &tmp_resp_headers,
                                          &tmp_err_resp_headers);
@@ -1163,10 +1164,10 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
 apr_status_t pagespeed_child_exit(void* data) {
   ApacheServerContext* server_context = static_cast<ApacheServerContext*>(data);
   if (server_context->PoolDestroyed()) {
-      // When the last server context is destroyed, it's important that we also
-      // clean up the factory, so we don't end up with dangling pointers in case
-      // we are not unloaded fully on a config check (e.g. on Ubuntu 11).
-      apache_process_context.factory_.reset(NULL);
+    // When the last server context is destroyed, it's important that we also
+    // clean up the factory, so we don't end up with dangling pointers in case
+    // we are not unloaded fully on a config check (e.g. on Ubuntu 11).
+    apache_process_context.factory_.reset(NULL);
   }
   return APR_SUCCESS;
 }
@@ -1856,7 +1857,9 @@ void* create_dir_config(apr_pool_t* pool, char* dir) {
   if (dir == NULL) {
     return NULL;
   }
-  ApacheConfig* config = new ApacheConfig(dir);
+  ThreadSystem* thread_system =
+      apache_process_context.factory_->thread_system();
+  ApacheConfig* config = new ApacheConfig(dir, thread_system);
   config->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   apr_pool_cleanup_register(pool, config, delete_config, apr_pool_cleanup_null);
   return config;
@@ -1874,8 +1877,10 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   // To make it easier to debug the merged configurations, we store
   // the name of both input configurations as the description for
   // the merged configuration.
-  ApacheConfig* dir3 = new ApacheConfig(StrCat(
-      "Combine(", dir1->description(), ", ", dir2->description(), ")"));
+  ApacheConfig* dir3 = new ApacheConfig(
+      StrCat(
+          "Combine(", dir1->description(), ", ", dir2->description(), ")"),
+      dir1->thread_system());
   dir3->Merge(*dir1);
   dir3->Merge(*dir2);
   apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
@@ -1957,7 +1962,13 @@ namespace net_instaweb {
 // install the Apache command-table in the module-record before Apache
 // initializes the module.
 void ApacheProcessContext::InstallCommands() {
-  ApacheConfig config_template;
+  // Similar to the instantiation in ApacheConfig::AddProperties(), we
+  // instantiate an ApacheConfig with a null thread system as we
+  // are only using it to populate a static table which must be
+  // established very early when mod_pagespeed.so is dynamically loaded,
+  // to build the Apache directives parse-table before Apache attempts
+  // to initialize our module.
+  ApacheConfig config_template(NULL);
   const RewriteOptions::OptionBaseVector& v = config_template.all_options();
   int num_cmds = arraysize(net_instaweb::mod_pagespeed_filter_cmds);
 

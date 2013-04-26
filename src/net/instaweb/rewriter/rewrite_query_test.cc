@@ -80,7 +80,7 @@ class RewriteQueryTest : public RewriteTestBase {
                                GoogleString* out_query,
                                GoogleString* out_req_string,
                                GoogleString* out_resp_string) {
-    options_.reset(new RewriteOptions);
+    options_.reset(new RewriteOptions(factory()->thread_system()));
     GoogleUrl url(StrCat(request_url, "?", in_query));
     if (RewriteQuery::Scan(allow_related_options_, factory(),
                            server_context(), &url, request_headers,
@@ -478,7 +478,7 @@ TEST_F(RewriteQueryTest, OutputQueryandHeadersPostRequest) {
 // Tests the ability to add an additional filter on the command-line based
 // on whatever set is already installed in the configuration.
 TEST_F(RewriteQueryTest, IncrementalAdd) {
-  RewriteOptions options;
+  RewriteOptions options(factory()->thread_system());
   options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   options.EnableFilter(RewriteOptions::kStripScripts);
   Incremental("+debug", &options);
@@ -493,7 +493,7 @@ TEST_F(RewriteQueryTest, IncrementalAdd) {
 // the explicitly enabled filter in the configuration and also the core
 // level.
 TEST_F(RewriteQueryTest, NonIncrementalAdd) {
-  RewriteOptions options;
+  RewriteOptions options(factory()->thread_system());
   options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   options.EnableFilter(RewriteOptions::kStripScripts);
   Incremental("debug", &options);
@@ -505,7 +505,7 @@ TEST_F(RewriteQueryTest, NonIncrementalAdd) {
 
 // In this version we specify nothing, and that should erase the filters.
 TEST_F(RewriteQueryTest, IncrementalEmpty) {
-  RewriteOptions options;
+  RewriteOptions options(factory()->thread_system());
   options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   options.EnableFilter(RewriteOptions::kStripScripts);
   Incremental("", &options);
@@ -515,7 +515,7 @@ TEST_F(RewriteQueryTest, IncrementalEmpty) {
 }
 
 TEST_F(RewriteQueryTest, IncrementalRemoveExplicit) {
-  RewriteOptions options;
+  RewriteOptions options(factory()->thread_system());
   options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   options.EnableFilter(RewriteOptions::kStripScripts);
   Incremental("-strip_scripts", &options);
@@ -525,7 +525,7 @@ TEST_F(RewriteQueryTest, IncrementalRemoveExplicit) {
 }
 
 TEST_F(RewriteQueryTest, IncrementalRemoveFromCore) {
-  RewriteOptions options;
+  RewriteOptions options(factory()->thread_system());
   options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   options.EnableFilter(RewriteOptions::kStripScripts);
   Incremental("-combine_css", &options);
@@ -535,7 +535,7 @@ TEST_F(RewriteQueryTest, IncrementalRemoveFromCore) {
 }
 
 TEST_F(RewriteQueryTest, NoChangesShouldNotModify) {
-  RewriteOptions options;
+  RewriteOptions options(factory()->thread_system());
   options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   Incremental("+combine_css", &options);
   EXPECT_FALSE(options.Enabled(RewriteOptions::kStripScripts));

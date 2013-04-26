@@ -22,6 +22,8 @@
 
 namespace net_instaweb {
 
+class ThreadSystem;
+
 RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
 
 void ApacheConfig::Initialize() {
@@ -37,12 +39,15 @@ void ApacheConfig::Terminate() {
   }
 }
 
-ApacheConfig::ApacheConfig(const StringPiece& description)
-    : description_(description.data(), description.size()) {
+ApacheConfig::ApacheConfig(const StringPiece& description,
+                           ThreadSystem* thread_system)
+    : SystemRewriteOptions(thread_system),
+      description_(description.data(), description.size()) {
   Init();
 }
 
-ApacheConfig::ApacheConfig() {
+ApacheConfig::ApacheConfig(ThreadSystem* thread_system)
+    : SystemRewriteOptions(thread_system) {
   Init();
 }
 
@@ -87,7 +92,14 @@ void ApacheConfig::AddProperties() {
       "Under construction. Do not use");
 
   MergeSubclassProperties(apache_properties_);
-  ApacheConfig config;
+
+  // TODO(jmarantz): We allow a special instantiation of ApacheConfig
+  // with null thread system because we are only updating the static properties
+  // on process startup; we won't have a thread-system yet or multiple threads.
+  //
+  // We should get rid of this by moving the DoNotUseForSignatureComputation
+  // bit into the Property constructor.
+  ApacheConfig config(NULL);
   config.InitializeSignaturesAndDefaults();
 }
 
@@ -121,9 +133,13 @@ void ApacheConfig::InitializeSignaturesAndDefaults() {
 }
 
 ApacheConfig* ApacheConfig::Clone() const {
-  ApacheConfig* options = new ApacheConfig(description_);
+  ApacheConfig* options = new ApacheConfig(description_, thread_system());
   options->Merge(*this);
   return options;
+}
+
+ApacheConfig* ApacheConfig::NewOptions() const {
+  return new ApacheConfig(thread_system());
 }
 
 const ApacheConfig* ApacheConfig::DynamicCast(const RewriteOptions* instance) {

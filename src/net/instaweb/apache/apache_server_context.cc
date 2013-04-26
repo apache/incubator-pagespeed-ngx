@@ -130,7 +130,8 @@ ApacheConfig* ApacheServerContext::config() {
 
 ApacheConfig* ApacheServerContext::SpdyConfigOverlay() {
   if (spdy_config_overlay_.get() == NULL) {
-    spdy_config_overlay_.reset(new ApacheConfig());
+    spdy_config_overlay_.reset(new ApacheConfig(
+        "spdy_overlay", thread_system()));
     // We want to copy any implicit rewrite level from the parent,
     // so we don't end up overriding it with passthrough. It's also OK
     // to forward explicit one to an implicit one here, since an implicit
@@ -142,7 +143,8 @@ ApacheConfig* ApacheServerContext::SpdyConfigOverlay() {
 
 ApacheConfig* ApacheServerContext::NonSpdyConfigOverlay() {
   if (non_spdy_config_overlay_.get() == NULL) {
-    non_spdy_config_overlay_.reset(new ApacheConfig());
+    non_spdy_config_overlay_.reset(new ApacheConfig(
+        "non_spdy_overlay", thread_system()));
     // See ::SpdyConfigOverlay for explanation.
     non_spdy_config_overlay_->SetDefaultRewriteLevel(config()->level());
   }

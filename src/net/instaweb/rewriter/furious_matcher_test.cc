@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
@@ -46,7 +47,7 @@ class FuriousMatcherTest : public RewriteOptionsTestBase<RewriteOptions> {
 // experiment we ended on in a cookie for us, which we also check.
 TEST_F(FuriousMatcherTest, ClassifyIntoExperiment) {
   RequestHeaders req_headers;
-  RewriteOptions options;
+  RewriteOptions options(thread_system_.get());
   options.set_running_furious_experiment(true);
   NullMessageHandler handler;
   ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
@@ -88,7 +89,7 @@ TEST_F(FuriousMatcherTest, ClassifyIntoExperiment) {
 
 TEST_F(FuriousMatcherTest, ClassifyIntoExperimentStaleCookie) {
   RequestHeaders req_headers;
-  RewriteOptions options;
+  RewriteOptions options(thread_system_.get());
   options.set_running_furious_experiment(true);
   NullMessageHandler handler;
   ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
@@ -102,7 +103,7 @@ TEST_F(FuriousMatcherTest, ClassifyIntoExperimentStaleCookie) {
 
 TEST_F(FuriousMatcherTest, ClassifyIntoExperimentNoExptCookie) {
   RequestHeaders req_headers;
-  RewriteOptions options;
+  RewriteOptions options(thread_system_.get());
   options.set_running_furious_experiment(true);
   NullMessageHandler handler;
   ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));

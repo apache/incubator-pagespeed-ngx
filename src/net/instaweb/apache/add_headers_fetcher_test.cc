@@ -37,7 +37,8 @@ namespace {
 class AddHeadersFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  public:
   AddHeadersFetcherTest()
-    : thread_system_(Platform::CreateThreadSystem()) {
+      : thread_system_(Platform::CreateThreadSystem()),
+        options_(thread_system_.get()) {
     options_.AddCustomFetchHeader("Custom", "custom-header");
     options_.AddCustomFetchHeader("Extra", "extra-header");
     add_headers_fetcher_.reset(new AddHeadersFetcher(
@@ -47,9 +48,9 @@ class AddHeadersFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
   scoped_ptr<AddHeadersFetcher> add_headers_fetcher_;
   GoogleMessageHandler handler_;
+  scoped_ptr<ThreadSystem> thread_system_;
   RewriteOptions options_;
   ReflectingTestFetcher reflecting_fetcher_;
-  scoped_ptr<ThreadSystem> thread_system_;
 };
 
 TEST_F(AddHeadersFetcherTest, AddsHeaders) {

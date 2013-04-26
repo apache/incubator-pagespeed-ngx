@@ -22,6 +22,8 @@
 
 namespace net_instaweb {
 
+class ThreadSystem;
+
 namespace {
 
 const int64 kDefaultCacheFlushIntervalSec = 5;
@@ -43,7 +45,8 @@ void SystemRewriteOptions::Terminate() {
   }
 }
 
-SystemRewriteOptions::SystemRewriteOptions() {
+SystemRewriteOptions::SystemRewriteOptions(ThreadSystem* thread_system)
+    : RewriteOptions(thread_system) {
   DCHECK(system_properties_ != NULL)
       << "Call SystemRewriteOptions::Initialize() before construction";
   InitializeOptions(system_properties_);
@@ -143,9 +146,13 @@ void SystemRewriteOptions::AddProperties() {
 }
 
 SystemRewriteOptions* SystemRewriteOptions::Clone() const {
-  SystemRewriteOptions* options = new SystemRewriteOptions();
+  SystemRewriteOptions* options = NewOptions();
   options->Merge(*this);
   return options;
+}
+
+SystemRewriteOptions* SystemRewriteOptions::NewOptions() const {
+  return new SystemRewriteOptions(thread_system());
 }
 
 }  // namespace net_instaweb

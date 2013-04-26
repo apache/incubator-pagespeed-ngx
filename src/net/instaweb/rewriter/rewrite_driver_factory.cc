@@ -683,7 +683,7 @@ RewriteStats* RewriteDriverFactory::rewrite_stats() {
 }
 
 RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
-  return new RewriteOptions;
+  return new RewriteOptions(thread_system());
 }
 
 RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {

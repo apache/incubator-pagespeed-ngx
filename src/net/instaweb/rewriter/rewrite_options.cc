@@ -618,7 +618,7 @@ bool RewriteOptions::ImageOptimizationEnabled() const {
           this->Enabled(RewriteOptions::kConvertToWebpLossless));
 }
 
-RewriteOptions::RewriteOptions()
+RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
     : modified_(false),
       frozen_(false),
       initialized_options_(0),
@@ -626,7 +626,8 @@ RewriteOptions::RewriteOptions()
       need_to_store_experiment_data_(false),
       furious_id_(furious::kFuriousNotSet),
       furious_percent_(0),
-      hasher_(kHashBytes) {
+      hasher_(kHashBytes),
+      thread_system_(thread_system) {
   url_cache_invalidation_map_.set_empty_key("");
   url_cache_invalidation_map_.set_deleted_key("-");
 
@@ -2766,11 +2767,15 @@ void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
 }
 
 RewriteOptions* RewriteOptions::Clone() const {
-  RewriteOptions* options = new RewriteOptions;
+  RewriteOptions* options = NewOptions();
   options->Merge(*this);
   options->frozen_ = false;
   options->modified_ = false;
   return options;
+}
+
+RewriteOptions* RewriteOptions::NewOptions() const {
+  return new RewriteOptions(thread_system_);
 }
 
 GoogleString RewriteOptions::OptionSignature(const GoogleString& x,

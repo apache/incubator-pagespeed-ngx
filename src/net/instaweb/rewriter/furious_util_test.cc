@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
@@ -98,7 +99,7 @@ TEST_F(FuriousUtilTest, RemoveFuriousCookie) {
 
 // Check that DetermineFuriousState behaves vaguely as expected.
 TEST_F(FuriousUtilTest, DetermineFuriousState) {
-  RewriteOptions options;
+  RewriteOptions options(thread_system_.get());
   options.set_running_furious_experiment(true);
   NullMessageHandler handler;
   ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=35", &handler));

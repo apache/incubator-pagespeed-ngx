@@ -448,7 +448,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
 
 TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
   // Inject a url-namer that will establish a domain configuration.
-  RewriteOptions namer_options;
+  RewriteOptions namer_options(factory()->thread_system());
   namer_options.EnableFilter(RewriteOptions::kCombineJavascript);
   namer_options.EnableFilter(RewriteOptions::kDelayImages);
 
@@ -675,7 +675,7 @@ TEST_F(ServerContextTest, TestPlatformSpecificConfiguration) {
   factory()->AddPlatformSpecificConfigurationCallback(&custom_callback);
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
-          new RewriteOptions(),
+          new RewriteOptions(factory()->thread_system()),
           RequestContext::NewTestRequestContext(
               server_context()->thread_system()));
   EXPECT_EQ(custom_driver, rec_custom_driver);

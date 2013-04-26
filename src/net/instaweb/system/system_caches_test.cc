@@ -137,7 +137,8 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   };
 
   SystemCachesTest()
-      : thread_system_(Platform::CreateThreadSystem()) {
+      : thread_system_(Platform::CreateThreadSystem()),
+        options_(new SystemRewriteOptions(thread_system_.get())) {
     shared_mem_.reset(new InProcessSharedMem(thread_system_.get()));
     factory_->set_hasher(new MD5Hasher());
     SystemCaches::InitStats(factory()->statistics());
@@ -247,16 +248,15 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
       return;
     }
 
-    scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-    options->set_file_cache_path(kCachePath);
-    options->set_use_shared_mem_locking(false);
-    options->set_lru_cache_kb_per_process(0);
-    options->set_memcached_servers(MemCachedServerSpec());
-    options->set_memcached_threads(num_threads_specified);
-    PrepareWithConfig(options.get());
+    options_->set_file_cache_path(kCachePath);
+    options_->set_use_shared_mem_locking(false);
+    options_->set_lru_cache_kb_per_process(0);
+    options_->set_memcached_servers(MemCachedServerSpec());
+    options_->set_memcached_threads(num_threads_specified);
+    PrepareWithConfig(options_.get());
 
     scoped_ptr<ServerContext> server_context(
-        SetupServerContext(options.release()));
+        SetupServerContext(options_.release()));
 
     GoogleString mem_cache;
     if (num_threads_expected == 0) {
@@ -316,20 +316,20 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<AbstractSharedMem> shared_mem_;
   scoped_ptr<SystemCaches> system_caches_;
+  scoped_ptr<SystemRewriteOptions> options_;
 
  private:
   GoogleString server_spec_;  // Set lazily by MemCachedServerSpec()
 };
 
 TEST_F(SystemCachesTest, BasicFileAndLruCache) {
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
                             Stats("file_cache", FileCacheName())),
                server_context->metadata_cache()->Name());
@@ -341,14 +341,13 @@ TEST_F(SystemCachesTest, BasicFileAndLruCache) {
 }
 
 TEST_F(SystemCachesTest, BasicFileOnlyCache) {
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(Stats("file_cache", FileCacheName()),
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(HttpCache(Stats("file_cache", FileCacheName())),
@@ -363,14 +362,13 @@ TEST_F(SystemCachesTest, UnusableShmAndLru) {
       system_caches_->CreateShmMetadataCache(kCachePath, 10, &error_msg));
   EXPECT_STREQ("Shared memory cache unusably small.", error_msg);
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
                             Stats("file_cache", FileCacheName())),
                server_context->metadata_cache()->Name());
@@ -386,14 +384,13 @@ TEST_F(SystemCachesTest, BasicShmAndLru) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
   EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
                server_context->metadata_cache()->Name());
@@ -409,14 +406,13 @@ TEST_F(SystemCachesTest, BasicShmAndNoLru) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
   EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
                server_context->metadata_cache()->Name());
@@ -439,14 +435,13 @@ TEST_F(SystemCachesTest, DoubleShmCreate) {
   EXPECT_STREQ(StrCat("Cache named ", kCachePath, " already exists."),
                error_msg);
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
   EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
                server_context->metadata_cache()->Name());
@@ -463,15 +458,14 @@ TEST_F(SystemCachesTest, BasicMemCachedAndLru) {
     return;
   }
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  options->set_memcached_servers(MemCachedServerSpec());
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  options_->set_memcached_servers(MemCachedServerSpec());
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
                             Fallback(Batcher(Stats("memcached",
                                                    AsyncMemCache()),
@@ -508,15 +502,14 @@ TEST_F(SystemCachesTest, BasicMemCachedLruShm) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  options->set_memcached_servers(MemCachedServerSpec());
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  options_->set_memcached_servers(MemCachedServerSpec());
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // For metadata, we fallback to memcached behind shmcache.
   EXPECT_STREQ(
       WriteThrough(Stats("shm_cache", SharedMemCache<64>::FormatName()),
@@ -542,15 +535,14 @@ TEST_F(SystemCachesTest, BasicMemCachedShmNoLru) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  options->set_memcached_servers(MemCachedServerSpec());
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  options_->set_memcached_servers(MemCachedServerSpec());
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(
       WriteThrough(
           Stats("shm_cache", "SharedMemCache<64>"),
@@ -565,23 +557,23 @@ TEST_F(SystemCachesTest, BasicMemCachedShmNoLru) {
 }
 
 TEST_F(SystemCachesTest, BasicFileLockManager) {
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
-  NamedLockManager* named_locks = system_caches_->GetLockManager(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
+  NamedLockManager* named_locks = system_caches_->GetLockManager(
+      options_.get());
   EXPECT_TRUE(named_locks != NULL);
   EXPECT_TRUE(dynamic_cast<FileSystemLockManager*>(named_locks) != NULL);
 }
 
 TEST_F(SystemCachesTest, BasicShmLockManager) {
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(true);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
-  NamedLockManager* named_locks = system_caches_->GetLockManager(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(true);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
+  NamedLockManager* named_locks = system_caches_->GetLockManager(
+      options_.get());
   EXPECT_TRUE(named_locks != NULL);
   EXPECT_TRUE(dynamic_cast<SharedMemLockManager*>(named_locks) != NULL);
 }
@@ -590,7 +582,7 @@ TEST_F(SystemCachesTest, FileShare) {
   // [0], [1], share path, [2] doesn't.
   std::vector<SystemRewriteOptions*> configs;
   for (int i = 0; i < 3; ++i) {
-    SystemRewriteOptions* config = new SystemRewriteOptions;
+    SystemRewriteOptions* config = options_->NewOptions();
     config->set_file_cache_path((i == 2) ? kCachePath : kAltCachePath);
     system_caches_->RegisterConfig(config);
     configs.push_back(config);
@@ -647,7 +639,7 @@ TEST_F(SystemCachesTest, ShmShare) {
 
   std::vector<SystemRewriteOptions*> configs;
   for (int i = 0; i < 3; ++i) {
-    SystemRewriteOptions* config = new SystemRewriteOptions;
+    SystemRewriteOptions* config = options_->NewOptions();
     config->set_file_cache_path((i== 2) ? kAltCachePath : kCachePath);
     system_caches_->RegisterConfig(config);
     configs.push_back(config);
@@ -685,7 +677,7 @@ TEST_F(SystemCachesTest, MemCachedShare) {
 
   std::vector<SystemRewriteOptions*> configs;
   for (int i = 0; i < 3; ++i) {
-    SystemRewriteOptions* config = new SystemRewriteOptions;
+    SystemRewriteOptions* config = options_->NewOptions();
     config->set_file_cache_path(kCachePath);
     config->set_memcached_servers(MemCachedServerSpec());
     system_caches_->RegisterConfig(config);
@@ -727,17 +719,16 @@ TEST_F(SystemCachesTest, MemCachedShare) {
 
 TEST_F(SystemCachesTest, FileCacheSettings) {
   // Make sure we apply the various file cache settings right.
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_file_cache_clean_interval_ms(3 * Timer::kHourMs);
-  options->set_file_cache_clean_size_kb(1024);
-  options->set_file_cache_clean_inode_limit(50000);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_file_cache_clean_interval_ms(3 * Timer::kHourMs);
+  options_->set_file_cache_clean_size_kb(1024);
+  options_->set_file_cache_clean_inode_limit(50000);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(Stats("file_cache", FileCacheName()),
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(HttpCache(Stats("file_cache", FileCacheName())),
@@ -756,13 +747,12 @@ TEST_F(SystemCachesTest, FileCacheSettings) {
 
 TEST_F(SystemCachesTest, LruCacheSettings) {
   // Test that we apply LRU cache settings right.
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_lru_cache_kb_per_process(1024);
-  options->set_lru_cache_byte_limit(500);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_lru_cache_kb_per_process(1024);
+  options_->set_lru_cache_byte_limit(500);
+  PrepareWithConfig(options_.get());
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
 
   WriteThroughCache* write_through = dynamic_cast<WriteThroughCache*>(
       SkipWrappers(server_context->metadata_cache()));
@@ -794,15 +784,14 @@ TEST_F(SystemCachesTest, StatsStringMinimal) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  options->set_memcached_servers(MemCachedServerSpec());
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  options_->set_memcached_servers(MemCachedServerSpec());
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
 
   system_caches_->PrintCacheStats(
       static_cast<SystemCaches::StatFlags>(SystemCaches::kGlobalView |
@@ -819,12 +808,12 @@ class BrokenShmSystemCachesTest : public SystemCachesTest {
 };
 
 TEST_F(BrokenShmSystemCachesTest, FallbackShmLockManager) {
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(true);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
-  NamedLockManager* named_locks = system_caches_->GetLockManager(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(true);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
+  NamedLockManager* named_locks = system_caches_->GetLockManager(
+      options_.get());
   EXPECT_TRUE(named_locks != NULL);
 
   // Actually file system based here, due to fallback.
@@ -836,14 +825,13 @@ TEST_F(BrokenShmSystemCachesTest, FallbackShmAndLru) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
   EXPECT_STREQ(WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
                             Stats("file_cache", FileCacheName())),
@@ -861,14 +849,13 @@ TEST_F(BrokenShmSystemCachesTest, FallbackShmAndNoLru) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
   EXPECT_STREQ(Stats("file_cache", FileCacheName()),
                server_context->metadata_cache()->Name());
@@ -886,15 +873,14 @@ TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedLruShm) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(100);
-  options->set_memcached_servers(MemCachedServerSpec());
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(100);
+  options_->set_memcached_servers(MemCachedServerSpec());
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   // For metadata, we fallback to memcached behind shmcache.
   EXPECT_STREQ(
       WriteThrough(
@@ -920,15 +906,14 @@ TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedShmNoLru) {
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
 
-  scoped_ptr<SystemRewriteOptions> options(new SystemRewriteOptions);
-  options->set_file_cache_path(kCachePath);
-  options->set_use_shared_mem_locking(false);
-  options->set_lru_cache_kb_per_process(0);
-  options->set_memcached_servers(MemCachedServerSpec());
-  PrepareWithConfig(options.get());
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  options_->set_memcached_servers(MemCachedServerSpec());
+  PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
-      SetupServerContext(options.release()));
+      SetupServerContext(options_.release()));
   EXPECT_STREQ(
       Fallback(Batcher(Stats("memcached", AsyncMemCache()), 1, 1000),
                Stats("file_cache", FileCacheName())),

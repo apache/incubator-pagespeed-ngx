@@ -24,6 +24,8 @@
 
 namespace net_instaweb {
 
+class ThreadSystem;
+
 // This manages system configuration options for platform supports classes that
 // the pagespeed optimization library comes bundled with.
 class SystemRewriteOptions : public RewriteOptions {
@@ -31,7 +33,7 @@ class SystemRewriteOptions : public RewriteOptions {
   static void Initialize();
   static void Terminate();
 
-  SystemRewriteOptions();
+  explicit SystemRewriteOptions(ThreadSystem* thread_system);
   virtual ~SystemRewriteOptions();
 
   int64 file_cache_clean_interval_ms() const {
@@ -154,8 +156,8 @@ class SystemRewriteOptions : public RewriteOptions {
     return cache_flush_filename_.value();
   }
 
-  // Make an identical copy of these options and return it.
   virtual SystemRewriteOptions* Clone() const;
+  virtual SystemRewriteOptions* NewOptions() const;
 
  private:
   // Keeps the properties added by this subclass.  These are merged into
