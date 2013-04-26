@@ -1503,7 +1503,6 @@ CreateRequestContext::Response ps_create_request_context(
   net_instaweb::GoogleUrl url(url_string);
 
   if (!url.is_valid()) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid url");
 
     // Let nginx deal with the error however it wants; we will see a NULL ctx in
     // the body filter or content handler and do nothing.
