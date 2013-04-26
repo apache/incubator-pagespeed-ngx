@@ -25,12 +25,6 @@
       'include_dirs': [
         '<(re2_root)/src/',
       ],
-      'conditions': [
-        ['OS=="win"', {
-          'include_dirs+': [ '<(re2_root)/src/win_compat', ],
-          'dependencies': [ '<(DEPTH)/pagespeed/kernel.gyp:base' ],
-        }]
-      ],
       'all_dependent_settings': {
         'include_dirs': [
           '<(DEPTH)/third_party/re2/src/',
