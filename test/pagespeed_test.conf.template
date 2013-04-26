@@ -111,6 +111,18 @@ http {
   }
 
   server {
+    # Setup a vhost with the critical image beacon and lazyload filter enabled
+    # to make sure that critical images are not lazyloaded.
+    listen @@SECONDARY_PORT@@;
+    server_name imagebeacon.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters lazyload_images;
+    pagespeed CriticalImagesBeaconEnabled true;
+  }
+
+  server {
     # Sets up a virtual host where we can specify forbidden filters without
     # affecting any other hosts.
     listen @@SECONDARY_PORT@@;

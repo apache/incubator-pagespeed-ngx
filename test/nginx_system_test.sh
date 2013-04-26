@@ -1446,4 +1446,51 @@ check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
 check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
   $FETCH_UNTIL_OUTFILE` = 1 ]
 
+# Verify that we can send a critical image beacon and that lazyload_images
+# does not try to lazyload the critical images.
+WGET_ARGS=""
+start_test lazyload_images,rewrite_images with critical images beacon
+HOST_NAME="http://imagebeacon.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
+# There are 3 images on rewrite_images.html. Check that they are all
+# lazyloaded by default.
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+
+check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+  $OUTDIR/rewrite_images.html) = 1 ];
+# We need the options hash to send a critical image beacon, so extract it from
+# injected beacon JS.
+OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
+  $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-1)}')
+# Send a beacon response using POST indicating that Puzzle.jpg is a critical
+# image.
+BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
+BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+BEACON_DATA+="image_rewriting%2Frewrite_images.html"
+BEACON_DATA+="&oh=$OPTIONS_HASH&ci=2932493096"
+# See note above in the prioritize_critical_css test regarding --timeout=1.
+OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+  wget -q --save-headers -O - -t 1 --timeout=1 \
+  --post-data "$BEACON_DATA" "$BEACON_URL")
+echo $OUT
+check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+# Now only 2 of the images should be lazyloaded, Cuppa.png should not be.
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 2
+
+# Now test sending a beacon with a GET request, instead of POST. Indicate that
+# Puzzle.jpg and Cuppa.png are the critical images. In practice we expect only
+# POSTs to be used by the critical image beacon, but both code paths are
+# supported.
+# Add the hash for Cuppa.png to BEACON_DATA, which will be used as the query
+# params for the GET.
+BEACON_DATA+=",2644480723"
+OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+  $WGET_DUMP "$BEACON_URL?$BEACON_DATA")
+check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+# Now only BikeCrashIcn.png should be lazyloaded.
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
+
 check_failures_and_exit
