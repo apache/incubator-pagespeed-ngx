@@ -2276,7 +2276,7 @@ ngx_int_t ps_messages_handler(
   return NGX_OK;
 }
 
-ngx_int_t ps_beacon_handler_helper(ngx_http_request_t* r,
+void ps_beacon_handler_helper(ngx_http_request_t* r,
                                    StringPiece beacon_data) {
   ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "ps_beacon_handler_helper: beacon[%d] %*s",
@@ -2299,8 +2299,6 @@ ngx_int_t ps_beacon_handler_helper(ngx_http_request_t* r,
 
   // TODO(jefftk): figure out how to insert Content-Length:0 as a response
   // header so wget doesn't hang.
-
-  return NGX_HTTP_NO_CONTENT;
 }
 
 
@@ -2383,14 +2381,16 @@ bool ps_request_body_to_string_piece(
 // example processing request buffers, see ngx_http_form_input_module.c
 void ps_beacon_body_handler(ngx_http_request_t* r) {
   StringPiece request_body;
-  ngx_int_t rc;
   bool ok = ps_request_body_to_string_piece(r, &request_body);
   if (ok) {
-    rc = ps_beacon_handler_helper(r, request_body);
+    ps_beacon_handler_helper(r, request_body);
+    // TODO(jefftk): should we use "r->filter_finalize = 1" instead?  Is this
+    // the right way to do it?
+    r->count--;
+    ngx_http_finalize_request(r, NGX_HTTP_NO_CONTENT);
   } else {
-    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
   }
-  ngx_http_finalize_request(r, rc);
 }
 
 ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
@@ -2417,7 +2417,8 @@ ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
       beacon_data = unparsed_uri.substr(
           question_mark_index+1, unparsed_uri.size() - (question_mark_index+1));
     }
-    return ps_beacon_handler_helper(r, beacon_data);
+    ps_beacon_handler_helper(r, beacon_data);
+    return NGX_HTTP_NO_CONTENT;
   }
 }
 
