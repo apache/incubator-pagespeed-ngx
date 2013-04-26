@@ -396,7 +396,7 @@ message DeviceInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 25
+// Next id for LoggingInfo: 26
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -451,4 +451,6 @@ message LoggingInfo {
   optional CriticalCssInfo critical_css_info = 23;
   // Information about the device making the request.
   optional DeviceInfo device_info = 24;
+  // Is the request an XmlHttpRequest.
+  optional bool is_xhr = 25;
 }

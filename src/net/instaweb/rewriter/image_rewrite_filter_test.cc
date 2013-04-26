@@ -2305,6 +2305,18 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
   EXPECT_EQ(70, img_options->jpeg_quality);
   EXPECT_TRUE(ctx.use_small_screen_quality());
+
+  // Min of small screen and desktop
+  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality_for_small_screens(70);
+  options()->set_image_jpeg_recompress_quality(60);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(60, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.use_small_screen_quality());
 }
 
 TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
@@ -2406,13 +2418,27 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
 
   // Mobile UA
   rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ctx.Clear();
   options()->ClearSignatureForTesting();
-  options()->set_image_jpeg_recompress_quality_for_small_screens(70);
+  options()->set_image_webp_recompress_quality_for_small_screens(70);
   rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
-  EXPECT_EQ(70, img_options->jpeg_quality);
+  EXPECT_EQ(70, img_options->webp_quality);
+  EXPECT_TRUE(ctx.use_small_screen_quality());
+
+  // Min of desktop and mobile quality
+  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  ctx.Clear();
+  options()->ClearSignatureForTesting();
+  options()->set_image_webp_recompress_quality_for_small_screens(70);
+  options()->set_image_webp_recompress_quality(55);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(55, img_options->webp_quality);
   EXPECT_TRUE(ctx.use_small_screen_quality());
 }
 
@@ -2521,6 +2547,13 @@ TEST_F(ImageRewriteTest, JpegProgressiveScansForSmallScreens) {
                    &image_rewrite_filter, &ctx, &img_options);
   EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
   EXPECT_TRUE(ctx.use_small_screen_quality());
+
+  // Mobile UA - use min of default and small screen values
+  rewrite_driver()->SetUserAgent("iPhone OS Safari");
+  SetNumberOfScans(2, 8, res_ptr, options(), rewrite_driver(),
+                   &image_rewrite_filter, &ctx, &img_options);
+  EXPECT_EQ(2, img_options->jpeg_num_progressive_scans);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
 }
 
 TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {

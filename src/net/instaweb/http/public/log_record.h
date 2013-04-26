@@ -230,6 +230,9 @@ class AbstractLogRecord  {
       bool supports_split_html,
       bool can_preload_resources);
 
+  // Log whether the request is an XmlHttpRequest.
+  void LogIsXhr(bool is_xhr);
+
   // Sets initial information for background rewrite log.
   virtual void SetBackgroundRewriteInfo(
     bool log_urls,

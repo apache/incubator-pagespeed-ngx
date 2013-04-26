@@ -506,6 +506,8 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForXHR) {
         logging_info->rewriter_stats(i).has_html_status()) {
       EXPECT_EQ(RewriterHtmlApplication::DISABLED,
                 logging_info->rewriter_stats(i).html_status());
+      EXPECT_TRUE(logging_info->has_is_xhr());
+      EXPECT_TRUE(logging_info->is_xhr());
       return;
     }
   }

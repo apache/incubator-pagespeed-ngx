@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
@@ -607,6 +608,9 @@ TEST_F(CssCombineFilterCustomOptions, CssDoNotCombineAcrossNotProxiedDomains) {
 TEST_F(CssCombineFilterTest, CombineCssRecombine) {
   SetHtmlMimetype();
   UseMd5Hasher();
+  RequestHeaders request_headers;
+  rewrite_driver()->set_request_headers(&request_headers);
+
   CombineCss("combine_css_recombine", "", "", false);
   int inserts_before = lru_cache()->num_inserts();
 

@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <utility>
 
+#include <algorithm>                    // for min
 #include "base/logging.h"               // for CHECK, etc
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -65,6 +66,27 @@
 namespace net_instaweb {
 
 class UrlSegmentEncoder;
+
+namespace {
+
+// Determines the image options to be used for the given image. If neither
+// of large screen and small screen values are set, use the base value. If
+// any of them are set explicity, use the set value depending on the size of
+// the screen. The only exception is if the image is being compressed for a
+// small screen and the quality for small screen is set to a higher value.
+// In this case, use the value that is explicitly set to be lower of the two.
+int64 DetermineImageOptions(
+    int64 base_value, int64 large_screen_value, int64 small_screen_value,
+    bool is_small_screen) {
+  int64 quality = (large_screen_value == -1) ? base_value : large_screen_value;
+  if (is_small_screen && small_screen_value != -1) {
+    quality = (quality == -1) ? small_screen_value :
+        std::min(quality, small_screen_value);
+  }
+  return quality;
+}
+
+}  // namespace
 
 // Expose kRelatedFilters and kRelatedOptions as class variables for the benefit
 // of static-init-time merging in css_filter.cc.
@@ -524,34 +546,20 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
                               &webp_conversion_variables_,
                               image_options);
   }
-  image_options->jpeg_quality = options->image_recompress_quality();
-  if (options->image_jpeg_recompress_quality() != -1) {
-    // if jpeg quality is explicitly set, it takes precedence over generic image
-    // quality.
-    image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-  }
-
-  if (options->image_jpeg_recompress_quality_for_small_screens() != -1 &&
-      resource_context.use_small_screen_quality()) {
-    image_options->jpeg_quality =
-        options->image_jpeg_recompress_quality_for_small_screens();
-  }
-  image_options->webp_quality = options->image_recompress_quality();
-  if (options->image_webp_recompress_quality() != -1) {
-    image_options->webp_quality = options->image_webp_recompress_quality();
-  }
-  if (options->image_webp_recompress_quality_for_small_screens() != -1 &&
-      resource_context.use_small_screen_quality()) {
-    image_options->webp_quality =
-        options->image_webp_recompress_quality_for_small_screens();
-  }
+  image_options->jpeg_quality =
+      DetermineImageOptions(options->image_recompress_quality(),
+          options->image_jpeg_recompress_quality(),
+          options->image_jpeg_recompress_quality_for_small_screens(),
+          resource_context.use_small_screen_quality());
+  image_options->webp_quality =
+      DetermineImageOptions(options->image_recompress_quality(),
+          options->image_webp_recompress_quality(),
+          options->image_webp_recompress_quality_for_small_screens(),
+          resource_context.use_small_screen_quality());
   image_options->jpeg_num_progressive_scans =
-      options->image_jpeg_num_progressive_scans();
-  if (options->image_jpeg_num_progressive_scans_for_small_screens() != -1 &&
-      resource_context.use_small_screen_quality()) {
-    image_options->jpeg_num_progressive_scans =
-        options->image_jpeg_num_progressive_scans_for_small_screens();
-  }
+      DetermineImageOptions(-1, options->image_jpeg_num_progressive_scans(),
+          options->image_jpeg_num_progressive_scans_for_small_screens(),
+          resource_context.use_small_screen_quality());
   image_options->progressive_jpeg =
       options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
       input_size >= options->progressive_jpeg_min_bytes();

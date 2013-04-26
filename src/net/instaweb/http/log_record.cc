@@ -422,6 +422,11 @@ void AbstractLogRecord::LogDeviceInfo(
   device_info->set_can_preload_resources(can_preload_resources);
 }
 
+void AbstractLogRecord::LogIsXhr(bool is_xhr) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->set_is_xhr(is_xhr);
+}
+
 void AbstractLogRecord::LogImageBackgroundRewriteActivity(
     RewriterApplication::Status status,
     const GoogleString& url,

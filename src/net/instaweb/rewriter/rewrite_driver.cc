@@ -2317,6 +2317,9 @@ void RewriteDriver::LogStats() {
       device_properties_->SupportsSplitHtml(
           options()->enable_aggressive_rewriters_for_mobile()),
       device_properties_->CanPreloadResources());
+  bool is_xhr = request_headers() != NULL &&
+      request_headers()->IsXmlHttpRequest();
+  log_record()->LogIsXhr(is_xhr);
 }
 
 void RewriteDriver::FinishParse() {
