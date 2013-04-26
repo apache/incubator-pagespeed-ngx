@@ -39,7 +39,7 @@ class Timer;
 class Writer;
 
 // Implementation of a message handler that uses ngx_log_error()
-// logging to emit messsages, with a fallback to GoogleMessageHandler
+// logging to emit messages, with a fallback to GoogleMessageHandler
 class NgxMessageHandler : public GoogleMessageHandler {
  public:
   explicit NgxMessageHandler(AbstractMutex* mutex);
