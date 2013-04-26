@@ -23,6 +23,12 @@
       'include_dirs': [
         '<(DEPTH)',
       ],
+      'dependencies': [
+        '<(DEPTH)/base/base.gyp:base'
+      ],
+      'export_dependent_settings': [
+        '<(DEPTH)/base/base.gyp:base'
+      ],
     },
     {
       'target_name': 'base_test_util',
