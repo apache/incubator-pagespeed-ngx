@@ -37,8 +37,11 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
 
    ```bash
    $ cd ~
-   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/alpha-r2748.zip
-   $ unzip alpha-r2748.zip
+   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/release-1.5.27.2-beta.zip
+   $ unzip release-1.5.27.2-beta.zip
+   $ cd ngx_pagespeed-release-1.5.27.2-beta/
+   $ wget http://dl.google.com/page-speed/psol/1.5.27.2.tar.gz
+   $ tar -xzvf 1.5.27.2.tar.gz # expands to psol/
    ```
 
 3. Download and build nginx:
@@ -48,7 +51,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ wget http://nginx.org/download/nginx-1.4.0.tar.gz
    $ tar -xvzf nginx-1.4.0.tar.gz
    $ cd nginx-1.4.0/
-   $ ./configure --add-module=$HOME/ngx_pagespeed-alpha-r2748
+   $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.5.27.2-beta
    $ make
    $ sudo make install
    ```
