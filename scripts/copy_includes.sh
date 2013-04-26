@@ -65,13 +65,15 @@ git add psol/include/
 
 # Log that we did this.
 SVN_REVISION="$(svn info $MOD_PAGESPEED_SRC | grep Revision | awk '{print $2}')"
+SVN_TAG="$(svn info $MOD_PAGESPEED_SRC | grep URL |  awk -F/ '{print $(NF-1)}')"
+
 DATE="$(date +%F)"
-echo "${DATE}: Updated from mod_pagespeed r${SVN_REVISION} ($USER)" >> \
-  psol/include_history.txt
+echo "${DATE}: Updated from mod_pagespeed ${SVN_TAG}@r${SVN_REVISION} ($USER)" \
+  >> psol/include_history.txt
 git add psol/include_history.txt
 
 echo
 echo "Verify that the copy looks good and then run:"
-echo "   git commit -m 'psol: updating from r${SVN_REVISION}'"
+echo "   git commit -m 'psol: updating from ${SVN_TAG}@r${SVN_REVISION}'"
 echo
-echo "You should also commit rebuilt binaries."
+echo "You should also commit rebuilt binaries if you haven't already."
