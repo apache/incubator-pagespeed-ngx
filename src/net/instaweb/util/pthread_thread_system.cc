@@ -33,6 +33,29 @@
 
 namespace net_instaweb {
 
+namespace {
+
+class PthreadId : public ThreadSystem::ThreadId {
+ public:
+  PthreadId() : id_(pthread_self()) {}
+  virtual ~PthreadId() {}
+
+  virtual bool IsEqual(const ThreadId& that) const {
+    return pthread_equal(id_, dynamic_cast<const PthreadId&>(that).id_) != 0;
+  }
+
+  virtual bool IsCurrentThread() const {
+    return pthread_equal(id_, pthread_self()) != 0;
+  }
+
+ private:
+  pthread_t id_;
+
+  DISALLOW_COPY_AND_ASSIGN(PthreadId);
+};
+
+}  // namespace
+
 class Timer;
 
 class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
@@ -134,8 +157,8 @@ Timer* PthreadThreadSystem::NewTimer() {
   return new PosixTimer;
 }
 
-int64 PthreadThreadSystem::ThreadId() const {
-  return static_cast<int64>(pthread_self());
+ThreadSystem::ThreadId* PthreadThreadSystem::GetThreadId() const {
+  return new PthreadId;
 }
 
 }  // namespace net_instaweb

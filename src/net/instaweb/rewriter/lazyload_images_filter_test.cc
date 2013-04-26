@@ -22,7 +22,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -455,7 +455,8 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySliderAfterHead) {
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForOldBlackberry) {
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kBlackBerryOS5UserAgent);
+  rewrite_driver()->SetUserAgent(
+      UserAgentMatcherTestBase::kBlackBerryOS5UserAgent);
   InitLazyloadImagesFilter(false);
   GoogleString input_html = "<head>"
       "</head>"
@@ -466,7 +467,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForOldBlackberry) {
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForGooglebot) {
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kGooglebotUserAgent);
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   InitLazyloadImagesFilter(false);
   GoogleString input_html = "<head>"
       "</head>"

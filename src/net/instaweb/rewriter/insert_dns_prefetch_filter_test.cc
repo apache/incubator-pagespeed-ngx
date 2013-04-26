@@ -19,7 +19,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -59,7 +59,7 @@ class InsertDnsPrefetchFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&writer_);
-    rewrite_driver()->SetUserAgent(UserAgentStrings::kChromeUserAgent);
+    rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChromeUserAgent);
   }
 
   virtual void TearDown() {

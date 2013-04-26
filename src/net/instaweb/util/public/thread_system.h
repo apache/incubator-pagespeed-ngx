@@ -110,6 +110,20 @@ class ThreadSystem {
     DISALLOW_COPY_AND_ASSIGN(ScopedReader);
   };
 
+  // Encapsulates a thread ID, whose type is dependent on the thread system
+  // implementation, and may be non-integral.  E.g, see
+  // http://linux.die.net/man/3/pthread_self.
+  class ThreadId {
+   public:
+    ThreadId() {}
+    virtual ~ThreadId();
+    virtual bool IsEqual(const ThreadId& that) const = 0;
+    virtual bool IsCurrentThread() const = 0;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(ThreadId);
+  };
+
   enum ThreadFlags {
     kDetached = 0,
     kJoinable = 1
@@ -133,8 +147,9 @@ class ThreadSystem {
   // TODO(jmarantz): consider removing this and controlling timers separately.
   virtual Timer* NewTimer() = 0;
 
-  // Returns an integer unique to the current thread.
-  virtual int64 ThreadId() const = 0;
+  // Returns an object holding the current thread ID.  The resultant object must
+  // be freed by the caller.
+  virtual ThreadId* GetThreadId() const = 0;
 
  private:
   friend class Thread;

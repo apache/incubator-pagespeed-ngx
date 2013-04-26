@@ -18,7 +18,7 @@
 
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -143,7 +143,7 @@ TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
 
 TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
   InitJsDeferDisabledFilter(false);
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhone4Safari);
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"
@@ -167,7 +167,7 @@ TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
   InitJsDeferDisabledFilter(false);
   options_->ClearSignatureForTesting();
   options_->set_enable_aggressive_rewriters_for_mobile(false);
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhone4Safari);
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"

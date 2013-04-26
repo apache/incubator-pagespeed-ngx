@@ -61,6 +61,24 @@ class NullRWLock : public ThreadSystem::RWLock {
   DISALLOW_COPY_AND_ASSIGN(NullRWLock);
 };
 
+class NullThreadId : public ThreadSystem::ThreadId {
+ public:
+  NullThreadId() {}
+  virtual ~NullThreadId() {}
+
+  virtual bool IsEqual(const ThreadId& that) const {
+    CHECK(dynamic_cast<const NullThreadId*>(&that) != NULL);
+    return true;
+  }
+
+  virtual bool IsCurrentThread() const {
+    return true;
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NullThreadId);
+};
+
 }  // namespace
 
 NullCondvarCapableMutex::~NullCondvarCapableMutex() {
@@ -86,8 +104,8 @@ Timer* NullThreadSystem::NewTimer() {
   return new MockTimer(0);
 }
 
-int64 NullThreadSystem::ThreadId() const {
-  return kMockThreadId;
+ThreadSystem::ThreadId* NullThreadSystem::GetThreadId() const {
+  return new NullThreadId;
 }
 
 ThreadSystem::ThreadImpl* NullThreadSystem::NewThreadImpl(Thread* wrapper,

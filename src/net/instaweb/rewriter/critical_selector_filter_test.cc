@@ -21,7 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -157,7 +157,7 @@ TEST_F(CriticalSelectorFilterTest, EmptyBlock) {
 }
 
 TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kIe7UserAgent);
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
   GoogleString css = StrCat(
       "<style>*,p {display: none; } span {display: inline; }</style>",
       CssLinkHref("a.css"),

@@ -35,7 +35,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
@@ -198,13 +198,13 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
       UserAgentMatcher::DeviceType device_type) {
     switch (device_type) {
       case UserAgentMatcher::kMobile:
-        return UserAgentStrings::kAndroidICSUserAgent;
+        return UserAgentMatcherTestBase::kAndroidICSUserAgent;
       case UserAgentMatcher::kTablet:
-        return UserAgentStrings::kIPadUserAgent;
+        return UserAgentMatcherTestBase::kIPadUserAgent;
       case UserAgentMatcher::kDesktop:
       case UserAgentMatcher::kEndOfDeviceType:
       default:
-        return UserAgentStrings::kChromeUserAgent;
+        return UserAgentMatcherTestBase::kChromeUserAgent;
     }
   }
 

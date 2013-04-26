@@ -33,7 +33,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
@@ -1690,8 +1690,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   options_->ClearSignatureForTesting();
   options_->set_enable_aggressive_rewriters_for_mobile(true);
   server_context()->ComputeSignature(options_.get());
-  request_headers.Add(HttpAttributes::kUserAgent,
-                      UserAgentStrings::kIPhone4Safari);  // Mobile Request.
+  request_headers.Add(
+      HttpAttributes::kUserAgent,
+      UserAgentMatcherTestBase::kIPhone4Safari);  // Mobile Request.
   FetchFromProxy("plain.html", true, request_headers, &text,
                  &response_headers, &user_agent, false);
   EXPECT_STREQ(kHtmlInput, text);

@@ -116,7 +116,9 @@ class CheckingThreadSystem : public ThreadSystem {
   virtual Mutex* NewMutex();
   virtual RWLock* NewRWLock();
   virtual Timer* NewTimer();
-  virtual int64 ThreadId() const { return thread_system_->ThreadId(); }
+  virtual ThreadId* GetThreadId() const {
+    return thread_system_->GetThreadId();
+  }
 
  private:
   friend class Mutex;

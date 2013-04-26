@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
@@ -854,8 +854,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     GoogleString text;
     RequestHeaders request_headers;
     if (is_mobile) {
-      request_headers.Replace(HttpAttributes::kUserAgent,
-                              UserAgentStrings::kAndroidChrome21UserAgent);
+      request_headers.Replace(
+          HttpAttributes::kUserAgent,
+          UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
     } else {
       request_headers.Replace(HttpAttributes::kUserAgent, "Chrome/ 9.0");
     }
@@ -966,8 +967,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     GoogleString text;
     RequestHeaders request_headers;
     if (is_mobile) {
-      request_headers.Replace(HttpAttributes::kUserAgent,
-                              UserAgentStrings::kAndroidChrome21UserAgent);
+      request_headers.Replace(
+          HttpAttributes::kUserAgent,
+          UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
     } else {
       request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
     }
@@ -1144,7 +1146,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
 */
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestMobile) {
-  TestFlushEarlyFlow(UserAgentStrings::kAndroidChrome21UserAgent,
+  TestFlushEarlyFlow(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
                      UserAgentMatcher::kPrefetchImageTag);
 }
 
@@ -1750,7 +1752,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
-                          UserAgentStrings::kChrome18UserAgent);
+                          UserAgentMatcherTestBase::kChrome18UserAgent);
 
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 

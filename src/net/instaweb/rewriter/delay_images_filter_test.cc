@@ -20,7 +20,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -481,7 +481,7 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
 TEST_F(DelayImagesFilterTest, DelayImageWithMobileAggressiveEnabled) {
   options()->set_enable_aggressive_rewriters_for_mobile(true);
   AddFilter(RewriteOptions::kDelayImages);
-  SetupUserAgentTest(UserAgentStrings::kAndroidICSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString input_html = "<head></head>"
@@ -505,7 +505,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileLazyLoad) {
   options()->set_enable_aggressive_rewriters_for_mobile(true);
   options()->set_lazyload_highres_images(true);
   AddFilter(RewriteOptions::kDelayImages);
-  SetupUserAgentTest(UserAgentStrings::kAndroidICSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString input_html = "<head></head>"
@@ -528,7 +528,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileLazyLoad) {
 TEST_F(DelayImagesFilterTest, DelayImageWithMobileAndExperimentEnabled) {
   options()->set_enable_aggressive_rewriters_for_mobile(true);
   options()->set_enable_inline_preview_images_experimental(true);
-  SetupUserAgentTest(UserAgentStrings::kAndroidICSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
@@ -781,14 +781,14 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
   SetupUserAgentTest("Safari");
   int byte_count_desktop1 = MatchOutputAndCountBytes(input_html, output_html);
 
-  SetupUserAgentTest(UserAgentStrings::kAndroidICSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   int byte_count_android1 = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_LT(byte_count_android1, byte_count_desktop1);
 
   SetupUserAgentTest("MSIE 8.0");
   int byte_count_desktop2 = MatchOutputAndCountBytes(input_html, output_html);
 
-  SetupUserAgentTest(UserAgentStrings::kAndroidNexusSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidNexusSUserAgent);
   int byte_count_android2 = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_android1, byte_count_android2);
   EXPECT_EQ(byte_count_desktop1, byte_count_desktop2);
@@ -817,7 +817,8 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
 
   // No low quality data for an image smaller than kDelayImageWidthForMobile
   // (in image_rewrite_filter.cc).
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kAndroidICSUserAgent);
+  rewrite_driver()->SetUserAgent(
+      UserAgentMatcherTestBase::kAndroidICSUserAgent);
   MatchOutputAndCountBytes(input_html, output_html);
 
   ScopedMutex lock(rewrite_driver()->log_record()->mutex());
@@ -861,7 +862,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
   // outputs will have the same size.
   SetupUserAgentTest("Safari");
   int byte_count_desktop = MatchOutputAndCountBytes(input_html, output_html);
-  SetupUserAgentTest(UserAgentStrings::kAndroidICSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   int byte_count_mobile = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_mobile, byte_count_desktop);
 }
@@ -932,7 +933,7 @@ TEST_F(DelayImagesFilterTest, ExperimentalAndMobileLazyLoadIsTrue) {
   options()->set_enable_aggressive_rewriters_for_mobile(true);
   options()->set_enable_inline_preview_images_experimental(true);
   options()->set_lazyload_highres_images(true);
-  SetupUserAgentTest(UserAgentStrings::kAndroidICSUserAgent);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);

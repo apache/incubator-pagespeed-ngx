@@ -46,7 +46,7 @@ class NullThreadSystem : public ThreadSystem {
   virtual CondvarCapableMutex* NewMutex();
   virtual RWLock* NewRWLock();
   virtual Timer* NewTimer();
-  virtual int64 ThreadId() const;
+  virtual ThreadId* GetThreadId() const;
 
  private:
   virtual ThreadImpl* NewThreadImpl(Thread* wrapper, ThreadFlags flags);

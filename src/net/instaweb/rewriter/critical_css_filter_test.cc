@@ -23,7 +23,7 @@
 
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
@@ -166,7 +166,7 @@ TEST_F(CriticalCssFilterTest, UnchangedWithNoCriticalRules) {
 
 TEST_F(CriticalCssFilterTest, DisabledForIE) {
   // Critical CSS is disabed in IE (awaiting conditional comment support).
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kIe7UserAgent);
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIe7UserAgent);
   static const char input_html[] =
       "<head>\n"
       "  <title>Example</title>\n"

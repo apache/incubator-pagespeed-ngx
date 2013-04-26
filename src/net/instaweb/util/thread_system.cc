@@ -35,4 +35,7 @@ ThreadSystem::ThreadImpl::~ThreadImpl() {
 void ThreadSystem::RWLock::DCheckReaderLocked() {
 }
 
+ThreadSystem::ThreadId::~ThreadId() {
+}
+
 }  // namespace net_instaweb

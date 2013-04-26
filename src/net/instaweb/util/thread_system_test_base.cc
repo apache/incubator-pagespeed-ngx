@@ -53,9 +53,26 @@ class ToggleThread : public ThreadSystem::Thread {
         owner_(owner),
         lock_(lock),
         notify_true_(notify_true),
-        notify_false_(notify_false) {}
+        notify_false_(notify_false),
+        parent_id_(owner->thread_system()->GetThreadId()) {
+  }
 
   virtual void Run() {
+    // Check whether our ID is not the same as our parent, and
+    // vice versa.
+    scoped_ptr<ThreadSystem::ThreadId> id(
+        owner_->thread_system()->GetThreadId());
+    EXPECT_FALSE(parent_id_->IsEqual(*id.get()));
+    EXPECT_FALSE(id->IsEqual(*parent_id_.get()));
+
+    EXPECT_FALSE(parent_id_->IsCurrentThread());
+    EXPECT_TRUE(id->IsCurrentThread());
+
+    // Check that if we strobe our ID a second time it matches.
+    scoped_ptr<ThreadSystem::ThreadId> id_check(
+        owner_->thread_system()->GetThreadId());
+    EXPECT_TRUE(id_check->IsEqual(*id.get()));
+
     // Wait for parent to set it to true.
     {
       ScopedMutex hold_lock(lock_);
@@ -82,6 +99,7 @@ class ToggleThread : public ThreadSystem::Thread {
   AbstractMutex* lock_;
   ThreadSystem::Condvar* notify_true_;
   ThreadSystem::Condvar* notify_false_;
+  scoped_ptr<ThreadSystem::ThreadId> parent_id_;
 };
 
 }  // namespace

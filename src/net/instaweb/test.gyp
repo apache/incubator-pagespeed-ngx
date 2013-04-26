@@ -95,6 +95,7 @@
         'http/sync_fetcher_adapter_test.cc',
         'http/url_async_fetcher_stats_test.cc',
         'http/user_agent_matcher_test.cc',
+        'http/user_agent_matcher_test_base.cc',
         'http/wait_url_async_fetcher_test.cc',
         'http/write_through_http_cache_test.cc',
         'js/js_lexer_test.cc',

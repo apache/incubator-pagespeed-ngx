@@ -36,7 +36,7 @@ class PthreadThreadSystem : public ThreadSystem {
   virtual CondvarCapableMutex* NewMutex();
   virtual RWLock* NewRWLock();
   virtual Timer* NewTimer();
-  virtual int64 ThreadId() const;
+  virtual ThreadId* GetThreadId() const;
 
  protected:
   // This hook will get invoked by the implementation in the context of a

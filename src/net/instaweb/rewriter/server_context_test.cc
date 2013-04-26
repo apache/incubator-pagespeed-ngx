@@ -34,7 +34,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
@@ -980,38 +980,38 @@ TEST_F(ServerContextTest, TestNotGenerated) {
 
 TEST_F(ServerContextTest, TestHandleBeaconNoLoadParam) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "", UserAgentStrings::kChromeUserAgent,
+      "", UserAgentMatcherTestBase::kChromeUserAgent,
       CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidLoadParam) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "ets=asd", UserAgentStrings::kChromeUserAgent,
+      "ets=asd", UserAgentMatcherTestBase::kChromeUserAgent,
       CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconNoUrl) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "ets=load:34", UserAgentStrings::kChromeUserAgent,
+      "ets=load:34", UserAgentMatcherTestBase::kChromeUserAgent,
       CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidUrl) {
   EXPECT_FALSE(server_context()->HandleBeacon(
       "url=%2f%2finvalidurl&ets=load:34",
-      UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
+      UserAgentMatcherTestBase::kChromeUserAgent, CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconMissingValue) {
   EXPECT_FALSE(server_context()->HandleBeacon(
       "url=http%3A%2F%2Flocalhost%3A8080%2Findex.html&ets=load:",
-      UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
+      UserAgentMatcherTestBase::kChromeUserAgent, CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeacon) {
   EXPECT_TRUE(server_context()->HandleBeacon(
       "url=http%3A%2F%2Flocalhost%3A8080%2Findex.html&ets=load:34",
-      UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
+      UserAgentMatcherTestBase::kChromeUserAgent, CreateRequestContext()));
 }
 
 class BeaconTest : public ServerContextTest {
@@ -1107,7 +1107,7 @@ TEST_F(BeaconTest, BasicPcacheSetup) {
       RewriteDriver::kBeaconCohort);
   UserAgentMatcher::DeviceType device_type =
       server_context()->user_agent_matcher()->GetDeviceTypeForUA(
-          UserAgentStrings::kChromeUserAgent);
+          UserAgentMatcherTestBase::kChromeUserAgent);
   StringPiece device_type_suffix =
       UserAgentMatcher::DeviceTypeSuffix(device_type);
   GoogleString key = server_context()->GetPagePropertyCacheKey(
@@ -1134,7 +1134,8 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
   critical_image_hashes.insert(hash1);
   proto.add_html_critical_images(hash1);
   proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, NULL,
+             UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 
   critical_image_hashes.insert(hash2);
@@ -1144,7 +1145,8 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
       proto.add_html_critical_images_sets();
   field->add_critical_images(hash1);
   field->add_critical_images(hash2);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, NULL,
+             UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 
   critical_image_hashes.clear();
@@ -1152,12 +1154,14 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
   proto.clear_html_critical_images();
   proto.add_html_critical_images(hash1);
   proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, NULL,
+             UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 
   proto.clear_html_critical_images_sets();
   proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kIPhoneUserAgent);
+  TestBeacon(&critical_image_hashes, NULL,
+             UserAgentMatcherTestBase::kIPhoneUserAgent);
   EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 }
 
@@ -1173,7 +1177,8 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
       css_selector_proto.add_selector_set_history();
   set->add_selectors("#foo");
   set->add_selectors(".bar");
-  TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(NULL, &critical_css_selector,
+             UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(css_selector_proto.SerializeAsString(),
                critical_css_selectors_property_value_);
 
@@ -1186,7 +1191,8 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   set = css_selector_proto.add_selector_set_history();
   set->add_selectors(".bar");
   set->add_selectors("img");
-  TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(NULL, &critical_css_selector,
+             UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(css_selector_proto.SerializeAsString(),
                critical_css_selectors_property_value_);
 }
@@ -1196,7 +1202,7 @@ TEST_F(BeaconTest, EmptyCriticalCss) {
   CriticalSelectorSet empty_selector_proto;
   empty_selector_proto.add_selector_set_history();
   TestBeacon(NULL, &empty_critical_selectors,
-             UserAgentStrings::kChromeUserAgent);
+             UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(empty_selector_proto.SerializeAsString(),
                critical_css_selectors_property_value_);
 }

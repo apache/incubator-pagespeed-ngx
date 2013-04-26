@@ -37,7 +37,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -811,7 +811,7 @@ TEST_F(ImageRewriteTest, ImgTag) {
 }
 
 TEST_F(ImageRewriteTest, ImgTagWithDeviceTypeLogging) {
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhoneUserAgent);
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIPhoneUserAgent);
   RewriteImage("img", kContentTypeJpeg);
   EXPECT_EQ(UserAgentMatcher::kMobile,
             logging_info()->device_info().device_type());
@@ -2171,7 +2171,8 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   int screen_height;
   ImageUrlEncoder::GetNormalizedScreenResolution(
       100, 80, &screen_width, &screen_height);
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kAndroidNexusSUserAgent);
+  rewrite_driver()->SetUserAgent(
+      UserAgentMatcherTestBase::kAndroidNexusSUserAgent);
 
   TestSquashImagesForMobileScreen(
       rewrite_driver(), screen_width, screen_height);
