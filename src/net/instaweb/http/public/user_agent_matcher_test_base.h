@@ -123,12 +123,19 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kTestingWebp[];
   static const char kTestingWebpLosslessAlpha[];
 
-  static const char* const kMobileUserAgents[33];
-  static const char* const kDesktopUserAgents[27];
-  static const char* const kTabletUserAgents[6];
-  static const char* const kImageInliningSupportedUserAgents[10];
-  static const char* const kSplitHtmlSupportedUserAgents[4];
-  static const char* const kSplitHtmlUnSupportedUserAgents[7];
+  static const char* const kMobileUserAgents[];
+  static const char* const kDesktopUserAgents[];
+  static const char* const kTabletUserAgents[];
+  static const char* const kImageInliningSupportedUserAgents[];
+  static const char* const kSplitHtmlSupportedUserAgents[];
+  static const char* const kSplitHtmlUnSupportedUserAgents[];
+
+  static const int kMobileUserAgentsArraySize;
+  static const int kDesktopUserAgentsArraySize;
+  static const int kTabletUserAgentsArraySize;
+  static const int kImageInliningSupportedUserAgentsArraySize;
+  static const int kSplitHtmlSupportedUserAgentsArraySize;
+  static const int kSplitHtmlUnSupportedUserAgentsArraySize;
 };
 
 }  // namespace net_instaweb

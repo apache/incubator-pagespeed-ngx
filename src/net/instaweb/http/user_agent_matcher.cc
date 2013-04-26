@@ -204,7 +204,8 @@ const char* kMobileUserAgentWhitelist[] = {
   "*Profile/MIDP*",
   "*profile/MIDP*",
   "*portalmmm*",
-  "*DoCoMo*"
+  "*DoCoMo*",
+  "*Obigo*"
 };
 
 // Blacklist used for doing the mobile-user-agent check.

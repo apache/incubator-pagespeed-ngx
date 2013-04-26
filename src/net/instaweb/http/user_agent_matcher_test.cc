@@ -67,7 +67,7 @@ TEST_F(UserAgentMatcherTest, IsNotIeTest) {
 }
 
 TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
-  for (int i = 0; i < arraysize(kImageInliningSupportedUserAgents); ++i) {
+  for (int i = 0; i < kImageInliningSupportedUserAgentsArraySize; ++i) {
     EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
                     kImageInliningSupportedUserAgents[i]))
         << "\"" << kImageInliningSupportedUserAgents[i]
@@ -449,7 +449,7 @@ TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
 }
 
 TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
-  for (int i = 0; i < arraysize(kSplitHtmlSupportedUserAgents); ++i) {
+  for (int i = 0; i < kSplitHtmlSupportedUserAgentsArraySize; ++i) {
     EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
                     kSplitHtmlSupportedUserAgents[i], false))
         << "\"" << kSplitHtmlSupportedUserAgents[i]
@@ -458,7 +458,7 @@ TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
   // Allow-mobile case.
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
       kAndroidChrome21UserAgent, true));
-  for (int i = 0; i < arraysize(kSplitHtmlUnSupportedUserAgents); ++i) {
+  for (int i = 0; i < kSplitHtmlUnSupportedUserAgentsArraySize; ++i) {
     EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
                     kSplitHtmlUnSupportedUserAgents[i],
                     false))
@@ -468,7 +468,7 @@ TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
 }
 
 TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
-  for (int i = 0; i < arraysize(kMobileUserAgents); ++i) {
+  for (int i = 0; i < kMobileUserAgentsArraySize; ++i) {
     EXPECT_TRUE(IsMobileUserAgent(kMobileUserAgents[i]))
         << "\"" << kMobileUserAgents[i] << "\""
         << " not detected as mobile user agent.";
@@ -476,7 +476,7 @@ TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
 }
 
 TEST_F(UserAgentMatcherTest, IsDesktopUserAgent) {
-  for (int i = 0; i < arraysize(kDesktopUserAgents); ++i) {
+  for (int i = 0; i < kDesktopUserAgentsArraySize; ++i) {
     EXPECT_TRUE(IsDesktopUserAgent(kDesktopUserAgents[i]))
         << "\"" << kDesktopUserAgents[i] << "\""
         << " not detected as desktop user agent.";
@@ -484,7 +484,7 @@ TEST_F(UserAgentMatcherTest, IsDesktopUserAgent) {
 }
 
 TEST_F(UserAgentMatcherTest, IsTabletUserAgent) {
-  for (int i = 0; i < arraysize(kTabletUserAgents); ++i) {
+  for (int i = 0; i < kTabletUserAgentsArraySize; ++i) {
     EXPECT_TRUE(IsTabletUserAgent(kTabletUserAgents[i]))
         << "\"" << kTabletUserAgents[i] << "\""
         << " not detected as tablet user agent.";

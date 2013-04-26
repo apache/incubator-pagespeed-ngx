@@ -265,8 +265,9 @@ const char UserAgentMatcherTestBase::kTestingWebp[] =
 const char UserAgentMatcherTestBase::kTestingWebpLosslessAlpha[] =
     "webp-la";
 
-const char* const UserAgentMatcherTestBase::kMobileUserAgents[33] = {
+const char* const UserAgentMatcherTestBase::kMobileUserAgents[] = {
   UserAgentMatcherTestBase::kALCATELMobileUserAgent,
+  UserAgentMatcherTestBase::kAlcatelUserAgent,
   UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
   UserAgentMatcherTestBase::kAndroidICSUserAgent,
   UserAgentMatcherTestBase::kAndroidICSUserAgent,
@@ -289,6 +290,7 @@ const char* const UserAgentMatcherTestBase::kMobileUserAgents[33] = {
   UserAgentMatcherTestBase::kOperaMobi9,
   UserAgentMatcherTestBase::kOperaMobilMobileUserAgent,
   UserAgentMatcherTestBase::kPanasonicMobileUserAgent,
+  UserAgentMatcherTestBase::kPHILIPSUserAgent,
   UserAgentMatcherTestBase::kportalmmmMobileUserAgent,
   UserAgentMatcherTestBase::kSAGEMMobileUserAgent,
   UserAgentMatcherTestBase::kSAMSUNGMobileUserAgent,
@@ -301,9 +303,8 @@ const char* const UserAgentMatcherTestBase::kMobileUserAgents[33] = {
   UserAgentMatcherTestBase::kZTEMobileUserAgent,
 };
 
-const char* const UserAgentMatcherTestBase::kDesktopUserAgents[27] = {
+const char* const UserAgentMatcherTestBase::kDesktopUserAgents[] = {
   "not a mobile",
-  UserAgentMatcherTestBase::kAlcatelUserAgent,
   UserAgentMatcherTestBase::kAmoiUserAgent,
   UserAgentMatcherTestBase::kBenqUserAgent,
   UserAgentMatcherTestBase::kCompalUserAgent,
@@ -317,7 +318,6 @@ const char* const UserAgentMatcherTestBase::kDesktopUserAgents[27] = {
   UserAgentMatcherTestBase::kNECUserAgent,
   UserAgentMatcherTestBase::kOpera1101UserAgent,
   UserAgentMatcherTestBase::kPGUserAgent,
-  UserAgentMatcherTestBase::kPHILIPSUserAgent,
   UserAgentMatcherTestBase::kRoverUserAgent,
   UserAgentMatcherTestBase::kSafariUserAgent,
   UserAgentMatcherTestBase::kSAGEMUserAgent,
@@ -331,7 +331,7 @@ const char* const UserAgentMatcherTestBase::kDesktopUserAgents[27] = {
   UserAgentMatcherTestBase::kYourWapUserAgent,
 };
 
-const char* const UserAgentMatcherTestBase::kTabletUserAgents[6] = {
+const char* const UserAgentMatcherTestBase::kTabletUserAgents[] = {
   UserAgentMatcherTestBase::kGenericAndroidUserAgent,
   UserAgentMatcherTestBase::kIPadTabletUserAgent,
   UserAgentMatcherTestBase::kIPadUserAgent,
@@ -341,7 +341,7 @@ const char* const UserAgentMatcherTestBase::kTabletUserAgents[6] = {
 };
 
 const char* const
-UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[10] = {
+UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[] = {
   "",  // Empty user agent.
   UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
   UserAgentMatcherTestBase::kAndroidHCUserAgent,
@@ -354,7 +354,7 @@ UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[10] = {
   UserAgentMatcherTestBase::kSafariUserAgent,
 };
 
-const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[4] = {
+const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kChromeUserAgent,
   UserAgentMatcherTestBase::kFirefoxUserAgent,
   UserAgentMatcherTestBase::kIe9UserAgent,
@@ -362,7 +362,7 @@ const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[4] = {
 };
 
 const char* const
-UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[7] = {
+UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
   UserAgentMatcherTestBase::kFirefox1UserAgent,
   UserAgentMatcherTestBase::kIe6UserAgent,
@@ -371,5 +371,18 @@ UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[7] = {
   UserAgentMatcherTestBase::kOpera5UserAgent,
   UserAgentMatcherTestBase::kPSPUserAgent,
 };
+
+const int UserAgentMatcherTestBase::kMobileUserAgentsArraySize =
+    arraysize(kMobileUserAgents);
+const int UserAgentMatcherTestBase::kDesktopUserAgentsArraySize =
+    arraysize(kDesktopUserAgents);
+const int UserAgentMatcherTestBase::kTabletUserAgentsArraySize =
+    arraysize(kTabletUserAgents);
+const int UserAgentMatcherTestBase::kImageInliningSupportedUserAgentsArraySize =
+    arraysize(kImageInliningSupportedUserAgents);
+const int UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgentsArraySize =
+    arraysize(kSplitHtmlSupportedUserAgents);
+const int UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgentsArraySize =
+    arraysize(kSplitHtmlUnSupportedUserAgents);
 
 }  // namespace net_instaweb
