@@ -87,6 +87,7 @@ typedef struct {
   bool is_resource_fetch;
   bool write_pending;
   bool modify_headers;
+  bool fetch_done;
   net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 

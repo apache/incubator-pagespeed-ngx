@@ -333,77 +333,77 @@ ngx_http_output_header_filter_pt ngx_http_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 
-ngx_int_t ps_send_response(ngx_http_request_t *r) {
+ngx_int_t ps_response_handler(ngx_http_request_t *r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   ngx_int_t rc;
+  ngx_chain_t *cl = NULL;
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps send response: %V", &r->uri);
 
-  // Get output from pagespeed.
-  if (!r->header_sent) {
+  if (!r->header_sent) {  
+    ps_set_buffered(r, true);
+
+    // collect response headers from pagespeed
     if (ctx->is_resource_fetch || ctx->modify_headers) {
       ngx_http_clean_header(r);
-
       rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
       if (rc == NGX_ERROR) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
       }
     }
+
+    // send response headers
     if (ctx->is_resource_fetch) {
       rc = ngx_http_send_header(r);
     } else {
       rc = ngx_http_header_filter(r);
     }
-
     // standard nginx send header check see ngx_http_send_response
     if (rc == NGX_ERROR || rc > NGX_OK) {
       return ngx_http_filter_finalize_request(r, NULL, rc);
     }
-    if (rc == NGX_OK && r->header_only) {
-      return NGX_OK;
+
+    ctx->write_pending = (rc == NGX_AGAIN);
+
+    if (r->header_only) {
+      ctx->fetch_done = true;
+      ps_set_buffered(r, false);
+      return rc;
     }
   }
 
-  ngx_chain_t* cl;
-
-  // OK means last buffer has been sent
-  rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
-  PDBG(ctx, "CollectAccumulatedWrites, %d", rc);
-
-  if (rc == NGX_ERROR) {
-      return NGX_HTTP_INTERNAL_SERVER_ERROR;
-  }
-
-  // rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DECLINED
-  //
+  // collect response body from pagespeed
   // Pass the optimized content along to later body filters.
   // From Weibin: This function should be called mutiple times. Store the
   // whole file in one chain buffers is too aggressive. It could consume
   // too much memory in busy servers.
 
-  bool done = (rc == NGX_OK);
+  rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
+  PDBG(ctx, "CollectAccumulatedWrites, %d", rc);
 
-  // body_filter can handle NULL chain.
-  rc = ngx_http_next_body_filter(r, cl);
+  if (rc == NGX_ERROR) {
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
+  // rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DECLINED
 
   if (rc == NGX_OK) {
-    ctx->write_pending = false;
-    if (done) {
-      ps_set_buffered(ctx->r, false);
-      return NGX_OK;
+    ps_set_buffered(r, false);
+	ctx->fetch_done = true;
+  }
+
+  // send response body
+  if (cl || ctx->write_pending) {
+    rc = ngx_http_next_body_filter(r, cl);
+    ctx->write_pending = (rc == NGX_AGAIN);
+    if (rc == NGX_OK && !ctx->fetch_done) {
+      return NGX_AGAIN;
     }
+    return rc;
   }
 
-  if (rc == NGX_OK || rc == NGX_AGAIN) {
-    ps_set_buffered(ctx->r, true);
-    return NGX_AGAIN;
-  }
-
-  // others
-  return rc;
+  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
 }
-
 
 ngx_connection_t *ps_base_fetch_conn = NULL;
 int ps_base_fetch_pipefds[2] = {-1, -1};
@@ -447,9 +447,8 @@ void ps_base_fetch_clear(ngx_http_request_t *skip = NULL) {
             "base fetch clear");
         continue;
       }
-      ps_request_ctx_t* ctx = ps_get_request_context(r);
-      ctx->write_pending = true;;
-      ngx_http_finalize_request(r, ps_send_response(r));
+
+      ngx_http_finalize_request(r, ps_response_handler(r));
     }
   }
 }
@@ -964,6 +963,14 @@ char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
 void ps_release_request_context(void* data) {
   ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(data);
 
+  // proxy_fetch deleted itself if we called Done(), but if an error happened
+  // before then we need to tell it to delete itself.
+  //
+  // If this is a resource fetch then proxy_fetch was never initialized.
+  if (ctx->proxy_fetch != NULL) {
+    ctx->proxy_fetch->Done(false /* failure */);
+  }
+
   // In the normal flow BaseFetch doesn't delete itself in HandleDone() because
   // we still need to receive notification via pipe and call
   // CollectAccumulatedWrites.  If there's an error and we're cleaning up early
@@ -976,14 +983,6 @@ void ps_release_request_context(void* data) {
     ctx->base_fetch->Release();
     ps_base_fetch_clear(ctx->r);
     ctx->base_fetch = NULL;
-  }
-
-  // proxy_fetch deleted itself if we called Done(), but if an error happened
-  // before then we need to tell it to delete itself.
-  //
-  // If this is a resource fetch then proxy_fetch was never initialized.
-  if (ctx->proxy_fetch != NULL) {
-    ctx->proxy_fetch->Done(false /* failure */);
   }
 
   if (ctx->inflater_ != NULL) {
@@ -1741,14 +1740,20 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   if (in != NULL) {
     // Send all input data to the proxy fetch.
+    ps_set_buffered(r, true);  
     ps_send_to_pagespeed(r, ctx, cfg_s, in);
   }
-  ps_set_buffered(r, true);
 
   if (ctx->write_pending) {
-    return ps_send_response(r);
+    ngx_int_t rc = ngx_http_next_body_filter(r, NULL);
+    ctx->write_pending = (rc == NGX_AGAIN);
+    if (rc == NGX_OK && !ctx->fetch_done) {
+      return NGX_AGAIN;
+    }
+	return rc;
   }
-  return NGX_AGAIN;
+  
+  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
 }
 
 #ifndef ngx_http_clear_etag
