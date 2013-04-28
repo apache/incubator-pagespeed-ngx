@@ -18,9 +18,9 @@
 
 // Unit-test RefCountedPtr.
 
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/util/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
