@@ -40,7 +40,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ wget https://github.com/pagespeed/ngx_pagespeed/archive/release-1.5.27.2-beta.zip
    $ unzip release-1.5.27.2-beta.zip
    $ cd ngx_pagespeed-release-1.5.27.2-beta/
-   $ wget http://dl.google.com/page-speed/psol/1.5.27.2.tar.gz
+   $ wget https://dl.google.com/dl/page-speed/psol/1.5.27.2.tar.gz
    $ tar -xzvf 1.5.27.2.tar.gz # expands to psol/
    ```
 

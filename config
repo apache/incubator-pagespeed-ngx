@@ -20,6 +20,21 @@ mod_pagespeed_dir="${MOD_PAGESPEED_DIR:-unset}"
 if [ "$mod_pagespeed_dir" = "unset" ] ; then
   mod_pagespeed_dir="$ngx_addon_dir/psol/include"
   build_from_source=false
+
+  if [ ! -e "$mod_pagespeed_dir" ] ; then
+    echo "ngx_pagespeed: pagespeed optimization library not found:"
+    echo ""
+    echo "   You need to separately download the pagespeed library:"
+    echo ""
+    echo "     $ cd /path/to/ngx_pagespeed"
+    echo "     $ wget https://dl.google.com/dl/page-speed/psol/1.5.27.2.tar.gz"
+    echo "     $ tar -xzvf 1.5.27.2.tar.gz # expands to psol/"
+    echo ""
+    echo "   Or see the installation instructions:"
+    echo "     https://github.com/pagespeed/ngx_pagespeed#how-to-build"
+    exit 1
+  fi
+
 else
   build_from_source=true
 fi
