@@ -25,14 +25,6 @@
 
 #include "ngx_pagespeed.h"
 
-extern "C" {
-  #include <ngx_config.h>
-  #include <ngx_core.h>
-  #include <ngx_http.h>
-  #include <ngx_log.h>
-}
-
-#include <unistd.h>
 #include <vector>
 #include <set>
 
