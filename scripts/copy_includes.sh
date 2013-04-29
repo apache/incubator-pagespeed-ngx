@@ -1,4 +1,4 @@
-#!/bin/bash
+as#!/bin/bash
 #
 # Copyright 2012 Google Inc.
 #
@@ -22,7 +22,8 @@
 # Must be run from ngx_pagespeed checkout
 #
 # Copies headers and a few source files from a depot_tools (glient) checkout
-# into this repo.
+# into psol/include, deleting and recreating it.  Along with creating binaries,
+# this is a step in preparing psol.tar.gz for distribution.
 #
 
 set -u  # check for undefined variables
@@ -47,7 +48,7 @@ if [ "$(basename "$(dirname "$MOD_PAGESPEED_SRC")")/$( \
 fi
 
 # Copy over the .h files, plus a few selected .cc and .c files.
-git rm -r psol/include/
+rm -r psol/include/
 rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --exclude=".svn" \
   --exclude=".git" \
@@ -66,7 +67,6 @@ rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --include="sparse_hash_set" \
   --include="sparsetable" \
   --exclude='*'
-git add psol/include/
 
 # Log that we did this.
 SVN_REVISION="$(svn info $MOD_PAGESPEED_SRC | grep Revision | awk '{print $2}')"
@@ -75,10 +75,9 @@ SVN_TAG="$(svn info $MOD_PAGESPEED_SRC | grep URL |  awk -F/ '{print $(NF-1)}')"
 DATE="$(date +%F)"
 echo "${DATE}: Updated from mod_pagespeed ${SVN_TAG}@r${SVN_REVISION} ($USER)" \
   >> psol/include_history.txt
-git add psol/include_history.txt
 
 echo
-echo "Verify that the copy looks good and then run:"
-echo "   git commit -m 'psol: updating from ${SVN_TAG}@r${SVN_REVISION}'"
-echo
-echo "You should also commit rebuilt binaries if you haven't already."
+echo "Output is in psol/include.  Now put binaries in psol/lib following"
+echo "https://github.com/pagespeed/ngx_pagespeed/wiki/Building-Release-Binaries"
+echo "and then you can distribute PSOL."
+
