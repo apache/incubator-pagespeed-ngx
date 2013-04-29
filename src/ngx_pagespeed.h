@@ -28,13 +28,12 @@
 #ifdef LOG_WARNING
 #undef LOG_WARNING
 #endif
-#include "base/logging.h"
 
 extern "C" {
-  #include <ngx_core.h>
   #include <ngx_http.h>
 }
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_util.h"
 
