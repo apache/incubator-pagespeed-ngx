@@ -15,7 +15,10 @@
 {
   'targets': [
     {
-      'target_name': 'base',
+      'target_name': 'pagespeed_base',
+      # xcode build names libraries just based on the target_name, so
+      # if this were merely base then its libbase.a would clash with
+      # Chromium libbase.a
       'type': '<(library)',
       'sources': [
         'kernel/base/string_util.cc',
@@ -61,7 +64,7 @@
         '<(DEPTH)',
       ],
       'dependencies': [
-        'base',
+        'pagespeed_base',
         'pagespeed_javascript_gperf',
       ],
     },
@@ -92,7 +95,7 @@
         '<(DEPTH)',
       ],
       'dependencies': [
-        'base',
+        'pagespeed_base',
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
