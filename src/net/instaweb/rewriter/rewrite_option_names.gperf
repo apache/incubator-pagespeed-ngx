@@ -192,6 +192,7 @@ struct OptionName {
 "StatisticsLoggingChartsJS",             RewriteOptions::kStatisticsLoggingChartsJS
 "StatisticsLoggingFile",                 RewriteOptions::kStatisticsLoggingFile
 "StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
+"StatisticsLoggingMaxFileSizeKb",        RewriteOptions::kStatisticsLoggingMaxFileSizeKb
 "TestProxy",                             RewriteOptions::kTestProxy
 "TestProxySlurp",                        RewriteOptions::kTestProxySlurp
 %%

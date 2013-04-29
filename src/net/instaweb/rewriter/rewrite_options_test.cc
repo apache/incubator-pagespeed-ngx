@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(174, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(175, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -1209,18 +1209,21 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("StatisticsLogging",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsLoggingEnabled));
-  EXPECT_STREQ("StatisticsLoggingFile",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingFile));
-  EXPECT_STREQ("StatisticsLoggingIntervalMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingIntervalMs));
   EXPECT_STREQ("StatisticsLoggingChartsCSS",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsLoggingChartsCSS));
   EXPECT_STREQ("StatisticsLoggingChartsJS",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsLoggingChartsJS));
+  EXPECT_STREQ("StatisticsLoggingFile",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kStatisticsLoggingFile));
+  EXPECT_STREQ("StatisticsLoggingIntervalMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kStatisticsLoggingIntervalMs));
+  EXPECT_STREQ("StatisticsLoggingMaxFileSizeKb",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kStatisticsLoggingMaxFileSizeKb));
   EXPECT_STREQ("TestProxy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kTestProxy));

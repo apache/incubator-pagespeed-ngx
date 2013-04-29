@@ -74,10 +74,9 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kMemcachedTimeoutUs,
                     "Maximum time in microseconds to allow for memcached "
                         "transactions");
-  AddSystemProperty("", &SystemRewriteOptions::statistics_logging_file_, "aslf",
-                    RewriteOptions::kStatisticsLoggingFile,
-                    "Where to log cross-process statistics if they're being "
-                        "collected."),
+  AddSystemProperty(true, &SystemRewriteOptions::statistics_enabled_, "ase",
+                    RewriteOptions::kStatisticsEnabled,
+                    "Whether to collect cross-process statistics.");
   AddSystemProperty("", &SystemRewriteOptions::statistics_logging_charts_css_,
                     "aslcc", RewriteOptions::kStatisticsLoggingChartsCSS,
                     "Where to find an offline copy of the Google Charts Tools "
@@ -86,13 +85,25 @@ void SystemRewriteOptions::AddProperties() {
                     "aslcj", RewriteOptions::kStatisticsLoggingChartsJS,
                     "Where to find an offline copy of the Google Charts Tools "
                         "API JS.");
-  AddSystemProperty(true, &SystemRewriteOptions::statistics_enabled_, "ase",
-                    RewriteOptions::kStatisticsEnabled,
-                    "Whether to collect cross-process statistics.");
   AddSystemProperty(false, &SystemRewriteOptions::statistics_logging_enabled_,
                     "asle", RewriteOptions::kStatisticsLoggingEnabled,
-                    "Whether to log cross-process statistics if they're being "
-                        "collected.");
+                    "Whether to log statistics if they're being collected.");
+  AddSystemProperty(1 * Timer::kMinuteMs,
+                    &SystemRewriteOptions::statistics_logging_interval_ms_,
+                    "asli", RewriteOptions::kStatisticsLoggingIntervalMs,
+                    "How often to log statistics, in milliseconds.");
+  AddSystemProperty("", &SystemRewriteOptions::statistics_logging_file_prefix_,
+                    // TODO(sligocki): Should we update the option name to
+                    // kStatisticsLoggingFilePrefix to clarify? Or just bring
+                    // back a general Pagespeed directory to put all these
+                    // log files in?
+                    "aslf", RewriteOptions::kStatisticsLoggingFile,
+                    "Filename prefix for where to log statistics if they're "
+                        "being collected.");
+  AddSystemProperty(100 * 1024 /* 100 Megabytes */,
+                    &SystemRewriteOptions::statistics_logging_max_file_size_kb_,
+                    "aslfs", RewriteOptions::kStatisticsLoggingMaxFileSizeKb,
+                    "Max size for statistics logging file.");
   AddSystemProperty(true, &SystemRewriteOptions::use_shared_mem_locking_,
                     "ausml", RewriteOptions::kUseSharedMemLocking,
                     "Use shared memory for internal named lock service");
@@ -120,11 +131,6 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kLruCacheKbPerProcess,
                     "Set the total size, in KB, of the per-process in-memory "
                         "LRU cache");
-  AddSystemProperty(3000,
-                    &SystemRewriteOptions::statistics_logging_interval_ms_,
-                    "asli", RewriteOptions::kStatisticsLoggingIntervalMs,
-                    "How often to log cross-process statistics, in "
-                        "milliseconds.");
   AddSystemProperty("", &SystemRewriteOptions::cache_flush_filename_, "acff",
                     RewriteOptions::kCacheFlushFilename,
                     "Name of file to check for timestamp updates used to flush "

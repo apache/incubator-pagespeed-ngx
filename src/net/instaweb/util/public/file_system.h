@@ -268,15 +268,15 @@ class FileSystem {
   virtual void GetDirInfo(const StringPiece& path, DirInfo* dirinfo,
                           MessageHandler* handler);
 
-  // Given a file, computes its size in bytes and store it in *size.  Returns
-  // true on success, false on failure.  Behavior is undefined if path refers to
-  // a directory.
+  // Given a file, computes its size in bytes and store it in *size_bytes.
+  // Returns true on success, false on failure.  Behavior is undefined if
+  // path refers to a directory.
   // This function has different behavior depending on the underlying
   // implementation. Memory-based implementations will report the size of the
   // file, while disk-based implementations should return the actual allocated
   // size on disk.
   // TODO(abliss): replace this with a single Stat() function.
-  virtual bool Size(const StringPiece& path, int64* size,
+  virtual bool Size(const StringPiece& path, int64* size_bytes,
                     MessageHandler* handler) = 0;
 
   // Attempts to obtain a global (cross-process, cross-thread) lock of the given

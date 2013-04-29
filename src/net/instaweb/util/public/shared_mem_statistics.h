@@ -138,9 +138,10 @@ class ConsoleStatisticsLogfileReader {
 class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
  public:
   SharedMemConsoleStatisticsLogger(
-      const int64 update_interval_ms, const StringPiece& log_file,
-      SharedMemVariable* var, MessageHandler* message_handler,
-      Statistics* stats, FileSystem *file_system, Timer* timer);
+      int64 update_interval_ms, int64 max_logfile_size_kb,
+      const StringPiece& log_file, SharedMemVariable* last_dump_timestamp,
+      MessageHandler* message_handler, Statistics* stats,
+      FileSystem* file_system, Timer* timer);
   virtual ~SharedMemConsoleStatisticsLogger();
 
   // Writes filtered variable and histogram data in JSON format to the given
@@ -156,6 +157,9 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   // If it's been longer than kStatisticsDumpIntervalMs, update the
   // timestamp to now and dump the current state of the Statistics.
   void UpdateAndDumpIfRequired();
+
+  // Trim file down if it gets above max_logfile_size_kb.
+  void TrimLogfileIfNeeded();
 
  private:
   friend class SharedMemStatisticsTestBase;
@@ -203,6 +207,7 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   FileSystem* file_system_;
   Timer* timer_;    // Used to retrieve timestamps
   const int64 update_interval_ms_;
+  const int64 max_logfile_size_kb_;
   GoogleString logfile_name_;
   DISALLOW_COPY_AND_ASSIGN(SharedMemConsoleStatisticsLogger);
 };
@@ -300,6 +305,7 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
     SharedMemHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(int64 logging_interval_ms,
+                      int64 max_logfile_size_kb,
                       const StringPiece& logging_file, bool logging,
                       const GoogleString& filename_prefix,
                       AbstractSharedMem* shm_runtime,
@@ -343,6 +349,8 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   // Create mutexes in the segment, with per_var bytes being used,
   // counting the mutex, for each variable.
   bool InitMutexes(size_t per_var, MessageHandler* message_handler);
+
+  friend class SharedMemStatisticsTestBase;
 
   AbstractSharedMem* shm_runtime_;
   GoogleString filename_prefix_;

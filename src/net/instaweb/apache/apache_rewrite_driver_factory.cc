@@ -496,11 +496,10 @@ void ApacheRewriteDriverFactory::ShutDown() {
 // help with the settings if needed.
 // Note: does not call set_statistics() on the factory.
 Statistics* ApacheRewriteDriverFactory::MakeGlobalSharedMemStatistics(
-    bool logging, int64 logging_interval_ms,
-    const GoogleString& logging_file_base) {
+    const ApacheConfig* options) {
   if (shared_mem_statistics_.get() == NULL) {
     shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
-        "global", logging, logging_interval_ms, logging_file_base));
+        "global", options));
   }
   DCHECK(!statistics_frozen_);
   statistics_frozen_ = true;
@@ -510,9 +509,7 @@ Statistics* ApacheRewriteDriverFactory::MakeGlobalSharedMemStatistics(
 
 SharedMemStatistics* ApacheRewriteDriverFactory::
     AllocateAndInitSharedMemStatistics(
-        const StringPiece& name, const bool logging,
-        const int64 logging_interval_ms,
-        const GoogleString& logging_file_base) {
+        const StringPiece& name, const ApacheConfig* options) {
   // Note that we create the statistics object in the parent process, and
   // it stays around in the kids but gets reinitialized for them
   // inside ChildInit(), called from pagespeed_child_init.
@@ -521,9 +518,12 @@ SharedMemStatistics* ApacheRewriteDriverFactory::
   // established at the time of this construction, calling into question
   // whether we are naming our shared-memory segments correctly.
   SharedMemStatistics* stats = new SharedMemStatistics(
-      logging_interval_ms, StrCat(logging_file_base, name), logging,
-      StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
-      file_system(), timer());
+      options->statistics_logging_interval_ms(),
+      options->statistics_logging_max_file_size_kb(),
+      StrCat(options->statistics_logging_file_prefix(), name),
+      options->statistics_logging_enabled(),
+      StrCat(filename_prefix(), name), shared_mem_runtime(),
+      message_handler(), file_system(), timer());
   InitStats(stats);
   stats->Init(true, message_handler());
   return stats;

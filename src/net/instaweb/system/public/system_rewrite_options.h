@@ -26,8 +26,8 @@ namespace net_instaweb {
 
 class ThreadSystem;
 
-// This manages system configuration options for platform supports classes that
-// the pagespeed optimization library comes bundled with.
+// This manages configuration options specific to server implementations of
+// pagespeed optimization libraries, such as mod_pagespeed and ngx_pagespeed.
 class SystemRewriteOptions : public RewriteOptions {
  public:
   static void Initialize();
@@ -90,8 +90,11 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_statistics_logging_enabled(bool x) {
     set_option(x, &statistics_logging_enabled_);
   }
-  const GoogleString& statistics_logging_file() const {
-    return statistics_logging_file_.value();
+  const GoogleString& statistics_logging_file_prefix() const {
+    return statistics_logging_file_prefix_.value();
+  }
+  int64 statistics_logging_max_file_size_kb() const {
+    return statistics_logging_max_file_size_kb_.value();
   }
   const GoogleString& statistics_logging_charts_css() const {
     return statistics_logging_charts_css_.value();
@@ -99,8 +102,8 @@ class SystemRewriteOptions : public RewriteOptions {
   const GoogleString& statistics_logging_charts_js() const {
     return statistics_logging_charts_js_.value();
   }
-  void set_statistics_logging_file(GoogleString x) {
-    set_option(x, &statistics_logging_file_);
+  void set_statistics_logging_file_prefix(GoogleString x) {
+    set_option(x, &statistics_logging_file_prefix_);
   }
   int64 statistics_logging_interval_ms() const {
     return statistics_logging_interval_ms_.value();
@@ -184,7 +187,7 @@ class SystemRewriteOptions : public RewriteOptions {
   // comma-separated list of host[:port].  See AprMemCache::AprMemCache
   // for code that parses it.
   Option<GoogleString> memcached_servers_;
-  Option<GoogleString> statistics_logging_file_;
+  Option<GoogleString> statistics_logging_file_prefix_;
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;
@@ -206,6 +209,7 @@ class SystemRewriteOptions : public RewriteOptions {
   // If cache_flush_poll_interval_sec_<=0 then we turn off polling for
   // cache-flushes.
   Option<int64> cache_flush_poll_interval_sec_;
+  Option<int64> statistics_logging_max_file_size_kb_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteOptions);
 };

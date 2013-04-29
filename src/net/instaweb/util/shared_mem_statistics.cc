@@ -174,15 +174,17 @@ AbstractMutex* SharedMemVariable::mutex() {
 }
 
 SharedMemConsoleStatisticsLogger::SharedMemConsoleStatisticsLogger(
-    const int64 update_interval_ms, const StringPiece& log_file,
-    SharedMemVariable* var, MessageHandler* message_handler,
-    Statistics* stats, FileSystem* file_system, Timer* timer)
-      : last_dump_timestamp_(var),
+    int64 update_interval_ms, int64 max_logfile_size_kb,
+    const StringPiece& log_file, SharedMemVariable* last_dump_timestamp,
+    MessageHandler* message_handler, Statistics* stats,
+    FileSystem* file_system, Timer* timer)
+      : last_dump_timestamp_(last_dump_timestamp),
         message_handler_(message_handler),
         statistics_(stats),
         file_system_(file_system),
         timer_(timer),
-        update_interval_ms_(update_interval_ms) {
+        update_interval_ms_(update_interval_ms),
+        max_logfile_size_kb_(max_logfile_size_kb) {
   log_file.CopyToString(&logfile_name_);
 }
 
@@ -211,6 +213,9 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
             current_time_ms, &statistics_writer, message_handler_);
         statistics_writer.Flush(message_handler_);
         file_system_->Close(statistics_log_file, message_handler_);
+
+        // Trim logfile if it's over max size.
+        TrimLogfileIfNeeded();
       } else {
         message_handler_->Message(kError,
                                   "Error opening statistics log file %s.",
@@ -221,6 +226,18 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
       last_dump_timestamp_->SetLockHeldNoUpdate(current_time_ms);
     }
     mutex->Unlock();
+  }
+}
+
+void SharedMemConsoleStatisticsLogger::TrimLogfileIfNeeded() {
+  int64 size_bytes;
+  if (file_system_->Size(logfile_name_, &size_bytes, message_handler_) &&
+      size_bytes > max_logfile_size_kb_ * 1024) {
+    // TODO(sligocki): Rotate a set of logfiles and just delete the
+    // oldest one each time instead of deleting the entire log.
+    // NOTE: Update SharedMemStatisticsTestBase.TestLogfileTrimming when we
+    // make this change so that it correctly tests the total log size.
+    file_system_->RemoveFile(logfile_name_.c_str(), message_handler_);
   }
 }
 
@@ -836,7 +853,8 @@ double SharedMemHistogram::BucketWidth() {
 }
 
 SharedMemStatistics::SharedMemStatistics(
-    int64 logging_interval_ms, const StringPiece& logging_file, bool logging,
+    int64 logging_interval_ms, int64 max_logfile_size_kb,
+    const StringPiece& logging_file, bool logging,
     const GoogleString& filename_prefix, AbstractSharedMem* shm_runtime,
     MessageHandler* message_handler, FileSystem* file_system, Timer* timer)
     : shm_runtime_(shm_runtime), filename_prefix_(filename_prefix),
@@ -848,13 +866,12 @@ SharedMemStatistics::SharedMemStatistics(
       for (int i = 0, n = arraysize(kImportant); i < n; ++i) {
         important_variables_.insert(kImportant[i]);
       }
-      SharedMemVariable* timestampVar = AddVariable(kTimestampVariable);
+      SharedMemVariable* timestamp_var = AddVariable(kTimestampVariable);
       console_logger_.reset(new SharedMemConsoleStatisticsLogger(
-          logging_interval_ms, logging_file, timestampVar,
-          message_handler, this, file_system, timer));
+          logging_interval_ms, max_logfile_size_kb, logging_file,
+          timestamp_var, message_handler, this, file_system, timer));
       // The Logger needs a Variable which needs a Logger, hence the setter.
-      timestampVar->SetConsoleStatisticsLogger(console_logger_.get());
-      console_logger_->UpdateAndDumpIfRequired();
+      timestamp_var->SetConsoleStatisticsLogger(console_logger_.get());
     } else {
       message_handler->Message(kError,
           "Error: ModPagespeedStatisticsLoggingFile is required if "

@@ -982,10 +982,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       // allows statistics to work if mod_pagespeed gets turned on via
       // .htaccess or query param.
       if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics = factory->MakeGlobalSharedMemStatistics(
-            config->statistics_logging_enabled(),
-            config->statistics_logging_interval_ms(),
-            config->statistics_logging_file());
+        statistics = factory->MakeGlobalSharedMemStatistics(config);
       }
 
       // If config has statistics on and we have per-vhost statistics on

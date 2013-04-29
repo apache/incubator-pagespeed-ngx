@@ -94,6 +94,7 @@ class SplitStatisticsTest : public testing::Test {
   SharedMemStatistics* MakeInMemory(InProcessSharedMem** mem_runtime_out) {
     *mem_runtime_out = new InProcessSharedMem(threads_.get());
     return new SharedMemStatistics(3000,
+                                   100000,
                                    "/usr/local/apache2/logs/stats.log",
                                    true,
                                    "in_mem",

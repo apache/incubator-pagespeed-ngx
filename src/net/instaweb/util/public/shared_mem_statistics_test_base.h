@@ -37,6 +37,9 @@ class SharedMemStatisticsTestBase : public testing::Test {
  protected:
   typedef void (SharedMemStatisticsTestBase::*TestMethod)();
 
+  static const int64 kLogIntervalMs;
+  static const int64 kMaxLogfileSizeKb;
+
   explicit SharedMemStatisticsTestBase(SharedMemTestEnv* test_env);
   SharedMemStatisticsTestBase() : testing::Test() {}
 
@@ -63,6 +66,11 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestHistogramExtremeBuckets();
   void TestTimedVariableEmulation();
   void TestConsoleStatisticsLogger();
+  void TestLogfileTrimming();
+
+  SharedMemConsoleStatisticsLogger* console_logger() const {
+    return stats_->console_logger_.get();
+  }
 
   MockMessageHandler handler_;
   scoped_ptr<MemFileSystem> file_system_;
@@ -146,6 +154,11 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestTimedVariableEmulation) {
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestConsoleStatisticsLogger) {
   SharedMemStatisticsTestBase::TestConsoleStatisticsLogger();
 }
+
+TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestLogfileTrimming) {
+  SharedMemStatisticsTestBase::TestLogfileTrimming();
+}
+
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd,
                            TestSetReturningPrevious,
@@ -153,7 +166,8 @@ REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestHistogramNoExtraClear,
                            TestHistogramExtremeBuckets,
                            TestTimedVariableEmulation,
-                           TestConsoleStatisticsLogger);
+                           TestConsoleStatisticsLogger,
+                           TestLogfileTrimming);
 
 }  // namespace net_instaweb
 
