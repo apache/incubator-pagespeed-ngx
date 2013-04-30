@@ -127,7 +127,6 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
       mock_timer_(NULL),
       mock_scheduler_(NULL),
       delay_cache_(NULL),
-      lru_cache_(NULL),
       proxy_url_fetcher_(NULL),
       mock_url_fetcher_(mock_fetcher),
       mock_distributed_fetcher_(mock_distributed_fetcher),

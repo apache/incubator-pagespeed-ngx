@@ -355,7 +355,7 @@ class FakeUrlNamer : public UrlNamer {
                              const RequestHeaders& request_headers,
                              Callback* callback,
                              MessageHandler* handler) const {
-    callback->Done((options_ == NULL) ? NULL : options_->Clone());
+    callback->Run((options_ == NULL) ? NULL : options_->Clone());
   }
 
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,

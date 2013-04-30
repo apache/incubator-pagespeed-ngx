@@ -21,6 +21,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
@@ -43,18 +44,7 @@ class UrlNamer {
     kUnsharded
   };
 
-  class Callback {
-   public:
-    Callback() {}
-    virtual ~Callback();
-    // Provide the Callback function which will be executed once we have
-    // rewrite_options. It is the responsibility of Done() function to
-    // delete the Callback.
-    virtual void Done(RewriteOptions* rewrite_options) = 0;
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(Callback);
-  };
+  typedef Callback1<RewriteOptions*> Callback;
   UrlNamer();
   virtual ~UrlNamer();
 

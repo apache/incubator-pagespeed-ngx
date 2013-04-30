@@ -72,7 +72,7 @@ class ProxyUrlNamer : public UrlNamer {
                              const RequestHeaders& request_headers,
                              Callback* callback,
                              MessageHandler* handler) const {
-    callback->Done((options_ == NULL) ? NULL : options_->Clone());
+    callback->Run((options_ == NULL) ? NULL : options_->Clone());
   }
 
   void set_authorized(bool authorized) { authorized_ = authorized; }

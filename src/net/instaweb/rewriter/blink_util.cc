@@ -72,26 +72,30 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
           user_agent, async_fetch->request_headers());
   {
     ScopedMutex lock(async_fetch->log_record()->mutex());
-    // TODO(mmohabey): When called by IsCacheHtmlRequest logging should be done
-    // differently.
-    BlinkInfo* blink_info =
-        async_fetch->log_record()->logging_info()->mutable_blink_info();
+    CacheHtmlLoggingInfo* cache_html_logging_info =
+        async_fetch->log_record()->logging_info()->
+        mutable_cache_html_logging_info();
     switch (request_type) {
       case UserAgentMatcher::kBlinkWhiteListForDesktop:
-        blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_WHITELIST);
+        cache_html_logging_info->set_cache_html_user_agent(
+            CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_WHITELIST);
         return true;
       case UserAgentMatcher::kDoesNotSupportBlink:
-        blink_info->set_blink_user_agent(BlinkInfo::NOT_SUPPORT_BLINK);
+        cache_html_logging_info->set_cache_html_user_agent(
+            CacheHtmlLoggingInfo::NOT_SUPPORT_CACHE_HTML);
         return false;
       case UserAgentMatcher::kBlinkBlackListForDesktop:
-        blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_BLACKLIST);
+        cache_html_logging_info->set_cache_html_user_agent(
+            CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_BLACKLIST);
         return false;
       case UserAgentMatcher::kBlinkWhiteListForMobile:
       case UserAgentMatcher::kDoesNotSupportBlinkForMobile:
-        blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
+        cache_html_logging_info->set_cache_html_user_agent(
+            CacheHtmlLoggingInfo::CACHE_HTML_MOBILE);
         return false;
       case UserAgentMatcher::kNullOrEmpty:
-        blink_info->set_blink_user_agent(BlinkInfo::NULL_OR_EMPTY);
+        cache_html_logging_info->set_cache_html_user_agent(
+            CacheHtmlLoggingInfo::NULL_OR_EMPTY);
         return false;
     }
   }
@@ -104,8 +108,9 @@ bool IsBlinkBlacklistActive(int64 now_ms,
   bool is_blacklisted = blink_blacklist_end_timestamp_ms >= now_ms;
   if (is_blacklisted) {
     ScopedMutex lock(log_record->mutex());
-    log_record->logging_info()->mutable_blink_info()->set_blink_request_flow(
-        BlinkInfo::BLINK_BLACKLISTED);
+    log_record->logging_info()->mutable_cache_html_logging_info()->
+        set_cache_html_request_flow(
+            CacheHtmlLoggingInfo::CACHE_HTML_BLACKLISTED);
   }
   return is_blacklisted;
 }

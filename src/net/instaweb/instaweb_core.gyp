@@ -208,7 +208,7 @@
                 #
                 # Note: these must be in dependency order to work; you can't
                 # sort this list alphabetically.
-                '<(LIB_DIR)/pagespeed/libbase.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_base.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_rewriter_html.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core.a',
                 '<(LIB_DIR)/net/instaweb/libhttp_core.a',

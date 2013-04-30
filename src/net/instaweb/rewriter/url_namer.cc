@@ -84,7 +84,7 @@ void UrlNamer::DecodeOptions(const GoogleUrl& request_url,
                              const RequestHeaders& request_headers,
                              Callback* callback,
                              MessageHandler* handler) const {
-  callback->Done(NULL);
+  callback->Run(NULL);
 }
 
 void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
@@ -110,9 +110,6 @@ void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
     }
   }
   func->CallRun();
-}
-
-UrlNamer::Callback::~Callback() {
 }
 
 }  // namespace net_instaweb

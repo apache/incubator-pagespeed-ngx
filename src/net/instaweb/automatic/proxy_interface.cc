@@ -53,6 +53,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
@@ -115,7 +116,8 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
 
 // Provides a callback whose Done() function is executed once we have
 // rewrite options.
-class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
+// TODO(gee): Use MemberCallback_1_1 once it's available.
+class ProxyInterfaceUrlNamerCallback {
  public:
   ProxyInterfaceUrlNamerCallback(
       bool is_resource_fetch,
@@ -300,9 +302,11 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
                                          async_fetch, this,
                                          query_options_success.first, handler);
 
-  server_context_->url_namer()->DecodeOptions(
+    server_context_->url_namer()->DecodeOptions(
       *released_gurl, *async_fetch->request_headers(),
-      proxy_interface_url_namer_callback, handler);
+      NewCallback(proxy_interface_url_namer_callback,
+                  &ProxyInterfaceUrlNamerCallback::Done),
+      handler);
 }
 
 ProxyFetchPropertyCallbackCollector*

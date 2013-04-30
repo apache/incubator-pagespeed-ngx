@@ -347,7 +347,7 @@ class FakeUrlNamer : public UrlNamer {
                              const RequestHeaders& request_headers,
                              Callback* callback,
                              MessageHandler* handler) const {
-    callback->Done((options_ == NULL) ? NULL : options_->Clone());
+    callback->Run((options_ == NULL) ? NULL : options_->Clone());
   }
 
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,
@@ -1503,8 +1503,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   ResponseHeaders response_headers;
   FetchFromProxyWaitForBackground("minifiable_text.html", true, &text,
                                   &response_headers);
-  EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_WHITELIST,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_WHITELIST,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(1, values.size());
@@ -1784,8 +1784,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
   FetchFromProxy("blacklist.html", true, request_headers, &text,
                  &response_headers, false);
   // unassigned user agent
-  EXPECT_EQ(BlinkInfo::NOT_SET,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::NOT_SET,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
@@ -1834,8 +1834,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUserAgents) {
   request_headers.Add(HttpAttributes::kUserAgent, kBlackListUserAgent);
   FetchFromProxy("plain.html", true, request_headers, &text,
                  &response_headers, false);
-  EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_BLACKLIST,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_BLACKLIST,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   EXPECT_STREQ(kHtmlInput, text);
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
@@ -2032,8 +2032,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
   request_headers.Add(HttpAttributes::kUserAgent, "BlacklistUserAgent");
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
-  EXPECT_EQ(BlinkInfo::NOT_SUPPORT_BLINK,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::NOT_SUPPORT_CACHE_HTML,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
   EXPECT_STREQ("max-age=0", *(values[0]));
@@ -2060,8 +2060,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
       UserAgentMatcherTestBase::kIPhone4Safari);  // Mobile Request.
   FetchFromProxy("plain.html", true, request_headers, &text,
                  &response_headers, &user_agent, false);
-  EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::CACHE_HTML_MOBILE,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   EXPECT_STREQ(kHtmlInput, text);
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
@@ -2078,8 +2078,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {
   request_headers.Add(HttpAttributes::kUserAgent, NULL);
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
-  EXPECT_EQ(BlinkInfo::NULL_OR_EMPTY,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::NULL_OR_EMPTY,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   EXPECT_STREQ(noblink_output_, text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
@@ -2087,8 +2087,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {
   request_headers.Replace(HttpAttributes::kUserAgent, "");
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
-  EXPECT_EQ(BlinkInfo::NULL_OR_EMPTY,
-            logging_info()->blink_info().blink_user_agent());
+  EXPECT_EQ(CacheHtmlLoggingInfo::NULL_OR_EMPTY,
+            logging_info()->cache_html_logging_info().cache_html_user_agent());
   EXPECT_STREQ(noblink_output_, text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
@@ -2216,8 +2216,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklisted) {
   // No blink flow should have happened.
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
-  EXPECT_EQ(BlinkInfo::BLINK_BLACKLISTED,
-            logging_info()->blink_info().blink_request_flow());
+  EXPECT_EQ(CacheHtmlLoggingInfo::CACHE_HTML_BLACKLISTED,
+            logging_info()->
+            cache_html_logging_info().cache_html_request_flow());
   ClearStats();
 
   // Advance time beyond the blacklist end point.
