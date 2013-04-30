@@ -214,7 +214,6 @@ class RewriteOptions {
     kEnableFlushEarlyCriticalCss,
     kEnableFixReflow,
     kEnableFlushSubresourcesExperimental,
-    kEnableInlinePreviewImagesExperimental,
     kEnableLazyLoadHighResImages,
     kEnableLazyloadInBlink,
     kEnablePrioritizingScripts,
@@ -1772,13 +1771,6 @@ class RewriteOptions {
   }
   bool enable_cache_purge() const {
     return enable_cache_purge_.value();
-  }
-
-  void set_enable_inline_preview_images_experimental(bool x) {
-    set_option(x, &enable_inline_preview_images_experimental_);
-  }
-  bool enable_inline_preview_images_experimental() const {
-    return enable_inline_preview_images_experimental_.value();
   }
 
   void set_lazyload_highres_images(bool x) {

@@ -60,9 +60,13 @@ pagespeed.DelayImagesInline.prototype['addLowResImages'] =
 pagespeed.DelayImagesInline.prototype.replaceElementSrc =
     function(elements) {
   for (var i = 0; i < elements.length; ++i) {
-    var src = elements[i].getAttribute('pagespeed_high_res_src');
-    if (src) {
-      elements[i].setAttribute('src', this.inlineMap_[src]);
+    var high_res_src = elements[i].getAttribute('pagespeed_high_res_src');
+    var src = elements[i].getAttribute('src');
+    if (high_res_src && !src) {
+      var low_res = this.inlineMap_[high_res_src];
+      if (low_res) {
+        elements[i].setAttribute('src', low_res);
+      }
     }
   }
 };

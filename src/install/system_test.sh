@@ -648,6 +648,7 @@ test_filter inline_preview_images optimize mode
 FILE=delay_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
+WGET_ARGS="${WGET_ARGS} --user-agent=iPhone"
 echo run_wget_with_args $URL
 fetch_until $URL 'grep -c pagespeed.delayImagesInit' 1
 fetch_until $URL 'grep -c /\*' 0
@@ -659,6 +660,7 @@ test_filter inline_preview_images,debug debug mode
 FILE=delay_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
+WGET_ARGS="${WGET_ARGS} --user-agent=iPhone"
 fetch_until $URL 'grep -c pagespeed.delayImagesInit' 3
 check run_wget_with_args $URL
 

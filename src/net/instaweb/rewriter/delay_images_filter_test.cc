@@ -23,8 +23,6 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
-#include "net/instaweb/rewriter/public/js_disable_filter.h"
-#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -43,8 +41,6 @@ const char kSampleWebpFile[] = "Sample_webp.webp";
 const char kLargeJpgFile[] = "Puzzle.jpg";
 const char kSmallPngFile[] = "BikeCrashIcn.png";
 
-const char kBlankImageSrc[] = "/psajs/1.0.gif";
-
 // Generated html is matched approximately because different versions of
 // libjpeg are yeilding different low_res_image_data.
 const char kSampleJpegData[] = "data:image/jpeg;base64*";
@@ -52,26 +48,8 @@ const char kSampleWebpData[] = "data:image/webp;base64*";
 
 const char kHeadHtml[] = "<head></head>";
 
-const char kHeadHtmlWithDeferJsTemplate[] =
-    "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-    "%s"
-    "</script>"
-    "</head>";
-
-const char kDeferJsTemplate[] =
-    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>";
-
-const char kLazyloadTemplate[] =
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-    "%s"
-    "\npagespeed.lazyLoadInit(false, \"%s\");\n"
-    "</script>";
-
-const char kInlineScriptTemplate[] =
-    "<script type=\"text/javascript\">%s";
-
 const char kScriptTemplate[] =
-    "<script type=\"text/javascript\">%s</script>";
+    "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>";
 
 }  // namespace
 
@@ -111,68 +89,43 @@ class DelayImagesFilterTest : public RewriteTestBase {
         "http://test.com/inline_preview_images.html?ModPagespeed=noscript");
   }
 
-  GoogleString GenerateAddLowResString(const GoogleString& url,
+  GoogleString GenerateAddLowResScript(const GoogleString& url,
                                        const GoogleString& image_data) {
-    return StrCat("\npagespeed.delayImagesInline.addLowResImages(\'", url,
-        "\', \'", image_data, "\');");
+    return StringPrintf(
+        kScriptTemplate,
+        StrCat("\npagespeed.delayImagesInline.addLowResImages(\'", url,
+               "\', \'", image_data, "\');\n"
+               "pagespeed.delayImagesInline.replaceWithLowRes();\n").c_str());
   }
 
-  GoogleString GenerateRewrittenImageTag(const StringPiece& url) {
-    return StrCat("<img pagespeed_lazy_src=\"", url, "\" src=\"",
-                  kBlankImageSrc, "\" onload=\"",
-                  LazyloadImagesFilter::kImageOnloadCode, "\"/>");
-  }
-
-  GoogleString GetHeadHtmlWithDeferJs() {
-    return StringPrintf(kHeadHtmlWithDeferJsTemplate,
-                        JsDisableFilter::kDisableJsExperimental);
-  }
-
-  GoogleString GetDeferJs() {
-    return kDeferJsTemplate;
-  }
-
-  GoogleString GetHtmlWithLazyload() {
-    return StringPrintf(kLazyloadTemplate,
-                        GetLazyloadImagesCode().c_str(),
-                        kBlankImageSrc);
+  GoogleString GenerateRewrittenImageTag(const GoogleString& url,
+                                         const GoogleString& low_res_src) {
+    return StrCat(
+        "<img pagespeed_high_res_src=\"", url, "\" src=\"", low_res_src,
+        "\" onload=\"", DelayImagesFilter::kOnloadFunction, "\"/>");
   }
 
   GoogleString GetInlineScript() {
-    return StringPrintf(kInlineScriptTemplate,
-                        GetDelayImagesInlineCode().c_str());
+    return StringPrintf(
+        kScriptTemplate,
+        StrCat(GetDelayImagesInlineCode(),
+               GetJsCode(StaticAssetManager::kDelayImagesJs,
+                          DelayImagesFilter::kDelayImagesSuffix)).c_str());
   }
 
-  GoogleString GetDelayImages() {
-    return StringPrintf(kScriptTemplate, GetDelayImagesCode().c_str());
+  GoogleString GetHighResScript() {
+    return StringPrintf(kScriptTemplate,
+                        "\npagespeed.delayImages.replaceWithHighRes();\n");
   }
 
-  GoogleString GetDelayImagesCode() {
-    GoogleString delayImagesSuffix = StrCat(
-        DelayImagesFilter::kDelayImagesSuffix,
-        "\npagespeed.delayImages.replaceWithHighRes();\n");
-    return GetJsCode(StaticAssetManager::kDelayImagesJs, delayImagesSuffix);
-  }
-
-  GoogleString GetDelayImagesLazyLoad() {
-    return StringPrintf(kScriptTemplate, GetDelayImagesLazyLoadCode().c_str());
-  }
-
-  GoogleString GetDelayImagesLazyLoadCode() {
-    GoogleString delayImagesSuffix = StrCat(
-        DelayImagesFilter::kDelayImagesSuffix,
-        "\npagespeed.delayImages.registerLazyLoadHighRes();\n");
-    return GetJsCode(StaticAssetManager::kDelayImagesJs, delayImagesSuffix);
+  GoogleString GetLazyHighResScript() {
+    return StringPrintf(kScriptTemplate,
+                        "\npagespeed.delayImages.registerLazyLoadHighRes();\n");
   }
 
   GoogleString GetDelayImagesInlineCode() {
     return GetJsCode(StaticAssetManager::kDelayImagesInlineJs,
                      DelayImagesFilter::kDelayImagesInlineSuffix);
-  }
-
-  GoogleString GetLazyloadImagesCode() {
-    return server_context()->static_asset_manager()->GetAsset(
-        StaticAssetManager::kLazyloadImagesJs, options());
   }
 
   GoogleString GetJsCode(StaticAssetManager::StaticAsset module,
@@ -220,8 +173,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
 };
 
 TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->set_lazyload_highres_images(true);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                          kContentTypeWebp, 100);
@@ -232,34 +184,21 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
       "<img src=\"http://test.com/1.webp\" />";
   GoogleString flush2="<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString input = StrCat(flush1, flush2);
   SetupWriter();
-  html_parse()->StartParse("http://test.com/");
+  html_parse()->StartParse("http://test.com/inline_preview_images.html");
   html_parse()->ParseText(flush1);
   html_parse()->Flush();
   html_parse()->ParseText(flush2);
   html_parse()->FinishParse();
 
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      StrCat("<body>",
-             StringPrintf(kNoScriptRedirectFormatter,
-                          "http://test.com/?ModPagespeed=noscript",
-                          "http://test.com/?ModPagespeed=noscript"),
-             "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"),
-      GetInlineScript(),
-      StrCat("</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.webp",
-                                     kSampleWebpData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages()),
-      StrCat("<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>"
-             "<script type=\"text/javascript\">"
-             "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
-             "</body>", GetDeferJs()));
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      GenerateRewrittenImageTag("http://test.com/1.webp",
+                                kSampleWebpData),
+      GenerateRewrittenImageTag("http://test.com/1.jpeg",
+                                kSampleJpegData),
+      "</body>");
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
   EXPECT_TRUE(AppliedRewriterStringFromLog().find("di") !=
               GoogleString::npos);
@@ -291,6 +230,18 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   expected1.mutable_image_rewrite_resource_info()->set_low_res_size(1072);
   ExpectLogRecord(2, expected1);
   ExpectLogRecord(3, expected2);
+
+  rewrite_driver_->log_record()->WriteLog();
+  LoggingInfo* logging_info = rewrite_driver_->log_record()->logging_info();
+  for (int i = 0; i < logging_info->rewriter_stats_size(); i++) {
+    if (logging_info->rewriter_stats(i).id() == "di" &&
+        logging_info->rewriter_stats(i).has_html_status()) {
+      EXPECT_EQ(RewriterHtmlApplication::ACTIVE,
+                logging_info->rewriter_stats(i).html_status());
+      return;
+    }
+  }
+  FAIL();
 }
 
 TEST_F(DelayImagesFilterTest, DelayImagesPreserveURLsOn) {
@@ -308,7 +259,6 @@ TEST_F(DelayImagesFilterTest, DelayImagesPreserveURLsOn) {
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageInsideNoscript) {
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -321,35 +271,6 @@ TEST_F(DelayImagesFilterTest, DelayImageInsideNoscript) {
       StrCat("<body>", GetNoscript(), "<noscript>"
              "<img src=\"http://test.com/1.webp\"/></noscript></body>"));
   MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
-                       kContentTypeWebp, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.webp\" />"
-      "</body>";
-  GoogleString output_html = StrCat(
-      "<head></head>",
-      StrCat("<body>",
-             GetNoscript(),
-             "<img pagespeed_high_res_src=\"http://test.com/1.webp\" "),
-      "src=\"", kSampleWebpData, "\"/>", GetDelayImages(), "</body>");
-  MatchOutputAndCountBytes(input_html, output_html);
-  rewrite_driver_->log_record()->WriteLog();
-  LoggingInfo* logging_info = rewrite_driver_->log_record()->logging_info();
-  for (int i = 0; i < logging_info->rewriter_stats_size(); i++) {
-    if (logging_info->rewriter_stats(i).id() == "di" &&
-        logging_info->rewriter_stats(i).has_html_status()) {
-      EXPECT_EQ(RewriterHtmlApplication::ACTIVE,
-                logging_info->rewriter_stats(i).html_status());
-      return;
-    }
-  }
-  FAIL();
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageWithUnsupportedUserAgent) {
@@ -376,7 +297,6 @@ TEST_F(DelayImagesFilterTest, DelayImageWithUnsupportedUserAgent) {
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageWithQueryParam) {
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   options()->DisableFilter(RewriteOptions::kInlineImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp?a=b&c=d", kSampleWebpFile,
@@ -388,13 +308,13 @@ TEST_F(DelayImagesFilterTest, DelayImageWithQueryParam) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp?a=b&amp;c=d\" "
-      "src=\"", kSampleWebpData, "\"/>", GetDelayImages(), "</body>");
+      GenerateRewrittenImageTag("http://test.com/1.webp?a=b&amp;c=d",
+                                kSampleWebpData),
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageWithUnescapedQueryParam) {
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   options()->DisableFilter(RewriteOptions::kInlineImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp?a=b&c=d", kSampleWebpFile,
@@ -406,75 +326,9 @@ TEST_F(DelayImagesFilterTest, DelayImageWithUnescapedQueryParam) {
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp?a=b&c=d\" "
-      "src=\"", kSampleWebpData, "\"/>", GetDelayImages(), "</body>");
-  MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, DelayImageWithLazyLoadDisabled) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
-                       kContentTypeWebp, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.webp\" />"
-      "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
-      GetNoscript(),
-      StrCat("<img pagespeed_high_res_src=\"http://test.com/1.webp\" ",
-             "src=\"", kSampleWebpData, "\"/>"),
-      GetDelayImages(), "</body>", GetDeferJs());
-  MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, DelayWebPImage) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
-                       kContentTypeWebp, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.webp\" />"
-      "<input src=\"http://test.com/1.webp\" type=\"image\"/>"
-      "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
-      GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
-      "<input pagespeed_high_res_src=\"http://test.com/1.webp\"",
-      " type=\"image\"/>",
-      StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>", GetDeferJs()));
-  MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, DelayJpegImage) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
-                       kContentTypeJpeg, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.jpeg\" />"
-      "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
-      GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>", GetDeferJs()));
+      GenerateRewrittenImageTag("http://test.com/1.webp?a=b&c=d",
+                                kSampleWebpData),
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -493,11 +347,8 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileAggressiveEnabled) {
       GetNoscript(),
       "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>"));
+             GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
+             GetHighResScript(), "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -517,66 +368,34 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileLazyLoad) {
       GetNoscript(),
       "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImagesLazyLoad(), "</body>"));
-  MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, DelayImageWithMobileAndExperimentEnabled) {
-  options()->set_enable_aggressive_rewriters_for_mobile(true);
-  options()->set_enable_inline_preview_images_experimental(true);
-  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
-                       kContentTypeJpeg, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.jpeg\" />"
-      "</body>";
-  GoogleString output_html = StrCat(
-      "<head></head><body>",
-      GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             "</body>"));
+             GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
+             GetLazyHighResScript(), "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, DelayJpegImageOnInputElement) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
   AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString input_html = "<head></head>"
       "<body>"
       "<input type=\"image\" src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
       GetNoscript(),
-      "<input type=\"image\"",
+      "<input type=\"image\""
       " pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>", GetDeferJs()));
+             GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
+             GetHighResScript(), "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
   options()->set_min_image_size_low_resolution_bytes(2 * 1024);
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -590,27 +409,17 @@ TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
       "<img src=\"http://test.com/1.webp\" />"
       "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
       GetNoscript(),
-      GetHtmlWithLazyload(),
-      GenerateRewrittenImageTag("http://test.com/1.webp"),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-      "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>",
-      StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>", GetDeferJs()));
+      "<img src=\"http://test.com/1.webp\"/>",
+      GenerateRewrittenImageTag("http://test.com/1.jpeg", kSampleJpegData),
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, TestMaxImageSizeLowResolutionBytesFlag) {
   options()->set_max_image_size_low_resolution_bytes(4 * 1024);
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -624,30 +433,17 @@ TEST_F(DelayImagesFilterTest, TestMaxImageSizeLowResolutionBytesFlag) {
       "<img src=\"http://test.com/1.webp\" />"
       "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
-      StrCat(GetInlineScript(),
-             StrCat("</script>",
-                 "<script type=\"text/javascript\">",
-                 GenerateAddLowResString("http://test.com/1.webp",
-                     kSampleWebpData),
-                 "\npagespeed.delayImagesInline.replaceWithLowRes();\n"
-                 "</script>",
-                 GetDelayImages(),
-                 GetHtmlWithLazyload(),
-                 GenerateRewrittenImageTag("http://test.com/1.jpeg")),
-             "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-             "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-             "</body>", GetDeferJs()));
+      GenerateRewrittenImageTag("http://test.com/1.webp", kSampleWebpData),
+      "<img src=\"http://test.com/1.jpeg\"/>",
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
   options()->set_max_inlined_preview_images_index(1);
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -658,51 +454,37 @@ TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
       "<img src=\"http://test.com/1.jpeg\" />"
       "<img src=\"http://test.com/1.webp\" />"
       "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      StrCat(GetInlineScript(),
-             StrCat("</script>",
-                    "<script type=\"text/javascript\">",
-                    GenerateAddLowResString("http://test.com/1.jpeg",
-                                            kSampleJpegData),
-                    "\npagespeed.delayImagesInline.replaceWithLowRes();\n"
-                    "</script>",
-                    GetDelayImages(),
-                    GetHtmlWithLazyload()),
-             GenerateRewrittenImageTag("http://test.com/1.webp"),
-             "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-             "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-             "</body>", GetDeferJs()));
+      GenerateRewrittenImageTag("http://test.com/1.jpeg", kSampleJpegData),
+      "<img src=\"http://test.com/1.webp\"/>",
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
   AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeWebp, 100);
 
   // pagespeed_inline_map size will be 1. For same images, delay_images_filter
   // make only one entry in pagespeed_inline_map.
   GoogleString input_html = "<head></head>"
       "<body>"
-      "<img src=\"http://test.com/1.webp\" />"
-      "<img src=\"http://test.com/1.webp\" />"
+      "<img src=\"http://test.com/1.jpeg\" />"
+      "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>", GetDeferJs()));
+             GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
+             GetHighResScript(), "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -716,15 +498,15 @@ TEST_F(DelayImagesFilterTest, NoHeadTag) {
   GoogleString output_html = StrCat(
       "<body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\" ",
-      "src=\"", kSampleWebpData, "\"/>", GetDelayImages(), "</body>");
+      GenerateRewrittenImageTag("http://test.com/1.webp", kSampleWebpData),
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
-  options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
   AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
   AddFileToMockFetcher("http://test.com/2.jpeg", kSampleJpgFile,
@@ -734,27 +516,48 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
   GoogleString input_html = "<head></head>"
       "<body><img src=\"http://test.com/1.webp\"/></body>"
       "<body><img src=\"http://test.com/2.jpeg\"/></body>";
-  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
-      "<body>",
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
-      "</body>",
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
       StrCat(GetInlineScript(),
-             StrCat("</script>",
-                    "<script type=\"text/javascript\">",
-                    GenerateAddLowResString("http://test.com/1.webp",
-                                            kSampleWebpData),
-                    "\npagespeed.delayImagesInline.replaceWithLowRes();\n"
-                    "</script>",
-                    GetDelayImages()),
-             "<body><img pagespeed_high_res_src=\"http://test.com/2.jpeg\"/>"
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/2.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>"
-             "<script type=\"text/javascript\">"
-             "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
-             "</body>", GetDeferJs()));
+             GenerateAddLowResScript("http://test.com/1.webp", kSampleWebpData),
+             GetHighResScript(), "</body>"),
+      "<body>",
+      "<img pagespeed_high_res_src=\"http://test.com/2.jpeg\"/>",
+      StrCat(GenerateAddLowResScript("http://test.com/2.jpeg", kSampleJpegData),
+             GetHighResScript(), "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, MultipleFlushWindowsForExperimental) {
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
+  AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  AddFileToMockFetcher("http://test.com/2.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+
+  SetupWriter();
+  html_parse()->StartParse("http://test.com/inline_preview_images.html");
+  html_parse()->ParseText(
+      "<head></head><body><img src=\"http://test.com/1.webp\"/>");
+  html_parse()->Flush();
+  html_parse()->ParseText("<img src=\"http://test.com/2.jpeg\"/></body>");
+  html_parse()->FinishParse();
+
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      StrCat(GetInlineScript(),
+             GenerateAddLowResScript("http://test.com/1.webp",
+                                     kSampleWebpData)),
+      "<img pagespeed_high_res_src=\"http://test.com/2.jpeg\"/>",
+      StrCat(GenerateAddLowResScript("http://test.com/2.jpeg", kSampleJpegData),
+             GetHighResScript(), "</body>"));
+  EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
 }
 
 TEST_F(DelayImagesFilterTest, ResizeForResolution) {
@@ -773,7 +576,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
       StrCat("<body>",
              GetNoscript(),
              "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "),
-      "src=\"", kSampleJpegData, "\"/>", GetDelayImages(), "</body>");
+      "src=\"", kSampleJpegData, "\"/>", "</body>");
 
   // Mobile output should be smaller than desktop because inlined low quality
   // image is resized smaller for mobile.
@@ -856,7 +659,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
       StrCat("<body>",
              GetNoscript(),
              "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" "),
-      "src=\"", kSampleJpegData, "\"/>", GetDelayImages(), "</body>");
+      "src=\"", kSampleJpegData, "\"/>", "</body>");
 
   // If kResizeMobileImages is not explicitly enabled, desktop and mobile
   // outputs will have the same size.
@@ -868,90 +671,28 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
 }
 
 TEST_F(DelayImagesFilterTest, DelayImagesScriptOptimized) {
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
   AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
                        kContentTypeJpeg, 100);
-  rewrite_driver()->SetUserAgent("Safari");
   Parse("optimized",
-        "<head></head><body><img src=\"http://test.com/1.jpeg\"</body>");
+        "<head></head><body><img src=\"http://test.com/1.jpeg\"/></body>");
   EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
       << "There should be no comments in the optimized code";
 }
 
 TEST_F(DelayImagesFilterTest, DelayImagesScriptDebug) {
   options()->EnableFilter(RewriteOptions::kDebug);
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
   AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
   AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
                        kContentTypeJpeg, 100);
-  rewrite_driver()->SetUserAgent("Safari");
   Parse("debug",
-        "<head></head><body><img src=\"http://test.com/1.jpeg\"</body>");
+        "<head></head><body><img src=\"http://test.com/1.jpeg\"/></body>");
   EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
       << "There should still be some comments in the debug code";
-}
-
-TEST_F(DelayImagesFilterTest, ExperimentalIsTrue) {
-  options()->set_enable_inline_preview_images_experimental(true);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
-                       kContentTypeJpeg, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.jpeg\" onload=\"blah();\"/>"
-      "<img src=\"http://test.com/1.jpeg\" />"
-      "</body>";
-  GoogleString output_html = StrCat("<head></head><body>",
-      GetNoscript(),
-      "<img src=\"http://test.com/1.jpeg\" onload=\"blah();\"/>"
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" src=\"",
-      kSampleJpegData, "\" onload=\"",
-      DelayImagesFilter::kOnloadFunction, "\"/></body>");
-  MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, ExperimentalAndLazyLoadIsTrueNotMobile) {
-  options()->set_enable_inline_preview_images_experimental(true);
-  options()->set_lazyload_highres_images(true);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
-                       kContentTypeJpeg, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.jpeg\" onload=\"blah();\"/>"
-      "<img src=\"http://test.com/1.jpeg\" />"
-      "</body>";
-  GoogleString output_html = StrCat("<head></head><body>",
-      GetNoscript(),
-      "<img src=\"http://test.com/1.jpeg\" onload=\"blah();\"/>"
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" src=\"",
-      kSampleJpegData, "\" onload=\"",
-      DelayImagesFilter::kOnloadFunction, "\"/></body>");
-  MatchOutputAndCountBytes(input_html, output_html);
-}
-
-TEST_F(DelayImagesFilterTest, ExperimentalAndMobileLazyLoadIsTrue) {
-  options()->set_enable_aggressive_rewriters_for_mobile(true);
-  options()->set_enable_inline_preview_images_experimental(true);
-  options()->set_lazyload_highres_images(true);
-  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
-  AddFilter(RewriteOptions::kDelayImages);
-  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
-                       kContentTypeJpeg, 100);
-  GoogleString input_html = "<head></head>"
-      "<body>"
-      "<img src=\"http://test.com/1.jpeg\" />"
-      "</body>";
-  GoogleString output_html = StrCat(
-      "<head></head><body>",
-      GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      StrCat(GetInlineScript(),
-             "</script>",
-             "<script type=\"text/javascript\">",
-             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImagesLazyLoad(), "</body>"));
-  MatchOutputAndCountBytes(input_html, output_html);
 }
 
 }  // namespace net_instaweb

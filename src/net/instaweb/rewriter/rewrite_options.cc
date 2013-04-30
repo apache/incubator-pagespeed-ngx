@@ -1017,11 +1017,6 @@ void RewriteOptions::AddProperties() {
       "Allows individual resources to be flushed; adding some overhead to "
       "the metadata cache");
   AddBaseProperty(
-      false, &RewriteOptions::enable_inline_preview_images_experimental_,
-      "eipie", kEnableInlinePreviewImagesExperimental,
-      kDirectoryScope,
-      NULL);  // TODO(jmarantz): eliminate experiment or document.
-  AddBaseProperty(
       false, &RewriteOptions::lazyload_highres_images_,
       "elhr", kEnableLazyLoadHighResImages,
       kDirectoryScope,

@@ -318,7 +318,7 @@ fetch_until $URL 'egrep -c big.css.pagespeed.' 1
 # Check that introspection.js was inlined.
 fetch_until $URL 'grep -c document\.write(\"External' 1
 # Check that the image was optimized.
-fetch_until $URL 'grep -c BikeCrashIcn\.png\.pagespeed\.' 2
+fetch_until $URL 'grep -c BikeCrashIcn\.png\.pagespeed\.' 1
 
 # TODO(jkarlin): When ajax rewriting is in MPS check that it works with
 # MPS.

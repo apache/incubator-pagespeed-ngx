@@ -288,9 +288,6 @@ DEFINE_int32(property_cache_http_status_stability_threshold,
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js.");
 
-DEFINE_bool(enable_inline_preview_images_experimental, false,
-            "Enables experimental inline preview images.");
-
 DEFINE_bool(lazyload_highres_images, false,
             "Enables experimental lazy load of high res images.");
 
@@ -657,10 +654,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("flush_more_resources_in_ie_and_firefox")) {
     options->set_flush_more_resources_in_ie_and_firefox(
         FLAGS_flush_more_resources_in_ie_and_firefox);
-  }
-  if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
-    options->set_enable_inline_preview_images_experimental(
-        FLAGS_enable_inline_preview_images_experimental);
   }
   if (WasExplicitlySet("lazyload_highres_images")) {
     options->set_lazyload_highres_images(FLAGS_lazyload_highres_images);

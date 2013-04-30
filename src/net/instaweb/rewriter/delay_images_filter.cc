@@ -25,6 +25,7 @@
 #include <map>
 #include <utility>
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -55,33 +56,23 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       static_asset_manager_(
           driver->server_context()->static_asset_manager()),
-      low_res_map_inserted_(false),
       num_low_res_inlined_images_(0),
       insert_low_res_images_inplace_(false),
-      is_experimental_inline_preview_enabled_(
-          driver_->options()->enable_inline_preview_images_experimental()),
-      lazyload_highres_images_(false) {
+      lazyload_highres_images_(false),
+      is_script_inserted_(false) {
 }
 
 DelayImagesFilter::~DelayImagesFilter() {}
 
 void DelayImagesFilter::StartDocument() {
-  low_res_map_inserted_ = false;
   num_low_res_inlined_images_ = 0;
-
-  // Low res images will be placed inside the respective image tag if any one of
-  // kDeferJavascript or kLazyloadImages is turned off or
-  // enable_inline_preview_images_experimental is set to true. Otherwise, low
-  // res images will be blocked by javascript or images which are not critical.
-  // If mobile aggressive rewriters are turned on, the low res images are NOT
-  // inlined in the image tag.
-  insert_low_res_images_inplace_ =
-      !DisableInplaceLowResForMobile() &&
-          (is_experimental_inline_preview_enabled_ ||
-           !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
-           !driver_->options()->Enabled(RewriteOptions::kLazyloadImages));
+  // Low res images will be placed inside the respective image tag if the user
+  // agent is not a mobile, or if mobile aggressive rewriters are turned off.
+  // Otherwise, the low res images are inserted at the end of the flush window.
+  insert_low_res_images_inplace_ = ShouldRewriteInplace();
   lazyload_highres_images_ = driver_->options()->lazyload_highres_images() &&
       driver_->device_properties()->IsMobile();
+  is_script_inserted_ = false;
 }
 
 void DelayImagesFilter::EndDocument() {
@@ -89,16 +80,16 @@ void DelayImagesFilter::EndDocument() {
 }
 
 void DelayImagesFilter::EndElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kBody && !low_res_map_inserted_ &&
-      !low_res_data_map_.empty()) {
-    InsertDelayImagesInlineJS(element);
+  if (element->keyword() == HtmlName::kBody) {
+    InsertLowResImagesAndJs(element, /* insert_after_element */ false);
+    InsertHighResJs(element);
   } else if (driver_->IsRewritable(element) &&
              (element->keyword() == HtmlName::kImg ||
               element->keyword() == HtmlName::kInput)) {
     // We only handle img and input tag images.  Note that delay_images.js and
     // delay_images_inline.js must be modified to handle other possible tags.
     // We should probably specifically *not* include low res images for link
-    // tags of various sorts (favicons, mobile desktop icons, etc.).  Use of low
+    // tags of various sorts (favicons, mobile desktop icons, etc.). Use of low
     // res for explicit background images is a more interesting case, but the
     // current DOM walk in the above js files would need to be modified to
     // handle the large number of tags that we can identify in
@@ -107,80 +98,84 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
         element, driver_, &category);
 
-    if (src != NULL && src->DecodedValueOrNull() != NULL &&
-        category == semantic_type::kImage) {
-      // Remove the inline_src which is low quality base64 encoded data url and
-      // add them to a map so that all inline data urls will be available at the
-      // end of body tag.
-      HtmlElement::Attribute* low_res_src =
-          element->FindAttribute(HtmlName::kPagespeedLowResSrc);
-      if ((low_res_src != NULL) &&
-          (low_res_src->DecodedValueOrNull() != NULL)) {
-        ++num_low_res_inlined_images_;
-        // Experimental mode adds an onload attribute of the image tag. So, low
-        // res image is only added if onload function is not already present.
-        if (!is_experimental_inline_preview_enabled_ ||
-            element->FindAttribute(HtmlName::kOnload) == NULL) {
-          // Low res image data is collected in low_res_data_map_ map. This
-          // low_res_src will be moved just after last low res image in the html
-          // DOM.
-          // It is better to move inlined low resolution data later in the DOM,
-          // otherwise they will block further parsing and rendering of the html
-          // page.
-          // High res src is added and original img src attribute is removed
-          // from img tag.
-          driver_->log_record()->SetRewriterLoggingStatus(
-              RewriteOptions::FilterId(RewriteOptions::kDelayImages),
-              RewriterApplication::APPLIED_OK);
-          driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
-          if (insert_low_res_images_inplace_) {
-            driver_->AddAttribute(element, HtmlName::kSrc,
-                                  low_res_src->DecodedValueOrNull());
-            // Add the image onload tag if experimental preview flag is enabled
-            // lazyload_highres flag is disabled. If the lazyload is set,
-            // we want to lazy load the high res images and not part of image
-            // onload.
-            if (is_experimental_inline_preview_enabled_ &&
-                !lazyload_highres_images_) {
-              driver_->AddEscapedAttribute(
-                  element, HtmlName::kOnload, kOnloadFunction);
-            }
-          } else {
-            const GoogleString& src_content = src->DecodedValueOrNull();
-            low_res_data_map_[src_content] =
-                low_res_src->DecodedValueOrNull();
-          }
-        }
-        if (num_low_res_inlined_images_ ==
-            driver_->num_inline_preview_images()) {
-          if (insert_low_res_images_inplace_) {
-            InsertDelayImagesJS(element);
-          } else {
-            InsertDelayImagesInlineJS(element);
-          }
-        }
+    if (src == NULL || src->DecodedValueOrNull() == NULL ||
+        category != semantic_type::kImage) {
+      return;
+    }
+    HtmlElement::Attribute* low_res_src =
+        element->FindAttribute(HtmlName::kPagespeedLowResSrc);
+    if (low_res_src == NULL || low_res_src->DecodedValueOrNull() == NULL) {
+      return;
+    }
+    ++num_low_res_inlined_images_;
+    if (element->FindAttribute(HtmlName::kOnload) == NULL) {
+      driver_->log_record()->SetRewriterLoggingStatus(
+          RewriteOptions::FilterId(RewriteOptions::kDelayImages),
+          RewriterApplication::APPLIED_OK);
+      // High res src is added and original img src attribute is removed
+      // from img tag.
+      driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
+      if (insert_low_res_images_inplace_) {
+        // Set the src as the low resolution image.
+        driver_->AddAttribute(element, HtmlName::kSrc,
+                              low_res_src->DecodedValueOrNull());
+        // Add an onload function to set the high resolution image.
+        driver_->AddEscapedAttribute(
+            element, HtmlName::kOnload, kOnloadFunction);
+      } else {
+        // Low res image data is collected in low_res_data_map_ map. This
+        // low_res_src will be moved just after last low res image in the flush
+        // window.
+        // It is better to move inlined low resolution data later in the DOM,
+        // otherwise they will block further parsing and rendering of the html
+        // page.
+        // Note that the high resolution images are loaded at end of body.
+        const GoogleString& src_content = src->DecodedValueOrNull();
+        low_res_data_map_[src_content] = low_res_src->DecodedValueOrNull();
       }
-      element->DeleteAttribute(HtmlName::kPagespeedLowResSrc);
+    }
+    if (num_low_res_inlined_images_ == driver_->num_inline_preview_images()) {
+      if (!insert_low_res_images_inplace_) {
+        InsertLowResImagesAndJs(element, /* insert_after_element */ true);
+      }
     }
   }
+  element->DeleteAttribute(HtmlName::kPagespeedLowResSrc);
 }
 
-void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
+void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
+                                                bool insert_after_element) {
+  if (low_res_data_map_.empty()) {
+    return;
+  }
   GoogleString inline_script;
-  HtmlElement *current_element = element;
+  HtmlElement* current_element = element;
   // Check script for changing src to low res data url is inserted once.
-  if (!low_res_map_inserted_) {
+  if (!is_script_inserted_) {
     inline_script = StrCat(
         static_asset_manager_->GetAsset(
             StaticAssetManager::kDelayImagesInlineJs,
             driver_->options()),
-        kDelayImagesInlineSuffix);
+        kDelayImagesInlineSuffix,
+        static_asset_manager_->GetAsset(
+            StaticAssetManager::kDelayImagesJs,
+            driver_->options()),
+        kDelayImagesSuffix);
     HtmlElement* script_element =
         driver_->NewElement(element, HtmlName::kScript);
-    driver_->InsertElementAfterElement(current_element, script_element);
+    driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+    if (insert_after_element) {
+      DCHECK(element->keyword() == HtmlName::kImg ||
+             element->keyword() == HtmlName::kInput);
+      driver_->InsertElementAfterElement(current_element, script_element);
+      current_element = script_element;
+    } else {
+      DCHECK(element->keyword() == HtmlName::kBody);
+      driver_->AppendChild(element, script_element);
+    }
     static_asset_manager_->AddJsToElement(
         inline_script, script_element, driver_);
-    current_element = script_element;
+    is_script_inserted_ = true;
   }
 
   // Generate javascript map for inline data urls where key is url and
@@ -196,47 +191,41 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
               "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
     HtmlElement* low_res_element =
         driver_->NewElement(current_element, HtmlName::kScript);
-    driver_->InsertElementAfterElement(current_element, low_res_element);
+    driver_->AddAttribute(low_res_element, HtmlName::kPagespeedNoDefer, "");
+    if (insert_after_element) {
+      driver_->InsertElementAfterElement(current_element, low_res_element);
+      current_element = low_res_element;
+    } else {
+      driver_->AppendChild(element, low_res_element);
+    }
     static_asset_manager_->AddJsToElement(
         inline_data_script, low_res_element, driver_);
-    current_element = low_res_element;
   }
   low_res_data_map_.clear();
-
-  InsertDelayImagesJS(current_element);
 }
 
-void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
-  if (is_experimental_inline_preview_enabled_ && !lazyload_highres_images_) {
+void DelayImagesFilter::InsertHighResJs(HtmlElement* body_element) {
+  if (insert_low_res_images_inplace_ || !is_script_inserted_) {
     return;
   }
-  GoogleString delay_images_js;
-  // Check script for changing src to high res src is inserted once.
-  if (!low_res_map_inserted_) {
-    delay_images_js = StrCat(
-        static_asset_manager_->GetAsset(
-            StaticAssetManager::kDelayImagesJs,
-            driver_->options()),
-        kDelayImagesSuffix);
-  }
-
+  GoogleString js;
   if (lazyload_highres_images_) {
-    StrAppend(&delay_images_js,
+    StrAppend(&js,
               "\npagespeed.delayImages.registerLazyLoadHighRes();\n");
   } else {
-    StrAppend(&delay_images_js,
+    StrAppend(&js,
               "\npagespeed.delayImages.replaceWithHighRes();\n");
   }
-  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  driver_->InsertElementAfterElement(element, script);
-  static_asset_manager_->AddJsToElement(delay_images_js, script, driver_);
-  low_res_map_inserted_ = true;
+  HtmlElement* script = driver_->NewElement(body_element, HtmlName::kScript);
+  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  driver_->AppendChild(body_element, script);
+  static_asset_manager_->AddJsToElement(js, script, driver_);
 }
 
-bool DelayImagesFilter::DisableInplaceLowResForMobile() const {
+bool DelayImagesFilter::ShouldRewriteInplace() const {
   const RewriteOptions* options = driver_->options();
-  return options->enable_aggressive_rewriters_for_mobile() &&
-      driver_->device_properties()->IsMobile();
+  return !(options->enable_aggressive_rewriters_for_mobile() &&
+           driver_->device_properties()->IsMobile());
 }
 
 void DelayImagesFilter::DetermineEnabled() {
