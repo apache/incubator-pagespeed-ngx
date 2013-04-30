@@ -17,8 +17,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cstdlib>
 #include <limits>
+#include <utility>                      // for pair
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -50,7 +50,7 @@ const char kStatisticsObjName[] = "statistics";
 // statistics.
 const char kTimestampVariable[] = "timestamp_";
 // Variables to keep for the console. These are the same names used in
-// /mod_pagespeed_statistics: variable_names, Histogram Names.
+// /mod_pagespeed_statistics.
 // IMPORTANT: Do not include kTimestampVariable here, or else DumpToWriter
 // will hang.
 const char* const kImportant[] = {
@@ -62,16 +62,13 @@ const char* const kImportant[] = {
   "javascript_total_bytes_saved", "css_filter_total_bytes_saved",
   "image_rewrite_total_bytes_saved", "image_norewrites_high_resolution",
   "image_rewrites_dropped_due_to_load", "image_rewrites_dropped_intentionally",
-  "Html Time us Histogram", "Rewrite Latency Histogram",
-  "Pagespeed Resource Latency Histogram",
-  "Backend Fetch First Byte Latency Histogram", "memcached_get_count",
-  "memcached_hit_latency_us", "memcached_insert_latency_us",
-  "memcached_insert_size_bytes", "memcached_lookup_size_bytes",
-  "memcached_hits", "memcached_misses", "flatten_imports_charset_mismatch",
-  "flatten_imports_invalid_url", "flatten_imports_limit_exceeded",
-  "flatten_imports_minify_failed", "flatten_imports_recursion",
-  "css_filter_parse_failures", "converted_meta_tags",
-  "javascript_minification_failures"
+  "memcached_get_count", "memcached_hit_latency_us",
+  "memcached_insert_latency_us", "memcached_insert_size_bytes",
+  "memcached_lookup_size_bytes", "memcached_hits", "memcached_misses",
+  "flatten_imports_charset_mismatch", "flatten_imports_invalid_url",
+  "flatten_imports_limit_exceeded", "flatten_imports_minify_failed",
+  "flatten_imports_recursion", "css_filter_parse_failures",
+  "converted_meta_tags", "javascript_minification_failures"
 };
 }  // namespace
 
@@ -243,61 +240,41 @@ void SharedMemConsoleStatisticsLogger::TrimLogfileIfNeeded() {
 
 void SharedMemConsoleStatisticsLogger::DumpJSON(
     const std::set<GoogleString>& var_titles,
-    const std::set<GoogleString>& hist_titles, int64 start_time,
-    int64 end_time, int64 granularity_ms, Writer* writer,
-    MessageHandler* message_handler) const {
+    int64 start_time, int64 end_time, int64 granularity_ms,
+    Writer* writer, MessageHandler* message_handler) const {
   FileSystem::InputFile* log_file =
       file_system_->OpenInputFile(logfile_name_.c_str(), message_handler);
-  HistMap parsed_hist_data;
   VarMap parsed_var_data;
   std::vector<int64> list_of_timestamps;
   ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
                                         granularity_ms, message_handler);
-  ParseDataFromReader(var_titles, hist_titles, &reader, &list_of_timestamps,
-                      &parsed_var_data, &parsed_hist_data);
-  PrintJSON(list_of_timestamps, parsed_var_data, parsed_hist_data, writer,
-            message_handler);
+  ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
+                      &parsed_var_data);
+  PrintJSON(list_of_timestamps, parsed_var_data, writer, message_handler);
   file_system_->Close(log_file, message_handler);
 }
 
 void SharedMemConsoleStatisticsLogger::ParseDataFromReader(
     const std::set<GoogleString>& var_titles,
-    const std::set<GoogleString>& hist_titles,
     ConsoleStatisticsLogfileReader* reader,
-    std::vector<int64>* list_of_timestamps, VarMap* parsed_var_data,
-    HistMap* parsed_hist_data) const {
+    std::vector<int64>* list_of_timestamps, VarMap* parsed_var_data) const {
   // curr_timestamp starts as 0 because we need to compare it to the first
   // timestamp pulled from the file. The current timestamp should always be
   // less than the timestamp after it due to the fact that the logfile dumps
   // data periodically. This makes sure that all timestamps are >= 0.
   int64 curr_timestamp = 0;
-  // closest_timestamp_diff stores the difference between the closest timestamp
-  // in the log file and the given end time. This is stored so that we can
-  // determine which timestamp's corresponding histogram data should be sent.
-  int64 closest_timestamp_diff = reader->end_time();
   // Stores data associated with current timestamp.
   GoogleString data;
-  // Stores the histogram data closest to the queried endtime.
-  GoogleString logfile_hist_data;
-  GoogleString var_data;
   while (reader->ReadNextDataBlock(&curr_timestamp, &data)) {
     list_of_timestamps->push_back(curr_timestamp);
     // Add the variable data to a Map.
-    // TODO(bvb, sarahdw): histogram# is probably a bad marker to use
-    // because it might appear in the title of a histogram. This might cause
-    // bugs if new histograms are ever added. Change.
+    //
+    // Note: Histogram writing and reading code has been removed, so we just
+    // ignore any histogram data (for backwards compatibility.
     size_t end_index_of_var_data = data.find("histogram#");
-    var_data = data.substr(0, end_index_of_var_data);
+    StringPiece var_data = StringPiece(data).substr(0, end_index_of_var_data);
     ParseVarDataIntoMap(var_data, var_titles, parsed_var_data);
-    // Keep track of which timestamp is closest to the wanted histogram's
-    // timestamp and record only that timestamp's histogram data.
-    if (abs(reader->end_time() - curr_timestamp) < closest_timestamp_diff) {
-      closest_timestamp_diff = abs(reader->end_time() - curr_timestamp);
-      logfile_hist_data = data.substr(end_index_of_var_data,
-                                      data.size() - end_index_of_var_data);
-    }
   }
-  *parsed_hist_data = ParseHistDataIntoMap(logfile_hist_data, hist_titles);
 }
 
 // Takes a block of variable data and separates it into a map of
@@ -320,42 +297,9 @@ void SharedMemConsoleStatisticsLogger::ParseVarDataIntoMap(
   }
 }
 
-// Takes a block of histogram data and separates it into a map of the histograms
-// that have been queried.
-SharedMemConsoleStatisticsLogger::HistMap
-    SharedMemConsoleStatisticsLogger::ParseHistDataIntoMap(
-    StringPiece logfile_hist_data,
-    const std::set<GoogleString>& hist_titles) const {
-  HistMap parsed_hist_data;
-  std::vector<StringPiece> histograms;
-  SplitStringPieceToVector(logfile_hist_data, "\n", &histograms, true);
-  for (size_t h = 0; h < histograms.size(); ++h) {
-    std::vector<StringPiece> bars;
-    SplitStringPieceToVector(histograms[h], "#", &bars, true);
-    GoogleString histogram_name = bars[1].as_string();
-    // If the histogram is one that hasn't been queried for, ignore it.
-    if (hist_titles.find(histogram_name) == hist_titles.end()) {
-      continue;
-    }
-    HistInfo individual_histogram;
-    // Iterate through all bars except the first two, which are the new
-    // histogram marker and the histogram's name respectively.
-    for (size_t i = 2; i < bars.size() - 2; i+=3) {
-      StringPiece lower_bound = bars[i];
-      StringPiece upper_bound = bars[i+1];
-      StringPiece count = bars[i+2];
-      HistBounds bounds(lower_bound.as_string(), upper_bound.as_string());
-      HistBarInfo bar(bounds, count.as_string());
-      individual_histogram.push_back(bar);
-    }
-    parsed_hist_data[histogram_name] = individual_histogram;
-  }
-  return parsed_hist_data;
-}
-
 void SharedMemConsoleStatisticsLogger::PrintJSON(
     const std::vector<int64>& list_of_timestamps,
-    const VarMap& parsed_var_data, const HistMap& parsed_hist_data,
+    const VarMap& parsed_var_data,
     Writer* writer, MessageHandler* message_handler) const {
   writer->Write("{", message_handler);
   writer->Write("\"timestamps\": [", message_handler);
@@ -363,9 +307,6 @@ void SharedMemConsoleStatisticsLogger::PrintJSON(
   writer->Write("],", message_handler);
   writer->Write("\"variables\": {", message_handler);
   PrintVarDataAsJSON(parsed_var_data, writer, message_handler);
-  writer->Write("},", message_handler);
-  writer->Write("\"histograms\": {", message_handler);
-  PrintHistDataAsJSON(&parsed_hist_data, writer, message_handler);
   writer->Write("}", message_handler);
   writer->Write("}", message_handler);
 }
@@ -410,38 +351,6 @@ void SharedMemConsoleStatisticsLogger::PrintVarDataAsJSON(
   }
 }
 
-void SharedMemConsoleStatisticsLogger::PrintHistDataAsJSON(
-    const HistMap* parsed_hist_data, Writer* writer,
-    MessageHandler* message_handler) const {
-  for (HistMap::const_iterator iterator =
-      parsed_hist_data->begin(); iterator != parsed_hist_data->end();
-      ++iterator) {
-    // Again, if we are at the last entry in the map, we do not
-    // want the trailing comma.
-    if (iterator != parsed_hist_data->begin()) {
-      writer->Write(",", message_handler);
-    }
-    StringPiece hist_name = iterator->first;
-    HistInfo info = iterator->second;
-    writer->Write("\"", message_handler);
-    writer->Write(hist_name, message_handler);
-    writer->Write("\": [", message_handler);
-    for (size_t i = 0; i < info.size(); ++i) {
-      HistBarInfo bar = info[i];
-      HistBounds bounds = bar.first;
-      GoogleString& count = bar.second;
-      writer->Write(StringPrintf(
-          "{\"lowerBound\": \"%s\",\"upperBound\": \"%s\",\"count\": %s}",
-          bounds.first.c_str(), bounds.second.c_str(),
-          count.c_str()), message_handler);
-      if (i != info.size() - 1) {
-        writer->Write(",", message_handler);
-      }
-    }
-    writer->Write("]", message_handler);
-  }
-}
-
 ConsoleStatisticsLogfileReader::ConsoleStatisticsLogfileReader(
     FileSystem::InputFile* file, int64 start_time, int64 end_time,
     int64 granularity_ms, MessageHandler* message_handler)
@@ -471,6 +380,7 @@ bool ConsoleStatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
     size_t newline_pos = BufferFind("\n", offset);
     // Separate the current timestamp from the rest of the data in the buffer.
     size_t timestamp_size = STATIC_STRLEN("timestamp: ");
+    // Note: We cannot use StringPiece here because StringToInt64 is too dumb.
     GoogleString timestamp_int_as_str =
         buffer_.substr(offset + timestamp_size, newline_pos - timestamp_size);
     StringToInt64(timestamp_int_as_str, timestamp);
@@ -520,7 +430,7 @@ int ConsoleStatisticsLogfileReader::FeedBuffer() {
   char buf[kChunkSize + 1];
   int num_read = file_->Read(buf, kChunkSize, message_handler_);
   buf[num_read] = '\0';
-  StrAppend(&buffer_, StringPiece(buf));
+  StrAppend(&buffer_, buf);
   return num_read;
 }
 
@@ -1038,27 +948,9 @@ void SharedMemStatistics::DumpConsoleVarsToWriter(
         var_as_str.c_str()), message_handler);
   }
 
-  for (int i = 0, n = histograms_size(); i < n; ++i) {
-    Histogram* histogram = histograms(i);
-    GoogleString histogram_name = histogram_names(i);
-    if (IsIgnoredVariable(histogram_name)) {
-      continue;
-    }
-    writer->Write(StringPrintf("histogram#%s",
-        histogram_name.c_str()), message_handler);
-    for (int j = 0, n = histogram->NumBuckets(); j < n; j++) {
-      double lower_bound = histogram->BucketStart(j);
-      double upper_bound = histogram->BucketLimit(j);
-      double value = histogram->BucketCount(j);
-      if (value == 0) {
-        continue;
-      }
-      GoogleString result = StringPrintf("#%f#%f#%f",
-          lower_bound, upper_bound, value);
-      writer->Write(result, message_handler);
-    }
-    writer->Write("\n", message_handler);
-  }
+  // Note: We used to dump histogram data as well, but that data is quite large
+  // and we don't have a plan to use it in the console, so it was removed.
+
   writer->Flush(message_handler);
 }
 
