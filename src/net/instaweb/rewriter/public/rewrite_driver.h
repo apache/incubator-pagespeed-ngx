@@ -66,13 +66,13 @@ class CriticalSelectorSet;
 class DebugFilter;
 class DeviceProperties;
 class DomainRewriteFilter;
+class DomStatsFilter;
 class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
 class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
-class LoggingFilter;
 class MessageHandler;
 class OutputResource;
 class PropertyPage;
@@ -988,6 +988,10 @@ class RewriteDriver : public HtmlParse {
   // by the rewrite_driver's request context.
   AbstractLogRecord* log_record();
 
+  DomStatsFilter* dom_stats_filter() const {
+    return dom_stats_filter_;
+  }
+
   // Determines whether the system is healthy enough to rewrite resources.
   // Currently, systems get sick based on the health of the metadata cache.
   bool can_rewrite_resources() const { return can_rewrite_resources_; }
@@ -1341,7 +1345,7 @@ class RewriteDriver : public HtmlParse {
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
-  LoggingFilter* logging_filter_;
+  DomStatsFilter* dom_stats_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
 
   ScanFilter scan_filter_;

@@ -344,14 +344,6 @@ void AbstractLogRecord::SetNumCssCriticalImages(int num_css_critical_images) {
   logging_info()->set_num_css_critical_images(num_css_critical_images);
 }
 
-void AbstractLogRecord::SetImageStats(int num_img_tags,
-                                      int num_inlined_img_tags) {
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_image_stats()->set_num_img_tags(num_img_tags);
-  logging_info()->mutable_image_stats()
-      ->set_num_inlined_img_tags(num_inlined_img_tags);
-}
-
 void AbstractLogRecord::SetCriticalCssInfo(int critical_inlined_bytes,
                                    int original_external_bytes,
                                    int overhead_bytes) {

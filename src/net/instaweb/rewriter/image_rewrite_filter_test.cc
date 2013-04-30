@@ -41,6 +41,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -829,8 +830,8 @@ TEST_F(ImageRewriteTest, ImgTagWithDeviceTypeLogging) {
 TEST_F(ImageRewriteTest, ImgTagWithComputeStatistics) {
   options()->EnableFilter(RewriteOptions::kComputeStatistics);
   RewriteImage("img", kContentTypeJpeg);
-  EXPECT_EQ(1, logging_info()->image_stats().num_img_tags());
-  EXPECT_EQ(0, logging_info()->image_stats().num_inlined_img_tags());
+  EXPECT_EQ(1, rewrite_driver()->dom_stats_filter()->num_img_tags());
+  EXPECT_EQ(0, rewrite_driver()->dom_stats_filter()->num_inlined_img_tags());
 }
 
 TEST_F(ImageRewriteTest, ImgTagWithRewriterStatsChecking) {

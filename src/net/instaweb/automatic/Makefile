@@ -72,7 +72,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_deterministic_data2c.a \
   net/instaweb/libinstaweb_deterministic_opt_data2c.a \
   net/instaweb/libinstaweb_flush_early_pb.a \
-  net/instaweb/libinstaweb_htmlparse.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
   net/instaweb/libinstaweb_htmlparse_core_gperf.a \
   net/instaweb/libinstaweb_http.a \

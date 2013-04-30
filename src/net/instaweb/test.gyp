@@ -137,6 +137,7 @@
         'rewriter/decode_rewritten_urls_filter_test.cc',
         'rewriter/defer_iframe_filter_test.cc',
         'rewriter/delay_images_filter_test.cc',
+        'rewriter/dom_stats_filter_test.cc',
         'rewriter/domain_lawyer_test.cc',
         'rewriter/domain_rewrite_filter_test.cc',
         'rewriter/elide_attributes_filter_test.cc',

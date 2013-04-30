@@ -1672,12 +1672,18 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
   GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+  GoogleString disable_link_tag_string =
+      StringPrintf(FlushEarlyContentWriterFilter::kDisableLinkTag, "*");
+  GoogleString move_link_tag_template =
+      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate, "*", "");
+
   const char kInputHtml[] =
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"
       "<head>"
       "<title>Flush Subresources Early example</title>"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"2.css?a=1&b=2\">"
       "</head>"
       "<body>"
       "Hello, mod_pagespeed!"
@@ -1690,27 +1696,32 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
       "<link id=\"*\" href=\"data:text/css;base64*\""
       " rel=\"stylesheet\" />"
       "%s"
+      "<link id=\"*\" href=\"data:text/css;base64*\""
+      " rel=\"stylesheet\" />"
+      "%s"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
-      "window.mod_pagespeed_num_resources_prefetched = 1"
+      "window.mod_pagespeed_num_resources_prefetched = 2"
       "</script>"
       "<title>Flush Subresources Early example</title>"
       "<script id=\"psa_flush_style_early\""
       " pagespeed_no_defer=\"\" type=\"text/javascript\">"
       "%s</script>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>"
       "</head>"
       "<body>%sHello, mod_pagespeed!</body></html>"
       "<noscript id=\"psa_add_styles\">"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"*1.css*\"></noscript>"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"*1.css*\">"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"*2.css*\"></noscript>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">"
       "%s*"
       "</script>",
-      StringPrintf(FlushEarlyContentWriterFilter::kDisableLinkTag,
-                   "*").c_str(),
+      disable_link_tag_string.c_str(),
+      disable_link_tag_string.c_str(),
       CriticalCssFilter::kMoveAndApplyLinkScriptTemplate,
-      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
-                   "*", "").c_str(),
+      move_link_tag_template.c_str(),
+      move_link_tag_template.c_str(),
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                    redirect_url.c_str()).c_str(),
       CriticalCssFilter::kAddStylesScript);
@@ -1722,6 +1733,9 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
   mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
                                 kCssContent, kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.css?a=1&b=2"),
+                                kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
 
   // Enable FlushSubresourcesFilter filter.
   RewriteOptions* rewrite_options = server_context()->global_options();
@@ -1748,6 +1762,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
   server_context()->set_critical_css_finder(critical_css_finder);
   critical_css_finder->AddCriticalCss("http://test.com/1.css",
                                       "b {color: black }", 100);
+  critical_css_finder->AddCriticalCss("http://test.com/2.css?a=1&b=2",
+                                      "a {float: left }", 100);
 
   GoogleString text;
   RequestHeaders request_headers;

@@ -1766,7 +1766,7 @@ void RewriteOptions::DisallowResourcesForProxy() {
   // regexps only after a match has been found.  Alternatively, since we're
   // setting up a binary choice here, consider using RE2 to make the yes/no
   // decision.
-  Disallow("*//ajax.googleapis.com/ajax/libs/*");
+  Disallow("*//ajax.googleapis.com/ajax/libs/*.js*");
   Disallow("*//pagead2.googlesyndication.com/pagead/show_ads.js*");
   Disallow("*//partner.googleadservices.com/gampad/google_service.js*");
   Disallow("*//platform.twitter.com/widgets.js*");

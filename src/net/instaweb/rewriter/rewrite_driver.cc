@@ -32,7 +32,6 @@
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -80,6 +79,7 @@
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
 #include "net/instaweb/rewriter/public/deterministic_js_filter.h"
+#include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
@@ -223,7 +223,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       url_async_fetcher_(default_url_async_fetcher_),
       distributed_async_fetcher_(NULL),
       add_instrumentation_filter_(NULL),
-      logging_filter_(NULL),
+      dom_stats_filter_(NULL),
       scan_filter_(this),
       controlling_pool_(NULL),
       html_worker_(NULL),
@@ -841,8 +841,8 @@ void RewriteDriver::AddPreRenderFilters() {
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kComputeStatistics)) {
-    logging_filter_ = new LoggingFilter;
-    AddOwnedEarlyPreRenderFilter(logging_filter_);
+    dom_stats_filter_ = new DomStatsFilter(this);
+    AddOwnedEarlyPreRenderFilter(dom_stats_filter_);
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
@@ -2299,9 +2299,12 @@ void RewriteDriver::PrintStateToErrorLog(bool show_detached_contexts) {
 }
 
 void RewriteDriver::LogStats() {
-  if (logging_filter_ != NULL && log_record() != NULL) {
-    log_record()->SetImageStats(logging_filter_->num_img_tags(),
-                                logging_filter_->num_inlined_img_tags());
+  if (dom_stats_filter_ != NULL && log_record() != NULL) {
+    log_record()->SetImageStats(dom_stats_filter_->num_img_tags(),
+                                dom_stats_filter_->num_inlined_img_tags(),
+                                dom_stats_filter_->num_critical_images_used());
+    log_record()->SetResourceCounts(dom_stats_filter_->num_external_css(),
+                                    dom_stats_filter_->num_scripts());
   }
   log_record()->LogDeviceInfo(
       device_properties_->GetDeviceType(),

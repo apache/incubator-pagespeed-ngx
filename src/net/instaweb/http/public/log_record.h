@@ -210,7 +210,11 @@ class AbstractLogRecord  {
   void SetNumCssCriticalImages(int num_css_critical_images);
 
   // Sets image related statistics.
-  void SetImageStats(int num_img_tags, int num_inlined_img_tags);
+  virtual void SetImageStats(int num_img_tags, int num_inlined_img_tags,
+                             int num_critical_images_used) = 0;
+
+  // Sets the number of external resources on an HTML page.
+  virtual void SetResourceCounts(int num_external_css, int num_scripts) = 0;
 
   // Sets critical CSS related byte counts (all uncompressed).
   void SetCriticalCssInfo(int critical_inlined_bytes,
@@ -343,6 +347,11 @@ class LogRecord : public AbstractLogRecord {
   virtual ~LogRecord();
 
   LoggingInfo* logging_info() { return logging_info_.get(); }
+
+  virtual void SetImageStats(int num_img_tags, int num_inlined_img_tags,
+                             int num_critical_images_used) {}
+
+  virtual void SetResourceCounts(int num_external_css, int num_scripts) {}
 
   bool WriteLogImpl() { return true; }
 

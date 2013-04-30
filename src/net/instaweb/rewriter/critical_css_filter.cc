@@ -30,6 +30,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -357,13 +358,15 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
 
   const GoogleString& style_id = driver_->server_context()->hasher()->Hash(url);
 
+  GoogleString escaped_url;
+  HtmlKeywords::Escape(url, &escaped_url);
   // If the resource has already been flushed early, just apply it here. This
   // can be checked by looking up the url in the DOM cohort. If the url is
   // present in the DOM cohort, it is guaranteed to have been flushed early.
   if (driver_->flushed_early() &&
       driver_->options()->enable_flush_early_critical_css() &&
       driver_->flush_early_info() != NULL &&
-      driver_->flush_early_info()->resource_html().find(url) !=
+      driver_->flush_early_info()->resource_html().find(escaped_url) !=
           GoogleString::npos) {
     // In this case we have already added the CSS rules to the head as
     // part of flushing early. Now, find the rule, remove the disabled tag
