@@ -1274,8 +1274,7 @@ if [ $statistics_logging_enabled = "1" ]; then
   done
   # Check a few arbitrary statistics to make sure logging is taking place.
   check [ $(grep "num_flushes: " $MOD_PAGESPEED_STATS_LOG | wc -l) -ge 1 ]
-  # We are not outputing histograms.
-  check [ $(grep "histogram#" $MOD_PAGESPEED_STATS_LOG | wc -l) -eq 0 ]
+  check [ $(grep "histogram#" $MOD_PAGESPEED_STATS_LOG | wc -l) -ge 1 ]
   check [ $(grep "image_ongoing_rewrites: " $MOD_PAGESPEED_STATS_LOG | wc -l) \
     -ge 1 ]
 
@@ -1284,12 +1283,13 @@ if [ $statistics_logging_enabled = "1" ]; then
   # $STATISTICS_URL ends in ?ModPagespeed=off, so we need & for now.
   # If we remove the query from $STATISTICS_URL, s/&/?/.
   STATS_JSON_URL="$STATISTICS_URL&json&granularity=0&var_titles=num_\
-flushes,image_ongoing_rewrites"
+flushes,image_ongoing_rewrites&hist_titles=Html%20Time%20us%20Histogram"
   echo "$WGET_DUMP $STATS_JSON_URL > $JSON"
   $WGET_DUMP $STATS_JSON_URL > $JSON
   # Each variable we ask for should show up once.
   check [ $(grep "\"num_flushes\": " $JSON | wc -l) -eq 1 ]
   check [ $(grep "\"image_ongoing_rewrites\": " $JSON | wc -l) -eq 1 ]
+  check [ $(grep "\"Html Time us Histogram\": " $JSON | wc -l) -eq 1 ]
   check [ $(grep "\"timestamps\": " $JSON | wc -l) -eq 1 ]
   # An array of all the timestamps that the JSON handler returned.
   JSON_TIMESTAMPS=($(sed -rn 's/^\{"timestamps": \[(([0-9]+, )*[0-9]*)\].*}$/\1/;/^[0-9]+/s/,//gp' $JSON))

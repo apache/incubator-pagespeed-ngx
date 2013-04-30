@@ -1322,6 +1322,12 @@ void RewriteOptions::AddProperties() {
       "Support for clients with no script support, in filters that "
       "insert new javascript.");
   AddBaseProperty(
+      false, &RewriteOptions::enable_extended_instrumentation_, "eei",
+      kEnableExtendedInstrumentation,
+      kDirectoryScope,
+      "If set to true, addition instrumentation js is added to that page that "
+      "the beacon can collect more information.");
+  AddBaseProperty(
       kDefaultMaxCombinedJsBytes,
       &RewriteOptions::max_combined_js_bytes_, "xcj",
       kMaxCombinedJsBytes,

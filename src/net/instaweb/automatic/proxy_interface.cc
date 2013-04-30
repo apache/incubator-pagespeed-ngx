@@ -366,15 +366,11 @@ ProxyFetchPropertyCallbackCollector*
     // as cache key without query params. The result of this lookup will be used
     // if actual property page does not contains property value.
     if (options != NULL &&
-        options->use_fallback_property_cache_values()) {
-      GoogleString fallback_page_key;
-      if (request_url.has_query()) {
-        fallback_page_key = server_context_->GetFallbackPagePropertyCacheKey(
-            request_url.AllExceptQuery(), options, device_type_suffix);
-      } else {
-        fallback_page_key = server_context_->GetFallbackPagePropertyCacheKey(
-            request_url.AllExceptLeaf(), options, device_type_suffix);
-      }
+        options->use_fallback_property_cache_values() &&
+        request_url.has_query()) {
+      GoogleString fallback_page_key =
+          server_context_->GetFallbackPagePropertyCacheKey(
+              request_url.AllExceptQuery(), options, device_type_suffix);
       fallback_property_callback =
           new ProxyFetchPropertyCallback(
               ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,

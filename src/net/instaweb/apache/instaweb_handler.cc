@@ -691,6 +691,7 @@ apr_status_t instaweb_statistics_handler(
 
   int64 start_time, end_time, granularity_ms;
   std::set<GoogleString> var_titles;
+  std::set<GoogleString> hist_titles;
   if (general_stats_request && !factory->use_per_vhost_statistics()) {
     global_stats_request = true;
   }
@@ -733,6 +734,16 @@ apr_status_t instaweb_statistics_handler(
         for (size_t i = 0; i < variable_names.size(); ++i) {
           var_titles.insert(variable_names[i].as_string());
         }
+      } else if (strcmp(name, "hist_titles") == 0) {
+        std::vector<StringPiece> histogram_names;
+        SplitStringPieceToVector(value, ",", &histogram_names, true);
+        for (size_t i = 0; i < histogram_names.size(); ++i) {
+          // TODO(morlovich): Cleanup & publicize UrlToFileNameEncoder::Unescape
+          // and use it here, instead of this GlobalReplaceSubstring hack.
+          GoogleString name = histogram_names[i].as_string();
+          GlobalReplaceSubstring("%20", " ", &(name));
+          hist_titles.insert(name);
+        }
       } else if (strcmp(name, "granularity") == 0) {
         StringToInt64(value, &granularity_ms);
       }
@@ -749,9 +760,10 @@ apr_status_t instaweb_statistics_handler(
   GoogleString output;
   StringWriter writer(&output);
   if (json) {
-    statistics->console_logger()->DumpJSON(var_titles, start_time, end_time,
-                                           granularity_ms, &writer,
-                                           message_handler);
+    statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+                                            start_time, end_time,
+                                            granularity_ms, &writer,
+                                            message_handler);
   } else {
     // Generate some navigational links to the right to help
     // our users get to other modes.

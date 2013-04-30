@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(174, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(175, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -849,6 +849,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableDeferJsExperimental",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableDeferJsExperimental));
+  EXPECT_STREQ("EnableExtendedInstrumentation",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kEnableExtendedInstrumentation));
   EXPECT_STREQ("EnableFixReflow",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableFixReflow));

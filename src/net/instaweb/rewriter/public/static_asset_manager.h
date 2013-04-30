@@ -59,6 +59,7 @@ class StaticAssetManager {
     kLazyloadImagesJs,
     kDetectReflowJs,
     kLocalStorageCacheJs,
+    kExtendedInstrumentationJs,
     kEndOfModules,  // Keep this as the last enum value.
   };
 

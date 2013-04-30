@@ -165,6 +165,20 @@ TEST_F(AddInstrumentationFilterTest,
               GoogleString::npos);
 }
 
+// Test that extended instrumentation is injected properly.
+TEST_F(AddInstrumentationFilterTest, TestExtendedInstrumentation) {
+  NullMessageHandler handler;
+  options()->set_enable_extended_instrumentation(true);
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load",
+          "", "", "", "")) !=
+              GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("getResourceTimingData=function()") !=
+              GoogleString::npos);
+}
+
 // Test that headers fetch timing reporting is done correctly.
 TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   NullMessageHandler handler;

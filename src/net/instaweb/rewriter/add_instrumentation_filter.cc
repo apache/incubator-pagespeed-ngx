@@ -136,8 +136,12 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
       driver_->server_context()->static_asset_manager();
   // Only add the static JS once.
   if (!added_tail_script_ && !added_unload_script_) {
-    js = static_asset_manager->GetAsset(
-        StaticAssetManager::kAddInstrumentationJs, driver_->options());
+    if (driver_->options()->enable_extended_instrumentation()) {
+      js = static_asset_manager->GetAsset(
+          StaticAssetManager::kExtendedInstrumentationJs, driver_->options());
+    }
+    StrAppend(&js, static_asset_manager->GetAsset(
+        StaticAssetManager::kAddInstrumentationJs, driver_->options()));
   }
 
   GoogleString js_event = (event == kLoadTag) ? "load" : "beforeunload";

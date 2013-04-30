@@ -45,10 +45,14 @@ class SharedMemStatisticsTestBase : public testing::Test {
 
   virtual void SetUp();
   virtual void TearDown();
+  GoogleString CreateHistogramDataResponse(
+      const GoogleString & histogram_name, bool is_long_response);
   GoogleString CreateVariableDataResponse(
       bool has_unused_variable, bool first);
   GoogleString CreateFakeLogfile(GoogleString* var_data,
-                                 std::set<GoogleString>* var_titles);
+                                 GoogleString* hist_data,
+                                 std::set<GoogleString>* var_titles,
+                                 std::set<GoogleString>* hist_titles);
   bool CreateChild(TestMethod method);
 
   void TestCreate();

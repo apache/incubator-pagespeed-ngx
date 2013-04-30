@@ -324,6 +324,10 @@ DEFINE_bool(passthrough_blink_for_last_invalid_response_code, false,
             "Pass-through blink request if we got a non-200 response from "
             "origin on the last fetch.");
 
+DEFINE_bool(enable_extended_instrumentation, false,
+            "If set to true, additional instrumentation js added to that "
+            "page that adds more information to the beacon.");
+
 DEFINE_bool(apply_blink_if_no_families, false,
             "If prioritize_visible_content_families_ is empty, apply "
             "prioritize visible content rewriter on all URLs (with default "
@@ -841,6 +845,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_passthrough_blink_for_last_invalid_response_code(
         FLAGS_passthrough_blink_for_last_invalid_response_code);
   }
+  if (WasExplicitlySet("enable_extended_instrumentation")) {
+    options->set_enable_extended_instrumentation(
+        FLAGS_enable_extended_instrumentation);
+  }
+
   if (WasExplicitlySet("apply_blink_if_no_families")) {
     options->set_apply_blink_if_no_families(FLAGS_apply_blink_if_no_families);
   }

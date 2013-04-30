@@ -74,6 +74,34 @@
       ]
     },
     {
+      'target_name': 'instaweb_extended_instrumentation_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'var_name': 'extended_instrumentation',
+      },
+      'sources': [
+        'rewriter/extended_instrumentation.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_extended_instrumentation_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'extended_instrumentation_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/extended_instrumentation_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_client_domain_rewriter_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1135,6 +1163,8 @@
         'instaweb_detect_reflow_opt_data2c',
         'instaweb_deterministic_data2c',
         'instaweb_deterministic_opt_data2c',
+        'instaweb_extended_instrumentation_data2c',
+        'instaweb_extended_instrumentation_opt_data2c',
         'instaweb_flush_early_pb',
         'instaweb_http',
         'instaweb_js_defer_data2c',

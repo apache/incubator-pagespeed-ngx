@@ -213,6 +213,7 @@ class RewriteOptions {
     kEnableCachePurge,
     kEnableFlushEarlyCriticalCss,
     kEnableFixReflow,
+    kEnableExtendedInstrumentation,
     kEnableFlushSubresourcesExperimental,
     kEnableLazyLoadHighResImages,
     kEnableLazyloadInBlink,
@@ -1998,6 +1999,13 @@ class RewriteOptions {
     set_option(x, &support_noscript_enabled_);
   }
 
+  bool enable_extended_instrumentation() const {
+    return enable_extended_instrumentation_.value();
+  }
+  void set_enable_extended_instrumentation(bool x) {
+    set_option(x, &enable_extended_instrumentation_);
+  }
+
   void set_max_combined_js_bytes(int64 x) {
     set_option(x, &max_combined_js_bytes_);
   }
@@ -3183,6 +3191,10 @@ class RewriteOptions {
   // only if any filter that inserts new javascript (e.g., lazyload_images) is
   // enabled.
   Option<bool> support_noscript_enabled_;
+
+  // If this set to true, we add additional instrumentation code to page that
+  // reports more information in the beacon.
+  Option<bool> enable_extended_instrumentation_;
 
   // Maximum size allowed for the combined js resource.
   // Negative value will bypass the size check.

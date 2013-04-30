@@ -54,6 +54,8 @@ extern const char* JS_delay_images;
 extern const char* JS_delay_images_opt;
 extern const char* JS_delay_images_inline;
 extern const char* JS_delay_images_inline_opt;
+extern const char* JS_extended_instrumentation;
+extern const char* JS_extended_instrumentation_opt;
 extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
@@ -152,6 +154,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   }
   // Initialize file names.
   assets_[kAddInstrumentationJs]->file_name = "add_instrumentation";
+  assets_[kExtendedInstrumentationJs]->file_name = "extended_instrumentation";
   assets_[kBlinkJs]->file_name = "blink";
   assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
   assets_[kCriticalCssBeaconJs]->file_name = "critical_css_beacon";
@@ -167,6 +170,8 @@ void StaticAssetManager::InitializeAssetStrings() {
 
   // Initialize compiled javascript strings->
   assets_[kAddInstrumentationJs]->js_optimized = JS_add_instrumentation_opt;
+  assets_[kExtendedInstrumentationJs]->js_optimized =
+      JS_extended_instrumentation_opt;
   // Fetching the blink JS is not currently supported->
   assets_[kBlinkJs]->js_optimized = "// Unsupported";
   assets_[kClientDomainRewriter]->js_optimized =
@@ -185,6 +190,7 @@ void StaticAssetManager::InitializeAssetStrings() {
 
   // Initialize cleartext javascript strings->
   assets_[kAddInstrumentationJs]->js_debug = JS_add_instrumentation;
+  assets_[kExtendedInstrumentationJs]->js_debug = JS_extended_instrumentation;
   // Fetching the blink JS is not currently supported-> Add a comment in as the
   // unit test expects debug code to include comments->
   assets_[kBlinkJs]->js_debug = "/* Unsupported */";

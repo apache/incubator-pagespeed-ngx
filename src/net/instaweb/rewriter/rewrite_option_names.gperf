@@ -57,6 +57,7 @@ struct OptionName {
 "EnableCachePurge",                      RewriteOptions::kEnableCachePurge
 "EnableDeferJsExperimental",             RewriteOptions::kEnableDeferJsExperimental
 "EnableFixReflow",                       RewriteOptions::kEnableFixReflow,
+"EnableExtendedInstrumentation",          RewriteOptions::kEnableExtendedInstrumentation
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
 "EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
 "EnablePrioritizingScripts",             RewriteOptions::kEnablePrioritizingScripts

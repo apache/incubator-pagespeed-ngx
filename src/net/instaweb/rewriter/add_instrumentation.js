@@ -107,7 +107,12 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
    url += traditionalPLT;
   }
 
+  if (pagespeed['getResourceTimingData'] && window.parent == window) {
+    url += pagespeed.getResourceTimingData();
+  }
+
   url += (window.parent != window) ? '&ifr=1' : '&ifr=0';
+
   if (this.event_ == 'load') {
     window['mod_pagespeed_loaded'] = true;
     var numPrefetchedResources =
