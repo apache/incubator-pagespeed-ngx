@@ -453,6 +453,29 @@ TEST_F(CriticalSelectorWithCombinerFilterTest, Interaction) {
                           LoadRestOfCss(CssLinkHref(combined_url))));
 }
 
+TEST_F(CriticalSelectorWithCombinerFilterTest, ResolveWhenCombineAcrossPaths) {
+  // Make sure we get proper URL resolution when doing combine-across-paths.
+  SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss,
+                                "* { background-image: url(/dir/d.png); }",
+                                100);
+  GoogleString css = StrCat(
+      CssLinkHref("dir/a.css"),
+      CssLinkHref("b.css"));
+
+    // Only one <style> element since combine_css ran before us.
+  GoogleString critical_css =
+      "<style>*{background-image:url(dir/d.png)}"  // from dir/a.css
+      "@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString combined_url =
+      StrCat(kTestDomain, "dir,_a.css+b.css.pagespeed.cc.0.css");
+
+  ValidateExpected("with_combiner_rel",
+                   css,
+                   StrCat(critical_css,
+                          LoadRestOfCss(CssLinkHref(combined_url))));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

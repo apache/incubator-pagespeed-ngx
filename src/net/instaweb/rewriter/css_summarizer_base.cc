@@ -174,6 +174,11 @@ void CssSummarizerBase::Context::Render() {
     if (result.has_inlined_data()) {
       summary_info.state = kSummaryOk;
       summary_info.data = result.inlined_data();
+      // For external resources, fix up base to refer to the current URL in
+      // the slot, as it may have been changed by an earlier filter.
+      if (summary_info.is_external) {
+        summary_info.base = slot(0)->resource()->url();
+      }
       filter_->RenderSummary(pos_, element_, text_);
     } else {
       summary_info.state = kSummaryCssParseError;

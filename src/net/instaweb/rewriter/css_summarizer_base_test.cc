@@ -46,7 +46,8 @@ class MinifyExcerptFilter : public CssSummarizerBase {
   explicit MinifyExcerptFilter(RewriteDriver* driver)
       : CssSummarizerBase(driver),
         render_summaries_in_place_(false),
-        will_not_render_summaries_in_place_(false) {}
+        will_not_render_summaries_in_place_(false),
+        include_base_(false) {}
 
   virtual const char* Name() const { return "Minify10"; }
   virtual const char* id() const { return "csr"; }
@@ -129,6 +130,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
       StrAppend(&result_, EncodeState(sum.state), "/", sum.data,
                 (sum.is_inside_noscript ? "/noscr" : ""),
                 (sum.rel.empty() ? "" : StrCat("/rel=", sum.rel)),
+                (include_base_ ? StrCat("/base=", sum.base) : ""),
                 "|");
     }
     InjectSummaryData(driver()->NewCommentNode(NULL, result_));
@@ -146,10 +148,16 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     will_not_render_summaries_in_place_ = x;
   }
 
+  // Whether we should include the base URL in the output string we compute.
+  void set_include_base(bool x) {
+    include_base_ = x;
+  }
+
  private:
   GoogleString result_;
   bool render_summaries_in_place_;
   bool will_not_render_summaries_in_place_;
+  bool include_base_;
 };
 
 class CssSummarizerBaseTest : public RewriteTestBase {
@@ -283,6 +291,20 @@ TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWait) {
   CallFetcherCallbacks();
 }
 
+TEST_F(CssSummarizerBaseTest, Base) {
+  filter_->set_include_base(true);
+  GoogleString css =
+      StrCat(CssLinkHref("a.css"), "<style>*{display:block;}</style>");
+  Parse("base", css);
+  EXPECT_STREQ(
+      StrCat("<html>\n", css, "\n",
+             StrCat("<!--OK/div{displa/rel=stylesheet/base=",
+                    kTestDomain, "a.css"),
+             StrCat("|OK/*{display:/base=", kTestDomain, "base.html|-->"),
+             "</html>"),
+      output_buffer_);
+}
+
 TEST_F(CssSummarizerBaseTest, AlternateHandling) {
   // CssSummarizerBase itself handles alternate stylesheets, just keeps
   // the rel around inside the SummaryInfo
@@ -411,6 +433,25 @@ TEST_F(CssSummarizerBaseWithCombinerFilterTest, Interaction) {
                    "\n<!--OK/div{displa/rel=stylesheet|"
                    "SlotRemoved//rel=stylesheet|--></html>"),
             output_buffer_);
+}
+
+TEST_F(CssSummarizerBaseWithCombinerFilterTest, BaseAcrossPaths) {
+  // Make sure base is updated if a previous filter moves a resource across
+  // directories.
+  filter_->set_include_base(true);
+  SetResponseWithDefaultHeaders("b/a2.css", kContentTypeCss,
+                                 "span { display: inline; }", 100);
+  GoogleString combined_url =
+      StrCat(kTestDomain, "b,_a2.css+a.css.pagespeed.cc.0.css");
+
+  Parse("base_accross_paths",
+        StrCat(CssLinkHref("b/a2.css"), CssLinkHref("a.css")));
+  EXPECT_EQ(
+      StrCat("<html>\n", CssLinkHref(combined_url), "\n",
+             StrCat("<!--OK/span{displ/rel=stylesheet/base=", combined_url),
+             StrCat("|SlotRemoved//rel=stylesheet/base=", kTestDomain, "a.css"),
+             "|--></html>"),
+      output_buffer_);
 }
 
 }  // namespace
