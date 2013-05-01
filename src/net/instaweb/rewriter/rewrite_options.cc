@@ -660,6 +660,10 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
   // potentially add this much more latency.
   if (RunningOnValgrind()) {
     set_rewrite_deadline_ms(kValgrindWaitForRewriteMs);
+    modified_ = false;
+#ifndef NDEBUG
+    last_thread_id_.reset();
+#endif
   }
 
   InitializeOptions(properties_);
@@ -2591,10 +2595,15 @@ void RewriteOptions::DisableFiltersRequiringScriptExecution() {
 
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
+#ifndef NDEBUG
+  CHECK(src.MergeOK());  // DCHECK outside of the #ifndef does not link.
+#endif
+
+  bool modify = src.modified_;
+
   DCHECK_EQ(all_options_.size(), src.all_options_.size());
   DCHECK_EQ(initialized_options_, src.initialized_options_);
   DCHECK_EQ(initialized_options_, all_options_.size());
-  modified_ |= src.modified_;
 
   // If this.forbid_all_disabled_filters() is true
   // but src.forbid_all_disabled_filters() is false,
@@ -2611,15 +2620,15 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     disabled_filters_.EraseSet(src.enabled_filters_);
   }
 
-  modified_ |= enabled_filters_.Merge(src.enabled_filters_);
-  modified_ |= disabled_filters_.Merge(src.disabled_filters_);
+  modify |= enabled_filters_.Merge(src.enabled_filters_);
+  modify |= disabled_filters_.Merge(src.disabled_filters_);
 
   // Clean up enabled filters list to make debugging easier.
   enabled_filters_.EraseSet(disabled_filters_);
 
   // Forbidden filters strictly merge, with no exclusions.  E.g. You can never
   // enable a filter in an .htaccess file that was forbidden above.
-  modified_ |= forbidden_filters_.Merge(src.forbidden_filters_);
+  modify |= forbidden_filters_.Merge(src.forbidden_filters_);
 
   enabled_filters_.EraseSet(forbidden_filters_);
 
@@ -2738,6 +2747,10 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
       src.forbid_all_disabled_filters_.was_set()) {
     set_forbid_all_disabled_filters(new_forbid_all_disabled);
   }
+
+  if (modify) {
+    Modify();
+  }
 }
 
 RewriteOptions::MutexedOptionInt64MergeWithMax::MutexedOptionInt64MergeWithMax()
@@ -2826,6 +2839,13 @@ void RewriteOptions::ResolveConflicts() {
   ForbidFiltersForPreserveUrl();
 }
 
+void RewriteOptions::Freeze() {
+  if (!frozen_) {
+    frozen_ = true;
+    signature_.clear();
+  }
+}
+
 void RewriteOptions::ComputeSignature() {
   if (frozen_) {
     return;
@@ -2895,6 +2915,14 @@ void RewriteOptions::ComputeSignature() {
   // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
   // changes made here make our system strictly more correct than it was before,
   // using an ad-hoc signature in css_filter.cc.
+}
+
+void RewriteOptions::ClearSignatureWithCaution() {
+  frozen_ = false;
+#ifndef NDEBUG
+  last_thread_id_.reset();
+#endif
+  signature_.clear();
 }
 
 bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
@@ -3037,7 +3065,34 @@ GoogleString RewriteOptions::ToExperimentDebugString() const {
 void RewriteOptions::Modify() {
   DCHECK(!frozen_);
   modified_ = true;
+
+  // The data in last_thread_id_ is currently only examined in DCHECKs so
+  // there's no need to pay the cost of populating it in produciton.
+#ifndef NDEBUG
+  if (thread_system_ != NULL) {
+    if (last_thread_id_.get() == NULL) {
+      last_thread_id_.reset(thread_system_->GetThreadId());
+    } else {
+      DCHECK(ModificationOK());
+    }
+  }
+#endif
 }
+
+// These method implementations are only in debug builds for asserting that
+// the usage patterns are safe.  In fact we don't even have last_thread_id_
+// compiled into the class in non-debug compiles.
+#ifndef NDEBUG
+bool RewriteOptions::ModificationOK() const {
+  return ((last_thread_id_.get() == NULL) ||
+          (last_thread_id_->IsCurrentThread()));
+}
+
+bool RewriteOptions::MergeOK() const {
+  return frozen_ || (last_thread_id_.get() == NULL) ||
+      last_thread_id_->IsCurrentThread();
+}
+#endif
 
 void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,
                                           const StringPiece& value) {
@@ -3372,6 +3427,9 @@ bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms) {
   if (cache_invalidation_timestamp_.value() < timestamp_ms) {
     bool recompute_signature = frozen_;
     frozen_ = false;
+#ifndef NDEBUG
+    last_thread_id_.reset();
+#endif
     cache_invalidation_timestamp_.checked_set(timestamp_ms);
     Modify();
     if (recompute_signature) {

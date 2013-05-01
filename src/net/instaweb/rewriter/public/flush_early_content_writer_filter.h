@@ -110,6 +110,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   typedef std::list<ResourceInfo*> ResourceInfoList;
   ResourceInfoList js_resources_info_;
   bool defer_javascript_enabled_;
+  bool split_html_enabled_;
   bool is_flushing_critical_style_element_;
   GoogleString css_output_content_;
   GoogleString flush_early_content_;

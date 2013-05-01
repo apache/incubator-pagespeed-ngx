@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <map>
 #include <set>
-#include <utility>
 #include <vector>
 
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -116,8 +115,12 @@ class ConsoleStatisticsLogfileReader {
                                  int64 end_time, int64 granularity_ms,
                                  MessageHandler* message_handler);
   ~ConsoleStatisticsLogfileReader();
+
   // Reads the next timestamp in the file to timestamp and the corresponding
   // chunk of data to data. Returns true if new data has been read.
+  // TODO(sligocki): Use a StringPiece* here to avoid extra copies. We need
+  // to guarantee that the data pointed to by the StringPiece will be valid
+  // for the right lifetime first.
   bool ReadNextDataBlock(int64* timestamp, GoogleString* data);
   int64 end_time() { return end_time_; }
 
@@ -130,6 +133,7 @@ class ConsoleStatisticsLogfileReader {
   int64 end_time_;
   int64 granularity_ms_;
   MessageHandler* message_handler_;
+  // Logfile buffer.
   GoogleString buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(ConsoleStatisticsLogfileReader);
@@ -144,13 +148,11 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
       FileSystem* file_system, Timer* timer);
   virtual ~SharedMemConsoleStatisticsLogger();
 
-  // Writes filtered variable and histogram data in JSON format to the given
-  // writer. Variable data is a time series collected from with data points from
-  // start_time to end_time, whereas histograms are aggregated histogram data as
-  // of the given end_time. Granularity is the minimum time difference between
-  // each successive data point.
+  // Writes filtered variable data in JSON format to the given writer.
+  // Variable data is a time series collected from with data points from
+  // start_time to end_time. Granularity is the minimum time difference
+  // between each successive data point.
   virtual void DumpJSON(const std::set<GoogleString>& var_titles,
-                        const std::set<GoogleString>& hist_titles,
                         int64 start_time, int64 end_time, int64 granularity_ms,
                         Writer* writer, MessageHandler* message_handler) const;
 
@@ -165,36 +167,25 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   friend class SharedMemStatisticsTestBase;
   FRIEND_TEST(SharedMemStatisticsTestBase, TestNextDataBlock);
   FRIEND_TEST(SharedMemStatisticsTestBase, TestParseVarData);
-  FRIEND_TEST(SharedMemStatisticsTestBase, TestParseHistData);
   FRIEND_TEST(SharedMemStatisticsTestBase, TestPrintJSONResponse);
   FRIEND_TEST(SharedMemStatisticsTestBase, TestParseDataFromReader);
 
   typedef std::vector<GoogleString> VariableInfo;
   typedef std::map<GoogleString, VariableInfo> VarMap;
-  typedef std::pair<GoogleString, GoogleString> HistBounds;
-  typedef std::pair<HistBounds, GoogleString> HistBarInfo;
-  typedef std::vector<HistBarInfo> HistInfo;
-  typedef std::map<GoogleString, HistInfo> HistMap;
   void ParseDataFromReader(const std::set<GoogleString>& var_titles,
-                           const std::set<GoogleString>& hist_titles,
                            ConsoleStatisticsLogfileReader* reader,
                            std::vector<int64>* list_of_timestamps,
-                           VarMap* parsed_var_data, HistMap* parsed_hist_data)
-                           const;
+                           VarMap* parsed_var_data) const;
   void ParseVarDataIntoMap(StringPiece logfile_var_data,
                            const std::set<GoogleString>& var_titles,
                            VarMap* parsed_var_data) const;
-  HistMap ParseHistDataIntoMap(StringPiece logfile_hist_data,
-                               const std::set<GoogleString>& hist_titles) const;
   void PrintVarDataAsJSON(const VarMap& parsed_var_data, Writer* writer,
                           MessageHandler* message_handler) const;
-  void PrintHistDataAsJSON(const HistMap* parsed_hist_data, Writer* writer,
-                           MessageHandler* message_handler) const;
   void PrintTimestampListAsJSON(const std::vector<int64>& list_of_timestamps,
                                 Writer* writer,
                                 MessageHandler* message_handler) const;
-  void PrintJSON(const std::vector<int64> & list_of_timestamps,
-                 const VarMap& parsed_var_data, const HistMap& parsed_hist_data,
+  void PrintJSON(const std::vector<int64>& list_of_timestamps,
+                 const VarMap& parsed_var_data,
                  Writer* writer, MessageHandler* message_handler) const;
 
   // The last_dump_timestamp not only contains the time of the last dump,

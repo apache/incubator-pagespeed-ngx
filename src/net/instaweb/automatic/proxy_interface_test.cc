@@ -261,6 +261,49 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     server_context()->ComputeSignature(options);
   }
 
+  void TestFallbackPageProperties(
+      const GoogleString& url, const GoogleString& fallback_url) {
+    GoogleUrl gurl(url);
+    GoogleString kPropertyName("prop");
+    GoogleString kValue("value");
+    options()->set_use_fallback_property_cache_values(true);
+    // No fallback value is present.
+    const PropertyCache::Cohort* cohort =
+        page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
+    StringAsyncFetch callback(
+        RequestContext::NewTestRequestContext(
+            server_context()->thread_system()));
+    RequestHeaders request_headers;
+    callback.set_request_headers(&request_headers);
+    scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+        proxy_interface_->InitiatePropertyCacheLookup(
+            false, gurl, options(), &callback, false, NULL));
+
+    FallbackPropertyPage* fallback_page =
+        callback_collector->fallback_property_page();
+    fallback_page->UpdateValue(cohort, kPropertyName, kValue);
+    fallback_page->WriteCohort(cohort);
+
+    // Read from fallback value.
+    GoogleUrl new_gurl(fallback_url);
+    callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
+        false, new_gurl, options(), &callback, false, NULL));
+    fallback_page = callback_collector->fallback_property_page();
+    EXPECT_FALSE(fallback_page->actual_property_page()->GetProperty(
+        cohort, kPropertyName)->has_value());
+    EXPECT_EQ(kValue,
+              fallback_page->GetProperty(cohort, kPropertyName)->value());
+
+    // If use_fallback_property_cache_values option is set to false, fallback
+    // values will not be used.
+    options()->ClearSignatureForTesting();
+    options()->set_use_fallback_property_cache_values(false);
+    callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
+          false, new_gurl, options(), &callback, false, NULL));
+    EXPECT_FALSE(callback_collector->fallback_property_page()->GetProperty(
+        cohort, kPropertyName)->has_value());
+  }
+
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
@@ -329,6 +372,59 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_TRUE(logging_info()->is_html_response());
   EXPECT_FALSE(logging_info()->is_url_disallowed());
   EXPECT_TRUE(logging_info()->is_request_disabled());
+}
+
+TEST_F(ProxyInterfaceTest, SkipPropertyCacheLookupIfOptionsNotEnabled) {
+  GoogleString url = "http://www.example.com/";
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+
+  // Fetch disabled url.
+  url = "http://www.example.com/?ModPagespeed=off";
+  logging_info()->Clear();
+  mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
+                                "<html></html>");
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_TRUE(logging_info()->is_html_response());
+  EXPECT_FALSE(logging_info()->is_url_disallowed());
+  EXPECT_TRUE(logging_info()->is_request_disabled());
+
+  // Only the HTTP response lookup is issued and it is not in the cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+}
+
+TEST_F(ProxyInterfaceTest, SkipPropertyCacheLookupIfUrlBlacklisted) {
+  GoogleString url = "http://www.blacklist.com/";
+  RequestHeaders request_headers;
+  GoogleString text;
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+
+  custom_options->AddRejectedUrlWildcard(AbsolutifyUrl("blacklist*"));
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  logging_info()->Clear();
+  mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_TRUE(logging_info()->is_html_response());
+  EXPECT_TRUE(logging_info()->is_url_disallowed());
+  EXPECT_FALSE(logging_info()->is_request_disabled());
+
+  // Only the HTTP response lookup is issued and it is not in the cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
 }
 
 TEST_F(ProxyInterfaceTest, HeadRequest) {
@@ -3024,44 +3120,16 @@ TEST_F(ProxyInterfaceTest, TestOptionsAndDeviceTypeUsedInCacheKey) {
   TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kDesktop);
 }
 
-TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsage) {
-  GoogleUrl gurl("http://www.test.com/?withquery=some");
-  GoogleString kPropertyName("prop");
-  GoogleString kValue("value");
-  options()->set_use_fallback_property_cache_values(true);
-  // No fallback value is present.
-  const PropertyCache::Cohort* cohort =
-      page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
-  StringAsyncFetch callback(
-      RequestContext::NewTestRequestContext(server_context()->thread_system()));
-  RequestHeaders request_headers;
-  callback.set_request_headers(&request_headers);
-  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
-      proxy_interface_->InitiatePropertyCacheLookup(
-          false, gurl, options(), &callback, false, NULL));
+TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsageWithQueryParams) {
+  GoogleString url("http://www.test.com/a/b.html?withquery=some");
+  GoogleString fallback_url("http://www.test.com/a/b.html?withquery=different");
+  TestFallbackPageProperties(url, fallback_url);
+}
 
-  FallbackPropertyPage* fallback_page =
-      callback_collector->fallback_property_page();
-  fallback_page->UpdateValue(cohort, kPropertyName, kValue);
-  fallback_page->WriteCohort(cohort);
-
-  // Read from fallback value.
-  GoogleUrl new_gurl("http://www.test.com/?withquery=different");
-  callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-      false, new_gurl, options(), &callback, false, NULL));
-  fallback_page = callback_collector->fallback_property_page();
-  EXPECT_FALSE(fallback_page->actual_property_page()->GetProperty(
-      cohort, kPropertyName)->has_value());
-  EXPECT_EQ(kValue, fallback_page->GetProperty(cohort, kPropertyName)->value());
-
-  // If use_fallback_property_cache_values option is set to false, fallback
-  // values will not be used.
-  options()->ClearSignatureForTesting();
-  options()->set_use_fallback_property_cache_values(false);
-  callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
-        false, new_gurl, options(), &callback, false, NULL));
-  EXPECT_FALSE(callback_collector->fallback_property_page()->GetProperty(
-      cohort, kPropertyName)->has_value());
+TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsageWithLeafNode) {
+  GoogleString url("http://www.test.com/a/b.html");
+  GoogleString fallback_url("http://www.test.com/a/c.html");
+  TestFallbackPageProperties(url, fallback_url);
 }
 
 TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {

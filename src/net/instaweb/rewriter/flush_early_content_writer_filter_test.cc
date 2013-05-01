@@ -173,6 +173,23 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     return output;
   }
 
+  void VerifyJsNotFlushed() {
+    SetPrivateCacheableUrls();
+    GoogleString html_input = GetOutputWithHash(
+        kHtmlInputPrivateCacheableResources);
+    GoogleString html_output;
+
+    rewrite_driver()->SetUserAgent("prefetch_image_tag");
+    html_output = GetOutputWithHash(
+        "<script type=\"text/javascript\">(function(){"
+        "new Image().src=\"a.css\";"
+        "new Image().src=\"d.css.pagespeed.cf.%s.css\";})()"
+        "</script>");
+
+    Parse("prefetch_image_tag", html_input);
+    EXPECT_EQ(RewrittenOutputWithResources(html_output, 2), output_);
+  }
+
   GoogleString output_;
 
  private:
@@ -613,25 +630,23 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources3) {
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources4) {
-  SetPrivateCacheableUrls();
-  GoogleString html_input = GetOutputWithHash(
-      kHtmlInputPrivateCacheableResources);
-  GoogleString html_output;
-
   // Enable defer_javasript. We don't flush JS resources now.
   rewrite_driver()->SetUserAgent("prefetch_image_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->DisableFilter(RewriteOptions::kSplitHtml);
   server_context()->ComputeSignature(options());
+  VerifyJsNotFlushed();
+}
 
-  html_output = GetOutputWithHash(
-      "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"a.css\";"
-      "new Image().src=\"d.css.pagespeed.cf.%s.css\";})()"
-      "</script>");
-
-  Parse("prefetch_image_tag", html_input);
-  EXPECT_EQ(RewrittenOutputWithResources(html_output, 2), output_);
+TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources5) {
+  // Enable split_html. We don't flush JS resources now.
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kSplitHtml);
+  options()->DisableFilter(RewriteOptions::kDeferJavascript);
+  server_context()->ComputeSignature(options());
+  VerifyJsNotFlushed();
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest,

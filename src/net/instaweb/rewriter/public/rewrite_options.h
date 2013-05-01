@@ -827,6 +827,24 @@ class RewriteOptions {
   static bool Initialize();
   static bool Terminate();
 
+#ifndef NDEBUG
+  // Determines whether it's OK to modify the RewriteOptions in the
+  // current thread.  Note that this is stricter than necessary, but
+  // makes it easier to reason about potential thread safety issues
+  // for copy-on-write sharing of substructures.
+  //
+  // This is exposed as an external API for ease of unit testing.
+  bool ModificationOK() const;
+
+  // Determines whether it's OK to merge from the RewriteOptions object
+  // in the current thread.  Note that this is stricter than necessary, but
+  // makes it easier to reason about potential thread safety issues
+  // for copy-on-write sharing of substructures.
+  //
+  // This is exposed as an external API for ease of unit testing.
+  bool MergeOK() const;
+#endif
+
   // Initializes the Options objects in a RewriteOptions instance
   // based on the supplied Properties vector.  Note that subclasses
   // can statically define additional properties, in which case they
@@ -2195,16 +2213,19 @@ class RewriteOptions {
   // to modify a RewriteOptions after freezing will DCHECK.
   void ComputeSignature();
 
+  // Freeze a RewriteOptions so we can't modify it anymore and thus
+  // know that it's safe to read it from multiple threads, but don't
+  // bother calculating its signature since we will only be using this
+  // instance for merging and cloning.
+  void Freeze();
+
   // Clears the computed signature, unfreezing the options object.
   // Warning: Please note that using this method is extremely risky and should
   // be avoided as much as possible. If you are planning to use this, please
   // discuss this with your team-mates and ensure that you clearly understand
   // its implications. Also, please do repeat this warning at every place you
   // use this method.
-  void ClearSignatureWithCaution() {
-    frozen_ = false;
-    signature_.clear();
-  }
+  void ClearSignatureWithCaution();
 
   // Clears a computed signature, unfreezing the options object.  This
   // is intended for testing.
@@ -2223,6 +2244,7 @@ class RewriteOptions {
     // only time we Write is if someone flushes the cache.
     ThreadSystem::ScopedReader lock(cache_invalidation_timestamp_.mutex());
     DCHECK(frozen_);
+    DCHECK(!signature_.empty());
     return signature_;
   }
 
@@ -3283,12 +3305,21 @@ class RewriteOptions {
   GoogleString signature_;
   MD5Hasher hasher_;  // Used to compute named signatures.
 
-  // Populating this thread_system now, though the usage of it is not
-  // done yet.
-  //
-  // TODO(jmarantz): Use thread_system to help validate thread-safety of
-  // sharing substructures (e.g. DomainLawyer) across Merge.
   ThreadSystem* thread_system_;
+
+  // When compiled for debug, keep track of the last thread to modify
+  // this object.  If cloned or merged from prior to
+  // ComputeSignature(), we check that the thread doing the Merge is
+  // in the same thread that modified it.
+  //
+  // We also ensure that only one thread modifies a RewriteOptions
+  // object.
+  //
+  // Note: we don't ifdef the member variable declaration as having the
+  // structure-size dependent on debug-ifdef seems dangerous when used
+  // as a library against externally compiled code.  We do ifdef its
+  // usage within the class implementation, however.
+  scoped_ptr<ThreadSystem::ThreadId> last_thread_id_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

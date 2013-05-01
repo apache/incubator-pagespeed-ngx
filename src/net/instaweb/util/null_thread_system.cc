@@ -63,19 +63,25 @@ class NullRWLock : public ThreadSystem::RWLock {
 
 class NullThreadId : public ThreadSystem::ThreadId {
  public:
-  NullThreadId() {}
+  explicit NullThreadId(const NullThreadSystem* system)
+      : id_(system->current_thread()),
+        system_(system) {
+  }
+
   virtual ~NullThreadId() {}
 
   virtual bool IsEqual(const ThreadId& that) const {
-    CHECK(dynamic_cast<const NullThreadId*>(&that) != NULL);
-    return true;
+    return (id_ == dynamic_cast<const NullThreadId&>(that).id_);
   }
 
   virtual bool IsCurrentThread() const {
-    return true;
+    return id_ == system_->current_thread();
   }
 
  private:
+  int id_;
+  const NullThreadSystem* system_;
+
   DISALLOW_COPY_AND_ASSIGN(NullThreadId);
 };
 
@@ -105,7 +111,7 @@ Timer* NullThreadSystem::NewTimer() {
 }
 
 ThreadSystem::ThreadId* NullThreadSystem::GetThreadId() const {
-  return new NullThreadId;
+  return new NullThreadId(this);
 }
 
 ThreadSystem::ThreadImpl* NullThreadSystem::NewThreadImpl(Thread* wrapper,

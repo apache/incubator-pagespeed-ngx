@@ -2191,4 +2191,49 @@ TEST_F(RewriteOptionsTest, AccessOptionByIdAndEnum) {
   EXPECT_FALSE(options_.OptionValue(kBogusOptionEnum, &id, &was_set, &value));
 }
 
+TEST_F(RewriteOptionsTest, AccessAcrossThreads) {
+#ifndef NDEBUG  // Depends on bits set in rewrite_options.cc under debug
+  NullThreadSystem null_thread_system;
+
+  null_thread_system.set_current_thread(5);
+
+  RewriteOptions options(&null_thread_system);
+  // We can continue to modify in the same thread.
+  EXPECT_TRUE(options.ModificationOK());
+
+  // Unmodified, we could switch to a different thread.
+  null_thread_system.set_current_thread(6);
+  EXPECT_TRUE(options.ModificationOK());
+  null_thread_system.set_current_thread(5);
+
+  // Now make a modification.  We can continue to modify in the same thread.
+  options.set_enabled(RewriteOptions::kEnabledOff);
+  EXPECT_TRUE(options.ModificationOK());
+
+  // But from a different thread we must not modify.
+  null_thread_system.set_current_thread(4);
+  EXPECT_FALSE(options.ModificationOK());
+
+  // Back in thread 5 we can modify.
+  null_thread_system.set_current_thread(5);
+  EXPECT_TRUE(options.ModificationOK());
+
+  // We can merge from the same thread, but not from a different one.
+  EXPECT_TRUE(options.MergeOK());
+  null_thread_system.set_current_thread(4);
+  EXPECT_FALSE(options.MergeOK());
+
+  // Clearing the signature gets us on a clean slate and we can take over
+  // from thread 4.
+  options.ClearSignatureWithCaution();
+  EXPECT_TRUE(options.MergeOK());
+
+  // Once we freeze it we can merge from it.
+  options.Freeze();
+  EXPECT_TRUE(options.MergeOK());
+  null_thread_system.set_current_thread(5);
+  EXPECT_TRUE(options.MergeOK());
+#endif
+}
+
 }  // namespace net_instaweb

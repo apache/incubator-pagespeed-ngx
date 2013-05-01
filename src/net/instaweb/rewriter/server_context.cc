@@ -1046,6 +1046,7 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
   if (scoped_domain_options.get() != NULL) {
     custom_options.reset(NewOptions());
     custom_options->Merge(*options);
+    scoped_domain_options->Freeze();
     custom_options->Merge(*scoped_domain_options);
     options = custom_options.get();
   }
@@ -1059,6 +1060,7 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
     custom_options.reset(NewOptions());
     custom_options->Merge(*options);
+    query_options->Freeze();
     custom_options->Merge(*query_options);
     // Don't run any experiments if this is a special query-params request.
     custom_options->set_running_furious_experiment(false);

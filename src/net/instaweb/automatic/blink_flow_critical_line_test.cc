@@ -1789,10 +1789,10 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
-  // No lookup for BlinkCriticalLineData.
+  // No lookup for BlinkCriticalLineData. (pcache)
+  // No lookup for DomCohort. (pcache)
   // 1 Miss for original plain text,
-  // 1 Miss for DomCohort.
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.

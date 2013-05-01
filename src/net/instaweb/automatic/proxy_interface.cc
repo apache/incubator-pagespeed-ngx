@@ -18,6 +18,7 @@
 
 #include "net/instaweb/automatic/public/proxy_interface.h"
 
+#include "base/callback.h"
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/blink_flow_critical_line.h"
 #include "net/instaweb/automatic/public/cache_html_flow.h"
@@ -53,7 +54,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
@@ -366,11 +366,15 @@ ProxyFetchPropertyCallbackCollector*
     // as cache key without query params. The result of this lookup will be used
     // if actual property page does not contains property value.
     if (options != NULL &&
-        options->use_fallback_property_cache_values() &&
-        request_url.has_query()) {
-      GoogleString fallback_page_key =
-          server_context_->GetFallbackPagePropertyCacheKey(
-              request_url.AllExceptQuery(), options, device_type_suffix);
+        options->use_fallback_property_cache_values()) {
+      GoogleString fallback_page_key;
+      if (request_url.has_query()) {
+        fallback_page_key = server_context_->GetFallbackPagePropertyCacheKey(
+            request_url.AllExceptQuery(), options, device_type_suffix);
+      } else {
+        fallback_page_key = server_context_->GetFallbackPagePropertyCacheKey(
+            request_url.AllExceptLeaf(), options, device_type_suffix);
+      }
       fallback_property_callback =
           new ProxyFetchPropertyCallback(
               ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
@@ -414,7 +418,6 @@ ProxyFetchPropertyCallbackCollector*
     page_property_cache->ReadWithCohorts(cohort_list_without_blink,
                                          fallback_property_callback);
   }
-
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);
   }
@@ -539,15 +542,19 @@ void ProxyInterface::ProxyRequestCallback(
         (is_blink_request && apply_blink_critical_line) ||
         is_cache_html_request;
 
-    // Ownership of "property_callback" is eventually assumed by either
-    // CacheHtmlFlow or ProxyFetch.
-    ProxyFetchPropertyCallbackCollector* property_callback =
-        InitiatePropertyCacheLookup(is_resource_fetch,
-                                    *request_url,
-                                    options,
-                                    async_fetch,
-                                    requires_blink_cohort,
-                                    &page_callback_added);
+    ProxyFetchPropertyCallbackCollector* property_callback = NULL;
+
+    if (options == NULL ||
+        (options->enabled() && options->IsAllowed(request_url->Spec()))) {
+      // Ownership of "property_callback" is eventually assumed by either
+      // CacheHtmlFlow or ProxyFetch.
+      property_callback = InitiatePropertyCacheLookup(is_resource_fetch,
+                                                      *request_url,
+                                                      options,
+                                                      async_fetch,
+                                                      requires_blink_cohort,
+                                                      &page_callback_added);
+    }
 
     if (options != NULL) {
       server_context_->ComputeSignature(options);

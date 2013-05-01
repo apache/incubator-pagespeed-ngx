@@ -71,7 +71,6 @@ class ConsoleStatisticsLogger {
   // Writes the data from the logfile in JSON format for the given variables,
   // filtered with the given parameters.
   virtual void DumpJSON(const std::set<GoogleString>& var_titles,
-                        const std::set<GoogleString>& hist_titles,
                         int64 start_time, int64 end_time, int64 granularity_ms,
                         Writer* writer,
                         MessageHandler* message_handler) const = 0;
