@@ -94,7 +94,7 @@ To confirm that the module is loaded, fetch a page and check that you see the
 
 ```bash
 $ curl -I 'http://localhost:8050/some_page/' | grep X-Page-Speed
-X-Page-Speed: 1.4.0.0-2729
+X-Page-Speed: 1.5.27.1-2845
 ```
 
 Looking at the source of a few pages you should see various changes, such as
