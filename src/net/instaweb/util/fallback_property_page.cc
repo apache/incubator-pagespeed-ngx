@@ -45,6 +45,16 @@ PropertyValue* FallbackPropertyPage::GetProperty(
       cohort, property_name);
 }
 
+PropertyValue* FallbackPropertyPage::GetFallbackProperty(
+      const PropertyCache::Cohort* cohort,
+      const StringPiece& property_name) {
+  if (property_page_with_fallback_values_ == NULL) {
+    return NULL;
+  }
+  return property_page_with_fallback_values_->GetProperty(
+      cohort, property_name);
+}
+
 void FallbackPropertyPage::UpdateValue(
     const PropertyCache::Cohort* cohort, const StringPiece& property_name,
     const StringPiece& value) {
@@ -66,6 +76,14 @@ void FallbackPropertyPage::WriteCohort(
 CacheInterface::KeyState FallbackPropertyPage::GetCacheState(
     const PropertyCache::Cohort* cohort) {
   return actual_property_page_->GetCacheState(cohort);
+}
+
+CacheInterface::KeyState FallbackPropertyPage::GetFallbackCacheState(
+    const PropertyCache::Cohort* cohort) {
+  if (property_page_with_fallback_values_ == NULL) {
+    return CacheInterface::kNotFound;
+  }
+  return property_page_with_fallback_values_->GetCacheState(cohort);
 }
 
 void FallbackPropertyPage::DeleteProperty(const PropertyCache::Cohort* cohort,

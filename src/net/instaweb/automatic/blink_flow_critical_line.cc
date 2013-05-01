@@ -275,6 +275,7 @@ class CriticalLineFetch : public AsyncFetch {
     if (rewrite_driver_->options()->
         passthrough_blink_for_last_invalid_response_code()) {
       rewrite_driver_->UpdatePropertyValueInDomCohort(
+          rewrite_driver_->property_page(),
           BlinkUtil::kBlinkResponseCodePropertyName,
           IntegerToString(response_headers()->status_code()));
     }
@@ -610,6 +611,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
         rewrite_driver_->property_page() != NULL) {
       updated_response_code_ = true;
       rewrite_driver_->UpdatePropertyValueInDomCohort(
+          rewrite_driver_->property_page(),
           BlinkUtil::kBlinkResponseCodePropertyName,
           IntegerToString(response_headers()->status_code()));
     }

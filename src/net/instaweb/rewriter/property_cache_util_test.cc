@@ -152,7 +152,8 @@ TEST_F(PropertyCacheUtilTest, DecodeMissing) {
 
 TEST_F(PropertyCacheUtilTest, DecodeError) {
   // Write something that probably doesn't decode as NameValue proto.
-  rewrite_driver()->UpdatePropertyValueInDomCohort(kTestProp, "@(#(@(#@(");
+  rewrite_driver()->UpdatePropertyValueInDomCohort(
+      rewrite_driver()->property_page(), kTestProp, "@(#(@(#@(");
   PropertyCacheDecodeResult status;
   scoped_ptr<NameValue> result(
       DecodeFromPropertyCache<NameValue>(

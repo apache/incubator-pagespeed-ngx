@@ -134,6 +134,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -2119,25 +2120,27 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     PropertyCache* pcache = server_context_->page_property_cache();
     const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
     if (dom_cohort != NULL) {
-      // Update the timestamp of the last request.
+      // Update the timestamp of the last request in both actual property page
+      // and property page with fallback values.
       UpdatePropertyValueInDomCohort(
+          fallback_property_page(),
           kLastRequestTimestamp,
           Integer64ToString(server_context()->timer()->NowMs()));
       // Update the status code of the last request.
       if (status_code_ != HttpStatus::kUnknownStatusCode) {
-        UpdatePropertyValueInDomCohort(kStatusCodePropertyName,
-                                       IntegerToString(status_code_));
+        UpdatePropertyValueInDomCohort(
+            page, kStatusCodePropertyName, IntegerToString(status_code_));
       }
       if (options()->max_html_parse_bytes() > 0) {
         // Update whether the page exceeded the html parse size limit.
         UpdatePropertyValueInDomCohort(
-            kParseSizeLimitExceeded,
+            page, kParseSizeLimitExceeded,
             num_bytes_in_ > options()->max_html_parse_bytes() ? "1" : "0");
       }
       if (flush_early_info_.get() != NULL) {
         GoogleString value;
         flush_early_info_->SerializeToString(&value);
-        UpdatePropertyValueInDomCohort(kSubresourcesPropertyName, value);
+        UpdatePropertyValueInDomCohort(page, kSubresourcesPropertyName, value);
       }
       // Page cannot be cleared yet because other cohorts may still need to be
       // written.
@@ -2145,7 +2148,9 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
       // make more sense for this check to be done at the property cache or
       // lower level.
       if (!server_context_->shutting_down()) {
-        page->WriteCohort(dom_cohort);
+        // Write dom cohort for both actual property page and property page with
+        // fallback values.
+        fallback_property_page()->WriteCohort(dom_cohort);
       }
     }
   }
@@ -2157,9 +2162,11 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
   }
 }
 
-void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
-                                                   StringPiece property_value) {
-  if (!owns_property_page_) {
+void RewriteDriver::UpdatePropertyValueInDomCohort(
+    AbstractPropertyPage* page,
+    StringPiece property_name,
+    StringPiece property_value) {
+  if (page == NULL || !owns_property_page_) {
     return;
   }
   PropertyCache* pcache = server_context_->page_property_cache();
@@ -2171,7 +2178,7 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
     LOG(DFATAL) << "dom cohort is not available.";
     return;
   }
-  property_page()->UpdateValue(dom, property_name, property_value);
+  page->UpdateValue(dom, property_name, property_value);
 }
 
 void RewriteDriver::Cleanup() {

@@ -61,6 +61,7 @@ BlinkFilter::~BlinkFilter() {}
 void BlinkFilter::StartDocument() {
   if (rewrite_options_->passthrough_blink_for_last_invalid_response_code()) {
     rewrite_driver_->UpdatePropertyValueInDomCohort(
+        rewrite_driver_->property_page(),
         BlinkUtil::kBlinkResponseCodePropertyName,
         IntegerToString(rewrite_driver_->response_headers()->status_code()));
   }

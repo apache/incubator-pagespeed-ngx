@@ -40,7 +40,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -67,6 +66,7 @@ class DebugFilter;
 class DeviceProperties;
 class DomainRewriteFilter;
 class DomStatsFilter;
+class FallbackPropertyPage;
 class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
@@ -823,8 +823,10 @@ class RewriteDriver : public HtmlParse {
   // cache or dom cohort is not available, more so since the value payload has
   // to be serialised before calling this function.  Hence this function will
   // DFATAL if property cache or dom cohort is not available.
-  void UpdatePropertyValueInDomCohort(StringPiece property_name,
-                                      StringPiece property_value);
+  void UpdatePropertyValueInDomCohort(
+      AbstractPropertyPage* page,
+      StringPiece property_name,
+      StringPiece property_value);
 
   // Sets the pointer to the client state associated with this driver.
   // RewriteDriver takes ownership of the provided AbstractClientState object.
@@ -847,7 +849,7 @@ class RewriteDriver : public HtmlParse {
   // with the current URL and fallback URL (i.e. without query params). This
   // should be used where a property is interested in fallback values if
   // actual values are not present.
-  AbstractPropertyPage* fallback_property_page() const {
+  FallbackPropertyPage* fallback_property_page() const {
     return fallback_property_page_;
   }
   // Takes ownership of page.

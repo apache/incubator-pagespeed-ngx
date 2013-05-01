@@ -32,6 +32,7 @@
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -82,6 +83,7 @@ void LazyloadImagesFilter::StartDocumentImpl() {
 
 void LazyloadImagesFilter::EndDocument() {
   driver()->UpdatePropertyValueInDomCohort(
+      driver()->property_page(),
       kIsLazyloadScriptInsertedPropertyName,
       main_script_inserted_ ? "1" : "0");
 }
