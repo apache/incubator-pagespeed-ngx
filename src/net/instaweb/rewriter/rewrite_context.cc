@@ -978,6 +978,8 @@ class RewriteContext::FetchContext {
     async_fetch_->HeadersComplete();
     bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
                                                    handler_);
+    // Like FetchDone, we success false if not a 200.
+    ok &= headers->status_code() == HttpStatus::kOK;
     rewrite_context_->FetchCallbackDone(ok);
   }
 
@@ -1548,19 +1550,18 @@ bool RewriteContext::ShouldDistributeRewrite() const {
       || Options()->distributed_rewrite_servers().empty()) {
     return false;
   }
-
   // Don't redistribute an already distributed rewrite unless this is a nested
   // filter. For instance, if this is a distributed CSS request, we don't want
   // to redistribute the CSS rewrite but its nested image filters should be
   // allowed to be distributed.  The rewrite task of the nested filter will
   // not redistribute it.
+  DCHECK(request_headers != NULL);
   if (request_headers != NULL && parent() == NULL) {
     if (request_headers->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
         request_headers->Has(HttpAttributes::kXPsaDistributedRewriteHtml)) {
       return false;
     }
   }
-
   return true;
 }
 

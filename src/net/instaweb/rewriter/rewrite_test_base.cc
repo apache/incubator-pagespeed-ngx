@@ -56,6 +56,7 @@
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -82,32 +83,34 @@ namespace net_instaweb {
 class MessageHandler;
 class RequestHeaders;
 
-const char RewriteTestBase::kTestData[] =
-    "/net/instaweb/rewriter/testdata/";
+const char RewriteTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
 
 RewriteTestBase::RewriteTestBase()
-    : statistics_(new SimpleStats()),
+    : test_distributed_fetcher_(this),
+      statistics_(new SimpleStats()),
       factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                             &mock_url_fetcher_,
-                                            &mock_distributed_fetcher_)),
+                                            &test_distributed_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                                   &mock_url_fetcher_,
-                                                  &mock_distributed_fetcher_)),
+                                                  &test_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
-      other_options_(other_factory_->NewRewriteOptions()) {
+      other_options_(other_factory_->NewRewriteOptions()),
+      kEtag0(HTTPCache::FormatEtag("0")) {
   Init();
 }
 
 // Takes ownership of the statistics.
 RewriteTestBase::RewriteTestBase(Statistics* statistics)
-    : statistics_(statistics),
+    : test_distributed_fetcher_(this),
+      statistics_(statistics),
       factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                             &mock_url_fetcher_,
-                                            &mock_distributed_fetcher_)),
+                                            &test_distributed_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                                   &mock_url_fetcher_,
-                                                  &mock_distributed_fetcher_)),
+                                                  &test_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()) {
@@ -116,7 +119,8 @@ RewriteTestBase::RewriteTestBase(Statistics* statistics)
 
 RewriteTestBase::RewriteTestBase(
     std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
-    : statistics_(new SimpleStats()),
+    : test_distributed_fetcher_(this),
+      statistics_(new SimpleStats()),
       factory_(factories.first),
       other_factory_(factories.second),
       use_managed_rewrite_drivers_(false),
@@ -277,7 +281,7 @@ void RewriteTestBase::ServeResourceFromManyContextsWithUA(
 
 TestRewriteDriverFactory* RewriteTestBase::MakeTestFactory() {
   return new TestRewriteDriverFactory(GTestTempDir(), &mock_url_fetcher_,
-                                      &mock_distributed_fetcher_);
+                                      &test_distributed_fetcher_);
 }
 
 // Test that a resource can be served from a new server that has not yet
@@ -819,6 +823,8 @@ void RewriteTestBase::ClearStats() {
   }
   counting_url_async_fetcher()->Clear();
   counting_distributed_fetcher()->Clear();
+  other_factory_->counting_url_async_fetcher()->Clear();
+  other_factory_->counting_distributed_async_fetcher()->Clear();
   file_system()->ClearStats();
   rewrite_driver()->set_request_context(CreateRequestContext());
 }
@@ -826,6 +832,8 @@ void RewriteTestBase::ClearStats() {
 void RewriteTestBase::ClearRewriteDriver() {
   rewrite_driver()->Clear();
   rewrite_driver()->set_request_context(CreateRequestContext());
+  other_rewrite_driver()->Clear();
+  other_rewrite_driver()->set_request_context(CreateRequestContext());
 }
 
 void RewriteTestBase::SetCacheDelayUs(int64 delay_us) {
@@ -936,6 +944,13 @@ void RewriteTestBase::SetMimetype(const StringPiece& mimetype) {
   rewrite_driver()->set_response_headers_ptr(&response_headers_);
   response_headers_.Add(HttpAttributes::kContentType, mimetype);
   response_headers_.ComputeCaching();
+}
+
+void RewriteTestBase::SetupSharedCache() {
+  other_server_context_->set_http_cache(
+      new HTTPCache(factory_->delay_cache(), factory_->timer(),
+                    factory_->hasher(), factory_->statistics()));
+  other_server_context_->set_metadata_cache(factory_->delay_cache());
 }
 
 void RewriteTestBase::CheckFetchFromHttpCache(

@@ -51,6 +51,7 @@ class RewriteDriver;
 class RewriteFilter;
 class RewriteOptions;
 class Scheduler;
+class TestDistributedFetcher;
 class ThreadsafeCache;
 class Timer;
 class UrlAsyncFetcher;
@@ -97,7 +98,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
 
   TestRewriteDriverFactory(const StringPiece& temp_dir,
                            MockUrlFetcher* mock_fetcher,
-                           MockUrlFetcher* mock_distributed_fetcher);
+                           TestDistributedFetcher* test_distributed_fetcher);
   virtual ~TestRewriteDriverFactory();
 
   DelayCache* delay_cache() { return delay_cache_; }
@@ -213,9 +214,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<LRUCache> lru_cache_;
   UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;
-  MockUrlFetcher* mock_distributed_fetcher_;
+  TestDistributedFetcher* test_distributed_fetcher_;
   scoped_ptr<FakeUrlAsyncFetcher> mock_url_async_fetcher_;
-  scoped_ptr<FakeUrlAsyncFetcher> mock_distributed_async_fetcher_;
   CountingUrlAsyncFetcher* counting_url_async_fetcher_;
   CountingUrlAsyncFetcher* counting_distributed_async_fetcher_;
   scoped_ptr<WaitUrlAsyncFetcher> wait_url_async_fetcher_;

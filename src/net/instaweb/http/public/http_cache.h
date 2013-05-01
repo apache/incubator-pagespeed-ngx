@@ -56,8 +56,8 @@ class HTTPCache {
   // The prefix used for Etags.
   static const char kEtagPrefix[];
 
-  // Format that is used while generating Etags.
-  static const char kEtagFormat[];
+  // Function to format etags.
+  static GoogleString FormatEtag(StringPiece hash);
 
   // Does not take ownership of any inputs.
   HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,

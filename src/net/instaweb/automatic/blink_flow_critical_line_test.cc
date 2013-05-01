@@ -74,6 +74,7 @@ class AbstractMutex;
 class Function;
 class MessageHandler;
 class RewriteDriverFactory;
+class TestDistributedFetcher;
 
 namespace {
 
@@ -487,10 +488,10 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
 
 class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
  public:
-  explicit CustomRewriteDriverFactory(MockUrlFetcher* url_fetcher,
-                                      MockUrlFetcher* distributed_fetcher)
-      : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
-                                 distributed_fetcher) {
+  explicit CustomRewriteDriverFactory(
+      MockUrlFetcher* url_fetcher, TestDistributedFetcher* distributed_fetcher)
+      : TestRewriteDriverFactory(
+            GTestTempDir(), url_fetcher, distributed_fetcher) {
     InitializeDefaultOptions();
   }
 
@@ -592,9 +593,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       : RewriteTestBase(
             std::make_pair(
                 new CustomRewriteDriverFactory(&mock_url_fetcher_,
-                                               &mock_distributed_fetcher_),
+                                               &test_distributed_fetcher_),
                 new CustomRewriteDriverFactory(&mock_url_fetcher_,
-                                               &mock_distributed_fetcher_))),
+                                               &test_distributed_fetcher_))),
         blink_output_(StrCat(StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"), kBlinkOutputSuffix)),
         blink_output_with_extra_non_cacheable_(StrCat(StringPrintf(

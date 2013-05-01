@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -83,7 +84,6 @@ class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
 class RewriteTestBase : public RewriteOptionsTestBase {
  public:
   static const char kTestData[];    // Testdata directory.
-
   // Specifies which server should be "active" in that rewrites and fetches
   // will use it. The data members affected are those returned by:
   // - factory() / other_factory()
@@ -436,8 +436,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
-  MockUrlFetcher* mock_distributed_fetcher() {
-    return &mock_distributed_fetcher_;
+  TestDistributedFetcher* test_distributed_fetcher() {
+    return &test_distributed_fetcher_;
   }
   Hasher* hasher() { return server_context_->hasher(); }
   DelayCache* delay_cache() { return factory_->delay_cache(); }
@@ -564,6 +564,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     factory()->SetupCohort(cache, cohort);
   }
 
+  // Configure the other_server_context_ to use the same LRU cache as the
+  // primary server context.
+  void SetupSharedCache();
+
   // Returns a new mock property page for the page property cache.
   MockPropertyPage* NewMockPage(const StringPiece& key) {
     return new MockPropertyPage(
@@ -645,7 +649,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // The mock fetchers & stats are global across all Factories used in the
   // tests.
   MockUrlFetcher mock_url_fetcher_;
-  MockUrlFetcher mock_distributed_fetcher_;
+  TestDistributedFetcher test_distributed_fetcher_;
   scoped_ptr<Statistics> statistics_;
 
   // We have two independent RewriteDrivers representing two completely
@@ -669,6 +673,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   RewriteOptions* other_options_;  // owned by other_rewrite_driver_.
   UrlSegmentEncoder default_encoder_;
   ResponseHeaders response_headers_;
+  const GoogleString kEtag0;  // Etag with a 0 hash.
 };
 
 }  // namespace net_instaweb

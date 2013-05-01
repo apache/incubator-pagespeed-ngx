@@ -45,6 +45,7 @@ namespace net_instaweb {
 
 class CacheInterface;
 class MockUrlFetcher;
+class TestDistributedFetcher;
 
 namespace {
 
@@ -59,7 +60,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
  public:
   static std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*>
       MakeFactories(MockUrlFetcher* mock_url_fetcher,
-                    MockUrlFetcher* mock_distributed_fetcher) {
+                    TestDistributedFetcher* mock_distributed_fetcher) {
     CustomRewriteDriverFactory* factory1 = new CustomRewriteDriverFactory(
         mock_url_fetcher, mock_distributed_fetcher,
         true /* Use write through cache */, 1000);
@@ -96,7 +97,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
 
  private:
   CustomRewriteDriverFactory(MockUrlFetcher* url_fetcher,
-                             MockUrlFetcher* distributed_fetcher,
+                             TestDistributedFetcher* distributed_fetcher,
                              bool use_write_through_cache,
                              int cache_size)
       : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
@@ -110,7 +111,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
   }
 
   CustomRewriteDriverFactory(MockUrlFetcher* url_fetcher,
-                             MockUrlFetcher* distributed_fetcher,
+                             TestDistributedFetcher* distributed_fetcher,
                              bool use_write_through_cache,
                              LRUCache* cache1, LRUCache* cache2)
       : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
@@ -138,7 +139,7 @@ class TwoLevelCacheTest : public RewriteContextTestBase {
       : RewriteContextTestBase(
           CustomRewriteDriverFactory::MakeFactories(
               &mock_url_fetcher_,
-              &mock_distributed_fetcher_)) {}
+              &test_distributed_fetcher_)) {}
 
   // These must be run prior to the calls to 'new CustomRewriteDriverFactory'
   // in the constructor initializer above.  Thus the calls to Initialize() in
