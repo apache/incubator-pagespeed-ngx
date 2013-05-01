@@ -103,4 +103,14 @@ TEST_F(ElideAttributesFilterTest, DoNotRemoveScriptTypeInHtml4) {
                     "</script></head><body></body>");
 }
 
+// Wordpress uses CSS selectors on type=text attributes in inputs, so don't
+// remove it.
+TEST_F(ElideAttributesFilterTest, DoNotRemoveTypeAttribute) {
+  SetDoctype("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" "
+             "\"http://www.w3.org/TR/html4/strict.dtd\">");
+  ValidateNoChanges("do_not_remove_type_attribute_from_input",
+                    "<head></head><body><form>"
+                    "<input type=text></form></body>");
+}
+
 }  // namespace net_instaweb

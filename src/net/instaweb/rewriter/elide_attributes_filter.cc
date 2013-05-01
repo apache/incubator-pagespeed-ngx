@@ -167,9 +167,6 @@ const TagAttrValue kDefaultList[] = {
   //    http://www.w3.org/TR/html5/obsolete.html#non-conforming-features
   {HtmlName::kIframe, HtmlName::kFrameborder, "1", false},
   {HtmlName::kIframe, HtmlName::kScrolling, "auto", false},
-  // 4: http://www.w3.org/TR/html4/interact/forms.html#h-17.4
-  // 5: http://www.w3.org/TR/html5/the-input-element.html#the-input-element
-  {HtmlName::kInput, HtmlName::kType, "text", false},
   // 4: The <keygen> tag does not exist in HTML 4.
   // 5: http://www.w3.org/TR/html5/the-button-element.html#the-keygen-element
   {HtmlName::kKeygen, HtmlName::kKeytype, "rsa", true},

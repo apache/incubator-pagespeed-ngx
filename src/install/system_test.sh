@@ -222,7 +222,6 @@ check [ $(fgrep -c '<head>' $FETCHED) = 1 ]
 test_filter elide_attributes removes boolean and default attributes.
 check run_wget_with_args $URL
 check_not fgrep "disabled=" $FETCHED   # boolean, should not find
-check_not fgrep "type=" $FETCHED       # default, should not find
 
 test_filter extend_cache_images rewrites an image tag.
 URL=$EXAMPLE_ROOT/extend_cache.html?ModPagespeedFilters=extend_cache_images
