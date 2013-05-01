@@ -17,13 +17,11 @@
 # Author: jefftk@google.com (Jeff Kaufman)
 #
 # Usage:
-#   scripts/copy_includes.sh /path/to/mod_pagespeed/src
+#   scripts/prepare_psol.sh /path/to/mod_pagespeed/src
 #
-# Must be run from ngx_pagespeed checkout
-#
-# Copies headers and a few source files from a depot_tools (glient) checkout
-# into psol/include, deleting and recreating it.  Along with creating binaries,
-# this is a step in preparing psol.tar.gz for distribution.
+# Creates a directory psol/ and copies headers and a few source files from a
+# depot_tools (glient) checkout into psol/include.  Along with creating
+# binaries, this is a step in preparing psol.tar.gz for distribution.
 #
 
 set -u  # check for undefined variables
@@ -47,8 +45,12 @@ if [ "$(basename "$(dirname "$MOD_PAGESPEED_SRC")")/$( \
   exit 1
 fi
 
+if [ -e psol ] ; then
+  echo "A psol/ directory already exists.  Move it somewhere else and rerun."
+  exit 1
+fi
+mkdir psol/
 # Copy over the .h files, plus a few selected .cc and .c files.
-rm -r psol/include/
 rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --exclude=".svn" \
   --exclude=".git" \
@@ -67,13 +69,17 @@ rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --include="sparse_hash_set" \
   --include="sparsetable" \
   --exclude='*'
+mkdir -p psol/lib/Debug/linux/ia32
+mkdir -p psol/lib/Debug/linux/x64
+mkdir -p psol/lib/Release/linux/ia32
+mkdir -p psol/lib/Release/linux/x64
 
 # Log that we did this.
 SVN_REVISION="$(svn info $MOD_PAGESPEED_SRC | grep Revision | awk '{print $2}')"
 SVN_TAG="$(svn info $MOD_PAGESPEED_SRC | grep URL |  awk -F/ '{print $(NF-1)}')"
 
 DATE="$(date +%F)"
-echo "${DATE}: Updated from mod_pagespeed ${SVN_TAG}@r${SVN_REVISION} ($USER)" \
+echo "${DATE}: Copied from mod_pagespeed ${SVN_TAG}@r${SVN_REVISION} ($USER)" \
   >> psol/include_history.txt
 
 echo
