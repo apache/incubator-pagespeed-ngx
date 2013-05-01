@@ -27,89 +27,31 @@
 
 namespace net_instaweb {
 
-NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
-                           NgxServerContext* server_context,
-                           const RequestContextPtr& request_ctx)
+NgxBaseFetch::NgxBaseFetch(const RequestContextPtr& request_ctx,
+             NgxServerContext* server_context,
+             RequestHeaders *request_headers,
+             ngx_http_request_t* r, int pipe_fd)
     : AsyncFetch(request_ctx),
       request_(r),
       server_context_(server_context),
       done_called_(false),
       last_buf_sent_(false),
       pipe_fd_(pipe_fd),
-      references_(2) {
-  if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
-  PopulateRequestHeaders();
+      references_(2),
+      mutex_(server_context->thread_system()->NewMutex()) {
+
+  SetRequestHeadersTakingOwnership(request_headers);
 }
 
-NgxBaseFetch::~NgxBaseFetch() {
-  pthread_mutex_destroy(&mutex_);
-}
-
-void NgxBaseFetch::Lock() {
-  pthread_mutex_lock(&mutex_);
-}
-
-void NgxBaseFetch::Unlock() {
-  pthread_mutex_unlock(&mutex_);
-}
-
-void NgxBaseFetch::PopulateRequestHeaders() {
-  CopyHeadersFromTable<RequestHeaders>(&request_->headers_in.headers,
-                                       request_headers());
-}
+NgxBaseFetch::~NgxBaseFetch() {}
 
 void NgxBaseFetch::PopulateResponseHeaders() {
-  CopyHeadersFromTable<ResponseHeaders>(&request_->headers_out.headers,
-                                        response_headers());
-
-  response_headers()->set_status_code(request_->headers_out.status);
-
-  // Manually copy over the content type because it's not included in
-  // request_->headers_out.headers.
-  response_headers()->Add(
-      HttpAttributes::kContentType,
-      ngx_psol::str_to_string_piece(request_->headers_out.content_type));
-
-  // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
-  response_headers()->ComputeCaching();
+  ngx_psol::copy_response_headers_from_ngx(request_, response_headers());
 }
-
-template<class HeadersT>
-void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
-                                        HeadersT* headers_to) {
-  // http_version is the version number of protocol; 1.1 = 1001. See
-  // NGX_HTTP_VERSION_* in ngx_http_request.h
-  headers_to->set_major_version(request_->http_version / 1000);
-  headers_to->set_minor_version(request_->http_version % 1000);
-
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &headers_from->part;
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-
-    StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
-    StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
-
-    headers_to->Add(key, value);
-  }
-}
-
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
                                MessageHandler* handler) {
-  Lock();
+  ScopedMutex scoped_mutex(mutex_.get());
   buffer_.append(sp.data(), sp.size());
-  Unlock();
   return true;
 }
 
@@ -138,9 +80,8 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 // and Done() such that we're sending an empty buffer with last_buf set, which I
 // think nginx will reject.
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
-  Lock();
+  ScopedMutex scoped_mutex(mutex_.get());
   ngx_int_t rc = CopyBufferToNginx(link_ptr);
-  Unlock();
 
   if (rc == NGX_DECLINED) {
     *link_ptr = NULL;
@@ -150,9 +91,8 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 }
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
-  Lock();
+  ScopedMutex scoped_mutex(mutex_.get());
   const ResponseHeaders* pagespeed_headers = response_headers();
-  Unlock();
   return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
 }
 
@@ -189,27 +129,18 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void NgxBaseFetch::Release() {
-  DecrefAndDeleteIfUnreferenced();
-}
-
-void NgxBaseFetch::DecrefAndDeleteIfUnreferenced() {
-  // Creates a full memory barrier.
-  if (__sync_add_and_fetch(&references_, -1) == 0) {
+  if (references_.BarrierIncrement(-1) == 0) {
     delete this;
   }
 }
-
 void NgxBaseFetch::HandleDone(bool success) {
   // TODO(jefftk): it's possible that instead of locking here we can just modify
   // CopyBufferToNginx to only read done_called_ once.
-  Lock();
+  ScopedMutex scoped_mutex(mutex_.get());
   done_called_ = true;
-  Unlock();
-
   close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
   pipe_fd_ = -1;
-
-  DecrefAndDeleteIfUnreferenced();
+  Release();
 }
 
 }  // namespace net_instaweb

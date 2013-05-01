@@ -181,6 +181,62 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
+// modify from NgxBaseFetch::CopyHeadersFromTable()
+namespace {
+template<class Headers>
+void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  const ngx_list_part_t* part = &from.part;
+  const ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
+    StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
+
+    to->Add(key, value);
+  }
+}
+}  // namespace
+
+// modify from NgxBaseFetch::PopulateResponseHeaders()
+void copy_response_headers_from_ngx(const ngx_http_request_t *r,
+        net_instaweb::ResponseHeaders *headers) {
+  headers->set_major_version(r->http_version / 1000);
+  headers->set_minor_version(r->http_version % 1000);
+  copy_headers_from_table(r->headers_out.headers, headers);
+
+  headers->set_status_code(r->headers_out.status);
+
+  // Manually copy over the content type because it's not included in
+  // request_->headers_out.headers.
+  headers->Add(net_instaweb::HttpAttributes::kContentType,
+              ngx_psol::str_to_string_piece(r->headers_out.content_type));
+
+  // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
+  headers->ComputeCaching();
+}
+
+// modify from NgxBaseFetch::PopulateRequestHeaders()
+void copy_request_headers_from_ngx(const ngx_http_request_t *r,
+                                   net_instaweb::RequestHeaders *headers) {
+  // TODO(chaizhenhua): only allow RewriteDriver::kPassThroughRequestAttributes?
+  headers->set_major_version(r->http_version / 1000);
+  headers->set_minor_version(r->http_version % 1000);
+  copy_headers_from_table(r->headers_in.headers, headers);
+}
+
+
 ngx_int_t copy_response_headers_to_ngx(
     ngx_http_request_t* r,
     const net_instaweb::ResponseHeaders& pagespeed_headers) {
@@ -757,7 +813,7 @@ void ps_release_request_context(void* data) {
 
 // Tell nginx whether we have network activity we're waiting for so that it sets
 // a write handler.  See src/http/ngx_http_request.c:2083.
-void ps_set_buffered(ngx_http_request_t* r, bool on) {
+inline void ps_set_buffered(ngx_http_request_t* r, bool on) {
   if (on) {
     r->buffered |= NGX_HTTP_PAGESPEED_BUFFERED;
   } else {
@@ -867,7 +923,7 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
 
 // Get the context for this request.  ps_create_request_context
 // should already have been called to create it.
-ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
+inline ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
   return static_cast<ps_request_ctx_t*>(
       ngx_http_get_module_ctx(r, ngx_pagespeed));
 }
@@ -1058,15 +1114,15 @@ ngx_int_t ps_create_connection(ps_request_ctx_t* ctx) {
 
 // Populate cfg_* with configuration information for this
 // request.  Thin wrappers around ngx_http_get_module_*_conf and cast.
-ps_main_conf_t* ps_get_main_config(ngx_http_request_t* r) {
+inline ps_main_conf_t* ps_get_main_config(ngx_http_request_t* r) {
   return static_cast<ps_main_conf_t*>(
       ngx_http_get_module_main_conf(r, ngx_pagespeed));
 }
-ps_srv_conf_t* ps_get_srv_config(ngx_http_request_t* r) {
+inline ps_srv_conf_t* ps_get_srv_config(ngx_http_request_t* r) {
   return static_cast<ps_srv_conf_t*>(
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 }
-ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
+inline ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
   return static_cast<ps_loc_conf_t*>(
       ngx_http_get_module_loc_conf(r, ngx_pagespeed));
 }
@@ -1074,7 +1130,7 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 // Wrapper around GetQueryOptions()
 net_instaweb::RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
-    ps_request_ctx_t* ctx,
+    net_instaweb::RequestHeaders* request_headers,
     ps_srv_conf_t* cfg_s,
     net_instaweb::GoogleUrl* url) {
   // Stripping ModPagespeed query params before the property cache lookup to
@@ -1083,7 +1139,7 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
   // Sets option from request headers and url.
   net_instaweb::ServerContext::OptionsBoolPair query_options_success =
       cfg_s->server_context->GetQueryOptions(
-          url, ctx->base_fetch->request_headers(), NULL);
+          url, request_headers, NULL);
   bool get_query_options_success = query_options_success.second;
   if (!get_query_options_success) {
     // Failed to parse query params or request headers.  Treat this as if there
@@ -1105,13 +1161,13 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
 //
 // See InstawebContext::SetFuriousStateAndCookie()
 bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
-                                     ps_request_ctx_t* ctx,
-                                     net_instaweb::RewriteOptions* options,
-                                     const StringPiece& host) {
+                        net_instaweb::RequestHeaders* request_headers,
+                        net_instaweb::RewriteOptions* options,
+                        const StringPiece& host) {
   CHECK(options->running_furious());
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   bool need_cookie = cfg_s->server_context->furious_matcher()->
-      ClassifyIntoExperiment(*ctx->base_fetch->request_headers(), options);
+      ClassifyIntoExperiment(*request_headers, options);
   if (need_cookie && host.length() > 0) {
     int64 time_now_us = apr_time_now();
     int64 expiration_time_ms = (time_now_us/1000 +
@@ -1155,7 +1211,7 @@ bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
 // the caller takes ownership.  If the only applicable options are global,
 // set options to NULL so we can use server_context->global_options().
 bool ps_determine_options(ngx_http_request_t* r,
-                          ps_request_ctx_t* ctx,
+                          net_instaweb::RequestHeaders* request_headers,
                           net_instaweb::RewriteOptions** options,
                           net_instaweb::GoogleUrl* url) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -1172,7 +1228,7 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   net_instaweb::RewriteOptions* request_options =
-      ps_determine_request_options(r, ctx, cfg_s, url);
+      ps_determine_request_options(r, request_headers, cfg_s, url);
 
   // Because the caller takes memory ownership of any options we return, the
   // only situation in which we can avoid allocating a new RewriteOptions is if
@@ -1197,7 +1253,8 @@ bool ps_determine_options(ngx_http_request_t* r,
     (*options)->Merge(*request_options);
     delete request_options;
   } else if ((*options)->running_furious()) {
-    bool ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
+    bool ok = ps_set_furious_state_and_cookie(
+                  r, request_headers, *options, url->Host());
     if (!ok) {
       if (*options != NULL) {
         delete *options;
@@ -1494,6 +1551,46 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kNotUnderstood;
   }
 
+  // If null, that means use global options.
+  net_instaweb::RewriteOptions *options = NULL;
+
+  scoped_ptr<net_instaweb::RequestHeaders> request_headers(
+                                              new net_instaweb::RequestHeaders);
+
+  copy_request_headers_from_ngx(r, request_headers.get());
+
+  if ( !ps_determine_options(r, request_headers.get(), &options, &url) ) {
+    return CreateRequestContext::kError;
+  }
+
+  // Take the ownership of custom_options
+  scoped_ptr<net_instaweb::RewriteOptions> custom_options(options);
+
+  if (options == NULL) {
+    options = cfg_s->server_context->global_options();
+  }
+
+  if (!options->enabled()) {
+    // Disabled via query params or request headers.
+    return CreateRequestContext::kPagespeedDisabled;
+  }
+
+  // ps_determine_options modified url, removing any ModPagespeedFoo=Bar query
+  // parameters.  Keep url_string in sync with url.
+  url.Spec().CopyToString(&url_string);
+
+  if (options->respect_x_forwarded_proto()) {
+    bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
+    if (modified_url) {
+      url.Reset(url_string);
+      CHECK(url.is_valid()) << "The output of ps_apply_x_forwarded_proto should"
+                            << " always be a valid url because it only changes"
+                            << " the scheme between http and https.";
+    }
+  }
+
+
+  // create pipe for thread comm
   int file_descriptors[2];
   int rc = pipe(file_descriptors);
   if (rc != 0) {
@@ -1504,12 +1601,16 @@ CreateRequestContext::Response ps_create_request_context(
   if (ngx_nonblocking(file_descriptors[0]) == -1) {
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
                   ngx_nonblocking_n " pipe[0] failed");
+    close(file_descriptors[0]);
+    close(file_descriptors[1]);
     return CreateRequestContext::kError;
   }
 
   if (ngx_nonblocking(file_descriptors[1]) == -1) {
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
                   ngx_nonblocking_n " pipe[1] failed");
+    close(file_descriptors[0]);
+    close(file_descriptors[1]);
     return CreateRequestContext::kError;
   }
 
@@ -1531,54 +1632,25 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kError;
   }
 
+  // Set up a cleanup handler on the request.
+  ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
+  if (cleanup == NULL) {
+    ps_release_request_context(ctx);
+    return CreateRequestContext::kError;
+  }
+  cleanup->handler = ps_release_request_context;
+  cleanup->data = ctx;
+  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
+
   // Handles its own deletion.  We need to call Release() when we're done with
   // it, and call Done() on the associated parent (Proxy or Resource) fetch.  If
   // we fail before creating the associated fetch then we need to call Done() on
   // the BaseFetch ourselves.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
-      r, file_descriptors[1],
-      cfg_s->server_context,
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
           cfg_s->server_context->thread_system()->NewMutex(),
-          cfg_s->server_context->timer(), r)));
-
-  // If null, that means use global options.
-  net_instaweb::RewriteOptions* custom_options = NULL;
-  bool ok = ps_determine_options(r, ctx, &custom_options, &url);
-  if (!ok) {
-    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
-    ps_release_request_context(ctx);
-    return CreateRequestContext::kError;
-  }
-
-  // ps_determine_options modified url, removing any ModPagespeedFoo=Bar query
-  // parameters.  Keep url_string in sync with url.
-  url.Spec().CopyToString(&url_string);
-
-  net_instaweb::RewriteOptions* options;
-  if (custom_options == NULL) {
-    options = cfg_s->server_context->global_options();
-  } else {
-    options = custom_options;
-  }
-
-  if (!options->enabled()) {
-    // Disabled via query params or request headers.
-
-    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
-    ps_release_request_context(ctx);
-    return CreateRequestContext::kPagespeedDisabled;
-  }
-
-  if (options->respect_x_forwarded_proto()) {
-    bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
-    if (modified_url) {
-      url.Reset(url_string);
-      CHECK(url.is_valid()) << "The output of ps_apply_x_forwarded_proto should"
-                            << " always be a valid url because it only changes"
-                            << " the scheme between http and https.";
-    }
-  }
+          cfg_s->server_context->timer(), r)),
+      cfg_s->server_context, request_headers.release(), r, file_descriptors[1]);
 
   bool page_callback_added = false;
   scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
@@ -1586,25 +1658,25 @@ CreateRequestContext::Response ps_create_request_context(
           cfg_s->server_context,
           is_resource_fetch, url, options, ctx->base_fetch,
           &page_callback_added));
-
+  (void) page_callback_added;
   if (is_resource_fetch) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
     net_instaweb::ResourceFetch::Start(
-        url, custom_options /* null if there aren't custom options */,
+        url, custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
   } else {
     // If we don't have custom options we can use NewRewriteDriver which reuses
     // rewrite drivers and so is faster because there's no wait to construct
     // them.  Otherwise we have to build a new one every time.
 
-    if (custom_options == NULL) {
+    if (custom_options.get() == NULL) {
       ctx->driver = cfg_s->server_context->NewRewriteDriver(
           ctx->base_fetch->request_context());
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
       ctx->driver = cfg_s->server_context->NewCustomRewriteDriver(
-          custom_options, ctx->base_fetch->request_context());
+          custom_options.release(), ctx->base_fetch->request_context());
     }
 
     // TODO(jefftk): FlushEarlyFlow would go here.
@@ -1616,18 +1688,6 @@ CreateRequestContext::Response ps_create_request_context(
         property_callback.release(),
         NULL /* original_content_fetch */);
   }
-
-
-
-  // Set up a cleanup handler on the request.
-  ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
-  if (cleanup == NULL) {
-    ps_release_request_context(ctx);
-    return CreateRequestContext::kError;
-  }
-  cleanup->handler = ps_release_request_context;
-  cleanup->data = ctx;
-  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
 
   return CreateRequestContext::kOk;
 }
