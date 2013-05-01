@@ -154,9 +154,8 @@ class BeaconPropertyCallback : public PropertyPage {
             RewriteDriver::kBeaconCohort);
 
     server_context_->critical_images_finder()->UpdateCriticalImagesCacheEntry(
-        this, server_context_->page_property_cache(),
-        html_critical_images_set_.release(),
-        css_critical_images_set_.release());
+        html_critical_images_set_.get(), css_critical_images_set_.get(),
+        this, server_context_->page_property_cache());
     if (critical_css_selector_set_ != NULL) {
       server_context_->critical_selector_finder()->
           WriteCriticalSelectorsToPropertyCache(
@@ -171,10 +170,6 @@ class BeaconPropertyCallback : public PropertyPage {
 
  private:
   ServerContext* server_context_;
-  // Note that currently CriticalImagesFinder::UpdateCriticalImagesCacheEntry
-  // will take onwership of the StringSet* passed to it, while
-  // CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache does not.
-  // There is a TODO outstanding in CriticalImagesFinder to not take ownership.
   scoped_ptr<StringSet> html_critical_images_set_;
   scoped_ptr<StringSet> css_critical_images_set_;
   scoped_ptr<StringSet> critical_css_selector_set_;

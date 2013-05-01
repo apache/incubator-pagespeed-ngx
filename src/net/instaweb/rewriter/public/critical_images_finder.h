@@ -40,7 +40,7 @@ class Variable;
 // TODO(jud): Instead of a separate CriticalImagesInfo that gets populated from
 // the CriticalImages protobuf value, we could just store the protobuf value in
 // RewriteDriver and eliminate CriticalImagesInfo. Revisit this when updating
-// this class to support multiple beacon responese.
+// this class to support multiple beacon response.
 struct CriticalImagesInfo {
   StringSet html_critical_images;
   StringSet css_critical_images;
@@ -115,26 +115,24 @@ class CriticalImagesFinder {
   // is located in.
   virtual const char* GetCriticalImagesCohort() const = 0;
 
-  // Updates the critical images property cache entry. This will take the
-  // ownership of the critical_images_set. Returns whether the update succeeded
-  // or not. Note that this base implementation does not call WriteCohort. This
-  // should be called in the subclass if the cohort is not written elsewhere.
+  // Updates the critical images property cache entry. Returns whether the
+  // update succeeded or not. Note that this base implementation does not call
+  // WriteCohort. This should be called in the subclass if the cohort is not
+  // written elsewhere. NULL is permitted for the critical image sets if only
+  // one of the html or css sets is being updated, but not the other.
   bool UpdateCriticalImagesCacheEntryFromDriver(
-      RewriteDriver* driver,
-      StringSet* critical_images_set,
-      StringSet* css_critical_images_set);
+      const StringSet* html_critical_images_set,
+      const StringSet* css_critical_images_set,
+      RewriteDriver* driver);
 
   // Alternative interface to update the critical images cache entry. This is
   // useful in contexts like the beacon handler where the RewriteDriver for the
-  // original request no longer exists. This will take ownership of
-  // critical_images_set.
-  // TODO(jud): Modify to not take ownership of the sets. This will make the
-  // memory management of BeaconPropertyCallback clearer.
+  // original request no longer exists.
   bool UpdateCriticalImagesCacheEntry(
+      const StringSet* html_critical_images_set,
+      const StringSet* css_critical_images_set,
       AbstractPropertyPage* page,
-      PropertyCache* page_property_cache,
-      StringSet* critical_images_set,
-      StringSet* css_critical_images_set);
+      PropertyCache* page_property_cache);
 
  protected:
   // Gets critical images if present in the property cache and updates the

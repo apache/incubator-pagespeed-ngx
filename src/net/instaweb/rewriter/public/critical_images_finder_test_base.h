@@ -27,18 +27,16 @@
 namespace net_instaweb {
 
 class PropertyValue;
-class RewriteDriver;
 
 class CriticalImagesFinderTestBase : public RewriteTestBase {
  public:
   virtual CriticalImagesFinder* finder() = 0;
 
   bool CallUpdateCriticalImagesCacheEntry(
-      RewriteDriver* driver,
-      StringSet* critical_images_set,
-      StringSet* css_critical_images_set) {
+      const StringSet* critical_images_set,
+      const StringSet* css_critical_images_set) {
     return finder()->UpdateCriticalImagesCacheEntryFromDriver(
-        driver, critical_images_set, css_critical_images_set);
+        critical_images_set, css_critical_images_set, rewrite_driver());
   }
 
  protected:

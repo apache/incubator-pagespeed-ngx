@@ -2325,10 +2325,9 @@ void RewriteDriver::LogStats() {
 }
 
 void RewriteDriver::FinishParse() {
-  HtmlParse::FinishParse();
-  LogStats();
-  WriteClientStateIntoPropertyCache();
-  Cleanup();
+  SchedulerBlockingFunction wait(scheduler_);
+  FinishParseAsync(&wait);
+  wait.Block();
 }
 
 void RewriteDriver::FinishParseAsync(Function* callback) {

@@ -47,14 +47,17 @@ class Callback1 {
   virtual void Run(A1) = 0;
 };
 
+// Naming convention is:
+//  (Member)?Callback_<num-pre-bound-args>_<num-runtime-args>
+
 // TODO(gee): Fill out other useful specializations.
 template<class C, class A1>
-class _MemberCallback0_1 : public Callback1<A1> {
+class _MemberCallback_0_1 : public Callback1<A1> {
  public:
   typedef void (C::*MemberSignature)(A1);
   typedef Callback1<A1> base;
 
-  _MemberCallback0_1(C* object, MemberSignature member)
+  _MemberCallback_0_1(C* object, MemberSignature member)
       : object_(object),
         member_(member) {
   }
@@ -70,9 +73,52 @@ class _MemberCallback0_1 : public Callback1<A1> {
 };
 
 template <class T1, class T2, class A1>
-typename _MemberCallback0_1<T1, A1>::base*
+typename _MemberCallback_0_1<T1, A1>::base*
 NewCallback(T1* obj, void (T2::*member)(A1)) {
-  return new _MemberCallback0_1<T1, A1>(obj, member);
+  return new _MemberCallback_0_1<T1, A1>(obj, member);
+}
+
+// Specified by TR1 [4.7.2] Reference modifications.
+template<typename T> struct remove_reference { typedef T type; };
+template<typename T> struct remove_reference<T&> { typedef T type; };
+
+template <typename T>
+struct ConstRef {
+  typedef typename remove_reference<T>::type base_type;
+  typedef const base_type& type;
+};
+
+template <class T, class P1, class A1>
+class _MemberCallback_1_1 : public Callback1<A1> {
+ public:
+  typedef Callback1<A1> base;
+  typedef void (T::*MemberSignature)(P1, A1);
+
+ private:
+  T* object_;
+  MemberSignature member_;
+  typename remove_reference<P1>::type p1_;
+
+ public:
+  _MemberCallback_1_1(T* object,
+                      MemberSignature member,
+                      typename ConstRef<P1>::type p1)
+      : object_(object),
+        member_(member),
+        p1_(p1) { }
+
+  virtual void Run(A1 a1) {
+    (object_->*member_)(p1_, a1);
+    delete this;
+  }
+};
+
+template <class T1, class T2, class P1, class A1>
+inline typename _MemberCallback_1_1<T1, P1, A1>::base*
+NewCallback(T1* obj,
+            void (T2::*member)(P1, A1),
+            typename ConstRef<P1>::type p1) {
+  return new _MemberCallback_1_1<T1, P1, A1>(obj, member, p1);
 }
 
 }  // namespace net_instaweb

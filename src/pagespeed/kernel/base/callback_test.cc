@@ -27,7 +27,11 @@ class TestClass {
 
   void Method1(int x) { x_ = x; }
 
-  void Method1ConstArg(const int& x) { x_ = 2 * x; }
+  void Method1ConstRefArg(const int& x) { x_ = 2 * x; }
+
+  void Method2(int a, int b) { x_ = a + b; }
+
+  void Method2ConstRefArg(const int& a, int b) { x_ = a + b; }
 
   int x() const { return x_; }
 
@@ -35,7 +39,7 @@ class TestClass {
   int x_;
 };
 
-TEST(CallbackTest, MemberCallback0_1) {
+TEST(CallbackTest, MemberCallback_0_1) {
   TestClass test_class;
   Callback1<int>* cb = NewCallback(&test_class, &TestClass::Method1);
   EXPECT_EQ(0, test_class.x());
@@ -43,13 +47,37 @@ TEST(CallbackTest, MemberCallback0_1) {
   EXPECT_EQ(100, test_class.x());
 }
 
-TEST(CallbackTest, MemberCallback0_1ConstArg) {
+TEST(CallbackTest, MemberCallback_0_1_ConstRefArg) {
   TestClass test_class;
   Callback1<const int&>* cb = NewCallback(&test_class,
-                                   &TestClass::Method1ConstArg);
+                                   &TestClass::Method1ConstRefArg);
   EXPECT_EQ(0, test_class.x());
   cb->Run(100);
   EXPECT_EQ(200, test_class.x());
+}
+
+TEST(CallbackTest, MemberCallback_1_1) {
+  TestClass test_class;
+  Callback1<int>* cb = NewCallback(&test_class, &TestClass::Method2, 1);
+  EXPECT_EQ(0, test_class.x());
+  cb->Run(2);
+  EXPECT_EQ(3, test_class.x());
+}
+
+TEST(CallbackTest, MemberCallback_1_1ConstRefArg) {
+  TestClass test_class;
+  int arg = 1;
+  Callback1<int>* cb = NewCallback(&test_class,
+                                   &TestClass::Method2ConstRefArg,
+                                   arg);
+  // Increment x.
+  ++arg;
+  EXPECT_EQ(2, arg);
+  EXPECT_EQ(0, test_class.x());
+  cb->Run(2);
+  // The callback should have the bound value of 1, even though it was passed
+  // by reference.
+  EXPECT_EQ(3, test_class.x());
 }
 
 }  // namespace
