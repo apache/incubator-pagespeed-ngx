@@ -2281,7 +2281,7 @@ ngx_int_t ps_messages_handler(
 }
 
 void ps_beacon_handler_helper(ngx_http_request_t* r,
-                                   StringPiece beacon_data) {
+                              StringPiece beacon_data) {
   ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "ps_beacon_handler_helper: beacon[%d] %*s",
                 beacon_data.size(),  beacon_data.size(),
@@ -2301,6 +2301,8 @@ void ps_beacon_handler_helper(ngx_http_request_t* r,
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
           cfg_s->server_context->thread_system()->NewMutex(),
           cfg_s->server_context->timer(), r)));
+
+  ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
 
   // TODO(jefftk): figure out how to insert Content-Length:0 as a response
   // header so wget doesn't hang.
