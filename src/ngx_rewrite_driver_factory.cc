@@ -239,9 +239,6 @@ void NgxRewriteDriverFactory::ShutDown() {
   if (!is_root_process_) {
     Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
     child_shutdown_count->Add(1);
-    message_handler()->Message(kInfo, "Shutting down ngx_pagespeed child");
-  } else {
-    message_handler()->Message(kInfo, "Shutting down ngx_pagespeed root");
   }
 
   RewriteDriverFactory::ShutDown();
@@ -250,8 +247,6 @@ void NgxRewriteDriverFactory::ShutDown() {
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
 
-  // TODO(oschaaf): enable this once the shared memory cleanup code
-  // supports our ordering of events during a configuration reload
   if (is_root_process_) {
     // Cleanup statistics.
     // TODO(morlovich): This looks dangerous with async.
