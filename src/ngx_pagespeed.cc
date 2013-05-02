@@ -222,6 +222,18 @@ ngx_int_t copy_response_headers_to_ngx(
       // content_type_lowcase if we leave it as null.
       headers_out->content_type_lowcase = NULL;
       continue;
+    // TODO(oschaaf): are there any other headers we should not try to
+    // copy here?
+    } else if (STR_EQ_LITERAL(name, "Connection")) {
+      continue;
+    } else if (STR_EQ_LITERAL(name, "Vary")) {
+      continue;
+    } else if (STR_EQ_LITERAL(name, "Keep-Alive")) {
+      continue;
+    } else if (STR_EQ_LITERAL(name, "Transfer-Encoding")) {
+      continue;
+    } else if (STR_EQ_LITERAL(name, "Server")) {
+      continue;
     }
 
     u_char* name_s = ngx_pstrdup(r->pool, &name);
