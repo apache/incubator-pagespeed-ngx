@@ -1535,19 +1535,22 @@ TEST_F(HtmlParseTestNoBody, InsertCommentFromFlushInLargeCharactersBlock) {
   SetupWriter();
   html_parse_.StartParse("http://test.com/blank_flush.html");
   html_parse_.ParseText("<style>bytes:");
+  // This should be inserted before <style>.
+  EXPECT_TRUE(html_parse_.InsertComment("FLUSH1"));
   html_parse_.Flush();
   html_parse_.ParseText(":more:");
   html_parse_.Flush();
   html_parse_.ParseText(":still more:");
-  html_parse_.InsertComment("FLUSH");
+  // We are inside a literal block, so it's not safe to insert a comment here.
+  // This should not show up in output_buffer_.
+  EXPECT_FALSE(html_parse_.InsertComment("FLUSH2"));
   html_parse_.Flush();
   html_parse_.ParseText(":final bytes:</style>");
+  EXPECT_TRUE(html_parse_.InsertComment("FLUSH3"));
   html_parse_.FinishParse();
 
-  // Note that the large comment block gets buffered by the Lexer and doesn't
-  // actually get Flushed until we finally see the </style>, so FLUSH comment
-  // gets inserted *before* all the bytes in the characters blocks.
-  EXPECT_EQ("<style><!--FLUSH-->bytes::more::still more::final bytes:</style>",
+  EXPECT_EQ("<!--FLUSH1--><style>bytes::more::still more::final bytes:</style>"
+            "<!--FLUSH3-->",
             output_buffer_);
 }
 

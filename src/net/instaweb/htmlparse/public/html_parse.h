@@ -399,7 +399,13 @@ class HtmlParse {
   // Inserts a comment before or after the current node.  The function tries to
   // pick an intelligent place depending on the document structure and
   // whether the current node is a start-element, end-element, or a leaf.
-  void InsertComment(const StringPiece& sp);
+  // Returns true if it successfully added the comment, and false if it was not
+  // safe for the comment to be inserted. This can happen when a comment is
+  // inserted in a literal element (script or style) after the opening tag has
+  // been flushed, but the closing tag has not been seen yet. In this case, the
+  // caller can buffer the messages until EndElement is reached and call
+  // InsertComment at that point.
+  bool InsertComment(StringPiece sp);
 
   // Sets the limit on the maximum number of bytes that should be parsed.
   void set_size_limit(int64 x);

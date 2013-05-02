@@ -960,7 +960,7 @@ bool HtmlParse::size_limit_exceeded() const {
   return lexer_->size_limit_exceeded();
 }
 
-void HtmlParse::InsertComment(const StringPiece& sp) {
+bool HtmlParse::InsertComment(StringPiece sp) {
   HtmlElement* parent = NULL;
 
   if (queue_.begin() != queue_.end()) {
@@ -1001,8 +1001,16 @@ void HtmlParse::InsertComment(const StringPiece& sp) {
       }
     }
   } else {
+    // Verify that we aren't trying to create a new node inside of a literal
+    // block. This can happen if we already flushed the open tag of a literal
+    // element, but haven't seen the close tag yet.
+    HtmlElement* parent = lexer_->Parent();
+    if (parent != NULL && IsLiteralTag(parent->keyword())) {
+      return false;
+    }
     AddEvent(new HtmlCommentEvent(NewCommentNode(lexer_->Parent(), sp), 0));
   }
+  return true;
 }
 
 }  // namespace net_instaweb

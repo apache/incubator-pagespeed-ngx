@@ -202,6 +202,48 @@ TEST_F(DebugFilterTest, EndWithDelayedCache) {
             flush_messages[0]);
 }
 
+TEST_F(DebugFilterTest, FlushInStyleTag) {
+  // Verify that flush comments do not get insert in the middle of a literal tag
+  // (style or script) and instead are buffered until the end of that element.
+  const char kStyleStartTag[] = "<style>";
+  const char kStyleEndTag[] = "</style>";
+  const char kCss1[] = ".a { color:red; }";
+  const char kCss2[] = ".b { color:blue; }";
+  rewrite_driver()->StartParse(kTestDomain);
+  AdvanceTimeUs(1);
+  rewrite_driver()->ParseText(kStyleStartTag);
+  rewrite_driver()->ParseText(kCss1);
+  AdvanceTimeUs(10);                  // 11us elapsed so far.
+  rewrite_driver()->Flush();
+  AdvanceTimeUs(10);                  // 21us elapsed so far.
+  rewrite_driver()->ParseText(kCss2);
+  AdvanceTimeUs(10);                  // 31us elapsed so far.
+  rewrite_driver()->Flush();
+  AdvanceTimeUs(10);                  // 41us elapsed so far.
+  rewrite_driver()->ParseText(kStyleEndTag);
+  AdvanceTimeUs(10);                  // 51us elapsed so far.
+  rewrite_driver()->FinishParse();
+  EXPECT_STREQ(
+      StrCat(
+          StrCat("<!--",
+                 DebugFilter::FormatFlushMessage(11, 0, 0, 11),
+                 "-->"),
+          kStyleStartTag,
+          kCss1,
+          kCss2,
+          kStyleEndTag,
+          StrCat("<!--",
+                 DebugFilter::FormatFlushMessage(31, 0, 0, 20),
+                 "-->"),
+          StrCat("<!--",
+                 DebugFilter::FormatFlushMessage(51, 0, 0, 20),
+                 "-->"),
+          StrCat("<!--",
+                 DebugFilter::FormatEndDocumentMessage(51, 0, 0, 51, 2),
+                 "-->")),
+      output_buffer_);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
