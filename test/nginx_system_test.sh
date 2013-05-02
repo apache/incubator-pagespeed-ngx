@@ -713,6 +713,8 @@ test_filter add_instrumentation beacons load.
 OUT=$(wget -q  --save-headers -O - -t 1 --timeout=1 \
       http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13)
 check_from "$OUT" grep '^HTTP/1.1 204'
+# The $'...' tells bash to interpret c-style escapes, \r in this case.
+check_from "$OUT" grep $'^Cache-Control: max-age=0, no-cache\r$'
 
 start_test server-side includes
 fetch_until -save $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
