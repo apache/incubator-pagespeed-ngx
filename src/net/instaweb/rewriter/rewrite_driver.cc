@@ -319,7 +319,6 @@ RewriteDriver* RewriteDriver::Clone() {
 
 void RewriteDriver::Clear() {
   DCHECK(!flush_requested_);
-  WriteDomCohortIntoPropertyCache();
   cleanup_on_fetch_complete_ = false;
   release_driver_ = false;
   write_property_cache_dom_cohort_ = false;
@@ -2354,6 +2353,7 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
   LogStats();
+  WriteDomCohortIntoPropertyCache();
   WriteClientStateIntoPropertyCache();
 
   // Update stats.
