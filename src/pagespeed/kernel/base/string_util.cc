@@ -410,7 +410,7 @@ bool SplitStringPieceToIntegerVector(
   ints->clear();
   int v;
   for (int i = 0, n = values.size(); i < n; ++i) {
-    if (StringToInt(values[i].as_string(), &v)) {
+    if (StringToInt(values[i], &v)) {
       ints->push_back(v);
     } else {
       ints->clear();

@@ -122,7 +122,7 @@ int DetermineFuriousState(const RewriteOptions* options) {
 
 int CookieStringToState(const StringPiece& cookie_str) {
   int ret;
-  if (!StringToInt(cookie_str.as_string(), &ret)) {
+  if (!StringToInt(cookie_str, &ret)) {
     ret = kFuriousNotSet;
   }
   return ret;

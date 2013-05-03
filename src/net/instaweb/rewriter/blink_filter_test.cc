@@ -154,7 +154,7 @@ class BlinkFilterTest : public RewriteTestBase {
     PropertyValue* value = rewrite_driver()->property_page()->GetProperty(
       cohort, BlinkUtil::kBlinkResponseCodePropertyName);
     int code;
-    ASSERT_TRUE(StringToInt(value->value().as_string(), &code));
+    ASSERT_TRUE(StringToInt(value->value(), &code));
     EXPECT_EQ(expected_code, code);
   }
 

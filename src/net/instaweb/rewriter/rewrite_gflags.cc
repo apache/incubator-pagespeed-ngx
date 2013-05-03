@@ -862,7 +862,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     int i = 0;
     for (int max = library_specs.size() - 2; i < max; i += 3) {
       int64 bytes;
-      if (!StringToInt64(library_specs[i].as_string(), &bytes)) {
+      if (!StringToInt64(library_specs[i], &bytes)) {
         LOG(ERROR) << "Invalid library size in bytes; skipping: " <<
             library_specs[i];
         continue;

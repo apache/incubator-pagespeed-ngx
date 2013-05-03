@@ -101,7 +101,7 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
     if (host_port.size() == 1) {
       ok = true;
     } else if (host_port.size() == 2) {
-      ok = StringToInt(host_port[1].as_string(), &port);
+      ok = StringToInt(host_port[1], &port);
     }
     if (ok) {
       // If any host isn't "localhost" then the machine isn't local.

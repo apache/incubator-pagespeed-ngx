@@ -191,7 +191,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     value = page->GetProperty(
         cohort, RewriteDriver::kStatusCodePropertyName);
     int status_code;
-    EXPECT_TRUE(StringToInt(value->value().as_string(), &status_code));
+    EXPECT_TRUE(StringToInt(value->value(), &status_code));
     return status_code;
   }
 

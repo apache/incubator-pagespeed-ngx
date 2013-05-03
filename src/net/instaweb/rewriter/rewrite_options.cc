@@ -2198,7 +2198,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
     }
     case kExperimentVariable: {
       int slot;
-      bool ok = StringToInt(arg.as_string().c_str(), &slot);
+      bool ok = StringToInt(arg, &slot);
       if (!ok || slot < 1 || slot > 5) {
         *msg = "must be an integer between 1 and 5";
         return RewriteOptions::kOptionValueInvalid;
@@ -2306,7 +2306,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum3(
       // Examples:
       //   Library 43567 5giEj_jl-Ag5G8 http://www.example.com/url.js
       int64 bytes;
-      if (!StringToInt64(arg1.as_string(), &bytes) || bytes < 0) {
+      if (!StringToInt64(arg1, &bytes) || bytes < 0) {
         *msg = "Library size must be a positive 64-bit integer";
         return RewriteOptions::kOptionValueInvalid;
       }
@@ -3253,7 +3253,7 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
     TrimWhitespace(&piece);
     if (StringCaseStartsWith(piece, "id")) {
       StringPiece id = PieceAfterEquals(piece);
-      if (id.length() > 0 && !StringToInt(id.as_string(), &id_)) {
+      if (id.length() > 0 && !StringToInt(id, &id_)) {
         // If we failed to turn this string into an int, then
         // set the id_ to kFuriousNotSet so we don't end up adding
         // in this spec.
@@ -3264,7 +3264,7 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
       use_default_ = true;
     } else if (StringCaseStartsWith(piece, "percent")) {
       StringPiece percent = PieceAfterEquals(piece);
-      StringToInt(percent.as_string(), &percent_);
+      StringToInt(percent, &percent_);
     } else if (StringCaseStartsWith(piece, "ga")) {
       StringPiece ga = PieceAfterEquals(piece);
       if (ga.length() > 0) {
@@ -3273,7 +3273,7 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
     } else if (StringCaseStartsWith(piece, "slot")) {
       StringPiece slot = PieceAfterEquals(piece);
       int stored_id = ga_variable_slot_;
-      StringToInt(slot.as_string(), &ga_variable_slot_);
+      StringToInt(slot, &ga_variable_slot_);
       // Valid custom variable slots are 1-5 inclusive.
       if (ga_variable_slot_ < 1 || ga_variable_slot_ > 5) {
         LOG(INFO) << "Invalid custom variable slot.";
@@ -3302,17 +3302,17 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
     } else if (StringCaseStartsWith(piece, "inline_css")) {
       StringPiece max_bytes = PieceAfterEquals(piece);
       if (max_bytes.length() > 0) {
-        StringToInt64(max_bytes.as_string(), &css_inline_max_bytes_);
+        StringToInt64(max_bytes, &css_inline_max_bytes_);
       }
     } else if (StringCaseStartsWith(piece, "inline_images")) {
       StringPiece max_bytes = PieceAfterEquals(piece);
       if (max_bytes.length() > 0) {
-        StringToInt64(max_bytes.as_string(), &image_inline_max_bytes_);
+        StringToInt64(max_bytes, &image_inline_max_bytes_);
       }
     } else if (StringCaseStartsWith(piece, "inline_js")) {
       StringPiece max_bytes = PieceAfterEquals(piece);
       if (max_bytes.length() > 0) {
-        StringToInt64(max_bytes.as_string(), &js_inline_max_bytes_);
+        StringToInt64(max_bytes, &js_inline_max_bytes_);
       }
     }
   }
