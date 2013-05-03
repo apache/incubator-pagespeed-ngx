@@ -24,8 +24,8 @@
 
 namespace net_instaweb {
 
-class ContentType;
 class Hasher;
+struct ContentType;
 
 // Encapsulates the naming of resource URL leafs.  The class holds the context
 // of a single resource, and is not intended for re-use.  We could, of course,

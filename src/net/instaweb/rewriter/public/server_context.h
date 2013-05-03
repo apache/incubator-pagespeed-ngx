@@ -44,7 +44,6 @@ class AbstractMutex;
 class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
 class CacheInterface;
-class ContentType;
 class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalSelectorFinder;
@@ -77,6 +76,7 @@ class UrlAsyncFetcher;
 class UrlNamer;
 class UsageDataReporter;
 class UserAgentMatcher;
+struct ContentType;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;

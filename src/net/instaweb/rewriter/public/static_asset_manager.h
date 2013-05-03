@@ -27,13 +27,13 @@
 
 namespace net_instaweb {
 
-class ContentType;
 class Hasher;
 class HtmlElement;
 class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
 class UrlNamer;
+struct ContentType;
 
 
 // Composes URLs for the javascript files injected by the various PSA filters.

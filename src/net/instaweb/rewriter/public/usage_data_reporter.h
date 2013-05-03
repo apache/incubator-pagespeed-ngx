@@ -25,8 +25,8 @@
 
 namespace net_instaweb {
 
-class ContentType;
 class GoogleUrl;
+struct ContentType;
 
 // General interface for reporting usage data such as page load time,
 // error response codes, various rewriter warnings.

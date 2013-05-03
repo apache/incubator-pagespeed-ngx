@@ -37,7 +37,6 @@
 namespace net_instaweb {
 
 class CachedResult;
-class ContentType;
 class ImageDim;
 class Histogram;
 class ResourceContext;
@@ -48,6 +47,7 @@ class TimedVariable;
 class UrlSegmentEncoder;
 class Variable;
 class WorkBound;
+struct ContentType;
 
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to

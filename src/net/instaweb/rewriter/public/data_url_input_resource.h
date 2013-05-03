@@ -33,11 +33,11 @@
 
 namespace net_instaweb {
 
-class ContentType;
 class InputInfo;
 class MessageHandler;
 class RewriteOptions;
 class ServerContext;
+struct ContentType;
 
 enum Encoding;
 
