@@ -171,6 +171,9 @@ class CssRewriteTestBase : public RewriteTestBase {
   // Makes a minified CSS body with an external image link.
   GoogleString MakeMinifiedCssWithImage(StringPiece image_url);
 
+  // Extract the background image from the css text
+  GoogleString ExtractCssBackgroundImage(const GoogleString &in_css);
+
   void ValidateRewrite(const StringPiece& id,
                        const GoogleString& css_input,
                        const GoogleString& gold_output,

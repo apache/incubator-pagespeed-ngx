@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/css_url_extractor.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
@@ -241,6 +243,25 @@ GoogleString CssRewriteTestBase::MakeIndentedCssWithImage(
 GoogleString CssRewriteTestBase::MakeMinifiedCssWithImage(
     StringPiece image_url) {
   return StrCat("body{background-image:url(", image_url, ")}");
+}
+
+GoogleString CssRewriteTestBase::ExtractCssBackgroundImage(
+    const GoogleString &in_css) {
+  const char css_template[] = "*{background-image:url(*)}*";
+  GoogleString image_url;
+  if (!Wildcard(css_template).Match(in_css)) {
+    return image_url;
+  }
+  StringVector extracted_urls;
+  CssUrlExtractor url_extractor;
+  url_extractor.ExtractUrl(in_css, &extracted_urls);
+  // Although the CssUrlExtractor returns a StringVector, we expect only one
+  // url in the input string.
+  if (extracted_urls.size() == 1) {
+    image_url = extracted_urls[0];
+  }
+
+  return image_url;
 }
 
 // Check that external CSS gets rewritten correctly.

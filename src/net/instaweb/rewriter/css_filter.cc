@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -1069,9 +1068,8 @@ const UrlSegmentEncoder* CssFilter::encoder() const {
 
 void CssFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
-  context->set_inline_images(
-      driver_->device_properties()->SupportsImageInlining());
-  ImageUrlEncoder::SetLibWebpLevel(*driver_->device_properties(), context);
+  // Use the same encoding as the image rewrite filter.
+  image_rewrite_filter_->EncodeUserAgentIntoResourceContext(context);
 }
 
 const UrlSegmentEncoder* CssFilter::Context::encoder() const {

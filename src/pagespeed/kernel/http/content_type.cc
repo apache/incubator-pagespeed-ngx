@@ -16,13 +16,13 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/http/public/content_type.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -52,11 +52,15 @@ const ContentType kTypes[] = {
   {"application/pdf",               ".pdf",  ContentType::kPdf},  // RFC 3778
   {"application/octet-stream",      ".bin",  ContentType::kOctetStream },
 
-  // Synonyms; Note that the canonical types are referenced by index
-  // in the named references declared below.
+  // Synonyms; Note that the canonical types above are referenced by index
+  // in the named references declared below.  The synonyms below are not
+  // index-sensitive.
   {"application/x-javascript", ".js",   ContentType::kJavascript},
   {"text/javascript",          ".js",   ContentType::kJavascript},
+  {"text/x-javascript",        ".js",   ContentType::kJavascript},
   {"text/ecmascript",          ".js",   ContentType::kJavascript},
+  {"text/js",                  ".js",   ContentType::kJavascript},
+  {"text/jscript",             ".js",   ContentType::kJavascript},
   {"text/x-js",                ".js",   ContentType::kJavascript},
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
@@ -155,23 +159,20 @@ bool ContentType::IsVideo() const {
 const ContentType* NameExtensionToContentType(const StringPiece& name) {
   // Get the name from the extension.
   StringPiece::size_type ext_pos = name.rfind('.');
-  const ContentType* res = NULL;
   if (ext_pos != StringPiece::npos) {
     StringPiece ext = name.substr(ext_pos);
     // TODO(jmarantz): convert to a map if the list gets large.
     for (int i = 0; i < kNumTypes; ++i) {
       if (StringCaseEqual(ext, kTypes[i].file_extension())) {
-        res = &kTypes[i];
-        break;
+        return &kTypes[i];
       }
     }
   }
-  return res;
+  return NULL;
 }
 
 const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
   // TODO(jmarantz): convert to a map if the list gets large.
-  const ContentType* res = NULL;
 
   // The content-type can have a "; charset=...".  We are not interested
   // in that, for the purpose of our ContentType object.
@@ -189,11 +190,10 @@ const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
 
   for (int i = 0; i < kNumTypes; ++i) {
     if (StringCaseEqual(stripped_mime_type, kTypes[i].mime_type())) {
-      res = &kTypes[i];
-      break;
+      return &kTypes[i];
     }
   }
-  return res;
+  return NULL;
 }
 
 // TODO(nforman): Have some further indication of whether
@@ -253,6 +253,33 @@ void MimeTypeListToContentTypeSet(
       out->insert(ct);
     }
   }
+}
+
+bool ContentType::IsLikelyStaticResource() const {
+  switch (type_) {
+    case kCeHtml:
+    case kHtml:
+    case kJson:
+    case kOctetStream:
+    case kOther:
+    case kText:
+    case kXhtml:
+    case kXml:
+      return false;
+    case kCss:
+    case kGif:
+    case kIco:
+    case kJavascript:
+    case kJpeg:
+    case kPdf:
+    case kPng:
+    case kSwf:
+    case kVideo:
+    case kWebp:
+      return true;
+  };
+  LOG(DFATAL) << "Unexpected content type: " << type_;
+  return false;
 }
 
 }  // namespace net_instaweb

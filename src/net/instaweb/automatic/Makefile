@@ -106,6 +106,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_enums_pb.a \
   net/instaweb/libprocess_context.a \
   net/instaweb/libtest_infrastructure.a \
+  pagespeed/libpagespeed_http.a \
   pagespeed/libpagespeed_base.a \
   pagespeed/libutil.a \
   pagespeed/libjsminify.a \

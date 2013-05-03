@@ -16,12 +16,12 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/time_util.h"
+#include "pagespeed/kernel/base/time_util.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace {
 

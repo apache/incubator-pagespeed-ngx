@@ -16,12 +16,12 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/time_util.h"
+#include "pagespeed/kernel/base/time_util.h"
 #include <ctime>
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/core/resource_util.h"
+#include "prtime.h"  // NOLINT
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -96,8 +96,19 @@ bool ConvertTimeToStringWithUs(int64 time_us, GoogleString* time_string) {
 }
 
 bool ConvertStringToTime(const StringPiece& time_string, int64 *time_ms) {
-  GoogleString buf(time_string.data(), time_string.size());
-  return pagespeed::resource_util::ParseTimeValuedHeader(buf.c_str(), time_ms);
+  if (time_string.empty()) {
+    *time_ms = 0;
+    return false;
+  }
+  PRTime result_time_us = 0;
+  PRStatus result = PR_ParseTimeString(time_string.as_string().c_str(),
+                                       PR_FALSE, &result_time_us);
+  if (PR_SUCCESS != result) {
+    return false;
+  }
+
+  *time_ms = result_time_us / 1000;
+  return true;
 }
 
 }  // namespace net_instaweb

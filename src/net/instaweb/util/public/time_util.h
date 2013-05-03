@@ -19,21 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-
-namespace net_instaweb {
-
-// Converts time, in milliseconds, to a string.  Returns false on failure.
-bool ConvertTimeToString(int64 time_ms, GoogleString* time_string);
-// Converts time, in microseconds, to a string with accuracy at us.
-// Returns false on failure.
-bool ConvertTimeToStringWithUs(int64 time_us, GoogleString* time_string);
-// Converts time in string format, to the number of milliseconds since 1970.
-// Returns false on failure.
-bool ConvertStringToTime(const StringPiece& time_string, int64 *time_ms);
-
-}  // namespace net_instaweb
+// TODO(jmarantz): Remove this forwarding header and change all references.
+#include "pagespeed/kernel/base/time_util.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_TIME_UTIL_H_

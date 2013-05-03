@@ -22,9 +22,11 @@
       'type': '<(library)',
       'sources': [
         'kernel/base/string_util.cc',
+        'kernel/base/time_util.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',
+        '<(DEPTH)/third_party/chromium/src/base/third_party/nspr',
       ],
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base'
@@ -50,6 +52,18 @@
       ],
       'dependencies': [
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_http',
+      'type': '<(library)',
+      'sources': [
+        'kernel/http/caching_headers.cc',
+        'kernel/http/content_type.cc',
+        'kernel/http/http_names.cc',
+      ],
+      'dependencies': [
+        'pagespeed_base',
       ],
     },
     {

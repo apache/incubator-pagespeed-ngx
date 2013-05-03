@@ -17,7 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 
-#include "net/instaweb/http/public/meta_data.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 

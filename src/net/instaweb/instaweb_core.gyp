@@ -27,6 +27,7 @@
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
@@ -115,10 +116,9 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
-        'instaweb_core.gyp:instaweb_util_core',
+        'instaweb_util_core',
       ],
       'sources': [
-        'http/content_type.cc',
         'http/semantic_type.cc',
       ],
       'include_dirs': [
@@ -209,6 +209,7 @@
                 # Note: these must be in dependency order to work; you can't
                 # sort this list alphabetically.
                 '<(LIB_DIR)/pagespeed/libpagespeed_base.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_http.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_rewriter_html.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core.a',
                 '<(LIB_DIR)/net/instaweb/libhttp_core.a',

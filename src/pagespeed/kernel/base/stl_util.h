@@ -19,6 +19,14 @@
 #ifndef PAGESPEED_KERNEL_BASE_STL_UTIL_H_
 #define PAGESPEED_KERNEL_BASE_STL_UTIL_H_
 
+#include <algorithm>
+
 #include "base/stl_util.h"
+
+template<class T>
+bool STLFind(const T& collection, const typename T::value_type& value) {
+  return std::find(collection.begin(), collection.end(), value) !=
+      collection.end();
+}
 
 #endif  // PAGESPEED_KERNEL_BASE_STL_UTIL_H_
