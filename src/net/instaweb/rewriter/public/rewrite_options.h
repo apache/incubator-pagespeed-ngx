@@ -3091,9 +3091,6 @@ class RewriteOptions {
   // cache entries at all (ignores_metadata_and_pcache==false).
   Option<bool> enable_cache_purge_;
 
-  // Enables experimental code in inline preview images.
-  Option<bool> enable_inline_preview_images_experimental_;
-
   // Enables the code to lazy load high res images.
   Option<bool> lazyload_highres_images_;
 
