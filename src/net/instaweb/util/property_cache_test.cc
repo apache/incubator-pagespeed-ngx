@@ -21,9 +21,6 @@
 #include "net/instaweb/util/public/property_cache.h"
 
 #include <cstddef>
-#include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -380,39 +377,11 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
   page.UpdateValue(cohort_, kPropertyName2, "Value2");
   page.WriteCohort(cohort_);
   {
-    ScopedMutex lock(page.log_record()->mutex());
-    const PropertyPageInfo& page_info =
-        page.log_record()->logging_info()->property_page_info();
-    EXPECT_EQ(1, page_info.cohort_info_size());
-    const PropertyCohortInfo& cohort_info = page_info.cohort_info(0);
-    EXPECT_EQ(kCohortName1, cohort_info.name());
-    EXPECT_FALSE(cohort_info.is_cache_hit());
-    EXPECT_EQ(0, cohort_info.properties_found_size());
-    EXPECT_EQ(1, cohort_info.cache_key_state());
-    // Test Read log setup here
-    EXPECT_EQ(MockPropertyPage::kMockDeviceType, cohort_info.device_type());
-    EXPECT_EQ(MockPropertyPage::kMockCacheType, cohort_info.cache_type());
-  }
-
-  {
     MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     // The timestamp for invalidation is older than the write times of both
     // value.  So they are treated as valid.
     page.set_time_ms(timer_.NowMs() - 3);
     property_cache_.Read(&page);
-    {
-      ScopedMutex lock(page.log_record()->mutex());
-      const PropertyPageInfo& page_info =
-          page.log_record()->logging_info()->property_page_info();
-      EXPECT_EQ(1, page_info.cohort_info_size());
-      const PropertyCohortInfo& cohort_info = page_info.cohort_info(0);
-      EXPECT_EQ(2, cohort_info.properties_found_size());
-      EXPECT_EQ(kPropertyName1, cohort_info.properties_found(0));
-      EXPECT_EQ(kPropertyName2, cohort_info.properties_found(1));
-      EXPECT_EQ(kCohortName1, cohort_info.name());
-      EXPECT_TRUE(cohort_info.is_cache_hit());
-      EXPECT_EQ(0, cohort_info.cache_key_state());
-    }
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());
     PropertyValue* property1 = page.GetProperty(cohort_, kPropertyName1);
@@ -420,7 +389,6 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
     EXPECT_TRUE(property1->has_value());
     EXPECT_TRUE(property2->has_value());
   }
-
   {
     // The timestamp for invalidation is newer than the write time of one of the
     // values.  So both are treated as invalid.
@@ -609,14 +577,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
     MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     PropertyCache::CohortVector cohort_list;
     cohort_list.push_back(cohort2);
-    const PropertyPageInfo& page_info_before_read =
-        page.log_record()->logging_info()->property_page_info();
-    EXPECT_EQ(0, page_info_before_read.cohort_info_size());
     property_cache_.ReadWithCohorts(cohort_list, &page);
-    const PropertyPageInfo& page_info =
-        page.log_record()->logging_info()->property_page_info();
-    EXPECT_EQ(1, page_info.cohort_info_size());
-    EXPECT_STREQ(kCohortName2, page_info.cohort_info(0).name());
     EXPECT_EQ(0, lru_cache_.num_hits()) << "cohort1";
     EXPECT_EQ(1, lru_cache_.num_misses()) << "cohort2";
     PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
@@ -641,14 +602,6 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
     PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
     EXPECT_TRUE(p2->was_read());
     EXPECT_TRUE(p2->has_value());
-
-    const PropertyPageInfo& page_info =
-        page.log_record()->logging_info()->property_page_info();
-    EXPECT_EQ(1, page_info.cohort_info_size());
-    const PropertyCohortInfo& info = page_info.cohort_info(0);
-    EXPECT_STREQ(info.name(), kCohortName2);
-    EXPECT_EQ(MockPropertyPage::kMockDeviceType, info.device_type());
-    EXPECT_EQ(MockPropertyPage::kMockCacheType, info.cache_type());
   }
 
   lru_cache_.ClearStats();
@@ -664,23 +617,6 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
     PropertyValue* p1 = page.GetProperty(cohort_, kPropertyName1);
     EXPECT_TRUE(p1->was_read());
     EXPECT_TRUE(p1->has_value());
-
-    const PropertyPageInfo& page_info =
-        page.log_record()->logging_info()->property_page_info();
-    EXPECT_EQ(2, page_info.cohort_info_size());
-    const PropertyCohortInfo& cohort_info_1 = page_info.cohort_info(0);
-    const PropertyCohortInfo& cohort_info_2 = page_info.cohort_info(1);
-    if (cohort_info_1.name() == kCohortName1) {
-      EXPECT_STREQ(kCohortName2, cohort_info_2.name());
-    } else {
-      EXPECT_STREQ(kCohortName2, cohort_info_1.name());
-      EXPECT_STREQ(kCohortName1, cohort_info_2.name());
-    }
-    // Test Read log setup here
-    EXPECT_EQ(MockPropertyPage::kMockDeviceType, cohort_info_1.device_type());
-    EXPECT_EQ(MockPropertyPage::kMockCacheType, cohort_info_1.cache_type());
-    EXPECT_EQ(MockPropertyPage::kMockDeviceType, cohort_info_2.device_type());
-    EXPECT_EQ(MockPropertyPage::kMockCacheType, cohort_info_2.cache_type());
   }
 }
 

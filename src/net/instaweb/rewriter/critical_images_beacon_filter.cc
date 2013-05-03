@@ -72,7 +72,7 @@ void CriticalImagesBeaconFilter::DetermineEnabled() {
       driver_->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort =
       page_property_cache->GetCohort(finder->GetCriticalImagesCohort());
-  const PropertyPage* page = driver_->property_page();
+  PropertyPage* page = driver_->property_page();
   if (!driver_->server_context()->page_property_cache()->enabled() ||
       (page == NULL) || (cohort == NULL)) {
     return;

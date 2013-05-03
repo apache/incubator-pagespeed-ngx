@@ -173,7 +173,7 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
     }
 
     page_->log_record()->SetCacheStatusForCohortInfo(
-        pmap_struct_->cohort_index, valid, state);
+        page_->page_type_, cohort_->name(), valid, state);
     pmap_struct_->cache_state = state;
     collector_->Done(valid);
     delete this;
@@ -199,7 +199,7 @@ void PropertyPage::AddValueFromProtobuf(
     property = new PropertyValue;
     (*pmap)[pcache_value.name()] = property;
     log_record()->AddFoundPropertyToCohortInfo(
-        pmap_struct->cohort_index, pcache_value.name());
+        page_type_, cohort->name(), pcache_value.name());
   }
   property->InitFromProtobuf(pcache_value);
 }
@@ -208,9 +208,7 @@ void PropertyPage::SetupCohorts(
     const PropertyCache::CohortVector& cohort_list) {
   for (int j = 0, n = cohort_list.size(); j < n; ++j) {
     const PropertyCache::Cohort* cohort = cohort_list[j];
-    int cohort_index = log_record()->AddPropertyCohortInfo(cohort->name());
-    PropertyMapStruct* pmap_struct = new PropertyMapStruct(log_record(),
-                                                           cohort_index);
+    PropertyMapStruct* pmap_struct = new PropertyMapStruct(log_record());
     cohort_data_map_[cohort] = pmap_struct;
   }
 }
@@ -333,7 +331,6 @@ void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
         cohort_data_map_.find(cohort);
     CHECK(cohort_itr != cohort_data_map_.end());
     PropertyPage::PropertyMapStruct* pmap_struct = cohort_itr->second;
-    LogPageCohortInfo(log_record(), pmap_struct->cohort_index);
     const GoogleString cache_key = property_cache_->CacheKey(key(), cohort);
     cohort->cache()->Get(cache_key, new PropertyCache::CacheInterfaceCallback(
         this, cohort, pmap_struct, collector));
@@ -428,6 +425,7 @@ AbstractPropertyPage::~AbstractPropertyPage() {
 }
 
 PropertyPage::PropertyPage(
+    PageType page_type,
     const StringPiece& key,
     const RequestContextPtr& request_context,
     AbstractMutex* mutex,
@@ -436,7 +434,8 @@ PropertyPage::PropertyPage(
         key_(key.as_string()),
         request_context_(request_context),
         was_read_(false),
-        property_cache_(property_cache) {
+        property_cache_(property_cache),
+        page_type_(page_type) {
 }
 
 PropertyPage::~PropertyPage() {
@@ -460,7 +459,7 @@ PropertyPage::~PropertyPage() {
 
 PropertyValue* PropertyPage::GetProperty(
     const PropertyCache::Cohort* cohort,
-    const StringPiece& property_name) const {
+    const StringPiece& property_name) {
   ScopedMutex lock(mutex_.get());
   DCHECK(was_read_);
   DCHECK(cohort != NULL);
@@ -471,6 +470,8 @@ PropertyValue* PropertyPage::GetProperty(
   PropertyMapStruct* pmap_struct = cohort_itr->second;
   PropertyMap* pmap = &pmap_struct->pmap;
   property = (*pmap)[property_name_str];
+  log_record()->AddRetrievedPropertyToCohortInfo(
+      page_type_, cohort->name(), property_name.as_string());
   if (property == NULL) {
     property = new PropertyValue;
     (*pmap)[property_name_str] = property;

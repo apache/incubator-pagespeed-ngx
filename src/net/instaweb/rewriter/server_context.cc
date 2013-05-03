@@ -129,7 +129,7 @@ class BeaconPropertyCallback : public PropertyPage {
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set,
       StringSet* critical_css_selector_set)
-      : PropertyPage(key, request_context,
+      : PropertyPage(kPropertyCachePage, key, request_context,
                      server_context->thread_system()->NewMutex(),
                      server_context->page_property_cache()),
         server_context_(server_context),

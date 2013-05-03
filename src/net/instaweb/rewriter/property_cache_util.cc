@@ -26,7 +26,7 @@ namespace net_instaweb {
 
 const PropertyValue* DecodeFromPropertyCacheHelper(
     const PropertyCache* cache,
-    const PropertyPage* page,
+    PropertyPage* page,
     StringPiece cohort_name,
     StringPiece property_name,
     int64 cache_ttl_ms,

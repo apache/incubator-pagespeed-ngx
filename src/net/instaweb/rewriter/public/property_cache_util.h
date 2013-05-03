@@ -44,7 +44,7 @@ enum PropertyCacheDecodeResult {
 // setting *status and returning NULL if any errors were found.
 const PropertyValue* DecodeFromPropertyCacheHelper(
     const PropertyCache* cache,
-    const PropertyPage* page,
+    PropertyPage* page,
     StringPiece cohort_name,
     StringPiece property_name,
     int64 cache_ttl_ms,
@@ -59,7 +59,7 @@ const PropertyValue* DecodeFromPropertyCacheHelper(
 // NULL is returned.
 template<typename T>
 T* DecodeFromPropertyCache(const PropertyCache* cache,
-                           const PropertyPage* page,
+                           PropertyPage* page,
                            StringPiece cohort_name,
                            StringPiece property_name,
                            int64 cache_ttl_ms,

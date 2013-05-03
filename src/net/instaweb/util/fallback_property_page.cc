@@ -35,7 +35,7 @@ FallbackPropertyPage::~FallbackPropertyPage() {
 
 PropertyValue* FallbackPropertyPage::GetProperty(
       const PropertyCache::Cohort* cohort,
-      const StringPiece& property_name) const {
+      const StringPiece& property_name) {
   PropertyValue* value = actual_property_page_->GetProperty(
       cohort, property_name);
   if (value->has_value() || property_page_with_fallback_values_ == NULL) {

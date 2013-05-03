@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
@@ -339,12 +338,6 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(logging_info()->is_url_disallowed());
   EXPECT_FALSE(logging_info()->is_request_disabled());
   EXPECT_FALSE(logging_info()->is_pagespeed_resource());
-
-  const PropertyPageInfo& page_info = logging_info()->property_page_info();
-  EXPECT_EQ(1, page_info.cohort_info_size());
-  const PropertyCohortInfo& cohort_info_0 = page_info.cohort_info(0);
-  EXPECT_EQ("dom", cohort_info_0.name());
-  EXPECT_EQ(0, cohort_info_0.device_type());
 
   // Fetch non-HTML content.
   logging_info()->Clear();
@@ -3142,14 +3135,9 @@ TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {
       proxy_interface_->InitiatePropertyCacheLookup(
           false, gurl, options(), &callback, false, NULL));
 
-  PropertyPage* page = callback_collector->property_page();
-  const PropertyPageInfo& page_info =
-      page->log_record()->logging_info()->property_page_info();
-  EXPECT_NE(0, page_info.cohort_info_size());
-  for (int i = 0; i < page_info.cohort_info_size(); ++i) {
-    const PropertyCohortInfo& info = page_info.cohort_info(i);
-    EXPECT_STRNE(info.name(), BlinkCriticalLineDataFinder::kBlinkCohort);
-  }
+  // Cache lookup only for dom cohort.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUpInFallbackPage) {
@@ -3162,20 +3150,12 @@ TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUpInFallbackPage) {
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       proxy_interface_->InitiatePropertyCacheLookup(
           false, gurl, options(), &callback, true, NULL));
-  PropertyPage* page = callback_collector->property_page();
-  const PropertyPageInfo& page_info =
-      page->log_record()->logging_info()->property_page_info();
-  EXPECT_NE(0, page_info.cohort_info_size());
-  bool has_fallback_page = false;
-  for (int i = 0; i < page_info.cohort_info_size(); ++i) {
-    const PropertyCohortInfo& info = page_info.cohort_info(i);
-    if (info.cache_type() ==
-        ProxyFetchPropertyCallback::kPropertyCacheFallbackPage) {
-      has_fallback_page = true;
-      EXPECT_STRNE(info.name(), BlinkCriticalLineDataFinder::kBlinkCohort);
-    }
-  }
-  EXPECT_TRUE(has_fallback_page);
+
+  // Cache lookup for:
+  // dom and blink cohort for actual property page.
+  // dom cohort for fallback property page.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, BailOutOfParsing) {

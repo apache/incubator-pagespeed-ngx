@@ -126,21 +126,22 @@ class AbstractLogRecord  {
   // Atomically sets is_html_response in the logging proto.
   void SetIsHtml(bool is_html);
 
-  // Adds a new cohort info with the given cohort name and returns its index.
-  int AddPropertyCohortInfo(const GoogleString& cohort);
+  // Updated the cohort info to set the found to true for the given
+  // property.
+  virtual void AddFoundPropertyToCohortInfo(
+      int page_type, const GoogleString& cohort,
+      const GoogleString& property) = 0;
 
-  // Updates the cohort info at the specified index, to include the given
-  // property in the last of properties found in the cache.
-  void AddFoundPropertyToCohortInfo(int index, const GoogleString& property);
+  // Updated the cohort info to set the retrieved to true for the given
+  // property.
+  virtual void AddRetrievedPropertyToCohortInfo(
+      int page_type, const GoogleString& cohort,
+      const GoogleString& property) = 0;
 
-  // Updates the cohort info at the specified index, to indicate whether it was
-  // a cache hit.
-  void SetCacheStatusForCohortInfo(int index, bool found, int key_state);
-
-  // Updates the cohort info at the specified index with the device and cache
-  // type.
-  void SetDeviceAndCacheTypeForCohortInfo(
-      int index, int device_type, int cache_type);
+  // Updates the cohort info to update the cache key state.
+  virtual void SetCacheStatusForCohortInfo(
+      int page_type, const GoogleString& cohort,
+      bool found, int key_state) = 0;
 
   // Mutex-guarded log mutation convenience methods. The rule of thumb is that
   // if a single-field update to a logging proto occurs multiple times, it
@@ -352,6 +353,17 @@ class LogRecord : public AbstractLogRecord {
                              int num_critical_images_used) {}
 
   virtual void SetResourceCounts(int num_external_css, int num_scripts) {}
+
+  virtual void AddFoundPropertyToCohortInfo(
+      int page_type, const GoogleString& cohort,
+      const GoogleString& property) {}
+
+  virtual void AddRetrievedPropertyToCohortInfo(
+      int page_type, const GoogleString& cohort,
+      const GoogleString& property) {}
+
+  void SetCacheStatusForCohortInfo(
+      int page_type, const GoogleString& cohort, bool found, int key_state) {}
 
   bool WriteLogImpl() { return true; }
 

@@ -44,7 +44,7 @@ class FallbackPropertyPage : public AbstractPropertyPage {
   // from fallback property cache if actual property page has no value.
   virtual PropertyValue* GetProperty(
       const PropertyCache::Cohort* cohort,
-      const StringPiece& property_name) const;
+      const StringPiece& property_name);
 
   // Gets the property from property page with fallback values. It can return
   // NULL if property page with fallback values is NULL.

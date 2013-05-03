@@ -44,7 +44,6 @@
 namespace net_instaweb {
 
 class AbstractClientState;
-class AbstractLogRecord;
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class Function;
@@ -122,14 +121,6 @@ class ProxyFetchFactory {
 // to complete.
 class ProxyFetchPropertyCallback : public PropertyPage {
  public:
-  // The cache type associated with this callback.
-  enum PageType {
-    kPropertyCachePage,
-    kPropertyCacheFallbackPage,
-    kClientPropertyCachePage,
-    kDevicePropertyCachePage,
-  };
-
   ProxyFetchPropertyCallback(PageType page_type,
                              PropertyCache* property_cache,
                              const StringPiece& key,
@@ -145,10 +136,6 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   virtual bool IsCacheValid(int64 write_timestamp_ms) const;
 
   virtual void Done(bool success);
-
-  // Adds logs for the given PropertyPage to the specified cohort info index.
-  virtual void LogPageCohortInfo(AbstractLogRecord* log_record,
-                                 int cohort_index);
 
  private:
   PageType page_type_;

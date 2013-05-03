@@ -18,7 +18,6 @@
 #include "net/instaweb/apache/instaweb_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
@@ -34,7 +33,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -53,7 +51,8 @@ const int kRequestChainLimit = 5;
 PropertyCallback::PropertyCallback(RewriteDriver* driver,
                                    ThreadSystem* thread_system,
                                    const StringPiece& key)
-    : PropertyPage(key, driver->request_context(),
+    : PropertyPage(PropertyPage::kPropertyCachePage,
+                   key, driver->request_context(),
                    thread_system->NewMutex(),
                    driver->server_context()->page_property_cache()),
   driver_(driver),

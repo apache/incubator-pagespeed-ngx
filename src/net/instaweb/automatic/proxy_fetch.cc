@@ -187,7 +187,7 @@ ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
     ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
     : PropertyPage(
-          key, collector->request_context(), mutex, property_cache),
+          page_type, key, collector->request_context(), mutex, property_cache),
       page_type_(page_type),
       device_type_(device_type),
       collector_(collector) {
@@ -199,13 +199,6 @@ bool ProxyFetchPropertyCallback::IsCacheValid(int64 write_timestamp_ms) const {
 
 void ProxyFetchPropertyCallback::Done(bool success) {
   collector_->Done(this);
-}
-
-void ProxyFetchPropertyCallback::LogPageCohortInfo(
-    AbstractLogRecord* log_record, int cohort_index) {
-  // TODO(pulkitg): Change the name CacheType to PageType in logging info.
-  log_record->SetDeviceAndCacheTypeForCohortInfo(
-      cohort_index, device_type_, page_type_);
 }
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(

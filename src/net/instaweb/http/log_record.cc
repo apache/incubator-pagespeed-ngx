@@ -53,39 +53,6 @@ void AbstractLogRecord::SetIsHtml(bool is_html) {
   logging_info()->set_is_html_response(true);
 }
 
-int AbstractLogRecord::AddPropertyCohortInfo(const GoogleString& cohort) {
-  ScopedMutex lock(mutex_.get());
-  PropertyCohortInfo* cohort_info =
-      logging_info()->mutable_property_page_info()->add_cohort_info();
-  cohort_info->set_name(cohort);
-  return logging_info()->property_page_info().cohort_info_size() - 1;
-}
-
-void AbstractLogRecord::AddFoundPropertyToCohortInfo(
-    int index, const GoogleString& property) {
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_property_page_info()->mutable_cohort_info(index)->
-      add_properties_found(property);
-}
-
-void AbstractLogRecord::SetCacheStatusForCohortInfo(
-    int index, bool found, int key_state) {
-  ScopedMutex lock(mutex_.get());
-  PropertyCohortInfo* cohort_info =
-      logging_info()->mutable_property_page_info()->mutable_cohort_info(index);
-  cohort_info->set_is_cache_hit(found);
-  cohort_info->set_cache_key_state(key_state);
-}
-
-void AbstractLogRecord::SetDeviceAndCacheTypeForCohortInfo(
-    int index, int device_type, int cache_type) {
-  ScopedMutex lock(mutex_.get());
-  PropertyCohortInfo* cohort_info =
-      logging_info()->mutable_property_page_info()->mutable_cohort_info(index);
-  cohort_info->set_device_type(device_type);
-  cohort_info->set_cache_type(cache_type);
-}
-
 RewriterInfo* AbstractLogRecord::NewRewriterInfo(const char* rewriter_id) {
   ScopedMutex lock(mutex_.get());
   if (rewriter_info_max_size_ != -1 &&
