@@ -270,6 +270,7 @@
         'util/simple_stats_test.cc',
         'util/slow_worker_test.cc',
         'util/split_statistics_test.cc',
+        'util/statistics_logger_test.cc',
         'util/statistics_work_bound_test.cc',
         'util/stdio_file_system_test.cc',
         'util/string_multi_map_test.cc',

@@ -820,6 +820,7 @@
         'util/split_statistics.cc',
         'util/split_writer.cc',
         'util/statistics.cc',
+        'util/statistics_logger.cc',
         'util/statistics_work_bound.cc',
         'util/stdio_file_system.cc',
         'util/thread.cc',

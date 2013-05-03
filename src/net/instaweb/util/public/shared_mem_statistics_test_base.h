@@ -17,8 +17,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_STATISTICS_TEST_BASE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_STATISTICS_TEST_BASE_H_
 
-#include <set>
-
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -28,11 +26,13 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+class SharedMemConsoleStatisticsLogger;
+
 class SharedMemStatisticsTestBase : public testing::Test {
  protected:
   typedef void (SharedMemStatisticsTestBase::*TestMethod)();
@@ -45,10 +45,6 @@ class SharedMemStatisticsTestBase : public testing::Test {
 
   virtual void SetUp();
   virtual void TearDown();
-  GoogleString CreateVariableDataResponse(
-      bool has_unused_variable, bool first);
-  GoogleString CreateFakeLogfile(GoogleString* var_data,
-                                 std::set<GoogleString>* var_titles);
   bool CreateChild(TestMethod method);
 
   void TestCreate();
