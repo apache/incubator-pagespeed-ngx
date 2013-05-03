@@ -420,36 +420,6 @@ bool SplitStringPieceToIntegerVector(
   return true;
 }
 
-namespace {
-
-// From Hypertext Transfer Protocol -- HTTP/1.1
-// CTL            = <any US-ASCII control character
-//                  (octets 0 - 31) and DEL (127)>
-// SP             = <US-ASCII SP, space (32)>
-// HT             = <US-ASCII HT, horizontal-tab (9)>
-//        token          = 1*<any CHAR except CTLs or separators>
-//        separators     = "(" | ")" | "<" | ">" | "@"
-//                       | "," | ";" | ":" | "\" | <">
-//                       | "/" | "[" | "]" | "?" | "="
-//                       | "{" | "}" | SP | HT
-const char separators[] = "()<>@,;:\\\"/[]?={}";
-
-}  // namespace
-
-bool HasIllicitTokenCharacter(const StringPiece& str) {
-  for (int i = 0, n = str.size(); i < n; ++i) {
-    if (str[i] <= 32 || str[i] == 127) {
-      return true;
-    }
-    for (int j = 0, m = STATIC_STRLEN(separators); j < m; ++j) {
-      if (str[i] == separators[j]) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 const StringPiece EmptyString::kEmptyString;
 
 }  // namespace net_instaweb

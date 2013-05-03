@@ -328,10 +328,6 @@ void ParseShellLikeString(const StringPiece& input,
 // For example: "aaa" appears in "aaaaa" 3 times, not once
 int CountSubstring(const StringPiece& text, const StringPiece& substring);
 
-// Returns true if the string contains a character that is not legal
-// in an http header.
-bool HasIllicitTokenCharacter(const StringPiece& str);
-
 // Appends new empty string to a StringVector and returns a pointer to it.
 inline GoogleString* StringVectorAdd(StringVector* v) {
   v->push_back(GoogleString());
