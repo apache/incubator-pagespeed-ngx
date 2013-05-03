@@ -963,7 +963,8 @@ TEST_F(RewriteDriverTest, DiagnosticsWithPercent) {
 // Tests that we reject https URLs quickly.
 TEST_F(RewriteDriverTest, RejectHttpsQuickly) {
   // Need to expressly authorize https even though we don't support it.
-  options()->domain_lawyer()->AddDomain("https://*/", message_handler());
+  options()->WriteableDomainLawyer()->AddDomain("https://*/",
+                                                message_handler());
   AddFilter(RewriteOptions::kRewriteJavascript);
 
   // When we don't support https then we fail quickly and cleanly.

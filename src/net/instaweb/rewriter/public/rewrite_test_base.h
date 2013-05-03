@@ -365,6 +365,22 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   RewriteOptions* options() { return options_; }
   RewriteOptions* other_options() { return other_options_; }
 
+  // Authorizes a domain to options()->domain_lawyer(), recomputing
+  // the options signature if necessary.
+  bool AddDomain(StringPiece domain);
+
+  // Adds an origin domain mapping to options()->domain_lawyer(), recomputing
+  // the options signature if necessary.
+  bool AddOriginDomainMapping(StringPiece to_domain, StringPiece from_domain);
+
+  // Adds a rewrite domain mapping to options()->domain_lawyer(), recomputing
+  // the options signature if necessary.
+  bool AddRewriteDomainMapping(StringPiece to_domain, StringPiece from_domain);
+
+  // Adds a shard to options()->domain_lawyer(), recomputing the options
+  // signature if necessary.
+  bool AddShard(StringPiece domain, StringPiece shards);
+
   // Helper method to test all manner of resource serving from a filter.
   void TestServeFiles(const ContentType* content_type,
                       const StringPiece& filter_id,

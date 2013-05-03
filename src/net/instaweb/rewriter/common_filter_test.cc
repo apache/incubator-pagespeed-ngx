@@ -81,7 +81,7 @@ class CommonFilterTest : public RewriteTestBase {
                            const StringPiece& domain,
                            RewriteOptions* options,
                            RewriteDriver* driver) {
-    options->domain_lawyer()->AddDomain(domain, message_handler());
+    options->WriteableDomainLawyer()->AddDomain(domain, message_handler());
     CountingFilter* filter = new CountingFilter(driver);
     driver->AddOwnedPostRenderFilter(filter);
     driver->StartParse(base_url);

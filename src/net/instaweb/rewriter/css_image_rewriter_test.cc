@@ -869,7 +869,7 @@ TEST_F(CssImageRewriterTest, FallbackFails) {
 // Check that we absolutify URLs when moving CSS.
 TEST_F(CssImageRewriterTest, FallbackAbsolutify) {
   options()->ClearSignatureForTesting();
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   lawyer->AddRewriteDomainMapping("http://new_domain.com", kTestDomain,
                                   &message_handler_);
   // Turn off trimming to make sure we can see full absolutifications.
@@ -919,7 +919,7 @@ TEST_F(CssImageRewriterTest, FallbackNoAbsolutify) {
 // changes between the HTML and resource servers (race condition during push).
 TEST_F(CssImageRewriterTest, FetchRewriteFailure) {
   options()->ClearSignatureForTesting();
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   lawyer->AddRewriteDomainMapping("http://new_domain.com", kTestDomain,
                                   &message_handler_);
   // Turn off trimming to make sure we can see full absolutifications.

@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/util/copy_on_write.h"
 #include "pagespeed/kernel/util/dense_hash_map.h"
 #include "pagespeed/kernel/util/fast_wildcard_group.h"
 #include "pagespeed/kernel/util/wildcard.h"
@@ -2121,8 +2122,28 @@ class RewriteOptions {
   // not currently called by mod_pagespeed.
   virtual void DisallowResourcesForProxy();
 
-  DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
-  const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
+  // When someone asks for a readonly lawyer, we can return a pointer to
+  // the potentially shared DomainLawyer* object.  But if you want a mutable
+  // one, we clone whatever Lawyer we had and detach it from the shared
+  // group.  Here are several scenarios.
+  //   1. We are setting up the global_options() for a ServerContext on
+  //      startup.  There will be no concurrent access, and at this point
+  //      there will be no sharing with other RewriteOptions.
+  //   2. We are merging down global_options() based on the
+  //      vhost/directory/.htaccess data and need to update (among
+  //      other things) the settings.  This may happen concurrently for
+  //      several different server-scoped, directory-scoped, or request-scoped
+  //      RewriteOptions objects.  Those will all be attached to their
+  //      parent when the options get created.  However writing to these
+  //      will effectively detach them.
+  // One case that would be problematic is a mutation of a parent
+  // RewriteOptions->WriteableDomainLawyer() concurrent with instantiating
+  // a new child RewriteOptions.  However this does not occur in our system.
+  //
+  // The only similar place this does occur is cache_invalidation_timestamp_
+  // which can be mutated when there are active children.
+  const DomainLawyer* domain_lawyer() const { return domain_lawyer_.get(); }
+  DomainLawyer* WriteableDomainLawyer();
 
   FileLoadPolicy* file_load_policy() { return &file_load_policy_; }
   const FileLoadPolicy* file_load_policy() const { return &file_load_policy_; }
@@ -2227,10 +2248,15 @@ class RewriteOptions {
   // use this method.
   void ClearSignatureWithCaution();
 
+  bool frozen() const { return frozen_; }
+
   // Clears a computed signature, unfreezing the options object.  This
-  // is intended for testing.
-  void ClearSignatureForTesting() {
+  // is intended for testing.  Returns whether the options were frozen
+  // in the first place.
+  bool ClearSignatureForTesting() {
+    bool frozen = frozen_;
     ClearSignatureWithCaution();
+    return frozen;
   }
 
   // Returns the computed signature.
@@ -3139,8 +3165,8 @@ class RewriteOptions {
   // Option for the prioritize_visible_content filter.
   //
   // Represents the following information:
-  // "<url family wildcard 1>;<cache time 1>;<comma separated list of non-cacheable elements 1>",
-  // "<url family wildcard 2>;<cache time 2>;<comma separated list of non-cacheable elements 2>",
+  // "<url family wildcard 1>;<cache time 1>;<comma separated list of non-cacheable elements 1>",  // NOLINT
+  // "<url family wildcard 2>;<cache time 2>;<comma separated list of non-cacheable elements 2>",  // NOLINT
   //  ...
   std::vector<PrioritizeVisibleContentFamily*>
       prioritize_visible_content_families_;
@@ -3290,7 +3316,7 @@ class RewriteOptions {
 
   JavascriptLibraryIdentification javascript_library_identification_;
 
-  DomainLawyer domain_lawyer_;
+  CopyOnWrite<DomainLawyer> domain_lawyer_;
   FileLoadPolicy file_load_policy_;
 
   FastWildcardGroup allow_resources_;

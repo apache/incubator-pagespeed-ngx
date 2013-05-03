@@ -4141,7 +4141,7 @@ TEST_F(RewriteContextTest, BlockingRewrite) {
 TEST_F(RewriteContextTest, CssCdnMapToDifferentOrigin) {
   int64 start_time_ms = timer()->NowMs();
   UseMd5Hasher();
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   InitNestedFilter(true);
   InitResources();
   lawyer->AddRewriteDomainMapping("test.com", "static.test.com",
@@ -4186,7 +4186,7 @@ TEST_F(RewriteContextTest, CssCdnMapToDifferentOrigin) {
 TEST_F(RewriteContextTest, CssCdnMapToDifferentOriginSharded) {
   int64 start_time_ms = timer()->NowMs();
   UseMd5Hasher();
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   InitNestedFilter(true);
   InitResources();
 

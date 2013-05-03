@@ -51,7 +51,7 @@ class DomainRewriteFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
     options()->Disallow("*dont_shard*");
-    DomainLawyer* lawyer = options()->domain_lawyer();
+    DomainLawyer* lawyer = options()->WriteableDomainLawyer();
     lawyer->AddRewriteDomainMapping(kTo1Domain, kFrom1Domain,
                                     &message_handler_);
     lawyer->AddRewriteDomainMapping(kTo2Domain, kFrom2Domain,
@@ -109,8 +109,7 @@ TEST_F(DomainRewriteFilterTest, RelativeUpReferenceRewrite) {
   ExpectNoChange("subdir/relative", "under_subdir.css");
   ExpectNoChange("subdir/relative", "../under_top.css");
 
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping(kTo1Domain, kHtmlDomain, &message_handler_);
+  AddRewriteDomainMapping(kTo1Domain, kHtmlDomain);
   ExpectChange("subdir/relative", "under_subdir.css",
                StrCat(kTo1Domain, "subdir/under_subdir.css"));
   ExpectChange("subdir/relative", "../under_top2.css",
@@ -118,8 +117,7 @@ TEST_F(DomainRewriteFilterTest, RelativeUpReferenceRewrite) {
 }
 
 TEST_F(DomainRewriteFilterTest, RelativeUpReferenceShard) {
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping(kTo2Domain, kHtmlDomain, &message_handler_);
+  AddRewriteDomainMapping(kTo2Domain, kHtmlDomain);
   ExpectChange("subdir/relative", "under_subdir.css",
                StrCat(kTo2ADomain, "subdir/under_subdir.css"));
   ExpectChange("subdir/relative", "../under_top1.css",
@@ -194,8 +192,7 @@ TEST_F(DomainRewriteFilterTest, NoClientDomainRewrite) {
 
 TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
   options()->ClearSignatureForTesting();
-  options()->domain_lawyer()->AddRewriteDomainMapping(
-      kHtmlDomain, "http://clientrewrite.com/", &message_handler_);
+  AddRewriteDomainMapping(kHtmlDomain, "http://clientrewrite.com/");
   options()->set_domain_rewrite_hyperlinks(true);
   options()->set_client_domain_rewrite(true);
   StringPiece client_domain_rewriter_code =

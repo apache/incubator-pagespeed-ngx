@@ -24,7 +24,7 @@ class UrlNamerTest : public RewriteTestBase {
 };
 
 TEST_F(UrlNamerTest, UrlNamerEncoding) {
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   const char kRewriteDomain[] = "http://to.example.com/";
   const char kShard1[] = "http://s1.example.com/";
   const char kShard2[] = "http://s2.example.com/";

@@ -1018,7 +1018,6 @@ GoogleString RewriteTestBase::AppliedRewriterStringFromLog() {
     log_record()->AppliedRewritersString();
 }
 
-
 void RewriteTestBase::VerifyRewriterInfoEntry(
     AbstractLogRecord* log_record, const GoogleString& id, int url_index,
     int rewriter_info_index, int rewriter_info_size, int url_list_size,
@@ -1036,6 +1035,48 @@ void RewriteTestBase::VerifyRewriterInfoEntry(
             log_record->logging_info()->resource_url_info().url_size());
   EXPECT_EQ(url,
       log_record->logging_info()->resource_url_info().url(url_index));
+}
+
+bool RewriteTestBase::AddDomain(StringPiece domain) {
+  bool frozen = options_->ClearSignatureForTesting();
+  bool ret = options_->WriteableDomainLawyer()->AddDomain(
+      domain, message_handler());
+  if (frozen) {
+    server_context()->ComputeSignature(options_);
+  }
+  return ret;
+}
+
+bool RewriteTestBase::AddOriginDomainMapping(StringPiece to_domain,
+                                             StringPiece from_domain) {
+  bool frozen = options_->ClearSignatureForTesting();
+  bool ret = options_->WriteableDomainLawyer()->AddOriginDomainMapping(
+      to_domain, from_domain, message_handler());
+  if (frozen) {
+    server_context()->ComputeSignature(options_);
+  }
+  return ret;
+}
+
+bool RewriteTestBase::AddRewriteDomainMapping(StringPiece to_domain,
+                                              StringPiece from_domain) {
+  bool frozen = options_->ClearSignatureForTesting();
+  bool ret = options_->WriteableDomainLawyer()->AddRewriteDomainMapping(
+      to_domain, from_domain, message_handler());
+  if (frozen) {
+    server_context()->ComputeSignature(options_);
+  }
+  return ret;
+}
+
+bool RewriteTestBase::AddShard(StringPiece domain, StringPiece shards) {
+  bool frozen = options_->ClearSignatureForTesting();
+  bool ret = options_->WriteableDomainLawyer()->AddShard(
+      domain, shards, message_handler());
+  if (frozen) {
+    server_context()->ComputeSignature(options_);
+  }
+  return ret;
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

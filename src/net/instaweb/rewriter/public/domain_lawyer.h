@@ -46,8 +46,21 @@ class MessageHandler;
 
 class DomainLawyer {
  public:
-  DomainLawyer() : can_rewrite_domains_(false) {}
+  DomainLawyer() { Clear(); }
   ~DomainLawyer();
+
+  DomainLawyer& operator=(const DomainLawyer& src) {
+    if (&src != this) {
+      Clear();
+      Merge(src);
+    }
+    return *this;
+  }
+
+  DomainLawyer(const DomainLawyer& src) {
+    Clear();
+    Merge(src);
+  }
 
   // Determines whether a resource can be rewritten, and returns the domain
   // that it should be written to.  The domain and the path of the resolved
@@ -226,6 +239,9 @@ class DomainLawyer {
   // wins.
   void Merge(const DomainLawyer& src);
 
+  void Clear();
+  bool empty() const { return domain_map_.empty(); }
+
   // Determines whether a resource of the given domain name is going
   // to change due to RewriteDomain mapping or domain sharding.  Note
   // that this does not account for the actual domain shard selected.
@@ -316,7 +332,7 @@ class DomainLawyer {
   bool can_rewrite_domains_;
   // If you add more fields here, please be sure to update Merge().
 
-  DISALLOW_COPY_AND_ASSIGN(DomainLawyer);
+  // DomainLawyer is explicitly copyable and assignable.
 };
 
 }  // namespace net_instaweb

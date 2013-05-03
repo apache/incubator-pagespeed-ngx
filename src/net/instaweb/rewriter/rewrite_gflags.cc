@@ -819,26 +819,31 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
 
   StringPieceVector domains;
   SplitStringPieceToVector(FLAGS_domains, ",", &domains, true);
-  DomainLawyer* lawyer = options->domain_lawyer();
-  for (int i = 0, n = domains.size(); i < n; ++i) {
-    if (!lawyer->AddDomain(domains[i], handler)) {
-      LOG(ERROR) << "Invalid domain: " << domains[i];
-      ret = false;
+  if (!domains.empty()) {
+    DomainLawyer* lawyer = options->WriteableDomainLawyer();
+    for (int i = 0, n = domains.size(); i < n; ++i) {
+      if (!lawyer->AddDomain(domains[i], handler)) {
+        LOG(ERROR) << "Invalid domain: " << domains[i];
+        ret = false;
+      }
     }
   }
 
   if (WasExplicitlySet("rewrite_domain_map")) {
-    ret &= AddDomainMap(FLAGS_rewrite_domain_map, lawyer,
+    ret &= AddDomainMap(FLAGS_rewrite_domain_map,
+                        options->WriteableDomainLawyer(),
                         &DomainLawyer::AddRewriteDomainMapping, handler);
   }
 
   if (WasExplicitlySet("shard_domain_map")) {
-    ret &= AddDomainMap(FLAGS_shard_domain_map, lawyer,
+    ret &= AddDomainMap(FLAGS_shard_domain_map,
+                        options->WriteableDomainLawyer(),
                         &DomainLawyer::AddShard, handler);
   }
 
   if (WasExplicitlySet("origin_domain_map")) {
-    ret &= AddDomainMap(FLAGS_origin_domain_map, lawyer,
+    ret &= AddDomainMap(FLAGS_origin_domain_map,
+                        options->WriteableDomainLawyer(),
                         &DomainLawyer::AddOriginDomainMapping, handler);
   }
   if (WasExplicitlySet("passthrough_blink_for_last_invalid_response_code")) {

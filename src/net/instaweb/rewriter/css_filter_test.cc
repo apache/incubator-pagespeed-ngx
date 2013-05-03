@@ -86,14 +86,13 @@ class CssFilterTest : public CssRewriteTestBase {
       options()->DisableFilter(RewriteOptions::kExtendCacheImages);
       options()->DisableFilter(RewriteOptions::kSpriteImages);
     }
-    server_context()->ComputeSignature(options());
 
     // Set things up so that RewriteDriver::ShouldAbsolutifyUrl returns true
     // even though we are not proxying (but skip it if it has already been
     // set up by a previous call to this method).
     if (enable_mapping_and_sharding &&
         !options()->domain_lawyer()->can_rewrite_domains()) {
-      DomainLawyer* domain_lawyer = options()->domain_lawyer();
+      DomainLawyer* domain_lawyer = options()->WriteableDomainLawyer();
       MessageHandler* handler = message_handler();
       ASSERT_TRUE(domain_lawyer->AddDomain("http://cdn.com/", handler));
       ASSERT_TRUE(domain_lawyer->AddDomain("http://test.com/", handler));
@@ -118,6 +117,7 @@ class CssFilterTest : public CssRewriteTestBase {
                                                         &proxying));
       EXPECT_FALSE(proxying);
     }
+    server_context()->ComputeSignature(options());
 
     // By default TestUrlNamer doesn't proxy but we might need it for this test.
     TestUrlNamer::SetProxyMode(enable_proxy_mode);

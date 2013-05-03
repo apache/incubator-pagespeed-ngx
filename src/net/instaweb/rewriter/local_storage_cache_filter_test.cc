@@ -21,7 +21,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -29,7 +28,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -199,7 +197,7 @@ TEST_F(LocalStorageCacheTest, LinkUrlTransormationFails) {
   // The CSS rewriting fails so the local storage cache attributes are omitted
   // but because the CSS rewriting is asynchronous we still insert the JS even
   // though it ends up not being used. C'est la vie!
-  options()->domain_lawyer()->AddDomain("example.com", message_handler());
+  AddDomain("example.com");
   TestLocalStorage("link_url_transormation_fails",
                    "<link rel='stylesheet' href='http://example.com/junk.css'>",
                    InsertScriptBefore(

@@ -557,7 +557,7 @@ TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
 }
 
 TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
-  EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
+  EXPECT_TRUE(options()->WriteableDomainLawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", message_handler()));
   options()->EnableFilter(RewriteOptions::kRewriteJavascript);
   rewrite_driver()->AddFilters();
@@ -578,9 +578,9 @@ TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
 // rewrite domain, preventing us from finding the origin-mapping when
 // fetching the URL.
 TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
-  ASSERT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
+  ASSERT_TRUE(options()->WriteableDomainLawyer()->AddOriginDomainMapping(
       "localhost", kTestDomain, message_handler()));
-  EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
+  EXPECT_TRUE(options()->WriteableDomainLawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, message_handler()));
 
   ResourcePtr input(CreateResource(StrCat(kTestDomain, "index.html"),
@@ -1334,7 +1334,7 @@ class ServerContextShardedTest : public ServerContextTest {
  protected:
   virtual void SetUp() {
     ServerContextTest::SetUp();
-    EXPECT_TRUE(options()->domain_lawyer()->AddShard(
+    EXPECT_TRUE(options()->WriteableDomainLawyer()->AddShard(
         "example.com", "shard0.com,shard1.com", message_handler()));
   }
 };

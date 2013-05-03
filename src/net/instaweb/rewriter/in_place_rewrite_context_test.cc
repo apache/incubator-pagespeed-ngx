@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -1128,10 +1127,7 @@ TEST_F(InPlaceRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
   Init();
   const char kShard1[] = "http://s1.example.com/";
   const char kShard2[] = "http://s2.example.com/";
-
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddShard("http://www.example.com", StrCat(kShard1, ",", kShard2),
-                   message_handler());
+  AddShard("http://www.example.com", StrCat(kShard1, ",", kShard2));
   ExpectInPlaceImageSuccessFlow(cache_png_url_);
 }
 

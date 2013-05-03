@@ -95,7 +95,7 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
                dest.response_headers()->Lookup1("Host"));
 
   // Now make somehost.com known, as well as somehost.cdn.com
-  options_.domain_lawyer()->AddOriginDomainMapping(
+  options_.WriteableDomainLawyer()->AddOriginDomainMapping(
       "somehost.cdn.com", "somehost.com", &handler_);
 
   ExpectStringAsyncFetch dest2(

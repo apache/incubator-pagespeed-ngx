@@ -21,13 +21,11 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -183,8 +181,7 @@ TEST_F(JsOutlineFilterTest, EmptyScript) {
 // http://code.google.com/p/modpagespeed/issues/detail?id=416
 TEST_F(JsOutlineFilterTest, RewriteDomain) {
   SetupOutliner();
-  DomainLawyer* laywer = options()->domain_lawyer();
-  laywer->AddRewriteDomainMapping("cdn.com", kTestDomain, &message_handler_);
+  AddRewriteDomainMapping("cdn.com", kTestDomain);
 
   // Check that CSS gets outlined to the rewritten domain.
   GoogleString expected_url = Encode("http://cdn.com/", "jo", "0", "_", "js");

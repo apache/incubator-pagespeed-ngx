@@ -306,6 +306,7 @@ RewriteOptions* get_custom_options(ApacheServerContext* server_context,
   if ((directory_options != NULL) && directory_options->modified()) {
     custom_options = server_context->apache_factory()->NewRewriteOptions();
     custom_options->Merge(*global_options);
+    directory_options->Freeze();
     custom_options->Merge(*directory_options);
   }
 

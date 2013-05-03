@@ -2186,7 +2186,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
       break;
     }
     case kDomain:
-      domain_lawyer()->AddDomain(arg, handler);
+      WriteableDomainLawyer()->AddDomain(arg, handler);
       break;
     case kEnableFilters: {
       bool ok = EnableFiltersByCommaSeparatedList(arg, handler);
@@ -2265,16 +2265,16 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum2(
       break;
     }
     case kMapOriginDomain:
-      domain_lawyer()->AddOriginDomainMapping(arg1, arg2, handler);
+      WriteableDomainLawyer()->AddOriginDomainMapping(arg1, arg2, handler);
       break;
     case  kMapProxyDomain:
-      domain_lawyer()->AddProxyDomainMapping(arg1, arg2, "", handler);
+      WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, "", handler);
       break;
     case kMapRewriteDomain:
-      domain_lawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
+      WriteableDomainLawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
       break;
     case kShardDomain:
-      domain_lawyer()->AddShard(arg1, arg2, handler);
+      WriteableDomainLawyer()->AddShard(arg1, arg2, handler);
       break;
     default:
       return RewriteOptions::kOptionNameUnknown;
@@ -2318,7 +2318,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum3(
       break;
     }
     case kMapProxyDomain: {
-      domain_lawyer()->AddProxyDomainMapping(arg1, arg2, arg3, handler);
+      WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, arg3, handler);
       break;
     }
     default:
@@ -2593,6 +2593,11 @@ void RewriteOptions::DisableFiltersRequiringScriptExecution() {
   }
 }
 
+DomainLawyer* RewriteOptions::WriteableDomainLawyer() {
+  Modify();
+  return domain_lawyer_.MakeWriteable();
+}
+
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
 #ifndef NDEBUG
@@ -2683,7 +2688,13 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     insert_result.first->second->AppendFrom(*it->second);
   }
 
-  domain_lawyer_.Merge(src.domain_lawyer_);
+  if (!src.domain_lawyer_->empty()) {
+    if (domain_lawyer_->empty()) {
+      domain_lawyer_ = src.domain_lawyer_;
+    } else {
+      WriteableDomainLawyer()->Merge(*src.domain_lawyer());
+    }
+  }
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
@@ -2885,7 +2896,7 @@ void RewriteOptions::ComputeSignature() {
     javascript_library_identification()->AppendSignature(&signature_);
     StrAppend(&signature_, "_");
   }
-  StrAppend(&signature_, domain_lawyer_.Signature(), "_");
+  StrAppend(&signature_, domain_lawyer_->Signature(), "_");
   StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
   StrAppend(&signature_, "LDC:", lazyload_enabled_classes_.Signature(), "_");
@@ -2991,7 +3002,7 @@ GoogleString RewriteOptions::OptionsToString() const {
     }
   }
   output += "\nDomain Lawyer\n";
-  StrAppend(&output, domain_lawyer_.ToString("  "));
+  StrAppend(&output, domain_lawyer_->ToString("  "));
   // TODO(mmohabey): Incorporate ToString() from the file_load_policy,
   // allow_resources, and retain_comments.
   if (!url_cache_invalidation_entries_.empty()) {

@@ -520,7 +520,7 @@ TEST_F(CssCombineFilterCustomOptions, CssPreserveURLs) {
 // local files but they should have been after mapping into the same domain.
 TEST_F(CssCombineFilterCustomOptions, CssCombineAcrossProxyDomains) {
   // Proxy http://kProxyMapDomain/ onto http://kTestDomain/proxied/
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   GoogleString proxy_target = StrCat(kTestDomain, "proxied/");
   ASSERT_TRUE(lawyer->AddProxyDomainMapping(proxy_target,
                                             kProxyMapDomain,
@@ -1215,8 +1215,7 @@ TEST_F(CssCombineFilterTest, DoRewriteForDifferentDir) {
 
 TEST_F(CssCombineFilterTest, ShardSubresources) {
   UseMd5Hasher();
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddShard(kTestDomain, "shard1.com,shard2.com", &message_handler_);
+  AddShard(kTestDomain, "shard1.com,shard2.com");
 
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
@@ -1277,8 +1276,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
 
 TEST_F(CssCombineFilterTest, CrossMappedDomain) {
   CssLink::Vector css_in, css_out;
-  DomainLawyer* laywer = options()->domain_lawyer();
-  laywer->AddRewriteDomainMapping("a.com", "b.com", &message_handler_);
+  AddRewriteDomainMapping("a.com", "b.com");
   bool supply_mock = false;
   css_in.Add("http://a.com/1.css", kYellow, "", supply_mock);
   css_in.Add("http://b.com/2.css", kBlue, "", supply_mock);
@@ -1302,9 +1300,8 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
 // the domain mapping.
 TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
   CssLink::Vector css_in, css_out;
-  DomainLawyer* laywer = options()->domain_lawyer();
-  laywer->AddDomain("a.com", &message_handler_);
-  laywer->AddDomain("b.com", &message_handler_);
+  AddDomain("a.com");
+  AddDomain("b.com");
   bool supply_mock = false;
   const char kUrl1[] = "http://a.com/1.css";
   const char kUrl2[] = "http://b.com/2.css";

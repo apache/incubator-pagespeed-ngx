@@ -3039,7 +3039,7 @@ TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
   options->EnableFilter(RewriteOptions::kRewriteDomains);
   options->set_domain_rewrite_hyperlinks(true);
   NullMessageHandler handler;
-  options->domain_lawyer()->AddRewriteDomainMapping(
+  options->WriteableDomainLawyer()->AddRewriteDomainMapping(
       "http://dst.example.com", "http://src.example.com", &handler);
   options->AddUrlValuedAttribute(
       "span", "src", semantic_type::kHyperlink);

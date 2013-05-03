@@ -31,7 +31,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -44,7 +43,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -387,8 +385,7 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
 // the code (in url_partnership.cc) was already doing the right thing,
 // but was not previously confirmed in a unit-test.
 TEST_F(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  ASSERT_TRUE(lawyer->AddShard(kTestDomain, "a.com,b.com", &message_handler_));
+  ASSERT_TRUE(AddShard(kTestDomain, "a.com,b.com"));
 
   // Make sure the shards have the resources, too.
   SimulateJsResourceOnDomain("http://a.com/", kJsUrl1, kJsText1);
@@ -406,7 +403,7 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
-  options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
+  AddDomain(kAlternateDomain);
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
                                "<script src=", js_url_2, "></script>"));
   ASSERT_EQ(2, scripts.size());
@@ -450,7 +447,7 @@ TEST_F(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
-  options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
+  AddDomain(kAlternateDomain);
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
                                "<script src=", js_url_2, "></script>"));
   ASSERT_EQ(2, scripts.size()) << "If combination fails, we get 2 scripts";
@@ -761,8 +758,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
 
 // Validate that we can recover a combination after a cross-domain rejection
 TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  ASSERT_TRUE(lawyer->AddDomain(other_domain_, &message_handler_));
+  ASSERT_TRUE(AddDomain(other_domain_));
 
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);

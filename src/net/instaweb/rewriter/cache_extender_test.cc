@@ -380,8 +380,7 @@ TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
 
 TEST_F(CacheExtenderTest, ExtendIfSharded) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
-  EXPECT_TRUE(options()->domain_lawyer()->AddShard(
-      kTestDomain, "shard0.com,shard1.com", &message_handler_));
+  EXPECT_TRUE(AddShard(kTestDomain, "shard0.com,shard1.com"));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
   ValidateExpected("extend_if_sharded",
@@ -395,8 +394,7 @@ TEST_F(CacheExtenderTest, ExtendIfSharded) {
 
 TEST_F(CacheExtenderTest, ExtendIfOriginMappedHttps) {
   InitTest(kShortTtlSec);
-  EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
-      kTestDomain, "https://cdn.com", &message_handler_));
+  EXPECT_TRUE(AddOriginDomainMapping(kTestDomain, "https://cdn.com"));
   ValidateExpected("extend_if_origin_mapped_https",
                    GenerateHtml("https://cdn.com/sub/a.css?v=1",
                                 "https://cdn.com/b.jpg",
@@ -411,8 +409,7 @@ TEST_F(CacheExtenderTest, ExtendIfOriginMappedHttps) {
 TEST_F(CacheExtenderTest, ExtendIfRewritten) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
-  EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
-      "cdn.com", kTestDomain, &message_handler_));
+  EXPECT_TRUE(AddRewriteDomainMapping("cdn.com", kTestDomain));
   ValidateExpected("extend_if_rewritten",
                    GenerateHtml(kCssFile, "b.jpg", "c.js"),
                    GenerateHtml(
@@ -428,12 +425,10 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
-  EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
-      "cdn.com", kTestDomain, &message_handler_));
+  EXPECT_TRUE(AddRewriteDomainMapping("cdn.com", kTestDomain));
 
   // Domain-rewriting is performed first.  Then we shard.
-  EXPECT_TRUE(options()->domain_lawyer()->AddShard(
-      "cdn.com", "shard0.com,shard1.com", &message_handler_));
+  EXPECT_TRUE(AddShard("cdn.com", "shard0.com,shard1.com"));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
   ValidateExpected("extend_if_sharded_and_rewritten",
@@ -449,12 +444,10 @@ TEST_F(CacheExtenderTest, ExtendIfShardedToHttps) {
   InitTest(kLongTtlSec);
 
   // This Origin Mapping ensures any fetches are converted to http so work.
-  EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
-      kTestDomain, "https://test.com", &message_handler_));
+  EXPECT_TRUE(AddOriginDomainMapping(kTestDomain, "https://test.com"));
 
-  EXPECT_TRUE(options()->domain_lawyer()->AddShard(
-      "https://test.com", "https://shard0.com,https://shard1.com",
-      &message_handler_));
+  EXPECT_TRUE(AddShard("https://test.com",
+                       "https://shard0.com,https://shard1.com"));
   // shard0 is always selected in the test because of our mock hasher
   // that always returns 0.
   ValidateExpected("extend_if_sharded_to_https",
@@ -496,8 +489,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {
   // don't cache it.  However, what we must do is generate the correct hash
   // code.  To test that we need to use the real hasher.
   UseMd5Hasher();
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
+  AddRewriteDomainMapping(kNewDomain, kTestDomain);
   InitTest(kShortTtlSec);
 
   // First do the HTML rewrite.
@@ -541,9 +533,8 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
   // different than that for the .css file, thus the references within the
   // css file are rewritten as absolute.
   UseMd5Hasher();
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
-  lawyer->AddShard(kNewDomain, "shard1.com,shard2.com", &message_handler_);
+  AddRewriteDomainMapping(kNewDomain, kTestDomain);
+  AddShard(kNewDomain, "shard1.com,shard2.com");
   InitTest(kShortTtlSec);
 
   // First do the HTML rewrite.
@@ -577,8 +568,7 @@ TEST_F(CacheExtenderTest, ConsistentHashWithShard) {
 
 TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
   GoogleString content;
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
+  AddRewriteDomainMapping(kNewDomain, kTestDomain);
   InitTest(kShortTtlSec);
   ASSERT_TRUE(FetchResource(kCssPath, kFilterId, kCssTail, "css", &content));
   EXPECT_EQ(CssData("http://new.com/sub/"), content);
@@ -586,9 +576,7 @@ TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
 
 TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainAndPathEnabled) {
   GoogleString content;
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping("http://new.com/test/", kTestDomain,
-                                  &message_handler_);
+  AddRewriteDomainMapping("http://new.com/test/", kTestDomain);
   InitTest(kShortTtlSec);
   ASSERT_TRUE(FetchResource(kCssPath, kFilterId, kCssTail, "css", &content));
   EXPECT_EQ(CssData("http://new.com/test/sub/"), content);
@@ -596,9 +584,8 @@ TEST_F(CacheExtenderTest, ServeFilesWithRewriteDomainAndPathEnabled) {
 
 TEST_F(CacheExtenderTest, ServeFilesWithShard) {
   GoogleString content;
-  DomainLawyer* lawyer = options()->domain_lawyer();
-  lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
-  lawyer->AddShard(kNewDomain, "shard1.com,shard2.com", &message_handler_);
+  AddRewriteDomainMapping(kNewDomain, kTestDomain);
+  AddShard(kNewDomain, "shard1.com,shard2.com");
   InitTest(kShortTtlSec);
   ASSERT_TRUE(FetchResource(kCssPath, kFilterId, kCssTail, "css", &content));
   EXPECT_EQ(CssData("http://shard1.com/sub/"), content);
@@ -724,7 +711,7 @@ TEST_F(CacheExtenderTest, DoNotExtendRewrittenCss) {
   static const char kRewriteDomain[] = "http://rewrite.example.com/";
   static const char kShard1Domain[] = "http://shard1.example.com/";
   static const char kShard2Domain[] = "http://shard2.example.com/";
-  DomainLawyer* lawyer = options()->domain_lawyer();
+  DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   lawyer->AddRewriteDomainMapping(kRewriteDomain, kTestDomain,
                                   message_handler());
   lawyer->AddShard(kRewriteDomain,

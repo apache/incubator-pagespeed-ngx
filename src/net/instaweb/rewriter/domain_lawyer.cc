@@ -285,7 +285,7 @@ class DomainLawyer::Domain {
 };
 
 DomainLawyer::~DomainLawyer() {
-  STLDeleteValues(&domain_map_);
+  Clear();
 }
 
 bool DomainLawyer::AddDomain(const StringPiece& domain_name,
@@ -957,6 +957,12 @@ GoogleString DomainLawyer::ToString(StringPiece line_prefix) const {
     StrAppend(&output, line_prefix, iterator->second->ToString(), "\n");
   }
   return output;
+}
+
+void DomainLawyer::Clear() {
+  STLDeleteValues(&domain_map_);
+  can_rewrite_domains_ = false;
+  wildcarded_domains_.clear();
 }
 
 }  // namespace net_instaweb
