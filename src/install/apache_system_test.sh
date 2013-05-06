@@ -261,6 +261,7 @@ check fgrep -q '<base href="https://' $FETCHED
 test_filter add_instrumentation beacons load.
 check run_wget_with_args http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
 check fgrep -q "204 No Content" $WGET_OUTPUT
+check fgrep -q 'Cache-Control: max-age=0, no-cache' $WGET_OUTPUT
 
 test_filter combine_css combines 4 CSS files into 1.
 fetch_until $URL 'grep -c text/css' 1

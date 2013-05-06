@@ -957,6 +957,8 @@ apr_status_t instaweb_beacon_handler(request_rec* request,
   StringPiece user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
   server_context->HandleBeacon(data, user_agent, request_context);
+  apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
+                HttpAttributes::kNoCache);
   return HTTP_NO_CONTENT;
 }
 
