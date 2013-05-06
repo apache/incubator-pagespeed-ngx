@@ -89,6 +89,11 @@ typedef struct {
   bool modify_headers;
   bool fetch_done;
   net_instaweb::GzipInflater* inflater_;
+  InPlaceResourceRecorder* recorder;
+
+  GoogleString url;
+  
+  ngx_http_handler_pt response_handler;
 } ps_request_ctx_t;
 
 // called by net_instaweb::NgxBaseFetch to notify event
