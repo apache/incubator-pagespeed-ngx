@@ -751,6 +751,8 @@ class ImageRewriteTest : public RewriteTestBase {
         Count());
   }
 
+  // Verify log for background image rewriting. To skip url, pass in an empty
+  // string. To skip original_size or optimized_size,  pass in '-1'.
   void TestBackgroundRewritingLog(
       int rewrite_info_size,
       int rewrite_info_index,
@@ -784,8 +786,13 @@ class ImageRewriteTest : public RewriteTestBase {
     ASSERT_TRUE(rewriter_info.has_rewrite_resource_info());
     const RewriteResourceInfo& resource_info =
         rewriter_info.rewrite_resource_info();
-    EXPECT_EQ(original_size, resource_info.original_size());
-    EXPECT_EQ(optimized_size, resource_info.optimized_size());
+
+    if (original_size != -1) {
+      EXPECT_EQ(original_size, resource_info.original_size());
+    }
+    if (optimized_size != -1) {
+      EXPECT_EQ(optimized_size, resource_info.optimized_size());
+    }
     EXPECT_EQ(is_recompressed, resource_info.is_recompressed());
 
     ASSERT_TRUE(rewriter_info.has_image_rewrite_resource_info());
@@ -1039,7 +1046,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
       IMAGE_PNG, /* original_type */
       IMAGE_WEBP_LOSSLESS_OR_ALPHA, /* optimized_type */
       26548, /* original_size */
-      17534, /* optimized_size */
+      -1, /* optimized_size */
       true, /* is_recompressed */
       false /* is_resized */);
 }
