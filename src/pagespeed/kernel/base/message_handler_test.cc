@@ -16,13 +16,13 @@
 
 // Author: bmcquade@google.com (Bryan McQuade)
 
-#include "net/instaweb/util/public/message_handler.h"
+#include "pagespeed/kernel/base/message_handler.h"
 
 #include <cstdarg>
 #include <vector>
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

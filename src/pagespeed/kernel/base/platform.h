@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,35 +14,25 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
-
-#include "net/instaweb/util/public/timer.h"
-
-#include "net/instaweb/util/public/basictypes.h"
+#ifndef PAGESPEED_KERNEL_BASE_PLATFORM_H_
+#define PAGESPEED_KERNEL_BASE_PLATFORM_H_
 
 namespace net_instaweb {
 
-const int64 Timer::kSecondMs;
-const int64 Timer::kMsUs;
-const int64 Timer::kSecondUs;
-const int64 Timer::kSecondNs;
-const int64 Timer::kMinuteMs;
-const int64 Timer::kMinuteUs;
-const int64 Timer::kHourMs;
-const int64 Timer::kDayMs;
-const int64 Timer::kWeekMs;
-const int64 Timer::kMonthMs;
-const int64 Timer::kYearMs;
+class ThreadSystem;
+class Timer;
 
-Timer::~Timer() {
-}
+// Encapsulates the creation of objects that may have different applications
+// across platforms.
+class Platform {
+ public:
+  // Creates an appropriate ThreadSystem for the platform.
+  static ThreadSystem* CreateThreadSystem();
 
-int64 Timer::NowMs() const {
-  return NowUs() / 1000;
-}
-
-void Timer::SleepMs(int64 ms) {
-  SleepUs(ms * 1000);
-}
+  // Creates an appropriate Timer for the platform.
+  static Timer* CreateTimer();
+};
 
 }  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_BASE_PLATFORM_H_

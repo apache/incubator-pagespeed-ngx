@@ -16,17 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/abstract_mutex.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 
-AbstractMutex::~AbstractMutex() {
-}
-
-void AbstractMutex::DCheckLocked() {
-}
-
-void AbstractMutex::DCheckUnlocked() {
+Writer::~Writer() {
 }
 
 }  // namespace net_instaweb

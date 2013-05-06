@@ -16,24 +16,26 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/file_system_test.h"
+#include "pagespeed/kernel/base/file_system_test_base.h"
 
 #include <cstddef>
 #include <algorithm>
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
+// TODO(huibao): Rename FileSystemTest to FileSystemTestBase.
+
 FileSystemTest::FileSystemTest()
-    : test_tmpdir_(StrCat(GTestTempDir(), "/file_system_test")) {}
+    : test_tmpdir_(StrCat(GTestTempDir(), "/file_system_test_base")) {}
 FileSystemTest::~FileSystemTest() {}
 
 // Used by TestDirInfo to make sure vector of FileInfos can be compared

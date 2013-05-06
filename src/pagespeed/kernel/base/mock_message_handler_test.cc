@@ -16,9 +16,9 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/message_handler.h"
 
 namespace net_instaweb {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,27 @@
  * limitations under the License.
  */
 
-// Author: morlovich@google.com (Maksim Orlovich)
+// Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/string_writer.h"
+
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
-ThreadSystem::~ThreadSystem() {
+class MessageHandler;
+
+StringWriter::~StringWriter() {
 }
 
-ThreadSystem::CondvarCapableMutex::~CondvarCapableMutex() {
+bool StringWriter::Write(const StringPiece& str, MessageHandler* handler) {
+  string_->append(str.data(), str.size());
+  return true;
 }
 
-ThreadSystem::RWLock::~RWLock() {
-}
-
-ThreadSystem::ThreadImpl::~ThreadImpl() {
-}
-
-void ThreadSystem::RWLock::DCheckReaderLocked() {
-}
-
-ThreadSystem::ThreadId::~ThreadId() {
+bool StringWriter::Flush(MessageHandler* message_handler) {
+  return true;
 }
 
 }  // namespace net_instaweb

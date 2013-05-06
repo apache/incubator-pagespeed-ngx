@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,35 @@
  * limitations under the License.
  */
 
-// Author: jmaessen@google.com (Jan Maessen)
+// Author: jmarantz@google.com (Joshua Marantz)
 
-#include <sstream>
-#include "net/instaweb/util/public/debug.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/timer.h"
+
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 
-GoogleString StackTraceString() {
-  base::debug::StackTrace trace;
-  std::ostringstream ostream;
-  trace.OutputToStream(&ostream);
-  return ostream.str();
+const int64 Timer::kSecondMs;
+const int64 Timer::kMsUs;
+const int64 Timer::kSecondUs;
+const int64 Timer::kSecondNs;
+const int64 Timer::kMinuteMs;
+const int64 Timer::kMinuteUs;
+const int64 Timer::kHourMs;
+const int64 Timer::kDayMs;
+const int64 Timer::kWeekMs;
+const int64 Timer::kMonthMs;
+const int64 Timer::kYearMs;
+
+Timer::~Timer() {
+}
+
+int64 Timer::NowMs() const {
+  return NowUs() / 1000;
+}
+
+void Timer::SleepMs(int64 ms) {
+  SleepUs(ms * 1000);
 }
 
 }  // namespace net_instaweb

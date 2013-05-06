@@ -17,17 +17,17 @@
 
 // Unit-test the stdio file system
 
-#include "net/instaweb/util/public/stdio_file_system.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system_test.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/platform.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system_test_base.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

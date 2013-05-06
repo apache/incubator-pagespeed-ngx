@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/stdio_file_system.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -30,13 +30,13 @@
 #include <limits>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/debug.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/debug.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace {
 // The st_blocks field returned by stat is the number of 512B blocks allocated
@@ -173,7 +173,7 @@ StdioFileSystem::~StdioFileSystem() {
 int StdioFileSystem::MaxPathLength(const StringPiece& base) const {
   const int kMaxInt = std::numeric_limits<int>::max();
 
-  long limit = pathconf(base.as_string().c_str(), _PC_PATH_MAX);
+  long limit = pathconf(base.as_string().c_str(), _PC_PATH_MAX);  // NOLINT
   if (limit < 0) {
     // pathconf failed.
     return FileSystem::MaxPathLength(base);
@@ -181,7 +181,7 @@ int StdioFileSystem::MaxPathLength(const StringPiece& base) const {
     // As pathconf returns a long, we may have to clamp it.
     return kMaxInt;
   } else {
-    return static_cast<int>(limit);
+    return limit;
   }
 }
 

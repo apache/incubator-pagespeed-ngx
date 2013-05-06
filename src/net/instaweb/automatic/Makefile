@@ -108,6 +108,7 @@ BASE_LIBS = \
   net/instaweb/libtest_infrastructure.a \
   pagespeed/libpagespeed_http.a \
   pagespeed/libpagespeed_base.a \
+  pagespeed/libpagespeed_base_test_infrastructure.a \
   pagespeed/libutil.a \
   pagespeed/libjsminify.a \
   pagespeed/libpagespeed_javascript_gperf.a \

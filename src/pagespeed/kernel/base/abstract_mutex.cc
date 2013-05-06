@@ -16,10 +16,17 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
+#include "pagespeed/kernel/base/abstract_mutex.h"
 
-// TODO(huibao): Remove this forwarding header and update references.
-#include "pagespeed/kernel/base/stdio_file_system.h"
+namespace net_instaweb {
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
+AbstractMutex::~AbstractMutex() {
+}
+
+void AbstractMutex::DCheckLocked() {
+}
+
+void AbstractMutex::DCheckUnlocked() {
+}
+
+}  // namespace net_instaweb

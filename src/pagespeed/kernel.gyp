@@ -21,15 +21,42 @@
       # Chromium libbase.a
       'type': '<(library)',
       'sources': [
+        'kernel/base/abstract_mutex.cc',
+        'kernel/base/debug.cc',
+        'kernel/base/file_system.cc',
+        'kernel/base/message_handler.cc',
+        'kernel/base/google_message_handler.cc',
+        'kernel/base/stdio_file_system.cc',
         'kernel/base/string_util.cc',
+        'kernel/base/string_writer.cc',
         'kernel/base/time_util.cc',
+        'kernel/base/timer.cc',
+        'kernel/base/thread_system.cc',
+        'kernel/base/writer.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',
         '<(DEPTH)/third_party/chromium/src/base/third_party/nspr',
       ],
       'dependencies': [
+        '<(DEPTH)/base/base.gyp:base',
+      ],
+      'export_dependent_settings': [
         '<(DEPTH)/base/base.gyp:base'
+      ],
+    },
+    {
+      'target_name': 'pagespeed_base_test_infrastructure',
+      'type': '<(library)',
+      'sources': [
+        'kernel/base/mock_message_handler.cc',
+        'kernel/base/platform.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        '<(DEPTH)/base/base.gyp:base',
       ],
       'export_dependent_settings': [
         '<(DEPTH)/base/base.gyp:base'
@@ -39,6 +66,7 @@
       'target_name': 'base_test_util',
       'type': '<(library)',
       'sources': [
+        'kernel/base/file_system_test_base.cc',
         'kernel/base/gtest.cc',
       ],
       'all_dependent_settings': {

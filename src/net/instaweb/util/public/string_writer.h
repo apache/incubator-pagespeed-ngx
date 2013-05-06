@@ -19,28 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_WRITER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_WRITER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
-
-namespace net_instaweb {
-
-class MessageHandler;
-
-// Writer implementation for directing HTML output to a string.
-class StringWriter : public Writer {
- public:
-  explicit StringWriter(GoogleString* str) : string_(str) { }
-  virtual ~StringWriter();
-  virtual bool Write(const StringPiece& str, MessageHandler* message_handler);
-  virtual bool Flush(MessageHandler* message_handler);
- private:
-  GoogleString* string_;
-
-  DISALLOW_COPY_AND_ASSIGN(StringWriter);
-};
-
-}  // namespace net_instaweb
+// TODO(huibao): Remove this forwarding header and update references.
+#include "pagespeed/kernel/base/string_writer.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_WRITER_H_

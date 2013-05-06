@@ -17,22 +17,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
 
-namespace net_instaweb {
-
-class ThreadSystem;
-class Timer;
-
-// Encapsulates the creation of objects that may have different applications
-// across platforms.
-class Platform {
- public:
-  // Creates an appropriate ThreadSystem for the platform.
-  static ThreadSystem* CreateThreadSystem();
-
-  // Creates an appropriate Timer for the platform.
-  static Timer* CreateTimer();
-};
-
-}  // namespace net_instaweb
+// TODO(huibao): Remove this forwarding header and update references.
+#include "pagespeed/kernel/base/platform.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_

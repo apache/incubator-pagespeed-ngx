@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,26 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
+#include "pagespeed/kernel/base/platform.h"
 
-// TODO(huibao): Remove this forwarding header and update references.
-#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "net/instaweb/util/public/pthread_thread_system.h"
+#include "net/instaweb/util/public/checking_thread_system.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
+#include "net/instaweb/util/public/posix_timer.h"
+
+namespace net_instaweb {
+
+ThreadSystem* Platform::CreateThreadSystem() {
+  ThreadSystem* impl = new PthreadThreadSystem;
+#ifdef NDEBUG
+  return impl;
+#else
+  return new CheckingThreadSystem(impl);
+#endif
+}
+
+Timer* Platform::CreateTimer() {
+  return new PosixTimer;
+}
+
+}  // namespace net_instaweb

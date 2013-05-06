@@ -19,14 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_DEBUG_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_DEBUG_H_
 
-#include "net/instaweb/util/public/string.h"
-// Use Chromium debug support.
-#include "base/debug/stack_trace.h"
-
-namespace net_instaweb {
-
-GoogleString StackTraceString();
-
-}  // namespace net_instaweb
+// TODO(huibao): Remove this forwarding header and update references.
+#include "pagespeed/kernel/base/debug.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_DEBUG_H_

@@ -16,18 +16,18 @@
 
 // Author:  morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/mock_message_handler.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 
 #include <cstdarg>
 #include <map>
 #include <utility>
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/platform.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

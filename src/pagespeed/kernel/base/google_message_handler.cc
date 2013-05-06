@@ -16,13 +16,16 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/google_message_handler.h"
+// TODO(huibao): Rename GoogleMessageHandler and google_message_handler
+// to reflect the fact that they are not google specific.
+
+#include "pagespeed/kernel/base/google_message_handler.h"
 
 #include <cstdarg>
 #include "base/logging.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

@@ -16,10 +16,29 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
+#ifndef PAGESPEED_KERNEL_BASE_WRITER_H_
+#define PAGESPEED_KERNEL_BASE_WRITER_H_
 
-// TODO(huibao): Remove this forwarding header and update references.
-#include "pagespeed/kernel/base/stdio_file_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_STDIO_FILE_SYSTEM_H_
+namespace net_instaweb {
+class MessageHandler;
+
+// Interface for writing bytes to an output stream.
+class Writer {
+ public:
+  Writer() {}
+  virtual ~Writer();
+
+  virtual bool Write(const StringPiece& str, MessageHandler* handler) = 0;
+
+  virtual bool Flush(MessageHandler* message_handler) = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Writer);
+};
+
+}  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_BASE_WRITER_H_

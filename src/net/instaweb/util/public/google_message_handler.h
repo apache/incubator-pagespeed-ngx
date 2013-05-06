@@ -19,32 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_
 
-#include <cstdarg>
-
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string.h"
-
-namespace net_instaweb {
-
-// Implementation of an HTML parser message handler that uses Google
-// logging to emit messsages.
-class GoogleMessageHandler : public MessageHandler {
- public:
-  GoogleMessageHandler() { }
-
- protected:
-  virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
-
-  virtual void FileMessageVImpl(MessageType type, const char* filename,
-                                int line, const char* msg, va_list args);
-
- private:
-  GoogleString Format(const char* msg, va_list args);
-
-  DISALLOW_COPY_AND_ASSIGN(GoogleMessageHandler);
-};
-
-}  // namespace net_instaweb
+// TODO(huibao): Remove this forwarding header and update references.
+#include "pagespeed/kernel/base/google_message_handler.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_MESSAGE_HANDLER_H_

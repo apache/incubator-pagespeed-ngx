@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,19 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/string_writer.h"
-
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include <sstream>
+#include "pagespeed/kernel/base/debug.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
-class MessageHandler;
-
-StringWriter::~StringWriter() {
-}
-
-bool StringWriter::Write(const StringPiece& str, MessageHandler* handler) {
-  string_->append(str.data(), str.size());
-  return true;
-}
-
-bool StringWriter::Flush(MessageHandler* message_handler) {
-  return true;
+GoogleString StackTraceString() {
+  base::debug::StackTrace trace;
+  std::ostringstream ostream;
+  trace.OutputToStream(&ostream);
+  return ostream.str();
 }
 
 }  // namespace net_instaweb
