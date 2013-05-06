@@ -87,6 +87,10 @@ const char kChefDims[] = " width=\"192\" height=\"256\"";
 // Size of a 1x1 image.
 const char kPixelDims[] = " width='1' height='1'";
 
+// If the expected value of a size is set to -1, this size will be ignored in
+// the test.
+const int kIgnoreSize = -1;
+
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
 class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
@@ -752,7 +756,7 @@ class ImageRewriteTest : public RewriteTestBase {
   }
 
   // Verify log for background image rewriting. To skip url, pass in an empty
-  // string. To skip original_size or optimized_size,  pass in '-1'.
+  // string. To skip original_size or optimized_size,  pass in kIgnoreSize.
   void TestBackgroundRewritingLog(
       int rewrite_info_size,
       int rewrite_info_index,
@@ -787,10 +791,10 @@ class ImageRewriteTest : public RewriteTestBase {
     const RewriteResourceInfo& resource_info =
         rewriter_info.rewrite_resource_info();
 
-    if (original_size != -1) {
+    if (original_size != kIgnoreSize) {
       EXPECT_EQ(original_size, resource_info.original_size());
     }
-    if (optimized_size != -1) {
+    if (optimized_size != kIgnoreSize) {
       EXPECT_EQ(optimized_size, resource_info.optimized_size());
     }
     EXPECT_EQ(is_recompressed, resource_info.is_recompressed());
@@ -1046,7 +1050,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
       IMAGE_PNG, /* original_type */
       IMAGE_WEBP_LOSSLESS_OR_ALPHA, /* optimized_type */
       26548, /* original_size */
-      -1, /* optimized_size */
+      kIgnoreSize, /* optimized_size */
       true, /* is_recompressed */
       false /* is_resized */);
 }
