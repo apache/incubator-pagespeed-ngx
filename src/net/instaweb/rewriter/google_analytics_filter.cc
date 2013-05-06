@@ -460,7 +460,7 @@ bool GoogleAnalyticsFilter::RewriteAsAsync() {
     ScriptEditor* editor = script_editors_[i];
     HtmlElement* script = editor->GetScriptElement();
     if (editor->GetType() == ScriptEditor::kGaJsScriptSrcLoad) {
-      html_parse_->DeleteElement(script);
+      html_parse_->DeleteNode(script);
       html_parse_->InfoHere("Deleted script src load");
     } else if (editor->GetType() == ScriptEditor::kGaJsDocWriteLoad) {
       editor->NewContents("", &replacement_script);

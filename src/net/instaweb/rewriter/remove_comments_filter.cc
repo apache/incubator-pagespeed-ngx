@@ -28,7 +28,7 @@ RemoveCommentsFilter::~RemoveCommentsFilter() {}
 void RemoveCommentsFilter::Comment(HtmlCommentNode* comment) {
   if ((options_ == NULL) ||
       !options_->IsRetainedComment(comment->contents())) {
-    html_parse_->DeleteElement(comment);
+    html_parse_->DeleteNode(comment);
   }
 }
 

@@ -61,7 +61,7 @@ class StaticAssetManagerTest : public RewriteTestBase {
       if (element->keyword() == HtmlName::kBr) {
         HtmlElement* script = driver_->NewElement(element->parent(),
                                                   HtmlName::kScript);
-        driver_->InsertElementBeforeElement(element, script);
+        driver_->InsertNodeBeforeNode(element, script);
         driver_->server_context()->static_asset_manager()->
             AddJsToElement(kScript, script, driver_);
       }

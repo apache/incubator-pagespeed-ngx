@@ -243,7 +243,7 @@ void MockFilter::StartElement(HtmlElement* element) {
                 ? "stable " : "unstable ");
     }
     HtmlNode* node = driver_->NewCommentNode(element->parent(), comment);
-    driver_->InsertElementBeforeCurrent(node);
+    driver_->InsertNodeBeforeCurrent(node);
   }
   ++num_elements_;
 }

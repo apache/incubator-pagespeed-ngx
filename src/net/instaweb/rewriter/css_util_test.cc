@@ -63,7 +63,7 @@ TEST_F(CssUtilTest, TestGetDimensions) {
   EXPECT_EQ(80, extractor->width());
   EXPECT_EQ(50, extractor->height());
 
-  html_parse.DeleteElement(img);
+  html_parse.DeleteNode(img);
   img = html_parse.NewElement(NULL, HtmlName::kImg);
   html_parse.AddAttribute(img, HtmlName::kStyle,
                           "border-width:0px;");
@@ -72,7 +72,7 @@ TEST_F(CssUtilTest, TestGetDimensions) {
   EXPECT_EQ(kNoValue, extractor->width());
   EXPECT_EQ(kNoValue, extractor->height());
 
-  html_parse.DeleteElement(img);
+  html_parse.DeleteNode(img);
   img = html_parse.NewElement(NULL, HtmlName::kImg);
   html_parse.AddAttribute(img, HtmlName::kStyle,
                           "border-width:0px;width:80px;");
@@ -82,7 +82,7 @@ TEST_F(CssUtilTest, TestGetDimensions) {
   EXPECT_EQ(kNoValue, extractor->height());
   EXPECT_EQ(80, extractor->width());
 
-  html_parse.DeleteElement(img);
+  html_parse.DeleteNode(img);
   img = html_parse.NewElement(NULL, HtmlName::kImg);
   html_parse.AddAttribute(img, HtmlName::kStyle,
                           "border-width:0px;height:200px");
@@ -90,7 +90,7 @@ TEST_F(CssUtilTest, TestGetDimensions) {
   EXPECT_EQ(kHasHeightOnly, extractor->state());
   EXPECT_EQ(200, extractor->height());
   EXPECT_EQ(kNoValue, extractor->width());
-  html_parse.DeleteElement(img);
+  html_parse.DeleteNode(img);
 }
 
 TEST_F(CssUtilTest, TestAnyDimensions) {
@@ -102,14 +102,14 @@ TEST_F(CssUtilTest, TestAnyDimensions) {
   EXPECT_TRUE(extractor->HasAnyDimensions());
   EXPECT_EQ(kHasWidthOnly, extractor->state());
 
-  html_parse.DeleteElement(img);
+  html_parse.DeleteNode(img);
   img = html_parse.NewElement(NULL, HtmlName::kImg);
   html_parse.AddAttribute(img, HtmlName::kStyle,
                           "border-width:0px;background-color:blue;");
   extractor.reset(new StyleExtractor(img));
   EXPECT_FALSE(extractor->HasAnyDimensions());
 
-  html_parse.DeleteElement(img);
+  html_parse.DeleteNode(img);
   img = html_parse.NewElement(NULL, HtmlName::kImg);
   html_parse.AddAttribute(img, HtmlName::kStyle,
                           "border-width:0px;width:30px;height:40px");

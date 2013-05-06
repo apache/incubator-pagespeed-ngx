@@ -271,7 +271,7 @@ void CssSummarizerBase::InjectSummaryData(HtmlNode* data) {
   if (injection_point_ != NULL && driver()->IsRewritable(injection_point_)) {
     driver()->AppendChild(injection_point_, data);
   } else {
-    driver()->InsertElementBeforeCurrent(data);
+    driver()->InsertNodeBeforeCurrent(data);
   }
 }
 

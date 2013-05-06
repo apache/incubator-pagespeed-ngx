@@ -95,7 +95,7 @@ void AddInstrumentationFilter::AddHeadScript(HtmlElement* element) {
     // TODO(abliss): add an actual element instead, so other filters can
     // rewrite this JS
     HtmlCharactersNode* script = driver_->NewCharactersNode(NULL, kHeadScript);
-    driver_->InsertElementBeforeCurrent(script);
+    driver_->InsertNodeBeforeCurrent(script);
     instrumentation_script_added_count_->Add(1);
   }
 }
@@ -203,7 +203,7 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
 
   StrAppend(&js, init_js);
   HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  driver_->InsertElementBeforeCurrent(script);
+  driver_->InsertNodeBeforeCurrent(script);
   static_asset_manager->AddJsToElement(js, script, driver_);
 }
 

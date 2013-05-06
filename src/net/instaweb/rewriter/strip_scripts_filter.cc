@@ -32,7 +32,7 @@ StripScriptsFilter::~StripScriptsFilter() {}
 
 void StripScriptsFilter::EndElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kScript) {
-    html_parse_->DeleteElement(element);
+    html_parse_->DeleteNode(element);
   }
 }
 

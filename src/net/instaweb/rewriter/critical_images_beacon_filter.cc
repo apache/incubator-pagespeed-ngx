@@ -133,7 +133,7 @@ void CriticalImagesBeaconFilter::EndElement(HtmlElement* element) {
     StrAppend(&js, "'", options_signature_hash, "');");
 
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-    driver_->InsertElementBeforeCurrent(script);
+    driver_->InsertNodeBeforeCurrent(script);
     static_asset_manager->AddJsToElement(js, script, driver_);
 
     added_script_ = true;

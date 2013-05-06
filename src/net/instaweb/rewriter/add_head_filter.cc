@@ -44,7 +44,7 @@ void AddHeadFilter::StartElement(HtmlElement* element) {
     if (element->keyword() == HtmlName::kBody) {
       head_element_ = html_parse_->NewElement(
           element->parent(), HtmlName::kHead);
-      html_parse_->InsertElementBeforeElement(element, head_element_);
+      html_parse_->InsertNodeBeforeNode(element, head_element_);
       found_head_ = true;
     } else if (element->keyword() == HtmlName::kHead) {
       found_head_ = true;

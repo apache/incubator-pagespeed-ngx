@@ -279,13 +279,13 @@ void SplitHtmlFilter::InsertPanelStub(HtmlElement* element,
   HtmlCommentNode* comment = rewrite_driver_->NewCommentNode(
       element->parent(),
       StrCat(RewriteOptions::kPanelCommentPrefix, " begin ", panel_id));
-  rewrite_driver_->InsertElementBeforeCurrent(comment);
+  rewrite_driver_->InsertNodeBeforeCurrent(comment);
   Comment(comment);
   // Append end stub to json.
   comment = rewrite_driver_->NewCommentNode(
       element->parent(),
       StrCat(RewriteOptions::kPanelCommentPrefix, " end ", panel_id));
-  rewrite_driver_->InsertElementBeforeCurrent(comment);
+  rewrite_driver_->InsertNodeBeforeCurrent(comment);
   Comment(comment);
 }
 

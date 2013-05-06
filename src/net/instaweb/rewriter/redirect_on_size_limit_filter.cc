@@ -82,9 +82,9 @@ void RedirectOnSizeLimitFilter::InsertScriptIfNeeded(HtmlElement* element,
         driver()->AppendChild(element, script);
       }
     } else if (is_start) {
-      driver()->InsertElementBeforeElement(element, script);
+      driver()->InsertNodeBeforeNode(element, script);
     } else {
-      driver()->InsertElementAfterElement(element, script);
+      driver()->InsertNodeAfterNode(element, script);
     }
     driver()->AppendChild(script, script_code);
     redirect_inserted_ = true;

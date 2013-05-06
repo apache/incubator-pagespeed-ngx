@@ -62,7 +62,7 @@ void JsDeferDisabledFilter::InsertJsDeferCode() {
   rewrite_driver_->AddAttribute(
       defer_js_url_node, HtmlName::kSrc,
       static_asset_manager->GetAssetUrl(StaticAssetManager::kDeferJs, options));
-  rewrite_driver_->InsertElementAfterCurrent(defer_js_url_node);
+  rewrite_driver_->InsertNodeAfterCurrent(defer_js_url_node);
 }
 
 void JsDeferDisabledFilter::EndDocument() {

@@ -55,7 +55,7 @@ void BlinkBackgroundFilter::StartElement(HtmlElement* element) {
   // page since in case javascript is turned off, we anyway redirect
   // the user to the page with blink disabled.
   if (element->keyword() == HtmlName::kNoscript) {
-    rewrite_driver_->DeleteElement(element);
+    rewrite_driver_->DeleteNode(element);
   }
 }
 

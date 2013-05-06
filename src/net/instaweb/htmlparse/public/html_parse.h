@@ -172,16 +172,26 @@ class HtmlParse {
   // TODO(sligocki): Find Javascript equivalents and list them or even change
   // our names to be consistent.
 
-  // TODO(mdsteele): Rename these methods to e.g. InsertNodeBeforeNode.
   // This and downstream filters will then see inserted elements but upstream
   // filters will not.
+
   // Note: In Javascript the first is called insertBefore and takes the arg
   // in the opposite order.
   // Note: new_node must not already be in the DOM.
-  void InsertElementBeforeElement(const HtmlNode* existing_node,
-                                  HtmlNode* new_node);
-  void InsertElementAfterElement(const HtmlNode* existing_node,
-                                 HtmlNode* new_node);
+  void InsertNodeBeforeNode(const HtmlNode* existing_node, HtmlNode* new_node);
+  void InsertNodeAfterNode(const HtmlNode* existing_node, HtmlNode* new_node);
+
+  // These are a backwards-compatibility wrapper for use by Pagespeed Insights.
+  // TODO(morlovich): Remove them after PSI is synced.
+  void InsertElementBeforeElement(const HtmlNode* existing_element,
+                                  HtmlNode* new_element) {
+    InsertNodeBeforeNode(existing_element, new_element);
+  }
+
+  void InsertElementAfterElement(const HtmlNode* existing_element,
+                                 HtmlNode* new_element) {
+    InsertNodeAfterNode(existing_element, new_element);
+  }
 
   // Add a new child element at the beginning or end of existing_parent's
   // children. Named after Javascript's appendChild method.
@@ -191,13 +201,13 @@ class HtmlParse {
 
   // Insert a new element before the current one.  current_ remains unchanged.
   // Note: new_node must not already be in the DOM.
-  void InsertElementBeforeCurrent(HtmlNode* new_node);
+  void InsertNodeBeforeCurrent(HtmlNode* new_node);
 
   // Insert a new element after the current one, moving current_ to the new
   // element.  In a Filter, the flush-loop will advance past this on
   // the next iteration.
   // Note: new_node must not already be in the DOM.
-  void InsertElementAfterCurrent(HtmlNode* new_node);
+  void InsertNodeAfterCurrent(HtmlNode* new_node);
 
   // Enclose element around two elements in a sequence.  The first
   // element must be the same as, or precede the last element in the
@@ -220,14 +230,14 @@ class HtmlParse {
   // Moves current node (and all children) directly before existing_node.
   // Note: Will not work if called from StartElement() event.
   //
-  // This differs from InsertElementBeforeElement() because it moves the
+  // This differs from InsertNodeBeforeNode() because it moves the
   // current node, which is already in the DOM, rather than adding a new node.
   bool MoveCurrentBefore(HtmlNode* existing_node);
 
   // If the given node is rewritable, delete it and all of its children (if
   // any) and return true; otherwise, do nothing and return false.
   // Note: Javascript appears to use removeChild for this.
-  bool DeleteElement(HtmlNode* node);
+  bool DeleteNode(HtmlNode* node);
 
   // Delete a parent element, retaining any children and moving them to
   // reside under the parent's parent.
@@ -439,10 +449,10 @@ class HtmlParse {
   void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue
   bool IsInEventWindow(const HtmlEventListIterator& iter) const;
-  void InsertElementBeforeEvent(const HtmlEventListIterator& event,
-                                HtmlNode* new_node);
-  void InsertElementAfterEvent(const HtmlEventListIterator& event,
-                               HtmlNode* new_node);
+  void InsertNodeBeforeEvent(const HtmlEventListIterator& event,
+                             HtmlNode* new_node);
+  void InsertNodeAfterEvent(const HtmlEventListIterator& event,
+                            HtmlNode* new_node);
   bool MoveCurrentBeforeEvent(const HtmlEventListIterator& move_to);
   bool IsDescendantOf(const HtmlNode* possible_child,
                       const HtmlNode* possible_parent);

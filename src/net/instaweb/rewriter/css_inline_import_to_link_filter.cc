@@ -287,12 +287,12 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
           driver_->AddAttribute(link_element, HtmlName::kMedia, media[i]);
         }
         // Add the link to the DOM.
-        driver_->InsertElementAfterElement(insert_after_element, link_element);
+        driver_->InsertNodeAfterNode(insert_after_element, link_element);
         insert_after_element = link_element;
       }
 
       // Now we don't need it any more, remove the style element from the DOM.
-      if (!driver_->DeleteElement(style_element_)) {
+      if (!driver_->DeleteNode(style_element_)) {
         driver_->ErrorHere("Failed to delete inline style element");
       }
 

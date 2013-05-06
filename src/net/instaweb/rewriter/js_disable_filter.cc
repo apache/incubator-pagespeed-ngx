@@ -121,7 +121,7 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       !defer_js_experimental_script_written_) {
     HtmlElement* head_node =
         rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
-    rewrite_driver_->InsertElementBeforeCurrent(head_node);
+    rewrite_driver_->InsertNodeBeforeCurrent(head_node);
     InsertJsDeferExperimentalScript(head_node);
     InsertMetaTagForIE(head_node);
   } else {

@@ -238,7 +238,7 @@ void CriticalCssFilter::EndDocument() {
     HtmlElement* noscript_element =
         driver_->NewElement(NULL, HtmlName::kNoscript);
     driver_->AddAttribute(noscript_element, HtmlName::kId, kNoscriptStylesId);
-    driver_->InsertElementBeforeCurrent(noscript_element);
+    driver_->InsertNodeBeforeCurrent(noscript_element);
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),
          end = css_elements_.end(); it != end; ++it) {
@@ -247,7 +247,7 @@ void CriticalCssFilter::EndDocument() {
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-    driver_->InsertElementBeforeCurrent(script);
+    driver_->InsertNodeBeforeCurrent(script);
     int num_unreplaced_links_ = num_links_ - num_replaced_links_;
     int total_overhead_size =
         total_critical_size_ + repeated_style_blocks_size_;
@@ -380,7 +380,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
           driver_->NewElement(element->parent(), HtmlName::kScript);
       driver_->AddAttribute(script, HtmlName::kId, kMoveScriptId);
       driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-      driver_->InsertElementBeforeElement(element, script);
+      driver_->InsertNodeBeforeNode(element, script);
       driver_->server_context()->static_asset_manager()->AddJsToElement(
           kMoveAndApplyLinkScriptTemplate, script, driver_);
     }

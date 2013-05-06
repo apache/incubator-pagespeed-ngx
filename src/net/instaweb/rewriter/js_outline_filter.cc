@@ -136,10 +136,9 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
       driver_->AddAttribute(outline_element, HtmlName::kSrc,
                             resource->url());
       // Add <script src=...> element to DOM.
-      driver_->InsertElementBeforeElement(inline_element,
-                                          outline_element);
+      driver_->InsertNodeBeforeNode(inline_element, outline_element);
       // Remove original script element from DOM.
-      if (!driver_->DeleteElement(inline_element)) {
+      if (!driver_->DeleteNode(inline_element)) {
         driver_->FatalErrorHere("Failed to delete inline script element");
       }
     } else {

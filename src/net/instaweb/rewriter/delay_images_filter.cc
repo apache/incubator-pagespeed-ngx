@@ -167,7 +167,7 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
     if (insert_after_element) {
       DCHECK(element->keyword() == HtmlName::kImg ||
              element->keyword() == HtmlName::kInput);
-      driver_->InsertElementAfterElement(current_element, script_element);
+      driver_->InsertNodeAfterNode(current_element, script_element);
       current_element = script_element;
     } else {
       DCHECK(element->keyword() == HtmlName::kBody);
@@ -193,7 +193,7 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
         driver_->NewElement(current_element, HtmlName::kScript);
     driver_->AddAttribute(low_res_element, HtmlName::kPagespeedNoDefer, "");
     if (insert_after_element) {
-      driver_->InsertElementAfterElement(current_element, low_res_element);
+      driver_->InsertNodeAfterNode(current_element, low_res_element);
       current_element = low_res_element;
     } else {
       driver_->AppendChild(element, low_res_element);

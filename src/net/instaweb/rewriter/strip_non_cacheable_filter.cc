@@ -51,7 +51,7 @@ void StripNonCacheableFilter::StartElement(HtmlElement* element) {
         panel_number, panel_number_num_instances_[panel_number]);
     panel_number_num_instances_[panel_number]++;
     InsertPanelStub(element, panel_id);
-    rewrite_driver_->DeleteElement(element);
+    rewrite_driver_->DeleteNode(element);
   }
 }
 
@@ -60,12 +60,12 @@ void StripNonCacheableFilter::InsertPanelStub(HtmlElement* element,
   HtmlCommentNode* comment = rewrite_driver_->NewCommentNode(
       element->parent(),
       StrCat(RewriteOptions::kPanelCommentPrefix, " begin ", panel_id));
-  rewrite_driver_->InsertElementBeforeCurrent(comment);
+  rewrite_driver_->InsertNodeBeforeCurrent(comment);
   // Append end stub to json.
   comment = rewrite_driver_->NewCommentNode(
       element->parent(),
       StrCat(RewriteOptions::kPanelCommentPrefix, " end ", panel_id));
-  rewrite_driver_->InsertElementBeforeCurrent(comment);
+  rewrite_driver_->InsertNodeBeforeCurrent(comment);
 }
 
 }   // namespace net_instaweb

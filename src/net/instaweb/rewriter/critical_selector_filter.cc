@@ -266,12 +266,12 @@ void CriticalSelectorFilter::RenderSummary(
     *char_node->mutable_contents() = *css_to_use;
   } else {
     HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
-    driver_->InsertElementBeforeElement(element, style_element);
+    driver_->InsertNodeBeforeNode(element, style_element);
 
     HtmlCharactersNode* content =
         driver_->NewCharactersNode(style_element, *css_to_use);
     driver_->AppendChild(style_element, content);
-    driver_->DeleteElement(element);
+    driver_->DeleteNode(element);
     element = style_element;
   }
 
@@ -312,7 +312,7 @@ void CriticalSelectorFilter::RenderSummary(
   }
 
   if (drop_entire_element) {
-    driver_->DeleteElement(element);
+    driver_->DeleteNode(element);
   }
 
   // We've altered the CSS, so we should generate code to load the entire thing.

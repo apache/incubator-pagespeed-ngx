@@ -76,7 +76,7 @@ void HtmlResourceSlot::Render() {
     return;  // nothing done here.
   } else if (should_delete_element()) {
     if (element_ != NULL) {
-      html_parse_->DeleteElement(element_);
+      html_parse_->DeleteNode(element_);
       element_ = NULL;
     }
   } else {

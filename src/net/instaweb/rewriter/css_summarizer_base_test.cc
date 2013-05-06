@@ -97,12 +97,12 @@ class MinifyExcerptFilter : public CssSummarizerBase {
       // Replace link with style. Note: real one should also keep media,
       // test code does not have to.
       HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
-      driver_->InsertElementBeforeElement(element, style_element);
+      driver_->InsertNodeBeforeNode(element, style_element);
 
       HtmlCharactersNode* content =
           driver_->NewCharactersNode(style_element, summary.data);
       driver_->AppendChild(style_element, content);
-      EXPECT_TRUE(driver_->DeleteElement(element));
+      EXPECT_TRUE(driver_->DeleteNode(element));
     }
   }
 
@@ -119,7 +119,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     const SummaryInfo& sum = GetSummaryForStyle(pos);
     GoogleString annotation = StrCat("WillNotRender:", IntegerToString(pos),
                                      " --- ", EncodeState(sum.state));
-    driver_->InsertElementBeforeElement(
+    driver_->InsertNodeBeforeNode(
         element, driver_->NewCommentNode(NULL, annotation));
   }
 

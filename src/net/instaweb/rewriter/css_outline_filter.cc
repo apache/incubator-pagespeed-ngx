@@ -163,10 +163,10 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
             link_element->AddAttribute(attr);
           }
           // Add link to DOM.
-          driver_->InsertElementAfterElement(style_element, link_element);
+          driver_->InsertNodeAfterNode(style_element, link_element);
           // Remove style element from DOM.
-          if (!driver_->DeleteElement(style_element)) {
-            driver_->FatalErrorHere("Failed to delete inline sytle element");
+          if (!driver_->DeleteNode(style_element)) {
+            driver_->FatalErrorHere("Failed to delete inline style element");
           }
         }
       }

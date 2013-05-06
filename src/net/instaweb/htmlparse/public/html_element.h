@@ -355,7 +355,7 @@ class HtmlElement : public HtmlNode {
     // 24-bit integers together gives a total size of 16 bytes, so
     // we interleave.
     //
-    // HtmlParse::DeleteElement will set live_ to false without
+    // HtmlParse::DeleteNode will set live_ to false without
     // deleting element->data_.  Flushing an ElementClose deletes
     // data_ but HtmlElement knows that null data_ implies !live().
     unsigned begin_line_number_ : 24;

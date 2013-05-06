@@ -177,7 +177,7 @@ void InsertGAFilter::AddScriptNode(HtmlElement* current_element,
   HtmlNode* snippet =
       driver_->NewCharactersNode(script_element, text);
   if (insert_immediately_after_current) {
-    driver_->InsertElementAfterCurrent(script_element);
+    driver_->InsertNodeAfterCurrent(script_element);
   } else {
     driver_->AppendChild(current_element, script_element);
   }

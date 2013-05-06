@@ -59,7 +59,7 @@ void DeferIframeFilter::StartElement(HtmlElement* element) {
     if (!script_inserted_) {
       HtmlElement* script = driver_->NewElement(element->parent(),
                                                 HtmlName::kScript);
-      driver_->InsertElementBeforeElement(element, script);
+      driver_->InsertNodeBeforeNode(element, script);
 
       GoogleString js = StrCat(
           static_asset_manager_->GetAsset(

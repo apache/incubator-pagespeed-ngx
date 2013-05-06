@@ -87,7 +87,7 @@ class StaticAssetManager {
 
   // Add a CharacterNode to an already created script element, properly escaping
   // the text with CDATA tags is necessary. The script element should be added
-  // already, say with a call to InsertElementBeforeElement.
+  // already, say with a call to InsertNodeBeforeNode.
   void AddJsToElement(StringPiece js, HtmlElement* script,
                       RewriteDriver* driver) const;
 

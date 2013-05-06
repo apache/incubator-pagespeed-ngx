@@ -32,7 +32,7 @@ void BaseTagFilter::StartElement(HtmlElement* element) {
     HtmlElement* new_element = driver_->NewElement(element, HtmlName::kBase);
     driver_->AddAttribute(new_element, HtmlName::kHref,
                           driver_->decoded_base());
-    driver_->InsertElementAfterCurrent(new_element);
+    driver_->InsertNodeAfterCurrent(new_element);
   }
 }
 
