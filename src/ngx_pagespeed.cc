@@ -95,12 +95,6 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
     bool send_last_buf) {
-
-  if (!send_last_buf && sp.size() == 0) {
-    // Nothing to send, not even the metadata that this is the last buffer.
-    return NGX_DECLINED;
-  }
-
   // Below, *link_ptr will be NULL if we're starting the chain, and the head
   // chain link.
   *link_ptr = NULL;
@@ -937,7 +931,12 @@ ngx_int_t ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
     PDBG(ctx, "pagespeed update: %p, done: %d", cl, done);
 
     if (cl == NULL) {
-      return done ? NGX_OK : NGX_AGAIN;
+      rc = string_piece_to_buffer_chain(
+          ctx->r->pool, "", &cl, false /* send_last_buf */);
+      if (rc != NGX_OK) {
+        PDBG(ctx, "problem with string_piece_to_buffer_chain");
+        return rc;
+      }
     }
     // Pass the optimized content along to later body filters.
     // From Weibin: This function should be called mutiple times. Store the
