@@ -79,6 +79,7 @@ const int kCgiSlowJs = 3;
 const int kModpagespeedBeacon = 4;
 const int kHttpsGoogleFavicon = 5;
 const int kConnectionRefused = 6;
+const int kNoContent = 7;
 
 // Note: We do not subclass StringAsyncFetch because we want to lock access
 // to done_.
@@ -173,6 +174,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                       "favicon.d034f46c06475a27478e98ef5dff965e.ico"),
                GoogleString());
     AddTestUrl(StrCat("http:", fetch_test_domain, ":1023/refused.jpg"),
+               GoogleString());
+    AddTestUrl(StrCat("http:", fetch_test_domain, "/no_content"),
                GoogleString());
     prev_done_count = 0;
   }
@@ -564,9 +567,9 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, Test204) {
-  TestFetch(kModpagespeedBeacon, kModpagespeedBeacon);
+  TestFetch(kNoContent, kNoContent);
   EXPECT_EQ(HttpStatus::kNoContent,
-            response_headers(kModpagespeedBeacon)->status_code());
+            response_headers(kNoContent)->status_code());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsByDefault) {
