@@ -15,9 +15,13 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_TEST_BASE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_TEST_BASE_H_
 
+#include "pagespeed/kernel/base/string_util.h"        // for StringPiece
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
+
+class UserAgentMatcher;
 
 class UserAgentMatcherTestBase : public testing::Test {
  public:
@@ -136,6 +140,18 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const int kImageInliningSupportedUserAgentsArraySize;
   static const int kSplitHtmlSupportedUserAgentsArraySize;
   static const int kSplitHtmlUnSupportedUserAgentsArraySize;
+
+  UserAgentMatcherTestBase();
+  virtual ~UserAgentMatcherTestBase() { }
+  bool IsMobileUserAgent(const StringPiece& user_agent);
+  bool IsDesktopUserAgent(const StringPiece& user_agent);
+  bool IsTabletUserAgent(const StringPiece& user_agent);
+  void VerifyGetDeviceTypeForUA();
+  void VerifyImageInliningSupport();
+  void VerifySplitHtmlSupport();
+
+ protected:
+  scoped_ptr<UserAgentMatcher> user_agent_matcher_;
 };
 
 }  // namespace net_instaweb

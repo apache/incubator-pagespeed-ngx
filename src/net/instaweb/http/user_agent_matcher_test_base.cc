@@ -12,7 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "pagespeed/kernel/base/basictypes.h"                // for arraysize
+#include "pagespeed/kernel/base/gtest.h"  // for Message, EXPECT_TRUE, etc
+#include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
+#include "pagespeed/kernel/base/string_util.h"        // for StringPiece
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -384,5 +389,84 @@ const int UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgentsArraySize =
     arraysize(kSplitHtmlSupportedUserAgents);
 const int UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgentsArraySize =
     arraysize(kSplitHtmlUnSupportedUserAgents);
+
+UserAgentMatcherTestBase::UserAgentMatcherTestBase() {
+  user_agent_matcher_.reset(new UserAgentMatcher());
+}
+
+bool UserAgentMatcherTestBase::IsMobileUserAgent(
+    const StringPiece& user_agent) {
+  return user_agent_matcher_->GetDeviceTypeForUA(user_agent) ==
+      UserAgentMatcher::kMobile;
+}
+
+bool UserAgentMatcherTestBase::IsDesktopUserAgent(
+    const StringPiece& user_agent) {
+  return user_agent_matcher_->GetDeviceTypeForUA(user_agent) ==
+      UserAgentMatcher::kDesktop;
+}
+
+bool UserAgentMatcherTestBase::IsTabletUserAgent(
+    const StringPiece& user_agent) {
+  return user_agent_matcher_->GetDeviceTypeForUA(user_agent) ==
+      UserAgentMatcher::kTablet;
+}
+
+void UserAgentMatcherTestBase::VerifyGetDeviceTypeForUA() {
+  for (int i = 0; i < kMobileUserAgentsArraySize; ++i) {
+    EXPECT_TRUE(IsMobileUserAgent(kMobileUserAgents[i]))
+        << "\"" << kMobileUserAgents[i] << "\""
+        << " not detected as mobile user agent.";
+  }
+
+  for (int i = 0; i < kDesktopUserAgentsArraySize; ++i) {
+    EXPECT_TRUE(IsDesktopUserAgent(kDesktopUserAgents[i]))
+        << "\"" << kDesktopUserAgents[i] << "\""
+        << " not detected as desktop user agent.";
+  }
+
+  for (int i = 0; i < kTabletUserAgentsArraySize; ++i) {
+    EXPECT_TRUE(IsTabletUserAgent(kTabletUserAgents[i]))
+        << "\"" << kTabletUserAgents[i] << "\""
+        << " not detected as tablet user agent.";
+  }
+}
+
+void UserAgentMatcherTestBase::VerifyImageInliningSupport() {
+  for (int i = 0;
+       i < kImageInliningSupportedUserAgentsArraySize;
+       ++i) {
+    EXPECT_TRUE(user_agent_matcher_->SupportsImageInlining(
+                    kImageInliningSupportedUserAgents[i]))
+        << "\"" << kImageInliningSupportedUserAgents[i]
+        << "\" not detected as a user agent that supports image inlining";
+  }
+  EXPECT_FALSE(user_agent_matcher_->SupportsImageInlining(
+      "random user agent"));
+}
+
+void UserAgentMatcherTestBase::VerifySplitHtmlSupport() {
+  for (int i = 0;
+       i < kSplitHtmlSupportedUserAgentsArraySize;
+       ++i) {
+    EXPECT_TRUE(user_agent_matcher_->SupportsSplitHtml(
+                    kSplitHtmlSupportedUserAgents[i],
+                    false))
+        << "\"" << kSplitHtmlSupportedUserAgents[i]
+        << "\"" << " not detected as a user agent that supports split-html";
+  }
+  // Allow-mobile case.
+  EXPECT_TRUE(user_agent_matcher_->SupportsSplitHtml(
+      kAndroidChrome21UserAgent, true));
+  for (int i = 0;
+       i < kSplitHtmlUnSupportedUserAgentsArraySize;
+       ++i) {
+    EXPECT_FALSE(user_agent_matcher_->SupportsSplitHtml(
+                    kSplitHtmlUnSupportedUserAgents[i],
+                    false))
+        << "\"" << kSplitHtmlUnSupportedUserAgents[i]
+        << "\" detected incorrectly as a user agent that supports split-html";
+  }
+}
 
 }  // namespace net_instaweb
