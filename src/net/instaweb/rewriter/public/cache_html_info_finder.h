@@ -42,6 +42,9 @@ class CacheHtmlInfoFinder {
       bool is_diff, int64 now_ms, AbstractLogRecord* cache_html_log_record,
       RewriteDriver* rewrite_driver, RewriteDriverFactory* factory);
 
+  // Updates the driver with the split html information from the pcache.
+  virtual void UpdateSplitInfoInDriver(RewriteDriver* driver) {}
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CacheHtmlInfoFinder);
 };

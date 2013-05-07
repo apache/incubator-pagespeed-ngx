@@ -136,7 +136,8 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // (ProxyFetch).  Should we combine these?
       options->IsAllowed(url.Spec()) &&
       // Does url match a cacheable family pattern specified in config?
-      options->IsInBlinkCacheableFamily(url) &&
+      (filter == RewriteOptions::kCachePartialHtml ||
+       options->IsInBlinkCacheableFamily(url)) &&
       // Is the user agent allowed to enter the blink flow?
       IsUserAgentAllowedForBlink(
           async_fetch, options, user_agent,

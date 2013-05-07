@@ -156,6 +156,12 @@ void InitDriverWithPropertyCacheValues(
     css_finder->UpdateCriticalCssInfoInDriver(cache_html_driver);
   }
 
+  CacheHtmlInfoFinder* cache_html_finder =
+      cache_html_driver->server_context()->cache_html_info_finder();
+  if (cache_html_finder != NULL) {
+    cache_html_finder->UpdateSplitInfoInDriver(cache_html_driver);
+  }
+
   cache_html_driver->set_unowned_fallback_property_page(NULL);
 }
 
@@ -287,9 +293,10 @@ class CacheHtmlComputationFetch : public AsyncFetch {
       cache_html_log_helper_->SetCacheHtmlRequestFlow(
           CacheHtmlLoggingInfo::CACHE_HTML_MISS_TRIGGERED_REWRITE);
     }
-    if (rewrite_driver_->options()->enable_blink_html_change_detection() ||
-        rewrite_driver_->options()->
-        enable_blink_html_change_detection_logging()) {
+    if ((rewrite_driver_->options()->enable_blink_html_change_detection() ||
+         rewrite_driver_->options()->
+         enable_blink_html_change_detection_logging()) &&
+        server_context_->cache_html_info_finder() != NULL) {
       // We do diff mismatch detection in cache miss case also so that we can
       // update the content hash and smart text hash in CacheHtmlInfo in pcache.
       CreateHtmlChangeDetectionDriverAndRewrite();
