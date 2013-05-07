@@ -48,7 +48,6 @@ struct ResourceInfo;
 // need to the original writer.
 class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
  public:
-  static const char kPrefetchLinkRelSubresourceHtml[];
   static const char kPrefetchImageTagHtml[];
   static const char kPrefetchStartTimeScript[];
   static const char kNumResourcesFlushedEarly[];
@@ -77,6 +76,9 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   // Check whether resource can be flushed or not.
   bool IsFlushable(const GoogleUrl& gurl,
                    const FlushEarlyResourceInfo::ResourceType& resource_type);
+
+  // Flush the resource using kPrefetchImageTagHtml.
+  void FlushResourceAsImage(StringPiece url);
 
   // Flush the resource and update time_consumed_ms_ based on time_to_download.
   void FlushResources(
@@ -115,6 +117,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   GoogleString css_output_content_;
   GoogleString flush_early_content_;
   bool flush_more_resources_early_if_time_permits_;
+  bool stylesheets_flushed_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyContentWriterFilter);
 };

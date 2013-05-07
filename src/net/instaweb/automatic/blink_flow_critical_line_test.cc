@@ -816,7 +816,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     // If FlushSubresources Filter is applied then the response has
     // rel="subresource".
     bool is_applied = false;
-    const char pattern[] = "rel=\"subresource\"";
+    const char pattern[] = "mod_pagespeed_num_resources_prefetched = 1";
     int pattern_position = text.find(pattern);
     if (pattern_position != GoogleString::npos) {
       is_applied = true;
@@ -1395,7 +1395,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkFlushSubresources) {
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
-                          "prefetch_link_rel_subresource");
+                          "prefetch_image_tag");
   ResponseHeaders response_headers;
   FetchFromProxy("http://test.com/flush_subresources.html"
                  "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
