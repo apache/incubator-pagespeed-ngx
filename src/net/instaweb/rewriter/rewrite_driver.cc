@@ -143,6 +143,7 @@
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -1656,6 +1657,10 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
     // FetchInPlaceResource when that is what they want.
     FetchInPlaceResource(gurl, true /* proxy_mode */, async_fetch);
   }
+
+  // Note: "this" may have been deleted by this point. It is not safe to
+  // reference data members.
+
   return handled;
 }
 
@@ -1676,6 +1681,11 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
   fetch_queued_ = true;
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
   context->set_proxy_mode(proxy_mode);
+
+  // Save pointer to stats_logger before "this" is deleted.
+  StatisticsLogger* stats_logger =
+      server_context_->statistics()->console_logger();
+
   if (!context->Fetch(output_resource, async_fetch, message_handler())) {
     // RewriteContext::Fetch can fail if the input URLs are undecodeable
     // or unfetchable. There is no decoding in this case, but unfetchability
@@ -1684,6 +1694,14 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
     // and cleanup.
     async_fetch->Done(false);
     FetchComplete();
+  }
+
+  // Note: "this" may have been deleted by this point. It is not safe to
+  // reference data members.
+
+  // Update statistics log.
+  if (stats_logger != NULL) {
+    stats_logger->UpdateAndDumpIfRequired();
   }
 }
 
@@ -1700,6 +1718,9 @@ bool RewriteDriver::FetchOutputResource(
   // that's in the browser's cache must be correct.
   bool queued = false;
   ConstStringStarVector values;
+  // Save pointer to stats_logger before "this" is deleted.
+  StatisticsLogger* stats_logger =
+      server_context_->statistics()->console_logger();
   if (async_fetch->request_headers()->Lookup(HttpAttributes::kIfModifiedSince,
                                              &values)) {
     async_fetch->response_headers()->SetStatusAndReason(
@@ -1726,6 +1747,12 @@ bool RewriteDriver::FetchOutputResource(
       queued = true;
     }
   }
+
+  // Update statistics log.
+  if (stats_logger != NULL) {
+    stats_logger->UpdateAndDumpIfRequired();
+  }
+
   return queued;
 }
 
@@ -2361,6 +2388,13 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   stats->rewrite_latency_histogram()->Add(
       server_context_->timer()->NowMs() - start_time_ms_);
   stats->total_rewrite_count()->IncBy(1);
+
+  // Update statistics log.
+  StatisticsLogger* stats_logger =
+      server_context_->statistics()->console_logger();
+  if (stats_logger != NULL) {
+    stats_logger->UpdateAndDumpIfRequired();
+  }
 
   Cleanup();
   if (user_callback != NULL) {

@@ -81,8 +81,7 @@ const char* const kImportant[] = {
 // Our shared memory storage format is an array of (mutex, int64).
 SharedMemVariable::SharedMemVariable(const StringPiece& name)
     : name_(name.as_string()),
-      value_ptr_(NULL),
-      console_logger_(NULL) {
+      value_ptr_(NULL) {
 }
 
 int64 SharedMemVariable::Get() const {
@@ -106,10 +105,6 @@ int64 SharedMemVariable::SetReturningPreviousValue(int64 new_value) {
       previous_value = *value_ptr_;
       *value_ptr_ = new_value;
     }
-    // The variable was changed, so dump statistics if past the update interval.
-    if (console_logger_ != NULL) {
-      console_logger_->UpdateAndDumpIfRequired();
-    }
   }
   return previous_value;
 }
@@ -120,19 +115,11 @@ void SharedMemVariable::Set(int64 new_value) {
       ScopedMutex hold_lock(mutex_.get());
       *value_ptr_ = new_value;
     }
-    // The variable was changed, so dump statistics if past the update interval.
-    if (console_logger_ != NULL) {
-      console_logger_->UpdateAndDumpIfRequired();
-    }
   }
 }
 
 void SharedMemVariable::SetLockHeld(int64 new_value) {
   *value_ptr_ = new_value;
-}
-
-void SharedMemVariable::SetConsoleStatisticsLogger(StatisticsLogger* logger) {
-  console_logger_ = logger;
 }
 
 int64 SharedMemVariable::Add(int delta) {
@@ -142,10 +129,6 @@ int64 SharedMemVariable::Add(int delta) {
       ScopedMutex hold_lock(mutex_.get());
       *value_ptr_ += delta;
       value = *value_ptr_;
-    }
-    // The variable was changed, so dump statistics if past the update interval.
-    if (console_logger_ != NULL) {
-      console_logger_->UpdateAndDumpIfRequired();
     }
   }
   return value;
@@ -518,8 +501,6 @@ SharedMemStatistics::SharedMemStatistics(
       console_logger_.reset(new StatisticsLogger(
           logging_interval_ms, max_logfile_size_kb, logging_file,
           timestamp_var, message_handler, this, file_system, timer));
-      // The Logger needs a Variable which needs a Logger, hence the setter.
-      timestamp_var->SetConsoleStatisticsLogger(console_logger_.get());
     } else {
       message_handler->Message(kError,
           "Error: ModPagespeedStatisticsLoggingFile is required if "
@@ -539,7 +520,6 @@ SharedMemVariable* SharedMemStatistics::NewVariable(const StringPiece& name,
     return NULL;
   } else {
     SharedMemVariable* var = new SharedMemVariable(name);
-    var->SetConsoleStatisticsLogger(console_logger_.get());
     return var;
   }
 }

@@ -250,6 +250,8 @@ void SharedMemStatisticsTestBase::TestAdd() {
   EXPECT_EQ(3, hist2->Minimum());
   EXPECT_EQ(4, hist2->Maximum());
 
+  stats_->console_logger()->UpdateAndDumpIfRequired();
+
   GoogleString dump;
   StringWriter writer(&dump);
   stats_->Dump(&writer, &handler_);

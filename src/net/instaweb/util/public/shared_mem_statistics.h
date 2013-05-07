@@ -67,10 +67,6 @@ class SharedMemVariable : public MutexedVariable {
  protected:
   virtual AbstractMutex* mutex();
   virtual int64 GetLockHeld() const;
-  // Set the variable assuming that the lock is already held. Also, doesn't call
-  // ConsoleStatisticsLogger::UpdateAndDumpIfRequired. (This method is intended
-  // for use from within StatisticsLogger::UpdateAndDumpIfRequired, so
-  // the lock is already held and updating again would introduce a loop.)
   virtual void SetLockHeld(int64 new_value);
 
  private:
@@ -86,8 +82,6 @@ class SharedMemVariable : public MutexedVariable {
   // share some state with parent.
   void Reset();
 
-  void SetConsoleStatisticsLogger(StatisticsLogger* logger);
-
   // The name of this variable.
   const GoogleString name_;
 
@@ -96,11 +90,6 @@ class SharedMemVariable : public MutexedVariable {
 
   // The data...
   volatile int64* value_ptr_;
-
-  // The object used to log updates to a file. Owned by Statistics object, with
-  // a copy shared with every Variable. Note that this may be NULL if
-  // SetConsoleStatisticsLogger has not yet been called.
-  StatisticsLogger* console_logger_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
 };
