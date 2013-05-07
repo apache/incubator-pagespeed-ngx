@@ -1687,20 +1687,26 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   ClearStats();
 
   // Mobile User Agent.
-  GoogleString user_agent;
-  options_->ClearSignatureForTesting();
-  options_->set_enable_aggressive_rewriters_for_mobile(true);
-  server_context()->ComputeSignature(options_.get());
+  request_headers.Clear();
   request_headers.Add(
       HttpAttributes::kUserAgent,
       UserAgentMatcherTestBase::kIPhone4Safari);  // Mobile Request.
-  FetchFromProxy("plain.html", true, request_headers, &text,
-                 &response_headers, &user_agent, false);
-  EXPECT_STREQ(kHtmlInput, text);
-  // TODO(poojatandon): Check why max-age is 1 here.
-  VerifyBlacklistUserAgent(response_headers);
-  EXPECT_EQ(0, statistics()->FindVariable(
+  request_headers.Add(HttpAttributes::kXForwardedFor, "127.0.0.1");
+
+  FetchFromProxy("text.html", true, request_headers, &text, &response_headers,
+                 false);
+  VerifyNonCacheHtmlResponse(response_headers);
+  EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kCacheHtmlRequestCount)->Get());
+
+  ClearStats();
+  // Hit case.
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, request_headers, &text, &response_headers,
+                 false);
+  VerifyCacheHtmlResponse(response_headers);
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_, text);
 }
 
 }  // namespace net_instaweb

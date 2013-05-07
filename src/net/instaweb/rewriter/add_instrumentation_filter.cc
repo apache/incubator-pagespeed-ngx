@@ -149,18 +149,16 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
   const GoogleString* beacon_url =
       driver_->IsHttps() ? &beacons.https : &beacons.http;
-  GoogleString expt_id_param;
+  GoogleString extra_params;
   if (driver_->options()->running_furious()) {
     int furious_state = driver_->options()->furious_id();
     if (furious_state != furious::kFuriousNotSet &&
         furious_state != furious::kFuriousNoExperiment) {
-      expt_id_param = IntegerToString(driver_->options()->furious_id());
+      StrAppend(&extra_params, "&exptid=",
+                IntegerToString(driver_->options()->furious_id()));
     }
   }
 
-  GoogleString headers_fetch_time;
-  GoogleString time_to_first_byte;
-  GoogleString fetch_time;
   AbstractLogRecord* log_record = driver_->log_record();
   {
     ScopedMutex lock(log_record->mutex());
@@ -170,19 +168,20 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
             log_record->logging_info()->timing_info().header_fetch_ms();
         // If time taken to fetch the http header is not set, then the response
         // came from cache.
-        headers_fetch_time = Integer64ToString(header_fetch_ms);
+        StrAppend(&extra_params, "&hft=",
+                  Integer64ToString(header_fetch_ms));
       }
       if (log_record->logging_info()->timing_info().has_fetch_ms()) {
         int64 fetch_ms = log_record->logging_info()->timing_info().fetch_ms();
         // If time taken to fetch the resource is not set, then the response
         // came from cache.
-        fetch_time = Integer64ToString(fetch_ms);
+        StrAppend(&extra_params, "&ft=", Integer64ToString(fetch_ms));
       }
       if (log_record->logging_info()->timing_info()
           .has_time_to_first_byte_ms()) {
         int64 ttfb_ms =
             log_record->logging_info()->timing_info().time_to_first_byte_ms();
-        time_to_first_byte = Integer64ToString(ttfb_ms);
+        StrAppend(&extra_params, "&s_ttfb=", Integer64ToString(ttfb_ms));
       }
     }
   }
@@ -195,10 +194,7 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   GoogleString init_js = "\npagespeed.addInstrumentationInit(";
   StrAppend(&init_js, "'", *beacon_url, "', ");
   StrAppend(&init_js, "'", js_event, "', ");
-  StrAppend(&init_js, "'", headers_fetch_time, "', ");
-  StrAppend(&init_js, "'", time_to_first_byte, "', ");
-  StrAppend(&init_js, "'", fetch_time, "', ");
-  StrAppend(&init_js, "'", expt_id_param, "', ");
+  StrAppend(&init_js, "'", extra_params, "', ");
   StrAppend(&init_js, "'", html_url, "');");
 
   StrAppend(&js, init_js);

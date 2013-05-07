@@ -80,18 +80,19 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
         cache_html_logging_info->set_cache_html_user_agent(
             CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_WHITELIST);
         return true;
+      case UserAgentMatcher::kBlinkWhiteListForMobile:
+        cache_html_logging_info->set_cache_html_user_agent(
+            CacheHtmlLoggingInfo::CACHE_HTML_MOBILE);
+        return true;
       case UserAgentMatcher::kDoesNotSupportBlink:
         cache_html_logging_info->set_cache_html_user_agent(
             CacheHtmlLoggingInfo::NOT_SUPPORT_CACHE_HTML);
         return false;
       case UserAgentMatcher::kBlinkBlackListForDesktop:
-        cache_html_logging_info->set_cache_html_user_agent(
-            CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_BLACKLIST);
-        return false;
-      case UserAgentMatcher::kBlinkWhiteListForMobile:
+        FALLTHROUGH_INTENDED;
       case UserAgentMatcher::kDoesNotSupportBlinkForMobile:
         cache_html_logging_info->set_cache_html_user_agent(
-            CacheHtmlLoggingInfo::CACHE_HTML_MOBILE);
+            CacheHtmlLoggingInfo::CACHE_HTML_DESKTOP_BLACKLIST);
         return false;
       case UserAgentMatcher::kNullOrEmpty:
         cache_html_logging_info->set_cache_html_user_agent(

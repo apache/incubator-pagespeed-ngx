@@ -2050,26 +2050,19 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
   GoogleString text;
-  GoogleString user_agent;
   ResponseHeaders response_headers;
+  SetBlinkCriticalLineData();
   RequestHeaders request_headers;
   options_->ClearSignatureForTesting();
   options_->set_enable_aggressive_rewriters_for_mobile(true);
   server_context()->ComputeSignature(options_.get());
+  request_headers.Add(HttpAttributes::kXForwardedFor, "127.0.0.1");
   request_headers.Add(
       HttpAttributes::kUserAgent,
       UserAgentMatcherTestBase::kIPhone4Safari);  // Mobile Request.
-  FetchFromProxy("plain.html", true, request_headers, &text,
-                 &response_headers, &user_agent, false);
-  EXPECT_EQ(CacheHtmlLoggingInfo::CACHE_HTML_MOBILE,
-            logging_info()->cache_html_logging_info().cache_html_user_agent());
-  EXPECT_STREQ(kHtmlInput, text);
-  // No fetch for background computation is triggered here.
-  // Only original html is fetched from fetcher.
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  // No blink flow should have happened.
-  EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+  FetchFromProxy("cache.html", true, request_headers, &text,
+                 &response_headers, false);
+  EXPECT_STREQ(blink_output_with_cacheable_panels_cookies_, text);
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {

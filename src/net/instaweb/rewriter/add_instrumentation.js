@@ -31,31 +31,18 @@ var pagespeed = window['pagespeed'];
  * @constructor
  * @param {string} beaconUrlPrefix The prefix portion of the beacon url.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
- * @param {string} headerFetchTime Time to fetch header.
- * @param {string} timeToFirstByte Time to first byte at server.
- * @param {string} originFetchTime Time to fetch origin.
- * @param {string} experimentId Id of current experiment.
+ * @param {string} extraParams Additional parameters to be added to the beacon.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
-pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, headerFetchTime,
-                                        timeToFirstByte, originFetchTime,
-                                        experimentId, htmlUrl) {
+pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, extraParams,
+                                        htmlUrl) {
   this.beaconUrlPrefix_ = beaconUrlPrefix;
   this.event_ = event;
-  this.headerFetchTime_ = headerFetchTime;
-  this.timeToFirstByte_ = timeToFirstByte;
-  this.originFetchTime_ = originFetchTime;
-  this.experimentId_ = experimentId;
+  this.extraParams_ = extraParams;
   this.htmlUrl_ = htmlUrl;
-
-  /**
-   * @type {string} Generated beacon url (created purely for ease of webdriver
-   *     testing.
-    */
-  this.beaconUrl = '';
 };
 
-pagespeed['beaconUrl'] = pagespeed.beaconUrl;
+pagespeed['beaconUrl'] = '';
 
 /**
  * Create beacon URL and send request to server.
@@ -127,16 +114,14 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   }
 
   if (pagespeed['panelLoader']) {
-    var bcsi = pagespeed['panelLoader']['getCsiTimings']()['time'];
-    url += '&b_cdr=' + bcsi['CRITICAL_DATA_RECEIVED'] +
-           '&b_cii=' + bcsi['CRITICAL_IMAGES_INLINED'] +
-           '&b_cilrl=' + bcsi['CRITICAL_IMAGES_LOW_RES_LOADED'] +
-           '&b_cihrl=' + bcsi['CRITICAL_IMAGES_HIGH_RES_LOADED'] +
-           '&b_ncdl=' + bcsi['NON_CACHEABLE_DATA_LOADED'] +
-           '&b_ncl=' + bcsi['NON_CRITICAL_LOADED'];
-    var bci = pagespeed['panelLoader']['getCriticalImagesInfo']();
-    url += '&b_ncii=' + bci['NUM_CRITICAL_IMAGES_INLINED'] +
-           '&b_ncini=' + bci['NUM_CRITICAL_IMAGES_NOT_INLINED'];
+    var bcsi = pagespeed['panelLoader']['getCsiTimingsString']();
+    if (bcsi != '') {
+      url += '&b_csi=' + bcsi;
+    }
+    var bci = pagespeed['panelLoader']['getCriticalImagesInfoString']();
+    if (bci != '') {
+      url += '&bci=' + bci;
+    }
   }
   if (pagespeed['criticalCss']) {
     var cc = pagespeed['criticalCss'];
@@ -146,17 +131,8 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
            '&ccrl=' + cc['num_replaced_links'] +
            '&ccul=' + cc['num_unreplaced_links'];
   }
-  if (this.headerFetchTime_ != '') {
-    url += '&hft=' + this.headerFetchTime_;
-  }
-  if (this.timeToFirstByte_ != '') {
-    url += '&s_ttfb=' + this.timeToFirstByte_;
-  }
-  if (this.originFetchTime_ != '') {
-    url += '&ft=' + this.originFetchTime_;
-  }
-  if (this.experimentId_ != '') {
-    url += '&exptid=' + this.experimentId_;
+  if (this.extraParams_ != '') {
+    url += this.extraParams_;
   }
   url += '&url=' + encodeURIComponent(this.htmlUrl_);
 
@@ -168,19 +144,14 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
  * Initialize instrumentation beacon.
  * @param {string} beaconUrl Url of beacon.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
- * @param {string} headerFetchTime Time to fetch header.
- * @param {string} timeToFirstByte Time to first byte at server.
- * @param {string} originFetchTime Time to fetch origin.
- * @param {string} experimentId Id of current experiment.
+ * @param {string} extraParams Additional parameters to be added to the beacon.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
-pagespeed.addInstrumentationInit = function(beaconUrl, event, headerFetchTime,
-                                            timeToFirstByte, originFetchTime,
-                                            experimentId, htmlUrl) {
+pagespeed.addInstrumentationInit = function(beaconUrl, event, extraParams,
+                                            htmlUrl) {
 
-  var temp = new pagespeed.AddInstrumentation(beaconUrl, event, headerFetchTime,
-                                              timeToFirstByte, originFetchTime,
-                                              experimentId, htmlUrl);
+  var temp = new pagespeed.AddInstrumentation(beaconUrl, event, extraParams,
+                                              htmlUrl);
   if (window.addEventListener) {
     window.addEventListener(event, function() { temp.sendBeacon() }, false);
   } else {
