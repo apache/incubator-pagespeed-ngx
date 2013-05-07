@@ -2017,7 +2017,8 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   if (r->headers_out.content_type.data == NULL) {
     return NGX_ERROR;
   }
-  r->headers_out.content_type_lowcase = r->headers_out.content_type.data;
+  // ngx_http_test_content_type() will recalculate this if we null it
+  r->headers_out.content_type_lowcase = NULL;
 
   // Cache control
   char* cache_control_s = string_piece_to_pool_string(r->pool, cache_header);
