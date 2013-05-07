@@ -430,7 +430,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   // The default url_namer does not yield any name-derived options, and we
   // have not specified any URL params or request-headers, but kXRequestedWith
   // header is set to 'XmlHttpRequest', so there will be custom options with
-  // all js inserted filters disabled.
+  // all js inserting filters disabled.
   request_headers.RemoveAll(HttpAttributes::kXRequestedWith);
   request_headers.Add(
       HttpAttributes::kXRequestedWith, HttpAttributes::kXmlHttpRequest);
@@ -444,6 +444,28 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   // enabled even if it is enabled via EnableFilter().
   options->EnableFilter(RewriteOptions::kDelayImages);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
+
+  options->EnableFilter(RewriteOptions::kCachePartialHtml);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  options->EnableFilter(RewriteOptions::kDeferIframe);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferIframe));
+  options->EnableFilter(RewriteOptions::kDeferJavascript);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferJavascript));
+  options->EnableFilter(RewriteOptions::kDetectReflowWithDeferJavascript);
+  EXPECT_FALSE(options->Enabled(
+      RewriteOptions::kDetectReflowWithDeferJavascript));
+  options->EnableFilter(RewriteOptions::kFlushSubresources);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kFlushSubresources));
+  options->EnableFilter(RewriteOptions::kLazyloadImages);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kLazyloadImages));
+  options->EnableFilter(RewriteOptions::kLocalStorageCache);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kLocalStorageCache));
+  options->EnableFilter(RewriteOptions::kSplitHtml);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kSplitHtml));
+  options->EnableFilter(RewriteOptions::kPrioritizeVisibleContent);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
+  options->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeCriticalCss));
 }
 
 TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {

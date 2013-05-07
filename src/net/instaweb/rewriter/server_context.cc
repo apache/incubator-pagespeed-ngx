@@ -1074,10 +1074,9 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     if (custom_options == NULL) {
       custom_options.reset(options->Clone());
     }
-    custom_options->DisableFilter(RewriteOptions::kDelayImages);
+    custom_options->DisableFiltersRequiringScriptExecution();
     custom_options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
-    custom_options->DisableFilter(RewriteOptions::kDeferJavascript);
-    custom_options->DisableFilter(RewriteOptions::kLocalStorageCache);
+    custom_options->DisableFilter(RewriteOptions::kPrioritizeCriticalCss);
   }
 
   url_namer()->ConfigureCustomOptions(*request_headers, custom_options.get());
