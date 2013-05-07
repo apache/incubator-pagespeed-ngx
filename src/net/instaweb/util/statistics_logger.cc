@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -37,13 +36,13 @@
 
 namespace net_instaweb {
 
-// Handles reading the logfile created by SharedMemConsoleStatisticsLogger.
-class ConsoleStatisticsLogfileReader {
+// Handles reading the logfile created by StatisticsLogger.
+class StatisticsLogfileReader {
  public:
-  ConsoleStatisticsLogfileReader(FileSystem::InputFile* file, int64 start_time,
-                                 int64 end_time, int64 granularity_ms,
-                                 MessageHandler* message_handler);
-  ~ConsoleStatisticsLogfileReader();
+  StatisticsLogfileReader(FileSystem::InputFile* file, int64 start_time,
+                          int64 end_time, int64 granularity_ms,
+                          MessageHandler* message_handler);
+  ~StatisticsLogfileReader();
 
   // Reads the next timestamp in the file into timestamp and the corresponding
   // chunk of data into data. Returns true if new data has been read.
@@ -66,28 +65,28 @@ class ConsoleStatisticsLogfileReader {
   // Logfile buffer.
   GoogleString buffer_;
 
-  DISALLOW_COPY_AND_ASSIGN(ConsoleStatisticsLogfileReader);
+  DISALLOW_COPY_AND_ASSIGN(StatisticsLogfileReader);
 };
 
-SharedMemConsoleStatisticsLogger::SharedMemConsoleStatisticsLogger(
+StatisticsLogger::StatisticsLogger(
     int64 update_interval_ms, int64 max_logfile_size_kb,
-    const StringPiece& log_file, SharedMemVariable* last_dump_timestamp,
+    const StringPiece& logfile_name, MutexedVariable* last_dump_timestamp,
     MessageHandler* message_handler, Statistics* stats,
     FileSystem* file_system, Timer* timer)
-      : last_dump_timestamp_(last_dump_timestamp),
-        message_handler_(message_handler),
-        statistics_(stats),
-        file_system_(file_system),
-        timer_(timer),
-        update_interval_ms_(update_interval_ms),
-        max_logfile_size_kb_(max_logfile_size_kb) {
-  log_file.CopyToString(&logfile_name_);
+    : last_dump_timestamp_(last_dump_timestamp),
+      message_handler_(message_handler),
+      statistics_(stats),
+      file_system_(file_system),
+      timer_(timer),
+      update_interval_ms_(update_interval_ms),
+      max_logfile_size_kb_(max_logfile_size_kb) {
+  logfile_name.CopyToString(&logfile_name_);
 }
 
-SharedMemConsoleStatisticsLogger::~SharedMemConsoleStatisticsLogger() {
+StatisticsLogger::~StatisticsLogger() {
 }
 
-void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
+void StatisticsLogger::UpdateAndDumpIfRequired() {
   int64 current_time_ms = timer_->NowMs();
   AbstractMutex* mutex = last_dump_timestamp_->mutex();
   if (mutex == NULL) {
@@ -119,13 +118,13 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
       }
       // Update timestamp regardless of file write so we don't hit the same
       // error many times in a row.
-      last_dump_timestamp_->SetLockHeldNoUpdate(current_time_ms);
+      last_dump_timestamp_->SetLockHeld(current_time_ms);
     }
     mutex->Unlock();
   }
 }
 
-void SharedMemConsoleStatisticsLogger::TrimLogfileIfNeeded() {
+void StatisticsLogger::TrimLogfileIfNeeded() {
   int64 size_bytes;
   if (file_system_->Size(logfile_name_, &size_bytes, message_handler_) &&
       size_bytes > max_logfile_size_kb_ * 1024) {
@@ -137,7 +136,7 @@ void SharedMemConsoleStatisticsLogger::TrimLogfileIfNeeded() {
   }
 }
 
-void SharedMemConsoleStatisticsLogger::DumpJSON(
+void StatisticsLogger::DumpJSON(
     const std::set<GoogleString>& var_titles,
     int64 start_time, int64 end_time, int64 granularity_ms,
     Writer* writer, MessageHandler* message_handler) const {
@@ -145,7 +144,7 @@ void SharedMemConsoleStatisticsLogger::DumpJSON(
       file_system_->OpenInputFile(logfile_name_.c_str(), message_handler);
   VarMap parsed_var_data;
   std::vector<int64> list_of_timestamps;
-  ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
+  StatisticsLogfileReader reader(log_file, start_time, end_time,
                                         granularity_ms, message_handler);
   ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
                       &parsed_var_data);
@@ -153,9 +152,9 @@ void SharedMemConsoleStatisticsLogger::DumpJSON(
   file_system_->Close(log_file, message_handler);
 }
 
-void SharedMemConsoleStatisticsLogger::ParseDataFromReader(
+void StatisticsLogger::ParseDataFromReader(
     const std::set<GoogleString>& var_titles,
-    ConsoleStatisticsLogfileReader* reader,
+    StatisticsLogfileReader* reader,
     std::vector<int64>* list_of_timestamps, VarMap* parsed_var_data) const {
   // curr_timestamp starts as 0 because we need to compare it to the first
   // timestamp pulled from the file. The current timestamp should always be
@@ -178,7 +177,7 @@ void SharedMemConsoleStatisticsLogger::ParseDataFromReader(
 
 // Takes a block of variable data and separates it into a map of
 // the variables that have been queried.
-void SharedMemConsoleStatisticsLogger::ParseVarDataIntoMap(
+void StatisticsLogger::ParseVarDataIntoMap(
     StringPiece logfile_var_data, const std::set<GoogleString>& var_titles,
     VarMap* parsed_var_data) const {
   std::vector<StringPiece> vars;
@@ -196,7 +195,7 @@ void SharedMemConsoleStatisticsLogger::ParseVarDataIntoMap(
   }
 }
 
-void SharedMemConsoleStatisticsLogger::PrintJSON(
+void StatisticsLogger::PrintJSON(
     const std::vector<int64>& list_of_timestamps,
     const VarMap& parsed_var_data,
     Writer* writer, MessageHandler* message_handler) const {
@@ -210,7 +209,7 @@ void SharedMemConsoleStatisticsLogger::PrintJSON(
   writer->Write("}", message_handler);
 }
 
-void SharedMemConsoleStatisticsLogger::PrintTimestampListAsJSON(
+void StatisticsLogger::PrintTimestampListAsJSON(
     const std::vector<int64>& list_of_timestamps, Writer* writer,
     MessageHandler* message_handler) const {
   for (size_t i = 0; i < list_of_timestamps.size(); ++i) {
@@ -221,7 +220,7 @@ void SharedMemConsoleStatisticsLogger::PrintTimestampListAsJSON(
   }
 }
 
-void SharedMemConsoleStatisticsLogger::PrintVarDataAsJSON(
+void StatisticsLogger::PrintVarDataAsJSON(
     const VarMap& parsed_var_data, Writer* writer,
     MessageHandler* message_handler) const {
   for (VarMap::const_iterator iterator =
@@ -250,7 +249,7 @@ void SharedMemConsoleStatisticsLogger::PrintVarDataAsJSON(
   }
 }
 
-ConsoleStatisticsLogfileReader::ConsoleStatisticsLogfileReader(
+StatisticsLogfileReader::StatisticsLogfileReader(
     FileSystem::InputFile* file, int64 start_time, int64 end_time,
     int64 granularity_ms, MessageHandler* message_handler)
         : file_(file),
@@ -261,11 +260,11 @@ ConsoleStatisticsLogfileReader::ConsoleStatisticsLogfileReader(
 }
 
 
-ConsoleStatisticsLogfileReader::~ConsoleStatisticsLogfileReader() {
+StatisticsLogfileReader::~StatisticsLogfileReader() {
 }
 
-bool ConsoleStatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
-                                                       GoogleString* data) {
+bool StatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
+                                                GoogleString* data) {
   if (buffer_.size() < 1) {
     FeedBuffer();
   }
@@ -310,8 +309,8 @@ bool ConsoleStatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
 // into the buffer if search_for is not found and trying again. Returns the
 // position of first occurrence of search_for. If search_for is not found,
 // npos is returned.
-size_t ConsoleStatisticsLogfileReader::BufferFind(const char* search_for,
-                                                  size_t start_at) {
+size_t StatisticsLogfileReader::BufferFind(const char* search_for,
+                                           size_t start_at) {
   size_t position = buffer_.find(search_for, start_at);
   while (position == buffer_.npos) {
     int read = FeedBuffer();
@@ -324,7 +323,7 @@ size_t ConsoleStatisticsLogfileReader::BufferFind(const char* search_for,
   return position;
 }
 
-int ConsoleStatisticsLogfileReader::FeedBuffer() {
+int StatisticsLogfileReader::FeedBuffer() {
   const int kChunkSize = 3000;
   char buf[kChunkSize];
   int num_read = file_->Read(buf, kChunkSize, message_handler_);

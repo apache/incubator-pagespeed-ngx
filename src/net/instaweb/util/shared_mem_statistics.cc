@@ -127,12 +127,11 @@ void SharedMemVariable::Set(int64 new_value) {
   }
 }
 
-void SharedMemVariable::SetLockHeldNoUpdate(int64 new_value) {
+void SharedMemVariable::SetLockHeld(int64 new_value) {
   *value_ptr_ = new_value;
 }
 
-void SharedMemVariable::SetConsoleStatisticsLogger(
-    SharedMemConsoleStatisticsLogger* logger) {
+void SharedMemVariable::SetConsoleStatisticsLogger(StatisticsLogger* logger) {
   console_logger_ = logger;
 }
 
@@ -516,7 +515,7 @@ SharedMemStatistics::SharedMemStatistics(
         important_variables_.insert(kImportant[i]);
       }
       SharedMemVariable* timestamp_var = AddVariable(kTimestampVariable);
-      console_logger_.reset(new SharedMemConsoleStatisticsLogger(
+      console_logger_.reset(new StatisticsLogger(
           logging_interval_ms, max_logfile_size_kb, logging_file,
           timestamp_var, message_handler, this, file_system, timer));
       // The Logger needs a Variable which needs a Logger, hence the setter.

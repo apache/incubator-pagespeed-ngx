@@ -35,6 +35,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class MessageHandler;
+class StatisticsLogger;
 class ThreadSystem;
 class Writer;
 
@@ -140,7 +141,7 @@ class SplitStatistics
 
   virtual ~SplitStatistics();
 
-  virtual ConsoleStatisticsLogger* console_logger() {
+  virtual StatisticsLogger* console_logger() {
     // console_logger() is only used for read access, so just provide the
     // local version.
     return local_->console_logger();

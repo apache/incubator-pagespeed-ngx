@@ -25,8 +25,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-// Needed for polymorphism.
-#include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -35,6 +33,7 @@ namespace net_instaweb {
 
 class FileSystem;
 class MessageHandler;
+class StatisticsLogger;
 class Timer;
 class Writer;
 
@@ -56,18 +55,25 @@ class Writer;
 // warning message will be logged).  If the variable fails to initialize in the
 // process that happens to serve a statistics page, then the variable will show
 // up with value -1.
-class SharedMemVariable : public Variable {
+class SharedMemVariable : public MutexedVariable {
  public:
   virtual ~SharedMemVariable() {}
-  int64 Get() const;
+  virtual int64 Get() const;
   virtual int64 SetReturningPreviousValue(int64 new_value);  // Atomic
   virtual void Set(int64 new_value);
   virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return name_; }
-  AbstractMutex* mutex();
+
+ protected:
+  virtual AbstractMutex* mutex();
+  virtual int64 GetLockHeld() const;
+  // Set the variable assuming that the lock is already held. Also, doesn't call
+  // ConsoleStatisticsLogger::UpdateAndDumpIfRequired. (This method is intended
+  // for use from within StatisticsLogger::UpdateAndDumpIfRequired, so
+  // the lock is already held and updating again would introduce a loop.)
+  virtual void SetLockHeld(int64 new_value);
 
  private:
-  friend class SharedMemConsoleStatisticsLogger;
   friend class SharedMemStatistics;
   friend class SharedMemTimedVariable;
 
@@ -80,16 +86,7 @@ class SharedMemVariable : public Variable {
   // share some state with parent.
   void Reset();
 
-  void SetConsoleStatisticsLogger(SharedMemConsoleStatisticsLogger* logger);
-
-  // Set the variable assuming that the lock is already held. Also, doesn't call
-  // ConsoleStatisticsLogger::UpdateAndDumpIfRequired. (This method is intended
-  // for use from within ConsoleStatisticsLogger::UpdateAndDumpIfRequired, so
-  // the lock is already held and updating again would introduce a loop.)
-  void SetLockHeldNoUpdate(int64 newValue);
-
-  // Get the variable's value assuming that the lock is already held.
-  int64 GetLockHeld() const;
+  void SetConsoleStatisticsLogger(StatisticsLogger* logger);
 
   // The name of this variable.
   const GoogleString name_;
@@ -103,7 +100,7 @@ class SharedMemVariable : public Variable {
   // The object used to log updates to a file. Owned by Statistics object, with
   // a copy shared with every Variable. Note that this may be NULL if
   // SetConsoleStatisticsLogger has not yet been called.
-  SharedMemConsoleStatisticsLogger* console_logger_;
+  StatisticsLogger* console_logger_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
 };
@@ -223,7 +220,8 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   // no further children are expected to start.
   void GlobalCleanup(MessageHandler* message_handler);
 
-  SharedMemConsoleStatisticsLogger* console_logger() {
+  // TODO(sligocki): Rename to statistics_logger().
+  virtual StatisticsLogger* console_logger() {
     return console_logger_.get();
   }
 
@@ -252,7 +250,8 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   GoogleString filename_prefix_;
   scoped_ptr<AbstractSharedMemSegment> segment_;
   bool frozen_;
-  scoped_ptr<SharedMemConsoleStatisticsLogger> console_logger_;
+  // TODO(sligocki): Rename.
+  scoped_ptr<StatisticsLogger> console_logger_;
   // The variables that we're interested in displaying on the console.
   std::set<GoogleString> important_variables_;
 

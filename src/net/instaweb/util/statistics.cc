@@ -50,9 +50,6 @@ int64 Variable::SetReturningPreviousValue(int64 value) {
   return previous_value;
 }
 
-ConsoleStatisticsLogger::~ConsoleStatisticsLogger() {
-}
-
 Histogram::~Histogram() {
 }
 

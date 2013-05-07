@@ -28,12 +28,12 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
@@ -45,9 +45,9 @@ const char kLogFile[] = "mod_pagespeed_stats.log";
 
 }  // namespace
 
-class SharedMemStatisticsLoggerTest : public ::testing::Test {
+class StatisticsLoggerTest : public ::testing::Test {
  protected:
-  SharedMemStatisticsLoggerTest()
+  StatisticsLoggerTest()
       // This time is in the afternoon of 17 July 2012.
       : timer_(1342567288560ULL),
         thread_system_(Platform::CreateThreadSystem()),
@@ -100,10 +100,10 @@ class SharedMemStatisticsLoggerTest : public ::testing::Test {
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
   MemFileSystem file_system_;
-  SharedMemConsoleStatisticsLogger logger_;
+  StatisticsLogger logger_;
 };
 
-TEST_F(SharedMemStatisticsLoggerTest, TestParseDataFromReader) {
+TEST_F(StatisticsLoggerTest, TestParseDataFromReader) {
   GoogleString var_data;
   std::set<GoogleString> var_titles;
   GoogleString logfile_input = CreateFakeLogfile(&var_data, &var_titles);
@@ -119,10 +119,10 @@ TEST_F(SharedMemStatisticsLoggerTest, TestParseDataFromReader) {
   int64 start_time = 1300000000000LL;
   int64 end_time = 1400000000000LL;
   int64 granularity_ms = 2;
-  ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
-                                        granularity_ms, &handler_);
+  StatisticsLogfileReader reader(log_file, start_time, end_time,
+                                 granularity_ms, &handler_);
   std::vector<int64> list_of_timestamps;
-  SharedMemConsoleStatisticsLogger::VarMap parsed_var_data;
+  StatisticsLogger::VarMap parsed_var_data;
   logger_.ParseDataFromReader(var_titles, &reader,
                               &list_of_timestamps, &parsed_var_data);
   // Test that the entire logfile was parsed correctly.
@@ -134,7 +134,7 @@ TEST_F(SharedMemStatisticsLoggerTest, TestParseDataFromReader) {
 
 // Creates fake logfile data and tests that ReadNextDataBlock accurately
 // extracts data from logfile-formatted text.
-TEST_F(SharedMemStatisticsLoggerTest, TestNextDataBlock) {
+TEST_F(StatisticsLoggerTest, TestNextDataBlock) {
   // Note: We no longer write or read histograms, but we must still be able
   // to parse around them in old logfiles, so add for coverage.
   GoogleString histogram_data =
@@ -187,8 +187,8 @@ TEST_F(SharedMemStatisticsLoggerTest, TestNextDataBlock) {
   FileSystem::InputFile* log_file =
       file_system_.OpenInputFile(file_name.c_str(), &handler_);
   GoogleString output;
-  ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
-                                        granularity_ms, &handler_);
+  StatisticsLogfileReader reader(log_file, start_time, end_time,
+                                 granularity_ms, &handler_);
   int64 timestamp = -1;
   // Test that the first data block is read correctly.
   success = reader.ReadNextDataBlock(&timestamp, &output);
@@ -213,8 +213,8 @@ TEST_F(SharedMemStatisticsLoggerTest, TestNextDataBlock) {
 
 // Creates fake logfile data and tests that the data containing the variable
 // timeseries information is accurately parsed.
-TEST_F(SharedMemStatisticsLoggerTest, TestParseVarData) {
-  SharedMemConsoleStatisticsLogger::VarMap parsed_var_data;
+TEST_F(StatisticsLoggerTest, TestParseVarData) {
+  StatisticsLogger::VarMap parsed_var_data;
   GoogleString var_data = CreateVariableDataResponse(true, true);
   const StringPiece var_data_piece(var_data);
   std::set<GoogleString> var_titles;
@@ -246,12 +246,12 @@ TEST_F(SharedMemStatisticsLoggerTest, TestParseVarData) {
 
 // Takes fake logfile data and parses it. It then checks that PrintJSONResponse
 // accurately outputs a valid JSON object given the parsed variable data.
-TEST_F(SharedMemStatisticsLoggerTest, TestPrintJSONResponse) {
+TEST_F(StatisticsLoggerTest, TestPrintJSONResponse) {
   GoogleString var_data, var_data_2;
   std::set<GoogleString> var_titles;
   CreateFakeLogfile(&var_data, &var_titles);
 
-  SharedMemConsoleStatisticsLogger::VarMap parsed_var_data;
+  StatisticsLogger::VarMap parsed_var_data;
   logger_.ParseVarDataIntoMap(var_data, var_titles, &parsed_var_data);
 
   var_data_2 = CreateVariableDataResponse(false, false);

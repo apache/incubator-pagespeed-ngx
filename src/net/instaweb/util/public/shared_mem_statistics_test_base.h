@@ -31,7 +31,7 @@
 
 namespace net_instaweb {
 
-class SharedMemConsoleStatisticsLogger;
+class StatisticsLogger;
 
 class SharedMemStatisticsTestBase : public testing::Test {
  protected:
@@ -60,7 +60,7 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestConsoleStatisticsLogger();
   void TestLogfileTrimming();
 
-  SharedMemConsoleStatisticsLogger* console_logger() const {
+  StatisticsLogger* console_logger() const {
     return stats_->console_logger_.get();
   }
 
