@@ -2027,6 +2027,22 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   }
   ps_set_cache_control(r, cache_control_s);
 
+  if (net_instaweb::FindIgnoreCase(cache_header, "private") ==
+      static_cast<int>(StringPiece::npos)) {
+    ngx_table_elt_t* etag = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&r->headers_out.headers));
+    if (etag == NULL) {
+      return NGX_ERROR;
+    }
+
+    etag->hash = 1;  // Include this header in the output.
+    etag->key.len = 4;
+    etag->key.data = reinterpret_cast<u_char*>(const_cast<char*>("ETag"));
+    etag->value.len = 5;
+    etag->value.data = reinterpret_cast<u_char*>(const_cast<char*>("W/\"0\""));
+    r->headers_out.etag = etag;
+  }
+
   ngx_http_send_header(r);
 
   // Send the body.
