@@ -67,11 +67,11 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
-class Function;
 class MessageHandler;
 class RewriteDriverFactory;
 class TestDistributedFetcher;
@@ -354,11 +354,11 @@ class FakeUrlNamer : public UrlNamer {
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,
                               GoogleString* url,
                               RequestHeaders* request_headers,
-                              bool* success,
-                              Function* func, MessageHandler* handler) {
+                              Callback1<bool>* callback,
+                              MessageHandler* handler) {
     num_prepare_request_calls_->Add(1);
-    UrlNamer::PrepareRequest(rewrite_options, url, request_headers, success,
-                             func, handler);
+    UrlNamer::PrepareRequest(
+        rewrite_options, url, request_headers, callback, handler);
   }
 
   void set_options(RewriteOptions* options) { options_ = options; }

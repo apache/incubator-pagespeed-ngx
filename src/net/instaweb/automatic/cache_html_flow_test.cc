@@ -35,6 +35,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
+// TODO(mmohabey): This breaks IWYU
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
@@ -69,12 +70,12 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/worker_test_base.h"
 #include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
 class AsyncFetch;
-class Function;
 class MessageHandler;
 class ProxyFetchPropertyCallbackCollector;
 
@@ -361,11 +362,11 @@ class FakeUrlNamer : public UrlNamer {
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,
                               GoogleString* url,
                               RequestHeaders* request_headers,
-                              bool* success,
-                              Function* func, MessageHandler* handler) {
+                              Callback1<bool>* callback,
+                              MessageHandler* handler) {
     num_prepare_request_calls_->Add(1);
-    UrlNamer::PrepareRequest(rewrite_options, url, request_headers, success,
-                             func, handler);
+    UrlNamer::PrepareRequest(
+        rewrite_options, url, request_headers, callback, handler);
   }
 
   void set_options(RewriteOptions* options) { options_ = options; }

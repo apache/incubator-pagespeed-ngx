@@ -25,7 +25,6 @@
 
 namespace net_instaweb {
 
-class Function;
 class GoogleUrl;
 class OutputResource;
 class MessageHandler;
@@ -83,12 +82,15 @@ class UrlNamer {
                              Callback* callback,
                              MessageHandler* handler) const;
 
-  // Modifies the request prior to dispatch to the underlying fetcher.
+  // Modifies the request prior to dispatch to the underlying fetcher.  Invokes
+  // "callback" once preparation has finished with a boolean argument
+  // representing success.  "url" may be modified by PrepareRequest, but should
+  // be owned by the caller.
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,
                               GoogleString* url,
                               RequestHeaders* request_headers,
-                              bool* success,
-                              Function* func, MessageHandler* handler);
+                              Callback1<bool>* callback,
+                              MessageHandler* handler);
 
   // Configure custom options. Note that options may be NULL.
   virtual void ConfigureCustomOptions(const RequestHeaders& request_headers,

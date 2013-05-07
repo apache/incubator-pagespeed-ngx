@@ -36,7 +36,6 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -45,6 +44,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
@@ -141,7 +141,6 @@ class UrlResourceFetchCallback : public AsyncFetch {
         server_context_(server_context),
         rewrite_options_(rewrite_options),
         message_handler_(NULL),
-        success_(false),
         no_cache_ok_(false),
         fetcher_(NULL),
         respect_vary_(rewrite_options->respect_vary()),
@@ -192,9 +191,11 @@ class UrlResourceFetchCallback : public AsyncFetch {
 
     fetcher_ = fetcher;
 
-    url_namer->PrepareRequest(rewrite_options_, &fetch_url_, request_headers(),
-        &success_,
-        MakeFunction(this, &UrlResourceFetchCallback::StartFetchInternal),
+    url_namer->PrepareRequest(
+        rewrite_options_,
+        &fetch_url_,
+        request_headers(),
+        NewCallback(this, &UrlResourceFetchCallback::StartFetchInternal),
         message_handler_);
     return true;
   }
@@ -230,10 +231,12 @@ class UrlResourceFetchCallback : public AsyncFetch {
     return false;
   }
 
-  void StartFetchInternal() {
-    if (!success_) {
+  void StartFetchInternal(bool success) {
+    if (!success) {
+      // TODO(gee): Will this hang the state machine?
       return;
     }
+
     AsyncFetch* fetch = this;
     if (rewrite_options_->serve_stale_if_fetch_error() &&
         !fallback_value_.Empty()) {
@@ -341,7 +344,6 @@ class UrlResourceFetchCallback : public AsyncFetch {
   // TODO(jmarantz): consider request_headers.  E.g. will we ever
   // get different resources depending on user-agent?
   HTTPValue fallback_value_;
-  bool success_;
 
   // If this is true, loading of non-cacheable resources will succeed.
   bool no_cache_ok_;

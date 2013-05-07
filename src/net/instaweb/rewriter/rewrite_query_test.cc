@@ -751,4 +751,18 @@ TEST_F(RewriteQueryTest, ClientOptionsInvalidVersion) {
                     DeviceProperties::kImageQualityDefault);
 }
 
+TEST_F(RewriteQueryTest, CacheControlNoTransform) {
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kCacheControl, "no-transform");
+
+  ResponseHeaders response_headers;
+  GoogleString in_query, out_query, out_req_string, out_resp_string;
+
+  RewriteOptions* options = ParseAndScan(kHtmlUrl, in_query, &request_headers,
+                                         &response_headers, &out_query,
+                                         &out_req_string, &out_resp_string);
+  EXPECT_FALSE(options->enabled());
+  EXPECT_TRUE(request_headers.Lookup1(HttpAttributes::kCacheControl) != NULL);
+}
+
 }  // namespace net_instaweb

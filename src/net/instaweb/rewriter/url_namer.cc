@@ -21,7 +21,6 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
@@ -90,26 +89,31 @@ void UrlNamer::DecodeOptions(const GoogleUrl& request_url,
 void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
                               GoogleString* url,
                               RequestHeaders* request_headers,
-                              bool* success,
-                              Function* func,
+                              Callback1<bool>* callback,
                               MessageHandler* handler) {
-  *success = false;
   if (rewrite_options == NULL) {
-    *success = true;
-  } else {
-    GoogleUrl gurl(*url);
-    if (gurl.is_valid()) {
-      const DomainLawyer* domain_lawyer = rewrite_options->domain_lawyer();
-      bool is_proxy = false;
-      if (domain_lawyer->MapOriginUrl(gurl, url, &is_proxy)) {
-        *success = true;
-        if (!is_proxy) {
-          request_headers->Replace(HttpAttributes::kHost, gurl.HostAndPort());
-        }
-      }
-    }
+    callback->Run(true);
+    return;
   }
-  func->CallRun();
+
+  GoogleUrl gurl(*url);
+  if (!gurl.is_valid()) {
+    callback->Run(false);
+    return;
+  }
+
+  const DomainLawyer* domain_lawyer = rewrite_options->domain_lawyer();
+  bool is_proxy = false;
+  if (!domain_lawyer->MapOriginUrl(gurl, url, &is_proxy)) {
+    callback->Run(false);
+    return;
+  }
+
+  if (!is_proxy) {
+    request_headers->Replace(HttpAttributes::kHost, gurl.HostAndPort());
+  }
+
+  callback->Run(true);
 }
 
 }  // namespace net_instaweb

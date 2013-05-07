@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
@@ -464,8 +465,7 @@ ProxyFetch::ProxyFetch(
       done_result_(false),
       waiting_for_flush_to_finish_(false),
       idle_alarm_(NULL),
-      factory_(factory),
-      prepare_success_(false) {
+      factory_(factory) {
   driver_->SetWriter(async_fetch);
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
@@ -666,66 +666,69 @@ void ProxyFetch::SetupForHtml() {
 
 void ProxyFetch::StartFetch() {
   factory_->server_context_->url_namer()->PrepareRequest(
-      Options(), &url_, request_headers(), &prepare_success_,
-      MakeFunction(this, &ProxyFetch::DoFetch),
+      Options(),
+      &url_,
+      request_headers(),
+      NewCallback(this, &ProxyFetch::DoFetch),
       factory_->handler_);
 }
 
-void ProxyFetch::DoFetch() {
-  if (prepare_success_) {
-    const RewriteOptions* options = driver_->options();
-    const bool is_allowed = options->IsAllowed(url_);
-    const bool is_enabled = options->enabled();
-    {
-      ScopedMutex lock(log_record()->mutex());
-      if (!is_allowed) {
-        log_record()->logging_info()->set_is_url_disallowed(true);
-      }
-      if (!is_enabled) {
-        log_record()->logging_info()->set_is_request_disabled(true);
-      }
-    }
-
-    if (is_enabled && is_allowed) {
-      // Pagespeed enabled on URL.
-      if (options->in_place_rewriting_enabled()) {
-        // For Ajax rewrites, we go through RewriteDriver to give it
-        // a chance to optimize resources. (If they are HTML, it will
-        // not touch them, and we will stream them to the parser here).
-        driver_->FetchResource(url_, this);
-        return;
-      }
-      // Otherwise we just do a normal fetch from cache, and if it's
-      // HTML we will do a streaming rewrite.
-    } else {
-      // Pagespeed disabled on URL.
-      if (options->reject_blacklisted()) {
-        // We were asked to error out in this case.
-        response_headers()->SetStatusAndReason(
-            options->reject_blacklisted_status_code());
-        Done(true);
-        return;
-      } else if (cross_domain_ && !is_allowed) {
-        // If we find a cross domain request that is blacklisted, send a 302
-        // redirect to the decoded url instead of doing a passthrough.
-        response_headers()->Add(HttpAttributes::kLocation, url_);
-        response_headers()->SetStatusAndReason(HttpStatus::kFound);
-        Done(false);
-        return;
-      }
-      // Else we should do a passthrough. In that case, we still do a normal
-      // origin fetch, but we will never rewrite anything, since
-      // SetupForHtml() will re-check enabled() and IsAllowed();
-    }
-
-    cache_fetcher_.reset(driver_->CreateCacheFetcher());
-    // Since we are proxying resources to user, we want to fetch it even if
-    // there is a kRecentFetchNotCacheable message in the cache.
-    cache_fetcher_->set_ignore_recent_fetch_failed(true);
-    cache_fetcher_->Fetch(url_, factory_->handler_, this);
-  } else {
+void ProxyFetch::DoFetch(bool prepare_success) {
+  if (!prepare_success) {
     Done(false);
+    return;
   }
+
+  const RewriteOptions* options = driver_->options();
+  const bool is_allowed = options->IsAllowed(url_);
+  const bool is_enabled = options->enabled();
+  {
+    ScopedMutex lock(log_record()->mutex());
+    if (!is_allowed) {
+      log_record()->logging_info()->set_is_url_disallowed(true);
+    }
+    if (!is_enabled) {
+      log_record()->logging_info()->set_is_request_disabled(true);
+    }
+  }
+
+  if (is_enabled && is_allowed) {
+    // Pagespeed enabled on URL.
+    if (options->in_place_rewriting_enabled()) {
+      // For Ajax rewrites, we go through RewriteDriver to give it
+      // a chance to optimize resources. (If they are HTML, it will
+      // not touch them, and we will stream them to the parser here).
+      driver_->FetchResource(url_, this);
+      return;
+    }
+    // Otherwise we just do a normal fetch from cache, and if it's
+    // HTML we will do a streaming rewrite.
+  } else {
+    // Pagespeed disabled on URL.
+    if (options->reject_blacklisted()) {
+      // We were asked to error out in this case.
+      response_headers()->SetStatusAndReason(
+          options->reject_blacklisted_status_code());
+      Done(true);
+      return;
+    } else if (cross_domain_ && !is_allowed) {
+      // If we find a cross domain request that is blacklisted, send a 302
+      // redirect to the decoded url instead of doing a passthrough.
+      response_headers()->Add(HttpAttributes::kLocation, url_);
+      response_headers()->SetStatusAndReason(HttpStatus::kFound);
+      Done(false);
+      return;
+    }
+    // Else we should do a passthrough. In that case, we still do a normal
+    // origin fetch, but we will never rewrite anything, since
+    // SetupForHtml() will re-check enabled() and IsAllowed();
+  }
+
+  cache_fetcher_.reset(driver_->CreateCacheFetcher());
+  // Since we are proxying resources to user, we want to fetch it even if
+  // there is a kRecentFetchNotCacheable message in the cache.
+  cache_fetcher_->set_ignore_recent_fetch_failed(true);
+  cache_fetcher_->Fetch(url_, factory_->handler_, this);
 }
 
 void ProxyFetch::ScheduleQueueExecutionIfNeeded() {

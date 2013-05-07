@@ -346,7 +346,9 @@ class ProxyFetch : public SharedAsyncFetch {
   void StartFetch();
 
   // Actually do the fetch, called from callback of StartFetch.
-  void DoFetch();
+  // "prepare_success" represents whether the request was prepared successfully
+  // by the UrlNamer.
+  void DoFetch(bool prepare_success);
 
   // Handles buffered HTML writes, flushes, and done calls
   // in the QueuedWorkerPool::Sequence sequence_.
@@ -463,9 +465,6 @@ class ProxyFetch : public SharedAsyncFetch {
   QueuedAlarm* idle_alarm_;
 
   ProxyFetchFactory* factory_;
-
-  // Whether PrepareRequest() to url_namer succeeded.
-  bool prepare_success_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetch);
 };

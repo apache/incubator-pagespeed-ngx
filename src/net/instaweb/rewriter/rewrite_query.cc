@@ -119,13 +119,15 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   HeaderT headers_to_remove;
 
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
-    switch (ScanNameValue(
-        headers->Name(i), headers->Value(i), device_properties, options,
-        handler)) {
+    const StringPiece name(headers->Name(i));
+    const GoogleString& value = headers->Value(i);
+    switch (ScanNameValue(name, value, device_properties, options, handler)) {
       case kNoneFound:
         break;
       case kSuccess:
-        headers_to_remove.Add(headers->Name(i), headers->Value(i));
+        if (name.starts_with(kModPagespeed)) {
+          headers_to_remove.Add(name, value);
+        }
         status = kSuccess;
         break;
       case kInvalid:
@@ -300,7 +302,8 @@ bool RewriteQuery::MayHaveCustomOptions(
     return true;
   }
   if (req_headers != NULL &&
-      req_headers->Lookup1(HttpAttributes::kXPsaClientOptions) != NULL) {
+      (req_headers->Lookup1(HttpAttributes::kXPsaClientOptions) != NULL ||
+       req_headers->Lookup1(HttpAttributes::kCacheControl) != NULL)) {
     return true;
   }
   return false;
@@ -349,6 +352,18 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     }
     // We don't want to return kInvalid, which causes 405 (kMethodNotAllowed)
     // returned to client.
+  } else if (StringCaseEqual(name, HttpAttributes::kCacheControl)) {
+    StringPieceVector pairs;
+    SplitStringPieceToVector(value, ",", &pairs, true /* omit_empty_strings */);
+    for (int i = 0, n = pairs.size(); i < n; ++i) {
+      if (pairs[i] == "no-transform") {
+        // TODO(jmarantz): A .pagespeed resource should return un-optimized
+        // content with "Cache-Control: no-transform".
+        options->set_enabled(RewriteOptions::kEnabledOff);
+        status = kSuccess;
+        break;
+      }
+    }
   } else {
     for (unsigned i = 0; i < arraysize(int64_query_params_); ++i) {
       if (name == int64_query_params_[i].name_) {
