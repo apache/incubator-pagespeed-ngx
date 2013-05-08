@@ -71,7 +71,7 @@ class SuppressPreheadFilterTest : public RewriteTestBase {
     rewrite_driver()->SetWriter(&writer_);
     headers_.Clear();
     rewrite_driver()->set_response_headers_ptr(&headers_);
-    rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
+    rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
   }
 
   GoogleString output_;
