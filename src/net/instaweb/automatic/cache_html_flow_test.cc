@@ -1694,7 +1694,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   request_headers.Add(HttpAttributes::kXForwardedFor, "127.0.0.1");
 
   FetchFromProxy("text.html", true, request_headers, &text, &response_headers,
-                 false);
+                 true);
   VerifyNonCacheHtmlResponse(response_headers);
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kCacheHtmlRequestCount)->Get());
