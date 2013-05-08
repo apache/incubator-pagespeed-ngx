@@ -557,7 +557,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
 // Verifies that the computed rewrite delay agrees with expectations
 // depending on the configuration of constituent delay variables.
 TEST_F(RewriteDriverTest, TestComputeCurrentFlushWindowRewriteDelayMs) {
-  rewrite_driver()->set_rewrite_deadline_ms(1000);
+  options()->set_rewrite_deadline_ms(1000);
 
   // "Start" a parse to configure the start time in the driver.
   ASSERT_TRUE(rewrite_driver()->StartParseId("http://site.com/",

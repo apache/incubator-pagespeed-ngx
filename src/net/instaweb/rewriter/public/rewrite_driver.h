@@ -433,12 +433,6 @@ class RewriteDriver : public HtmlParse {
   const RewriteOptions* options() const {
     return (parent_ == NULL) ? owned_options_.get() : parent_->options();
   }
-  RewriteOptions* mutable_options() {
-    DCHECK(parent_ == NULL) << "Do not modify parent options";
-    DCHECK(controlling_pool_ == NULL)
-        << "Do not modify options for pooled drivers";
-    return owned_options_.get();
-  }
 
   // Override HtmlParse's StartParseId to propagate any required options.
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
@@ -706,14 +700,6 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the Rewrite thread.
   void DeleteRewriteContext(RewriteContext* rewrite_context);
 
-  // Explicitly sets the number of milliseconds to wait for Rewrites to complete
-  // while HTML parsing, overriding a default value which is dependent on
-  // whether the system is compiled for debug or release, or whether it's been
-  // detected as running on valgrind at runtime. Note that this delegates to
-  // options(), so make sure that options() is not locked when calling this.
-  void set_rewrite_deadline_ms(int x) {
-    mutable_options()->set_rewrite_deadline_ms(x);
-  }
   int rewrite_deadline_ms() { return options()->rewrite_deadline_ms(); }
 
   // Sets a maximum amount of time to process a page across all flush
@@ -1373,7 +1359,7 @@ class RewriteDriver : public HtmlParse {
   // Options owned by this RewriteDriver.  Note that nested
   // RewriteDrivers don't use this field, as they instead get their
   // options from their parent_.  Thus internal accesses should be
-  // made generally through accessors: mutable_options() and options().
+  // made generally through the accessor options().
   scoped_ptr<RewriteOptions> owned_options_;
 
   RewriteDriverPool* controlling_pool_;  // or NULL if this has custom options.
