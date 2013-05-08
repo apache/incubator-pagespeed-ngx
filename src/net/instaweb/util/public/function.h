@@ -130,12 +130,12 @@ class MemberFunction0 : public MemberFunctionBase<C> {
  public:
   typedef void (C::*Func)();
 
-  // Constructor suppying a Run method, but no Cancel method.
+  // Constructor supplying a Run method, but no Cancel method.
   MemberFunction0(Func f, C* c) : MemberFunctionBase<C>(c), run_(f),
                                   cancel_(NULL) {
   }
 
-  // Constructor suppying a Run method and a Cancel method.
+  // Constructor supplying a Run method and a Cancel method.
   MemberFunction0(Func f, Func cancel, C* c)
       : MemberFunctionBase<C>(c), run_(f), cancel_(cancel) {}
 
@@ -158,11 +158,11 @@ class MemberFunction1 : public MemberFunctionBase<C> {
  public:
   typedef void (C::*Func)(T1);
 
-  // Constructor suppying a Run method, but no Cancel method.
+  // Constructor supplying a Run method, but no Cancel method.
   MemberFunction1(Func f, C* c, T1 v1)
       : MemberFunctionBase<C>(c), run_(f), cancel_(NULL), v1_(v1) {}
 
-  // Constructor suppying a Run method and a Cancel method.
+  // Constructor supplying a Run method and a Cancel method.
   MemberFunction1(Func f, Func cancel,
                   C* c, T1 v1)
       : MemberFunctionBase<C>(c), run_(f), cancel_(cancel), v1_(v1)  {}
@@ -187,11 +187,11 @@ class MemberFunction2 : public MemberFunctionBase<C> {
  public:
   typedef void (C::*Func)(T1, T2);
 
-  // Constructor suppying a Run method, but no Cancel method.
+  // Constructor supplying a Run method, but no Cancel method.
   MemberFunction2(Func f, C* c, T1 v1, T2 v2)
       : MemberFunctionBase<C>(c), run_(f), cancel_(NULL), v1_(v1), v2_(v2) {}
 
-  // Constructor suppying a Run method and a Cancel method.
+  // Constructor supplying a Run method and a Cancel method.
   MemberFunction2(Func f, Func cancel,
                   C* c, T1 v1, T2 v2)
       : MemberFunctionBase<C>(c),
@@ -219,13 +219,13 @@ class MemberFunction3 : public MemberFunctionBase<C> {
  public:
   typedef void (C::*Func)(T1, T2, T3);
 
-  // Constructor suppying a Run method, but no Cancel method.
+  // Constructor supplying a Run method, but no Cancel method.
   MemberFunction3(Func f, C* c, T1 v1, T2 v2, T3 v3)
       : MemberFunctionBase<C>(c), run_(f), cancel_(NULL), v1_(v1), v2_(v2),
         v3_(v3) {
   }
 
-  // Constructor suppying a Run method and a Cancel method.
+  // Constructor supplying a Run method and a Cancel method.
   MemberFunction3(Func f, Func cancel,
                   C* c, T1 v1, T2 v2, T3 v3)
       : MemberFunctionBase<C>(c),
@@ -246,6 +246,42 @@ class MemberFunction3 : public MemberFunctionBase<C> {
   T1 v1_;
   T2 v2_;
   T3 v3_;
+};
+
+// Captures a delayed call to a 4-arg member function as a closure.
+template<class C, typename T1, typename T2, typename T3, typename T4>
+class MemberFunction4 : public MemberFunctionBase<C> {
+ public:
+  typedef void (C::*Func)(T1, T2, T3, T4);
+
+  // Constructor supplying a Run method, but no Cancel method.
+  MemberFunction4(Func f, C* c, T1 v1, T2 v2, T3 v3, T4 v4)
+      : MemberFunctionBase<C>(c), run_(f), cancel_(NULL), v1_(v1), v2_(v2),
+        v3_(v3), v4_(v4) {
+  }
+
+  // Constructor supplying a Run method and a Cancel method.
+  MemberFunction4(Func f, Func cancel,
+                  C* c, T1 v1, T2 v2, T3 v3, T4 v4)
+      : MemberFunctionBase<C>(c),
+        run_(f), cancel_(cancel),
+        v1_(v1), v2_(v2), v3_(v3), v4_(v4)  {}
+
+ protected:
+  virtual void Run() { CALL_MEMBER_FN(object_, run_)(v1_, v2_, v3_, v4_); }
+  virtual void Cancel() {
+    if (cancel_ != NULL) {
+      CALL_MEMBER_FN(object_, cancel_)(v1_, v2_, v3_, v4_);
+    }
+  }
+
+ private:
+  Func run_;
+  Func cancel_;
+  T1 v1_;
+  T2 v2_;
+  T3 v3_;
+  T4 v4_;
 };
 
 #undef CALL_MEMBER_FN
@@ -269,7 +305,7 @@ Function* MakeFunction(C* object, void (C::*run)(T), T t) {
   return new MemberFunction1<C, T>(run, object, t);
 }
 
-// Makes a Function* that calls a 1-arg class method, or a 0-arg cancel
+// Makes a Function* that calls a 1-arg class method, or a 1-arg cancel
 // method.
 template<class C, class T>
 Function* MakeFunction(C* object,
@@ -284,7 +320,7 @@ Function* MakeFunction(C* object, void (C::*run)(T, U), T t, U u) {
   return new MemberFunction2<C, T, U>(run, object, t, u);
 }
 
-// Makes a Function* that calls a 2-arg class method, or a 0-arg cancel
+// Makes a Function* that calls a 2-arg class method, or a 2-arg cancel
 // method.
 template<class C, class T, class U>
 Function* MakeFunction(C* object,
@@ -302,7 +338,7 @@ Function* MakeFunction(C* object,
   return new MemberFunction3<C, T, U, V>(run, object, t, u, v);
 }
 
-// Makes a Function* that calls a 3-arg class method, or a 0-arg cancel
+// Makes a Function* that calls a 3-arg class method, or a 3-arg cancel
 // method.
 template<class C, class T, class U, class V>
 Function* MakeFunction(C* object,
@@ -310,6 +346,24 @@ Function* MakeFunction(C* object,
                        void (C::*cancel)(T, U, V),
                        T t, U u, V v) {
   return new MemberFunction3<C, T, U, V>(run, cancel, object, t, u, v);
+}
+
+// Makes a Function* that calls a 4-arg class method.
+template<class C, class T, class U, class V, class W>
+Function* MakeFunction(C* object,
+                       void (C::*run)(T, U, V, W),
+                       T t, U u, V v, W w) {
+  return new MemberFunction4<C, T, U, V, W>(run, object, t, u, v, w);
+}
+
+// Makes a Function* that calls a 4-arg class method, or a 4-arg cancel
+// method.
+template<class C, class T, class U, class V, class W>
+Function* MakeFunction(C* object,
+                       void (C::*run)(T, U, V, W),
+                       void (C::*cancel)(T, U, V, W),
+                       T t, U u, V v, W w) {
+  return new MemberFunction4<C, T, U, V, W>(run, cancel, object, t, u, v, w);
 }
 
 }  // namespace net_instaweb
