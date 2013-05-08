@@ -3408,7 +3408,8 @@ void RewriteOptions::PurgeUrl(StringPiece url, int64 timestamp_ms) {
 void RewriteOptions::AddUrlCacheInvalidationEntry(
     StringPiece url_pattern, int64 timestamp_ms,
     bool ignores_metadata_and_pcache) {
-  if (!ignores_metadata_and_pcache &&
+  if (enable_cache_purge() &&
+      !ignores_metadata_and_pcache &&
       (url_pattern.find('*') == StringPiece::npos)) {
     // We could use Wildcard::IsSimple but let's define ? to mean in this
     // context a literal '?' because query-params are way more common than

@@ -120,9 +120,9 @@ class RewriteContextTest : public RewriteContextTestBase {
   }
 
   void EnableFastUrlInvalidation() {
-    server_context()->global_options()->ClearSignatureForTesting();
-    server_context()->global_options()->set_enable_cache_purge(true);
-    server_context()->global_options()->ComputeSignature();
+    options()->ClearSignatureForTesting();
+    options()->set_enable_cache_purge(true);
+    options()->ComputeSignature();
   }
 
   void FetchAndValidateMetadata(StringPiece input_url,
@@ -758,15 +758,15 @@ TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizableUrlCacheInvalidation) {
   ClearStats();
 
   // The third time we do a 'non-strict' (includes metadata) invalidation of
-  // the cache for some URL other than 'b.css', invalidationg just the
+  // the cache for some URL other than 'b.css', invalidating just the
   // metadata for foo.bar, which has no effect.
   SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar"), false);
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
-  // The above invalidation of foo.bar is completely irrelevant to the
-  // lookup for b.css, so it's all cache-hits, no inserts/rewrites/fetches.
-  EXPECT_EQ(1, lru_cache()->num_hits());  // metadata (valid)
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
+  // Since enable_cache_purge is not true, the above invalidation results in a
+  // signature change for metadata cache key.  Hence metadata is invalidated.
+  EXPECT_EQ(1, lru_cache()->num_hits());     // http cache
+  EXPECT_EQ(1, lru_cache()->num_misses());   // metadata
+  EXPECT_EQ(1, lru_cache()->num_inserts());  // metadata
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
