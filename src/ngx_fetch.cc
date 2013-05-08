@@ -32,7 +32,6 @@
 #include <string>
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/inflating_fetch.h"
@@ -313,13 +312,30 @@ namespace net_instaweb {
     RequestHeaders* request_headers = async_fetch_->request_headers();
     ConstStringStarVector v;
     size_t size = 0;
+    bool have_host = false;
+    GoogleString port;
+
     size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.0\r\n") - 1;
+
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
+      // if no explicit host header is given in the request headers,
+      // we need to derive it from the url.
+      if (StringCaseEqual(request_headers->Name(i), "Host")) {
+        have_host = true;
+      }
+
       // name: value\r\n
       size += request_headers->Name(i).length()
            + request_headers->Value(i).length()
            + 4;  // for ": \r\n"
     }
+
+    if (!have_host) {
+      port = StrCat(":", IntegerToString(url_.port));
+      // for "Host: " + host + ":" + port + "\r\n"
+      size += url_.host.len + 8 + port.size();
+    }
+
     size += 2;  // "\r\n";
     out_ = ngx_create_temp_buf(pool_, size);
 
@@ -330,6 +346,13 @@ namespace net_instaweb {
     out_->last = ngx_cpymem(out_->last, "GET ", 4);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
     out_->last = ngx_cpymem(out_->last, " HTTP/1.0\r\n", 11);
+
+    if (!have_host) {
+      out_->last = ngx_cpymem(out_->last, "Host: ", 6);
+      out_->last = ngx_cpymem(out_->last, url_.host.data, url_.host.len);
+      out_->last = ngx_cpymem(out_->last, port.c_str(), port.size());
+      out_->last = ngx_cpymem(out_->last, "\r\n", 2);
+    }
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
       const GoogleString& name = request_headers->Name(i);
