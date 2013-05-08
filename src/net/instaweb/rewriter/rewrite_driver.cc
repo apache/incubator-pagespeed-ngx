@@ -34,7 +34,6 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -149,6 +148,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -247,7 +247,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       can_rewrite_resources_(true),
       request_context_(NULL),
       start_time_ms_(0),
-      is_nested_(false)
+      parent_(NULL)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
@@ -307,14 +307,29 @@ RewriteDriver* RewriteDriver::Clone() {
   RewriteDriver* result;
   RewriteDriverPool* pool = controlling_pool();
   if (pool == NULL) {
+    // Child drivers will create resources that will be referenced by
+    // the parent, and parents outlive children.  To avoid having the
+    // resources point to dead options owned by the dead children, we
+    // share the options between parent & child.   This sharing
+    // occurs via indirection in options().
+    //
+    // Note: it should not be necessary to clone the options here.  Once we
+    // set the child's parent to this, the child will reference this->options()
+    // and ignores its self_options_.
+    //
+    // Nowever, if I use options()->NewOptions() here rather than
+    // options()->Clone(), then
+    //     CacheHtmlFlowTest.TestCacheHtmlCacheMissAndHit
+    // fails and I think this must be due to it referencing its options()
+    // directly from NewCustomRewriteDriver.
     RewriteOptions* options_copy = options()->Clone();
-    server_context_->ComputeSignature(options_copy);
+    options_copy->ComputeSignature();
     result =
         server_context_->NewCustomRewriteDriver(options_copy, request_context_);
   } else {
     result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
-  result->set_is_nested(true);
+  result->parent_ = this;
   return result;
 }
 
@@ -380,7 +395,7 @@ void RewriteDriver::Clear() {
     request_context_.reset(NULL);
   }
   start_time_ms_ = 0;
-  is_nested_ = false;
+  parent_ = NULL;
 
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
@@ -812,7 +827,11 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
-  server_context_->ComputeSignature(options_.get());
+  if (parent_ == NULL) {
+    server_context_->ComputeSignature(owned_options_.get());
+  } else {
+    DCHECK(options()->frozen());
+  }
   filters_added_ = true;
 
   AddPreRenderFilters();
@@ -1069,7 +1088,7 @@ void RewriteDriver::AddPostRenderFilters() {
     AddUnownedPostRenderFilter(url_trim_filter_.get());
   }
   if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources) &&
-      !options_->pre_connect_url().empty()) {
+      !options()->pre_connect_url().empty()) {
     AddOwnedPostRenderFilter(new RewrittenContentScanningFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
@@ -1304,7 +1323,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // In forward proxy in preserve-URLs mode we want to fetch .pagespeed.
   // resource, i.e. do not decode and and do not fetch original (especially
   // that encoded one will never be cached internally).
-  if (options_.get() != NULL && options_->oblivious_pagespeed_urls()) {
+  if (options() != NULL && options()->oblivious_pagespeed_urls()) {
     return false;
   }
 
@@ -2317,7 +2336,7 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
     AppendBool(&out, "serve_blink_non_critical", serve_blink_non_critical_);
     AppendBool(&out, "is_blink_request", is_blink_request_);
     AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
-    AppendBool(&out, "is_nested", is_nested_);
+    AppendBool(&out, "is_nested", is_nested());
   }
   return out;
 }

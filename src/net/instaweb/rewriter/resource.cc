@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -92,6 +93,13 @@ void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
   } else {
     input->clear_input_content_hash();
   }
+
+  // This crashes if rewrite_options() is dead.  Otherwise it's
+  // obviously pointless.
+  //
+  // TODO(sriharis): remove this when you put in a real usage of
+  // rewrite_options() here.
+  DCHECK_GE(rewrite_options()->domain_lawyer()->num_wildcarded_domains(), 0);
 
   if (server_context_->global_options()->enable_cache_purge()) {
     input->set_url(url());

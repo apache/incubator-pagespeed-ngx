@@ -26,7 +26,6 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -49,6 +48,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -423,14 +423,22 @@ class RewriteDriver : public HtmlParse {
   // use these options. May be NULL if using custom options.
   void set_options_for_pool(RewriteDriverPool* pool, RewriteOptions* options) {
     controlling_pool_ = pool;
-    options_.reset(options);
+    owned_options_.reset(options);
   }
 
   // Pool in which this driver can be recycled. May be NULL.
   RewriteDriverPool* controlling_pool() { return controlling_pool_; }
 
   // Return the options used for this RewriteDriver.
-  const RewriteOptions* options() const { return options_.get(); }
+  const RewriteOptions* options() const {
+    return (parent_ == NULL) ? owned_options_.get() : parent_->options();
+  }
+  RewriteOptions* mutable_options() {
+    DCHECK(parent_ == NULL) << "Do not modify parent options";
+    DCHECK(controlling_pool_ == NULL)
+        << "Do not modify options for pooled drivers";
+    return owned_options_.get();
+  }
 
   // Override HtmlParse's StartParseId to propagate any required options.
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
@@ -702,9 +710,11 @@ class RewriteDriver : public HtmlParse {
   // while HTML parsing, overriding a default value which is dependent on
   // whether the system is compiled for debug or release, or whether it's been
   // detected as running on valgrind at runtime. Note that this delegates to
-  // options_, so make sure that options_ is not locked when calling this.
-  void set_rewrite_deadline_ms(int x) { options_->set_rewrite_deadline_ms(x); }
-  int rewrite_deadline_ms() { return options_->rewrite_deadline_ms(); }
+  // options(), so make sure that options() is not locked when calling this.
+  void set_rewrite_deadline_ms(int x) {
+    mutable_options()->set_rewrite_deadline_ms(x);
+  }
+  int rewrite_deadline_ms() { return options()->rewrite_deadline_ms(); }
 
   // Sets a maximum amount of time to process a page across all flush
   // windows; i.e., the entire lifecycle of this driver during a given pageload.
@@ -998,9 +1008,8 @@ class RewriteDriver : public HtmlParse {
   // Currently, systems get sick based on the health of the metadata cache.
   bool can_rewrite_resources() const { return can_rewrite_resources_; }
 
-  // Sets the is_nested property on the driver.
-  void set_is_nested(bool n) { is_nested_ = n; }
-  bool is_nested() const { return is_nested_; }
+  // Determine whether this driver is nested inside another.
+  bool is_nested() const { return parent_ != NULL; }
 
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
@@ -1361,7 +1370,12 @@ class RewriteDriver : public HtmlParse {
 
   HtmlResourceSlotSet slots_;
 
-  scoped_ptr<RewriteOptions> options_;
+  // Options owned by this RewriteDriver.  Note that nested
+  // RewriteDrivers don't use this field, as they instead get their
+  // options from their parent_.  Thus internal accesses should be
+  // made generally through accessors: mutable_options() and options().
+  scoped_ptr<RewriteOptions> owned_options_;
+
   RewriteDriverPool* controlling_pool_;  // or NULL if this has custom options.
 
   // The default resource encoder
@@ -1448,11 +1462,14 @@ class RewriteDriver : public HtmlParse {
   // Start time for HTML requests. Used for statistics reporting.
   int64 start_time_ms_;
 
-  // True if this driver has been cloned from another to execute subordinate
-  // rewrites. Some logging operations aren't executed on nested rewrite
-  // drivers, and timeout policies are changed. Note that this is totally
-  // distinct from nested rewrite contexts.
-  bool is_nested_;
+  // Non-null if this driver has been cloned from another to execute
+  // subordinate rewrites. Some logging operations aren't executed on
+  // nested rewrite drivers, and timeout policies are changed. Note
+  // that this is totally distinct from nested rewrite contexts.
+  //
+  // Note also that the child rewrites share the parents options(), as
+  // nested rewrites share Resources which hold onto the options.
+  RewriteDriver* parent_;
 
   scoped_ptr<DeviceProperties> device_properties_;
 
