@@ -56,6 +56,7 @@ class Variable {
 
   // Adds 'delta' to the variable's value, returning the result.  This
   // is virtual so that subclasses can add platform-specific atomicity.
+  // TODO(sligocki): s/int/int64/
   virtual int64 Add(int delta) {
     int64 value = Get() + delta;
     Set(value);
@@ -73,16 +74,29 @@ class Variable {
 // StatisticsLogger depends upon these mutexes being cross-process so that
 // several processes using the same file system don't clobber each others logs.
 class MutexedVariable : public Variable {
+ public:
+  virtual ~MutexedVariable();
+
+  // Subclasses should not define these methods, instead define the *LockHeld()
+  // methods below.
+  virtual int64 Get() const;
+  virtual void Set(int64 value);
+  virtual int64 SetReturningPreviousValue(int64 value);
+  virtual int64 Add(int delta);
+
  protected:
   friend class StatisticsLogger;
 
-  virtual AbstractMutex* mutex() = 0;
+  virtual AbstractMutex* mutex() const = 0;
 
   // Get/Setters that may only be called if you already hold the mutex.
-  // TODO(sligocki): Implement Get() and Set() based on these so subclasses
-  // don't need to.
   virtual int64 GetLockHeld() const = 0;
-  virtual void SetLockHeld(int64 new_value) = 0;
+  virtual int64 SetReturningPreviousValueLockHeld(int64 value) = 0;
+
+  // These are implemented based on GetLockHeld() and
+  // SetReturningPreviousLockHeld().
+  void SetLockHeld(int64 value);
+  int64 AddLockHeld(int delta);
 };
 
 class Histogram {

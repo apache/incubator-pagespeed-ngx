@@ -84,54 +84,14 @@ SharedMemVariable::SharedMemVariable(const StringPiece& name)
       value_ptr_(NULL) {
 }
 
-int64 SharedMemVariable::Get() const {
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    return *value_ptr_;
-  } else {
-    return -1;
-  }
-}
-
 int64 SharedMemVariable::GetLockHeld() const {
   return *value_ptr_;
 }
 
-int64 SharedMemVariable::SetReturningPreviousValue(int64 new_value) {
-  int64 previous_value = -1;
-  if (mutex_.get() != NULL) {
-    {
-      ScopedMutex hold_lock(mutex_.get());
-      previous_value = *value_ptr_;
-      *value_ptr_ = new_value;
-    }
-  }
-  return previous_value;
-}
-
-void SharedMemVariable::Set(int64 new_value) {
-  if (mutex_.get() != NULL) {
-    {
-      ScopedMutex hold_lock(mutex_.get());
-      *value_ptr_ = new_value;
-    }
-  }
-}
-
-void SharedMemVariable::SetLockHeld(int64 new_value) {
+int64 SharedMemVariable::SetReturningPreviousValueLockHeld(int64 new_value) {
+  int64 previous_value = *value_ptr_;
   *value_ptr_ = new_value;
-}
-
-int64 SharedMemVariable::Add(int delta) {
-  int64 value = 0;
-  if (mutex_.get() != NULL) {
-    {
-      ScopedMutex hold_lock(mutex_.get());
-      *value_ptr_ += delta;
-      value = *value_ptr_;
-    }
-  }
-  return value;
+  return previous_value;
 }
 
 void SharedMemVariable::AttachTo(
@@ -152,7 +112,7 @@ void SharedMemVariable::Reset() {
   mutex_.reset();
 }
 
-AbstractMutex* SharedMemVariable::mutex() {
+AbstractMutex* SharedMemVariable::mutex() const {
   return mutex_.get();
 }
 

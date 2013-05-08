@@ -58,16 +58,12 @@ class Writer;
 class SharedMemVariable : public MutexedVariable {
  public:
   virtual ~SharedMemVariable() {}
-  virtual int64 Get() const;
-  virtual int64 SetReturningPreviousValue(int64 new_value);  // Atomic
-  virtual void Set(int64 new_value);
-  virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return name_; }
 
  protected:
-  virtual AbstractMutex* mutex();
+  virtual AbstractMutex* mutex() const;
   virtual int64 GetLockHeld() const;
-  virtual void SetLockHeld(int64 new_value);
+  virtual int64 SetReturningPreviousValueLockHeld(int64 value);
 
  private:
   friend class SharedMemStatistics;

@@ -55,20 +55,14 @@ SimpleStatsVariable::SimpleStatsVariable(AbstractMutex* mutex)
       mutex_(mutex) {
 }
 
-int64 SimpleStatsVariable::Get() const {
-  ScopedMutex lock(mutex_.get());
+int64 SimpleStatsVariable::GetLockHeld() const {
   return value_;
 }
 
-void SimpleStatsVariable::Set(int64 value) {
-  ScopedMutex lock(mutex_.get());
+int64 SimpleStatsVariable::SetReturningPreviousValueLockHeld(int64 value) {
+  int64 previous_value = value_;
   value_ = value;
-}
-
-int64 SimpleStatsVariable::Add(int delta) {
-  ScopedMutex lock(mutex_.get());
-  value_ += delta;
-  return value_;
+  return previous_value;
 }
 
 }  // namespace net_instaweb

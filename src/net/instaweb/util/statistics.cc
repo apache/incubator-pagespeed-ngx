@@ -50,6 +50,53 @@ int64 Variable::SetReturningPreviousValue(int64 value) {
   return previous_value;
 }
 
+MutexedVariable::~MutexedVariable() {
+}
+
+int64 MutexedVariable::Get() const {
+  if (mutex() != NULL) {
+    ScopedMutex hold_lock(mutex());
+    return GetLockHeld();
+  } else {
+    return -1;
+  }
+}
+
+void MutexedVariable::Set(int64 new_value) {
+  if (mutex() != NULL) {
+    ScopedMutex hold_lock(mutex());
+    SetLockHeld(new_value);
+  }
+}
+
+int64 MutexedVariable::SetReturningPreviousValue(int64 new_value) {
+  if (mutex() != NULL) {
+    ScopedMutex hold_lock(mutex());
+    return SetReturningPreviousValueLockHeld(new_value);
+  } else {
+    return -1;
+  }
+}
+
+int64 MutexedVariable::Add(int delta) {
+  if (mutex() != NULL) {
+    ScopedMutex hold_lock(mutex());
+    return AddLockHeld(delta);
+  } else {
+    return -1;
+  }
+}
+
+void MutexedVariable::SetLockHeld(int64 new_value) {
+  SetReturningPreviousValueLockHeld(new_value);
+}
+
+int64 MutexedVariable::AddLockHeld(int delta) {
+  int64 value = GetLockHeld() + delta;
+  SetLockHeld(value);
+  return value;
+}
+
 Histogram::~Histogram() {
 }
 

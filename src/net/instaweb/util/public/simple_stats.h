@@ -32,14 +32,16 @@ class AbstractMutex;
 class ThreadSystem;
 
 // These variables are thread-safe.
-class SimpleStatsVariable : public Variable {
+class SimpleStatsVariable : public MutexedVariable {
  public:
   explicit SimpleStatsVariable(AbstractMutex* mutex);
   virtual ~SimpleStatsVariable();
-  virtual int64 Get() const;
-  virtual void Set(int64 value);
-  virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return StringPiece(NULL); }
+
+ protected:
+  virtual AbstractMutex* mutex() const { return mutex_.get(); }
+  virtual int64 GetLockHeld() const;
+  virtual int64 SetReturningPreviousValueLockHeld(int64 value);
 
  private:
   int64 value_;
