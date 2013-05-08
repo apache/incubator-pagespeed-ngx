@@ -1982,7 +1982,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   return ngx_http_next_header_filter(r);
 }
 
-// TODO(oschaaf): make ps_static_handler use write_handler_response? for now,
+// TODO(oschaaf): make ps_static_handler use ps_write_handler_response? for now,
 // minimize the diff
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -2087,7 +2087,7 @@ ngx_int_t send_out_headers_and_body(
 
 // Write response headers and send out headers and output, including the option
 // for a custom Content-Type.
-void write_handler_response(const StringPiece& output,
+void ps_write_handler_response(const StringPiece& output,
                             ngx_http_request_t* r,
                             net_instaweb::ContentType content_type,
                             const StringPiece& cache_control,
@@ -2109,24 +2109,24 @@ void write_handler_response(const StringPiece& output,
 }
 
 // Writes text wrapped in a <pre> block
-void WritePre(StringPiece str, net_instaweb::Writer* writer,
+void ps_write_pre(StringPiece str, net_instaweb::Writer* writer,
               net_instaweb::MessageHandler* handler) {
   writer->Write("<pre>\n", handler);
   writer->Write(str, handler);
   writer->Write("</pre>\n", handler);
 }
 
-void write_handler_response(const StringPiece& output,
+void ps_write_handler_response(const StringPiece& output,
                             ngx_http_request_t* r,
                             net_instaweb::ContentType content_type,
                             net_instaweb::Timer* timer) {
-  write_handler_response(output, r, net_instaweb::kContentTypeHtml,
+  ps_write_handler_response(output, r, net_instaweb::kContentTypeHtml,
                          net_instaweb::HttpAttributes::kNoCache, timer);
 }
 
-void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
+void ps_write_handler_response(const StringPiece& output, ngx_http_request_t* r,
                             net_instaweb::Timer* timer) {
-  write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
+  ps_write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
 }
 
 // TODO(oschaaf): port SPDY specific functionality, shmcache stats
@@ -2253,23 +2253,23 @@ ngx_int_t ps_statistics_handler(
         GoogleString memcached_stats;
         factory->PrintMemCacheStats(&memcached_stats);
         if (!memcached_stats.empty()) {
-          WritePre(memcached_stats, &writer, message_handler);
+          ps_write_pre(memcached_stats, &writer, message_handler);
         }
       }
     }
 
     if (print_normal_config) {
       writer.Write("Configuration:<br>", message_handler);
-      WritePre(server_context->config()->OptionsToString(),
+      ps_write_pre(server_context->config()->OptionsToString(),
                &writer, message_handler);
     }
   }
 
   if (json) {
-    write_handler_response(output, r, net_instaweb::kContentTypeJson,
+    ps_write_handler_response(output, r, net_instaweb::kContentTypeJson,
                            factory->timer());
   } else {
-    write_handler_response(output, r, factory->timer());
+    ps_write_handler_response(output, r, factory->timer());
   }
 
   return NGX_OK;
@@ -2292,7 +2292,7 @@ ngx_int_t ps_messages_handler(
                  message_handler);
   }
   writer.Write("</pre>", message_handler);
-  write_handler_response(output, r, factory->timer());
+  ps_write_handler_response(output, r, factory->timer());
   return NGX_OK;
 }
 
