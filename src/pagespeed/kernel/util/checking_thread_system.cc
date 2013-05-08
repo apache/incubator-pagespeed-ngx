@@ -16,13 +16,13 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#include "net/instaweb/util/public/checking_thread_system.h"
+#include "pagespeed/kernel/util/checking_thread_system.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/condvar.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/util/atomic_bool.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/condvar.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

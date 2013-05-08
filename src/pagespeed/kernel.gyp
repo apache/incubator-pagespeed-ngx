@@ -22,6 +22,7 @@
       'type': '<(library)',
       'sources': [
         'kernel/base/abstract_mutex.cc',
+        'kernel/base/condvar.cc',
         'kernel/base/debug.cc',
         'kernel/base/file_system.cc',
         'kernel/base/message_handler.cc',
@@ -129,6 +130,7 @@
       'target_name': 'util',
       'type': '<(library)',
       'sources': [
+        'kernel/util/checking_thread_system.cc',
         'kernel/util/fast_wildcard_group.cc',
         'kernel/util/rolling_hash.cc',
         'kernel/util/wildcard.cc',

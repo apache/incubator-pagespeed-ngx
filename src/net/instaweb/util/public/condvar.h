@@ -17,56 +17,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/thread_system.h"
-
-namespace net_instaweb {
-
-// Abstract interface for implementing a condition variable layered on top of a
-// given mutex type, which ought to extend CondvarCapableMutex.
-class ThreadSystem::Condvar {
- public:
-  Condvar() { }
-  virtual ~Condvar();
-
-  // Return the mutex associated with this condition variable.
-  virtual CondvarCapableMutex* mutex() const = 0;
-
-  // Signal the condvar, waking a waiting thread if any.  mutex() must be held
-  // by caller.  Example:
-  // {
-  //   ScopedMutex lock(cv.mutex());
-  //   make_resource_available();
-  //   cv.Signal();
-  // }
-  virtual void Signal() = 0;
-
-  // Broadcast to all threads waiting on condvar.  mutex() must be held as with
-  // Signal().
-  virtual void Broadcast() = 0;
-
-  // Wait for condition to be signaled.  mutex() must be held; it will
-  // be released and then reclaimed when a signal is received.  Note
-  // that a Wait() may be terminated based on a condition being true,
-  // but the condition may no longer be true at the time the thread
-  // wakes up.  Example:
-  // {
-  //   ScopedMutex lock(cv.mutex());
-  //   while (status && !resource_available()) status = cv.wait();
-  //   if (status) {
-  //     use_resource();
-  //   }
-  // }
-  virtual void Wait() = 0;
-
-  // Wait for condition to be signaled, or timeout to occur.  Works like Wait(),
-  // and cv.mutex() must be held on entry and re-taken on exit.
-  virtual void TimedWait(int64 timeout_ms) = 0;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(Condvar);
-};
-
-}  // namespace net_instaweb
+// TODO(huibao): Remove this forwarding header and update references.
+#include "pagespeed/kernel/base/condvar.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_CONDVAR_H_

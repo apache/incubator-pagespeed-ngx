@@ -14,9 +14,9 @@
 //
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/condvar.h"
+#include "pagespeed/kernel/base/condvar.h"
 
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
