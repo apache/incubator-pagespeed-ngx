@@ -38,7 +38,6 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -209,16 +208,6 @@ void MockFilter::StartDocument() {
   }
 
   client_id_ = driver_->client_id();
-  client_state_ = driver_->client_state();
-  if (client_state_ != NULL) {
-    // Set or clear the client state based on its current value, so we can
-    // check whether it is being written back to the property cache correctly.
-    if (!client_state_->InCache("http://www.fakeurl.com")) {
-      client_state_->Set("http://www.fakeurl.com", 1000*1000);
-    } else {
-      client_state_->Clear();
-    }
-  }
 }
 
 void MockFilter::StartElement(HtmlElement* element) {
@@ -231,13 +220,6 @@ void MockFilter::StartElement(HtmlElement* element) {
 
     if (!client_id_.empty()) {
       StrAppend(&comment, "ClientID: ", client_id_, " ");
-    }
-    if (client_state_ != NULL) {
-      StrAppend(&comment, "ClientStateID: ",
-                client_state_->ClientId(),
-                " InCache: ",
-                client_state_->InCache("http://www.fakeurl.com") ?
-                "true" : "false", " ");
     }
     if ((num_elements_property_ != NULL) &&
                num_elements_property_->has_value()) {

@@ -37,7 +37,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
@@ -829,17 +828,6 @@ class RewriteDriver : public HtmlParse {
       StringPiece property_name,
       StringPiece property_value);
 
-  // Sets the pointer to the client state associated with this driver.
-  // RewriteDriver takes ownership of the provided AbstractClientState object.
-  void set_client_state(AbstractClientState* client_state) {
-      client_state_.reset(client_state);
-  }
-
-  // Return a pointer to the client state associated with this request.
-  // This may be NULL if the request does not have an associated client id, or
-  // if the retrieval of client state fails.
-  AbstractClientState* client_state() const { return client_state_.get(); }
-
   void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
   const GoogleString& client_id() const { return client_id_; }
 
@@ -1147,10 +1135,6 @@ class RewriteDriver : public HtmlParse {
   // RewriteFilter::UsesPropertyCacheDomCohort() to return true.
   void WriteDomCohortIntoPropertyCache();
 
-  // When HTML parsing is complete, write back client state, if it exists,
-  // to the property cache.
-  void WriteClientStateIntoPropertyCache();
-
   void FinalizeFilterLogging();
 
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
@@ -1390,9 +1374,6 @@ class RewriteDriver : public HtmlParse {
 
   // Stores a client identifier associated with this request, if any.
   GoogleString client_id_;
-
-  // Stores the AbstractClientState object associated with the client, if any.
-  scoped_ptr<AbstractClientState> client_state_;
 
   // Stores any cached properties associated with the current URL and fallback
   // URL (i.e. without query params).

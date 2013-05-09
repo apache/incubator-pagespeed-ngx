@@ -335,12 +335,9 @@ ProxyFetchPropertyCallbackCollector*
   bool added_callback = false;
   PropertyPageStarVector property_callbacks;
 
-  ProxyFetchPropertyCallback* client_callback = NULL;
   ProxyFetchPropertyCallback* property_callback = NULL;
   ProxyFetchPropertyCallback* fallback_property_callback = NULL;
   PropertyCache* page_property_cache = server_context_->page_property_cache();
-  PropertyCache* client_property_cache =
-      server_context_->client_property_cache();
   if (!is_resource_fetch &&
       server_context_->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
@@ -385,24 +382,6 @@ ProxyFetchPropertyCallbackCollector*
     }
   }
 
-  // Initiate client property cache lookup.
-  if (async_fetch != NULL) {
-    const char* client_id = async_fetch->request_headers()->Lookup1(
-        HttpAttributes::kXGooglePagespeedClientId);
-    if (client_id != NULL) {
-      if (client_property_cache->enabled()) {
-        AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
-        client_callback = new ProxyFetchPropertyCallback(
-            ProxyFetchPropertyCallback::kClientPropertyCachePage,
-            client_property_cache, client_id,
-            UserAgentMatcher::kEndOfDeviceType,
-            callback_collector.get(), mutex);
-        callback_collector->AddCallback(client_callback);
-        added_callback = true;
-      }
-    }
-  }
-
   // All callbacks need to be registered before Reads to avoid race.
   PropertyCache::CohortVector cohort_list_without_blink = GetCohortList(false);
   if (property_callback != NULL) {
@@ -417,9 +396,6 @@ ProxyFetchPropertyCallbackCollector*
     // no property in BlinkCohort which can used fallback values.
     page_property_cache->ReadWithCohorts(cohort_list_without_blink,
                                          fallback_property_callback);
-  }
-  if (client_callback != NULL) {
-    client_property_cache->Read(client_callback);
   }
 
   if (added_callback) {

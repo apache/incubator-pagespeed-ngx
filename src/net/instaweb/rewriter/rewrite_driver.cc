@@ -129,7 +129,6 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -367,7 +366,6 @@ void RewriteDriver::Clear() {
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 
-  client_state_.reset(NULL);
   should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
   max_page_processing_delay_ms_ = -1;
@@ -2205,12 +2203,6 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   fallback_property_page()->WriteCohort(server_context()->dom_cohort());
 }
 
-void RewriteDriver::WriteClientStateIntoPropertyCache() {
-  if (client_state_.get() != NULL) {
-    client_state_->WriteBackToPropertyCache();
-  }
-}
-
 void RewriteDriver::UpdatePropertyValueInDomCohort(
     AbstractPropertyPage* page,
     StringPiece property_name,
@@ -2396,7 +2388,6 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   HtmlParse::EndFinishParse();
   LogStats();
   WriteDomCohortIntoPropertyCache();
-  WriteClientStateIntoPropertyCache();
 
   // Update stats.
   RewriteStats* stats = server_context_->rewrite_stats();

@@ -178,7 +178,6 @@ class PropertyCache {
  public:
   // Property cache key prefixes.
   static const char kPagePropertyCacheKeyPrefix[];
-  static const char kClientPropertyCacheKeyPrefix[];
   static const char kDevicePropertyCacheKeyPrefix[];
 
   class CacheInterfaceCallback;
@@ -346,7 +345,6 @@ class PropertyPage : public AbstractPropertyPage {
   enum PageType {
     kPropertyCachePage,
     kPropertyCacheFallbackPage,
-    kClientPropertyCachePage,
     kDevicePropertyCachePage,
   };
 

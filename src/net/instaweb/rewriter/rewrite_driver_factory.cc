@@ -42,7 +42,6 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/checking_thread_system.h"
-#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -673,7 +672,6 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   CriticalImagesFinder::InitStats(statistics);
   CriticalCssFinder::InitStats(statistics);
   CriticalSelectorFinder::InitStats(statistics);
-  PropertyCache::InitCohortStats(ClientState::kClientStateCohort, statistics);
 }
 
 void RewriteDriverFactory::Initialize() {

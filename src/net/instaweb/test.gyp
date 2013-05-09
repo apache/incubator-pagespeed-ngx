@@ -217,7 +217,6 @@
         'util/charset_util_test.cc',
         'util/chunking_writer_test.cc',
         'util/circular_buffer_test.cc',
-        'util/client_state_test.cc',
         'util/compressed_cache_test.cc',
         'util/console_suggestions_test.cc',
         'util/countdown_timer_test.cc',

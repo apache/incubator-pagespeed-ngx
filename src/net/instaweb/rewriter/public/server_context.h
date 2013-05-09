@@ -207,9 +207,6 @@ class ServerContext {
   PropertyCache* page_property_cache() const {
     return page_property_cache_.get();
   }
-  PropertyCache* client_property_cache() const {
-    return client_property_cache_.get();
-  }
 
   const PropertyCache::Cohort* dom_cohort() const { return dom_cohort_; }
   void set_dom_cohort(const PropertyCache::Cohort* c) { dom_cohort_ = c; }
@@ -652,7 +649,6 @@ class ServerContext {
 
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
-  scoped_ptr<PropertyCache> client_property_cache_;
   CacheInterface* filesystem_metadata_cache_;
   CacheInterface* metadata_cache_;
 

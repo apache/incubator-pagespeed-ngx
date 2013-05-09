@@ -50,7 +50,6 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -72,7 +71,6 @@
 
 namespace net_instaweb {
 
-class AbstractClientState;
 class RewriteFilter;
 
 namespace {
@@ -1127,9 +1125,6 @@ void ServerContext::set_enable_property_cache(bool enabled) {
   if (page_property_cache_.get() != NULL) {
     page_property_cache_->set_enabled(enabled);
   }
-  if (client_property_cache_.get() != NULL) {
-    client_property_cache_->set_enabled(enabled);
-  }
 }
 
 // TODO(jmarantz): simplify the cache ownership model so that the layered
@@ -1139,9 +1134,6 @@ void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
   // this data can get stale quickly.
   page_property_cache_.reset(MakePropertyCache(
       PropertyCache::kPagePropertyCacheKeyPrefix, backend_cache));
-  client_property_cache_.reset(MakePropertyCache(
-      PropertyCache::kClientPropertyCacheKeyPrefix, backend_cache));
-  client_property_cache_->AddCohort(ClientState::kClientStateCohort);
 }
 
 PropertyCache* ServerContext::MakePropertyCache(
@@ -1150,10 +1142,6 @@ PropertyCache* ServerContext::MakePropertyCache(
       cache_key_prefix, cache, timer(), statistics(), thread_system_);
   pcache->set_enabled(enable_property_cache_);
   return pcache;
-}
-
-AbstractClientState* RewriteDriverFactory::NewClientState() {
-  return new ClientState();
 }
 
 void ServerContext::set_blink_critical_line_data_finder(

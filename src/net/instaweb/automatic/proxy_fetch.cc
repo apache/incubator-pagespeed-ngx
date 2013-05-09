@@ -37,7 +37,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -298,8 +297,8 @@ void ProxyFetchPropertyCallbackCollector::Done(
     PropertyPage* actual_page = ReleasePropertyPage(
         ProxyFetchPropertyCallback::kPropertyCachePage);
     if (actual_page != NULL) {
-      // actual_page can be NULL if client property cache is enabled and
-      // page property cache is disabled.
+      // TODO(jmarantz): Now that there is no more client property cache,
+      // is it necessary to do this test?
       // Compose the primary and fallback property pages into a
       // FallbackPropertyPage, so filters can use the fallback property in the
       // absence of the primary.
@@ -749,12 +748,10 @@ void ProxyFetch::PropertyCacheComplete(
   if (driver_ == NULL) {
     LOG(DFATAL) << "Expected non-null driver.";
   } else {
-    // Set the page property, device property and client state objects
-    // in the driver.
+    // Set the page property and device property objects in the driver.
     driver_->set_fallback_property_page(
         callback_collector->ReleaseFallbackPropertyPage());
     driver_->set_device_type(callback_collector->device_type());
-    driver_->set_client_state(GetClientState(callback_collector));
   }
   // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded
   // proceed (it waits until it's NULL). And we have to delete it because then
@@ -770,22 +767,6 @@ void ProxyFetch::PropertyCacheComplete(
   if (sequence_ != NULL) {
     ScheduleQueueExecutionIfNeeded();
   }
-}
-
-AbstractClientState* ProxyFetch::GetClientState(
-    ProxyFetchPropertyCallbackCollector* collector) {
-  // Do nothing if the client ID is unknown.
-  if (driver_->client_id().empty()) {
-    return NULL;
-  }
-  PropertyCache* cache = server_context_->client_property_cache();
-  PropertyPage* client_property_page = collector->ReleasePropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCachePage);
-  AbstractClientState* client_state =
-      server_context_->factory()->NewClientState();
-  client_state->InitFromPropertyCache(
-      driver_->client_id(), cache, client_property_page, timer_);
-  return client_state;
 }
 
 bool ProxyFetch::HandleWrite(const StringPiece& str,

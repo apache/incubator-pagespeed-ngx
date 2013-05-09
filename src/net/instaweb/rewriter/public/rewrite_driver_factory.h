@@ -31,7 +31,6 @@
 
 namespace net_instaweb {
 
-class AbstractClientState;
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
@@ -282,11 +281,6 @@ class RewriteDriverFactory {
   virtual bool IsDebugClient(const GoogleString& ip) const {
     return false;
   }
-
-  // Creates a new AbstractClientState object that must be populated.
-  // Subclasses can override this to create an appropriate AbstractClientState
-  // subclass if the default isn't acceptable.
-  virtual AbstractClientState* NewClientState();
 
   // Creates a FuriousMatcher, which is used to match clients or sessions to
   // a specific furious experiment.

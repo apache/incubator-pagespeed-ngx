@@ -43,7 +43,6 @@
 
 namespace net_instaweb {
 
-class AbstractClientState;
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class Function;
@@ -308,13 +307,6 @@ class ProxyFetch : public SharedAsyncFetch {
   // Called by ProxyFetchPropertyCallbackCollector when all property-cache
   // fetches are complete.  This function takes ownership of collector.
   virtual void PropertyCacheComplete(
-      ProxyFetchPropertyCallbackCollector* collector);
-
-  // Returns the AbstractClientState object carried by the property cache
-  // callback collector, if any. Returns NULL if no AbstractClientState
-  // is found. This method assumes that the property cache is enabled and
-  // the client state property cache lookup has completed.
-  AbstractClientState* GetClientState(
       ProxyFetchPropertyCallbackCollector* collector);
 
   // If cross_domain is true, we're requested under a domain different from

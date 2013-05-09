@@ -36,7 +36,6 @@
 
 namespace net_instaweb {
 
-class AbstractClientState;
 class CriticalImagesFinder;
 class GoogleUrl;
 class HtmlElement;
@@ -95,8 +94,7 @@ class MockFilter : public EmptyHtmlFilter {
   explicit MockFilter(RewriteDriver* driver)
       : driver_(driver),
         num_elements_(0),
-        num_elements_property_(NULL),
-        client_state_(NULL) {
+        num_elements_property_(NULL) {
   }
 
   virtual void StartDocument();
@@ -112,7 +110,6 @@ class MockFilter : public EmptyHtmlFilter {
   int num_elements_;
   PropertyValue* num_elements_property_;
   GoogleString client_id_;
-  AbstractClientState* client_state_;
   DISALLOW_COPY_AND_ASSIGN(MockFilter);
 };
 

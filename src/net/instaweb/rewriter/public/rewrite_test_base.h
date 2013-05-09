@@ -594,14 +594,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
         key);
   }
 
-  // Returns a new mock property page for the client property cache.
-  MockPropertyPage* NewMockClientPage(const StringPiece& key) {
-    return new MockPropertyPage(
-        server_context_->thread_system(),
-        server_context_->client_property_cache(),
-        key);
-  }
-
  protected:
   void Init();
 

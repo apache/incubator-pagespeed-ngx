@@ -2933,33 +2933,6 @@ TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
   sync->AllowSloppyTermination(ProxyFetch::kHeadersSetupRaceAlarmQueued);
 }
 
-TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
-  // Ensure that the ProxyFetchPropertyCallbackCollector calls its Post function
-  // only once, despite the fact that we are doing two property-cache lookups.
-  //
-  // Note that ProxyFetchPropertyCallbackCollector::Done waits for
-  // ProxyFetch::kCollectorDone.  We will signal it ahead of time so
-  // if this is working properly, it won't block.  However, if the system
-  // incorrectly calls Done() twice, then it will block forever on the
-  // second call to Wait(ProxyFetch::kCollectorDone), since we only offer
-  // one Signal here.
-  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
-  sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
-  sync->Signal(ProxyFetch::kCollectorDone);
-
-  RequestHeaders request_headers;
-  ResponseHeaders response_headers;
-  request_headers.Add(HttpAttributes::kXGooglePagespeedClientId, "1");
-
-  DisableAjax();
-  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
-                                "<div><p></p></div>", 0);
-  GoogleString response;
-  FetchFromProxy(kPageUrl, request_headers, true, &response, &response_headers);
-  sync->Wait(ProxyFetch::kCollectorReady);  // Clears Signal from PFPCC::Done.
-  sync->Wait(ProxyFetch::kCollectorDelete);
-}
-
 // TODO(jmarantz): add a test with a simulated slow cache to see what happens
 // when the rest of the system must block, buffering up incoming HTML text,
 // waiting for the property-cache lookups to complete.
@@ -3073,41 +3046,6 @@ TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
   // other.src not rewritten
   EXPECT_TRUE(text.find("<other src=\"http://src.example.com/null\"") !=
               GoogleString::npos);
-}
-
-// Test that ClientState is properly read from the client property cache.
-TEST_F(ProxyInterfaceTest, ClientStateTest) {
-  CreateFilterCallback create_filter_callback;
-  factory()->AddCreateFilterCallback(&create_filter_callback);
-  EnableDomCohortWritesWithDnsPrefetch();
-
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
-                                "<div><p></p></div>", 0);
-  GoogleString text_out;
-  ResponseHeaders headers_out;
-
-  RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kXGooglePagespeedClientId, "clientid");
-
-  // First pass: Should add fake URL to cache.
-  FetchFromProxy("page.html",
-                 request_headers,
-                 true,
-                 &text_out,
-                 &headers_out);
-  EXPECT_EQ(StrCat("<!-- ClientID: clientid ClientStateID: ",
-                   "clientid InCache: true --><div><p></p></div>"),
-            text_out);
-
-  // Second pass: Should clear fake URL from cache.
-  FetchFromProxy("page.html",
-                 request_headers,
-                 true,
-                 &text_out,
-                 &headers_out);
-  EXPECT_EQ(StrCat("<!-- ClientID: clientid ClientStateID: clientid ",
-                   "InCache: false 2 elements unstable --><div><p></p></div>"),
-            text_out);
 }
 
 TEST_F(ProxyInterfaceTest, TestOptionsAndDeviceTypeUsedInCacheKey) {
