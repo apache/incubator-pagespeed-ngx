@@ -251,6 +251,8 @@ class Resource : public RefCounted<Resource> {
                                AsyncCallback* callback,
                                MessageHandler* message_handler) = 0;
 
+  void set_enable_cache_purge(bool x) { enable_cache_purge_ = x; }
+
   ServerContext* server_context_;
 
   const ContentType* type_;
@@ -273,6 +275,8 @@ class Resource : public RefCounted<Resource> {
   // background and is not user-facing unless we explicitly set
   // is_background_fetch_ to false.
   bool is_background_fetch_;
+  bool enable_cache_purge_;
+
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };
 

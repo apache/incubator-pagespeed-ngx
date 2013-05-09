@@ -244,10 +244,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       serve_blink_non_critical_(false),
       is_blink_request_(false),
       can_rewrite_resources_(true),
+      is_nested_(false),
       request_context_(NULL),
-      start_time_ms_(0),
-      parent_(NULL),
-      child_count_(0)
+      start_time_ms_(0)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
@@ -316,28 +315,11 @@ RewriteDriver* RewriteDriver::Clone() {
     options_copy->ComputeSignature();
     result =
         server_context_->NewCustomRewriteDriver(options_copy, request_context_);
+    result->is_nested_ = true;
   } else {
     result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
   return result;
-}
-
-void RewriteDriver::SetParent(RewriteDriver* parent) {
-  // Child drivers will create resources that will be referenced by
-  // the parent, and parents outlive children.  To avoid having the
-  // resources point to dead options owned by the dead children, we
-  // share the options between parent & child.  This sharing
-  // occurs via indirection in options().
-  if (parent_ != parent) {
-    if (parent_ != NULL) {
-      DCHECK_LT(0, parent_->child_count_);
-      --parent_->child_count_;
-    }
-    if (parent != NULL) {
-      ++parent->child_count_;
-    }
-    parent_ = parent;
-  }
 }
 
 void RewriteDriver::Clear() {
@@ -396,13 +378,13 @@ void RewriteDriver::Clear() {
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
+  is_nested_ = false;
+
   if (request_context_.get() != NULL) {
     request_context_->WriteBackgroundRewriteLog();
     request_context_.reset(NULL);
   }
   start_time_ms_ = 0;
-  SetParent(NULL);
-  DCHECK_EQ(0, child_count_);
 
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
@@ -834,11 +816,7 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
-  if (parent_ == NULL) {
-    server_context_->ComputeSignature(owned_options_.get());
-  } else {
-    DCHECK(options()->frozen());
-  }
+  server_context_->ComputeSignature(options_.get());
   filters_added_ = true;
 
   AddPreRenderFilters();

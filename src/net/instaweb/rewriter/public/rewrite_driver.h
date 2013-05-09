@@ -164,11 +164,6 @@ class RewriteDriver : public HtmlParse {
   // record. Drivers should only be cloned within the same request.
   RewriteDriver* Clone();
 
-  // Establish a parent/child relationship for drivers.  this must be cloned
-  // from parent.  Once established, the this->options() will point to the
-  // parent options, and it is expected that the parent will outlive the child.
-  void SetParent(RewriteDriver* parent);
-
   // Clears the current request cache of resources and base URL.  The
   // filter-chain is left intact so that a new request can be issued.
   // Deletes all RewriteContexts.
@@ -427,16 +422,14 @@ class RewriteDriver : public HtmlParse {
   // use these options. May be NULL if using custom options.
   void set_options_for_pool(RewriteDriverPool* pool, RewriteOptions* options) {
     controlling_pool_ = pool;
-    owned_options_.reset(options);
+    options_.reset(options);
   }
 
   // Pool in which this driver can be recycled. May be NULL.
   RewriteDriverPool* controlling_pool() { return controlling_pool_; }
 
   // Return the options used for this RewriteDriver.
-  const RewriteOptions* options() const {
-    return (parent_ == NULL) ? owned_options_.get() : parent_->options();
-  }
+  const RewriteOptions* options() const { return options_.get(); }
 
   // Override HtmlParse's StartParseId to propagate any required options.
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
@@ -988,7 +981,7 @@ class RewriteDriver : public HtmlParse {
   bool can_rewrite_resources() const { return can_rewrite_resources_; }
 
   // Determine whether this driver is nested inside another.
-  bool is_nested() const { return parent_ != NULL; }
+  bool is_nested() const { return is_nested_; }
 
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
@@ -1345,11 +1338,7 @@ class RewriteDriver : public HtmlParse {
 
   HtmlResourceSlotSet slots_;
 
-  // Options owned by this RewriteDriver.  Note that nested
-  // RewriteDrivers don't use this field, as they instead get their
-  // options from their parent_.  Thus internal accesses should be
-  // made generally through the accessor options().
-  scoped_ptr<RewriteOptions> owned_options_;
+  scoped_ptr<RewriteOptions> options_;
 
   RewriteDriverPool* controlling_pool_;  // or NULL if this has custom options.
 
@@ -1426,6 +1415,7 @@ class RewriteDriver : public HtmlParse {
   // Is this a blink request?
   bool is_blink_request_;
   bool can_rewrite_resources_;
+  bool is_nested_;
 
   // Additional request context that may outlive this RewriteDriver. (Thus,
   // the context is reference counted.)
@@ -1433,16 +1423,6 @@ class RewriteDriver : public HtmlParse {
 
   // Start time for HTML requests. Used for statistics reporting.
   int64 start_time_ms_;
-
-  // Non-null if this driver has been cloned from another to execute
-  // subordinate rewrites. Some logging operations aren't executed on
-  // nested rewrite drivers, and timeout policies are changed. Note
-  // that this is totally distinct from nested rewrite contexts.
-  //
-  // Note also that the child rewrites share the parents options(), as
-  // nested rewrites share Resources which hold onto the options.
-  RewriteDriver* parent_;
-  int child_count_;
 
   scoped_ptr<DeviceProperties> device_properties_;
 

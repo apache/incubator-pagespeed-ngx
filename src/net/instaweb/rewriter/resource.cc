@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -46,7 +45,8 @@ Resource::Resource(ServerContext* server_context, const ContentType* type)
     : server_context_(server_context),
       type_(type),
       fetch_response_status_(kFetchStatusNotSet),
-      is_background_fetch_(true) {
+      is_background_fetch_(true),
+      enable_cache_purge_(false) {
 }
 
 Resource::~Resource() {
@@ -95,7 +95,7 @@ void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
 
   // TODO(jmarantz):  Implement this correctly for OutputResource which we also
   // have to purge if one of its inputs has been purged.
-  if (rewrite_options() != NULL && rewrite_options()->enable_cache_purge()) {
+  if (enable_cache_purge_) {
     input->set_url(url());
   }
 }

@@ -1714,17 +1714,6 @@ void RewriteContext::FetchInputs() {
       GoogleUrl resource_gurl(resource->url());
       if (FindServerContext()->IsPagespeedResource(resource_gurl)) {
         RewriteDriver* nested_driver = Driver()->Clone();
-
-        // Force the nested driver to create Resources using
-        // driver->options(), as the nested driver will be deleted and
-        // the options used later.  This is safe because the Driver()
-        // will always outlast nested_driver.
-        //
-        // This also results in nested_driver()->is_nested() being
-        // true, which helps RewriteContext ensure that its rewrites
-        // will not be backgrounded.
-        nested_driver->SetParent(Driver());
-
         RewriteFilter* filter = NULL;
         // We grab the filter now (and not just call DecodeOutputResource
         // earlier instead of IsPagespeedResource) so we get a filter that's

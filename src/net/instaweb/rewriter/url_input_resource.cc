@@ -125,6 +125,7 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
       respect_vary_(rewrite_options_->respect_vary()) {
   response_headers()->set_implicit_cache_ttl_ms(
       options->implicit_cache_ttl_ms());
+  set_enable_cache_purge(options->enable_cache_purge());
 }
 
 UrlInputResource::~UrlInputResource() {

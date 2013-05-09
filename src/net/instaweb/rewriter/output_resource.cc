@@ -89,6 +89,7 @@ OutputResource::OutputResource(ServerContext* server_context,
   full_name_.CopyFrom(full_name);
   CHECK(EndsInSlash(resolved_base)) <<
       "resolved_base must end in a slash, was: " << resolved_base;
+  set_enable_cache_purge(options->enable_cache_purge());
 }
 
 OutputResource::~OutputResource() {
