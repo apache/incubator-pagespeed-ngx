@@ -19,8 +19,8 @@
 # Run this script and copy&paste the output to the gperf table in
 # net/instaweb/http/bot_checker.gperf
 
-# The following names are missing from the database source web
-# (http://www.robotstxt.org/db/) but were noticed in access logs.
+# The following names are missing from the bot database
+# (http://www.robotstxt.org/db/all.txt) but were noticed in access logs.
 extra_names=(Googlebot-Image bingbot Yahoo! about.ask.com
 Baiduspider BackRub Gigabot OntoSpider Lycos YodaoBot YandexBot
 bitlybot vcbot Ruby Mediapartners-Google msnbot-UDiscovery WordPress
