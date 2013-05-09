@@ -62,7 +62,13 @@ killall nginx
 TEST_TMP="$this_dir/tmp"
 rm -r "$TEST_TMP"
 check_simple mkdir "$TEST_TMP"
-FILE_CACHE="$TEST_TMP/file-cache/"
+PROXY_CACHE="$TEST_TMP/proxycache"
+TMP_PROXY_CACHE="$TEST_TMP/tmpproxycache"
+ERROR_LOG="$TEST_TMP/error.log"
+ACCESS_LOG="$TEST_TMP/access.log"
+check_simple mkdir "$PROXY_CACHE"
+check_simple mkdir "$TMP_PROXY_CACHE"
+FILE_CACHE="$TEST_TMP/file-cache"
 check_simple mkdir "$FILE_CACHE"
 SECONDARY_CACHE="$TEST_TMP/file-cache/secondary/"
 check_simple mkdir "$SECONDARY_CACHE"
@@ -99,6 +105,10 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@DAEMON@@#'"$DAEMON"'#' \
   | sed 's#@@MASTER_PROCESS@@#'"$MASTER_PROCESS"'#' \
   | sed 's#@@TEST_TMP@@#'"$TEST_TMP/"'#' \
+  | sed 's#@@PROXY_CACHE@@#'"$PROXY_CACHE/"'#' \
+  | sed 's#@@TMP_PROXY_CACHE@@#'"$TMP_PROXY_CACHE/"'#' \
+  | sed 's#@@ERROR_LOG@@#'"$ERROR_LOG"'#' \
+  | sed 's#@@ACCESS_LOG@@#'"$ACCESS_LOG"'#' \
   | sed 's#@@FILE_CACHE@@#'"$FILE_CACHE/"'#' \
   | sed 's#@@SECONDARY_CACHE@@#'"$SECONDARY_CACHE/"'#' \
   | sed 's#@@SHM_CACHE@@#'"$SHM_CACHE/"'#' \
@@ -175,6 +185,45 @@ function run_post_cache_flush() {
 }
 
 # nginx-specific system tests
+
+# tests related to rewritten response caching.
+
+SECONDARY_LOC="$SECONDARY_HOSTNAME/mod_pagespeed_test"
+PS_HANDLED_HTML="Passing on content handling.*8050/mod_pagespeed_test/cachable"
+PS_HANDLED_HTML=$PS_HANDLED_HTML"_rewritten_html/rewrite_images.html"
+TMP_LOG_LINE="localhost:8051 GET /purge/mod_pagespeed_test/cachable_rewritten_"
+PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/rewrite_images.html.*(200)"
+
+# The 1st request results in a cache miss, non-rewritten response
+# produced by pagespeed code and a subsequent purge request.
+start_test Check for case where rewritten cache should get purged.
+OUT=$($WGET_DUMP $SECONDARY_LOC/cachable_rewritten_html/rewrite_images.html)
+check_not_from "$OUT" egrep -q "pagespeed.ce"
+check_from "$OUT" egrep -q "X-Cache: MISS"
+sleep 2
+check [ $(grep -ce "$PS_HANDLED_HTML" $ERROR_LOG) = 1 ];
+check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+
+# The 2nd request results in a cache miss (because the previous purge)
+# rewritten response produced by pagespeed code and no new purge requests.
+start_test Check for case where rewritten cache should not get purged.
+OUT=$($WGET_DUMP $SECONDARY_LOC/cachable_rewritten_html/rewrite_images.html)
+check_from "$OUT" egrep -q "pagespeed.ce"
+check_from "$OUT" egrep -q "X-Cache: MISS"
+sleep 2
+check [ $(grep -ce "$PS_HANDLED_HTML" $ERROR_LOG) = 2 ];
+check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+
+# The 3rd request results in a cache hit (because the previous response is
+# now present in cache), rewritten response served out from cache and not
+# by pagespeed code and no new purge requests.
+start_test Check for case where there is a rewritten cache hit.
+OUT=$($WGET_DUMP $SECONDARY_LOC/cachable_rewritten_html/rewrite_images.html)
+check_from "$OUT" egrep -q "pagespeed.ce"
+check_from "$OUT" egrep -q "X-Cache: HIT"
+sleep 2
+check [ $(grep -ce "$PS_HANDLED_HTML" $ERROR_LOG) = 2 ];
+check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 start_test Check for correct default X-Page-Speed header format.
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
