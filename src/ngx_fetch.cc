@@ -89,14 +89,13 @@ namespace net_instaweb {
   // This function is called by NgxUrlAsyncFetcher::StartFetch.
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
-    if (!Init()) {
-      return false;
-    }
-    return true;
+    return Init();
   }
 
-  // create the pool, parse the url, add the timeout event and
-  // hook the DNS resolver handler.
+  // Create the pool, parse the url, add the timeout event and
+  // hook the DNS resolver if needed. Else we connect directly.
+  // When this returns false, our caller (NgxUrlAsyncFetcher::StartFetch)
+  // will call fetch->CallbackDone()
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) {
@@ -135,29 +134,50 @@ namespace net_instaweb {
                                 "NgxFetch: ngx_pcalloc failed for status");
       return false;
     }
-    ngx_resolver_ctx_t temp;
-    temp.name.data = url_.host.data;
-    temp.name.len = url_.host.len;
-    resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
-    if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
-      // TODO(oschaaf): this spams the log, but is usefull in the fetchers
-      // current state
-      message_handler_->Message(
-          kError, "NgxFetch: Couldn't start resolving, "
-          "is there a proper resolver configured in nginx.conf?");
-      return false;
-    }
 
-    resolver_ctx_->data = this;
-    resolver_ctx_->name.data = url_.host.data;
-    resolver_ctx_->name.len = url_.host.len;
-    resolver_ctx_->type = NGX_RESOLVE_A;
-    resolver_ctx_->handler = NgxFetchResolveDone;
-    resolver_ctx_->timeout = fetcher_->resolver_timeout_;
+    // The host is either a domain name or an IP address.  First check
+    // if it's a valid IP address and only if that fails fall back to
+    // using the DNS resolver.
+    GoogleString s_ipaddress(reinterpret_cast<char*>(url_.host.data),
+                             url_.host.len);
+    ngx_memzero(&sin_, sizeof(sin_));
+    sin_.sin_family = AF_INET;
+    sin_.sin_port = htons(url_.port);
+    sin_.sin_addr.s_addr = inet_addr(s_ipaddress.c_str());
 
-    if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
-      message_handler_->Message(kWarning, "NgxFetch: ngx_resolve_name failed");
-      return false;
+    if (sin_.sin_addr.s_addr == INADDR_NONE) {
+      // inet_addr returned INADDR_NONE, which means the hostname
+      // isn't a valid IP address.  Check DNS.
+      ngx_resolver_ctx_t temp;
+      temp.name.data = url_.host.data;
+      temp.name.len = url_.host.len;
+      resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
+      if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
+        // TODO(oschaaf): this spams the log, but is useful in the fetcher's
+        // current state
+        message_handler_->Message(
+            kError, "NgxFetch: Couldn't start resolving, "
+            "is there a proper resolver configured in nginx.conf?");
+        return false;
+      }
+
+      resolver_ctx_->data = this;
+      resolver_ctx_->name.data = url_.host.data;
+      resolver_ctx_->name.len = url_.host.len;
+      resolver_ctx_->type = NGX_RESOLVE_A;
+      resolver_ctx_->handler = NgxFetchResolveDone;
+      resolver_ctx_->timeout = fetcher_->resolver_timeout_;
+
+      if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
+        message_handler_->Message(kWarning,
+                                  "NgxFetch: ngx_resolve_name failed");
+        return false;
+      }
+    } else {
+      if (InitRequest() != NGX_OK) {
+        message_handler()->Message(kError, "NgxFetch: InitRequest failed");
+        return false;
+      }
     }
     return true;
   }
