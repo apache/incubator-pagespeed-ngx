@@ -53,7 +53,7 @@ class SimpleCriticalImagesFinder : public CriticalImagesFinder {
   virtual bool IsMeaningful(const RewriteDriver* driver) const {
     return true;
   }
-  virtual void ComputeCriticalImages(StringPiece url, RewriteDriver* driver) {}
+  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
   virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
     return NULL;
   }

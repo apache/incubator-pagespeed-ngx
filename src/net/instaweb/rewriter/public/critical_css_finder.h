@@ -21,7 +21,6 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -48,8 +47,8 @@ class CriticalCssFinder {
   // Ownership of the result is passed to the caller.
   virtual CriticalCssResult* GetCriticalCssFromCache(RewriteDriver* driver);
 
-  // Compute the critical css for |url|.
-  virtual void ComputeCriticalCss(StringPiece url, RewriteDriver* driver) = 0;
+  // Compute the critical css for the driver's url.
+  virtual void ComputeCriticalCss(RewriteDriver* driver) = 0;
 
   // Copy |critical_css_map| into property cache. Returns true on success.
   virtual bool UpdateCache(RewriteDriver* driver,

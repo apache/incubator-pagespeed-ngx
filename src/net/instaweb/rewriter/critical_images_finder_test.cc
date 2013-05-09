@@ -39,8 +39,7 @@ class CriticalImagesFinderMock : public CriticalImagesFinder {
         cohort_(cohort) {}
 
   // Provide stub instantions for pure virtual functions
-  virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver) {}
+  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
 
   virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
     return cohort_;

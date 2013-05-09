@@ -105,9 +105,8 @@ class CriticalImagesFinder {
   StringSet* mutable_html_critical_images(RewriteDriver* driver);
   StringSet* mutable_css_critical_images(RewriteDriver* driver);
 
-  // Compute the critical images for the given url.
-  virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver) = 0;
+  // Compute the critical images for the driver's url.
+  virtual void ComputeCriticalImages(RewriteDriver* driver) = 0;
 
   // Identifies which cohort in the PropertyCache the critical image information
   // is located in.

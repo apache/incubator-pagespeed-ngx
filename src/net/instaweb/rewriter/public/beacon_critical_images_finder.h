@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -59,8 +58,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   virtual bool IsHtmlCriticalImage(const GoogleString& image_url,
                                    RewriteDriver* driver);
 
-  virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver);
+  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
 
   virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
     return cohort_;

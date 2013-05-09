@@ -46,8 +46,7 @@ class MockCriticalCssFinder : public CriticalCssFinder {
         cohort_(cohort) {}
 
   // Provide stub instantions for pure virtual functions
-  virtual void ComputeCriticalCss(StringPiece url,
-                                  RewriteDriver* driver) {}
+  virtual void ComputeCriticalCss(RewriteDriver* driver) {}
 
   virtual const PropertyCache::Cohort* GetCohort() const {
     return cohort_;

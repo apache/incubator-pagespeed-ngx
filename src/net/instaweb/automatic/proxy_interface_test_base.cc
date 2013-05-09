@@ -140,8 +140,7 @@ class FakeCriticalImagesFinder : public CriticalImagesFinder {
     driver->set_critical_images_info(info);
   }
 
-  virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver) {
+  virtual void ComputeCriticalImages(RewriteDriver* driver) {
     // Do Nothing
   }
 

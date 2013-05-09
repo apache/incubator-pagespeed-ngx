@@ -52,7 +52,7 @@ class MockCriticalCssFinder : public CriticalCssFinder {
     return GetPropertyValue(driver);
   }
 
-  virtual void ComputeCriticalCss(StringPiece url, RewriteDriver* driver) {}
+  virtual void ComputeCriticalCss(RewriteDriver* driver) {}
   virtual const PropertyCache::Cohort* GetCohort() const;
 
  private:

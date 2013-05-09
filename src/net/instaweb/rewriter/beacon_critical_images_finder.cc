@@ -39,8 +39,4 @@ bool BeaconCriticalImagesFinder::IsHtmlCriticalImage(
   return CriticalImagesFinder::IsHtmlCriticalImage(hash_str, driver);
 }
 
-void BeaconCriticalImagesFinder::ComputeCriticalImages(
-    StringPiece url, RewriteDriver* driver) {
-}
-
 }  // namespace net_instaweb
