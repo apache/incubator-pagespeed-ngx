@@ -7,7 +7,7 @@ worker_processes  1;
 daemon @@DAEMON@@;
 master_process @@MASTER_PROCESS@@;
 
-error_log "@@TEST_TMP@@/error.log" debug;
+error_log "@@ERROR_LOG@@" debug;
 pid "@@TEST_TMP@@/nginx.pid";
 
 events {
@@ -18,20 +18,14 @@ events {
 http {
   server_names_hash_bucket_size 128;
 
-  access_log "@@TEST_TMP@@/access.log";
-  # Uncomment this block to get access.log information related to proxy_cache
-  # hits, misses and expirations.
-  #log_format cache '***$time_local '
-  #                    '$upstream_cache_status '
-  #                    'Cache-Control: $upstream_http_cache_control '
-  #                    'Expires: $upstream_http_expires '
-  #                    '"$request" ($status) '
-  #                    '"$http_user_agent" ';
-  #access_log "@@TEST_TMP@@/access.log" cache;
+  log_format cache '$time_local '
+                   '$upstream_cache_status '
+                   '$http_host $request ($status) '
+                   '"$http_user_agent"';
+  access_log "@@ACCESS_LOG@@" cache;
 
-
-  proxy_cache_path "@@TEST_TMP@@/proxycache"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
-  proxy_temp_path "@@TEST_TMP@@/tmpproxycache";
+  proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
+  proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
@@ -70,7 +64,7 @@ http {
     # running on the PRIMARY_PORT when the response is not available in
     # the cache. It also services purge requests from the upstream server.
     listen @@SECONDARY_PORT@@;
-    server_name localhost
+    server_name localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed off;
