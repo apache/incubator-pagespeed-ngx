@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -449,6 +450,9 @@ TEST_F(SerfUrlAsyncFetcherTest, TestCancelTwoThreadedOneSync) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
+  if (RunningOnValgrind()) {
+    return;
+  }
   StartFetches(kModpagespeedSite, kGoogleLogo, true);
   serf_url_async_fetcher_->WaitForActiveFetches(
       kWaitTimeoutMs, &message_handler_,
@@ -519,7 +523,10 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitTwoThreadedOneSync) {
-  StartFetches(kModpagespeedSite, kModpagespeedSite, false),
+  if (RunningOnValgrind()) {
+    return;
+  }
+  StartFetches(kModpagespeedSite, kModpagespeedSite, false);
   StartFetches(kGoogleFavicon, kGoogleLogo, true);
   serf_url_async_fetcher_->WaitForActiveFetches(
       kWaitTimeoutMs, &message_handler_,

@@ -35,7 +35,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
-// TODO(mmohabey): This breaks IWYU
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
@@ -49,6 +48,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/delay_cache.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -68,8 +68,8 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/worker_test_base.h"
-#include "pagespeed/kernel/util/wildcard.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
@@ -1410,6 +1410,9 @@ TEST_F(CacheHtmlFlowTest, NonHtmlContent) {
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithWebp) {
+  if (RunningOnValgrind()) {
+    return;
+  }
   rewrite_driver_->server_context()->set_hasher(factory_->mock_hasher());
   AddFileToMockFetcher(StrCat(kTestDomain, "image1"), "Puzzle.jpg",
                        kContentTypeJpeg, 100);
