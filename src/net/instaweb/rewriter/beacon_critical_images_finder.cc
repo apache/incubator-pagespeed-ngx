@@ -23,8 +23,10 @@
 
 namespace net_instaweb {
 
-BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(Statistics* stats)
-    : CriticalImagesFinder(stats) {}
+BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(
+    const PropertyCache::Cohort* cohort, Statistics* stats)
+    : CriticalImagesFinder(stats),
+      cohort_(cohort) {}
 
 BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 }

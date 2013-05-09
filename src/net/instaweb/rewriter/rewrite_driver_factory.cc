@@ -341,12 +341,26 @@ CriticalCssFinder* RewriteDriverFactory::DefaultCriticalCssFinder() {
   return NULL;
 }
 
-CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
-  return new BeaconCriticalImagesFinder(statistics());
+CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
+    ServerContext* server_context) {
+  if (server_context->beacon_cohort() == NULL) {
+    LOG(WARNING) << "Beacon Cohort is NULL";
+  }
+  // TODO(pulkitg): Don't create BeaconCriticalImagesFinder if beacon cohort is
+  // not added.
+  return new BeaconCriticalImagesFinder(
+      server_context->beacon_cohort(), statistics());
 }
 
-CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder() {
-  return new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics());
+CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
+    ServerContext* server_context) {
+  if (server_context->beacon_cohort() == NULL) {
+    LOG(WARNING) << "Beacon Cohort is NULL";
+  }
+  // TODO(pulkitg): Don't create CriticalSelectorFinder if beacon cohort is
+  // not added.
+  return new CriticalSelectorFinder(
+      server_context->beacon_cohort(), statistics());
 }
 
 FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
@@ -355,12 +369,12 @@ FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
 
 BlinkCriticalLineDataFinder*
 RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder(
-    PropertyCache* pcache) {
+    PropertyCache* pcache, ServerContext* server_context) {
   return NULL;
 }
 
 CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
-    PropertyCache* cache) {
+    PropertyCache* cache, ServerContext* server_context) {
   return NULL;
 }
 
@@ -481,14 +495,15 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_static_asset_manager(static_asset_manager());
   PropertyCache* pcache = server_context->page_property_cache();
   server_context->set_critical_css_finder(DefaultCriticalCssFinder());
-  server_context->set_critical_images_finder(DefaultCriticalImagesFinder());
+  server_context->set_critical_images_finder(
+      DefaultCriticalImagesFinder(server_context));
   server_context->set_critical_selector_finder(
-      DefaultCriticalSelectorFinder());
+      DefaultCriticalSelectorFinder(server_context));
   server_context->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   server_context->set_blink_critical_line_data_finder(
-      DefaultBlinkCriticalLineDataFinder(pcache));
+      DefaultBlinkCriticalLineDataFinder(pcache, server_context));
   server_context->set_cache_html_info_finder(
-      DefaultCacheHtmlInfoFinder(pcache));
+      DefaultCacheHtmlInfoFinder(pcache, server_context));
   server_context->set_hostname(hostname_);
   server_context->InitWorkersAndDecodingDriver();
   server_contexts_.insert(server_context);

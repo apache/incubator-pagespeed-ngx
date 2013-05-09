@@ -32,6 +32,7 @@
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -58,7 +59,6 @@ class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
-class PropertyCache;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
@@ -210,6 +210,15 @@ class ServerContext {
   PropertyCache* client_property_cache() const {
     return client_property_cache_.get();
   }
+
+  const PropertyCache::Cohort* dom_cohort() const { return dom_cohort_; }
+  void set_dom_cohort(const PropertyCache::Cohort* c) { dom_cohort_ = c; }
+
+  const PropertyCache::Cohort* blink_cohort() const { return blink_cohort_; }
+  void set_blink_cohort(const PropertyCache::Cohort* c) { blink_cohort_ = c; }
+
+  const PropertyCache::Cohort* beacon_cohort() const { return beacon_cohort_; }
+  void set_beacon_cohort(const PropertyCache::Cohort* c) { beacon_cohort_ = c; }
 
   // Cache for storing file system metadata. It must be private to a server,
   // preferably but not necessarily shared between its processes, and is
@@ -653,6 +662,10 @@ class ServerContext {
 
   NamedLockManager* lock_manager_;
   MessageHandler* message_handler_;
+
+  const PropertyCache::Cohort* dom_cohort_;
+  const PropertyCache::Cohort* blink_cohort_;
+  const PropertyCache::Cohort* beacon_cohort_;
 
   // RewriteDrivers that were previously allocated, but have
   // been released with ReleaseRewriteDriver, and are ready

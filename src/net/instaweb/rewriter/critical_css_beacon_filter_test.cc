@@ -313,12 +313,16 @@ class CriticalCssBeaconOnlyTest : public CriticalCssBeaconFilterTestBase {
 // Right now we never beacon if there's valid pcache data, even if that data
 // corresponds to an earlier version of the page.
 TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
+  // Set up pcache for page.
+  const PropertyCache::Cohort* cohort =
+      SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+  server_context()->set_beacon_cohort(cohort);
   // Set up and register a beacon finder.
   CriticalSelectorFinder* finder =
-      new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics());
+      new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                 statistics());
   server_context()->set_critical_selector_finder(finder);
-  // Set up pcache for page.
-  SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+
   PropertyPage* page = NewMockPage(kTestDomain);
   rewrite_driver()->set_property_page(page);
   page_property_cache()->Read(page);
@@ -329,8 +333,7 @@ TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
   selectors.insert("span");  // Doesn't occur in our CSS
   finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   // Force cohort to persist.
-  page->WriteCohort(
-      page_property_cache()->GetCohort(RewriteDriver::kBeaconCohort));
+  page->WriteCohort(server_context()->beacon_cohort());
   // Check injection
   EXPECT_TRUE(rewrite_driver()->CriticalSelectors() != NULL);
   // Now do the test.

@@ -444,15 +444,14 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
       return;
     }
     PropertyPage* page = driver->property_page();
-    const PropertyCache::Cohort* cohort = pcache_->GetCohort(
-        BlinkCriticalLineDataFinder::kBlinkCohort);
-    if (page == NULL || cohort == NULL) {
-      LOG(ERROR) << "PropertyPage or Cohort goes missing for url: "
-                 << driver->url();
+    if (page == NULL) {
+      LOG(ERROR) << "PropertyPage goes missing for url: " << driver->url();
       return;
     }
     GoogleString buf;
     blink_critical_line_data_->SerializeToString(&buf);
+    const PropertyCache::Cohort* cohort =
+        driver->server_context()->blink_cohort();
     page->UpdateValue(cohort, "blink_critical_line_data", buf);
     page->WriteCohort(cohort);
   }
@@ -497,16 +496,20 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
 
   virtual void SetupCaches(ServerContext* server_context) {
     TestRewriteDriverFactory::SetupCaches(server_context);
-    SetupCohort(server_context->page_property_cache(),
-                RewriteDriver::kDomCohort);
-    SetupCohort(server_context->page_property_cache(),
-                BlinkCriticalLineDataFinder::kBlinkCohort);
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(server_context->page_property_cache(),
+                    RewriteDriver::kDomCohort);
+    const PropertyCache::Cohort* blink_cohort =
+        SetupCohort(server_context->page_property_cache(),
+                    BlinkCriticalLineDataFinder::kBlinkCohort);
+    server_context->set_dom_cohort(dom_cohort);
+    server_context->set_blink_cohort(blink_cohort);
     server_context->set_enable_property_cache(true);
   }
 
  private:
   BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
-      PropertyCache* pcache) {
+      PropertyCache* pcache, ServerContext* server_context) {
     return new FakeBlinkCriticalLineDataFinder();
   }
 

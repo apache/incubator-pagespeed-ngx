@@ -338,16 +338,18 @@ class RewriteDriverFactory {
   virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
 
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
-  virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
-  virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder();
+  virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
+      ServerContext* server_context);
+  virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder(
+      ServerContext* server_context);
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
-      PropertyCache* cache);
+      PropertyCache* cache, ServerContext* server_context);
 
   // Default implementation returns NULL.
   virtual CacheHtmlInfoFinder* DefaultCacheHtmlInfoFinder(
-      PropertyCache* cache);
+      PropertyCache* cache, ServerContext* server_context);
 
   // Default implementation returns NULL.
   virtual FlushEarlyInfoFinder* DefaultFlushEarlyInfoFinder();

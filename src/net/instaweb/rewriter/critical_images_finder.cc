@@ -252,10 +252,7 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     return;
   }
   CriticalImagesInfo* info = NULL;
-  PropertyCache* page_property_cache =
-      driver->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort =
-      page_property_cache->GetCohort(GetCriticalImagesCohort());
+  const PropertyCache::Cohort* cohort = GetCriticalImagesCohort();
   // Fallback properties can be used for critical images.
   AbstractPropertyPage* page = driver->fallback_property_page();
   if (page != NULL && cohort != NULL) {
@@ -285,23 +282,18 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
   // determined.
   // Fallback properties will be updated for critical images.
   AbstractPropertyPage* page = driver->fallback_property_page();
-  PropertyCache* page_property_cache =
-      driver->server_context()->page_property_cache();
-  return UpdateCriticalImagesCacheEntry(html_critical_images_set,
-                                        css_critical_images_set,
-                                        page, page_property_cache);
+  return UpdateCriticalImagesCacheEntry(
+      html_critical_images_set, css_critical_images_set, page);
 }
 
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     const StringSet* html_critical_images_set,
     const StringSet* css_critical_images_set,
-    AbstractPropertyPage* page,
-    PropertyCache* page_property_cache) {
+    AbstractPropertyPage* page) {
   // Update property cache if above the fold critical images are successfully
   // determined.
-  if (page_property_cache != NULL && page != NULL) {
-    const PropertyCache::Cohort* cohort =
-        page_property_cache->GetCohort(GetCriticalImagesCohort());
+  if (page != NULL) {
+    const PropertyCache::Cohort* cohort = GetCriticalImagesCohort();
     if (cohort != NULL) {
       PropertyValue* property_value = page->GetProperty(
           cohort, kCriticalImagesPropertyName);
@@ -323,7 +315,8 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
           if (buf.empty()) {
             buf = kEmptyValuePlaceholder;
           }
-          page->UpdateValue(cohort, kCriticalImagesPropertyName, buf);
+          page->UpdateValue(
+              GetCriticalImagesCohort(), kCriticalImagesPropertyName, buf);
         } else {
           LOG(WARNING) << "Serialization of critical images protobuf failed.";
           return false;

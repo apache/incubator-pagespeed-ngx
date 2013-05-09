@@ -2161,44 +2161,39 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
 
   PropertyPage* page = property_page();
   // Dont update property cache value if we are flushing early.
-  if (page != NULL && owns_property_page_) {
-    PropertyCache* pcache = server_context_->page_property_cache();
-    const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
-    if (dom_cohort != NULL) {
-      // Update the timestamp of the last request in both actual property page
-      // and property page with fallback values.
-      UpdatePropertyValueInDomCohort(
-          fallback_property_page(),
-          kLastRequestTimestamp,
-          Integer64ToString(server_context()->timer()->NowMs()));
-      // Update the status code of the last request.
-      if (status_code_ != HttpStatus::kUnknownStatusCode) {
-        UpdatePropertyValueInDomCohort(
-            page, kStatusCodePropertyName, IntegerToString(status_code_));
-      }
-      if (options()->max_html_parse_bytes() > 0) {
-        // Update whether the page exceeded the html parse size limit.
-        UpdatePropertyValueInDomCohort(
-            page, kParseSizeLimitExceeded,
-            num_bytes_in_ > options()->max_html_parse_bytes() ? "1" : "0");
-      }
-      if (flush_early_info_.get() != NULL) {
-        GoogleString value;
-        flush_early_info_->SerializeToString(&value);
-        UpdatePropertyValueInDomCohort(page, kSubresourcesPropertyName, value);
-      }
-      // Page cannot be cleared yet because other cohorts may still need to be
-      // written.
-      // TODO(jud): Is this the best place to check for shutting down? It might
-      // make more sense for this check to be done at the property cache or
-      // lower level.
-      if (!server_context_->shutting_down()) {
-        // Write dom cohort for both actual property page and property page with
-        // fallback values.
-        fallback_property_page()->WriteCohort(dom_cohort);
-      }
-    }
+  // TODO(jud): Is this the best place to check for shutting down? It might
+  // make more sense for this check to be done at the property cache or
+  // lower level.
+  if (server_context_->shutting_down() ||
+      page == NULL ||
+      !owns_property_page_) {
+    return;
   }
+  // Update the timestamp of the last request in both actual property page
+  // and property page with fallback values.
+  UpdatePropertyValueInDomCohort(
+    fallback_property_page(),
+    kLastRequestTimestamp,
+    Integer64ToString(server_context()->timer()->NowMs()));
+  // Update the status code of the last request.
+  if (status_code_ != HttpStatus::kUnknownStatusCode) {
+    UpdatePropertyValueInDomCohort(
+        page, kStatusCodePropertyName, IntegerToString(status_code_));
+  }
+  if (options()->max_html_parse_bytes() > 0) {
+    // Update whether the page exceeded the html parse size limit.
+    UpdatePropertyValueInDomCohort(
+        page, kParseSizeLimitExceeded,
+        num_bytes_in_ > options()->max_html_parse_bytes() ? "1" : "0");
+  }
+  if (flush_early_info_.get() != NULL) {
+    GoogleString value;
+    flush_early_info_->SerializeToString(&value);
+    UpdatePropertyValueInDomCohort(page, kSubresourcesPropertyName, value);
+  }
+  // Write dom cohort for both actual property page and property page with
+  // fallback values.
+  fallback_property_page()->WriteCohort(server_context()->dom_cohort());
 }
 
 void RewriteDriver::WriteClientStateIntoPropertyCache() {
@@ -2214,16 +2209,8 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(
   if (page == NULL || !owns_property_page_) {
     return;
   }
-  PropertyCache* pcache = server_context_->page_property_cache();
-  if (pcache == NULL || property_page() == NULL) {
-    return;
-  }
-  const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
-  if (dom == NULL) {
-    LOG(DFATAL) << "dom cohort is not available.";
-    return;
-  }
-  page->UpdateValue(dom, property_name, property_value);
+  page->UpdateValue(
+      server_context()->dom_cohort(), property_name, property_value);
 }
 
 void RewriteDriver::Cleanup() {
@@ -2853,7 +2840,7 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
     PropertyCacheDecodeResult status;
     flush_early_info_.reset(DecodeFromPropertyCache<FlushEarlyInfo>(
-        this, RewriteDriver::kDomCohort, kSubresourcesPropertyName,
+        this, server_context()->dom_cohort(), kSubresourcesPropertyName,
         -1 /* no ttl checking*/, &status));
     if (status != kPropertyCacheDecodeOk) {
       flush_early_info_.reset(new FlushEarlyInfo);

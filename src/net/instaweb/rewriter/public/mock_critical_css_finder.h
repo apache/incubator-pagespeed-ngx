@@ -19,12 +19,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOCK_CRITICAL_CSS_FINDER_H_
 
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
-class PropertyValue;
 class RewriteDriver;
 class CriticalCssResult;
 class Statistics;
@@ -33,8 +33,6 @@ class Statistics;
 // critical css proto. Note that this doesn't use property cache.
 class MockCriticalCssFinder : public CriticalCssFinder {
  public:
-  static const char kCriticalCssCohort[];
-
   MockCriticalCssFinder(RewriteDriver* driver, Statistics* stats)
       : CriticalCssFinder(stats),
         driver_(driver) {}
@@ -55,7 +53,7 @@ class MockCriticalCssFinder : public CriticalCssFinder {
   }
 
   virtual void ComputeCriticalCss(StringPiece url, RewriteDriver* driver) {}
-  virtual const char* GetCohort() const;
+  virtual const PropertyCache::Cohort* GetCohort() const;
 
  private:
   RewriteDriver* driver_;

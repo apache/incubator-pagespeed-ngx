@@ -46,9 +46,7 @@ CriticalImagesFinderTestBase::GetCriticalImagesUpdatedValue() {
   if (page == NULL) {
     return NULL;
   }
-  PropertyCache* pcache = server_context_->page_property_cache();
-  const PropertyCache::Cohort* cohort = pcache->GetCohort(
-      finder()->GetCriticalImagesCohort());
+  const PropertyCache::Cohort* cohort = finder()->GetCriticalImagesCohort();
   if (cohort == NULL) {
     return NULL;
   }

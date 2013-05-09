@@ -87,8 +87,7 @@ void BlinkFilter::StartDocument() {
 }
 
 void BlinkFilter::ObtainBlinkCriticalLineData() {
-  cohort_ = rewrite_driver_->server_context()->page_property_cache()
-      ->GetCohort(kBlinkCohort);
+  cohort_ = rewrite_driver_->server_context()->blink_cohort();
   PropertyValue* property_value = rewrite_driver_->property_page()->GetProperty(
       cohort_, kBlinkCriticalLineDataPropertyName);
   ArrayInputStream input(property_value->value().data(),

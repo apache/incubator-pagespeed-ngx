@@ -20,15 +20,13 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class CriticalImages;
-class AbstractPropertyPage;
-class PropertyCache;
-class PropertyValue;
 class RewriteDriver;
 class Statistics;
 class Variable;
@@ -113,7 +111,7 @@ class CriticalImagesFinder {
 
   // Identifies which cohort in the PropertyCache the critical image information
   // is located in.
-  virtual const char* GetCriticalImagesCohort() const = 0;
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const = 0;
 
   // Updates the critical images property cache entry. Returns whether the
   // update succeeded or not. Note that this base implementation does not call
@@ -131,8 +129,7 @@ class CriticalImagesFinder {
   bool UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
-      AbstractPropertyPage* page,
-      PropertyCache* page_property_cache);
+      AbstractPropertyPage* page);
 
  protected:
   // Gets critical images if present in the property cache and updates the

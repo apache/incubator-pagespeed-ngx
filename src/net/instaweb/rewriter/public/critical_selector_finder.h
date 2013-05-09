@@ -20,15 +20,13 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_SELECTOR_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class CriticalSelectorSet;
 class MessageHandler;
-class PropertyCache;
-class PropertyPage;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
@@ -42,7 +40,8 @@ class CriticalSelectorFinder {
   static const char kCriticalSelectorsNotFoundCount[];
   static const char kCriticalSelectorsPropertyName[];
 
-  CriticalSelectorFinder(StringPiece cohort, Statistics* stats);
+  CriticalSelectorFinder(
+      const PropertyCache::Cohort* cohort, Statistics* stats);
   virtual ~CriticalSelectorFinder();
 
   static void InitStats(Statistics* statistics);
@@ -85,7 +84,7 @@ class CriticalSelectorFinder {
   void UpdateCriticalSelectorSet(
     const StringSet& new_set, CriticalSelectorSet* set);
 
-  GoogleString cohort_;
+  const PropertyCache::Cohort* cohort_;
 
   TimedVariable* critical_selectors_valid_count_;
   TimedVariable* critical_selectors_expired_count_;

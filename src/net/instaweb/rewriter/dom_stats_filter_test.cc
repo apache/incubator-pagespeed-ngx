@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "testing/base/public/gunit.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -53,7 +54,9 @@ class SimpleCriticalImagesFinder : public CriticalImagesFinder {
     return true;
   }
   virtual void ComputeCriticalImages(StringPiece url, RewriteDriver* driver) {}
-  virtual const char* GetCriticalImagesCohort() const { return ""; }
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
+    return NULL;
+  }
  private:
   DISALLOW_COPY_AND_ASSIGN(SimpleCriticalImagesFinder);
 };

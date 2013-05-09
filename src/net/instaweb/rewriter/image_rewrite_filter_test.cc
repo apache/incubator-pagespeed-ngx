@@ -142,18 +142,14 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
     ++compute_calls_;
   }
   int num_compute_calls() { return compute_calls_; }
-  virtual const char* GetCriticalImagesCohort() const {
-    return kCriticalImagesCohort;
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
+    return NULL;
   }
 
  private:
-  static const char kCriticalImagesCohort[];
   int compute_calls_;
   DISALLOW_COPY_AND_ASSIGN(MeaningfulCriticalImagesFinder);
 };
-
-const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
-    "critical_images";
 
 }  // namespace
 
@@ -194,7 +190,9 @@ class ImageRewriteTest : public RewriteTestBase {
   virtual void SetUp() {
     PropertyCache* pcache = page_property_cache();
     server_context_->set_enable_property_cache(true);
-    SetupCohort(pcache, RewriteDriver::kDomCohort);
+    const PropertyCache::Cohort* cohort =
+        SetupCohort(pcache, RewriteDriver::kDomCohort);
+    server_context()->set_dom_cohort(cohort);
     RewriteTestBase::SetUp();
     MockPropertyPage* page = NewMockPage(kTestDomain);
     pcache->set_enabled(true);

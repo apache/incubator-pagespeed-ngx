@@ -22,10 +22,7 @@
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -73,25 +70,12 @@ const char* FlushEarlyInfoFinder::GetCharset(
 void FlushEarlyInfoFinder::UpdateFlushEarlyInfoCacheEntry(
     RewriteDriver* driver,
     FlushEarlyRenderInfo* flush_early_render_info) {
-  PropertyCache* property_cache =
-      driver->server_context()->page_property_cache();
-  PropertyPage* page = driver->property_page();
-  if (property_cache != NULL && page != NULL) {
-    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        GetCohort());
-    if (cohort != NULL) {
-      flush_early_render_info->set_updated(true);
-      GoogleString value;
-      {
-        StringOutputStream sstream(&value);  // finalizes in destructor
-        flush_early_render_info->SerializeToZeroCopyStream(&sstream);
-      }
-      page->UpdateValue(cohort, kFlushEarlyRenderPropertyName, value);
-    } else {
-      driver->message_handler()->Message(kWarning, "FlushEarly FinderCohort is"
-                                         "NULL.");
-    }
-  }
+  flush_early_render_info->set_updated(true);
+  UpdateInPropertyCache(*flush_early_render_info,
+                        GetCohort(),
+                        kFlushEarlyRenderPropertyName,
+                        false /* don't write_cohort*/,
+                        driver->property_page());
 }
 
 }  // namespace net_instaweb

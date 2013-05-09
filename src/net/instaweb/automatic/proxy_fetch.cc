@@ -42,7 +42,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -367,22 +366,14 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
   // If we have not transferred the ownership of PagePropertyCache to
   // ProxyFetch yet, and we have the status code, then write the status_code in
   // PropertyCache.
-  PropertyCache* pcache = server_context_->page_property_cache();
   PropertyPage* page = property_page();
-  if (pcache != NULL && page != NULL &&
-      status_code_ != HttpStatus::kUnknownStatusCode) {
-    const PropertyCache::Cohort* dom = pcache->GetCohort(
-        RewriteDriver::kDomCohort);
-    if (dom != NULL) {
-      page->UpdateValue(
-          dom, RewriteDriver::kStatusCodePropertyName,
-          IntegerToString(status_code_));
-      page->WriteCohort(dom);
-    } else {
-      server_context_->message_handler()->Message(
-          kInfo, "dom cohort is not available for url %s.", url_.c_str());
-    }
+  if (page == NULL || status_code_ == HttpStatus::kUnknownStatusCode) {
+    return;
   }
+  page->UpdateValue(
+      server_context_->dom_cohort(), RewriteDriver::kStatusCodePropertyName,
+      IntegerToString(status_code_));
+  page->WriteCohort(server_context_->dom_cohort());
 }
 
 void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {

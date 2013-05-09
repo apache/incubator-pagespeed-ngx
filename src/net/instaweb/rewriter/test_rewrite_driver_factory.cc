@@ -309,10 +309,10 @@ void TestRewriteDriverFactory::AdvanceTimeMs(int64 delta_ms) {
   mock_scheduler_->AdvanceTimeMs(delta_ms);
 }
 
-void TestRewriteDriverFactory::SetupCohort(PropertyCache* cache,
-                                           const GoogleString& cohort_name) {
+const PropertyCache::Cohort* TestRewriteDriverFactory::SetupCohort(
+    PropertyCache* cache, const GoogleString& cohort_name) {
   PropertyCache::InitCohortStats(cohort_name, statistics());
-  cache->AddCohort(cohort_name);
+  return cache->AddCohort(cohort_name);
 }
 
 TestRewriteDriverFactory::CreateFilterCallback::~CreateFilterCallback() {

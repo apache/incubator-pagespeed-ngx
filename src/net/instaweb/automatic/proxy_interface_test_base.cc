@@ -20,6 +20,7 @@
 
 #include <cstddef>
 
+#include "base/logging.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/proxy_interface.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -145,8 +146,11 @@ class FakeCriticalImagesFinder : public CriticalImagesFinder {
     // Do Nothing
   }
 
-  virtual const char* GetCriticalImagesCohort() const {
-    return "critical_images";
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
+    // Returns NULL as there is no call to GetCriticalImagesCohort() in
+    // FakeCriticalImagesFinder class.
+    LOG(DFATAL) << "Unexpected function call!!!";
+    return NULL;
   }
 
   void set_critical_images(StringSet* critical_images) {
@@ -256,13 +260,11 @@ void MockFilter::EndDocument() {
   // above.
   EXPECT_TRUE(driver_->response_headers()->IsCacheable());
   PropertyPage* page = driver_->property_page();
-  PropertyCache* page_cache =
-      driver_->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort =
-      page_cache->GetCohort(RewriteDriver::kDomCohort);
-  if (page != NULL && cohort != NULL) {
+  if (page != NULL) {
     page->UpdateValue(
-        cohort, "num_elements", IntegerToString(num_elements_));
+        driver_->server_context()->dom_cohort(),
+        "num_elements",
+        IntegerToString(num_elements_));
     num_elements_property_ = NULL;
   }
 }

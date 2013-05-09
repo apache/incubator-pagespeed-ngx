@@ -276,7 +276,6 @@ TEST_F(PropertyCacheTest, EmptyReadNewPropertyWasRead) {
 
 TEST_F(PropertyCacheTest, TwoCohorts) {
   EXPECT_EQ(cohort_, property_cache_.GetCohort(kCohortName1));
-  EXPECT_EQ(cohort_, property_cache_.AddCohort(kCohortName1));
   EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
   const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(
       kCohortName2);
@@ -558,7 +557,6 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
 
 TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
   EXPECT_EQ(cohort_, property_cache_.GetCohort(kCohortName1));
-  EXPECT_EQ(cohort_, property_cache_.AddCohort(kCohortName1));
   EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
 
   const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(

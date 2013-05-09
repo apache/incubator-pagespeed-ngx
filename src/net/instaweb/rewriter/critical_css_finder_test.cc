@@ -40,14 +40,18 @@ namespace {
 // we can test with property cache.
 class MockCriticalCssFinder : public CriticalCssFinder {
  public:
-  explicit MockCriticalCssFinder(Statistics* stats)
-      : CriticalCssFinder(stats) {}
+  explicit MockCriticalCssFinder(
+      Statistics* stats, const PropertyCache::Cohort* cohort)
+      : CriticalCssFinder(stats),
+        cohort_(cohort) {}
 
   // Provide stub instantions for pure virtual functions
   virtual void ComputeCriticalCss(StringPiece url,
                                   RewriteDriver* driver) {}
 
-  virtual const char* GetCohort() const { return kCriticalCssCohort; }
+  virtual const PropertyCache::Cohort* GetCohort() const {
+    return cohort_;
+  }
 
   // Make protected method public for test.
   const PropertyValue* GetUpdatedValue(RewriteDriver* driver) {
@@ -55,20 +59,20 @@ class MockCriticalCssFinder : public CriticalCssFinder {
   }
 
  private:
-  static const char kCriticalCssCohort[];
+  const PropertyCache::Cohort* cohort_;
 };
 
 }  // namespace
 
-const char MockCriticalCssFinder::kCriticalCssCohort[] =
-    "critical_css";
+const char kCriticalCssCohort[] = "critical_css";
 
 class CriticalCssFinderTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    finder_.reset(new MockCriticalCssFinder(statistics()));
-    SetupCohort(page_property_cache(), finder_->GetCohort());
+    SetupCohort(page_property_cache(), kCriticalCssCohort);
+    finder_.reset(new MockCriticalCssFinder(
+        statistics(), page_property_cache()->GetCohort("critical_css")));
     ResetDriver();
   }
 
@@ -161,10 +165,8 @@ TEST_F(CriticalCssFinderTest, CheckCacheHandling) {
     result.SerializeToString(&result_str);
 
     EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
-    const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
-        finder_->GetCohort());
     // Write the updated value to the pcache.
-    rewrite_driver()->property_page()->WriteCohort(cohort);
+    rewrite_driver()->property_page()->WriteCohort(finder_->GetCohort());
     EXPECT_TRUE(GetUpdatedValue()->has_value());
   }
 
@@ -195,10 +197,8 @@ TEST_F(CriticalCssFinderTest, CheckCacheHandling) {
 TEST_F(CriticalCssFinderTest, EmptyResultWritesValueToCache) {
   CriticalCssResult result;
   EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
-  const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
-      finder_->GetCohort());
   // Write the updated value to the pcache.
-  rewrite_driver()->property_page()->WriteCohort(cohort);
+  rewrite_driver()->property_page()->WriteCohort(finder_->GetCohort());
   EXPECT_TRUE(GetUpdatedValue()->has_value());
 }
 

@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/blink_filter.h"
 
-#include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
@@ -26,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -113,8 +113,12 @@ class BlinkFilterTest : public RewriteTestBase {
   void PopulatePropertyCache() {
     PropertyCache* property_cache = page_property_cache();
     property_cache->set_enabled(true);
-    SetupCohort(property_cache, BlinkFilter::kBlinkCohort);
-    SetupCohort(property_cache, RewriteDriver::kDomCohort);
+    const PropertyCache::Cohort* blink_cohort =
+        SetupCohort(property_cache, BlinkFilter::kBlinkCohort);
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(property_cache, RewriteDriver::kDomCohort);
+    server_context()->set_blink_cohort(blink_cohort);
+    server_context()->set_dom_cohort(dom_cohort);
 
     MockPropertyPage* page = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page);
@@ -122,27 +126,23 @@ class BlinkFilterTest : public RewriteTestBase {
   }
 
   void WriteBlinkCriticalLineData(const char* last_modified_value) {
-    PropertyCache* property_cache = page_property_cache();
     PropertyPage* page = rewrite_driver()->property_page();
-
     BlinkCriticalLineData response;
     response.set_url(kRequestUrl);
     response.set_non_critical_json("non_critical_json");
     if (last_modified_value != NULL) {
       response.set_last_modified_date(last_modified_value);
     }
-    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        BlinkFilter::kBlinkCohort);
 
-    if (cohort == NULL || page == NULL) {
-      LOG(ERROR) << "PropertyPage or Cohort NULL";
-    }
+    ASSERT_TRUE(page != NULL);
 
     GoogleString buf;
     response.SerializeToString(&buf);
     page->UpdateValue(
-        cohort, BlinkFilter::kBlinkCriticalLineDataPropertyName, buf);
-    page->WriteCohort(cohort);
+        rewrite_driver()->server_context()->blink_cohort(),
+        BlinkFilter::kBlinkCriticalLineDataPropertyName,
+        buf);
+    page->WriteCohort(rewrite_driver()->server_context()->blink_cohort());
 
     EXPECT_EQ(1, lru_cache()->num_inserts());
   }
@@ -168,9 +168,7 @@ class BlinkFilterTest : public RewriteTestBase {
   }
 
   bool IsBlinkCriticalLineDataInPropertyCache() {
-    PropertyCache* property_cache = page_property_cache();
-    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        BlinkFilter::kBlinkCohort);
+    const PropertyCache::Cohort* cohort = server_context()->blink_cohort();
     PropertyValue* value = rewrite_driver()->property_page()->GetProperty(
         cohort, BlinkFilter::kBlinkCriticalLineDataPropertyName);
     return value != NULL && value->has_value();

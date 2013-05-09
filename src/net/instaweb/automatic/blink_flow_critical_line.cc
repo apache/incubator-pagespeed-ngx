@@ -457,10 +457,7 @@ class CriticalLineFetch : public AsyncFetch {
     }
     int64 now_ms = server_context_->timer()->NowMs();
     PropertyPage* page = rewrite_driver_->property_page();
-    PropertyCache* property_cache =
-        rewrite_driver_->server_context()->page_property_cache();
-    const PropertyCache::Cohort* cohort =
-        property_cache->GetCohort(BlinkUtil::kBlinkCohort);
+    const PropertyCache::Cohort* cohort = server_context_->blink_cohort();
     bool diff_info_updated =
         server_context_->blink_critical_line_data_finder()->UpdateDiffInfo(
             recompute_critical_line, now_ms, blink_log_record_.get(),
@@ -484,7 +481,7 @@ class CriticalLineFetch : public AsyncFetch {
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
       UpdateInPropertyCache(*blink_critical_line_data_,
                             rewrite_driver_,
-                            BlinkUtil::kBlinkCohort,
+                            cohort,
                             BlinkUtil::kBlinkCriticalLineDataPropertyName,
                             true /* write the cohort*/);
       delete this;

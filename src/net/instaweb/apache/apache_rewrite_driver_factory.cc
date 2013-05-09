@@ -167,12 +167,13 @@ void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   caches_->SetupCaches(server_context);
   server_context->set_enable_property_cache(enable_property_cache());
   PropertyCache* pcache = server_context->page_property_cache();
-  if (pcache->GetCohort(RewriteDriver::kBeaconCohort) == NULL) {
-    pcache->AddCohort(RewriteDriver::kBeaconCohort);
-  }
-  if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
-    pcache->AddCohort(RewriteDriver::kDomCohort);
-  }
+
+  const PropertyCache::Cohort* cohort =
+      pcache->AddCohort(RewriteDriver::kBeaconCohort);
+  server_context->set_beacon_cohort(cohort);
+
+  cohort = pcache->AddCohort(RewriteDriver::kDomCohort);
+  server_context->set_dom_cohort(cohort);
 
   // TODO(jmarantz): It would make more sense to have the base ServerContext
   // own the ProxyFetchFactory, but that would create a cyclic directory

@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -51,15 +52,10 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
   }
   virtual void ComputeCriticalImages(StringPiece url,
                                      RewriteDriver* driver) {}
-  virtual const char* GetCriticalImagesCohort() const {
-    return kCriticalImagesCohort;
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
+    return NULL;
   }
- private:
-  static const char kCriticalImagesCohort[];
 };
-
-const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
-    "critical_images";
 
 class LazyloadImagesFilterTest : public RewriteTestBase {
  protected:

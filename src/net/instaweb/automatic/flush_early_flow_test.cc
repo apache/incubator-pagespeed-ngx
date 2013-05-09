@@ -33,7 +33,6 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -51,6 +50,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -442,9 +442,10 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     SetMockHashValue("00000");  // Base64 encodes to kMockHashValue.
     RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
-    SetupCohort(page_property_cache(), RewriteDriver::kDomCohort);
-    SetupCohort(page_property_cache(),
-                MockCriticalCssFinder::kCriticalCssCohort);
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(server_context_->page_property_cache(),
+                    RewriteDriver::kDomCohort);
+    server_context_->set_dom_cohort(dom_cohort);
     options->ClearSignatureForTesting();
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     options->set_in_place_rewriting_enabled(true);

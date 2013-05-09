@@ -1326,20 +1326,14 @@ bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {
   if (url.length() == 0) {
     return true;
   }
-  PropertyCache* pcache = server_context_->page_property_cache();
-  if (pcache == NULL) {
-    LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
-                 << "without property cache enabled.";
-    return false;
-  }
   PropertyPage* property_page = driver()->property_page();
   if (property_page == NULL) {
     LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
                  << "without PropertyPage.";
     return false;
   }
-  const PropertyCache::Cohort* cohort = pcache->GetCohort(
-      RewriteDriver::kDomCohort);
+  const PropertyCache::Cohort* cohort =
+      driver()->server_context()->dom_cohort();
   if (cohort == NULL) {
     LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
                  << "without configured DOM cohort.";

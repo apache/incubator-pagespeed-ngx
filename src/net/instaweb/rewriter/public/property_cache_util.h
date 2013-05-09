@@ -45,7 +45,7 @@ enum PropertyCacheDecodeResult {
 const PropertyValue* DecodeFromPropertyCacheHelper(
     const PropertyCache* cache,
     PropertyPage* page,
-    StringPiece cohort_name,
+    const PropertyCache::Cohort* cohort,
     StringPiece property_name,
     int64 cache_ttl_ms,
     PropertyCacheDecodeResult* status);
@@ -60,12 +60,12 @@ const PropertyValue* DecodeFromPropertyCacheHelper(
 template<typename T>
 T* DecodeFromPropertyCache(const PropertyCache* cache,
                            PropertyPage* page,
-                           StringPiece cohort_name,
+                           const PropertyCache::Cohort* cohort,
                            StringPiece property_name,
                            int64 cache_ttl_ms,
                            PropertyCacheDecodeResult* status) {
   const PropertyValue* property_value =
-      DecodeFromPropertyCacheHelper(cache, page, cohort_name, property_name,
+      DecodeFromPropertyCacheHelper(cache, page, cohort, property_name,
                                     cache_ttl_ms, status);
   if (property_value == NULL) {
     // *status set by helper
@@ -88,14 +88,14 @@ T* DecodeFromPropertyCache(const PropertyCache* cache,
 // property page from the given driver.
 template<typename T>
 T* DecodeFromPropertyCache(RewriteDriver* driver,
-                           StringPiece cohort_name,
+                           const PropertyCache::Cohort* cohort,
                            StringPiece property_name,
                            int64 cache_ttl_ms,
                            PropertyCacheDecodeResult* status) {
   return DecodeFromPropertyCache<T>(
       driver->server_context()->page_property_cache(),
       driver->property_page(),
-      cohort_name,
+      cohort,
       property_name,
       cache_ttl_ms,
       status);
@@ -108,9 +108,8 @@ enum PropertyCacheUpdateResult {
 };
 
 PropertyCacheUpdateResult UpdateInPropertyCache(
-    const protobuf::MessageLite& value, const PropertyCache* cache,
-    StringPiece cohort_name, StringPiece property_name, bool write_cohort,
-    PropertyPage* page);
+    const protobuf::MessageLite& value, const PropertyCache::Cohort* cohort,
+    StringPiece property_name, bool write_cohort, PropertyPage* page);
 
 // Updates the property 'property_name' in cohort 'cohort_name' of the property
 // cache managed by the rewrite driver with the new value of the proto T.
@@ -118,11 +117,11 @@ PropertyCacheUpdateResult UpdateInPropertyCache(
 // to the cache backing.
 inline PropertyCacheUpdateResult UpdateInPropertyCache(
     const protobuf::MessageLite& value, RewriteDriver* driver,
-    StringPiece cohort_name, StringPiece property_name, bool write_cohort) {
-  const PropertyCache* cache = driver->server_context()->page_property_cache();
+    const PropertyCache::Cohort* cohort, StringPiece property_name,
+    bool write_cohort) {
   PropertyPage* page = driver->property_page();
   return UpdateInPropertyCache(
-      value, cache, cohort_name, property_name, write_cohort, page);
+      value, cohort, property_name, write_cohort, page);
 }
 
 }  // namespace net_instaweb

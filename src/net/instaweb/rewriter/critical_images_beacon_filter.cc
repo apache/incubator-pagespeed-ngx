@@ -70,11 +70,9 @@ void CriticalImagesBeaconFilter::DetermineEnabled() {
   // RewriteOptions::beacon_reinstrument_time().
   const PropertyCache* page_property_cache =
       driver_->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort =
-      page_property_cache->GetCohort(finder->GetCriticalImagesCohort());
+  const PropertyCache::Cohort* cohort = finder->GetCriticalImagesCohort();
   PropertyPage* page = driver_->property_page();
-  if (!driver_->server_context()->page_property_cache()->enabled() ||
-      (page == NULL) || (cohort == NULL)) {
+  if (!page_property_cache->enabled() || (page == NULL) || (cohort == NULL)) {
     return;
   }
   const PropertyValue* property_value = page->GetProperty(

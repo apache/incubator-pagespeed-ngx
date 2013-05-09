@@ -110,8 +110,8 @@ bool CriticalCssFinder::UpdateCache(
     RewriteDriver* driver, const CriticalCssResult& result) {
   PropertyCacheUpdateResult status =
       UpdateInPropertyCache(
-          result, driver, GetCohort(), kCriticalCssPropertyName,
-          false /* don't write cohort */);
+          result, GetCohort(), kCriticalCssPropertyName,
+          false /* don't write cohort */, driver->property_page());
   switch (status) {
     case kPropertyCacheUpdateOk:
       driver->InfoHere("Critical CSS written to cache");
@@ -128,8 +128,7 @@ bool CriticalCssFinder::UpdateCache(
 }
 
 PropertyValue* CriticalCssFinder::GetPropertyValue(RewriteDriver* driver) {
-  const PropertyCache* cache = driver->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort = cache->GetCohort(GetCohort());
+  const PropertyCache::Cohort* cohort = GetCohort();
   PropertyPage* page = driver->property_page();
   if (cohort != NULL && page != NULL) {
     return page->GetProperty(cohort, kCriticalCssPropertyName);

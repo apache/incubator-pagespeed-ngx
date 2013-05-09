@@ -50,13 +50,18 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     filter_ = new CriticalSelectorFilter(rewrite_driver());
     rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
     server_context()->ComputeSignature(options());
-    server_context()->set_critical_selector_finder(
-        new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics()));
-
     // Setup pcache.
     pcache_ = rewrite_driver()->server_context()->page_property_cache();
-    SetupCohort(pcache_, RewriteDriver::kBeaconCohort);
-    SetupCohort(pcache_, RewriteDriver::kDomCohort);
+    const PropertyCache::Cohort* beacon_cohort =
+        SetupCohort(pcache_, RewriteDriver::kBeaconCohort);
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(pcache_, RewriteDriver::kDomCohort);
+    server_context()->set_dom_cohort(dom_cohort);
+    server_context()->set_beacon_cohort(beacon_cohort);
+    server_context()->set_critical_selector_finder(
+        new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                   statistics()));
+
     ResetDriver();
 
     // Write out some initial critical selectors for us to work with.
@@ -65,7 +70,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     selectors.insert("*");
     server_context()->critical_selector_finder()->
         WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-    page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
+    page_->WriteCohort(server_context()->beacon_cohort());
 
     // Some weird but valid CSS.
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
@@ -302,11 +307,11 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   selectors.insert("span");
   CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
   finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
+  page_->WriteCohort(server_context()->beacon_cohort());
   page_->DeleteProperty(
-      pcache_->GetCohort(RewriteDriver::kDomCohort),
+      server_context()->dom_cohort(),
       CriticalSelectorFilter::kSummarizedCssProperty);
-  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
+  page_->WriteCohort(server_context()->dom_cohort());
 
   // Note that calling ResetDriver() just resets the state in the
   // driver. Whatever has been written to the property & metadata caches so far
@@ -322,11 +327,11 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   for (int i = 0; i < finder->NumSetsToKeep(); ++i) {
     finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   }
-  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
+  page_->WriteCohort(server_context()->beacon_cohort());
   page_->DeleteProperty(
-      pcache_->GetCohort(RewriteDriver::kDomCohort),
+      server_context()->dom_cohort(),
       CriticalSelectorFilter::kSummarizedCssProperty);
-  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
+  page_->WriteCohort(server_context()->dom_cohort());
   ResetDriver();
   ValidateExpected("with_span", StrCat(css, "<span>Foo</span>"),
                    StrCat("<style>", critical_css_span, "</style>",
@@ -361,9 +366,9 @@ TEST_F(CriticalSelectorFilterTest, NoSelectorInfo) {
 
   // We shouldn't change things when there is no info on selectors available.
   page_->DeleteProperty(
-      pcache_->GetCohort(RewriteDriver::kBeaconCohort),
+      server_context()->beacon_cohort(),
       CriticalSelectorFinder::kCriticalSelectorsPropertyName);
-  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
+  page_->WriteCohort(server_context()->beacon_cohort());
 
   ResetDriver();
   ValidateNoChanges("no_sel_info", StrCat(css, "<div>Foo</div>"));

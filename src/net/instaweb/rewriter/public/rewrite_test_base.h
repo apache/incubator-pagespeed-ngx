@@ -46,6 +46,7 @@
 #include "net/instaweb/util/public/mock_property_page.h"
 // We need to include mock_timer.h to allow upcast to Timer*.
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -64,7 +65,6 @@ class HtmlWriterFilter;
 class LRUCache;
 class MessageHandler;
 class MockScheduler;
-class PropertyCache;
 class RequestHeaders;
 class ResourceNamer;
 class RewriteFilter;
@@ -577,8 +577,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
       int64 expected_expiration_ms);
 
   // Setup statistics for the given cohort and add it to the give PropertyCache.
-  void SetupCohort(PropertyCache* cache, const GoogleString& cohort) {
-    factory()->SetupCohort(cache, cohort);
+  const PropertyCache::Cohort*  SetupCohort(
+      PropertyCache* cache, const GoogleString& cohort) {
+    return factory()->SetupCohort(cache, cohort);
   }
 
   // Configure the other_server_context_ to use the same LRU cache as the

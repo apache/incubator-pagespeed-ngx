@@ -149,13 +149,8 @@ class BeaconPropertyCallback : public PropertyPage {
   virtual ~BeaconPropertyCallback() {}
 
   virtual void Done(bool success) {
-    const PropertyCache::Cohort* cohort =
-        server_context_->page_property_cache()->GetCohort(
-            RewriteDriver::kBeaconCohort);
-
     server_context_->critical_images_finder()->UpdateCriticalImagesCacheEntry(
-        html_critical_images_set_.get(), css_critical_images_set_.get(),
-        this, server_context_->page_property_cache());
+        html_critical_images_set_.get(), css_critical_images_set_.get(), this);
     if (critical_css_selector_set_ != NULL) {
       server_context_->critical_selector_finder()->
           WriteCriticalSelectorsToPropertyCache(
@@ -164,7 +159,7 @@ class BeaconPropertyCallback : public PropertyPage {
               server_context_->message_handler());
     }
 
-    WriteCohort(cohort);
+    WriteCohort(server_context_->beacon_cohort());
     delete this;
   }
 
@@ -265,6 +260,9 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       enable_property_cache_(true),
       lock_manager_(NULL),
       message_handler_(NULL),
+      dom_cohort_(NULL),
+      blink_cohort_(NULL),
+      beacon_cohort_(NULL),
       available_rewrite_drivers_(new GlobalOptionsRewriteDriverPool(this)),
       trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),

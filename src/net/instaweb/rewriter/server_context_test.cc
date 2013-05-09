@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
+#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
@@ -1046,7 +1047,13 @@ class BeaconTest : public ServerContextTest {
 
     property_cache_ = server_context()->page_property_cache();
     property_cache_->set_enabled(true);
-    SetupCohort(property_cache_, RewriteDriver::kBeaconCohort);
+    const PropertyCache::Cohort* beacon_cohort =
+        SetupCohort(property_cache_, RewriteDriver::kBeaconCohort);
+    server_context()->set_beacon_cohort(beacon_cohort);
+    server_context()->set_critical_images_finder(
+        new BeaconCriticalImagesFinder(beacon_cohort, statistics()));
+    server_context()->set_critical_selector_finder(
+        new CriticalSelectorFinder(beacon_cohort, statistics()));
   }
 
   // Send a beacon through ServerContext::HandleBeacon and verify that the

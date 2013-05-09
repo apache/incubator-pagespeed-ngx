@@ -36,7 +36,6 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 // TODO(mmohabey): This breaks IWYU
-#include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
@@ -515,8 +514,10 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   }
 
   virtual void SetUp() {
-    SetupCohort(page_property_cache(),
-                BlinkCriticalLineDataFinder::kBlinkCohort);
+    const PropertyCache::Cohort* blink_cohort =
+        SetupCohort(server_context_->page_property_cache(),
+                    BlinkCriticalLineDataFinder::kBlinkCohort);
+    server_context_->set_blink_cohort(blink_cohort);
     server_context_->set_enable_property_cache(true);
     UseMd5Hasher();
     ThreadSynchronizer* sync = server_context()->thread_synchronizer();

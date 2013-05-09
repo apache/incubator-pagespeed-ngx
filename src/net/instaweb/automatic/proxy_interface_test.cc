@@ -46,7 +46,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -105,11 +104,14 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
   virtual void SetUp() {
     RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
-    SetupCohort(page_property_cache(), RewriteDriver::kDomCohort);
-    SetupCohort(page_property_cache(),
-                BlinkCriticalLineDataFinder::kBlinkCohort);
-    SetupCohort(server_context_->client_property_cache(),
-                ClientState::kClientStateCohort);
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(server_context_->page_property_cache(),
+                    RewriteDriver::kDomCohort);
+    const PropertyCache::Cohort* blink_cohort =
+        SetupCohort(server_context_->page_property_cache(),
+                    BlinkCriticalLineDataFinder::kBlinkCohort);
+    server_context()->set_dom_cohort(dom_cohort);
+    server_context()->set_blink_cohort(blink_cohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);

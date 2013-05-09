@@ -23,6 +23,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
@@ -45,7 +46,6 @@ class MockScheduler;
 class MockTimer;
 class MockTimeCache;
 class MockUrlFetcher;
-class PropertyCache;
 class ServerContext;
 class RewriteDriver;
 class RewriteFilter;
@@ -188,7 +188,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   void AdvanceTimeMs(int64 delta_ms);
 
   // Sets up the cohort in the PropertyCache provided.
-  void SetupCohort(PropertyCache* cache, const GoogleString& cohort_name);
+  const PropertyCache::Cohort*  SetupCohort(
+      PropertyCache* cache, const GoogleString& cohort_name);
 
  protected:
   virtual Hasher* NewHasher();

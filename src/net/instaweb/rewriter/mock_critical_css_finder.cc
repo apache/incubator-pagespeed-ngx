@@ -22,8 +22,6 @@
 
 namespace net_instaweb {
 
-const char MockCriticalCssFinder::kCriticalCssCohort[] = "critical_css";
-
 MockCriticalCssFinder::~MockCriticalCssFinder() {}
 
 void MockCriticalCssFinder::AddCriticalCss(const StringPiece& url,
@@ -60,8 +58,8 @@ CriticalCssResult* MockCriticalCssFinder::GetCriticalCssFromCache(
   return result;
 }
 
-const char* MockCriticalCssFinder::GetCohort() const {
-  return kCriticalCssCohort;
+const PropertyCache::Cohort* MockCriticalCssFinder::GetCohort() const {
+  return NULL;
 }
 
 }  // namespace net_instaweb

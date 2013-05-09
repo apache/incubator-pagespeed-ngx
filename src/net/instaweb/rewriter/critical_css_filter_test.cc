@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -75,7 +74,9 @@ class CriticalCssFilterTest : public RewriteTestBase {
   void ResetDriver() {
     PropertyCache* pcache = page_property_cache();
     server_context_->set_enable_property_cache(true);
-    SetupCohort(pcache, finder_->GetCohort());
+    const PropertyCache::Cohort* dom_cohort =
+        SetupCohort(pcache, RewriteDriver::kDomCohort);
+    server_context()->set_dom_cohort(dom_cohort);
 
     MockPropertyPage* page = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page);

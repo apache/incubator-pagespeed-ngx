@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_INFO_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/property_cache.h"
 
 namespace net_instaweb {
 
@@ -55,7 +56,7 @@ class FlushEarlyInfoFinder {
   // meaningful results and provide a default behavior if it does not.
   virtual const char* GetCharset(const RewriteDriver* driver);
 
-  virtual const char* GetCohort() const = 0;
+  virtual const PropertyCache::Cohort* GetCohort() const = 0;
 
  protected:
   void UpdateFlushEarlyInfoCacheEntry(

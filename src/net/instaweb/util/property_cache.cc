@@ -389,6 +389,7 @@ const PropertyCache::Cohort* PropertyCache::AddCohort(
 const PropertyCache::Cohort* PropertyCache::AddCohortWithCache(
     const StringPiece& cohort_name, CacheInterface* cache) {
   CHECK(cache != NULL);
+  CHECK(GetCohort(cohort_name) == NULL) << cohort_name << " is added twice.";
   GoogleString cohort_string;
   cohort_name.CopyToString(&cohort_string);
   std::pair<CohortMap::iterator, bool> insertions = cohorts_.insert(
@@ -483,6 +484,11 @@ PropertyValue* PropertyPage::GetProperty(
 void PropertyPage::UpdateValue(
     const PropertyCache::Cohort* cohort, const StringPiece& property_name,
     const StringPiece& value) {
+  if (cohort == NULL) {
+    // TODO(pulkitg): Change LOG(WARNING) to LOG(DFATAL).
+    LOG(WARNING) << "Cohort is NULL in PropertyPage::UpdateValue()";
+    return;
+  }
   PropertyValue* property = GetProperty(cohort, property_name);
   int64 now_ms = property_cache_->timer()->NowMs();
 
@@ -497,6 +503,11 @@ void PropertyPage::UpdateValue(
 }
 
 void PropertyPage::WriteCohort(const PropertyCache::Cohort* cohort) {
+  if (cohort == NULL) {
+    // TODO(pulkitg): Change LOG(WARNING) to LOG(DFATAL).
+    LOG(WARNING) << "Cohort is NULL in PropertyPage::WriteCohort()";
+    return;
+  }
   if (property_cache_->enabled()) {
     GoogleString value;
     if (EncodeCacheEntry(cohort, &value) ||

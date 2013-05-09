@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -46,9 +45,9 @@ const char CriticalSelectorFinder::kCriticalSelectorsExpiredCount[] =
 const char CriticalSelectorFinder::kCriticalSelectorsNotFoundCount[] =
     "critical_selectors_not_found_count";
 
-CriticalSelectorFinder::CriticalSelectorFinder(StringPiece cohort,
-                                               Statistics* statistics) {
-  cohort.CopyToString(&cohort_);
+CriticalSelectorFinder::CriticalSelectorFinder(
+    const PropertyCache::Cohort* cohort, Statistics* statistics) {
+  cohort_ = cohort;
 
   critical_selectors_valid_count_ = statistics->GetTimedVariable(
       kCriticalSelectorsValidCount);
@@ -135,7 +134,7 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
       // the former, bail out since there is no use trying to update the
       // property cache if it is not setup. For the later, create a new
       // CriticalSelectorSet, since we just haven't written a value before.
-      if (cache->GetCohort(cohort_) == NULL) {
+      if (cohort_ == NULL) {
         return;
       }
       FALLTHROUGH_INTENDED;
@@ -150,7 +149,7 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
 
   PropertyCacheUpdateResult result =
       UpdateInPropertyCache(
-          *critical_selectors, cache, cohort_, kCriticalSelectorsPropertyName,
+          *critical_selectors, cohort_, kCriticalSelectorsPropertyName,
           false /* don't write cohort*/, page);
   switch (result) {
     case kPropertyCacheUpdateNotFound:

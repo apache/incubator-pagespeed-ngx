@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -34,7 +35,8 @@ class Statistics;
 // on the client.
 class BeaconCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  explicit BeaconCriticalImagesFinder(Statistics* stats);
+  BeaconCriticalImagesFinder(
+      const PropertyCache::Cohort* cohort, Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 
   virtual bool IsMeaningful(const RewriteDriver* driver) const {
@@ -60,8 +62,8 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   virtual void ComputeCriticalImages(StringPiece url,
                                      RewriteDriver* driver);
 
-  virtual const char* GetCriticalImagesCohort() const {
-    return RewriteDriver::kBeaconCohort;
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
+    return cohort_;
   }
 
  private:
@@ -69,6 +71,8 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   static const int kBeaconPercentSeenForCritical = 80;
   // This is a guess for how many samples we need to get stable data.
   static const int kBeaconNumSetsToKeep = 10;
+
+  const PropertyCache::Cohort* cohort_;
 };
 
 }  // namespace net_instaweb
