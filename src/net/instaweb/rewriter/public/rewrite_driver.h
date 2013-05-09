@@ -165,6 +165,11 @@ class RewriteDriver : public HtmlParse {
   // record. Drivers should only be cloned within the same request.
   RewriteDriver* Clone();
 
+  // Establish a parent/child relationship for drivers.  this must be cloned
+  // from parent.  Once established, the this->options() will point to the
+  // parent options, and it is expected that the parent will outlive the child.
+  void SetParent(RewriteDriver* parent);
+
   // Clears the current request cache of resources and base URL.  The
   // filter-chain is left intact so that a new request can be issued.
   // Deletes all RewriteContexts.
@@ -1456,6 +1461,7 @@ class RewriteDriver : public HtmlParse {
   // Note also that the child rewrites share the parents options(), as
   // nested rewrites share Resources which hold onto the options.
   RewriteDriver* parent_;
+  int child_count_;
 
   scoped_ptr<DeviceProperties> device_properties_;
 

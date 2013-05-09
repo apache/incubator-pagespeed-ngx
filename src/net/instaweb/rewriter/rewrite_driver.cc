@@ -247,7 +247,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       can_rewrite_resources_(true),
       request_context_(NULL),
       start_time_ms_(0),
-      parent_(NULL)
+      parent_(NULL),
+      child_count_(0)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
@@ -307,21 +308,11 @@ RewriteDriver* RewriteDriver::Clone() {
   RewriteDriver* result;
   RewriteDriverPool* pool = controlling_pool();
   if (pool == NULL) {
-    // Child drivers will create resources that will be referenced by
-    // the parent, and parents outlive children.  To avoid having the
-    // resources point to dead options owned by the dead children, we
-    // share the options between parent & child.   This sharing
-    // occurs via indirection in options().
-    //
-    // Note: it should not be necessary to clone the options here.  Once we
-    // set the child's parent to this, the child will reference this->options()
-    // and ignores its self_options_.
-    //
-    // Nowever, if I use options()->NewOptions() here rather than
-    // options()->Clone(), then
-    //     CacheHtmlFlowTest.TestCacheHtmlCacheMissAndHit
-    // fails and I think this must be due to it referencing its options()
-    // directly from NewCustomRewriteDriver.
+    // TODO(jmarantz): when used with SetParent, it should not be
+    // necessary to clone the options here.  Once we set the child's
+    // parent to this, the child will reference this->options() and
+    // ignores its self_options_.  To exploit that, we'd need to
+    // make a different entry-point for CloneAndSetParent.
     RewriteOptions* options_copy = options()->Clone();
     options_copy->ComputeSignature();
     result =
@@ -329,8 +320,25 @@ RewriteDriver* RewriteDriver::Clone() {
   } else {
     result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
-  result->parent_ = this;
   return result;
+}
+
+void RewriteDriver::SetParent(RewriteDriver* parent) {
+  // Child drivers will create resources that will be referenced by
+  // the parent, and parents outlive children.  To avoid having the
+  // resources point to dead options owned by the dead children, we
+  // share the options between parent & child.  This sharing
+  // occurs via indirection in options().
+  if (parent_ != parent) {
+    if (parent_ != NULL) {
+      DCHECK_LT(0, parent_->child_count_);
+      --parent_->child_count_;
+    }
+    if (parent != NULL) {
+      ++parent->child_count_;
+    }
+    parent_ = parent;
+  }
 }
 
 void RewriteDriver::Clear() {
@@ -395,7 +403,8 @@ void RewriteDriver::Clear() {
     request_context_.reset(NULL);
   }
   start_time_ms_ = 0;
-  parent_ = NULL;
+  SetParent(NULL);
+  DCHECK_EQ(0, child_count_);
 
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
