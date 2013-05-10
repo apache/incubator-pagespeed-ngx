@@ -165,6 +165,9 @@ const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength = -1;
 // Apache.  See http://code.google.com/p/modpagespeed/issues/detail?id=176
 const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
+// Maximum JS elements to prefetch early when defer JS filter is enabled.
+const int RewriteOptions::kDefaultMaxPrefetchJsElements = 0;
+
 #ifdef NDEBUG
 const int RewriteOptions::kDefaultRewriteDeadlineMs = 10;
 #else
@@ -1009,6 +1012,13 @@ void RewriteOptions::AddProperties() {
       false,
       &RewriteOptions::flush_more_resources_in_ie_and_firefox_,
       "fmrief");
+  AddBaseProperty(
+      kDefaultMaxPrefetchJsElements,
+      &RewriteOptions::max_prefetch_js_elements_, "mpje",
+      kMaxPrefetchJsElements,
+      kDirectoryScope,
+      "Set number of JS elements to download without executing. This is useful"
+      "for prefetching script elements when defer JS filter is enabled.");
   AddBaseProperty(
       false, &RewriteOptions::enable_defer_js_experimental_, "edje",
       kEnableDeferJsExperimental,

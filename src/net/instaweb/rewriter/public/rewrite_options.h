@@ -269,6 +269,7 @@ class RewriteOptions {
     kMaxImageBytesForWebpInCss,
     kMaxImageSizeLowResolutionBytes,
     kMaxInlinedPreviewImagesIndex,
+    kMaxPrefetchJsElements,
     kMaxRewriteInfoLogSize,
     kMaxUrlSegmentSize,
     kMaxUrlSize,
@@ -600,6 +601,7 @@ class RewriteOptions {
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
   static const int64 kDefaultOverrideBlinkCacheTimeMs;
+  static const int kDefaultMaxPrefetchJsElements;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -1777,6 +1779,13 @@ class RewriteOptions {
   }
   bool flush_more_resources_in_ie_and_firefox() const {
     return flush_more_resources_in_ie_and_firefox_.value();
+  }
+
+  void set_max_prefetch_js_elements(int x) {
+    set_option(x, &max_prefetch_js_elements_);
+  }
+  int max_prefetch_js_elements() const {
+    return max_prefetch_js_elements_.value();
   }
 
   void set_enable_defer_js_experimental(bool x) {
@@ -3076,6 +3085,10 @@ class RewriteOptions {
 
   // Flush more resources in IE and Firefox.
   Option<bool> flush_more_resources_in_ie_and_firefox_;
+
+  // Number of script elements to prefetch early. Applicable when defer_js
+  // filter is enabled.
+  Option<int> max_prefetch_js_elements_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;

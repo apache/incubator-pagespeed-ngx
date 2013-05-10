@@ -285,6 +285,11 @@ DEFINE_int32(property_cache_http_status_stability_threshold,
              "The number of requests for which the status code should remain "
              "same so that we consider it to be stable.");
 
+DEFINE_int32(max_prefetch_js_elements,
+             net_instaweb::RewriteOptions::kDefaultMaxPrefetchJsElements,
+             "The number of JS elements to prefetch and download when defer "
+             "Javascript filter is enabled.");
+
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js.");
 
@@ -645,6 +650,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("implicit_cache_ttl_ms")) {
     options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);
+  }
+  if (WasExplicitlySet("max_prefetch_js_elements")) {
+    options->set_max_prefetch_js_elements(FLAGS_max_prefetch_js_elements);
   }
   if (WasExplicitlySet("enable_defer_js_experimental")) {
     options->set_enable_defer_js_experimental(

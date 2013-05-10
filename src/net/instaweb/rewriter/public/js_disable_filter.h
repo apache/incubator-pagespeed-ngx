@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -62,6 +63,8 @@ class JsDisableFilter : public EmptyHtmlFilter {
 
   static GoogleString GetJsDisableScriptSnippet(const RewriteOptions* options);
 
+  static GoogleString GetImagePrefetchTemplate();
+
  private:
   // Inserts the experimental js enable/disable code.
   void InsertJsDeferExperimentalScript(HtmlElement* element);
@@ -76,6 +79,12 @@ class JsDisableFilter : public EmptyHtmlFilter {
   int index_;
   bool defer_js_experimental_script_written_;
   bool ie_meta_tag_written_;
+  int prefetch_js_elements_count_;
+  int max_prefetch_js_elements_;
+  GoogleString prefetch_js_elements_;
+  GoogleString prefetch_image_template_;
+  bool should_look_for_prefetch_js_elements_;
+  UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

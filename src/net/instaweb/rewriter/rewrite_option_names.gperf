@@ -109,6 +109,7 @@ struct OptionName {
 "MaxInlinedPreviewImagesIndex",          RewriteOptions::kMaxInlinedPreviewImagesIndex
 # TODO(sligocki): Put names in agreement. MaxSegmentLength is the
 # mod_pagespeed config name, MaxUrlSegmentSize is the name used in code.
+"MaxPrefetchJsElements",                 RewriteOptions::kMaxPrefetchJsElements
 "MaxRewriteInfoLogSize",                 RewriteOptions::kMaxRewriteInfoLogSize
 "MaxSegmentLength",                      RewriteOptions::kMaxUrlSegmentSize
 "MaxUrlSize",                            RewriteOptions::kMaxUrlSize

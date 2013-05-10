@@ -18,12 +18,15 @@
 
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/enums.pb.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -192,6 +195,149 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
       kUnrelatedTags,
       "<script pagespeed_orig_src=\"y?a=b&amp;c=d\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"1\">hi2</script>");
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
+  options()->set_max_prefetch_js_elements(3);
+  const GoogleString input_html = StrCat(
+      "<head>",
+      "<script></script>"
+      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      "<script src=\"blah2\" random=\"false\">hi2</script>"
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah4\">hi4</script>"
+      "<script src=\"blah5\">Not a prefetch candidate</script>"
+      "</head><body>"
+      "</body>");
+  GoogleString image_template = JsDisableFilter::GetImagePrefetchTemplate();
+
+  const GoogleString expected = StrCat(
+      "<head>"
+      "<script type=\"text/psajs\" orig_index=\"0\"></script>"
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
+      " orig_index=\"1\">hi1</script><script pagespeed_no_defer=\"\">",
+      StringPrintf(image_template.c_str(), "blah1"),
+      "</script>"
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
+      "<script pagespeed_no_defer=\"\">",
+      StringPrintf(image_template.c_str(), "blah2"),
+      "</script>", StrCat(
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script pagespeed_orig_src=\"blah4\" type=\"text/psajs\""
+      " orig_index=\"3\">hi4</script><script pagespeed_no_defer=\"\">",
+      StringPrintf(image_template.c_str(), "blah4"),
+      "</script>"
+      "<script pagespeed_orig_src=\"blah5\" type=\"text/psajs\""
+      " orig_index=\"4\">Not a prefetch candidate</script>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kDisableJsExperimental,
+      "</script></head><body></body>"));
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, PrefetchScriptWithIframeTemplate) {
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kFirefoxUserAgent);
+  options()->set_max_prefetch_js_elements(3);
+  const GoogleString input_html = StrCat(
+      "<head>",
+      kUnrelatedNoscriptTags,
+      "<script></script>"
+      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<img src=\"abc.jpg\" onload=\"foo1('abc');foo2();\">"
+      "<script src=\"blah2\" random=\"false\">hi2</script>"
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah4\">hi4</script>"
+      "<script src=\"blah5\">dont show up in prefetch iframe</script>"
+      "</head><body>"
+      "</body>");
+
+  const GoogleString prefetch_elements = StrCat(
+      "<script type=\"psa_prefetch\" src=\"blah1\"></script>\n",
+      "<script type=\"psa_prefetch\" src=\"blah2\"></script>\n",
+      "<script type=\"psa_prefetch\" src=\"blah4\"></script>\n");
+
+  GoogleString encoded_data;
+  DataUrl(kContentTypeHtml, BASE64, prefetch_elements, &encoded_data);
+
+  GoogleString iframe_element = StrCat(
+      "<iframe src=\"", encoded_data.c_str(),
+      "\" class=\"psa_prefetch_container\" style=\"display:none\">"
+      "</iframe>");
+
+  const GoogleString expected = StrCat(
+      "<head>",
+      kUnrelatedNoscriptTags,
+      "<script type=\"text/psajs\" orig_index=\"0\"></script>"
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
+      " orig_index=\"1\">hi1</script>",
+      kUnrelatedTags, StrCat(
+      "<img src=\"abc.jpg\" data-pagespeed-onload=\"foo1('abc');foo2();\" "
+      "onload=\"", JsDisableFilter::kElementOnloadCode, "\">"
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script pagespeed_orig_src=\"blah4\" type=\"text/psajs\""
+      " orig_index=\"3\">hi4</script>"
+      "<script pagespeed_orig_src=\"blah5\" type=\"text/psajs\""
+      " orig_index=\"4\">dont show up in prefetch iframe</script>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kDisableJsExperimental,
+      "</script></head>"
+      "<body>", iframe_element, "</body>"));
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, PrefetchScriptInHeadNotInBody) {
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kFirefoxUserAgent);
+  options()->set_max_prefetch_js_elements(3);
+  const GoogleString input_html = StrCat(
+      "<head>",
+      kUnrelatedNoscriptTags,
+      "<script></script>"
+      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script src=\"blah2\" random=\"false\">hi2</script>"
+      "</head><body>"
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script src=\"blah4\">dont show up in prefetch iframe</script>"
+      "</body>");
+
+  const GoogleString prefetch_elements = StrCat(
+      "<script type=\"psa_prefetch\" src=\"blah1\"></script>\n",
+      "<script type=\"psa_prefetch\" src=\"blah2\"></script>\n");
+
+  GoogleString encoded_data;
+  DataUrl(kContentTypeHtml, BASE64, prefetch_elements, &encoded_data);
+
+  GoogleString iframe_element = StrCat(
+      "<iframe src=\"", encoded_data.c_str(),
+      "\" class=\"psa_prefetch_container\" style=\"display:none\">"
+      "</iframe>");
+
+  const GoogleString expected = StrCat(
+      "<head>",
+      kUnrelatedNoscriptTags,
+      "<script type=\"text/psajs\" orig_index=\"0\"></script>"
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
+      " orig_index=\"1\">hi1</script>",
+      kUnrelatedTags, StrCat(
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kDisableJsExperimental,
+      "</script></head>"
+      "<body>", iframe_element,
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+      "<script pagespeed_orig_src=\"blah4\" type=\"text/psajs\""
+      " orig_index=\"3\">dont show up in prefetch iframe</script>"
+      "</body>"));
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
