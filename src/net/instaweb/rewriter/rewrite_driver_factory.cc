@@ -50,7 +50,6 @@
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -342,9 +341,6 @@ CriticalCssFinder* RewriteDriverFactory::DefaultCriticalCssFinder() {
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
     ServerContext* server_context) {
-  if (server_context->beacon_cohort() == NULL) {
-    LOG(WARNING) << "Beacon Cohort is NULL";
-  }
   // TODO(pulkitg): Don't create BeaconCriticalImagesFinder if beacon cohort is
   // not added.
   return new BeaconCriticalImagesFinder(
@@ -353,9 +349,6 @@ CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
 
 CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
     ServerContext* server_context) {
-  if (server_context->beacon_cohort() == NULL) {
-    LOG(WARNING) << "Beacon Cohort is NULL";
-  }
   // TODO(pulkitg): Don't create CriticalSelectorFinder if beacon cohort is
   // not added.
   return new CriticalSelectorFinder(

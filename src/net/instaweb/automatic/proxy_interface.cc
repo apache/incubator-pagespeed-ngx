@@ -20,7 +20,6 @@
 
 #include "base/callback.h"
 #include "base/logging.h"
-#include "net/instaweb/automatic/public/blink_flow_critical_line.h"
 #include "net/instaweb/automatic/public/cache_html_flow.h"
 #include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
@@ -33,7 +32,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
@@ -59,9 +57,6 @@ namespace net_instaweb {
 
 class MessageHandler;
 
-const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
-const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
-    "blink-critical-line-requests";
 const char ProxyInterface::kCacheHtmlRequestCount[] =
     "cache-html-requests";
 namespace {
@@ -69,7 +64,6 @@ namespace {
 // Names for Statistics variables.
 const char kTotalRequestCount[] = "all-requests";
 const char kPagespeedRequestCount[] = "pagespeed-requests";
-const char kBlinkRequestCount[] = "blink-requests";
 const char kRejectedRequestCount[] = "publisher-rejected-requests";
 const char kRejectedRequestHtmlResponse[] = "Unable to serve "
     "content as the content is blocked by the administrator of the domain.";
@@ -167,9 +161,6 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       port_(port),
       all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
       pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
-      blink_requests_(stats->GetTimedVariable(kBlinkRequestCount)),
-      blink_critical_line_requests_(
-          stats->GetTimedVariable(kBlinkCriticalLineRequestCount)),
       cache_html_flow_requests_(
           stats->GetTimedVariable(kCacheHtmlRequestCount)),
       rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)) {
@@ -184,15 +175,10 @@ void ProxyInterface::InitStats(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kPagespeedRequestCount,
                                ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kBlinkRequestCount,
-                               ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
-                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kCacheHtmlRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRejectedRequestCount,
                                ServerContext::kStatisticsGroup);
-  BlinkFlowCriticalLine::InitStats(statistics);
   CacheHtmlFlow::InitStats(statistics);
   FlushEarlyFlow::InitStats(statistics);
 }
@@ -418,8 +404,7 @@ PropertyCache::CohortVector ProxyInterface::GetCohortList(
 
   PropertyCache::CohortVector cohort_list_without_blink;
   for (int i = 0, m = cohort_list.size(); i < m; ++i) {
-    if (cohort_list[i]->name() ==
-        BlinkCriticalLineDataFinder::kBlinkCohort) {
+    if (cohort_list[i]->name() == BlinkUtil::kBlinkCohort) {
       continue;
     }
     cohort_list_without_blink.push_back(cohort_list[i]);
@@ -499,12 +484,6 @@ void ProxyInterface::ProxyRequestCallback(
     }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
-    const bool is_blink_request = BlinkUtil::IsBlinkRequest(
-        *request_url, async_fetch, options, user_agent, server_context_,
-        RewriteOptions::kPrioritizeVisibleContent);
-    const bool apply_blink_critical_line =
-        BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
-                                                    options);
     bool page_callback_added = false;
 
     // Whether it's a cache html request should not change despite the fact
@@ -513,10 +492,6 @@ void ProxyInterface::ProxyRequestCallback(
         *request_url, async_fetch, options,
         user_agent, server_context_,
         RewriteOptions::kCachePartialHtml);
-
-    const bool requires_blink_cohort =
-        (is_blink_request && apply_blink_critical_line) ||
-        is_cache_html_request;
 
     ProxyFetchPropertyCallbackCollector* property_callback = NULL;
 
@@ -528,7 +503,7 @@ void ProxyInterface::ProxyRequestCallback(
                                                       *request_url,
                                                       options,
                                                       async_fetch,
-                                                      requires_blink_cohort,
+                                                      is_cache_html_request,
                                                       &page_callback_added);
     }
 
@@ -542,80 +517,56 @@ void ProxyInterface::ProxyRequestCallback(
       }
     }
 
-    if (is_blink_request && apply_blink_critical_line && page_callback_added) {
-      // In blink flow, we have to modify RewriteOptions after the
-      // property cache read is completed. Hence, we clear the signature to
-      // unfreeze RewriteOptions, which was frozen during signature computation
-      // for generating key for property cache read.
-      // Warning: Please note that using this method is extremely risky and
-      // should be avoided as much as possible. If you are planning to use
-      // this, please discuss this with your team-mates and ensure that you
-      // clearly understand its implications. Also, please do repeat this
-      // warning at every place you use this method.
-      options->ClearSignatureWithCaution();
-
-      // TODO(rahulbansal): Remove this LOG once we expect to have
-      // a lot of such requests.
-      LOG(INFO) << "Triggering Blink flow critical line for url "
-                << url_string;
-      blink_critical_line_requests_->IncBy(1);
-      BlinkFlowCriticalLine::Start(url_string, async_fetch, options,
-                                   proxy_fetch_factory_.get(),
-                                   server_context_,
-                                   // Takes ownership of property_callback.
-                                   property_callback);
+    RewriteDriver* driver = NULL;
+    RequestContextPtr request_ctx = async_fetch->request_context();
+    DCHECK(request_ctx.get() != NULL) << "Async fetch must have a request"
+                                      << "context but does not.";
+    if (options == NULL) {
+      driver = server_context_->NewRewriteDriver(request_ctx);
     } else {
-      RewriteDriver* driver = NULL;
-      RequestContextPtr request_ctx = async_fetch->request_context();
-      DCHECK(request_ctx.get() != NULL) << "Async fetch must have a request"
-                                        << "context but does not.";
-      if (options == NULL) {
-        driver = server_context_->NewRewriteDriver(request_ctx);
-      } else {
-        // NewCustomRewriteDriver takes ownership of custom_options_.
-        driver = server_context_->NewCustomRewriteDriver(options, request_ctx);
-      }
-
-      // TODO(mmohabey): Remove duplicate setting of user agent and
-      // request headers for different flows.
-      if (user_agent != NULL) {
-        VLOG(1) << "Setting user-agent to " << user_agent;
-        driver->SetUserAgent(user_agent);
-      } else {
-        VLOG(1) << "User-agent empty";
-      }
-      driver->set_request_headers(async_fetch->request_headers());
-      // TODO(mmohabey): Factor out the below checks so that they are not
-      // repeated in BlinkUtil::IsBlinkRequest().
-
-      if (driver->options() != NULL && driver->options()->enabled() &&
-          property_callback != NULL &&
-          driver->options()->IsAllowed(url_string)) {
-        if (is_cache_html_request) {
-          cache_html_flow_requests_->IncBy(1);
-          CacheHtmlFlow::Start(url_string,
-                               async_fetch,
-                               driver,
-                               proxy_fetch_factory_.get(),
-                               // Takes ownership of property_callback.
-                               property_callback);
-
-          return;
-        }
-        // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
-        // but will not begin (FlushEarlyFlwow::FlushEarly) until the
-        // PropertyCache lookup has completed.
-        // Also it does NOT take ownership of property_callback.
-        // FlushEarlyFlow might not start if the request is not GET or if the
-        // useragent is unsupported etc.
-        FlushEarlyFlow::TryStart(url_string, &async_fetch, driver,
-                                 proxy_fetch_factory_.get(),
-                                 property_callback);
-      }
-      // Takes ownership of property_callback.
-      proxy_fetch_factory_->StartNewProxyFetch(
-          url_string, async_fetch, driver, property_callback, NULL);
+      // NewCustomRewriteDriver takes ownership of custom_options_.
+      driver = server_context_->NewCustomRewriteDriver(options, request_ctx);
     }
+
+    // TODO(mmohabey): Remove duplicate setting of user agent and
+    // request headers for different flows.
+    if (user_agent != NULL) {
+      VLOG(1) << "Setting user-agent to " << user_agent;
+      driver->SetUserAgent(user_agent);
+    } else {
+      VLOG(1) << "User-agent empty";
+    }
+    driver->set_request_headers(async_fetch->request_headers());
+    // TODO(mmohabey): Factor out the below checks so that they are not
+    // repeated in BlinkUtil::IsBlinkRequest().
+
+    if (driver->options() != NULL && driver->options()->enabled() &&
+        property_callback != NULL &&
+        driver->options()->IsAllowed(url_string)) {
+      if (is_cache_html_request) {
+        cache_html_flow_requests_->IncBy(1);
+        CacheHtmlFlow::Start(url_string,
+                             async_fetch,
+                             driver,
+                             proxy_fetch_factory_.get(),
+                             // Takes ownership of property_callback.
+                             property_callback);
+
+        return;
+      }
+      // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
+      // but will not begin (FlushEarlyFlwow::FlushEarly) until the
+      // PropertyCache lookup has completed.
+      // Also it does NOT take ownership of property_callback.
+      // FlushEarlyFlow might not start if the request is not GET or if the
+      // useragent is unsupported etc.
+      FlushEarlyFlow::TryStart(url_string, &async_fetch, driver,
+                               proxy_fetch_factory_.get(),
+                               property_callback);
+    }
+    // Takes ownership of property_callback.
+    proxy_fetch_factory_->StartNewProxyFetch(
+        url_string, async_fetch, driver, property_callback, NULL);
   }
 }
 

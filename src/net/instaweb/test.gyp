@@ -60,7 +60,6 @@
         '<(DEPTH)/third_party/css_parser/src',
       ],
       'sources': [
-        'automatic/blink_flow_critical_line_test.cc',
         'automatic/cache_html_flow_test.cc',
         'automatic/flush_early_flow_test.cc',
         'automatic/html_detector_test.cc',

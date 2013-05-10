@@ -1674,7 +1674,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">",
              "</script>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+      ProxyInterface::kCacheHtmlRequestCount)->Get());
   ClearStats();
 
   // Empty User Agent.
@@ -1687,7 +1687,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">",
              "</script>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
-      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+      ProxyInterface::kCacheHtmlRequestCount)->Get());
   ClearStats();
 
   // Mobile User Agent.

@@ -1328,7 +1328,6 @@
         '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'sources': [
-        'automatic/blink_flow_critical_line.cc',
         'automatic/cache_html_flow.cc',
         'automatic/flush_early_flow.cc',
         'automatic/html_detector.cc',

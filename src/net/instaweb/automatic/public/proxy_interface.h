@@ -77,8 +77,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   // Is this url_string well-formed enough to proxy through?
   bool IsWellFormedUrl(const GoogleUrl& url);
 
-  static const char kBlinkRequestCount[];
-  static const char kBlinkCriticalLineRequestCount[];
   static const char kCacheHtmlRequestCount[];
 
   // Initiates the PropertyCache look up.
@@ -124,10 +122,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* all_requests_;
   // Total Pagespeed requests.
   TimedVariable* pagespeed_requests_;
-  // Blink requests.
-  TimedVariable* blink_requests_;
-  // Blink requests in the critical line flow.
-  TimedVariable* blink_critical_line_requests_;
   // Cache Html requests.
   TimedVariable* cache_html_flow_requests_;
   // Rejected requests counter.
