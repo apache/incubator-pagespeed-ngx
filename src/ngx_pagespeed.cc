@@ -2407,9 +2407,6 @@ void ps_beacon_body_handler(ngx_http_request_t* r) {
   bool ok = ps_request_body_to_string_piece(r, &request_body);
   if (ok) {
     ps_beacon_handler_helper(r, request_body);
-    // TODO(jefftk): should we use "r->filter_finalize = 1" instead?  Is this
-    // the right way to do it?
-    r->count--;
     ngx_http_finalize_request(r, NGX_HTTP_NO_CONTENT);
   } else {
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -2486,9 +2483,35 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
-  // generic checker will not finalize request
-  // so do not need increase r->count here
+  // Tell nginx we're still working on this one.
+  r->count++;
   return NGX_DONE;
+}
+
+ngx_int_t ps_phase_handler(ngx_http_request_t *r,
+      ngx_http_phase_handler_t *ph) {
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "pagespeed phase: %ui", r->phase_handler);
+
+  r->write_event_handler = ngx_http_request_empty_handler;
+
+  ngx_int_t rc = ps_content_handler(r);
+  // Warning: this requires ps_content_handler to always return NGX_DECLINED
+  // directly if it's not going to handle the request. It is not ok for
+  // ps_content_handler to asynchronously determine whether to handle the
+  // request, returning NGX_DONE here.
+  if (rc == NGX_DECLINED) {
+    r->write_event_handler = ngx_http_core_run_phases;
+    r->phase_handler++;
+    return NGX_AGAIN;
+  }
+
+  if (rc == NGX_AGAIN) {
+    return NGX_OK;
+  }
+
+  ngx_http_finalize_request(r, rc);
+  return NGX_OK;
 }
 
 // preaccess_handler should be at generic phase before try_files
@@ -2511,9 +2534,9 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
     i++;
   }
 
-  // insert content handler
-  ph[i].checker = ngx_http_core_generic_phase;
-  ph[i].handler = ps_content_handler;
+  // insert ps phase handler
+  ph[i].checker = ps_phase_handler;
+  ph[i].handler = NULL;
   ph[i].next = i + 1;
 
   // next preaccess handler
