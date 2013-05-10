@@ -28,13 +28,13 @@
 #ifdef LOG_WARNING
 #undef LOG_WARNING
 #endif
-#include "base/logging.h"
 
 extern "C" {
   #include <ngx_core.h>
   #include <ngx_http.h>
 }
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -79,6 +79,7 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
 ngx_int_t copy_response_headers_to_ngx(
     ngx_http_request_t* r,
     const net_instaweb::ResponseHeaders& pagespeed_headers);
+ngx_int_t ps_fetch_handler(ngx_http_request_t *r);
 
 typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;

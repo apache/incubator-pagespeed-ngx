@@ -85,7 +85,13 @@ class NgxBaseFetch : public AsyncFetch {
   // Called by nginx when it's done with us.
   void Release();
 
+  static ngx_int_t Initialize(ngx_log_t *log, MessageHandler *handler);
+  static void Terminate(ngx_log_t * log);
+
  private:
+  static void ngx_event_handler(ngx_event_t *ev);
+  static void ProcessSignalExcept(NgxBaseFetch *except = NULL);
+  void SignalNoLock();
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleHeadersComplete();
@@ -109,13 +115,6 @@ class NgxBaseFetch : public AsyncFetch {
   // buffer_.
   ngx_int_t CopyBufferToNginx(ngx_chain_t** link_ptr);
 
-  void Lock();
-  void Unlock();
-
-  // Called by Done() and Release().  Decrements our reference count, and if
-  // it's zero we delete ourself.
-  void DecrefAndDeleteIfUnreferenced();
-
   ngx_http_request_t* request_;
   GoogleString buffer_;
   NgxServerContext* server_context_;
@@ -123,11 +122,17 @@ class NgxBaseFetch : public AsyncFetch {
   bool last_buf_sent_;
   // How many active references there are to this fetch. Starts at two,
   // decremented once when Done() is called and once when Release() is called.
-  int references_;
-  pthread_mutex_t mutex_;
+  AtomicInt32 references_;
+
+  scoped_ptr<AbstractMutex> mutex_;
 
   // set by RequestCollection, cleared by CollectAccumulatedWrites
-  volatile bool flush_;
+  bool pending_;
+
+  static AtomicInt32 n_instance_;
+  static ngx_connection_t *pipe_conn_;
+  static int pipefds_[2];
+
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
