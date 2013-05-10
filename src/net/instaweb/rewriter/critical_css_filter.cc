@@ -54,14 +54,21 @@
 
 namespace net_instaweb {
 
-// TODO(ksimbili): Move this to appropriate event instead of 'onload'.
+// TODO(ksimbili): Replace textContent with something which have similar
+// functionality as it is not supported in IE8 and older browsers.
+// TODO(ksimbili): Fix window.onload = addAllStyles call site as it will
+// override the existing onload function.
 const char CriticalCssFilter::kAddStylesScript[] =
+    "var stylesAdded = false;"
     "var addAllStyles = function() {"
+    "  if (stylesAdded) return;"
+    "  stylesAdded = true;"
     "  var div = document.createElement(\"div\");"
     "  div.innerHTML = document.getElementById(\"psa_add_styles\").textContent;"
     "  document.body.appendChild(div);"
     "};"
     "if (window.addEventListener) {"
+    "  document.addEventListener(\"DOMContentLoaded\", addAllStyles, false);"
     "  window.addEventListener(\"load\", addAllStyles, false);"
     "} else if (window.attachEvent) {"
     "  window.attachEvent(\"onload\", addAllStyles);"
