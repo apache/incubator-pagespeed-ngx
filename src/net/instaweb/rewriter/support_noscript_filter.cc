@@ -52,12 +52,6 @@ void SupportNoscriptFilter::StartDocument() {
 }
 
 void SupportNoscriptFilter::StartElement(HtmlElement* element) {
-  if (rewrite_driver_->options()->Enabled(
-      RewriteOptions::kProcessBlinkInBackground)) {
-    // Lazyload filter can be enabled for blink requests and hence this filter
-    // will get attached.
-    return;
-  }
   if (should_insert_noscript_ && element->keyword() == HtmlName::kBody) {
     scoped_ptr<GoogleUrl> url_with_psa_off(
         rewrite_driver_->google_url().CopyAndAddQueryParam(

@@ -32,7 +32,6 @@
 namespace net_instaweb {
 
 class AbstractMutex;
-class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
 class CriticalCssFinder;
 class CriticalImagesFinder;
@@ -336,10 +335,6 @@ class RewriteDriverFactory {
       ServerContext* server_context);
   virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder(
       ServerContext* server_context);
-
-  // Default implementation returns NULL.
-  virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
-      PropertyCache* cache, ServerContext* server_context);
 
   // Default implementation returns NULL.
   virtual CacheHtmlInfoFinder* DefaultCacheHtmlInfoFinder(

@@ -35,7 +35,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
@@ -402,7 +402,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
     }
     PropertyCache* pcache = manager_->page_property_cache();
     const PropertyCache::Cohort* cohort =
-        pcache->GetCohort(BlinkCriticalLineDataFinder::kBlinkCohort);
+        pcache->GetCohort(BlinkUtil::kBlinkCohort);
     key_ = pcache->CacheKey(key_base, cohort);
     delay_cache_->DelayKey(key_);
     if (added_page_property_callback != NULL) {
@@ -516,7 +516,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   virtual void SetUp() {
     const PropertyCache::Cohort* blink_cohort =
         SetupCohort(server_context_->page_property_cache(),
-                    BlinkCriticalLineDataFinder::kBlinkCohort);
+                    BlinkUtil::kBlinkCohort);
     server_context_->set_blink_cohort(blink_cohort);
     server_context_->set_enable_property_cache(true);
     UseMd5Hasher();

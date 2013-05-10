@@ -275,7 +275,7 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
   // it avoids writing two metadata cache keys for same output.
   SetLibWebpLevel(*driver.device_properties(), context);
 
-  if (options->NeedLowResImages() &&
+  if (options->Enabled(RewriteOptions::kDelayImages) &&
       options->Enabled(RewriteOptions::kResizeMobileImages) &&
       driver.device_properties()->IsMobile()) {
     context->set_mobile_user_agent(true);

@@ -652,7 +652,7 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
       ImageUrlEncoder::HasValidDimensions(image_dim) &&
       (image->content_type()->type() != ContentType::kGif ||
        options->Enabled(RewriteOptions::kConvertGifToPng) ||
-       options->NeedLowResImages())) {
+       options->Enabled(RewriteOptions::kDelayImages))) {
     if (!desired_dim->has_width()) {
       // Fill in a missing page height:
       //   page_height * (image_width / image_height),
@@ -844,7 +844,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
 
     int64 image_size = static_cast<int64>(image->output_size());
-    if (options->NeedLowResImages() && !rewrite_context->in_noscript_element_ &&
+    if (options->Enabled(RewriteOptions::kDelayImages) &&
+        !rewrite_context->in_noscript_element_ &&
         !cached->has_low_resolution_inlined_data() &&
         image_size >= options->min_image_size_low_resolution_bytes() &&
         image_size <= options->max_image_size_low_resolution_bytes()) {
@@ -1213,18 +1214,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     DCHECK(!options->cache_small_images_unrewritten())
         << "Modifying a URL slot despite "
         << "image_inlining_identify_and_cache_without_rewriting set.";
-    if (options->Enabled(RewriteOptions::kProcessBlinkInBackground)) {
-      // kPagespeedInlineSrc attribute is added to record data urls for
-      // directly-inlined-images in the blink background processing flow.
-      // In case the image lies above the critical line, this attribute
-      // is used to replace the original src value with the data url.
-      element->AddAttribute(driver_->MakeName(HtmlName::kPagespeedInlineSrc),
-                            data_url,
-                            HtmlElement::DOUBLE_QUOTE);
-    } else {
-      src->SetValue(data_url);
-      DeleteMatchingImageDimsAfterInline(cached, element);
-    }
+    src->SetValue(data_url);
+    DeleteMatchingImageDimsAfterInline(cached, element);
     // Note the use of the ORIGINAL url not the data url.
     LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
                                               driver_, element);
@@ -1261,7 +1252,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
   bool low_res_src_inserted = false;
   bool try_low_res_src_insertion = false;
-  if (options->NeedLowResImages() &&
+  if (options->Enabled(RewriteOptions::kDelayImages) &&
       (element->keyword() == HtmlName::kImg ||
        element->keyword() == HtmlName::kInput)) {
     try_low_res_src_insertion = true;

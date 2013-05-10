@@ -36,7 +36,7 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -109,7 +109,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
                     RewriteDriver::kDomCohort);
     const PropertyCache::Cohort* blink_cohort =
         SetupCohort(server_context_->page_property_cache(),
-                    BlinkCriticalLineDataFinder::kBlinkCohort);
+                    BlinkUtil::kBlinkCohort);
     server_context()->set_dom_cohort(dom_cohort);
     server_context()->set_blink_cohort(blink_cohort);
     options->ClearSignatureForTesting();

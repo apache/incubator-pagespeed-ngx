@@ -42,7 +42,6 @@
 namespace net_instaweb {
 
 class AbstractMutex;
-class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
 class CacheInterface;
 class CriticalCssFinder;
@@ -259,13 +258,6 @@ class ServerContext {
     return user_agent_matcher_;
   }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
-
-  BlinkCriticalLineDataFinder* blink_critical_line_data_finder() const {
-    return blink_critical_line_data_finder_.get();
-  }
-
-  void set_blink_critical_line_data_finder(
-      BlinkCriticalLineDataFinder* finder);
 
   CacheHtmlInfoFinder* cache_html_info_finder() const {
     return cache_html_info_finder_.get();
@@ -632,7 +624,6 @@ class ServerContext {
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalCssFinder> critical_css_finder_;
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
-  scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
 

@@ -100,8 +100,6 @@
         'rewriter/add_instrumentation_filter_test.cc',
         'rewriter/association_transformer_test.cc',
         'rewriter/base_tag_filter_test.cc',
-        'rewriter/blink_background_filter_test.cc',
-        'rewriter/blink_filter_test.cc',
         'rewriter/blink_util_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/cache_html_filter_test.cc',

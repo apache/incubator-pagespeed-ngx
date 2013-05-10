@@ -282,10 +282,6 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kPrioritizeCriticalCss,
-  RewriteOptions::kProcessBlinkInBackground,  // internal,
-                                              // enabled conditionally
-  RewriteOptions::kServeNonCacheableNonCritical,  // internal,
-                                                  // enabled conditionally
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
   RewriteOptions::kStripScripts,
@@ -440,10 +436,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "pc", "Add pedantic types" },
   { RewriteOptions::kPrioritizeCriticalCss,
     RewriteOptions::kPrioritizeCriticalCssId, "Prioritize Critical Css" },
-  { RewriteOptions::kPrioritizeVisibleContent,
-    "pv", "Prioritize Visible Content" },
-  { RewriteOptions::kProcessBlinkInBackground,
-    "bb", "Blink Background Processing" },
   { RewriteOptions::kRecompressJpeg,
     "rj", "Recompress Jpeg" },
   { RewriteOptions::kRecompressPng,
@@ -468,8 +460,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "cs", "Rewrite Style Attributes" },
   { RewriteOptions::kRewriteStyleAttributesWithUrl,
     "cu", "Rewrite Style Attributes With Url" },
-  { RewriteOptions::kServeNonCacheableNonCritical,
-    "sn", "Serve Non Cacheable and Non Critical Content" },
   { RewriteOptions::kSplitHtml,
     "sh", "Split Html" },
   { RewriteOptions::kSpriteImages,
@@ -2490,7 +2480,7 @@ bool RewriteOptions::IsRequestDeclined(
 }
 
 int64 RewriteOptions::ImageInlineMaxBytes() const {
-  if (Enabled(kInlineImages) || Enabled(kProcessBlinkInBackground)) {
+  if (Enabled(kInlineImages)) {
     return image_inline_max_bytes_.value();
   } else {
     return 0;

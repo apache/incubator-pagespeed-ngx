@@ -159,15 +159,6 @@ bool IsBlinkRequest(const GoogleUrl& url,
   return false;
 }
 
-bool ShouldApplyBlinkFlowCriticalLine(
-    const ServerContext* server_context,
-    const RewriteOptions* options) {
-  return options != NULL &&
-      // Blink flow critical line is enabled in rewrite options.
-      options->enable_blink_critical_line() &&
-      server_context->blink_critical_line_data_finder() != NULL;
-}
-
 bool IsJsonEmpty(const Json::Value& json) {
   const std::vector<std::string>& keys = json.getMemberNames();
   for (Json::ArrayIndex k = 0; k < keys.size(); ++k) {

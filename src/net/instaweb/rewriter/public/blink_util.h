@@ -70,11 +70,6 @@ bool IsBlinkRequest(const GoogleUrl& url,
                     const ServerContext* server_context,
                     RewriteOptions::Filter filter);
 
-// Checks if blink critical line flow can be applied.
-bool ShouldApplyBlinkFlowCriticalLine(
-    const ServerContext* server_context,
-    const RewriteOptions* options);
-
 // Returns true if json has only miscellaneous(like 'contiguous')
 // atributes.
 bool IsJsonEmpty(const Json::Value& json);

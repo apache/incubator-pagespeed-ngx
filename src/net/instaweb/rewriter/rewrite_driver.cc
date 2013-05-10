@@ -52,8 +52,6 @@
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
-#include "net/instaweb/rewriter/public/blink_background_filter.h"
-#include "net/instaweb/rewriter/public/blink_filter.h"
 #include "net/instaweb/rewriter/public/cache_html_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
@@ -1008,7 +1006,7 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kJpegSubsampling) ||
       rewrite_options->Enabled(RewriteOptions::kStripImageColorProfile) ||
       rewrite_options->Enabled(RewriteOptions::kStripImageMetaData) ||
-      rewrite_options->NeedLowResImages()) {
+      rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // Since AddFilters only applies to the HTML rewrite path, we check here
     // if IPRO preemptive rewrites are disabled and skip the filter if so.
     if (!rewrite_options->image_preserve_urls() ||
@@ -1148,11 +1146,6 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(filter);
   }
 
-  if (rewrite_options->Enabled(RewriteOptions::kProcessBlinkInBackground)) {
-    BlinkBackgroundFilter* filter = new BlinkBackgroundFilter(this);
-    AddOwnedPostRenderFilter(filter);
-  }
-
   if (rewrite_options->Enabled(RewriteOptions::kComputeVisibleText)) {
     ComputeVisibleTextFilter* filter = new ComputeVisibleTextFilter(this);
     AddOwnedPostRenderFilter(filter);
@@ -1239,9 +1232,7 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetWriter(Writer* writer) {
   writer_ = writer;
   if (html_writer_filter_ == NULL) {
-    if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
-      html_writer_filter_.reset(new BlinkFilter(this));
-    } else if (options()->Enabled(RewriteOptions::kCachePartialHtml) &&
+    if (options()->Enabled(RewriteOptions::kCachePartialHtml) &&
                flushed_cached_html_) {
       html_writer_filter_.reset(new CacheHtmlFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources) &&

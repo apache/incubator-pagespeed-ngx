@@ -463,8 +463,6 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kLocalStorageCache));
   options->EnableFilter(RewriteOptions::kSplitHtml);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kSplitHtml));
-  options->EnableFilter(RewriteOptions::kPrioritizeVisibleContent);
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
   options->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeCriticalCss));
 }

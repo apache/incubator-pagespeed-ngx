@@ -82,7 +82,6 @@ struct FilterMap {
 "outline_javascript",                RewriteOptions::kOutlineJavascript
 "pedantic",                          RewriteOptions::kPedantic
 "prioritize_critical_css",           RewriteOptions::kPrioritizeCriticalCss
-"prioritize_visible_content",        RewriteOptions::kPrioritizeVisibleContent
 "recompress_jpeg",                   RewriteOptions::kRecompressJpeg
 "recompress_png",                    RewriteOptions::kRecompressPng
 "recompress_webp",                   RewriteOptions::kRecompressWebp

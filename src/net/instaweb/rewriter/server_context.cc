@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
@@ -1071,7 +1070,6 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
       custom_options.reset(options->Clone());
     }
     custom_options->DisableFiltersRequiringScriptExecution();
-    custom_options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
     custom_options->DisableFilter(RewriteOptions::kPrioritizeCriticalCss);
   }
 
@@ -1144,10 +1142,6 @@ PropertyCache* ServerContext::MakePropertyCache(
   return pcache;
 }
 
-void ServerContext::set_blink_critical_line_data_finder(
-    BlinkCriticalLineDataFinder* finder) {
-  blink_critical_line_data_finder_.reset(finder);
-}
 
 void ServerContext::set_cache_html_info_finder(CacheHtmlInfoFinder* finder) {
   cache_html_info_finder_.reset(finder);

@@ -359,12 +359,6 @@ FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
   return NULL;
 }
 
-BlinkCriticalLineDataFinder*
-RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder(
-    PropertyCache* pcache, ServerContext* server_context) {
-  return NULL;
-}
-
 CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
     PropertyCache* cache, ServerContext* server_context) {
   return NULL;
@@ -492,8 +486,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_critical_selector_finder(
       DefaultCriticalSelectorFinder(server_context));
   server_context->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
-  server_context->set_blink_critical_line_data_finder(
-      DefaultBlinkCriticalLineDataFinder(pcache, server_context));
   server_context->set_cache_html_info_finder(
       DefaultCacheHtmlInfoFinder(pcache, server_context));
   server_context->set_hostname(hostname_);

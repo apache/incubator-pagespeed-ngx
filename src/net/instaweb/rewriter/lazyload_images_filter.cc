@@ -233,42 +233,31 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  // Critical Images are required only if it is not a blink request as
-  // blink automatically decides critical images.
-  // Lazyload script will only be inserted if it is not a blink request.
-  // Blink sends the lazyload script after critical images are sent.
-  if (!driver_->options()->Enabled(
-      RewriteOptions::kProcessBlinkInBackground)) {
-    CriticalImagesFinder* finder =
-        driver()->server_context()->critical_images_finder();
-    // Note that if the platform lacks a CriticalImageFinder
-    // implementation, we consider all images to be non-critical and try
-    // to lazily load them.
-    if (finder->IsMeaningful(driver())) {
-      // Decode the url since the critical images in the finder are not
-      // rewritten.
-      if (finder->IsHtmlCriticalImage(full_url.data(), driver())) {
-        log_record->LogLazyloadFilter(
-            RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-            RewriterApplication::NOT_APPLIED, false, true);
-        // Do not try to lazily load this image since it is critical.
-        return;
-      }
+  CriticalImagesFinder* finder =
+      driver()->server_context()->critical_images_finder();
+  // Note that if the platform lacks a CriticalImageFinder
+  // implementation, we consider all images to be non-critical and try
+  // to lazily load them.
+  if (finder->IsMeaningful(driver())) {
+    // Decode the url since the critical images in the finder are not
+    // rewritten.
+    if (finder->IsHtmlCriticalImage(full_url.data(), driver())) {
+      log_record->LogLazyloadFilter(
+          RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
+          RewriterApplication::NOT_APPLIED, false, true);
+      // Do not try to lazily load this image since it is critical.
+      return;
     }
-    if (!main_script_inserted_) {
-      InsertLazyloadJsCode(element);
-     }
-    // Replace the src with pagespeed_lazy_src.
-    driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
-    driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
-    log_record->LogLazyloadFilter(
-        RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-        RewriterApplication::APPLIED_OK, false, false);
-  } else {
-    // Add pagespeed_blank_src as the blank image.
-    driver()->AddAttribute(
-        element, HtmlName::kPagespeedBlankSrc, blank_image_url_);
   }
+  if (!main_script_inserted_) {
+    InsertLazyloadJsCode(element);
+  }
+  // Replace the src with pagespeed_lazy_src.
+  driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
+  driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
+  log_record->LogLazyloadFilter(
+      RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
+      RewriterApplication::APPLIED_OK, false, false);
   // Set the onload appropriately.
   driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
   ++num_images_lazily_loaded_;

@@ -533,21 +533,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_blink_critical_line_data_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/blink_critical_line_data.pb.cc',
-        'rewriter/blink_critical_line_data.proto',
-      ],
-      'dependencies': [
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_critical_css_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -948,7 +933,6 @@
       ],
       'sources': [
         'rewriter/beacon_critical_images_finder.cc',
-        'rewriter/blink_critical_line_data_finder.cc',
         'rewriter/cache_html_info_finder.cc',
         'rewriter/critical_images_finder.cc',
         'rewriter/domain_lawyer.cc',
@@ -1115,7 +1099,6 @@
       'dependencies': [
         'instaweb_add_instrumentation_data2c',
         'instaweb_add_instrumentation_opt_data2c',
-        'instaweb_blink_critical_line_data_pb',
         'instaweb_cache_html_info_pb',
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
@@ -1162,8 +1145,6 @@
         'rewriter/add_head_filter.cc',
         'rewriter/add_instrumentation_filter.cc',
         'rewriter/base_tag_filter.cc',
-        'rewriter/blink_background_filter.cc',
-        'rewriter/blink_filter.cc',
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
         'rewriter/cache_html_filter.cc',
@@ -1314,7 +1295,6 @@
       'target_name': 'instaweb_automatic',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_blink_critical_line_data_pb',
         'instaweb_cache_html_info_pb',
         'instaweb_critical_css_pb',
         'instaweb_critical_line_info_pb',

@@ -138,8 +138,6 @@ class RewriteOptions {
     kOutlineJavascript,
     kPedantic,
     kPrioritizeCriticalCss,
-    kPrioritizeVisibleContent,
-    kProcessBlinkInBackground,
     kRecompressJpeg,
     kRecompressPng,
     kRecompressWebp,
@@ -152,7 +150,6 @@ class RewriteOptions {
     kRewriteJavascript,
     kRewriteStyleAttributes,
     kRewriteStyleAttributesWithUrl,
-    kServeNonCacheableNonCritical,
     kSplitHtml,
     kSpriteImages,
     kSquashImagesForMobileScreen,
@@ -2294,11 +2291,6 @@ class RewriteOptions {
   // experiment. Primarily used for tagging Google Analytics data.  This format
   // is not at all specific to Google Analytics, however.
   virtual GoogleString ToExperimentDebugString() const;
-
-  // Returns true if generation low res images is required.
-  virtual bool NeedLowResImages() const {
-    return Enabled(kDelayImages);
-  }
 
   // Convert an id string like "ah" to a Filter enum like kAddHead.
   // Returns kEndOfFilters if the id isn't known.

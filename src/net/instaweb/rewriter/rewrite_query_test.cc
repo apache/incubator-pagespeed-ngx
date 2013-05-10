@@ -557,7 +557,6 @@ TEST_F(RewriteQueryTest, NoscriptQueryParamEmptyValue) {
   RewriteOptions::FilterVector filter_set;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_set);
   EXPECT_TRUE(filter_set.empty());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
@@ -566,7 +565,6 @@ TEST_F(RewriteQueryTest, NoscriptHeader) {
   RewriteOptions::FilterVector filter_set;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_set);
   EXPECT_TRUE(filter_set.empty());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 

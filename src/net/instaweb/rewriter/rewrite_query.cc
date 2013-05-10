@@ -322,10 +322,6 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     } else if (value == kNoscriptValue) {
       // Disable filters that depend on custom script execution.
       options->DisableFiltersRequiringScriptExecution();
-      // Blink cache hit response will also redirect to "?Noscript=" and hence
-      // we need to disable blink.  Otherwise we will enter
-      // blink_flow_critical_line (causing a redirect loop).
-      options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
       options->EnableFilter(RewriteOptions::kHandleNoscriptRedirect);
       status = kSuccess;
     } else {
