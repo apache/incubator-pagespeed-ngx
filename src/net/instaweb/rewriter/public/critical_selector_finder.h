@@ -46,9 +46,19 @@ class CriticalSelectorFinder {
 
   static void InitStats(Statistics* statistics);
 
+  // Reads the recorded selector set from the property cache, and unmarshals it
+  // into *critical_selectors.  Abstracts away the handling of multiple beacon
+  // results.  Call this in preference to the method below.  Returns false and
+  // empties *critical_selectors if no valid critical image set is available.
+  static bool GetCriticalSelectorsFromPropertyCache(
+      RewriteDriver* driver, StringSet* critical_selectors);
+
   // Reads the recorded selector set from the property cache, and demarshals it.
-  // Allocates a fresh object, transferring ownership of it to the caller.
-  // May return NULL if no currently valid set is available.
+  // Allocates a fresh object, transferring ownership of it to the caller.  May
+  // return NULL if no currently valid set is available.  This is used
+  // internally by RewriteDriver to lazily initialize critical selector data
+  // from the pcache; don't call it, call GetCriticalSelectorsFromPropertyCache
+  // instead.
   CriticalSelectorSet* DecodeCriticalSelectorsFromPropertyCache(
       RewriteDriver* driver);
 
@@ -76,6 +86,12 @@ class CriticalSelectorFinder {
   // The number of beacon results to keep. This is an estimate for how many
   // samples it will take to get stable results.
   static const int kDefaultNumSetsToKeep = 10;
+
+  // Compute a simple critical selector set for the given pcache_selectors and
+  // record it in *critical_selectors.
+  static void ConvertCriticalSelectorsToSet(
+      const CriticalSelectorSet& pcache_selectors,
+      StringSet* critical_selectors);
 
   // Merge the given set into the existing critical selector sets by adding the
   // new set to the history of sets, discarding the oldest if we exceed

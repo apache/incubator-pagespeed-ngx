@@ -30,7 +30,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/critical_selectors.pb.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -331,19 +331,15 @@ GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
 
 void CriticalSelectorFilter::StartDocumentImpl() {
   CssSummarizerBase::StartDocumentImpl();
+  ServerContext* context = driver()->server_context();
 
   // Read critical selector info from pcache.
-  critical_selectors_.clear();
-  CriticalSelectorSet* pcache_selectors = driver_->CriticalSelectors();
-  if (pcache_selectors != NULL) {
-    for (int i = 0; i < pcache_selectors->critical_selectors_size(); ++i) {
-      critical_selectors_.insert(pcache_selectors->critical_selectors(i));
-    }
-  }
+  context->critical_selector_finder()->GetCriticalSelectorsFromPropertyCache(
+      driver(), &critical_selectors_);
 
+  // Compute corresponding cache key suffix
   GoogleString all_selectors = JoinCollection(critical_selectors_, ",");
-  cache_key_suffix_ =
-      driver_->server_context()->lock_hasher()->Hash(all_selectors);
+  cache_key_suffix_ = context->lock_hasher()->Hash(all_selectors);
 
   // Clear state between re-uses / check to make sure we wrapped up properly.
   DCHECK(css_elements_.empty());

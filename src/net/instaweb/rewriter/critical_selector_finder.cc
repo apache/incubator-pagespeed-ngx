@@ -97,6 +97,25 @@ CriticalSelectorFinder::DecodeCriticalSelectorsFromPropertyCache(
   return NULL;
 }
 
+void CriticalSelectorFinder::ConvertCriticalSelectorsToSet(
+    const CriticalSelectorSet& pcache_selectors,
+    StringSet* critical_selectors) {
+  for (int i = 0; i < pcache_selectors.critical_selectors_size(); ++i) {
+    critical_selectors->insert(pcache_selectors.critical_selectors(i));
+  }
+}
+
+bool CriticalSelectorFinder::GetCriticalSelectorsFromPropertyCache(
+    RewriteDriver* driver, StringSet* critical_selectors) {
+  CriticalSelectorSet* pcache_selectors = driver->CriticalSelectors();
+  critical_selectors->clear();
+  if (pcache_selectors == NULL) {
+    return false;
+  }
+  ConvertCriticalSelectorsToSet(*pcache_selectors, critical_selectors);
+  return true;
+}
+
 void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
   const StringSet& selector_set, RewriteDriver* driver) {
   WriteCriticalSelectorsToPropertyCache(
@@ -110,7 +129,6 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
     const StringSet& selector_set,
     const PropertyCache* cache, PropertyPage* page,
     MessageHandler* message_handler) {
-
   // We can't do anything here if page is NULL, so bail out early.
   if (page == NULL) {
     return;
