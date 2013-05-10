@@ -44,7 +44,7 @@ enum PropertyCacheDecodeResult {
 // setting *status and returning NULL if any errors were found.
 const PropertyValue* DecodeFromPropertyCacheHelper(
     const PropertyCache* cache,
-    PropertyPage* page,
+    AbstractPropertyPage* page,
     const PropertyCache::Cohort* cohort,
     StringPiece property_name,
     int64 cache_ttl_ms,
@@ -59,7 +59,7 @@ const PropertyValue* DecodeFromPropertyCacheHelper(
 // NULL is returned.
 template<typename T>
 T* DecodeFromPropertyCache(const PropertyCache* cache,
-                           PropertyPage* page,
+                           AbstractPropertyPage* page,
                            const PropertyCache::Cohort* cohort,
                            StringPiece property_name,
                            int64 cache_ttl_ms,
@@ -108,8 +108,11 @@ enum PropertyCacheUpdateResult {
 };
 
 PropertyCacheUpdateResult UpdateInPropertyCache(
-    const protobuf::MessageLite& value, const PropertyCache::Cohort* cohort,
-    StringPiece property_name, bool write_cohort, PropertyPage* page);
+    const protobuf::MessageLite& value,
+    const PropertyCache::Cohort* cohort,
+    StringPiece property_name,
+    bool write_cohort,
+    AbstractPropertyPage* page);
 
 // Updates the property 'property_name' in cohort 'cohort_name' of the property
 // cache managed by the rewrite driver with the new value of the proto T.
@@ -119,7 +122,7 @@ inline PropertyCacheUpdateResult UpdateInPropertyCache(
     const protobuf::MessageLite& value, RewriteDriver* driver,
     const PropertyCache::Cohort* cohort, StringPiece property_name,
     bool write_cohort) {
-  PropertyPage* page = driver->property_page();
+  AbstractPropertyPage* page = driver->property_page();
   return UpdateInPropertyCache(
       value, cohort, property_name, write_cohort, page);
 }

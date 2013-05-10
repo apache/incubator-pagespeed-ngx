@@ -47,11 +47,6 @@ class MockCriticalCssFinder : public CriticalCssFinder {
   // Mock to avoid dealing with property cache.
   virtual CriticalCssResult* GetCriticalCssFromCache(RewriteDriver* driver);
 
-  // Method to get propertyValue using protected method 'GetPropertyValue'.
-  const PropertyValue* GetUpdatedValue(RewriteDriver* driver) {
-    return GetPropertyValue(driver);
-  }
-
   virtual void ComputeCriticalCss(RewriteDriver* driver) {}
   virtual const PropertyCache::Cohort* GetCohort() const;
 

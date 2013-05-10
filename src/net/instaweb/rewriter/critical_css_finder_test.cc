@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -34,6 +35,8 @@
 namespace net_instaweb {
 
 namespace {
+
+const char kFallbackUrl[] = "http://www.test.com?a=b";
 
 // Provide stub implementation of abstract base class for testing purposes.
 // Note: Not using the implementation from mock_critical_css_finder.h, so that
@@ -53,8 +56,13 @@ class MockCriticalCssFinder : public CriticalCssFinder {
   }
 
   // Make protected method public for test.
-  const PropertyValue* GetUpdatedValue(RewriteDriver* driver) {
-    return GetPropertyValue(driver);
+  const PropertyValue* GetUpdatedValue(
+      RewriteDriver* driver, AbstractPropertyPage* page) {
+    const PropertyCache::Cohort* cohort = GetCohort();
+    if (cohort != NULL && page != NULL) {
+      return page->GetProperty(cohort, kCriticalCssPropertyName);
+    }
+    return NULL;
   }
 
  private:
@@ -79,14 +87,23 @@ class CriticalCssFinderTest : public RewriteTestBase {
     rewrite_driver()->Clear();
     rewrite_driver()->set_request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
-    MockPropertyPage* page = NewMockPage(kRequestUrl);
-    rewrite_driver()->set_property_page(page);
     PropertyCache* pcache = server_context_->page_property_cache();
+    MockPropertyPage* page = NewMockPage(kRequestUrl);
+    MockPropertyPage* page_with_fallback_values =
+        NewMockPage(kFallbackUrl);
+    rewrite_driver()->set_fallback_property_page(
+        new FallbackPropertyPage(page, page_with_fallback_values));
+    pcache->Read(page_with_fallback_values);
     pcache->Read(page);
   }
 
   const PropertyValue* GetUpdatedValue() {
-    return finder_->GetUpdatedValue(rewrite_driver());
+    return finder_->GetUpdatedValue(
+        rewrite_driver(), rewrite_driver()->property_page());
+  }
+
+  const PropertyCache::Cohort* GetCohort() {
+    return finder_->GetCohort();
   }
 
   void CheckCriticalCssFinderStats(int hits, int expiries, int not_found) {
@@ -113,7 +130,11 @@ TEST_F(CriticalCssFinderTest, UpdateCacheOnSuccess) {
   link_rules->set_critical_rules(GoogleString("a_critical {color: black;}"));
   link_rules->set_original_size(100);
   EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
+  // Property present in actual page.
   EXPECT_TRUE(GetUpdatedValue()->has_value());
+  // Property present in page containing fallback values.
+  EXPECT_TRUE(rewrite_driver()->fallback_property_page()->GetFallbackProperty(
+      GetCohort(), CriticalCssFinder::kCriticalCssPropertyName));
 }
 
 TEST_F(CriticalCssFinderTest,
@@ -164,9 +185,13 @@ TEST_F(CriticalCssFinderTest, CheckCacheHandling) {
     result.SerializeToString(&result_str);
 
     EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
-    // Write the updated value to the pcache.
+    // Write the updated value for both actual property page and page with
+    // fallback values to the pcache.
     rewrite_driver()->property_page()->WriteCohort(finder_->GetCohort());
     EXPECT_TRUE(GetUpdatedValue()->has_value());
+    // Property present in page containing fallback values.
+    EXPECT_TRUE(rewrite_driver()->fallback_property_page()->GetFallbackProperty(
+        GetCohort(), CriticalCssFinder::kCriticalCssPropertyName));
   }
 
   {

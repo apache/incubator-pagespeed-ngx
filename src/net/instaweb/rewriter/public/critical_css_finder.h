@@ -29,7 +29,6 @@ class RewriteDriver;
 class Statistics;
 class TimedVariable;
 
-
 // Finds critical CSS rules (i.e. CSS needed for the initial page load).
 class CriticalCssFinder {
  public:
@@ -66,9 +65,6 @@ class CriticalCssFinder {
   virtual CriticalCssResult* GetCriticalCss(RewriteDriver* driver);
 
   virtual const PropertyCache::Cohort* GetCohort() const = 0;
-
- protected:
-  PropertyValue* GetPropertyValue(RewriteDriver* driver);
 
  private:
   TimedVariable* critical_css_valid_count_;
