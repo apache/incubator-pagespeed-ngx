@@ -138,7 +138,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     ngx_url_async_fetcher_ = fetcher;
     return fetcher;
   } else {
-    net_instaweb::UrlAsyncFetcher* fetcher =
+    net_instaweb::SerfUrlAsyncFetcher* fetcher =
         new net_instaweb::SerfUrlAsyncFetcher(
             fetcher_proxy,
             NULL,
@@ -147,6 +147,8 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             timer(),
             2500,
             message_handler());
+    // Make sure we don't block the nginx event loop
+    fetcher->set_force_threaded(true);
     return fetcher;
   }
 }
