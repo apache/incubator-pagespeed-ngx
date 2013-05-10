@@ -708,9 +708,10 @@ WGET_ARGS=""
 test_filter add_instrumentation beacons load.
 
 # Nginx won't sent a Content-Length header on a 204, and while this is correct
-# per rfc 2616 wget hangs.  So set wget to time out after one second,
-# "--timeout=1", and try only once, "-t 1", and check that we got a 204.
-OUT=$(wget -q  --save-headers -O - -t 1 --timeout=1 \
+# per rfc 2616 wget hangs. Adding --no-http-keep-alive fixes that, as wget will.
+# send 'Connection: close' in its request headers, which will make nginx
+# respond with that as well. Check that we got a 204.
+OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
       http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13)
 check_from "$OUT" grep '^HTTP/1.1 204'
 # The $'...' tells bash to interpret c-style escapes, \r in this case.
@@ -1425,10 +1426,8 @@ OPTIONS_HASH=$( \
 BEACON_URL="http://${HOSTNAME}${BEACON_PATH}"
 BEACON_DATA="url=${ESCAPED_URL}&oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
 
-# Again, nginx won't sent a Content-Length header on a 204, which hangs wget.
-# So set wget to time out after one second, "--timeout=1", and try only once,
-# "-t 1", and check that we got a 204.
-OUT=$(wget -q  --save-headers -O - -t 1 --timeout=1 \
+# See the comments about 204 responses and --no-http-keep-alive above.
+OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
       --post-data "$BEACON_DATA" "$BEACON_URL")
 check_from "$OUT" grep '^HTTP/1.1 204'
 
@@ -1471,9 +1470,9 @@ BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_DATA+="image_rewriting%2Frewrite_images.html"
 BEACON_DATA+="&oh=$OPTIONS_HASH&ci=2932493096"
-# See note above in the prioritize_critical_css test regarding --timeout=1.
+# See the comments about 204 responses and --no-http-keep-alive above.
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-  wget -q --save-headers -O - -t 1 --timeout=1 \
+  wget -q --save-headers -O - --no-http-keep-alive \
   --post-data "$BEACON_DATA" "$BEACON_URL")
 echo $OUT
 check_from "$OUT" egrep -q "HTTP/1[.]. 204"
