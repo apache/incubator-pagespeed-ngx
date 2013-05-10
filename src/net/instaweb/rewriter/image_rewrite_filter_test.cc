@@ -40,9 +40,9 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/image.h"
+#include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -123,31 +123,6 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
   GoogleString* headers_out_;
   bool found_;
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheStringCallback);
-};
-
-// By default, CriticalImagesFinder does not return meaningful results. However,
-// this test manually manages the critical image set, so CriticalImagesFinder
-// can return useful information for testing this filter.
-class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
- public:
-  explicit MeaningfulCriticalImagesFinder(Statistics* stats)
-      : CriticalImagesFinder(stats),
-        compute_calls_(0) {}
-  virtual ~MeaningfulCriticalImagesFinder() {}
-  virtual bool IsMeaningful(const RewriteDriver* driver) const {
-    return true;
-  }
-  virtual void ComputeCriticalImages(RewriteDriver* driver) {
-    ++compute_calls_;
-  }
-  int num_compute_calls() { return compute_calls_; }
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return NULL;
-  }
-
- private:
-  int compute_calls_;
-  DISALLOW_COPY_AND_ASSIGN(MeaningfulCriticalImagesFinder);
 };
 
 }  // namespace
@@ -1653,8 +1628,8 @@ TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
 }
 
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
-  MeaningfulCriticalImagesFinder* finder =
-      new MeaningfulCriticalImagesFinder(statistics());
+  MockCriticalImagesFinder* finder =
+      new MockCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -1667,9 +1642,10 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 
   // Image not present in critical set should not be inlined.
-  StringSet* critical_images = server_context()->critical_images_finder()->
-      mutable_html_critical_images(rewrite_driver());
+  StringSet* critical_images = new StringSet;
   critical_images->insert(StrCat(kTestDomain, "other_image.png"));
+  finder->set_critical_images(critical_images);
+
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
   EXPECT_EQ(-1, logging_info()->num_html_critical_images());

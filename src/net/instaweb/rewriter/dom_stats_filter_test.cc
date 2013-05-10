@@ -19,19 +19,16 @@
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "testing/base/public/gunit.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
-
-class Statistics;
 
 class DomStatsFilterTest : public RewriteTestBase {
  protected:
@@ -43,22 +40,6 @@ class DomStatsFilterTest : public RewriteTestBase {
   }
 
   DomStatsFilter* filter_;
-};
-
-class SimpleCriticalImagesFinder : public CriticalImagesFinder {
- public:
-  explicit SimpleCriticalImagesFinder(Statistics* stats)
-      : CriticalImagesFinder(stats) {}
-  virtual ~SimpleCriticalImagesFinder() {}
-  virtual bool IsMeaningful(const RewriteDriver* driver) const {
-    return true;
-  }
-  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return NULL;
-  }
- private:
-  DISALLOW_COPY_AND_ASSIGN(SimpleCriticalImagesFinder);
 };
 
 TEST_F(DomStatsFilterTest, ImgTest) {
@@ -97,14 +78,14 @@ TEST_F(DomStatsFilterTest, NumScriptsTest) {
 TEST_F(DomStatsFilterTest, CriticalImagesUsedTest) {
   const GoogleString input_html =
       "<html><body><img src='a'><img src='a'><img src='b'></body></html>";
-  SimpleCriticalImagesFinder* finder =
-      new SimpleCriticalImagesFinder(statistics());
+  MockCriticalImagesFinder* finder =
+      new MockCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
-  StringSet* critical_images = server_context()->critical_images_finder()->
-      mutable_html_critical_images(rewrite_driver());
+  StringSet* critical_images = new StringSet;
   critical_images->insert(StrCat(kTestDomain, "a"));
   critical_images->insert(StrCat(kTestDomain, "c"));
   critical_images->insert(StrCat(kTestDomain, "d"));
+  finder->set_critical_images(critical_images);
   ValidateNoChanges("critical_images_used", input_html);
   // Image 'a' is the only critical image used and it is used twice.
   EXPECT_EQ(2, filter_->num_critical_images_used());

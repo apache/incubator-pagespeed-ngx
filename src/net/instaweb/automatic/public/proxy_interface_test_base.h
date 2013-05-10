@@ -36,7 +36,7 @@
 
 namespace net_instaweb {
 
-class CriticalImagesFinder;
+class MockCriticalImagesFinder;
 class GoogleUrl;
 class HtmlElement;
 class HtmlFilter;
@@ -241,7 +241,7 @@ class ProxyInterfaceTestBase : public RewriteTestBase {
  private:
   friend class FilterCallback;
 
-  CriticalImagesFinder* fake_critical_images_finder_;
+  MockCriticalImagesFinder* mock_critical_images_finder_;
 };
 
 }  // namespace net_instaweb

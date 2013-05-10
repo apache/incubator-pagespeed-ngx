@@ -23,38 +23,18 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-class Statistics;
-
-// By default, CriticalImagesFinder does not return meaningful results. However,
-// this test manually manages the critical image set, so CriticalImagesFinder
-// can return useful information for testing this filter.
-class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
- public:
-  explicit MeaningfulCriticalImagesFinder(Statistics* stats)
-      : CriticalImagesFinder(stats) {}
-  virtual ~MeaningfulCriticalImagesFinder() {}
-  virtual bool IsMeaningful(const RewriteDriver* driver) const {
-    return true;
-  }
-  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return NULL;
-  }
-};
 
 class LazyloadImagesFilterTest : public RewriteTestBase {
  protected:
@@ -217,15 +197,15 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
 
 TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   InitLazyloadImagesFilter(false);
-  server_context()->set_critical_images_finder(
-      new MeaningfulCriticalImagesFinder(statistics()));
+  MockCriticalImagesFinder* finder = new MockCriticalImagesFinder(statistics());
+  server_context()->set_critical_images_finder(finder);
 
-  StringSet* critical_images = server_context()->critical_images_finder()->
-      mutable_html_critical_images(rewrite_driver());
+  StringSet* critical_images = new StringSet;
   critical_images->insert("http://www.1.com/critical");
   critical_images->insert("www.1.com/critical2");
   critical_images->insert("http://test.com/critical3");
   critical_images->insert("http://test.com/critical4.jpg");
+  finder->set_critical_images(critical_images);
 
   GoogleString rewritten_url = Encode(
       "http://test.com/", "ce", "HASH", "critical4.jpg", "jpg");
