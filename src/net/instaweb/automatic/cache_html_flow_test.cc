@@ -1482,7 +1482,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlushSubresources) {
                           "prefetch_link_rel_subresource");
   ResponseHeaders response_headers;
   FetchFromProxy("http://test.com/flush_subresources.html"
-                 "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
+                 "?PageSpeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyNonCacheHtmlResponse(response_headers);
   EXPECT_EQ(0, statistics()->FindVariable(
@@ -1492,7 +1492,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlushSubresources) {
   flush_early_info_finder_->Clear();
   response_headers.Clear();
   FetchFromProxy("http://test.com/flush_subresources.html"
-                 "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
+                 "?PageSpeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyFlushSubresourcesResponse(text, true);
   EXPECT_EQ(0, statistics()->FindVariable(

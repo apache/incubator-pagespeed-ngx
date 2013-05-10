@@ -281,7 +281,7 @@ apache_debug_global_off_test :
 	$(MAKE) apache_install_conf
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
-	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE)?ModPagespeed=on 2>&1 \
+	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE)?PageSpeed=on 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 # Sanity-check that enabling shared-memory locks don't cause the
@@ -289,10 +289,10 @@ apache_debug_global_off_test :
 apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
     apache_install_conf apache_debug_restart
 	$(WGET_NO_PROXY) -q -O /dev/null \
-	    $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css
+	    $(EXAMPLE_COMBINE_CSS)?PageSpeedFilters=combine_css
 	sleep 1
 	$(WGET_NO_PROXY) -q -O - \
-	    $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css \
+	    $(EXAMPLE_COMBINE_CSS)?PageSpeedFilters=combine_css \
 	 | grep "\.pagespeed\.cc\."
 
 shared_mem_lock_test_prepare :
@@ -315,7 +315,7 @@ apache_debug_all_directives_test :
 STATS = mod_pagespeed_statistics
 GLOBAL_STATS = mod_pagespeed_global_statistics
 TRIM_PATH = \
-    "mod_pagespeed_example/trim_urls.html?ModPagespeedFilters=trim_urls"
+    "mod_pagespeed_example/trim_urls.html?PageSpeedFilters=trim_urls"
 
 apache_debug_per_vhost_stats_test :
 	$(MAKE) apache_install_conf \

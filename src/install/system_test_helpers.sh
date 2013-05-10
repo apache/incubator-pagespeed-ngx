@@ -98,7 +98,7 @@ HOSTNAME=$1
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
 # TODO(sligocki): Should we be rewriting the statistics page by default?
 # Currently we are, so disable that so that it doesn't spoil our stats.
-STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics?ModPagespeed=off
+STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics?PageSpeed=off
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/W.bad.pagespeed.cf.hash.css
 MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
@@ -423,8 +423,10 @@ function fetch_until() {
   done;
 }
 
-# Helper to set up most filter tests.  Alternate between using query-params
-# and request-headers to enable the filter, so we know they both work.
+# Helper to set up most filter tests.  Alternate between using:
+#  1) query-params vs request-headers
+#  2) ModPagespeed... vs PageSpeed...
+# to enable the filter so we know all combinations work.
 filter_spec_method="query_params"
 function test_filter() {
   rm -rf $OUTDIR
@@ -438,7 +440,14 @@ function test_filter() {
   if [ $filter_spec_method = "query_params" ]; then
     WGET_ARGS=""
     FILE="$FILE?ModPagespeedFilters=$FILTER_NAME"
+    filter_spec_method="query_params_pagespeed"
+  elif [ $filter_spec_method = "query_params_pagespeed" ]; then
+    WGET_ARGS=""
+    FILE="$FILE?PageSpeedFilters=$FILTER_NAME"
     filter_spec_method="headers"
+  elif [ $filter_spec_method = "headers" ]; then
+    WGET_ARGS="--header=ModPagespeedFilters:$FILTER_NAME"
+    filter_spec_method="headers_pagespeed"
   else
     WGET_ARGS="--header=ModPagespeedFilters:$FILTER_NAME"
     filter_spec_method="query_params"

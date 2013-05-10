@@ -313,7 +313,7 @@ RewriteOptions* get_custom_options(ApacheServerContext* server_context,
       server_context->GetQueryOptions(gurl, request_headers, NULL);
   if (!query_options_success.second) {
     server_context->message_handler()->Message(
-        kWarning, "Invalid ModPagespeed query params or headers for "
+        kWarning, "Invalid PageSpeed query params or headers for "
         "request %s. Serving with default options.", gurl->spec_c_str());
   }
   if (query_options_success.first != NULL) {
@@ -438,12 +438,11 @@ bool handle_as_proxy(ApacheServerContext* server_context,
                      RewriteOptions* options,
                      scoped_ptr<RewriteOptions>* custom_options) {
   bool handled = false;
-  // Consider Issue 609: proxying an external CSS file via
-  // ModPagespeedMapProxyDomain, and the CSS file makes reference to
-  // a font file, which mod_pagespeed does not know anything about, and
-  // does not know how to absolutify.  We need to handle the request for
-  // the external font file here, even if IPRO (in place resource
-  // optimization) is off.
+  // Consider Issue 609: proxying an external CSS file via MapProxyDomain, and
+  // the CSS file makes reference to a font file, which mod_pagespeed does not
+  // know anything about, and does not know how to absolutify.  We need to
+  // handle the request for the external font file here, even if IPRO (in place
+  // resource optimization) is off.
   bool is_proxy = false;
   GoogleString mapped_url;
   if (options->domain_lawyer()->MapOriginUrl(*gurl, &mapped_url, &is_proxy) &&
@@ -1025,7 +1024,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (request_handler_str == kLogRequestHeadersHandler) {
-    // For testing ModPagespeedCustomFetchHeader.
+    // For testing CustomFetchHeader.
     GoogleString output;
     StringWriter writer(&output);
     HeaderLoggingData header_logging_data(&writer, message_handler);
@@ -1041,19 +1040,19 @@ apr_status_t instaweb_handler(request_rec* request) {
     // headers_out and/or err_headers_out to test handling of parameters in
     // those resources.
     if (strstr(request->parsed_uri.query, "headers_out") != NULL) {
-      apr_table_add(request->headers_out, "ModPagespeed", "off");
+      apr_table_add(request->headers_out, "PageSpeed", "off");
     } else if (strstr(request->parsed_uri.query, "headers_errout") != NULL) {
-      apr_table_add(request->err_headers_out, "ModPagespeed", "off");
+      apr_table_add(request->err_headers_out, "PageSpeed", "off");
     } else if (strstr(request->parsed_uri.query, "headers_override") != NULL) {
-      apr_table_add(request->headers_out, "ModPagespeed", "off");
-      apr_table_add(request->headers_out, "ModPagespeedFilters",
+      apr_table_add(request->headers_out, "PageSpeed", "off");
+      apr_table_add(request->headers_out, "PageSpeedFilters",
                     "-remove_comments");
-      apr_table_add(request->err_headers_out, "ModPagespeed", "on");
-      apr_table_add(request->err_headers_out, "ModPagespeedFilters",
+      apr_table_add(request->err_headers_out, "PageSpeed", "on");
+      apr_table_add(request->err_headers_out, "PageSpeedFilters",
                     "+remove_comments");
     } else if (strstr(request->parsed_uri.query, "headers_combine") != NULL) {
-      apr_table_add(request->headers_out, "ModPagespeed", "on");
-      apr_table_add(request->err_headers_out, "ModPagespeedFilters",
+      apr_table_add(request->headers_out, "PageSpeed", "on");
+      apr_table_add(request->err_headers_out, "PageSpeedFilters",
                     "+remove_comments");
     }
 

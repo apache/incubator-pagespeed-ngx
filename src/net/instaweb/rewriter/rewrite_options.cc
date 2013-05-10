@@ -1928,7 +1928,7 @@ bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
       (enabled_filters_.size() + disabled_filters_.size());
 
   // Default to false unless no filters are specified.
-  // "ModPagespeedFilters=" -> disable all filters.
+  // "PageSpeedFilters=" -> disable all filters.
   bool non_incremental = names.empty();
   for (int i = 0, n = names.size(); i < n; ++i) {
     StringPiece& option = names[i];

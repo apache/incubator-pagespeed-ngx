@@ -45,7 +45,7 @@ const char kPsaRewriterHeader[] = "X-PSA-Rewriter";
 // prioritize_visible_content filter to invalidate its cache.
 const char kPsaLastModified[] = "X-PSA-Last-Modified";
 
-// Noscript element that redirects to ModPagespeed=noscript.  This is applied
+// Noscript element that redirects to PageSpeed=noscript.  This is applied
 // when a filter that inserts custom javascript is enabled.
 const char kNoScriptRedirectFormatter[] =
     "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url='%s'\" />"

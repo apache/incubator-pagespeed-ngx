@@ -29,9 +29,9 @@ class RewriteDriver;
 
 // This filter applies only for requests that are redirects to
 // "?ModPagespeed=noscript".  It inserts a "<link rel=canonical href="URL
-// without the query param" >" element in the head.
-// TODO(sriharis): Set a cookie so that subsequent requests from the same client
-// do not cause redirects.
+// without the query param" >" element in the head.  TODO(sriharis): Set a
+// cookie so that subsequent requests from the same client do not cause
+// redirects.
 class HandleNoscriptRedirectFilter : public EmptyHtmlFilter {
  public:
   explicit HandleNoscriptRedirectFilter(RewriteDriver* rewrite_driver);

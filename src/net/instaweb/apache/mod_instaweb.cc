@@ -462,7 +462,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   ResponseHeaders response_headers;
   {
-    // TODO(mmohabey): Add a hook which strips off the ModPagespeed* query
+    // TODO(mmohabey): Add a hook which strips off the PageSpeed* query
     // (instead of stripping them here) params before content generation.
     GoogleUrl gurl(absolute_url);
     ApacheRequestToRequestHeaders(*request, request_headers.get());
@@ -480,7 +480,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
                                         &response_headers);
     if (!query_options_success.second) {
       ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                    "Request not rewritten because ModPagespeed "
+                    "Request not rewritten because PageSpeed "
                     "query-params or headers are invalid.");
       return NULL;
     }
@@ -501,7 +501,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       options = merged_options;
 
       if (gurl.is_valid()) {
-        // Set final url to gurl which has ModPagespeed* query params
+        // Set final url to gurl which has PageSpeed* query params
         // stripped.
         final_url = gurl.Spec().as_string();
       }
@@ -538,7 +538,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
           ApacheRequestToResponseHeaders(*request, &tmp_resp_headers,
                                          &tmp_err_resp_headers);
 
-          // Use ScanHeader's parsing logic to find and strip the ModPagespeed
+          // Use ScanHeader's parsing logic to find and strip the PageSpeed
           // options from the headers. Use NULL for device_properties as no
           // device property information is needed for the stripping.
           RewriteQuery::ScanHeader(
@@ -564,16 +564,16 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // TODO(sligocki): Move inside PSOL.
-  // Is ModPagespeed turned off? We check after parsing query params so that
+  // Is PageSpeed turned off? We check after parsing query params so that
   // they can override .conf settings.
   if (!options->enabled()) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                  "Request not rewritten because: ModPagespeed off");
+                  "Request not rewritten because: PageSpeed is off");
     return NULL;
   }
 
   // TODO(sligocki): Move inside PSOL.
-  // Do ModPagespeedDisallow statements restrict us from rewriting this URL?
+  // Do Disallow statements restrict us from rewriting this URL?
   if (!options->IsAllowed(final_url)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: ModPagespeedDisallow");
@@ -730,7 +730,7 @@ apr_status_t instaweb_out_filter(ap_filter_t* filter, apr_bucket_brigade* bb) {
 // by the call to ap_add_output_filter(kModPagespeedFixHeadersName...)
 // in build_context_for_request.
 //
-// NOTE: This is disabled if users set "ModPagespeedModifyCachingHeaders false".
+// NOTE: This is disabled if users set "ModifyCachingHeaders false".
 apr_status_t instaweb_fix_headers_filter(
     ap_filter_t* filter, apr_bucket_brigade* bb) {
   request_rec* request = filter->r;

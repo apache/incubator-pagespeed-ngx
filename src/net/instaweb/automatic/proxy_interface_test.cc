@@ -359,7 +359,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(logging_info()->is_request_disabled());
 
   // Fetch disabled url.
-  url = "http://www.example.com/?ModPagespeed=off";
+  url = "http://www.example.com/?PageSpeed=off";
   logging_info()->Clear();
   mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
                                 "<html></html>");
@@ -378,7 +378,7 @@ TEST_F(ProxyInterfaceTest, SkipPropertyCacheLookupIfOptionsNotEnabled) {
   headers.SetStatusAndReason(HttpStatus::kOK);
 
   // Fetch disabled url.
-  url = "http://www.example.com/?ModPagespeed=off";
+  url = "http://www.example.com/?PageSpeed=off";
   logging_info()->Clear();
   mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
                                 "<html></html>");

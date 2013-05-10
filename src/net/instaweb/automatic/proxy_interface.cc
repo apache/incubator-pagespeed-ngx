@@ -264,7 +264,7 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   scoped_ptr<GoogleUrl> gurl(new GoogleUrl);
   gurl->Reset(request_url);
 
-  // Stripping ModPagespeed query params before the property cache lookup to
+  // Stripping PageSpeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
   ServerContext::OptionsBoolPair query_options_success =
       server_context_->GetQueryOptions(gurl.get(),

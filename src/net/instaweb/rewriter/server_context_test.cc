@@ -386,7 +386,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   // Now put a query-param in, just turning on PageSpeed.  The core filters
   // should be enabled.
   options.reset(GetCustomOptions(
-      "http://example.com/?ModPagespeed=on",
+      "http://example.com/?PageSpeed=on",
       &request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
@@ -396,7 +396,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
 
   // Now explicitly enable a filter, which should disable others.
   options.reset(GetCustomOptions(
-      "http://example.com/?ModPagespeedFilters=extend_cache",
+      "http://example.com/?PageSpeedFilters=extend_cache",
       &request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   CheckExtendCache(options.get(), true);
@@ -405,16 +405,16 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
 
   // Now put a request-header in, turning off pagespeed.  request-headers get
   // priority over query-params.
-  request_headers.Add("ModPagespeed", "off");
+  request_headers.Add("PageSpeed", "off");
   options.reset(GetCustomOptions(
-      "http://example.com/?ModPagespeed=on",
+      "http://example.com/?PageSpeed=on",
       &request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_FALSE(options->enabled());
 
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
-  GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
+  GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
   EXPECT_FALSE(server_context()->GetQueryOptions(
       &gurl, &request_headers, NULL).second);
 
@@ -488,7 +488,7 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
 
   // Now combine with query params, which turns core-filters on.
   options.reset(GetCustomOptions(
-      "http://example.com/?ModPagespeed=on",
+      "http://example.com/?PageSpeed=on",
       &request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
@@ -501,7 +501,7 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
   // that explicit filter-setting in query-params overrides completely
   // the options provided as a parameter.
   options.reset(GetCustomOptions(
-      "http://example.com/?ModPagespeedFilters=combine_css",
+      "http://example.com/?PageSpeedFilters=combine_css",
       &request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
@@ -511,7 +511,7 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
 
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
-  GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
+  GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
   EXPECT_FALSE(server_context()->GetQueryOptions(
       &gurl, &request_headers, NULL).second);
 

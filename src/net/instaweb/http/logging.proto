@@ -443,7 +443,7 @@ message LoggingInfo {
   optional bool is_url_disallowed = 11 [ default = false ];
   // RewriteOptions signature hash.
   optional int64 options_signature_hash = 12;
-  // Whether request is disabled like ModPagespeed=off.
+  // Whether request is disabled like PageSpeed=off.
   optional bool is_request_disabled = 13 [ default = false ];
   // Information about flush subresources filter.
   optional FlushEarlyFlowInfo flush_early_flow_info = 14;
