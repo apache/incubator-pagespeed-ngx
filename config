@@ -170,6 +170,9 @@ if [ $ngx_found = yes ]; then
   # Make pagespeed run immediately before gzip.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
     sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/")
+  # Make the etag header filter run immediately after gzip.
+  HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
+    sed "s/$HTTP_GZIP_FILTER_MODULE/ngx_pagespeed_etag_filter $HTTP_GZIP_FILTER_MODULE/")
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
