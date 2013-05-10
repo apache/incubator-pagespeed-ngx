@@ -19,6 +19,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -80,6 +81,7 @@ SyncFetcherAdapterCallback::SyncFetcherAdapterCallback(
     const RequestContextPtr& request_context)
     : AsyncFetch(request_context),
       mutex_(thread_system->NewMutex()),
+      cond_(mutex_->NewCondvar()),
       done_(false),
       success_(false),
       released_(false),
@@ -97,6 +99,7 @@ void SyncFetcherAdapterCallback::HandleDone(bool success) {
     mutex_->Unlock();
     delete this;
   } else {
+    cond_->Signal();
     mutex_->Unlock();
   }
 }
@@ -113,8 +116,13 @@ void SyncFetcherAdapterCallback::Release() {
   }
 }
 
-bool SyncFetcherAdapterCallback::done() const {
+bool SyncFetcherAdapterCallback::IsDone() const {
   ScopedMutex hold_lock(mutex_.get());
+  return done_;
+}
+
+bool SyncFetcherAdapterCallback::IsDoneLockHeld() const {
+  mutex_->DCheckLocked();
   return done_;
 }
 
@@ -140,6 +148,12 @@ bool SyncFetcherAdapterCallback::LockIfNotReleased() {
 
 void SyncFetcherAdapterCallback::Unlock() {
   mutex_->Unlock();
+}
+
+void SyncFetcherAdapterCallback::TimedWait(int64 timeout_ms) {
+  mutex_->DCheckLocked();
+  DCHECK(!released_);
+  cond_->TimedWait(timeout_ms);
 }
 
 }  // namespace net_instaweb

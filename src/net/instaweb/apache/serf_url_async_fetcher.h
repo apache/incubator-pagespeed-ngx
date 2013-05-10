@@ -21,7 +21,7 @@
 #include <set>
 #include <vector>
 
-#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/string.h"
@@ -54,6 +54,7 @@ class SerfFetch;
 class SerfThreadedFetcher;
 class Timer;
 class Variable;
+struct ContentType;
 
 struct SerfStats {
   static const char kSerfFetchRequestCount[];
@@ -80,7 +81,7 @@ struct SerfStats {
 //   (1) It does not attempt to fall-back to IPv4 if IPv6 connection fails;
 //   (2) It may not correctly signal failure, which causes the incoming
 //       connection to hang.
-class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
+class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
   enum WaitChoice {
     kThreadedOnly,
@@ -106,8 +107,8 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* callback);
-
-  virtual int Poll(int64 max_wait_ms);
+  // TODO(morlovich): Make private once non-thread mode concept removed.
+  int Poll(int64 max_wait_ms);
 
   bool WaitForActiveFetches(int64 max_milliseconds,
                             MessageHandler* message_handler,

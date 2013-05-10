@@ -736,7 +736,6 @@
         'http/url_async_fetcher.cc',
         'http/url_async_fetcher_stats.cc',
         'http/url_fetcher.cc',
-        'http/url_pollable_async_fetcher.cc',
         'http/user_agent_matcher.cc',
         'http/wait_url_async_fetcher.cc',
         'http/wget_url_fetcher.cc',

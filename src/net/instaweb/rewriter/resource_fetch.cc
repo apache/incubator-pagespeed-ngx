@@ -111,10 +111,10 @@ bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
                   callback);
 
   // Wait for resource fetch to complete.
-  if (!callback->done()) {
+  if (!callback->IsDone()) {
     int64 max_ms = driver->options()->blocking_fetch_timeout_ms();
     for (int64 start_ms = server_context->timer()->NowMs(), now_ms = start_ms;
-         !callback->done() && now_ms - start_ms < max_ms;
+         !callback->IsDone() && now_ms - start_ms < max_ms;
          now_ms = server_context->timer()->NowMs()) {
       int64 remaining_ms = max_ms - (now_ms - start_ms);
 
@@ -124,7 +124,7 @@ bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
 
   MessageHandler* message_handler = server_context->message_handler();
   bool ok = false;
-  if (callback->done()) {
+  if (callback->IsDone()) {
     if (callback->success()) {
       ok = true;
     } else {

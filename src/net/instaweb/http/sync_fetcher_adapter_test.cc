@@ -14,11 +14,9 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-// Test the pollable async -> sync fetcher adapter and its callback helper
+// Test the async -> sync fetcher adapter and its callback helper
 
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
-
-#include <algorithm>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -26,19 +24,20 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_fetcher.h"
-#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
 
@@ -67,53 +66,59 @@ class TrapWriter : public Writer {
   DISALLOW_COPY_AND_ASSIGN(TrapWriter);
 };
 
-// A pollable fetcher that writes out a response at given number of microseconds
-// elapsed, or when asked to immediately. Note that it's only capable of one
-// fetch at a time!
-class DelayedFetcher : public UrlPollableAsyncFetcher {
+// An async fetcher that writes out a response at given number of milliseconds
+// elapsed, or when asked to immediately (if delay_ms <= 0). Note that it's only
+// capable of one fetch, and destroys itself after that completes. If a
+// syncpoint is set using set_sync, it will be notified immediately before that.
+class DelayedFetcher : public UrlAsyncFetcher {
  public:
   // Note: If sim_delay <= 0, will report immediately at Fetch.
-  DelayedFetcher(Timer* timer, MessageHandler* handler,
-                 int64 sim_delay_ms, bool sim_success)
-      : timer_(timer), handler_(handler), sim_delay_ms_(sim_delay_ms),
-        sim_success_(sim_success) {
-    CleanFetchSettings();
+  DelayedFetcher(ThreadSystem* thread_system,
+                 Timer* timer, MessageHandler* handler,
+                 int64 delay_ms, bool sim_success)
+      : thread_system_(thread_system),
+        timer_(timer), handler_(handler), delay_ms_(delay_ms),
+        sim_success_(sim_success), fetch_pending_(false), fetch_(NULL),
+        sync_(NULL) {
   }
 
   virtual void Fetch(const GoogleString& url, MessageHandler* handler,
                      AsyncFetch* fetch) {
     CHECK(!fetch_pending_);
     fetch_ = fetch;
-    remaining_ms_ = sim_delay_ms_;
     fetch_pending_ = true;
 
-    if (remaining_ms_ <= 0) {
+    if (delay_ms_ <= 0) {
       ReportResult();
+    } else {
+      InvokeCallbackThread* thread =
+          new InvokeCallbackThread(thread_system_, this);
+      EXPECT_TRUE(thread->Start());
     }
   }
 
-  virtual int Poll(int64 max_wait_ms) {
-    if (fetch_pending_) {
-      int64 delay_ms = std::min(max_wait_ms, remaining_ms_);
-      timer_->SleepMs(delay_ms);
-      remaining_ms_ -= delay_ms;
-
-      if (remaining_ms_ <= 0) {
-        ReportResult();
-      }
-    }
-
-    return fetch_pending_ ? 1 : 0;
-  }
+  void set_sync(WorkerTestBase::SyncPoint* sync) { sync_ = sync; }
 
  private:
-  void CleanFetchSettings() {
-    fetch_pending_ = false;
+  ~DelayedFetcher() {}
 
-    // Defensively set active fetch variables to catch us doing something silly.
-    fetch_ = NULL;
-    remaining_ms_ = 0;
-  }
+  class InvokeCallbackThread : public ThreadSystem::Thread {
+   public:
+    InvokeCallbackThread(ThreadSystem* thread_system,
+                         DelayedFetcher* parent)
+        : Thread(thread_system, "delayed_fetch", ThreadSystem::kDetached),
+          parent_(parent) {
+    }
+
+    virtual void Run() {
+      parent_->timer_->SleepMs(parent_->delay_ms_);
+      parent_->ReportResult();
+      delete this;
+    }
+
+   private:
+    DelayedFetcher* parent_;
+  };
 
   void ReportResult() {
     ResponseHeaders headers;
@@ -125,26 +130,34 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
       fetch_->Write(kText, handler_);
     }
     fetch_->Done(sim_success_);
-    CleanFetchSettings();
+    if (sync_ != NULL) {
+      sync_->Notify();
+    }
+    delete this;
   }
 
-  // Simulation settings:
+  ThreadSystem* thread_system_;
   Timer* timer_;
   MessageHandler* handler_;
-  int64 sim_delay_ms_;  // how long till we report the result
+
+  // Simulation settings:
+  int64 delay_ms_;  // how long till we report the result
   bool sim_success_;  // whether to report success or failure
 
   // Fetch session:
   bool fetch_pending_;
   AsyncFetch* fetch_;
-  int64 remaining_ms_;  // how much time left to report result of current fetch
+
+  // If non-NULL, will be used to wake up an owner when done.
+  WorkerTestBase::SyncPoint* sync_;
 };
 
 }  // namespace
 
 class SyncFetcherAdapterTest : public testing::Test {
  public:
-  SyncFetcherAdapterTest(): timer_(0) {
+  SyncFetcherAdapterTest() {
+    timer_.reset(Platform::CreateTimer());
     thread_system_.reset(Platform::CreateThreadSystem());
   }
 
@@ -161,8 +174,8 @@ class SyncFetcherAdapterTest : public testing::Test {
                                       ctx);
   }
 
-  void TestSuccessfulFetch(UrlPollableAsyncFetcher* async_fetcher) {
-    SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
+  void TestSuccessfulFetch(UrlAsyncFetcher* async_fetcher) {
+    SyncFetcherAdapter fetcher(timer_.get(), 1000, async_fetcher,
                                thread_system_.get());
 
     GoogleString out_str;
@@ -176,8 +189,8 @@ class SyncFetcherAdapterTest : public testing::Test {
     EXPECT_EQ(GoogleString(kText), *(values[0]));
   }
 
-  void TestFailedFetch(UrlPollableAsyncFetcher* async_fetcher) {
-    SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
+  void TestFailedFetch(UrlAsyncFetcher* async_fetcher) {
+    SyncFetcherAdapter fetcher(timer_.get(), 1000, async_fetcher,
                                thread_system_.get());
     TestFailedFetchSync(&fetcher);
   }
@@ -188,51 +201,62 @@ class SyncFetcherAdapterTest : public testing::Test {
   }
 
   void TestTimeoutFetch(DelayedFetcher* async_fetcher) {
-    SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
-                               thread_system_.get());
+    // We use a 1ms timeout here.
+    SyncFetcherAdapter fetcher(
+        timer_.get(), 1, async_fetcher, thread_system_.get());
+
+    WorkerTestBase::SyncPoint sync(thread_system_.get());
+
+    // We use a sync point to wait for the fetch thread to exit since the
+    // fixture owns the timer and we need that to be alive from the callbacks.
+    async_fetcher->set_sync(&sync);
 
     // First let the sync fetcher timeout, and return failure.
     TestFailedFetchSync(&fetcher);
 
-    // Now spin until async fetcher delivers the result, to make sure
-    // we do not blow up
-    while (async_fetcher->Poll(1000) != 0) {}
+    sync.Wait();
   }
 
   ResponseHeaders out_headers_;
   MockMessageHandler handler_;
-  MockTimer timer_;
+  scoped_ptr<Timer> timer_;
   scoped_ptr<ThreadSystem> thread_system_;
 };
 
 TEST_F(SyncFetcherAdapterTest, QuickOk) {
-  DelayedFetcher async_fetcher(&timer_, &handler_, 0, true);
-  TestSuccessfulFetch(&async_fetcher);
+  DelayedFetcher* async_fetcher = new DelayedFetcher(
+      thread_system_.get(), timer_.get(), &handler_, 0, true);
+  TestSuccessfulFetch(async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, SlowOk) {
-  DelayedFetcher async_fetcher(&timer_, &handler_, 500, true);
-  TestSuccessfulFetch(&async_fetcher);
+  DelayedFetcher* async_fetcher = new DelayedFetcher(
+      thread_system_.get(), timer_.get(), &handler_, 5, true);
+  TestSuccessfulFetch(async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, QuickFail) {
-  DelayedFetcher async_fetcher(&timer_, &handler_, 0, false);
-  TestFailedFetch(&async_fetcher);
+  DelayedFetcher* async_fetcher = new DelayedFetcher(
+      thread_system_.get(), timer_.get(), &handler_, 0, false);
+  TestFailedFetch(async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, SlowFail) {
-  DelayedFetcher async_fetcher(&timer_, &handler_, 500, false);
-  TestFailedFetch(&async_fetcher);
+  DelayedFetcher* async_fetcher = new DelayedFetcher(
+      thread_system_.get(), timer_.get(), &handler_, 5, false);
+  TestFailedFetch(async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, TimeoutOk) {
-  DelayedFetcher async_fetcher(&timer_, &handler_, 5000, true);
-  TestTimeoutFetch(&async_fetcher);
+  DelayedFetcher* async_fetcher = new DelayedFetcher(
+      thread_system_.get(), timer_.get(), &handler_, 25, true);
+  TestTimeoutFetch(async_fetcher);
 }
 
 TEST_F(SyncFetcherAdapterTest, TimeoutFail) {
-  DelayedFetcher async_fetcher(&timer_, &handler_, 5000, false);
-  TestTimeoutFetch(&async_fetcher);
+  DelayedFetcher* async_fetcher = new DelayedFetcher(
+      thread_system_.get(), timer_.get(), &handler_, 25, false);
+  TestTimeoutFetch(async_fetcher);
 }
 
 }  // namespace net_instaweb

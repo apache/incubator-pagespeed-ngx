@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This permits the use of any UrlPollableAsyncFetcher as a synchronous fetcher.
+// This permits the use of any UrlAsyncFetcher as a synchronous fetcher.
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_H_
@@ -29,7 +29,7 @@ class RequestHeaders;
 class ResponseHeaders;
 class ThreadSystem;
 class Timer;
-class UrlPollableAsyncFetcher;
+class UrlAsyncFetcher;
 class Writer;
 
 class SyncFetcherAdapter : public UrlFetcher {
@@ -38,7 +38,7 @@ class SyncFetcherAdapter : public UrlFetcher {
   // fetcher_timeout_ms (or none at all).
   SyncFetcherAdapter(Timer* timer,
                      int64 fetcher_timeout_ms,
-                     UrlPollableAsyncFetcher* async_fetcher,
+                     UrlAsyncFetcher* async_fetcher,
                      ThreadSystem* thread_system);
   virtual ~SyncFetcherAdapter();
   virtual bool StreamingFetchUrl(const GoogleString& url,
@@ -51,7 +51,7 @@ class SyncFetcherAdapter : public UrlFetcher {
  private:
   Timer* timer_;
   int64 fetcher_timeout_ms_;
-  UrlPollableAsyncFetcher* async_fetcher_;
+  UrlAsyncFetcher* async_fetcher_;
   ThreadSystem* thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapter);

@@ -15,9 +15,10 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 
 #include <algorithm>
+
 #include "base/logging.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
-#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -31,7 +32,7 @@ class Writer;
 
 SyncFetcherAdapter::SyncFetcherAdapter(Timer* timer,
                                        int64 fetcher_timeout_ms,
-                                       UrlPollableAsyncFetcher* async_fetcher,
+                                       UrlAsyncFetcher* async_fetcher,
                                        ThreadSystem* thread_system)
     : timer_(timer),
       fetcher_timeout_ms_(fetcher_timeout_ms),
@@ -54,19 +55,22 @@ bool SyncFetcherAdapter::StreamingFetchUrl(
   // We are counting on the async fetcher having a timeout (if any)
   // that's similar to the timeout that we have in this class.
   // To avoid a race we double the timeout in the limit set here and
-  // CHECK that the callback got called by the time our timeout loop exits.
+  // check that the callback got called by the time our timeout loop exits.
   int64 start_ms = timer_->NowMs();
   int64 now_ms = start_ms;
+  bool locked_ok = callback->LockIfNotReleased();
+  DCHECK(locked_ok);  // Should always succeed since we don't call ->Release
+                      // on callback until end of this method.
   for (int64 end_ms = now_ms + 2 * fetcher_timeout_ms_;
-       !callback->done() && (now_ms < end_ms);
+       !callback->IsDoneLockHeld() && (now_ms < end_ms);
        now_ms = timer_->NowMs()) {
     int64 remaining_ms =
         std::max(static_cast<int64>(0), end_ms - now_ms);
-    int active = async_fetcher_->Poll(remaining_ms);
-    CHECK(active > 0 || callback->done());
+    callback->TimedWait(remaining_ms);
   }
+  callback->Unlock();
   bool ret = false;
-  if (!callback->done()) {
+  if (!callback->IsDone()) {
     message_handler->Message(
         kWarning,
         "Async fetch of %s allowed %dms to expire without calling its callback",

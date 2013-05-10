@@ -75,7 +75,7 @@ TEST_F(ResourceFetchTest, BlockingFetch) {
   EXPECT_TRUE(
       ResourceFetch::BlockingFetch(
           url, server_context(), custom_driver, callback));
-  EXPECT_TRUE(callback->done());
+  EXPECT_TRUE(callback->IsDone());
   EXPECT_TRUE(callback->success());
   callback->Release();
 
@@ -110,7 +110,7 @@ TEST_F(ResourceFetchTest, BlockingFetchOfInvalidUrl) {
   EXPECT_FALSE(
       ResourceFetch::BlockingFetch(
           url, server_context(), custom_driver, callback));
-  EXPECT_TRUE(callback->done());
+  EXPECT_TRUE(callback->IsDone());
   EXPECT_FALSE(callback->success());
   callback->Release();
 

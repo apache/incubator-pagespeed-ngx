@@ -22,7 +22,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 
-#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -38,7 +38,7 @@ class UrlFetcher;
 // fetcher in a thread, but this does not do that: it blocks.
 //
 // This is intended for functional regression tests only.
-class FakeUrlAsyncFetcher : public UrlPollableAsyncFetcher {
+class FakeUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
   explicit FakeUrlAsyncFetcher(UrlFetcher* url_fetcher)
       : url_fetcher_(url_fetcher),
@@ -51,10 +51,6 @@ class FakeUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
-
-  // Since the underlying fetcher is blocking, there can never be
-  // any outstanding fetches.
-  virtual int Poll(int64 max_wait_ms) { return 0; }
 
   void set_fetcher_supports_https(bool val) { fetcher_supports_https_ = val; }
 

@@ -23,20 +23,18 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class MessageHandler;
-class ThreadSystem;
 
 // Class to help run an asynchronous fetch synchronously with a timeout.
 class SyncFetcherAdapterCallback : public AsyncFetch {
  public:
   SyncFetcherAdapterCallback(ThreadSystem* thread_system, Writer* writer,
                              const RequestContextPtr& request_context);
-  virtual ~SyncFetcherAdapterCallback();
 
   // When implementing a synchronous fetch with a timeout based on an
   // underlying asynchronous mechanism, we need to ensure that we don't
@@ -52,26 +50,34 @@ class SyncFetcherAdapterCallback : public AsyncFetch {
   // to guard access to these.
 
   // When the 'owner' of this callback -- the code that calls 'new' --
-  // is done with it, it can call release.  This will only delete the
-  // callback if Done() has been called.  Otherwise it will stay around
-  // waiting for Done() to be called, and only then will it be deleted.
-  //
-  // When Release is called prior to Done(), the writer and response_headers
-  // will be NULLed out in this structure so they will not be updated when
-  // Done() is finally called.
+  // is done with it, it can call Release(). That will arrange for the object
+  // to be deleted as soon as it's safe to do so, which may be immediately
+  // at the point of call, or from some asynchronous event.
+  // The object should not be used by the owner after Release() has been called.
   void Release();
 
-  bool done() const;
+  bool IsDone() const;
+
+  // Version of IsDone() that may only be called if you already hold the mutex.
+  bool IsDoneLockHeld() const;
   bool success() const;
   bool released() const;
 
-  // If this fetcher hasn't yet been released(), returns true with mutex_ held.
+  // If this fetcher hasn't yet been Released(), returns true with mutex_ held.
   // Otherwise, returns false with the mutex_ released. These methods
   // should be used to guard accesses to writer() and response_headers().
   bool LockIfNotReleased();
 
   // Releases mutex acquired by a successful LockIfNotReleased() call.
   void Unlock();
+
+  // Waits on condition variable associated with the mutex, with timeout
+  // of timeout_ms. The wake up condition is Done() being called, but this
+  // merely waits for lookup and does not ensure the condition has occurred ---
+  // the caller should use a while loop conditioned on done_lock_held().
+  // Should not be called if this callback is already released, and expects
+  // mutex already held.
+  void TimedWait(int64 timeout_ms);
 
  protected:
   virtual void HandleDone(bool success);
@@ -85,8 +91,14 @@ class SyncFetcherAdapterCallback : public AsyncFetch {
   virtual void HandleHeadersComplete() {
   }
 
+  virtual bool EnableThreaded() const { return true; }
+
  private:
-  scoped_ptr<AbstractMutex> mutex_;
+  virtual ~SyncFetcherAdapterCallback();
+
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  scoped_ptr<ThreadSystem::Condvar> cond_;
+
   bool done_;
   bool success_;
   bool released_;
