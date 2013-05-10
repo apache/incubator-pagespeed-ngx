@@ -117,20 +117,16 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   // Remove the completed fetch from the active fetch set, and put it into a
   // completed fetch list to be cleaned up.
   void FetchComplete(SerfFetch* fetch);
+
+  // Update the statistics object with results of the (completed) fetch.
+  void ReportCompletedFetchStats(SerfFetch* fetch);
+
   apr_pool_t* pool() const { return pool_; }
   serf_context_t* serf_context() const { return serf_context_; }
 
   void PrintActiveFetches(MessageHandler* handler) const;
   virtual int64 timeout_ms() { return timeout_ms_; }
   ThreadSystem* thread_system() { return thread_system_; }
-
-  // By default, the Serf fetcher will call
-  // UrlAsyncFetcher::Callback::EnableThreaded() to determine whether
-  // a particular URL fetch should be executed in the fetcher thread.
-  //
-  // Setting this variable causes the fetches to be threaded independent
-  // of the value of UrlAsyncFetcher::Callback::EnableThreaded().
-  void set_force_threaded(bool x) { force_threaded_ = x; }
 
   // Indicates that Serf should enumerate failing URLs whenever the underlying
   // Serf library reports an error.
@@ -243,7 +239,6 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   Variable* failure_count_;
   Variable* cert_errors_;
   const int64 timeout_ms_;
-  bool force_threaded_;
   bool shutdown_;
   bool list_outstanding_urls_on_error_;
   bool track_original_content_length_;

@@ -179,8 +179,9 @@ class SerfFetch : public PoolElement<SerfFetch> {
                  << str_url() << " (" << this << ").  Please report this "
                  << "at http://code.google.com/p/modpagespeed/issues/";
     } else {
-      CallbackDone(success);
       fetch_end_ms_ = timer_->NowMs();
+      fetcher_->ReportCompletedFetchStats(this);
+      CallbackDone(success);
       fetcher_->FetchComplete(this);
     }
   }
@@ -1004,7 +1005,6 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       failure_count_(NULL),
       cert_errors_(NULL),
       timeout_ms_(timeout_ms),
-      force_threaded_(false),
       shutdown_(false),
       list_outstanding_urls_on_error_(false),
       track_original_content_length_(false),
@@ -1042,7 +1042,6 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       failure_count_(parent->failure_count_),
       cert_errors_(parent->cert_errors_),
       timeout_ms_(parent->timeout_ms()),
-      force_threaded_(parent->force_threaded_),
       shutdown_(false),
       list_outstanding_urls_on_error_(parent->list_outstanding_urls_on_error_),
       track_original_content_length_(parent->track_original_content_length_),
@@ -1145,18 +1144,12 @@ void SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
   SerfFetch* fetch = new SerfFetch(url, async_fetch, message_handler, timer_);
 
   request_count_->Add(1);
-  if (force_threaded_ || async_fetch->EnableThreaded()) {
-    message_handler->Message(kInfo, "Initiating async fetch for %s",
-                             url.c_str());
-    threaded_fetcher_->InitiateFetch(fetch);
-  } else {
-    message_handler->Message(kInfo, "Initiating blocking fetch for %s",
-                             url.c_str());
-    {
-      ScopedMutex mutex(mutex_);
-      StartFetch(fetch);
-    }
-  }
+  message_handler->Message(kInfo, "Initiating async fetch for %s",
+                           url.c_str());
+  threaded_fetcher_->InitiateFetch(fetch);
+
+  // TODO(morlovich): There is quite a bit of code related to doing work
+  // both on 'this' and threaded_fetcher_ that could use cleaning up.
 }
 
 void SerfUrlAsyncFetcher::PrintActiveFetches(
@@ -1183,7 +1176,6 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
       // This relies on the insertion-ordering guarantee
       // provided by the Pool iterator.
       int64 stale_cutoff = timer_->NowMs() - timeout_ms_;
-      int timeouts = 0;
       // This loop calls Cancel, which deletes a fetch and thus invalidates
       // iterators; we thus rely on retrieving oldest().
       while (!active_fetches_.empty()) {
@@ -1197,13 +1189,12 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
             fetch->str_url(),
             static_cast<long>(active_fetches_.size()),  // NOLINT
             static_cast<long>(max_wait_ms));            // NOLINT
-        timeouts++;
         // Note that canceling the fetch will ultimately call FetchComplete and
         // delete it from the pool.
+        if (timeout_count_ != NULL) {
+          timeout_count_->Add(1);
+        }
         fetch->Cancel();
-      }
-      if ((timeouts > 0) && (timeout_count_ != NULL)) {
-        timeout_count_->Add(timeouts);
       }
     }
     bool success = ((status == APR_SUCCESS) || APR_STATUS_IS_TIMEUP(status));
@@ -1258,6 +1249,9 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   completed_fetches_.Add(fetch);
   fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
                                     fetch->str_url());
+}
+
+void SerfUrlAsyncFetcher::ReportCompletedFetchStats(SerfFetch* fetch) {
   if (time_duration_ms_) {
     time_duration_ms_->Add(fetch->TimeDuration());
   }

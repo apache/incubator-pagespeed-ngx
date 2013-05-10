@@ -327,10 +327,6 @@ class UrlResourceFetchCallback : public AsyncFetch {
   // TODO(abliss): unit test this
   virtual bool should_yield() = 0;
 
-  // Indicate that it's OK for the callback to be executed on a different
-  // thread, as it only populates the cache, which is thread-safe.
-  virtual bool EnableThreaded() const { return true; }
-
   void set_no_cache_ok(bool x) { no_cache_ok_ = x; }
 
  protected:
@@ -576,7 +572,6 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
     callback_->Done(lock_failure, resource_ok);
   }
 
-  virtual bool EnableThreaded() const { return callback_->EnableThreaded(); }
   virtual bool IsBackgroundFetch() const {
     return resource_->is_background_fetch();
   }

@@ -622,8 +622,6 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
     delete this;
   }
 
-  virtual bool EnableThreaded() const { return true; }
-
  private:
   ResourceCallbackUtils delegate_;
 };
@@ -691,8 +689,6 @@ class RewriteContext::ResourceRevalidateCallback
                      input_info_, !lock_failure && resource_ok));
     delete this;
   }
-
-  virtual bool EnableThreaded() const { return true; }
 
  private:
   RewriteContext* rewrite_context_;

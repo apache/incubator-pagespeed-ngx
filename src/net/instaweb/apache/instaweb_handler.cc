@@ -200,12 +200,6 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
     }
   }
 
-  // Returning true here tells Serf to use the threaded fetcher.  We can
-  // also consider returning false here and polling the fetcher.
-  //
-  // TODO(jmarantz): delete the non-threaded fetcher support in Serf.
-  virtual bool EnableThreaded() const { return true; }
-
   bool status_ok() const { return status_ok_; }
 
  private:

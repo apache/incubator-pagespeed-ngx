@@ -155,8 +155,6 @@ class StrippingFetch : public StringAsyncFetch {
         condvar_(mutex_->NewCondvar()) {
   }
 
-  virtual bool EnableThreaded() const { return true; }
-
   // Blocking fetch.
   bool Fetch() {
     // To test sharding domains from a slurp of a site that does not support

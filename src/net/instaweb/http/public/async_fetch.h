@@ -120,8 +120,6 @@ class AsyncFetch : public Writer {
   ResponseHeaders* extra_response_headers();
   void set_extra_response_headers(ResponseHeaders* headers);
 
-  virtual bool EnableThreaded() const { return false; }
-
   // Indicates whether the request is a background fetch. These can be scheduled
   // differently by the fetcher.
   virtual bool IsBackgroundFetch() const { return false; }
@@ -290,10 +288,6 @@ class SharedAsyncFetch : public AsyncFetch {
   }
 
   virtual void HandleHeadersComplete();
-
-  virtual bool EnableThreaded() const {
-    return base_fetch_->EnableThreaded();
-  }
 
   virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
     return base_fetch_->IsCachedResultValid(headers);

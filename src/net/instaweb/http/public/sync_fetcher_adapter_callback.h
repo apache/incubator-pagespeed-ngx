@@ -91,8 +91,6 @@ class SyncFetcherAdapterCallback : public AsyncFetch {
   virtual void HandleHeadersComplete() {
   }
 
-  virtual bool EnableThreaded() const { return true; }
-
  private:
   virtual ~SyncFetcherAdapterCallback();
 
