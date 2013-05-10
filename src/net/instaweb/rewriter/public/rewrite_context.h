@@ -50,26 +50,89 @@ class Statistics;
 class Variable;
 class Writer;
 
-// A RewriteContext is all the contextual information required to
-// perform one or more Rewrites.  Member data in the ResourceContext
-// helps us track the collection of data to rewrite, via async
-// cache-lookup or async fetching.  It also tracks what to do with the
-// rewritten data when the rewrite completes (e.g. rewrite the URL in
-// HTML or serve the requested data).
+// RewriteContext manages asynchronous rewriting of some n >= 1 resources (think
+// CSS, JS, or images) into m >= 0 improved versions (typically, n = m = 1).
+// It also helps update the references in the containing document (called
+// slots), such as <img src=> in HTML, or background-image: url() in CSS,
+// and make any other changes to it needed to commit the optimization.
 //
-// RewriteContext is subclassed to control the transformation (e.g.
-// minify js, compress images, etc).
+// It is normally used as a base class, with its own code helping take care
+// of caching, fetching, etc., while subclasses describe how to transform the
+// resources, and how to update the document containing them with the new
+// version by overriding some virtuals like Rewrite() and Render().
 //
-// A new RewriteContext is created on behalf of an HTML or CSS
-// rewrite, or on behalf of a resource-fetch.  A single filter may
-// have multiple outstanding RewriteContexts associated with it.
+// Filters parsing HTML create their RewriteContext subclasses for every
+// group of resources they think should be optimized together (such as one
+// RewriteContext for every image for image re-compression, or one for a group
+// of CSS files that have compatible HTML markup for CSS combining). The
+// framework may also ask a filter to make its RewriteContext subclass via
+// MakeRewriteContext() in case it need to reconstruct an optimized resource
+// that's not available in the cache.
+//
 // In the case of combining filters, a single RewriteContext may
 // result in multiple rewritten resources that are partitioned based
 // on data semantics.  Most filters will just work on one resource,
 // and those can inherit from SingleRewriteContext which is simpler
 // to implement.
 //
-// TODO(jmarantz): add support for controlling TTL on failures.
+// The most basic transformation steps subclasses will want to implement are:
+//
+// Partition:
+//   Determines how many outputs, if any, will be created from all the inputs.
+//   For example, a spriter may create separate partitions for groups of images
+//   with similar colormaps. This step is also responsible for deciding what to
+//   do if some inputs were not loaded successfully. SingleRewriteContext
+//   provides the correct implementation for transformations that take in one
+//   file and optimize it.
+//
+// Rewrite:
+//   Takes inputs from one partition, and tries to produce an optimized output
+//   for it, as well as a CachedResult, which caches any auxiliary information
+//   that may be needed to update the container document. For example, the image
+//   filter will store image dimensions inside the CachedResult object.
+//
+//   If a better version can be created, the subclass should call
+//   RewriteDriver::Write with its data, and then RewriteDone(kRewriteOk).
+//
+//   If no improvement is possible, it should call RewriteDone(kRewriteFailed).
+//   Note that this does not mean that nothing can be done, just that no new
+//   resource has been created (for example an image filter might still insert
+//   dimensions into the <img> tag even if it can't compress the image better).
+//
+// Render:
+//   Updates the document based on information stored in CachedResult.
+//   This is the only step that can touch the HTML DOM. Note that you
+//   do not need to implement it if you just want to update the URL to the new
+//   version: the ResourceSlot's will do it automatically.
+//
+// Which of the steps get invoked depends on how much information has been
+// cached, as well as on timing of things (since the system tries not to
+// hold up the web page noticeably to wait for an optimization). Common
+// scenarios are:
+//
+// 1) New rewrite, finishes quickly:
+//    Partition -> Rewrite -> Render
+// 2) New rewrite, but too slow to render:
+//    Partition -> Rewrite
+// 3) Metadata cache hit:
+//    Render
+// 4) Reconstructing output from a .pagespeed. URL:
+//    Rewrite
+//
+// Note in particular that (3) means that all rendering should be doable just
+// from information inside the CachedResult.
+//
+// Top-level RewriteContexts are initialized from the HTML thread, by filters
+// responding to parser events.  In particular, from this thread they can be
+// constructed, and AddSlot() and Initiate() can be called.  Once Initiate is
+// called, the RewriteContext runs purely in its two threads, until
+// it completes.  At that time it will self-delete in coordination with
+// RewriteDriver.
+//
+// RewriteContexts can also be nested, in which case they are constructed,
+// slotted, and Initated all within the rewrite threads.  However, they
+// are Propagated and destructed by their parent, which was initiated by the
+// RewriteDriver.
 //
 // RewriteContext utilizes two threads (via QueuedWorkerPool::Sequence)
 // to do most of its work. The "high priority" thread is used to run the
@@ -78,18 +141,7 @@ class Writer;
 // in the "low priority" thread and can be canceled during extreme load
 // or shutdown.
 //
-// Top-level RewriteContexts are initialized from the HTML
-// thread.  In particular, from this thread they can be constructed,
-// and AddSlot() and Initiate() can be called.  Once Initiate is
-// called, the RewriteContext runs purely in its two threads, until
-// it completes.  At that time it calls
-// RewriteDriver::RewriteComplete.  Once complete, the RewriteDriver
-// can call RewriteContext::Propagate() and finally delete the object.
-//
-// RewriteContexts can also be nested, in which case they are constructed,
-// slotted, and Initated all within the rewrite threads.  However, they
-// are Propagated and destructed by their parent, which is initiated by the
-// RewriteDriver.
+// TODO(jmarantz): add support for controlling TTL on failures.
 class RewriteContext {
  public:
   typedef std::vector<InputInfo*> InputInfoStarVector;
@@ -159,6 +211,13 @@ class RewriteContext {
   // context must be the last one attached to the slot.
   void RemoveLastSlot();
 
+  // Adds a new nested RewriteContext.  This RewriteContext will not
+  // be considered complete until all nested contexts have completed.
+  // This may be useful, for example for a CSS optimizer that also wants to
+  // optimize images referred to from CSS (in which case the image rewrite
+  // context will be nested inside the CSS context).
+  void AddNestedContext(RewriteContext* context);
+
   // Starts a resource rewrite.  Once Inititated, the Rewrite object
   // should only be accessed from the Rewrite thread, until it
   // Completes, at which point top-level Contexts will call
@@ -172,12 +231,10 @@ class RewriteContext {
   void Initiate();
 
   // Fetch the specified output resource by reconstructing it from
-  // its inputs, sending output into response_writer, writing
-  // headers to response_headers, and calling callback->Done(bool success)
-  // when complete.
+  // its inputs, sending output into fetch.
   //
   // True is returned if an asynchronous fetch got queued up.
-  // If false, Done() will not be called.
+  // If false, fetch->Done() will not be called.
   bool Fetch(const OutputResourcePtr& output_resource,
              AsyncFetch* fetch,
              MessageHandler* message_handler);
@@ -201,34 +258,12 @@ class RewriteContext {
       GoogleString* error_out,
       CacheLookupResultCallback* callback);
 
-  // Runs after all Rewrites have been completed, and all nested
-  // RewriteContexts have completed and harvested.
-  //
-  // For top-level Rewrites, this must be called from the HTML thread.
-  // For nested Rewrites it runs from the Rewrite thread.
-  //
-  // If render_slots is true, then all the slots owned by this context
-  // will have Render() called on them.  For top-level Rewrites, this
-  // should only be done if the rewrite completes before the rewrite
-  // deadline expires.  After that, the HTML elements referred to by
-  // the slots have already been flushed to the network.  For nested
-  // Rewrites it's done unconditionally.
-  //
-  // Rewriting and propagation continue even after this deadline, so
-  // that we may cache the rewritten results, allowing the deadline to
-  // be easier-to-hit next time the same resources need to be
-  // rewritten.
-  //
-  // And in all cases, the successors Rewrites are queued up in the
-  // Rewrite thread once any nested propagation is complete.  And, in
-  // particular, each slot must be updated with any rewritten
-  // resources, before the successors can be run, independent of
-  // whether the slots can be rendered into HTML.
-  void Propagate(bool render_slots);
-
   // If true, we have determined that this job can't be rendered just
   // from metadata cache (including all prerequisites).
   bool slow() const { return slow_; }
+
+  // This particular rewrite was a metadata cache miss.
+  bool is_metadata_cache_miss() const { return is_metadata_cache_miss_; }
 
   // Returns true if this is a nested rewriter.
   bool has_parent() const { return parent_ != NULL; }
@@ -237,38 +272,17 @@ class RewriteContext {
   RewriteContext* parent() { return parent_; }
   const RewriteContext* parent() const { return parent_; }
 
-  // Adds a new nested RewriteContext.  This RewriteContext will not
-  // be considered complete until all nested contexts have completed.
-  void AddNestedContext(RewriteContext* context);
-
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
-
-  // Returns true if this context will prevent any attempt at distributing a
-  // rewrite (although its nested context still may be distributed). See
-  // ShouldDistributeRewrite for more detail on when a rewrite should be
-  // distributed.
-  bool block_distribute_rewrite() const { return block_distribute_rewrite_; }
-  void set_block_distribute_rewrite(const bool x) {
-    block_distribute_rewrite_ = x;
-  }
-
-  const ResourceContext* resource_context() const {
-    return resource_context_.get();
-  }
-
-  bool is_metadata_cache_miss() const { return is_metadata_cache_miss_; }
 
   bool rewrite_uncacheable() const { return rewrite_uncacheable_; }
   void set_rewrite_uncacheable(bool rewrite_uncacheable) {
     rewrite_uncacheable_ = rewrite_uncacheable;
   }
 
-  // Removes this RewriteContext from all slots.  This is done normally when
-  // a RewriteContext is completed and we are ready to run the successors.
-  // It is also done when aborting a RewriteContext due to cache being
-  // unhealthy.
-  void DetachSlots();
+  const ResourceContext* resource_context() const {
+    return resource_context_.get();
+  }
 
   // Returns debug information about this RewriteContext.
   GoogleString ToString(StringPiece prefix) const;
@@ -279,20 +293,10 @@ class RewriteContext {
  protected:
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
 
-  // Creates a new request trace associated with this context with a given
-  // |label|.
-  void AttachDependentRequestTrace(const StringPiece& label);
-
-  // Provides the dependent request trace associated with this context, if any.
-  // Note that this is distinct from the root user request trace, available
-  // in Driver().
-  RequestTrace* dependent_request_trace() { return dependent_request_trace_; }
-
-  // A convenience wrapper to log a trace annotation in both the request
-  // trace (if present) as well as the root user request trace (if present).
-  void TracePrintf(const char* fmt, ...);
-
-  // The following methods are provided for the benefit of subclasses.
+  // -----------------------------------------------------------------------
+  // Resource transformation APIs. If you are implementing an optimization,
+  // you'll be dealing mainly with these.
+  // -----------------------------------------------------------------------
 
   // Finds the ServerContext associated with this context.  Note that
   // this method might have to climb up the parent-tree, but it's typically
@@ -301,40 +305,15 @@ class RewriteContext {
   const RewriteOptions* Options() const;
   RewriteDriver* Driver() const;
 
+  // Accessors for the nested rewrites.
+  int num_nested() const { return nested_.size(); }
+  RewriteContext* nested(int i) const { return nested_[i]; }
+
+  OutputPartitions* partitions() { return partitions_.get(); }
+
   // Add a dummy other_dependency that will force the rewrite's OutputPartitions
   // to be rechecked after a modest TTL.
   void AddRecheckDependency();
-
-  // Establishes that a slot has been rewritten.  So when Propagate()
-  // is called, the resource update that has been written to this slot can
-  // be propagated to the DOM.
-  void RenderPartitionOnDetach(int partition_index);
-
-  // Called by subclasses when an individual rewrite partition is
-  // done.  Note that RewriteDone may 'delete this' so no
-  // further references to 'this' should follow a call to RewriteDone.
-  // This method can run in any thread.
-  void RewriteDone(RewriteResult result, int partition_index);
-
-  // Called on the parent from a nested Rewrite when it is complete.
-  // Note that we don't track rewrite success/failure here.  We only
-  // care whether the nested rewrites are complete, and whether there
-  // are any dependencies.
-  void NestedRewriteDone(const RewriteContext* context);
-
-  // Called on the parent to initiate all nested tasks.  This is so
-  // that they can all be added before any of them are started.
-  // May be called from any thread.
-  void StartNestedTasks();
-
-  // Deconstructs a URL by name and creates an output resource that
-  // corresponds to it. If force_hash_to_zero is present, we are
-  // processing a stale rewrite, and we should use "0" as the hash
-  // so that the client browser sends a request for the freshened
-  // rewritten resource.
-  bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
-                                           bool force_hash_to_zero,
-                                           OutputResourcePtr* output_resource);
 
   // If this returns true, running the rewriter isn't required for
   // correctness of the page, so the engine will be permitted to drop
@@ -379,12 +358,19 @@ class RewriteContext {
   void CrossThreadPartitionDone(bool result);
 
   // Takes a completed rewrite partition and rewrites it.  When
-  // complete calls RewriteDone with kRewriteOk if successful.  Note that
-  // a value of kTooBusy means that an HTML rewrite will skip this resource,
-  // but we should not cache it as "do not optimize".
+  // complete, implementations should call RewriteDone(kRewriteOk) if
+  // they successfully created an output resource using RewriteDriver::Write,
+  // and RewriteDone(kRewriteFailed) if they didn't. They may also call
+  // RewriteDone(kTooBusy) in case system load/resource usage makes it
+  // dangerous for the filter to do optimization at this time.
   //
-  // During this phase, any nested contexts that are needed to complete
-  // the Rewrite process can be instantiated.
+  // Any information about the inputs or output that may be needed to update
+  // the containing document should be stored inside the CachedResult.
+  //
+  // If implementors wish to rewrite resources referred to from within the
+  // inputs (e.g. images in CSS), they may create nested rewrite contexts
+  // and call AddNestedContext() on each, and then StartNestedTasks()
+  // when all have been added.
   //
   // TODO(jmarantz): check for resource completion from a different
   // thread (while we were waiting for resource fetches) when Rewrite
@@ -392,6 +378,26 @@ class RewriteContext {
   virtual void Rewrite(int partition_index,
                        CachedResult* partition,
                        const OutputResourcePtr& output) = 0;
+
+  // Called by subclasses when an individual rewrite partition is
+  // done.  Note that RewriteDone may 'delete this' so no
+  // further references to 'this' should follow a call to RewriteDone.
+  // This method can run in any thread.
+  void RewriteDone(RewriteResult result, int partition_index);
+
+  // Absolutify contents of an input resource and write it into writer.
+  // This is called in case a rewrite fails in the fetch path or a deadline
+  // is exceeded. Default implementation is just to write the input.
+  // But contexts may need to specialize this to actually absolutify
+  // subresources if the fetched resource is served on a different path
+  // than the input resource.
+  virtual bool AbsolutifyIfNeeded(const StringPiece& input_contents,
+                                  Writer* writer, MessageHandler* handler);
+
+  // Called on the parent to initiate all nested tasks.  This is so
+  // that they can all be added before any of them are started.
+  // May be called from any thread.
+  void StartNestedTasks();
 
   // Once any nested rewrites have completed, the results of these
   // can be incorporated into the rewritten data.  For contexts that
@@ -444,6 +450,23 @@ class RewriteContext {
   // metadata cache key.  The default implementation returns "".
   virtual GoogleString CacheKeySuffix() const;
 
+  // Indicates user agent capabilities that must be stored in the cache key.
+  //
+  // Note that the context may be NULL as it may not be set before this. Since
+  // it isn't going to be modified in the method, ResourceContext is passed
+  // as a const pointer.
+  // TODO(morlovich): This seems to overlap with CacheKeySuffix.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* context) const {
+    return "";
+  }
+
+  // Encodes User Agent into the ResourceContext.
+  // A subclass ResourceContext should normally call
+  // RewriteFilter::EncodeUserAgentIntoResourceContext if it has access to
+  // a RewriteFilter.
+  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {}
+
   // Returns the filter ID.
   virtual const char* id() const = 0;
 
@@ -456,6 +479,31 @@ class RewriteContext {
   // this category, and it's arguable we could treat js minification
   // that way too (though we don't at the moment).
   virtual OutputResourceKind kind() const = 0;
+
+  // -----------------------------------------------------------------------
+  // Tracing API.
+  // -----------------------------------------------------------------------
+
+  // Creates a new request trace associated with this context with a given
+  // |label|.
+  void AttachDependentRequestTrace(const StringPiece& label);
+
+  // Provides the dependent request trace associated with this context, if any.
+  // Note that this is distinct from the root user request trace, available
+  // in Driver().
+  RequestTrace* dependent_request_trace() { return dependent_request_trace_; }
+
+  // A convenience wrapper to log a trace annotation in both the request
+  // trace (if present) as well as the root user request trace (if present).
+  void TracePrintf(const char* fmt, ...);
+
+  // -----------------------------------------------------------------------
+  // Fetch state machine override APIs, as well as exports of some general
+  // state machine state for overriders to use. If you just want to write an
+  // optimization, you do not need these --- they are useful if you want to
+  // write a new state machine that's similar but not quite identical to
+  // what RewriteContext provides.
+  // -----------------------------------------------------------------------
 
   // Called in fetch path if we have not found the resource available
   // in HTTP cache under an alternate location suggested by metadata cache
@@ -501,15 +549,6 @@ class RewriteContext {
   // notify_driver_on_fetch_done is true.
   virtual void FetchCallbackDone(bool success);
 
-  // Absolutify contents of an input resource and write it into writer.
-  // This is called in case a rewrite fails in the fetch path or a deadline
-  // is exceeded. Default implementation is just to write the input.
-  // But contexts may need to specialize this to actually absolutify
-  // subresources if the fetched resource is served on a different path
-  // than the input resource.
-  virtual bool AbsolutifyIfNeeded(const StringPiece& input_contents,
-                                  Writer* writer, MessageHandler* handler);
-
   // Attempts to fetch a given URL from HTTP cache, and serves it
   // (with shortened HTTP headers) if available. If not, fallback to normal
   // full reconstruction path. Note that the hash can be an empty string if the
@@ -520,14 +559,17 @@ class RewriteContext {
   // Freshens resources proactively to avoid expiration in the near future.
   void Freshen();
 
-  // Accessors for the nested rewrites.
-  int num_nested() const { return nested_.size(); }
-  RewriteContext* nested(int i) const { return nested_[i]; }
-
-  OutputPartitions* partitions() { return partitions_.get(); }
-
   void set_notify_driver_on_fetch_done(bool value) {
     notify_driver_on_fetch_done_ = value;
+  }
+
+  // Returns true if this context will prevent any attempt at distributing a
+  // rewrite (although its nested context still may be distributed). See
+  // ShouldDistributeRewrite for more detail on when a rewrite should be
+  // distributed.
+  bool block_distribute_rewrite() const { return block_distribute_rewrite_; }
+  void set_block_distribute_rewrite(const bool x) {
+    block_distribute_rewrite_ = x;
   }
 
   // Note that the following must only be called in the fetch flow.
@@ -546,22 +588,6 @@ class RewriteContext {
   // alarm in FetchContext::SetupDeadlineAlarm(). Subclasses may configure the
   // deadline based on rewrite type, e.g., IPRO vs. HTML-path.
   virtual int64 GetRewriteDeadlineAlarmMs() const;
-
-  // Indicates user agent capabilities that must be stored in the cache key.
-  //
-  // Note that the context may be NULL as it may not be set before this. Since
-  // it isn't going to be modified in the method, ResourceContext is passed
-  // as a const pointer.
-  virtual GoogleString UserAgentCacheKey(
-      const ResourceContext* context) const {
-    return "";
-  }
-
-  // Encodes User Agent into the ResourceContext.
-  // A subclass ResourceContext should normally call
-  // RewriteFilter::EncodeUserAgentIntoResourceContext if it has access to
-  // a RewriteFilter.
-  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {}
 
  private:
   class DistributedRewriteCallback;
@@ -639,10 +665,41 @@ class RewriteContext {
   // and returned, bypassing rewriting.
   void DistributeRewriteDone(bool success);
 
+  // Called on the parent from a nested Rewrite when it is complete.
+  // Note that we don't track rewrite success/failure here.  We only
+  // care whether the nested rewrites are complete, and whether there
+  // are any dependencies.
+  void NestedRewriteDone(const RewriteContext* context);
+
   // Generally a RewriteContext is waiting for one or more
   // asynchronous events to take place.  Activate is called
   // to run some action to help us advance to the next state.
   void Activate();
+
+  // Runs after all Rewrites have been completed, and all nested
+  // RewriteContexts have completed and harvested.
+  //
+  // For top-level Rewrites, this must be called from the HTML thread.
+  // For nested Rewrites it runs from the Rewrite thread.
+  //
+  // If render_slots is true, then all the slots owned by this context
+  // will have Render() called on them.  For top-level Rewrites, this
+  // should only be done if the rewrite completes before the rewrite
+  // deadline expires.  After that, the HTML elements referred to by
+  // the slots have already been flushed to the network.  For nested
+  // Rewrites it's done unconditionally.
+  //
+  // Rewriting and propagation continue even after this deadline, so
+  // that we may cache the rewritten results, allowing the deadline to
+  // be easier-to-hit next time the same resources need to be
+  // rewritten.
+  //
+  // And in all cases, the successors Rewrites are queued up in the
+  // Rewrite thread once any nested propagation is complete.  And, in
+  // particular, each slot must be updated with any rewritten
+  // resources, before the successors can be run, independent of
+  // whether the slots can be rendered into HTML.
+  void Propagate(bool render_slots);
 
   // With all resources loaded, the rewrite can now be done, writing:
   //    The metadata into the cache
@@ -660,6 +717,12 @@ class RewriteContext {
   //    - no outstanding fetches
   //    - rewriting not already complete.
   bool ReadyToRewrite() const;
+
+  // Removes this RewriteContext from all slots.  This is done normally when
+  // a RewriteContext is completed and we are ready to run the successors.
+  // It is also done when aborting a RewriteContext due to cache being
+  // unhealthy.
+  void DetachSlots();
 
   // Activate any Rewrites that come after this one, for serializability
   // of access to common slots.
@@ -708,12 +771,26 @@ class RewriteContext {
   // high-priority rewrite thread.
   void StartNestedTasksImpl();
 
+  // Establishes that a slot has been rewritten.  So when Propagate()
+  // is called, the resource update that has been written to this slot can
+  // be propagated to the DOM.
+  void RenderPartitionOnDetach(int partition_index);
+
   // Sets up all the state needed for Fetch, but doesn't register this context
   // or actually start the rewrite process.
   bool PrepareFetch(
       const OutputResourcePtr& output_resource,
       AsyncFetch* fetch,
       MessageHandler* message_handler);
+
+  // Creates an output resource that corresponds to a full URL stored in
+  // metadata cache. If force_hash_to_zero is present, we are
+  // processing a stale rewrite, and we should use "0" as the hash
+  // so that the client browser sends a request for the freshened
+  // rewritten resource.
+  bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
+                                           bool force_hash_to_zero,
+                                           OutputResourcePtr* output_resource);
 
   // Callback for metadata lookup on fetch path.
   void FetchCacheDone(CacheLookupResult* cache_result);
