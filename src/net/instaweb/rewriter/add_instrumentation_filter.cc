@@ -115,6 +115,8 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
+    // TODO(jud): Refactor to insert the tail script in EndDocument using
+    // CommonFilter::InsertNodeAtBodyEnd.
     AddScriptNode(element, kLoadTag);
     added_tail_script_ = true;
   } else if (found_head_ && element->keyword() == HtmlName::kHead) {
@@ -199,6 +201,7 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
 
   StrAppend(&js, init_js);
   HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   driver_->InsertNodeBeforeCurrent(script);
   static_asset_manager->AddJsToElement(js, script, driver_);
 }

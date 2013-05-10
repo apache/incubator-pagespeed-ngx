@@ -39,7 +39,6 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class HtmlCharactersNode;
-class HtmlNode;
 class RewriteContext;
 class RewriteDriver;
 
@@ -165,7 +164,7 @@ class CssSummarizerBase : public RewriteFilter {
   //
   // It's called from a context which allows HTML parser state access.  You can
   // insert things at end of document by constructing an HtmlNode* using the
-  // factories in HtmlParse and calling InjectSummaryData(element).
+  // factories in HtmlParse and calling CommonFilter::InsertNodeAtBodyEnd(node).
   //
   // Note that the timing of this can vary widely --- it can occur during
   // initial parse, during the render phase, or even at RenderDone, so
@@ -174,14 +173,6 @@ class CssSummarizerBase : public RewriteFilter {
   //
   // Base version does nothing.
   virtual void SummariesDone();
-
-  // Inject summary data at the end of the document.  Intended to be called from
-  // SummariesDone().  Tries to inject just before </body> if nothing else
-  // intervenes; otherwise tries to inject before </html> or, failing that, at
-  // the end of all content.  This latter case still works in browsers, but is
-  // incredibly ugly.  It can be necessitated by other post-</html> content, or
-  // by flushes in the body.
-  void InjectSummaryData(HtmlNode* data);
 
   // Returns total number of <link> and <style> elements we encountered.
   // This includes those for which we had problem computing summary information.
@@ -254,7 +245,6 @@ class CssSummarizerBase : public RewriteFilter {
   std::vector<int> canceled_summaries_;  // guarded by progress_lock_
 
   HtmlElement* style_element_;  // The element we are in, or NULL.
-  HtmlElement* injection_point_;  // Preferred location for InjectSummaryData
 
   DISALLOW_COPY_AND_ASSIGN(CssSummarizerBase);
 };

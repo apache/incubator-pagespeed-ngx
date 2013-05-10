@@ -42,8 +42,8 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -65,8 +65,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/util/wildcard.h"
@@ -164,8 +164,8 @@ const char kHtmlInputWithMinifiedJs[] =
           "</div>"
       "</div>"
     "</div>"
-    "</body></html>"
-    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>";
+    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
+    "</body></html>";
 
 const char kHtmlInputWithExtraCommentAndNonCacheable[] =
     "<html>"
@@ -1280,9 +1280,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlOverThreshold) {
 
   GoogleString SmallHtmlOutput =
       StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body>A small test html.</body></html>",
-             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">",
-             "</script>");
+             "</head><body>A small test html."
+             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
+             "</script></body></html>");
   EXPECT_STREQ(SmallHtmlOutput, text);
   VerifyCacheHtmlLoggingInfo(
       CacheHtmlLoggingInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
@@ -1453,9 +1453,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithHttpsUrl) {
                  &text, &response_headers, false);
   EXPECT_STREQ(
       StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body></body></html>",
-             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">",
-             "</script>"), text);
+             "</head><body>"
+             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
+             "</script></body></html>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kCacheHtmlRequestCount)->Get());
 }
@@ -1518,12 +1518,12 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowUrlCacheInvalidation) {
           "</div>"
       "</div>"
     "</div>"
+    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
     "</body></html>";
 
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
   EXPECT_STREQ(StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-                      "</head>", htmlOutput, "<script type=\"text/javascript\"",
-                      " src=\"/psajs/js_defer.0.js\">", "</script>"), text);
+                      "</head>", htmlOutput), text);
 
   // Cache lookup for original plain text and Blink Cohort
   // all miss.
@@ -1579,8 +1579,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowUrlCacheInvalidation) {
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
 
   EXPECT_STREQ(StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-                      "</head>", htmlOutput, "<script type=\"text/javascript\"",
-                      " src=\"/psajs/js_defer.0.js\">", "</script>"), text);
+                      "</head>", htmlOutput), text);
   // 1 Miss for original plain text
   EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -1631,11 +1630,11 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowDataMissDelayCache) {
           "</div>"
       "</div>"
     "</div>"
+    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
     "</body></html>";
 
   EXPECT_STREQ(StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-                      "</head>", htmlOutput, "<script type=\"text/javascript\"",
-                      " src=\"/psajs/js_defer.0.js\">", "</script>"), text);
+                      "</head>", htmlOutput), text);
 
   EXPECT_STREQ("text/html; charset=utf-8",
                response_headers.Lookup1(HttpAttributes::kContentType));
@@ -1670,9 +1669,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
                  &response_headers, false);
   EXPECT_STREQ(
       StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body></body></html>",
-             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">",
-             "</script>"), text);
+             "</head><body>"
+             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
+             "</script></body></html>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kCacheHtmlRequestCount)->Get());
   ClearStats();
@@ -1683,9 +1682,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
                  &response_headers, false);
   EXPECT_STREQ(
       StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body></body></html>",
-             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">",
-             "</script>"), text);
+             "</head><body>"
+             "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
+             "</script></body></html>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kCacheHtmlRequestCount)->Get());
   ClearStats();

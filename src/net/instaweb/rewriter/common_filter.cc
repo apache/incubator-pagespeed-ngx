@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -37,14 +38,24 @@ CommonFilter::CommonFilter(RewriteDriver* driver)
       server_context_(driver->server_context()),
       rewrite_options_(driver->options()),
       noscript_element_(NULL),
+      end_body_point_(NULL),
       seen_base_(false) {
 }
 
 CommonFilter::~CommonFilter() {}
 
+void CommonFilter::InsertNodeAtBodyEnd(HtmlNode* data) {
+  if (end_body_point_ != NULL && driver_->IsRewritable(end_body_point_)) {
+    driver_->AppendChild(end_body_point_, data);
+  } else {
+    driver_->InsertNodeBeforeCurrent(data);
+  }
+}
+
 void CommonFilter::StartDocument() {
   // Base URL starts as document URL.
   noscript_element_ = NULL;
+  end_body_point_ = NULL;
   // Reset whether or not we've seen the base tag yet, because we're starting
   // back at the top of the document.
   seen_base_ = false;
@@ -65,17 +76,53 @@ void CommonFilter::StartElement(HtmlElement* element) {
     seen_base_ = true;
   }
 
-  // Run actual filter's StartElementImpl
+  // If end_body_point_ was set (if we've already seen a </body> for instance),
+  // and we encounter a new open element, clear end_body_point_ as it's no
+  // longer the end of the body.
+  end_body_point_ = NULL;
+
+  // Run actual filter's StartElementImpl.
   StartElementImpl(element);
 }
 
 void CommonFilter::EndElement(HtmlElement* element) {
-  if (element == noscript_element_) {
-    noscript_element_ = NULL;  // We are exitting the top-level <noscript>
+  switch (element->keyword()) {
+    case HtmlName::kNoscript:
+      if (element == noscript_element_) {
+        noscript_element_ = NULL;  // We are exiting the top-level <noscript>
+      }
+      end_body_point_ = NULL;
+      break;
+    case HtmlName::kBody:
+      // Preferred injection location
+      end_body_point_ = element;
+      break;
+    case HtmlName::kHtml:
+      if ((end_body_point_ == NULL ||
+           !driver()->IsRewritable(end_body_point_)) &&
+          driver()->IsRewritable(element)) {
+        // Try to inject before </html> if before </body> won't work.
+        end_body_point_ = element;
+      }
+      break;
+    default:
+      // There were (possibly implicit) close tags after </body> or </html>, so
+      // throw that point away.
+      end_body_point_ = NULL;
+      break;
   }
 
-  // Run actual filter's EndElementImpl
+  // Run actual filter's EndElementImpl.
   EndElementImpl(element);
+}
+
+void CommonFilter::Characters(net_instaweb::HtmlCharactersNode* characters) {
+  // If we have a character node after the closing body or html tag, then we
+  // can't safely insert something depending on being at the end of the document
+  // there. This can happen due to a faulty filter, or malformed HTML.
+  if (end_body_point_ != NULL && !OnlyWhitespace(characters->contents())) {
+    end_body_point_ = NULL;
+  }
 }
 
 // Returns whether or not we can resolve against the base tag.  References

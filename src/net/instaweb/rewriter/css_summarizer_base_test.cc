@@ -133,7 +133,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
                 (include_base_ ? StrCat("/base=", sum.base) : ""),
                 "|");
     }
-    InjectSummaryData(driver()->NewCommentNode(NULL, result_));
+    InsertNodeAtBodyEnd(driver()->NewCommentNode(NULL, result_));
   }
 
   const GoogleString& result() { return result_; }

@@ -19,11 +19,12 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_DEFER_DISABLED_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DEFER_DISABLED_FILTER_H_
 
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 
 namespace net_instaweb {
 
+class HtmlElement;
 class RewriteDriver;
 class Statistics;
 
@@ -31,12 +32,11 @@ class Statistics;
 // JsDisableFilter moves scripts inside a noscript tag. This
 // filter adds a javascript that goes through every noscript
 // tag to defer them to be executed at onload of window.
-class JsDeferDisabledFilter : public EmptyHtmlFilter {
+class JsDeferDisabledFilter : public CommonFilter {
  public:
   explicit JsDeferDisabledFilter(RewriteDriver* driver);
   virtual ~JsDeferDisabledFilter();
 
-  virtual void EndDocument();
   virtual void DetermineEnabled();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
 
@@ -48,9 +48,13 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   static bool ShouldApply(RewriteDriver* driver);
 
  private:
-  void InsertJsDeferCode();
+  virtual void EndDocument();
 
-  RewriteDriver* rewrite_driver_;
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+
+  void InsertJsDeferCode();
 
   DISALLOW_COPY_AND_ASSIGN(JsDeferDisabledFilter);
 };

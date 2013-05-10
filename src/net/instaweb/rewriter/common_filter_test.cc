@@ -19,12 +19,12 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 
 #include "base/logging.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -34,7 +34,6 @@
 
 namespace net_instaweb {
 class HtmlElement;
-class HtmlParse;
 
 namespace {
 
@@ -89,8 +88,6 @@ class CommonFilterTest : public RewriteTestBase {
     return filter;
   }
 
-  GoogleMessageHandler handler_;
-  HtmlParse* html_parse_;
   scoped_ptr<CountingFilter> filter_;
 };
 
@@ -209,6 +206,121 @@ TEST_F(CommonFilterTest, TestTwoDomainLawyers) {
   EXPECT_FALSE(CanRewriteResource(a, "http://b.com/b.css"));
   EXPECT_FALSE(CanRewriteResource(b, "http://a.com/a.css"));
   EXPECT_TRUE(CanRewriteResource(b, "http://b.com/b.css"));
+}
+
+const char kEndDocumentComment[] = "<!--test comment-->";
+
+class EndDocumentInserterFilter : public CommonFilter {
+ public:
+  explicit EndDocumentInserterFilter(RewriteDriver* driver)
+      : CommonFilter(driver)
+  {}
+
+  virtual void EndDocument() {
+    InsertNodeAtBodyEnd(driver()->NewCommentNode(NULL, "test comment"));
+  }
+
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+
+  virtual const char* Name() const {
+    return "CommonFilterTest.EndDocumentInserterFilter";
+  }
+};
+
+class CommonFilterInsertNodeAtBodyEndTest : public RewriteTestBase {
+ protected:
+  virtual void SetUp() {
+    RewriteTestBase::SetUp();
+    filter_.reset(new EndDocumentInserterFilter(rewrite_driver()));
+    rewrite_driver()->AddFilter(filter_.get());
+    SetupWriter();
+  }
+
+  scoped_ptr<EndDocumentInserterFilter> filter_;
+};
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, OneBody) {
+  GoogleString doc_url = "http://www.example.com/";
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
+
+  GoogleString html_in = "<html><head></head><body></body></html>";
+  GoogleString expected = StrCat("<html><head></head><body>",
+                                 kEndDocumentComment,
+                                 "</body></html>");
+  driver->ParseText(html_in);
+  driver->FinishParse();
+
+  EXPECT_STREQ(expected, output_buffer_);
+}
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, NoCloseBody) {
+  GoogleString doc_url = "http://www.example.com/";
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
+
+  GoogleString html_in = "<html><head></head><body><img src=\"a.jpg\"></html>";
+  GoogleString expected = StrCat("<html><head></head><body><img src=\"a.jpg\">",
+                                 kEndDocumentComment,
+                                 "</html>");
+  driver->ParseText(html_in);
+  driver->FinishParse();
+
+  EXPECT_STREQ(expected, output_buffer_);
+}
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, FlushAfterCloseBody) {
+  GoogleString doc_url = "http://www.example.com/";
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
+
+  driver->ParseText("<html><head></head><body></body>");
+  driver->Flush();
+  driver->ParseText("</html>");
+  driver->FinishParse();
+
+  // kEndDocumentComment gets inserted after </html> despite it being in the
+  // last flush window. This is because HtmlParse::IsRewritable only returns
+  // true if both the open and close elements are in the flush window.
+  GoogleString expected = StrCat("<html><head></head><body></body></html>",
+                                 kEndDocumentComment);
+  EXPECT_STREQ(expected, output_buffer_);
+}
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, TwoBodies) {
+  GoogleString doc_url = "http://www.example.com/";
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
+
+  driver->ParseText("<html><head></head><body></body><body></body></html>");
+  driver->FinishParse();
+
+  GoogleString expected =
+      StrCat("<html><head></head><body></body><body>",
+             kEndDocumentComment,
+             "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, TextAfterCloseBody) {
+  GoogleString doc_url = "http://www.example.com/";
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  driver->Flush();
+
+  driver->ParseText("<html><head></head><body></body></html>extra text");
+  driver->FinishParse();
+
+  GoogleString expected =
+      StrCat("<html><head></head><body></body></html>extra text",
+             kEndDocumentComment);
+  EXPECT_STREQ(expected, output_buffer_);
 }
 
 }  // namespace

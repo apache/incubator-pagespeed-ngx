@@ -1081,6 +1081,12 @@ void RewriteDriver::AddPostRenderFilters() {
         new InsertDnsPrefetchFilter(this);
     AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
   }
+  if (rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
+    // Inject javascript to instrument loading-time. This should run before
+    // defer js so that its onload handler can fire before JS starts executing.
+    add_instrumentation_filter_ = new AddInstrumentationFilter(this);
+    AddOwnedPostRenderFilter(add_instrumentation_filter_);
+  }
   if (rewrite_options->Enabled(RewriteOptions::kSplitHtml)) {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
@@ -1105,11 +1111,6 @@ void RewriteDriver::AddPostRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
     AddOwnedPostRenderFilter(new DeterministicJsFilter(this));
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
-    // Inject javascript to instrument loading-time.
-    add_instrumentation_filter_ = new AddInstrumentationFilter(this);
-    AddOwnedPostRenderFilter(add_instrumentation_filter_);
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertMetaTags)) {
     AddOwnedPostRenderFilter(new MetaTagFilter(this));

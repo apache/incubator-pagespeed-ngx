@@ -73,9 +73,9 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
              "<script type='text/psajs'"
              "> func();</script>"
-             "</head><body>Hello, world!"
-             "</body></html>",
-             kDeferJsCodeNonGStatic));
+             "</head><body>Hello, world!",
+             kDeferJsCodeNonGStatic,
+             "</body></html>"));
 }
 
 TEST_F(JsDeferDisabledFilterTest, JsDeferPreserveURLsOn) {
@@ -107,8 +107,9 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
              "<script type='text/psajs'> func(); </script>"
              "</head><body>Hello, world!"
              "</body><body><script type='text/psajs'> func2(); "
-             "</script></body></html>",
-             kDeferJsCodeNonGStatic));
+             "</script>",
+             kDeferJsCodeNonGStatic,
+             "</body></html>"));
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptOptimized) {
@@ -151,14 +152,14 @@ TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
       "> func();</script>"
       "</head><body>Hello, world!</body>";
 
-  GoogleString expected = "<head>"
+  GoogleString expected = StrCat("<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"
       "<script type='text/psajs'"
       "> func();</script></head><body>"
-      "Hello, world!</body>"
-      "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
-      "</script>";
+      "Hello, world!",
+      kDeferJsCodeNonGStatic,
+      "</body>");
 
   ValidateExpected("defer_script", script, expected);
 }
@@ -195,10 +196,10 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
       "<script type='text/psajs'> func2(); </script></body></html>",
       "<html><body>Hello, world!"
       "</body><body><script type='text/psajs'> func2(); "
-      "</script></body></html>"
+      "</script>"
       "<script type=\"text/javascript\" "
       "src=\"//www.gstatic.com/psa/static/1-js_defer.js\">"
-      "</script>");
+      "</script></body></html>");
 }
 
 TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromNonGStatic) {
@@ -210,8 +211,9 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromNonGStatic) {
       "<script type='text/psajs'> func2(); </script></body></html>",
       StrCat("<html><body>Hello, world!",
              "</body><body><script type='text/psajs'> func2(); "
-             "</script></body></html>",
-             kDeferJsCodeNonGStatic));
+             "</script>",
+             kDeferJsCodeNonGStatic,
+             "</body></html>"));
 }
 
 }  // namespace net_instaweb

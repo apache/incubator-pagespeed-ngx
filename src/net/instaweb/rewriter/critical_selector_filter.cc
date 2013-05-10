@@ -388,13 +388,13 @@ void CriticalSelectorFilter::RenderDone() {
           driver_->AddAttribute(noscript_element, HtmlName::kClass,
                                 "psa_add_styles");
         }
-        InjectSummaryData(noscript_element);
+        InsertNodeAtBodyEnd(noscript_element);
       }
       css_elements_[i]->AppendTo(noscript_element);
     }
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-    InjectSummaryData(script);
+    InsertNodeAtBodyEnd(script);
     if (driver_->options()
         ->test_only_prioritize_critical_css_dont_apply_original_css()) {
       driver_->server_context()->static_asset_manager()->AddJsToElement(
