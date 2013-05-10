@@ -74,6 +74,8 @@ extern ngx_module_t ngx_pagespeed;
 // http://lxr.evanmiller.org/http/source/http/ngx_http_request.h#L130
 #define  NGX_HTTP_PAGESPEED_BUFFERED 0x08
 
+const char* kInternalEtagName = "@psol-etag";
+
 namespace ngx_psol {
 
 StringPiece str_to_string_piece(ngx_str_t s) {
@@ -187,8 +189,19 @@ ngx_int_t copy_response_headers_to_ngx(
     const GoogleString& value_gs = pagespeed_headers.Value(i);
 
     ngx_str_t name, value;
-    name.len = name_gs.length();
-    name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
+
+    // To prevent the gzip module from clearing weak etags, we output them
+    // using a different name here. The etag header filter module runs behind
+    // the gzip compressors header filter, and will rename it to 'ETag'
+    if (net_instaweb::StringCaseEqual(name_gs, "etag")
+        && net_instaweb::StringCaseStartsWith(value_gs, "W/")) {
+      name.len = strlen(kInternalEtagName);
+      name.data = reinterpret_cast<u_char*>(
+          const_cast<char*>(kInternalEtagName));
+    } else {
+      name.len = name_gs.length();
+      name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
+    }
     value.len = value_gs.length();
     value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
 
@@ -718,6 +731,8 @@ char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
   return NGX_CONF_OK;
 }
 
+// _ef_ is a shorthand for ETag Filter
+ngx_http_output_header_filter_pt ngx_http_ef_next_header_filter;
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
@@ -1852,6 +1867,37 @@ bool ps_has_stacked_content_encoding(ngx_http_request_t* r) {
   return false;
 }
 
+ngx_int_t ps_etag_header_filter(ngx_http_request_t* r) {
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_out.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+  u_char* etag = reinterpret_cast<u_char*>(
+      const_cast<char*>(kInternalEtagName));
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    if (header[i].key.len == strlen(kInternalEtagName) &&
+        !ngx_strncasecmp(header[i].key.data, etag, header[i].key.len)) {
+      header[i].key.data = reinterpret_cast<u_char*>(const_cast<char*>("ETag"));
+      header[i].key.len = 4;
+      r->headers_out.etag = header;
+      break;
+    }
+  }
+
+  return ngx_http_ef_next_header_filter(r);
+}
+
 ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
@@ -2544,6 +2590,16 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
   return NGX_DECLINED;
 }
 
+ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
+  if (cfg_m->driver_factory != NULL) {
+    ngx_http_ef_next_header_filter = ngx_http_top_header_filter;
+    ngx_http_top_header_filter = ps_etag_header_filter;
+  }
+  return NGX_OK;
+}
+
 ngx_int_t ps_init(ngx_conf_t* cf) {
   // Only put register pagespeed code to run if there was a "pagespeed"
   // configuration option set in the config file.  With "pagespeed off" we
@@ -2579,6 +2635,17 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
 
   return NGX_OK;
 }
+
+ngx_http_module_t ps_etag_filter_module = {
+  NULL,  // preconfiguration
+  ps_etag_filter_init,  // postconfiguration
+  NULL,
+  NULL,  // initialize main configuration
+  NULL,
+  NULL,
+  NULL,
+  NULL
+};
 
 ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
@@ -2720,6 +2787,21 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 }  // namespace
 
 }  // namespace ngx_psol
+
+ngx_module_t ngx_pagespeed_etag_filter = {
+  NGX_MODULE_V1,
+  &ngx_psol::ps_etag_filter_module,
+  NULL,
+  NGX_HTTP_MODULE,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NGX_MODULE_V1_PADDING
+};
 
 ngx_module_t ngx_pagespeed = {
   NGX_MODULE_V1,
