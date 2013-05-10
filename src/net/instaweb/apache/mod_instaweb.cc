@@ -1868,8 +1868,8 @@ void* create_dir_config(apr_pool_t* pool, char* dir) {
 // new_conf is the directory structure currently being processed.
 // This function returns the new per-directory structure created
 void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
-  const ApacheConfig* dir1 = static_cast<const ApacheConfig*>(base_conf);
-  const ApacheConfig* dir2 = static_cast<const ApacheConfig*>(new_conf);
+  ApacheConfig* dir1 = static_cast<ApacheConfig*>(base_conf);
+  ApacheConfig* dir2 = static_cast<ApacheConfig*>(new_conf);
 
   // To make it easier to debug the merged configurations, we store
   // the name of both input configurations as the description for
@@ -1878,7 +1878,15 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
       StrCat(
           "Combine(", dir1->description(), ", ", dir2->description(), ")"),
       dir1->thread_system());
+
+  // Apache does not notify us when it is done adding directives to a
+  // configuration, so we don't have a good opportunity to Freeze it
+  // until it use used as a merge source.  We don't want to do this in
+  // Merge because, for C++ cleanliness/readability, we want to let
+  // Merge take a const RewrieOptions&, so we must Freeze at the call site.
+  dir1->Freeze();
   dir3->Merge(*dir1);
+  dir2->Freeze();
   dir3->Merge(*dir2);
   apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
   return dir3;

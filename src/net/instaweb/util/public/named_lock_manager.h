@@ -56,13 +56,29 @@ class NamedLock {
   // Non-blocking.
   virtual bool TryLockStealOld(int64 timeout_ms) = 0;
 
-  // LockTimedWaitStealOld will block until unlocked, the lock has been held for
-  // timeout_ms, or the caller has waited for wait_ms.
+  // LockTimedWaitStealOld without a callback will block for up to
+  // wait_ms until the lock is unlocked, then lock it and return true.
+  // If the current lock holder has locked it for more than
+  // timeout_ms, the lock is "stolen" (re-locked by the caller).  If
+  // wait_ms passes without the lock being unlocked or stolen, false
+  // (failed to lock) is returned.
+  //
+  // Note that even if wait_ms > timeout_ms, callback->Cancel() may be
+  // called if there are multiple concurrent attempts to take the
+  // lock.
   virtual bool LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms) = 0;
 
-  // Return immeidately.  Run the callback if the lock can be obtained within
-  // wait_ms, seizing the lock if the current holder has held it more than
-  // timeout_ms.  On timeout, cancel callback.
+  // LockTimedWaitStealOld with a callback returns immediately.  The
+  // callback is Run if the lock can be obtained within wait_ms.  If
+  // the current lock holder has locked it for more than timeout_ms,
+  // the lock is "stolen" (re-locked by the caller and the callback is
+  // called) and again the callback is Run.  If wait_ms passes without
+  // the lock being unlocked or stolen, the callback's Cancel method
+  // is called.
+  //
+  // Note that even if wait_ms > timeout_ms, callback->Cancel() may be
+  // called if there are multiple concurrent attempts to take the
+  // lock.
   virtual void LockTimedWaitStealOld(int64 wait_ms, int64 timeout_ms,
                                      Function* callback) = 0;
 
