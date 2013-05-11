@@ -169,7 +169,6 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
       mutex_(server_context->thread_system()->NewMutex()),
       pending_(false) {
   n_instance_.BarrierIncrement(1);
-  PopulateRequestHeaders();
 }
 
 NgxBaseFetch::~NgxBaseFetch() {

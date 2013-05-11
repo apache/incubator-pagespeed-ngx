@@ -803,7 +803,7 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 // Wrapper around GetQueryOptions()
 net_instaweb::RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
-    ps_request_ctx_t* ctx,
+    net_instaweb::RequestHeaders* request_headers,
     ps_srv_conf_t* cfg_s,
     net_instaweb::GoogleUrl* url) {
   // Stripping ModPagespeed query params before the property cache lookup to
@@ -812,7 +812,7 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
   // Sets option from request headers and url.
   net_instaweb::ServerContext::OptionsBoolPair query_options_success =
       cfg_s->server_context->GetQueryOptions(
-          url, ctx->base_fetch->request_headers(), NULL);
+          url, request_headers, NULL);
   bool get_query_options_success = query_options_success.second;
   if (!get_query_options_success) {
     // Failed to parse query params or request headers.  Treat this as if there
@@ -834,13 +834,13 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
 //
 // See InstawebContext::SetFuriousStateAndCookie()
 bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
-                                     ps_request_ctx_t* ctx,
-                                     net_instaweb::RewriteOptions* options,
-                                     const StringPiece& host) {
+                        net_instaweb::RequestHeaders* request_headers,
+                        net_instaweb::RewriteOptions* options,
+                        const StringPiece& host) {
   CHECK(options->running_furious());
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   bool need_cookie = cfg_s->server_context->furious_matcher()->
-      ClassifyIntoExperiment(*ctx->base_fetch->request_headers(), options);
+      ClassifyIntoExperiment(*request_headers, options);
   if (need_cookie && host.length() > 0) {
     int64 time_now_us = apr_time_now();
     int64 expiration_time_ms = (time_now_us/1000 +
@@ -884,7 +884,7 @@ bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
 // the caller takes ownership.  If the only applicable options are global,
 // set options to NULL so we can use server_context->global_options().
 bool ps_determine_options(ngx_http_request_t* r,
-                          ps_request_ctx_t* ctx,
+                          net_instaweb::RequestHeaders* request_headers,
                           net_instaweb::RewriteOptions** options,
                           net_instaweb::GoogleUrl* url) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -901,7 +901,7 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   net_instaweb::RewriteOptions* request_options =
-      ps_determine_request_options(r, ctx, cfg_s, url);
+      ps_determine_request_options(r, request_headers, cfg_s, url);
 
   // Because the caller takes memory ownership of any options we return, the
   // only situation in which we can avoid allocating a new RewriteOptions is if
@@ -926,7 +926,8 @@ bool ps_determine_options(ngx_http_request_t* r,
     (*options)->Merge(*request_options);
     delete request_options;
   } else if ((*options)->running_furious()) {
-    bool ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
+    bool ok = ps_set_furious_state_and_cookie(
+                  r, request_headers, *options, url->Host());
     if (!ok) {
       if (*options != NULL) {
         delete *options;
@@ -1223,50 +1224,33 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kNotUnderstood;
   }
 
-  ps_request_ctx_t* ctx = new ps_request_ctx_t();
-
-  ctx->r = r;
-  ctx->is_resource_fetch = is_resource_fetch;
-  ctx->write_pending = false;
-
-
-  // Handles its own deletion.  We need to call Release() when we're done with
-  // it, and call Done() on the associated parent (Proxy or Resource) fetch.  If
-  // we fail before creating the associated fetch then we need to call Done() on
-  // the BaseFetch ourselves.
-  ctx->base_fetch = new net_instaweb::NgxBaseFetch(
-      r,
-      cfg_s->server_context,
-      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
-          cfg_s->server_context->thread_system()->NewMutex(), r)));
-
   // If null, that means use global options.
-  net_instaweb::RewriteOptions* custom_options = NULL;
-  bool ok = ps_determine_options(r, ctx, &custom_options, &url);
-  if (!ok) {
-    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
-    ps_release_request_context(ctx);
+  net_instaweb::RewriteOptions *options = NULL;
+
+  scoped_ptr<net_instaweb::RequestHeaders> request_headers(
+                                              new net_instaweb::RequestHeaders);
+
+  copy_request_headers_from_ngx(r, request_headers.get());
+
+  if ( !ps_determine_options(r, request_headers.get(), &options, &url) ) {
     return CreateRequestContext::kError;
+  }
+
+  // Take the ownership of custom_options
+  scoped_ptr<net_instaweb::RewriteOptions> custom_options(options);
+
+  if (options == NULL) {
+    options = cfg_s->server_context->global_options();
+  }
+
+  if (!options->enabled()) {
+    // Disabled via query params or request headers.
+    return CreateRequestContext::kPagespeedDisabled;
   }
 
   // ps_determine_options modified url, removing any ModPagespeedFoo=Bar query
   // parameters.  Keep url_string in sync with url.
   url.Spec().CopyToString(&url_string);
-
-  net_instaweb::RewriteOptions* options;
-  if (custom_options == NULL) {
-    options = cfg_s->server_context->global_options();
-  } else {
-    options = custom_options;
-  }
-
-  if (!options->enabled()) {
-    // Disabled via query params or request headers.
-
-    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
-    ps_release_request_context(ctx);
-    return CreateRequestContext::kPagespeedDisabled;
-  }
 
   if (options->respect_x_forwarded_proto()) {
     bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
@@ -1278,49 +1262,11 @@ CreateRequestContext::Response ps_create_request_context(
     }
   }
 
-  bool page_callback_added = false;
-  scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
-      property_callback(ps_initiate_property_cache_lookup(
-          cfg_s->server_context,
-          is_resource_fetch, url, options, ctx->base_fetch,
-          &page_callback_added));
+  ps_request_ctx_t* ctx = new ps_request_ctx_t();
 
-  if (is_resource_fetch) {
-    // TODO(jefftk): Set using_spdy appropriately.  See
-    // ProxyInterface::ProxyRequestCallback
-    net_instaweb::ResourceFetch::Start(
-        url, custom_options /* null if there aren't custom options */,
-        false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
-  } else {
-    // If we don't have custom options we can use NewRewriteDriver which reuses
-    // rewrite drivers and so is faster because there's no wait to construct
-    // them.  Otherwise we have to build a new one every time.
-
-    // Do not store driver in request_context, it's not safe.
-    net_instaweb::RewriteDriver* driver;
-
-    if (custom_options == NULL) {
-      driver = cfg_s->server_context->NewRewriteDriver(
-          ctx->base_fetch->request_context());
-    } else {
-      // NewCustomRewriteDriver takes ownership of custom_options.
-      driver = cfg_s->server_context->NewCustomRewriteDriver(
-          custom_options, ctx->base_fetch->request_context());
-    }
-
-    ctx->modify_headers = driver->options()->modify_caching_headers();
-
-    // TODO(jefftk): FlushEarlyFlow would go here.
-
-    // Will call StartParse etc.  The rewrite driver will take care of deleting
-    // itself if necessary.
-    ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
-        url_string, ctx->base_fetch, driver,
-        property_callback.release(),
-        NULL /* original_content_fetch */);
-  }
-
-
+  ctx->r = r;
+  ctx->is_resource_fetch = is_resource_fetch;
+  ctx->write_pending = false;
 
   // Set up a cleanup handler on the request.
   ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -1331,6 +1277,59 @@ CreateRequestContext::Response ps_create_request_context(
   cleanup->handler = ps_release_request_context;
   cleanup->data = ctx;
   ngx_http_set_ctx(r, ctx, ngx_pagespeed);
+
+  // Handles its own deletion.  We need to call Release() when we're done with
+  // it, and call Done() on the associated parent (Proxy or Resource) fetch.  If
+  // we fail before creating the associated fetch then we need to call Done() on
+  // the BaseFetch ourselves.
+  ctx->base_fetch = new net_instaweb::NgxBaseFetch(r,
+             cfg_s->server_context,
+             net_instaweb::RequestContextPtr(
+                 new net_instaweb::NgxRequestContext(
+                     cfg_s->server_context->thread_system()->NewMutex(), r)));
+  ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers.release());
+
+  if (is_resource_fetch) {
+    // TODO(jefftk): Set using_spdy appropriately.  See
+    // ProxyInterface::ProxyRequestCallback
+    net_instaweb::ResourceFetch::Start(
+        url, custom_options.release() /* null if there aren't custom options */,
+        false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
+  } else {
+    // If we don't have custom options we can use NewRewriteDriver which reuses
+    // rewrite drivers and so is faster because there's no wait to construct
+    // them.  Otherwise we have to build a new one every time.
+
+    // Do not store driver in request_context, it's not safe.
+    net_instaweb::RewriteDriver* driver;
+    if (custom_options.get() == NULL) {
+      driver = cfg_s->server_context->NewRewriteDriver(
+          ctx->base_fetch->request_context());
+    } else {
+      // NewCustomRewriteDriver takes ownership of custom_options.
+      driver = cfg_s->server_context->NewCustomRewriteDriver(
+          custom_options.release(), ctx->base_fetch->request_context());
+    }
+
+    ctx->modify_headers = driver->options()->modify_caching_headers();
+
+    bool page_callback_added = false;
+    scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
+        property_callback(ps_initiate_property_cache_lookup(
+            cfg_s->server_context,
+            is_resource_fetch, url, options, ctx->base_fetch,
+            &page_callback_added));
+
+
+    // TODO(jefftk): FlushEarlyFlow would go here.
+
+    // Will call StartParse etc.  The rewrite driver will take care of deleting
+    // itself if necessary.
+    ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
+        url_string, ctx->base_fetch, driver,
+        property_callback.release(),
+        NULL /* original_content_fetch */);
+  }
 
   return CreateRequestContext::kOk;
 }
