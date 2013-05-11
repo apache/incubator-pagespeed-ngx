@@ -38,6 +38,7 @@ extern "C" {
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/util/public/google_url.h"
 
 namespace net_instaweb {
 
@@ -83,10 +84,10 @@ typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   ngx_http_request_t* r;
-  bool is_resource_fetch;
   bool write_pending;
   bool modify_headers;
   bool fetch_done;
+  bool do_rewrite;
   net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 

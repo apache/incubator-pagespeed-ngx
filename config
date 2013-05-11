@@ -154,8 +154,8 @@ if [ $ngx_found = yes ]; then
   # Make pagespeed run immediately before gzip.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
     sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/")
-  HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
-    sed "s/$HTTP_HEADER_FILTER_MODULE/$HTTP_HEADER_FILTER_MODULE ngx_pagespeed_copy_filter/")
+#  HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
+#    sed "s/$HTTP_HEADER_FILTER_MODULE/$HTTP_HEADER_FILTER_MODULE ngx_pagespeed_copy_filter/")
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else

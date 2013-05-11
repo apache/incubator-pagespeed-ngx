@@ -227,6 +227,10 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   const ResponseHeaders* pagespeed_headers = response_headers();
+  if (content_length_known()) {
+    headers_out->content_length = NULL;
+    headers_out->content_length_n = content_length();
+  }
   return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
 }
 
@@ -301,7 +305,7 @@ void NgxBaseFetch::HandleDone(bool success) {
   }
   done_called_ = true;
   SignalNoLock();
-
+  scoped_mutex.Release();
   if (references_.BarrierIncrement(-1) == 0) {
     delete this;
   }
