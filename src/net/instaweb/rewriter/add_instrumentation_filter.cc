@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -35,6 +36,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
@@ -192,6 +194,16 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   EscapeToJsStringLiteral(driver_->google_url().Spec(),
                           false, /* no quotes */
                           &html_url);
+
+  const RequestHeaders* request_headers = driver_->request_headers();
+  if (request_headers != NULL) {
+    const char* referer = request_headers->Lookup1(HttpAttributes::kReferer);
+    if (referer != NULL) {
+      GoogleString referer_escaped;
+      EscapeToJsStringLiteral(referer, false /* no quotes */, &referer_escaped);
+      StrAppend(&extra_params, "&ref=", referer_escaped);
+    }
+  }
 
   GoogleString init_js = "\npagespeed.addInstrumentationInit(";
   StrAppend(&init_js, "'", *beacon_url, "', ");

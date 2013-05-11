@@ -147,6 +147,12 @@ void SystemRewriteOptions::AddProperties() {
                     "cc", RewriteOptions::kCompressMetadataCache,
                     "Whether to compress cache entries before writing them to "
                     "memory or disk.");
+  AddSystemProperty("", &SystemRewriteOptions::ssl_cert_directory_, "assld",
+                    RewriteOptions::kSslCertDirectory,
+                    "Directory to find SSL certificates.");
+  AddSystemProperty("", &SystemRewriteOptions::ssl_cert_file_, "asslf",
+                    RewriteOptions::kSslCertFile,
+                    "File with SSL certificates.");
 
   MergeSubclassProperties(system_properties_);
 }

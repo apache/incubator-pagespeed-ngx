@@ -30,16 +30,16 @@
 
 // To enable HTTPS fetching with serf, we must link against OpenSSL,
 // which is a a large library with licensing restrictions not known to
-// be wholly inline with the Apache license.  To enable HTTPS fetching:
-//   1. Set SERF_HTTPS_FETCHING to 1 here
-//   2. Uncomment the references to openssl.gyp and ssl_buckets.c in
+// be wholly inline with the Apache license.  To disable HTTPS fetching:
+//   1. Set SERF_HTTPS_FETCHING to 0 here
+//   2. Comment out the references to openssl.gyp and ssl_buckets.c in
 //      src/third_party/serf/serf.gyp.
-//   3. Uncomment both references to openssl in src/DEPS.
+//   3. Comment out all references to openssl in src/DEPS.
 //
 // If this is enabled, then the HTTPS fetching can be tested with
 //    install/apache_https_fetch_test.sh
 #ifndef SERF_HTTPS_FETCHING
-#define SERF_HTTPS_FETCHING 0
+#define SERF_HTTPS_FETCHING 1
 #endif
 
 struct apr_pool_t;
@@ -163,6 +163,16 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
     return ParseHttpsOptions(directive, &options, error_message);
   }
 
+  void SetSslCertificatesDir(StringPiece dir);
+  const GoogleString& ssl_certificates_dir() const {
+    return ssl_certificates_dir_;
+  }
+
+  void SetSslCertificatesFile(StringPiece file);
+  const GoogleString& ssl_certificates_file() const {
+    return ssl_certificates_file_;
+  }
+
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
 
@@ -244,6 +254,8 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   bool track_original_content_length_;
   uint32 https_options_;  // Composed of HttpsOptions ORed together.
   MessageHandler* message_handler_;
+  GoogleString ssl_certificates_dir_;
+  GoogleString ssl_certificates_file_;
 
   // Set of content types that will not be inflated, when passing through
   // inflating fetch.

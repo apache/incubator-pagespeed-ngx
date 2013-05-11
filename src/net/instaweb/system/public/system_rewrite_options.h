@@ -159,6 +159,13 @@ class SystemRewriteOptions : public RewriteOptions {
     return cache_flush_filename_.value();
   }
 
+  const GoogleString& ssl_cert_directory() const {
+    return ssl_cert_directory_.value();
+  }
+  const GoogleString& ssl_cert_file() const {
+    return ssl_cert_file_.value();
+  }
+
   virtual SystemRewriteOptions* Clone() const;
   virtual SystemRewriteOptions* NewOptions() const;
 
@@ -191,6 +198,8 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;
+  Option<GoogleString> ssl_cert_directory_;
+  Option<GoogleString> ssl_cert_file_;
 
   Option<bool> statistics_enabled_;
   Option<bool> statistics_logging_enabled_;

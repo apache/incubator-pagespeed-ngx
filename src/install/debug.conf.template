@@ -38,16 +38,17 @@ ModPagespeedCriticalImagesBeaconEnabled false
 
 # This will cause an error report in the startup log if mod_pagespeed is not
 # built with ssl, but otherwise will cause no trouble.
-ModPagespeedFetchHttps enable,allow_self_signed
+ModPagespeedFetchHttps enable
 
 # Test proxying of non-.pagespeed. resources.
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
                            http://@@TEST_PROXY_ORIGIN@@/do_not_modify
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch" >
+  ModPagespeedDisableFilters inline_images
   ModPagespeedDomain https://@@TEST_PROXY_ORIGIN@@
-  ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_dot_com \
-                             https://@@TEST_PROXY_ORIGIN@@/do_not_modify
+  ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/https_gstatic_dot_com \
+      https://www.gstatic.com/psa/static
 </Directory>
 
 # These caching headers are set up for the document root, and

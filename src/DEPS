@@ -70,13 +70,18 @@ vars = {
   "re2_src": "http://re2-svn.googlecode.com/svn/trunk/",
   "re2_revision": "@2",
 
-  # Uncomment to enable HTTPS fetching via serf.  See also commented out
+  # Comment this out to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
   #
   # TODO(jmarantz): create an easy way to choose this option from the
   # 'gclient' command, without having to edit the gyp & DEPS files.
   #
-  # "openssl_src": "http://git.chromium.org/chromium/deps/openssl.git",
+  # The revision we are picking here is to a specific commit found on
+  # http://git.chromium.org/gitweb/?p=chromium/deps/openssl.git;a=summary :
+  #     4 days ago  tfarina@chromium.org  Remove <(library) usage from openssl.gyp. master
+  # This was the latest revision as of Jan 23, 2013.
+  "openssl_src": "http://git.chromium.org/chromium/deps/openssl.git",
+  "openssl_revision": "@67ccadeefe503dad566639ac02c772945a72a08d",
 }
 
 deps = {
@@ -218,10 +223,10 @@ deps = {
   "src/third_party/re2/src":
     Var("re2_src") + "/src/re2" + Var("re2_revision"),
 
-  # Uncomment to enable HTTPS fetching via serf.  See also commented out
+  # Comment to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
   #
-  # "src/third_party/openssl": Var("openssl_src"),
+  "src/third_party/openssl": Var("openssl_src") + Var("openssl_revision"),
 }
 
 

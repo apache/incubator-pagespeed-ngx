@@ -75,9 +75,9 @@ const int kGoogleFavicon = 1;
 const int kGoogleLogo = 2;
 const int kCgiSlowJs = 3;
 const int kModpagespeedBeacon = 4;
-const int kHttpsGoogleFavicon = 5;
-const int kConnectionRefused = 6;
-const int kNoContent = 7;
+const int kConnectionRefused = 5;
+const int kNoContent = 6;
+const int kNextTestcaseIndex = 7;  // Should always be last.
 
 // Note: We do not subclass StringAsyncFetch because we want to lock access
 // to done_.
@@ -98,7 +98,7 @@ class SerfTestFetch : public AsyncFetch {
   virtual void HandleHeadersComplete() {}
   virtual void HandleDone(bool success) {
     ScopedMutex lock(mutex_);
-    CHECK(!done_);
+    EXPECT_FALSE(done_);
     success_ = success;
     done_ = true;
   }
@@ -154,24 +154,34 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     // Note: We store resources in www.modpagespeed.com/do_not_modify and
     // with content hash so that we can make sure the files don't change
     // from under us and cause our tests to fail.
-    AddTestUrl(StrCat("http:", fetch_test_domain, "/do_not_modify/"
-                      "favicon.d034f46c06475a27478e98ef5dff965e.ico"),
-               GoogleString("\000\000\001\000", 4));
+    GoogleString favicon_domain_and_path = StrCat(
+        fetch_test_domain,
+        "/do_not_modify/favicon.d034f46c06475a27478e98ef5dff965e.ico");
+    static const char kFaviconHead[] = "\000\000\001\001\002\000\020";
+    favicon_head_.append(kFaviconHead, STATIC_STRLEN(kFaviconHead));
+    https_favicon_url_ = StrCat("https:", favicon_domain_and_path);
+    AddTestUrl(StrCat("http:", favicon_domain_and_path), favicon_head_);
     AddTestUrl(StrCat("http:", fetch_test_domain, "/do_not_modify/"
                       "logo.e80d1c59a673f560785784fb1ac10959.gif"), "GIF");
     AddTestUrl("http://modpagespeed.com/do_not_modify/cgi/slow_js.cgi",
                "alert('hello world');");
     AddTestUrl(StrCat("http:", fetch_test_domain,
-                      "/mod_pagespeed_beacon?ets=42"),
-               "");
-    AddTestUrl(StrCat("https:", fetch_test_domain, "/do_not_modify/"
-                      "favicon.d034f46c06475a27478e98ef5dff965e.ico"),
-               GoogleString());
-    AddTestUrl(StrCat("http:", fetch_test_domain, ":1023/refused.jpg"),
-               GoogleString());
-    AddTestUrl(StrCat("http:", fetch_test_domain, "/no_content"),
-               GoogleString());
+                      "/mod_pagespeed_beacon?ets=42"), "");
+    AddTestUrl(StrCat("http:", fetch_test_domain, ":1023/refused.jpg"), "");
+    AddTestUrl(StrCat("http:", fetch_test_domain, "/no_content"), "");
+
     prev_done_count = 0;
+
+#if SERF_HTTPS_FETCHING
+    const char* ssl_cert_dir = getenv("SSL_CERT_DIR");
+    if (ssl_cert_dir != NULL) {
+      serf_url_async_fetcher_->SetSslCertificatesDir(ssl_cert_dir);
+    }
+    const char* ssl_cert_file = getenv("SSL_CERT_FILE");
+    if (ssl_cert_file != NULL) {
+      serf_url_async_fetcher_->SetSslCertificatesFile(ssl_cert_file);
+    }
+#endif
   }
 
   virtual void TearDown() {
@@ -182,14 +192,17 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     apr_pool_destroy(pool_);
   }
 
-  void AddTestUrl(const GoogleString& url,
-                  const GoogleString& content_start) {
+  // Adds a new URL & expected response to the url/response structure, returning
+  // its index so it can be passed to StartFetch/StartFetches etc.
+  int AddTestUrl(const GoogleString& url, const GoogleString& content_start) {
     urls_.push_back(url);
     content_starts_.push_back(content_start);
+    int index = fetches_.size();
     fetches_.push_back(
         new SerfTestFetch(
             RequestContext::NewTestRequestContext(thread_system_.get()),
             mutex_.get()));
+    return index;
   }
 
   void StartFetch(int idx) {
@@ -245,8 +258,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         EXPECT_EQ(HttpStatus::kOK, response_headers(idx)->status_code())
             << urls_[idx];
       }
-      EXPECT_EQ(content_starts_[idx],
-                contents(idx).substr(0, content_starts_[idx].size()));
+      EXPECT_STREQ(content_starts_[idx],
+                   contents(idx).substr(0, content_starts_[idx].size()));
     }
   }
 
@@ -298,15 +311,50 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
               response_headers(kConnectionRefused)->status_code());
   }
 
-  void TestHttpsFails() {
-    StartFetches(kHttpsGoogleFavicon, kHttpsGoogleFavicon);
-    ASSERT_EQ(1,
-              WaitTillDone(kHttpsGoogleFavicon, kHttpsGoogleFavicon, kMaxMs));
-    ASSERT_TRUE(fetches_[kHttpsGoogleFavicon]->IsDone());
-    ASSERT_TRUE(content_starts_[kHttpsGoogleFavicon].empty());
-    EXPECT_STREQ("", contents(kHttpsGoogleFavicon));
-    EXPECT_EQ(HttpStatus::kNotFound,
-              response_headers(kHttpsGoogleFavicon)->status_code());
+  // Tests that a range of URLs (established with AddTestUrl) all fail
+  // with HTTPS, either because HTTPS is disabled or because of cert issues.
+  void TestHttpsFails(int first, int last) {
+    int num_fetches = last - first + 1;
+    CHECK_LT(0, num_fetches);
+    StartFetches(first, last);
+    ASSERT_EQ(num_fetches, WaitTillDone(first, last, kMaxMs));
+    for (int index = first; index <= last; ++index) {
+      ASSERT_TRUE(fetches_[index]->IsDone()) << urls_[index];
+      ASSERT_TRUE(content_starts_[index].empty()) << urls_[index];
+      EXPECT_STREQ("", contents(index)) << urls_[index];
+      EXPECT_EQ(HttpStatus::kNotFound, response_headers(index)->status_code())
+          << urls_[index];
+    }
+
+    // If we have enabled https, we should be counting our cert-failures.
+    // Otherwise we shouldn't even be checking.
+    if (serf_url_async_fetcher_->SupportsHttps()) {
+      EXPECT_EQ(num_fetches, statistics_->GetVariable(
+          SerfStats::kSerfFetchCertErrors)->Get());
+    } else {
+      EXPECT_EQ(0, statistics_->GetVariable(
+          SerfStats::kSerfFetchCertErrors)->Get());
+    }
+  }
+
+  // Tests a single URL fails with HTTPS.
+  void TestHttpsFails(const GoogleString& url) {
+    int index = AddTestUrl(url, "");
+    TestHttpsFails(index, index);
+  }
+
+  // Tests that a single HTTPS URL with expected content succeeds.
+  void TestHttpsSucceeds(const GoogleString& url,
+                         const GoogleString& content_start) {
+    int index = AddTestUrl(url, content_start);
+    StartFetches(index, index);
+    ASSERT_EQ(WaitTillDone(index, index, kMaxMs), 1);
+    ASSERT_TRUE(fetches_[index]->IsDone());
+    ASSERT_FALSE(content_starts_[index].empty());
+    EXPECT_FALSE(contents(index).empty());
+    EXPECT_EQ(HttpStatus::kOK, response_headers(index)->status_code());
+    EXPECT_EQ(0, statistics_->GetVariable(
+        SerfStats::kSerfFetchCertErrors)->Get());
   }
 
   // Convenience getters.
@@ -330,6 +378,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   scoped_ptr<AbstractMutex> mutex_;
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<SimpleStats> statistics_;
+  GoogleString https_favicon_url_;
+  GoogleString favicon_head_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcherTest);
@@ -509,7 +559,7 @@ TEST_F(SerfUrlAsyncFetcherTest, Test204) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsByDefault) {
-  TestHttpsFails();
+  TestHttpsFails(https_favicon_url_);
 }
 
 #if SERF_HTTPS_FETCHING
@@ -517,28 +567,32 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsByDefault) {
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForSelfSignedCert) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
-  TestHttpsFails();
-  EXPECT_EQ(1,
-            statistics_->GetVariable(SerfStats::kSerfFetchCertErrors)->Get());
+  TestHttpsFails(https_favicon_url_);
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsForGoogleCom) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");
+  EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
+  TestHttpsSucceeds("https://www.google.com", "<!doctype html>");
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForGoogleComWithBogusCertDir) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");
+  serf_url_async_fetcher_->SetSslCertificatesDir(GTestTempDir());
+  TestHttpsFails("https://www.google.com");
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsWhenEnabled) {
   serf_url_async_fetcher_->SetHttpsOptions("enable,allow_self_signed");
   EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
-  StartFetches(kHttpsGoogleFavicon, kHttpsGoogleFavicon);
-  ASSERT_EQ(WaitTillDone(kHttpsGoogleFavicon, kHttpsGoogleFavicon, kMaxMs), 1);
-  ASSERT_TRUE(fetches_[kHttpsGoogleFavicon]->IsDone());
-  ASSERT_TRUE(content_starts_[kHttpsGoogleFavicon].empty());
-  EXPECT_FALSE(contents(kHttpsGoogleFavicon).empty());
-  EXPECT_EQ(HttpStatus::kOK,
-            response_headers(kHttpsGoogleFavicon)->status_code());
+  TestHttpsSucceeds(https_favicon_url_, favicon_head_);
 }
 #else
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsEvenWhenEnabled) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");  // ignored
   EXPECT_FALSE(serf_url_async_fetcher_->SupportsHttps());
-  TestHttpsFails();
+  TestHttpsFails(https_favicon_url_);
 }
 
 #endif

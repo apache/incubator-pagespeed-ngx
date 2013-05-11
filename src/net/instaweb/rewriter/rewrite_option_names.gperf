@@ -188,6 +188,8 @@ struct OptionName {
 "SlurpDirectory",                        RewriteOptions::kSlurpDirectory
 "SlurpFlushLimit",                       RewriteOptions::kSlurpFlushLimit
 "SlurpReadOnly",                         RewriteOptions::kSlurpReadOnly
+"SslCertDirectory",                      RewriteOptions::kSslCertDirectory
+"SslCertFile",                           RewriteOptions::kSslCertFile
 "Statistics",                            RewriteOptions::kStatisticsEnabled
 "StatisticsLogging",                     RewriteOptions::kStatisticsLoggingEnabled
 "StatisticsLoggingChartsCSS",            RewriteOptions::kStatisticsLoggingChartsCSS

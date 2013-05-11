@@ -50,6 +50,7 @@ apache_vm_system_tests :
 	$(MAKE) FAST_RESTART=1 apache_debug_vhost_only_test
 	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
 	$(MAKE) FAST_RESTART=1 apache_debug_shared_mem_lock_sanity_test
+	$(MAKE) apache_debug_https_fetch_test
 	# The stats logging test is disabled as it has permission issues
 	# when package building (issue 559).
 	# $(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
@@ -283,6 +284,13 @@ apache_debug_global_off_test :
 	$(MAKE) apache_debug_restart
 	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE)?PageSpeed=on 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
+
+# Test to make sure HTTPS fetching works.
+apache_debug_https_fetch_test :
+	$(MAKE) apache_install_conf
+	$(MAKE) apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_https_fetch_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # Sanity-check that enabling shared-memory locks don't cause the
 # system to crash, and a rewrite does successfully happen.

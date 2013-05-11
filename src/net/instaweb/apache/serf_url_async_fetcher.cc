@@ -78,6 +78,12 @@ serf_bucket_t* serf_request_bucket_request_create_for_host(
     serf_bucket_alloc_t *allocator, const char* host);
 
 int serf_connection_is_in_error_state(serf_connection_t* connection);
+
+  // Declares new functions added in instaweb_ssl_buckets.c
+apr_status_t serf_ssl_set_certificates_directory(serf_ssl_context_t *ssl_ctx,
+                                                 const char* path);
+apr_status_t serf_ssl_set_certificates_file(serf_ssl_context_t *ssl_ctx,
+                                            const char* file);
 }  // extern "C"
 
 namespace net_instaweb {
@@ -169,20 +175,23 @@ class SerfFetch : public PoolElement<SerfFetch> {
   // HandleResponse multiple times on the same object.
   //
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
+  //
+  // Note that when there are SSL error messages, we immediately call
+  // CallCallback, which is robust against duplicate calls in that case.
   void CallCallback(bool success) {
     if (ssl_error_message_ != NULL) {
       success = false;
     }
 
-    if (async_fetch_ == NULL) {
-      LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
-                 << str_url() << " (" << this << ").  Please report this "
-                 << "at http://code.google.com/p/modpagespeed/issues/";
-    } else {
+    if (async_fetch_ != NULL) {
       fetch_end_ms_ = timer_->NowMs();
       fetcher_->ReportCompletedFetchStats(this);
       CallbackDone(success);
       fetcher_->FetchComplete(this);
+    } else if (ssl_error_message_ == NULL) {
+      LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
+                 << str_url() << " (" << this << ").  Please report this "
+                 << "at http://code.google.com/p/modpagespeed/issues/";
     }
   }
 
@@ -256,6 +265,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
       void* setup_baton, apr_pool_t* pool) {
     SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
     *read_bkt = serf_bucket_socket_create(socket, fetch->bucket_alloc_);
+    apr_status_t status = APR_SUCCESS;
 #if SERF_HTTPS_FETCHING
     if (fetch->using_https_) {
       *read_bkt = serf_bucket_ssl_decrypt_create(*read_bkt,
@@ -263,6 +273,31 @@ class SerfFetch : public PoolElement<SerfFetch> {
                                                  fetch->bucket_alloc_);
       if (fetch->ssl_context_ == NULL) {
         fetch->ssl_context_ = serf_bucket_ssl_decrypt_context_get(*read_bkt);
+        if (fetch->ssl_context_ == NULL) {
+          status = APR_EGENERAL;
+        } else {
+          SerfUrlAsyncFetcher* fetcher = fetch->fetcher_;
+          const GoogleString& certs_dir = fetcher->ssl_certificates_dir();
+          const GoogleString& certs_file = fetcher->ssl_certificates_file();
+
+          if (!certs_file.empty()) {
+            status = serf_ssl_set_certificates_file(
+                fetch->ssl_context_, certs_file.c_str());
+          }
+          if ((status == APR_SUCCESS) && !certs_dir.empty()) {
+            status = serf_ssl_set_certificates_directory(fetch->ssl_context_,
+                                                         certs_dir.c_str());
+          }
+
+          // If no explicit file or directory is specified, then use the
+          // compiled-in default.
+          if (certs_dir.empty() && certs_file.empty()) {
+            status = serf_ssl_use_default_certificates(fetch->ssl_context_);
+          }
+        }
+        if (status != APR_SUCCESS) {
+          return status;
+        }
       }
 
       serf_ssl_server_cert_callback_set(fetch->ssl_context_, SSLCertError,
@@ -367,7 +402,14 @@ class SerfFetch : public PoolElement<SerfFetch> {
     } else if (errors & SERF_SSL_CERT_UNKNOWN_FAILURE) {
       ssl_error_message_ = "SSL certificate has an unknown error";
     }
-    // Fall-through here implies success.
+
+    // Immediately call the fetch callback on a cert error.  Note that
+    // HandleSSLCertErrors is called multiple times when there is an error,
+    // so check async_fetch before CallCallback.
+    if ((ssl_error_message_ != NULL) && (async_fetch_ != NULL)) {
+      fetcher_->cert_errors_->Add(1);
+      CallCallback(false);  // sets async_fetch_ to null.
+    }
 
     // TODO(jmarantz): I think the design of this system indicates
     // that we should be returning APR_EGENERAL on failure.  However I
@@ -498,7 +540,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
             response_headers->set_status_code(HttpStatus::kNotFound);
             message_handler_->Message(kInfo, "%s: %s", str_url_.c_str(),
                                       ssl_error_message_);
-            fetcher_->cert_errors_->Add(1);
             has_saved_byte_ = false;
           }
 
@@ -1402,6 +1443,20 @@ bool SerfUrlAsyncFetcher::SetHttpsOptions(StringPiece directive) {
     threaded_fetcher_->set_https_options(https_options_);
   }
   return true;
+}
+
+void SerfUrlAsyncFetcher::SetSslCertificatesDir(StringPiece dir) {
+  dir.CopyToString(&ssl_certificates_dir_);
+  if (threaded_fetcher_ != NULL) {
+    threaded_fetcher_->SetSslCertificatesDir(dir);
+  }
+}
+
+void SerfUrlAsyncFetcher::SetSslCertificatesFile(StringPiece file) {
+  file.CopyToString(&ssl_certificates_file_);
+  if (threaded_fetcher_ != NULL) {
+    threaded_fetcher_->SetSslCertificatesFile(file);
+  }
 }
 
 bool SerfUrlAsyncFetcher::allow_https() const {

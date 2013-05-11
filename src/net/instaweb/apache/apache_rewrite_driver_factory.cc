@@ -344,16 +344,27 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
   return iter->second;
 }
 
+// TODO(jmarantz): move this to a new class in system/system_fetches.cc that can
+// be shared with ngx_pagespeed.
 SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
     ApacheConfig* config) {
   // Since we don't do slurping a this level, our key is just the proxy setting.
-  const GoogleString& proxy = config->fetcher_proxy();
+  GoogleString cache_key = StrCat(
+      list_outstanding_urls_on_error_ ? "list_errors\n" : "no_errors\n",
+      config->fetcher_proxy(), "\n",
+      fetch_with_gzip_ ? "fetch_with_gzip\n": "no_gzip\n",
+      track_original_content_length_ ? "track_content_length\n" : "no_track\n"
+      "timeout: ", Integer64ToString(config->blocking_fetch_timeout_ms()));
+  StrAppend(&cache_key,
+            "\nhttps: ", https_options_,
+            "\ncert_dir: ", config->ssl_cert_directory(),
+            "\ncert_file: ", config->ssl_cert_file());
   std::pair<SerfFetcherMap::iterator, bool> result = serf_fetcher_map_.insert(
-      std::make_pair(proxy, static_cast<SerfUrlAsyncFetcher*>(NULL)));
+      std::make_pair(cache_key, static_cast<SerfUrlAsyncFetcher*>(NULL)));
   SerfFetcherMap::iterator iter = result.first;
   if (result.second) {
     SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
-        proxy.c_str(),
+        config->fetcher_proxy().c_str(),
         NULL,  // Do not use the Factory pool so we can control deletion.
         thread_system(), statistics(), timer(),
         config->blocking_fetch_timeout_ms(),
@@ -362,6 +373,8 @@ SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
     serf->set_fetch_with_gzip(fetch_with_gzip_);
     serf->set_track_original_content_length(track_original_content_length_);
     serf->SetHttpsOptions(https_options_);
+    serf->SetSslCertificatesDir(config->ssl_cert_directory());
+    serf->SetSslCertificatesFile(config->ssl_cert_file());
     iter->second = serf;
   }
   return iter->second;

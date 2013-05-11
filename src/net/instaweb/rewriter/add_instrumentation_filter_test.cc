@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
@@ -156,7 +158,6 @@ TEST_F(AddInstrumentationFilterTest,
 
 // Test that extended instrumentation is injected properly.
 TEST_F(AddInstrumentationFilterTest, TestExtendedInstrumentation) {
-  NullMessageHandler handler;
   options()->set_enable_extended_instrumentation(true);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
@@ -169,7 +170,6 @@ TEST_F(AddInstrumentationFilterTest, TestExtendedInstrumentation) {
 
 // Test that headers fetch timing reporting is done correctly.
 TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
-  NullMessageHandler handler;
   logging_info()->mutable_timing_info()->set_header_fetch_ms(200);
   logging_info()->mutable_timing_info()->set_time_to_first_byte_ms(300);
   logging_info()->mutable_timing_info()->set_fetch_ms(500);
@@ -177,6 +177,18 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
           options()->beacon_url().http, "load", "&hft=200&ft=500&s_ttfb=300"))
+              != GoogleString::npos);
+}
+
+// Test that header referer reporting is done correctly.
+TEST_F(AddInstrumentationFilterTest, TestHeadersReferer) {
+  RequestHeaders headers;
+  headers.Add(HttpAttributes::kReferer, "www.abc.com");
+  rewrite_driver()->set_request_headers(&headers);
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load", "&ref=www.abc.com"))
               != GoogleString::npos);
 }
 

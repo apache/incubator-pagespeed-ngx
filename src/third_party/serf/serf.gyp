@@ -24,13 +24,13 @@
       'dependencies': [
         '<(DEPTH)/third_party/apr/apr.gyp:include',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
-        # Uncomment to enable HTTPS fetching via serf.  Also uncomment
-        # the reference to openssl in src/DEPS.
+        # Comment out the reference to openssl to disable HTTPS fetching via
+        # serf.  Also comment out the reference to openssl in src/DEPS.
         #
         # TODO(jmarantz): create an easy way to choose this option from the
         # 'gclient' command, without having to edit the gyp & DEPS files.
         #
-        # '<(DEPTH)/third_party/openssl/openssl.gyp:openssl',
+        '<(DEPTH)/third_party/openssl/openssl.gyp:openssl',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
@@ -47,12 +47,12 @@
         '<(serf_src)/buckets/socket_buckets.c',
         '<(serf_root)/instaweb_response_buckets.c',
         '<(serf_root)/instaweb_headers_buckets.c',
+        # Comment out instaweb_ssl_buckets.c to disable HTTPS fetching via serf.
+        '<(serf_root)/instaweb_ssl_buckets.c',
         '<(serf_src)/buckets/allocator.c',
         '<(serf_src)/buckets/dechunk_buckets.c',
         '<(serf_src)/buckets/deflate_buckets.c',
         '<(serf_src)/buckets/limit_buckets.c',
-        # Uncomment to enable HTTPS fetching via serf.
-        # '<(serf_src)/buckets/ssl_buckets.c',
         '<(serf_src)/buckets/barrier_buckets.c',
         '<(serf_src)/buckets/chunk_buckets.c',
         '<(serf_src)/buckets/bwtp_buckets.c',

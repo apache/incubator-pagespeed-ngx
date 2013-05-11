@@ -255,6 +255,8 @@ APACHE_CONF_D_DIR="/etc/apache2/conf.d"
 MOD_PAGESPEED_CACHE="/var/cache/mod_pagespeed"
 APACHE_USER="www-data"
 COMMENT_OUT_DEFLATE=
+SSL_CERT_DIR="/etc/ssl/certs"
+SSL_CERT_FILE_COMMAND=
 
 case "$TARGETARCH" in
   ia32 )

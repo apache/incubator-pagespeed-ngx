@@ -47,6 +47,8 @@ APACHE_DOMAIN         = localhost
 APACHE_HTTPS_DOMAIN   = localhost
 APACHE_PORT           = 80
 APACHE_SECONDARY_PORT = 8084
+SSL_CERT_DIR          = /etc/ssl/certs
+SSL_CERT_FILE_COMMAND =
 
 # These are set via command-line when run via 'ubuntu.sh', 'centos.sh',
 # or 'opensuse.sh'.  However during development we use this Makefile
@@ -348,6 +350,8 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@TEST_PROXY_ORIGIN@@!$(TEST_PROXY_ORIGIN)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s!@@MOD_PAGESPEED_STATS_LOG@@!$(MOD_PAGESPEED_STATS_LOG)!g" \
+	    -e "s!@@SSL_CERT_DIR@@!$(SSL_CERT_DIR)!g" \
+	    -e "s!@@SSL_CERT_FILE_COMMAND@@!$(SSL_CERT_FILE_COMMAND)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s|@@TMP_SLURP_DIR@@|$(TMP_SLURP_DIR)|g" \

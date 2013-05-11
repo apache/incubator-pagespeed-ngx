@@ -12,4 +12,6 @@ exec make \
     APACHE_STOP_COMMAND=stop \
     APACHE_USER=apache \
     BINDIR=/usr/local/bin \
+    SSL_CERT_DIR=/etc/pki/tls/certs \
+    SSL_CERT_FILE_COMMAND="ModPagespeedSslCertFile /etc/pki/tls/cert.pem" \
     $*

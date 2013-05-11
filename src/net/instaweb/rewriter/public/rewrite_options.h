@@ -348,6 +348,8 @@ class RewriteOptions {
     kSlurpDirectory,
     kSlurpFlushLimit,
     kSlurpReadOnly,
+    kSslCertDirectory,
+    kSslCertFile,
     kStatisticsEnabled,
     kStatisticsLoggingChartsCSS,
     kStatisticsLoggingChartsJS,

@@ -20,6 +20,10 @@
     # by the apache user (as specified by the User directive).
     ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
 
+    # The locations of SSL Certificates is distribution-dependent.
+    ModPagespeedSslCertDirectory "@@SSL_CERT_DIR@@"
+    @@SSL_CERT_FILE_COMMAND@@
+
     # If you want, you can use one or more memcached servers as the store for
     # the mod_pagespeed cache.
     # ModPagespeedMemcachedServers localhost:11211
