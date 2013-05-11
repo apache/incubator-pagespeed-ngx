@@ -17,9 +17,7 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 #include "ngx_base_fetch.h"
-
 #include "ngx_pagespeed.h"
-
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -45,11 +43,11 @@ ngx_int_t NgxBaseFetch::Initialize(ngx_log_t *log, MessageHandler *handler) {
   if (pipe_conn_ == NULL) {
     if (close(pipefds_[0]) == -1) {
       ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                    "close() NgxBaseFetch read fd failed");
+                "close() NgxBaseFetch read fd failed");
     }
     if (close(pipefds_[1]) == -1) {
       ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
-                    "close() NgxBaseFetch write fd failed");
+                "close() NgxBaseFetch write fd failed");
     }
     return NGX_ERROR;
   }
@@ -155,7 +153,7 @@ void NgxBaseFetch::ngx_event_handler(ngx_event_t *ev) {
     return;
   }
   ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                     "NgxBaseFetch::event_handler");
+                 "NgxBaseFetch::event_handler");
   ProcessSignalExcept(NULL);
 }
 
@@ -180,55 +178,11 @@ NgxBaseFetch::~NgxBaseFetch() {
 
 
 void NgxBaseFetch::PopulateRequestHeaders() {
-  CopyHeadersFromTable<RequestHeaders>(&request_->headers_in.headers,
-                                       request_headers());
+  ngx_psol::copy_request_headers_from_ngx(request_, request_headers());
 }
 
 void NgxBaseFetch::PopulateResponseHeaders() {
-  CopyHeadersFromTable<ResponseHeaders>(&request_->headers_out.headers,
-                                        response_headers());
-
-  response_headers()->set_status_code(request_->headers_out.status);
-
-  // Manually copy over the content type because it's not included in
-  // request_->headers_out.headers.
-  response_headers()->Add(
-      HttpAttributes::kContentType,
-      ngx_psol::str_to_string_piece(request_->headers_out.content_type));
-
-  // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
-  response_headers()->ComputeCaching();
-}
-
-template<class HeadersT>
-void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
-                                        HeadersT* headers_to) {
-  // http_version is the version number of protocol; 1.1 = 1001. See
-  // NGX_HTTP_VERSION_* in ngx_http_request.h
-  headers_to->set_major_version(request_->http_version / 1000);
-  headers_to->set_minor_version(request_->http_version % 1000);
-
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &headers_from->part;
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-
-    StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
-    StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
-
-    headers_to->Add(key, value);
-  }
+  ngx_psol::copy_response_headers_from_ngx(request_, response_headers());
 }
 
 // should only be called in nginx thread
@@ -298,12 +252,12 @@ void NgxBaseFetch::SignalNoLock() {
 
   pending_ = true;
   ngx_log_debug0(NGX_LOG_DEBUG_HTTP, request_->connection->log, 0,
-             "NgxBaseFetch::SignalNoLock");
+                 "NgxBaseFetch::SignalNoLock");
 
   while (true) {
     NgxBaseFetch *fetch = this;
     ssize_t size = ::write(pipefds_[1],
-                        static_cast<void *>(&fetch), sizeof(fetch));
+                      static_cast<void *>(&fetch), sizeof(fetch));
     if (size == -1 && errno == EINTR) {
       continue;
     }

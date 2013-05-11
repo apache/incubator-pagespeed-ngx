@@ -35,8 +35,9 @@ extern "C" {
 }
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/request_headers.h"
 
 namespace net_instaweb {
 
@@ -76,9 +77,6 @@ StringPiece str_to_string_piece(ngx_str_t s);
 // Allocate memory out of the pool for the string piece, and copy the contents
 // over.  Returns NULL if we can't get memory.
 char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
-ngx_int_t copy_response_headers_to_ngx(
-    ngx_http_request_t* r,
-    const net_instaweb::ResponseHeaders& pagespeed_headers);
 ngx_int_t ps_fetch_handler(ngx_http_request_t *r);
 
 typedef struct {
@@ -95,6 +93,16 @@ typedef struct {
 // called by net_instaweb::NgxBaseFetch to notify event
 void ps_base_fetch_signal(ngx_http_request_t *r);
 
+
+void copy_request_headers_from_ngx(const ngx_http_request_t *r, 
+       net_instaweb::RequestHeaders *headers);
+
+void copy_response_headers_from_ngx(const ngx_http_request_t *r, 
+       net_instaweb::ResponseHeaders *headers);
+
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& pagespeed_headers);
 }  // namespace ngx_psol
 
 #endif  // NGX_PAGESPEED_H_
