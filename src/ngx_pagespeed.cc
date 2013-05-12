@@ -59,6 +59,9 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/apache/in_place_resource_recorder.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -647,11 +650,11 @@ void ps_release_request_context(void* data) {
     delete ctx->inflater_;
     ctx->inflater_ = NULL;
   }
-  // TODO(chaizhenhua): release driver
-  //  if (ctx->driver != NULL) {
-  //    ctx->driver->Cleanup();
-  //    ctx->driver = NULL;
-  //  }
+
+  if (ctx->driver != NULL) {
+    ctx->driver->Cleanup();
+    ctx->driver = NULL;
+  }
   delete ctx;
 }
 
@@ -1166,7 +1169,11 @@ ps_request_ctx_t* ps_create_request_context(ngx_http_request_t* r) {
   // default allow modify headers
   ctx->modify_headers = true;
   ctx->inflater_ = NULL;
+  ctx->recorder = NULL;
+  ctx->fetch_checker = NULL;
+  ctx->write_pending = false;
   ctx->fetch_done = false;
+  ctx->driver = NULL;
 
   ngx_http_set_ctx(r, ctx, ngx_pagespeed);
 
@@ -1192,6 +1199,7 @@ ngx_int_t ps_messages_handler(ngx_http_request_t * r,
                      net_instaweb::NgxServerContext * server_context);
 ngx_int_t ps_beacon_handler(ngx_http_request_t * r);
 
+ngx_int_t ps_inplace_checker(ngx_http_request_t *r);
 
 // Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
@@ -1246,10 +1254,15 @@ ngx_int_t ps_content_handler(
     return NGX_DECLINED;
   }
 
+  if (is_pagespeed_subrequest(r)) {
+    return NGX_DECLINED;
+  }
+
+  if (r != r->main) {
+    return NGX_DECLINED;
+  }
+
   if (is_resource_fetch) {
-    if (is_pagespeed_subrequest(r)) {
-      return NGX_DECLINED;
-    }
 
     if (url.PathSansLeaf() ==
         net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix) {
@@ -1331,8 +1344,8 @@ ngx_int_t ps_content_handler(
                      cfg_s->server_context->thread_system()->NewMutex(), r)));
   ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers.release());
 
-  if (is_resource_fetch) {
-    if (cfg_s->server_context->IsPagespeedResource(url)) {
+  if (is_resource_fetch
+     && cfg_s->server_context->IsPagespeedResource(url)) {
       // TODO(jefftk): Set using_spdy appropriately.  See
       // ProxyInterface::ProxyRequestCallback
       net_instaweb::ResourceFetch::Start(
@@ -1340,15 +1353,7 @@ ngx_int_t ps_content_handler(
           custom_options.release() /* null if there aren't custom options */,
           false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
       return ps_async_wait_response(r);
-    }
-    // TODO(chaizhenhua): other resource type
-    ctx->do_rewrite = true;
-    return NGX_DECLINED;
   }
-
-  // is_resource_fetch == false
-
-  ctx->base_fetch->PopulateResponseHeaders();
 
   // If we don't have custom options we can use NewRewriteDriver which reuses
   // rewrite drivers and so is faster because there's no wait to construct
@@ -1365,8 +1370,50 @@ ngx_int_t ps_content_handler(
     custom_options.release(), ctx->base_fetch->request_context());
   }
 
-  ctx->modify_headers = driver->options()->modify_caching_headers();
+  if (is_resource_fetch) {
+    bool is_proxy = false;
+    GoogleString mapped_url;
+    if (options->domain_lawyer()->MapOriginUrl(url, &mapped_url, &is_proxy)
+           && is_proxy) {
 
+
+      // TODO(jefftk): FlushEarlyFlow would go here.
+      // Will call StartParse etc.
+      // The rewrite driver will take care of deleting
+      // itself if necessary.
+      // TODO(chaizhenhua): property_callback
+      cfg_s->proxy_fetch_factory->StartNewProxyFetch(
+                    url_string, ctx->base_fetch, driver,
+                    NULL,
+                    NULL /* original_content_fetch */);
+
+      return ps_async_wait_response(r);
+    }
+
+    if (options->in_place_rewriting_enabled()
+                  && options->enabled()
+                  && options->IsAllowed(url.Spec())) {
+      ctx->driver = driver;
+
+      cfg_s->server_context->message_handler()->Message(net_instaweb::kInfo,
+             "Trying to serve rewritten resource in-place: %s",
+            url_string.c_str());
+
+      ctx->fetch_checker = ps_inplace_checker;
+      ctx->driver->FetchInPlaceResource(
+                 url, false /* proxy_mode */, ctx->base_fetch);
+
+      return ps_async_wait_response(r);
+    }
+
+
+    // TODO(chaizhenhua): other resource type
+    ctx->do_rewrite = true;
+    return NGX_DECLINED;
+  }
+
+  // is_resource_fetch == false, do html rewrite
+  ctx->modify_headers = options->modify_caching_headers();
   bool page_callback_added = false;
   scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
   property_callback(ps_initiate_property_cache_lookup(
@@ -1442,8 +1489,7 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
 ngx_int_t ps_html_rewrite_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  // TODO(chaizhenhua): check r != r->main
-  if (ctx == NULL || ctx->base_fetch == NULL || !ctx->do_rewrite) {
+  if (r != r->main || ctx == NULL || ctx->base_fetch == NULL || !ctx->do_rewrite) {
     return ps_write_filter(r, in);
   }
 
@@ -1459,18 +1505,16 @@ ngx_int_t ps_html_rewrite_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   return ps_write_filter(r, NULL);
 }
 
+ngx_int_t ps_inplace_body_filter(ngx_http_request_t *r, ngx_chain_t *in);
+
 // handler fetch output
 // after ps_html_rewrite_body_filter and before ngx_http_write_filter
 ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in) {
-  if (r != r->main) {
-    // Don't handle subrequests.
-    return ngx_http_next_body_filter(r, in);
-  }
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   // TODO(chaizhenhua): check r != r->main
   if (ctx == NULL || ctx->base_fetch == NULL) {
-    return ngx_http_next_body_filter(r, in);
+    return ps_inplace_body_filter(r, in);
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1478,7 +1522,7 @@ ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   // send response body
   if (in || ctx->write_pending) {
-    ngx_int_t rc = ngx_http_next_body_filter(r, in);
+    ngx_int_t rc = ps_inplace_body_filter(r, in);
     ctx->write_pending = (rc == NGX_AGAIN);
     if (rc == NGX_OK && !ctx->fetch_done) {
       return NGX_AGAIN;
@@ -1605,8 +1649,6 @@ bool ps_has_stacked_content_encoding(ngx_http_request_t* r) {
 // send response header to pagespeed for html_rewrite,
 // last header filter before header filter
 ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t *r) {
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "ps html rewrite header filter: %V", &r->uri);
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   if (r != r->main || ctx == NULL || !ctx->do_rewrite) {
@@ -1618,6 +1660,9 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t *r) {
     ctx->do_rewrite = false;
     return ngx_http_next_header_filter(r);
   }
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "ps html rewrite header filter: %V", &r->uri);
 
   // We don't know what this request is, but we only want to send html through
   // to pagespeed.  Check the content type header and find out.
@@ -1670,14 +1715,62 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t *r) {
     }
   }
 
-  ps_set_buffered(r, true);
+  ctx->base_fetch->PopulateResponseHeaders();
+  // ctx->proxy_fetch->HeadersComplete();
 
-  r->filter_need_in_memory = 1;
   if (r->header_only) {
     ctx->proxy_fetch->Done(true /* success */);
   }
 
+  ps_set_buffered(r, true);
+  r->filter_need_in_memory = 1;
   return NGX_AGAIN;
+}
+
+// filters priority:
+//
+//   ps_html_rewrite_body_filter -> pagespeed -> ps_write_filter
+//       -> ps_inplace_body_filter -> chunked_body_filter  -> write_filter
+//
+//   ps_html_rewrite_header_filter -> chunked_header_filter
+
+
+ngx_int_t ps_inplace_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
+  ps_request_ctx_t *ctx = ps_get_request_context(r);
+  if (r != r->main || ctx == NULL || ctx->recorder == NULL) {
+    return ngx_http_next_body_filter(r, in);
+  }
+  
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "ps inplace body filter: %V", &r->uri);
+
+  net_instaweb::InPlaceResourceRecorder* recorder = ctx->recorder;
+
+  for (ngx_chain_t *cl = in; cl; cl = cl->next) {
+    if (ngx_buf_size(cl->buf)) {
+       CHECK(ngx_buf_in_memory(cl->buf));
+       StringPiece contents(reinterpret_cast<char *>(cl->buf->pos),
+                                 ngx_buf_size(cl->buf));
+
+       recorder->Write(contents, recorder->handler());
+    }
+
+    if (cl->buf->flush) {
+      recorder->Flush(recorder->handler());
+    }
+
+    if (cl->buf->last_buf) {
+      net_instaweb::ResponseHeaders response_headers;
+
+      copy_response_headers_from_ngx(r, &response_headers);
+
+      ctx->recorder->DoneAndSetHeaders(&response_headers);
+      ctx->recorder = NULL;
+      break;
+    }
+  }
+
+  return ngx_http_next_body_filter(r, in);
 }
 
 // TODO(oschaaf): make ps_static_handler use write_handler_response? for now,
@@ -2087,8 +2180,7 @@ void ps_beacon_body_handler(ngx_http_request_t* r) {
   ngx_int_t rc;
   bool ok = ps_request_body_to_string_piece(r, &request_body);
   if (ok) {
-    ps_beacon_handler_helper(r, request_body);
-    ngx_http_finalize_request(r, NGX_HTTP_NO_CONTENT);
+    rc = ps_beacon_handler_helper(r, request_body);
   } else {
     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
@@ -2123,8 +2215,82 @@ ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
   }
 }
 
+// we are still at pagespeed phase
+ngx_int_t ps_request_declined(ngx_http_request_t *r) {
+  ps_request_ctx_t *ctx = ps_get_request_context(r);
+  CHECK(ctx != NULL);
 
+  // re init ctx
+  ctx->fetch_checker = NULL;
+  ctx->driver->Cleanup();
+  ctx->driver = NULL;
+  ctx->fetch_done = false;
+  ctx->do_rewrite = true;
+  ctx->base_fetch->Release();
+  ctx->base_fetch = NULL;
+  ps_set_buffered(r, false);
 
+  r->count++;
+  r->phase_handler++;
+  r->write_event_handler = ngx_http_core_run_phases;
+  ngx_http_core_run_phases(r);
+  ngx_http_run_posted_requests(r->connection);
+  return NGX_DONE;
+}
+
+// check pagespeed response
+ngx_int_t ps_inplace_checker(ngx_http_request_t *r) {
+  ps_request_ctx_t *ctx = ps_get_request_context(r);
+
+  CHECK(ctx);
+
+  int status_code = ctx->base_fetch->response_headers()->status_code();
+
+  bool status_ok = (status_code != 0) && (status_code < 400);
+
+  // continue process
+  if (status_ok) {
+    return NGX_OK;
+  }
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "ps inplace checker: %V", &r->uri);
+
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  net_instaweb::NgxServerContext* server_context = cfg_s->server_context;
+  net_instaweb::MessageHandler* message_handler = cfg_s->handler;
+  GoogleString url = ps_determine_url(r);
+
+  if (status_code == net_instaweb::CacheUrlAsyncFetcher::kNotInCacheStatus) {
+    server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
+    server_context->message_handler()->Message(net_instaweb::kInfo,
+            "Could not rewrite resource in-place "
+            "because URL is not in cache: %s", url.c_str());
+
+    scoped_ptr<net_instaweb::RequestHeaders> request_headers(
+                 new net_instaweb::RequestHeaders);
+    copy_request_headers_from_ngx(r, request_headers.get());
+    // This URL was not found in cache (neither the input resource nor
+    // a ResourceNotCacheable entry) so we need to get it into cache
+    // (or at least a note that it cannot be cached stored there).
+    // We do that using an Apache output filter.
+    ctx->recorder = new net_instaweb::InPlaceResourceRecorder(
+           url,
+           request_headers.release(),
+           ctx->driver->options()->respect_vary(),
+           server_context->http_cache(),
+           server_context->statistics(),
+           message_handler);
+    // set in memory flag for inplace_body_filter
+    r->filter_need_in_memory = 1;
+  } else {
+    server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
+    message_handler->Message(net_instaweb::kInfo,
+           "Could not rewrite resource in-place: %s", url.c_str());
+  }
+
+  return ps_request_declined(r);
+}
 
 ngx_int_t ps_phase_handler(ngx_http_request_t *r,
       ngx_http_phase_handler_t *ph) {
@@ -2336,6 +2502,11 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_OK;
   }
 
+  if (net_instaweb::NgxBaseFetch::Initialize(cycle->log, cfg_m->handler)
+               != NGX_OK) {
+    return NGX_ERROR;
+  }
+
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
   cfg_m->driver_factory->ChildInit(cycle->log);
@@ -2362,12 +2533,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   if (!cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
     return NGX_ERROR;
   }
-
-  if (net_instaweb::NgxBaseFetch::Initialize(cycle->log, cfg_m->handler)
-               != NGX_OK) {
-    return NGX_ERROR;
-  }
-
   cfg_m->driver_factory->StartThreads();
 
   return NGX_OK;
@@ -2385,7 +2550,12 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
                  "ps fetch handler: %V", &r->uri);
 
   if (!r->header_sent) {
-    ps_set_buffered(r, true);
+    if (ctx->fetch_checker) {
+      rc = ctx->fetch_checker(r);
+      if (rc != NGX_OK) {
+        return rc;
+      }
+    }
 
     // collect response headers from pagespeed
     if (!ctx->do_rewrite || ctx->modify_headers) {
@@ -2407,10 +2577,12 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     ctx->write_pending = (rc == NGX_AGAIN);
 
     if (r->header_only) {
+      // TODO: ctx->base_fetch->Release();
+      // ctx->base_fetch = NULL;
       ctx->fetch_done = true;
-      ps_set_buffered(r, false);
       return rc;
     }
+	ps_set_buffered(r, true);
   }
 
   // collect response body from pagespeed
@@ -2423,6 +2595,7 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
   PDBG(ctx, "CollectAccumulatedWrites, %d", rc);
 
   if (rc == NGX_ERROR) {
+    ps_set_buffered(r, false);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
   // rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DECLINED
@@ -2430,6 +2603,8 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
   if (rc == NGX_OK) {
     ps_set_buffered(r, false);
     ctx->fetch_done = true;
+    // TODO: ctx->base_fetch->Release();
+    // ctx->base_fetch = NULL;
   }
 
   return ps_write_filter(r, cl);

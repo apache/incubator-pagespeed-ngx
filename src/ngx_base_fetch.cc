@@ -141,8 +141,10 @@ void NgxBaseFetch::ProcessSignalExcept(NgxBaseFetch *except) {
       if (fetch == except) {
         continue;
       }
-      ngx_http_finalize_request(fetch->request_,
-             ngx_psol::ps_fetch_handler(fetch->request_));
+
+      ngx_http_request_t *r = fetch->request_;
+      ngx_http_finalize_request(r,
+             ngx_psol::ps_fetch_handler(r));
     }
   }
 }

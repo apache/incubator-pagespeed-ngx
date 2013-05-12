@@ -1,5 +1,7 @@
 
 #include "ngx_pagespeed.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/request_headers.h"
 
 namespace ngx_psol {
 // modify from NgxBaseFetch::CopyHeadersFromTable()

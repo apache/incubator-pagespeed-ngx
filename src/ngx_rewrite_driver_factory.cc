@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/apache/in_place_resource_recorder.h"
 
 namespace net_instaweb {
 
@@ -377,6 +378,7 @@ AllocateAndInitSharedMemStatistics(
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
   RewriteDriverFactory::InitStats(statistics);
+  InPlaceResourceRecorder::InitStats(statistics);
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);

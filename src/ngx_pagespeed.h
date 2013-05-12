@@ -36,8 +36,6 @@ extern "C" {
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/google_url.h"
 
 namespace net_instaweb {
@@ -46,7 +44,9 @@ class GzipInflater;
 class NgxBaseFetch;
 class ProxyFetch;
 class RewriteDriver;
-
+class InPlaceResourceRecorder;
+class RequestHeaders;
+class ResponseHeaders;
 }  // namespace net_instaweb
 
 namespace ngx_psol {
@@ -81,14 +81,23 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
 ngx_int_t ps_fetch_handler(ngx_http_request_t *r);
 
 typedef struct {
-  net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   ngx_http_request_t* r;
+
+  // for html rewrite
+  net_instaweb::ProxyFetch* proxy_fetch;
+  net_instaweb::GzipInflater* inflater_;
+
+  // for in-place only
+  net_instaweb::RewriteDriver *driver;
+  net_instaweb::InPlaceResourceRecorder* recorder;
+  ngx_http_handler_pt fetch_checker;
+
+  // use to handle pagespeed output
   bool write_pending;
   bool modify_headers;
   bool fetch_done;
   bool do_rewrite;
-  net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 
 // called by net_instaweb::NgxBaseFetch to notify event
