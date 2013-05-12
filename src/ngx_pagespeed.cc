@@ -224,7 +224,15 @@ ngx_int_t copy_response_headers_to_ngx(
       // Unlike all the other headers, content_type is just a string.
       headers_out->content_type.data = value_s;
       headers_out->content_type.len = value.len;
-      headers_out->content_type_len = value.len;
+
+      // We should not include the charset when determining content_type_len, so
+      // scan for the ';' that marks the start of the charset part.
+      for (ngx_uint_t i = 0; i < value.len; i++) {
+        if (value_s[i] == ';')
+          break;
+        headers_out->content_type_len = i + 1;
+      }
+
       // In ngx_http_test_content_type() nginx will allocate and calculate
       // content_type_lowcase if we leave it as null.
       headers_out->content_type_lowcase = NULL;
