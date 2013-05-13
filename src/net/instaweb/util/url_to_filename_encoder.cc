@@ -79,8 +79,8 @@ void UrlToFilenameEncoder::AppendSegment(GoogleString* segment,
   }
 }
 
-void UrlToFilenameEncoder::EncodeSegment(const GoogleString& filename_prefix,
-                                         const GoogleString& escaped_ending,
+void UrlToFilenameEncoder::EncodeSegment(const StringPiece& filename_prefix,
+                                         const StringPiece& escaped_ending,
                                          char dir_separator,
                                          GoogleString* encoded_filename) {
   GoogleString filename_ending = Unescape(escaped_ending);
@@ -94,10 +94,11 @@ void UrlToFilenameEncoder::EncodeSegment(const GoogleString& filename_prefix,
   // then change the is routine to just take one input string.
   size_t start_of_segment = filename_prefix.find_last_of(dir_separator);
   if (start_of_segment == GoogleString::npos) {
-    segment = filename_prefix;
+    filename_prefix.CopyToString(&segment);
   } else {
-    segment = filename_prefix.substr(start_of_segment + 1);
-    *encoded_filename = filename_prefix.substr(0, start_of_segment + 1);
+    filename_prefix.substr(start_of_segment + 1).CopyToString(&segment);
+    filename_prefix.substr(0, start_of_segment + 1).CopyToString(
+        encoded_filename);
   }
 
   size_t index = 0;
@@ -161,7 +162,7 @@ void UrlToFilenameEncoder::EncodeSegment(const GoogleString& filename_prefix,
 
 // Note: this decoder is not the exact inverse of the EncodeSegment above,
 // because it does not take into account a prefix.
-bool UrlToFilenameEncoder::Decode(const GoogleString& encoded_filename,
+bool UrlToFilenameEncoder::Decode(const StringPiece& encoded_filename,
                                   char dir_separator,
                                   GoogleString* decoded_url) {
   enum State {
@@ -173,7 +174,7 @@ bool UrlToFilenameEncoder::Decode(const GoogleString& encoded_filename,
   };
   State state = kStart;
   char hex_buffer[3] = { '\0', '\0', '\0' };
-  for (size_t i = 0; i < encoded_filename.size(); ++i) {
+  for (int i = 0, n = encoded_filename.size(); i < n; ++i) {
     char ch = encoded_filename[i];
     switch (state) {
       case kStart:
@@ -236,103 +237,6 @@ bool UrlToFilenameEncoder::Decode(const GoogleString& encoded_filename,
   return (state == kEscape);
 }
 
-// Escape the given input |path| and chop any individual components
-// of the path which are greater than kMaximumSubdirectoryLength characters
-// into two chunks.
-//
-// This legacy version has several issues with aliasing of different URLs,
-// inability to represent both /a/b/c and /a/b/c/d, and inability to decode
-// the filenames back into URLs.
-//
-// But there is a large body of slurped data which depends on this format.
-GoogleString UrlToFilenameEncoder::LegacyEscape(const GoogleString& path) {
-  GoogleString output;
-
-  // Note:  We also chop paths into medium sized 'chunks'.
-  //        This is due to the incompetence of the windows
-  //        filesystem, which still hasn't figured out how
-  //        to deal with long filenames.
-  int last_slash = 0;
-  for (size_t index = 0; index < path.length(); index++) {
-    char ch = path[index];
-    if (ch == 0x5C)
-      last_slash = index;
-    if ((ch == 0x2D) ||                    // hyphen
-        (ch == 0x5C) || (ch == 0x5F) ||    // backslash, underscore
-        ((0x30 <= ch) && (ch <= 0x39)) ||  // Digits [0-9]
-        ((0x41 <= ch) && (ch <= 0x5A)) ||  // Uppercase [A-Z]
-        ((0x61 <= ch) && (ch <= 0x7A))) {  // Lowercase [a-z]
-      output.push_back(path[index]);
-    } else {
-      char encoded[3];
-      encoded[0] = 'x';
-      encoded[1] = ch / 16;
-      encoded[1] += (encoded[1] >= 10) ? 'A' - 10 : '0';
-      encoded[2] = ch % 16;
-      encoded[2] += (encoded[2] >= 10) ? 'A' - 10 : '0';
-      output.append(encoded, 3);
-    }
-    if (index - last_slash > kMaximumSubdirectoryLength) {
-#ifdef WIN32
-      char slash = '\\';
-#else
-      char slash = '/';
-#endif
-      output.push_back(slash);
-      last_slash = index;
-    }
-  }
-  return output;
-}
-
-GoogleString UrlToFilenameEncoder::GetUrlHost(const GoogleString& url) {
-  size_t b = url.find("//");
-  if (b == GoogleString::npos)
-    b = 0;
-  else
-    b += 2;
-  size_t next_slash = url.find_first_of('/', b);
-  size_t next_colon = url.find_first_of(':', b);
-  if (next_slash != GoogleString::npos
-      && next_colon != GoogleString::npos
-      && next_colon < next_slash) {
-    return GoogleString(url, b, next_colon - b);
-  }
-  if (next_slash == GoogleString::npos) {
-    if (next_colon != GoogleString::npos) {
-      return GoogleString(url, b, next_colon - b);
-    } else {
-      next_slash = url.size();
-    }
-  }
-  return GoogleString(url, b, next_slash - b);
-}
-
-GoogleString UrlToFilenameEncoder::GetUrlHostPath(const GoogleString& url) {
-  size_t b = url.find("//");
-  if (b == GoogleString::npos)
-    b = 0;
-  else
-    b += 2;
-  return GoogleString(url, b);
-}
-
-GoogleString UrlToFilenameEncoder::GetUrlPath(const GoogleString& url) {
-  size_t b = url.find("//");
-  if (b == GoogleString::npos)
-    b = 0;
-  else
-    b += 2;
-  b = url.find("/", b);
-  if (b == GoogleString::npos)
-    return "/";
-
-  size_t e = url.find("#", b+1);
-  if (e != GoogleString::npos)
-    return GoogleString(url, b, (e - b));
-  return GoogleString(url, b);
-}
-
 namespace {
 
 // Parsing states for UrlToFilenameEncoder::Unescape
@@ -355,13 +259,14 @@ int HexStringToInt(const GoogleString& value) {
 
 }  // namespace
 
-GoogleString UrlToFilenameEncoder::Unescape(const GoogleString& escaped_url) {
+GoogleString UrlToFilenameEncoder::Unescape(const StringPiece& escaped_url) {
   GoogleString unescaped_url, escape_text;
   unsigned char escape_value;
   UnescapeState state = NORMAL;
-  GoogleString::const_iterator iter = escaped_url.begin();
-  while (iter < escaped_url.end()) {
-    char c = *iter;
+  int iter = 0;
+  int n = escaped_url.size();
+  while (iter < n) {
+    char c = escaped_url[iter];
     switch (state) {
       case NORMAL:
         if (c == '%') {

@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/url_to_filename_encoder.h"
 
+#include <cstdio>
 #include <vector>
 
 #include "net/instaweb/util/public/gtest.h"
@@ -30,10 +31,8 @@ namespace {
 
 #ifdef WIN32
 char kDirSeparator = '\\';
-char kOtherDirSeparator = '/';
 #else
 char kDirSeparator = '/';
-char kOtherDirSeparator = '\\';
 #endif
 
 class UrlToFilenameEncoderTest : public ::testing::Test {
@@ -98,36 +97,6 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     Validate(GoogleString(1, ch), escaped);
   }
 
-  void ValidateUrl(const GoogleString& url, const GoogleString& base_path,
-                   bool legacy_escape, const GoogleString& gold_filename) {
-    GoogleString encoded_filename = UrlToFilenameEncoder::Encode(
-        url, base_path, legacy_escape);
-    EXPECT_EQ(gold_filename, encoded_filename);
-    if (!legacy_escape) {
-      CheckSegmentLength(encoded_filename);
-      CheckValidChars(encoded_filename, kOtherDirSeparator);
-      GoogleString decoded_url;
-      UrlToFilenameEncoder::Decode(encoded_filename, kDirSeparator,
-                                   &decoded_url);
-      if (url != decoded_url) {
-        EXPECT_EQ(url, "http://" + decoded_url);
-      }
-    }
-  }
-
-  void ValidateUrlOldNew(const GoogleString& url,
-                         const GoogleString& gold_old_filename,
-                         const GoogleString& gold_new_filename) {
-    ValidateUrl(url, "", true, gold_old_filename);
-    ValidateUrl(url, "", false, gold_new_filename);
-  }
-
-  void ValidateEncodeSame(const GoogleString& url1, const GoogleString& url2) {
-    GoogleString filename1 = UrlToFilenameEncoder::Encode(url1, "", false);
-    GoogleString filename2 = UrlToFilenameEncoder::Encode(url2, "", false);
-    EXPECT_EQ(filename1, filename2);
-  }
-
   GoogleString escape_;
   GoogleString dir_sep_;
 };
@@ -185,54 +154,6 @@ TEST_F(UrlToFilenameEncoderTest, DoesEscapeCorrectly) {
   Validate("~joebob/my_neeto-website+with_stuff.asp?id=138&content=true",
            "" + escape_ + "7Ejoebob/my_neeto-website+with_stuff.asp" + escape_ +
            "3Fid=138" + escape_ + "26content=true" + escape_);
-}
-
-TEST_F(UrlToFilenameEncoderTest, EncodeUrlCorrectly) {
-  ValidateUrlOldNew("http://www.google.com/index.html",
-                    "www.google.com" + dir_sep_ + "indexx2Ehtml",
-                    "www.google.com" + dir_sep_ + "index.html" + escape_);
-  ValidateUrlOldNew("http://www.google.com/x/search?hl=en&q=dogs&oq=",
-                    "www.google.com" + dir_sep_ + "x" + dir_sep_ +
-                    "searchx3Fhlx3Denx26qx3Ddogsx26oqx3D",
-
-                    "www.google.com" + dir_sep_ + "x" + dir_sep_ + "search" +
-                    escape_ + "3Fhl=en" + escape_ + "26q=dogs" + escape_ +
-                    "26oq=" + escape_);
-  ValidateUrlOldNew("http://www.foo.com/a//",
-                    "www.foo.com" + dir_sep_ + "ax255Cx255Cindexx2Ehtml",
-                    "www.foo.com" + dir_sep_ + "a" + dir_sep_ + escape_ + "2F" +
-                    escape_);
-
-  ValidateUrl("http://www.foo.com/u?site=http://www.google.com/index.html",
-              "", false,
-              "www.foo.com" + dir_sep_ + "u" + escape_ + "3Fsite=http" +
-              escape_ + "3A" + dir_sep_ + escape_ + "2Fwww.google.com" +
-              dir_sep_ + "index.html" + escape_);
-  ValidateUrlOldNew(
-      "http://blogutils.net/olct/online.php?"
-      "site=http://thelwordfanfics.blogspot.&interval=600",
-
-      "blogutils.net" + dir_sep_ + "olct" + dir_sep_ + "onlinex2Ephpx3F"
-      "sitex3Dhttpx3Ax255Cx255Cthelwordfanficsx2Eblogspotx2Ex26intervalx3D600",
-
-      "blogutils.net" + dir_sep_ + "olct" + dir_sep_ + "online.php" + escape_ +
-      "3Fsite=http" + escape_ + "3A" + dir_sep_ + escape_ +
-      "2Fthelwordfanfics.blogspot." + escape_ + "26interval=600" + escape_);
-}
-
-TEST_F(UrlToFilenameEncoderTest, UnescapeUrlsBeforeEncode) {
-  for (int i = 0; i < 128; ++i) {
-    GoogleString unescaped(1, static_cast<char>(i));
-    GoogleString escaped = StringPrintf("%%%02X", i);
-    ValidateEncodeSame(unescaped, escaped);
-  }
-
-  ValidateEncodeSame(
-      "http://www.blogger.com/navbar.g?bName=God!&Mode=FOO&searchRoot"
-      "=http%3A%2F%2Fsurvivorscanthrive.blogspot.com%2Fsearch",
-
-      "http://www.blogger.com/navbar.g?bName=God%21&Mode=FOO&searchRoot"
-      "=http%3A%2F%2Fsurvivorscanthrive.blogspot.com%2Fsearch");
 }
 
 TEST_F(UrlToFilenameEncoderTest, EscapeSecondSlash) {
