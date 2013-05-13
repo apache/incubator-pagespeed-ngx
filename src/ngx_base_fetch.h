@@ -37,31 +37,24 @@
 #ifndef NGX_BASE_FETCH_H_
 #define NGX_BASE_FETCH_H_
 
-extern "C" {
-#include <ngx_http.h>
-}
-
-#include <pthread.h>
-
 #include "ngx_pagespeed.h"
-
 #include "ngx_server_context.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+  NgxBaseFetch(const RequestContextPtr& request_ctx, 
                NgxServerContext* server_context,
-               const RequestContextPtr& request_ctx);
+               RequestHeaders *request_headers,
+               ngx_http_request_t* r, int pipe_fd);
   virtual ~NgxBaseFetch();
-
-  // Copies the request headers out of request_->headers_in->headers.
-  void PopulateRequestHeaders();
 
   // Copies the response headers out of request_->headers_out->headers.
   void PopulateResponseHeaders();
@@ -107,13 +100,6 @@ class NgxBaseFetch : public AsyncFetch {
   // buffer_.
   ngx_int_t CopyBufferToNginx(ngx_chain_t** link_ptr);
 
-  void Lock();
-  void Unlock();
-
-  // Called by Done() and Release().  Decrements our reference count, and if
-  // it's zero we delete ourself.
-  void DecrefAndDeleteIfUnreferenced();
-
   ngx_http_request_t* request_;
   GoogleString buffer_;
   NgxServerContext* server_context_;
@@ -122,8 +108,8 @@ class NgxBaseFetch : public AsyncFetch {
   int pipe_fd_;
   // How many active references there are to this fetch. Starts at two,
   // decremented once when Done() is called and once when Release() is called.
-  int references_;
-  pthread_mutex_t mutex_;
+  AtomicInt32 references_;
+  scoped_ptr<AbstractMutex> mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
