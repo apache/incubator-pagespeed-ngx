@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -93,6 +94,10 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       use_native_fetcher_(false) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
+  SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
+      default_options());
+  system_options->set_file_cache_clean_inode_limit(500000);
+  system_options->set_avoid_renaming_introspective_javascript(true);
   set_message_handler(ngx_message_handler_);
   set_html_parse_message_handler(ngx_html_parse_message_handler_);
 
