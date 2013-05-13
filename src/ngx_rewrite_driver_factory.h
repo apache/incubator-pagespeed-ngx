@@ -170,6 +170,10 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
     use_native_fetcher_ = x;
   }
 
+  NgxThreadSystem* ngx_thread_system() {
+    return ngx_thread_system_;
+  }
+
   // We use a beacon handler to collect data for critical images,
   // css, etc., so filters should be configured accordingly.
   //

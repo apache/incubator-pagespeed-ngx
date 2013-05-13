@@ -41,7 +41,7 @@ class NgxThreadSystem : public PthreadThreadSystem {
   // right after forking, and CHECK-fail if something tries to start a thread
   // before then.
   void PermitThreadStarting();
-
+  bool may_start_threads() { return may_start_threads_; }
  protected:
   virtual void BeforeThreadRunHook();
 
