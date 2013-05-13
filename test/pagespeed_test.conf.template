@@ -441,6 +441,8 @@ http {
     }
 
     pagespeed Domain modpagespeed.com:1023;
+    # As opposed to mod_pagespeed, our default for aris is 'on'
+    pagespeed AvoidRenamingIntrospectiveJavascript off;
 
     location /mod_pagespeed_test/forbid_all_disabled/disabled {
       # Prevent the enabling of these filters for files in this directory
