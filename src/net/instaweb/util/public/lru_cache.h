@@ -20,13 +20,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_LRU_CACHE_H_
 
 #include <cstddef>
-#include <list>
-#include <map>
-#include <utility>  // for pair
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/cache/lru_cache_base.h"
 
 namespace net_instaweb {
 
@@ -44,12 +43,7 @@ namespace net_instaweb {
 // should be added.
 class LRUCache : public CacheInterface {
  public:
-  explicit LRUCache(size_t max_size)
-      : max_bytes_in_cache_(max_size),
-        current_bytes_in_cache_(0),
-        is_healthy_(true) {
-    ClearStats();
-  }
+  explicit LRUCache(size_t max_size);
   virtual ~LRUCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
@@ -64,30 +58,32 @@ class LRUCache : public CacheInterface {
   virtual void Delete(const GoogleString& key);
 
   // Total size in bytes of keys and values stored.
-  size_t size_bytes() const { return current_bytes_in_cache_; }
+  size_t size_bytes() const { return base_.size_bytes(); }
 
   // Maximum capacity.
-  size_t max_bytes_in_cache() const { return max_bytes_in_cache_; }
+  size_t max_bytes_in_cache() const { return base_.max_bytes_in_cache(); }
 
   // Number of elements stored
-  size_t num_elements() const { return map_.size(); }
+  size_t num_elements() const { return base_.num_elements(); }
 
-  size_t num_evictions() const { return num_evictions_; }
-  size_t num_hits() const { return num_hits_; }
-  size_t num_misses() const { return num_misses_; }
-  size_t num_inserts() const { return num_inserts_; }
-  size_t num_identical_reinserts() const { return num_identical_reinserts_; }
-  size_t num_deletes() const { return num_deletes_; }
+  size_t num_evictions() const { return base_.num_evictions(); }
+  size_t num_hits() const { return base_.num_hits(); }
+  size_t num_misses() const { return base_.num_misses(); }
+  size_t num_inserts() const { return base_.num_inserts(); }
+  size_t num_identical_reinserts() const {
+    return base_.num_identical_reinserts();
+  }
+  size_t num_deletes() const { return base_.num_deletes(); }
 
   // Sanity check the cache data structures.
-  void SanityCheck();
+  void SanityCheck() { base_.SanityCheck(); }
 
   // Clear the entire cache.  Used primarily for testing.  Note that this
   // will not clear the stats, however it will update current_bytes_in_cache_.
-  void Clear();
+  void Clear() { base_.Clear(); }
 
   // Clear the stats -- note that this will not clear the content.
-  void ClearStats();
+  void ClearStats() { base_.ClearStats(); }
 
   static GoogleString FormatName() { return "LRUCache"; }
   virtual GoogleString Name() const { return FormatName(); }
@@ -98,26 +94,24 @@ class LRUCache : public CacheInterface {
   void set_is_healthy(bool x) { is_healthy_ = x; }
 
  private:
-  typedef std::pair<const GoogleString*, SharedString> KeyValuePair;
-  typedef std::list<KeyValuePair*> EntryList;
-  // STL guarantees lifetime of list itererators as long as the node is in list.
-  typedef EntryList::iterator ListNode;
-  typedef std::map<GoogleString, ListNode> Map;
-  inline size_t entry_size(KeyValuePair* kvp) const;
-  inline ListNode Freshen(KeyValuePair* key_value);
-  bool EvictIfNecessary(size_t bytes_needed);
+  struct SharedStringHelper {
+    size_t size(const SharedString& ss) const {
+      return ss.size();
+    }
+    bool Equal(const SharedString& a, const SharedString& b) const {
+      return a.Value() == b.Value();
+    }
+    void EvictNotify(const SharedString& a) {}
+    bool ShouldReplace(const SharedString& old_value,
+                       const SharedString& new_value) const {
+      return true;
+    }
+  };
+  typedef LRUCacheBase<SharedString, SharedStringHelper> Base;
 
-  size_t max_bytes_in_cache_;
-  size_t current_bytes_in_cache_;
-  size_t num_evictions_;
-  size_t num_hits_;
-  size_t num_misses_;
-  size_t num_inserts_;
-  size_t num_identical_reinserts_;
-  size_t num_deletes_;
+  Base base_;
   bool is_healthy_;
-  EntryList lru_ordered_list_;
-  Map map_;
+  SharedStringHelper value_helper_;
 
   DISALLOW_COPY_AND_ASSIGN(LRUCache);
 };
