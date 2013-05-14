@@ -354,7 +354,6 @@
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_test_infrastructure',
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
-        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
@@ -434,7 +433,6 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
-        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'include_dirs': [
         '<(DEPTH)',

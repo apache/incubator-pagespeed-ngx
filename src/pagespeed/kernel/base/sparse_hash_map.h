@@ -15,10 +15,10 @@
  */
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_KERNEL_UTIL_SPARSE_HASH_SET_H_
-#define PAGESPEED_KERNEL_UTIL_SPARSE_HASH_SET_H_
+#ifndef PAGESPEED_KERNEL_BASE_SPARSE_HASH_MAP_H_
+#define PAGESPEED_KERNEL_BASE_SPARSE_HASH_MAP_H_
 
-#include "google/sparse_hash_set"
-namespace net_instaweb { using google::sparse_hash_set; }
+#include "google/sparse_hash_map"
+namespace net_instaweb { using google::sparse_hash_map; }
 
-#endif  // PAGESPEED_KERNEL_UTIL_SPARSE_HASH_SET_H_
+#endif  // PAGESPEED_KERNEL_BASE_SPARSE_HASH_MAP_H_

@@ -39,8 +39,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/dense_hash_map.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
-#include "pagespeed/kernel/util/dense_hash_map.h"
 #include "pagespeed/kernel/util/fast_wildcard_group.h"
 #include "pagespeed/kernel/util/wildcard.h"
 

@@ -20,10 +20,11 @@
 #include <cstddef>
 #include <cstdio>
 #include <utility>
+
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/dense_hash_set.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/dense_hash_set.h"
 
 namespace net_instaweb {
 namespace {

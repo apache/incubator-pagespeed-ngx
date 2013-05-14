@@ -44,9 +44,11 @@
       ],
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
       'export_dependent_settings': [
-        '<(DEPTH)/base/base.gyp:base'
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
     },
     {
@@ -143,7 +145,6 @@
       ],
       'dependencies': [
         'pagespeed_base',
-        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
     }

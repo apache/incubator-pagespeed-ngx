@@ -27,7 +27,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_hash.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/sparse_hash_map.h"
+#include "pagespeed/kernel/base/sparse_hash_map.h"
 
 namespace net_instaweb {
 
