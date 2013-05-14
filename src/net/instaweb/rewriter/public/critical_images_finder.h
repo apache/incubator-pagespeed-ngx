@@ -125,9 +125,12 @@ class CriticalImagesFinder {
   // Alternative interface to update the critical images cache entry. This is
   // useful in contexts like the beacon handler where the RewriteDriver for the
   // original request no longer exists.
-  bool UpdateCriticalImagesCacheEntry(
+  static bool UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
+      int num_sets_to_keep,
+      int percent_seen_for_critical,
+      const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page);
 
  protected:
@@ -151,9 +154,11 @@ class CriticalImagesFinder {
   // either of the html or css sets are NULL, those fields in critical_images
   // will not be updated. Returns true if either of the critical image sets in
   // critical_images was updated.
-  bool UpdateCriticalImages(const StringSet* html_critical_images,
-                            const StringSet* css_critical_images,
-                            CriticalImages* critical_images) const;
+  static bool UpdateCriticalImages(const StringSet* html_critical_images,
+                                   const StringSet* css_critical_images,
+                                   int num_sets_to_keep,
+                                   int percent_seen_for_critical,
+                                   CriticalImages* critical_images);
 
   // By default, store 1 critical image set and require an image to be in that
   // set for it to be critical.

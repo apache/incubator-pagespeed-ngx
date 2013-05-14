@@ -19,7 +19,6 @@
 
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -37,6 +36,19 @@ bool BeaconCriticalImagesFinder::IsHtmlCriticalImage(
       image_url.c_str(), image_url.size());
   GoogleString hash_str = UintToString(hash_val);
   return CriticalImagesFinder::IsHtmlCriticalImage(hash_str, driver);
+}
+
+bool BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
+      const StringSet* html_critical_images_set,
+      const StringSet* css_critical_images_set,
+      const PropertyCache::Cohort* cohort,
+      AbstractPropertyPage* page) {
+  return CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
+      html_critical_images_set,
+      css_critical_images_set,
+      kBeaconNumSetsToKeep,
+      kBeaconPercentSeenForCritical,
+      cohort, page);
 }
 
 }  // namespace net_instaweb

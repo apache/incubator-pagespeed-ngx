@@ -283,71 +283,78 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
   // Fallback properties will be updated for critical images.
   AbstractPropertyPage* page = driver->fallback_property_page();
   return UpdateCriticalImagesCacheEntry(
-      html_critical_images_set, css_critical_images_set, page);
+      html_critical_images_set, css_critical_images_set,
+      NumSetsToKeep(), PercentSeenForCritical(),
+      GetCriticalImagesCohort(), page);
 }
 
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     const StringSet* html_critical_images_set,
     const StringSet* css_critical_images_set,
+    int num_sets_to_keep,
+    int percent_seen_for_critical,
+    const PropertyCache::Cohort* cohort,
     AbstractPropertyPage* page) {
   // Update property cache if above the fold critical images are successfully
   // determined.
-  if (page != NULL) {
-    const PropertyCache::Cohort* cohort = GetCriticalImagesCohort();
-    if (cohort != NULL) {
-      PropertyValue* property_value = page->GetProperty(
-          cohort, kCriticalImagesPropertyName);
-      // Read in the current critical images, and preserve the current HTML or
-      // CSS critical images if they are not being updated.
-      CriticalImages critical_images;
-      PopulateCriticalImagesFromPropertyValue(property_value, &critical_images);
-      bool updated = UpdateCriticalImages(
-          html_critical_images_set, css_critical_images_set,
-          &critical_images);
-      if (updated) {
-        GoogleString buf;
-        if (critical_images.SerializeToString(&buf)) {
-          // The property cache won't store an empty value, which is what an
-          // empty CriticalImages will serialize to. If buf is an empty string,
-          // repalce with a placeholder that we can then handle when decoding
-          // the property_cache value in
-          // PopulateCriticalImagesFromPropertyValue.
-          if (buf.empty()) {
-            buf = kEmptyValuePlaceholder;
-          }
-          page->UpdateValue(
-              GetCriticalImagesCohort(), kCriticalImagesPropertyName, buf);
-        } else {
-          LOG(WARNING) << "Serialization of critical images protobuf failed.";
-          return false;
-        }
-      }
-      return updated;
-    } else {
-      LOG(WARNING) << "Critical Images Cohort is NULL.";
-    }
+  if (page == NULL) {
+    return false;
   }
-  return false;
+  if (cohort == NULL) {
+    LOG(WARNING) << "Critical Images Cohort is NULL.";
+    return false;
+  }
+
+  PropertyValue* property_value = page->GetProperty(
+      cohort, kCriticalImagesPropertyName);
+  // Read in the current critical images, and preserve the current HTML or
+  // CSS critical images if they are not being updated.
+  CriticalImages critical_images;
+  PopulateCriticalImagesFromPropertyValue(property_value, &critical_images);
+  if (!UpdateCriticalImages(
+      html_critical_images_set, css_critical_images_set,
+      num_sets_to_keep, percent_seen_for_critical,
+      &critical_images)) {
+    return false;
+  }
+
+  GoogleString buf;
+  if (!critical_images.SerializeToString(&buf)) {
+    LOG(WARNING) << "Serialization of critical images protobuf failed.";
+    return false;
+  }
+  // The property cache won't store an empty value, which is what an
+  // empty CriticalImages will serialize to. If buf is an empty string,
+  // repalce with a placeholder that we can then handle when decoding
+  // the property_cache value in
+  // PopulateCriticalImagesFromPropertyValue.
+  if (buf.empty()) {
+    buf = kEmptyValuePlaceholder;
+  }
+  page->UpdateValue(cohort, kCriticalImagesPropertyName, buf);
+  return true;
 }
 
 bool CriticalImagesFinder::UpdateCriticalImages(
     const StringSet* html_critical_images,
     const StringSet* css_critical_images,
-    CriticalImages* critical_images) const {
+    int num_sets_to_keep,
+    int percent_seen_for_critical,
+    CriticalImages* critical_images) {
   DCHECK(critical_images != NULL);
   if (html_critical_images != NULL) {
     UpdateCriticalImagesSetInProto(
         *html_critical_images,
-        NumSetsToKeep(),
-        PercentSeenForCritical(),
+        num_sets_to_keep,
+        percent_seen_for_critical,
         critical_images->mutable_html_critical_images_sets(),
         critical_images->mutable_html_critical_images());
   }
   if (css_critical_images != NULL) {
     UpdateCriticalImagesSetInProto(
         *css_critical_images,
-        NumSetsToKeep(),
-        PercentSeenForCritical(),
+        num_sets_to_keep,
+        percent_seen_for_critical,
         critical_images->mutable_css_critical_images_sets(),
         critical_images->mutable_css_critical_images());
   }

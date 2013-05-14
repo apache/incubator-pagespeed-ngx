@@ -30,9 +30,10 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
@@ -146,8 +147,9 @@ class BeaconPropertyCallback : public PropertyPage {
   virtual ~BeaconPropertyCallback() {}
 
   virtual void Done(bool success) {
-    server_context_->critical_images_finder()->UpdateCriticalImagesCacheEntry(
-        html_critical_images_set_.get(), css_critical_images_set_.get(), this);
+    BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
+        html_critical_images_set_.get(), css_critical_images_set_.get(),
+        server_context_->beacon_cohort(), this);
     if (critical_css_selector_set_ != NULL) {
       server_context_->critical_selector_finder()->
           WriteCriticalSelectorsToPropertyCache(

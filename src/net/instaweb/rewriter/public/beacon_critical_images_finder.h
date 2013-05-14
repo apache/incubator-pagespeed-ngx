@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -63,6 +64,14 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
     return cohort_;
   }
+
+  // Update the critical image entry in the property cache. This is meant to be
+  // called in the beacon handler, where there is no RewriteDriver available.
+  static bool UpdateCriticalImagesCacheEntry(
+      const StringSet* html_critical_images_set,
+      const StringSet* css_critical_images_set,
+      const PropertyCache::Cohort* cohort,
+      AbstractPropertyPage* page);
 
  private:
   // 80% is a guess at a reasonable value for this param.
