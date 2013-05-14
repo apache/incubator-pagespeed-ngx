@@ -47,6 +47,7 @@ struct OptionName {
 "CssOutlineMinBytes",                    RewriteOptions::kCssOutlineMinBytes
 "CssPreserveURLs",                       RewriteOptions::kCssPreserveURLs
 "DefaultCacheHtml",                      RewriteOptions::kDefaultCacheHtml
+"DistributedRewriteKey",                 RewriteOptions::kDistributedRewriteKey
 "DistributedRewriteServers",             RewriteOptions::kDistributedRewriteServers
 "DistributedRewriteTimeoutMs",           RewriteOptions::kDistributedRewriteTimeoutMs
 "DomainShardCount",                      RewriteOptions::kDomainShardCount

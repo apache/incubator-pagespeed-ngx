@@ -1267,6 +1267,13 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Set the value for the X-Mod-Pagespeed HTTP header");
   AddBaseProperty(
+      "", &RewriteOptions::distributed_rewrite_key_, "drwk",
+      kDistributedRewriteKey, kProcessScope,
+      "The key used to authenticate requests from one rewrite task "
+      "to another.  This should be random, greater than 8 characters (longer "
+      "is better), and the same value on each mod_pagespeed server config in "
+      "the rewrite cluster.");
+  AddBaseProperty(
       "", &RewriteOptions::distributed_rewrite_servers_, "drws",
       kDistributedRewriteServers, kProcessScope,
      "A comma-separated list of hosts to use for distributed rewrites.");

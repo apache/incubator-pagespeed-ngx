@@ -1730,7 +1730,7 @@ bool RewriteDriver::FetchOutputResource(
     SetBaseUrlForFetch(output_resource->url());
     fetch_queued_ = true;
     if (output_resource->kind() == kOnTheFlyResource ||
-        async_fetch->request_headers()->MetadataRequested()) {
+        MetadataRequested(*async_fetch->request_headers())) {
       // Don't bother to look up the resource in the cache: ask the filter. If
       // metadata is requested we need to skip the initial http cache lookup
       // because we can't return until we've done a metadata lookup first.
@@ -2926,6 +2926,17 @@ void RewriteDriver::DetermineEnabledFilters() {
 void RewriteDriver::ClearDeviceProperties() {
   device_properties_.reset(new DeviceProperties(
       server_context_->user_agent_matcher()));
+}
+
+bool RewriteDriver::MetadataRequested(
+    const RequestHeaders& request_headers) const {
+  StringPiece expected_key = options_->distributed_rewrite_key();
+  // Empty keys don't count.
+  if (expected_key.empty()) {
+    return false;
+  }
+  return request_headers.HasValue(HttpAttributes::kXPsaRequestMetadata,
+                                  expected_key);
 }
 
 }  // namespace net_instaweb

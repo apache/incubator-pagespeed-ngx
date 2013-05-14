@@ -197,6 +197,7 @@ class RewriteOptions {
     kCssOutlineMinBytes,
     kCssPreserveURLs,
     kDefaultCacheHtml,
+    kDistributedRewriteKey,
     kDistributedRewriteServers,
     kDistributedRewriteTimeoutMs,
     kDomainRewriteHyperlinks,
@@ -1950,6 +1951,13 @@ class RewriteOptions {
     return x_header_value_.value();
   }
 
+  void set_distributed_rewrite_key(const StringPiece& p) {
+      set_option(p.as_string(), &distributed_rewrite_key_);
+  }
+  const GoogleString& distributed_rewrite_key() const {
+    return distributed_rewrite_key_.value();
+  }
+
   void set_distributed_rewrite_servers(const StringPiece& p) {
       set_option(p.as_string(), &distributed_rewrite_servers_);
   }
@@ -3217,6 +3225,9 @@ class RewriteOptions {
   Option<GoogleString> blink_non_cacheables_for_all_families_;
   // Specification for critical line.
   Option<GoogleString> critical_line_config_;
+  // The user-provided key used to authenticate requests from one rewrite task
+  // to another.  Right now only used to validate meta-data headers.
+  Option<GoogleString> distributed_rewrite_key_;
   // A comma delimited list of hosts that can be used to rewrite resources.
   Option<GoogleString> distributed_rewrite_servers_;
   // Time to wait for a distributed rewrite to complete before giving up on the

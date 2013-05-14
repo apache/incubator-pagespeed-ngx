@@ -26,12 +26,15 @@
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -48,6 +51,11 @@ namespace {
 // SetupDistributedTest to configure the test class.
 class DistributedRewriteContextTest : public RewriteContextTestBase {
  protected:
+  enum HttpRequestType {
+    kHeadRequest,
+    kGetRequest
+  };
+
   DistributedRewriteContextTest() {
     distributed_rewrite_failures_ = statistics()->GetVariable(
         RewriteContext::kNumDistributedRewriteFailures);
@@ -67,6 +75,7 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
     SetupSharedCache();
     options_->DistributeFilter(TrimWhitespaceRewriter::kFilterId);
     options_->set_distributed_rewrite_servers("example.com:80");
+    options_->set_distributed_rewrite_key("1234123");
     // Make sure they have the same options so that they generate the same
     // metadata keys.
     other_options()->Merge(*options());
@@ -91,6 +100,41 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
     EXPECT_EQ(0, trim_filter_->num_rewrites());
     EXPECT_EQ(rewritten, other_trim_filter_->num_rewrites());
   }
+
+  bool FetchValidatedMetadata(StringPiece key, StringPiece input_url,
+                              StringPiece correct_url,
+                              HttpRequestType request_type) {
+    GoogleString output;
+    ResponseHeaders response_headers;
+    RequestHeaders req_headers;
+    bool valid_metadata = false;
+    req_headers.Add(HttpAttributes::kXPsaRequestMetadata, key);
+    if (request_type == kHeadRequest) {
+      req_headers.set_method(RequestHeaders::kHead);
+    }
+    rewrite_driver()->set_request_headers(&req_headers);
+    EXPECT_TRUE(FetchResourceUrl(input_url, &req_headers, &output,
+                                 &response_headers));
+
+    // Check if the metadata is valid.
+    if (response_headers.Has(HttpAttributes::kXPsaResponseMetadata)) {
+      GoogleString encoded_serialized =
+          response_headers.Lookup1(HttpAttributes::kXPsaResponseMetadata);
+      GoogleString decoded_serialized;
+      Mime64Decode(encoded_serialized, &decoded_serialized);
+      OutputPartitions partitions;
+      EXPECT_TRUE(partitions.ParseFromString(decoded_serialized));
+      EXPECT_STREQ(correct_url, partitions.partition(0).url());
+      valid_metadata = true;
+    }
+
+    // If we did a HEAD request we don't expect any output
+    if (request_type == kHeadRequest) {
+      EXPECT_STREQ("", output);
+    }
+    return valid_metadata;
+  }
+
 
   Variable* fetch_failures_;
   Variable* fetch_successes_;
@@ -251,6 +295,170 @@ TEST_F(DistributedRewriteContextTest,
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(5, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+}
+
+TEST_F(DistributedRewriteContextTest, ReturnMetadataOnRequest) {
+  // Sends a fetch that asks for metadata in the response headers and checks
+  // that it's in the response.
+
+  // We need to make distributed_rewrite_servers != "" and set a
+  // distributed_rewrite_key in order to return metadata.
+  options()->set_distributed_rewrite_servers("example.com");
+  static const char kDistributedKey[] = "1234123";
+  options()->set_distributed_rewrite_key(kDistributedKey);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+  GoogleString bad_encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "1", "a.css", "css");
+
+  // Note that the .pagespeed. path with metadata request headers do not
+  // check the http cache up front.  If they did that and hit they would
+  // not have metadata to return.  Therefore the tests below have fewer
+  // cache misses than you might have expected.
+
+  // The first .pagespeed. request.  It should hit the reconstruction path.
+  // We'll miss on the metadata and the input resource.  Then fetch once
+  // and put optimized resource, input resource, and metadata in cache.
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, encoded_url, encoded_url,
+                                     kGetRequest));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // We should get metadata even though the optimized output is cached.
+  ClearStats();
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, encoded_url, encoded_url,
+                                     kGetRequest));
+  EXPECT_EQ(2, lru_cache()->num_hits());  // 1 metadata and 1 http
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // If we use the wrong encoding the metadata + subsequent HTTP cache will hit,
+  // following the fallback path.
+  ClearStats();
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, bad_encoded_url,
+                                     encoded_url, kGetRequest));
+  // Expect the bad url to miss twice (RewriteDriver::CacheCallback tries
+  // twice). We should then hit the metadata and good http url.
+  EXPECT_EQ(2, lru_cache()->num_hits());     // 1 metadata and 1 http
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // If we clear the caches and use the wrong URL it should use the
+  // reconstruction path and return the right URL and the metadata.
+  ClearStats();
+  lru_cache()->Clear();
+  http_cache()->Delete(encoded_url);
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, bad_encoded_url,
+                                     encoded_url, kGetRequest));
+  // We should fetch once and insert the input, optimized, and metadata into
+  // cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // 1 metadata and 1 http input
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(DistributedRewriteContextTest, HeadMetadata) {
+  // Verify that a HEAD request that asks for metadata returns the metadata
+  // but not the content.  We don't check cache hit/miss numbers because that
+  // would be redundant with RewriteContextTest.ReturnMetadataOnRequest.
+
+  // We need to make distributed_rewrite_servers != "" in order to return
+  // metedata.
+  options()->set_distributed_rewrite_servers("example.com");
+  static const char kDistributedKey[] = "1234123";
+  options()->set_distributed_rewrite_key(kDistributedKey);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+  GoogleString bad_encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "1", "a.css", "css");
+
+  // Reconstruction path.
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, encoded_url, encoded_url,
+                                     kHeadRequest));
+
+  // Second fetch, verify that we skip the initial http cache check and do
+  // return metadata.
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, encoded_url, encoded_url,
+                                     kHeadRequest));
+
+  // Bad .pagespeed. hash but still gets resolved.
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, bad_encoded_url,
+                                     encoded_url, kHeadRequest));
+
+  // Bad .pagespeed. hash and empty cache but should still reconstruct properly.
+  lru_cache()->Clear();
+  http_cache()->Delete(encoded_url);
+  EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, bad_encoded_url,
+                                     encoded_url, kHeadRequest));
+}
+
+TEST_F(DistributedRewriteContextTest, NoMetadataWithoutRewriteOption) {
+  // Ensure that we don't return metadata if we're not configured
+  // to run with distributed rewrites.
+  static const char kDistributedKey[] = "1234123";
+  options()->set_distributed_rewrite_key(kDistributedKey);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+
+  // We didn't set rewrite tasks in options, so we shouldn't get any metadata.
+  EXPECT_FALSE(FetchValidatedMetadata(kDistributedKey, encoded_url, encoded_url,
+                                      kGetRequest));
+}
+
+TEST_F(DistributedRewriteContextTest, NoMetadataWithoutSettingKey) {
+  // Ensure that we don't return metadata if we're not configured
+  // to run with distributed rewrites.
+  options()->set_distributed_rewrite_servers("example.com");
+  static const char kDistributedKey[] = "1234123";
+  // Neglect to set the distributed rewrite key in options.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+
+  // We didn't set a distributed rewrite key in options, so we shouldn't get any
+  // metadata.
+  EXPECT_FALSE(
+      FetchValidatedMetadata("", encoded_url, encoded_url, kGetRequest));
+  EXPECT_FALSE(FetchValidatedMetadata(kDistributedKey, encoded_url, encoded_url,
+                                      kGetRequest));
+}
+
+TEST_F(DistributedRewriteContextTest, NoMetadataWithBadKeys) {
+  // Ensure that we don't return metadata if we're not configured
+  // to run with distributed rewrites.
+  options()->set_distributed_rewrite_servers("example.com");
+  static const char kDistributedKey[] = "a1234123";
+  options()->set_distributed_rewrite_key(kDistributedKey);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+
+  EXPECT_FALSE(
+      FetchValidatedMetadata("", encoded_url, encoded_url, kGetRequest));
+  // Changing case doesn't work.
+  EXPECT_FALSE(FetchValidatedMetadata("A1234123", encoded_url, encoded_url,
+                                      kGetRequest));
+  // Sanity check that it does work with the correct key.
+  EXPECT_TRUE(FetchValidatedMetadata("a1234123", encoded_url, encoded_url,
+                                     kGetRequest));
 }
 
 }  // namespace net_instaweb

@@ -829,16 +829,18 @@ class RewriteContext::FetchContext {
   // We need to be careful not to leak metadata.  So only add it when
   // it has been requested and we're configured to use distributed rewriting.
   bool ShouldAddMetadata() {
-    const RequestHeaders* request_headers =
-        rewrite_context_->Driver()->request_headers();
+    RewriteDriver* driver = rewrite_context_->Driver();
+    const RequestHeaders* request_headers = driver->request_headers();
     // TODO(jkarlin): DCHECK that distributed rewrite is set in the request
     // header.
     // TODO(jkarlin): For Apache we'll also need to verify the src address is
     // from a trusted host or trusted network. This will require a new directive
     // and src address information in the request_context, which is not there
     // today.
-    if (!rewrite_context_->Options()->distributed_rewrite_servers().empty() &&
-        request_headers != NULL && request_headers->MetadataRequested()) {
+    const RewriteOptions* options = rewrite_context_->Options();
+    if (!options->distributed_rewrite_servers().empty() &&
+        request_headers != NULL &&
+        driver->MetadataRequested(*request_headers)) {
       return true;
     }
     return false;

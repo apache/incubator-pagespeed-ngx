@@ -480,6 +480,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     options_->DistributeFilter("aj");
     options_->set_distributed_rewrite_servers("example.com:80");
+    options_->set_distributed_rewrite_key("1234123");
     Init();
     other_options()->Merge(*options());
     other_server_context()->ComputeSignature(other_options());

@@ -344,6 +344,14 @@ DEFINE_string(blocking_rewrite_key,
               "the client, if X-PSA-Blocking-Rewrite http request header's "
               "value is same as this flag's value.");
 
+DEFINE_string(distributed_rewrite_key, "",
+              "The user-provided key used to authenticate requests from one "
+              "rewrite task to another.  Right now only used to validate "
+              "meta-data headers in distributed rewrites in the html path. "
+              "This should be random, greater than 8 characters, and the same "
+              "value for each task. An empty value disables features that rely "
+              "on it.");
+
 DEFINE_string(distributed_rewrite_servers, "",
               "Comma-separated list of servers for distributed rewriting. "
               "Servers can be BNS jobs or host:port pairs.");
@@ -692,6 +700,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("blocking_rewrite_key")) {
     options->set_blocking_rewrite_key(FLAGS_blocking_rewrite_key);
+  }
+  if (WasExplicitlySet("distributed_rewrite_key")) {
+    options->set_distributed_rewrite_key(FLAGS_distributed_rewrite_key);
   }
   if (WasExplicitlySet("distributed_rewrite_servers")) {
     options->set_distributed_rewrite_servers(FLAGS_distributed_rewrite_servers);

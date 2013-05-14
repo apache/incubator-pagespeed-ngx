@@ -983,6 +983,11 @@ class RewriteDriver : public HtmlParse {
   // Determine whether this driver is nested inside another.
   bool is_nested() const { return is_nested_; }
 
+  // Determines whether metadata was requested in the response headers and
+  // verifies that the key in the header is the same as the expected key. An
+  // empty expected key returns false.
+  bool MetadataRequested(const RequestHeaders& request_headers) const;
+
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
   // to construct the output, and is used to determine whether the
