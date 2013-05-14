@@ -308,10 +308,6 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
   finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   page_->WriteCohort(server_context()->beacon_cohort());
-  page_->DeleteProperty(
-      server_context()->dom_cohort(),
-      CriticalSelectorFilter::kSummarizedCssProperty);
-  page_->WriteCohort(server_context()->dom_cohort());
 
   // Note that calling ResetDriver() just resets the state in the
   // driver. Whatever has been written to the property & metadata caches so far
@@ -328,10 +324,6 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
     finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   }
   page_->WriteCohort(server_context()->beacon_cohort());
-  page_->DeleteProperty(
-      server_context()->dom_cohort(),
-      CriticalSelectorFilter::kSummarizedCssProperty);
-  page_->WriteCohort(server_context()->dom_cohort());
   ResetDriver();
   ValidateExpected("with_span", StrCat(css, "<span>Foo</span>"),
                    StrCat("<style>", critical_css_span, "</style>",

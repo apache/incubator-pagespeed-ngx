@@ -48,7 +48,6 @@ class CriticalSelectorFilter : public CssSummarizerBase {
  public:
   static const char kAddStylesFunction[];
   static const char kAddStylesInvocation[];
-  static const char kSummarizedCssProperty[];
 
   explicit CriticalSelectorFilter(RewriteDriver* rewrite_driver);
   virtual ~CriticalSelectorFilter();

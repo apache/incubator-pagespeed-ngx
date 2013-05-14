@@ -65,9 +65,6 @@ template<typename VectorType> void Compact(VectorType* cl) {
 
 }  // namespace
 
-const char CriticalSelectorFilter::kSummarizedCssProperty[] =
-    "selector_summarized_css";
-
 // Function and invocation are separate so we can suppress the invocation when
 // running tests while still being able to manually invoke it from the JS
 // console if desired.
