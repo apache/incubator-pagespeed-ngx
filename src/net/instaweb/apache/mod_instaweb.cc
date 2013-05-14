@@ -1170,8 +1170,13 @@ apr_status_t pagespeed_child_exit(void* data) {
 }
 
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
+  // Note: when statically loaded server->module_config is NULL when
+  // initializing and this is called for the first time.
   ApacheServerContext* server_context =
-      InstawebContext::ServerContextFromServerRec(server);
+      server->module_config == NULL
+          ? NULL
+          : InstawebContext::ServerContextFromServerRec(server);
+
   if (server_context == NULL) {
     ApacheRewriteDriverFactory* factory = apache_process_context.factory(
         server);

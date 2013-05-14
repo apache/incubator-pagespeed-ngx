@@ -105,7 +105,7 @@ ModPagespeedEnableFilters add_instrumentation
     AllowOverride All
     # Some versions of mod_rewrite will refuse to do any work if
     # symlink handling is off.
-    Options +SymLinksIfOwnerMatch
+    Options +FollowSymLinks
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/close_connection/" >
@@ -870,8 +870,8 @@ ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 
 # For testing where we do our loopback routing. Note that this is listening
 # on an unusual loopback IP.
-Listen 127.0.0.2:8085
-<VirtualHost 127.0.0.2:8085>
+Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
+<VirtualHost 127.0.0.2:@@APACHE_TERTIARY_PORT@@>
   ServerName loopbackfetch.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/loopbackfetch/"

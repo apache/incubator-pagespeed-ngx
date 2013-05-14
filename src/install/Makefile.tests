@@ -108,6 +108,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	FIRST_RUN=true \
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
@@ -116,6 +117,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	@echo '***' System-test with warm cache
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
@@ -128,8 +130,11 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) stop
 	$(MAKE) start
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
-	                                          $(APACHE_HTTPS_SERVER)
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
+	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+	    $(INSTALL_DATA_DIR)/apache_system_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Now turn off ModPagespeedInheritVHostConfig, turn stats back on.
 	@echo '***' System-test without InheritVhostConfig, stats on.
@@ -143,6 +148,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	CACHE_FLUSH_TEST=on \
 	NO_VHOST_MERGE=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(INSTALL_DATA_DIR)/apache_system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
@@ -191,6 +197,7 @@ apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
 	    env \
 	    CACHE_FLUSH_TEST=on \
 	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	    APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	        $(APACHE_HTTPS_SERVER)

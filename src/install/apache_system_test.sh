@@ -31,6 +31,8 @@ CACHE_FLUSH_TEST=${CACHE_FLUSH_TEST:-off}
 NO_VHOST_MERGE=${NO_VHOST_MERGE:-off}
 SUDO=${SUDO:-}
 SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
+# TODO(jkarlin): Should we just use a vhost instead?  If so, remember to update
+# all scripts that use TEST_PROXY_ORIGIN.
 TEST_PROXY_ORIGIN=${TEST_PROXY_ORIGIN:-modpagespeed.com}
 
 # Run General system tests.
@@ -156,13 +158,15 @@ fi
 
 
 # Test that loopback route fetcher works with vhosts not listening on
-# 127.0.0.1
-start_test IP choice for loopback fetches.
-HOST_NAME="loopbackfetch.example.com"
-URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
-http_proxy=127.0.0.2:8085 \
+# 127.0.0.1  Only run this during CACHE_FLUSH_TEST as that is when
+# APACHE_TERTIARY_PORT is set.
+if [ "${APACHE_TERTIARY_PORT:-}" != "" ]; then
+  start_test IP choice for loopback fetches.
+  HOST_NAME="loopbackfetch.example.com"
+  URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
+  http_proxy=127.0.0.2:$APACHE_TERTIARY_PORT \
     fetch_until $URL 'grep -c .pagespeed.ic' 2
-
+fi
 # Test /mod_pagespeed_message exists.
 start_test Check if /mod_pagespeed_message page exists.
 OUT=$($WGET --save-headers -q -O - $MESSAGE_URL | head -1)
@@ -1661,17 +1665,17 @@ fi
 
 WGET_ARGS=""
 start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
-URL="http://$HOSTNAME/modpagespeed_http/not_really_a_font.woff"
+URL="http://$HOSTNAME/modpagespeed_http/small_javascript.js"
 echo $WGET_DUMP $URL ....
 OUT1=$($WGET_DUMP $URL)
-check_from "$OUT1" egrep -q "This is not really font data"
+check_from "$OUT1" egrep -q "hello world"
 if [ $statistics_enabled = "1" ]; then
   OLDSTATS=$OUTDIR/proxy_fetch_stats.old
   NEWSTATS=$OUTDIR/proxy_fetch_stats.new
   $WGET_DUMP $STATISTICS_URL > $OLDSTATS
 fi
 OUT2=$($WGET_DUMP $URL)
-check_from "$OUT2" egrep -q "This is not really font data"
+check_from "$OUT2" egrep -q "hello world"
 if [ $statistics_enabled = "1" ]; then
   $WGET_DUMP $STATISTICS_URL > $NEWSTATS
   check_stat $OLDSTATS $NEWSTATS cache_hits 1
