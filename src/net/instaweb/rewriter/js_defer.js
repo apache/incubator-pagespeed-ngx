@@ -1421,14 +1421,17 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
     return;
   }
   var deferJsEvent;
+  var deferJsEventName;
 
   if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.DOM_READY &&
      (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
       eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange')) {
     deferJsEvent = deferJsNs.DeferJs.EVENT.DOM_READY;
+    deferJsEventName = 'DOMContentLoaded';
   } else if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.LOAD &&
             (eventName == 'load' || eventName == 'onload')) {
     deferJsEvent = deferJsNs.DeferJs.EVENT.LOAD;
+    deferJsEventName = 'load';
   } else if (eventName == 'onbeforescripts') {
     deferJsEvent = deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS;
   } else if (eventName == 'onafterscripts') {
@@ -1439,20 +1442,25 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
     }
     return;
   }
-  var loadEvent;
-  // TODO(ksimbili): Fix for IE8 too.
-  if (deferJsEvent == deferJsNs.DeferJs.EVENT.LOAD &&
-      !(deferJs.getIEVersion() <= 8)) {
+  var eventListenerClosure = function() {
     // HACK HACK: This is specifically to solve for jquery libraries, who try
     // to read the event being passed.
     // Note we are not setting any of the other params in event. We don't see
     // them as a need for now.
-    loadEvent = document.createEvent('HTMLEvents');
-    loadEvent.initEvent('load', false, false);
-  }
-
-  var eventListenerClosure = function() {
-    func.call(elem, loadEvent);
+    // This is set based on documentation from
+    // https://developer.mozilla.org/en-US/docs/DOM/Mozilla_event_reference/DOMContentLoaded#Cross-browser_fallback
+    var customEvent = {};
+    customEvent['bubbles'] = false;
+    customEvent['cancelable'] = false;
+    customEvent['eventPhase'] = 2;  // Event.AT_TARGET
+    customEvent['timeStamp'] = new Date().getTime();
+    customEvent['type'] = deferJsEventName;
+    // event.target has to be some element in DOM. It can never be window.
+    customEvent['target'] = (elem != window) ? elem : document;
+    // This can be safely 'elem' because the two events "DOMContentLoaded' and
+    // 'load' cannot bubble.
+    customEvent['currentTarget'] = elem;
+    func.call(elem, customEvent);
   }
   if (!deferJs.eventListernersMap_[deferJsEvent]) {
     deferJs.eventListernersMap_[deferJsEvent] = [];

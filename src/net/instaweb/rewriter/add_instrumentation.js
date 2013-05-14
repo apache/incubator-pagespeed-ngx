@@ -74,21 +74,34 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   if (window['performance']) {
     var timingApi = window['performance']['timing'];
     var navStartTime = timingApi['navigationStart'];
+    var requestStartTime = timingApi['requestStart'];
     url += (timingApi[this.event_ + 'EventStart'] - navStartTime);
     url += '&nav=' + (timingApi['fetchStart'] - navStartTime);
     url += '&dns=' + (
         timingApi['domainLookupEnd'] - timingApi['domainLookupStart']);
     url += '&connect=' + (
         timingApi['connectEnd'] - timingApi['connectStart']);
-    url += '&req_start=' + (timingApi['requestStart'] - navStartTime);
+    url += '&req_start=' + (requestStartTime - navStartTime);
     url += '&ttfb=' + (
-        timingApi['responseStart'] - timingApi['requestStart']);
+        timingApi['responseStart'] - requestStartTime);
     url += '&dwld=' + (
         timingApi['responseEnd'] - timingApi['responseStart']);
     url += '&dom_c=' + (timingApi['domContentLoadedEventStart'] - navStartTime);
 
     if (window['performance']['navigation']) {
       url += '&nt=' + window['performance']['navigation']['type'];
+    }
+    var firstPaintTime = -1;
+    if (timingApi['msFirstPaint']) {
+      // IE.
+      firstPaintTime = timingApi['msFirstPaint'];
+    } else if (window['chrome'] && window['chrome']['loadTimes']) {
+      // Chrome. Note that window.chrome.loadTimes returns a time in seconds.
+      firstPaintTime = Math.floor(
+          window['chrome']['loadTimes']()['firstPaintTime'] * 1000);
+    }
+    if (firstPaintTime != -1) {
+      url += '&fp=' + (firstPaintTime - requestStartTime);
     }
   } else {
    url += traditionalPLT;
