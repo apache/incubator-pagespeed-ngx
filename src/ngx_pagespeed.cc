@@ -2560,10 +2560,6 @@ ngx_int_t ps_phase_handler(ngx_http_request_t *r,
     return NGX_AGAIN;
   }
 
-  if (rc == NGX_AGAIN) {
-    return NGX_OK;
-  }
-
   ngx_http_finalize_request(r, rc);
   return NGX_OK;
 }
