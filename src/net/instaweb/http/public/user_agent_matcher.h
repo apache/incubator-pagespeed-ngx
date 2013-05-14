@@ -62,9 +62,7 @@ class UserAgentMatcher {
 
   enum PrefetchMechanism {
     kPrefetchNotSupported,
-    kPrefetchLinkRelSubresource,
     kPrefetchImageTag,
-    kPrefetchObjectTag,
     kPrefetchLinkScriptTag,
   };
 
