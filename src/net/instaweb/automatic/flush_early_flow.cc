@@ -448,8 +448,7 @@ void FlushEarlyFlow::FlushEarly() {
       ArrayInputStream value(property_value->value().data(),
                              property_value->value().size());
       flush_early_info.ParseFromZeroCopyStream(&value);
-      if (!flush_early_info.http_only_cookie_present() &&
-          flush_early_info.has_resource_html() &&
+      if (flush_early_info.has_resource_html() &&
           !flush_early_info.resource_html().empty() &&
           flush_early_info.response_headers().status_code() ==
           HttpStatus::kOK && status_code_property_value_recently_constant) {
