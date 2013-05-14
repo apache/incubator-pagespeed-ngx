@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(179, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(180, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -910,6 +910,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImageLimitOptimizedPercent",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageLimitOptimizedPercent));
+  EXPECT_STREQ("ImageLimitRenderedAreaPercent",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kImageLimitRenderedAreaPercent));
   EXPECT_STREQ("ImageLimitResizeAreaPercent",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageLimitResizeAreaPercent));

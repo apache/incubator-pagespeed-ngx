@@ -75,6 +75,7 @@ struct OptionName {
 "ImageJpegNumProgressiveScans",          RewriteOptions::kImageJpegNumProgressiveScans
 "ImageJpegNumProgressiveScansForSmallScreens", RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens
 "ImageLimitOptimizedPercent",            RewriteOptions::kImageLimitOptimizedPercent
+"ImageLimitRenderedAreaPercent",         RewriteOptions::kImageLimitRenderedAreaPercent
 "ImageLimitResizeAreaPercent",           RewriteOptions::kImageLimitResizeAreaPercent
 "ImageMaxRewritesAtOnce",                RewriteOptions::kImageMaxRewritesAtOnce
 "ImagePreserveURLs",                     RewriteOptions::kImagePreserveURLs

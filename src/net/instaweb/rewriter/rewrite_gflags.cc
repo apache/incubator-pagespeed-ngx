@@ -110,6 +110,11 @@ DEFINE_int32(
     "Optimized images will be used only if they are less than this percent "
     "size of the original image size.  100 retains any smaller image.");
 DEFINE_int32(
+    image_limit_rendered_area_percent,
+    net_instaweb::RewriteOptions::kDefaultImageLimitRenderedAreaPercent,
+    "Store image's rendered dimensions into property cache only if the "
+    "rendered dimensions reduce the image area more than the limit");
+DEFINE_int32(
     image_limit_resize_area_percent,
     net_instaweb::RewriteOptions::kDefaultImageLimitResizeAreaPercent,
     "Only attempt to shrink an image on the server if its area is less than "
@@ -593,6 +598,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("image_limit_resize_area_percent")) {
     options->set_image_limit_resize_area_percent(
         FLAGS_image_limit_resize_area_percent);
+  }
+  if (WasExplicitlySet("image_limit_rendered_area_percent")) {
+    options->set_image_limit_rendered_area_percent(
+        FLAGS_image_limit_rendered_area_percent);
   }
   if (WasExplicitlySet("enable_blink_critical_line")) {
     options->set_enable_blink_critical_line(FLAGS_enable_blink_critical_line);

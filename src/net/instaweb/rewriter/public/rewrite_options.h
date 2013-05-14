@@ -145,6 +145,7 @@ class RewriteOptions {
     kRemoveQuotes,
     kResizeImages,
     kResizeMobileImages,
+    kResizeToRenderedImageDimensions,
     kRewriteCss,
     kRewriteDomains,
     kRewriteJavascript,
@@ -233,6 +234,7 @@ class RewriteOptions {
     kImageJpegRecompressionQuality,
     kImageJpegRecompressionQualityForSmallScreens,
     kImageLimitOptimizedPercent,
+    kImageLimitRenderedAreaPercent,
     kImageLimitResizeAreaPercent,
     kImageMaxRewritesAtOnce,
     kImagePreserveURLs,
@@ -593,6 +595,7 @@ class RewriteOptions {
   static const int64 kDefaultImagesRecompressQuality;
   static const int64 kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
+  static const int kDefaultImageLimitRenderedAreaPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int64 kDefaultImageResolutionLimitBytes;
   static const int64 kDefaultImageJpegNumProgressiveScans;
@@ -1717,6 +1720,13 @@ class RewriteOptions {
   }
   void set_image_limit_resize_area_percent(int x) {
     set_option(x, &image_limit_resize_area_percent_);
+  }
+
+  int image_limit_rendered_area_percent() const {
+    return image_limit_rendered_area_percent_.value();
+  }
+  void set_image_limit_rendered_area_percent(int x) {
+    set_option(x, &image_limit_rendered_area_percent_);
   }
 
   int64 image_jpeg_num_progressive_scans() const {
@@ -2978,6 +2988,7 @@ class RewriteOptions {
   // Options governing when to retain optimized images vs keep original
   Option<int> image_limit_optimized_percent_;
   Option<int> image_limit_resize_area_percent_;
+  Option<int> image_limit_rendered_area_percent_;
 
   // Options related to webp compression.
   Option<int64> image_webp_recompress_quality_;

@@ -142,6 +142,11 @@ const int64 RewriteOptions::kDefaultImageJpegNumProgressiveScans = -1;
 const int RewriteOptions::kDefaultImageLimitOptimizedPercent = 100;
 const int RewriteOptions::kDefaultImageLimitResizeAreaPercent = 100;
 
+// Percentage limit on image wxh reduction for the rendered dimensions to be
+// stored in the property cache. This is kept at default 95 after
+// some experiments."
+const int RewriteOptions::kDefaultImageLimitRenderedAreaPercent = 95;
+
 // Sets limit for image optimization to 32MB.
 const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
 
@@ -263,6 +268,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLeftTrimUrls,
   RewriteOptions::kMakeGoogleAnalyticsAsync,
+  RewriteOptions::kResizeToRenderedImageDimensions,
   RewriteOptions::kRewriteDomains,
   RewriteOptions::kSpriteImages,
 };
@@ -450,6 +456,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ri", "Resize Images" },
   { RewriteOptions::kResizeMobileImages,
     "rm", "Resize Mobile Images" },
+  { RewriteOptions::kResizeToRenderedImageDimensions,
+    "ir", "Resize to Rendered Image Dimensions" },
   { RewriteOptions::kRewriteCss,
     RewriteOptions::kCssFilterId, "Rewrite Css" },
   { RewriteOptions::kRewriteDomains,
@@ -1140,6 +1148,15 @@ void RewriteOptions::AddProperties() {
       "Replace images whose size after recompression is less than the "
       "given percent of original image size; 100 means replace if "
       "smaller.");
+  AddBaseProperty(
+      kDefaultImageLimitRenderedAreaPercent,
+      &RewriteOptions::image_limit_rendered_area_percent_, "ira",
+      kImageLimitRenderedAreaPercent,
+      kDirectoryScope,
+      "Limit on percentage of rendered image wxh to the original "
+      "image wxh that should be stored in the property cache. This is to "
+      "avoid corner cases where rounding off decreases the rendered "
+      "image size by a few pixels.");
   AddBaseProperty(
       kDefaultImageLimitResizeAreaPercent,
       &RewriteOptions::image_limit_resize_area_percent_, "ia",

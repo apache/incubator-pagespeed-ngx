@@ -548,6 +548,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_rendered_image_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/rendered_image.pb.cc',
+        'rewriter/rendered_image.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_critical_images_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
