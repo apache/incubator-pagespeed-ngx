@@ -1165,7 +1165,9 @@ static apr_status_t ssl_free_context(
 
     /* SSL_free implicitly frees the underlying BIO. */
     SSL_free(ssl_ctx->ssl);
+    ssl_ctx->ssl = NULL;
     SSL_CTX_free(ssl_ctx->ctx);
+    ssl_ctx->ctx = NULL;
 
     p = ssl_ctx->pool;
 
@@ -1554,6 +1556,7 @@ static void serf_ssl_destroy_and_data(serf_bucket_t *bucket)
 
     if (!--ctx->ssl_ctx->refcount) {
         ssl_free_context(ctx->ssl_ctx);
+        ctx->ssl_ctx = NULL;
     }
 
     serf_default_destroy_and_data(bucket);

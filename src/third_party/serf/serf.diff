@@ -1,5 +1,5 @@
---- serf/src/buckets/headers_buckets.c	2012-11-02 14:14:04.020904000 -0400
-+++ src/third_party/serf/instaweb_headers_buckets.c	2012-11-02 14:14:04.573892000 -0400
+--- serf/src/buckets/headers_buckets.c	2012-08-29 13:52:29.400953000 -0400
++++ src/third_party/serf/instaweb_headers_buckets.c	2012-08-29 13:52:29.574913000 -0400
 @@ -163,11 +163,11 @@
                     be comma-separated, that is clearly the correct behavior;
                     for others, the correct behavior is undefined anyway. */
@@ -37,8 +37,8 @@
  
          /* Calling read() would not be a safe opt in the general case, but it
           * is here for the header bucket as it only frees all of the header
---- serf/src/buckets/response_buckets.c	2012-11-02 14:14:04.031894000 -0400
-+++ src/third_party/serf/instaweb_response_buckets.c	2012-11-02 14:14:04.585900000 -0400
+--- serf/src/buckets/response_buckets.c	2012-08-29 13:52:29.426925000 -0400
++++ src/third_party/serf/instaweb_response_buckets.c	2012-08-29 13:52:29.580912000 -0400
 @@ -241,45 +241,58 @@
              ctx->body =
                  serf_bucket_barrier_create(ctx->stream, bkt->allocator);
@@ -130,8 +130,8 @@
              /* If we're a HEAD request, we don't receive a body. */
              if (ctx->head_req) {
                  ctx->state = STATE_DONE;
---- serf/src/outgoing.c	2012-11-02 14:14:03.947978000 -0400
-+++ src/third_party/serf/instaweb_outgoing.c	2012-11-02 14:14:04.576891000 -0400
+--- serf/src/outgoing.c	2012-08-29 13:52:29.333023000 -0400
++++ src/third_party/serf/instaweb_outgoing.c	2012-08-29 13:52:29.577920000 -0400
 @@ -823,6 +823,8 @@
       * This permits older Serf apps to still handle authentication
       * themselves by not registering credential callbacks.
@@ -267,8 +267,8 @@
 +    return serf_request_bucket_request_create_for_host(
 +        request, method, uri, body, allocator, NULL);
 +}
---- serf/src/buckets/ssl_buckets.c	2012-11-02 14:14:04.044895000 -0400
-+++ src/third_party/serf/instaweb_ssl_buckets.c	2013-05-13 09:47:52.622628000 -0400
+--- serf/src/buckets/ssl_buckets.c	2012-08-29 13:52:29.443913000 -0400
++++ src/third_party/serf/instaweb_ssl_buckets.c	2013-05-14 09:56:37.292605000 -0400
 @@ -34,6 +34,11 @@
   * Originally developed by Aaron Bannert and Justin Erenkrantz, eBuilt.
   */
@@ -281,7 +281,17 @@
  #include <apr_pools.h>
  #include <apr_network_io.h>
  #include <apr_portable.h>
-@@ -1209,6 +1214,28 @@
+@@ -1160,7 +1165,9 @@
+ 
+     /* SSL_free implicitly frees the underlying BIO. */
+     SSL_free(ssl_ctx->ssl);
++    ssl_ctx->ssl = NULL;
+     SSL_CTX_free(ssl_ctx->ctx);
++    ssl_ctx->ctx = NULL;
+ 
+     p = ssl_ctx->pool;
+ 
+@@ -1209,6 +1216,28 @@
      return result ? APR_SUCCESS : APR_EGENERAL;
  }
  
@@ -310,3 +320,11 @@
  apr_status_t serf_ssl_load_cert_file(
      serf_ssl_certificate_t **cert,
      const char *file_path,
+@@ -1527,6 +1556,7 @@
+ 
+     if (!--ctx->ssl_ctx->refcount) {
+         ssl_free_context(ctx->ssl_ctx);
++        ctx->ssl_ctx = NULL;
+     }
+ 
+     serf_default_destroy_and_data(bucket);

@@ -78,10 +78,14 @@ vars = {
   #
   # The revision we are picking here is to a specific commit found on
   # http://git.chromium.org/gitweb/?p=chromium/deps/openssl.git;a=summary :
-  #     4 days ago  tfarina@chromium.org  Remove <(library) usage from openssl.gyp. master
-  # This was the latest revision as of Jan 23, 2013.
+  #     2013-01-19  tfarina@chromium.org  Remove <(library) usage from openssl.gyp.
   "openssl_src": "http://git.chromium.org/chromium/deps/openssl.git",
-  "openssl_revision": "@67ccadeefe503dad566639ac02c772945a72a08d",
+  "openssl_revision": "@ecd56d84116e2acded8a6c4e0ea6ffdde09c2a78",
+  # Note that version "@67ccadeefe503dad566639ac02c772945a72a08d"
+  #     2013-03-26 digit@chromium.org Restore the x509_hash_name_alpgorithm_change patch.
+  # results in valgrind failures 7/10 times using command:
+  #   valgrind --leak-check=full src/out/Debug/mod_pagespeed_test \
+  #        --gtest_filter="Serf*Goog*"
 }
 
 deps = {
