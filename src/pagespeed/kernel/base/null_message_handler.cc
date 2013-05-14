@@ -14,23 +14,26 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: lsong@google.com (Libo Song)
 
-#include "net/instaweb/util/public/null_writer.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
+
+#include <cstdarg>
+
+#include "pagespeed/kernel/base/message_handler.h"
 
 namespace net_instaweb {
-class MessageHandler;
 
-NullWriter::~NullWriter() {
+NullMessageHandler::~NullMessageHandler() {
 }
 
-bool NullWriter::Write(const StringPiece& str, MessageHandler* handler) {
-  return true;
+void NullMessageHandler::MessageVImpl(MessageType type, const char* msg,
+                                      va_list args) {
 }
 
-bool NullWriter::Flush(MessageHandler* handler) {
-  return true;
+void NullMessageHandler::FileMessageVImpl(MessageType type, const char* file,
+                                          int line, const char* msg,
+                                          va_list args) {
 }
 
 }  // namespace net_instaweb

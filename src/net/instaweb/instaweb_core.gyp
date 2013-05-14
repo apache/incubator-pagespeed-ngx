@@ -36,7 +36,6 @@
         'util/countdown_timer.cc',
         'util/file_message_handler.cc',
         'util/google_url.cc',
-        'util/print_message_handler.cc',
         'util/query_params.cc',
         'util/string_convert.cc',
         'util/symbol_table.cc',
@@ -203,13 +202,13 @@
                 #
                 # Note: these must be in dependency order to work; you can't
                 # sort this list alphabetically.
-                '<(LIB_DIR)/pagespeed/libpagespeed_base.a',
-                '<(LIB_DIR)/pagespeed/libpagespeed_http.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_rewriter_html.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core.a',
                 '<(LIB_DIR)/net/instaweb/libhttp_core.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_util_core.a',
                 '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core_gperf.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_http.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_base.a',
                 '<(LIB_DIR)/build/temp_gyp/libgoogleurl.a',
                 '<(LIB_DIR)/base/libbase.a',
                 '<(LIB_DIR)/base/libbase_static.a',

@@ -14,12 +14,12 @@
 //
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/inline_slist.h"
+#include "pagespeed/kernel/base/inline_slist.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

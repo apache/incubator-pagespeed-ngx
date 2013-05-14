@@ -16,13 +16,13 @@
 
 // Author: dgerman@google.com (David German)
 
-#include "net/instaweb/util/public/print_message_handler.h"
+#include "pagespeed/kernel/base/print_message_handler.h"
 
 #include <cstdarg>
 #include <cstdio>
 
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

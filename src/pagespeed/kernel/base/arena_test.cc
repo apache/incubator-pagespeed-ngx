@@ -18,12 +18,12 @@
 
 // Unit-test the arena
 
-#include "net/instaweb/util/public/arena.h"
+#include "pagespeed/kernel/base/arena.h"
 
 #include <cstddef>
 #include <set>
 
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 
