@@ -25,17 +25,17 @@
 #include <set>
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/util/public/arena.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/arena.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/printf_format.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/printf_format.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 

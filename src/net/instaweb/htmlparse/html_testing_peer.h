@@ -20,7 +20,8 @@
 #define NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
 
 #include <cstddef>
-#include "net/instaweb/util/public/basictypes.h"
+
+#include "pagespeed/kernel/base/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 

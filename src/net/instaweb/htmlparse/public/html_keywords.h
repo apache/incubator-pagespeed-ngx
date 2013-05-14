@@ -21,11 +21,12 @@
 
 #include <algorithm>
 #include <vector>
-#include "net/instaweb/util/public/basictypes.h"
+
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_hash.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_hash.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/util/sparse_hash_map.h"
 
 namespace net_instaweb {

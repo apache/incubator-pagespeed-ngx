@@ -29,16 +29,16 @@
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/util/public/arena.h"
+#include "pagespeed/kernel/base/arena.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/print_message_handler.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/print_message_handler.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "net/instaweb/util/public/symbol_table.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 class DocType;

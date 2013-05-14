@@ -20,14 +20,15 @@
 #define NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 
 #include <vector>
+
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/printf_format.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/printf_format.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 

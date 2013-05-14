@@ -41,8 +41,8 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_LOGGING_HTML_FILTER_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_LOGGING_HTML_FILTER_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

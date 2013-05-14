@@ -17,8 +17,10 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/html_event.h"
+
 #include <cstdio>
-#include "net/instaweb/util/public/string.h"
+
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

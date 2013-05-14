@@ -22,15 +22,15 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "net/instaweb/util/public/chunking_writer.h"
-#include "net/instaweb/util/public/file_system.h"
+#include "pagespeed/kernel/base/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 

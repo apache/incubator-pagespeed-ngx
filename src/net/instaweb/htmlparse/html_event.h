@@ -19,11 +19,11 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

@@ -4,7 +4,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 %}

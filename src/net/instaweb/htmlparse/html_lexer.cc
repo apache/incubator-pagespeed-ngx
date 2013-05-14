@@ -30,8 +30,8 @@
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

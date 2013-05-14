@@ -17,7 +17,7 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_DOCTYPE_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_DOCTYPE_H_
 
-#include "net/instaweb/util/public/string_util.h"  // for StringPiece
+#include "pagespeed/kernel/base/string_util.h"  // for StringPiece
 
 namespace net_instaweb {
 struct ContentType;
