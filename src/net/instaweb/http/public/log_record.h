@@ -244,34 +244,6 @@ class AbstractLogRecord  {
     bool log_url_indices,
     int max_rewrite_info_log_size);
 
-  // TODO(gee): Deprecate these methods.
-  // Sets the time from the start of the request till it begins getting
-  // processed.
-  void SetTimeToStartProcessing(int64 end_ms) {
-    SetTimeFromRequestStart(
-        &TimingInfo::set_time_to_start_processing_ms, end_ms);
-  }
-
-  // Sets the time from the start of the request till the start of parsing.
-  void SetTimeToStartParse(int64 end_ms) {
-    SetTimeFromRequestStart(
-        &TimingInfo::set_time_to_start_parse_ms, end_ms);
-  }
-
-  // Sets the time from the start of the request till the start of the pcache
-  // lookup.
-  void SetTimeToPcacheStart(int64 end_ms) {
-    SetTimeFromRequestStart(
-        &TimingInfo::set_time_to_pcache_lookup_start_ms, end_ms);
-  }
-
-  // Sets the time from the start of the request till the end of the pcache
-  // lookup.
-  void SetTimeToPcacheEnd(int64 end_ms) {
-    SetTimeFromRequestStart(
-        &TimingInfo::set_time_to_pcache_lookup_end_ms, end_ms);
-  }
-
   // Set timing information in the logging implementation.
   virtual void SetTimingInfo(const RequestContext::TimingInfo& timing_info) {}
 
@@ -286,8 +258,6 @@ class AbstractLogRecord  {
   virtual bool WriteLogImpl() = 0;
 
  private:
-  typedef void (TimingInfo::*SetTimeFromStartFn)(int64);
-
   // Called on construction.
   void InitLogging();
 
@@ -297,8 +267,6 @@ class AbstractLogRecord  {
   // Fill LoggingInfo proto with information collected from LogRewriterStatus
   // and LogRewrite.
   void PopulateRewriterStatusCounts();
-
-  void SetTimeFromRequestStart(SetTimeFromStartFn fn, int64 end_ms);
 
   // Helper function which creates a new rewriter logging submessage for
   // |rewriter_id|, sets status and the url index. It is intended to be called

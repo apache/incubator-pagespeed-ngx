@@ -119,42 +119,101 @@ class RequestContext : public RefCounted<RequestContext> {
       bool log_url_indices,
       int max_rewrite_info_log_size);
 
-  // TODO(gee): Track queuing time.
+  // TimingInfo tracks various event timestamps over the lifetime of a request.
+  // The timeline looks (roughly) like the following, with the associated
+  // TimingInfo calls.
+  // - Request Received/Context created: Init
+  // <queueing delay>
+  // - Trigger: RequestStarted
+  // <option lookup>
+  // - Start Processing: ProcessingStarted
+  // - Lookup Properties?: PropertyCacheLookup*
+  // - Fetch?: Fetch*
+  // - Start parsing?: ParsingStarted
+  // - Finish: RequestFinished
   class TimingInfo {
    public:
     // TODO(gee): Does this need to be thread safe?
-    // Timer is not owned by TimingInfo.
     TimingInfo();
 
     // Initialize the TimingInfo with the specified Timer.  Sets a timestamp
     // from which GetElapsedMs is based.
-    // TODO(gee): This is forced by the RequestContext/GoogleRequestContext
+    // NOTE: Timer is not owned by TimingInfo.
+    // TODO(gee): This is forced by the RequestContext subclasses.
     void Init(Timer* timer);
 
-    // This should be called when the request "starts", for example in
-    // HTTPServerFetch::Start.  It denotes the request "start time", which all
-    // other timing values are relative to.
+    // This should be called when the request "starts", potentially after
+    // queuing. It denotes the request "start time", which "elapsed" timing
+    // values are relative to.
     void RequestStarted();
+
+    // This should be called once the options are available and PSOL can start
+    // doing meaningful work.
+    void ProcessingStarted() { SetToNow(&processing_start_ts_ms_); }
+
+    // This should be called if/when HTML parsing begins.
+    void ParsingStarted() { SetToNow(&parsing_start_ts_ms_); }
+
+    // This should be called when a PropertyCache lookup is initiated.
+    void PropertyCacheLookupStarted() {
+      SetToNow(&pcache_lookup_start_ts_ms_);
+    }
+
+    // This should be called when a PropertyCache lookup completes.
+    void PropertyCacheLookupFinished() { SetToNow(&pcache_lookup_end_ts_ms_); }
 
     // Called when the request is finished, i.e. the response has been sent to
     // the client.
-    void RequestFinished();
+    void RequestFinished() { SetToNow(&end_ts_ms_); }
 
     // Fetch related timing events.
     // Note:  Only the first call to FetchStarted will have an affect,
     // subsequent calls are silent no-ops.
     void FetchStarted();
-    void FetchFirstByteReceived();
-    void FetchHeaderReceived();
-    void FetchFinished();
+    void FetchFirstByteReceived() { SetToNow(&fetch_first_byte_ts_ms_); }
+    void FetchHeaderReceived() { SetToNow(&fetch_header_ts_ms_); }
+    void FetchFinished() { SetToNow(&fetch_end_ts_ms_); }
 
     // Milliseconds since Init.
     int64 GetElapsedMs() const;
 
-    // Milliseconds since FetchStarted.
-    int64 GetElapsedFromFetchStart();
+    // Milliseconds from request start to processing start.
+    bool GetTimeToStartProcessingMs(int64* elapsed_ms) const {
+      return GetTimeFromStart(processing_start_ts_ms_, elapsed_ms);
+    }
 
-    // Methods for retrieving information.
+    // Milliseconds spent "processing": end time - start time - fetch time.
+    // TODO(gee): This naming is somewhat misleading since it is from request
+    // start not processing start.  Leaving as is for historical reasons, at
+    // least for the time being.
+    bool GetProcessingElapsedMs(int64* elapsed_ms) const;
+
+    // Milliseconds from request start to pcache lookup start.
+    bool GetTimeToPropertyCacheLookupStartMs(int64* elapsed_ms) const {
+      return GetTimeFromStart(pcache_lookup_start_ts_ms_, elapsed_ms);
+    }
+
+    // Milliseconds from request start to pcache lookup end.
+    bool GetTimeToPropertyCacheLookupEndMs(int64* elapsed_ms) const {
+      return GetTimeFromStart(pcache_lookup_end_ts_ms_, elapsed_ms);
+    }
+
+    // Milliseconds from fetch start to fetch end.
+    bool GetFetchElapsedMs(int64* elapsed_ms) const;
+
+    // Milliseconds from request start to fetch start.
+    bool GetTimeToStartFetchMs(int64* elapsed_ms) const {
+      return GetTimeFromStart(fetch_start_ts_ms_, elapsed_ms);
+    }
+
+    // Milliseconds from fetch start to header received.
+    bool GetTimeToFetchHeaderMs(int64* elaped_ms) const;
+
+    // Milliseconds from request start to parse start.
+    bool GetTimeToStartParseMs(int64* elapsed_ms) const {
+      return GetTimeFromStart(parsing_start_ts_ms_, elapsed_ms);
+    }
+
     int64 init_ts_ms() const {
       return init_ts_ms_;
     }
@@ -163,39 +222,30 @@ class RequestContext : public RefCounted<RequestContext> {
       return start_ts_ms_;
     }
 
-    // Milliseconds from request start to fetch start.
-    int64 fetch_start_ms() const { return fetch_start_ts_ms_ - start_ts_ms_; }
-
-    int64 fetch_first_byte_ms() const { return fetch_first_byte_ms_; }
-
-    // Milliseconds from fetch start to head received.
-    int64 fetch_header_ms() const { return fetch_header_ms_; }
-
-    // Milliseconds from fetch start to fetch end.
-    int64 fetch_elapsed_ms() const { return fetch_elapsed_ms_; }
-
-    // Milliseconds spent "processing": end time - start time - fetch time.
-    int64 processing_elapsed_ms() const { return processing_elapsed_ms_; }
-
    private:
     int64 NowMs() const;
 
+    // Set "ts_ms" to NowMs().
+    void SetToNow(int64* ts_ms) const;
+
+    // Set "elapsed_ms" to "ts_ms" - start_ms_ and returns true on success.
+    // Returns false if either start_ms_ or "ts_ms" have not been set (< 0).
+    bool GetTimeFromStart(int64 ts_ms, int64* elapsed_ms) const;
+
     Timer* timer_;
 
-    // Timestamps.
+    // Event Timestamps.  These should appear in (roughly) chronological order.
     int64 init_ts_ms_;
-
     int64 start_ts_ms_;
-
+    int64 processing_start_ts_ms_;
+    int64 pcache_lookup_start_ts_ms_;
+    int64 pcache_lookup_end_ts_ms_;
+    int64 parsing_start_ts_ms_;
     int64 fetch_start_ts_ms_;
-
-    // Durations.
-    // TODO(gee): Make all members timestamps?
-    int64 fetch_first_byte_ms_;
-    int64 fetch_header_ms_;
-    int64 fetch_elapsed_ms_;
-
-    int64 processing_elapsed_ms_;
+    int64 fetch_first_byte_ts_ms_;
+    int64 fetch_header_ts_ms_;
+    int64 fetch_end_ts_ms_;
+    int64 end_ts_ms_;
 
     DISALLOW_COPY_AND_ASSIGN(TimingInfo);
   };

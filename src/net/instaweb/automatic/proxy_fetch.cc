@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -287,8 +286,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
 
   if (call_post) {
     DCHECK(request_context_.get() != NULL);
-    request_context_->log_record()->SetTimeToPcacheEnd(
-        server_context_->timer()->NowMs());
+    request_context_->mutable_timing_info()->PropertyCacheLookupFinished();
     ThreadSynchronizer* sync = server_context->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
     sync->Wait(ProxyFetch::kCollectorDetach);
@@ -987,7 +985,7 @@ void ProxyFetch::ExecuteQueued() {
   }
 
   if (!parse_text_called_) {
-    log_record()->SetTimeToStartParse(server_context_->timer()->NowMs());
+    request_context()->mutable_timing_info()->ParsingStarted();
     parse_text_called_ = true;
   }
 

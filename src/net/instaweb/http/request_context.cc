@@ -101,11 +101,15 @@ RequestContext::TimingInfo::TimingInfo()
     : timer_(NULL),
       init_ts_ms_(-1),
       start_ts_ms_(-1),
+      processing_start_ts_ms_(-1),
+      pcache_lookup_start_ts_ms_(-1),
+      pcache_lookup_end_ts_ms_(-1),
+      parsing_start_ts_ms_(-1),
       fetch_start_ts_ms_(-1),
-      fetch_first_byte_ms_(0),
-      fetch_header_ms_(0),
-      fetch_elapsed_ms_(0),
-      processing_elapsed_ms_(0) {
+      fetch_first_byte_ts_ms_(-1),
+      fetch_header_ts_ms_(-1),
+      fetch_end_ts_ms_(-1),
+      end_ts_ms_(-1) {
 }
 
 void RequestContext::TimingInfo::Init(Timer* timer) {
@@ -115,15 +119,8 @@ void RequestContext::TimingInfo::Init(Timer* timer) {
 }
 
 void RequestContext::TimingInfo::RequestStarted() {
-  DCHECK_EQ(-1, start_ts_ms_);
-  start_ts_ms_ = NowMs();
+  SetToNow(&start_ts_ms_);
   VLOG(2) << "RequestStarted: " << start_ts_ms_;
-}
-
-void RequestContext::TimingInfo::RequestFinished() {
-  VLOG(2) << "RequestFinished";
-  // Processing is the time since RequestStarted - fetch time.
-  processing_elapsed_ms_ = GetElapsedMs() - fetch_elapsed_ms();
 }
 
 void RequestContext::TimingInfo::FetchStarted() {
@@ -133,15 +130,7 @@ void RequestContext::TimingInfo::FetchStarted() {
     return;
   }
 
-  fetch_start_ts_ms_ = NowMs();
-}
-
-void RequestContext::TimingInfo::FetchHeaderReceived() {
-  fetch_header_ms_ = GetElapsedFromFetchStart();
-}
-
-void RequestContext::TimingInfo::FetchFinished() {
-  fetch_elapsed_ms_ = GetElapsedFromFetchStart();
+  SetToNow(&fetch_start_ts_ms_);
 }
 
 int64 RequestContext::TimingInfo::GetElapsedMs() const {
@@ -149,9 +138,44 @@ int64 RequestContext::TimingInfo::GetElapsedMs() const {
   return NowMs() - init_ts_ms_;
 }
 
-int64 RequestContext::TimingInfo::GetElapsedFromFetchStart() {
-  DCHECK_GE(fetch_start_ts_ms_, 0);
-  return NowMs() - fetch_start_ts_ms_;
+bool RequestContext::TimingInfo::GetProcessingElapsedMs(
+    int64* processing_elapsed_ms) const {
+  if (end_ts_ms_ < 0 || start_ts_ms_ < 0) {
+    return false;
+  }
+  int64 elapsed_ms = end_ts_ms_ - start_ts_ms_;
+  int64 fetch_elapsed_ms = 0;
+  if (GetFetchElapsedMs(&fetch_elapsed_ms)) {
+    elapsed_ms -= fetch_elapsed_ms;
+  }
+
+  *processing_elapsed_ms = elapsed_ms;
+  return true;
+}
+
+bool RequestContext::TimingInfo::GetFetchElapsedMs(int64* elapsed_ms) const {
+  if (fetch_end_ts_ms_ < 0 || fetch_start_ts_ms_ < 0) {
+    return false;
+  }
+
+  *elapsed_ms = fetch_end_ts_ms_ - fetch_start_ts_ms_;
+  return true;
+}
+
+bool RequestContext::TimingInfo::GetTimeToFetchHeaderMs(
+    int64* elapsed_ms) const {
+  if (fetch_header_ts_ms_ < 0 || fetch_start_ts_ms_< 0) {
+    return false;
+  }
+
+
+  const int64 tmp_elapsed_ms = fetch_header_ts_ms_ - fetch_start_ts_ms_;
+  if (tmp_elapsed_ms < 0) {
+    return false;
+  }
+
+  *elapsed_ms = tmp_elapsed_ms;
+  return true;
 }
 
 int64 RequestContext::TimingInfo::NowMs() const {
@@ -160,6 +184,21 @@ int64 RequestContext::TimingInfo::NowMs() const {
   }
 
   return timer_->NowMs();
+}
+
+void RequestContext::TimingInfo::SetToNow(int64* ts) const {
+  DCHECK_GE(*ts, -1);
+  *ts = NowMs();
+}
+
+bool RequestContext::TimingInfo::GetTimeFromStart(
+    int64 ts_ms, int64* elapsed_ms) const {
+  if (ts_ms < 0 || start_ts_ms_ < 0) {
+    return false;
+  }
+
+  *elapsed_ms = ts_ms - start_ts_ms_;
+  return true;
 }
 
 }  // namespace net_instaweb

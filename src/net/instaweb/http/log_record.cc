@@ -131,15 +131,6 @@ void AbstractLogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
   logging_info()->set_is_original_resource_cacheable(cacheable);
 }
 
-void AbstractLogRecord::SetTimeFromRequestStart(SetTimeFromStartFn fn,
-                                                int64 end_ms) {
-  ScopedMutex lock(mutex_.get());
-  TimingInfo* timing_info = logging_info()->mutable_timing_info();
-  if (timing_info->has_request_start_ms()) {
-    (timing_info->*fn)(end_ms - timing_info->request_start_ms());
-  }
-}
-
 void AbstractLogRecord::SetBlinkInfo(const GoogleString& user_agent) {
   ScopedMutex lock(mutex_.get());
   SetBlinkInfoImpl(user_agent);
