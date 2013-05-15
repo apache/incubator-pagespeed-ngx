@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "testing/base/public/gunit.h"
+#include "pagespeed/kernel/base/string_writer.h"
 
 namespace net_instaweb {
 
@@ -202,42 +203,52 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
 TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
   rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
   options()->set_max_prefetch_js_elements(3);
-  const GoogleString input_html = StrCat(
-      "<head>",
+  GoogleString image_template = JsDisableFilter::GetImagePrefetchTemplate();
+
+  const GoogleString expected = StrCat(
+      "<head>"
+      "<script type=\"text/psajs\" orig_index=\"0\"></script>"
+      "<script pagespeed_no_defer=\"\">",
+      StringPrintf(image_template.c_str(), "blah1"),
+      "</script>"
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
+      " orig_index=\"1\">hi1</script>"
+      "<script pagespeed_no_defer=\"\">",
+      StringPrintf(image_template.c_str(), "blah2"),
+      "</script>"
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"2\">hi2</script>",
+      StrCat(
+          "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
+          "<script pagespeed_no_defer=\"\">",
+          StringPrintf(image_template.c_str(), "blah4"),
+          "</script>"
+          "<script pagespeed_orig_src=\"blah4\" type=\"text/psajs\""
+          " orig_index=\"3\">hi4</script>"
+          "<script pagespeed_orig_src=\"blah5\" type=\"text/psajs\""
+          " orig_index=\"4\">Not a prefetch candidate</script>"
+          "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+          JsDisableFilter::kDisableJsExperimental,
+          "</script>"
+          "</head><body></body>"));
+
+  html_parse()->SetWriter(&write_to_string_);
+  html_parse()->StartParse("http://example.com");
+  html_parse()->ParseText(
+      "<head>"
       "<script></script>"
-      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      "<script src=\"blah1\" random=\"true\">hi1");
+  html_parse()->Flush();
+  html_parse()->ParseText(
+      "</script>"
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
       "<script src=\"blah4\">hi4</script>"
       "<script src=\"blah5\">Not a prefetch candidate</script>"
       "</head><body>"
       "</body>");
-  GoogleString image_template = JsDisableFilter::GetImagePrefetchTemplate();
-
-  const GoogleString expected = StrCat(
-      "<head>"
-      "<script type=\"text/psajs\" orig_index=\"0\"></script>"
-      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
-      " orig_index=\"1\">hi1</script><script pagespeed_no_defer=\"\">",
-      StringPrintf(image_template.c_str(), "blah1"),
-      "</script>"
-      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
-      " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
-      "<script pagespeed_no_defer=\"\">",
-      StringPrintf(image_template.c_str(), "blah2"),
-      "</script>", StrCat(
-      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
-      "<script pagespeed_orig_src=\"blah4\" type=\"text/psajs\""
-      " orig_index=\"3\">hi4</script><script pagespeed_no_defer=\"\">",
-      StringPrintf(image_template.c_str(), "blah4"),
-      "</script>"
-      "<script pagespeed_orig_src=\"blah5\" type=\"text/psajs\""
-      " orig_index=\"4\">Not a prefetch candidate</script>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-      JsDisableFilter::kDisableJsExperimental,
-      "</script></head><body></body>"));
-
-  ValidateExpectedUrl("http://example.com/", input_html, expected);
+  html_parse()->FinishParse();
+  EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(JsDisableFilterTest, PrefetchScriptWithIframeTemplate) {

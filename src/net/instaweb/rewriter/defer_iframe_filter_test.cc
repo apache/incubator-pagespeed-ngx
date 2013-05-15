@@ -68,6 +68,16 @@ TEST_F(DeferIframeFilterTest, TestNoIframePresent) {
   ValidateExpected("defer_iframe", input_html, input_html);
 }
 
+TEST_F(DeferIframeFilterTest, TestIframeInNoscript) {
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<noscript>"
+      "<iframe src=\"http://test.com/1.html\"/>"
+      "</noscript>"
+      "</body>";
+  ValidateExpected("defer_iframe", input_html, input_html);
+}
+
 TEST_F(DeferIframeFilterTest, TestMultipleIframePresent) {
   StringPiece defer_iframe_js_code =
       server_context()->static_asset_manager()->GetAsset(

@@ -37,7 +37,7 @@ const char DeferIframeFilter::kDeferIframeIframeJs[] =
     "\npagespeed.deferIframe.convertToIframe();";
 
 DeferIframeFilter::DeferIframeFilter(RewriteDriver* driver)
-    : driver_(driver),
+    : CommonFilter(driver),
       static_asset_manager_(
           driver->server_context()->static_asset_manager()),
       script_inserted_(false) {}
@@ -46,40 +46,46 @@ DeferIframeFilter::~DeferIframeFilter() {
 }
 
 void DeferIframeFilter::DetermineEnabled() {
-  set_is_enabled(driver_->device_properties()->SupportsJsDefer(
-      driver_->options()->enable_aggressive_rewriters_for_mobile()));
+  set_is_enabled(driver()->device_properties()->SupportsJsDefer(
+      driver()->options()->enable_aggressive_rewriters_for_mobile()));
 }
 
-void DeferIframeFilter::StartDocument() {
+void DeferIframeFilter::StartDocumentImpl() {
   script_inserted_ = false;
 }
 
-void DeferIframeFilter::StartElement(HtmlElement* element) {
+void DeferIframeFilter::StartElementImpl(HtmlElement* element) {
+  if (noscript_element() != NULL) {
+    return;
+  }
   if (element->keyword() == HtmlName::kIframe) {
     if (!script_inserted_) {
-      HtmlElement* script = driver_->NewElement(element->parent(),
+      HtmlElement* script = driver()->NewElement(element->parent(),
                                                 HtmlName::kScript);
-      driver_->InsertNodeBeforeNode(element, script);
+      driver()->InsertNodeBeforeNode(element, script);
 
       GoogleString js = StrCat(
           static_asset_manager_->GetAsset(
-              StaticAssetManager::kDeferIframe, driver_->options()),
+              StaticAssetManager::kDeferIframe, driver()->options()),
               kDeferIframeInit);
-      static_asset_manager_->AddJsToElement(js, script, driver_);
+      static_asset_manager_->AddJsToElement(js, script, driver());
       script_inserted_ = true;
     }
     element->set_name(HtmlName(HtmlName::kPagespeedIframe, "pagespeed_iframe"));
   }
 }
 
-void DeferIframeFilter::EndElement(HtmlElement* element) {
+void DeferIframeFilter::EndElementImpl(HtmlElement* element) {
+  if (noscript_element() != NULL) {
+    return;
+  }
   if (element->keyword() == HtmlName::kPagespeedIframe) {
-    HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-    driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-    HtmlCharactersNode* script_content = driver_->NewCharactersNode(
+    HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+    driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
+    HtmlCharactersNode* script_content = driver()->NewCharactersNode(
         script, kDeferIframeIframeJs);
-    driver_->AppendChild(element, script);
-    driver_->AppendChild(script, script_content);
+    driver()->AppendChild(element, script);
+    driver()->AppendChild(script, script_content);
   }
 }
 

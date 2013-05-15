@@ -184,7 +184,7 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
                                           "");
             GoogleString script_data = StringPrintf(
                 prefetch_image_template_.c_str(), escaped_source.c_str());
-            rewrite_driver_->InsertNodeAfterNode(element, script);
+            rewrite_driver_->InsertNodeBeforeNode(element, script);
             HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
                 script, script_data);
             rewrite_driver_->AppendChild(script, script_code);
