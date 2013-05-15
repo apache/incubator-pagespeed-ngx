@@ -136,11 +136,12 @@ const GoogleString& StaticAssetManager::GetAssetUrl(
 }
 
 void StaticAssetManager::set_gstatic_hash(const StaticAsset& module,
+                                          const GoogleString& gstatic_base,
                                           const GoogleString& hash) {
   if (serve_asset_from_gstatic_) {
     CHECK(!hash.empty());
     assets_[module]->opt_url =
-        StrCat(kGStaticBase, hash, "-", assets_[module]->file_name,
+        StrCat(gstatic_base, hash, "-", assets_[module]->file_name,
                assets_[module]->content_type.file_extension());
   }
 }

@@ -94,7 +94,9 @@ class StaticAssetManager {
 
   // If set_serve_asset_from_gstatic is true, update the URL for module to use
   // gstatic.
-  void set_gstatic_hash(const StaticAsset& module, const GoogleString& hash);
+  void set_gstatic_hash(const StaticAsset& module,
+                        const GoogleString& gstatic_base,
+                        const GoogleString& hash);
 
   // Set serve_asset_from_gstatic_ to serve the files from gstatic. Note that
   // files won't actually get served from gstatic until you also call
