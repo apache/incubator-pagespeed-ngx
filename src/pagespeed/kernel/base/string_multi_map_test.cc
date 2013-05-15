@@ -3,11 +3,11 @@
 
 // Unit-test StringMultiMap.
 
-#include "net/instaweb/util/public/string_multi_map.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_multi_map.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace {
 

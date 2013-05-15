@@ -35,8 +35,6 @@
         'util/charset_util.cc',
         'util/countdown_timer.cc',
         'util/file_message_handler.cc',
-        'util/google_url.cc',
-        'util/query_params.cc',
         'util/string_convert.cc',
         'util/symbol_table.cc',
       ],
@@ -74,7 +72,6 @@
         'instaweb_htmlparse_core_gperf',
         'http_core',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
       'sources': [

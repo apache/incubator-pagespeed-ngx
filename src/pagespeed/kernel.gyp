@@ -94,10 +94,13 @@
       'sources': [
         'kernel/http/caching_headers.cc',
         'kernel/http/content_type.cc',
+        'kernel/http/google_url.cc',
         'kernel/http/http_names.cc',
+        'kernel/http/query_params.cc',
       ],
       'dependencies': [
         'pagespeed_base',
+        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
       ],
     },
     {

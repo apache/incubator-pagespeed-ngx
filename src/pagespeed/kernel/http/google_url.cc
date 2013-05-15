@@ -17,14 +17,15 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         nforman@google.com  (Naomi Forman)
 
-#include "net/instaweb/util/public/google_url.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 #include <cstddef>
 #include <string>
+
 #include "base/logging.h"
-#include "net/instaweb/util/public/query_params.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/query_params.h"
 
 namespace net_instaweb {
 
