@@ -157,7 +157,16 @@ pagespeed.CriticalImagesBeacon.prototype.sendBeacon_ = function(data) {
     return false;
   }
 
-  httpRequest.open('POST', this.beaconUrl_);
+  // We send the page url in the query param instead of the POST body to assist
+  // load balancers or other systems that want to route the beacon based on the
+  // originating page.
+  // TODO(jud): Handle long URLs correctly. We should send a signal back to the
+  // server indicating that we couldn't send the beacon because the URL was too
+  // long, so that the server will stop instrumenting pages.
+  var query_param_char = this.beaconUrl_.indexOf('?') == -1 ? '?' : '&';
+  var url = this.beaconUrl_ + query_param_char + 'url=' +
+      encodeURIComponent(this.htmlUrl_);
+  httpRequest.open('POST', url);
   httpRequest.setRequestHeader(
       'Content-Type', 'application/x-www-form-urlencoded');
   httpRequest.send(data);
@@ -196,8 +205,7 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
   }
   critical_imgs = Object.keys(critical_imgs);
   if (critical_imgs.length != 0) {
-    var data = 'url=' + encodeURIComponent(this.htmlUrl_);
-    data += '&oh=' + this.optionsHash_;
+    var data = 'oh=' + this.optionsHash_;
     data += '&ci=' + encodeURIComponent(critical_imgs[0]);
     for (var i = 1; i < critical_imgs.length; ++i) {
       var tmp = ',' + encodeURIComponent(critical_imgs[i]);

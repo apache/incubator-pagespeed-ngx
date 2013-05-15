@@ -1570,9 +1570,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Send a beacon response using POST indicating that Puzzle.jpg is a critical
   # image.
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
-  BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
-  BEACON_DATA+="image_rewriting%2Frewrite_images.html"
-  BEACON_DATA+="&oh=$OPTIONS_HASH&ci=2932493096"
+  BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+  BEACON_URL+="image_rewriting%2Frewrite_images.html"
+  BEACON_DATA="oh=$OPTIONS_HASH&ci=2932493096"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
     $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
@@ -1588,7 +1588,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # params for the GET.
   BEACON_DATA+=",2644480723"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-    $WGET_DUMP "$BEACON_URL?$BEACON_DATA")
+    $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now only BikeCrashIcn.png should be lazyloaded.
   http_proxy=$SECONDARY_HOSTNAME \
@@ -1610,8 +1610,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
   OPTIONS_HASH=$( \
     sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-  BEACON_URL="http://${HOSTNAME}${BEACON_PATH}"
-  BEACON_DATA="url=${ESCAPED_URL}&oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
+  BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
+  BEACON_DATA="oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
   run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
   # Now make sure we see the correct critical css rules.
   fetch_until $URL \

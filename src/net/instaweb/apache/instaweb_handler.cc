@@ -116,14 +116,14 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
   ApacheProxyFetch(const GoogleString& mapped_url, ThreadSystem* thread_system,
                    RewriteDriver* driver, request_rec* request)
       : AsyncFetchUsingWriter(driver->request_context(), &apache_writer_),
-        mapped_url_(mapped_url),
-        apache_writer_(request),
-        driver_(driver),
-        mutex_(thread_system->NewMutex()),
-        condvar_(mutex_->NewCondvar()),
-        done_(false),
-        handle_error_(true),
-        status_ok_(false) {
+      mapped_url_(mapped_url),
+      apache_writer_(request),
+      driver_(driver),
+      mutex_(thread_system->NewMutex()),
+      condvar_(mutex_->NewCondvar()),
+      done_(false),
+      handle_error_(true),
+      status_ok_(false) {
     // We are proxying content, and the caching in the http configuration
     // should not apply; we want to use the caching from the proxy.
     apache_writer_.set_disable_downstream_header_filters(true);
@@ -648,7 +648,7 @@ apr_status_t instaweb_statistics_graphs_handler(
   GoogleString output;
   StringWriter writer(&output);
   writer.Write("<!DOCTYPE html>"
-                "<title>mod_pagespeed console</title>",
+               "<title>mod_pagespeed console</title>",
                message_handler);
   writer.Write("<style>", message_handler);
   writer.Write(CSS_mod_pagespeed_console_css, message_handler);
@@ -762,7 +762,7 @@ apr_status_t instaweb_statistics_handler(
     // Only print stats or configuration, not both.
     if (!print_normal_config && !print_spdy_config) {
       writer.Write(global_stats_request ?
-                       "Global Statistics" : "VHost-Specific Statistics",
+                   "Global Statistics" : "VHost-Specific Statistics",
                    message_handler);
 
       // Write <pre></pre> for Dump to keep good format.
@@ -798,7 +798,7 @@ apr_status_t instaweb_statistics_handler(
       ApacheConfig* spdy_config = server_context->SpdyConfig();
       if (spdy_config == NULL) {
         writer.Write("SPDY-specific configuration missing, using default.",
-                      message_handler);
+                     message_handler);
       } else {
         writer.Write("SPDY-specific configuration:<br>", message_handler);
         WritePre(spdy_config->OptionsToString(), &writer, message_handler);
@@ -815,15 +815,12 @@ apr_status_t instaweb_statistics_handler(
   return OK;
 }
 
-// Copy the query params from a GET request into data. Return true if
-// successful, otherwise, returns false and sets ret to the appropriate status.
-bool parse_query_params_from_get(const request_rec* request, GoogleString* data,
-                         apr_status_t* ret) {
-  if (request->method_number != M_GET) {
-    *ret = HTTP_METHOD_NOT_ALLOWED;
-    return false;
-  }
-
+// Append the query params from a request into data. This just parses the query
+// params from a request URL. For parsing the query params from a POST body, use
+// parse_body_from_post(). Return true if successful, otherwise, returns false
+// and sets ret to the appropriate status.
+bool parse_query_params(const request_rec* request, GoogleString* data,
+                        apr_status_t* ret) {
   // Add a dummy host (www.example.com) to the request URL to make it absolute
   // so that GoogleUrl can be used for parsing.
   GoogleUrl base("http://www.example.com");
@@ -834,12 +831,12 @@ bool parse_query_params_from_get(const request_rec* request, GoogleString* data,
     return false;
   }
 
-  url.Query().CopyToString(data);
+  url.Query().AppendToString(data);
   return true;
 }
 
-// Read the body from a POST request into data. Return true if successful,
-// otherwise, returns false and sets ret to the appropriate status.
+// Read the body from a POST request and append to data. Return true if
+// successful, otherwise, returns false and sets ret to the appropriate status.
 bool parse_body_from_post(const request_rec* request, GoogleString* data,
                           apr_status_t* ret) {
   if (request->method_number != M_POST) {
@@ -934,13 +931,20 @@ apr_status_t instaweb_beacon_handler(request_rec* request,
   GoogleString data;
   apr_status_t ret = DECLINED;
   if (request->method_number == M_GET) {
-    if (!parse_query_params_from_get(request, &data, &ret)) {
+    if (!parse_query_params(request, &data, &ret)) {
       return ret;
     }
   } else if (request->method_number == M_POST) {
-    if (!parse_body_from_post(request, &data, &ret)) {
+    GoogleString query_param_data, post_data;
+    // Even if the beacon is a POST, the originating url should be in the query
+    // params, not the POST body.
+    if (!parse_query_params(request, &query_param_data, &ret)) {
       return ret;
     }
+    if (!parse_body_from_post(request, &post_data, &ret)) {
+      return ret;
+    }
+    StrAppend(&data, query_param_data, "&", post_data);
   } else {
     return HTTP_METHOD_NOT_ALLOWED;
   }
