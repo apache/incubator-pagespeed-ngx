@@ -200,7 +200,6 @@ class CssCombineFilterTest : public RewriteTestBase {
         "</body>\n")));
     if (!debug_text.empty()) {
       StrAppend(&expected_output,
-                "<!--css_combine: end_document-->"
                 "<!--",
                 DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0),
                 "-->");
@@ -690,7 +689,7 @@ TEST_F(CssCombineFilterTest, XhtmlCombineLinkClosed) {
                    StringPrintf(html_format, kXhtmlDtd, combination.c_str()));
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
+TEST_F(CssCombineFilterTest, IEDirectiveBarrier) {
   SetHtmlMimetype();
   GoogleString ie_directive_barrier(StrCat(
       "<!--[if IE]>\n",
@@ -710,7 +709,7 @@ class CssCombineFilterWithDebugTest : public CssCombineFilterTest {
   }
 };
 
-TEST_F(CssCombineFilterWithDebugTest, CombineCssWithIEDirectiveDebug) {
+TEST_F(CssCombineFilterWithDebugTest, IEDirectiveBarrier) {
   SetHtmlMimetype();
   GoogleString ie_directive_barrier(StrCat(
       "<!--[if IE]>\n",
@@ -718,25 +717,27 @@ TEST_F(CssCombineFilterWithDebugTest, CombineCssWithIEDirectiveDebug) {
       "\n<![endif]-->"));
   UseMd5Hasher();
   CombineCss("combine_css_ie", ie_directive_barrier,
-             "<!--css_combine: ie directive-->", true);
+             "<!--combine_css: Could not combine over barrier: IE directive-->",
+             true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithStyle) {
+TEST_F(CssCombineFilterTest, StyleBarrier) {
   SetHtmlMimetype();
   const char style_barrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
   CombineCss("combine_css_style", style_barrier, "", true);
 }
 
-TEST_F(CssCombineFilterWithDebugTest, CombineCssWithStyleDebug) {
+TEST_F(CssCombineFilterWithDebugTest, StyleBarrier) {
   SetHtmlMimetype();
   const char style_barrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
   CombineCss("combine_css_style", style_barrier,
-             "<!--css_combine: inline style-->", true);
+             "<!--combine_css: Could not combine over barrier: inline style-->",
+             true);
 }
 
-TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
+TEST_F(CssCombineFilterTest, BogusLinkBarrier) {
   SetHtmlMimetype();
   const char bogus_barrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
@@ -744,13 +745,42 @@ TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
   CombineCss("combine_css_bogus_link", bogus_barrier, "",  true);
 }
 
-TEST_F(CssCombineFilterWithDebugTest, CombineCssWithBogusLink) {
+TEST_F(CssCombineFilterWithDebugTest, BogusLinkBarrier) {
   SetHtmlMimetype();
   const char bogus_barrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
   CombineCss("combine_css_bogus_link", bogus_barrier,
-             "<!--css_combine: resource not rewriteable-->",  true);
+             "<!--combine_css: Could not combine over barrier: "
+             "resource not rewritable-->",  true);
+}
+
+TEST_F(CssCombineFilterTest, AlternateStylesheetBarrier) {
+  SetHtmlMimetype();
+  const char barrier[] =
+      "<link rel='alternate stylesheet' type='text/css' href='a.css'>";
+  UseMd5Hasher();
+  // TODO(sligocki): This should actually be a barrier: s/false/true/
+  // Add CssCombineFilterWithDebugTest version as well when it is.
+  CombineCss("alternate_stylesheet_barrier", barrier, "", false);
+}
+
+TEST_F(CssCombineFilterTest, NonStandardAttributesBarrier) {
+  SetHtmlMimetype();
+  const char barrier[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' foo='bar'>";
+  UseMd5Hasher();
+  CombineCss("non_standard_attributes_barrier", barrier, "", true);
+}
+
+TEST_F(CssCombineFilterWithDebugTest, NonStandardAttributesBarrier) {
+  SetHtmlMimetype();
+  const char barrier[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' foo='bar'>";
+  UseMd5Hasher();
+  CombineCss("non_standard_attributes_barrier", barrier,
+             "<!--combine_css: Could not combine over barrier: "
+             "non-standard attributes-->", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {

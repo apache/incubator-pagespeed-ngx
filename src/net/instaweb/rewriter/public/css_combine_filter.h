@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
@@ -66,7 +67,7 @@ class CssCombineFilter : public RewriteFilter {
   class CssCombiner;
 
   CssCombiner* combiner();
-  void NextCombination(const char* debug_help);
+  void NextCombination(StringPiece debug_help);
   Context* MakeContext();
 
   CssTagScanner css_tag_scanner_;
