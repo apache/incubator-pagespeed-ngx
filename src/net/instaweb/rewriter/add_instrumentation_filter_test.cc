@@ -184,7 +184,7 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
 TEST_F(AddInstrumentationFilterTest, TestHeadersReferer) {
   RequestHeaders headers;
   headers.Add(HttpAttributes::kReferer, "www.abc.com");
-  rewrite_driver()->set_request_headers(&headers);
+  rewrite_driver()->SetRequestHeaders(headers);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(

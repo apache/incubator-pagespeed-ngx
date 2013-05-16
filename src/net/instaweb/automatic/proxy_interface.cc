@@ -535,7 +535,7 @@ void ProxyInterface::ProxyRequestCallback(
     } else {
       VLOG(1) << "User-agent empty";
     }
-    driver->set_request_headers(async_fetch->request_headers());
+    driver->SetRequestHeaders(*async_fetch->request_headers());
     // TODO(mmohabey): Factor out the below checks so that they are not
     // repeated in BlinkUtil::IsBlinkRequest().
 

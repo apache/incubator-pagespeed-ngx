@@ -149,7 +149,7 @@ class LocalStorageCacheTest : public RewriteTestBase,
         url.c_str(), body_html_out.c_str()));
 
     // Set this for every test.
-    rewrite_driver()->set_request_headers(&request_headers_);
+    rewrite_driver()->SetRequestHeaders(request_headers_);
 
     Parse(case_id, html_in);
     GoogleString expected_out = doctype_string_ + AddHtmlBody(html_out);

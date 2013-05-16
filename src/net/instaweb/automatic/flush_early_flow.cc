@@ -474,7 +474,7 @@ void FlushEarlyFlow::FlushEarly() {
         RewriteDriver* new_driver = driver_->Clone();
         new_driver->increment_async_events_count();
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
-        new_driver->set_request_headers(base_fetch_->request_headers());
+        new_driver->SetRequestHeaders(*base_fetch_->request_headers());
         new_driver->set_flushing_early(true);
         new_driver->SetWriter(base_fetch_);
         new_driver->SetUserAgent(driver_->user_agent());

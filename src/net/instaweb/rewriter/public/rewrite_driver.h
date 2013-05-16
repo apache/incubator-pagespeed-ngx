@@ -244,12 +244,10 @@ class RewriteDriver : public HtmlParse {
     response_headers_ = headers;
   }
 
-  void set_request_headers(const RequestHeaders* headers) {
-    request_headers_ = headers;
-  }
+  void SetRequestHeaders(const RequestHeaders& headers);
 
-  const RequestHeaders* request_headers() const {
-    return request_headers_;
+  RequestHeaders* request_headers() const {
+    return request_headers_.get();
   }
 
   UserAgentMatcher* user_agent_matcher() const {
@@ -1263,7 +1261,11 @@ class RewriteDriver : public HtmlParse {
   StringFilterMap resource_filter_map_;
 
   ResponseHeaders* response_headers_;
-  const RequestHeaders* request_headers_;
+
+  // request_headers_ is a copy of the Fetch's request headers, and it
+  // stays alive until the rewrite driver is recycled or deleted.
+  scoped_ptr<RequestHeaders> request_headers_;
+
   int status_code_;  // Status code of response for this request.
 
   // This group of rewrite-context-related variables is accessed

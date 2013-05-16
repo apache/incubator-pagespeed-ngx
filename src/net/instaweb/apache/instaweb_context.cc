@@ -159,7 +159,7 @@ InstawebContext::InstawebContext(request_rec* request,
   }
 
   // Make the entire request headers available to filters.
-  rewrite_driver_->set_request_headers(request_headers_.get());
+  rewrite_driver_->SetRequestHeaders(*request_headers_);
 
   response_headers_.Clear();
   rewrite_driver_->set_response_headers_ptr(&response_headers_);

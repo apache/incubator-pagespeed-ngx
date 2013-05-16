@@ -82,7 +82,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     options()->set_flush_more_resources_early_if_time_permits(true);
     options()->set_flush_more_resources_in_ie_and_firefox(true);
     RewriteTestBase::SetUp();
-    rewrite_driver()->set_request_headers(&request_headers_);
+    rewrite_driver()->SetRequestHeaders(request_headers_);
     rewrite_driver()->set_flushing_early(true);
     rewrite_driver()->SetWriter(&writer_);
     server_context()->set_flush_early_info_finder(
@@ -94,7 +94,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     ClearRewriteDriver();
     rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(190);
     rewrite_driver_->log_record()->SetLogUrlIndices(true);
-    rewrite_driver()->set_request_headers(&request_headers_);
+    rewrite_driver()->SetRequestHeaders(request_headers_);
     output_.clear();
   }
 

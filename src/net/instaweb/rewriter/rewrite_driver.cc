@@ -209,7 +209,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       rewrites_to_delete_(0),
       should_skip_parsing_(kNotSet),
       response_headers_(NULL),
-      request_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
       max_page_processing_delay_ms_(-1),
       pending_rewrites_(0),
@@ -249,6 +248,11 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
   early_pre_render_filters_.push_back(&scan_filter_);
+}
+
+void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
+  request_headers_.reset(new RequestHeaders());
+  request_headers_->CopyFrom(headers);
 }
 
 void RewriteDriver::set_request_context(const RequestContextPtr& x) {
@@ -349,7 +353,7 @@ void RewriteDriver::Clear() {
   should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
   max_page_processing_delay_ms_ = -1;
-  request_headers_ = NULL;
+  request_headers_.reset(NULL);
   response_headers_ = NULL;
   status_code_ = 0;
   fetch_detached_ = false;
@@ -1631,7 +1635,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
 
   // Set the request headers if they haven't been yet.
   if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
-    set_request_headers(async_fetch->request_headers());
+    SetRequestHeaders(*async_fetch->request_headers());
   }
 
   // Note that this does permission checking and parsing of the url, but doesn't
@@ -1674,7 +1678,7 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
   SetBaseUrlForFetch(gurl.Spec());
   // Set the request headers if they haven't been yet.
   if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
-    set_request_headers(async_fetch->request_headers());
+    SetRequestHeaders(*async_fetch->request_headers());
   }
   fetch_queued_ = true;
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
