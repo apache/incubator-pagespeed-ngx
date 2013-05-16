@@ -56,16 +56,8 @@ void DomainRewriteFilter::StartDocumentImpl() {
   if (rewrite_hyperlinks) {
     // TODO(nikhilmadan): Rewrite the domain for cookies.
     // Rewrite the Location header for redirects.
-    ResponseHeaders* headers = driver_->mutable_response_headers();
-    if (headers != NULL) {
-      const char* location = headers->Lookup1(HttpAttributes::kLocation);
-      if (location != NULL) {
-        GoogleString new_location;
-        Rewrite(location, driver_->base_url(), false /* !apply_sharding */,
-                &new_location);
-        headers->Replace(HttpAttributes::kLocation, new_location);
-      }
-    }
+    UpdateLocationHeader(driver_->base_url(), driver_,
+                         driver_->mutable_response_headers());
   }
 }
 
@@ -73,6 +65,23 @@ DomainRewriteFilter::~DomainRewriteFilter() {}
 
 void DomainRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDomainRewrites);
+}
+
+void DomainRewriteFilter::UpdateLocationHeader(const GoogleUrl& base_url,
+                                               RewriteDriver* driver,
+                                               ResponseHeaders* headers) const {
+  if (headers != NULL) {
+    const char* location = headers->Lookup1(HttpAttributes::kLocation);
+    if (location != NULL) {
+      GoogleString new_location;
+      DomainRewriteFilter::RewriteResult status = Rewrite(
+          location, base_url, driver, false /* !apply_sharding */,
+          &new_location);
+      if (status == kRewroteDomain) {
+        headers->Replace(HttpAttributes::kLocation, new_location);
+      }
+    }
+  }
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
@@ -98,8 +107,8 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
                            element->keyword() != HtmlName::kFrame &&
                            element->keyword() != HtmlName::kIframe);
     if (!val.empty() && BaseUrlIsValid() &&
-        (Rewrite(val, driver_->base_url(), apply_sharding, &rewritten_val) ==
-         kRewroteDomain)) {
+        (Rewrite(val, driver_->base_url(), driver_,
+                 apply_sharding, &rewritten_val) == kRewroteDomain)) {
       href->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
@@ -109,7 +118,8 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 // Resolve the url we want to rewrite, and then shard as appropriate.
 DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
-    bool apply_sharding, GoogleString* rewritten_url) {
+    const RewriteDriver* driver,
+    bool apply_sharding, GoogleString* rewritten_url) const {
   if (url_to_rewrite.empty()) {
     return kDomainUnchanged;
   }
@@ -132,7 +142,7 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   }
 
   StringPiece orig_spec = orig_url.Spec();
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver->options();
 
   if (!options->IsAllowed(orig_spec) ||
       // Don't rewrite a domain from an already-rewritten resource.
@@ -155,7 +165,7 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   GoogleUrl resolved_request;
   if (!lawyer->MapRequestToDomain(base_url, url_to_rewrite,
                                   &mapped_domain_name, &resolved_request,
-                                  driver_->message_handler())) {
+                                  driver->message_handler())) {
     // Even though domain is unchanged, we need to store absolute URL in
     // rewritten_url.
     orig_url.Spec().CopyToString(rewritten_url);

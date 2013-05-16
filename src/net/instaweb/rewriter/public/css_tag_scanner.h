@@ -120,6 +120,7 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
   UrlLeftTrimFilter* url_trim_filter_;
   MessageHandler* handler_;
   bool trim_urls_;
+  RewriteDriver* driver_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDomainTransformer);
 };

@@ -467,6 +467,41 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
   EXPECT_TRUE(get_text.empty());
 }
 
+TEST_F(ProxyInterfaceTest, RedirectRequestWhenDomainRewriterEnabled) {
+  // Test to check if we are handling Head requests correctly.
+  GoogleString url = "http://www.example.com/";
+  GoogleString set_text, get_text;
+  RequestHeaders request_headers;
+  ResponseHeaders set_headers, get_headers;
+  NullMessageHandler handler;
+
+  set_headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  set_headers.Add(HttpAttributes::kLocation, "http://m.example.com");
+  set_headers.SetStatusAndReason(HttpStatus::kFound);
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->EnableFilter(RewriteOptions::kRewriteDomains);
+  custom_options->WriteableDomainLawyer()->AddTwoProtocolRewriteDomainMapping(
+      "www.example.com", "m.example.com", &handler);
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+  set_text = "<html></html>";
+  mock_url_fetcher_.SetResponse(url, set_headers, set_text);
+  FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
+
+  // Headers and body are correct for a Get request.
+  EXPECT_EQ("HTTP/1.0 302 Found\r\n"
+            "Content-Type: text/html\r\n"
+            "Location: http://www.example.com/\r\n"
+            "X-Background-Fetch: 0\r\n"
+            "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+            "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+            "Cache-Control: max-age=0, private\r\n"
+            "X-Page-Speed: \r\n"
+            "HeadersComplete: 1\r\n\r\n", get_headers.ToString());
+}
+
 TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
   // Test to check if we are handling Head requests correctly in pagespeed
   // resource flow.

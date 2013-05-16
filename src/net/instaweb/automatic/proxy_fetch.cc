@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -543,9 +544,21 @@ const RewriteOptions* ProxyFetch::Options() {
 }
 
 void ProxyFetch::HandleHeadersComplete() {
+  // If domain rewrite filter is enabled we need to also rewrite the location
+  // headers when origin is serving redirects.
+  if (response_headers() != NULL &&
+      driver_->options()->Enabled(RewriteOptions::kRewriteDomains) &&
+      driver_->domain_rewriter() != NULL &&
+      (response_headers()->status_code() == HttpStatus::kFound ||
+       response_headers()->status_code() == HttpStatus::kMovedPermanently)) {
+    GoogleUrl gurl(url_);
+    driver_->domain_rewriter()->UpdateLocationHeader(gurl, driver_,
+                                                     response_headers());
+    response_headers()->ComputeCaching();
+  }
+
   // Figure out semantic info from response_headers_
   claims_html_ = response_headers()->IsHtmlLike();
-
   if (original_content_fetch_ != NULL) {
     ResponseHeaders* headers = original_content_fetch_->response_headers();
     headers->CopyFrom(*response_headers());
