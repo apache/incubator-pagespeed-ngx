@@ -133,6 +133,7 @@
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/request_trace.h"
@@ -2468,13 +2469,30 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   OutputResourcePtr resource;
   int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
                       + ContentType::MaxProducedExtensionLength();
-  int url_size = mapped_path.size() + max_leaf_size;
-  if ((max_leaf_size <= options()->max_url_segment_size()) &&
-      (url_size <= options()->max_url_size())) {
-    OutputResource* output_resource = new OutputResource(
-        server_context_, mapped_path, unmapped_path, base_url,
-        full_name, options(), kind);
-    resource.reset(output_resource);
+  if (max_leaf_size > options()->max_url_segment_size()) {
+    return resource;
+  }
+
+  bool no_hash = false;
+  int extra_len = 0;
+  Hasher* hasher = server_context()->hasher();
+  if (full_name.hash().empty()) {
+    // Content and content type are not present. So set some nonzero hash and
+    // assume largest possible extension.
+    no_hash = true;
+    full_name.set_hash(GoogleString(hasher->HashSizeInChars(), '#'));
+    extra_len = ContentType::MaxProducedExtensionLength();
+  }
+  resource.reset(new OutputResource(
+      server_context_, mapped_path, unmapped_path, base_url,
+      full_name, options(), kind));
+
+  if (options()->max_url_size() < (resource->url().size() + extra_len)) {
+    resource.clear();
+    return resource;
+  }
+  if (no_hash) {
+    resource->clear_hash();
   }
   return resource;
 }

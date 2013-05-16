@@ -57,8 +57,6 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   friend class SuppressPreheadFilterTest;
   void SendCookies(HtmlElement* element);
 
-  void PreHeadDone(HtmlElement* element);
-
   static void UpdateFetchLatencyInFlushEarlyProto(int64 latency,
                                                   RewriteDriver*driver);
 

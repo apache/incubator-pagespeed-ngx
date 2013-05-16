@@ -143,6 +143,10 @@ class OutputResource : public Resource {
   StringPiece filter_prefix() const { return full_name_.id(); }
   StringPiece hash() const { return full_name_.hash(); }
   bool has_hash() const { return !hash().empty(); }
+  void clear_hash() {
+    full_name_.ClearHash();
+    computed_url_.clear();
+  }
 
   // Some output resources have mangled names derived from input resource(s),
   // such as when combining CSS files.  When we need to regenerate the output

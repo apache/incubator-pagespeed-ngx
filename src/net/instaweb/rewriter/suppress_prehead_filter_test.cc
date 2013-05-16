@@ -71,7 +71,7 @@ class SuppressPreheadFilterTest : public RewriteTestBase {
     rewrite_driver()->SetWriter(&writer_);
     headers_.Clear();
     rewrite_driver()->set_response_headers_ptr(&headers_);
-    rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
+    rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
   }
 
   GoogleString output_;
@@ -141,9 +141,8 @@ TEST_F(SuppressPreheadFilterTest, UpdateFetchLatencyInFlushEarlyProto) {
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   InitResources();
-  const char pre_head_input[] = "<!DOCTYPE html><html>";
+  const char pre_head_input[] = "<!DOCTYPE html><html><head>";
   const char post_head_input[] =
-        "<a></a><head>"
         "<link type=\"text/css\" rel=\"stylesheet\""
         " href=\"http://test.com/a.css\"/>"
         "<script src=\"http://test.com/b.js\"></script>"
@@ -254,9 +253,8 @@ TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<head></head>"
       "<body></body></html>";
-  const char html_without_prehead[] =
-      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-      "<head></head>"
+  const char html_without_prehead_and_meta_tags[] =
+      "</head>"
       "<body></body></html>";
 
   Parse("not_flushed_early", html_input);
@@ -268,7 +266,7 @@ TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
-  EXPECT_EQ(html_without_prehead, output_);
+  EXPECT_EQ(html_without_prehead_and_meta_tags, output_);
 }
 
 TEST_F(SuppressPreheadFilterTest, NoHead) {
@@ -283,11 +281,10 @@ TEST_F(SuppressPreheadFilterTest, NoHead) {
       "<!DOCTYPE html>"
       "<html>"
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-      "<head/><body></body></html>";
+      "<head></head><body></body></html>";
 
   const char html_input_without_prehead[] =
-      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-      "<head/><body></body></html>";
+      "</head><body></body></html>";
 
   Parse("not_flushed_early", html_input);
   EXPECT_EQ(html_input_with_head_tag, output_);

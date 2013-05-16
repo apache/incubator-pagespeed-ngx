@@ -54,6 +54,7 @@ const char* kImageInliningWhitelist[] = {
   "google command line rewriter",
   "webp",
   "webp-la",
+  "prefetch_link_rel_subresource",
   "prefetch_image_tag",
   "prefetch_link_script_tag",
 };
@@ -213,6 +214,11 @@ const char* kMobileUserAgentBlacklist[] = {
   "*Mozilla*Android*Kindle Fire*Mobile*"
 };
 
+const char* kSupportsPrefetchLinkRelSubresource[] = {
+  // User agent used only for internal testing
+  "prefetch_link_rel_subresource",
+};
+
 // TODO(mmohabey): Tune this to include more browsers.
 const char* kSupportsPrefetchImageTag[] = {
   "*Chrome/*",
@@ -282,6 +288,11 @@ UserAgentMatcher::UserAgentMatcher()
   }
   for (int i = 0, n = arraysize(kWebpLosslessAlphaBlacklist); i < n; ++i) {
     supports_webp_lossless_alpha_.Disallow(kWebpLosslessAlphaBlacklist[i]);
+  }
+  for (int i = 0, n = arraysize(kSupportsPrefetchLinkRelSubresource); i < n;
+       ++i) {
+    supports_prefetch_link_rel_subresource_.Allow(
+        kSupportsPrefetchLinkRelSubresource[i]);
   }
   for (int i = 0, n = arraysize(kSupportsPrefetchImageTag); i < n; ++i) {
     supports_prefetch_image_tag_.Allow(kSupportsPrefetchImageTag[i]);
@@ -371,7 +382,9 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
 
 UserAgentMatcher::PrefetchMechanism UserAgentMatcher::GetPrefetchMechanism(
     const StringPiece& user_agent) const {
-  if (supports_prefetch_image_tag_.Match(user_agent, false)) {
+  if (supports_prefetch_link_rel_subresource_.Match(user_agent, false)) {
+    return kPrefetchLinkRelSubresource;
+  } else if (supports_prefetch_image_tag_.Match(user_agent, false)) {
     return kPrefetchImageTag;
   } else if (supports_prefetch_link_script_tag_.Match(user_agent, false)) {
     return kPrefetchLinkScriptTag;

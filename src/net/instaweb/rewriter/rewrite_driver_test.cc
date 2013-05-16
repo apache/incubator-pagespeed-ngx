@@ -687,6 +687,33 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
   EXPECT_EQ("http://example.com/absolute/", BaseUrlSpec());
 }
 
+// The TestUrlNamer produces a url like below which is too long.
+// http://cdn.com/http/base.example.com/http/unmapped.example.com/dir/test.jpg.pagespeed.xy.#.     NOLINT
+TEST_F(RewriteDriverTest, CreateOutputResourceTooLongSeparateBase) {
+  SetUseTestUrlNamer(true);
+  OutputResourcePtr resource;
+
+  options()->set_max_url_size(94);
+  resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+      "http://mapped.example.com/dir/",
+      "http://unmapped.example.com/dir/",
+      "http://base.example.com/dir/",
+      "xy",
+      "test.jpg",
+      kRewrittenResource));
+  EXPECT_TRUE(NULL == resource.get());
+
+  options()->set_max_url_size(95);
+  resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+      "http://mapped.example.com/dir/",
+      "http://unmapped.example.com/dir/",
+      "http://base.example.com/dir/",
+      "xy",
+      "test.jpg",
+      kRewrittenResource));
+  EXPECT_TRUE(NULL != resource.get());
+}
+
 TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   const OutputResourceKind resource_kinds[] = {
     kRewrittenResource,
