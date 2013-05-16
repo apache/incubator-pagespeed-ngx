@@ -40,8 +40,8 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/image_compression/jpeg_optimizer_test_helper.h"
-#include "pagespeed/image_compression/jpeg_utils.h"
+#include "pagespeed/kernel/image/jpeg_optimizer_test_helper.h"
+#include "pagespeed/kernel/image/jpeg_utils.h"
 
 using pagespeed::image_compression::JpegUtils;
 using pagespeed_testing::image_compression::GetNumScansInJpeg;

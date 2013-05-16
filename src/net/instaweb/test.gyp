@@ -49,7 +49,7 @@
         '<(DEPTH)/third_party/apr/apr.gyp:apr',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:aprutil',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/image_compression/image_compression.gyp:pagespeed_image_test_util',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_image_test_util',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
@@ -66,7 +66,6 @@
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
         'automatic/proxy_interface_test_base.cc',
-
         'htmlparse/canonical_attributes_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
@@ -286,6 +285,11 @@
         '<(DEPTH)/pagespeed/kernel/http/content_type_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/google_url_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/query_params_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/gif_reader_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/image_converter_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/jpeg_optimizer_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/jpeg_utils_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/png_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/js/js_minify_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/copy_on_write_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_test.cc',
@@ -441,3 +445,4 @@
     },
   ],
 }
+

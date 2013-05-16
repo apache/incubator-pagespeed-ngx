@@ -30,7 +30,7 @@ typedef bool (*WebpProgressHook)(int percent, void* user_data);
 // retrieved from JpegUtils::GetImageQualityFromImage.
 const int kNoQualityGiven = -1;
 
-// Optimizer in the style of pagespeed/image_compression/jpeg_optimizer.h that
+// Optimizer in the style of pagespeed/kernel/image/jpeg_optimizer.h that
 // creates a webp-formatted image in compressed_webp from the jpeg image in
 // original_jpeg.  Indicates failure by returning false, in which case
 // compressed_webp may be filled with junk.

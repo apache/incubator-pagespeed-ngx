@@ -39,7 +39,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "pagespeed/image_compression/jpeg_utils.h"
+#include "pagespeed/kernel/image/jpeg_utils.h"
 
 using pagespeed::image_compression::JpegUtils;
 

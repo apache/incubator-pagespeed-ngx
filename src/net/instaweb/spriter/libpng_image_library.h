@@ -18,7 +18,19 @@
 #ifndef NET_INSTAWEB_SPRITER_LIBPNG_IMAGE_LIBRARY_H_
 #define NET_INSTAWEB_SPRITER_LIBPNG_IMAGE_LIBRARY_H_
 
-#include <png.h>
+// TODO(huibao): Move LibpngImageLibrary to pagespeed/kernel/image/.
+// Refactor LibpngImageLibrary. This class can be split into 3 parts:
+// reader, writer, and canvas creater. The first two parts can be merged
+// with png_optimizer.cc and png_optimizer.h.
+
+extern "C" {
+#ifdef USE_SYSTEM_LIBPNG
+#include "png.h"  // NOLINT
+#else
+#include "third_party/libpng/png.h"
+#endif
+}  // extern "C"
+
 #include "net/instaweb/spriter/image_library_interface.h"
 #include "net/instaweb/util/public/string.h"
 

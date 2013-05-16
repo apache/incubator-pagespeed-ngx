@@ -150,6 +150,63 @@
         'pagespeed_base',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
-    }
+    },
+    {
+      'target_name': 'pagespeed_image_processing',
+      'type': '<(library)',
+      'dependencies': [
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/giflib/giflib.gyp:dgiflib',
+        '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
+        '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
+        '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp',
+        '<(DEPTH)/third_party/optipng/optipng.gyp:opngreduc',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
+      ],
+      'sources': [
+        'kernel/image/gif_reader.cc',
+        'kernel/image/image_converter.cc',
+        'kernel/image/jpeg_optimizer.cc',
+        'kernel/image/jpeg_reader.cc',
+        'kernel/image/jpeg_utils.cc',
+        'kernel/image/png_optimizer.cc',
+        'kernel/image/read_image.cc',
+        'kernel/image/scanline_utils.cc',
+        'kernel/image/webp_optimizer.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'msvs_disabled_warnings': [
+        4996,  # std::string::copy() is deprecated on Windows, but we use it,
+               # so we need to disable the warning.
+      ],
+      'export_dependent_settings': [
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_image_test_util',
+      'type': '<(library)',
+      'sources': [
+        'kernel/image/jpeg_optimizer_test_helper.cc',
+        'kernel/image/test_utils.cc',
+      ],
+      'all_dependent_settings': {
+        'include_dirs': [
+          '<(DEPTH)/testing/gtest/include',
+        ],
+      },
+      'include_dirs': [
+        '<(DEPTH)',
+        '<(DEPTH)/testing/gtest/include',
+      ],
+      'dependencies': [
+        ':base_test_util',
+        ':pagespeed_image_processing',
+      ],
+    },
   ],
 }

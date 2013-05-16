@@ -107,6 +107,7 @@ BASE_LIBS = \
   pagespeed/libpagespeed_http.a \
   pagespeed/libpagespeed_base.a \
   pagespeed/libpagespeed_base_test_infrastructure.a \
+  pagespeed/libpagespeed_image_processing.a \
   pagespeed/libutil.a \
   pagespeed/libjsminify.a \
   pagespeed/libpagespeed_javascript_gperf.a \
@@ -117,24 +118,16 @@ BASE_LIBS = \
   third_party/domain_registry_provider/src/domain_registry/libassert_lib.a \
   third_party/domain_registry_provider/src/domain_registry/libdomain_registry_lib.a \
   third_party/gflags/libgflags.a \
+  third_party/giflib/libdgiflib.a \
+  third_party/giflib/libgiflib_core.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
   third_party/jsoncpp/libjsoncpp.a \
   third_party/libjpeg/libjpeg.a \
   third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_image_converter.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_optimizer.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_reader.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_utils.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_scanline_utils.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_webp_optimizer.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_resource_pb.a \
   third_party/libpagespeed/src/pagespeed/proto/libtimeline_pb.a \
-  third_party/libpagespeed/src/third_party/giflib/libdgiflib.a \
-  third_party/libpagespeed/src/third_party/giflib/libgiflib_core.a \
-  third_party/libpagespeed/src/third_party/optipng/libopngreduc.a \
   third_party/libpng/libpng.a \
   third_party/libwebp/libwebp_dec.a \
   third_party/libwebp/libwebp_dsp.a \
@@ -143,6 +136,7 @@ BASE_LIBS = \
   third_party/opencv/libhighgui.a \
   third_party/opencv/libopencv_core.a \
   third_party/opencv/libopencv_imgproc.a \
+  third_party/optipng/libopngreduc.a \
   third_party/protobuf/libprotobuf_lite.a \
   third_party/re2/libre2.a \
   third_party/zlib/libzlib.a

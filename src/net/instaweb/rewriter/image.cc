@@ -34,6 +34,13 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/image/gif_reader.h"
+#include "pagespeed/kernel/image/image_converter.h"
+#include "pagespeed/kernel/image/jpeg_optimizer.h"
+#include "pagespeed/kernel/image/jpeg_utils.h"
+#include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/webp_optimizer.h"
+
 extern "C" {
 #ifdef USE_SYSTEM_LIBWEBP
 #include "webp/decode.h"
@@ -49,11 +56,6 @@ extern "C" {
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #endif
-#include "pagespeed/image_compression/gif_reader.h"
-#include "pagespeed/image_compression/image_converter.h"
-#include "pagespeed/image_compression/jpeg_optimizer.h"
-#include "pagespeed/image_compression/jpeg_utils.h"
-#include "pagespeed/image_compression/png_optimizer.h"
 
 #if (CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1) || (CV_MAJOR_VERSION > 2)
 #include <vector>
