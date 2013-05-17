@@ -794,7 +794,7 @@ TEST_F(FlushEarlyContentWriterFilterTest,
                   false /* not in HEAD */);
 }
 
-TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsLinkDisabledTag) {
+TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsScript) {
   GoogleString html_input =
       "<!DOCTYPE html>"
       "<html>"
@@ -811,19 +811,17 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsLinkDisabledTag) {
       "</style>\n"
       "</body></html>";
 
-  const char kCssRulesLinkTag[] =
-      "<link id=\"%s\" href=\"data:text/css;base64*\" rel=\"stylesheet\" />"
-      "<script type=\"text/javascript\">"
-      "document.getElementById(\"%s\").disabled=true;</script>";
   const char kImagePrefetchScriptTag[] =
       "<script type=\"text/javascript\">"
       "(function(){new Image().src=\"%s*\";})()</script>";
 
   GoogleString html_output = StrCat(
       StringPrintf(kImagePrefetchScriptTag, "a.css"),
-      StringPrintf(kCssRulesLinkTag, "123", "123"),
+      "<script type=\"text/psa_flush_style\" id=\"123\">"
+      "b_used {color: blue }</script>",
       StringPrintf(kImagePrefetchScriptTag, "d.css"),
-      StringPrintf(kCssRulesLinkTag, "345", "345"),
+      "<script type=\"text/psa_flush_style\" id=\"345\">"
+      "c_used {color: cyan }</script>",
       StringPrintf(kPrefetchScript, 4));
 
   Clear();

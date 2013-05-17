@@ -34,7 +34,6 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
-#include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
@@ -1653,10 +1652,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
   GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
-  GoogleString disable_link_tag_string =
-      StringPrintf(FlushEarlyContentWriterFilter::kDisableLinkTag, "*");
-  GoogleString move_link_tag_template =
-      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate, "*", "");
+  GoogleString invoke_flush_style_template =
+      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate, "*", "");
 
   const char kInputHtml[] =
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
@@ -1674,12 +1671,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"
       "<head>"
-      "<link id=\"*\" href=\"data:text/css;base64*\""
-      " rel=\"stylesheet\" />"
-      "%s"
-      "<link id=\"*\" href=\"data:text/css;base64*\""
-      " rel=\"stylesheet\" />"
-      "%s"
+      "<script type=\"text/psa_flush_style\" id=\"*\">b{color:#000}</script>"
+      "<script type=\"text/psa_flush_style\" id=\"*\">a{float:left}</script>"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
       "window.mod_pagespeed_num_resources_prefetched = 2"
@@ -1698,11 +1691,9 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">"
       "%s*"
       "</script>",
-      disable_link_tag_string.c_str(),
-      disable_link_tag_string.c_str(),
-      CriticalCssFilter::kMoveAndApplyLinkScriptTemplate,
-      move_link_tag_template.c_str(),
-      move_link_tag_template.c_str(),
+      CriticalCssFilter::kApplyFlushEarlyCssTemplate,
+      invoke_flush_style_template.c_str(),
+      invoke_flush_style_template.c_str(),
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                    redirect_url.c_str()).c_str(),
       CriticalCssFilter::kAddStylesScript);

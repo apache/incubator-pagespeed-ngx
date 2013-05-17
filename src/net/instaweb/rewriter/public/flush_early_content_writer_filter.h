@@ -54,8 +54,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   static const char kNumResourcesFlushedEarly[];
   static const char kPrefetchScriptTagHtml[];
   static const char kPrefetchLinkTagHtml[];
-  static const char kInlineCriticalCssLinkTemplate[];
-  static const char kDisableLinkTag[];
+  static const char kFlushEarlyStyleTemplate[];
 
   explicit FlushEarlyContentWriterFilter(RewriteDriver* driver);
 

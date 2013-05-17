@@ -23,7 +23,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
@@ -36,7 +35,6 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -64,15 +62,8 @@ const char FlushEarlyContentWriterFilter::kPrefetchStartTimeScript[] =
 const char FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly[] =
     "num_resources_flushed_early";
 
-const char FlushEarlyContentWriterFilter::kInlineCriticalCssLinkTemplate[] =
-    "<link id=\"%s\" href=\"%s\" rel=\"stylesheet\" />";
-
-// This JS snippet is needed to disable the CSS link tag that is flushed early.
-// Adding the disabled attribute directly to the link tag does not work on
-// some browsers like Firefox.
-const char FlushEarlyContentWriterFilter::kDisableLinkTag[] =
-    "<script type=\"text/javascript\">"
-    "document.getElementById(\"%s\").disabled=true;</script>";
+const char FlushEarlyContentWriterFilter::kFlushEarlyStyleTemplate[] =
+    "<script type=\"text/psa_flush_style\" id=\"%s\">%s</script>";
 
 struct ResourceInfo {
  public:
@@ -432,6 +423,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
 void FlushEarlyContentWriterFilter::Characters(
     HtmlCharactersNode* characters_node) {
   if (is_flushing_critical_style_element_) {
+    // TODO(mpalem): Do we need to escape this content?
     css_output_content_ = characters_node->contents();
   }
 }
@@ -463,15 +455,8 @@ void FlushEarlyContentWriterFilter::EndElement(HtmlElement* element) {
 
 GoogleString FlushEarlyContentWriterFilter::ComputeFlushEarlyCriticalCss(
     const GoogleString& style_id) {
-  GoogleString encoded_rule;
-
-  DataUrl(kContentTypeCss, BASE64, css_output_content_, &encoded_rule);
-
-  GoogleString css_output = StringPrintf(kInlineCriticalCssLinkTemplate,
-      style_id.c_str(), encoded_rule.c_str());
-  StrAppend(&css_output, StringPrintf(kDisableLinkTag,
-      style_id.c_str()));
-
+  GoogleString css_output = StringPrintf(kFlushEarlyStyleTemplate,
+      style_id.c_str(), css_output_content_.c_str());
   return css_output;
 }
 

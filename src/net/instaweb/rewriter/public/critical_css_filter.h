@@ -56,10 +56,10 @@ class CriticalCssFilter : public EmptyHtmlFilter {
 
   static const char kAddStylesScript[];
   static const char kStatsScriptTemplate[];
-  static const char kMoveAndApplyLinkScriptTemplate[];
-  static const char kMoveAndApplyLinkTagTemplate[];
   static const char kNoscriptStylesId[];
   static const char kMoveScriptId[];
+  static const char kApplyFlushEarlyCssTemplate[];
+  static const char kInvokeFlushEarlyCssTemplate[];
 
   // Overridden from EmptyHtmlFilter:
   virtual void DetermineEnabled();

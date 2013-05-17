@@ -47,7 +47,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-
 namespace net_instaweb {
 
 namespace {
@@ -1075,6 +1074,5 @@ TEST_F(JsCombineFilterTest, TestMaxCombinedJsSize) {
   VerifyUse(scripts[4], kJsUrl3);
   VerifyUse(scripts[5], kJsUrl4);
 }
-
 
 }  // namespace net_instaweb

@@ -54,8 +54,6 @@
 
 namespace net_instaweb {
 
-// TODO(ksimbili): Replace textContent with something which have similar
-// functionality as it is not supported in IE8 and older browsers.
 // TODO(ksimbili): Fix window.onload = addAllStyles call site as it will
 // override the existing onload function.
 const char CriticalCssFilter::kAddStylesScript[] =
@@ -64,7 +62,9 @@ const char CriticalCssFilter::kAddStylesScript[] =
     "  if (stylesAdded) return;"
     "  stylesAdded = true;"
     "  var div = document.createElement(\"div\");"
-    "  div.innerHTML = document.getElementById(\"psa_add_styles\").textContent;"
+    "  var styleElement = document.getElementById(\"psa_add_styles\");"
+    "  div.innerHTML = styleElement.textContent || styleElement.innerHTML || "
+    "                  styleElement.data || \"\";"
     "  document.body.appendChild(div);"
     "};"
     "if (window.addEventListener) {"
@@ -87,24 +87,33 @@ const char CriticalCssFilter::kStatsScriptTemplate[] =
     "  'num_unreplaced_links': %d"
     "};";
 
-// This script is used to find the previously flushed link tag with inlined
-// CSS and apply the styles by removing the disabled attribute. It also moves
-// the link Tag element to the current location in the document where the style
-// element exists.
-const char CriticalCssFilter::kMoveAndApplyLinkScriptTemplate[] =
-    "  var moveAndApplyLinkTag = function(link_id, mediaString) {"
+// When flush early filter is enabled, critical css rules are flushed early
+// as innerHTML of a script element. When the CSS element appears in the
+// document, find the previously flushed style data and copy it to the style
+// element so it can be applied. This script is used for that.
+const char CriticalCssFilter::kApplyFlushEarlyCssTemplate[] =
+    "  var applyFlushedCriticalCss = function(script_id, mediaString) {"
     "    var scripts = document.getElementsByTagName('script');"
-    "    var linkTag = document.getElementById(link_id);"
+    "    var styleScript = document.getElementById(script_id);"
+    "    var cssText = styleScript.innerHTML || styleScript.textContent || "
+    "                  styleScript.data || \"\";"
+    "    var styleElem = document.createElement('style');"
+    "    styleElem.type = 'text/css';"
+    "    if (styleElem.styleSheet) {"
+    "      styleElem.styleSheet.cssText = cssText;"
+    "    } else {"
+    "      styleElem.appendChild(document.createTextNode(cssText));"
+    "    }"
     "    if (mediaString) {"
-    "      linkTag.setAttribute(\"media\", mediaString);"
+    "      styleElem.setAttribute(\"media\", mediaString);"
     "    }"
     "    var currentScript = scripts[scripts.length-1];"
-    "    currentScript.parentNode.insertBefore(linkTag, currentScript);"
-    "    linkTag.removeAttribute('disabled');"
+    "    currentScript.parentNode.insertBefore(styleElem, currentScript);"
+    "    currentScript.parentNode.removeChild(currentScript);"
     "  };";
 
-const char CriticalCssFilter::kMoveAndApplyLinkTagTemplate[] =
-    "moveAndApplyLinkTag(\"%s\", \"%s\");";
+const char CriticalCssFilter::kInvokeFlushEarlyCssTemplate[] =
+    "applyFlushedCriticalCss(\"%s\", \"%s\");";
 
 const char CriticalCssFilter::kNoscriptStylesId[] = "psa_add_styles";
 const char CriticalCssFilter::kMoveScriptId[] = "psa_flush_style_early";
@@ -389,7 +398,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
       driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
       driver_->InsertNodeBeforeNode(element, script);
       driver_->server_context()->static_asset_manager()->AddJsToElement(
-          kMoveAndApplyLinkScriptTemplate, script, driver_);
+          kApplyFlushEarlyCssTemplate, script, driver_);
     }
 
     HtmlElement* script_element =
@@ -399,7 +408,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
       LogRewrite(RewriterApplication::REPLACE_FAILED);
       return;
     }
-    GoogleString js_data = StringPrintf(kMoveAndApplyLinkTagTemplate,
+    GoogleString js_data = StringPrintf(kInvokeFlushEarlyCssTemplate,
                                         style_id.c_str(), media);
 
     driver_->server_context()->static_asset_manager()->AddJsToElement(js_data,

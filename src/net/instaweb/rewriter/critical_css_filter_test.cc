@@ -434,14 +434,14 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "  Hello,\n"
       "  <script id=\"psa_flush_style_early\" pagespeed_no_defer=\"\""
       " type=\"text/javascript\">",
-      CriticalCssFilter::kMoveAndApplyLinkScriptTemplate,
+      CriticalCssFilter::kApplyFlushEarlyCssTemplate,
       "</script>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate,
                    a_styleId.c_str(), "print"),
       "</script>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate,
                    b_styleId.c_str(), ""));
 
   StrAppend(&expected_html,
@@ -449,7 +449,7 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "\n  <style type='text/css'>t {color: turquoise }</style>\n"
       "  World!\n"
       "  <script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate,
                    c_styleId.c_str(), ""),
       "</script>"
       "\n</body>\n"
