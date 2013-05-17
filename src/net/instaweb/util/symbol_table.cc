@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <vector>
+
 #include "base/logging.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string.h"
@@ -43,6 +44,9 @@ template<class CharTransform>
 SymbolTable<CharTransform>::SymbolTable()
     : next_ptr_(NULL),
       string_bytes_allocated_(0) {
+  // We can use an empty string piece as the empty value, since
+  // ::Intern has a quick exit on empty inputs.
+  string_set_.set_empty_key(StringPiece());
 }
 
 template<class CharTransform>

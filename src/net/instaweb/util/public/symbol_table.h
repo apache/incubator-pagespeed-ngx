@@ -23,47 +23,11 @@
 #include <cstddef>
 #include <vector>
 
-#ifdef __GNUC__
-#define SYMBOL_TABLE_USE_HASH_TABLE 1
-#else
-#define SYMBOL_TABLE_USE_HASH_TABLE 0
-#endif
-
-#if SYMBOL_TABLE_USE_HASH_TABLE
-
-// This revolting mess is due to the 'deprecated' warnings which at
-// least some versions of gcc have attached to hash_set, despite the
-// lack of general availability of 'unordered_set' suggested in the
-// warning.  I am not able to figure out how to apply
-// '-Wno-deprecated', in .gyp files, and am not sure I really want to
-// since it would make *all* deprecation issues instead of just this
-// one.  And of course since we promote warnings to errors, we cannot
-// compile without this.  Nor am I able to figure out how to enable
-// Page Speed to compile its instaweb dependency on dense_hash_map, so
-// that's out too.
-//
-// TODO(jmarantz): Remove all this and go back to dense_hash_map pending
-// Bryan authorizing us to grow the core library, and his gyp skills in
-// helping us successfully link it in Page Speed.
-
-#ifndef _BACKWARD_BACKWARD_WARNING_H
-#define NEED_UNDEF
-#define _BACKWARD_BACKWARD_WARNING_H
-#endif
-#include <ext/hash_set>
-#ifdef NEED_UNDEF
-#undef NEED_UNDEF
-#undef _BACKWARD_BACKWARD_WARNING_H
-#endif
-
-#else
-#include <set>
-#endif
-
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/dense_hash_set.h"
 
 namespace net_instaweb {
 
@@ -102,7 +66,6 @@ template<class CharTransform> class SymbolTable {
   size_t string_bytes_allocated() const { return string_bytes_allocated_; }
 
  private:
-#if SYMBOL_TABLE_USE_HASH_TABLE
   // StringPiece equality aware of CharTransform
   struct Comparator {
     bool operator()(const StringPiece& key_a, const StringPiece& key_b) const {
@@ -130,16 +93,7 @@ template<class CharTransform> class SymbolTable {
     }
   };
 
-  typedef __gnu_cxx::hash_set<StringPiece, Hash, Comparator> SymbolSet;
-#else
-  struct Compare {
-    bool operator()(const StringPiece& a, const StringPiece& b) const {
-      return CharTransform::Compare(a, b);
-    }
-  };
-
-  typedef std::set<StringPiece, Compare> SymbolSet;
-#endif
+  typedef dense_hash_set<StringPiece, Hash, Comparator> SymbolSet;
   SymbolSet string_set_;
 
   // Allocates a new chunk of storage.
