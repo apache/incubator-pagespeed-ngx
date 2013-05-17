@@ -37,7 +37,7 @@ message HttpResponseHeaders {
   optional int64 date_ms = 6;  // Timestamp from Date header.
   optional int64 last_modified_time_ms = 10;
   optional int64 cache_ttl_ms = 11;
-  optional bool cacheable = 7;
+  optional bool browser_cacheable = 7;
   optional bool proxy_cacheable = 8;
   repeated NameValue header = 9;
   optional bool is_implicitly_cacheable = 12;

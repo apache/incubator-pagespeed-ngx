@@ -151,7 +151,7 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
 void ResponseHeaders::Clear() {
   Headers<HttpResponseHeaders>::Clear();
 
-  proto_->set_cacheable(false);
+  proto_->set_browser_cacheable(false);
   proto_->set_proxy_cacheable(false);   // accurate only if !cache_fields_dirty_
   proto_->clear_expiration_time_ms();
   proto_->clear_date_ms();
@@ -357,12 +357,13 @@ bool ResponseHeaders::WriteAsHttp(Writer* writer, MessageHandler* handler)
 
 // Specific information about cache.  This is all embodied in the
 // headers but is centrally parsed so we can try to get it right.
-bool ResponseHeaders::IsCacheable() const {
+bool ResponseHeaders::IsBrowserCacheable() const {
   // We do not compute caching from accessors so that the
   // accessors can be easier to call from multiple threads
   // without mutexing.
-  DCHECK(!cache_fields_dirty_) << "Call ComputeCaching() before IsCacheable()";
-  return proto_->cacheable();
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before IsBrowserCacheable()";
+  return proto_->browser_cacheable();
 }
 
 bool ResponseHeaders::IsProxyCacheable() const {
@@ -440,7 +441,8 @@ void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
 }
 
 bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {
-  if (IsCacheable()) {
+  // TODO(sligocki): Shouldn't we be checking if it's ProxyCacheable()?
+  if (IsBrowserCacheable()) {
     if (force_cache_ttl_ms_ > 0) {
       // If we've been asked to force cache a request, then we always consider
       // it as VaryCacheable.
@@ -581,11 +583,12 @@ void ResponseHeaders::ComputeCaching() {
   // only allow a few hand-picked status codes to be cacheable at all.
   // Note that if force caching is enabled, we consider a privately cacheable
   // resource as cacheable.
-  bool is_cacheable = computer.IsCacheable();
-  proto_->set_cacheable(has_date &&
-                        computer.IsAllowedCacheableStatusCode() &&
-                        (force_caching_enabled || is_cacheable));
-  if (proto_->cacheable()) {
+  bool is_browser_cacheable = computer.IsCacheable();
+  proto_->set_browser_cacheable(
+      has_date &&
+      computer.IsAllowedCacheableStatusCode() &&
+      (force_caching_enabled || is_browser_cacheable));
+  if (proto_->browser_cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce
     // the expiration_time_ms_.  This is, says, bmcquade@google.com,
     // typically use to indicate how long a resource has been sitting
@@ -602,8 +605,7 @@ void ResponseHeaders::ComputeCaching() {
       computer.GetFreshnessLifetimeMillis(&cache_ttl_ms);
     }
     if (force_caching_enabled &&
-        (force_cache_ttl_ms_ > cache_ttl_ms ||
-         !is_cacheable || !is_proxy_cacheable)) {
+        (force_cache_ttl_ms_ > cache_ttl_ms || !is_proxy_cacheable)) {
       // We consider the response to have been force cached only if force
       // caching was enabled and the forced cache TTL is larger than the
       // original TTL or the original response wasn't cacheable.
@@ -835,7 +837,8 @@ void ResponseHeaders::DebugPrint() const {
             Integer64ToString(proto_->date_ms()).c_str());
     fprintf(stderr, "cache_ttl_ms_ = %s\n",
             Integer64ToString(proto_->cache_ttl_ms()).c_str());
-    fprintf(stderr, "cacheable_ = %s\n", BoolToString(proto_->cacheable()));
+    fprintf(stderr, "browser_cacheable_ = %s\n",
+            BoolToString(proto_->browser_cacheable()));
     fprintf(stderr, "proxy_cacheable_ = %s\n",
             BoolToString(proto_->proxy_cacheable()));
   }

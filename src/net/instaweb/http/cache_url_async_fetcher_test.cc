@@ -71,7 +71,7 @@ class MockFetch : public AsyncFetch {
   virtual void HandleHeadersComplete() {
     // Make sure that we've called response_headers()->ComputeCaching() before
     // this and that this call succeeds.
-    response_headers()->IsCacheable();
+    response_headers()->IsProxyCacheable();
   }
 
   virtual bool HandleWrite(const StringPiece& content,

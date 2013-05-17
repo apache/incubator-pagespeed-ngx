@@ -418,7 +418,7 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
                                            ResponseHeaders* headers) {
   headers->ComputeCaching();
   bool proxy_cacheable = headers->IsProxyCacheable();
-  bool cacheable = headers->IsCacheable();
+  bool browser_cacheable = headers->IsBrowserCacheable();
   bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
                                     "no-store");
   int64 max_age = headers->cache_ttl_ms();
@@ -431,12 +431,12 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
         max_age = input_headers->cache_ttl_ms();
       }
       proxy_cacheable &= input_headers->IsProxyCacheable();
-      cacheable &= input_headers->IsCacheable();
+      browser_cacheable &= input_headers->IsBrowserCacheable();
       no_store |= input_headers->HasValue(HttpAttributes::kCacheControl,
                                           "no-store");
     }
   }
-  if (cacheable) {
+  if (browser_cacheable) {
     if (proxy_cacheable) {
       return;
     } else {

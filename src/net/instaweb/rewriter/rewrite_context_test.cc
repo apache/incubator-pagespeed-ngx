@@ -948,7 +948,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   // Make sure headers are nice and long.
   EXPECT_EQ(Timer::kYearMs, headers.cache_ttl_ms());
   EXPECT_TRUE(headers.IsProxyCacheable());
-  EXPECT_TRUE(headers.IsCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
 }
 
 TEST_F(RewriteContextTest, TrimFetchSeedsCache) {
@@ -1744,7 +1744,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHash) {
   // Make sure the TTL is correct, and the result is private.
   EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
-  EXPECT_TRUE(headers.IsCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
 }
 
 TEST_F(RewriteContextTest, TrimFetchWrongHashColdCache) {
@@ -1762,7 +1762,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHashColdCache) {
   // Make sure the TTL is correct (short), and the result is private.
   EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
-  EXPECT_TRUE(headers.IsCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
 }
 
 TEST_F(RewriteContextTest, TrimFetchHashFailed) {
@@ -1790,7 +1790,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailed) {
   // Make sure the TTL is correct, and the result is private.
   EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
-  EXPECT_TRUE(headers.IsCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
 }
 
 TEST_F(RewriteContextTest, TrimFetchHashFailedShortTtl) {
@@ -1807,7 +1807,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailedShortTtl) {
   EXPECT_STREQ("d", contents);
   EXPECT_EQ(kLowOriginTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
-  EXPECT_TRUE(headers.IsCacheable());
+  EXPECT_TRUE(headers.IsBrowserCacheable());
 }
 
 TEST_F(RewriteContextTest, FetchColdCacheRewritten) {

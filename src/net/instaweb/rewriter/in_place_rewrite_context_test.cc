@@ -1399,7 +1399,7 @@ TEST_F(InPlaceRewriteContextTest, NonCacheableUrlRewriting) {
                         etag_, timer()->NowMs());
 
   // Shouldn't be cacheable at all.
-  EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.IsBrowserCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
 
   // First fetch misses initial cache lookup, succeeds at fetch and we don't
@@ -1436,7 +1436,7 @@ TEST_F(InPlaceRewriteContextTest, PrivateCacheableUrlRewriting) {
                         true /* success */, 1000 /* ttl (s) */, etag_,
                         timer()->NowMs());
   // Should be cacheable.
-  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_TRUE(response_headers_.IsBrowserCacheable());
 
   // But only in a private way.
   EXPECT_FALSE(response_headers_.IsProxyCacheable());

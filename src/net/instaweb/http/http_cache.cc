@@ -105,9 +105,6 @@ bool HTTPCache::IsCurrentlyValid(const RequestHeaders* request_headers,
   if (force_caching_) {
     return true;
   }
-  if (!headers.IsCacheable()) {
-    return false;
-  }
 
   if ((request_headers == NULL && !headers.IsProxyCacheable()) ||
       (request_headers != NULL &&
@@ -218,8 +215,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
             callback_->http_value()->SetHeaders(headers);
           }
         } else {
-          if (http_cache_->force_caching_ ||
-              (headers->IsCacheable() && headers->IsProxyCacheable())) {
+          if (http_cache_->force_caching_ || headers->IsProxyCacheable()) {
             callback_->fallback_http_value()->Link(callback_->http_value());
           }
         }
@@ -380,9 +376,8 @@ void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
   if (!MayCacheUrl(key, headers)) {
     return;
   }
-  if (!force_caching_ &&
-      !(headers.IsCacheable() && headers.IsProxyCacheable() &&
-        IsCacheableBodySize(value->contents_size()))) {
+  if (!force_caching_ && !(headers.IsProxyCacheable() &&
+                           IsCacheableBodySize(value->contents_size()))) {
     LOG(DFATAL) << "trying to Put uncacheable data for key " << key;
     return;
   }

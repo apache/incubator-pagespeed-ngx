@@ -239,7 +239,7 @@ RewriteResult CacheExtender::RewriteLoadedResource(
   bool ok = false;
   const ContentType* output_type = NULL;
   if (!server_context_->http_cache()->force_caching() &&
-      !(headers->IsCacheable() && headers->IsProxyCacheable())) {
+      !headers->IsProxyCacheable()) {
     // Note: RewriteContextTest.PreserveNoCacheWithFailedRewrites
     // relies on CacheExtender failing rewrites in this case.
     // If you change this behavior that test MUST be updated as it covers

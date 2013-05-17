@@ -50,11 +50,12 @@ class CachingHeaders {
   // To obtain correct heuristics on URLs with query-parameters, supply the URL.
   void set_url(StringPiece x) { url_ = x; }
 
-  // Is the resource cachable, either by explicit caching headers or
-  // using common caching heuristics? If you want to know if the
-  // resource is explicitly marked as cacheable, use
+  // Is the resource privately cacheable, either by explicit caching
+  // headers or using common caching heuristics? If you want to know
+  // if the resource is explicitly marked as cacheable, use
   // GetFreshnessLifetimeMillis() and test to see that the output
   // parameter it positive.
+  // TODO(sligocki): Rename to IsBrowserCacheable().
   bool IsCacheable();
 
   // Is the resource likely to be cached by proxies?

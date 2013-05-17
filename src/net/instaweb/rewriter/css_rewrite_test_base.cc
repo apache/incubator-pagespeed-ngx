@@ -307,7 +307,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
 
     // Non-fallback CSS should have very long caching headers
     if (!FlagSet(flags, kExpectFallback)) {
-      EXPECT_TRUE(headers_out.IsCacheable());
+      EXPECT_TRUE(headers_out.IsBrowserCacheable());
       EXPECT_TRUE(headers_out.IsProxyCacheable());
       EXPECT_LE(Timer::kYearMs, headers_out.cache_ttl_ms());
     }

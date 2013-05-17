@@ -100,10 +100,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // is in milliseconds since 1970.  It is an error to call any of the
   // accessors before ComputeCaching is called.
   void ComputeCaching();
-  bool IsCacheable() const;
 
-  // Returns true if these response headers indicate the response is cacheable
-  // if it was fetched w/o special authorization headers.
+  // Returns true if these response headers indicate the response is
+  // publicly cacheable if it was fetched w/o special authorization headers.
   //
   // Generally you want to use IsProxyCacheableGivenRequest() instead which will
   // also take the request headers into account, unless you know the request
@@ -113,6 +112,20 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Returns true if these response header indicate the response is cacheable
   // if it was fetched with given 'request_headers'.
   bool IsProxyCacheableGivenRequest(const RequestHeaders& req_headers) const;
+
+  // Returns true if the response is privately cacheable.
+  //
+  // Generally you want to use IsProxyCacheable*() instead.
+  bool IsBrowserCacheable() const;
+
+  // Returns whether or not we can cache these headers if we take into
+  // account the Vary: headers. Note that we consider Vary: Cookie as cacheable
+  // if request_has_cookie is false.
+  //
+  // TODO(sligocki): Currently checks IsBrowserCacheable(), shouldn't we be
+  // checking IsProxyCacheable() instead?
+  // TODO(sligocki): Rename to IsVaryCacheable().
+  bool VaryCacheable(bool request_has_cookie) const;
 
   // Note(sligocki): I think CacheExpirationTimeMs will return 0 if !IsCacheable
   // TODO(sligocki): Look through callsites and make sure this is being
@@ -247,11 +260,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
     set_status_code(status_code);
     set_reason_phrase(reason_phrase);
   }
-
-  // Returns whether or not we can cache these headers if we take into
-  // account the Vary: headers. Note that we consider Vary: Cookie as cacheable
-  // if request_has_cookie is false.
-  bool VaryCacheable(bool request_has_cookie) const;
 
   // Finds Content-Length in the response headers, returning true and putting
   // it in *content_length if successful.

@@ -110,7 +110,8 @@ void Resource::FillInPartitionInputInfoFromResponseHeaders(
 
 int64 Resource::CacheExpirationTimeMs() const {
   int64 input_expire_time_ms = kNotCacheable;
-  if (response_headers_.IsCacheable()) {
+  // TODO(sligocki): Should this be IsProxyCacheable()?
+  if (response_headers_.IsBrowserCacheable()) {
     input_expire_time_ms = response_headers_.CacheExpirationTimeMs();
   }
   return input_expire_time_ms;

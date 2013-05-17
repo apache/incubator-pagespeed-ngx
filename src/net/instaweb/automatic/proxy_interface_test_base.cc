@@ -187,12 +187,12 @@ void MockFilter::StartElement(HtmlElement* element) {
 }
 
 void MockFilter::EndDocument() {
-  // We query IsCacheable for the HTML file only to ensure that
+  // We query IsBrowserCacheable for the HTML file only to ensure that
   // the test will crash if ComputeCaching() was never called.
   //
-  // IsCacheable is true for HTML files because of kHtmlCacheTimeSec
+  // IsBrowserCacheable is true for HTML files because of kHtmlCacheTimeSec
   // above.
-  EXPECT_TRUE(driver_->response_headers()->IsCacheable());
+  EXPECT_TRUE(driver_->response_headers()->IsBrowserCacheable());
   PropertyPage* page = driver_->property_page();
   if (page != NULL) {
     page->UpdateValue(
