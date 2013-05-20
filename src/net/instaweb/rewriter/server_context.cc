@@ -1104,9 +1104,24 @@ GoogleString ServerContext::GetPagePropertyCacheKey(
 }
 
 GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
-    StringPiece url, const RewriteOptions* options,
+    const GoogleUrl& request_url, const RewriteOptions* options,
     StringPiece device_type_suffix) {
-  return StrCat(GetPagePropertyCacheKey(url, options, device_type_suffix),
+  GoogleString key;
+  if (request_url.has_query()) {
+    key = request_url.AllExceptQuery().as_string();
+  } else {
+    GoogleString url(request_url.spec_c_str());
+    int size = url.size();
+    if (url[size - 1] == '/') {
+      // It's common for site admins to canonicalize urls by redirecting "/a/b"
+      // to "/a/b/".  In order to more effectively share fallback properties, we
+      // strip the trailing '/' before dropping down a level.
+      url.resize(size - 1);
+    }
+    GoogleUrl gurl(url);
+    key = gurl.AllExceptLeaf().as_string();
+  }
+  return StrCat(GetPagePropertyCacheKey(key, options, device_type_suffix),
                 kFallbackPageCacheKeySuffix);
 }
 

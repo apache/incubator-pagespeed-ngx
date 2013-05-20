@@ -374,9 +374,10 @@ class ServerContext {
                                        StringPiece device_type_suffix);
 
   // Returns the page property cache key for the page containing fallback
-  // values (i.e. wihtout query params) to be used for the proxy interface flow.
+  // values (i.e. wihtout query params or without leaf) to be used for the proxy
+  // interface flow.
   // Options are expected to be frozen.
-  GoogleString GetFallbackPagePropertyCacheKey(StringPiece url,
+  GoogleString GetFallbackPagePropertyCacheKey(const GoogleUrl& request_url,
                                                const RewriteOptions* options,
                                                StringPiece device_type_suffix);
 

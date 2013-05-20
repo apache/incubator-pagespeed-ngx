@@ -140,16 +140,14 @@ class CacheHtmlFilterTest : public RewriteTestBase {
 };
 
 TEST_F(CacheHtmlFilterTest, SendNonCacheable) {
-  options_->AddBlinkCacheableFamily(
-      "http://www.test.com/", kCacheTimeMs, "class=\"item\",id='beforeItems'");
+  options_->set_non_cacheables_for_cache_partial_html(
+      "class=\"item\",id='beforeItems'");
   Validate(kRequestUrl, kHtmlInput, kExpectedOutput);
 }
 
 TEST_F(CacheHtmlFilterTest, SendNonCacheableWithMultipleFamilies) {
-  options_->AddBlinkCacheableFamily(
-      "http://www.test.com/", kCacheTimeMs, "id=random");
-  options_->AddBlinkCacheableFamily(
-      "http://www.test.com/path", kCacheTimeMs, "class=item,id=beforeItems");
+  options_->set_non_cacheables_for_cache_partial_html(
+      "class=item,id=beforeItems");
   Validate(kRequestUrlWithPath, kHtmlInput, kExpectedOutput);
 }
 

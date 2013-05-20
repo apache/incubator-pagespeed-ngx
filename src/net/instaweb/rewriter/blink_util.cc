@@ -136,9 +136,6 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // TODO(sriharis): We also make this check in regular proxy flow
       // (ProxyFetch).  Should we combine these?
       options->IsAllowed(url.Spec()) &&
-      // Does url match a cacheable family pattern specified in config?
-      (filter == RewriteOptions::kCachePartialHtml ||
-       options->IsInBlinkCacheableFamily(url)) &&
       // Is the user agent allowed to enter the blink flow?
       IsUserAgentAllowedForBlink(
           async_fetch, options, user_agent,
@@ -150,10 +147,6 @@ bool IsBlinkRequest(const GoogleUrl& url,
     // Is the request a HTTP request?
     if (url.SchemeIs("http")) {
       return true;
-    }
-    if (!options->apply_blink_if_no_families()) {
-      LOG(ERROR) << "Non http url : " << url.spec_c_str() << " allowed in "
-                 << "blink cacheable families.";
     }
   }
   return false;
@@ -242,7 +235,7 @@ void PopulateAttributeToNonCacheableValuesMap(
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
     std::vector<int>* panel_number_num_instances) {
   GoogleString non_cacheable_elements_str =
-      rewrite_options->GetBlinkNonCacheableElementsFor(url);
+      rewrite_options->non_cacheables_for_cache_partial_html();
   StringPiece non_cacheable_elements(non_cacheable_elements_str);
   // TODO(rahulbansal): Add more error checking.
   StringPieceVector non_cacheable_values;

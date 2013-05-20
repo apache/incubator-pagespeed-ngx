@@ -529,11 +529,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     options_.reset(server_context()->NewOptions());
     options_->EnableFilter(RewriteOptions::kCachePartialHtml);
     options_->EnableFilter(RewriteOptions::kRewriteJavascript);
-    options_->AddBlinkCacheableFamily("http://test.com/text.html",
-                                      1000 * Timer::kSecondMs,
-                                      "class=item,id=beforeItems");
-    options_->AddBlinkCacheableFamily("http://test.com/*html",
-                                      1000 * Timer::kSecondMs, "");
+    options_->set_non_cacheables_for_cache_partial_html(
+        "class=item,id=beforeItems");
 
     options_->Disallow("*blacklist*");
 
@@ -788,8 +785,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   }
 
   CacheHtmlLoggingInfo* VerifyCacheHtmlLoggingInfo(
-      int cache_html_request_flow, bool html_match,
-                             const char* url) {
+      int cache_html_request_flow, bool html_match, const char* url) {
     CacheHtmlLoggingInfo* cache_html_logging_info =
         VerifyCacheHtmlLoggingInfo(cache_html_request_flow, url);
     EXPECT_EQ(html_match, cache_html_logging_info->html_match());
@@ -1099,11 +1095,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
   options_.reset(server_context()->NewOptions());
   options_->EnableFilter(RewriteOptions::kCachePartialHtml);
   options_->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
-  options_->AddBlinkCacheableFamily("http://test.com/text.html",
-                                    1000 * Timer::kSecondMs,
-                                    "class=item,id=beforeItems");
-  options_->AddBlinkCacheableFamily("http://test.com/*html",
-                                    1000 * Timer::kSecondMs, "");
+  options_->set_non_cacheables_for_cache_partial_html(
+      "class=item,id=beforeItems");
 
   server_context()->ComputeSignature(options_.get());
   ProxyUrlNamer url_namer;

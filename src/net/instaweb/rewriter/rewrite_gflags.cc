@@ -219,8 +219,6 @@ DEFINE_int32(psa_idle_flush_time_ms,
              " will be injected. Use a value <= 0 to disable.");
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
-DEFINE_bool(enable_blink_critical_line, false,
-            "If true then blink critical line flow is enabled");
 DEFINE_bool(enable_flush_early_critical_css, false,
             "If true, inlined critical css rules are flushed early if both"
             "flush subresources and critical css filter are enabled");
@@ -330,18 +328,9 @@ DEFINE_string(experiment_specs, "",
               "'id=7;enable=recompress_images;percent=50+id=2;enable="
               "recompress_images,convert_jpeg_to_progressive;percent=5'.");
 
-DEFINE_bool(passthrough_blink_for_last_invalid_response_code, false,
-            "Pass-through blink request if we got a non-200 response from "
-            "origin on the last fetch.");
-
 DEFINE_bool(enable_extended_instrumentation, false,
             "If set to true, additional instrumentation js added to that "
             "page that adds more information to the beacon.");
-
-DEFINE_bool(apply_blink_if_no_families, false,
-            "If prioritize_visible_content_families_ is empty, apply "
-            "prioritize visible content rewriter on all URLs (with default "
-            "cache time and no non-cacheables).");
 
 DEFINE_string(blocking_rewrite_key,
               net_instaweb::RewriteOptions::kDefaultBlockingRewriteKey,
@@ -373,11 +362,6 @@ DEFINE_bool(support_noscript_enabled, true,
 DEFINE_bool(enable_blink_debug_dashboard, true,
             "Enable blink dashboard used for debugging.");
 
-DEFINE_int64(override_blink_cache_time_ms,
-             net_instaweb::RewriteOptions::kDefaultOverrideBlinkCacheTimeMs,
-             "If positive, overrides the cache-time for cacheable resources "
-             "in blink.");
-
 DEFINE_bool(report_unload_time, false, "If enabled, sends beacons when page "
             "unload happens before onload.");
 
@@ -402,9 +386,6 @@ DEFINE_bool(enable_blink_html_change_detection_logging, false,
 DEFINE_bool(use_smart_diff_in_blink, false,
             "If enabled use smart diff to detect publisher changes in html "
             "in blink");
-
-DEFINE_bool(enable_lazyload_in_blink, false,
-    "If it is set to true, don't force disable lazyload in blink");
 
 DEFINE_bool(persist_blink_blacklist, false,
             "Persist the blink blacklist by writing to kansas.");
@@ -603,9 +584,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_limit_rendered_area_percent(
         FLAGS_image_limit_rendered_area_percent);
   }
-  if (WasExplicitlySet("enable_blink_critical_line")) {
-    options->set_enable_blink_critical_line(FLAGS_enable_blink_critical_line);
-  }
   if (WasExplicitlySet("enable_flush_early_critical_css")) {
     options->set_enable_flush_early_critical_css(
         FLAGS_enable_flush_early_critical_css);
@@ -727,10 +705,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_enable_blink_debug_dashboard(
         FLAGS_enable_blink_debug_dashboard);
   }
-  if (WasExplicitlySet("override_blink_cache_time_ms")) {
-    options->set_override_blink_cache_time_ms(
-        FLAGS_override_blink_cache_time_ms);
-  }
   if (WasExplicitlySet("report_unload_time")) {
     options->set_report_unload_time(FLAGS_report_unload_time);
   }
@@ -752,10 +726,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
     options->set_max_image_bytes_for_webp_in_css(
         FLAGS_max_image_bytes_for_webp_in_css);
-  }
-  if (WasExplicitlySet("enable_lazyload_in_blink")) {
-    options->set_enable_lazyload_in_blink(
-        FLAGS_enable_lazyload_in_blink);
   }
   if (WasExplicitlySet("persist_blink_blacklist")) {
     options->set_persist_blink_blacklist(
@@ -874,18 +844,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
                         options->WriteableDomainLawyer(),
                         &DomainLawyer::AddOriginDomainMapping, handler);
   }
-  if (WasExplicitlySet("passthrough_blink_for_last_invalid_response_code")) {
-    options->set_passthrough_blink_for_last_invalid_response_code(
-        FLAGS_passthrough_blink_for_last_invalid_response_code);
-  }
   if (WasExplicitlySet("enable_extended_instrumentation")) {
     options->set_enable_extended_instrumentation(
         FLAGS_enable_extended_instrumentation);
   }
 
-  if (WasExplicitlySet("apply_blink_if_no_families")) {
-    options->set_apply_blink_if_no_families(FLAGS_apply_blink_if_no_families);
-  }
   if (WasExplicitlySet("support_noscript_enabled")) {
     options->set_support_noscript_enabled(FLAGS_support_noscript_enabled);
   }

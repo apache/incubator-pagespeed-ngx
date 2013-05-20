@@ -3100,6 +3100,31 @@ TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsageWithLeafNode) {
   TestFallbackPageProperties(url, fallback_url);
 }
 
+TEST_F(ProxyInterfaceTest,
+       TestFallbackPropertiesUsageWithLeafNodeHavingTrailingSlash) {
+  GoogleString url("http://www.test.com/a/b/");
+  GoogleString fallback_url("http://www.test.com/a/c/");
+  TestFallbackPageProperties(url, fallback_url);
+}
+
+TEST_F(ProxyInterfaceTest, TestNoFallbackCallWithNoLeaf) {
+  GoogleUrl gurl("http://www.test.com/");
+  options()->set_use_fallback_property_cache_values(true);
+  StringAsyncFetch callback(
+      RequestContext::NewTestRequestContext(
+          server_context()->thread_system()));
+  RequestHeaders request_headers;
+  callback.set_request_headers(&request_headers);
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+      proxy_interface_->InitiatePropertyCacheLookup(
+          false, gurl, options(), &callback, false, NULL));
+
+  PropertyPage* fallback_page = callback_collector->fallback_property_page()
+      ->property_page_with_fallback_values();
+  // No PropertyPage with fallback values.
+  EXPECT_EQ(NULL, fallback_page);
+}
+
 TEST_F(ProxyInterfaceTest, TestSkipBlinkCohortLookUp) {
   GoogleUrl gurl("http://www.test.com/");
   StringAsyncFetch callback(

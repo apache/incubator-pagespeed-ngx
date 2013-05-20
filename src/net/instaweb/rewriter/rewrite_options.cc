@@ -30,7 +30,6 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_rw_lock.h"
@@ -60,10 +59,6 @@ const char RewriteOptions::kPrioritizeCriticalCssId[] = "pr";
 // Sets limit for buffering html in blink secondary fetch to 10MB default.
 const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
     10 * 1024 * 1024;
-
-// If positive, the overridden default cache-time for cacheable resources in
-// blink.
-const int64 RewriteOptions::kDefaultOverrideBlinkCacheTimeMs = -1;
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
@@ -1034,11 +1029,6 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);
   AddBaseProperty(
-      false, &RewriteOptions::enable_blink_critical_line_, "ebcl",
-      kEnableBlinkCriticalLine,
-      kDirectoryScope,
-      NULL);  // Not applicable for mod_pagespeed.
-  AddBaseProperty(
       false, &RewriteOptions::enable_flush_early_critical_css_, "efcc",
       kEnableFlushEarlyCriticalCss,
       kDirectoryScope,
@@ -1308,12 +1298,6 @@ void RewriteOptions::AddProperties() {
       "introspection in the form of "
       "document.getElementsByTagName('script').");
   AddBaseProperty(
-      false,
-      &RewriteOptions::passthrough_blink_for_last_invalid_response_code_,
-      "ptbi", kPassthroughBlinkForInvalidResponseCode,
-      kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
-  AddBaseProperty(
       false, &RewriteOptions::reject_blacklisted_, "rbl",
       kRejectBlacklisted,
       kDirectoryScope,
@@ -1388,11 +1372,6 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
-      false, &RewriteOptions::enable_lazyload_in_blink_, "elib",
-      kEnableLazyloadInBlink,
-      kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
-  AddBaseProperty(
       false, &RewriteOptions::enable_prioritizing_scripts_, "eps",
       kEnablePrioritizingScripts,
       kDirectoryScope,
@@ -1420,19 +1399,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::metadata_input_errors_cache_ttl_ms_,
       "mect");
   AddRequestProperty(
-      false,
-      &RewriteOptions::RewriteOptions::apply_blink_if_no_families_,
-      "abnf");
-  AddRequestProperty(
       true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd");
-  AddRequestProperty(
-      kDefaultOverrideBlinkCacheTimeMs,
-      &RewriteOptions::override_blink_cache_time_ms_, "obctm");
-  AddBaseProperty(
-      "", &RewriteOptions::blink_non_cacheables_for_all_families_,
-      "bncfaf", kBlinkNonCacheablesForAllFamilies,
-      kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
   AddRequestProperty(
       kDefaultBlinkHtmlChangeDetectionTimeMs,
       &RewriteOptions::blink_html_change_detection_time_ms_,
@@ -1518,8 +1485,6 @@ void RewriteOptions::AddProperties() {
   // log_url_indices_.DoNotUseForSignatureComputation();
   // serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
   // enable_defer_js_experimental_.DoNotUseForSignatureComputation();
-  // enable_blink_critical_line_.DoNotUseForSignatureComputation();
-  // serve_blink_non_critical_.DoNotUseForSignatureComputation();
   // default_cache_html_.DoNotUseForSignatureComputation();
   // lazyload_images_after_onload_.DoNotUseForSignatureComputation();
   // ga_id_.DoNotUseForSignatureComputation();
@@ -1532,7 +1497,6 @@ void RewriteOptions::AddProperties() {
 RewriteOptions::~RewriteOptions() {
   STLDeleteElements(&custom_fetch_headers_);
   STLDeleteElements(&furious_specs_);
-  STLDeleteElements(&prioritize_visible_content_families_);
   STLDeleteElements(&url_cache_invalidation_entries_);
   STLDeleteValues(&rejected_request_map_);
 }  // NOLINT
@@ -2534,72 +2498,6 @@ int64 RewriteOptions::MaxImageInlineMaxBytes() const {
                   CssImageInlineMaxBytes());
 }
 
-bool RewriteOptions::IsInBlinkCacheableFamily(const GoogleUrl& gurl) const {
-  // If there are no families added and apply_blink_if_no_families is
-  // true, then the default behaviour is to allow all urls.
-  if (apply_blink_if_no_families() &&
-      prioritize_visible_content_families_.empty()) {
-    return true;
-  }
-  return FindPrioritizeVisibleContentFamily(gurl.Spec()) != NULL;
-}
-
-int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
-  if (override_blink_cache_time_ms_.value() > 0) {
-    return override_blink_cache_time_ms_.value();
-  }
-  const PrioritizeVisibleContentFamily* family =
-      FindPrioritizeVisibleContentFamily(gurl.Spec());
-  if (family != NULL) {
-    return family->cache_time_ms;
-  }
-  return kDefaultPrioritizeVisibleContentCacheTimeMs;
-}
-
-GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
-    const GoogleUrl& gurl) const {
-  if (!non_cacheables_for_cache_partial_html().empty()) {
-    return non_cacheables_for_cache_partial_html();
-  }
-  const PrioritizeVisibleContentFamily* family =
-      FindPrioritizeVisibleContentFamily(gurl.Spec());
-  if (family == NULL || family->non_cacheable_elements.empty()) {
-    // If no family or family has empty non-cacheables then return the all
-    // families value.
-    return blink_non_cacheables_for_all_families_.value();
-  }
-  const GoogleString& non_cacheables_for_all_families =
-      blink_non_cacheables_for_all_families_.value();
-  if (non_cacheables_for_all_families.empty()) {
-    return family->non_cacheable_elements;
-  } else {
-    return StrCat(family->non_cacheable_elements, ",",
-                  non_cacheables_for_all_families);
-  }
-}
-
-const RewriteOptions::PrioritizeVisibleContentFamily*
-RewriteOptions::FindPrioritizeVisibleContentFamily(
-    const StringPiece url) const {
-  for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
-    const PrioritizeVisibleContentFamily* family =
-        prioritize_visible_content_families_[i];
-    if (family->url_pattern.Match(url)) {
-      return family;
-    }
-  }
-  return NULL;
-}
-
-void RewriteOptions::AddBlinkCacheableFamily(
-    const StringPiece url_pattern, int64 cache_time_ms,
-    const StringPiece non_cacheable_elements) {
-  Modify();
-  prioritize_visible_content_families_.push_back(
-      new PrioritizeVisibleContentFamily(
-          url_pattern, cache_time_ms, non_cacheable_elements));
-}
-
 void RewriteOptions::GetEnabledFiltersRequiringScriptExecution(
     RewriteOptions::FilterVector* filters) const {
   for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
@@ -2756,23 +2654,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
            src.url_cache_invalidation_map_.begin(),
            e = src.url_cache_invalidation_map_.end(); p != e; ++p) {
     PurgeUrl(p->first, p->second);
-  }
-
-  // If src's prioritize_visible_content_families_ is non-empty we simply
-  // replace this' prioritize_visible_content_families_ with src's.  Naturally,
-  // this means that families in this are lost.
-  // TODO(sriharis):  Revisit the Merge logic to be used for
-  // prioritize_visible_content_families_.
-  if (!src.prioritize_visible_content_families_.empty()) {
-    if (!prioritize_visible_content_families_.empty()) {
-      STLDeleteElements(&prioritize_visible_content_families_);
-      prioritize_visible_content_families_.clear();
-    }
-    for (int i = 0, n = src.prioritize_visible_content_families_.size(); i < n;
-         ++i) {
-      prioritize_visible_content_families_.push_back(
-          src.prioritize_visible_content_families_[i]->Clone());
-    }
   }
 
   // If either side has forbidden all disabled filters then the result must
@@ -2940,11 +2821,6 @@ void RewriteOptions::ComputeSignature() {
   // rejected_request_map_ is not added to rewrite options signature as this
   // should not affect rewriting and metadata or property cache lookups.
   StrAppend(&signature_, "OC:", override_caching_wildcard_.Signature(), "_");
-  StrAppend(&signature_, "PVC:");
-  for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
-    StrAppend(&signature_,
-              prioritize_visible_content_families_[i]->ComputeSignature(), "|");
-  }
   frozen_ = true;
 
   // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
@@ -3034,14 +2910,6 @@ GoogleString RewriteOptions::OptionsToString() const {
     for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
       StrAppend(&output, "  ", url_cache_invalidation_entries_[i]->ToString(),
                 "\n");
-    }
-  }
-  if (!prioritize_visible_content_families_.empty()) {
-    StrAppend(&output, "\nPrioritize visible content cacheable families\n");
-    for (int i = 0, n = prioritize_visible_content_families_.size(); i < n;
-         ++i) {
-      StrAppend(&output, "  ",
-                prioritize_visible_content_families_[i]->ToString(), "\n");
     }
   }
   if (rejected_request_map_.size() > 0) {

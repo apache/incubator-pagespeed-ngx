@@ -46,7 +46,9 @@ const char JsDisableFilter::kDisableJsExperimental[] =
     "  window.localStorage.removeItem(\'defer_js_experimental\');"
     "}";
 const char JsDisableFilter::kElementOnloadCode[] =
-    "this.setAttribute('data-pagespeed-loaded', 1)";
+    "var elem=this;"
+    "if (this==window) elem=document.body;"
+    "elem.setAttribute('data-pagespeed-loaded', 1)";
 
 JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
@@ -229,6 +231,8 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
     // always javascript. But we don't have any way of identifying it.
     // For now let us assume it is JS, which is the case in majority.
     // TODO(ksimbili): Try fixing not adding non-Js code, if we can.
+    // TODO(ksimbili): Call onloads on elements in the same order as they are
+    // triggered.
     onload->set_name(rewrite_driver_->MakeName("data-pagespeed-onload"));
     rewrite_driver_->AddEscapedAttribute(element, HtmlName::kOnload,
                                          kElementOnloadCode);

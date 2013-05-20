@@ -33,7 +33,6 @@ struct OptionName {
 "BeaconReinstrumentTimeSec",             RewriteOptions::kBeaconReinstrumentTimeSec
 "BeaconUrl",                             RewriteOptions::kBeaconUrl
 "BlinkMaxHtmlSizeRewritable",            RewriteOptions::kBlinkMaxHtmlSizeRewritable
-"BlinkNonCacheablesForAllFamilies",      RewriteOptions::kBlinkNonCacheablesForAllFamilies
 "BlockingRewriteKey",                    RewriteOptions::kXPsaBlockingRewrite
 "CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
 "ClientDomainRewrite",                   RewriteOptions::kClientDomainRewrite
@@ -52,7 +51,6 @@ struct OptionName {
 "DistributedRewriteTimeoutMs",           RewriteOptions::kDistributedRewriteTimeoutMs
 "DomainShardCount",                      RewriteOptions::kDomainShardCount
 "EnableAggressiveRewritersForMobile",    RewriteOptions::kEnableAggressiveRewritersForMobile
-"EnableBlinkCriticalLine",               RewriteOptions::kEnableBlinkCriticalLine
 "EnableBlinkHtmlChangeDetection",        RewriteOptions::kEnableBlinkHtmlChangeDetection
 "EnableBlinkHtmlChangeDetectionLogging", RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging
 "EnableCachePurge",                      RewriteOptions::kEnableCachePurge
@@ -60,7 +58,6 @@ struct OptionName {
 "EnableFixReflow",                       RewriteOptions::kEnableFixReflow,
 "EnableExtendedInstrumentation",          RewriteOptions::kEnableExtendedInstrumentation
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
-"EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
 "EnablePrioritizingScripts",             RewriteOptions::kEnablePrioritizingScripts
 "EnableRewriting",                       RewriteOptions::kEnabled
 "ExperimentSlot",                        RewriteOptions::kFuriousSlot

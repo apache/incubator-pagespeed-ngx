@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(180, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(173, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -777,9 +777,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("BlinkMaxHtmlSizeRewritable",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kBlinkMaxHtmlSizeRewritable));
-  EXPECT_STREQ("BlinkNonCacheablesForAllFamilies",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kBlinkNonCacheablesForAllFamilies));
   EXPECT_STREQ("BlockingRewriteKey",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kXPsaBlockingRewrite));
@@ -837,9 +834,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableAggressiveRewritersForMobile",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableAggressiveRewritersForMobile));
-  EXPECT_STREQ("EnableBlinkCriticalLine",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableBlinkCriticalLine));
   EXPECT_STREQ("EnableBlinkHtmlChangeDetection",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableBlinkHtmlChangeDetection));
@@ -861,9 +855,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableFlushSubresourcesExperimental",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableFlushSubresourcesExperimental));
-  EXPECT_STREQ("EnableLazyloadInBlink",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableLazyloadInBlink));
   EXPECT_STREQ("UseFallbackPropertyCacheValues",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kUseFallbackPropertyCacheValues));
@@ -1614,63 +1605,6 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum3) {
                 &msg, &handler));
   EXPECT_EQ("Format is size md5 url; bad md5 #@#)@(#@) or "
             "URL http://www.example.com/url.js", msg);
-}
-
-TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
-  GoogleUrl gurl_one("http://www.test.org/one.html");
-  GoogleUrl gurl_two("http://www.test.org/two.html");
-
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
-  options_.set_apply_blink_if_no_families(true);
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_one));
-  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor(gurl_one));
-  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor(gurl_two));
-  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor(gurl_one));
-  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor(gurl_two));
-
-  options_.AddBlinkCacheableFamily("http://www.test.org/one*", 10, "something");
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_one));
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_two));
-  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor(gurl_one));
-  EXPECT_EQ("something", options_.GetBlinkNonCacheableElementsFor(gurl_one));
-
-  options_.set_blink_non_cacheables_for_all_families("all1");
-  EXPECT_EQ("something,all1",
-            options_.GetBlinkNonCacheableElementsFor(gurl_one));
-  EXPECT_EQ("all1", options_.GetBlinkNonCacheableElementsFor(gurl_two));
-
-  RewriteOptions options1(&thread_system_);
-  options1.AddBlinkCacheableFamily("http://www.test.org/two*", 20, "something");
-  options1.set_blink_non_cacheables_for_all_families("all2");
-  options_.Merge(options1);
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_two));
-  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor(gurl_one));
-  EXPECT_EQ(20, options_.GetBlinkCacheTimeFor(gurl_two));
-  EXPECT_EQ("all2", options_.GetBlinkNonCacheableElementsFor(gurl_one));
-  EXPECT_EQ("something,all2",
-            options_.GetBlinkNonCacheableElementsFor(gurl_two));
-
-  EXPECT_EQ(RewriteOptions::kDefaultOverrideBlinkCacheTimeMs,
-            options1.override_blink_cache_time_ms());
-  options1.set_override_blink_cache_time_ms(120000);
-  EXPECT_EQ(120000, options1.GetBlinkCacheTimeFor(gurl_one));
-  EXPECT_EQ(120000, options1.GetBlinkCacheTimeFor(gurl_two));
-
-  options_.set_blink_non_cacheables_for_all_families("all3");
-  RewriteOptions options2(&thread_system_);
-  options2.AddBlinkCacheableFamily("http://www.test.org/two*", 40, "");
-  options_.Merge(options2);
-  EXPECT_EQ(40, options_.GetBlinkCacheTimeFor(gurl_two));
-  EXPECT_EQ("all3", options_.GetBlinkNonCacheableElementsFor(gurl_one));
-  EXPECT_EQ("all3", options_.GetBlinkNonCacheableElementsFor(gurl_two));
-
-  options_.set_non_cacheables_for_cache_partial_html("non_cacheables");
-  EXPECT_EQ("non_cacheables",
-            options_.GetBlinkNonCacheableElementsFor(gurl_one));
 }
 
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {

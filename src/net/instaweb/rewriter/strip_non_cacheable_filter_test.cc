@@ -83,9 +83,7 @@ class StripNonCacheableFilterTest : public RewriteTestBase {
     options_ = new RewriteOptions(factory()->thread_system());
     options_->EnableFilter(RewriteOptions::kStripNonCacheable);
 
-    options_->AddBlinkCacheableFamily(
-        "http://www.test.com/",
-        RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+    options_->set_non_cacheables_for_cache_partial_html(
         "class= \"item \" , id\t =beforeItems \t , class=\"itema itemb\"");
 
     SetUseManagedRewriteDrivers(true);

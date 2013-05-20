@@ -841,17 +841,8 @@ void CacheHtmlFlow::PopulateCacheHtmlInfo(PropertyPage* page) {
   if (!cache_html_info_.ParseFromZeroCopyStream(&value)) {
     LOG(DFATAL) << "Parsing value from cache into CacheHtmlInfo failed.";
     cache_html_info_.Clear();
-    return;
   }
-  int64 expiration_time_ms =
-      cache_html_info_.last_cached_html_computation_timestamp_ms() +
-      options_->GetBlinkCacheTimeFor(google_url_);
-
-  if (!options_->enable_blink_html_change_detection() &&
-      server_context_->timer()->NowMs() > expiration_time_ms) {
-    cache_html_info_.Clear();
-    return;
-  }
+  return;
 }
 
 }  // namespace net_instaweb

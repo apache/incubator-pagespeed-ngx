@@ -46,7 +46,6 @@
 
 namespace net_instaweb {
 
-class GoogleUrl;
 class Hasher;
 class MessageHandler;
 class RequestHeaders;
@@ -182,9 +181,7 @@ class RewriteOptions {
     kAvoidRenamingIntrospectiveJavascript,
     kBeaconReinstrumentTimeSec,
     kBeaconUrl,
-    kBlinkDesktopUserAgent,
     kBlinkMaxHtmlSizeRewritable,
-    kBlinkNonCacheablesForAllFamilies,
     kCacheInvalidationTimestamp,
     kCacheSmallImagesUnrewritten,
     kClientDomainRewrite,
@@ -204,9 +201,7 @@ class RewriteOptions {
     kDomainRewriteHyperlinks,
     kDomainShardCount,
     kEnableAggressiveRewritersForMobile,
-    kEnableBlinkCriticalLine,
     kEnableBlinkDashboard,
-    kEnableBlinkForMobileDevices,
     kEnableBlinkHtmlChangeDetection,
     kEnableBlinkHtmlChangeDetectionLogging,
     kEnableDeferJsExperimental,
@@ -216,7 +211,6 @@ class RewriteOptions {
     kEnableExtendedInstrumentation,
     kEnableFlushSubresourcesExperimental,
     kEnableLazyLoadHighResImages,
-    kEnableLazyloadInBlink,
     kEnablePrioritizingScripts,
     kEnabled,
     kFinderPropertiesCacheExpirationTimeMs,
@@ -279,10 +273,8 @@ class RewriteOptions {
     kModifyCachingHeaders,
     kNonCacheablesForCachePartialHtml,
     kObliviousPagespeedUrls,
-    kOverrideBlinkCacheTimeMs,
     kOverrideCachingTtlMs,
     kOverrideIeDocumentMode,
-    kPassthroughBlinkForInvalidResponseCode,
     kPersistBlinkBlacklist,
     kProgressiveJpegMinBytes,
     kPropagateBlinkCacheDeletes,
@@ -603,7 +595,6 @@ class RewriteOptions {
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
-  static const int64 kDefaultOverrideBlinkCacheTimeMs;
   static const int kDefaultMaxPrefetchJsElements;
 
   // IE limits URL size overall to about 2k characters.  See
@@ -1545,13 +1536,6 @@ class RewriteOptions {
     return serve_stale_if_fetch_error_.value();
   }
 
-  void set_enable_blink_critical_line(bool x) {
-    set_option(x, &enable_blink_critical_line_);
-  }
-  bool enable_blink_critical_line() const {
-    return enable_blink_critical_line_.value();
-  }
-
   void set_enable_flush_early_critical_css(bool x) {
     set_option(x, &enable_flush_early_critical_css_);
   }
@@ -1854,13 +1838,6 @@ class RewriteOptions {
     return use_fallback_property_cache_values_.value();
   }
 
-  void set_enable_lazyload_in_blink(bool x) {
-    set_option(x, &enable_lazyload_in_blink_);
-  }
-  bool enable_lazyload_in_blink() const {
-    return enable_lazyload_in_blink_.value();
-  }
-
   void set_enable_prioritizing_scripts(bool x) {
     set_option(x, &enable_prioritizing_scripts_);
   }
@@ -1873,21 +1850,6 @@ class RewriteOptions {
   }
   int64 blink_html_change_detection_time_ms() const {
     return blink_html_change_detection_time_ms_.value();
-  }
-
-  void set_override_blink_cache_time_ms(int64 x) {
-    set_option(x, &override_blink_cache_time_ms_);
-  }
-  int64 override_blink_cache_time_ms() const {
-    return override_blink_cache_time_ms_.value();
-  }
-
-  void set_blink_non_cacheables_for_all_families(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()),
-               &blink_non_cacheables_for_all_families_);
-  }
-  const GoogleString& blink_non_cacheables_for_all_families() const {
-    return blink_non_cacheables_for_all_families_.value();
   }
 
   const GoogleString& blocking_rewrite_key() const {
@@ -1904,27 +1866,6 @@ class RewriteOptions {
   void set_rewrite_uncacheable_resources(bool x) {
     set_option(x, &rewrite_uncacheable_resources_);
   }
-
-  // Does url match a cacheable family pattern?  Returns true if url matches a
-  // url_pattern in prioritize_visible_content_families_.
-  bool IsInBlinkCacheableFamily(const GoogleUrl& gurl) const;
-
-  // Get the cache time for gurl for prioritize_visible_content filter.  In case
-  // gurl matches a url_pattern in prioritize_visible_content_families_ we
-  // return the corresponding cache_time_ms field, else we return
-  // kDefaultPrioritizeVisibleContentCacheTimeMs.
-  int64 GetBlinkCacheTimeFor(const GoogleUrl& gurl) const;
-
-  // Get elements to be treated as non-cacheable for gurl.  In case
-  // gurl matches a url_pattern in prioritize_visible_content_families_ we
-  // return the corresponding non_cacheable_elements field, else we return empty
-  // string.
-  GoogleString GetBlinkNonCacheableElementsFor(const GoogleUrl& gurl) const;
-
-  // Create and add a PrioritizeVisibleContentFamily object the given fields.
-  void AddBlinkCacheableFamily(const StringPiece url_pattern,
-                               int64 cache_time_ms,
-                               const StringPiece non_cacheable_elements);
 
   void set_running_furious_experiment(bool x) {
     set_option(x, &running_furious_);
@@ -1989,25 +1930,11 @@ class RewriteOptions {
     return avoid_renaming_introspective_javascript_.value();
   }
 
-  void set_passthrough_blink_for_last_invalid_response_code(bool x) {
-    set_option(x, &passthrough_blink_for_last_invalid_response_code_);
-  }
-  bool passthrough_blink_for_last_invalid_response_code() const {
-    return passthrough_blink_for_last_invalid_response_code_.value();
-  }
-
   int64 blink_max_html_size_rewritable() const {
     return blink_max_html_size_rewritable_.value();
   }
   void set_blink_max_html_size_rewritable(int64 x) {
     set_option(x, &blink_max_html_size_rewritable_);
-  }
-
-  void set_apply_blink_if_no_families(bool x) {
-    set_option(x, &apply_blink_if_no_families_);
-  }
-  bool apply_blink_if_no_families() const {
-    return apply_blink_if_no_families_.value();
   }
 
   void set_critical_line_config(const StringPiece& p) {
@@ -3042,8 +2969,6 @@ class RewriteOptions {
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;
-  // Whether blink critical line flow should be enabled.
-  Option<bool> enable_blink_critical_line_;
   // Whether to flush the inlined critical css rules early.
   Option<bool> enable_flush_early_critical_css_;
   // When default_cache_html_ is false (default) we do not cache
@@ -3185,15 +3110,6 @@ class RewriteOptions {
   // Maximum length (in bytes) of response content.
   Option<int64> max_cacheable_response_content_length_;
 
-  // Option for the prioritize_visible_content filter.
-  //
-  // Represents the following information:
-  // "<url family wildcard 1>;<cache time 1>;<comma separated list of non-cacheable elements 1>",  // NOLINT
-  // "<url family wildcard 2>;<cache time 2>;<comma separated list of non-cacheable elements 2>",  // NOLINT
-  //  ...
-  std::vector<PrioritizeVisibleContentFamily*>
-      prioritize_visible_content_families_;
-
   // The timestamp when blink blacklist expires.
   Option<int64> blink_blacklist_end_timestamp_ms_;
   // Persist blink blacklist.
@@ -3201,18 +3117,10 @@ class RewriteOptions {
 
   Option<GoogleString> ga_id_;
 
-  // Pass-through request in prioritize_visible_content filter, if we got a
-  // non-200 response from origin on the last fetch.
-  Option<bool> passthrough_blink_for_last_invalid_response_code_;
-  // Sets limit for max html size that is rewritten in Blink.
   Option<int64> blink_max_html_size_rewritable_;
   // Time after which we should try to detect if publisher html in blink
   // has changed.
   Option<int64> blink_html_change_detection_time_ms_;
-  // If prioritize_visible_content_families_ is empty and the following is true,
-  // then prioritize_visible_content applies on all URLs (with default cache
-  // time and no non-cacheables).
-  Option<bool> apply_blink_if_no_families_;
   // Show the blink debug dashboard.
   Option<bool> enable_blink_debug_dashboard_;
   // Enable automatic detection of publisher changes in html in blink.
@@ -3223,17 +3131,10 @@ class RewriteOptions {
   Option<bool> use_smart_diff_in_blink_;
   // Use fallback values from property cache.
   Option<bool> use_fallback_property_cache_values_;
-  // Don't force disable lazyload in blink;
-  Option<bool> enable_lazyload_in_blink_;
   // Enable Prioritizing of scripts in defer javascript.
   Option<bool> enable_prioritizing_scripts_;
   // Enables rewriting of uncacheable resources.
   Option<bool> rewrite_uncacheable_resources_;
-  // Override cache-time for cacheable resources in blink.
-  Option<int64> override_blink_cache_time_ms_;
-  // Non-cacheables to be used for all families in
-  // prioritize_visible_content_families_.
-  Option<GoogleString> blink_non_cacheables_for_all_families_;
   // Specification for critical line.
   Option<GoogleString> critical_line_config_;
   // The user-provided key used to authenticate requests from one rewrite task

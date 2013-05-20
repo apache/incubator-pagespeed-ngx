@@ -350,20 +350,23 @@ ProxyFetchPropertyCallbackCollector*
     if (options != NULL &&
         options->use_fallback_property_cache_values()) {
       GoogleString fallback_page_key;
-      if (request_url.has_query()) {
+      if (request_url.PathAndLeaf() != "/" &&
+          !request_url.PathAndLeaf().empty()) {
+        // Don't bother looking up fallback properties for the root, "/", since
+        // there is nothing to fall back to.
         fallback_page_key = server_context_->GetFallbackPagePropertyCacheKey(
-            request_url.AllExceptQuery(), options, device_type_suffix);
-      } else {
-        fallback_page_key = server_context_->GetFallbackPagePropertyCacheKey(
-            request_url.AllExceptLeaf(), options, device_type_suffix);
+            request_url, options, device_type_suffix);
       }
-      fallback_property_callback =
-          new ProxyFetchPropertyCallback(
-              ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
-              page_property_cache, fallback_page_key, device_type,
-              callback_collector.get(),
-              server_context_->thread_system()->NewMutex());
-      callback_collector->AddCallback(fallback_property_callback);
+
+      if (!fallback_page_key.empty()) {
+        fallback_property_callback =
+            new ProxyFetchPropertyCallback(
+                ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
+                page_property_cache, fallback_page_key, device_type,
+                callback_collector.get(),
+                server_context_->thread_system()->NewMutex());
+        callback_collector->AddCallback(fallback_property_callback);
+      }
     }
   }
 

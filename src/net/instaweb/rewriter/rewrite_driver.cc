@@ -2138,8 +2138,7 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   // Only update the property cache if there is a filter or option enabled that
   // actually makes use of it.
   if (!(write_property_cache_dom_cohort_ ||
-        options()->max_html_parse_bytes() > 0 ||
-        options()->enable_blink_critical_line())) {
+        options()->max_html_parse_bytes() > 0)) {
     return;
   }
 
