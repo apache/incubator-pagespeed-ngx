@@ -121,15 +121,6 @@ NgxRewriteOptions::ParseAndSetOptions(
     NgxRewriteDriverFactory* driver_factory) {
   CHECK_GE(n_args, 1);
 
-  int i;
-  fprintf(stderr, "Setting option from (");
-  for (i = 0 ; i < n_args ; i++) {
-    fprintf(stderr, "%s\"%s\"",
-            i == 0 ? "" : ", ",
-            args[i].as_string().c_str());
-  }
-  fprintf(stderr, ")\n");
-
   StringPiece directive = args[0];
 
   // Remove initial "ModPagespeed" if there is one.
