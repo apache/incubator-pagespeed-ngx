@@ -82,6 +82,7 @@
         'http/http_response_parser_test.cc',
         'http/http_value_test.cc',
         'http/inflating_fetch_test.cc',
+        'http/log_record_test.cc',
         'http/mock_url_fetcher_test.cc',
         'http/rate_controlling_url_async_fetcher_test.cc',
         'http/reflecting_test_fetcher_test.cc',
