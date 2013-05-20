@@ -17,16 +17,16 @@
 // Author: jmarantz@google.com (Joshua Marantz),
 //         morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/symbol_table.h"
+#include "pagespeed/kernel/base/symbol_table.h"
 
 #include <cstddef>
 #include <cstdlib>
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/atom.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace {
 

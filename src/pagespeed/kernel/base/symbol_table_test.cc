@@ -18,12 +18,12 @@
 
 // Unit-test the symbol table
 
-#include "net/instaweb/util/public/symbol_table.h"
+#include "pagespeed/kernel/base/symbol_table.h"
 
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/atom.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

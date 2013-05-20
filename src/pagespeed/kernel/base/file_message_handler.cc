@@ -16,13 +16,13 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/file_message_handler.h"
+#include "pagespeed/kernel/base/file_message_handler.h"
 
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 
-#include "net/instaweb/util/public/message_handler.h"
+#include "pagespeed/kernel/base/message_handler.h"
 
 namespace net_instaweb {
 

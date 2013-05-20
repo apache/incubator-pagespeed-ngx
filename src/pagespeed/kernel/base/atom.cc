@@ -17,7 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz),
 //         morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/atom.h"
+#include "pagespeed/kernel/base/atom.h"
 
 namespace net_instaweb {
 

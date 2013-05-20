@@ -22,21 +22,14 @@
   },
   'targets': [
     {
+      # TODO(morlovich): This is a compatibility target and should get removed
+      # eventually.
       'target_name': 'instaweb_util_core',
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
-      'sources': [
-        'util/atom.cc',
-        'util/charset_util.cc',
-        'util/countdown_timer.cc',
-        'util/file_message_handler.cc',
-        'util/string_convert.cc',
-        'util/symbol_table.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -48,9 +41,6 @@
           '<(DEPTH)',
         ],
       },
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
     },
     {
       'target_name': 'instaweb_htmlparse_core_gperf',

@@ -263,7 +263,6 @@
         'util/split_statistics_test.cc',
         'util/statistics_logger_test.cc',
         'util/statistics_work_bound_test.cc',
-        'util/symbol_table_test.cc',
         'util/thread_system_test_base.cc',
         'util/threadsafe_cache_test.cc',
         'util/thread_synchronizer_test.cc',
@@ -282,6 +281,7 @@
         '<(DEPTH)/pagespeed/kernel/base/stdio_file_system_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/string_multi_map_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/string_util_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/symbol_table_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/time_util_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/content_type_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/google_url_test.cc',
@@ -406,6 +406,7 @@
         'instaweb_core.gyp:instaweb_util_core',
         'test_util',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/re2/re2.gyp:re2_bench_util',
       ],
       'include_dirs': [
