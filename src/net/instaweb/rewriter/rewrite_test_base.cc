@@ -77,6 +77,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
@@ -138,6 +139,7 @@ void RewriteTestBase::Init() {
   server_context_ = factory_->CreateServerContext();
   other_server_context_ = other_factory_->CreateServerContext();
   active_server_ = kPrimary;
+  message_handler_.set_mutex(factory_->thread_system()->NewMutex());
 }
 
 RewriteTestBase::~RewriteTestBase() {

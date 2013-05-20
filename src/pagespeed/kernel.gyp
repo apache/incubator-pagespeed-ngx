@@ -30,6 +30,7 @@
         'kernel/base/google_message_handler.cc',
         'kernel/base/message_handler.cc',
         'kernel/base/null_message_handler.cc',
+        'kernel/base/null_mutex.cc',
         'kernel/base/null_writer.cc',
         'kernel/base/print_message_handler.cc',
         'kernel/base/stdio_file_system.cc',

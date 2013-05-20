@@ -20,9 +20,11 @@
 #include <cstdlib>
 #include "base/logging.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/shared_dynamic_string_map.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -44,7 +46,9 @@ const char kExampleString2[] = "http://www.example2.com";
 SharedDynamicStringMapTestBase::SharedDynamicStringMapTestBase(
     SharedMemTestEnv* test_env)
     : test_env_(test_env),
-      shmem_runtime_(test_env->CreateSharedMemRuntime()) {
+      shmem_runtime_(test_env->CreateSharedMemRuntime()),
+      thread_system_(Platform::CreateThreadSystem()),
+      handler_(thread_system_->NewMutex()) {
   // We must be able to fit a unique int in our string
   CHECK(2 * kIntSize < kStringSize - 1);
   // 255 because we can't use null char

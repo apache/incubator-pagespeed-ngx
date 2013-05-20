@@ -32,10 +32,8 @@
 namespace net_instaweb {
 
 
-MockMessageHandler::MockMessageHandler() {
-  // TODO(morlovich): Allow providing the thread system as an argument.
-  scoped_ptr<ThreadSystem> thread_runtime(Platform::CreateThreadSystem());
-  mutex_.reset(thread_runtime->NewMutex());
+MockMessageHandler::MockMessageHandler(AbstractMutex* mutex)
+    : mutex_(mutex) {
 }
 
 MockMessageHandler::~MockMessageHandler() {
@@ -88,6 +86,11 @@ int MockMessageHandler::TotalMessagesImpl() const {
 int MockMessageHandler::SeriousMessages() const {
   ScopedMutex hold_mutex(mutex_.get());
   return TotalMessagesImpl() - MessagesOfTypeImpl(kInfo);
+}
+
+void MockMessageHandler::set_mutex(AbstractMutex* mutex) {
+  mutex_->DCheckUnlocked();
+  mutex_.reset(mutex);
 }
 
 }  // namespace net_instaweb

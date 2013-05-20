@@ -20,6 +20,7 @@
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -87,6 +88,8 @@ class TracingWriter : public Writer {
 
 class ChunkingWriterTest : public testing::Test {
  public:
+  ChunkingWriterTest() : message_handler_(new NullMutex) {}
+
   virtual void SetUp() {
     tracer_.reset(new TracingWriter(&message_handler_));
     SetUpWithLimit(0);

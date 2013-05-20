@@ -20,6 +20,7 @@
 
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string_writer.h"
 
@@ -30,7 +31,7 @@ namespace image_compression {
 bool ReadFile(const GoogleString& file_name,
               GoogleString* content) {
   net_instaweb::StdioFileSystem file_system;
-  net_instaweb::MockMessageHandler message_handler;
+  net_instaweb::MockMessageHandler message_handler(new net_instaweb::NullMutex);
   net_instaweb::StringWriter writer(content);
   return(file_system.ReadFile(file_name.c_str(), &writer, &message_handler));
 }

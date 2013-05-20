@@ -232,13 +232,14 @@ Hasher* TestRewriteDriverFactory::NewHasher() {
 
 MessageHandler* TestRewriteDriverFactory::DefaultMessageHandler() {
   DCHECK(mock_message_handler_ == NULL);
-  mock_message_handler_ = new MockMessageHandler;
+  mock_message_handler_ = new MockMessageHandler(thread_system()->NewMutex());
   return mock_message_handler_;
 }
 
 MessageHandler* TestRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
   DCHECK(mock_html_message_handler_ == NULL);
-  mock_html_message_handler_ = new MockMessageHandler;
+  mock_html_message_handler_ = new MockMessageHandler(
+      thread_system()->NewMutex());
   return mock_html_message_handler_;
 }
 

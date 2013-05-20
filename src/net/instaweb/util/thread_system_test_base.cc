@@ -106,7 +106,9 @@ class ToggleThread : public ThreadSystem::Thread {
 
 ThreadSystemTestBase::ThreadSystemTestBase(ThreadSystem* thread_system)
     : ok_flag_(false),
-      thread_system_(thread_system) {}
+      thread_system_(thread_system),
+      handler_(thread_system_->NewMutex()) {
+}
 
 void ThreadSystemTestBase::TestStartJoin() {
   SuccessThread test_thread(this);

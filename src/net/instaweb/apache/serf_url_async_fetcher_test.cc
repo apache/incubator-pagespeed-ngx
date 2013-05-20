@@ -131,7 +131,10 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   }
 
  protected:
-  SerfUrlAsyncFetcherTest() { }
+  SerfUrlAsyncFetcherTest()
+      : thread_system_(Platform::CreateThreadSystem()),
+        message_handler_(thread_system_->NewMutex()) {
+  }
 
   virtual void SetUp() {
     StringPiece fetch_test_domain(getenv("FETCH_TEST_DOMAIN"));
@@ -140,7 +143,6 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     }
     apr_pool_create(&pool_, NULL);
     timer_.reset(Platform::CreateTimer());
-    thread_system_.reset(Platform::CreateThreadSystem());
     statistics_.reset(new SimpleStats(thread_system_.get()));
     SerfUrlAsyncFetcher::InitStats(statistics_.get());
     serf_url_async_fetcher_.reset(
@@ -373,10 +375,10 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   // The fetcher to be tested.
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;
   scoped_ptr<Timer> timer_;
-  MockMessageHandler message_handler_;
   size_t prev_done_count;
   scoped_ptr<AbstractMutex> mutex_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockMessageHandler message_handler_;
   scoped_ptr<SimpleStats> statistics_;
   GoogleString https_favicon_url_;
   GoogleString favicon_head_;

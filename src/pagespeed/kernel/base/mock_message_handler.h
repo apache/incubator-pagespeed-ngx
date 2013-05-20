@@ -35,7 +35,9 @@ class AbstractMutex;
 // track of number of messages output, to validate diagnostics
 class MockMessageHandler : public GoogleMessageHandler {
  public:
-  MockMessageHandler();
+  // Takes ownership of the mutex.
+  explicit MockMessageHandler(AbstractMutex* mutex);
+
   virtual ~MockMessageHandler();
 
   // Returns number of messages of given type issued
@@ -46,6 +48,9 @@ class MockMessageHandler : public GoogleMessageHandler {
 
   // Returns number of messages of severity higher than info
   int SeriousMessages() const;
+
+  // Takes ownership of the mutex.
+  void set_mutex(AbstractMutex* mutex);
 
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);

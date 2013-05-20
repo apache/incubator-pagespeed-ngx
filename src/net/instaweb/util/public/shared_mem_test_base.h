@@ -28,6 +28,7 @@
 namespace net_instaweb {
 
 class Function;
+class ThreadSystem;
 
 class SharedMemTestEnv {
  public:
@@ -117,6 +118,7 @@ class SharedMemTestBase : public testing::Test {
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemTestBase);

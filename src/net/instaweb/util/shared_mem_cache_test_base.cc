@@ -21,9 +21,11 @@
 
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/shared_mem_cache.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -49,6 +51,8 @@ void YieldToThread() {
 SharedMemCacheTestBase::SharedMemCacheTestBase(SharedMemTestEnv* env)
     : test_env_(env),
       shmem_runtime_(env->CreateSharedMemRuntime()),
+      thread_system_(Platform::CreateThreadSystem()),
+      handler_(thread_system_->NewMutex()),
       timer_(0),
       sanity_checks_enabled_(true) {
   cache_.reset(MakeCache());

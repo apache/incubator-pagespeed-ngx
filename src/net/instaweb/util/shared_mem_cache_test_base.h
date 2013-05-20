@@ -32,6 +32,7 @@
 namespace net_instaweb {
 
 class CacheInterface;
+class ThreadSystem;
 
 class SharedMemCacheTestBase : public CacheTestBase {
  protected:
@@ -63,6 +64,7 @@ class SharedMemCacheTestBase : public CacheTestBase {
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
   scoped_ptr<SharedMemCache<kBlockSize> > cache_;
   MD5Hasher hasher_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
   MockTimer timer_;
 

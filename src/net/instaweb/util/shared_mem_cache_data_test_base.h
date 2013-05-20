@@ -30,6 +30,8 @@
 
 namespace net_instaweb {
 
+class ThreadSystem;
+
 class SharedMemCacheDataTestBase : public testing::Test {
  protected:
   typedef void (SharedMemCacheDataTestBase::*TestMethod)();
@@ -64,6 +66,7 @@ class SharedMemCacheDataTestBase : public testing::Test {
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemCacheDataTestBase);

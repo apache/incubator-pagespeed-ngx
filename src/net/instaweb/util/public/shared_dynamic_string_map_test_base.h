@@ -29,6 +29,7 @@
 
 namespace net_instaweb {
 class SharedDynamicStringMap;
+class ThreadSystem;
 
 class SharedDynamicStringMapTestBase : public testing::Test {
  protected:
@@ -75,6 +76,7 @@ class SharedDynamicStringMapTestBase : public testing::Test {
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedDynamicStringMapTestBase);

@@ -343,6 +343,11 @@ void AbstractLogRecord::PopulateRewriterStatusCounts() {
       status_count->set_application_status(application_status);
       status_count->set_count(count);
     }
+    if (stats_proto->html_status() == RewriterHtmlApplication::UNKNOWN_STATUS &&
+        stats_proto->status_counts_size() > 0) {
+      // The filter was active if there are any status counts.
+      stats_proto->set_html_status(RewriterHtmlApplication::ACTIVE);
+    }
   }
 }
 

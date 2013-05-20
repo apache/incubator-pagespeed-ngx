@@ -48,14 +48,20 @@ const int64 SharedMemStatisticsTestBase::kMaxLogfileSizeKb = 10;
 
 SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
     SharedMemTestEnv* test_env)
-    : test_env_(test_env),
+    : thread_system_(Platform::CreateThreadSystem()),
+      handler_(thread_system_->NewMutex()),
+      test_env_(test_env),
       shmem_runtime_(test_env->CreateSharedMemRuntime()) {
+}
+
+SharedMemStatisticsTestBase::SharedMemStatisticsTestBase()
+    : thread_system_(Platform::CreateThreadSystem()),
+      handler_(thread_system_->NewMutex()) {
 }
 
 void SharedMemStatisticsTestBase::SetUp() {
   // This time is in the afternoon of 17 July 2012.
   timer_.reset(new MockTimer(1342567288560ULL));
-  thread_system_.reset(Platform::CreateThreadSystem());
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
   stats_.reset(new SharedMemStatistics(
       kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, true, kPrefix,

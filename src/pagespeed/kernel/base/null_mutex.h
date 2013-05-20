@@ -16,21 +16,24 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/null_mutex.h"
+#ifndef PAGESPEED_KERNEL_BASE_NULL_MUTEX_H_
+#define PAGESPEED_KERNEL_BASE_NULL_MUTEX_H_
+
+#include "net/instaweb/util/public/abstract_mutex.h"
 
 namespace net_instaweb {
 
-NullMutex::~NullMutex() {
-}
-
-bool NullMutex::TryLock() {
-  return true;
-}
-
-void NullMutex::Lock() {
-}
-
-void NullMutex::Unlock() {
-}
+// Implements an empty mutex for single-threaded programs that need to work
+// with interfaces that require mutexes.
+class NullMutex : public AbstractMutex {
+ public:
+  NullMutex() {}
+  virtual ~NullMutex();
+  virtual bool TryLock();
+  virtual void Lock();
+  virtual void Unlock();
+};
 
 }  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_BASE_NULL_MUTEX_H_

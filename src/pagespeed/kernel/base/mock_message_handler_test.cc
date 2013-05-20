@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
@@ -26,6 +27,8 @@ namespace {
 
 class MockMessageHandlerTest : public testing::Test {
  protected:
+  MockMessageHandlerTest() : handler_(new NullMutex) {}
+
   void CheckCounts(int expectInfo, int expectWarn, int expectError,
                    int expectFatal) {
     EXPECT_EQ(expectInfo, handler_.MessagesOfType(kInfo));

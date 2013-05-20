@@ -284,8 +284,9 @@ TEST_F(LogRecordTest, LogRewriterApplicationStatus) {
             logged.rewriter_stats(0).status_counts(1).application_status());
   EXPECT_EQ(2, logged.rewriter_stats(0).status_counts(1).count());
 
+  // If any application status count is logged, the filter is considered ACTIVE.
   EXPECT_EQ("bb", logged.rewriter_stats(1).id());
-  EXPECT_EQ(RewriterHtmlApplication::UNKNOWN_STATUS,
+  EXPECT_EQ(RewriterHtmlApplication::ACTIVE,
             logged.rewriter_stats(1).html_status());
   ASSERT_EQ(1, logged.rewriter_stats(1).status_counts_size());
   EXPECT_EQ(RewriterApplication::PROPERTY_NOT_FOUND,

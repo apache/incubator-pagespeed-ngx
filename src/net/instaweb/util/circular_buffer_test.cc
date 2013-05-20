@@ -17,12 +17,14 @@
 #include <cstdlib>
 #include "net/instaweb/util/public/circular_buffer.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
 
 class CircularBufferTest : public testing::Test {
  protected:
+  CircularBufferTest() : handler_(new NullMutex) {}
   MockMessageHandler handler_;
 };
 

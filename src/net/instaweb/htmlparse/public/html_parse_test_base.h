@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -40,7 +41,8 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   static const char kXhtmlDtd[];    // DOCTYPE string for claiming XHTML
 
   HtmlParseTestBaseNoAlloc()
-      : write_to_string_(&output_buffer_),
+      : message_handler_(new NullMutex),
+        write_to_string_(&output_buffer_),
         added_filter_(false) {
   }
   virtual ~HtmlParseTestBaseNoAlloc();

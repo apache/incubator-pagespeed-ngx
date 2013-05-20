@@ -20,6 +20,8 @@
 #include <set>
 
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -44,7 +46,9 @@ const int kEntries = 25;
 
 SharedMemCacheDataTestBase::SharedMemCacheDataTestBase(SharedMemTestEnv* env)
     : test_env_(env),
-      shmem_runtime_(env->CreateSharedMemRuntime()) {
+      shmem_runtime_(env->CreateSharedMemRuntime()),
+      thread_system_(Platform::CreateThreadSystem()),
+      handler_(thread_system_->NewMutex()) {
 }
 
 bool SharedMemCacheDataTestBase::CreateChild(TestMethod method) {

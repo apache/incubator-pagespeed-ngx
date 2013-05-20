@@ -40,8 +40,8 @@ class SharedMemStatisticsTestBase : public testing::Test {
   static const int64 kLogIntervalMs;
   static const int64 kMaxLogfileSizeKb;
 
+  SharedMemStatisticsTestBase();
   explicit SharedMemStatisticsTestBase(SharedMemTestEnv* test_env);
-  SharedMemStatisticsTestBase() : testing::Test() {}
 
   virtual void SetUp();
   virtual void TearDown();
@@ -64,6 +64,7 @@ class SharedMemStatisticsTestBase : public testing::Test {
     return stats_->console_logger_.get();
   }
 
+  scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
   scoped_ptr<MemFileSystem> file_system_;
   scoped_ptr<SharedMemStatistics> stats_;  // (the parent process version)
@@ -88,7 +89,6 @@ class SharedMemStatisticsTestBase : public testing::Test {
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
   scoped_ptr<MockTimer> timer_;
-  scoped_ptr<ThreadSystem> thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemStatisticsTestBase);
 };

@@ -48,7 +48,8 @@ class AsyncFetchTest : public testing::Test {
  protected:
   AsyncFetchTest()
       : request_context_(new RequestContext(new NullMutex, NULL)),
-        string_fetch_(request_context_) {
+        string_fetch_(request_context_),
+        handler_(new NullMutex) {
   }
 
  protected:

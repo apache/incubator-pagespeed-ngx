@@ -26,7 +26,9 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class SharedCircularBuffer;
+class ThreadSystem;
 
 // This TestBase is added to pthread_shared_mem_test
 class SharedCircularBufferTestBase : public testing::Test {
@@ -63,6 +65,7 @@ class SharedCircularBufferTestBase : public testing::Test {
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
   // Message to write in Child process.
   // We can't pass in argument in callback functions in this TestBase,

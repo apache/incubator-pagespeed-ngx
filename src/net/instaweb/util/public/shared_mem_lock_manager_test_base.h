@@ -54,12 +54,12 @@ class SharedMemLockManagerTestBase : public testing::Test {
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
-  MockMessageHandler handler_;
   MockTimer timer_;   // note: this is thread-unsafe, and if we are running in
                       // a process-based environment it's not shared at all.
                       // Therefore,  all advancement must be done in either
                       // parent or kid but not both.
   scoped_ptr<ThreadSystem> thread_system_;
+  MockMessageHandler handler_;
   MockScheduler scheduler_;
   MD5Hasher hasher_;
   scoped_ptr<SharedMemLockManager> root_lock_manager_;  // used for init only.

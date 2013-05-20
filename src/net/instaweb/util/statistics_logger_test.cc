@@ -51,6 +51,7 @@ class StatisticsLoggerTest : public ::testing::Test {
       // This time is in the afternoon of 17 July 2012.
       : timer_(1342567288560ULL),
         thread_system_(Platform::CreateThreadSystem()),
+        handler_(thread_system_->NewMutex()),
         file_system_(thread_system_.get(), &timer_),
         // Note: These unit tests don't need access to timestamp variable or
         // statistics. There are integration tests in
@@ -96,9 +97,9 @@ class StatisticsLoggerTest : public ::testing::Test {
     return logfile_input;
   }
 
-  MockMessageHandler handler_;
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockMessageHandler handler_;
   MemFileSystem file_system_;
   StatisticsLogger logger_;
 };

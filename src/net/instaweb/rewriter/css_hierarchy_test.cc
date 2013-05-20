@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -72,7 +73,8 @@ static const char kTopChild2Child1Css[] =
 class CssHierarchyTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
   CssHierarchyTest()
-      : top_url_(kTestDomain),
+      : handler_(new NullMutex),
+        top_url_(kTestDomain),
         top_child1_url_(top_url_, "nested1.css"),
         top_child2_url_(top_url_, "nested2.css"),
         top_child1_child1_url_(top_url_, "nested/nested1.css"),

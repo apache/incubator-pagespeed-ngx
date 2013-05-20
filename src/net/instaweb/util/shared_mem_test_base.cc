@@ -23,7 +23,9 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -37,7 +39,9 @@ SharedMemTestEnv::~SharedMemTestEnv() {
 
 SharedMemTestBase::SharedMemTestBase(SharedMemTestEnv* test_env)
     : test_env_(test_env),
-      shmem_runtime_(test_env->CreateSharedMemRuntime()) {
+      shmem_runtime_(test_env->CreateSharedMemRuntime()),
+      thread_system_(Platform::CreateThreadSystem()),
+      handler_(thread_system_->NewMutex()) {
 }
 
 bool SharedMemTestBase::CreateChild(TestMethod method) {

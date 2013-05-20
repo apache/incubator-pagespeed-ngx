@@ -156,9 +156,10 @@ class DelayedFetcher : public UrlAsyncFetcher {
 
 class SyncFetcherAdapterTest : public testing::Test {
  public:
-  SyncFetcherAdapterTest() {
-    timer_.reset(Platform::CreateTimer());
-    thread_system_.reset(Platform::CreateThreadSystem());
+  SyncFetcherAdapterTest()
+      : timer_(Platform::CreateTimer()),
+        thread_system_(Platform::CreateThreadSystem()),
+        handler_(thread_system_->NewMutex()) {
   }
 
  protected:
@@ -218,9 +219,9 @@ class SyncFetcherAdapterTest : public testing::Test {
   }
 
   ResponseHeaders out_headers_;
-  MockMessageHandler handler_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockMessageHandler handler_;
 };
 
 TEST_F(SyncFetcherAdapterTest, QuickOk) {
