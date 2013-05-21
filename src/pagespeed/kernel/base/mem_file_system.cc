@@ -16,21 +16,21 @@
 
 // Author: abliss@google.com (Adam Bliss)
 
-#include "net/instaweb/util/public/mem_file_system.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
 
 #include <cstddef>
 #include <map>
 #include <utility>
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 
 namespace net_instaweb {
 

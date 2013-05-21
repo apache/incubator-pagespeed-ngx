@@ -20,10 +20,10 @@
 // ThreadImpl.
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

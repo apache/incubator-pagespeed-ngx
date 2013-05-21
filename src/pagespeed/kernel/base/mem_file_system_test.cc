@@ -18,19 +18,19 @@
 
 // Unit-test the in-memory filesystem
 
-#include "net/instaweb/util/public/mem_file_system.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/file_system_test.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/file_system_test.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/platform.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
@@ -155,9 +155,9 @@ TEST_F(MemFileSystemTest, TestLock) {
 }
 
 // TODO(sligocki): This test does not seem to work for MemFileSystem
-//TEST_F(MemFileSystemTest, TestLockTimeout) {
-//  TestLockTimeout();
-//}
+// TEST_F(MemFileSystemTest, TestLockTimeout) {
+//   TestLockTimeout();
+// }
 
 // Since this filesystem doesn't support directories, we skip these tests:
 // TestIsDir

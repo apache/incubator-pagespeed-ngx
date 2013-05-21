@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-// Author: morlovich@google.com (Maksim Orlovich)
+// Author: matterbury@google.com (Matt Atterbury)
 
-#include "net/instaweb/util/public/abstract_shared_mem.h"
+#ifndef PAGESPEED_KERNEL_BASE_GTEST_PROD_H_
+#define PAGESPEED_KERNEL_BASE_GTEST_PROD_H_
 
-namespace net_instaweb {
 
-AbstractSharedMemSegment::~AbstractSharedMemSegment() {
-}
+#include "testing/gtest/include/gtest/gtest_prod.h"
 
-AbstractSharedMem::~AbstractSharedMem() {
-}
-
-}  // namespace net_instaweb
+#endif  // PAGESPEED_KERNEL_BASE_GTEST_PROD_H_

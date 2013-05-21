@@ -20,6 +20,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_CHECKING_THREAD_SYSTEM_H_
 
 // TODO(huibao): Remove this forwarding header and update references.
-#include "pagespeed/kernel/util/checking_thread_system.h"
+#include "pagespeed/kernel/base/checking_thread_system.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_CHECKING_THREAD_SYSTEM_H_

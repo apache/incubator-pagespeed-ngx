@@ -16,13 +16,13 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/mock_timer.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/null_mutex.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/function.h"
 
 namespace net_instaweb {
 
@@ -52,6 +52,7 @@ void MockTimer::SetTimeUs(int64 new_time_us) {
   }
   mutex_->Unlock();
 }
+
 void MockTimer::SetTimeDeltaUsWithCallback(int64 delta_us,
                                            Function* callback) {
   TimeAndCallback time_and_callback;

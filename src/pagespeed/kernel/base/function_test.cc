@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace {
 

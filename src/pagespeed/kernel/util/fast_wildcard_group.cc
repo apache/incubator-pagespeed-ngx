@@ -22,11 +22,11 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/atomic_int32.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/atomic_int32.h"
 #include "pagespeed/kernel/util/rolling_hash.h"
 #include "pagespeed/kernel/util/wildcard.h"
 

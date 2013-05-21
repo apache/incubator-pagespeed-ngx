@@ -14,10 +14,11 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

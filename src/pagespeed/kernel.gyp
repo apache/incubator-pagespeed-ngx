@@ -15,7 +15,7 @@
 {
   'targets': [
     {
-      'target_name': 'pagespeed_base',
+      'target_name': 'pagespeed_base_core',
       # xcode build names libraries just based on the target_name, so
       # if this were merely base then its libbase.a would clash with
       # Chromium libbase.a
@@ -23,7 +23,6 @@
       'sources': [
         'kernel/base/abstract_mutex.cc',
         'kernel/base/atom.cc',
-        'kernel/base/condvar.cc',
         'kernel/base/debug.cc',
         'kernel/base/file_message_handler.cc',
         'kernel/base/file_system.cc',
@@ -33,6 +32,7 @@
         'kernel/base/null_mutex.cc',
         'kernel/base/null_writer.cc',
         'kernel/base/print_message_handler.cc',
+        'kernel/base/statistics.cc',
         'kernel/base/stdio_file_system.cc',
         'kernel/base/string_convert.cc',
         'kernel/base/string_util.cc',
@@ -57,10 +57,28 @@
       ],
     },
     {
+      'target_name': 'pagespeed_base',
+      # xcode build names libraries just based on the target_name, so
+      # if this were merely base then its libbase.a would clash with
+      # Chromium libbase.a
+      'type': '<(library)',
+      'sources': [
+        'kernel/base/checking_thread_system.cc',
+        'kernel/base/condvar.cc',
+        'kernel/base/function.cc',
+        'kernel/base/thread.cc',
+      ],
+      'dependencies': [
+        'pagespeed_base_core',
+      ],
+    },
+    {
       'target_name': 'pagespeed_base_test_infrastructure',
       'type': '<(library)',
       'sources': [
+        'kernel/base/mem_file_system.cc',
         'kernel/base/mock_message_handler.cc',
+        'kernel/base/mock_timer.cc',
         'kernel/base/platform.cc',
       ],
       'include_dirs': [
@@ -102,6 +120,9 @@
       'dependencies': [
         'pagespeed_base',
       ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
     },
     {
       'target_name': 'pagespeed_http',
@@ -114,7 +135,7 @@
         'kernel/http/query_params.cc',
       ],
       'dependencies': [
-        'pagespeed_base',
+        'pagespeed_base_core',
         '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
       ],
     },
@@ -130,7 +151,7 @@
         '<(DEPTH)',
       ],
       'dependencies': [
-        'pagespeed_base',
+        'pagespeed_base_core',
         'pagespeed_javascript_gperf',
       ],
     },
@@ -153,7 +174,7 @@
       'target_name': 'util',
       'type': '<(library)',
       'sources': [
-        'kernel/util/checking_thread_system.cc',
+        'kernel/util/abstract_shared_mem.cc',
         'kernel/util/fast_wildcard_group.cc',
         'kernel/util/rolling_hash.cc',
         'kernel/util/wildcard.cc',

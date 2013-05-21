@@ -20,6 +20,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_ATOMIC_INT32_H_
 
 // TODO(jmarantz): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/atomic_int32.h"
+#include "pagespeed/kernel/base/atomic_int32.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_ATOMIC_INT32_H_

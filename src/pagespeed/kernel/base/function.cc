@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/function.h"
+#include "pagespeed/kernel/base/function.h"
 #include "base/logging.h"
 
 namespace net_instaweb {

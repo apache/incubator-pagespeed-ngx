@@ -19,7 +19,7 @@
 #ifndef PAGESPEED_KERNEL_BASE_NULL_MUTEX_H_
 #define PAGESPEED_KERNEL_BASE_NULL_MUTEX_H_
 
-#include "net/instaweb/util/public/abstract_mutex.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 
 namespace net_instaweb {
 

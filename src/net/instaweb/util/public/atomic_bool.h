@@ -20,6 +20,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_ATOMIC_BOOL_H_
 
 // TODO(jmarantz): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/atomic_bool.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_ATOMIC_BOOL_H_

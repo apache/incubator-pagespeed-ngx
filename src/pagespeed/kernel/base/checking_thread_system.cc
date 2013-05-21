@@ -16,10 +16,10 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#include "pagespeed/kernel/util/checking_thread_system.h"
+#include "pagespeed/kernel/base/checking_thread_system.h"
 
 #include "base/logging.h"
-#include "pagespeed/kernel/util/atomic_bool.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/thread_system.h"

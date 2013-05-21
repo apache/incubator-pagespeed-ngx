@@ -25,6 +25,7 @@
 #include <cstddef>                     // for size_t
 
 #include "base/logging.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"  // for int64, int32, etc
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_cache.h"
@@ -32,7 +33,6 @@
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class AbstractSharedMem;
 class AbstractSharedMemSegment;
 class MessageHandler;

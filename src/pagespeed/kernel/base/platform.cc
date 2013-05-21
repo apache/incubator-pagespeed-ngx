@@ -19,7 +19,7 @@
 #include "pagespeed/kernel/base/platform.h"
 
 #include "net/instaweb/util/public/pthread_thread_system.h"
-#include "net/instaweb/util/public/checking_thread_system.h"
+#include "pagespeed/kernel/base/checking_thread_system.h"
 
 #include "net/instaweb/util/public/posix_timer.h"
 

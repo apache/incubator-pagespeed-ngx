@@ -16,11 +16,11 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#ifndef PAGESPEED_KERNEL_UTIL_ATOMIC_INT32_H_
-#define PAGESPEED_KERNEL_UTIL_ATOMIC_INT32_H_
+#ifndef PAGESPEED_KERNEL_BASE_ATOMIC_INT32_H_
+#define PAGESPEED_KERNEL_BASE_ATOMIC_INT32_H_
 
+#include "pagespeed/kernel/base/atomicops.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/util/atomicops.h"
 
 namespace net_instaweb {
 
@@ -124,4 +124,4 @@ class AtomicInt32 {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_ATOMIC_INT32_H_
+#endif  // PAGESPEED_KERNEL_BASE_ATOMIC_INT32_H_

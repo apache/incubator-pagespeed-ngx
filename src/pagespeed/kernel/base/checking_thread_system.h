@@ -16,13 +16,13 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#ifndef PAGESPEED_KERNEL_UTIL_CHECKING_THREAD_SYSTEM_H_
-#define PAGESPEED_KERNEL_UTIL_CHECKING_THREAD_SYSTEM_H_
+#ifndef PAGESPEED_KERNEL_BASE_CHECKING_THREAD_SYSTEM_H_
+#define PAGESPEED_KERNEL_BASE_CHECKING_THREAD_SYSTEM_H_
 
 #include "pagespeed/kernel/base/thread_system.h"
 
-#include "pagespeed/kernel/util/atomic_bool.h"
-#include "pagespeed/kernel/util/atomic_int32.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/atomic_int32.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 
@@ -131,4 +131,4 @@ class CheckingThreadSystem : public ThreadSystem {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_CHECKING_THREAD_SYSTEM_H_
+#endif  // PAGESPEED_KERNEL_BASE_CHECKING_THREAD_SYSTEM_H_

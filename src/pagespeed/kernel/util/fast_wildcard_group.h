@@ -20,10 +20,10 @@
 #define PAGESPEED_KERNEL_UTIL_FAST_WILDCARD_GROUP_H_
 
 #include <vector>
+#include "pagespeed/kernel/base/atomic_int32.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/atomic_int32.h"
 
 namespace net_instaweb {
 

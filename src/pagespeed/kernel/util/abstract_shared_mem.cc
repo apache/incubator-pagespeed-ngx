@@ -16,10 +16,14 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
+#include "pagespeed/kernel/util/abstract_shared_mem.h"
 
-// TODO(jmarantz): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/base/mem_file_system.h"
+namespace net_instaweb {
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
+AbstractSharedMemSegment::~AbstractSharedMemSegment() {
+}
+
+AbstractSharedMem::~AbstractSharedMem() {
+}
+
+}  // namespace net_instaweb
