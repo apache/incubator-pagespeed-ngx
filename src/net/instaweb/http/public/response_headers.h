@@ -118,12 +118,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Generally you want to use IsProxyCacheable*() instead.
   bool IsBrowserCacheable() const;
 
-  // Returns whether or not we can cache these headers if we take into
+  // Returns whether or not we can proxy cache these headers if we take into
   // account the Vary: headers. Note that we consider Vary: Cookie as cacheable
   // if request_has_cookie is false.
   //
-  // TODO(sligocki): Currently checks IsBrowserCacheable(), shouldn't we be
-  // checking IsProxyCacheable() instead?
   // TODO(sligocki): Rename to IsVaryCacheable().
   bool VaryCacheable(bool request_has_cookie) const;
 

@@ -948,7 +948,6 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   // Make sure headers are nice and long.
   EXPECT_EQ(Timer::kYearMs, headers.cache_ttl_ms());
   EXPECT_TRUE(headers.IsProxyCacheable());
-  EXPECT_TRUE(headers.IsBrowserCacheable());
 }
 
 TEST_F(RewriteContextTest, TrimFetchSeedsCache) {

@@ -69,8 +69,7 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
     // cookie.
     cacheable = headers.VaryCacheable(true);
   } else {
-    // TODO(sligocki): Shouldn't we be testing IsProxyCacheable() here?
-    cacheable = headers.IsBrowserCacheable();
+    cacheable = headers.IsProxyCacheable();
   }
   // If we are setting a TTL for HTML, we cannot rewrite any resource
   // with a shorter TTL.

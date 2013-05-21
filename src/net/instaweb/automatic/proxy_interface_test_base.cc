@@ -190,8 +190,7 @@ void MockFilter::EndDocument() {
   // We query IsBrowserCacheable for the HTML file only to ensure that
   // the test will crash if ComputeCaching() was never called.
   //
-  // IsBrowserCacheable is true for HTML files because of kHtmlCacheTimeSec
-  // above.
+  // All these HTML responses are Cache-Control: private.
   EXPECT_TRUE(driver_->response_headers()->IsBrowserCacheable());
   PropertyPage* page = driver_->property_page();
   if (page != NULL) {

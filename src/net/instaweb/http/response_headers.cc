@@ -441,8 +441,7 @@ void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
 }
 
 bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {
-  // TODO(sligocki): Shouldn't we be checking if it's ProxyCacheable()?
-  if (IsBrowserCacheable()) {
+  if (IsProxyCacheable()) {
     if (force_cache_ttl_ms_ > 0) {
       // If we've been asked to force cache a request, then we always consider
       // it as VaryCacheable.
