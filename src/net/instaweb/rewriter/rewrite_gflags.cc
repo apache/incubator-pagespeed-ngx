@@ -174,9 +174,9 @@ DEFINE_int32(rewrite_deadline_per_flush_ms,
              "background and returning the original resource. A value of -1 "
              "will result in waiting for all rewrites to complete.");
 DEFINE_int32(
-    furious_cookie_duration_ms,
-    net_instaweb::RewriteOptions::kDefaultFuriousCookieDurationMs,
-    "Duration after which the furious cookie used for A/B experiments "
+    experiment_cookie_duration_ms,
+    net_instaweb::RewriteOptions::kDefaultExperimentCookieDurationMs,
+    "Duration after which the experiment cookie used for A/B experiments "
     "should expire on the user's browser.");
 DEFINE_bool(log_background_rewrites, false,
             "Log rewriting that cannot finish in the line-of-request.");
@@ -677,9 +677,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("rewrite_deadline_per_flush_ms")) {
     options->set_rewrite_deadline_ms(FLAGS_rewrite_deadline_per_flush_ms);
   }
-  if (WasExplicitlySet("furious_cookie_duration_ms")) {
-    options->set_furious_cookie_duration_ms(
-        FLAGS_furious_cookie_duration_ms);
+  if (WasExplicitlySet("experiment_cookie_duration_ms")) {
+    options->set_experiment_cookie_duration_ms(
+        FLAGS_experiment_cookie_duration_ms);
   }
   if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
     options->set_avoid_renaming_introspective_javascript(
@@ -877,12 +877,12 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     }
   }
   if (WasExplicitlySet("experiment_specs")) {
-    options->set_running_furious_experiment(true);
+    options->set_running_experiment(true);
     StringPieceVector experiment_specs;
     SplitStringPieceToVector(FLAGS_experiment_specs, "+",
                              &experiment_specs, true);
     for (int i = 0, n = experiment_specs.size(); i < n; ++i) {
-      if (!options->AddFuriousSpec(experiment_specs[i], handler)) {
+      if (!options->AddExperimentSpec(experiment_specs[i], handler)) {
         LOG(ERROR) << "Invalid experiment specification: "
                    << experiment_specs[i];
         ret = false;

@@ -39,7 +39,7 @@ class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
-class FuriousMatcher;
+class ExperimentMatcher;
 class Hasher;
 class MessageHandler;
 class NamedLockManager;
@@ -281,9 +281,9 @@ class RewriteDriverFactory {
     return false;
   }
 
-  // Creates a FuriousMatcher, which is used to match clients or sessions to
-  // a specific furious experiment.
-  virtual FuriousMatcher* NewFuriousMatcher();
+  // Creates an ExperimentMatcher, which is used to match clients or sessions to
+  // a specific experiment.
+  virtual ExperimentMatcher* NewExperimentMatcher();
 
   // Returns the preferred webp image quality vector for client options.
   const std::vector<int>* preferred_webp_qualities() {

@@ -31,8 +31,8 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -148,9 +148,9 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
     fetch->request_headers()->RemoveAll(HttpAttributes::kAuthorization);
     fetch->request_headers()->RemoveAll(HttpAttributes::kProxyAuthorization);
   } else {
-    // If we didn't already remove all the cookies, remove the furious
+    // If we didn't already remove all the cookies, remove the experiment
     // ones so we don't confuse the origin.
-    furious::RemoveFuriousCookie(fetch->request_headers());
+    experiment::RemoveExperimentCookie(fetch->request_headers());
   }
   RegisterNewFetch(fetch);
   return fetch;
@@ -509,12 +509,12 @@ bool ProxyFetch::StartParse() {
   // Therefore, we can not set the Set-Cookie header there, and must
   // do it here instead.
   if (Options()->need_to_store_experiment_data() &&
-      Options()->running_furious()) {
-    int furious_value = Options()->furious_id();
-    server_context_->furious_matcher()->StoreExperimentData(
-        furious_value, url_,
+      Options()->running_experiment()) {
+    int experiment_value = Options()->experiment_id();
+    server_context_->experiment_matcher()->StoreExperimentData(
+        experiment_value, url_,
         server_context_->timer()->NowMs() +
-            Options()->furious_cookie_duration_ms(),
+            Options()->experiment_cookie_duration_ms(),
         response_headers());
   }
   driver_->set_response_headers_ptr(response_headers());

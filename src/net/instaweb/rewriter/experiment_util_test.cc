@@ -16,9 +16,9 @@
 
 // Author: nforman@google.com (Naomi Forman)
 
-// Unit-test the furious utilities.
+// Unit-test the experiment utilities.
 
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -33,78 +33,78 @@
 
 namespace net_instaweb {
 
-namespace furious {
+namespace experiment {
 
-class FuriousUtilTest : public RewriteOptionsTestBase<RewriteOptions> {
+class ExperimentUtilTest : public RewriteOptionsTestBase<RewriteOptions> {
 };
 
-TEST_F(FuriousUtilTest, GetCookieState) {
+TEST_F(ExperimentUtilTest, GetCookieState) {
   RequestHeaders req_headers;
   int state;
   // Empty headers, cookie not set.
-  EXPECT_FALSE(GetFuriousCookieState(req_headers, &state));
-  EXPECT_EQ(kFuriousNotSet, state);
+  EXPECT_FALSE(GetExperimentCookieState(req_headers, &state));
+  EXPECT_EQ(kExperimentNotSet, state);
 
-  // Headers with malformed furious cookie, cookie not set.
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=absdfkjs");
-  EXPECT_FALSE(GetFuriousCookieState(req_headers, &state));
-  EXPECT_EQ(kFuriousNotSet, state);
+  // Headers with malformed experiment cookie, cookie not set.
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=absdfkjs");
+  EXPECT_FALSE(GetExperimentCookieState(req_headers, &state));
+  EXPECT_EQ(kExperimentNotSet, state);
 
-  // Headers with valid furious cookie in None (i.e. not in experiment)
+  // Headers with valid experiment cookie in None (i.e. not in experiment)
   // state set.
   req_headers.Clear();
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=0");
-  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
+  EXPECT_TRUE(GetExperimentCookieState(req_headers, &state));
   EXPECT_EQ(0, state);
 
-  // Headers with valid furious cookie in experiment 1.
+  // Headers with valid experiment cookie in experiment 1.
   req_headers.Clear();
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=1");
-  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
+  EXPECT_TRUE(GetExperimentCookieState(req_headers, &state));
   EXPECT_EQ(1, state);
 
-  // Headers with valid furious cookie in experiment 2.
+  // Headers with valid experiment cookie in experiment 2.
   req_headers.Clear();
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=2");
-  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=2");
+  EXPECT_TRUE(GetExperimentCookieState(req_headers, &state));
   EXPECT_EQ(2, state);
 
-  // Headers with valid furious cookie in experiment 2.
+  // Headers with valid experiment cookie in experiment 2.
   req_headers.Clear();
   req_headers.Add(HttpAttributes::kCookie,
-                  "cookie=a;_GFURIOUS=2;something=foo");
-  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
+                  "cookie=a;PageSpeedExperiment=2;something=foo");
+  EXPECT_TRUE(GetExperimentCookieState(req_headers, &state));
   EXPECT_EQ(2, state);
 }
 
-// Test that we remove the _GFURIOUS cookie when it's there, and leave
+// Test that we remove the PageSpeedExperiment cookie when it's there, and leave
 // the remainder of the cookies in tact.
-TEST_F(FuriousUtilTest, RemoveFuriousCookie) {
+TEST_F(ExperimentUtilTest, RemoveExperimentCookie) {
   RequestHeaders req_headers;
   req_headers.Add(HttpAttributes::kAcceptEncoding, "gzip");
   req_headers.Add(HttpAttributes::kCookie,
-                  "something=random;_GFURIOUS=18:2;another=cookie");
-  RemoveFuriousCookie(&req_headers);
+                  "something=random;PageSpeedExperiment=18:2;another=cookie");
+  RemoveExperimentCookie(&req_headers);
 
   GoogleString expected = "something=random;another=cookie";
   EXPECT_EQ(expected, req_headers.Lookup1(HttpAttributes::kCookie));
 
   req_headers.Clear();
   req_headers.Add(HttpAttributes::kCookie, "abd=123;jsjsj=4444");
-  RemoveFuriousCookie(&req_headers);
+  RemoveExperimentCookie(&req_headers);
 
   expected = "abd=123;jsjsj=4444";
   EXPECT_EQ(expected, req_headers.Lookup1(HttpAttributes::kCookie));
 }
 
-// Check that DetermineFuriousState behaves vaguely as expected.
-TEST_F(FuriousUtilTest, DetermineFuriousState) {
+// Check that DetermineExperimentState behaves vaguely as expected.
+TEST_F(ExperimentUtilTest, DetermineExperimentState) {
   RewriteOptions options(thread_system_.get());
-  options.set_running_furious_experiment(true);
+  options.set_running_experiment(true);
   NullMessageHandler handler;
-  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=35", &handler));
-  ASSERT_TRUE(options.AddFuriousSpec("id=2;percent=35", &handler));
-  ASSERT_EQ(2, options.num_furious_experiments());
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=35", &handler));
+  ASSERT_TRUE(options.AddExperimentSpec("id=2;percent=35", &handler));
+  ASSERT_EQ(2, options.num_experiments());
   int none = 0;
   int in_a = 0;
   int in_b = 0;
@@ -112,9 +112,9 @@ TEST_F(FuriousUtilTest, DetermineFuriousState) {
   // In 100000000 runs, with 70% of the traffic in an experiment, we should
   // get some of each.
   for (int i = 0; i < runs; ++i) {
-    int state = DetermineFuriousState(&options);
+    int state = DetermineExperimentState(&options);
     switch (state) {
-      case kFuriousNoExperiment:  // explicitly not in experiment
+      case kNoExperiment:  // explicitly not in experiment
         ++none;
         break;
       case 1:  // in id=1
@@ -138,12 +138,12 @@ TEST_F(FuriousUtilTest, DetermineFuriousState) {
   EXPECT_TRUE(in_b > .25 * runs);
 }
 
-// Check that SetFuriousCookie sets the cookie on the appropriate
+// Check that SetExperimentCookie sets the cookie on the appropriate
 // domain, and with the correct expiration.
-TEST_F(FuriousUtilTest, SetFuriousCookie) {
+TEST_F(ExperimentUtilTest, SetExperimentCookie) {
   ResponseHeaders resp_headers;
   GoogleString url = "http://www.test.com/stuff/some_page.html";
-  SetFuriousCookie(&resp_headers, 1, url, Timer::kWeekMs);
+  SetExperimentCookie(&resp_headers, 1, url, Timer::kWeekMs);
   EXPECT_TRUE(resp_headers.Has(HttpAttributes::kSetCookie));
   ConstStringStarVector v;
   EXPECT_TRUE(resp_headers.Lookup(HttpAttributes::kSetCookie, &v));
@@ -151,10 +151,11 @@ TEST_F(FuriousUtilTest, SetFuriousCookie) {
   GoogleString expires;
   ConvertTimeToString(Timer::kWeekMs, &expires);
   GoogleString expected = StringPrintf(
-      "_GFURIOUS=1; Expires=%s; Domain=.www.test.com; Path=/", expires.c_str());
+      "PageSpeedExperiment=1; Expires=%s; Domain=.www.test.com; Path=/",
+      expires.c_str());
   EXPECT_EQ(expected, *v[0]);
 }
 
-}  // namespace furious
+}  // namespace experiment
 
 }  // namespace net_instaweb

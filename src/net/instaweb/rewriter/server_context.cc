@@ -35,8 +35,8 @@
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -271,7 +271,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       low_priority_rewrite_workers_(NULL),
       static_asset_manager_(NULL),
       thread_synchronizer_(new ThreadSynchronizer(thread_system_)),
-      furious_matcher_(factory_->NewFuriousMatcher()),
+      experiment_matcher_(factory_->NewExperimentMatcher()),
       usage_data_reporter_(factory_->usage_data_reporter()) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
@@ -1055,7 +1055,7 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     query_options->Freeze();
     custom_options->Merge(*query_options);
     // Don't run any experiments if this is a special query-params request.
-    custom_options->set_running_furious_experiment(false);
+    custom_options->set_running_experiment(false);
   }
 
   if (request_headers->IsXmlHttpRequest()) {

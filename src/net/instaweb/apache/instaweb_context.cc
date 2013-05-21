@@ -27,7 +27,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -99,9 +99,9 @@ InstawebContext::InstawebContext(request_rec* request,
       sent_headers_(false),
       populated_headers_(false),
       modify_caching_headers_(true) {
-  if (options.running_furious()) {
-    // Furious requires custom options because it has to make changes based on
-    // what ExperimentSpec the user should be seeing.
+  if (options.running_experiment()) {
+    // The experiment framework requires custom options because it has to make
+    // changes based on what ExperimentSpec the user should be seeing.
     use_custom_options = true;
   }
   if (use_custom_options) {
@@ -112,10 +112,10 @@ InstawebContext::InstawebContext(request_rec* request,
     // domain lawyer and other options.
     RewriteOptions* custom_options = options.Clone();
 
-    // If we're running a Furious experiment, determine the state of this
-    // request and reset the options accordingly.
-    if (custom_options->running_furious()) {
-      SetFuriousStateAndCookie(request, custom_options);
+    // If we're running an experiment, determine the state of this request and
+    // reset the options accordingly.
+    if (custom_options->running_experiment()) {
+      SetExperimentStateAndCookie(request, custom_options);
     }
     server_context_->ComputeSignature(custom_options);
     rewrite_driver_ = server_context_->NewCustomRewriteDriver(
@@ -401,21 +401,21 @@ const char* InstawebContext::MakeRequestUrl(const RewriteOptions& options,
   return url;
 }
 
-void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
-                                               RewriteOptions* options) {
+void InstawebContext::SetExperimentStateAndCookie(request_rec* request,
+                                                  RewriteOptions* options) {
   // If we didn't get a valid (i.e. currently-running experiment) value from
   // the cookie, determine which experiment this request should end up in
   // and set the cookie accordingly.
-  bool need_cookie = server_context_->furious_matcher()->
+  bool need_cookie = server_context_->experiment_matcher()->
       ClassifyIntoExperiment(*request_headers_, options);
   if (need_cookie) {
     ResponseHeaders resp_headers;
     AprTimer timer;
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
-    int furious_value = options->furious_id();
-    server_context_->furious_matcher()->StoreExperimentData(
-        furious_value, url,
-        timer.NowMs() + options->furious_cookie_duration_ms(),
+    int experiment_value = options->experiment_id();
+    server_context_->experiment_matcher()->StoreExperimentData(
+        experiment_value, url,
+        timer.NowMs() + options->experiment_cookie_duration_ms(),
         &resp_headers);
     AddResponseHeadersToRequest(&resp_headers, NULL,
                                 options->modify_caching_headers(), request);

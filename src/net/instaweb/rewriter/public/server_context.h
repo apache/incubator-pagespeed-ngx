@@ -48,11 +48,11 @@ class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalSelectorFinder;
 class DeviceProperties;
+class ExperimentMatcher;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
 class Function;
-class FuriousMatcher;
 class GoogleUrl;
 class Hasher;
 class MessageHandler;
@@ -142,7 +142,7 @@ class ServerContext {
   ThreadSynchronizer* thread_synchronizer() {
     return thread_synchronizer_.get();
   }
-  FuriousMatcher* furious_matcher() { return furious_matcher_.get(); }
+  ExperimentMatcher* experiment_matcher() { return experiment_matcher_.get(); }
 
   // Computes the most restrictive Cache-Control intersection of the input
   // resources, and the provided headers, and sets that cache-control on the
@@ -717,8 +717,8 @@ class ServerContext {
   // of controlling thread interleaving to test code for possible races.
   scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
 
-  // Used to match clients or sessions to a specific furious experiment.
-  scoped_ptr<FuriousMatcher> furious_matcher_;
+  // Used to match clients or sessions to a specific experiment.
+  scoped_ptr<ExperimentMatcher> experiment_matcher_;
 
   UsageDataReporter* usage_data_reporter_;
 

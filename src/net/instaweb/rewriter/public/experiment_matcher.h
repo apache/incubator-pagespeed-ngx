@@ -16,8 +16,8 @@
 
 // Author: mukerjee@google.com (Matt Mukerjee)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_FURIOUS_MATCHER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_FURIOUS_MATCHER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_EXPERIMENT_MATCHER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_EXPERIMENT_MATCHER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -28,19 +28,16 @@ class RequestHeaders;
 class ResponseHeaders;
 class RewriteOptions;
 
-// Provides a way to replace the mapping of clients/sessions to furious
-// experiments.
+// Provides a way to replace the mapping of clients/sessions to experiments.
 //
-// Furious is the A/B experiment framework that enables us to track
-// page speed statistics and correlate them with different sets of
-// rewriters. The default implementation uses cookies to send clients
-// to the same experiment consistently. This implementation can be
-// overridden to divide clients/sessions into experiments using a
-// different mechanism.
-class FuriousMatcher {
+// The default implementation of the experiment framework uses cookies to send
+// clients to the same experiment consistently. This implementation can be
+// overridden to divide clients/sessions into experiments using a different
+// mechanism.
+class ExperimentMatcher {
  public:
-  FuriousMatcher() { }
-  virtual ~FuriousMatcher();
+  ExperimentMatcher() { }
+  virtual ~ExperimentMatcher();
 
   // Decides which experiment to place the current client/session into.
   // Returns true if the mapping needs to be stored.
@@ -55,8 +52,8 @@ class FuriousMatcher {
       int64 expiration_time_ms, ResponseHeaders* headers);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(FuriousMatcher);
+  DISALLOW_COPY_AND_ASSIGN(ExperimentMatcher);
 };
 
 }  // namespace net_instaweb
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_FURIOUS_MATCHER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_EXPERIMENT_MATCHER_H_

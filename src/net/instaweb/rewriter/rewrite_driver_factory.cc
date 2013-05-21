@@ -31,7 +31,7 @@
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -688,8 +688,8 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
   return NewRewriteOptions();
 }
 
-FuriousMatcher* RewriteDriverFactory::NewFuriousMatcher() {
-  return new FuriousMatcher;
+ExperimentMatcher* RewriteDriverFactory::NewExperimentMatcher() {
+  return new ExperimentMatcher;
 }
 
 bool RewriteDriverFactory::SetPreferredWebpQualities(

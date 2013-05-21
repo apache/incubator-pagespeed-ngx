@@ -427,8 +427,8 @@ message LoggingInfo {
   optional MetadataCacheInfo metadata_cache_info = 4;
   // Whether the original resource is cacheable.
   optional bool is_original_resource_cacheable = 5 [ default = true ];
-  // Furious ID used for this request.
-  optional int32 furious_id = 6;
+  // Experiment ID used for this request.
+  optional int32 experiment_id = 6;
   // All information related to split_html.
   optional SplitHtmlInfo split_html_info = 7;
   // All information related to the pcache lookup.

@@ -609,10 +609,11 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     return RequestContextPtr(test_request_context_);
   }
 
-  void InitializeFuriousSpec() {
-    options_->set_running_furious_experiment(true);
+  void InitializeExperimentSpec() {
+    options_->set_running_experiment(true);
     NullMessageHandler handler;
-    ASSERT_TRUE(options_->AddFuriousSpec("id=3;percent=100;default", &handler));
+    ASSERT_TRUE(options_->AddExperimentSpec("id=3;percent=100;default",
+                                            &handler));
   }
 
   void GetDefaultRequestHeaders(RequestHeaders* request_headers) {
@@ -993,11 +994,11 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlChangeDetectionWithSmartDiffOn) {
   TestCacheHtmlChangeDetection(true);
 }
 
-TEST_F(CacheHtmlFlowTest, TestCacheHtmlMissFuriousSetCookie) {
+TEST_F(CacheHtmlFlowTest, TestCacheHtmlMissExperimentSetCookie) {
   options_->ClearSignatureForTesting();
-  options_->set_furious_cookie_duration_ms(1000);
+  options_->set_experiment_cookie_duration_ms(1000);
   SetTimeMs(MockTimer::kApr_5_2010_ms);
-  InitializeFuriousSpec();
+  InitializeExperimentSpec();
   server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
@@ -1007,16 +1008,16 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlMissFuriousSetCookie) {
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(2, values.size());
-  EXPECT_STREQ("_GFURIOUS=3", (*(values[1])).substr(0, 11));
+  EXPECT_STREQ("PageSpeedExperiment=3", (*(values[1])).substr(0, 21));
   GoogleString expires_str;
   ConvertTimeToString(MockTimer::kApr_5_2010_ms + 1000, &expires_str);
   EXPECT_NE(GoogleString::npos, ((*(values[1])).find(expires_str)));
   VerifyNonCacheHtmlResponse(response_headers);
 }
 
-TEST_F(CacheHtmlFlowTest, TestCacheHtmlHitFuriousSetCookie) {
+TEST_F(CacheHtmlFlowTest, TestCacheHtmlHitExperimentSetCookie) {
   options_->ClearSignatureForTesting();
-  InitializeFuriousSpec();
+  InitializeExperimentSpec();
   server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
@@ -1032,19 +1033,19 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlHitFuriousSetCookie) {
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(1, values.size());
-  EXPECT_STREQ("_GFURIOUS=3", (*(values[0])).substr(0, 11));
+  EXPECT_STREQ("PageSpeedExperiment=3", (*(values[0])).substr(0, 21));
   VerifyCacheHtmlResponse(response_headers);
 }
 
-TEST_F(CacheHtmlFlowTest, TestCacheHtmlFuriousCookieHandling) {
+TEST_F(CacheHtmlFlowTest, TestCacheHtmlExperimentCookieHandling) {
   options_->ClearSignatureForTesting();
-  InitializeFuriousSpec();
+  InitializeExperimentSpec();
   server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
   GetDefaultRequestHeaders(&request_headers);
-  request_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=3");
+  request_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=3");
 
   // Populate the property cache in first request.
   FetchFromProxyWaitForBackground("text.html", true, &text,
@@ -1310,7 +1311,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlOverThreshold) {
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlHeaderOverThreshold) {
   options_->ClearSignatureForTesting();
-  InitializeFuriousSpec();
+  InitializeExperimentSpec();
   int64 size_of_small_html = arraysize(kSmallHtmlInput) - 1;
   int64 html_buffer_threshold = size_of_small_html;
   options_->ClearSignatureForTesting();

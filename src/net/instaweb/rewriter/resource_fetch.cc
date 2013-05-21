@@ -39,10 +39,10 @@
 
 namespace net_instaweb {
 
-void ResourceFetch::ApplyFuriousOptions(const GoogleUrl& url,
-                                        const RequestContextPtr& request_ctx,
-                                        ServerContext* server_context,
-                                        RewriteOptions** custom_options) {
+void ResourceFetch::ApplyExperimentOptions(const GoogleUrl& url,
+                                           const RequestContextPtr& request_ctx,
+                                           ServerContext* server_context,
+                                           RewriteOptions** custom_options) {
   const RewriteOptions* active_options;
   if (*custom_options == NULL) {
     RewriteDriverPool* driver_pool = server_context->SelectDriverPool(
@@ -51,16 +51,17 @@ void ResourceFetch::ApplyFuriousOptions(const GoogleUrl& url,
   } else {
     active_options = *custom_options;
   }
-  if (active_options->running_furious()) {
+  if (active_options->running_experiment()) {
     // If we're running an experiment and this resource url specifies a
-    // furious_spec, make sure the custom options have that experiment selected.
+    // experiment_spec, make sure the custom options have that experiment
+    // selected.
     ResourceNamer namer;
     namer.Decode(url.LeafSansQuery());
     if (namer.has_experiment()) {
       if (*custom_options == NULL) {
         *custom_options = active_options->Clone();
       }
-      (*custom_options)->SetFuriousStateStr(namer.experiment());
+      (*custom_options)->SetExperimentStateStr(namer.experiment());
       server_context->ComputeSignature(*custom_options);
     }
   }
@@ -69,7 +70,7 @@ void ResourceFetch::ApplyFuriousOptions(const GoogleUrl& url,
 RewriteDriver* ResourceFetch::GetDriver(
     const GoogleUrl& url, RewriteOptions* custom_options,
     ServerContext* server_context, const RequestContextPtr& request_ctx) {
-  ApplyFuriousOptions(url, request_ctx, server_context, &custom_options);
+  ApplyExperimentOptions(url, request_ctx, server_context, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
       ? server_context->NewRewriteDriver(request_ctx)
       : server_context->NewCustomRewriteDriver(custom_options, request_ctx);

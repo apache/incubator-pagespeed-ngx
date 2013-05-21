@@ -481,7 +481,7 @@ class RewriteDriver : public HtmlParse {
   //    $(PATH)/$(NAME).pagespeed[.$EXPERIMENT].$(FILTER_PREFIX).
   //        $(HASH).$(CONTENT_TYPE_EXT)
   //
-  // EXPERIMENT is set only when there is an active furious_spec.
+  // EXPERIMENT is set only when there is an active experiment_spec.
   //
   // Could be private since you should use one of the versions below but put
   // here with the rest like it and for documentation clarity.

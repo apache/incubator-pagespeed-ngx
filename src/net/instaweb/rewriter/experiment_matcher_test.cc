@@ -16,14 +16,14 @@
 
 // Author: mukerjee@google.com (Matt Mukerjee)
 
-// Unit-test for FuriousMatcher
+// Unit-test for ExperimentMatcher
 
-#include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -34,48 +34,50 @@
 
 namespace net_instaweb {
 
-class FuriousMatcherTest : public RewriteOptionsTestBase<RewriteOptions> {
+class ExperimentMatcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
-  FuriousMatcher furious_matcher_;
+  ExperimentMatcher experiment_matcher_;
 };
 
-// Test that the Furious Utils are working together correctly. First tests
-// that we can add a furious spec then classifies the client into an
-// experiment. Then manually inserts a cookie and checks that client will
-// not ask for another cookie. Then we remove this cookie and ask for
-// classification again. We then have furious store what side of the
+// Test that the experiment utils are working together correctly. First tests
+// that we can add an experiment spec then classifies the client into an
+// experiment. Then manually inserts a cookie and checks that client will not
+// ask for another cookie. Then we remove this cookie and ask for classification
+// again. We then have the experiment frameworka store what side of the
 // experiment we ended on in a cookie for us, which we also check.
-TEST_F(FuriousMatcherTest, ClassifyIntoExperiment) {
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperiment) {
   RequestHeaders req_headers;
   RewriteOptions options(thread_system_.get());
-  options.set_running_furious_experiment(true);
+  options.set_running_experiment(true);
   NullMessageHandler handler;
-  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
-  ASSERT_EQ(1, options.num_furious_experiments());
-  bool need_cookie = furious_matcher_.ClassifyIntoExperiment(req_headers,
-                                                             &options);
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
+  ASSERT_EQ(1, options.num_experiments());
+  bool need_cookie = experiment_matcher_.ClassifyIntoExperiment(req_headers,
+                                                                &options);
 
   // We expect 1 here because we set up an experiment above (id=1;percent=100)
   // that takes 100% of the traffic and puts it into an experiment with id=1.
-  ASSERT_EQ(1, options.furious_id());
+  ASSERT_EQ(1, options.experiment_id());
   ASSERT_TRUE(need_cookie);
 
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=1");
-  need_cookie = furious_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
+  need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, &options);
   ASSERT_FALSE(need_cookie);
 
-  furious::RemoveFuriousCookie(&req_headers);
-  need_cookie = furious_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  experiment::RemoveExperimentCookie(&req_headers);
+  need_cookie = experiment_matcher_.ClassifyIntoExperiment(
+      req_headers, &options);
 
   // Same as above comment.
-  ASSERT_EQ(1, options.furious_id());
+  ASSERT_EQ(1, options.experiment_id());
   ASSERT_TRUE(need_cookie);
 
-  // Same test used for furious::SetFuriousCookie (furious_util_test.cc).
+  // Same test used for experiment::SetExperimentCookie in experiment_util_test.
   ResponseHeaders resp_headers;
   GoogleString url = "http://www.test.com/stuff/some_page.html";
-  furious_matcher_.StoreExperimentData(
-      options.furious_id(), url, 0, &resp_headers);
+  experiment_matcher_.StoreExperimentData(
+      options.experiment_id(), url, 0, &resp_headers);
   ASSERT_TRUE(resp_headers.Has(HttpAttributes::kSetCookie));
   ConstStringStarVector v;
   EXPECT_TRUE(resp_headers.Lookup(HttpAttributes::kSetCookie, &v));
@@ -83,36 +85,37 @@ TEST_F(FuriousMatcherTest, ClassifyIntoExperiment) {
   GoogleString expires;
   ConvertTimeToString(0, &expires);
   GoogleString expected = StringPrintf(
-      "_GFURIOUS=1; Expires=%s; Domain=.www.test.com; Path=/", expires.c_str());
+      "PageSpeedExperiment=1; Expires=%s; Domain=.www.test.com; Path=/",
+      expires.c_str());
   EXPECT_EQ(expected, *v[0]);
 }
 
-TEST_F(FuriousMatcherTest, ClassifyIntoExperimentStaleCookie) {
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentStaleCookie) {
   RequestHeaders req_headers;
   RewriteOptions options(thread_system_.get());
-  options.set_running_furious_experiment(true);
+  options.set_running_experiment(true);
   NullMessageHandler handler;
-  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   // Test that a new cookie is set when the incoming cookie has an invalid id.
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=4");
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=4");
   bool need_cookie =
-      furious_matcher_.ClassifyIntoExperiment(req_headers, &options);
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
   ASSERT_TRUE(need_cookie);
 }
 
-TEST_F(FuriousMatcherTest, ClassifyIntoExperimentNoExptCookie) {
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoExptCookie) {
   RequestHeaders req_headers;
   RewriteOptions options(thread_system_.get());
-  options.set_running_furious_experiment(true);
+  options.set_running_experiment(true);
   NullMessageHandler handler;
-  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
 
   // Test that a new cookie is not assigned when the incoming cookie has the
   // no-expt cookie.
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=0");
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
   bool need_cookie =
-      furious_matcher_.ClassifyIntoExperiment(req_headers, &options);
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
   ASSERT_FALSE(need_cookie);
 }
 

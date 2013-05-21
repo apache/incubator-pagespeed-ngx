@@ -35,7 +35,7 @@ class CacheHtmlInfoFinder {
   CacheHtmlInfoFinder() { }
   virtual ~CacheHtmlInfoFinder() { }
 
-  virtual void PropagateCacheDeletes(const GoogleString& url, int furious_id,
+  virtual void PropagateCacheDeletes(const GoogleString& url, int experiment_id,
                                      UserAgentMatcher::DeviceType device_type);
 
   virtual bool UpdateDiffInfo(

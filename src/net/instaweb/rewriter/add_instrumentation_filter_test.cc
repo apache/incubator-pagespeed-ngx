@@ -117,8 +117,7 @@ TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigation) {
 }
 
 // Test an https fetch.
-TEST_F(AddInstrumentationFilterTest,
-       TestScriptInjectionWithHttps) {
+TEST_F(AddInstrumentationFilterTest, TestScriptInjectionWithHttps) {
   AssumeHttps();
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
@@ -141,14 +140,13 @@ TEST_F(AddInstrumentationFilterTest,
 }
 
 // Test that experiment id reporting is done correctly.
-TEST_F(AddInstrumentationFilterTest,
-       TestFuriousExperimentIdReporting) {
+TEST_F(AddInstrumentationFilterTest, TestExperimentIdReporting) {
   NullMessageHandler handler;
-  options()->set_running_furious_experiment(true);
-  options()->AddFuriousSpec("id=2;percent=10;slot=4;", &handler);
-  options()->AddFuriousSpec("id=7;percent=10;level=CoreFilters;slot=4;",
-                            &handler);
-  options()->SetFuriousState(2);
+  options()->set_running_experiment(true);
+  options()->AddExperimentSpec("id=2;percent=10;slot=4;", &handler);
+  options()->AddExperimentSpec("id=7;percent=10;level=CoreFilters;slot=4;",
+                               &handler);
+  options()->SetExperimentState(2);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(

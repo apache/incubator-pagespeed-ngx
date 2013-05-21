@@ -144,11 +144,12 @@ class InstawebContext {
   PropertyCallback* InitiatePropertyCacheLookup();
   void ProcessBytes(const char* input, int size);
 
-  // Checks to see if there was a Furious cookie sent with the request.
+  // Checks to see if there was an experiment cookie sent with the request.
   // If there was not, set one, and add a Set-Cookie header to the
   // response headers.
   // If there was one, make sure to set the options state appropriately.
-  void SetFuriousStateAndCookie(request_rec* request, RewriteOptions* options);
+  void SetExperimentStateAndCookie(request_rec* request,
+                                   RewriteOptions* options);
 
   GoogleString output_;  // content after instaweb rewritten.
   apr_bucket_brigade* bucket_brigade_;

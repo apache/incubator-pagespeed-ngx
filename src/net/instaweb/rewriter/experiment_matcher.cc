@@ -16,38 +16,38 @@
 
 // Author: mukerjee@google.com (Matt Mukerjee)
 
-#include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"  // for int64
 
 namespace net_instaweb {
 
-FuriousMatcher::~FuriousMatcher() { }
+ExperimentMatcher::~ExperimentMatcher() { }
 
-bool FuriousMatcher::ClassifyIntoExperiment(
+bool ExperimentMatcher::ClassifyIntoExperiment(
     const RequestHeaders& headers, RewriteOptions* options) {
-  int furious_value = furious::kFuriousNotSet;
+  int experiment_value = experiment::kExperimentNotSet;
   bool need_cookie = false;
-  if (!furious::GetFuriousCookieState(headers, &furious_value) ||
-      (furious_value != furious::kFuriousNoExperiment &&
-       options->GetFuriousSpec(furious_value) == NULL)) {
+  if (!experiment::GetExperimentCookieState(headers, &experiment_value) ||
+      (experiment_value != experiment::kNoExperiment &&
+       options->GetExperimentSpec(experiment_value) == NULL)) {
     // TODO(anupama): We currently do not handle "No-Experiment"
-    // (_GFURIOUS=0) cookies well because we do not know whether these are
-    // stale or new. Implement the grouping approach suggested in
+    // (PageSpeedExperiment=0) cookies well because we do not know whether these
+    // are stale or new. Implement the grouping approach suggested in
     // http://b/6831327 for fixing this.
-    furious_value = furious::DetermineFuriousState(options);
+    experiment_value = experiment::DetermineExperimentState(options);
     need_cookie = true;
   }
-  options->SetFuriousState(furious_value);
+  options->SetExperimentState(experiment_value);
   return need_cookie;
 }
 
-void FuriousMatcher::StoreExperimentData(
+void ExperimentMatcher::StoreExperimentData(
     int state, const StringPiece& url, int64 expiration_time_ms,
     ResponseHeaders* headers) {
-  furious::SetFuriousCookie(headers, state, url, expiration_time_ms);
+  experiment::SetExperimentCookie(headers, state, url, expiration_time_ms);
 }
 
 

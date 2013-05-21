@@ -33,7 +33,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -466,21 +466,21 @@ void ProxyInterface::ProxyRequestCallback(
                          server_context_, async_fetch);
   } else {
     // TODO(nforman): If we are not running an experiment, remove the
-    // furious cookie.
-    // If we don't already have custom options, and the global options
-    // say we're running furious, then clone them into custom_options so we
-    // can manipulate custom options without affecting the global options.
+    // experiment cookie.
+    // If we don't already have custom options, and the global options say we're
+    // running an experiment, then clone them into custom_options so we can
+    // manipulate custom options without affecting the global options.
     if (options == NULL) {
       RewriteOptions* global_options = server_context_->global_options();
-      if (global_options->running_furious()) {
+      if (global_options->running_experiment()) {
         options = global_options->Clone();
       }
     }
-    // TODO(anupama): Adapt the below furious experiment logic for
-    // FlushEarlyFlow as well.
+    // TODO(anupama): Adapt the experiment logic below for the FlushEarlyFlow as
+    // well.
     bool need_to_store_experiment_data = false;
-    if (options != NULL && options->running_furious()) {
-      need_to_store_experiment_data = server_context_->furious_matcher()->
+    if (options != NULL && options->running_experiment()) {
+      need_to_store_experiment_data = server_context_->experiment_matcher()->
           ClassifyIntoExperiment(*async_fetch->request_headers(), options);
       options->set_need_to_store_experiment_data(need_to_store_experiment_data);
     }

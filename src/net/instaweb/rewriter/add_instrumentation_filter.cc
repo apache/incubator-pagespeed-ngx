@@ -25,7 +25,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -154,12 +154,12 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   const GoogleString* beacon_url =
       driver_->IsHttps() ? &beacons.https : &beacons.http;
   GoogleString extra_params;
-  if (driver_->options()->running_furious()) {
-    int furious_state = driver_->options()->furious_id();
-    if (furious_state != furious::kFuriousNotSet &&
-        furious_state != furious::kFuriousNoExperiment) {
+  if (driver_->options()->running_experiment()) {
+    int experiment_state = driver_->options()->experiment_id();
+    if (experiment_state != experiment::kExperimentNotSet &&
+        experiment_state != experiment::kNoExperiment) {
       StrAppend(&extra_params, "&exptid=",
-                IntegerToString(driver_->options()->furious_id()));
+                IntegerToString(driver_->options()->experiment_id()));
     }
   }
 

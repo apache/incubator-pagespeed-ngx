@@ -38,7 +38,7 @@
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -485,7 +485,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
       // CreateCacheHtmlComputationDriverAndRewrite.
       server_context_->cache_html_info_finder()->PropagateCacheDeletes(
           url_,
-          rewrite_driver_->options()->furious_id(),
+          rewrite_driver_->options()->experiment_id(),
           rewrite_driver_->device_type());
       page->DeleteProperty(
           cohort, BlinkUtil::kCacheHtmlRewriterInfo);
@@ -716,14 +716,14 @@ void CacheHtmlFlow::CacheHtmlHit(FallbackPropertyPage* page) {
   response_headers->ComputeCaching();
   response_headers->SetDateAndCaching(server_context_->timer()->NowMs(), 0,
                                       ", private, no-cache");
-  // If relevant, add the Set-Cookie header for furious experiments.
+  // If relevant, add the Set-Cookie header for experiments.
   if (options_->need_to_store_experiment_data() &&
-      options_->running_furious()) {
-    int furious_value = options_->furious_id();
-    server_context_->furious_matcher()->StoreExperimentData(
-        furious_value, url_,
+      options_->running_experiment()) {
+    int experiment_value = options_->experiment_id();
+    server_context_->experiment_matcher()->StoreExperimentData(
+        experiment_value, url_,
         server_context_->timer()->NowMs() +
-            options_->furious_cookie_duration_ms(),
+            options_->experiment_cookie_duration_ms(),
         response_headers);
   }
   base_fetch_->HeadersComplete();

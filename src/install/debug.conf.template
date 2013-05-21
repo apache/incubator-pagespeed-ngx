@@ -801,22 +801,23 @@ ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #HTTPS SSLRandomSeed connect builtin
 #HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
 
-#FURIOUS_GA # This is used for testing the Furious experiment framework.
-#FURIOUS_GA ModPagespeedRunExperiment on
-#FURIOUS_GA ModPagespeedAnalyticsID "123-45-6734"
-#FURIOUS_GA ModPagespeedExperimentVariable 2
-#FURIOUS_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
+#EXPERIMENT_GA # This is used for testing the experiment framework.
+#EXPERIMENT_GA ModPagespeedRunExperiment on
+#EXPERIMENT_GA ModPagespeedAnalyticsID "123-45-6734"
+#EXPERIMENT_GA ModPagespeedExperimentVariable 2
+#EXPERIMENT_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
+#EXPERIMENT_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
 
-#FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
-#FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
-#FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
-#FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
-#FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
-#FURIOUS_NO_GA ModPagespeedRunExperiment on
-#FURIOUS_NO_GA ModPagespeedExperimentVariable 2
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
+#EXPERIMENT_NO_GA # This is used for testing the experiment framework still
+#EXPERIMENT_NO_GA # works when no analytics ID is specified.  It should assign
+#EXPERIMENT_NO_GA # users to experiments and use appropriate experimental
+#EXPERIMENT_NO_GA # options but not report back to Google Analytics.  The
+#EXPERIMENT_NO_GA # instrumentation beacon, however, will still contain the
+#EXPERIMENT_NO_GA # experiment id.
+#EXPERIMENT_NO_GA ModPagespeedRunExperiment on
+#EXPERIMENT_NO_GA ModPagespeedExperimentVariable 2
+#EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
+#EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
 
 # Support for embedded configurations, where image flags in the
 # VirtualHost serving HTML is not the same as the one serving resources,

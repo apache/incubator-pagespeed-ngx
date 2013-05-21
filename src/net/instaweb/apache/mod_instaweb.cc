@@ -162,7 +162,7 @@ const char kModPagespeedNumExpensiveRewriteThreads[] =
 const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
 const char kModPagespeedNumShards[] = "ModPagespeedNumShards";
 const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
-const char kModPagespeedRunFurious[] = "ModPagespeedRunExperiment";
+const char kModPagespeedRunExperiment[] = "ModPagespeedRunExperiment";
 const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
 const char kModPagespeedTrackOriginalContentLength[] =
@@ -495,7 +495,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       merged_options->Merge(*options);
       merged_options->Merge(*query_options.get());
       // Don't run any experiments if we're handling a query params request.
-      merged_options->set_running_furious_experiment(false);
+      merged_options->set_running_experiment(false);
       server_context->ComputeSignature(merged_options);
       custom_options.reset(merged_options);
       options = merged_options;
@@ -1748,7 +1748,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,
         "Retain HTML comments matching wildcard, even with remove_comments "
         "enabled"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedRunFurious,
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRunExperiment,
          "Run an experiment to test the effectiveness of rewriters."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedSpeedTracking,
         "Increase the percentage of sites that have Google Analytics page "

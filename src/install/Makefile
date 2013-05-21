@@ -283,20 +283,20 @@ else
   GZIP_TEST_SED_PATTERN=^\#GZIP.*\n
 endif
 
-ifeq ($(FURIOUS_GA_TEST),1)
+ifeq ($(EXPERIMENT_GA_TEST),1)
   # remove prefix
-  FURIOUS_GA_TEST_SED_PATTERN=^\#FURIOUS_GA
+  EXPERIMENT_GA_TEST_SED_PATTERN=^\#EXPERIMENT_GA
 else
   # remove whole line
-  FURIOUS_GA_TEST_SED_PATTERN=^\#FURIOUS_GA.*\n
+  EXPERIMENT_GA_TEST_SED_PATTERN=^\#EXPERIMENT_GA.*\n
 endif
 
-ifeq ($(FURIOUS_NO_GA_TEST),1)
+ifeq ($(EXPERIMENT_NO_GA_TEST),1)
   # remove prefix
-  FURIOUS_NO_GA_TEST_SED_PATTERN=^\#FURIOUS_NO_GA
+  EXPERIMENT_NO_GA_TEST_SED_PATTERN=^\#EXPERIMENT_NO_GA
 else
   # remove whole line
-  FURIOUS_NO_GA_TEST_SED_PATTERN=^\#FURIOUS_NO_GA.*\n
+  EXPERIMENT_NO_GA_TEST_SED_PATTERN=^\#EXPERIMENT_NO_GA.*\n
 endif
 
 ifeq ($(HTTPS_TEST),1)
@@ -369,8 +369,8 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(PURGING_COVERAGE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(FURIOUS_GA_TEST_SED_PATTERN)@@" \
-	    -e "s@$(FURIOUS_NO_GA_TEST_SED_PATTERN)@@" \
+	    -e "s@$(EXPERIMENT_GA_TEST_SED_PATTERN)@@" \
+	    -e "s@$(EXPERIMENT_NO_GA_TEST_SED_PATTERN)@@" \
 	    -e "s@$(ALL_DIRECTIVES_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(NO_PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
@@ -485,8 +485,8 @@ apache_install_conf :
 	    $(OPT_HTTPS_TEST) \
 	    $(OPT_SHARED_MEM_LOCK_TEST) \
 	    $(OPT_GZIP_TEST) \
-	    $(OPT_FURIOUS_GA_TEST) \
-	    $(OPT_FURIOUS_NO_GA_TEST) \
+	    $(OPT_EXPERIMENT_GA_TEST) \
+	    $(OPT_EXPERIMENT_NO_GA_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_PER_VHOST_STATS_TEST) \
 	    $(OPT_NO_PER_VHOST_STATS_TEST) \
@@ -504,8 +504,8 @@ apache_install_conf :
 	    $(OPT_HTTPS_TEST) \
 	    $(OPT_SHARED_MEM_LOCK_TEST) \
 	    $(OPT_GZIP_TEST) \
-	    $(OPT_FURIOUS_GA_TEST) \
-	    $(OPT_FURIOUS_NO_GA_TEST) \
+	    $(OPT_EXPERIMENT_GA_TEST) \
+	    $(OPT_EXPERIMENT_NO_GA_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_PER_VHOST_STATS_TEST) \
 	    $(OPT_NO_PER_VHOST_STATS_TEST) \

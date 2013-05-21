@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
 #include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -882,9 +882,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ForbidAllDisabledFilters",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kForbidAllDisabledFilters));
-  EXPECT_STREQ("FuriousCookieDurationMs",
+  EXPECT_STREQ("ExperimentCookieDurationMs",
                RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFuriousCookieDurationMs));
+                   RewriteOptions::kExperimentCookieDurationMs));
   EXPECT_STREQ("IdleFlushTimeMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kIdleFlushTimeMs));
@@ -1052,7 +1052,7 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                    RewriteOptions::kRewriteUncacheableResources));
   EXPECT_STREQ("RunExperiment",
                RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRunningFurious));
+                   RewriteOptions::kRunningExperiment));
   EXPECT_STREQ("ServeStaleIfFetchError",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kServeStaleIfFetchError));
@@ -1342,7 +1342,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
                 RewriteOptions::kExperimentSpec,
                 "id=2;enable=recompress_png;percent=50",
                 &msg, &handler));
-  RewriteOptions::FuriousSpec* spec = options_.GetFuriousSpec(2);
+  RewriteOptions::ExperimentSpec* spec = options_.GetExperimentSpec(2);
   ASSERT_TRUE(spec != NULL);
   EXPECT_EQ(2, spec->id());
   EXPECT_EQ(50, spec->percent());
@@ -1356,11 +1356,11 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
                 &msg, &handler));
   EXPECT_EQ("not a valid experiment spec", msg);
 
-  EXPECT_NE(4, options_.furious_ga_slot());
+  EXPECT_NE(4, options_.experiment_ga_slot());
   EXPECT_EQ(RewriteOptions::kOptionOk,
             options_.ParseAndSetOptionFromEnum1(
                 RewriteOptions::kExperimentVariable, "4", &msg, &handler));
-  EXPECT_EQ(4, options_.furious_ga_slot());
+  EXPECT_EQ(4, options_.experiment_ga_slot());
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
             options_.ParseAndSetOptionFromEnum1(
@@ -1607,90 +1607,91 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum3) {
             "URL http://www.example.com/url.js", msg);
 }
 
-TEST_F(RewriteOptionsTest, FuriousSpecTest) {
-  // Test that we handle furious specs properly, and that when
-  // we set the options to one experiment or another, it works.
+TEST_F(RewriteOptionsTest, ExperimentSpecTest) {
+  // Test that we handle experiment specs properly, and that when we set the
+  // options to one experiment or another, it works.
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.set_ga_id("UA-111111-1");
   // Set the default slot to 4.
-  options_.set_furious_ga_slot(4);
-  EXPECT_FALSE(options_.AddFuriousSpec("id=0", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  options_.set_experiment_ga_slot(4);
+  EXPECT_FALSE(options_.AddExperimentSpec("id=0", &handler));
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=7;percent=10;level=CoreFilters;enabled=sprite_images;"
       "disabled=inline_css;inline_js=600000", &handler));
 
   // Extra spaces to test whitespace handling.
-  EXPECT_TRUE(options_.AddFuriousSpec("id=2;    percent=15;ga=UA-2222-1;"
-                                      "disabled=insert_ga ;slot=3;",
-                                      &handler));
+  EXPECT_TRUE(options_.AddExperimentSpec("id=2;    percent=15;ga=UA-2222-1;"
+                                         "disabled=insert_ga ;slot=3;",
+                                         &handler));
 
   // Invalid slot - make sure the spec still gets added, and the slot defaults
   // to the global slot (4).
-  EXPECT_TRUE(options_.AddFuriousSpec("id=17;percent=3;slot=8", &handler));
+  EXPECT_TRUE(options_.AddExperimentSpec("id=17;percent=3;slot=8", &handler));
 
-  options_.SetFuriousState(7);
+  options_.SetExperimentState(7);
   EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
   // This experiment didn't have a ga_id, so make sure we still have the
   // global ga_id.
   EXPECT_EQ("UA-111111-1", options_.ga_id());
-  EXPECT_EQ(4, options_.furious_ga_slot());
+  EXPECT_EQ(4, options_.experiment_ga_slot());
 
-  // insert_ga can not be disabled in any furious experiment because
-  // that filter injects the instrumentation we use to collect the data.
-  options_.SetFuriousState(2);
+  // insert_ga can not be disabled in any experiment because that filter injects
+  // the instrumentation we use to collect the data.
+  options_.SetExperimentState(2);
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInsertGA));
-  EXPECT_EQ(3, options_.furious_ga_slot());
+  EXPECT_EQ(3, options_.experiment_ga_slot());
   // This experiment specified a ga_id, so make sure that we set it.
   EXPECT_EQ("UA-2222-1", options_.ga_id());
 
-  options_.SetFuriousState(17);
-  EXPECT_EQ(4, options_.furious_ga_slot());
+  options_.SetExperimentState(17);
+  EXPECT_EQ(4, options_.experiment_ga_slot());
 
-  options_.SetFuriousState(7);
-  EXPECT_EQ("a", options_.GetFuriousStateStr());
-  options_.SetFuriousState(2);
-  EXPECT_EQ("b", options_.GetFuriousStateStr());
-  options_.SetFuriousState(17);
-  EXPECT_EQ("c", options_.GetFuriousStateStr());
-  options_.SetFuriousState(furious::kFuriousNotSet);
-  EXPECT_EQ("", options_.GetFuriousStateStr());
-  options_.SetFuriousState(furious::kFuriousNoExperiment);
-  EXPECT_EQ("", options_.GetFuriousStateStr());
+  options_.SetExperimentState(7);
+  EXPECT_EQ("a", options_.GetExperimentStateStr());
+  options_.SetExperimentState(2);
+  EXPECT_EQ("b", options_.GetExperimentStateStr());
+  options_.SetExperimentState(17);
+  EXPECT_EQ("c", options_.GetExperimentStateStr());
+  options_.SetExperimentState(experiment::kExperimentNotSet);
+  EXPECT_EQ("", options_.GetExperimentStateStr());
+  options_.SetExperimentState(experiment::kNoExperiment);
+  EXPECT_EQ("", options_.GetExperimentStateStr());
 
-  options_.SetFuriousStateStr("a");
-  EXPECT_EQ("a", options_.GetFuriousStateStr());
-  options_.SetFuriousStateStr("b");
-  EXPECT_EQ("b", options_.GetFuriousStateStr());
-  options_.SetFuriousStateStr("c");
-  EXPECT_EQ("c", options_.GetFuriousStateStr());
+  options_.SetExperimentStateStr("a");
+  EXPECT_EQ("a", options_.GetExperimentStateStr());
+  options_.SetExperimentStateStr("b");
+  EXPECT_EQ("b", options_.GetExperimentStateStr());
+  options_.SetExperimentStateStr("c");
+  EXPECT_EQ("c", options_.GetExperimentStateStr());
 
   // Invalid state index 'd'; we only added three specs above.
-  options_.SetFuriousStateStr("d");
-  // No effect on the furious state; stay with 'c' from before.
-  EXPECT_EQ("c", options_.GetFuriousStateStr());
+  options_.SetExperimentStateStr("d");
+  // No effect on the experiment state; stay with 'c' from before.
+  EXPECT_EQ("c", options_.GetExperimentStateStr());
 
   // Check a state index that will be out of bounds in the other direction.
-  options_.SetFuriousStateStr("`");
-  // Still no effect on the furious state.
-  EXPECT_EQ("c", options_.GetFuriousStateStr());
+  options_.SetExperimentStateStr("`");
+  // Still no effect on the experiment state.
+  EXPECT_EQ("c", options_.GetExperimentStateStr());
 
   // Check that we have a maximum size of 26 concurrent experiment specs.
   // Get us up to 26.
-  for (int i = options_.num_furious_experiments(); i < 26 ; ++i) {
+  for (int i = options_.num_experiments(); i < 26 ; ++i) {
     int tmp_id = i+100;  // Don't want conflict with experiments added above.
-    EXPECT_TRUE(options_.AddFuriousSpec(
+    EXPECT_TRUE(options_.AddExperimentSpec(
         StrCat("id=", IntegerToString(tmp_id),
                ";percent=1;default"), &handler));
   }
-  EXPECT_EQ(26, options_.num_furious_experiments());
+  EXPECT_EQ(26, options_.num_experiments());
   // Object to adding a 27th.
-  EXPECT_FALSE(options_.AddFuriousSpec("id=200;percent=1;default", &handler));
+  EXPECT_FALSE(options_.AddExperimentSpec("id=200;percent=1;default",
+                                          &handler));
 }
 
 TEST_F(RewriteOptionsTest, PreserveURLDefaults) {
@@ -1711,32 +1712,33 @@ TEST_F(RewriteOptionsTest, RewriteDeadlineTest) {
   EXPECT_EQ(40, options_.rewrite_deadline_ms());
 }
 
-TEST_F(RewriteOptionsTest, FuriousPrintTest) {
+TEST_F(RewriteOptionsTest, ExperimentPrintTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.set_ga_id("UA-111111-1");
-  options_.set_running_furious_experiment(true);
-  EXPECT_FALSE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec("id=1;percent=15;default", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec("id=7;percent=15;level=AllFilters;",
-                                      &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec("id=2;percent=15;enabled=rewrite_css;"
-                                      "inline_css=4096;ga_id=122333-4",
-                                      &handler));
-  options_.SetFuriousState(-7);
+  options_.set_running_experiment(true);
+  EXPECT_FALSE(options_.AddExperimentSpec("id=2;enabled=rewrite_css;",
+                                          &handler));
+  EXPECT_TRUE(options_.AddExperimentSpec("id=1;percent=15;default", &handler));
+  EXPECT_TRUE(options_.AddExperimentSpec("id=7;percent=15;level=AllFilters;",
+                                         &handler));
+  EXPECT_TRUE(options_.AddExperimentSpec("id=2;percent=15;enabled=rewrite_css;"
+                                         "inline_css=4096;ga_id=122333-4",
+                                         &handler));
+  options_.SetExperimentState(-7);
   // This should be the core filters.
   EXPECT_EQ("ah,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
             "ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
-  options_.SetFuriousState(1);
+  options_.SetExperimentState(1);
   EXPECT_EQ("Experiment: 1; ah,ai,ca,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
             "il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
-  options_.SetFuriousState(7);
+  options_.SetExperimentState(7);
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
-  options_.SetFuriousState(2);
+  options_.SetExperimentState(2);
   // This should be the filters we need to run an experiment (add_head,
   // add_instrumentation, html_writer, insert_ga) plus rewrite_css.
   // The image inline threshold is 0 because ImageInlineMaxBytes()
@@ -1749,82 +1751,82 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   EXPECT_EQ("122333-4", options_.ga_id());
 }
 
-TEST_F(RewriteOptionsTest, FuriousUndoOptionsTest) {
+TEST_F(RewriteOptionsTest, ExperimentUndoOptionsTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options_.set_running_furious_experiment(true);
+  options_.set_running_experiment(true);
 
   // Default for this is 2048.
   EXPECT_EQ(2048L, options_.ImageInlineMaxBytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=1;percent=15;enable=inline_images;"
       "inline_images=1024", &handler));
-  options_.SetFuriousState(1);
+  options_.SetExperimentState(1);
   EXPECT_EQ(1024L, options_.ImageInlineMaxBytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=2;percent=15;enable=inline_images", &handler));
-  options_.SetFuriousState(2);
+  options_.SetExperimentState(2);
   EXPECT_EQ(2048L, options_.ImageInlineMaxBytes());
 }
 
-TEST_F(RewriteOptionsTest, FuriousOptionsTest) {
+TEST_F(RewriteOptionsTest, ExperimentOptionsTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options_.set_running_furious_experiment(true);
+  options_.set_running_experiment(true);
 
   // Default for this is 2048.
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=1;percent=15;enable=defer_javascript;"
       "options=CssInlineMaxBytes=1024", &handler));
-  options_.SetFuriousState(1);
+  options_.SetExperimentState(1);
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=2;percent=15;enable=resize_images;options=BogusOption=35", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=3;percent=15;enable=defer_javascript", &handler));
-  options_.SetFuriousState(3);
+  options_.SetExperimentState(3);
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=4;percent=15;enable=defer_javascript;"
       "options=CssInlineMaxBytes=Cabbage", &handler));
-  options_.SetFuriousState(4);
+  options_.SetExperimentState(4);
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=5;percent=15;enable=defer_javascript;"
       "options=Potato=Carrot,5=10,6==9,CssInlineMaxBytes=1024", &handler));
-  options_.SetFuriousState(5);
+  options_.SetExperimentState(5);
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddFuriousSpec(
+  EXPECT_TRUE(options_.AddExperimentSpec(
       "id=6;percent=15;enable=defer_javascript;"
       "options=JsOutlineMinBytes=4096,JpegRecompresssionQuality=50,"
       "CssInlineMaxBytes=100,JsInlineMaxBytes=123", &handler));
-  options_.SetFuriousState(6);
+  options_.SetExperimentState(6);
   EXPECT_EQ(100L, options_.css_inline_max_bytes());
 }
 
-TEST_F(RewriteOptionsTest, FuriousMergeTest) {
+TEST_F(RewriteOptionsTest, ExperimentMergeTest) {
   NullMessageHandler handler;
-  RewriteOptions::FuriousSpec *spec = new
-      RewriteOptions::FuriousSpec("id=1;percentage=15;"
-                                  "enable=defer_javascript;"
-                                  "options=CssInlineMaxBytes=100",
-                                  &options_, &handler);
+  RewriteOptions::ExperimentSpec *spec = new
+      RewriteOptions::ExperimentSpec("id=1;percentage=15;"
+                                     "enable=defer_javascript;"
+                                     "options=CssInlineMaxBytes=100",
+                                     &options_, &handler);
 
-  RewriteOptions::FuriousSpec *spec2 = new
-      RewriteOptions::FuriousSpec("id=2;percentage=25;enable=resize_images;"
-                                  "options=CssInlineMaxBytes=125", &options_,
-                                  &handler);
-  options_.InsertFuriousSpecInVector(spec);
-  options_.InsertFuriousSpecInVector(spec2);
-  options_.SetFuriousState(1);
+  RewriteOptions::ExperimentSpec *spec2 = new
+      RewriteOptions::ExperimentSpec("id=2;percentage=25;enable=resize_images;"
+                                     "options=CssInlineMaxBytes=125", &options_,
+                                     &handler);
+  options_.InsertExperimentSpecInVector(spec);
+  options_.InsertExperimentSpecInVector(spec2);
+  options_.SetExperimentState(1);
   EXPECT_EQ(15, spec->percent());
   EXPECT_EQ(1, spec->id());
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kResizeImages));
   EXPECT_EQ(100L, options_.css_inline_max_bytes());
   spec->Merge(*spec2);
-  options_.SetFuriousState(1);
+  options_.SetExperimentState(1);
   EXPECT_EQ(25, spec->percent());
   EXPECT_EQ(1, spec->id());
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));

@@ -12,7 +12,7 @@
 #                       OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
-#                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
+#                       OPT_EXPERIMENT_GA_TEST, OPT_EXPERIMENT_NO_GA_TEST,
 #                       OPT_PER_VHOST_STATS_TEST, OPT_NO_PER_VHOST_STATS_TEST,
 #                       OPT_ALL_DIRECTIVES_TEST)
 #  stop, start  (to stop and start Apache)
@@ -46,7 +46,7 @@ apache_vm_system_tests :
 	$(MAKE) FAST_RESTART=1 apache_debug_slurp_test
 	$(MAKE) FAST_RESTART=1 apache_debug_speling_test
 	$(MAKE) FAST_RESTART=1 apache_debug_gzip_test
-	$(MAKE) FAST_RESTART=1 apache_debug_furious_test
+	$(MAKE) FAST_RESTART=1 apache_debug_experiment_test
 	$(MAKE) FAST_RESTART=1 apache_debug_vhost_only_test
 	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
 	$(MAKE) FAST_RESTART=1 apache_debug_shared_mem_lock_sanity_test
@@ -235,27 +235,27 @@ gzip_test_prepare :
 	$(eval OPT_GZIP_TEST="GZIP_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
-# Test to make sure Furious is sending its headers
+# Test to make sure the experiment framework is sending its headers.
 # TODO(nforman): Make this run multiple times and make sure we don't *always*
 # get the same result.
-apache_debug_furious_test :
-	$(MAKE) apache_debug_furious_ga_test
-	$(MAKE) apache_debug_furious_no_ga_test
+apache_debug_experiment_test :
+	$(MAKE) apache_debug_experiment_ga_test
+	$(MAKE) apache_debug_experiment_no_ga_test
 
-apache_debug_furious_ga_test : furious_ga_test_prepare apache_install_conf \
-    apache_debug_restart
-	$(INSTALL_DATA_DIR)/apache_furious_ga_test.sh $(APACHE_SERVER)
-
-apache_debug_furious_no_ga_test : furious_no_ga_test_prepare \
+apache_debug_experiment_ga_test : experiment_ga_test_prepare \
  apache_install_conf apache_debug_restart
-	$(INSTALL_DATA_DIR)/apache_furious_no_ga_test.sh $(APACHE_SERVER)
+	$(INSTALL_DATA_DIR)/apache_experiment_ga_test.sh $(APACHE_SERVER)
 
-furious_ga_test_prepare :
-	$(eval OPT_FURIOUS_GA_TEST="FURIOUS_GA_TEST=1")
+apache_debug_experiment_no_ga_test : experiment_no_ga_test_prepare \
+ apache_install_conf apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_experiment_no_ga_test.sh $(APACHE_SERVER)
+
+experiment_ga_test_prepare :
+	$(eval OPT_EXPERIMENT_GA_TEST="EXPERIMENT_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
-furious_no_ga_test_prepare :
-	$(eval OPT_FURIOUS_NO_GA_TEST="FURIOUS_NO_GA_TEST=1")
+experiment_no_ga_test_prepare :
+	$(eval OPT_EXPERIMENT_NO_GA_TEST="EXPERIMENT_NO_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.

@@ -38,7 +38,7 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -2972,14 +2972,14 @@ TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
 // when the rest of the system must block, buffering up incoming HTML text,
 // waiting for the property-cache lookups to complete.
 
-// Test that we set the Furious cookie up appropriately.
-TEST_F(ProxyInterfaceTest, FuriousTest) {
+// Test that we set the Experiment cookie up appropriately.
+TEST_F(ProxyInterfaceTest, ExperimentTest) {
   RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_ga_id("123-455-2341");
-  options->set_running_furious_experiment(true);
+  options->set_running_experiment(true);
   NullMessageHandler handler;
-  options->AddFuriousSpec("id=2;enable=extend_cache;percent=100", &handler);
+  options->AddExperimentSpec("id=2;enable=extend_cache;percent=100", &handler);
   server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders("example.jpg", kContentTypeJpeg,
@@ -2995,19 +2995,19 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
 
   GoogleString text;
   FetchFromProxy("text.html", true, &text, &headers);
-  // Assign all visitors to a furious_spec.
+  // Assign all visitors to an experiment_spec.
   EXPECT_TRUE(headers.Has(HttpAttributes::kSetCookie));
   ConstStringStarVector values;
   headers.Lookup(HttpAttributes::kSetCookie, &values);
   bool found = false;
   for (int i = 0, n = values.size(); i < n; ++i) {
-    if (values[i]->find(furious::kFuriousCookie) == 0) {
+    if (values[i]->find(experiment::kExperimentCookie) == 0) {
       found = true;
       break;
     }
   }
   EXPECT_TRUE(found);
-  // Image cache-extended and including furious_spec 'a'.
+  // Image cache-extended and including experiment_spec 'a'.
   EXPECT_TRUE(text.find("example.jpg.pagespeed.a.ce") != GoogleString::npos);
 
   headers.Clear();
@@ -3018,15 +3018,15 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
   text.clear();
 
   RequestHeaders req_headers;
-  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=2");
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=2");
 
   FetchFromProxy("text2.html", req_headers, true, &text, &headers);
   // Visitor already has cookie with id=2; don't give them a new one.
   EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));
-  // Image cache-extended and including furious_spec 'a'.
+  // Image cache-extended and including experiment_spec 'a'.
   EXPECT_TRUE(text.find("example.jpg.pagespeed.a.ce") != GoogleString::npos);
 
-  // Check that we don't include a furious_spec index in urls for the "no
+  // Check that we don't include an experiment_spec index in urls for the "no
   // experiment" group (id=0).
   headers.Clear();
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
@@ -3036,7 +3036,7 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
   text.clear();
 
   RequestHeaders req_headers2;
-  req_headers2.Add(HttpAttributes::kCookie, "_GFURIOUS=0");
+  req_headers2.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
 
   FetchFromProxy("text3.html", req_headers2, true, &text, &headers);
   EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));

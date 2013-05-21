@@ -25,8 +25,8 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -188,15 +188,15 @@ const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
 
 // Setting the limit on combined js resource to -1 will bypass the size check.
 const int64 RewriteOptions::kDefaultMaxCombinedJsBytes = -1;
-const int64 RewriteOptions::kDefaultFuriousCookieDurationMs =
+const int64 RewriteOptions::kDefaultExperimentCookieDurationMs =
     Timer::kWeekMs;
 const int64 RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs =
     2 * Timer::kHourMs;
 const int64 RewriteOptions::kDefaultFinderPropertiesCacheRefreshTimeMs =
     (3 * Timer::kHourMs) / 2;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
-const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
-const int RewriteOptions::kDefaultFuriousSlot = 1;
+const int RewriteOptions::kDefaultExperimentTrafficPercent = 50;
+const int RewriteOptions::kDefaultExperimentSlot = 1;
 
 // An empty default key indicates that the blocking rewrite feature is disabled.
 const char RewriteOptions::kDefaultBlockingRewriteKey[] = "";
@@ -620,8 +620,8 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
       initialized_options_(0),
       options_uniqueness_checked_(false),
       need_to_store_experiment_data_(false),
-      furious_id_(furious::kFuriousNotSet),
-      furious_percent_(0),
+      experiment_id_(experiment::kExperimentNotSet),
+      experiment_percent_(0),
       hasher_(kHashBytes),
       thread_system_(thread_system) {
   url_cache_invalidation_map_.set_empty_key("");
@@ -1211,9 +1211,9 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
-      kDefaultFuriousCookieDurationMs,
-      &RewriteOptions::furious_cookie_duration_ms_, "fcd",
-      kFuriousCookieDurationMs,
+      kDefaultExperimentCookieDurationMs,
+      &RewriteOptions::experiment_cookie_duration_ms_, "fcd",
+      kExperimentCookieDurationMs,
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
@@ -1255,12 +1255,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
-      false, &RewriteOptions::running_furious_, "fur", kRunningFurious,
+      false, &RewriteOptions::running_experiment_, "fur", kRunningExperiment,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
-      kDefaultFuriousSlot, &RewriteOptions::furious_ga_slot_, "fga",
-      kFuriousSlot,
+      kDefaultExperimentSlot, &RewriteOptions::experiment_ga_slot_, "fga",
+      kExperimentSlot,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
@@ -1489,14 +1489,14 @@ void RewriteOptions::AddProperties() {
   // lazyload_images_after_onload_.DoNotUseForSignatureComputation();
   // ga_id_.DoNotUseForSignatureComputation();
   // increase_speed_tracking_.DoNotUseForSignatureComputation();
-  // running_furious_.DoNotUseForSignatureComputation();
+  // running_experiment_.DoNotUseForSignatureComputation();
   // x_header_value_.DoNotUseForSignatureComputation();
   // blocking_fetch_timeout_ms_.DoNotUseForSignatureComputation();
 }  // NOLINT  (large function)
 
 RewriteOptions::~RewriteOptions() {
   STLDeleteElements(&custom_fetch_headers_);
-  STLDeleteElements(&furious_specs_);
+  STLDeleteElements(&experiment_specs_);
   STLDeleteElements(&url_cache_invalidation_entries_);
   STLDeleteValues(&rejected_request_map_);
 }  // NOLINT
@@ -1652,17 +1652,18 @@ void RewriteOptions::MergeSubclassProperties(Properties* properties) {
   all_properties_->Merge(properties);
 }
 
-bool RewriteOptions::SetFuriousState(int id) {
-  furious_id_ = id;
-  return SetupFuriousRewriters();
+bool RewriteOptions::SetExperimentState(int id) {
+  experiment_id_ = id;
+  return SetupExperimentRewriters();
 }
 
-void RewriteOptions::SetFuriousStateStr(const StringPiece& experiment_index) {
+void RewriteOptions::SetExperimentStateStr(
+    const StringPiece& experiment_index) {
   if (experiment_index.length() == 1) {
     int index = experiment_index[0] - 'a';
-    int n_furious_specs = furious_specs_.size();
-    if (0 <= index && index < n_furious_specs) {
-      SetFuriousState(furious_specs_[index]->id());
+    int n_experiment_specs = experiment_specs_.size();
+    if (0 <= index && index < n_experiment_specs) {
+      SetExperimentState(experiment_specs_[index]->id());
     }
   }
   // Ignore any calls with an invalid index-string.  When experiments are ended
@@ -1675,16 +1676,16 @@ void RewriteOptions::SetFuriousStateStr(const StringPiece& experiment_index) {
   // and it would be bad to break that resource link when the experiment ended.
 }
 
-GoogleString RewriteOptions::GetFuriousStateStr() const {
-  // Don't look at more than 26 furious_specs because we use lowercase a-z.
+GoogleString RewriteOptions::GetExperimentStateStr() const {
+  // Don't look at more than 26 experiment_specs because we use lowercase a-z.
   // While this is an arbitrary limit, it's much higher than webmasters are
   // likely to run into in practice.  Most of the time people will be running
   // a/b or a/b/c tests, and an a/b/c/d/.../y/z test would be unwieldy and
   // difficult to interpret.  If this does turn out to be needed we can switch
   // to base64 to get 64-way tests, and more than one character experiment index
   // strings would also be possible.
-  for (int i = 0, n = furious_specs_.size(); i < n && i < 26; ++i) {
-    if (furious_specs_[i]->id() == furious_id_) {
+  for (int i = 0, n = experiment_specs_.size(); i < n && i < 26; ++i) {
+    if (experiment_specs_[i]->id() == experiment_id_) {
       return GoogleString(1, static_cast<char>('a' + i));
     }
   }
@@ -2191,11 +2192,11 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
         *msg = "must be an integer between 1 and 5";
         return RewriteOptions::kOptionValueInvalid;
       }
-      set_furious_ga_slot(slot);
+      set_experiment_ga_slot(slot);
       break;
     }
     case kExperimentSpec: {
-      bool ok = AddFuriousSpec(arg, handler);
+      bool ok = AddExperimentSpec(arg, handler);
       if (!ok) {
         *msg = "not a valid experiment spec";
         return RewriteOptions::kOptionValueInvalid;
@@ -2566,9 +2567,9 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     distributable_filters_.insert(filter_id.as_string());
   }
 
-  for (int i = 0, n = src.furious_specs_.size(); i < n; ++i) {
-    FuriousSpec* spec = src.furious_specs_[i]->Clone();
-    InsertFuriousSpecInVector(spec);
+  for (int i = 0, n = src.experiment_specs_.size(); i < n; ++i) {
+    ExperimentSpec* spec = src.experiment_specs_[i]->Clone();
+    InsertExperimentSpecInVector(spec);
   }
 
   for (int i = 0, n = src.custom_fetch_headers_.size(); i < n; ++i) {
@@ -2576,7 +2577,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     AddCustomFetchHeader(nv->name, nv->value);
   }
 
-  furious_id_ = src.furious_id_;
+  experiment_id_ = src.experiment_id_;
   for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
     StringPiece element;
     StringPiece attribute;
@@ -2930,8 +2931,8 @@ GoogleString RewriteOptions::OptionsToString() const {
 
 GoogleString RewriteOptions::ToExperimentString() const {
   // Only add the experiment id if we're running this experiment.
-  if (GetFuriousSpec(furious_id_) != NULL) {
-    return StringPrintf("Experiment: %d", furious_id_);
+  if (GetExperimentSpec(experiment_id_) != NULL) {
+    return StringPrintf("Experiment: %d", experiment_id_);
   }
   return GoogleString();
 }
@@ -2941,11 +2942,11 @@ GoogleString RewriteOptions::ToExperimentDebugString() const {
   if (!output.empty()) {
     output += "; ";
   }
-  if (!running_furious()) {
+  if (!running_experiment()) {
     output += "off; ";
-  } else if (furious_id_ == furious::kFuriousNotSet) {
+  } else if (experiment_id_ == experiment::kExperimentNotSet) {
     output += "not set; ";
-  } else if (furious_id_ == furious::kFuriousNoExperiment) {
+  } else if (experiment_id_ == experiment::kNoExperiment) {
     output += "no experiment; ";
   }
   for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
@@ -3002,58 +3003,59 @@ void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,
   custom_fetch_headers_.push_back(new NameValue(name, value));
 }
 
-// We expect furious_specs_.size() to be small (not more than 2 or 3)
+// We expect experiment_specs_.size() to be small (not more than 2 or 3)
 // so there is no need to optimize this
-RewriteOptions::FuriousSpec* RewriteOptions::GetFuriousSpec(int id) const {
-  for (int i = 0, n = furious_specs_.size(); i < n; ++i) {
-    if (furious_specs_[i]->id() == id) {
-      return furious_specs_[i];
+RewriteOptions::ExperimentSpec* RewriteOptions::GetExperimentSpec(
+    int id) const {
+  for (int i = 0, n = experiment_specs_.size(); i < n; ++i) {
+    if (experiment_specs_[i]->id() == id) {
+      return experiment_specs_[i];
     }
   }
   return NULL;
 }
 
-bool RewriteOptions::AvailableFuriousId(int id) {
-  if (id < 0 || id == furious::kFuriousNotSet ||
-      id == furious::kFuriousNoExperiment) {
+bool RewriteOptions::AvailableExperimentId(int id) {
+  if (id < 0 || id == experiment::kExperimentNotSet ||
+      id == experiment::kNoExperiment) {
     return false;
   }
-  return (GetFuriousSpec(id) == NULL);
+  return (GetExperimentSpec(id) == NULL);
 }
 
-bool RewriteOptions::AddFuriousSpec(const StringPiece& spec,
-                                    MessageHandler* handler) {
-  FuriousSpec* f_spec = new FuriousSpec(spec, this, handler);
-  return InsertFuriousSpecInVector(f_spec);
+bool RewriteOptions::AddExperimentSpec(const StringPiece& spec,
+                                       MessageHandler* handler) {
+  ExperimentSpec* f_spec = new ExperimentSpec(spec, this, handler);
+  return InsertExperimentSpecInVector(f_spec);
 }
 
-bool RewriteOptions::InsertFuriousSpecInVector(FuriousSpec* spec) {
-  // See RewriteOptions::GetFuriousStateStr for why we can't have more than 26.
-  if (!AvailableFuriousId(spec->id()) || spec->percent() <= 0 ||
-      furious_percent_ + spec->percent() > 100 ||
-      furious_specs_.size() + 1 > 26) {
+bool RewriteOptions::InsertExperimentSpecInVector(ExperimentSpec* spec) {
+  // See RewriteOptions::GetExperimentStateStr for why we can't have more than
+  // 26.
+  if (!AvailableExperimentId(spec->id()) || spec->percent() <= 0 ||
+      experiment_percent_ + spec->percent() > 100 ||
+      experiment_specs_.size() + 1 > 26) {
     delete spec;
     return false;
   }
-  furious_specs_.push_back(spec);
-  furious_percent_ += spec->percent();
+  experiment_specs_.push_back(spec);
+  experiment_percent_ += spec->percent();
   return true;
 }
 
-// Always enable add_head, insert_ga, add_instrumentation,
-// and HtmlWriter.  This is considered a "no-filter" base for
-// furious experiments.
-bool RewriteOptions::SetupFuriousRewriters() {
+// Always enable add_head, insert_ga, add_instrumentation, and HtmlWriter.  This
+// is considered a "no-filter" base for experiments.
+bool RewriteOptions::SetupExperimentRewriters() {
   // Don't change anything if we're not in an experiment or have some
   // unset id.
-  if (furious_id_ == furious::kFuriousNotSet ||
-      furious_id_ == furious::kFuriousNoExperiment) {
+  if (experiment_id_ == experiment::kExperimentNotSet ||
+      experiment_id_ == experiment::kNoExperiment) {
     return true;
   }
   // Control: just make sure that the necessary stuff is on.
-  // Do NOT try to set up things to look like the FuriousSpec
+  // Do NOT try to set up things to look like the ExperimentSpec
   // for this id: it doesn't match the rewrite options.
-  FuriousSpec* spec = GetFuriousSpec(furious_id_);
+  ExperimentSpec* spec = GetExperimentSpec(experiment_id_);
   if (spec == NULL) {
     return false;
   }
@@ -3062,11 +3064,11 @@ bool RewriteOptions::SetupFuriousRewriters() {
     set_ga_id(spec->ga_id());
   }
 
-  set_furious_ga_slot(spec->slot());
+  set_experiment_ga_slot(spec->slot());
 
   if (spec->use_default()) {
     // We need these for the experiment to work properly.
-    SetRequiredFuriousFilters();
+    SetRequiredExperimentFilters();
     return true;
   }
 
@@ -3076,7 +3078,7 @@ bool RewriteOptions::SetupFuriousRewriters() {
   DisableFilters(spec->disabled_filters());
   // spec doesn't specify forbidden filters so no need to call ForbidFilters().
   // We need these for the experiment to work properly.
-  SetRequiredFuriousFilters();
+  SetRequiredExperimentFilters();
   set_css_inline_max_bytes(spec->css_inline_max_bytes());
   set_js_inline_max_bytes(spec->js_inline_max_bytes());
   set_image_inline_max_bytes(spec->image_inline_max_bytes());
@@ -3084,7 +3086,7 @@ bool RewriteOptions::SetupFuriousRewriters() {
   return true;
 }
 
-void RewriteOptions::SetRequiredFuriousFilters() {
+void RewriteOptions::SetRequiredExperimentFilters() {
   ForceEnableFilter(RewriteOptions::kAddHead);
   ForceEnableFilter(RewriteOptions::kAddInstrumentation);
   ForceEnableFilter(RewriteOptions::kComputeStatistics);
@@ -3092,12 +3094,12 @@ void RewriteOptions::SetRequiredFuriousFilters() {
   ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
 }
 
-RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
-                                         RewriteOptions* options,
-                                         MessageHandler* handler)
-    : id_(furious::kFuriousNotSet),
+RewriteOptions::ExperimentSpec::ExperimentSpec(const StringPiece& spec,
+                                               RewriteOptions* options,
+                                               MessageHandler* handler)
+    : id_(experiment::kExperimentNotSet),
       ga_id_(options->ga_id()),
-      ga_variable_slot_(options->furious_ga_slot()),
+      ga_variable_slot_(options->experiment_ga_slot()),
       percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
@@ -3107,10 +3109,10 @@ RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
   Initialize(spec, handler);
 }
 
-RewriteOptions::FuriousSpec::FuriousSpec(int id)
+RewriteOptions::ExperimentSpec::ExperimentSpec(int id)
     : id_(id),
       ga_id_(""),
-      ga_variable_slot_(kDefaultFuriousSlot),
+      ga_variable_slot_(kDefaultExperimentSlot),
       percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
@@ -3119,9 +3121,9 @@ RewriteOptions::FuriousSpec::FuriousSpec(int id)
       use_default_(false) {
 }
 
-RewriteOptions::FuriousSpec::~FuriousSpec() { }
+RewriteOptions::ExperimentSpec::~ExperimentSpec() { }
 
-void RewriteOptions::FuriousSpec::Merge(const FuriousSpec& spec) {
+void RewriteOptions::ExperimentSpec::Merge(const ExperimentSpec& spec) {
   enabled_filters_.Merge(spec.enabled_filters_);
   disabled_filters_.Merge(spec.disabled_filters_);
   for (OptionSet::const_iterator iter = spec.filter_options_.begin();
@@ -3138,17 +3140,17 @@ void RewriteOptions::FuriousSpec::Merge(const FuriousSpec& spec) {
   use_default_ = spec.use_default_;
 }
 
-RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
-  FuriousSpec* ret = new FuriousSpec(id_);
+RewriteOptions::ExperimentSpec* RewriteOptions::ExperimentSpec::Clone() {
+  ExperimentSpec* ret = new ExperimentSpec(id_);
   ret->Merge(*this);
   return ret;
 }
 
 // Options are written in the form:
-// ModPagespeedExperimentSpec 'id= 2; percent= 20; RewriteLevel= CoreFilters;
+// ExperimentSpec 'id= 2; percent= 20; RewriteLevel= CoreFilters;
 // enable= resize_images; disable = is; inline_css = 25556; ga=UA-233842-1'
-void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
-                                             MessageHandler* handler) {
+void RewriteOptions::ExperimentSpec::Initialize(const StringPiece& spec,
+                                                MessageHandler* handler) {
   StringPieceVector spec_pieces;
   SplitStringPieceToVector(spec, ";", &spec_pieces, true);
   for (int i = 0, n = spec_pieces.size(); i < n; ++i) {
@@ -3158,9 +3160,9 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
       StringPiece id = PieceAfterEquals(piece);
       if (id.length() > 0 && !StringToInt(id, &id_)) {
         // If we failed to turn this string into an int, then
-        // set the id_ to kFuriousNotSet so we don't end up adding
+        // set the id_ to kExperimentNotSet so we don't end up adding
         // in this spec.
-        id_ = furious::kFuriousNotSet;
+        id_ = experiment::kExperimentNotSet;
       }
     } else if (StringCaseEqual(piece, "default")) {
       // "Default" means use whatever RewriteOptions are.

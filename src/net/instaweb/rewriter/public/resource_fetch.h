@@ -113,10 +113,10 @@ class ResourceFetch : public SharedAsyncFetch {
   // If we're running an experiment and the url specifies an experiment spec,
   // set custom_options to use that experiment spec.  If custom_options is NULL
   // one will be allocated and the caller takes ownership of it.
-  static void ApplyFuriousOptions(const GoogleUrl& url,
-                                  const RequestContextPtr& request_ctx,
-                                  ServerContext* server_context,
-                                  RewriteOptions** custom_options);
+  static void ApplyExperimentOptions(const GoogleUrl& url,
+                                     const RequestContextPtr& request_ctx,
+                                     ServerContext* server_context,
+                                     RewriteOptions** custom_options);
 
   GoogleUrl resource_url_;
   RewriteDriver* driver_;

@@ -34,7 +34,7 @@ class RewriteDriver;
 class Statistics;
 class Variable;
 
-extern const char kGAFuriousSnippet[];
+extern const char kGAExperimentSnippet[];
 extern const char kGAJsSnippet[];
 extern const char kGASpeedTracking[];
 
@@ -57,11 +57,11 @@ class InsertGAFilter : public CommonFilter {
   virtual const char* Name() const { return "InsertGASnippet"; }
 
  private:
-  // Construct the custom variable part for Furious of the GA snippet.
-  GoogleString ConstructFuriousSnippet() const;
+  // Construct the custom variable part for experiment of the GA snippet.
+  GoogleString ConstructExperimentSnippet() const;
 
-  // Construct a stand-alone GA snippet to send back Furious info.
-  GoogleString MakeFullFuriousSnippet() const;
+  // Construct a stand-alone GA snippet to send back experiment info.
+  GoogleString MakeFullExperimentSnippet() const;
 
   // If appropriate, insert the GA snippet at the end of the body element.
   void HandleEndBody(HtmlElement* body);
@@ -87,8 +87,8 @@ class InsertGAFilter : public CommonFilter {
   HtmlElement* script_element_;
   // Whether we added the analytics js or not.
   bool added_analytics_js_;
-  // Whether we added the furious snippet or not.
-  bool added_furious_snippet_;
+  // Whether we added the experiment snippet or not.
+  bool added_experiment_snippet_;
 
   // GA ID for this site.
   GoogleString ga_id_;

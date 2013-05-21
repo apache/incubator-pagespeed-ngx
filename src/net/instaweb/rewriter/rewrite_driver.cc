@@ -975,7 +975,7 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new GoogleAnalyticsFilter(this, statistics()));
   }
   if ((rewrite_options->Enabled(RewriteOptions::kInsertGA) ||
-       rewrite_options->running_furious()) &&
+       rewrite_options->running_experiment()) &&
       rewrite_options->ga_id() != "") {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));
@@ -2193,7 +2193,7 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(
 void RewriteDriver::Cleanup() {
   {
     ScopedMutex lock(log_record()->mutex());
-    log_record()->logging_info()->set_furious_id(options()->furious_id());
+    log_record()->logging_info()->set_experiment_id(options()->experiment_id());
   }
   if (!externally_managed_) {
     bool should_release = false;
@@ -2442,7 +2442,7 @@ void RewriteDriver::PopulateResourceNamer(
     ResourceNamer* full_name) {
   full_name->set_id(filter_id);
   full_name->set_name(name);
-  full_name->set_experiment(options()->GetFuriousStateStr());
+  full_name->set_experiment(options()->GetExperimentStateStr());
 
   // Note that we never populate ResourceNamer::options for in place resource
   // rewrites.

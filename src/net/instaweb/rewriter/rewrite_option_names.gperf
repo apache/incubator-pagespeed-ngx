@@ -60,13 +60,13 @@ struct OptionName {
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
 "EnablePrioritizingScripts",             RewriteOptions::kEnablePrioritizingScripts
 "EnableRewriting",                       RewriteOptions::kEnabled
-"ExperimentSlot",                        RewriteOptions::kFuriousSlot
+"ExperimentSlot",                        RewriteOptions::kExperimentSlot
 "FinderPropertiesCacheExpirationTimeMs", RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
 "FlushHtml",                             RewriteOptions::kFlushHtml
 "FlushMoreResourcesEarlyIfTimePermits",  RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits
 "ForbidAllDisabledFilters",              RewriteOptions::kForbidAllDisabledFilters
-"FuriousCookieDurationMs",               RewriteOptions::kFuriousCookieDurationMs
+"ExperimentCookieDurationMs",            RewriteOptions::kExperimentCookieDurationMs
 "IdleFlushTimeMs",                       RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                   RewriteOptions::kImageInlineMaxBytes
 "ImageJpegNumProgressiveScans",          RewriteOptions::kImageJpegNumProgressiveScans
@@ -133,7 +133,7 @@ struct OptionName {
 "RewriteDeadlinePerFlushMs",             RewriteOptions::kRewriteDeadlineMs
 "RewriteLevel",                          RewriteOptions::kRewriteLevel
 "RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
-"RunExperiment",                         RewriteOptions::kRunningFurious
+"RunExperiment",                         RewriteOptions::kRunningExperiment
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
 "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss", RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss
