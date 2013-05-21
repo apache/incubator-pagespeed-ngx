@@ -94,6 +94,16 @@
       ],
     },
     {
+      'target_name': 'pagespeed_cache',
+      'type': '<(library)',
+      'sources': [
+        'kernel/cache/purge_set.cc',
+       ],
+      'dependencies': [
+        'pagespeed_base',
+      ],
+    },
+    {
       'target_name': 'pagespeed_http',
       'type': '<(library)',
       'sources': [
