@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/html_event.h"
+#include "pagespeed/kernel/html/html_event.h"
 
 #include <cstdio>
 

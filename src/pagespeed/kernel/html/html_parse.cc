@@ -16,29 +16,29 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 #include <list>
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/html_event.h"
-#include "net/instaweb/htmlparse/html_lexer.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/htmlparse/public/html_filter.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "pagespeed/kernel/base/arena.h"
-#include "net/instaweb/util/public/atom.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "pagespeed/kernel/base/atom.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/print_message_handler.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "net/instaweb/util/public/symbol_table.h"
+#include "pagespeed/kernel/base/symbol_table.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_event.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/html/html_lexer.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 class DocType;

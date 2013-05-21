@@ -3,11 +3,12 @@
 
 // Unit-test the HTML escaper.
 
-#include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_name.h"
 
 namespace net_instaweb {
 

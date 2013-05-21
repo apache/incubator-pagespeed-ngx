@@ -19,7 +19,7 @@
 // Unit-test the html name class, make sure we can do case
 // insensitive matching.
 
-#include "net/instaweb/htmlparse/public/html_name.h"
+#include "pagespeed/kernel/html/html_name.h"
 
 #include <set>
 

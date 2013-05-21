@@ -16,13 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/public/canonical_attributes.h"
+#include "pagespeed/kernel/html/canonical_attributes.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
+
 
 namespace net_instaweb {
 

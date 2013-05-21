@@ -43,52 +43,13 @@
       },
     },
     {
-      'target_name': 'instaweb_htmlparse_core_gperf',
-      'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/htmlparse',
-      },
-      'sources': [
-        'htmlparse/html_name.gperf',
-      ],
-      'includes': [
-        'gperf.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_htmlparse_core',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_util_core',
-        'instaweb_htmlparse_core_gperf',
-        'http_core',
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_html',
       ],
-      'sources': [
-        'htmlparse/doctype.cc',
-        'htmlparse/empty_html_filter.cc',
-        'htmlparse/explicit_close_tag.cc',
-        'htmlparse/html_element.cc',
-        'htmlparse/html_event.cc',
-        'htmlparse/html_filter.cc',
-        'htmlparse/html_keywords.cc',
-        'htmlparse/html_lexer.cc',
-        'htmlparse/html_node.cc',
-        'htmlparse/html_parse.cc',
-        'htmlparse/html_writer_filter.cc',
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-        '<(DEPTH)',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(instaweb_root)',
-          '<(DEPTH)',
-        ],
-      },
       'export_dependent_settings': [
-        'instaweb_util_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_html',
       ],
     },
     {
@@ -189,10 +150,8 @@
                 # Note: these must be in dependency order to work; you can't
                 # sort this list alphabetically.
                 '<(LIB_DIR)/net/instaweb/libinstaweb_rewriter_html.a',
-                '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core.a',
-                '<(LIB_DIR)/net/instaweb/libhttp_core.a',
-                '<(LIB_DIR)/net/instaweb/libinstaweb_util_core.a',
-                '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core_gperf.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_html.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_html_gperf.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_http.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_base_core.a',
                 '<(LIB_DIR)/build/temp_gyp/libgoogleurl.a',

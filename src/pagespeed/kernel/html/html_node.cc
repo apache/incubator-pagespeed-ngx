@@ -16,9 +16,9 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/htmlparse/public/html_node.h"
+#include "pagespeed/kernel/html/html_node.h"
 
-#include "net/instaweb/htmlparse/html_event.h"
+#include "pagespeed/kernel/html/html_event.h"
 
 namespace net_instaweb {
 

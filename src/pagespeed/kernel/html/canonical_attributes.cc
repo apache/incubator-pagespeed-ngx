@@ -16,8 +16,9 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/public/canonical_attributes.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
+#include "pagespeed/kernel/html/canonical_attributes.h"
+
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 

@@ -16,17 +16,17 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/public/html_element.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 #include <cstdio>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/html_event.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_event.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/html/html_name.h"
 
 namespace net_instaweb {
 

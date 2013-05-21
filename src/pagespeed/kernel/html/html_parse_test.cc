@@ -19,23 +19,23 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
-#include "net/instaweb/htmlparse/html_event.h"
-#include "net/instaweb/htmlparse/html_testing_peer.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/explicit_close_tag.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_filter.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/html/explicit_close_tag.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_event.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
+#include "pagespeed/kernel/html/html_testing_peer.h"
+#include "pagespeed/kernel/html/html_writer_filter.h"
 
 namespace net_instaweb {
 

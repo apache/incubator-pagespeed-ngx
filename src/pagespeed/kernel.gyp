@@ -125,6 +125,42 @@
       ],
     },
     {
+      'target_name': 'pagespeed_html_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'kernel/html',
+        'instaweb_root':  '<(DEPTH)/pagespeed',
+      },
+      'sources': [
+        'kernel/html/html_name.gperf',
+      ],
+      # TODO(morlovich): Move gperf.gypi to pagespeed/, changing all
+      # references in net/instaweb gyp files.
+      'includes': [
+        '../net/instaweb/gperf.gypi',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_html',
+      'type': '<(library)',
+      'sources': [
+        'kernel/html/doctype.cc',
+        'kernel/html/empty_html_filter.cc',
+        'kernel/html/html_element.cc',
+        'kernel/html/html_event.cc',
+        'kernel/html/html_filter.cc',
+        'kernel/html/html_keywords.cc',
+        'kernel/html/html_lexer.cc',
+        'kernel/html/html_node.cc',
+        'kernel/html/html_parse.cc',
+        'kernel/html/html_writer_filter.cc',
+      ],
+      'dependencies': [
+        ':pagespeed_base_core',
+        ':pagespeed_html_gperf',
+        ':pagespeed_http',
+      ],
+    },
+    {
       'target_name': 'pagespeed_http',
       'type': '<(library)',
       'sources': [

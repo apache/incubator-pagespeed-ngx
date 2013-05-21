@@ -16,14 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
-#define NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
+#ifndef PAGESPEED_KERNEL_HTML_HTML_EVENT_H_
+#define PAGESPEED_KERNEL_HTML_HTML_EVENT_H_
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_filter.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_filter.h"
+#include "pagespeed/kernel/html/html_node.h"
 
 namespace net_instaweb {
 
@@ -217,4 +217,4 @@ class HtmlDirectiveEvent: public HtmlLeafNodeEvent {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTMLPARSE_HTML_EVENT_H_
+#endif  // PAGESPEED_KERNEL_HTML_HTML_EVENT_H_

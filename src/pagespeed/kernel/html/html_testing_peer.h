@@ -16,14 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
-#define NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
+#ifndef PAGESPEED_KERNEL_HTML_HTML_TESTING_PEER_H_
+#define PAGESPEED_KERNEL_HTML_HTML_TESTING_PEER_H_
 
 #include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
 
@@ -56,4 +56,4 @@ class HtmlTestingPeer {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTMLPARSE_HTML_TESTING_PEER_H_
+#endif  // PAGESPEED_KERNEL_HTML_HTML_TESTING_PEER_H_

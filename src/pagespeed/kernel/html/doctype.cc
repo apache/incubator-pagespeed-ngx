@@ -14,7 +14,7 @@
 //
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/htmlparse/public/doctype.h"
+#include "pagespeed/kernel/html/doctype.h"
 
 #include <vector>
 

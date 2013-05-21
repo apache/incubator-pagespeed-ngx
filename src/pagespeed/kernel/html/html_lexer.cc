@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/html_lexer.h"
+#include "pagespeed/kernel/html/html_lexer.h"
 
 #include <algorithm>
 #include <cctype>
@@ -25,13 +25,13 @@
 #include <cstdio>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/html_event.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_event.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
 

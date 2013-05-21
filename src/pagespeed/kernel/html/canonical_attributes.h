@@ -16,11 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_CANONICAL_ATTRIBUTES_H_
-#define NET_INSTAWEB_HTMLPARSE_PUBLIC_CANONICAL_ATTRIBUTES_H_
+#ifndef PAGESPEED_KERNEL_HTML_CANONICAL_ATTRIBUTES_H_
+#define PAGESPEED_KERNEL_HTML_CANONICAL_ATTRIBUTES_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/html/empty_html_filter.h"
 
 namespace net_instaweb {
 
@@ -50,4 +50,4 @@ class CanonicalAttributes : public EmptyHtmlFilter {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTMLPARSE_PUBLIC_CANONICAL_ATTRIBUTES_H_
+#endif  // PAGESPEED_KERNEL_HTML_CANONICAL_ATTRIBUTES_H_

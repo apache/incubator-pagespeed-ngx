@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/htmlparse/public/explicit_close_tag.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
+#include "pagespeed/kernel/html/explicit_close_tag.h"
+#include "pagespeed/kernel/html/html_element.h"
 
 namespace net_instaweb {
 

@@ -16,18 +16,18 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
-#define NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
+#ifndef PAGESPEED_KERNEL_HTML_HTML_LEXER_H_
+#define PAGESPEED_KERNEL_HTML_HTML_LEXER_H_
 
 #include <vector>
 
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/printf_format.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/html/doctype.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
@@ -246,4 +246,4 @@ class HtmlLexer {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
+#endif  // PAGESPEED_KERNEL_HTML_HTML_LEXER_H_
