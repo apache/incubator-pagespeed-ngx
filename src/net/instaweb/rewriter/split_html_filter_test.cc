@@ -143,7 +143,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     RewriteTestBase::SetUp();
 
-    rewrite_driver()->SetRequestHeaders(request_headers_);
+    rewrite_driver()->set_request_headers(&request_headers_);
     rewrite_driver()->SetUserAgent("");
     rewrite_driver()->SetWriter(&writer_);
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());

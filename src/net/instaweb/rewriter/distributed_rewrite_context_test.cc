@@ -112,7 +112,7 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
     if (request_type == kHeadRequest) {
       req_headers.set_method(RequestHeaders::kHead);
     }
-    rewrite_driver()->SetRequestHeaders(req_headers);
+    rewrite_driver()->set_request_headers(&req_headers);
     EXPECT_TRUE(FetchResourceUrl(input_url, &req_headers, &output,
                                  &response_headers));
 

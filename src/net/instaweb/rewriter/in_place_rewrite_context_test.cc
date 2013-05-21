@@ -421,7 +421,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     if (!user_agent_.empty()) {
       rewrite_driver()->SetUserAgent(user_agent_);
     }
-    rewrite_driver()->SetRequestHeaders(request_headers_);
+    rewrite_driver()->set_request_headers(&request_headers_);
     rewrite_driver()->FetchResource(url, &mock_fetch);
     // If we're testing if the rewrite takes too long, we need to push
     // time forward here.
