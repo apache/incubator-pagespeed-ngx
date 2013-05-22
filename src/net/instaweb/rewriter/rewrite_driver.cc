@@ -1873,12 +1873,13 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
         kFatal, "invalid decoded_base_url_ for '%s'", input_url.spec_c_str());
     DLOG(FATAL);
   }
+  RewriteStats* stats = server_context_->rewrite_stats();
   if (may_rewrite) {
     resource = CreateInputResourceUnchecked(input_url);
+    stats->resource_url_domain_acceptances()->Add(1);
   } else {
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
                                input_url.spec_c_str());
-    RewriteStats* stats = server_context_->rewrite_stats();
     stats->resource_url_domain_rejections()->Add(1);
   }
   return resource;

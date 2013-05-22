@@ -25,13 +25,16 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class MessageHandler;
 class SharedString;
 
@@ -63,9 +66,19 @@ bool Resource::IsValidAndCacheable() const {
 
 bool Resource::IsSafeToRewrite(bool rewrite_uncacheable) const {
   rewrite_uncacheable &= HttpStatusOk();
-  return (IsValidAndCacheable() || rewrite_uncacheable) &&
-         !response_headers_.HasValue(HttpAttributes::kCacheControl,
-                                     "no-transform");
+  RewriteStats* stats = server_context_->rewrite_stats();
+  if ((IsValidAndCacheable() || rewrite_uncacheable) &&
+      !response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                  "no-transform")) {
+    stats->num_cache_control_rewritable_resources()->Add(1);
+    return true;
+  } else {
+    // TODO(sligocki): Are we over-counting this because uncacheable
+    // resources will hit this stat for every filter, but cacheable ones
+    // will only hit the above stat once?
+    stats->num_cache_control_not_rewritable_resources()->Add(1);
+    return false;
+  }
 }
 
 GoogleString Resource::ContentsHash() const {

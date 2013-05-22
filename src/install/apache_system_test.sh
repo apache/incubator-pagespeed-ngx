@@ -1762,7 +1762,7 @@ check_not fgrep -q pagespeed.ic $FETCH_FILE
 # will only fail at runtime when the console is loaded).
 start_test mod_pagespeed_console
 OUT=$($WGET_DUMP http://$HOSTNAME/mod_pagespeed_console)
-check_from "$OUT" grep -q "Fetch failure rate"
+check_from "$OUT" grep -q "Resources not loaded because of fetch failure"
 
 function scrape_secondary_stat {
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \

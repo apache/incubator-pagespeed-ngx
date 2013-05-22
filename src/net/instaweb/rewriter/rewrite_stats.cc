@@ -27,9 +27,10 @@ namespace net_instaweb {
 
 namespace {
 
-// resource_url_domain_rejections counts the number of urls on a page that we
-// could have rewritten, except that they lay in a domain that did not
-// permit resource rewriting relative to the current page.
+// Num of URLs we could have rewritten and were authorized to rewrite.
+const char kResourceUrlDomainAcceptances[] = "resource_url_domain_acceptances";
+// Num of URLs we could have rewritten, but were not authorized to rewrite
+// because of the domain they are on.
 const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
 const char kCachedOutputMissedDeadline[] =
     "rewrite_cached_output_missed_deadline";
@@ -42,6 +43,10 @@ const char kResourceFetchConstructSuccesses[] =
     "resource_fetch_construct_successes";
 const char kResourceFetchConstructFailures[] =
     "resource_fetch_construct_failures";
+const char kNumCacheControlRewritableResources[] =
+    "num_cache_control_rewritable_resources";
+const char kNumCacheControlNotRewritableResources[] =
+    "num_cache_control_not_rewritable_resources";
 const char kNumFlushes[] = "num_flushes";
 const char kFallbackResponsesServed[] = "num_fallback_responses_served";
 const char kNumConditionalRefreshes[] = "num_conditional_refreshes";
@@ -93,6 +98,7 @@ const char RewriteStats::kNumResourceFetchFailures[] =
 // Note that there are other statistics owned by filters and subsystems,
 // that must get the some treatment.
 void RewriteStats::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kResourceUrlDomainAcceptances);
   statistics->AddVariable(kResourceUrlDomainRejections);
   statistics->AddVariable(kCachedOutputMissedDeadline);
   statistics->AddVariable(kCachedOutputHits);
@@ -104,6 +110,8 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddVariable(kResourceFetchesCached);
   statistics->AddVariable(kResourceFetchConstructSuccesses);
   statistics->AddVariable(kResourceFetchConstructFailures);
+  statistics->AddVariable(kNumCacheControlRewritableResources);
+  statistics->AddVariable(kNumCacheControlNotRewritableResources);
   statistics->AddVariable(kNumFlushes);
   statistics->AddHistogram(kBeaconTimingsMsHistogram);
   statistics->AddHistogram(kFetchLatencyHistogram);
@@ -148,12 +156,18 @@ RewriteStats::RewriteStats(Statistics* stats,
           stats->GetVariable(kResourceFetchesCached)),
       failed_filter_resource_fetches_(
           stats->GetVariable(kResourceFetchConstructFailures)),
+      num_cache_control_rewritable_resources_(
+          stats->GetVariable(kNumCacheControlRewritableResources)),
+      num_cache_control_not_rewritable_resources_(
+          stats->GetVariable(kNumCacheControlNotRewritableResources)),
       num_flushes_(
           stats->GetVariable(kNumFlushes)),
       page_load_count_(
           stats->GetVariable(kPageLoadCount)),
       resource_404_count_(
           stats->GetVariable(kInstawebResource404Count)),
+      resource_url_domain_acceptances_(
+          stats->GetVariable(kResourceUrlDomainAcceptances)),
       resource_url_domain_rejections_(
           stats->GetVariable(kResourceUrlDomainRejections)),
       slurp_404_count_(

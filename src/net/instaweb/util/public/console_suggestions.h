@@ -70,6 +70,10 @@ class ConsoleSuggestionsFactory {
   // Returns ratio of bad / (good + bad). Common pattern for our stats.
   // (Returns 0 if good + bad = 0).
   double StatSumRatio(StringPiece bad, StringPiece good);
+  // Helper method to add a suggestion to suggestions_ in standard format.
+  void AddConsoleSuggestion(double stat_failure_ratio,
+                            const char* message_format,
+                            const GoogleString& doc_link);
 
  private:
   FRIEND_TEST(ConsoleSuggestionsTest, Stats);

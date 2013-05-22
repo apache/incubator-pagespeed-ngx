@@ -70,52 +70,75 @@ bool CompareSuggestions(ConsoleSuggestion a, ConsoleSuggestion b) {
 
 }  // namespace
 
-void ConsoleSuggestionsFactory::GenerateSuggestions() {
-  // Serf fetch failure rate.
-  // TODO(sligocki): This should probably be in the Apache-specific code.
-  double fetch_failure_rate = StatRatio("serf_fetch_failure_count",
-                                        "serf_fetch_request_count");
+void ConsoleSuggestionsFactory::AddConsoleSuggestion(
+    double stat_failure_ratio, const char* message_format,
+    const GoogleString& doc_link) {
   suggestions_.push_back(ConsoleSuggestion(
-      fetch_failure_rate,
-      StringPrintf("Fetch failure rate: %.2f%%", fetch_failure_rate * 100),
-      // TODO(sligocki): Add doc links.
-      ""));
+      stat_failure_ratio,
+      StringPrintf(message_format, stat_failure_ratio * 100),
+      doc_link));
+}
+
+void ConsoleSuggestionsFactory::GenerateSuggestions() {
+  // Cannot fetch resources.
+  // TODO(sligocki): This should probably be in the Apache-specific code.
+  AddConsoleSuggestion(StatRatio("serf_fetch_failure_count",
+                                 "serf_fetch_request_count"),
+                       "Resources not loaded because of fetch failure: %.2f%%",
+                       // TODO(sligocki): Add doc links.
+                       "");
 
   // Resource fetch failures.
-  double resource_fetch_failure_rate =
-      StatSumRatio("num_resource_fetch_failures",
-                   "num_resource_fetch_successes");
-  suggestions_.push_back(ConsoleSuggestion(
-      resource_fetch_failure_rate,
-      StringPrintf("Resource fetch failure rate: %.2f%%",
-                   resource_fetch_failure_rate * 100),
-      ""));
+  // TODO(sligocki): What does resource fetch failure mean?
+  AddConsoleSuggestion(StatSumRatio("num_resource_fetch_failures",
+                                    "num_resource_fetch_successes"),
+                       "Resource fetch failure percent: %.2f%%",
+                       "");
 
-  // Cache miss rate.
-  double cache_miss_rate = StatSumRatio("cache_misses", "cache_hits");
-  suggestions_.push_back(ConsoleSuggestion(
-      cache_miss_rate,
-      StringPrintf("Cache miss rate: %.2f%%", cache_miss_rate * 100),
-      ""));
+  // Domains are not authorized.
+  AddConsoleSuggestion(StatSumRatio("resource_url_domain_rejections",
+                                    "resource_url_domain_acceptances"),
+                       "Resources not rewritten because domain wasn't "
+                       "authorized: %.2f%%",
+                       "");
 
-  // CSS rewrite failure rate.
-  double css_failure_rate = StatSumRatio("css_filter_parse_failures",
-                                         "css_filter_blocks_rewritten");
-  suggestions_.push_back(ConsoleSuggestion(
-      css_failure_rate,
-      StringPrintf("CSS parser failure rate: %.2f%%", css_failure_rate * 100),
-      ""));
+  // Resources are not cacheable.
+  AddConsoleSuggestion(
+      StatSumRatio("num_cache_control_not_rewritable_resources",
+                   "num_cache_control_rewritable_resources"),
+      "Resources not rewritten because of restrictive Cache-Control "
+      "headers: %.2f%%",
+      "");
 
-  // TODO(sligocki): Images
+  // TODO(sligocki): Cache too small (High cache evictions).
 
-  // Javascript minification failure rate.
-  double js_failure_rate = StatSumRatio("javascript_minification_failures",
-                                        "javascript_blocks_minified");
-  suggestions_.push_back(ConsoleSuggestion(
-      js_failure_rate,
-      StringPrintf("Javascript minification failure rate: %.2f%%",
-                   js_failure_rate * 100),
-      ""));
+  // TODO(sligocki): Resources accessed too infrequently.
+
+  // Cache miss percent.
+  AddConsoleSuggestion(StatSumRatio("cache_misses", "cache_hits"),
+                       "Cache miss percent: %.2f%%",
+                       "");
+
+  // Cannot parse CSS.
+  // TODO(sligocki): This counts per rewrite, it seems like it should count
+  // per time CSS URL is seen in HTML.
+  AddConsoleSuggestion(StatSumRatio("css_filter_parse_failures",
+                                    "css_filter_blocks_rewritten"),
+                       "CSS files not rewritten because of parse errors: "
+                       "%.2f%%",
+                       "");
+
+  // Cannot parse JavaScript.
+  AddConsoleSuggestion(StatSumRatio("javascript_minification_failures",
+                                    "javascript_blocks_minified"),
+                       "JavaScript minification failures: %.2f%%",
+                       "");
+
+  // TODO(sligocki): Image reading failure.
+
+  // TODO(sligocki): CSS not combinable.
+
+  // TODO(sligocki): Images not spriteable.
 
   // Most important suggestions first.
   std::sort(suggestions_.begin(), suggestions_.end(), CompareSuggestions);

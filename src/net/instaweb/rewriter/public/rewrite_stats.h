@@ -54,8 +54,17 @@ class RewriteStats {
   Variable* failed_filter_resource_fetches() {
     return failed_filter_resource_fetches_;
   }
+  Variable* num_cache_control_rewritable_resources() {
+    return num_cache_control_rewritable_resources_;
+  }
+  Variable* num_cache_control_not_rewritable_resources() {
+    return num_cache_control_not_rewritable_resources_;
+  }
   Variable* num_flushes() { return num_flushes_; }
   Variable* resource_404_count() { return resource_404_count_; }
+  Variable* resource_url_domain_acceptances() {
+    return resource_url_domain_acceptances_;
+  }
   Variable* resource_url_domain_rejections() {
     return resource_url_domain_rejections_;
   }
@@ -103,9 +112,12 @@ class RewriteStats {
   Variable* cached_output_misses_;
   Variable* cached_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
+  Variable* num_cache_control_rewritable_resources_;
+  Variable* num_cache_control_not_rewritable_resources_;
   Variable* num_flushes_;
   Variable* page_load_count_;
   Variable* resource_404_count_;
+  Variable* resource_url_domain_acceptances_;
   Variable* resource_url_domain_rejections_;
   Variable* slurp_404_count_;
   Variable* succeeded_filter_resource_fetches_;
