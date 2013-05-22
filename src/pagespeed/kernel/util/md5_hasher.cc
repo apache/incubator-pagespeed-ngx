@@ -15,10 +15,10 @@
 // Authors: sligocki@google.com (Shawn Ligocki),
 //          lsong@google.com (Libo Song)
 
-#include "net/instaweb/util/public/md5_hasher.h"
+#include "pagespeed/kernel/util/md5_hasher.h"
 
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "base/md5.h"
 #if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 92861
 using base::MD5Digest;

@@ -19,10 +19,10 @@
 #include <cstdlib>         // for malloc
 #include <algorithm>       // for min
 #include "base/logging.h"  // for DCHECK
-#include "net/instaweb/util/public/circular_buffer.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/util/circular_buffer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

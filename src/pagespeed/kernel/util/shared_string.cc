@@ -22,14 +22,14 @@
 // whether other references exist.  Thus it is feasible to implement
 // copy-on-write as a layer over this class.
 
-#include "net/instaweb/util/public/shared_string.h"
+#include "pagespeed/kernel/util/shared_string.h"
 
 #include <algorithm>  // for std::min, std::max
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/ref_counted_ptr.h"
 
 namespace net_instaweb {
 

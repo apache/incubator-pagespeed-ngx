@@ -211,8 +211,14 @@
       'type': '<(library)',
       'sources': [
         'kernel/util/abstract_shared_mem.cc',
+        'kernel/util/cache_interface.cc',
+        'kernel/util/circular_buffer.cc',
         'kernel/util/fast_wildcard_group.cc',
+        'kernel/util/hasher.cc',
+        'kernel/util/md5_hasher.cc',
+        'kernel/util/named_lock_manager.cc',
         'kernel/util/rolling_hash.cc',
+        'kernel/util/shared_string.cc',
         'kernel/util/wildcard.cc',
       ],
       'include_dirs': [

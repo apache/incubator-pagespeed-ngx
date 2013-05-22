@@ -19,11 +19,11 @@
 #ifndef PAGESPEED_KERNEL_BASE_FILE_SYSTEM_TEST_H_
 #define PAGESPEED_KERNEL_BASE_FILE_SYSTEM_TEST_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

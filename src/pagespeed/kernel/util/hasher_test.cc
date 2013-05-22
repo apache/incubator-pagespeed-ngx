@@ -16,10 +16,10 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/hasher.h"
+#include "pagespeed/kernel/util/hasher.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 
