@@ -100,6 +100,7 @@ class RewriteOptions {
     kConvertToWebpLossless,
     kDebug,
     kDecodeRewrittenUrls,
+    kDedupInlinedImages,
     kDeferIframe,
     kDeferJavascript,
     kDelayImages,

@@ -51,6 +51,7 @@ class StaticAssetManager {
     kClientDomainRewriter,
     kCriticalCssBeaconJs,
     kCriticalImagesBeaconJs,
+    kDedupInlinedImagesJs,
     kDeferIframe,
     kDeferJs,
     kDelayImagesJs,

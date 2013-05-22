@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <title>dedup_inlined_images example</title>
+  </head>
+  <body>
+    <img src="images/Puzzle.jpg"
+         title="A large image that isn't inlined."/><br/>
+    <img src="images/Cuppa.png"
+         title="A small image that is inlined."/><br/>
+    <img src="images/disclosure_open_plus.png"
+         title="A second small image (with an id) that is inlined."
+         id="open_plus"/><br/>
+    <img src="images/Puzzle.jpg"
+         title="The large image again; still not inlined."/><br/>
+    <img src="images/Cuppa.png"
+         title="The small image again that is converted to JavaScript."/><br/>
+    <img src="images/Cuppa.png"
+         title="The small image again; again converted to JavaScript."/><br/>
+    <img src="images/Cuppa.png"
+         title="The small image again; again converted to JavaScript."/><br/>
+    <img src="images/disclosure_open_plus.png"
+         title="The 2nd small image again; converted to JS with its id."/><br/>
+  </body>
+</html>

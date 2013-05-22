@@ -72,6 +72,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/decode_rewritten_urls_filter.h"
+#include "net/instaweb/rewriter/public/dedup_inlined_images_filter.h"
 #include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
@@ -734,6 +735,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   CssFilter::InitStats(statistics);
   CssInlineImportToLinkFilter::InitStats(statistics);
   CssMoveToHeadFilter::InitStats(statistics);
+  DedupInlinedImagesFilter::InitStats(statistics);
   DomainRewriteFilter::InitStats(statistics);
   GoogleAnalyticsFilter::InitStats(statistics);
   ImageCombineFilter::InitStats(statistics);
@@ -773,7 +775,7 @@ void RewriteDriver::SetServerContext(ServerContext* server_context) {
   DCHECK(resource_filter_map_.empty());
 
   // Add the rewriting filters to the map unconditionally -- we may
-  // need the to process resource requests due to a query-specific
+  // need them to process resource requests due to a query-specific
   // 'rewriters' specification.  We still use the passed-in options
   // to determine whether they get added to the html parse filter chain.
   // Note: RegisterRewriteFilter takes ownership of these filters.
@@ -1121,6 +1123,9 @@ void RewriteDriver::AddPostRenderFilters() {
     // or disable_js is enabled.
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDedupInlinedImages)) {
+    AddOwnedPostRenderFilter(new DedupInlinedImagesFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // kInsertImageDimensions should be enabled to avoid drastic reflows.

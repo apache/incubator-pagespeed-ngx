@@ -196,6 +196,28 @@
 
 <tr class="filter_row">
   <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-dedup-inlined-images">
+      dedup_inlined_images
+    </a>
+  </td>
+  <td class="desc">
+    Replaces repeated inlined images with JavaScript that loads the data from
+    the first instance of the image.
+  </td>
+  <td class="before">
+    <a href="dedup_inlined_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="dedup_inlined_images.html?ModPagespeed=on&amp;ModPagespeedFilters=inline_images,dedup_inlined_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr class="filter_row">
+  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-defer">
       defer_javascript
     </a>

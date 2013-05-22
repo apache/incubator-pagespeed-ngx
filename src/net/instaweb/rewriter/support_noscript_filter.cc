@@ -88,6 +88,7 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         filter_enabled = device_properties->SupportsJsDefer(
             options->enable_aggressive_rewriters_for_mobile());
         break;
+      case RewriteOptions::kDedupInlinedImages:
       case RewriteOptions::kDelayImages:
       case RewriteOptions::kLazyloadImages:
       case RewriteOptions::kLocalStorageCache:

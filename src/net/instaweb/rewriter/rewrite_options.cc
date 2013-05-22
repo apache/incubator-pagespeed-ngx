@@ -294,6 +294,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
 // if you update this list.
 const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kCachePartialHtml,
+  RewriteOptions::kDedupInlinedImages,
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDelayImages,
@@ -363,6 +364,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "db", "Debug" },
   { RewriteOptions::kDecodeRewrittenUrls,
     "du", "Decode Rewritten URLs" },
+  { RewriteOptions::kDedupInlinedImages,
+    "dd", "Dedup Inlined Images" },
   { RewriteOptions::kDeferIframe,
     "df", "Defer Iframe" },
   { RewriteOptions::kDeferJavascript,

@@ -781,6 +781,11 @@ test_filter insert_dns_prefetch
 fetch_until $URL 'fgrep -c //ref.pssdemos.com' 2
 fetch_until $URL 'fgrep -c //ajax.googleapis.com' 2
 
+# Test dedup_inlined_images
+test_filter dedup_inlined_images,inline_images
+fetch_until -save $URL 'fgrep -ocw inlineImg(' 4
+check grep -q "ModPagespeed=noscript" $FETCH_FILE
+
 # Cleanup
 rm -rf $OUTDIR
 
