@@ -52,8 +52,7 @@ class MockProxyFetch : public ProxyFetch {
                    NULL,  // callback
                    async_fetch,
                    NULL,  // no original content fetch
-                   server_context->NewRewriteDriver(
-                       async_fetch->request_context()),
+                   GetNewRewriteDriver(server_context, async_fetch),
                    server_context,
                    NULL,  // timer
                    factory),
@@ -62,6 +61,15 @@ class MockProxyFetch : public ProxyFetch {
   }
 
   ~MockProxyFetch() { }
+
+  static RewriteDriver* GetNewRewriteDriver(ServerContext* server_context,
+                                     AsyncFetch* async_fetch) {
+    RewriteDriver* driver = server_context->NewRewriteDriver(
+                                async_fetch->request_context());
+    RequestHeaders headers;
+    driver->SetRequestHeaders(headers);
+    return driver;
+  }
 
   void PropertyCacheComplete(
       ProxyFetchPropertyCallbackCollector* callback_collector) {

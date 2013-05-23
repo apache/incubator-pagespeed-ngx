@@ -467,8 +467,7 @@ ProxyFetch::ProxyFetch(
     driver_->set_client_id(client_id);
   }
 
-  // Make request headers available to the filters.
-  driver_->set_request_headers(request_headers());
+  DCHECK(driver_->request_headers() != NULL);
 
   // Set the user agent in the rewrite driver if it is not set already.
   if (driver_->user_agent().empty()) {

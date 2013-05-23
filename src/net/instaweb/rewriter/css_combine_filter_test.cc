@@ -608,7 +608,7 @@ TEST_F(CssCombineFilterTest, CombineCssRecombine) {
   SetHtmlMimetype();
   UseMd5Hasher();
   RequestHeaders request_headers;
-  rewrite_driver()->set_request_headers(&request_headers);
+  rewrite_driver()->SetRequestHeaders(request_headers);
 
   CombineCss("combine_css_recombine", "", "", false);
   int inserts_before = lru_cache()->num_inserts();

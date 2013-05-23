@@ -211,7 +211,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       rewrites_to_delete_(0),
       should_skip_parsing_(kNotSet),
       response_headers_(NULL),
-      request_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
       max_page_processing_delay_ms_(-1),
       pending_rewrites_(0),
@@ -251,6 +250,12 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
   early_pre_render_filters_.push_back(&scan_filter_);
+}
+
+void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
+  DCHECK(request_headers_.get() == NULL);
+  request_headers_.reset(new RequestHeaders());
+  request_headers_->CopyFrom(headers);
 }
 
 void RewriteDriver::set_request_context(const RequestContextPtr& x) {
@@ -351,7 +356,7 @@ void RewriteDriver::Clear() {
   should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
   max_page_processing_delay_ms_ = -1;
-  request_headers_ = NULL;
+  request_headers_.reset(NULL);
   response_headers_ = NULL;
   status_code_ = 0;
   fetch_detached_ = false;
@@ -489,8 +494,7 @@ void RewriteDriver::TryCheckForCompletion(
 }
 
 bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
-  // Always wait for pending async events during shutdown.
-  if (pending_async_events_ > 0 && wait_mode == kWaitForShutDown) {
+  if (pending_async_events_ > 0 && WaitForPendingAsyncEvents(wait_mode)) {
     return false;
   }
 
@@ -1637,7 +1641,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
 
   // Set the request headers if they haven't been yet.
   if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
-    set_request_headers(async_fetch->request_headers());
+    SetRequestHeaders(*async_fetch->request_headers());
   }
 
   // Note that this does permission checking and parsing of the url, but doesn't
@@ -1680,7 +1684,7 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
   SetBaseUrlForFetch(gurl.Spec());
   // Set the request headers if they haven't been yet.
   if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
-    set_request_headers(async_fetch->request_headers());
+    SetRequestHeaders(*async_fetch->request_headers());
   }
   fetch_queued_ = true;
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
@@ -2651,7 +2655,7 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
   low_priority_rewrite_worker_->Add(task);
 }
 
-// TODO(nikhilmadan): Merge this with set_request_headers.
+// TODO(nikhilmadan): Merge this with SetRequestHeaders.
 void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
   user_agent_string.CopyToString(&user_agent_);
   ClearDeviceProperties();
@@ -2788,12 +2792,18 @@ void RewriteDriver::increment_async_events_count() {
 
 void RewriteDriver::decrement_async_events_count() {
   bool should_release = false;
+  bool should_wakeup = false;
   {
     ScopedMutex lock(rewrite_mutex());
     --pending_async_events_;
     should_release = release_driver_ && (pending_async_events_ == 0);
+    should_wakeup = WaitForPendingAsyncEvents(waiting_) &&
+        (pending_async_events_ == 0);
   }
-  if (should_release) {
+  if (should_wakeup) {
+    ScopedMutex lock(rewrite_mutex());
+    scheduler_->Signal();
+  } else if (should_release) {
     server_context_->ReleaseRewriteDriver(this);
   }
 }

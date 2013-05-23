@@ -129,7 +129,7 @@ class DedupInlinedImagesTest : public RewriteTestBase,
         kHtmlWrapperFormat, head_html_out.c_str(), body_out.c_str()));
 
     // Set this for every test.
-    rewrite_driver()->set_request_headers(&request_headers_);
+    rewrite_driver()->SetRequestHeaders(request_headers_);
 
     Parse(case_id, html_in);
     GoogleString expected_out = doctype_string_ + AddHtmlBody(html_out);
@@ -243,7 +243,7 @@ TEST_F(DedupInlinedImagesTest, DisabledForOldBlackberry) {
       "<img src='", kCuppaPngFilename, "'>");
   GoogleString html_in_out(StringPrintf(
       kHtmlWrapperFormat, "", repeated_inlined_image.c_str()));
-  rewrite_driver()->set_request_headers(&request_headers_);
+  rewrite_driver()->SetRequestHeaders(request_headers_);
   Parse(case_id, html_in_out);
   GoogleString expected_out = doctype_string_ + AddHtmlBody(html_in_out);
   EXPECT_EQ(expected_out, output_buffer_) << "Test id:" << case_id;

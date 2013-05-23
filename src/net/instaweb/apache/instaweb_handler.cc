@@ -451,6 +451,7 @@ bool handle_as_proxy(ApacheServerContext* server_context,
         *gurl, custom_options->release(), server_context, request_context);
     ApacheProxyFetch apache_proxy_fetch(
         mapped_url, server_context->thread_system(), driver, request);
+    driver->SetRequestHeaders(*apache_proxy_fetch.request_headers());
     server_context->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, &apache_proxy_fetch, driver, NULL, NULL);
     apache_proxy_fetch.Wait();

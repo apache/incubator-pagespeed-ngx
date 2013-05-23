@@ -244,12 +244,15 @@ class RewriteDriver : public HtmlParse {
     response_headers_ = headers;
   }
 
-  void set_request_headers(const RequestHeaders* headers) {
-    request_headers_ = headers;
-  }
+  // Reinitializes request_headers_ (a scoped ptr) with a copy of the original
+  // request headers. Note that the fetches associated with the driver could
+  // be using a modified version of the original request headers.
+  // There MUST be at most 1 call to this method after a rewrite driver object
+  // has been constructed or recycled.
+  void SetRequestHeaders(const RequestHeaders& headers);
 
-  const RequestHeaders* request_headers() const {
-    return request_headers_;
+  RequestHeaders* request_headers() const {
+    return request_headers_.get();
   }
 
   UserAgentMatcher* user_agent_matcher() const {
@@ -664,6 +667,11 @@ class RewriteDriver : public HtmlParse {
     fully_rewrite_on_flush_ = x;
   }
 
+  // Returns if this response has a blocking rewrite or not.
+  bool fully_rewrite_on_flush() const {
+    return fully_rewrite_on_flush_;
+  }
+
   // If the value of X-PSA-Blocking-Rewrite request header matches the blocking
   // rewrite key, set fully_rewrite_on_flush flag.
   void EnableBlockingRewrite(RequestHeaders* request_headers);
@@ -1039,6 +1047,12 @@ class RewriteDriver : public HtmlParse {
   // Termination predicate for above; assumes locks held.
   bool IsDone(WaitMode wait_mode, bool deadline_reached);
 
+  // Always wait for pending async events during shutdown or while waiting for
+  // the completion of all rewriting.
+  bool WaitForPendingAsyncEvents(WaitMode wait_mode) {
+    return wait_mode == kWaitForShutDown || fully_rewrite_on_flush_;
+  }
+
   // Portion of flush that happens asynchronously off the scheduler
   // once the rendering is complete. Calls back to 'callback' after its
   // processing, but with the lock released.
@@ -1263,7 +1277,11 @@ class RewriteDriver : public HtmlParse {
   StringFilterMap resource_filter_map_;
 
   ResponseHeaders* response_headers_;
-  const RequestHeaders* request_headers_;
+
+  // request_headers_ is a copy of the Fetch's request headers, and it
+  // stays alive until the rewrite driver is recycled or deleted.
+  scoped_ptr<RequestHeaders> request_headers_;
+
   int status_code_;  // Status code of response for this request.
 
   // This group of rewrite-context-related variables is accessed

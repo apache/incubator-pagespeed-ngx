@@ -468,7 +468,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForXHR) {
   RequestHeaders request_headers;
   request_headers.Add(
       HttpAttributes::kXRequestedWith, HttpAttributes::kXmlHttpRequest);
-  rewrite_driver_->set_request_headers(&request_headers);
+  rewrite_driver_->SetRequestHeaders(request_headers);
   GoogleString input_html = "<head>"
       "</head>"
       "<body>"

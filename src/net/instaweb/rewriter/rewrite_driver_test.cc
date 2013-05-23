@@ -79,6 +79,18 @@ class RewriteDriverTest : public RewriteTestBase {
     return rewrite_driver()->ComputeCurrentFlushWindowRewriteDelayMs();
   }
 
+  bool IsDone(RewriteDriver::WaitMode wait_mode, bool deadline_reached) {
+    return rewrite_driver()->IsDone(wait_mode, deadline_reached);
+  }
+
+  void IncrementAsyncEventsCount() {
+    rewrite_driver()->increment_async_events_count();
+  }
+
+  void DecrementAsyncEventsCount() {
+    rewrite_driver()->decrement_async_events_count();
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
@@ -1483,6 +1495,35 @@ TEST_F(RewriteDriverTest, RenderDoneTest) {
   EXPECT_EQ(Encode(kTestDomain, RewriteOptions::kCacheExtenderId, "0",
                    "a.png", "png"),
             filter->src());
+}
+
+TEST_F(RewriteDriverTest, PendingAsyncEventsTest) {
+  RewriteDriver* driver = rewrite_driver();
+  driver->set_fully_rewrite_on_flush(true);
+
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+
+  IncrementAsyncEventsCount();
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForShutDown, false));
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  DecrementAsyncEventsCount();
+
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+
+  driver->set_fully_rewrite_on_flush(false);
+
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+
+  IncrementAsyncEventsCount();
+  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForShutDown, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  DecrementAsyncEventsCount();
+
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
+  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
 }
 
 }  // namespace
