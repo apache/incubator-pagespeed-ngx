@@ -64,6 +64,7 @@ TEST(RollingHashTest, RollShakedown) {
 // Prove that there are no trivial 1-, 2-, or 3-gram overlaps.
 // Note that the open-vcdiff rolling hash cannot pass this test
 // as it only has 23 bits!
+#ifdef NDEBUG  // This test takes ~15 seconds in debug mode.
 TEST(RollingHashTest, NGrams) {
   // Using dense_hash_set is MUCH faster (6x) than std::set.
   // That keeps this test "small".
@@ -110,6 +111,7 @@ TEST(RollingHashTest, NGrams) {
   }
   EXPECT_FALSE(gramOverlap);
 }
+#endif
 
 }  // namespace
 }  // namespace net_instaweb
