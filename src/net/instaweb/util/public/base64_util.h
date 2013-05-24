@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_BASE64_UTIL_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/base64_util.h"
+#include "pagespeed/kernel/base/base64_util.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_BASE64_UTIL_H_

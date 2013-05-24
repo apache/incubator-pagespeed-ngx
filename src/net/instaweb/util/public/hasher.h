@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_HASHER_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/hasher.h"
+#include "pagespeed/kernel/base/hasher.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_HASHER_H_

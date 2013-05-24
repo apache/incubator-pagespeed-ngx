@@ -15,11 +15,11 @@
 // Authors: sligocki@google.com (Shawn Ligocki),
 //          lsong@google.com (Libo Song)
 
-#ifndef PAGESPEED_KERNEL_UTIL_MD5_HASHER_H_
-#define PAGESPEED_KERNEL_UTIL_MD5_HASHER_H_
+#ifndef PAGESPEED_KERNEL_BASE_MD5_HASHER_H_
+#define PAGESPEED_KERNEL_BASE_MD5_HASHER_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/util/hasher.h"
+#include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -42,4 +42,4 @@ class MD5Hasher : public Hasher {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_MD5_HASHER_H_
+#endif  // PAGESPEED_KERNEL_BASE_MD5_HASHER_H_

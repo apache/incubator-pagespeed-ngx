@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_KERNEL_UTIL_BASE64_UTIL_H_
-#define PAGESPEED_KERNEL_UTIL_BASE64_UTIL_H_
+#ifndef PAGESPEED_KERNEL_BASE_BASE64_UTIL_H_
+#define PAGESPEED_KERNEL_BASE_BASE64_UTIL_H_
 
 #include "pagespeed/kernel/base/string.h"
 
@@ -50,4 +50,4 @@ inline bool Mime64Decode(const StringPiece& in, GoogleString* out) {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_BASE64_UTIL_H_
+#endif  // PAGESPEED_KERNEL_BASE_BASE64_UTIL_H_

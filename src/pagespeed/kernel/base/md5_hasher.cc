@@ -15,7 +15,7 @@
 // Authors: sligocki@google.com (Shawn Ligocki),
 //          lsong@google.com (Libo Song)
 
-#include "pagespeed/kernel/util/md5_hasher.h"
+#include "pagespeed/kernel/base/md5_hasher.h"
 
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"

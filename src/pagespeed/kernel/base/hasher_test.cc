@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "pagespeed/kernel/util/hasher.h"
+#include "pagespeed/kernel/base/hasher.h"
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/gtest.h"

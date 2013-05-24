@@ -29,8 +29,8 @@
 #ifndef PAGESPEED_KERNEL_BASE_NULL_THREAD_SYSTEM_H_
 #define PAGESPEED_KERNEL_BASE_NULL_THREAD_SYSTEM_H_
 
-#include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

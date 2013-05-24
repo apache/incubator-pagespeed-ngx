@@ -16,18 +16,19 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/simple_stats.h"
+#include "pagespeed/kernel/base/simple_stats.h"
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
 SimpleStatsVariable::~SimpleStatsVariable() {
 }
 
+// TODO(jmarantz): Remove this constructor and pass in thread-system explicitly.
 SimpleStats::SimpleStats()
     : thread_system_(Platform::CreateThreadSystem()),
       own_thread_system_(true) {

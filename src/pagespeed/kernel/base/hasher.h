@@ -18,8 +18,8 @@
 //
 // Interface for a hash function.
 
-#ifndef PAGESPEED_KERNEL_UTIL_HASHER_H_
-#define PAGESPEED_KERNEL_UTIL_HASHER_H_
+#ifndef PAGESPEED_KERNEL_BASE_HASHER_H_
+#define PAGESPEED_KERNEL_BASE_HASHER_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
@@ -67,4 +67,4 @@ class Hasher {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_HASHER_H_
+#endif  // PAGESPEED_KERNEL_BASE_HASHER_H_

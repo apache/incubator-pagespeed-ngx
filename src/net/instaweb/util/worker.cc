@@ -32,7 +32,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/waveform.h"
+#include "pagespeed/kernel/base/waveform.h"
 
 namespace net_instaweb {
 

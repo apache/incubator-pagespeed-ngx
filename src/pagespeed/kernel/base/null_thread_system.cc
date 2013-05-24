@@ -19,7 +19,7 @@
 #include "pagespeed/kernel/base/null_thread_system.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/mock_timer.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 
 namespace net_instaweb {
 

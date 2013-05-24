@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_MD5_HASHER_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/md5_hasher.h"
+#include "pagespeed/kernel/base/md5_hasher.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_MD5_HASHER_H_

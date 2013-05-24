@@ -3,11 +3,11 @@
 
 // Unit-test the simple statistics implementation.
 
-#include "net/instaweb/util/public/simple_stats.h"
+#include "pagespeed/kernel/base/simple_stats.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/statistics.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 

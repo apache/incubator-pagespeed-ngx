@@ -29,7 +29,7 @@
 #include "net/instaweb/util/public/queued_worker.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/waveform.h"
+#include "pagespeed/kernel/base/waveform.h"
 
 namespace net_instaweb {
 
