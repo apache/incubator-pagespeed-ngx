@@ -19,8 +19,9 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_JPEG_READER_H_
 #define PAGESPEED_KERNEL_IMAGE_JPEG_READER_H_
 
-#include "base/basictypes.h"
-#include "pagespeed/kernel/base/string.h"
+#include <cstddef>
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
 
 struct jpeg_decompress_struct;
 struct jpeg_error_mgr;
@@ -28,6 +29,8 @@ struct jpeg_error_mgr;
 namespace pagespeed {
 
 namespace image_compression {
+
+struct JpegEnv;
 
 // A very thin wrapper that configures a jpeg_decompress_struct for
 // reading from a string. The caller is responsible for
@@ -57,6 +60,43 @@ class JpegReader {
   jpeg_error_mgr *decompress_error_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegReader);
+};
+
+// JpegScanlineReader decodes JPEG image. It returns a scanline (a row of
+// pixels) each time it is called. The output format is GRAY_8 if the input
+// image has JCS_GRAYSCALE format, or RGB_888 otherwise.
+class JpegScanlineReader : public ScanlineReaderInterface {
+ public:
+  JpegScanlineReader();
+  virtual ~JpegScanlineReader();
+  virtual bool Reset();
+
+  // Initialize the reader with the given image stream. Note that image_buffer
+  // must remain unchanged until the last call to ReadNextScanline().
+  bool Initialize(const void* image_buffer, size_t buffer_length);
+
+  // Return the next row of pixels.
+  virtual bool ReadNextScanline(void** out_scanline_bytes);
+
+  // Return the number of bytes in a row (without padding).
+  virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
+
+  virtual bool HasMoreScanLines() { return (row_ < height_); }
+  virtual PixelFormat GetPixelFormat() { return pixel_format_; }
+  virtual size_t GetImageHeight() { return height_; }
+  virtual size_t GetImageWidth() {  return width_; }
+
+ private:
+  JpegEnv* jpeg_env_;  // State of libjpeg
+  unsigned char* row_pointer_[1];  // Pointer for a row buffer
+  PixelFormat pixel_format_;
+  size_t height_;
+  size_t width_;
+  size_t row_;
+  size_t bytes_per_row_;
+  bool was_initialized_;
+
+  DISALLOW_COPY_AND_ASSIGN(JpegScanlineReader);
 };
 
 }  // namespace image_compression

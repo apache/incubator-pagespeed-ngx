@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -234,6 +235,15 @@ void DelayImagesFilter::DetermineEnabled() {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
+    set_is_enabled(false);
+    return;
+  }
+  CriticalImagesFinder* finder =
+      driver_->server_context()->critical_images_finder();
+  if (finder->IsMeaningful(driver_) && !finder->IsSetFromPcache(driver_)) {
+    log_record->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kDelayImages),
+        RewriterHtmlApplication::PROPERTY_CACHE_MISS);
     set_is_enabled(false);
     return;
   }

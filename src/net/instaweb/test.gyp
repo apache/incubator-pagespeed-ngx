@@ -288,6 +288,7 @@
         '<(DEPTH)/pagespeed/kernel/image/gif_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_converter_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_optimizer_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/jpeg_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_utils_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/png_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/js/js_minify_test.cc',

@@ -260,6 +260,7 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
         cohort, kCriticalImagesPropertyName);
     info = ExtractCriticalImagesFromCache(driver, property_value);
     if (info != NULL) {
+      info->is_set_from_pcache = true;
       driver->log_record()->SetNumHtmlCriticalImages(
           info->html_critical_images.size());
       driver->log_record()->SetNumCssCriticalImages(
@@ -394,6 +395,11 @@ CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
     critical_images_not_found_count_->Add(1);
   }
   return critical_images_info;
+}
+
+bool CriticalImagesFinder::IsSetFromPcache(RewriteDriver* driver) {
+  UpdateCriticalImagesSetInDriver(driver);
+  return driver->critical_images_info()->is_set_from_pcache;
 }
 
 }  // namespace net_instaweb

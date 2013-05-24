@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
+#include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -501,6 +502,30 @@ TEST_F(DelayImagesFilterTest, NoHeadTag) {
       GenerateRewrittenImageTag("http://test.com/1.webp", kSampleWebpData),
       "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, PcacheMiss) {
+  ForwardingMockCriticalImagesFinder* finder =
+      new ForwardingMockCriticalImagesFinder(statistics());
+  server_context()->set_critical_images_finder(finder);
+
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head><body>"
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      "<img src=\"http://test.com/1.webp\"/></body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+
+  rewrite_driver_->log_record()->WriteLog();
+  ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+  EXPECT_EQ(RewriterHtmlApplication::PROPERTY_CACHE_MISS,
+            logging_info()->rewriter_stats(0).html_status());
+  EXPECT_EQ("di", logging_info()->rewriter_stats(0).id());
 }
 
 TEST_F(DelayImagesFilterTest, MultipleBodyTags) {

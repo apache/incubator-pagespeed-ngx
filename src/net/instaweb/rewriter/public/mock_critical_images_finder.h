@@ -64,12 +64,33 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
   void set_css_critical_images(StringSet* css_critical_images) {
     css_critical_images_.reset(css_critical_images);
   }
+  virtual bool IsSetFromPcache(RewriteDriver* driver) {
+    return true;
+  }
 
  private:
   int compute_calls_;
   scoped_ptr<StringSet> critical_images_;
   scoped_ptr<StringSet> css_critical_images_;
   DISALLOW_COPY_AND_ASSIGN(MockCriticalImagesFinder);
+};
+
+// This is currently used only to get a property cache miss in tests.
+// This just forwards UpdateCriticalImagesSetInDriver and IsSetFromPcache to the
+// abstract base class CriticalImagesFinder.
+class ForwardingMockCriticalImagesFinder : public MockCriticalImagesFinder {
+ public:
+  explicit ForwardingMockCriticalImagesFinder(Statistics* stats) :
+    MockCriticalImagesFinder(stats) {}
+  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver) {
+    CriticalImagesFinder::UpdateCriticalImagesSetInDriver(driver);
+  }
+  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
+    return NULL;
+  }
+  virtual bool IsSetFromPcache(RewriteDriver* driver) {
+    return CriticalImagesFinder::IsSetFromPcache(driver);
+  }
 };
 
 }  // namespace net_instaweb

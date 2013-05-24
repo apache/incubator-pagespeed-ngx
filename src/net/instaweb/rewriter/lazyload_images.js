@@ -431,6 +431,7 @@ pagespeed.lazyLoadInit = function(loadAfterOnload, blankImageSrc) {
       }
     };
     pagespeed.addHandler(window, 'scroll', lazy_onscroll);
+    pagespeed.addHandler(window, 'resize', lazy_onscroll);
   }
 };
 

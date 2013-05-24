@@ -19,7 +19,9 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_TEST_UTILS_H_
 #define PAGESPEED_KERNEL_IMAGE_TEST_UTILS_H_
 
+#include <cstddef>
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/read_image.h"
 
 namespace pagespeed {
 
@@ -44,6 +46,14 @@ bool ReadTestFile(const GoogleString& path,
 bool ReadTestFileWithExt(const GoogleString& path,
                          const char* name_with_extension,
                          GoogleString* content);
+
+void DecodeAndCompareImages(
+    pagespeed::image_compression::ImageFormat image_format1,
+    const void* image_buffer1,
+    size_t buffer_length1,
+    pagespeed::image_compression::ImageFormat image_format2,
+    const void* image_buffer2,
+    size_t buffer_length2);
 
 }  // namespace image_compression
 

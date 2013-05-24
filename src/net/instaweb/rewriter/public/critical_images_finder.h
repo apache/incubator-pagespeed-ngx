@@ -40,8 +40,10 @@ class Variable;
 // RewriteDriver and eliminate CriticalImagesInfo. Revisit this when updating
 // this class to support multiple beacon response.
 struct CriticalImagesInfo {
+  CriticalImagesInfo() : is_set_from_pcache(false) {}
   StringSet html_critical_images;
   StringSet css_critical_images;
+  bool is_set_from_pcache;
 };
 
 
@@ -132,6 +134,10 @@ class CriticalImagesFinder {
       int percent_seen_for_critical,
       const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page);
+
+  // Returns true if the critical images have been extracted from pcache,
+  // false otherwise. This is virtual only to be overridden in tests.
+  virtual bool IsSetFromPcache(RewriteDriver* driver);
 
  protected:
   // Gets critical images if present in the property cache and updates the

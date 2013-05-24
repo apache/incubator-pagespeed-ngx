@@ -18,18 +18,12 @@
 
 #include "pagespeed/kernel/image/read_image.h"
 
-#include <stdlib.h>  // for malloc
+#include <stdlib.h>
 #include "base/logging.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/jpeg_reader.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
-
-extern "C" {
-#ifdef USE_SYSTEM_LIBPNG
-#include "png.h"                                                // NOLINT
-#else
-#include "third_party/libpng/png.h"
-#endif
-}  // extern "C"
 
 namespace pagespeed {
 
@@ -62,7 +56,14 @@ bool ReadImage(ImageFormat image_type,
       break;
 
     case IMAGE_JPEG:
-      LOG(INFO) << "Jpeg image is not supported.";
+      {
+        scoped_ptr<JpegScanlineReader> jpeg_reader(new JpegScanlineReader());
+        if (jpeg_reader == NULL ||
+            !jpeg_reader->Initialize(image_buffer, buffer_length)) {
+          return false;
+        }
+        reader.reset(jpeg_reader.release());
+      }
       break;
 
     case IMAGE_WEBP:

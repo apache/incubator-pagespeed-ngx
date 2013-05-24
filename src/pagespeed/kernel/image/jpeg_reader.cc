@@ -18,11 +18,9 @@
 
 #include "pagespeed/kernel/image/jpeg_reader.h"
 
-#include <setjmp.h>  // for longjmp
-#include <stdio.h>  // provides FILE for jpeglib (needed for certain builds)
-#include <stdlib.h>  // for malloc
+#include <setjmp.h>
+#include <stdlib.h>
 
-#include "base/logging.h"
 #include "pagespeed/kernel/base/string.h"
 
 extern "C" {
@@ -113,6 +111,12 @@ namespace pagespeed {
 
 namespace image_compression {
 
+struct JpegEnv {
+  jpeg_decompress_struct jpeg_decompress_;
+  jpeg_error_mgr decompress_error_;
+  jmp_buf jmp_buf_env_;
+};
+
 JpegReader::JpegReader() {
   jpeg_decompress_ = static_cast<jpeg_decompress_struct*>(
       malloc(sizeof(jpeg_decompress_struct)));
@@ -136,6 +140,132 @@ JpegReader::~JpegReader() {
 void JpegReader::PrepareForRead(const void* image_data, size_t image_length) {
   // Prepare to read from a string.
   JpegStringReader(jpeg_decompress_, image_data, image_length);
+}
+
+JpegScanlineReader::JpegScanlineReader() :
+  jpeg_env_(NULL),
+  pixel_format_(UNSUPPORTED),
+  height_(0),
+  width_(0),
+  row_(0),
+  bytes_per_row_(0),
+  was_initialized_(false) {
+  row_pointer_[0] = NULL;
+}
+
+JpegScanlineReader::~JpegScanlineReader() {
+  if (was_initialized_) {
+    Reset();
+  }
+  free(jpeg_env_);
+}
+
+bool JpegScanlineReader::Reset() {
+  pixel_format_ = UNSUPPORTED;
+  height_ = 0;
+  width_ = 0;
+  row_ = 0;
+  bytes_per_row_ = 0;
+  was_initialized_ = false;
+
+  jpeg_destroy_decompress(&(jpeg_env_->jpeg_decompress_));
+  memset(jpeg_env_, 0, sizeof(JpegEnv));
+  free(row_pointer_[0]);
+  row_pointer_[0] = NULL;
+  return true;
+}
+
+bool JpegScanlineReader::Initialize(const void* image_data,
+                                    size_t image_length) {
+  if (was_initialized_) {
+    // Reset the reader if it has been initialized before.
+    Reset();
+  } else if (jpeg_env_ == NULL) {
+    jpeg_env_ = static_cast<JpegEnv*>(malloc(sizeof(JpegEnv)));
+    memset(jpeg_env_, 0, sizeof(JpegEnv));
+  }
+
+  // libjpeg's error handling mechanism requires that longjmp be used
+  // to get control after an error.
+  if (setjmp(jpeg_env_->jmp_buf_env_)) {
+    // This code is run only when libjpeg hit an error and called
+    // longjmp(env). It will reset the object to a state where it can be used
+    // again.
+    Reset();
+    return false;
+  }
+
+  jpeg_error_mgr* decompress_error = &(jpeg_env_->decompress_error_);
+  jpeg_decompress_struct* jpeg_decompress = &(jpeg_env_->jpeg_decompress_);
+  jpeg_decompress->err = jpeg_std_error(decompress_error);
+  decompress_error->error_exit = &ErrorExit;
+  decompress_error->output_message = &OutputMessage;
+  jpeg_create_decompress(jpeg_decompress);
+
+  // Need to install env so that it will be longjmp()ed to on error.
+  jpeg_decompress->client_data = static_cast<void *>(jpeg_env_->jmp_buf_env_);
+
+  // Prepare to read from a string.
+  JpegStringReader(jpeg_decompress, image_data, image_length);
+
+  // Read jpeg data into the decompression struct.
+  jpeg_read_header(jpeg_decompress, TRUE);
+
+  width_ = jpeg_decompress->image_width;
+  height_ = jpeg_decompress->image_height;
+
+  // Decode the image to GRAY_8 if it was in gray scale, or to RGB_888
+  // otherwise.
+  if (jpeg_decompress->jpeg_color_space == JCS_GRAYSCALE) {
+    jpeg_decompress->out_color_space = JCS_GRAYSCALE;
+    pixel_format_ = GRAY_8;
+    bytes_per_row_ = width_;
+  } else {
+    jpeg_decompress->out_color_space = JCS_RGB;
+    pixel_format_ = RGB_888;
+    bytes_per_row_ = 3 * width_;
+  }
+
+  was_initialized_ = true;
+  return true;
+}
+
+bool JpegScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
+  if (!was_initialized_ || !HasMoreScanLines()) {
+    return false;
+  }
+
+  if (setjmp(jpeg_env_->jmp_buf_env_)) {
+    // This code is run only when libjpeg hit an error and called
+    // longjmp(env). It will reset the object to a state where it can be used
+    // again.
+    Reset();
+    return false;
+  }
+
+  // At the time when ReadNextScanline is called, allocate buffer for holding
+  // a row of pixels, and initiate decompression.
+  jpeg_decompress_struct* jpeg_decompress = &(jpeg_env_->jpeg_decompress_);
+  if (row_ == 0) {
+    row_pointer_[0] = static_cast<JSAMPLE*>(malloc(bytes_per_row_));
+    jpeg_start_decompress(jpeg_decompress);
+  }
+
+  // Try to read a scanline.
+  const JDIMENSION num_scanlines_read =
+      jpeg_read_scanlines(jpeg_decompress, row_pointer_, 1);
+  if (num_scanlines_read != 1) {
+    Reset();
+    return false;
+  }
+  *out_scanline_bytes = row_pointer_[0];
+  ++row_;
+
+  // At the last row, ask libjpeg to finish decompression.
+  if (!HasMoreScanLines()) {
+    jpeg_finish_decompress(jpeg_decompress);
+  }
+  return true;
 }
 
 }  // namespace image_compression
