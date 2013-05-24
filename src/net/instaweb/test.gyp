@@ -375,7 +375,6 @@
         'util/delay_cache.cc',
         'util/mock_scheduler.cc',
         'util/mock_time_cache.cc',
-        'util/null_thread_system.cc',
         'util/simple_stats.cc',
       ],
     },

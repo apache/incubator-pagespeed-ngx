@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/null_thread_system.h"
+#include "pagespeed/kernel/base/null_thread_system.h"
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/mock_timer.h"

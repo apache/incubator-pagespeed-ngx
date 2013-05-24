@@ -642,8 +642,8 @@ void ServerContext::ReadAsync(
                                        this,
                                        request_context);
     // Don't log timing for background-fetched resources.
-    read_async_http_cache_callback->set_log_timing(
-        !resource->is_background_fetch());
+    read_async_http_cache_callback->set_is_background(
+        resource->is_background_fetch());
     http_cache_->Find(resource->url(), message_handler_,
                       read_async_http_cache_callback);
   } else {

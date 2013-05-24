@@ -797,7 +797,6 @@
         'util/null_rw_lock.cc',
         'util/null_shared_mem.cc',
         'util/null_statistics.cc',
-        'util/posix_timer.cc',
         'util/property_cache.cc',
         'util/queued_alarm.cc',
         'util/queued_worker.cc',
@@ -1375,7 +1374,6 @@
       'sources': [
         'rewriter/rewrite_gflags.cc',
         'util/gflags.cc',
-        'util/posix_timer.cc',
       ],
     },
     {

@@ -27,13 +27,35 @@
 
 namespace net_instaweb {
 
-RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
-    : log_record_(new LogRecord(logging_mutex)),
-      using_spdy_(false) {
-  timing_info_.Init(timer);
+namespace {
+
+bool SetValueIfGEZero(int64 in, int64* out) {
+  if (in < 0) {
+    return false;
+  }
+
+  *out = in;
+  return true;
 }
 
-RequestContext::RequestContext() : using_spdy_(false) {}
+}  // namespace
+
+// TODO(gee): Deprecate this.
+RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
+    : log_record_(new LogRecord(logging_mutex)),
+      // TODO(gee): Move ownership of mutex to TimingInfo.
+      timing_info_(timer, logging_mutex),
+      using_spdy_(false) {
+}
+
+RequestContext::RequestContext(AbstractMutex* mutex,
+                               Timer* timer,
+                               bool want_log_record)
+    : log_record_(want_log_record ? new LogRecord(mutex) : NULL),
+      // TODO(gee): Move ownership of mutex to TimingInfo.
+      timing_info_(timer, mutex),
+      using_spdy_(false) {
+}
 
 RequestContext::~RequestContext() {
   // Please do not add non-diagnostic functionality here.
@@ -97,24 +119,21 @@ void RequestContext::ReleaseDependentTraceContext(RequestTrace* t) {
   }
 }
 
-RequestContext::TimingInfo::TimingInfo()
-    : timer_(NULL),
+RequestContext::TimingInfo::TimingInfo(Timer* timer, AbstractMutex* mutex)
+    : timer_(timer),
       init_ts_ms_(-1),
       start_ts_ms_(-1),
       processing_start_ts_ms_(-1),
       pcache_lookup_start_ts_ms_(-1),
       pcache_lookup_end_ts_ms_(-1),
       parsing_start_ts_ms_(-1),
+      end_ts_ms_(-1),
+      mu_(mutex),
       fetch_start_ts_ms_(-1),
-      fetch_first_byte_ts_ms_(-1),
       fetch_header_ts_ms_(-1),
       fetch_end_ts_ms_(-1),
-      end_ts_ms_(-1) {
-}
-
-void RequestContext::TimingInfo::Init(Timer* timer) {
-  DCHECK(timer_ == NULL);
-  timer_ = timer;
+      http_cache_latency_ms_(-1),
+      l2http_cache_latency_ms_(-1) {
   init_ts_ms_ = NowMs();
 }
 
@@ -124,6 +143,7 @@ void RequestContext::TimingInfo::RequestStarted() {
 }
 
 void RequestContext::TimingInfo::FetchStarted() {
+  ScopedMutex l(mu_);
   if (fetch_start_ts_ms_ > 0) {
     // It's possible this is called more than once, just ignore subsequent
     // calls.
@@ -131,6 +151,26 @@ void RequestContext::TimingInfo::FetchStarted() {
   }
 
   SetToNow(&fetch_start_ts_ms_);
+}
+
+void RequestContext::TimingInfo::FetchHeaderReceived() {
+  ScopedMutex l(mu_);
+  SetToNow(&fetch_header_ts_ms_);
+}
+
+void RequestContext::TimingInfo::FetchFinished() {
+  ScopedMutex l(mu_);
+  SetToNow(&fetch_end_ts_ms_);
+}
+
+void RequestContext::TimingInfo::SetHTTPCacheLatencyMs(int64 latency_ms) {
+  ScopedMutex l(mu_);
+  SetValueIfGEZero(latency_ms, &http_cache_latency_ms_);
+}
+
+void RequestContext::TimingInfo::SetL2HTTPCacheLatencyMs(int64 latency_ms) {
+  ScopedMutex l(mu_);
+  SetValueIfGEZero(latency_ms, &l2http_cache_latency_ms_);
 }
 
 int64 RequestContext::TimingInfo::GetElapsedMs() const {
@@ -145,7 +185,7 @@ bool RequestContext::TimingInfo::GetProcessingElapsedMs(
   }
   int64 elapsed_ms = end_ts_ms_ - start_ts_ms_;
   int64 fetch_elapsed_ms = 0;
-  if (GetFetchElapsedMs(&fetch_elapsed_ms)) {
+  if (GetFetchLatencyMs(&fetch_elapsed_ms)) {
     elapsed_ms -= fetch_elapsed_ms;
   }
 
@@ -153,21 +193,18 @@ bool RequestContext::TimingInfo::GetProcessingElapsedMs(
   return true;
 }
 
-bool RequestContext::TimingInfo::GetFetchElapsedMs(int64* elapsed_ms) const {
-  if (fetch_end_ts_ms_ < 0 || fetch_start_ts_ms_ < 0) {
-    return false;
-  }
-
-  *elapsed_ms = fetch_end_ts_ms_ - fetch_start_ts_ms_;
-  return true;
+bool RequestContext::TimingInfo::GetTimeToStartFetchMs(
+    int64* elapsed_ms) const {
+  ScopedMutex l(mu_);
+  return GetTimeFromStart(fetch_start_ts_ms_, elapsed_ms);
 }
 
-bool RequestContext::TimingInfo::GetTimeToFetchHeaderMs(
+bool RequestContext::TimingInfo::GetFetchHeaderLatencyMs(
     int64* elapsed_ms) const {
+  ScopedMutex l(mu_);
   if (fetch_header_ts_ms_ < 0 || fetch_start_ts_ms_< 0) {
     return false;
   }
-
 
   const int64 tmp_elapsed_ms = fetch_header_ts_ms_ - fetch_start_ts_ms_;
   if (tmp_elapsed_ms < 0) {
@@ -175,6 +212,16 @@ bool RequestContext::TimingInfo::GetTimeToFetchHeaderMs(
   }
 
   *elapsed_ms = tmp_elapsed_ms;
+  return true;
+}
+
+bool RequestContext::TimingInfo::GetFetchLatencyMs(int64* elapsed_ms) const {
+  ScopedMutex l(mu_);
+  if (fetch_end_ts_ms_ < 0 || fetch_start_ts_ms_ < 0) {
+    return false;
+  }
+
+  *elapsed_ms = fetch_end_ts_ms_ - fetch_start_ts_ms_;
   return true;
 }
 
@@ -199,6 +246,18 @@ bool RequestContext::TimingInfo::GetTimeFromStart(
 
   *elapsed_ms = ts_ms - start_ts_ms_;
   return true;
+}
+
+bool RequestContext::TimingInfo::GetHTTPCacheLatencyMs(
+    int64* latency_ms) const {
+  ScopedMutex l(mu_);
+  return SetValueIfGEZero(http_cache_latency_ms_, latency_ms);
+}
+
+bool RequestContext::TimingInfo::GetL2HTTPCacheLatencyMs(
+    int64* latency_ms) const {
+  ScopedMutex l(mu_);
+  return SetValueIfGEZero(l2http_cache_latency_ms_, latency_ms);
 }
 
 }  // namespace net_instaweb

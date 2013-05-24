@@ -22,6 +22,8 @@
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -42,7 +44,10 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoInDriver(RewriteDriver* driver) {
   PropertyCacheDecodeResult decode_status;
   scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info(
       DecodeFromPropertyCache<FlushEarlyRenderInfo>(
-          driver, GetCohort(), kFlushEarlyRenderPropertyName,
+          driver->server_context()->page_property_cache(),
+          driver->fallback_property_page(),
+          GetCohort(),
+          kFlushEarlyRenderPropertyName,
           driver->options()->finder_properties_cache_expiration_time_ms(),
           &decode_status));
   if (decode_status == kPropertyCacheDecodeOk) {
@@ -75,7 +80,7 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoCacheEntry(
                         GetCohort(),
                         kFlushEarlyRenderPropertyName,
                         false /* don't write_cohort*/,
-                        driver->property_page());
+                        driver->fallback_property_page());
 }
 
 }  // namespace net_instaweb

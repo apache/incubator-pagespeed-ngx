@@ -26,7 +26,7 @@
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
-#include "pagespeed/kernel/base/platform.h"
+#include "pagespeed/kernel/base/null_thread_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -39,7 +39,7 @@ class Timer;
 class MemFileSystemTest : public FileSystemTest {
  protected:
   MemFileSystemTest()
-      : thread_system_(Platform::CreateThreadSystem()),
+      : thread_system_(new NullThreadSystem),
         timer_(0),
         mem_file_system_(thread_system_.get(), &timer_) {
     mem_file_system_.set_advance_time_on_update(true, &timer_);

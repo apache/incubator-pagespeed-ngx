@@ -16,12 +16,12 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/kernel/base/platform.h"
+#include "pagespeed/kernel/util/platform.h"
 
 #include "net/instaweb/util/public/pthread_thread_system.h"
 #include "pagespeed/kernel/base/checking_thread_system.h"
 
-#include "net/instaweb/util/public/posix_timer.h"
+#include "pagespeed/kernel/base/posix_timer.h"
 
 namespace net_instaweb {
 

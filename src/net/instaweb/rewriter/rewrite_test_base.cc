@@ -1008,6 +1008,11 @@ void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
   factory_->mock_timer()->SetTimeUs(time_us);
 }
 
+const RequestContext::TimingInfo& RewriteTestBase::timing_info() {
+  CHECK(rewrite_driver()->request_context().get() != NULL);
+  return rewrite_driver()->request_context()->timing_info();
+}
+
 LoggingInfo* RewriteTestBase::logging_info() {
   CHECK(rewrite_driver()->request_context().get() != NULL);
   return rewrite_driver()->request_context()->log_record()->logging_info();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef PAGESPEED_KERNEL_BASE_PLATFORM_H_
-#define PAGESPEED_KERNEL_BASE_PLATFORM_H_
+// Author: jmarantz@google.com (Joshua Marantz)
+
+#ifndef PAGESPEED_KERNEL_BASE_POSIX_TIMER_H_
+#define PAGESPEED_KERNEL_BASE_POSIX_TIMER_H_
+
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
-class ThreadSystem;
-class Timer;
-
-// Encapsulates the creation of objects that may have different applications
-// across platforms.
-class Platform {
+class PosixTimer : public Timer {
  public:
-  // Creates an appropriate ThreadSystem for the platform.
-  static ThreadSystem* CreateThreadSystem();
+  PosixTimer() {}
+  virtual ~PosixTimer();
 
-  // Creates an appropriate Timer for the platform.
-  static Timer* CreateTimer();
+  virtual int64 NowUs() const;
+  virtual void SleepUs(int64 us);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(PosixTimer);
 };
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_BASE_PLATFORM_H_
+#endif  // PAGESPEED_KERNEL_BASE_POSIX_TIMER_H_

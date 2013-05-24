@@ -67,6 +67,7 @@
         'kernel/base/condvar.cc',
         'kernel/base/function.cc',
         'kernel/base/thread.cc',
+        'kernel/base/posix_timer.cc',
       ],
       'dependencies': [
         'pagespeed_base_core',
@@ -79,7 +80,8 @@
         'kernel/base/mem_file_system.cc',
         'kernel/base/mock_message_handler.cc',
         'kernel/base/mock_timer.cc',
-        'kernel/base/platform.cc',
+        'kernel/base/null_thread_system.cc',
+        'kernel/util/platform.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',

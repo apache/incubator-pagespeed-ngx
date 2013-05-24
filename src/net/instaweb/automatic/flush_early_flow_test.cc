@@ -1038,6 +1038,49 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPcacheMiss) {
   EXPECT_EQ(0, stats.status_counts_size());
 }
 
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestFallbackPageUsage) {
+  SetupForFlushEarlyFlow();
+
+  // Enable UseFallbackPropertyCacheValues.
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->set_use_fallback_property_cache_values(true);
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  // Setting up mock responses for the url and fallback url.
+  GoogleString url = StrCat(kTestDomain, "a.html?query=some");
+  GoogleString fallback_url =
+      StrCat(kTestDomain, "a.html?different_query=some");
+  ResponseHeaders response_headers;
+  response_headers.Add(
+      HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse(url, response_headers, kFlushEarlyHtml);
+  mock_url_fetcher_.SetResponse(
+      fallback_url, response_headers, kFlushEarlyHtml);
+
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_rel_subresource");
+
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+
+  // Request another url with different query params so that fallback values
+  // will be used.
+  FetchFromProxy(fallback_url, request_headers, true, &text, &headers);
+
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& fallback_stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::ACTIVE, fallback_stats.html_status());
+  EXPECT_EQ(2, fallback_stats.status_counts_size());
+}
+
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {
   SetupForFlushEarlyFlow();
   GoogleString text;

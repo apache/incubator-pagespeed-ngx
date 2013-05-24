@@ -2178,7 +2178,8 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   if (flush_early_info_.get() != NULL) {
     GoogleString value;
     flush_early_info_->SerializeToString(&value);
-    UpdatePropertyValueInDomCohort(page, kSubresourcesPropertyName, value);
+    UpdatePropertyValueInDomCohort(
+        fallback_property_page(), kSubresourcesPropertyName, value);
   }
   // Write dom cohort for both actual property page and property page with
   // fallback values.
@@ -2845,8 +2846,12 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
     PropertyCacheDecodeResult status;
     flush_early_info_.reset(DecodeFromPropertyCache<FlushEarlyInfo>(
-        this, server_context()->dom_cohort(), kSubresourcesPropertyName,
-        -1 /* no ttl checking*/, &status));
+        server_context()->page_property_cache(),
+        fallback_property_page(),
+        server_context()->dom_cohort(),
+        kSubresourcesPropertyName,
+        -1 /* no ttl checking*/,
+        &status));
     if (status != kPropertyCacheDecodeOk) {
       flush_early_info_.reset(new FlushEarlyInfo);
     }

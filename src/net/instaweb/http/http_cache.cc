@@ -22,11 +22,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -222,13 +219,12 @@ class HTTPCacheCallback : public CacheInterface::Callback {
       }
     }
 
+    // TODO(gee): Perhaps all of this belongs in TimingInfo.
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
     http_cache_->UpdateStats(result,
                              !callback_->fallback_http_value()->Empty(),
                              elapsed_us);
-    if (callback_->log_timing()) {
-      callback_->SetTimingMs(elapsed_us/1000);
-    }
+    callback_->ReportLatencyMs(elapsed_us/1000);
     if (result != HTTPCache::kFound) {
       headers->Clear();
       callback_->http_value()->Clear();
@@ -468,17 +464,21 @@ HTTPCache::Callback::~Callback() {
   }
 }
 
-AbstractLogRecord* HTTPCache::Callback::log_record() {
-  return request_context()->log_record();
+void HTTPCache::Callback::ReportLatencyMs(int64 latency_ms) {
+  if (is_background_) {
+    return;
+  }
+
+  if (request_context().get() == NULL) {
+    DLOG(FATAL) << "NOTREACHED";
+    return;
+  }
+
+  ReportLatencyMsImpl(latency_ms);
 }
 
-void HTTPCache::Callback::SetTimingMs(int64 timing_value_ms) {
-  DCHECK(request_context().get() != NULL);
-  ScopedMutex lock(log_record()->mutex());
-  TimingInfo* timing_info = log_record()->logging_info()->mutable_timing_info();
-  if (!timing_info->has_cache1_ms()) {
-    timing_info->set_cache1_ms(timing_value_ms);
-  }
+void HTTPCache::Callback::ReportLatencyMsImpl(int64 latency_ms) {
+  request_context()->mutable_timing_info()->SetHTTPCacheLatencyMs(latency_ms);
 }
 
 }  // namespace net_instaweb

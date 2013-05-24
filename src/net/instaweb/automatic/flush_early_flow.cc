@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -81,7 +82,6 @@ const int kMinLatencyForPreconnectMs = 100;
 
 namespace net_instaweb {
 
-class FallbackPropertyPage;
 class StaticAssetManager;
 
 namespace {
@@ -412,9 +412,10 @@ FlushEarlyFlow::~FlushEarlyFlow() {
 
 void FlushEarlyFlow::FlushEarly() {
   const RewriteOptions* options = driver_->options();
-  const PropertyCache::Cohort* cohort = server_context_->page_property_cache()->
-      GetCohort(RewriteDriver::kDomCohort);
+  const PropertyCache::Cohort* cohort = server_context_->dom_cohort();
   PropertyPage* page = property_cache_callback_->property_page();
+  AbstractPropertyPage* fallback_page =
+      property_cache_callback_->fallback_property_page();
   DCHECK(page != NULL);
   bool property_cache_miss = true;
   if (page != NULL && cohort != NULL) {
@@ -440,7 +441,7 @@ void FlushEarlyFlow::FlushEarly() {
       num_flush_early_http_status_code_deemed_unstable_->IncBy(1);
     }
 
-    PropertyValue* property_value = page->GetProperty(
+    PropertyValue* property_value = fallback_page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
     if (property_value != NULL && property_value->has_value()) {
       property_cache_miss = false;

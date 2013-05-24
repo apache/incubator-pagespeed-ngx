@@ -32,7 +32,6 @@
 
 namespace net_instaweb {
 
-class AbstractLogRecord;
 class Hasher;
 class MessageHandler;
 class RequestHeaders;
@@ -87,7 +86,7 @@ class HTTPCache {
         : response_headers_(NULL),
           owns_response_headers_(false),
           request_ctx_(request_ctx),
-          log_timing_(true) {
+          is_background_(false) {
     }
     virtual ~Callback();
     virtual void Done(FindResult find_result) = 0;
@@ -117,6 +116,13 @@ class HTTPCache {
     // the cache ttl of the stored value.
     virtual int64 OverrideCacheTtlMs(const GoogleString& key) { return -1; }
 
+    // Called upon completion of a cache lookup trigged by HTTPCache::Find by
+    // the HTTPCache code with the latency in milliseconds.  Will invoke
+    // ReportLatencyMsImpl for non-background fetches in order for system
+    // implementations, like RequestContext::TimingInfo, to record the cache
+    // latency.
+    void ReportLatencyMs(int64 latency_ms);
+
     // TODO(jmarantz): specify the dataflow between http_value and
     // response_headers.
     HTTPValue* http_value() { return &http_value_; }
@@ -140,12 +146,15 @@ class HTTPCache {
     }
     HTTPValue* fallback_http_value() { return &fallback_http_value_; }
 
-    AbstractLogRecord* log_record();
     const RequestContextPtr& request_context() { return request_ctx_; }
-    void set_log_timing(bool t) { log_timing_ = t; }
-    bool log_timing() const { return log_timing_; }
+    void set_is_background(bool is_background) {
+      is_background_ = is_background;
+    }
 
-    virtual void SetTimingMs(int64 timing_value_ms);
+   protected:
+    // Virtual implementation for subclasses to override.  Default
+    // implementation calls RequestContext::TimingInfo::SetHTTPCacheLatencyMs.
+    virtual void ReportLatencyMsImpl(int64 latency_ms);
 
    private:
     HTTPValue http_value_;
@@ -155,7 +164,7 @@ class HTTPCache {
     ResponseHeaders* response_headers_;
     bool owns_response_headers_;
     RequestContextPtr request_ctx_;
-    bool log_timing_;
+    bool is_background_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };

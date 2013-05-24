@@ -20,7 +20,7 @@
 
 # MOD_PAGESPEED_ROOT should be set to the 'src' directory where mod_pagespeed
 # was built.  See:
-# https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
+# https://developers.google.com/speed/pagespeed/module/build_from_source
 #
 # When running this Makefile from the 'automatic' directory then it will
 # be set automatically.

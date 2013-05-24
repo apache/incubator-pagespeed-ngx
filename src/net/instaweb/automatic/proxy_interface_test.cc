@@ -328,12 +328,16 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   // Fetch HTML content.
   mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
   FetchFromProxy(url, request_headers, true, &text, &headers);
+
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(0);
+  const RequestContext::TimingInfo& rti = timing_info();
+  int64 latency_ms;
+  ASSERT_TRUE(rti.GetHTTPCacheLatencyMs(&latency_ms));
+  EXPECT_EQ(0, latency_ms);
+  EXPECT_FALSE(rti.GetL2HTTPCacheLatencyMs(&latency_ms));
+
   const TimingInfo timing_info = logging_info()->timing_info();
-  ASSERT_TRUE(timing_info.has_cache1_ms());
-  EXPECT_EQ(timing_info.cache1_ms(), 0);
-  EXPECT_FALSE(timing_info.has_cache2_ms());
   EXPECT_FALSE(timing_info.has_header_fetch_ms());
   EXPECT_FALSE(timing_info.has_fetch_ms());
   EXPECT_TRUE(logging_info()->is_html_response());

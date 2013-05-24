@@ -131,16 +131,13 @@ class RequestContext : public RefCounted<RequestContext> {
   // - Fetch?: Fetch*
   // - Start parsing?: ParsingStarted
   // - Finish: RequestFinished
+  // NOTE: This class is thread safe.
   class TimingInfo {
    public:
-    // TODO(gee): Does this need to be thread safe?
-    TimingInfo();
-
-    // Initialize the TimingInfo with the specified Timer.  Sets a timestamp
-    // from which GetElapsedMs is based.
-    // NOTE: Timer is not owned by TimingInfo.
-    // TODO(gee): This is forced by the RequestContext subclasses.
-    void Init(Timer* timer);
+    // Initialize the TimingInfo with the specified Timer.  Sets init_ts_ to
+    // Timer::NowMs, from which GetElapsedMs is based.
+    // NOTE: Timer and mutex are not owned by TimingInfo.
+    TimingInfo(Timer* timer, AbstractMutex* mutex);
 
     // This should be called when the request "starts", potentially after
     // queuing. It denotes the request "start time", which "elapsed" timing
@@ -167,12 +164,18 @@ class RequestContext : public RefCounted<RequestContext> {
     void RequestFinished() { SetToNow(&end_ts_ms_); }
 
     // Fetch related timing events.
-    // Note:  Only the first call to FetchStarted will have an affect,
+    // Note:  Only the first call to FetchStarted will have an effect,
     // subsequent calls are silent no-ops.
+    // TODO(gee): Fetch and cache timing is busted for reconstructing resources
+    // with multiple inputs.
     void FetchStarted();
-    void FetchFirstByteReceived() { SetToNow(&fetch_first_byte_ts_ms_); }
-    void FetchHeaderReceived() { SetToNow(&fetch_header_ts_ms_); }
-    void FetchFinished() { SetToNow(&fetch_end_ts_ms_); }
+    void FetchHeaderReceived();
+    void FetchFinished();
+
+    // TODO(gee): I'd really prefer these to be start/end calls, but the
+    // WriteThroughCache design pattern will not allow for this.
+    void SetHTTPCacheLatencyMs(int64 latency_ms);
+    void SetL2HTTPCacheLatencyMs(int64 latency_ms);
 
     // Milliseconds since Init.
     int64 GetElapsedMs() const;
@@ -198,29 +201,27 @@ class RequestContext : public RefCounted<RequestContext> {
       return GetTimeFromStart(pcache_lookup_end_ts_ms_, elapsed_ms);
     }
 
-    // Milliseconds from fetch start to fetch end.
-    bool GetFetchElapsedMs(int64* elapsed_ms) const;
+    // HTTP Cache latencies.
+    bool GetHTTPCacheLatencyMs(int64* latency_ms) const;
+    bool GetL2HTTPCacheLatencyMs(int64* latency_ms) const;
 
     // Milliseconds from request start to fetch start.
-    bool GetTimeToStartFetchMs(int64* elapsed_ms) const {
-      return GetTimeFromStart(fetch_start_ts_ms_, elapsed_ms);
-    }
+    bool GetTimeToStartFetchMs(int64* elapsed_ms) const;
 
     // Milliseconds from fetch start to header received.
-    bool GetTimeToFetchHeaderMs(int64* elaped_ms) const;
+    bool GetFetchHeaderLatencyMs(int64* latency_ms) const;
+
+    // Milliseconds from fetch start to fetch end.
+    bool GetFetchLatencyMs(int64* latency_ms) const;
 
     // Milliseconds from request start to parse start.
     bool GetTimeToStartParseMs(int64* elapsed_ms) const {
       return GetTimeFromStart(parsing_start_ts_ms_, elapsed_ms);
     }
 
-    int64 init_ts_ms() const {
-      return init_ts_ms_;
-    }
+    int64 init_ts_ms() const { return init_ts_ms_; }
 
-    int64 start_ts_ms() const {
-      return start_ts_ms_;
-    }
+    int64 start_ts_ms() const { return start_ts_ms_; }
 
    private:
     int64 NowMs() const;
@@ -232,20 +233,31 @@ class RequestContext : public RefCounted<RequestContext> {
     // Returns false if either start_ms_ or "ts_ms" have not been set (< 0).
     bool GetTimeFromStart(int64 ts_ms, int64* elapsed_ms) const;
 
+
     Timer* timer_;
 
     // Event Timestamps.  These should appear in (roughly) chronological order.
+    // These need not be protected by mu_ as they are only accessed by a single
+    // thread at any given time, and subsequent accesses are made through
+    // paths which are synchronized by other locks (pcache callback collector,
+    // sequences, etc.).
     int64 init_ts_ms_;
     int64 start_ts_ms_;
     int64 processing_start_ts_ms_;
     int64 pcache_lookup_start_ts_ms_;
     int64 pcache_lookup_end_ts_ms_;
     int64 parsing_start_ts_ms_;
+    int64 end_ts_ms_;
+
+    AbstractMutex* mu_;  // Not owned by TimingInfo.
+    // The following members are protected by mu_;
     int64 fetch_start_ts_ms_;
-    int64 fetch_first_byte_ts_ms_;
     int64 fetch_header_ts_ms_;
     int64 fetch_end_ts_ms_;
-    int64 end_ts_ms_;
+
+    // Latencies.
+    int64 http_cache_latency_ms_;
+    int64 l2http_cache_latency_ms_;
 
     DISALLOW_COPY_AND_ASSIGN(TimingInfo);
   };
@@ -257,7 +269,7 @@ class RequestContext : public RefCounted<RequestContext> {
   // TODO(gee): Fix this, it sucks.
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.
-  RequestContext();
+  RequestContext(AbstractMutex* mutex, Timer* timer, bool want_log_record);
   // Destructors in refcounted classes should be protected.
   virtual ~RequestContext();
   REFCOUNT_FRIEND_DECLARATION(RequestContext);

@@ -14,10 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
+#ifndef PAGESPEED_KERNEL_UTIL_PLATFORM_H_
+#define PAGESPEED_KERNEL_UTIL_PLATFORM_H_
 
-// TODO(huibao): Remove this forwarding header and update references.
-#include "pagespeed/kernel/util/platform.h"
+namespace net_instaweb {
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
+class ThreadSystem;
+class Timer;
+
+// Encapsulates the creation of objects that may have different applications
+// across platforms.
+class Platform {
+ public:
+  // Creates an appropriate ThreadSystem for the platform.
+  static ThreadSystem* CreateThreadSystem();
+
+  // Creates an appropriate Timer for the platform.
+  static Timer* CreateTimer();
+};
+
+}  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_UTIL_PLATFORM_H_

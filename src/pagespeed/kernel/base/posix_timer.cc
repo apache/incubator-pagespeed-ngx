@@ -16,15 +16,15 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/posix_timer.h"
+#include "pagespeed/kernel/base/posix_timer.h"
 
 #include <sys/time.h>
 #include <unistd.h>
 #include <cerrno>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

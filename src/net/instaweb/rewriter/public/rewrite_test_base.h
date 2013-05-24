@@ -626,6 +626,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Adjusts time ignoring any scheduler callbacks.  Use with caution.
   void AdjustTimeUsWithoutWakingAlarms(int64 time_us);
 
+  // Accessor for TimingInfo.
+  const RequestContext::TimingInfo& timing_info();
+
   // Convenience method to pull the logging info proto out of the current
   // request context's log record. The request context owns the log record, and
   // if the log record has a non-NULL mutex, it will need to be locked

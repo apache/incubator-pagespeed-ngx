@@ -20,12 +20,10 @@
 #include "pagespeed/kernel/base/stdio_file_system.h"
 
 #include "pagespeed/kernel/base/google_message_handler.h"
-#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/platform.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -33,8 +31,7 @@ namespace net_instaweb {
 
 class StdioFileSystemTest : public FileSystemTest {
  protected:
-  StdioFileSystemTest()
-      : timer_(Platform::CreateTimer()) {
+  StdioFileSystemTest() {
     // Create the temp directory, so we are not dependent on test order
     // to make it.
     file_system()->RecursivelyMakeDir(test_tmpdir(), &handler_);
@@ -67,7 +64,7 @@ class StdioFileSystemTest : public FileSystemTest {
   virtual FileSystem* file_system() {
     return &stdio_file_system_;
   }
-  virtual Timer* timer()  { return timer_.get(); }
+  virtual Timer* timer()  { return &timer_; }
 
   // Disk based file systems should return the number of disk blocks allocated
   // for a file, not the size of the contents.
@@ -99,7 +96,7 @@ class StdioFileSystemTest : public FileSystemTest {
     }
   }
 
-  scoped_ptr<Timer> timer_;
+  PosixTimer timer_;
   StdioFileSystem stdio_file_system_;
   int64 default_dir_size_;
   int64 default_file_size_;
