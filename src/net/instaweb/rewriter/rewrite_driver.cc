@@ -2798,8 +2798,12 @@ void RewriteDriver::decrement_async_events_count() {
     ScopedMutex lock(rewrite_mutex());
     --pending_async_events_;
     should_release = release_driver_ && (pending_async_events_ == 0);
+    // We may need to wake up someone waiting for completion and let them
+    // take control of cleanup, but only if someone like that actually exists.
+    // There may be no such waiter e.g. when WaitForPendingAsyncEvents() is true
+    // and a .pagespeed. request is being handled via a fully async path.
     should_wakeup = WaitForPendingAsyncEvents(waiting_) &&
-        (pending_async_events_ == 0);
+        (pending_async_events_ == 0) && (waiting_ != kNoWait);
   }
   if (should_wakeup) {
     ScopedMutex lock(rewrite_mutex());

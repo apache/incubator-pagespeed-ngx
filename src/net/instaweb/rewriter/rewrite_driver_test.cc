@@ -1524,6 +1524,22 @@ TEST_F(RewriteDriverTest, PendingAsyncEventsTest) {
 
   EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
   EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+
+  // Make sure we properly cleanup as well.
+  RewriteDriver* other_driver =
+    server_context()->NewRewriteDriver(CreateRequestContext());
+  other_driver->increment_async_events_count();
+  other_driver->Cleanup();
+  other_driver->decrement_async_events_count();
+  EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
+
+  RewriteDriver* other_driver2 =
+    server_context()->NewRewriteDriver(CreateRequestContext());
+  other_driver2->set_fully_rewrite_on_flush(true);
+  other_driver2->increment_async_events_count();
+  other_driver2->Cleanup();
+  other_driver2->decrement_async_events_count();
+  EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
 }
 
 }  // namespace
