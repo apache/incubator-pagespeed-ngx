@@ -85,12 +85,16 @@
         'kernel/base/mock_timer.cc',
         'kernel/base/null_thread_system.cc',
         'kernel/base/simple_stats.cc',
+        'kernel/html/canonical_attributes.cc',
+        'kernel/html/explicit_close_tag.cc',
         'kernel/util/platform.cc',
+        'kernel/thread/mock_scheduler.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',
       ],
       'dependencies': [
+        'pthread_system',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'export_dependent_settings': [
@@ -103,6 +107,8 @@
       'sources': [
         'kernel/base/file_system_test_base.cc',
         'kernel/base/gtest.cc',
+        'kernel/thread/thread_system_test_base.cc',
+        'kernel/thread/worker_test_base.cc',
       ],
       'all_dependent_settings': {
         'include_dirs': [
@@ -220,8 +226,10 @@
         'kernel/util/cache_interface.cc',
         'kernel/util/circular_buffer.cc',
         'kernel/util/fast_wildcard_group.cc',
+        'kernel/util/file_system_lock_manager.cc',
         'kernel/util/named_lock_manager.cc',
         'kernel/util/rolling_hash.cc',
+        'kernel/util/scheduler_based_abstract_lock.cc',
         'kernel/util/shared_string.cc',
         'kernel/util/wildcard.cc',
       ],
@@ -230,6 +238,7 @@
       ],
       'dependencies': [
         'pagespeed_base',
+        'pagespeed_thread',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
     },
@@ -288,6 +297,41 @@
       'dependencies': [
         ':base_test_util',
         ':pagespeed_image_processing',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_thread',
+      'type': '<(library)',
+      'sources': [
+        'kernel/thread/queued_worker.cc',
+        'kernel/thread/queued_worker_pool.cc',
+        'kernel/thread/scheduler.cc',
+        'kernel/thread/scheduler_thread.cc',
+        'kernel/thread/slow_worker.cc',
+        'kernel/thread/thread_synchronizer.cc',
+        'kernel/thread/worker.cc',
+      ],
+      'dependencies': [
+        'pagespeed_base',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+    },
+    {
+      'target_name': 'pthread_system',
+      'type': '<(library)',
+      'sources': [
+        'kernel/thread/pthread_condvar.cc',
+        'kernel/thread/pthread_mutex.cc',
+        'kernel/thread/pthread_rw_lock.cc',
+        'kernel/thread/pthread_thread_system.cc',
+      ],
+      'dependencies': [
+        'pagespeed_base',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
       ],
     },
   ],

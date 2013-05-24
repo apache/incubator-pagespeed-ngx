@@ -112,6 +112,8 @@ BASE_LIBS = \
   pagespeed/libpagespeed_base_core.a \
   pagespeed/libpagespeed_base_test_infrastructure.a \
   pagespeed/libpagespeed_image_processing.a \
+  pagespeed/libpthread_system.a \
+  pagespeed/libpagespeed_thread.a \
   pagespeed/libutil.a \
   pagespeed/libjsminify.a \
   pagespeed/libpagespeed_javascript_gperf.a \

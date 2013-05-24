@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,32 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: morlovich@google.com (Maksim Orlovich)
+//
+// Implements QueuedWorker, which runs tasks in a background thread.
 
-#include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/thread/queued_worker.h"
 
-#include "pagespeed/kernel/thread/pthread_thread_system.h"
-#include "pagespeed/kernel/base/checking_thread_system.h"
-
-#include "pagespeed/kernel/base/posix_timer.h"
+#include "base/logging.h"
 
 namespace net_instaweb {
 
-ThreadSystem* Platform::CreateThreadSystem() {
-  ThreadSystem* impl = new PthreadThreadSystem;
-#ifdef NDEBUG
-  return impl;
-#else
-  return new CheckingThreadSystem(impl);
-#endif
+class Function;
+
+QueuedWorker::QueuedWorker(StringPiece thread_name, ThreadSystem* runtime)
+    : Worker(thread_name, runtime) {
 }
 
-Timer* Platform::CreateTimer() {
-  return new PosixTimer;
+QueuedWorker::~QueuedWorker() {
+}
+
+void QueuedWorker::RunInWorkThread(Function* closure) {
+  bool ok = QueueIfPermitted(closure);
+  CHECK(ok);
+}
+
+bool QueuedWorker::IsPermitted(Function* closure) {
+  return true;
 }
 
 }  // namespace net_instaweb
