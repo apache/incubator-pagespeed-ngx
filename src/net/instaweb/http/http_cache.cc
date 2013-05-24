@@ -59,10 +59,13 @@ const int64 kCacheSizeUnlimited = -1;
 const char HTTPCache::kCacheTimeUs[] = "cache_time_us";
 const char HTTPCache::kCacheHits[] = "cache_hits";
 const char HTTPCache::kCacheMisses[] = "cache_misses";
+const char HTTPCache::kCacheBackendHits[] = "cache_backend_hits";
+const char HTTPCache::kCacheBackendMisses[] = "cache_backend_misses";
 const char HTTPCache::kCacheFallbacks[] = "cache_fallbacks";
 const char HTTPCache::kCacheExpirations[] = "cache_expirations";
 const char HTTPCache::kCacheInserts[] = "cache_inserts";
 const char HTTPCache::kCacheDeletes[] = "cache_deletes";
+
 // This used for doing prefix match for etag in fetcher code.
 const char HTTPCache::kEtagPrefix[] = "W/\"PSA-";
 
@@ -76,6 +79,8 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
       cache_misses_(stats->GetVariable(kCacheMisses)),
+      cache_backend_hits_(stats->GetVariable(kCacheBackendHits)),
+      cache_backend_misses_(stats->GetVariable(kCacheBackendMisses)),
       cache_fallbacks_(stats->GetVariable(kCacheFallbacks)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
       cache_inserts_(stats->GetVariable(kCacheInserts)),
@@ -134,13 +139,13 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     start_ms_ = start_us_ / 1000;
   }
 
-  virtual void Done(CacheInterface::KeyState state) {
+  virtual void Done(CacheInterface::KeyState backend_state) {
     HTTPCache::FindResult result = HTTPCache::kNotFound;
 
     int64 now_us = http_cache_->timer()->NowUs();
     int64 now_ms = now_us / 1000;
     ResponseHeaders* headers = callback_->response_headers();
-    if ((state == CacheInterface::kAvailable) &&
+    if ((backend_state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
         callback_->IsCacheValid(key_, *headers)) {
       // While stale responses can potentially be used in case of fetch
@@ -221,7 +226,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
 
     // TODO(gee): Perhaps all of this belongs in TimingInfo.
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
-    http_cache_->UpdateStats(result,
+    http_cache_->UpdateStats(backend_state, result,
                              !callback_->fallback_http_value()->Empty(),
                              elapsed_us);
     callback_->ReportLatencyMs(elapsed_us/1000);
@@ -251,8 +256,14 @@ void HTTPCache::Find(const GoogleString& key, MessageHandler* handler,
 }
 
 void HTTPCache::UpdateStats(
-    FindResult result, bool has_fallback, int64 delta_us) {
+    CacheInterface::KeyState backend_state, FindResult result,
+    bool has_fallback, int64 delta_us) {
   cache_time_us_->Add(delta_us);
+  if (backend_state == CacheInterface::kAvailable) {
+    cache_backend_hits_->Add(1);
+  } else {
+    cache_backend_misses_->Add(1);
+  }
   if (result == kFound) {
     cache_hits_->Add(1);
     DCHECK(!has_fallback);
@@ -448,6 +459,8 @@ void HTTPCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheTimeUs);
   statistics->AddVariable(kCacheHits);
   statistics->AddVariable(kCacheMisses);
+  statistics->AddVariable(kCacheBackendHits);
+  statistics->AddVariable(kCacheBackendMisses);
   statistics->AddVariable(kCacheFallbacks);
   statistics->AddVariable(kCacheExpirations);
   statistics->AddVariable(kCacheInserts);

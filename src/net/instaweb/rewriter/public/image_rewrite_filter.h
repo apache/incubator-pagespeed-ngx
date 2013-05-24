@@ -283,7 +283,10 @@ class ImageRewriteFilter : public RewriteFilter {
   // # of images that we decided not to serve rewritten. This could be because
   // the rewrite failed, recompression wasn't effective enough, the image
   // couldn't be resized because it had an alpha-channel, etc.
+  // Note: This overlaps with most of the other image_rewrites_dropped_* vars.
   Variable* image_rewrites_dropped_intentionally_;
+  // # of images not rewritten because we failed to decode them.
+  Variable* image_rewrites_dropped_decode_failure_;
   // # of images not rewritten because the image MIME type is unknown.
   Variable* image_rewrites_dropped_mime_type_unknown_;
   // # of images not rewritten because the server fails to write the merged

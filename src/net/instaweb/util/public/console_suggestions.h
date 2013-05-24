@@ -67,9 +67,11 @@ class ConsoleSuggestionsFactory {
   int64 StatValue(StringPiece var_name);
   // Returns ratio of variables (or 0 if denominator is 0).
   double StatRatio(StringPiece numerator, StringPiece denominator);
+  double Ratio(int64 numerator, int64 denominator);
   // Returns ratio of bad / (good + bad). Common pattern for our stats.
   // (Returns 0 if good + bad = 0).
   double StatSumRatio(StringPiece bad, StringPiece good);
+  double SumRatio(int64 bad, int64 good);
   // Helper method to add a suggestion to suggestions_ in standard format.
   void AddConsoleSuggestion(double stat_failure_ratio,
                             const char* message_format,

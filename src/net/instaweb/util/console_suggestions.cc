@@ -39,26 +39,24 @@ int64 ConsoleSuggestionsFactory::StatValue(StringPiece var_name) {
 
 double ConsoleSuggestionsFactory::StatRatio(StringPiece numerator,
                                             StringPiece denominator) {
-  int64 denom_value = StatValue(denominator);
+  return Ratio(StatValue(numerator), StatValue(denominator));
+}
+
+double ConsoleSuggestionsFactory::Ratio(int64 num_value, int64 denom_value) {
   if (denom_value == 0) {
     return 0.0;
   } else {
-    double num_value = StatValue(numerator);
-    return num_value / denom_value;
+    return static_cast<double>(num_value) / denom_value;
   }
 }
 
-// Returns ratio of bad / (good + bad).
 double ConsoleSuggestionsFactory::StatSumRatio(StringPiece bad,
                                                StringPiece good) {
-  int64 bad_value = StatValue(bad);
-  int64 good_value = StatValue(good);
-  int64 total = bad_value + good_value;
-  if (total == 0) {
-    return 0.0;
-  } else {
-    return static_cast<double>(bad_value) / total;
-  }
+  return SumRatio(StatValue(bad), StatValue(good));
+};
+
+double ConsoleSuggestionsFactory::SumRatio(int64 bad_value, int64 good_value) {
+  return Ratio(bad_value, good_value + bad_value);
 }
 
 namespace {
@@ -88,14 +86,9 @@ void ConsoleSuggestionsFactory::GenerateSuggestions() {
                        // TODO(sligocki): Add doc links.
                        "");
 
-  // Resource fetch failures.
-  // TODO(sligocki): What does resource fetch failure mean?
-  AddConsoleSuggestion(StatSumRatio("num_resource_fetch_failures",
-                                    "num_resource_fetch_successes"),
-                       "Resource fetch failure percent: %.2f%%",
-                       "");
-
   // Domains are not authorized.
+  // TODO(sligocki): Use constants (rather than string literals) for these
+  // stat names.
   AddConsoleSuggestion(StatSumRatio("resource_url_domain_rejections",
                                     "resource_url_domain_acceptances"),
                        "Resources not rewritten because domain wasn't "
@@ -110,14 +103,21 @@ void ConsoleSuggestionsFactory::GenerateSuggestions() {
       "headers: %.2f%%",
       "");
 
-  // TODO(sligocki): Cache too small (High cache evictions).
-
-  // TODO(sligocki): Resources accessed too infrequently.
-
-  // Cache miss percent.
-  AddConsoleSuggestion(StatSumRatio("cache_misses", "cache_hits"),
-                       "Cache miss percent: %.2f%%",
+  // Cache too small (High backend cache miss rate).
+  AddConsoleSuggestion(StatSumRatio("cache_backend_misses",
+                                    "cache_backend_hits"),
+                       "Cache evictions: %.2f%%",
                        "");
+
+  // Resources accessed too infrequently (High cache expirations).
+  {
+    int64 bad = StatValue("cache_expirations");
+    // Total number of Find() calls.
+    int64 total = StatValue("cache_hits") + StatValue("cache_misses");
+    AddConsoleSuggestion(Ratio(bad, total),
+                         "Cache expirations: %.2f%%",
+                         "");
+  }
 
   // Cannot parse CSS.
   // TODO(sligocki): This counts per rewrite, it seems like it should count
@@ -134,7 +134,24 @@ void ConsoleSuggestionsFactory::GenerateSuggestions() {
                        "JavaScript minification failures: %.2f%%",
                        "");
 
-  // TODO(sligocki): Image reading failure.
+  // Image reading failure.
+  double good = StatValue("image_rewrites") +
+      // These are considered good because they were read and we could have
+      // optimized them, the only reason we didn't was because they were
+      // already optimal.
+      StatValue("image_rewrites_dropped_nosaving_resize") +
+      StatValue("image_rewrites_dropped_nosaving_noresize");
+  double bad = StatValue("image_norewrites_high_resolution") +
+      StatValue("image_rewrites_dropped_decode_failure") +
+      StatValue("image_rewrites_dropped_server_write_fail") +
+      StatValue("image_rewrites_dropped_mime_type_unknown") +
+      StatValue("image_norewrites_high_resolution");
+      // TODO(sligocki): We don't seem to be tracking TimedVariables as
+      // normal Variables in mod_pagespeed. Fix this.
+      // + StatValue("image_rewrites_dropped_due_to_load");
+  AddConsoleSuggestion(SumRatio(bad, good),
+                       "Image rewrite failures: %.2f%%",
+                       "");
 
   // TODO(sligocki): CSS not combinable.
 

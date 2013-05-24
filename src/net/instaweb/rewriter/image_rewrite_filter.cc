@@ -131,6 +131,8 @@ const char ImageRewriteFilter::kImageNoRewritesHighResolution[] =
     "image_norewrites_high_resolution";
 const char kImageRewritesDroppedIntentionally[] =
     "image_rewrites_dropped_intentionally";
+const char kImageRewritesDroppedDecodeFailure[] =
+    "image_rewrites_dropped_decode_failure";
 const char ImageRewriteFilter::kImageRewritesDroppedServerWriteFail[] =
     "image_rewrites_dropped_server_write_fail";
 const char ImageRewriteFilter::kImageRewritesDroppedMIMETypeUnknown[] =
@@ -382,6 +384,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
       kImageNoRewritesHighResolution);
   image_rewrites_dropped_intentionally_ =
       stats->GetVariable(kImageRewritesDroppedIntentionally);
+  image_rewrites_dropped_decode_failure_ =
+      stats->GetVariable(kImageRewritesDroppedDecodeFailure);
   image_rewrites_dropped_server_write_fail_ =
       stats->GetVariable(kImageRewritesDroppedServerWriteFail);
   image_rewrites_dropped_mime_type_unknown_ =
@@ -479,6 +483,7 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageRewrites);
   statistics->AddVariable(kImageNoRewritesHighResolution);
   statistics->AddVariable(kImageRewritesDroppedIntentionally);
+  statistics->AddVariable(kImageRewritesDroppedDecodeFailure);
   statistics->AddVariable(kImageRewritesDroppedMIMETypeUnknown);
   statistics->AddVariable(kImageRewritesDroppedServerWriteFail);
   statistics->AddVariable(kImageRewritesDroppedNoSavingResize);
@@ -703,6 +708,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (!encoder_.Decode(result->name(),
                        &urls, &resource_context, message_handler)) {
     image_rewrites_dropped_intentionally_->Add(1);
+    image_rewrites_dropped_decode_failure_->Add(1);
     return kRewriteFailed;
   }
 
@@ -921,7 +927,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   // All other conditions were updated in other code paths above.
   if (rewrite_result == kRewriteFailed) {
     image_rewrites_dropped_intentionally_->Add(1);
-  } else {
+  } else if (rewrite_result == kRewriteOk) {
     rewrite_context->TracePrintf("Image rewrite success (%u -> %u)",
                                  static_cast<unsigned>(image->input_size()),
                                  static_cast<unsigned>(image->output_size()));

@@ -208,6 +208,8 @@ TEST_F(HTTPCacheTest, PutGet) {
                            callback.get());
   ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheBackendHits));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheBackendMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
 
@@ -232,6 +234,7 @@ TEST_F(HTTPCacheTest, PutGet) {
                            callback2.get());
   ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheBackendHits));
   // The fallback is empty since the entry has been invalidated.
   fallback_value = callback2->fallback_http_value();
   ASSERT_TRUE(fallback_value->Empty());

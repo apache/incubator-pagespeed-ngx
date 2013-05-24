@@ -47,6 +47,8 @@ class HTTPCache {
   static const char kCacheTimeUs[];
   static const char kCacheHits[];
   static const char kCacheMisses[];
+  static const char kCacheBackendHits[];
+  static const char kCacheBackendMisses[];
   static const char kCacheFallbacks[];
   static const char kCacheExpirations[];
   static const char kCacheInserts[];
@@ -320,7 +322,8 @@ class HTTPCache {
   HTTPValue* ApplyHeaderChangesForPut(
       const GoogleString& key, int64 start_us, const StringPiece* content,
       ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler);
-  void UpdateStats(FindResult result, bool has_fallback, int64 delta_us);
+  void UpdateStats(CacheInterface::KeyState backend_state, FindResult result,
+                   bool has_fallback, int64 delta_us);
   void RememberFetchFailedorNotCacheableHelper(
       const GoogleString& key, MessageHandler* handler, HttpStatus::Code code,
       int64 ttl_sec);
@@ -331,13 +334,23 @@ class HTTPCache {
   bool force_caching_;
   // Whether to disable caching of HTML content fetched via https.
   bool disable_html_caching_on_https_;
+
+  // Total cumulative time spent accessing backend cache.
   Variable* cache_time_us_;
+  // # of Find() requests which are found in cache and are still valid.
   Variable* cache_hits_;
+  // # of other Find() requests that fail or are expired.
   Variable* cache_misses_;
+  // # of Find() requests which are found in backend cache (whether or not
+  // they are valid).
+  Variable* cache_backend_hits_;
+  // # of Find() requests not found in backend cache.
+  Variable* cache_backend_misses_;
   Variable* cache_fallbacks_;
   Variable* cache_expirations_;
   Variable* cache_inserts_;
   Variable* cache_deletes_;
+
   GoogleString name_;
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
