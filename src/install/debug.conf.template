@@ -144,6 +144,15 @@ ModPagespeedEnableFilters add_instrumentation
     ModPagespeedImageWebpRecompressionQuality 65
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cachable_rewritten_html" >
+    ModPagespeedRewriteDeadlinePerFlushMs 1
+    ModPagespeedDownstreamCacheLifetimeMs 100
+    ModPagespeedDownstreamCachePurgePathPrefix "/mypurgepath"
+    ModPagespeedDownstreamCachePurgeMethod "GET"
+    ModPagespeedRewriteLevel PassThrough
+    ModPagespeedEnableFilters collapse_whitespace,extend_cache,recompress_images
+</Directory>
+
 # This Directory does not even exist, but by setting some options in that
 # scope we test to make sure the options we claim are really settable in
 # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.

@@ -61,6 +61,7 @@ CountingUrlAsyncFetcher::~CountingUrlAsyncFetcher() {
 void CountingUrlAsyncFetcher::Fetch(const GoogleString& url,
                                     MessageHandler* message_handler,
                                     AsyncFetch* base_fetch) {
+  most_recent_fetched_url_ = url;
   CountingFetch* counting_fetch = new CountingFetch(this, base_fetch);
   fetcher_->Fetch(url, message_handler, counting_fetch);
 }
@@ -69,6 +70,7 @@ void CountingUrlAsyncFetcher::Clear() {
   fetch_count_ = 0;
   byte_count_ = 0;
   failure_count_ = 0;
+  most_recent_fetched_url_ = "";
 }
 
 }  // namespace net_instaweb

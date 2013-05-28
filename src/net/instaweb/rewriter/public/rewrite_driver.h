@@ -1152,6 +1152,31 @@ class RewriteDriver : public HtmlParse {
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
   CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
 
+  // Just before releasing the rewrite driver, check if the feature for storing
+  // rewritten responses (e.g. html) in cache is enabled. If yes, purge the
+  // old response if significant amount of rewriting happened after this
+  // response was stored in the cache. If not, release the rewrite driver. If a
+  // purge fetch request is issued, the rewrite driver will be released after
+  // this async fetch request is completed.
+  void PossiblyPurgeCachedResponseAndReleaseDriver();
+
+  // Check rewrite options specified for downstream caching behavior and
+  // amount of rewriting initiated and completed to decide whether the
+  // fully rewritten response is significantly better than the stored
+  // version and whether the currently stored version ought to be purged.
+  bool ShouldPurgeRewrittenResponse();
+
+  // Construct the purge URL and decide on the purge HTTP method (GET, PURGE
+  // etc.) based on the rewrite options.
+  static bool GetPurgeUrl(const GoogleUrl& google_url,
+                          const RewriteOptions* options,
+                          GoogleString* purge_url,
+                          GoogleString* purge_method);
+
+  // Initiates a purge request fetch.
+  void PurgeDownstreamCache(const GoogleString& purge_url,
+                            const GoogleString& purge_method);
+
   // Log statistics to the AbstractLogRecord.
   void LogStats();
 
@@ -1301,6 +1326,9 @@ class RewriteDriver : public HtmlParse {
   // one the rewrite_deadline_ms has passed.
   RewriteContextSet initiated_rewrites_;  // protected by rewrite_mutex()
 
+  // Number of total initiated rewrites for the request.
+  int64 num_initiated_rewrites_;          // protected by rewrite_mutex()
+
   // Contains the RewriteContext* that were still running at the deadline.
   // They are said to be in a "detached" state although the RewriteContexts
   // themselves don't know that.  They will continue performing their
@@ -1309,6 +1337,10 @@ class RewriteDriver : public HtmlParse {
   // or deleted.  WaitForCompletion() blocks until all detached_rewrites
   // have been retired.
   RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex()
+
+  // Number of total detached rewrites for the request, i.e. rewrites whose
+  // results did not make it to the response.
+  int64 num_detached_rewrites_;           // protected by rewrite_mutex()
 
   // The number of rewrites that have been requested, and not yet
   // completed.  This can actually be derived, more or less, from

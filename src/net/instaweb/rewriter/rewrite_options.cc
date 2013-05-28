@@ -195,6 +195,11 @@ const int64 RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs =
 const int64 RewriteOptions::kDefaultFinderPropertiesCacheRefreshTimeMs =
     (3 * Timer::kHourMs) / 2;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
+const int64 RewriteOptions::kDefaultDownstreamCacheLifetimeMs = 0;
+const char RewriteOptions::kDefaultDownstreamCachePurgeMethod[] = "PURGE";
+const char RewriteOptions::kDefaultDownstreamCachePurgePathPrefix[] = "";
+const int64
+    RewriteOptions::kDefaultDownstreamCacheRewrittenPercentageThreshold = 95;
 const int RewriteOptions::kDefaultExperimentTrafficPercent = 50;
 const int RewriteOptions::kDefaultExperimentSlot = 1;
 
@@ -1397,6 +1402,38 @@ void RewriteOptions::AddProperties() {
       kMetadataCacheStalenessThresholdMs,
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+  AddBaseProperty(
+      kDefaultDownstreamCacheLifetimeMs,
+      &RewriteOptions::downstream_cache_lifetime_ms_,
+      "dcl",
+      kDownstreamCacheLifetimeMs,
+      kDirectoryScope,
+      "Time for which responses ought to be cached in the downstream cache");
+  AddBaseProperty(
+      kDefaultDownstreamCachePurgeMethod,
+      &RewriteOptions::downstream_cache_purge_method_,
+      "dcpm",
+      kDownstreamCachePurgeMethod,
+      kDirectoryScope,
+      "Method to be used for purging responses from the downstream cache");
+  AddBaseProperty(
+      kDefaultDownstreamCachePurgePathPrefix,
+      &RewriteOptions::downstream_cache_purge_path_prefix_,
+      "dcppp",
+      kDownstreamCachePurgePathPrefix,
+      kDirectoryScope,
+      "Path prefix to be used for purging responses from the downstream "
+      "cache");
+  AddBaseProperty(
+      kDefaultDownstreamCacheRewrittenPercentageThreshold,
+      &RewriteOptions::downstream_cache_rewritten_percentage_threshold_,
+      "dcrpt",
+      kDownstreamCacheRewrittenPercentageThreshold,
+      kDirectoryScope,
+      "Threshold for percentage of rewriting to be finished before the "
+      "response is served out and simultaneously stored in the downstream "
+      "cache, beyond which the response will not be purged from the cache even"
+      "if more rewriting is possible now");
   AddRequestProperty(
       kDefaultMetadataInputErrorsCacheTtlMs,
       &RewriteOptions::metadata_input_errors_cache_ttl_ms_,

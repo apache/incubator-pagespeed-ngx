@@ -45,6 +45,12 @@ const char kPsaRewriterHeader[] = "X-PSA-Rewriter";
 // prioritize_visible_content filter to invalidate its cache.
 const char kPsaLastModified[] = "X-PSA-Last-Modified";
 
+// Header whose existence indicates that this is a purge request to
+// and external/internal caching layer and hence should not be
+// allowed to initiate yet another purge request (which could result in
+// an infinite loop).
+const char kPsaPurgeRequest[] = "X-PSA-Purge-Request";
+
 // Noscript element that redirects to PageSpeed=noscript.  This is applied
 // when a filter that inserts custom javascript is enabled.
 const char kNoScriptRedirectFormatter[] =

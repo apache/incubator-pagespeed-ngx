@@ -201,6 +201,10 @@ class RewriteOptions {
     kDistributedRewriteTimeoutMs,
     kDomainRewriteHyperlinks,
     kDomainShardCount,
+    kDownstreamCacheLifetimeMs,
+    kDownstreamCachePurgeMethod,
+    kDownstreamCachePurgePathPrefix,
+    kDownstreamCacheRewrittenPercentageThreshold,
     kEnableAggressiveRewritersForMobile,
     kEnableBlinkDashboard,
     kEnableBlinkHtmlChangeDetection,
@@ -579,6 +583,10 @@ class RewriteOptions {
   static const int64 kDefaultMaxImageBytesForWebpInCss;
   static const int64 kDefaultMetadataInputErrorsCacheTtlMs;
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
+  static const int64 kDefaultDownstreamCacheLifetimeMs;
+  static const char kDefaultDownstreamCachePurgeMethod[];
+  static const char kDefaultDownstreamCachePurgePathPrefix[];
+  static const int64 kDefaultDownstreamCacheRewrittenPercentageThreshold;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
   static const int64 kDefaultFlushBufferLimitBytes;
@@ -1664,6 +1672,34 @@ class RewriteOptions {
   }
   int64 metadata_input_errors_cache_ttl_ms() const {
     return metadata_input_errors_cache_ttl_ms_.value();
+  }
+
+  void set_downstream_cache_lifetime_ms(int64 x) {
+    set_option(x, &downstream_cache_lifetime_ms_);
+  }
+  int64 downstream_cache_lifetime_ms() const {
+    return downstream_cache_lifetime_ms_.value();
+  }
+
+  const GoogleString& downstream_cache_purge_method() const {
+    return downstream_cache_purge_method_.value();
+  }
+  void set_downstream_cache_purge_method(const StringPiece& p) {
+    set_option(p.as_string(), &downstream_cache_purge_method_);
+  }
+
+  const GoogleString& downstream_cache_purge_path_prefix() const {
+    return downstream_cache_purge_path_prefix_.value();
+  }
+  void set_downstream_cache_purge_path_prefix(const StringPiece& p) {
+    set_option(p.as_string(), &downstream_cache_purge_path_prefix_);
+  }
+
+  void set_downstream_cache_rewritten_percentage_threshold(int64 x) {
+    set_option(x, &downstream_cache_rewritten_percentage_threshold_);
+  }
+  int64 downstream_cache_rewritten_percentage_threshold() const {
+    return downstream_cache_rewritten_percentage_threshold_.value();
   }
 
   const BeaconUrl& beacon_url() const { return beacon_url_.value(); }
@@ -3103,6 +3139,27 @@ class RewriteOptions {
 
   // The metadata cache ttl for input resources which are 4xx errors.
   Option<int64> metadata_input_errors_cache_ttl_ms_;
+
+  // The lifetime for responses which are stored in the downstream cache.
+  // TODO(anupama): This is right now used to only detect whether the
+  // rewritten-caching feature is enabled. Provide support for
+  // caches to respect this value by communicating them via headers
+  // to external caching layers.
+  Option<int64> downstream_cache_lifetime_ms_;
+
+  // The HTTP method to use ("PURGE", "GET" etc.) for purge requests sent to
+  // downstream caches (e.g. proxy_cache, Varnish).
+  Option<GoogleString> downstream_cache_purge_method_;
+
+  // The path prefix to be used for purging the cached responses.
+  Option<GoogleString> downstream_cache_purge_path_prefix_;
+
+  // Threshold for amount of rewriting finished before the response was served
+  // out (expressed as a percentage) and simultaneously stored in the downstream
+  // cache  beyond which the response will not be purged from the cache even if
+  // more rewriting is possible now. If the threshold is exceeded, this means
+  // that the version in the cache is good enough and hence need not be purged.
+  Option<int64> downstream_cache_rewritten_percentage_threshold_;
 
   // The number of milliseconds of cache TTL we assign to resources that
   // are "likely cacheable" (e.g. images, js, css, not html) and have no

@@ -326,6 +326,9 @@ void RewriteTestBase::ServeResourceFromNewContext(
 
   // After we call the callback, it should be correct.
   new_factory->CallFetcherCallbacksForDriver(new_rewrite_driver);
+  // Since CallFetcherCallbacksForDriver waits for completion, we
+  // can safely call Clear() on the driver now.
+  new_rewrite_driver->Clear();
   EXPECT_TRUE(response_contents.done());
   EXPECT_STREQ(expected_content, response_contents.buffer());
 
@@ -749,7 +752,8 @@ void RewriteTestBase::SetupWaitFetcher() {
 
 void RewriteTestBase::CallFetcherCallbacks() {
   factory_->CallFetcherCallbacksForDriver(rewrite_driver_);
-  // This calls Clear() on the driver, so give it a new request context.
+  rewrite_driver_->Clear();
+  // Since we call Clear() on the driver, give it a new request context.
   rewrite_driver_->set_request_context(CreateRequestContext());
 }
 

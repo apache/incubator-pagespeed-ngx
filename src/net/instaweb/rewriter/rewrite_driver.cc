@@ -44,6 +44,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
@@ -158,6 +159,8 @@ namespace {
 
 const int kTestTimeoutMs = 10000;
 
+const char kDownstreamCachePurges[] = "downstream_cache_purges";
+
 // Implementation of RemoveCommentsFilter::OptionsInterface that wraps
 // a RewriteOptions instance.
 class RemoveCommentsFilterOptions
@@ -213,6 +216,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       response_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
       max_page_processing_delay_ms_(-1),
+      num_initiated_rewrites_(0),
+      num_detached_rewrites_(0),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
       pending_async_events_(0),
@@ -384,7 +389,8 @@ void RewriteDriver::Clear() {
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
   is_nested_ = false;
-
+  num_initiated_rewrites_ = 0;
+  num_detached_rewrites_ = 0;
   if (request_context_.get() != NULL) {
     request_context_->WriteBackgroundRewriteLog();
     request_context_.reset(NULL);
@@ -578,6 +584,7 @@ void RewriteDriver::FlushAsync(Function* callback) {
     // concurrent READs.
     ScopedMutex lock(rewrite_mutex());
     initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
+    num_initiated_rewrites_ += num_rewrites;
 
     // We must also start tasks while holding the lock, as otherwise a
     // successor task may complete and delete itself before we see if we
@@ -667,6 +674,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
       RewriteContext* rewrite_context = *p;
       rewrite_context->WillNotRender();
       detached_rewrites_.insert(rewrite_context);
+      ++num_detached_rewrites_;
       --pending_rewrites_;
     }
     DCHECK_EQ(0, pending_rewrites_);
@@ -752,6 +760,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   MetaTagFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
+  statistics->AddVariable(kDownstreamCachePurges);
 }
 
 void RewriteDriver::Terminate() {
@@ -1628,6 +1637,29 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   GoogleString canonical_url_;
 };
 
+class StringAsyncFetchWithAsyncCountUpdates : public StringAsyncFetch {
+ public:
+  StringAsyncFetchWithAsyncCountUpdates(const RequestContextPtr& ctx,
+                                        RewriteDriver* driver)
+      : StringAsyncFetch(ctx),
+        driver_(driver) {
+    driver_->increment_async_events_count();
+  }
+
+  virtual ~StringAsyncFetchWithAsyncCountUpdates() { }
+
+  virtual void HandleDone(bool success) {
+    StringAsyncFetch::HandleDone(success);
+    driver_->decrement_async_events_count();
+    delete this;
+  }
+
+ private:
+  RewriteDriver* driver_;
+
+  DISALLOW_COPY_AND_ASSIGN(StringAsyncFetchWithAsyncCountUpdates);
+};
+
 }  // namespace
 
 bool RewriteDriver::FetchResource(const StringPiece& url,
@@ -2110,6 +2142,91 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
     }
   }
   if (should_release) {
+    PossiblyPurgeCachedResponseAndReleaseDriver();
+  }
+}
+
+bool RewriteDriver::GetPurgeUrl(const GoogleUrl& page_url,
+                                const RewriteOptions* options,
+                                GoogleString* purge_url,
+                                GoogleString* purge_method) {
+  StringPiece full_url = page_url.Spec();
+  StringPiece path = page_url.PathAndLeaf();
+  int url_prefix_length = full_url.size() - path.size();
+  *purge_url = StrCat(
+      full_url.substr(0, url_prefix_length),
+      options->downstream_cache_purge_path_prefix(),
+      path);
+  *purge_method = options->downstream_cache_purge_method();
+  return (!purge_url->empty() && !purge_method->empty());
+}
+
+bool RewriteDriver::ShouldPurgeRewrittenResponse() {
+  if (options()->downstream_cache_lifetime_ms() <= 0) {
+    // Downstream caching is not enabled.
+    return false;
+  }
+  if (num_initiated_rewrites_ == 0) {
+    // No rewrites were initiated. Could happen if the rewriters
+    // enabled don't apply on the page, or apply instantly (e.g.
+    // collapse whitespace).
+    return false;
+  }
+  // Figure out what percentage of the rewriting was done before the
+  // response was served out, so that we can initiate a cache purge if there
+  // was significant amount of rewriting remaining to be done.
+  float served_rewritten_percentage =
+      ((num_initiated_rewrites_ - num_detached_rewrites_) * 100.0) /
+       num_initiated_rewrites_;
+  if (served_rewritten_percentage <
+      options()->downstream_cache_rewritten_percentage_threshold()) {
+    message_handler()->Message(
+        kInfo,
+        "Should purge \"%s\" which was served with only %d%% rewriting done.",
+        google_url().spec_c_str(),
+        static_cast<int>(served_rewritten_percentage));
+    return true;
+  }
+  return false;
+}
+
+void RewriteDriver::PurgeDownstreamCache(const GoogleString& purge_url,
+                                         const GoogleString& purge_method) {
+  // TODO(anupama): Use purge_method actually.
+  StringAsyncFetchWithAsyncCountUpdates* dummy_fetch =
+      new StringAsyncFetchWithAsyncCountUpdates(request_context(), this);
+  // Add a purge-related header so that the purge request does not
+  // get us into a loop.
+  request_headers()->Add(kPsaPurgeRequest, "1");
+  dummy_fetch->set_request_headers(request_headers());
+
+  message_handler()->Message(kInfo, "Purge url is %s", purge_url.c_str());
+  async_fetcher()->Fetch(purge_url, message_handler(), dummy_fetch);
+}
+
+void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
+  GoogleString purge_url;
+  GoogleString purge_method;
+  // If request headers have not been set or this is a looped back purge
+  // request, do not issue purge calls and return immediately. If not,
+  // check whether the rewritten response needs to be purged, and whether
+  // valid purge URL and method are available and decide whether to
+  // purge or to release the driver right away. If a purge fetch request
+  // is issued, the driver will be released when the async event count
+  // is decremented at the end of the fetch.
+  if (request_headers() != NULL &&
+      request_headers()->Lookup1(kPsaPurgeRequest) == NULL &&
+      google_url().is_valid() &&
+      ShouldPurgeRewrittenResponse() &&
+      RewriteDriver::GetPurgeUrl(google_url(), options(),
+                                 &purge_url, &purge_method)) {
+    // Purge old version from cache since we will have a better rewritten
+    // version available on the next request. The purge request will
+    // use the same request headers as the request (and hence the same
+    // UserAgent etc.).
+    PurgeDownstreamCache(purge_url, purge_method);
+    server_context_->statistics()->GetVariable(kDownstreamCachePurges)->Add(1);
+  } else {
     server_context_->ReleaseRewriteDriver(this);
   }
 }
@@ -2226,7 +2343,7 @@ void RewriteDriver::Cleanup() {
       }
     }
     if (should_release) {
-      server_context_->ReleaseRewriteDriver(this);
+      PossiblyPurgeCachedResponseAndReleaseDriver();
     }
   }
 }
@@ -2809,7 +2926,7 @@ void RewriteDriver::decrement_async_events_count() {
     ScopedMutex lock(rewrite_mutex());
     scheduler_->Signal();
   } else if (should_release) {
-    server_context_->ReleaseRewriteDriver(this);
+    PossiblyPurgeCachedResponseAndReleaseDriver();
   }
 }
 

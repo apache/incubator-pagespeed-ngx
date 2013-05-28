@@ -169,7 +169,6 @@ void TestRewriteDriverFactory::CallFetcherCallbacksForDriver(
   // according to the needs of the simulation.
   driver->WaitForCompletion();
   wait_url_async_fetcher_->SetPassThroughMode(pass_through_mode);
-  driver->Clear();
 }
 
 UrlFetcher* TestRewriteDriverFactory::DefaultUrlFetcher() {
