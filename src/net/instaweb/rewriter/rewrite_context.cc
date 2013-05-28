@@ -728,6 +728,75 @@ class RewriteContext::RewriteFreshenCallback
   DISALLOW_COPY_AND_ASSIGN(RewriteFreshenCallback);
 };
 
+// This class helps to prepare a distributed fetch and calls
+// DistributeRewriteDone once a dispatched fetch is complete.
+class RewriteContext::DistributedRewriteFetch : public AsyncFetch {
+ public:
+  DistributedRewriteFetch(const RequestContextPtr& request_ctx,
+                          const StringPiece url,
+                          const RequestHeaders* request_headers,
+                          RewriteContext* rewrite_context,
+                          UrlAsyncFetcher* fetcher,
+                          MessageHandler* handler)
+      : AsyncFetch(request_ctx),
+        url_(url),
+        rewrite_context_(rewrite_context),
+        fetcher_(fetcher),
+        message_handler_(handler) {
+    // Copy the request headers instead of making clean ones as they might have
+    // important information such as user-agent.
+    RequestHeaders* new_req_headers = new RequestHeaders();
+    new_req_headers->CopyFrom(*request_headers);
+    SetRequestHeadersTakingOwnership(new_req_headers);
+  }
+
+  virtual ~DistributedRewriteFetch() {
+  }
+  void DispatchFetch() {
+    DCHECK(fetcher_ != NULL);
+    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteFetch, "");
+    fetcher_->Fetch(url_.Spec().as_string(), message_handler_, this);
+  }
+
+  virtual void HandleDone(bool success) {
+    if (http_value_.Empty()) {
+      // If there have been no writes so far, write an empty string to the
+      // HTTPValue. Note that this is required since empty writes aren't
+      // propagated while fetching and we need to write something to the
+      // HTTPValue so that we can successfully extract empty content from it.
+      http_value_.Write("", message_handler_);
+    }
+    RewriteDriver* rewrite_driver = rewrite_context_->Driver();
+    rewrite_driver->AddRewriteTask(
+        MakeFunction(rewrite_context_, &RewriteContext::DistributeRewriteDone,
+                     success));
+  }
+  virtual void HandleHeadersComplete() {
+  }
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    return http_value_.Write(content, handler);
+  }
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return true;
+  }
+  StringPiece contents() {
+    StringPiece contents;
+    http_value_.ExtractContents(&contents);
+    return contents;
+  }
+  HTTPValue* http_value() { return &http_value_; }
+
+ private:
+  GoogleUrl url_;
+  RewriteContext* rewrite_context_;
+  UrlAsyncFetcher* fetcher_;
+  HTTPValue http_value_;
+  MessageHandler* message_handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(DistributedRewriteFetch);
+};
+
 // This class encodes a few data members used for responding to
 // resource-requests when the output_resource is not in cache.
 class RewriteContext::FetchContext {
@@ -822,8 +891,7 @@ class RewriteContext::FetchContext {
     handler_->Message(
         kInfo, "Deadline exceeded for rewrite of resource %s with %s.",
         input->url().c_str(), rewrite_context_->id());
-    FetchFallbackDoneImpl(input->contents(), input->response_headers(),
-                          false /* don't preserve headers */);
+    FetchFallbackDoneImpl(input->contents(), input->response_headers());
   }
 
   // We need to be careful not to leak metadata.  So only add it when
@@ -891,8 +959,8 @@ class RewriteContext::FetchContext {
         // Our rewrite produced a different hash than what was requested;
         // we better not give it an ultra-long TTL.
         FetchFallbackDone(output_resource_->contents(),
-                          output_resource_->response_headers(),
-                          false /* don't preserve headers */);
+                          output_resource_->response_headers());
+
         return;
       }
     } else {
@@ -942,36 +1010,70 @@ class RewriteContext::FetchContext {
     rewrite_context_->FetchCallbackDone(ok);
   }
 
-  // This is used in case we used a metadata cache to find an alternative URL
-  // to serve --- either a version with a different hash, or that we should
-  // serve the original. In this case, we serve it out, but with shorter headers
-  // than usual.
-  void FetchFallbackDone(const StringPiece& contents,
-                         ResponseHeaders* headers,
-                         bool preserve_headers) {
+  // Copy the contents and response headers from distributed_fetch (taking
+  // ownership of the fetch object) and write them to the base fetch. This is a
+  // similar path to FetchFallbackDone but the RewriteContext is cleaned up
+  // before calling HeadersComplete. This is necessary in case the fetched
+  // resource is HTML and the underlying fetch parses it, modifying the
+  // RewriteDriver. Note that we do not normalize headers in this path as the
+  // distributed task already did that.  Takes ownership of dist_fetch.
+  void DistributedFetchDone(DistributedRewriteFetch* dist_fetch) {
+    // We will delete the RewriteContext that owns this dist_fetch so take
+    // ownership here.
+    scoped_ptr<RewriteContext::DistributedRewriteFetch> distributed_fetch(
+        dist_fetch);
+
     CancelDeadlineAlarm();
     if (detached_) {
       rewrite_context_->Driver()->DetachedFetchComplete();
       return;
     }
 
-    FetchFallbackDoneImpl(contents, headers, preserve_headers);
+    // We're going to delete this object before this function is done, so hang
+    // on to any pointers that we need.
+    AsyncFetch* async_fetch = async_fetch_;
+    MessageHandler* message_handler = handler();
+
+    if (rewrite_context_->notify_driver_on_fetch_done()) {
+      // deletes RewriteContext and this so be careful what you access.
+      rewrite_context_->Driver()->FetchComplete();
+    }
+
+    // Copy to the underlying fetch.
+    ResponseHeaders* response_headers = distributed_fetch->response_headers();
+    StringPiece contents = distributed_fetch->contents();
+    async_fetch->response_headers()->CopyFrom(*response_headers);
+    async_fetch->set_content_length(contents.size());
+    async_fetch->HeadersComplete();
+    bool ok = async_fetch->Write(contents, message_handler);
+    ok &= response_headers->status_code() == HttpStatus::kOK;
+    async_fetch->Done(ok);
+  }
+
+  // This is used in case we used a metadata cache to find an alternative URL
+  // to serve --- either a version with a different hash, or that we should
+  // serve the original. In this case, we serve it out, but with shorter headers
+  // than usual.
+  void FetchFallbackDone(const StringPiece& contents,
+                         ResponseHeaders* headers) {
+    CancelDeadlineAlarm();
+    if (detached_) {
+      rewrite_context_->Driver()->DetachedFetchComplete();
+      return;
+    }
+
+    FetchFallbackDoneImpl(contents, headers);
   }
 
   // Backend for FetchFallbackCacheDone, but can be also invoked
   // for main rewrite when background rewrite is detached.
   void FetchFallbackDoneImpl(const StringPiece& contents,
-                             const ResponseHeaders* headers,
-                             const bool preserve_headers) {
+                             const ResponseHeaders* headers) {
     async_fetch_->response_headers()->CopyFrom(*headers);
-    // Don't alter headers of responses that come from a distributed rewrite.
-    if (!preserve_headers) {
-      rewrite_context_->FixFetchFallbackHeaders(
-          async_fetch_->response_headers());
-      // Use the most conservative Cache-Control considering all inputs.
-      ApplyInputCacheControl(async_fetch_->response_headers());
-      AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
-    }
+    rewrite_context_->FixFetchFallbackHeaders(async_fetch_->response_headers());
+    // Use the most conservative Cache-Control considering all inputs.
+    ApplyInputCacheControl(async_fetch_->response_headers());
+    AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
     async_fetch_->set_content_length(contents.size());
     async_fetch_->HeadersComplete();
     bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
@@ -1054,73 +1156,6 @@ class RewriteContext::InvokeRewriteFunction : public Function {
   RewriteContext* context_;
   int partition_;
   OutputResourcePtr output_;
-};
-
-// This class helps to prepare a distributed fetch and calls
-// DistributeRewriteDone once a dispatched fetch is complete.
-class RewriteContext::DistributedRewriteFetch : public AsyncFetch {
- public:
-  DistributedRewriteFetch(const RequestContextPtr& request_ctx,
-                          const StringPiece url,
-                          const RequestHeaders* request_headers,
-                          RewriteContext* rewrite_context,
-                          UrlAsyncFetcher* fetcher,
-                          MessageHandler* handler)
-      : AsyncFetch(request_ctx),
-        url_(url),
-        rewrite_context_(rewrite_context),
-        fetcher_(fetcher),
-        message_handler_(handler) {
-    // Copy the request headers instead of making clean ones as they might have
-    // important information such as user-agent.
-    RequestHeaders* new_req_headers = new RequestHeaders();
-    new_req_headers->CopyFrom(*request_headers);
-    SetRequestHeadersTakingOwnership(new_req_headers);
-  }
-
-  virtual ~DistributedRewriteFetch() {
-  }
-  void DispatchFetch() {
-    DCHECK(fetcher_ != NULL);
-    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteFetch, "");
-    fetcher_->Fetch(url_.Spec().as_string(), message_handler_, this);
-  }
-
-  virtual void HandleDone(bool success) {
-    if (http_value_.Empty()) {
-      // If there have been no writes so far, write an empty string to the
-      // HTTPValue. Note that this is required since empty writes aren't
-      // propagated while fetching and we need to write something to the
-      // HTTPValue so that we can successfully extract empty content from it.
-      http_value_.Write("", message_handler_);
-    }
-    RewriteDriver* rewrite_driver = rewrite_context_->Driver();
-    rewrite_driver->AddRewriteTask(
-        MakeFunction(rewrite_context_, &RewriteContext::DistributeRewriteDone,
-                     success));
-  }
-  virtual void HandleHeadersComplete() {
-  }
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    return http_value_.Write(content, handler);
-  }
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return true;
-  }
-  StringPiece contents() {
-    StringPiece contents;
-    http_value_.ExtractContents(&contents);
-    return contents;
-  }
-  HTTPValue* http_value() { return &http_value_; }
-
- private:
-  GoogleUrl url_;
-  RewriteContext* rewrite_context_;
-  UrlAsyncFetcher* fetcher_;
-  HTTPValue http_value_;
-  MessageHandler* message_handler_;
 };
 
 RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
@@ -1595,8 +1630,6 @@ void RewriteContext::DistributeRewriteDone(bool success) {
             num_distributed_rewrite_failures_->Add(1);
 
   bool fetch_path = fetch_.get() != NULL;
-  ResponseHeaders* response_headers = distributed_fetch_->response_headers();
-  StringPiece contents = distributed_fetch_->contents();
 
   if (fetch_path) {
     if (!success) {
@@ -1608,8 +1641,7 @@ void RewriteContext::DistributeRewriteDone(bool success) {
       StartFetchReconstruction();
     } else {
       // We got something back, that's what we're going to use.
-      fetch_->FetchFallbackDone(contents, response_headers,
-                                true /* preserve headers */);
+      fetch_->DistributedFetchDone(distributed_fetch_.release());
     }
   } else {
     // TODO(jkarlin): HTML path goes here.
@@ -2607,8 +2639,7 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
       data->http_value()->ExtractContents(&contents) &&
       (data->response_headers()->status_code() == HttpStatus::kOK)) {
     // We want to serve the found result, with short cache lifetime.
-    fetch_->FetchFallbackDone(contents, data->response_headers(),
-                              false /* don't preserve headers */);
+    fetch_->FetchFallbackDone(contents, data->response_headers());
   } else {
     StartFetchReconstruction();
   }

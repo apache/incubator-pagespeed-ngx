@@ -559,6 +559,9 @@ class RewriteContext {
   // Freshens resources proactively to avoid expiration in the near future.
   void Freshen();
 
+  bool notify_driver_on_fetch_done() const {
+    return notify_driver_on_fetch_done_;
+  }
   void set_notify_driver_on_fetch_done(bool value) {
     notify_driver_on_fetch_done_ = value;
   }
