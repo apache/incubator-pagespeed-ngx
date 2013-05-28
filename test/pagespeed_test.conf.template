@@ -391,6 +391,31 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name keepalive.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel CoreFilters;
+
+    error_log "@@TEST_TMP@@/ka-error.log" info;
+    index index.html;
+
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
+      add_header "" "";
+    }
+
+    location /ngx_pagespeed_statistics {
+      allow 127.0.0.1;
+      deny all;
+    }
+
+    location /ngx_pagespeed_message {
+      allow 127.0.0.1;
+      deny all;
+    }
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
