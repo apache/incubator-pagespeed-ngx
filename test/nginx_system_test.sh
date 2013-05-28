@@ -141,6 +141,7 @@ PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 PAGESPEED_EXPECTED_FAILURES="
   ~convert_meta_tags~
   ~In-place resource optimization~
+  ~keepalive with html rewriting~
 "
 
 # The existing system test takes its arguments as positional parameters, and
@@ -1492,5 +1493,41 @@ check_from "$OUT" egrep -q "HTTP/1[.]. 204"
 # Now only BikeCrashIcn.png should be lazyloaded.
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
+
+start_test keepalive with html rewriting
+
+HOST_NAME="keepalive.example.com"
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/rewrite_images.html"
+
+# Run 5 keepalive requests both with and without gzip for a few times.
+# curl will use keepalive when running multiple request with one command
+for ((i=0; i < 100; i++)); do
+   curl -m 1 -S -s -v -H "Host: $HOST_NAME" $URL $URL $URL $URL $URL\
+     > /dev/null 2>"$TEST_TMP/curl-ka.log"
+   curl -m 1 -S -s -v -H "Host: $HOST_NAME" -H "Accept-Encoding: gzip" \
+     $URL $URL $URL $URL $URL > /dev/null 2>"$TEST_TMP/curl-ka.log"
+done
+
+# Filter the curl output from unimportant messages
+OUT=$(cat "$TEST_TMP/curl-ka.log"\
+  | grep -v "^[<>]"\
+  | grep -v "^{ \\[data not shown"\
+  | grep -v "^\\* About to connect"\
+  | grep -v "^\\* Closing"\
+  | grep -v "^\\* Connected to"\
+  | grep -v "^\\* Re-using"\
+  | grep -v "^\\* Connection.*left intact"\
+  | grep -v "^\\*   Trying.*\\.\\.\\. connected")
+
+# Nothing should remain after that.
+check [ -z "$OUT" ]
+
+# Filter the nginx log from our vhost from unimportant messages.
+OUT=$(cat "$TEST_TMP/ka-error.log"\
+  | grep -v "closed keepalive connection$"\
+)
+
+# Nothing should remain after that.
+check [ -z "$OUT" ]
 
 check_failures_and_exit
