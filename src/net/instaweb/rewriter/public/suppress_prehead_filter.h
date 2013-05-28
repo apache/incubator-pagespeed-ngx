@@ -57,12 +57,15 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   friend class SuppressPreheadFilterTest;
   void SendCookies(HtmlElement* element);
 
+  void PreHeadDone(HtmlElement* element);
+
   static void UpdateFetchLatencyInFlushEarlyProto(int64 latency,
                                                   RewriteDriver*driver);
 
   // If X-UA-Compatible meta tag is set then convert that to response header.
   bool ExtractAndUpdateXUACompatible(HtmlElement* element);
 
+  bool seen_start_html_;
   bool seen_first_head_;
   bool has_charset_;
   bool has_x_ua_compatible_;

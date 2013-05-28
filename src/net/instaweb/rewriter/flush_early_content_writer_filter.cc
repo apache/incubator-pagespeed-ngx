@@ -365,6 +365,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
     } else if (category == semantic_type::kPrefetch) {
       // Flush the element as such if category is kPrefetch.
       current_element_ = element;
+      HtmlWriterFilter::TerminateLazyCloseElement();
       set_writer(original_writer_);
       if (insert_close_script_) {
         WriteToOriginalWriter("})()</script>");

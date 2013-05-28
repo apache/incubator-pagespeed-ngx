@@ -141,8 +141,9 @@ TEST_F(SuppressPreheadFilterTest, UpdateFetchLatencyInFlushEarlyProto) {
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   InitResources();
-  const char pre_head_input[] = "<!DOCTYPE html><html><head>";
+  const char pre_head_input[] = "<!DOCTYPE html><html>";
   const char post_head_input[] =
+        "<a></a><head>"
         "<link type=\"text/css\" rel=\"stylesheet\""
         " href=\"http://test.com/a.css\"/>"
         "<script src=\"http://test.com/b.js\"></script>"
@@ -253,8 +254,9 @@ TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<head></head>"
       "<body></body></html>";
-  const char html_without_prehead_and_meta_tags[] =
-      "</head>"
+  const char html_without_prehead[] =
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<head></head>"
       "<body></body></html>";
 
   Parse("not_flushed_early", html_input);
@@ -266,7 +268,26 @@ TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
-  EXPECT_EQ(html_without_prehead_and_meta_tags, output_);
+  EXPECT_EQ(html_without_prehead, output_);
+}
+
+
+TEST_F(SuppressPreheadFilterTest, XmlTagsBeforeDocType) {
+  InitResources();
+  const char html_input[] =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+      "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\""
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
+      "<html xmlns=\"http://www.w3.org/1999/xhtml\">"
+      "<head profile=\"blah\">"
+      "</head>"
+      "<body></body></html>";
+
+  // pre head is suppressed if the dummy head was flushed early.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ("</head><body></body></html>", output_);
 }
 
 TEST_F(SuppressPreheadFilterTest, NoHead) {
@@ -281,10 +302,11 @@ TEST_F(SuppressPreheadFilterTest, NoHead) {
       "<!DOCTYPE html>"
       "<html>"
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-      "<head></head><body></body></html>";
+      "<head/><body></body></html>";
 
   const char html_input_without_prehead[] =
-      "</head><body></body></html>";
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<head/><body></body></html>";
 
   Parse("not_flushed_early", html_input);
   EXPECT_EQ(html_input_with_head_tag, output_);
