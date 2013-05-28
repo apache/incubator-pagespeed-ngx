@@ -100,27 +100,8 @@ X-Page-Speed: 1.5.27.3-...
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
-When reading the [mod_pagespeed
-documentation](https://developers.google.com/speed/docs/mod_pagespeed/using_mod),
-keep in mind that you need to make a small adjustment to configuration
-directives: replace **ModPagespeed** with **pagespeed**:
-
-    mod_pagespeed.conf:
-      ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
-      ModPagespeedRunExperiment on
-      ModPagespeedExperimentSpec id=3;percent=50;default
-      ModPagespeedExperimentSpec id=4;percent=50
-
-    ngx_pagespeed.conf:
-      pagespeed EnableFilters collapse_whitespace,add_instrumentation;
-      pagespeed RunExperiment on;
-      pagespeed ExperimentSpec "id=3;percent=50;default";
-      pagespeed ExperimentSpec "id=4;percent=50";
-
-For more configuration details, see the [differences from mod_pagespeed
-configuration](https://github.com/pagespeed/ngx_pagespeed/wiki/Configuration-differences-from-mod_pagespeed)
-and <a href="https://github.com/pagespeed/ngx_pagespeed/wiki/Known-Issues">known
-issues</a> wiki pages.
+For complete documentation, see [Using
+PageSpeed](https://developers.google.com/speed/pagespeed/module/using).
 
 There are extensive system tests which cover most of ngx_pagespeed's
 functionality.  Consider [testing your
