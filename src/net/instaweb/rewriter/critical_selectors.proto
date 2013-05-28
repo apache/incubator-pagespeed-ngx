@@ -25,12 +25,18 @@ package net_instaweb;
 // This represents aggregated list of all selectors of the CSS that was needed
 // to render the above-the-fold portion of a page.
 //
-// Next free id: 4
-// TODO(morlovich): We may want to keep track of information on inputs to detect
-// changes to HTML.
+// Next free id: 6
+// TODO(jmaessen): Keep track of information on inputs to detect
+// changes to HTML.  (CL in progress)
 message CriticalSelectorSet {
   message BeaconResponse {
     repeated string selectors = 1;
+  }
+  // The SelectorSupport proto aggregates multiple selector returns in a
+  // scalable way; support is exponentially decayed over time.
+  message SelectorEvidence {
+    optional string selector = 1 [default = ""];
+    optional int32 support = 2 [default = 0];
   }
 
   // The set of all selectors that were guarding the CSS that got applied for
@@ -48,4 +54,11 @@ message CriticalSelectorSet {
   // storing a new critical image beacon response. It will be set to the union
   // of all critical selectors received so far.
   repeated BeaconResponse selector_set_history = 3;
+
+  optional int64 next_beacon_timestamp_ms = 4 [default = 0];
+
+  // This represents a serialized key/value map mapping selectors to support
+  // for their criticality.  Support is added by beacon results, but decays
+  // exponentially over time.
+  repeated SelectorEvidence selector_evidence = 5;
 }

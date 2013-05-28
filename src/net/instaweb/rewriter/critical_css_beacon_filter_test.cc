@@ -77,7 +77,18 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     RewriteTestBase::SetUp();
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     factory()->set_use_beacon_results_in_filters(true);
-
+    rewrite_driver()->set_property_page(NewMockPage(kTestDomain));
+    // Set up pcache for page.
+    const PropertyCache::Cohort* cohort =
+        SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+    server_context()->set_beacon_cohort(cohort);
+    page_property_cache()->Read(rewrite_driver()->property_page());
+    // Set up and register a beacon finder.
+    CriticalSelectorFinder* finder =
+        new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                   statistics());
+    server_context()->set_critical_selector_finder(finder);
+    // Set up contents of CSS files.
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
                                   kStyleA, 100);
     SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
@@ -94,8 +105,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
   }
 
   GoogleString BeaconScriptFor(StringPiece selectors) {
-    StaticAssetManager* manager =
-        rewrite_driver()->server_context()->static_asset_manager();
+    StaticAssetManager* manager = server_context()->static_asset_manager();
     GoogleString script = StrCat(
         "<script src=\"",
         manager->GetAssetUrl(
@@ -313,27 +323,16 @@ class CriticalCssBeaconOnlyTest : public CriticalCssBeaconFilterTestBase {
 // Right now we never beacon if there's valid pcache data, even if that data
 // corresponds to an earlier version of the page.
 TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
-  // Set up pcache for page.
-  const PropertyCache::Cohort* cohort =
-      SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
-  server_context()->set_beacon_cohort(cohort);
-  // Set up and register a beacon finder.
-  CriticalSelectorFinder* finder =
-      new CriticalSelectorFinder(server_context()->beacon_cohort(),
-                                 statistics());
-  server_context()->set_critical_selector_finder(finder);
-
-  PropertyPage* page = NewMockPage(kTestDomain);
-  rewrite_driver()->set_property_page(page);
-  page_property_cache()->Read(page);
   // Inject pcache entry.
   StringSet selectors;
   selectors.insert("div ul > li");
   selectors.insert("p");
   selectors.insert("span");  // Doesn't occur in our CSS
-  finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  server_context()->critical_selector_finder()->
+      WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   // Force cohort to persist.
-  page->WriteCohort(server_context()->beacon_cohort());
+  rewrite_driver()->property_page()->WriteCohort(
+      server_context()->beacon_cohort());
   // Check injection
   EXPECT_TRUE(rewrite_driver()->CriticalSelectors() != NULL);
   // Now do the test.

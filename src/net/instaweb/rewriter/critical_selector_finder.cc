@@ -17,7 +17,9 @@
 
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 
+#include <map>
 #include <set>
+#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
@@ -25,13 +27,124 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
+
+namespace {
+
+typedef map<GoogleString, int> SupportMap;
+
+// *dest += addend, but capping at kint32max
+inline void SaturatingAddTo(int32 addend, int32* dest) {
+  int64 result = *dest;
+  result += addend;
+  *dest = (result > kint32max) ? kint32max : static_cast<int32>(result);
+}
+
+SupportMap ConvertCriticalSelectorsToSupportMap(
+    const CriticalSelectorSet& selectors, int legacy_support_value) {
+  SupportMap support_map;
+  // Invariant: we have at most one of selectors data or evidence data.
+  DCHECK(selectors.selector_evidence_size() == 0 ||
+         selectors.critical_selectors_size() == 0);
+  // Start by reading in the support data
+  for (int i = 0; i < selectors.selector_evidence_size(); ++i) {
+    const CriticalSelectorSet::SelectorEvidence& evidence =
+        selectors.selector_evidence(i);
+    if (!evidence.selector().empty()) {
+      // We aggregate here just in case of a corrupt duplicate entry.
+      SaturatingAddTo(evidence.support(), &support_map[evidence.selector()]);
+    }
+  }
+  // Now migrate legacy data into support_map.  Start with the response history.
+  for (int i = 0; i < selectors.selector_set_history_size(); ++i) {
+    const CriticalSelectorSet::BeaconResponse& response =
+        selectors.selector_set_history(i);
+    for (int j = 0; j < response.selectors_size(); ++j) {
+      SaturatingAddTo(legacy_support_value,
+                      &support_map[response.selectors(j)]);
+    }
+  }
+  // Sometimes we have critical_selectors with no response history (eg when only
+  // a single legacy beacon result was computed).  Inject support for
+  // critical_selectors if they weren't supported by the response history.  This
+  // avoids double-counting beacon results.
+  for (int i = 0; i < selectors.critical_selectors_size(); ++i) {
+    int& map_value = support_map[selectors.critical_selectors(i)];
+    if (map_value == 0) {
+      SaturatingAddTo(legacy_support_value, &map_value);
+    }
+  }
+  return support_map;
+}
+
+void WriteSupportMapToCriticalSelectors(
+    const SupportMap& support_map, CriticalSelectorSet* critical_selector_set) {
+  // Clean out the critical_selector_set and legacy data and inject the fresh
+  // data.
+  critical_selector_set->clear_critical_selectors();
+  critical_selector_set->clear_selector_set_history();
+  critical_selector_set->clear_selector_evidence();
+  for (SupportMap::const_iterator entry = support_map.begin();
+       entry != support_map.end(); ++entry) {
+    CriticalSelectorSet::SelectorEvidence* evidence =
+        critical_selector_set->add_selector_evidence();
+    evidence->set_selector(entry->first);
+    evidence->set_support(entry->second);
+  }
+}
+
+// Merge the given set into the existing critical selector sets by adding
+// support for new_set to existing support.
+void UpdateCriticalSelectorSet(
+    const StringSet& new_set, int support_value,
+    CriticalSelectorSet* critical_selector_set) {
+  DCHECK(critical_selector_set != NULL);
+  SupportMap support_map = ConvertCriticalSelectorsToSupportMap(
+      *critical_selector_set, support_value);
+  // Actually add the new_set to the support_map.
+  for (StringSet::const_iterator s = new_set.begin(); s != new_set.end(); ++s) {
+    // Allows insertion of absent entries.
+    SaturatingAddTo(support_value, &support_map[*s]);
+  }
+  WriteSupportMapToCriticalSelectors(support_map, critical_selector_set);
+}
+
+// Write selector_set to given cohort and page of pcache.  Used after
+// selector_set update occurs.
+void WriteCriticalSelectorSetToPropertyCache(
+    const CriticalSelectorSet& selector_set,
+    const PropertyCache::Cohort* cohort, PropertyPage* page,
+    MessageHandler* message_handler) {
+  PropertyCacheUpdateResult result =
+      UpdateInPropertyCache(
+          selector_set, cohort,
+          CriticalSelectorFinder::kCriticalSelectorsPropertyName,
+          false /* write_cohort */, page);
+  switch (result) {
+    case kPropertyCacheUpdateNotFound:
+      message_handler->Message(
+          kWarning, "Unable to get Critical css selector set for update.");
+      break;
+    case kPropertyCacheUpdateEncodeError:
+      message_handler->Message(
+          kWarning, "Trouble marshaling CriticalSelectorSet!?");
+      break;
+    case kPropertyCacheUpdateOk:
+      // Nothing more to do.
+      break;
+  }
+}
+
+}  // namespace
 
 const char CriticalSelectorFinder::kCriticalSelectorsPropertyName[] =
     "critical_selectors";
@@ -44,6 +157,8 @@ const char CriticalSelectorFinder::kCriticalSelectorsExpiredCount[] =
 
 const char CriticalSelectorFinder::kCriticalSelectorsNotFoundCount[] =
     "critical_selectors_not_found_count";
+
+const int64 CriticalSelectorFinder::kMinBeaconIntervalMs = 5 * Timer::kSecondMs;
 
 CriticalSelectorFinder::CriticalSelectorFinder(
     const PropertyCache::Cohort* cohort, Statistics* statistics) {
@@ -73,6 +188,12 @@ CriticalSelectorSet*
 CriticalSelectorFinder::DecodeCriticalSelectorsFromPropertyCache(
     RewriteDriver* driver) {
   PropertyCacheDecodeResult result;
+  // NOTE: if any of these checks fail you probably didn't set up your test
+  // environment carefully enough.  Figuring that out based on test failures
+  // alone will drive you nuts and take hours out of your life, thus DCHECKs.
+  DCHECK(driver != NULL);
+  DCHECK(driver->property_page() != NULL);
+  DCHECK(cohort_ != NULL);
   scoped_ptr<CriticalSelectorSet> critical_selectors(
       DecodeFromPropertyCache<CriticalSelectorSet>(
           driver, cohort_, kCriticalSelectorsPropertyName,
@@ -97,14 +218,6 @@ CriticalSelectorFinder::DecodeCriticalSelectorsFromPropertyCache(
   return NULL;
 }
 
-void CriticalSelectorFinder::ConvertCriticalSelectorsToSet(
-    const CriticalSelectorSet& pcache_selectors,
-    StringSet* critical_selectors) {
-  for (int i = 0; i < pcache_selectors.critical_selectors_size(); ++i) {
-    critical_selectors->insert(pcache_selectors.critical_selectors(i));
-  }
-}
-
 bool CriticalSelectorFinder::GetCriticalSelectorsFromPropertyCache(
     RewriteDriver* driver, StringSet* critical_selectors) {
   CriticalSelectorSet* pcache_selectors = driver->CriticalSelectors();
@@ -112,7 +225,18 @@ bool CriticalSelectorFinder::GetCriticalSelectorsFromPropertyCache(
   if (pcache_selectors == NULL) {
     return false;
   }
-  ConvertCriticalSelectorsToSet(*pcache_selectors, critical_selectors);
+  // Collect legacy beacon results
+  for (int i = 0; i < pcache_selectors->critical_selectors_size(); ++i) {
+    critical_selectors->insert(pcache_selectors->critical_selectors(i));
+  }
+  // Collect supported beacon results
+  for (int i = 0; i < pcache_selectors->selector_evidence_size(); ++i) {
+    const CriticalSelectorSet::SelectorEvidence& evidence =
+        pcache_selectors->selector_evidence(i);
+    if (evidence.support() > 0 && !evidence.selector().empty()) {
+      critical_selectors->insert(evidence.selector());
+    }
+  }
   return true;
 }
 
@@ -133,7 +257,6 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
   if (page == NULL) {
     return;
   }
-
   // We first need to read the current critical selectors in the property cache,
   // then update it with the new set if it exists, or create it if it doesn't.
   PropertyCacheDecodeResult decode_result;
@@ -163,73 +286,56 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
       break;
   }
 
-  UpdateCriticalSelectorSet(selector_set, critical_selectors.get());
+  UpdateCriticalSelectorSet(
+      selector_set, SupportInterval(), critical_selectors.get());
 
-  PropertyCacheUpdateResult result =
-      UpdateInPropertyCache(
-          *critical_selectors, cohort_, kCriticalSelectorsPropertyName,
-          false /* don't write cohort*/, page);
-  switch (result) {
-    case kPropertyCacheUpdateNotFound:
-      message_handler->Message(
-          kWarning, "Unable to get Critical css selector set for update.");
-      break;
-    case kPropertyCacheUpdateEncodeError:
-      message_handler->Message(
-          kWarning, "Trouble marshaling CriticalSelectorSet!?");
-      break;
-    case kPropertyCacheUpdateOk:
-      // Nothing more to do.
-      break;
-  }
+  WriteCriticalSelectorSetToPropertyCache(
+      *critical_selectors.get(), cohort_, page, message_handler);
 }
 
-void CriticalSelectorFinder::UpdateCriticalSelectorSet(
-    const StringSet& new_set, CriticalSelectorSet* critical_selector_set) {
-  DCHECK(critical_selector_set != NULL);
-
-  // Update the selector_sets field first, which contains the history of up to
-  // NumSetsToKeep() critical selector responses. If we already have
-  // NumSetsToKeep(), drop the first (oldest) response, and append the new
-  // response to the end.
-  CriticalSelectorSet::BeaconResponse* new_selector_set;
-  if (critical_selector_set->selector_set_history_size() >= NumSetsToKeep()) {
-    DCHECK_EQ(critical_selector_set->selector_set_history_size(),
-              NumSetsToKeep());
-    protobuf::RepeatedPtrField<CriticalSelectorSet::BeaconResponse>*
-        selector_history =
-            critical_selector_set->mutable_selector_set_history();
-    for (int i = 1; i < selector_history->size(); ++i) {
-      selector_history->SwapElements(i - 1, i);
+bool CriticalSelectorFinder::MustBeaconForCandidates(
+    const StringSet& selectors, RewriteDriver* driver) {
+  if (selectors.empty()) {
+    // Never instrument when there's nothing to check.
+    return false;
+  }
+  DCHECK(driver->property_page() != NULL);
+  CriticalSelectorSet* critical_selector_set = driver->CriticalSelectors();
+  if (critical_selector_set == NULL) {
+    // No critical selectors yet, create them and tell the rewrite_driver about
+    // it (to avoid forcing a round-trip to the cache, and also to simplify the
+    // rest of the flow here).
+    critical_selector_set = new CriticalSelectorSet;
+    driver->SetCriticalSelectors(critical_selector_set);
+  }
+  SupportMap support = ConvertCriticalSelectorsToSupportMap(
+      *critical_selector_set, SupportInterval());
+  // TODO(jmaessen): Set support to 0 for elements of selectors that are not
+  // already supported (already in another client).
+  int64 now = driver->timer()->NowMs();
+  if (now >= critical_selector_set->next_beacon_timestamp_ms()) {
+    // TODO(jmaessen): Add noise to inter-beacon interval.  How?
+    // Currently first visit to page after next_beacon_timestamp_ms will beacon.
+    critical_selector_set->set_next_beacon_timestamp_ms(
+        now + kMinBeaconIntervalMs);
+    // Decay the support map.
+    for (SupportMap::iterator i = support.begin(), end = support.end();
+         i != end; ++i) {
+      // Multiply i->second by the fraction
+      // SupportInterval() / (SupportInterval() + 1)
+      // Using int64 to avoid overflow.
+      int64 support = i->second;
+      support *= SupportInterval();
+      support /= SupportInterval() + 1;
+      i->second = static_cast<int32>(support);
     }
-    new_selector_set = selector_history->Mutable(selector_history->size() - 1);
-    new_selector_set->Clear();
-  } else {
-    new_selector_set = critical_selector_set->add_selector_set_history();
+    WriteSupportMapToCriticalSelectors(support, critical_selector_set);
+    WriteCriticalSelectorSetToPropertyCache(
+        *critical_selector_set, cohort_, driver->property_page(),
+        driver->message_handler());
+    return true;
   }
-
-  for (StringSet::const_iterator it = new_set.begin();
-       it != new_set.end(); ++it) {
-    new_selector_set->add_selectors(*it);
-  }
-
-  // Now recalculate the critical_selectors field as the union of all selectors
-  // reported by beacons. Aggregate all the selectors into a StringSet first to
-  // remove duplicates.
-  StringSet new_critical_selectors;
-  for (int i = 0; i < critical_selector_set->selector_set_history_size(); ++i) {
-    const CriticalSelectorSet::BeaconResponse& curr_set =
-        critical_selector_set->selector_set_history(i);
-    for (int j = 0; j < curr_set.selectors_size(); ++j) {
-      new_critical_selectors.insert(curr_set.selectors(j));
-    }
-  }
-
-  critical_selector_set->clear_critical_selectors();
-  for (StringSet::const_iterator it = new_critical_selectors.begin();
-       it != new_critical_selectors.end(); ++it) {
-    critical_selector_set->add_critical_selectors(*it);
-  }
+  return false;
 }
 
 }  // namespace net_instaweb

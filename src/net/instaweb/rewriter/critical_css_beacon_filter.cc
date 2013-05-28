@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -126,41 +127,39 @@ GoogleString CriticalCssBeaconFilter::BeaconBoilerplate() {
 }
 
 void CriticalCssBeaconFilter::SummariesDone() {
-  // First check the property cache to see if we need to inject a beacon at all.
-  // TODO(jmaessen): Why do we do this so late in the process?  Because
-  // eventually we want to store a signature of the selectors the browser
-  // checked as part of the beacon result, and this is the point where we'll be
-  // able to check it against the set of selectors we would *like* the browser
-  // to check.  If they're different we have to insert the beacon because the
-  // CSS has changed.
-  // TODO(jmaessen): This is also where we decide whether we want >1 set of
-  // beacon results, a la what's done with critical images.  For now we bail
-  // out if there are beacon results available to us.
   if (driver()->CriticalSelectors() != NULL) {
     return;
   }
-  // We construct a transient set of StringPiece objects backed by the summary
-  // information.  We parse each summary back into component selectors from its
-  // comma-separated string, use the set to remove duplicates (they'll be
+  // We parse each summary back into component selectors from its
+  // comma-separated string, using a StringSet to remove duplicates (they'll be
   // sorted, too, which makes this easier to test).  We re-serialize the set.
-  set<StringPiece> selectors;
+  StringSet selectors;
   for (int i = 0; i < NumStyles(); ++i) {
-    const SummaryInfo& block_info = GetSummaryForStyle(i);
+    const SummaryInfo& summary_info = GetSummaryForStyle(i);
     // The critical_selector_filter doesn't include <noscript>-specific CSS
     // in the critical CSS it computes; so there is no need to figure out
     // critical selectors for such CSS.
-    if (block_info.is_inside_noscript) {
+    if (summary_info.is_inside_noscript) {
       continue;
     }
-    switch (block_info.state) {
+    switch (summary_info.state) {
       case kSummaryStillPending:
         // Don't beacon if we're still waiting for critical selector data.
         return;
-      case kSummaryOk:
+      case kSummaryOk: {
         // Include the selectors in the beacon
+        StringPieceVector temp;
+        SplitStringPieceToVector(summary_info.data, ",", &temp,
+                                 false /* empty shouldn't happen */);
+        for (StringPieceVector::const_iterator i = temp.begin(),
+                 end = temp.end();
+             i != end; ++i) {
+          selectors.insert(i->as_string());
+        }
         break;
+      }
       case kSummarySlotRemoved:
-        // Another filter has eliminated this CSS.
+        // Another filter (likely combine CSS) has eliminated this CSS.
         continue;
       case kSummaryCssParseError:
       case kSummaryResourceCreationFailed:
@@ -175,25 +174,14 @@ void CriticalCssBeaconFilter::SummariesDone() {
         // CSS with a mix of parseable and unparseable rules.
         continue;
     }
-    StringPieceVector temp;
-    SplitStringPieceToVector(block_info.data, ",", &temp,
-                             false /* empty shouldn't happen */);
-    selectors.insert(temp.begin(), temp.end());
   }
-  if (selectors.empty()) {
-    // Don't insert beacon if no parseable CSS was found (usually meaning there
-    // wasn't any CSS).
-    // TODO(jmaessen): Mark this case in the property cache.  We need to be a
-    // bit careful here; we want to attempt to re-instrument if there were JS
-    // resources that arrived too late for us to parse them and include them in
-    // the beaconing.  We are eventually going to need to compute a selector
-    // signature of some sort and use that to control when we re-instrument (and
-    // when we consider the beacon results to match the CSS that we actually see
-    // on the page).
-    driver()->InfoHere("No CSS selectors found.");
+  if (!(driver()->server_context()->critical_selector_finder()->
+        MustBeaconForCandidates(selectors, driver()))) {
+    // No beaconing required according to current pcache state and computed
+    // selector set.
     return;
   }
-  // The set is assembled.  Insert the beaconing code.
+  // Insert the beaconing code.
   GoogleString script = BeaconBoilerplate();
   StrAppend(&script, "[");
   AppendJoinCollection(&script, selectors, ",");

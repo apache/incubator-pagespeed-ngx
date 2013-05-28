@@ -2903,6 +2903,12 @@ CriticalSelectorSet* RewriteDriver::CriticalSelectors() {
   return critical_selector_info_.get();
 }
 
+void RewriteDriver::SetCriticalSelectors(CriticalSelectorSet* selectors) {
+  DCHECK(server_context_->critical_selector_finder() != NULL);
+  critical_selector_info_.reset(selectors);
+  critical_selector_info_computed_ = true;
+}
+
 void RewriteDriver::increment_async_events_count() {
   ScopedMutex lock(rewrite_mutex());
   ++pending_async_events_;

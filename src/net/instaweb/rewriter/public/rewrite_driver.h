@@ -898,9 +898,17 @@ class RewriteDriver : public HtmlParse {
 
   // Returns computed critical selector set for this page, or NULL
   // if not available. Should only be called from HTML-safe thread context.
-  // (parser threar or Render() callbacks). The returned value is owned by
+  // (parser thread or Render() callbacks). The returned value is owned by
   // the rewrite driver.
   CriticalSelectorSet* CriticalSelectors();
+
+  // Sets computed critical selector set for this page.  Should only be called
+  // from HTML-safe thread context.  Ownership transfers to the rewrite_driver.
+  // Caller is reponsible for updating the property cache.  NOTE: should only be
+  // called from the CriticalSelectorFinder or from test code.
+  // TODO(jmaessen): refactor this away when critical selector finder resides in
+  // the rewrite_driver and keeps its own state.
+  void SetCriticalSelectors(CriticalSelectorSet* selectors);
 
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
