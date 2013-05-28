@@ -22,15 +22,15 @@
 // whether other references exist.  Thus it is feasible to implement
 // copy-on-write as a layer over this class.
 
-#ifndef PAGESPEED_KERNEL_UTIL_SHARED_STRING_H_
-#define PAGESPEED_KERNEL_UTIL_SHARED_STRING_H_
+#ifndef PAGESPEED_KERNEL_BASE_SHARED_STRING_H_
+#define PAGESPEED_KERNEL_BASE_SHARED_STRING_H_
 
 #include <cstddef>                     // for size_t
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
@@ -189,4 +189,4 @@ class SharedString {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_SHARED_STRING_H_
+#endif  // PAGESPEED_KERNEL_BASE_SHARED_STRING_H_

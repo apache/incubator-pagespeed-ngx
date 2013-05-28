@@ -16,7 +16,7 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "pagespeed/kernel/util/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 
 namespace net_instaweb {
 

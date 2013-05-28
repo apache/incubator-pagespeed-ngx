@@ -63,12 +63,16 @@
       # Chromium libbase.a
       'type': '<(library)',
       'sources': [
+        'kernel/base/cache_interface.cc',
         'kernel/base/checking_thread_system.cc',
+        'kernel/base/circular_buffer.cc',
         'kernel/base/condvar.cc',
         'kernel/base/function.cc',
         'kernel/base/hasher.cc',
         'kernel/base/md5_hasher.cc',
+        'kernel/base/named_lock_manager.cc',
         'kernel/base/posix_timer.cc',
+        'kernel/base/shared_string.cc',
         'kernel/base/thread.cc',
         'kernel/base/waveform.cc',
       ],
@@ -223,14 +227,10 @@
       'type': '<(library)',
       'sources': [
         'kernel/util/abstract_shared_mem.cc',
-        'kernel/util/cache_interface.cc',
-        'kernel/util/circular_buffer.cc',
         'kernel/util/fast_wildcard_group.cc',
         'kernel/util/file_system_lock_manager.cc',
-        'kernel/util/named_lock_manager.cc',
         'kernel/util/rolling_hash.cc',
         'kernel/util/scheduler_based_abstract_lock.cc',
-        'kernel/util/shared_string.cc',
         'kernel/util/wildcard.cc',
       ],
       'include_dirs': [

@@ -30,7 +30,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/thread/mock_scheduler.h"
-#include "pagespeed/kernel/util/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {

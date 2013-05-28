@@ -15,7 +15,7 @@
 // Author: fangfei@google.com (Fangfei Zhou)
 
 #include <cstdlib>
-#include "pagespeed/kernel/util/circular_buffer.h"
+#include "pagespeed/kernel/base/circular_buffer.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/gtest.h"

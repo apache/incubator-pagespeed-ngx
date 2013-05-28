@@ -20,7 +20,7 @@
 #define PAGESPEED_KERNEL_UTIL_SCHEDULER_BASED_ABSTRACT_LOCK_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/util/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 
 namespace net_instaweb {
 

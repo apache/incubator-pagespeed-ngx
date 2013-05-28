@@ -19,7 +19,7 @@
 #include <cstdlib>         // for malloc
 #include <algorithm>       // for min
 #include "base/logging.h"  // for DCHECK
-#include "pagespeed/kernel/util/circular_buffer.h"
+#include "pagespeed/kernel/base/circular_buffer.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/string_util.h"

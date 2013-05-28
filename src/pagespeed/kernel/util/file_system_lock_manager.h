@@ -22,7 +22,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 
 namespace net_instaweb {
 

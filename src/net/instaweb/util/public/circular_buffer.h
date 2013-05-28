@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_CIRCULAR_BUFFER_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/circular_buffer.h"
+#include "pagespeed/kernel/base/circular_buffer.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_CIRCULAR_BUFFER_H_

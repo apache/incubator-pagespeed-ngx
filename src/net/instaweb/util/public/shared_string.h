@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/shared_string.h"
+#include "pagespeed/kernel/base/shared_string.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_SHARED_STRING_H_

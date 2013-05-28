@@ -16,15 +16,15 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_KERNEL_UTIL_CACHE_INTERFACE_H_
-#define PAGESPEED_KERNEL_UTIL_CACHE_INTERFACE_H_
+#ifndef PAGESPEED_KERNEL_BASE_CACHE_INTERFACE_H_
+#define PAGESPEED_KERNEL_BASE_CACHE_INTERFACE_H_
 
 #include <vector>
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/util/shared_string.h"
+#include "pagespeed/kernel/base/shared_string.h"
 
 namespace net_instaweb {
 
@@ -223,4 +223,4 @@ class CacheInterface {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_CACHE_INTERFACE_H_
+#endif  // PAGESPEED_KERNEL_BASE_CACHE_INTERFACE_H_

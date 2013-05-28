@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/kernel/util/cache_interface.h"
+#include "pagespeed/kernel/base/cache_interface.h"
 
 namespace net_instaweb {
 

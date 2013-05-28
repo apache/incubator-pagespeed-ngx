@@ -18,6 +18,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 
 // TODO(jmarantz): Remove this forwarding header and update references.
-#include "pagespeed/kernel/util/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_

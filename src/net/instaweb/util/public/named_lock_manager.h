@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_NAMED_LOCK_MANAGER_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/named_lock_manager.h"
+#include "pagespeed/kernel/base/named_lock_manager.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_NAMED_LOCK_MANAGER_H_

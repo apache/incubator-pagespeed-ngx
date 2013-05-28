@@ -16,8 +16,8 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#ifndef PAGESPEED_KERNEL_UTIL_NAMED_LOCK_MANAGER_H_
-#define PAGESPEED_KERNEL_UTIL_NAMED_LOCK_MANAGER_H_
+#ifndef PAGESPEED_KERNEL_BASE_NAMED_LOCK_MANAGER_H_
+#define PAGESPEED_KERNEL_BASE_NAMED_LOCK_MANAGER_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
@@ -103,4 +103,4 @@ class NamedLockManager {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_NAMED_LOCK_MANAGER_H_
+#endif  // PAGESPEED_KERNEL_BASE_NAMED_LOCK_MANAGER_H_

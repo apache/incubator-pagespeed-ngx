@@ -20,7 +20,7 @@
 #define PAGESPEED_KERNEL_UTIL_COPY_ON_WRITE_H_
 
 #include "base/logging.h"
-#include "pagespeed/kernel/util/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace net_instaweb {
 

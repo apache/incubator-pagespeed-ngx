@@ -22,10 +22,10 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "pagespeed/kernel/util/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
