@@ -135,27 +135,34 @@ void ConsoleSuggestionsFactory::GenerateSuggestions() {
                        "");
 
   // Image reading failure.
-  double good = StatValue("image_rewrites") +
-      // These are considered good because they were read and we could have
-      // optimized them, the only reason we didn't was because they were
-      // already optimal.
-      StatValue("image_rewrites_dropped_nosaving_resize") +
-      StatValue("image_rewrites_dropped_nosaving_noresize");
-  double bad = StatValue("image_norewrites_high_resolution") +
-      StatValue("image_rewrites_dropped_decode_failure") +
-      StatValue("image_rewrites_dropped_server_write_fail") +
-      StatValue("image_rewrites_dropped_mime_type_unknown") +
-      StatValue("image_norewrites_high_resolution");
-      // TODO(sligocki): We don't seem to be tracking TimedVariables as
-      // normal Variables in mod_pagespeed. Fix this.
-      // + StatValue("image_rewrites_dropped_due_to_load");
-  AddConsoleSuggestion(SumRatio(bad, good),
-                       "Image rewrite failures: %.2f%%",
-                       "");
+  {
+    double good = StatValue("image_rewrites") +
+        // These are considered good because they were read and we could have
+        // optimized them, the only reason we didn't was because they were
+        // already optimal.
+        StatValue("image_rewrites_dropped_nosaving_resize") +
+        StatValue("image_rewrites_dropped_nosaving_noresize");
+    double bad = StatValue("image_norewrites_high_resolution") +
+        StatValue("image_rewrites_dropped_decode_failure") +
+        StatValue("image_rewrites_dropped_server_write_fail") +
+        StatValue("image_rewrites_dropped_mime_type_unknown") +
+        StatValue("image_norewrites_high_resolution");
+    // TODO(sligocki): We don't seem to be tracking TimedVariables as
+    // normal Variables in mod_pagespeed. Fix this.
+    // + StatValue("image_rewrites_dropped_due_to_load");
+    AddConsoleSuggestion(SumRatio(bad, good),
+                         "Image rewrite failures: %.2f%%",
+                         "");
+  }
 
-  // TODO(sligocki): CSS not combinable.
-
-  // TODO(sligocki): Images not spriteable.
+  // CSS not combinable.
+  {
+    double good = StatValue("css_file_count_reduction");
+    double total = StatValue("css_combine_opportunities");
+    AddConsoleSuggestion(Ratio(total - good, total),
+                         "CSS combine opportunities missed: %.2f%%",
+                         "");
+  }
 
   // Most important suggestions first.
   std::sort(suggestions_.begin(), suggestions_.end(), CompareSuggestions);

@@ -63,6 +63,12 @@ const char kCCssBody[] = ".c3 {\n font-weight: bold;\n}\n";
 
 class CssCombineFilterTest : public RewriteTestBase {
  protected:
+  CssCombineFilterTest()
+      : css_combine_opportunities_(statistics()->GetVariable(
+            CssCombineFilter::kCssCombineOpportunities)),
+        css_file_count_reduction_(statistics()->GetVariable(
+            CssCombineFilter::kCssFileCountReduction)) {}
+
   virtual void SetUp() {
     RewriteTestBase::SetUp();
     AddFilter(RewriteOptions::kCombineCss);
@@ -143,9 +149,7 @@ class CssCombineFilterTest : public RewriteTestBase {
 
     SetupCssResources(a_css_name, b_css_name);
 
-    Variable* css_file_count_reduction =
-        statistics()->GetVariable(CssCombineFilter::kCssFileCountReduction);
-    int orig_file_count_reduction = css_file_count_reduction->Get();
+    int orig_file_count_reduction = css_file_count_reduction_->Get();
 
     ParseUrl(html_url, html_input);
 
@@ -176,7 +180,7 @@ class CssCombineFilterTest : public RewriteTestBase {
       expected_file_count_reduction = 0;
     }
 
-    EXPECT_EQ(expected_file_count_reduction, css_file_count_reduction->Get());
+    EXPECT_EQ(expected_file_count_reduction, css_file_count_reduction_->Get());
     if (expected_file_count_reduction > 0) {
       EXPECT_STREQ(RewriteOptions::kCssCombinerId,
                    AppliedRewriterStringFromLog());
@@ -461,6 +465,9 @@ class CssCombineFilterTest : public RewriteTestBase {
     ASSERT_TRUE(FetchResourceUrl(combined_url, &content));
     EXPECT_EQ(StrCat(kACssBody, kBCssBody), content);
   }
+
+  Variable* css_combine_opportunities_;
+  Variable* css_file_count_reduction_;
 
  private:
   GoogleString combined_headers_;
@@ -1483,6 +1490,87 @@ TEST_F(CssCombineFilterTest, AlternateStylesheets) {
       "alternate_same",
       "<link rel='alternate stylesheet' href='a.css' title='foo'>"
       "<link rel='alternate stylesheet' href='b.css' title='foo'>");
+}
+
+TEST_F(CssCombineFilterTest, Stats) {
+  Parse("stats_no_link", "");
+  // 0 opportunities with 0 links.
+  EXPECT_EQ(0, css_combine_opportunities_->Get());
+  EXPECT_EQ(0, css_file_count_reduction_->Get());
+  ClearStats();
+
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                ".a { color: red; }", 100);
+  Parse("stats_one_link", Link("a.css"));
+  // 0 opportunities with 1 link.
+  EXPECT_EQ(0, css_combine_opportunities_->Get());
+  EXPECT_EQ(0, css_file_count_reduction_->Get());
+  ClearStats();
+
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                ".b { color: green; }", 100);
+  SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
+                                ".c { color: blue; }", 100);
+  Parse("stats_3_links", StrCat(Link("a.css"), Link("b.css"), Link("c.css")));
+  // 2 opportunity with 3 links.
+  EXPECT_EQ(2, css_combine_opportunities_->Get());
+  EXPECT_EQ(2, css_file_count_reduction_->Get());
+  ClearStats();
+
+  Parse("stats_partial", StrCat(Link("a.css"), Link("b.css"),
+                                // media="print" so that it can't be combined.
+                                Link("c.css", "print", false)));
+  // 2 opportunities, but only one reduction because last is not combinable.
+  EXPECT_EQ(2, css_combine_opportunities_->Get());
+  EXPECT_EQ(1, css_file_count_reduction_->Get());
+  ClearStats();
+}
+
+TEST_F(CssCombineFilterTest, StatsWithDelay) {
+  SetupWaitFetcher();
+
+  // Setup CSS files.
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                ".a { color: red; }", 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                ".b { color: green; }", 100);
+  SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
+                                ".c { color: blue; }", 100);
+
+  GoogleString input_html = StrCat(Link("a.css"), Link("b.css"), Link("c.css"));
+
+  // We have a wait fetcher, so this won't be rewritten on the first run.
+  Parse("stats1", input_html);
+  // All opportunities for combining will be missed.
+  EXPECT_EQ(2, css_combine_opportunities_->Get());
+  EXPECT_EQ(0, css_file_count_reduction_->Get());
+  ClearStats();
+
+  // Calling callbacks will cause async rewrite to happen, but will not
+  // affect stats (which measure actual HTML usage).
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, css_combine_opportunities_->Get());
+  EXPECT_EQ(0, css_file_count_reduction_->Get());
+  ClearStats();
+
+  // This time result is rewritten.
+  Parse("stats2", input_html);
+  // All opportunities for combining will be taken.
+  EXPECT_EQ(2, css_combine_opportunities_->Get());
+  EXPECT_EQ(2, css_file_count_reduction_->Get());
+  ClearStats();
+
+  // Nothing happens here.
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, css_combine_opportunities_->Get());
+  EXPECT_EQ(0, css_file_count_reduction_->Get());
+  ClearStats();
+
+  // Same as second load.
+  Parse("stats3", input_html);
+  EXPECT_EQ(2, css_combine_opportunities_->Get());
+  EXPECT_EQ(2, css_file_count_reduction_->Get());
+  ClearStats();
 }
 
 class CssCombineAndCacheExtendTest : public CssCombineFilterTest {

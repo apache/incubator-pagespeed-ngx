@@ -58,7 +58,9 @@ namespace net_instaweb {
 class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
 
-// names for Statistics variables.
+// Names for Statistics variables.
+const char CssCombineFilter::kCssCombineOpportunities[] =
+    "css_combine_opportunities";
 const char CssCombineFilter::kCssFileCountReduction[] =
     "css_file_count_reduction";
 
@@ -328,23 +330,33 @@ class CssCombineFilter::Context : public RewriteContext {
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       css_tag_scanner_(driver_),
-      end_document_found_(false) {
+      end_document_found_(false),
+      css_links_(0),
+      css_combine_opportunities_(driver->statistics()->GetVariable(
+          kCssCombineOpportunities)) {
 }
 
 CssCombineFilter::~CssCombineFilter() {
 }
 
 void CssCombineFilter::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kCssCombineOpportunities);
   statistics->AddVariable(kCssFileCountReduction);
 }
 
 void CssCombineFilter::StartDocumentImpl() {
   context_.reset(MakeContext());
   end_document_found_ = false;
+  css_links_ = 0;
 }
 
 void CssCombineFilter::EndDocument() {
   end_document_found_ = true;
+  if (css_links_ > 1) {
+    // There are only opportunities to combine if there was more than one
+    // css <link> in original HTML.
+    css_combine_opportunities_->Add(css_links_ - 1);
+  }
 }
 
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
@@ -360,6 +372,7 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
     return;
   } else if (css_tag_scanner_.ParseCssElement(element, &href, &media,
                                               &num_nonstandard_attributes)) {
+    ++css_links_;
     // Element is a <link rel="stylesheet" ...>.
     if (driver_->HasChildrenInFlushWindow(element)) {
       LOG(DFATAL) << "HTML lexer allowed children in <link>.";

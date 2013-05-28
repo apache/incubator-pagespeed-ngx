@@ -35,11 +35,15 @@ class RewriteContext;
 class RewriteDriver;
 class Statistics;
 class UrlSegmentEncoder;
+class Variable;
 
 class CssCombineFilter : public RewriteFilter {
  public:
-  // Name of statistics variable used to record # of CSS file fetches
-  // avoided due to combining.
+  // Statistic names:
+  // # of CSS links which could ideally have been reduced (# CSS links on
+  // original page - 1 for each page).
+  static const char kCssCombineOpportunities[];
+  // CSS file reduction (Optimally this equals kCssCombineOpportunities).
   static const char kCssFileCountReduction[];
 
   explicit CssCombineFilter(RewriteDriver* rewrite_driver);
@@ -74,6 +78,9 @@ class CssCombineFilter : public RewriteFilter {
   scoped_ptr<Context> context_;
   UrlMultipartEncoder multipart_encoder_;
   bool end_document_found_;
+  int css_links_;  // # of CSS <link>s found on this page.
+
+  Variable* css_combine_opportunities_;
 
   DISALLOW_COPY_AND_ASSIGN(CssCombineFilter);
 };
