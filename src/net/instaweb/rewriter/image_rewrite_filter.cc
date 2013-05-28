@@ -126,12 +126,12 @@ const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
 const int ImageRewriteFilter::kRelatedOptionsSize = arraysize(kRelatedOptions);
 
 // names for Statistics variables.
-const char kImageRewrites[] = "image_rewrites";
+const char ImageRewriteFilter::kImageRewrites[] = "image_rewrites";
 const char ImageRewriteFilter::kImageNoRewritesHighResolution[] =
     "image_norewrites_high_resolution";
 const char kImageRewritesDroppedIntentionally[] =
     "image_rewrites_dropped_intentionally";
-const char kImageRewritesDroppedDecodeFailure[] =
+const char ImageRewriteFilter::kImageRewritesDroppedDecodeFailure[] =
     "image_rewrites_dropped_decode_failure";
 const char ImageRewriteFilter::kImageRewritesDroppedServerWriteFail[] =
     "image_rewrites_dropped_server_write_fail";

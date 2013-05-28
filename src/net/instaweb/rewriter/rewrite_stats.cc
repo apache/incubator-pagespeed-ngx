@@ -27,11 +27,6 @@ namespace net_instaweb {
 
 namespace {
 
-// Num of URLs we could have rewritten and were authorized to rewrite.
-const char kResourceUrlDomainAcceptances[] = "resource_url_domain_acceptances";
-// Num of URLs we could have rewritten, but were not authorized to rewrite
-// because of the domain they are on.
-const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
 const char kCachedOutputMissedDeadline[] =
     "rewrite_cached_output_missed_deadline";
 const char kCachedOutputHits[] = "rewrite_cached_output_hits";
@@ -43,10 +38,6 @@ const char kResourceFetchConstructSuccesses[] =
     "resource_fetch_construct_successes";
 const char kResourceFetchConstructFailures[] =
     "resource_fetch_construct_failures";
-const char kNumCacheControlRewritableResources[] =
-    "num_cache_control_rewritable_resources";
-const char kNumCacheControlNotRewritableResources[] =
-    "num_cache_control_not_rewritable_resources";
 const char kNumFlushes[] = "num_flushes";
 const char kFallbackResponsesServed[] = "num_fallback_responses_served";
 const char kNumConditionalRefreshes[] = "num_conditional_refreshes";
@@ -87,10 +78,21 @@ const char kRewritesDropped[] = "num_rewrites_dropped";
 
 }  // namespace
 
+const char RewriteStats::kNumCacheControlRewritableResources[] =
+    "num_cache_control_rewritable_resources";
+const char RewriteStats::kNumCacheControlNotRewritableResources[] =
+    "num_cache_control_not_rewritable_resources";
 const char RewriteStats::kNumResourceFetchSuccesses[] =
     "num_resource_fetch_successes";
 const char RewriteStats::kNumResourceFetchFailures[] =
     "num_resource_fetch_failures";
+// Num of URLs we could have rewritten and were authorized to rewrite.
+const char RewriteStats::kResourceUrlDomainAcceptances[] =
+    "resource_url_domain_acceptances";
+// Num of URLs we could have rewritten, but were not authorized to rewrite
+// because of the domain they are on.
+const char RewriteStats::kResourceUrlDomainRejections[] =
+    "resource_url_domain_rejections";
 
 // In Apache, this is called in the root process to establish shared memory
 // boundaries prior to the primary initialization of RewriteDriverFactories.

@@ -14,7 +14,7 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/console_suggestions.h"
+#include "net/instaweb/rewriter/public/console_suggestions.h"
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/simple_stats.h"

@@ -54,69 +54,34 @@ struct ContentType;
 //     rewritten urls, when in general those urls will be in a different domain.
 class ImageRewriteFilter : public RewriteFilter {
  public:
-  // Name for statistic used to bound rewriting work.
-  static const char kImageOngoingRewrites[];
-
-  // # of images that we decided not to rewrite because of size constraint.
+  // Statistic names:
   static const char kImageNoRewritesHighResolution[];
-
-  // TimedVariable denoting image rewrites we dropped due to
-  // load (too many concurrent rewrites)
-  static const char kImageRewritesDroppedDueToLoad[];
-
-  // # of images not rewritten because the image MIME type is unknown.
-  static const char kImageRewritesDroppedMIMETypeUnknown[];
-
-  // # of images not rewritten because the server fails to write the merged
-  // html files.
-  static const char kImageRewritesDroppedServerWriteFail[];
-
-  // # of images not rewritten because the rewriting does not reduce the
-  // data size by a certain threshold. The image is resized in this case.
-  static const char kImageRewritesDroppedNoSavingResize[];
-
-  // # of images not rewritten because the rewriting does not reduce the
-  // data size by a certain threshold. The image is not resized in this case.
-  static const char kImageRewritesDroppedNoSavingNoResize[];
-
-  // TimedVariable denoting image squashing for mobile screen.
-  static const char kImageRewritesSquashingForMobileScreen[];
-
-  // Histogram for delays of successful image rewrites.
-  static const char kImageRewriteLatencyOkMs[];
-
-  // Histogram for delays of failed image rewrites.
+  static const char kImageOngoingRewrites[];
   static const char kImageRewriteLatencyFailedMs[];
-
-  // # of timeouts while attempting to rewrite images as WebP from
-  // various formats.
-  static const char kImageWebpFromGifTimeouts[];
-  static const char kImageWebpFromPngTimeouts[];
-  static const char kImageWebpFromJpegTimeouts[];
-
-  // Duration of successful WebP conversions from various
-  // formats. Note that a successful conversion may not be served if
-  // it happens to be larger than the original image.
-  static const char kImageWebpFromGifSuccessMs[];
-  static const char kImageWebpFromPngSuccessMs[];
-  static const char kImageWebpFromJpegSuccessMs[];
-
-  // Duration of failed WebP conversions from various formats. Note
-  // that this does not include timeout failures, which are captured
-  // above.
+  static const char kImageRewriteLatencyOkMs[];
+  static const char kImageRewritesDroppedDecodeFailure[];
+  static const char kImageRewritesDroppedDueToLoad[];
+  static const char kImageRewritesDroppedMIMETypeUnknown[];
+  static const char kImageRewritesDroppedNoSavingNoResize[];
+  static const char kImageRewritesDroppedNoSavingResize[];
+  static const char kImageRewritesDroppedServerWriteFail[];
+  static const char kImageRewritesSquashingForMobileScreen[];
+  static const char kImageRewrites[];
   static const char kImageWebpFromGifFailureMs[];
-  static const char kImageWebpFromPngFailureMs[];
+  static const char kImageWebpFromGifSuccessMs[];
+  static const char kImageWebpFromGifTimeouts[];
   static const char kImageWebpFromJpegFailureMs[];
-
-  // Duration of conversions of images with alpha to WebP.
-  static const char kImageWebpWithAlphaTimeouts[];
-  static const char kImageWebpWithAlphaSuccessMs[];
-  static const char kImageWebpWithAlphaFailureMs[];
-
-  // Duration of conversions of images without alpha to WebP.
-  static const char kImageWebpOpaqueTimeouts[];
-  static const char kImageWebpOpaqueSuccessMs[];
+  static const char kImageWebpFromJpegSuccessMs[];
+  static const char kImageWebpFromJpegTimeouts[];
+  static const char kImageWebpFromPngFailureMs[];
+  static const char kImageWebpFromPngSuccessMs[];
+  static const char kImageWebpFromPngTimeouts[];
   static const char kImageWebpOpaqueFailureMs[];
+  static const char kImageWebpOpaqueSuccessMs[];
+  static const char kImageWebpOpaqueTimeouts[];
+  static const char kImageWebpWithAlphaFailureMs[];
+  static const char kImageWebpWithAlphaSuccessMs[];
+  static const char kImageWebpWithAlphaTimeouts[];
 
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the

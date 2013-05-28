@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/console_suggestions.h"
+#include "net/instaweb/system/public/system_console_suggestions.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
@@ -29,7 +29,8 @@ namespace net_instaweb {
 // Handler which serves PSOL console.
 void ConsoleHandler(ServerContext* server_context, Writer* writer,
                     MessageHandler* handler) {
-  ConsoleSuggestionsFactory suggestions_factory(server_context->statistics());
+  SystemConsoleSuggestionsFactory suggestions_factory(
+      server_context->statistics());
   suggestions_factory.GenerateSuggestions();
   const std::vector<ConsoleSuggestion>* suggestions =
       suggestions_factory.suggestions();
@@ -80,11 +81,11 @@ void ConsoleHandler(ServerContext* server_context, Writer* writer,
                 "  <body>\n"
                 "    <div id='top-bar'>\n"
                 "      <span id='title'>PSOL Console</span>\n"
-                "      <div id='metric-box'>\n"
-                // TODO(sligocki): Get real metric.
+                // TODO(sligocki): Get real metric and uncomment this block.
+                "      <!-- <div id='metric-box'>\n"
                 "        <div id='metric-value'>32%</div>\n"
                 "        <div id='metric-name'>Bytes saved (dummy)</div>\n"
-                "      </div>\n"
+                "      </div> -->\n"
                 "    </div>\n"
                 "\n"
                 "    <div id='menu'>\n"

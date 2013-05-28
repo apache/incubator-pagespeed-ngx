@@ -104,6 +104,7 @@
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/common_filter_test.cc',
         'rewriter/compute_visible_text_filter_test.cc',
+        'rewriter/console_suggestions_test.cc',
         'rewriter/critical_css_beacon_filter_test.cc',
         'rewriter/critical_css_filter_test.cc',
         'rewriter/critical_css_finder_test.cc',
@@ -212,7 +213,6 @@
         'util/charset_util_test.cc',
         'util/chunking_writer_test.cc',
         'util/compressed_cache_test.cc',
-        'util/console_suggestions_test.cc',
         'util/countdown_timer_test.cc',
         'util/data_url_test.cc',
         'util/delay_cache_test.cc',
@@ -445,4 +445,3 @@
     },
   ],
 }
-

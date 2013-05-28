@@ -14,11 +14,17 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/console_suggestions.h"
+#include "net/instaweb/rewriter/public/console_suggestions.h"
 
 #include <algorithm>                    // for sort
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/rewriter/public/css_combine_filter.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
@@ -78,78 +84,75 @@ void ConsoleSuggestionsFactory::AddConsoleSuggestion(
 }
 
 void ConsoleSuggestionsFactory::GenerateSuggestions() {
-  // Cannot fetch resources.
-  // TODO(sligocki): This should probably be in the Apache-specific code.
-  AddConsoleSuggestion(StatRatio("serf_fetch_failure_count",
-                                 "serf_fetch_request_count"),
-                       "Resources not loaded because of fetch failure: %.2f%%",
-                       // TODO(sligocki): Add doc links.
-                       "");
-
   // Domains are not authorized.
-  // TODO(sligocki): Use constants (rather than string literals) for these
-  // stat names.
-  AddConsoleSuggestion(StatSumRatio("resource_url_domain_rejections",
-                                    "resource_url_domain_acceptances"),
-                       "Resources not rewritten because domain wasn't "
-                       "authorized: %.2f%%",
-                       "");
+  AddConsoleSuggestion(
+      StatSumRatio(RewriteStats::kResourceUrlDomainRejections,
+                   RewriteStats::kResourceUrlDomainAcceptances),
+      "Resources not rewritten because domain wasn't "
+      "authorized: %.2f%%",
+      // TODO(sligocki): Add doc links.
+      "");
 
   // Resources are not cacheable.
   AddConsoleSuggestion(
-      StatSumRatio("num_cache_control_not_rewritable_resources",
-                   "num_cache_control_rewritable_resources"),
+      StatSumRatio(RewriteStats::kNumCacheControlNotRewritableResources,
+                   RewriteStats::kNumCacheControlRewritableResources),
       "Resources not rewritten because of restrictive Cache-Control "
       "headers: %.2f%%",
       "");
 
+
   // Cache too small (High backend cache miss rate).
-  AddConsoleSuggestion(StatSumRatio("cache_backend_misses",
-                                    "cache_backend_hits"),
-                       "Cache evictions: %.2f%%",
+  AddConsoleSuggestion(StatSumRatio(HTTPCache::kCacheBackendMisses,
+                                    HTTPCache::kCacheBackendHits),
+                       "Cache misses: %.f%%",
                        "");
 
   // Resources accessed too infrequently (High cache expirations).
   {
-    int64 bad = StatValue("cache_expirations");
+    int64 bad = StatValue(HTTPCache::kCacheExpirations);
     // Total number of Find() calls.
-    int64 total = StatValue("cache_hits") + StatValue("cache_misses");
+    int64 total = StatValue(HTTPCache::kCacheHits) +
+        StatValue(HTTPCache::kCacheMisses);
     AddConsoleSuggestion(Ratio(bad, total),
-                         "Cache expirations: %.2f%%",
+                         "Cache lookups were expired: %.2f%%",
                          "");
   }
 
   // Cannot parse CSS.
   // TODO(sligocki): This counts per rewrite, it seems like it should count
   // per time CSS URL is seen in HTML.
-  AddConsoleSuggestion(StatSumRatio("css_filter_parse_failures",
-                                    "css_filter_blocks_rewritten"),
+  AddConsoleSuggestion(StatSumRatio(CssFilter::kParseFailures,
+                                    CssFilter::kBlocksRewritten),
                        "CSS files not rewritten because of parse errors: "
                        "%.2f%%",
                        "");
 
   // Cannot parse JavaScript.
-  AddConsoleSuggestion(StatSumRatio("javascript_minification_failures",
-                                    "javascript_blocks_minified"),
-                       "JavaScript minification failures: %.2f%%",
-                       "");
+  AddConsoleSuggestion(
+      StatSumRatio(JavascriptRewriteConfig::kMinificationFailures,
+                   JavascriptRewriteConfig::kBlocksMinified),
+      "JavaScript minification failures: %.2f%%",
+      "");
 
   // Image reading failure.
   {
-    double good = StatValue("image_rewrites") +
+    double good =
+        StatValue(ImageRewriteFilter::kImageRewrites) +
         // These are considered good because they were read and we could have
         // optimized them, the only reason we didn't was because they were
         // already optimal.
-        StatValue("image_rewrites_dropped_nosaving_resize") +
-        StatValue("image_rewrites_dropped_nosaving_noresize");
-    double bad = StatValue("image_norewrites_high_resolution") +
-        StatValue("image_rewrites_dropped_decode_failure") +
-        StatValue("image_rewrites_dropped_server_write_fail") +
-        StatValue("image_rewrites_dropped_mime_type_unknown") +
-        StatValue("image_norewrites_high_resolution");
+        StatValue(ImageRewriteFilter::kImageRewritesDroppedNoSavingResize) +
+        StatValue(ImageRewriteFilter::kImageRewritesDroppedNoSavingNoResize);
+    double bad =
+        StatValue(ImageRewriteFilter::kImageNoRewritesHighResolution) +
+        StatValue(ImageRewriteFilter::kImageRewritesDroppedDecodeFailure) +
+        StatValue(ImageRewriteFilter::kImageRewritesDroppedServerWriteFail) +
+        StatValue(ImageRewriteFilter::kImageRewritesDroppedMIMETypeUnknown) +
+        StatValue(ImageRewriteFilter::kImageNoRewritesHighResolution);
     // TODO(sligocki): We don't seem to be tracking TimedVariables as
     // normal Variables in mod_pagespeed. Fix this.
-    // + StatValue("image_rewrites_dropped_due_to_load");
+    // + StatValue(ImageRewriteFilter::kImageRewritesDroppedDueToLoad);
     AddConsoleSuggestion(SumRatio(bad, good),
                          "Image rewrite failures: %.2f%%",
                          "");
@@ -157,8 +160,8 @@ void ConsoleSuggestionsFactory::GenerateSuggestions() {
 
   // CSS not combinable.
   {
-    double good = StatValue("css_file_count_reduction");
-    double total = StatValue("css_combine_opportunities");
+    double good = StatValue(CssCombineFilter::kCssFileCountReduction);
+    double total = StatValue(CssCombineFilter::kCssCombineOpportunities);
     AddConsoleSuggestion(Ratio(total - good, total),
                          "CSS combine opportunities missed: %.2f%%",
                          "");

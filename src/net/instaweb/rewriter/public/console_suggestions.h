@@ -14,8 +14,8 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_CONSOLE_SUGGESTIONS_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_CONSOLE_SUGGESTIONS_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CONSOLE_SUGGESTIONS_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_CONSOLE_SUGGESTIONS_H_
 
 #include <vector>
 
@@ -88,4 +88,4 @@ class ConsoleSuggestionsFactory {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_CONSOLE_SUGGESTIONS_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CONSOLE_SUGGESTIONS_H_
