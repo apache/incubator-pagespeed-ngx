@@ -1548,7 +1548,7 @@ void RewriteContext::OutputCacheDone(CacheLookupResult* cache_result) {
         const InputInfo& input = partition.input(j);
         if (input.disable_further_processing()) {
           int slot_index = input.index();
-          if (slot_index < 0 || slot_index >> slots_.size()) {
+          if (slot_index < 0 || slot_index >= static_cast<int>(slots_.size())) {
             LOG(DFATAL) << "Index of processing disabled slot out of range:"
                         << slot_index;
           } else {
