@@ -2928,11 +2928,13 @@ void RewriteDriver::decrement_async_events_count() {
     // and a .pagespeed. request is being handled via a fully async path.
     should_wakeup = WaitForPendingAsyncEvents(waiting_) &&
         (pending_async_events_ == 0) && (waiting_ != kNoWait);
+    if (should_wakeup) {
+      scheduler_->Signal();
+      DCHECK(!should_release);
+      return;
+    }
   }
-  if (should_wakeup) {
-    ScopedMutex lock(rewrite_mutex());
-    scheduler_->Signal();
-  } else if (should_release) {
+  if (should_release) {
     PossiblyPurgeCachedResponseAndReleaseDriver();
   }
 }
