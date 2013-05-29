@@ -106,13 +106,26 @@
           # We'd like to add '-Wtype-limits', but this does not work on
           # earlier versions of g++ on supported operating systems.
         ],
-        # Newer Chromium build adds -Wsign-compare which we have some difficulty
-        # with. Remove it for now.
         'cflags_cc!': [
-          '-Wsign-compare'
+          # Newer Chromium build adds -Wsign-compare which we have some
+          # difficulty with. Remove it for now.
+          '-Wsign-compare',
+          '-fno-rtti',  # Same reason as using -frtti below.
         ],
         'cflags_cc': [
           '-frtti',  # Hardy's g++ 4.2 <trl/function> uses typeid
+        ],
+        'defines!': [
+          # testing/gtest.gyp defines GTEST_HAS_RTTI=0 for itself and all deps.
+          # This breaks when we turn rtti on, so must be removed.
+          'GTEST_HAS_RTTI=0',
+          # third_party/protobuf/protobuf.gyp defines GOOGLE_PROTOBUF_NO_RTTI
+          # for itself and all deps. I assume this is just a ticking time bomb
+          # like GTEST_HAS_RTTI=0 was, so remove it as well.
+          'GOOGLE_PROTOBUF_NO_RTTI',
+        ],
+        'defines': [
+          'GTEST_HAS_RTTI=1',  # gtest requires this set to indicate RTTI on.
         ],
         # Disable -z,defs in linker.
         # This causes mod_pagespeed.so to fail because it doesn't link apache
