@@ -143,6 +143,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_fetch.h \
     $ps_src/ngx_url_async_fetcher.h \
     $ps_src/ngx_base_fetch.h \
+    $ps_src/ngx_list_iterator.h \
     $ps_src/ngx_server_context.h \
     $ps_src/ngx_rewrite_options.h \
     $ps_src/ngx_rewrite_driver_factory.h \
@@ -159,6 +160,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_fetch.cc \
     $ps_src/ngx_url_async_fetcher.cc \
     $ps_src/ngx_base_fetch.cc \
+    $ps_src/ngx_list_iterator.cc \
     $ps_src/ngx_thread_system.cc \
     $ps_src/ngx_message_handler.cc \
     $ps_src/pthread_shared_mem.cc \
