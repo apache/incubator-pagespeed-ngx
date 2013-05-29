@@ -29,23 +29,18 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/fake_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -53,145 +48,9 @@
 
 namespace net_instaweb {
 
-class HtmlElement;
 class MessageHandler;
 
 namespace {
-
-const char kTestUserAgentWebP[] = "test-user-agent-webp";
-// Note that this must no contain the substring "webp".
-const char kTestUserAgentNoWebP[] = "test-user-agent-no";
-
-// A filter that that appends ':id' to the input contents and counts the number
-// of rewrites it has performed. It also has the ability to simulate a long
-// rewrite to test exceeding the rewrite deadline.
-class FakeFilter : public RewriteFilter {
- public:
-  class Context : public SingleRewriteContext {
-   public:
-    Context(FakeFilter* filter, RewriteDriver* driver,
-            RewriteContext* parent, ResourceContext* resource_context)
-        : SingleRewriteContext(driver, parent, resource_context),
-          filter_(filter) {}
-    virtual ~Context() {}
-
-    void RewriteSingle(const ResourcePtr& input,
-                       const OutputResourcePtr& output) {
-      if (filter_->exceed_deadline()) {
-        int64 wakeup_us = Driver()->scheduler()->timer()->NowUs() +
-            (1000 * GetRewriteDeadlineAlarmMs());
-        Function* closure = MakeFunction(this, &Context::DoRewriteSingle,
-                                         input, output);
-        Driver()->scheduler()->AddAlarm(wakeup_us, closure);
-      } else {
-        DoRewriteSingle(input, output);
-      }
-    }
-
-    void DoRewriteSingle(const ResourcePtr input,
-                         OutputResourcePtr output) {
-      RewriteResult result = kRewriteFailed;
-      GoogleString rewritten;
-
-      if (filter_->enabled()) {
-        // TODO(jkarlin): Writing to the filter from a context is not thread
-        // safe.
-        filter_->IncRewrites();
-        StrAppend(&rewritten, input->contents(), ":", filter_->id());
-
-        // Set the output type here to make sure that the CachedResult url
-        // field has the correct extension for the type.
-        const ContentType* output_type = &kContentTypeText;
-        if (filter_->output_content_type() != NULL) {
-          output_type = filter_->output_content_type();
-        } else if (input->type() != NULL) {
-          output_type = input->type();
-        }
-        ResourceVector rv = ResourceVector(1, input);
-        if (Driver()->Write(rv, rewritten, output_type,
-                            input->charset(), output.get())) {
-          result = kRewriteOk;
-        }
-      }
-
-      RewriteDone(result, 0);
-    }
-    GoogleString UserAgentCacheKey(
-        const ResourceContext* resource_context) const {
-      if (resource_context != NULL) {
-        return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
-      }
-      return "";
-    }
-
-    virtual const char* id() const { return filter_->id(); }
-    virtual OutputResourceKind kind() const { return filter_->kind(); }
-
-   private:
-    FakeFilter* filter_;
-  };
-
-  FakeFilter(const char* id, RewriteDriver* rewrite_driver)
-      : RewriteFilter(rewrite_driver), id_(id), exceed_deadline_(false),
-        enabled_(true), num_rewrites_(0), output_content_type_(NULL),
-        num_encode_user_agent_(0) {}
-
-  virtual ~FakeFilter() {}
-
-  virtual void StartDocumentImpl() {}
-  virtual void EndElementImpl(HtmlElement* element) {}
-  virtual void StartElementImpl(HtmlElement* element) {}
-  virtual RewriteContext* MakeRewriteContext() {
-    return new FakeFilter::Context(this, driver_, NULL, NULL);
-  }
-  virtual RewriteContext* MakeNestedRewriteContext(
-      RewriteContext* parent, const ResourceSlotPtr& slot) {
-    ResourceContext* resource_context = new ResourceContext;
-    if (parent != NULL && parent->resource_context() != NULL) {
-      resource_context->CopyFrom(*parent->resource_context());
-    }
-    RewriteContext* context = new FakeFilter::Context(
-        this, NULL, parent, resource_context);
-    context->AddSlot(slot);
-    return context;
-  }
-  int num_rewrites() const { return num_rewrites_; }
-  int num_encode_user_agent() const { return num_encode_user_agent_; }
-  void ClearStats() {
-    num_rewrites_ = 0;
-    num_encode_user_agent_ = 0;
-  }
-  void set_enabled(bool x) { enabled_ = x; }
-  bool enabled() { return enabled_; }
-  bool exceed_deadline() { return exceed_deadline_; }
-  void set_exceed_deadline(bool x) { exceed_deadline_ = x; }
-  void IncRewrites() { ++num_rewrites_; }
-  void set_output_content_type(const ContentType* type) {
-    output_content_type_ = type;
-  }
-  const ContentType* output_content_type() { return output_content_type_; }
-  virtual void EncodeUserAgentIntoResourceContext(
-      ResourceContext* context) const {
-    if (driver_->user_agent() == kTestUserAgentWebP) {
-      context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
-    }
-    ++num_encode_user_agent_;
-  }
-
- protected:
-  virtual const char* id() const { return id_; }
-  virtual OutputResourceKind kind() const { return kRewrittenResource; }
-  virtual const char* Name() const { return "MockFilter"; }
-  virtual bool ComputeOnTheFly() const { return false; }
-
- private:
-  const char* id_;
-  bool exceed_deadline_;
-  bool enabled_;
-  int num_rewrites_;
-  const ContentType* output_content_type_;
-  mutable int num_encode_user_agent_;
-};
 
 class FakeFetch : public AsyncFetch {
  public:
@@ -1615,7 +1474,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // First fetch with kTestUserAgentWebP. This will miss everything (metadata
   // lookup, original content, and rewritten content).
   // Vary: User-Agent header should be added.
-  user_agent_ = kTestUserAgentWebP;
+  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
 
@@ -1639,7 +1498,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: User-Agent header should be be added.
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  user_agent_ = kTestUserAgentNoWebP;
+  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -1672,7 +1531,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: User-Agent header should be added.
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  user_agent_ = kTestUserAgentWebP;
+  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   CheckWarmCache("back_to_webp");
@@ -1686,14 +1545,14 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {
   Init();
 
   // Vary: User-Agent header should not be added no matter the user-agent.
-  user_agent_ = kTestUserAgentWebP;
+  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
 
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  user_agent_ = kTestUserAgentNoWebP;
+  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));

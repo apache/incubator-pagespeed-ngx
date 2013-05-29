@@ -26,6 +26,10 @@
 
 namespace net_instaweb {
 
+const char UserAgentMatcher::kTestUserAgentWebP[] = "test-user-agent-webp";
+// Note that this must not contain the substring "webp".
+const char UserAgentMatcher::kTestUserAgentNoWebP[] = "test-user-agent-no";
+
 class RequestHeaders;
 
 // These are the user-agents of browsers/mobile devices which support

@@ -42,6 +42,10 @@ class RequestHeaders;
 // clients.
 class UserAgentMatcher {
  public:
+  static const char kTestUserAgentWebP[];  // webp user agent
+  // Note that this must not contain the substring "webp".
+  static const char kTestUserAgentNoWebP[];  // non-webp user agent
+
   enum BlinkRequestType {
     kBlinkWhiteListForDesktop,
     kBlinkBlackListForDesktop,
