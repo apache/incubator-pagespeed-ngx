@@ -70,7 +70,7 @@ const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
 const char HttpAttributes::kXPsaClientOptions[] = "X-PSA-Client-Options";
 const char HttpAttributes::kXPsaDistributedRewriteFetch[] =
     "X-PSA-Distributed-Rewrite-Fetch";
-const char HttpAttributes::kXPsaDistributedRewriteHtml[] =
+const char HttpAttributes::kXPsaDistributedRewriteForHtml[] =
     "X-PSA-Distributed-Rewrite-Html";
 const char HttpAttributes::kXPsaOptimizeForSpdy[] = "X-PSA-Optimize-For-SPDY";
 const char HttpAttributes::kXPsaLoadShed[] = "X-Psa-Load-Shed";

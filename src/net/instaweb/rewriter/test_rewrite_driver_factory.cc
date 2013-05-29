@@ -168,6 +168,8 @@ void TestRewriteDriverFactory::CallFetcherCallbacksForDriver(
   // simulation of Rewrites, in which case we can do a TimedWait
   // according to the needs of the simulation.
   driver->WaitForCompletion();
+  // Await quiescence will wait for cache puts to finish.
+  mock_scheduler()->AwaitQuiescence();
   wait_url_async_fetcher_->SetPassThroughMode(pass_through_mode);
 }
 

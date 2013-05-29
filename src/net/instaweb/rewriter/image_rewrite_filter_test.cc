@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -46,6 +47,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -1047,6 +1049,75 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlagTimesOut) {
                           1, 0, 0,   // png
                           0, 0, 0,   // jpg
                           true);
+}
+
+TEST_F(ImageRewriteTest, DistributedImageRewrite) {
+  // Distribute an image rewrite, make sure that the image is resized.
+  SetupSharedCache();
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options_->DistributeFilter(RewriteOptions::kImageCompressionId);
+  options_->set_distributed_rewrite_servers("example.com:80");
+  options_->set_distributed_rewrite_key("1234123");
+  other_options()->Merge(*options());
+  rewrite_driver()->AddFilters();
+  other_rewrite_driver()->AddFilters();
+  RequestHeaders request_headers;
+  // Set default request headers.
+  rewrite_driver()->SetRequestHeaders(request_headers);
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                    " width=10 height=10",  // initial_dims,
+                    " width=10 height=10",  // final_dims,
+                    true,                   // expect_rewritten
+                    false);                 // expect_inline
+  EXPECT_EQ(1, statistics()->GetVariable(
+                   RewriteContext::kNumDistributedRewriteSuccesses)->Get());
+}
+
+TEST_F(ImageRewriteTest, DistributedImageInline) {
+  // Distribute an image rewrite, make sure that the inlined image is used from
+  // the returned metadata.
+  SetupSharedCache();
+  options()->set_image_inline_max_bytes(1000000);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options_->DistributeFilter(RewriteOptions::kImageCompressionId);
+  options_->set_distributed_rewrite_servers("example.com:80");
+  options_->set_distributed_rewrite_key("1234123");
+  other_options()->Merge(*options());
+  rewrite_driver()->AddFilters();
+  other_rewrite_driver()->AddFilters();
+  RequestHeaders request_headers;
+  // Set default request headers.
+  rewrite_driver()->SetRequestHeaders(request_headers);
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
+                    true,   // expect_rewritten
+                    true);  // expect_inline
+  EXPECT_EQ(1, statistics()->GetVariable(
+                   RewriteContext::kNumDistributedRewriteSuccesses)->Get());
+  GoogleString distributed_output = output_buffer_;
+
+  // Run it again but this time without distributed rewriting, the output should
+  // be the same.
+  lru_cache()->Clear();
+  ClearStats();
+  // Clearing the distributed_rewrite_servers disables distribution.
+  options()->ClearSignatureForTesting();
+  options_->set_distributed_rewrite_servers("");
+  options()->ComputeSignature();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
+                    true,   // expect_rewritten
+                    true);  // expect_inline
+  EXPECT_EQ(0, statistics()->GetVariable(
+                   RewriteContext::kNumDistributedRewriteSuccesses)->Get());
+  // Make sure we did a rewrite.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+
+  // Is the output from distributed rewriting and local rewriting the same?
+  EXPECT_STREQ(distributed_output, output_buffer_);
 }
 
 TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {

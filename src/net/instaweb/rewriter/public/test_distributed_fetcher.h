@@ -36,20 +36,25 @@ class RewriteTestBase;
 // RewriteTestBase::other_rewrite_driver_.
 class TestDistributedFetcher : public UrlAsyncFetcher {
  public:
-  virtual void Fetch(const GoogleString& url,
-                              MessageHandler* message_handler,
-                              AsyncFetch* fetch);
   explicit TestDistributedFetcher(RewriteTestBase* test_base);
   virtual ~TestDistributedFetcher();
+  virtual void Fetch(const GoogleString& url, MessageHandler* message_handler,
+                     AsyncFetch* fetch);
+
   // If true, stops writing to the fetch after the headers and HandleDone's
   // success parameter will be false.
   void set_fail_after_headers(bool x) { fail_after_headers_ = x; }
+
+  // Should the fetch block on the distributed rewrite? We usually want this to
+  // be true because that way we can predict the behavior of the shared cache in
+  // our tests but some tests require it to be false.
+  void set_blocking_fetch(bool x) { blocking_fetch_ = x; }
 
  private:
   class TestDistributedFetch;
   RewriteTestBase* rewrite_test_base_;
   bool fail_after_headers_;
-
+  bool blocking_fetch_;
   DISALLOW_COPY_AND_ASSIGN(TestDistributedFetcher);
 };
 

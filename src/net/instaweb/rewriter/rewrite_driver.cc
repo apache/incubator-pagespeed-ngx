@@ -2711,6 +2711,7 @@ bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
   // (StartParseId), so that we don't decide in the middle of an HTML
   // rewrite that we won't be able to initialize the resource, thus leaving
   // us with a partially constructed slot-graph.
+  DCHECK(!fetch_queued_);
   if (!can_rewrite_resources_) {
     if (rewrites_.empty()) {
       rewrite_context->DetachSlots();

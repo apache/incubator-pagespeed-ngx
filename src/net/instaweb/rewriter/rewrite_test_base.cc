@@ -27,7 +27,6 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -78,6 +77,7 @@
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -755,6 +755,12 @@ void RewriteTestBase::CallFetcherCallbacks() {
   rewrite_driver_->Clear();
   // Since we call Clear() on the driver, give it a new request context.
   rewrite_driver_->set_request_context(CreateRequestContext());
+}
+
+void RewriteTestBase::OtherCallFetcherCallbacks() {
+  other_factory_->CallFetcherCallbacksForDriver(other_rewrite_driver_);
+  // This calls Clear() on the driver, so give it a new request context.
+  other_rewrite_driver_->set_request_context(CreateRequestContext());
 }
 
 void RewriteTestBase::SetUseManagedRewriteDrivers(

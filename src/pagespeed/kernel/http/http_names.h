@@ -81,7 +81,7 @@ struct HttpAttributes {
 
   // This header is set in distributed rewrite requests that originated from
   // HTML requests (HTML and nested filters).
-  static const char kXPsaDistributedRewriteHtml[];
+  static const char kXPsaDistributedRewriteForHtml[];
 
   // This header is set on optional fetches that got dropped due to load.
   static const char kXPsaLoadShed[];

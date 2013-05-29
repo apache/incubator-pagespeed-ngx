@@ -148,6 +148,12 @@ class RewriteContext {
   static const char kNumDeadlineAlarmInvocations[];
   static const char kNumDistributedRewriteSuccesses[];
   static const char kNumDistributedRewriteFailures[];
+  static const char kNumDistributedMetadataFailures[];
+  // The extension used for all distributed fetch URLs.
+  static const char kDistributedExt[];
+  // The hash value used for all distributed fetch URLs.
+  static const char kDistributedHash[];
+
   // Used to pass the result of the metadata cache lookups. Recipient must
   // take ownership.
   struct CacheLookupResult {
@@ -518,11 +524,18 @@ class RewriteContext {
 
   // Determines if the given rewrite should be distributed. This is based on
   // whether distributed servers have been configured, if the current filter is
-  // configured to be distributed, if a distributed fetcher is in place, and if
-  // distribution has been explicitly disabled for this context.
+  // configured to be distributed, where a filter is in a chain, if a
+  // distributed fetcher is in place, and if distribution has been explicitly
+  // disabled for this context.
   bool ShouldDistributeRewrite() const;
 
-  // Dispatches the rewrite to another task with a distributed fetcher.
+  // Determines if this rewrite-context is acting on behalf of a distributed
+  // rewrite request from an HTML rewrite.
+  bool IsDistributedRewriteForHtml() const;
+
+  // Dispatches the rewrite to another task with a distributed fetcher. Should
+  // not be called without first getting true from ShoulDistributeRewrite() as
+  // it has guards (such as checking the number of slots).
   void DistributeRewrite();
 
   // Makes the rest of a fetch run in background, not producing
@@ -667,6 +680,34 @@ class RewriteContext {
   // skipped and that result is used, otherwise the original resource is fetched
   // and returned, bypassing rewriting.
   void DistributeRewriteDone(bool success);
+
+  // If the response_headers have metadata in them, strip the metadata from the
+  // headers, parse them and write them to cache_result.  Returns true if
+  // the parse was successful otherwise false.
+  bool ParseAndRemoveMetadataFromResponseHeaders(
+      ResponseHeaders* response_headers, CacheLookupResult* cache_result);
+
+  // Create an OutputResource initialized from CachedResult, response headers,
+  // and content.
+  bool CreateOutputResourceFromContent(const CachedResult& cached_result,
+                                       const ResponseHeaders& response_headers,
+                                       StringPiece content,
+                                       OutputResourcePtr* output_resource);
+
+  // The distributed rewrite path for HTML rewrites works by converting the
+  // input URL on the ingress task into a .pagespeed. fetch for the distributed
+  // task to reconstruct using the corresponding filter id. This function maps
+  // the given input resource URL into a .pagespeed. URL for reconstruction. It
+  // uses a hash value of 0 and an extension of "distributed". Returns an empty
+  // string if the URL could not be constructed (e.g., was too long).
+  //
+  // Ex. input: http://www.example.com/a.png with an image compression context
+  //    output: http://www.example.com/50x50xa.png.pagespeed.ic.0.distributed
+  GoogleString DistributedFetchUrl(StringPiece url);
+
+  // Returns true if this rewrite context was created to fetch a resource (e.g.,
+  // IPRO or .pagespeed. URLs) and false otherwise.
+  bool IsFetchRewrite() const { return fetch_.get() != NULL; }
 
   // Called on the parent from a nested Rewrite when it is complete.
   // Note that we don't track rewrite success/failure here.  We only
@@ -960,7 +1001,7 @@ class RewriteContext {
 
   Variable* const num_distributed_rewrite_failures_;
   Variable* const num_distributed_rewrite_successes_;
-
+  Variable* const num_distributed_metadata_failures_;
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };
 

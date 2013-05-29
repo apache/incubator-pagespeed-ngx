@@ -458,6 +458,9 @@ class ProxyFetch : public SharedAsyncFetch {
 
   ProxyFetchFactory* factory_;
 
+  // Set to true if this proxy_fetch is the result of a distributed fetch.
+  bool distributed_fetch_;
+
   DISALLOW_COPY_AND_ASSIGN(ProxyFetch);
 };
 

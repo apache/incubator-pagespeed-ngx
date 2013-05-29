@@ -361,7 +361,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // and call the callbacks.
   void SetupWaitFetcher();
   void CallFetcherCallbacks();
-
+  void OtherCallFetcherCallbacks();
   RewriteOptions* options() { return options_; }
   RewriteOptions* other_options() { return other_options_; }
 

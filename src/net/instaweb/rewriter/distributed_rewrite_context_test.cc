@@ -37,12 +37,16 @@
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/timer.h"  // for Timer, etc
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
+
 namespace {
 
 // A class for testing the distributed paths through the rewrite context. It
@@ -61,6 +65,8 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
         RewriteContext::kNumDistributedRewriteFailures);
     distributed_rewrite_successes_ = statistics()->GetVariable(
         RewriteContext::kNumDistributedRewriteSuccesses);
+    distributed_metadata_failures_ = statistics()->GetVariable(
+        RewriteContext::kNumDistributedMetadataFailures);
     fetch_failures_ =
         statistics()->GetVariable(RewriteStats::kNumResourceFetchFailures);
     fetch_successes_ =
@@ -81,24 +87,38 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
     other_options()->Merge(*options());
     InitTrimFilters(kRewrittenResource);
     InitResources();
+    // Default to empty request headers.
+    rewrite_driver()->SetRequestHeaders(request_headers_);
   }
 
+  void InitTwoFilters(OutputResourceKind kind) {
+    InitUpperFilter(kind, rewrite_driver());
+    InitUpperFilter(kind, other_rewrite_driver());
+    options_->DistributeFilter(UpperCaseRewriter::kFilterId);
+    SetupDistributedTest();
+  }
+
+  // TODO(jkarlin): Instead of CheckDistributedFetch where we pass in the
+  // expected values an alternative idea is to create a DistributedFetch
+  // function that returns a struct with all of the resulting stats that we can
+  // EXPECT_EQ from the calling sites. That might be more readable.
+
   void CheckDistributedFetch(int distributed_fetch_success_count,
-                             bool local_fetch_required,
-                             bool distributed_fetch_required, bool rewritten) {
-    EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+                             int distributed_fetch_failure_count,
+                             int local_fetch_required, int rewritten) {
+    EXPECT_EQ(distributed_fetch_success_count + distributed_fetch_failure_count,
+              counting_distributed_fetcher()->fetch_count());
     EXPECT_EQ(local_fetch_required,
               counting_url_async_fetcher()->fetch_count());
     EXPECT_EQ(
         0, other_factory_->counting_distributed_async_fetcher()->fetch_count());
-    EXPECT_EQ(distributed_fetch_required,
-              other_factory_->counting_url_async_fetcher()->fetch_count());
     EXPECT_EQ(distributed_fetch_success_count,
               distributed_rewrite_successes_->Get());
-    EXPECT_EQ(!distributed_fetch_success_count,
+    EXPECT_EQ(distributed_fetch_failure_count,
               distributed_rewrite_failures_->Get());
     EXPECT_EQ(0, trim_filter_->num_rewrites());
     EXPECT_EQ(rewritten, other_trim_filter_->num_rewrites());
+    EXPECT_EQ(0, distributed_metadata_failures_->Get());
   }
 
   bool FetchValidatedMetadata(StringPiece key, StringPiece input_url,
@@ -113,8 +133,8 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
       req_headers.set_method(RequestHeaders::kHead);
     }
     rewrite_driver()->SetRequestHeaders(req_headers);
-    EXPECT_TRUE(FetchResourceUrl(input_url, &req_headers, &output,
-                                 &response_headers));
+    EXPECT_TRUE(
+        FetchResourceUrl(input_url, &req_headers, &output, &response_headers));
 
     // Check if the metadata is valid.
     if (response_headers.Has(HttpAttributes::kXPsaResponseMetadata)) {
@@ -135,14 +155,340 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
     return valid_metadata;
   }
 
-
+  RequestHeaders request_headers_;  // default request headers
   Variable* fetch_failures_;
   Variable* fetch_successes_;
   Variable* distributed_rewrite_failures_;
   Variable* distributed_rewrite_successes_;
+  Variable* distributed_metadata_failures_;
 };
 
 }  // namespace
+
+// Copy of the RewriteContextTest.TrimRewrittenOptimizable test modified for
+// distributed rewrites.
+TEST_F(DistributedRewriteContextTest, TrimRewrittenOptimizable) {
+  SetupDistributedTest();
+
+  // Ingress task: Misses on metadata and distributes.
+  // Rewrite task: Misses on metadata, misses on http data, writes original
+  // resources, optimized resource, and metadata.
+  ValidateExpected(
+      "trimmable", CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                         "a.css", "css")));
+
+  CheckDistributedFetch(1,   // successful distributed fetches
+                        0,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        1);  // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  ClearStats();
+
+  // The second time we request this URL, we should find no additional cache
+  // inserts or fetches. The rewrite should complete using a single cache hit
+  // for the metadata. No cache misses will occur.
+  ValidateExpected(
+      "trimmable", CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                         "a.css", "css")));
+  CheckDistributedFetch(0,   // successful distributed fetches
+                        0,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        0);  // number of rewrites
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+}
+
+// Copy of the RewriteContextTest.TrimRewrittenNonOptimizable test modified for
+// distributed rewrites.
+TEST_F(DistributedRewriteContextTest, TrimRewrittenNonOptimizable) {
+  SetupDistributedTest();
+
+  // In this case, the resource is not optimizable.  The cache pattern is
+  // exactly the same as when the resource was on-the-fly and optimizable.
+  // We'll cache the successfully fetched resource, and the OutputPartitions
+  // which indicates the unsuccessful optimization.
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
+  CheckDistributedFetch(1,   // successful distributed fetches
+                        0,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        1);  // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  ClearStats();
+
+  // We should have cached the failed rewrite, no misses, fetches, or inserts.
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        0);               // number of rewrites
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+}
+
+// Copy of the RewriteContextTest.TrimRepeatedOptimizable test modified for
+// distributed rewrites.
+TEST_F(DistributedRewriteContextTest, TrimRepeatedOptimizable) {
+  // Make sure two instances of the same link are handled properly,
+  // when optimization succeeds.
+  SetupDistributedTest();
+  ValidateExpected(
+      "trimmable2", StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
+      StrCat(CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                                "0", "a.css", "css")),
+             CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                                "0", "a.css", "css"))));
+  CheckDistributedFetch(1,   // successful distributed fetches
+                        0,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        1);  // number of rewrites
+}
+
+TEST_F(DistributedRewriteContextTest, TwoFilters) {
+  InitTwoFilters(kOnTheFlyResource);
+
+  ValidateExpected(
+      "two_filters", CssLinkHref("a.css"),
+      CssLinkHref(
+          Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
+                 "css")));
+  EXPECT_EQ(1, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(0, distributed_rewrite_failures_->Get());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());  // not distributed
+  EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+}
+
+// Same as TwoFilters but this time write to HTTP cache.
+TEST_F(DistributedRewriteContextTest, TwoFiltersRewritten) {
+  InitTwoFilters(kRewrittenResource);
+
+  ValidateExpected(
+      "two_filters", CssLinkHref("a.css"),
+      CssLinkHref(
+          Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
+                 "css")));
+  EXPECT_EQ(1, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(0, distributed_rewrite_failures_->Get());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());  // not distributed
+  EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+  // num_hits = 0 proves that we didn't use the cache to pipe the output of the
+  // first filter in the chain to the second, instead we used the slot like we
+  // were supposed to.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  // Miss uc (UpperCaseRewriter) metadata on ingress and distributed task.
+  // Miss http input on distributed task.
+  // Miss tw metadata on ingress task (but don't distribute).
+  EXPECT_EQ(4, lru_cache()->num_misses());
+  // uc (UpperCaseRewriter) inserts metadata, original http content, and
+  // optimized http content.
+  // tw filter inserts metadata and optimized http content.
+  EXPECT_EQ(5, lru_cache()->num_inserts());
+}
+
+TEST_F(DistributedRewriteContextTest, TwoFiltersDelayedFetches) {
+  other_factory_->SetupWaitFetcher();
+  InitTwoFilters(kOnTheFlyResource);
+  test_distributed_fetcher_.set_blocking_fetch(false);
+
+  ValidateNoChanges("trimmable1", CssLinkHref("a.css"));
+  OtherCallFetcherCallbacks();
+  ValidateExpected(
+      "delayed_fetches", CssLinkHref("a.css"),
+      CssLinkHref(
+          Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
+                 "css")));
+  EXPECT_EQ(1, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(0, distributed_rewrite_failures_->Get());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());  // not distributed
+  EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+}
+
+TEST_F(DistributedRewriteContextTest, RepeatedTwoFilters) {
+  // Make sure if we have repeated URLs and chaining, it still works right. Note
+  // that both trim and upper are distributed, but when chained only the first
+  // should distribute.
+  InitTwoFilters(kRewrittenResource);
+
+  ValidateExpected(
+      "two_filters2", StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
+      StrCat(CssLinkHref(Encode(
+                 kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
+                 "css")),
+             CssLinkHref(Encode(
+                 kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
+                 "css"))));
+  EXPECT_EQ(1, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(0, distributed_rewrite_failures_->Get());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());  // not distributed
+  EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+}
+
+// Simulate distributed fetch failure and ensure that we fall back to the
+// original.
+TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFailFallback) {
+  SetupDistributedTest();
+  // Break the response after the headers have written but before data is
+  // complete.
+  test_distributed_fetcher()->set_fail_after_headers(true);
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+
+  // Ingress: Misses metadata, and does not optimize after unsuccessful
+  // distributed fetch.
+  // Distributed task: Misses metadata and original resource. Inserts metadata,
+  // original, and optimized.  Returned stream is broken.
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        1,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        1);               // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+
+  ClearStats();
+
+  // Try again, this time we should have the result in shared cache.
+  ValidateExpected(
+      "trimmable", CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                         "a.css", "css")));
+
+  // Ingress: Misses metadata, and does not optimize after unsuccessful
+  // distributed fetch.
+  // Distributed task: Misses metadata and original resource. Inserts metadata,
+  // original, and optimized.  Returned stream is broken.
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        0);               // number of rewrites
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+}
+
+// If the distributed fetcher returns a 404 then that's what needs to be
+// returned.
+TEST_F(DistributedRewriteContextTest, DistributedRewriteNotFound) {
+  SetupDistributedTest();
+  static const char fourofour[] = "fourofour.css";
+  GoogleString orig_url = StrCat(kTestDomain, fourofour);
+  SetFetchResponse404(orig_url);
+  ValidateNoChanges("trimmable", CssLinkHref(fourofour));
+  // Ingress task misses on metadata, gets unsuccessful fetch and returns
+  // original unoptimized reference.
+  // Distributed task misses on metadata and original resource fetch, fails its
+  // fetch (404) and writes that back to metadata and original resource,
+  // returning failure.
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        1,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        0);               // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+
+  ClearStats();
+  // Try again, this time it should be a quick metadata lookup at the ingress
+  // task.
+  ValidateNoChanges("trimmable", CssLinkHref(fourofour));
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        0);               // number of rewrites
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+}
+
+// Similar to RewriteContextTest.TrimDelayed test but modified for distributed
+// rewrites.
+TEST_F(DistributedRewriteContextTest, TrimDelayed) {
+  //  In this run, we will delay the URL fetcher's callback so that the initial
+  //  Rewrite will not take place until after the HTML has been flushed.
+  SetupDistributedTest();
+  other_factory_->SetupWaitFetcher();
+  test_distributed_fetcher_.set_blocking_fetch(false);
+
+  // First time distribute but the external fetch doesn't finish by ingress task
+  // (or deadline task's for that matter) deadline.
+  // Ingress: metadata miss, distributed rewrite which times out, so don't
+  // optimize.
+  // Distributed: metadata miss and original http miss. Left fetching the http
+  // and isn't done fetching before the time out on the ingress task.
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        0);               // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+
+  // Let the distributed rewriter finish up its fetch and rewrite.
+  OtherCallFetcherCallbacks();
+  // Let the ingress task finish up as well.
+  rewrite_driver_->WaitForShutDown();
+  factory_->mock_scheduler()->AwaitQuiescence();
+
+  // Now the rewrite is done, make sure the stats look right.
+  // Ingress: same as before
+  // Distributed: puts the original and optimized resource and metadata in
+  // cache.
+  CheckDistributedFetch(1,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        1);               // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+
+  // Second time the ingress metadata hits and that's all that's necessary.
+  ClearStats();
+  ValidateExpected(
+      "trimmable", CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                         "a.css", "css")));
+
+  CheckDistributedFetch(0,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        0);               // number of rewrites
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+}
+
+// Copy of the RewriteContextTest.TrimRepeatedNonOptimizable test modified for
+// distributed rewrites.
+TEST_F(DistributedRewriteContextTest, TrimRepeatedNonOptimizable) {
+  // Make sure two instances of the same link are handled properly when
+  // optimization fails.
+
+  SetupDistributedTest();
+  ValidateNoChanges("notrimmable2",
+                    StrCat(CssLinkHref("b.css"), CssLinkHref("b.css")));
+  // Ingress task misses metadata and distributes rewrite.
+  // Distributed task misses metadata and original resource, inserts
+  // meteadata, optimized, and unoptimized resource.
+  CheckDistributedFetch(1,                // successful distributed fetches
+                        0,                // unsuccessful distributed fetches
+                        0,                // number of ingress fetches
+                        1);               // number of rewrites
+  EXPECT_EQ(0, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+}
 
 // Distribute a .pagespeed. reconstruction.
 TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFetch) {
@@ -159,10 +505,15 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFetch) {
   // Content should be optimized.
   EXPECT_EQ("a", content);
 
-  CheckDistributedFetch(1,      // distributed fetch success count
-                        false,  // ingress fetch required
-                        true,   // distributed fetch required
-                        true);  // rewrite
+  // Make sure the TTL is long and the result is cacheable.
+  EXPECT_EQ(Timer::kYearMs, response_headers.cache_ttl_ms());
+  EXPECT_TRUE(response_headers.IsProxyCacheable());
+  EXPECT_TRUE(response_headers.IsBrowserCacheable());
+
+  CheckDistributedFetch(1,   // successful distributed fetches
+                        0,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        1);  // number of rewrites
 
   // Ingress task misses on two HTTP lookups (check twice for rewritten
   // resource) and one metadata lookup.
@@ -221,10 +572,10 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
   // The distributed fetcher should have run once on the ingress task and the
   // url fetcher should have run once on the rewrite task.  The result goes to
   // shared cache.
-  CheckDistributedFetch(0,       // distributed fetch success count
-                        false,   // ingress fetch required
-                        true,    // distributed fetch required
-                        false);  // rewrite
+  CheckDistributedFetch(0,   // successful distributed fetches
+                        1,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        0);  // number of rewrites
 
   // Ingress task misses on two HTTP lookups (check twice for rewritten
   // resource) and one metadata lookup.  Then hits on the 404'd resource.
@@ -250,10 +601,11 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
   ClearStats();
   EXPECT_FALSE(FetchResourceUrl(encoded_url, &request_headers, &content,
                                 &response_headers));
-  CheckDistributedFetch(0,       // distributed fetch success count
-                        false,   // ingress fetch required
-                        false,   // distributed fetch required
-                        false);  // rewrite
+  CheckDistributedFetch(0,   // successful distributed fetches
+                        1,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        0);  // number of rewrites
+
   EXPECT_EQ(6, lru_cache()->num_hits());
   EXPECT_EQ(4, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -280,10 +632,11 @@ TEST_F(DistributedRewriteContextTest,
 
   // Ingress task distributes, which fails, but pick up original resource from
   // shared cache.
-  CheckDistributedFetch(0,      // distributed fetch success count
-                        false,  // ingress fetch required
-                        true,   // distributed fetch required
-                        true);  // rewrite
+  CheckDistributedFetch(0,   // successful distributed fetches
+                        1,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        1);  // number of rewrites
+
   // Ingress task: Misses http cache twice, then metadata. Distributed rewrite
   // fails, so fetches original (a hit because of shared cache), and returns.
   // Distributed task: Misses http cache twice, then metadata. Fetches original
@@ -345,7 +698,7 @@ TEST_F(DistributedRewriteContextTest, ReturnMetadataOnRequest) {
                                      encoded_url, kGetRequest));
   // Expect the bad url to miss twice (RewriteDriver::CacheCallback tries
   // twice). We should then hit the metadata and good http url.
-  EXPECT_EQ(2, lru_cache()->num_hits());     // 1 metadata and 1 http
+  EXPECT_EQ(2, lru_cache()->num_hits());  // 1 metadata and 1 http
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -459,6 +812,38 @@ TEST_F(DistributedRewriteContextTest, NoMetadataWithBadKeys) {
   // Sanity check that it does work with the correct key.
   EXPECT_TRUE(FetchValidatedMetadata("a1234123", encoded_url, encoded_url,
                                      kGetRequest));
+}
+
+// If we try to distribute an HTML rewrite for a resource whose URL is too long
+// we should handle it gracefully.
+TEST_F(DistributedRewriteContextTest, GracefullyHandleURLTooLong) {
+  SetupDistributedTest();
+
+  // Create a long URL that could feasibly exist but cannot be extended into a
+  // .pagespeed. resource.
+  GoogleString long_url = kTestDomain;
+  for (int i = long_url.size(),
+           max_size = options()->max_url_segment_size() - 4;
+       i < max_size; ++i) {
+    long_url += "a";
+  }
+  long_url = StrCat(long_url, ".css");
+
+  SetResponseWithDefaultHeaders(long_url, kContentTypeCss, " hello ", 60);
+
+  ValidateNoChanges("long_url", CssLinkHref(long_url));
+  EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(
+      0, other_factory_->counting_distributed_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, distributed_rewrite_successes_->Get());
+  // Even though we didn't have a distributed fetch, we do have a distributed
+  // rewrite failure since when prepping for the fetch we failed because the URL
+  // was too long.
+  EXPECT_EQ(1, distributed_rewrite_failures_->Get());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+  EXPECT_EQ(0, distributed_metadata_failures_->Get());
 }
 
 }  // namespace net_instaweb

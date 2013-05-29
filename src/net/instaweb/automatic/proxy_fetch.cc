@@ -454,10 +454,17 @@ ProxyFetch::ProxyFetch(
       done_result_(false),
       waiting_for_flush_to_finish_(false),
       idle_alarm_(NULL),
-      factory_(factory) {
+      factory_(factory),
+      distributed_fetch_(false) {
   driver_->SetWriter(async_fetch);
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
+
+  // Was this proxy_fetch created on behalf of a distributed rewrite?
+  if (request_headers()->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
+      request_headers()->Has(HttpAttributes::kXPsaDistributedRewriteForHtml)) {
+    distributed_fetch_ = true;
+  }
 
   // Now that we've created the RewriteDriver, include the client_id generated
   // from the original request headers, if any.
@@ -608,7 +615,10 @@ void ProxyFetch::AddPagespeedHeader() {
 
 void ProxyFetch::SetupForHtml() {
   const RewriteOptions* options = Options();
-  if (options->enabled() && options->IsAllowed(url_)) {
+
+  if (options->enabled() && options->IsAllowed(url_) && !distributed_fetch_) {
+    // Note that we guard with distributed_fetch_ to avoid parsing HTML on a
+    // distributed task, that's left to the ingress task to do.
     started_parse_ = StartParse();
     if (started_parse_) {
       // TODO(sligocki): Get these in the main flow.
