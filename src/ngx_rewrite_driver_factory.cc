@@ -29,6 +29,7 @@
 #include "pthread_shared_mem.h"
 
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/automatic/public/proxy_interface.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
@@ -379,6 +380,9 @@ AllocateAndInitSharedMemStatistics(
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
   RewriteDriverFactory::InitStats(statistics);
+
+  // Init the ProxyInterface stats.
+  ProxyInterface::InitStats(statistics);
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
