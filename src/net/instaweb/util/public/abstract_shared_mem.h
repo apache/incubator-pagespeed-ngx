@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_SHARED_MEM_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/abstract_shared_mem.h"
+#include "pagespeed/kernel/base/abstract_shared_mem.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_SHARED_MEM_H_

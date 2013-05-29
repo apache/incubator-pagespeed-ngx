@@ -735,7 +735,7 @@
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:util',
-        '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_sharedmem',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
@@ -782,32 +782,21 @@
         'util/fallback_cache.cc',
         'util/fallback_property_page.cc',
         'util/file_cache.cc',
-        'util/file_writer.cc',
         'util/filename_encoder.cc',
         'util/gzip_inflater.cc',
         'util/hostname_util.cc',
-        'util/inprocess_shared_mem.cc',
-        'util/json_writer.cc',
         'util/key_value_codec.cc',
         'util/lru_cache.cc',
         'util/mock_hasher.cc',
         'util/mock_property_page.cc',
         'util/null_rw_lock.cc',
-        'util/null_shared_mem.cc',
         'util/null_statistics.cc',
         'util/property_cache.cc',
         'util/queued_alarm.cc',
         'util/ref_counted.cc',
         'util/request_trace.cc',
-        'util/shared_circular_buffer.cc',
-        'util/shared_dynamic_string_map.cc',
-        'util/shared_mem_cache.cc',
-        'util/shared_mem_cache_data.cc',
-        'util/shared_mem_lock_manager.cc',
-        'util/shared_mem_statistics.cc',
         'util/split_statistics.cc',
         'util/split_writer.cc',
-        'util/statistics_logger.cc',
         'util/statistics_work_bound.cc',
         'util/threadsafe_cache.cc',
         'util/url_escaper.cc',
@@ -830,31 +819,6 @@
       'export_dependent_settings': [
         'instaweb_http',
       ],
-    },
-    {
-      'target_name': 'instaweb_util_pthread',
-      'type': '<(library)',
-      'dependencies': [
-        'instaweb_util',
-        '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
-      ],
-      'sources': [
-        'util/pthread_shared_mem.cc',
-      ],
-      'conditions': [
-        ['support_posix_shared_mem != 1', {
-          'sources!' : [
-            'util/pthread_shared_mem.cc',
-          ],
-        }]
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-        '<(DEPTH)',
-      ],
-      'ldflags': [
-        '-lrt',
-      ]
     },
     {
       'target_name': 'instaweb_htmlparse',
@@ -1153,7 +1117,6 @@
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
-        '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
       ],
       'sources': [
         'rewriter/add_head_filter.cc',
@@ -1319,7 +1282,6 @@
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/pagespeed/kernel.gyp:jsminify',
       ],
       'sources': [

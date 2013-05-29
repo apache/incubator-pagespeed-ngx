@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SCHEDULER_BASED_ABSTRACT_LOCK_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/util/scheduler_based_abstract_lock.h"
+#include "pagespeed/kernel/thread/scheduler_based_abstract_lock.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_SCHEDULER_BASED_ABSTRACT_LOCK_H_

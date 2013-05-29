@@ -38,8 +38,8 @@
         '<(instaweb_root)/instaweb.gyp:instaweb_spriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_system',
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
-        '<(instaweb_root)/instaweb.gyp:instaweb_util_pthread',
         '<(instaweb_root)/instaweb.gyp:process_context',
+        '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
       ],
       'include_dirs': [
         '<(DEPTH)',

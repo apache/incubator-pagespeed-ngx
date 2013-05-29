@@ -101,7 +101,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_system.a \
   net/instaweb/libinstaweb_util.a \
   net/instaweb/libinstaweb_util_core.a \
-  net/instaweb/libinstaweb_util_pthread.a \
   net/instaweb/libinstaweb_util_enums_pb.a \
   net/instaweb/libprocess_context.a \
   net/instaweb/libtest_infrastructure.a \

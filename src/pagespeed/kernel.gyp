@@ -30,6 +30,7 @@
         'kernel/base/message_handler.cc',
         'kernel/base/null_message_handler.cc',
         'kernel/base/null_mutex.cc',
+        'kernel/base/null_shared_mem.cc',
         'kernel/base/null_writer.cc',
         'kernel/base/print_message_handler.cc',
         'kernel/base/statistics.cc',
@@ -63,21 +64,27 @@
       # Chromium libbase.a
       'type': '<(library)',
       'sources': [
+        'kernel/base/abstract_shared_mem.cc',
         'kernel/base/cache_interface.cc',
         'kernel/base/checking_thread_system.cc',
         'kernel/base/circular_buffer.cc',
         'kernel/base/condvar.cc',
+        'kernel/base/file_writer.cc',
         'kernel/base/function.cc',
         'kernel/base/hasher.cc',
+        'kernel/base/json_writer.cc',
         'kernel/base/md5_hasher.cc',
         'kernel/base/named_lock_manager.cc',
         'kernel/base/posix_timer.cc',
+        'kernel/base/rolling_hash.cc',
         'kernel/base/shared_string.cc',
+        'kernel/base/statistics_logger.cc',
         'kernel/base/thread.cc',
         'kernel/base/waveform.cc',
       ],
       'dependencies': [
         'pagespeed_base_core',
+        '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
       ],
     },
     {
@@ -111,6 +118,13 @@
       'sources': [
         'kernel/base/file_system_test_base.cc',
         'kernel/base/gtest.cc',
+        'kernel/sharedmem/shared_circular_buffer_test_base.cc',
+        'kernel/sharedmem/shared_dynamic_string_map_test_base.cc',
+        'kernel/sharedmem/shared_mem_cache_data_test_base.cc',
+        'kernel/sharedmem/shared_mem_cache_test_base.cc',
+        'kernel/sharedmem/shared_mem_lock_manager_test_base.cc',
+        'kernel/sharedmem/shared_mem_statistics_test_base.cc',
+        'kernel/sharedmem/shared_mem_test_base.cc',
         'kernel/thread/thread_system_test_base.cc',
         'kernel/thread/worker_test_base.cc',
       ],
@@ -226,11 +240,8 @@
       'target_name': 'util',
       'type': '<(library)',
       'sources': [
-        'kernel/util/abstract_shared_mem.cc',
         'kernel/util/fast_wildcard_group.cc',
         'kernel/util/file_system_lock_manager.cc',
-        'kernel/util/rolling_hash.cc',
-        'kernel/util/scheduler_based_abstract_lock.cc',
         'kernel/util/wildcard.cc',
       ],
       'include_dirs': [
@@ -300,12 +311,32 @@
       ],
     },
     {
+      'target_name': 'pagespeed_sharedmem',
+      'type': '<(library)',
+      'sources': [
+        'kernel/sharedmem/inprocess_shared_mem.cc',
+        'kernel/sharedmem/shared_circular_buffer.cc',
+        'kernel/sharedmem/shared_dynamic_string_map.cc',
+        'kernel/sharedmem/shared_mem_cache.cc',
+        'kernel/sharedmem/shared_mem_cache_data.cc',
+        'kernel/sharedmem/shared_mem_lock_manager.cc',
+        'kernel/sharedmem/shared_mem_statistics.cc',
+      ],
+      'dependencies': [
+        'pagespeed_base',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+    },
+    {
       'target_name': 'pagespeed_thread',
       'type': '<(library)',
       'sources': [
         'kernel/thread/queued_worker.cc',
         'kernel/thread/queued_worker_pool.cc',
         'kernel/thread/scheduler.cc',
+        'kernel/thread/scheduler_based_abstract_lock.cc',
         'kernel/thread/scheduler_thread.cc',
         'kernel/thread/slow_worker.cc',
         'kernel/thread/thread_synchronizer.cc',
@@ -325,7 +356,15 @@
         'kernel/thread/pthread_condvar.cc',
         'kernel/thread/pthread_mutex.cc',
         'kernel/thread/pthread_rw_lock.cc',
+        'kernel/thread/pthread_shared_mem.cc',
         'kernel/thread/pthread_thread_system.cc',
+      ],
+      'conditions': [
+        ['support_posix_shared_mem != 1', {
+          'sources!' : [
+            'kernel/thread/pthread_shared_mem.cc',
+          ],
+        }]
       ],
       'dependencies': [
         'pagespeed_base',
@@ -333,6 +372,9 @@
       'include_dirs': [
         '<(DEPTH)',
       ],
+      'ldflags': [
+        '-lrt',
+      ]
     },
   ],
 }

@@ -1,0 +1,302 @@
+// Copyright 2013 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Author: bvb@google.com (Ben VanBerkum)
+// Author: sligocki@google.com (Shawn Ligocki)
+
+#include "pagespeed/kernel/base/statistics_logger.h"
+
+#include <cstddef>
+#include <map>
+#include <set>
+#include <utility>                      // for pair
+#include <vector>
+
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_writer.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/writer.h"
+
+namespace net_instaweb {
+
+StatisticsLogger::StatisticsLogger(
+    int64 update_interval_ms, int64 max_logfile_size_kb,
+    const StringPiece& logfile_name, MutexedVariable* last_dump_timestamp,
+    MessageHandler* message_handler, Statistics* stats,
+    FileSystem* file_system, Timer* timer)
+    : last_dump_timestamp_(last_dump_timestamp),
+      message_handler_(message_handler),
+      statistics_(stats),
+      file_system_(file_system),
+      timer_(timer),
+      update_interval_ms_(update_interval_ms),
+      max_logfile_size_kb_(max_logfile_size_kb) {
+  logfile_name.CopyToString(&logfile_name_);
+}
+
+StatisticsLogger::~StatisticsLogger() {
+}
+
+void StatisticsLogger::UpdateAndDumpIfRequired() {
+  int64 current_time_ms = timer_->NowMs();
+  AbstractMutex* mutex = last_dump_timestamp_->mutex();
+  if (mutex == NULL) {
+    return;
+  }
+  // Avoid blocking if the dump is already happening in another thread/process.
+  if (mutex->TryLock()) {
+    if (current_time_ms >=
+        (last_dump_timestamp_->GetLockHeld() + update_interval_ms_)) {
+      // It's possible we'll need to do some of the following here for
+      // cross-process consistency:
+      // - flush the logfile before unlock to force out buffered data
+      FileSystem::OutputFile* statistics_log_file =
+          file_system_->OpenOutputFileForAppend(
+              logfile_name_.c_str(), message_handler_);
+      if (statistics_log_file != NULL) {
+        FileWriter statistics_writer(statistics_log_file);
+        statistics_->DumpConsoleVarsToWriter(
+            current_time_ms, &statistics_writer, message_handler_);
+        statistics_writer.Flush(message_handler_);
+        file_system_->Close(statistics_log_file, message_handler_);
+
+        // Trim logfile if it's over max size.
+        TrimLogfileIfNeeded();
+      } else {
+        message_handler_->Message(kError,
+                                  "Error opening statistics log file %s.",
+                                  logfile_name_.c_str());
+      }
+      // Update timestamp regardless of file write so we don't hit the same
+      // error many times in a row.
+      last_dump_timestamp_->SetLockHeld(current_time_ms);
+    }
+    mutex->Unlock();
+  }
+}
+
+void StatisticsLogger::TrimLogfileIfNeeded() {
+  int64 size_bytes;
+  if (file_system_->Size(logfile_name_, &size_bytes, message_handler_) &&
+      size_bytes > max_logfile_size_kb_ * 1024) {
+    // TODO(sligocki): Rotate a set of logfiles and just delete the
+    // oldest one each time instead of deleting the entire log.
+    // NOTE: Update SharedMemStatisticsTestBase.TestLogfileTrimming when we
+    // make this change so that it correctly tests the total log size.
+    file_system_->RemoveFile(logfile_name_.c_str(), message_handler_);
+  }
+}
+
+void StatisticsLogger::DumpJSON(
+    const std::set<GoogleString>& var_titles,
+    int64 start_time, int64 end_time, int64 granularity_ms,
+    Writer* writer, MessageHandler* message_handler) const {
+  FileSystem::InputFile* log_file =
+      file_system_->OpenInputFile(logfile_name_.c_str(), message_handler);
+  VarMap parsed_var_data;
+  std::vector<int64> list_of_timestamps;
+  StatisticsLogfileReader reader(log_file, start_time, end_time,
+                                        granularity_ms, message_handler);
+  ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
+                      &parsed_var_data);
+  PrintJSON(list_of_timestamps, parsed_var_data, writer, message_handler);
+  file_system_->Close(log_file, message_handler);
+}
+
+void StatisticsLogger::ParseDataFromReader(
+    const std::set<GoogleString>& var_titles,
+    StatisticsLogfileReader* reader,
+    std::vector<int64>* list_of_timestamps, VarMap* parsed_var_data) const {
+  // curr_timestamp starts as 0 because we need to compare it to the first
+  // timestamp pulled from the file. The current timestamp should always be
+  // less than the timestamp after it due to the fact that the logfile dumps
+  // data periodically. This makes sure that all timestamps are >= 0.
+  int64 curr_timestamp = 0;
+  // Stores data associated with current timestamp.
+  GoogleString data;
+  while (reader->ReadNextDataBlock(&curr_timestamp, &data)) {
+    list_of_timestamps->push_back(curr_timestamp);
+    // Add the variable data to a Map.
+    //
+    // Note: Histogram writing and reading code has been removed, so we just
+    // ignore any histogram data (for backwards compatibility.
+    size_t end_index_of_var_data = data.find("histogram#");
+    StringPiece var_data = StringPiece(data).substr(0, end_index_of_var_data);
+    ParseVarDataIntoMap(var_data, var_titles, parsed_var_data);
+  }
+}
+
+// Takes a block of variable data and separates it into a map of
+// the variables that have been queried.
+void StatisticsLogger::ParseVarDataIntoMap(
+    StringPiece logfile_var_data, const std::set<GoogleString>& var_titles,
+    VarMap* parsed_var_data) const {
+  std::vector<StringPiece> vars;
+  SplitStringPieceToVector(logfile_var_data, "\n", &vars, true);
+  for (size_t i = 0; i < vars.size(); ++i) {
+    size_t end_index_of_name = vars[i].find_first_of(":");
+    GoogleString var_name = vars[i].substr(0, end_index_of_name).as_string();
+    // If the variable is one that hasn't been queried for, ignore it.
+    if (var_titles.find(var_name) == var_titles.end()) {
+      continue;
+    }
+    GoogleString value_as_string =
+        vars[i].substr(end_index_of_name + 2).as_string();
+    (*parsed_var_data)[var_name].push_back(value_as_string);
+  }
+}
+
+void StatisticsLogger::PrintJSON(
+    const std::vector<int64>& list_of_timestamps,
+    const VarMap& parsed_var_data,
+    Writer* writer, MessageHandler* message_handler) const {
+  writer->Write("{", message_handler);
+  writer->Write("\"timestamps\": [", message_handler);
+  PrintTimestampListAsJSON(list_of_timestamps, writer, message_handler);
+  writer->Write("],", message_handler);
+  writer->Write("\"variables\": {", message_handler);
+  PrintVarDataAsJSON(parsed_var_data, writer, message_handler);
+  writer->Write("}", message_handler);
+  writer->Write("}", message_handler);
+}
+
+void StatisticsLogger::PrintTimestampListAsJSON(
+    const std::vector<int64>& list_of_timestamps, Writer* writer,
+    MessageHandler* message_handler) const {
+  for (size_t i = 0; i < list_of_timestamps.size(); ++i) {
+    writer->Write(Integer64ToString(list_of_timestamps[i]), message_handler);
+    if (i != list_of_timestamps.size() - 1) {
+      writer->Write(", ", message_handler);
+    }
+  }
+}
+
+void StatisticsLogger::PrintVarDataAsJSON(
+    const VarMap& parsed_var_data, Writer* writer,
+    MessageHandler* message_handler) const {
+  for (VarMap::const_iterator iterator =
+      parsed_var_data.begin(); iterator != parsed_var_data.end();
+      ++iterator) {
+    StringPiece var_name = iterator->first;
+    VariableInfo info = iterator->second;
+    // If we are at the last entry in the map, we do not
+    // want the trailing comma as per JSON format.
+    if (iterator != parsed_var_data.begin()) {
+      writer->Write(",", message_handler);
+    }
+    // StringPrintf not used so that StringPiece not converted to GoogleString.
+    writer->Write("\"", message_handler);
+    writer->Write(var_name, message_handler);
+    writer->Write("\": [", message_handler);
+    for (size_t i = 0; i < info.size(); ++i) {
+      writer->Write(info[i], message_handler);
+      // If we are at the last recorded variable, we do not want the
+      // trailing comma as per JSON format.
+      if (i != info.size() - 1) {
+        writer->Write(", ", message_handler);
+      }
+    }
+    writer->Write("]", message_handler);
+  }
+}
+
+StatisticsLogfileReader::StatisticsLogfileReader(
+    FileSystem::InputFile* file, int64 start_time, int64 end_time,
+    int64 granularity_ms, MessageHandler* message_handler)
+        : file_(file),
+          start_time_(start_time),
+          end_time_(end_time),
+          granularity_ms_(granularity_ms),
+          message_handler_(message_handler) {
+}
+
+
+StatisticsLogfileReader::~StatisticsLogfileReader() {
+}
+
+bool StatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
+                                                GoogleString* data) {
+  if (buffer_.size() < 1) {
+    FeedBuffer();
+  }
+  size_t offset = 0;
+  // The first line should always be "timestamp: xxx".
+  // If it's not, we're done; otherwise, we grab the timestamp value.
+  while (StringPiece(buffer_).substr(offset).starts_with("timestamp: ")) {
+    int64 old_timestamp = *timestamp;
+    // If the timestamp was cut off in the middle of the buffer, we need to
+    // read more into the buffer.
+    size_t newline_pos = BufferFind("\n", offset);
+    // Separate the current timestamp from the rest of the data in the buffer.
+    size_t timestamp_size = STATIC_STRLEN("timestamp: ");
+    // Note: We cannot use StringPiece here because StringToInt64 is too dumb.
+    GoogleString timestamp_int_as_str =
+        buffer_.substr(offset + timestamp_size, newline_pos - timestamp_size);
+    StringToInt64(timestamp_int_as_str, timestamp);
+    // Before ReadNextDataBlock returns, it finds the next occurrence of the
+    // full string "timestamp: " so that it knows it contains the full data
+    // block. It then separates the data block from the rest of the data,
+    // meaning that "timestamp:  " should always be the first thing in the
+    // buffer.
+    size_t next_timestamp_pos = BufferFind("timestamp: ",
+                                           offset + newline_pos + 1);
+    // Check to make sure that this timestamp fits the criteria. If it doesn't,
+    // the loop restarts.
+    if (*timestamp >= start_time_ && *timestamp <= end_time_ &&
+        *timestamp >= old_timestamp + granularity_ms_) {
+      *data = buffer_.substr(newline_pos + 1,
+                             next_timestamp_pos - (newline_pos + 1));
+      buffer_.erase(0, next_timestamp_pos);
+      return true;
+    } else {
+      *timestamp = old_timestamp;
+      offset = next_timestamp_pos;
+    }
+  }
+  return false;
+}
+
+// Finds the string constant search_for in the buffer, continually reading more
+// into the buffer if search_for is not found and trying again. Returns the
+// position of first occurrence of search_for. If search_for is not found,
+// npos is returned.
+size_t StatisticsLogfileReader::BufferFind(const char* search_for,
+                                           size_t start_at) {
+  size_t position = buffer_.find(search_for, start_at);
+  while (position == buffer_.npos) {
+    int read = FeedBuffer();
+    if (read == 0) {
+      return buffer_.npos;
+    }
+    position = buffer_.find(search_for,
+                            buffer_.size() - read - strlen(search_for));
+  }
+  return position;
+}
+
+int StatisticsLogfileReader::FeedBuffer() {
+  const int kChunkSize = 3000;
+  char buf[kChunkSize];
+  int num_read = file_->Read(buf, kChunkSize, message_handler_);
+  StrAppend(&buffer_, StringPiece(buf, num_read));
+  return num_read;
+}
+
+}  // namespace net_instaweb

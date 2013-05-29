@@ -1,4 +1,4 @@
-// Copyright 2011 Google Inc.
+// Copyright 2013 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,63 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: morlovich@google.com (Maksim Orlovich)
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
 
-#include <cstddef>
-#include <map>
-
-#include "net/instaweb/util/public/abstract_shared_mem.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-
-namespace net_instaweb {
-class MessageHandler;
-
-// POSIX shared memory support, using mmap/pthread_mutexattr_setpshared
-// Supports both processes and threads, but processes that want to access it
-// must be results of just fork (without exec), and all the CreateSegment
-// calls must occur before the fork.
-//
-// This implementation is also not capable of deallocating segments except
-// at exit, so it should not be used when the set of segments may be dynamic.
-class PthreadSharedMem : public AbstractSharedMem {
- public:
-  PthreadSharedMem();
-  virtual ~PthreadSharedMem();
-
-  virtual size_t SharedMutexSize() const;
-
-  virtual AbstractSharedMemSegment* CreateSegment(
-      const GoogleString& name, size_t size, MessageHandler* handler);
-
-  virtual AbstractSharedMemSegment* AttachToSegment(
-      const GoogleString& name, size_t size, MessageHandler* handler);
-
-  virtual void DestroySegment(const GoogleString& name,
-                              MessageHandler* handler);
-
-  // Frees all lazy-initialized memory used to track shared-memory segments.
-  static void Terminate();
-
- private:
-  typedef std::map<GoogleString, char*> SegmentBaseMap;
-
-  // Accessor for below. Note that the segment_bases_lock will be held at exit.
-  static SegmentBaseMap* AcquireSegmentBases();
-
-  static void UnlockSegmentBases();
-
-  // The root process stores segment locations here. Child processes will
-  // inherit a readonly copy of this map after the fork. Note that this is
-  // initialized in a thread-unsafe manner, given the above assumptions.
-  static SegmentBaseMap* segment_bases_;
-
-  DISALLOW_COPY_AND_ASSIGN(PthreadSharedMem);
-};
-
-}  // namespace net_instaweb
+// TODO(morlovich): Remove this forwarding header and change all references.
+#include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_SHARED_MEM_H_
