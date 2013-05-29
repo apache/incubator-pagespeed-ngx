@@ -17,6 +17,7 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 #include "ngx_base_fetch.h"
+#include "ngx_list_iterator.h"
 
 #include "ngx_pagespeed.h"
 
@@ -82,24 +83,11 @@ void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
   headers_to->set_major_version(request_->http_version / 1000);
   headers_to->set_minor_version(request_->http_version % 1000);
 
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &headers_from->part;
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-
-    StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
-    StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
+  ngx_table_elt_t* header;
+  NgxListIterator it(&headers_from->part);
+  while ((header = it.Next()) != NULL) {
+    StringPiece key = ngx_psol::str_to_string_piece(header->key);
+    StringPiece value = ngx_psol::str_to_string_piece(header->value);
 
     headers_to->Add(key, value);
   }
