@@ -392,27 +392,38 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
-    server_name keepalive.example.com;
+    server_name keepalive-html.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-
     pagespeed RewriteLevel CoreFilters;
+    error_log "@@TEST_TMP@@/keepalive-html.example.com.error.log" info;
+  }
 
-    error_log "@@TEST_TMP@@/ka-error.log" info;
-    index index.html;
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name keepalive-resource.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    error_log "@@TEST_TMP@@/keepalive-resource.example.com.error.log" info;
+  }
 
-    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
-      add_header "" "";
-    }
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name keepalive-beacon-get.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    error_log "@@TEST_TMP@@/keepalive-beacon-get.example.com.error.log" info;
+  }
 
-    location /ngx_pagespeed_statistics {
-      allow 127.0.0.1;
-      deny all;
-    }
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name keepalive-beacon-post.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    error_log "@@TEST_TMP@@/keepalive-beacon-post.example.com.error.log" info;
+  }
 
-    location /ngx_pagespeed_message {
-      allow 127.0.0.1;
-      deny all;
-    }
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name keepalive-static.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    error_log "@@TEST_TMP@@/keepalive-static.example.com.error.log" info;
   }
 
   server {

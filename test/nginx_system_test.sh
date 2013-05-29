@@ -54,6 +54,58 @@ function check_not_simple() {
   "$@" && handle_failure_simple
 }
 
+# Argument list:
+# host_name, path, post-data
+# Runs 5 keepalive requests both with and without gzip for a few times.
+# Curl will use keepalive when running multiple request with one command.
+# When post-data is empty, a get request will be executed.
+function keepalive_test() {
+  HOST_NAME=$1
+  URL="$SECONDARY_HOSTNAME$2"
+  CURL_LOG_FILE="$1.curl.log"
+  NGX_LOG_FILE="$1.error.log"
+  POST_DATA=$3
+
+  for ((i=0; i < 100; i++)); do
+    for accept_encoding in "" "-H \"Accept-Encoding:gzip\""; do
+      if [ -z "$POST_DATA" ]; then 
+        curl -m 1 -S -s -v $accept_encoding -H "Host: $HOST_NAME" \
+          $URL $URL $URL $URL $URL > /dev/null \
+          2>>"$TEST_TMP/$CURL_LOG_FILE"
+      else
+        curl -X POST --data "$POST_DATA" -m 1 -S -s -v \
+          $accept_encoding -H "Host: $HOST_NAME"\
+          $URL $URL $URL $URL $URL > /dev/null \
+          2>>"$TEST_TMP/$CURL_LOG_FILE"
+      fi
+    done
+  done
+
+  # Filter the curl output from unimportant messages
+  OUT=$(cat "$TEST_TMP/$CURL_LOG_FILE"\
+    | grep -v "^[<>]"\
+    | grep -v "^{ \\[data not shown"\
+    | grep -v "^\\* About to connect"\
+    | grep -v "^\\* Closing"\
+    | grep -v "^\\* Connected to"\
+    | grep -v "^\\* Re-using"\
+    | grep -v "^\\* Connection.*left intact"\
+    | grep -v "^} \\[data not shown"\
+    | grep -v "^\\* upload completely sent off"\
+    | grep -v "^\\*   Trying.*\\.\\.\\. connected")
+
+  # Nothing should remain after that.
+  check [ -z "$OUT" ]
+
+  # Filter the nginx log from our vhost from unimportant messages.
+  OUT=$(cat "$TEST_TMP/$NGX_LOG_FILE"\
+    | grep -v "closed keepalive connection$")
+
+  # Nothing should remain after that.
+  check [ -z "$OUT" ]
+}
+
+
 this_dir="$( cd $(dirname "$0") && pwd)"
 
 # stop nginx
@@ -1495,39 +1547,28 @@ http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
 
 start_test keepalive with html rewriting
+keepalive_test "keepalive-html.example.com"\
+  "/mod_pagespeed_example/rewrite_images.html" ""
 
-HOST_NAME="keepalive.example.com"
-URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/rewrite_images.html"
+start_test keepalive with serving resources
+keepalive_test "keepalive-resource.example.com"\
+  "/mod_pagespeed_example/combine_javascript2.js+combine_javascript1.js+combine_javascript2.js.pagespeed.jc.0.js"\
+  ""
 
-# Run 5 keepalive requests both with and without gzip for a few times.
-# curl will use keepalive when running multiple request with one command
-for ((i=0; i < 100; i++)); do
-   curl -m 1 -S -s -v -H "Host: $HOST_NAME" $URL $URL $URL $URL $URL\
-     > /dev/null 2>"$TEST_TMP/curl-ka.log"
-   curl -m 1 -S -s -v -H "Host: $HOST_NAME" -H "Accept-Encoding: gzip" \
-     $URL $URL $URL $URL $URL > /dev/null 2>"$TEST_TMP/curl-ka.log"
-done
+start_test keepalive with beacon get requests
+keepalive_test "keepalive-beacon-get.example.com"\
+  "/ngx_pagespeed_beacon?ets=load:13" ""
 
-# Filter the curl output from unimportant messages
-OUT=$(cat "$TEST_TMP/curl-ka.log"\
-  | grep -v "^[<>]"\
-  | grep -v "^{ \\[data not shown"\
-  | grep -v "^\\* About to connect"\
-  | grep -v "^\\* Closing"\
-  | grep -v "^\\* Connected to"\
-  | grep -v "^\\* Re-using"\
-  | grep -v "^\\* Connection.*left intact"\
-  | grep -v "^\\*   Trying.*\\.\\.\\. connected")
+BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+BEACON_DATA+="image_rewriting%2Frewrite_images.html"
+BEACON_DATA+="&oh=$OPTIONS_HASH&ci=2932493096"
 
-# Nothing should remain after that.
-check [ -z "$OUT" ]
+start_test keepalive with beacon post requests
+keepalive_test "keepalive-beacon-post.example.com" "/ngx_pagespeed_beacon"\
+  "$BEACON_DATA"
 
-# Filter the nginx log from our vhost from unimportant messages.
-OUT=$(cat "$TEST_TMP/ka-error.log"\
-  | grep -v "closed keepalive connection$"\
-)
-
-# Nothing should remain after that.
-check [ -z "$OUT" ]
+start_test keepalive with static resources
+keepalive_test "keepalive-static.example.com"\
+  "/ngx_pagespeed_static/js_defer.0.js" ""
 
 check_failures_and_exit
