@@ -119,7 +119,8 @@ pagespeed.CriticalImagesBeacon.prototype.isCritical_ = function(element) {
   // Only return 1 image as critical if there are multiple images that have the
   // same location. This is to handle sliders with many images in the same
   // location, but most of which only appear after onload.
-  var elLocationStr = JSON.stringify(elLocation);
+  var elLocationStr = elLocation.top.toString() + ',' +
+      elLocation.left.toString();
   if (this.imgLocations_.hasOwnProperty(elLocationStr)) {
     return false;
   } else {
@@ -186,24 +187,29 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
 
   // List of tags whose elements we will check to see if they are critical.
   var tags = ['img', 'input'];
-  // Use an object to store the critical_imgs so that we get a unique (no
-  // duplicates) list of them.
-  var critical_imgs = {};
+
+  var critical_imgs = [];
+  // Use an object to store the keys for critical_imgs so that we get a unique
+  // list of them.
+  var critical_imgs_keys = {};
 
   for (var i = 0; i < tags.length; ++i) {
     var elements = document.getElementsByTagName(tags[i]);
     for (var j = 0; j < elements.length; ++j) {
+      var key = elements[j].getAttribute('pagespeed_url_hash');
       // TODO(jud): Remove the check for getBoundingClientRect below, either by
       // making elLocation_ work correctly if it isn't defined, or updating the
       // user agent whitelist to exclude UAs that don't support it correctly.
-      if (elements[j].hasAttribute('pagespeed_url_hash') &&
-          elements[j].getBoundingClientRect &&
+      if (key && elements[j].getBoundingClientRect &&
           this.isCritical_(elements[j])) {
-        critical_imgs[elements[j].getAttribute('pagespeed_url_hash')] = true;
+        if (!(key in critical_imgs_keys)) {
+          critical_imgs.push(key);
+          critical_imgs_keys[key] = true;
+        }
       }
     }
   }
-  critical_imgs = Object.keys(critical_imgs);
+
   if (critical_imgs.length != 0) {
     var data = 'oh=' + this.optionsHash_;
     data += '&ci=' + encodeURIComponent(critical_imgs[0]);
