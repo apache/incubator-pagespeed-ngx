@@ -415,25 +415,18 @@ TEST_F(DistributedRewriteContextTest, DistributedRewriteNotFound) {
 // rewrites.
 TEST_F(DistributedRewriteContextTest, TrimDelayed) {
   //  In this run, we will delay the URL fetcher's callback so that the initial
-  //  Rewrite will not take place until after the HTML has been flushed.
+  //  rewrite will not take place until after the HTML has been flushed.
   SetupDistributedTest();
   other_factory_->SetupWaitFetcher();
   test_distributed_fetcher_.set_blocking_fetch(false);
 
   // First time distribute but the external fetch doesn't finish by ingress task
   // (or deadline task's for that matter) deadline.
-  // Ingress: metadata miss, distributed rewrite which times out, so don't
-  // optimize.
-  // Distributed: metadata miss and original http miss. Left fetching the http
-  // and isn't done fetching before the time out on the ingress task.
   ValidateNoChanges("trimmable", CssLinkHref("a.css"));
   CheckDistributedFetch(0,                // successful distributed fetches
                         0,                // unsuccessful distributed fetches
                         0,                // number of ingress fetches
                         0);               // number of rewrites
-  EXPECT_EQ(0, lru_cache()->num_hits());  // partition
-  EXPECT_EQ(3, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
 
   // Let the distributed rewriter finish up its fetch and rewrite.
   OtherCallFetcherCallbacks();
