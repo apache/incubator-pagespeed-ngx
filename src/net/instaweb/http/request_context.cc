@@ -65,9 +65,10 @@ RequestContext::~RequestContext() {
   // to diagnose performance and correctness bugs.
 }
 
-RequestContextPtr RequestContext::NewTestRequestContext(
-    ThreadSystem* thread_system) {
-  return RequestContextPtr(new RequestContext(thread_system->NewMutex(), NULL));
+RequestContextPtr RequestContext::NewTestRequestContextWithTimer(
+    ThreadSystem* thread_system, Timer* timer) {
+  return RequestContextPtr(new RequestContext(thread_system->NewMutex(),
+                                              timer));
 }
 
 AbstractLogRecord* RequestContext::NewSubordinateLogRecord(
@@ -132,6 +133,7 @@ RequestContext::TimingInfo::TimingInfo(Timer* timer, AbstractMutex* mutex)
       fetch_start_ts_ms_(-1),
       fetch_header_ts_ms_(-1),
       fetch_end_ts_ms_(-1),
+      first_byte_ts_ms_(-1),
       http_cache_latency_ms_(-1),
       l2http_cache_latency_ms_(-1) {
   init_ts_ms_ = NowMs();
@@ -140,6 +142,11 @@ RequestContext::TimingInfo::TimingInfo(Timer* timer, AbstractMutex* mutex)
 void RequestContext::TimingInfo::RequestStarted() {
   SetToNow(&start_ts_ms_);
   VLOG(2) << "RequestStarted: " << start_ts_ms_;
+}
+
+void RequestContext::TimingInfo::FirstByteReturned() {
+  ScopedMutex l(mu_);
+  SetToNow(&first_byte_ts_ms_);
 }
 
 void RequestContext::TimingInfo::FetchStarted() {
@@ -222,6 +229,16 @@ bool RequestContext::TimingInfo::GetFetchLatencyMs(int64* elapsed_ms) const {
   }
 
   *elapsed_ms = fetch_end_ts_ms_ - fetch_start_ts_ms_;
+  return true;
+}
+
+bool RequestContext::TimingInfo::GetTimeToFirstByte(int64* latency_ms) const {
+  ScopedMutex l(mu_);
+  if (first_byte_ts_ms_ < 0) {
+    return false;
+  }
+
+  *latency_ms = first_byte_ts_ms_ - init_ts_ms_;
   return true;
 }
 

@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
@@ -150,7 +151,10 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
       "</head>"
       "<body></body></html>";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
-  logging_info()->mutable_timing_info()->set_header_fetch_ms(100);
+  RequestContext::TimingInfo* timing_info = mutable_timing_info();
+  timing_info->FetchStarted();
+  AdvanceTimeMs(100);
+  timing_info->FetchHeaderReceived();
   rewrite_driver_->log_record()->logging_info()->
       set_is_original_resource_cacheable(false);
   rewrite_driver_->flush_early_info()->set_last_n_fetch_latencies("96,98");
@@ -185,7 +189,10 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppressWithCacheableHtml) {
       "</head>"
       "<body></body></html>";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
-  logging_info()->mutable_timing_info()->set_header_fetch_ms(100);
+  RequestContext::TimingInfo* timing_info = mutable_timing_info();
+  timing_info->FetchStarted();
+  AdvanceTimeMs(100);
+  timing_info->FetchHeaderReceived();
   rewrite_driver_->log_record()->logging_info()->
       set_is_original_resource_cacheable(true);
   rewrite_driver_->flush_early_info()->set_last_n_fetch_latencies("96,98");

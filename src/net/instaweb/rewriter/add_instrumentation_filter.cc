@@ -22,19 +22,18 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"
 
@@ -163,31 +162,23 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
     }
   }
 
-  AbstractLogRecord* log_record = driver_->log_record();
-  {
-    ScopedMutex lock(log_record->mutex());
-    if (log_record->logging_info()->has_timing_info()) {
-      if (log_record->logging_info()->timing_info().has_header_fetch_ms()) {
-        int64 header_fetch_ms =
-            log_record->logging_info()->timing_info().header_fetch_ms();
-        // If time taken to fetch the http header is not set, then the response
-        // came from cache.
-        StrAppend(&extra_params, "&hft=",
-                  Integer64ToString(header_fetch_ms));
-      }
-      if (log_record->logging_info()->timing_info().has_fetch_ms()) {
-        int64 fetch_ms = log_record->logging_info()->timing_info().fetch_ms();
-        // If time taken to fetch the resource is not set, then the response
-        // came from cache.
-        StrAppend(&extra_params, "&ft=", Integer64ToString(fetch_ms));
-      }
-      if (log_record->logging_info()->timing_info()
-          .has_time_to_first_byte_ms()) {
-        int64 ttfb_ms =
-            log_record->logging_info()->timing_info().time_to_first_byte_ms();
-        StrAppend(&extra_params, "&s_ttfb=", Integer64ToString(ttfb_ms));
-      }
-    }
+  const RequestContext::TimingInfo& timing_info =
+      driver_->request_context()->timing_info();
+  int64 header_fetch_ms;
+  if (timing_info.GetFetchHeaderLatencyMs(&header_fetch_ms)) {
+    // If time taken to fetch the http header is not set, then the response
+    // came from cache.
+    StrAppend(&extra_params, "&hft=", Integer64ToString(header_fetch_ms));
+  }
+  int64 fetch_ms;
+  if (timing_info.GetFetchLatencyMs(&fetch_ms)) {
+    // If time taken to fetch the resource is not set, then the response
+    // came from cache.
+    StrAppend(&extra_params, "&ft=", Integer64ToString(fetch_ms));
+  }
+  int64 ttfb_ms;
+  if (timing_info.GetTimeToFirstByte(&ttfb_ms)) {
+    StrAppend(&extra_params, "&s_ttfb=", Integer64ToString(ttfb_ms));
   }
 
   GoogleString html_url;

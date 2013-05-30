@@ -1358,6 +1358,14 @@ void RewriteOptions::AddProperties() {
       "ebhcd", kEnableBlinkHtmlChangeDetection,
       kDirectoryScope,
       NULL);   // Not applicable for mod_pagespeed.
+  // Currently not applicable for mod_pagespeed.
+  AddBaseProperty(
+      false,
+      &RewriteOptions::rewrite_request_urls_early_, "rrue",
+      kRewriteRequestUrlsEarly,
+      kServerScope,
+      "If set, we apply the origin rules to rewrite requests urls before "
+      "we start processing them");
   AddBaseProperty(
       false,
       &RewriteOptions::enable_blink_html_change_detection_logging_,

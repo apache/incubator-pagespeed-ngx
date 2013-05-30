@@ -769,7 +769,8 @@ void RewriteTestBase::SetUseManagedRewriteDrivers(
 }
 
 RequestContextPtr RewriteTestBase::CreateRequestContext() {
-  return RequestContext::NewTestRequestContext(factory_->thread_system());
+  return RequestContext::NewTestRequestContextWithTimer(
+      factory_->thread_system(), timer());
 }
 
 RewriteDriver* RewriteTestBase::MakeDriver(
@@ -1021,6 +1022,11 @@ void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
 const RequestContext::TimingInfo& RewriteTestBase::timing_info() {
   CHECK(rewrite_driver()->request_context().get() != NULL);
   return rewrite_driver()->request_context()->timing_info();
+}
+
+RequestContext::TimingInfo* RewriteTestBase::mutable_timing_info() {
+  CHECK(rewrite_driver()->request_context().get() != NULL);
+  return rewrite_driver()->request_context()->mutable_timing_info();
 }
 
 LoggingInfo* RewriteTestBase::logging_info() {

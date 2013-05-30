@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
@@ -31,6 +32,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace {
 
@@ -147,22 +149,25 @@ void SuppressPreheadFilter::Clear() {
 void SuppressPreheadFilter::EndDocument() {
   int64 header_fetch_ms = -1;
   {
-    AbstractLogRecord* log_record = driver_->log_record();
-    ScopedMutex lock(log_record->mutex());
-    // It is assumed that default value of is_original_resource_cacheable is
-    // true. This field will be set only if original resource is not cacheable.
-    bool is_cacheable_html =
-        !log_record->logging_info()->has_is_original_resource_cacheable() ||
-        log_record->logging_info()->is_original_resource_cacheable();
+    bool is_cacheable_html = false;
+    {
+      AbstractLogRecord* log_record = driver_->log_record();
+      ScopedMutex lock(log_record->mutex());
+      // It is assumed that default value of is_original_resource_cacheable is
+      // true. This field will be set only if original resource is not
+      // cacheable.
+      is_cacheable_html =
+          (!log_record->logging_info()->has_is_original_resource_cacheable() ||
+           log_record->logging_info()->is_original_resource_cacheable());
+    }  // Release lock before calling GetFetchHeaderMs as it takes the same lock
+    // TODO(gee): Fix this.
 
     // If the html is cacheable, then any resource other than the critical
     // resources may block the html download as html might get served from
     // cache. Thus header_fetch_ms is not populated in that case.
-    if (!driver_->flushing_early() &&
-        !is_cacheable_html &&
-        log_record->logging_info()->timing_info().has_header_fetch_ms()) {
-      header_fetch_ms =
-          log_record->logging_info()->timing_info().header_fetch_ms();
+    if (!driver_->flushing_early() && !is_cacheable_html) {
+      driver_->request_context()->timing_info().GetFetchHeaderLatencyMs(
+          &header_fetch_ms);
     }
   }
 

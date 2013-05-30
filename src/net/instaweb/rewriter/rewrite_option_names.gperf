@@ -137,6 +137,7 @@ struct OptionName {
 "RewriteDeadlinePerFlushMs",             RewriteOptions::kRewriteDeadlineMs
 "RewriteLevel",                          RewriteOptions::kRewriteLevel
 "RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
+"RewriteRequestUrlsEarly",               RewriteOptions::kRewriteRequestUrlsEarly
 "RunExperiment",                         RewriteOptions::kRunningExperiment
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled

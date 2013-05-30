@@ -23,31 +23,7 @@ import "net/instaweb/util/enums.proto";
 
 package net_instaweb;
 
-
-// This proto is expected to track the time taken by various components of page
-// speed service processing. Overall, the PSS processing time can be broken down
-// into time taken by the following constituents:
-// Kansas lookup
-// Local + remote cache lookup
-// Property cache lookup
-// Fastnet fetch
-// Rewriting
-// Streaming
-//
-// Here is the ordering of events.
-// 1. request_start_ms
-// 2. time_to_start_processing_ms
-// 3. time_to_pcache_lookup_start_ms
-// 4. time_to_start_fetch_ms | time_to_pcache_lookup_end_ms
-// 5. time_to_start_parse_ms
-// 6. time_to_first_byte_ms
-//
-// Note that cache1_ms, cache2_ms, header_fetch_ms and fetch_ms represent the
-// absolute times for the HTTP cache lookup and the fetch.
-//
-// Please make sure you keep this proto in sync with the proto at
-// //net/instaweb/http/logging.proto
-// Next id for TimingInfo: 13
+// DEPRECATED.
 message TimingInfo {
   // Local HTTP cache lookup time in ms.
   optional int64 cache1_ms = 1;
@@ -416,9 +392,6 @@ message DeviceInfo {
 // This proto stores all information which we would like to log.
 // Next id for LoggingInfo: 26
 message LoggingInfo {
-  // Used to track time taken by various components of page speed service
-  // processing.
-  optional TimingInfo timing_info = 1;
   // Stores all Blink related information.
   optional BlinkInfo blink_info = 2;
   // Sorted list of applied rewriter ids separated by comma.
@@ -471,4 +444,7 @@ message LoggingInfo {
   optional DeviceInfo device_info = 24;
   // Is the request an XmlHttpRequest.
   optional bool is_xhr = 25;
+
+  // --- DEPRECATED FIELDS FOLLOW ---
+  optional TimingInfo deprecated_timing_info = 1;
 }

@@ -53,7 +53,11 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // TODO(marq): Move this test context factory to a test-specific file.
   //             Makes a request context for running tests.
-  static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system);
+  static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system) {
+    return NewTestRequestContextWithTimer(thread_system, NULL);
+  }
+  static RequestContextPtr NewTestRequestContextWithTimer(
+      ThreadSystem* thread_system, Timer* timer);
 
   // Creates a new, unowned AbstractLogRecord, for use by some subordinate
   // action.  Also useful in case of background activity where logging is
@@ -130,6 +134,7 @@ class RequestContext : public RefCounted<RequestContext> {
   // - Lookup Properties?: PropertyCacheLookup*
   // - Fetch?: Fetch*
   // - Start parsing?: ParsingStarted
+  // - First byte sent to client: FirstByteReturned.
   // - Finish: RequestFinished
   // NOTE: This class is thread safe.
   class TimingInfo {
@@ -150,6 +155,9 @@ class RequestContext : public RefCounted<RequestContext> {
 
     // This should be called if/when HTML parsing begins.
     void ParsingStarted() { SetToNow(&parsing_start_ts_ms_); }
+
+    // Called when the first byte is sent back to the user.
+    void FirstByteReturned();
 
     // This should be called when a PropertyCache lookup is initiated.
     void PropertyCacheLookupStarted() {
@@ -214,6 +222,10 @@ class RequestContext : public RefCounted<RequestContext> {
     // Milliseconds from fetch start to fetch end.
     bool GetFetchLatencyMs(int64* latency_ms) const;
 
+    // Milliseconds from receiving the request (Init) to responding with the
+    // first byte of data.
+    bool GetTimeToFirstByte(int64* latency_ms) const;
+
     // Milliseconds from request start to parse start.
     bool GetTimeToStartParseMs(int64* elapsed_ms) const {
       return GetTimeFromStart(parsing_start_ts_ms_, elapsed_ms);
@@ -254,6 +266,7 @@ class RequestContext : public RefCounted<RequestContext> {
     int64 fetch_start_ts_ms_;
     int64 fetch_header_ts_ms_;
     int64 fetch_end_ts_ms_;
+    int64 first_byte_ts_ms_;
 
     // Latencies.
     int64 http_cache_latency_ms_;

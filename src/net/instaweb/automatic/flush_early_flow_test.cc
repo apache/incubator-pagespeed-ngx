@@ -20,16 +20,15 @@
 
 #include "net/instaweb/automatic/public/proxy_interface_test_base.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
@@ -58,8 +57,6 @@
 #include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 namespace {
 
@@ -394,31 +391,6 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
     "</body>"
     "</html>";
 
-class LatencyUrlAsyncFetcher : public UrlAsyncFetcher {
- public:
-  explicit LatencyUrlAsyncFetcher(UrlAsyncFetcher* fetcher)
-      : base_fetcher_(fetcher),
-        latency_ms_(-1) {}
-  virtual ~LatencyUrlAsyncFetcher() {}
-
-  virtual void Fetch(const GoogleString& url,
-                     MessageHandler* message_handler,
-                     AsyncFetch* fetch) {
-    if (latency_ms_ != -1) {
-      fetch->log_record()->logging_info()->mutable_timing_info()->
-          set_header_fetch_ms(latency_ms_);
-    }
-    base_fetcher_->Fetch(url, message_handler, fetch);
-  }
-
-  void set_latency(int64 latency) { latency_ms_ = latency; }
-
- private:
-  UrlAsyncFetcher* base_fetcher_;
-  int64 latency_ms_;
-  DISALLOW_COPY_AND_ASSIGN(LatencyUrlAsyncFetcher);
-};
-
 }  // namespace
 
 class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
@@ -453,9 +425,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
     background_fetch_fetcher_.reset(new BackgroundFetchCheckingUrlAsyncFetcher(
         factory()->ComputeUrlAsyncFetcher()));
-    latency_fetcher_.reset(
-        new LatencyUrlAsyncFetcher(background_fetch_fetcher_.get()));
-    server_context()->set_default_system_fetcher(latency_fetcher_.get());
+    server_context()->set_default_system_fetcher(
+        background_fetch_fetcher_.get());
 
     start_time_ms_ = timer()->NowMs();
     rewritten_css_url_1_ = Encode(
@@ -876,7 +847,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   }
 
   void TestFlushPreconnects(bool is_mobile) {
-    latency_fetcher_->set_latency(200);
+    SetHeaderLatencyMs(200);
     const char kInputHtml[] =
         "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
         "<html>"
@@ -984,8 +955,14 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     EXPECT_STREQ(kOutputHtml, text);
   }
 
+  void SetHeaderLatencyMs(int64 latency_ms) {
+    RequestContext::TimingInfo* timing_info = mutable_timing_info();
+    timing_info->FetchStarted();
+    AdvanceTimeMs(latency_ms);
+    timing_info->FetchHeaderReceived();
+  }
+
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
-  scoped_ptr<LatencyUrlAsyncFetcher> latency_fetcher_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
   GoogleString start_time_plus_300s_string_;
@@ -1344,7 +1321,7 @@ TEST_F(FlushEarlyFlowTest,
 }
 
 TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
-  latency_fetcher_->set_latency(600);
+  SetHeaderLatencyMs(600);
   SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
@@ -1449,7 +1426,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
-  latency_fetcher_->set_latency(600);
+  SetHeaderLatencyMs(600);
   StringSet* css_critical_images = new StringSet;
   css_critical_images->insert(StrCat(kTestDomain, "1.jpg"));
   SetCssCriticalImagesInFinder(css_critical_images);

@@ -337,9 +337,8 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_EQ(0, latency_ms);
   EXPECT_FALSE(rti.GetL2HTTPCacheLatencyMs(&latency_ms));
 
-  const TimingInfo timing_info = logging_info()->timing_info();
-  EXPECT_FALSE(timing_info.has_header_fetch_ms());
-  EXPECT_FALSE(timing_info.has_fetch_ms());
+  EXPECT_FALSE(rti.GetFetchHeaderLatencyMs(&latency_ms));
+  EXPECT_FALSE(rti.GetFetchLatencyMs(&latency_ms));
   EXPECT_TRUE(logging_info()->is_html_response());
   EXPECT_FALSE(logging_info()->is_url_disallowed());
   EXPECT_FALSE(logging_info()->is_request_disabled());
@@ -597,6 +596,53 @@ TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedUrls) {
 
   FetchFromProxy("blocked", false, &text, &response_headers);
   EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
+}
+
+TEST_F(ProxyInterfaceTest, RewriteUrlsEarly) {
+  GoogleString text;
+  ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  NullMessageHandler handler;
+  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "index.html"),
+                                response_headers,
+                                "<html></html>");
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
+      "test.com", "pagespeed.test.com/test.com", &handler);
+  custom_options->set_rewrite_request_urls_early(true);
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+  FetchFromProxy("http://pagespeed.test.com/test.com/index.html", true,
+                 &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_EQ("<html></html>", text);
+}
+
+TEST_F(ProxyInterfaceTest, RewriteUrlsEarlyUsingReferer) {
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  NullMessageHandler handler;
+  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "index.html"),
+                                response_headers,
+                                "<html></html>");
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
+      "test.com", "pagespeed.test.com/test.com", &handler);
+  custom_options->set_rewrite_request_urls_early(true);
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+  request_headers.Replace(HttpAttributes::kReferer,
+                          "http://pagespeed.test.com/test.com/");
+  FetchFromProxy("http://pagespeed.test.com/index.html", request_headers, true,
+                 &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_EQ("<html></html>", text);
 }
 
 TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedHeaders) {

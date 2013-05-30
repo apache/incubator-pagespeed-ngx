@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -168,14 +168,19 @@ TEST_F(AddInstrumentationFilterTest, TestExtendedInstrumentation) {
 
 // Test that headers fetch timing reporting is done correctly.
 TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
-  logging_info()->mutable_timing_info()->set_header_fetch_ms(200);
-  logging_info()->mutable_timing_info()->set_time_to_first_byte_ms(300);
-  logging_info()->mutable_timing_info()->set_fetch_ms(500);
+  RequestContext::TimingInfo* timing_info = mutable_timing_info();
+  timing_info->FetchStarted();
+  AdvanceTimeMs(200);
+  timing_info->FetchHeaderReceived();
+  AdvanceTimeMs(100);
+  timing_info->FirstByteReturned();
+  AdvanceTimeMs(200);
+  timing_info->FetchFinished();
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
           options()->beacon_url().http, "load", "&hft=200&ft=500&s_ttfb=300"))
-              != GoogleString::npos);
+              != GoogleString::npos) << output_buffer_;
 }
 
 // Test that header referer reporting is done correctly.

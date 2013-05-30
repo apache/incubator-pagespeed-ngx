@@ -50,15 +50,6 @@ class LogRecordTest : public testing::Test {
 
 typedef LogRecordTest LogRecordDeathTest;
 
-TEST_F(LogRecordTest, SetAndGet) {
-  LoggingInfo* logging_info = log_record_->logging_info();
-  EXPECT_FALSE(logging_info->has_timing_info());
-  log_record_->logging_info()->mutable_timing_info()->set_header_fetch_ms(500);
-  EXPECT_TRUE(logging_info->has_timing_info());
-  TimingInfo timing_info = logging_info->timing_info();
-  EXPECT_EQ(500, timing_info.header_fetch_ms());
-}
-
 TEST_F(LogRecordTest, NoAppliedRewriters) {
   LoggingInfo* logging_info = log_record_->logging_info();
   EXPECT_EQ("", log_record_->AppliedRewritersString());

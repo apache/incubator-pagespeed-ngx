@@ -628,6 +628,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   // Accessor for TimingInfo.
   const RequestContext::TimingInfo& timing_info();
+  RequestContext::TimingInfo* mutable_timing_info();
 
   // Convenience method to pull the logging info proto out of the current
   // request context's log record. The request context owns the log record, and

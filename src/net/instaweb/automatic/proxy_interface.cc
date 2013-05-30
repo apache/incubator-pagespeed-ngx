@@ -441,6 +441,19 @@ void ProxyInterface::ProxyRequestCallback(
     return;
   }
 
+  if (options != NULL && options->rewrite_request_urls_early()) {
+    const UrlNamer* url_namer = server_context_->url_namer();
+    StringPiece referer(async_fetch->request_headers()->Lookup1(
+        HttpAttributes::kReferer));
+    if (url_namer->ResolveToOriginUrl(
+        *options, referer, request_url.get())) {
+      // Update the headers accordingly if the request url changes.
+      async_fetch->request_headers()->Replace(
+          HttpAttributes::kHost, request_url->Origin());
+      request_url->Spec().CopyToString(&url_string);
+    }
+  }
+
   // Update request_headers.
   // We deal with encodings. So strip the users Accept-Encoding headers.
   async_fetch->request_headers()->RemoveAll(HttpAttributes::kAcceptEncoding);
