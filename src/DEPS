@@ -23,9 +23,9 @@ vars = {
   "chromium_revision_num": "161115",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  # Version of libwebp we use. This should normally match the chromium base,
-  # but sometimes it's easier to update it separately.
-  "chromium_webp_revision": "@161115",
+  # Version of libwebp and android we use. This should normally match the
+  # chromium base, but sometimes it's easier to update it separately.
+  "chromium_webp_android_revision": "@200538",
 
   "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/trunk",
@@ -215,7 +215,13 @@ deps = {
   # We check libwebp out of Chromium repo to get the .gyp file.
   "src/third_party/libwebp":
      Var("chromium_trunk") + "/src/third_party/libwebp" +
-     Var("chromium_webp_revision"),
+     Var("chromium_webp_android_revision"),
+
+  # We check 'build/android' out of Chromium repo to get
+  # 'android/cpufeatures.gypi', which is needed to compile libwebp.
+  "src/build/android":
+     Var("chromium_trunk") + "/src/build/android" +
+     Var("chromium_webp_android_revision"),
 
   "src/tools/clang":From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),

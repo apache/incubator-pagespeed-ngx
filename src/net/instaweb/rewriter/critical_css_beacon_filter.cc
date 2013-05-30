@@ -150,7 +150,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
         // Include the selectors in the beacon
         StringPieceVector temp;
         SplitStringPieceToVector(summary_info.data, ",", &temp,
-                                 false /* empty shouldn't happen */);
+                                 true /* omit_empty_strings */);
         for (StringPieceVector::const_iterator i = temp.begin(),
                  end = temp.end();
              i != end; ++i) {

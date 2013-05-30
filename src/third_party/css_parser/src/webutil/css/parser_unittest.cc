@@ -2319,4 +2319,76 @@ TEST_F(ParserTest, SkipPastDelimiterRecusiveDepth) {
 
 }
 
+TEST_F(ParserTest, ParseMediaQueries) {
+  scoped_ptr<Parser> a(new Parser("screen"));
+  scoped_ptr<MediaQueries> q(a->ParseMediaQueries());
+  ASSERT_TRUE(NULL != q.get());
+  EXPECT_EQ(1, q->size());
+  EXPECT_EQ(MediaQuery::NO_QUALIFIER, (*q)[0]->qualifier());
+  EXPECT_EQ("screen", UnicodeTextToUTF8((*q)[0]->media_type()));
+  // now it requires ";" at the end of the input query.
+  EXPECT_EQ(Parser::kMediaError, a->errors_seen_mask());
+
+  // qualifier
+  a.reset(new Parser("only screen"));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_EQ(MediaQuery::ONLY, (*q)[0]->qualifier());
+  EXPECT_EQ("screen", UnicodeTextToUTF8((*q)[0]->media_type()));
+
+  // media expression
+  a.reset(new Parser("screen and (max-width: 640px)"));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_EQ("screen", UnicodeTextToUTF8((*q)[0]->media_type()));
+  ASSERT_EQ(1, (*q)[0]->expressions().size());
+  EXPECT_EQ("max-width", UnicodeTextToUTF8((*q)[0]->expression(0).name()));
+  ASSERT_TRUE((*q)[0]->expression(0).has_value());
+  EXPECT_EQ("640px", UnicodeTextToUTF8((*q)[0]->expression(0).value()));
+
+  // tailing whitespaces of values are not trimmed.
+  a.reset(new Parser("screen and (max-width:  640 px  )"));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_EQ("screen", UnicodeTextToUTF8((*q)[0]->media_type()));
+  ASSERT_EQ(1, (*q)[0]->expressions().size());
+  EXPECT_EQ("max-width", UnicodeTextToUTF8((*q)[0]->expression(0).name()));
+  ASSERT_TRUE((*q)[0]->expression(0).has_value());
+  EXPECT_EQ("640 px  ", UnicodeTextToUTF8((*q)[0]->expression(0).value()));
+
+  // multiple queries
+  a.reset(new Parser(
+      "not screen and (max-width: 500px), projection and (color)"));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_EQ(2, q->size());
+  EXPECT_EQ(MediaQuery::NOT, (*q)[0]->qualifier());
+  EXPECT_EQ("screen", UnicodeTextToUTF8((*q)[0]->media_type()));
+  ASSERT_EQ(1, (*q)[0]->expressions().size());
+  EXPECT_EQ("max-width", UnicodeTextToUTF8((*q)[0]->expression(0).name()));
+  ASSERT_TRUE((*q)[0]->expression(0).has_value());
+  EXPECT_EQ("500px", UnicodeTextToUTF8((*q)[0]->expression(0).value()));
+  EXPECT_EQ("projection", UnicodeTextToUTF8((*q)[1]->media_type()));
+  ASSERT_EQ(1, (*q)[1]->expressions().size());
+  EXPECT_EQ("color", UnicodeTextToUTF8((*q)[1]->expression(0).name()));
+  ASSERT_FALSE((*q)[1]->expression(0).has_value());
+
+  // empty input. never return NULL.
+  a.reset(new Parser(""));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_TRUE(NULL != q.get());
+  EXPECT_EQ(0, q->size());
+
+  // any media_type is allowed
+  a.reset(new Parser("foobar"));
+  q.reset(a->ParseMediaQueries());
+  EXPECT_EQ(1, q->size());
+  EXPECT_EQ("foobar", UnicodeTextToUTF8((*q)[0]->media_type()));
+
+  // same results with or without "and".
+  scoped_ptr<Parser> b;
+  scoped_ptr<MediaQueries> r;
+  a.reset(new Parser("screen (max-width: 640px)"));
+  b.reset(new Parser("screen and (max-width: 640px)"));
+  q.reset(a->ParseMediaQueries());
+  r.reset(b->ParseMediaQueries());
+  EXPECT_EQ(r->ToString(), q->ToString());
+}
+
 }  // namespace Css
