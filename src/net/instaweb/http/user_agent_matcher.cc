@@ -244,18 +244,25 @@ const char* kChromeVersionPattern =
     "(?:Chrome|CriOS)/(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)";
 
 // Device strings must not include wildcards.
-const pair<GoogleString, pair<int, int> > kKnownScreenDimensions[] = {
-  make_pair("Galaxy Nexus", make_pair(720, 1280)),
-  make_pair("GT-I9300", make_pair(720, 1280)),
-  make_pair("GT-N7100", make_pair(720, 1280)),
-  make_pair("HTC One", make_pair(720, 1280)),
-  make_pair("Nexus 4", make_pair(768, 1280)),
-  make_pair("Nexus 7", make_pair(800, 1280)),
-  make_pair("Nexus 10", make_pair(1600, 2560)),
-  make_pair("Nexus S", make_pair(480, 800)),
-  make_pair("Xoom", make_pair(800, 1280)),
-  make_pair("XT907", make_pair(540, 960))
+struct Dimension {
+  const char* device_name;
+  int width;
+  int height;
 };
+
+const Dimension kKnownScreenDimensions[] = {
+  {"Galaxy Nexus", 720, 1280},
+  {"GT-I9300", 720, 1280},
+  {"GT-N7100", 720, 1280},
+  {"HTC One", 720, 1280},
+  {"Nexus 4", 768, 1280},
+  {"Nexus 7", 800, 1280},
+  {"Nexus 10", 1600, 2560},
+  {"Nexus S", 480, 800},
+  {"Xoom", 800, 1280},
+  {"XT907", 540, 960},
+};
+
 }  // namespace
 
 UserAgentMatcher::UserAgentMatcher()
@@ -322,12 +329,12 @@ UserAgentMatcher::UserAgentMatcher()
   }
   GoogleString known_devices_pattern_string = "(";
   for (int i = 0, n = arraysize(kKnownScreenDimensions); i < n; ++i) {
-    screen_dimensions_map_[kKnownScreenDimensions[i].first] =
-        kKnownScreenDimensions[i].second;
+    const Dimension& dim = kKnownScreenDimensions[i];
+    screen_dimensions_map_[dim.device_name] = make_pair(dim.width, dim.height);
     if (i != 0) {
       StrAppend(&known_devices_pattern_string, "|");
     }
-    StrAppend(&known_devices_pattern_string, kKnownScreenDimensions[i].first);
+    StrAppend(&known_devices_pattern_string, dim.device_name);
   }
   StrAppend(&known_devices_pattern_string, ")");
   known_devices_pattern_.reset(new RE2(known_devices_pattern_string));
