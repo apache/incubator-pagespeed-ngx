@@ -669,6 +669,10 @@ ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #COVERAGE   # Proxy using SERF
 #COVERAGE   ModPagespeedTestProxy on
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
+#IPRO_PRESERVE_COVERAGE ModPagespeedInPlaceResourceOptimization on
+#IPRO_PRESERVE_COVERAGE ModPagespeedCssPreserveURLs on
+#IPRO_PRESERVE_COVERAGE ModPagespeedImagePreserveURLs on
+#IPRO_PRESERVE_COVERAGE ModPagespeedJsPreserveURLS on
 #COVERAGE
 #MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
 #PURGING_COVERAGE    ModPagespeedEnableUrlCacheInvalidation on
