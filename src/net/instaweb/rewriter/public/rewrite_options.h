@@ -962,7 +962,7 @@ class RewriteOptions {
   // Store size, md5 hash and canonical url for library recognition.
   bool RegisterLibrary(
       uint64 bytes, StringPiece md5_hash, StringPiece canonical_url) {
-    return javascript_library_identification_.RegisterLibrary(
+    return WriteableJavascriptLibraryIdentification()->RegisterLibrary(
         bytes, md5_hash, canonical_url);
   }
 
@@ -971,7 +971,7 @@ class RewriteOptions {
   const JavascriptLibraryIdentification* javascript_library_identification()
       const {
     if (Enabled(kCanonicalizeJavascriptLibraries)) {
-      return &javascript_library_identification_;
+      return javascript_library_identification_.get();
     } else {
       return NULL;
     }
@@ -2695,6 +2695,9 @@ class RewriteOptions {
     return false;
   }
 
+  // Makes sure that javascript_library_identification_ points to an object
+  // owned only by us, so that we can modify it; and returns the pointer to it.
+  JavascriptLibraryIdentification* WriteableJavascriptLibraryIdentification();
 
   // A family of urls for which prioritize_visible_content filter can be
   // applied.  url_pattern represents the actual set of urls,
@@ -3310,7 +3313,8 @@ class RewriteOptions {
   // interpreted as containing urls.
   scoped_ptr<std::vector<ElementAttributeCategory> > url_valued_attributes_;
 
-  JavascriptLibraryIdentification javascript_library_identification_;
+  CopyOnWrite<JavascriptLibraryIdentification>
+      javascript_library_identification_;
 
   CopyOnWrite<DomainLawyer> domain_lawyer_;
   FileLoadPolicy file_load_policy_;

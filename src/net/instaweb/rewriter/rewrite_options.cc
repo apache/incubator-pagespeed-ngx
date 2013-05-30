@@ -2569,6 +2569,12 @@ DomainLawyer* RewriteOptions::WriteableDomainLawyer() {
   return domain_lawyer_.MakeWriteable();
 }
 
+JavascriptLibraryIdentification* RewriteOptions::
+    WriteableJavascriptLibraryIdentification() {
+  Modify();
+  return javascript_library_identification_.MakeWriteable();
+}
+
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
 #ifndef NDEBUG
@@ -2670,8 +2676,15 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
   lazyload_enabled_classes_.AppendFrom(src.lazyload_enabled_classes_);
-  javascript_library_identification_.Merge(
-      src.javascript_library_identification_);
+  if (!src.javascript_library_identification_->empty()) {
+    if (javascript_library_identification_->empty()) {
+      javascript_library_identification_ =
+          src.javascript_library_identification_;
+    } else {
+      WriteableJavascriptLibraryIdentification()->Merge(
+          *src.javascript_library_identification_.get());
+    }
+  }
   override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
 
   // Merge url_cache_invalidation_entries_ so that increasing order of timestamp
