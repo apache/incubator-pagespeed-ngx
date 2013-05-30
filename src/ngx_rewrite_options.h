@@ -40,7 +40,7 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static void Initialize();
   static void Terminate();
 
-  NgxRewriteOptions();
+  explicit NgxRewriteOptions(ThreadSystem* thread_system);
   virtual ~NgxRewriteOptions() { }
 
   // args is an array of n_args StringPieces together representing a directive.
