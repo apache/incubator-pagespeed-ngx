@@ -35,7 +35,7 @@ extern "C" {
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 

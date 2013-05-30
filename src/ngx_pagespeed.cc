@@ -41,8 +41,8 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/experiment_matcher.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -54,6 +54,7 @@
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -481,9 +482,6 @@ char* ps_configure(ngx_conf_t* cf,
                    net_instaweb::NgxRewriteOptions** options,
                    net_instaweb::MessageHandler* handler,
                    PsConfigure::OptionLevel option_level) {
-  if (*options == NULL) {
-    *options = new net_instaweb::NgxRewriteOptions();
-  }
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
@@ -513,6 +511,10 @@ char* ps_configure(ngx_conf_t* cf,
 
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
+  if (*options == NULL) {
+    *options = new net_instaweb::NgxRewriteOptions(
+        cfg_m->driver_factory->thread_system());
+  }
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler, cfg_m->driver_factory);
 
@@ -1137,32 +1139,32 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
 // classify them into one by setting a cookie.  Then set options appropriately
 // for their experiment.
 //
-// See InstawebContext::SetFuriousStateAndCookie()
-bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
+// See InstawebContext::SetExperimentStateAndCookie()
+bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
                                      ps_request_ctx_t* ctx,
                                      net_instaweb::RewriteOptions* options,
                                      const StringPiece& host) {
-  CHECK(options->running_furious());
+  CHECK(options->running_experiment());
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  bool need_cookie = cfg_s->server_context->furious_matcher()->
+  bool need_cookie = cfg_s->server_context->experiment_matcher()->
       ClassifyIntoExperiment(*ctx->base_fetch->request_headers(), options);
   if (need_cookie && host.length() > 0) {
     int64 time_now_us = apr_time_now();
     int64 expiration_time_ms = (time_now_us/1000 +
-                                options->furious_cookie_duration_ms());
+                                options->experiment_cookie_duration_ms());
 
-    // TODO(jefftk): refactor SetFuriousCookie to expose the value we want to
+    // TODO(jefftk): refactor SetExperimentCookie to expose the value we want to
     // set on the cookie.
-    int state = options->furious_id();
+    int state = options->experiment_id();
     GoogleString expires;
     net_instaweb::ConvertTimeToString(expiration_time_ms, &expires);
     GoogleString value = StringPrintf(
         "%s=%s; Expires=%s; Domain=.%s; Path=/",
-        net_instaweb::furious::kFuriousCookie,
-        net_instaweb::furious::FuriousStateToCookieString(state).c_str(),
+        net_instaweb::experiment::kExperimentCookie,
+        net_instaweb::experiment::ExperimentStateToCookieString(state).c_str(),
         expires.c_str(), host.as_string().c_str());
 
-    // Set the GFURIOUS cookie.
+    // Set the PagespeedExperiment cookie.
     ngx_table_elt_t* cookie = static_cast<ngx_table_elt_t*>(
         ngx_list_push(&r->headers_out.headers));
     if (cookie == NULL) {
@@ -1212,7 +1214,7 @@ bool ps_determine_options(ngx_http_request_t* r,
   // only situation in which we can avoid allocating a new RewriteOptions is if
   // the global options are ok as are.
   if (directory_options == NULL && request_options == NULL &&
-      !global_options->running_furious()) {
+      !global_options->running_experiment()) {
     return true;
   }
 
@@ -1230,8 +1232,8 @@ bool ps_determine_options(ngx_http_request_t* r,
   if (request_options != NULL) {
     (*options)->Merge(*request_options);
     delete request_options;
-  } else if ((*options)->running_furious()) {
-    bool ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
+  } else if ((*options)->running_experiment()) {
+    bool ok = ps_set_experiment_state_and_cookie(r, ctx, *options, url->Host());
     if (!ok) {
       if (*options != NULL) {
         delete *options;
@@ -1378,13 +1380,10 @@ ps_initiate_property_cache_lookup(
   bool added_callback = false;
   net_instaweb::PropertyPageStarVector property_callbacks;
 
-  net_instaweb::ProxyFetchPropertyCallback* client_callback = NULL;
   net_instaweb::ProxyFetchPropertyCallback* property_callback = NULL;
   net_instaweb::ProxyFetchPropertyCallback* fallback_property_callback = NULL;
   net_instaweb::PropertyCache* page_property_cache =
       server_context->page_property_cache();
-  net_instaweb::PropertyCache* client_property_cache =
-      server_context->client_property_cache();
   if (!is_resource_fetch &&
       server_context->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
@@ -1411,12 +1410,18 @@ ps_initiate_property_cache_lookup(
     // Trigger property cache lookup for the requests which contains query param
     // as cache key without query params. The result of this lookup will be used
     // if actual property page does not contains property value.
+    GoogleString fallback_page_key;
     if (options != NULL &&
         options->use_fallback_property_cache_values() &&
-        request_url.has_query()) {
-      GoogleString fallback_page_key =
-          server_context->GetFallbackPagePropertyCacheKey(
-              request_url.AllExceptQuery(), options, device_type_suffix);
+        request_url.has_query() &&
+        request_url.PathAndLeaf() != "/" &&
+        !request_url.PathAndLeaf().empty()) {
+      // Don't bother looking up fallback properties for the root, "/", since
+      // there is nothing to fall back to.
+      fallback_page_key = server_context->GetFallbackPagePropertyCacheKey(
+          request_url, options, device_type_suffix);
+    }
+    if (!fallback_page_key.empty()) {
       fallback_property_callback = new net_instaweb::ProxyFetchPropertyCallback(
           net_instaweb::ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
           page_property_cache, fallback_page_key, device_type,
@@ -1426,34 +1431,12 @@ ps_initiate_property_cache_lookup(
     }
   }
 
-  // Initiate client property cache lookup.
-  if (async_fetch != NULL) {
-    const char* client_id = async_fetch->request_headers()->Lookup1(
-        net_instaweb::HttpAttributes::kXGooglePagespeedClientId);
-    if (client_id != NULL) {
-      if (client_property_cache->enabled()) {
-        net_instaweb::AbstractMutex* mutex =
-            server_context->thread_system()->NewMutex();
-        client_callback = new net_instaweb::ProxyFetchPropertyCallback(
-            net_instaweb::ProxyFetchPropertyCallback::kClientPropertyCachePage,
-            client_property_cache, client_id,
-            net_instaweb::UserAgentMatcher::kEndOfDeviceType,
-            callback_collector.get(), mutex);
-        callback_collector->AddCallback(client_callback);
-        added_callback = true;
-      }
-    }
-  }
-
   // All callbacks need to be registered before Reads to avoid race.
   if (property_callback != NULL) {
     page_property_cache->Read(property_callback);
   }
   if (fallback_property_callback != NULL) {
     page_property_cache->Read(fallback_property_callback);
-  }
-  if (client_callback != NULL) {
-    client_property_cache->Read(client_callback);
   }
 
   if (!added_callback) {
@@ -1641,6 +1624,12 @@ CreateRequestContext::Response ps_create_request_context(
           custom_options, ctx->base_fetch->request_context());
     }
 
+    StringPiece user_agent = ctx->base_fetch->request_headers()->Lookup1(
+        net_instaweb::HttpAttributes::kUserAgent);
+    if (!user_agent.empty()) {
+      ctx->driver->SetUserAgent(user_agent);
+    }
+    ctx->driver->SetRequestHeaders(*ctx->base_fetch->request_headers());
     // TODO(jefftk): FlushEarlyFlow would go here.
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
@@ -2266,7 +2255,7 @@ ngx_int_t ps_statistics_handler(
   GoogleString output;
   net_instaweb::StringWriter writer(&output);
   if (json) {
-    statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+    statistics->console_logger()->DumpJSON(var_titles,
                                            start_time, end_time,
                                            granularity_ms, &writer,
                                            message_handler);
@@ -2454,13 +2443,32 @@ bool ps_request_body_to_string_piece(
   }
 }
 
+// Parses out query params from the request.
+void ps_query_params_handler(ngx_http_request_t* r, StringPiece* data) {
+  StringPiece unparsed_uri = str_to_string_piece(r->unparsed_uri);
+  stringpiece_ssize_type question_mark_index = unparsed_uri.find("?");
+  if (question_mark_index == StringPiece::npos) {
+    *data = "";
+  } else {
+    *data = unparsed_uri.substr(
+        question_mark_index+1, unparsed_uri.size() - (question_mark_index+1));
+  }
+}
+
 // Called after nginx reads the request body from the client.  For another
 // example processing request buffers, see ngx_http_form_input_module.c
 void ps_beacon_body_handler(ngx_http_request_t* r) {
+  // Even if the beacon is a POST, the originating url should be in the query
+  // params, not the POST body.
+  StringPiece query_param_beacon_data;
+  ps_query_params_handler(r, &query_param_beacon_data);
+
   StringPiece request_body;
   bool ok = ps_request_body_to_string_piece(r, &request_body);
+  GoogleString beacon_data = net_instaweb::StrCat(
+      query_param_beacon_data, "&", request_body); 
   if (ok) {
-    ps_beacon_handler_helper(r, request_body);
+    ps_beacon_handler_helper(r, beacon_data.c_str());
     ngx_http_finalize_request(r, NGX_HTTP_NO_CONTENT);
   } else {
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -2482,16 +2490,9 @@ ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
     return NGX_DONE;
   } else {
     // Use query params.
-    StringPiece beacon_data;
-    StringPiece unparsed_uri = str_to_string_piece(r->unparsed_uri);
-    stringpiece_ssize_type question_mark_index = unparsed_uri.find("?");
-    if (question_mark_index == StringPiece::npos) {
-      beacon_data = "";
-    } else {
-      beacon_data = unparsed_uri.substr(
-          question_mark_index+1, unparsed_uri.size() - (question_mark_index+1));
-    }
-    ps_beacon_handler_helper(r, beacon_data);
+    StringPiece query_param_beacon_data;
+    ps_query_params_handler(r, &query_param_beacon_data);
+    ps_beacon_handler_helper(r, query_param_beacon_data);
     return NGX_HTTP_NO_CONTENT;
   }
 }
@@ -2695,7 +2696,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
         statistics = cfg_m->driver_factory->MakeGlobalSharedMemStatistics(
             config->statistics_logging_enabled(),
             config->statistics_logging_interval_ms(),
-            config->statistics_logging_file());
+            config->statistics_logging_max_file_size_kb(),
+            config->statistics_logging_file_prefix());
       }
 
       // The hostname identifier is used by the shared memory statistics

@@ -37,7 +37,8 @@ namespace net_instaweb {
 
 RewriteOptions::Properties* NgxRewriteOptions::ngx_properties_ = NULL;
 
-NgxRewriteOptions::NgxRewriteOptions() {
+NgxRewriteOptions::NgxRewriteOptions(ThreadSystem* thread_system)
+    : SystemRewriteOptions(thread_system) {
   Init();
 }
 
@@ -51,8 +52,11 @@ void NgxRewriteOptions::AddProperties() {
   // Nothing ngx-specific for now.
 
   MergeSubclassProperties(ngx_properties_);
-  NgxRewriteOptions config;
-  config.InitializeSignaturesAndDefaults();
+  // We create a dummy NgxRewriteOptions object here so that we can
+  // call InitializeSignaturesAndDefaults on it, and in turn get the
+  // global defaults (for say, X-Page-Speed header value) setup correctly.
+  NgxRewriteOptions dummy_config(NULL);
+  dummy_config.InitializeSignaturesAndDefaults();
 }
 
 void NgxRewriteOptions::InitializeSignaturesAndDefaults() {
@@ -231,7 +235,7 @@ NgxRewriteOptions::ParseAndSetOptions(
 }
 
 NgxRewriteOptions* NgxRewriteOptions::Clone() const {
-  NgxRewriteOptions* options = new NgxRewriteOptions();
+  NgxRewriteOptions* options = new NgxRewriteOptions(thread_system());
   options->Merge(*this);
   return options;
 }
