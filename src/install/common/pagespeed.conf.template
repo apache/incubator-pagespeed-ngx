@@ -214,7 +214,7 @@
     # Additional library configuration can be found in
     # pagespeed_libraries.conf included in the distribution.  You should add
     # new entries here, though, so that file can be automatically upgraded.
-    ModPagespeedLibrary 43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js
+    # ModPagespeedLibrary 43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js
 
     # Explicitly tell mod_pagespeed to load some resources from disk.
     # This will speed up load time and update frequency.
