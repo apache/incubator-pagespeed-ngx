@@ -251,7 +251,6 @@
         '<(DEPTH)/pagespeed/kernel/base/mock_message_handler_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/mock_timer_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/ref_counted_ptr_test.cc',
-        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/shared_string_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/simple_stats_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/statistics_logger_test.cc',
@@ -296,6 +295,9 @@
         '<(DEPTH)/pagespeed/kernel/util/wildcard_group.cc',
         '<(DEPTH)/pagespeed/kernel/util/wildcard_group_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/wildcard_test.cc',
+# Rolling hash test fails to build in 32-bit g++ 4.1
+# [google] See b/9203004
+#        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
       ],
       'conditions': [

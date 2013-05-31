@@ -68,6 +68,8 @@ TEST(RollingHashTest, RollShakedown) {
 TEST(RollingHashTest, NGrams) {
   // Using dense_hash_set is MUCH faster (6x) than std::set.
   // That keeps this test "small".
+  // TODO(sligocki): Currently fails in 32-bit g++ 4.1 because there's
+  // no specialization of std::tr1::hash<> for <long long unsigned int>.
   dense_hash_set<uint64> grams;
   grams.set_empty_key(0ULL);
   char buf[3];
