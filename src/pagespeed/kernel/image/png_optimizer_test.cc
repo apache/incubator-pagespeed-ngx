@@ -16,6 +16,8 @@
 
 // Author: Bryan McQuade
 
+#include <cstdlib>
+#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
@@ -34,12 +36,16 @@ using pagespeed::image_compression::kPngSuiteTestDir;
 using pagespeed::image_compression::kPngSuiteGifTestDir;
 using pagespeed::image_compression::kPngTestDir;
 using pagespeed::image_compression::GifReader;
+using pagespeed::image_compression::PixelFormat;
+using pagespeed::image_compression::PngCompressParams;
 using pagespeed::image_compression::PngOptimizer;
 using pagespeed::image_compression::PngReader;
 using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::PngScanlineReaderRaw;
 using pagespeed::image_compression::PngScanlineReader;
+using pagespeed::image_compression::PngScanlineWriter;
 using pagespeed::image_compression::ReadTestFile;
+using pagespeed::image_compression::ScanlineReaderInterface;
 using pagespeed::image_compression::ScopedPngStruct;
 
 // Structure that holds metadata and actual pixel data for a decoded
@@ -201,6 +207,37 @@ void AssertPngEq(
   }
 }
 
+void AssertReadersMatch(ScanlineReaderInterface* reader1,
+                        ScanlineReaderInterface* reader2) {
+  // Make sure the images sizes and the pixel formats are the same.
+  ASSERT_EQ(reader1->GetImageWidth(), reader2->GetImageWidth());
+  ASSERT_EQ(reader1->GetImageHeight(), reader2->GetImageHeight());
+  ASSERT_EQ(reader1->GetPixelFormat(), reader2->GetPixelFormat());
+
+  const int width = reader1->GetImageWidth();
+  const int num_channels =
+    GetNumChannelsFromPixelFormat(reader1->GetPixelFormat());
+  uint8* pixels1 = NULL;
+  uint8* pixels2 = NULL;
+
+  // Decode and check the image a scanline at a time.
+  while (reader1->HasMoreScanLines() &&
+         reader2->HasMoreScanLines()) {
+    ASSERT_TRUE(reader1->ReadNextScanline(
+      reinterpret_cast<void**>(&pixels2)));
+
+    ASSERT_TRUE(reader2->ReadNextScanline(
+      reinterpret_cast<void**>(&pixels1)));
+
+    for (int i = 0; i < width*num_channels; ++i) {
+      ASSERT_EQ(pixels1[i], pixels2[i]);
+    }
+  }
+
+  // Make sure both readers have exhausted all scanlines.
+  ASSERT_FALSE(reader1->HasMoreScanLines());
+  ASSERT_FALSE(reader2->HasMoreScanLines());
+}
 
 struct ImageCompressionInfo {
   const char* filename;
@@ -486,6 +523,25 @@ const size_t kValidImageCount = arraysize(kValidImages);
 const size_t kValidGifImageCount = arraysize(kValidGifImages);
 const size_t kInvalidFileCount = arraysize(kInvalidFiles);
 const size_t kOpaqueImagesWithAlphaCount = arraysize(kOpaqueImagesWithAlpha);
+
+class PngScanlineWriterTest : public testing::Test {
+ public:
+  PngScanlineWriterTest()
+    : params_(PngCompressParams(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY)) {
+  }
+
+ protected:
+  PngScanlineWriter writer_;
+  GoogleString output_;
+  PngCompressParams params_;
+  unsigned char scanline_[3];
+  static const int width_ = 3;
+  static const int height_ = 2;
+  static const PixelFormat pixel_format_ = pagespeed::image_compression::GRAY_8;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(PngScanlineWriterTest);
+};
 
 TEST(PngOptimizerTest, ValidPngs) {
   PngReader reader;
@@ -1043,6 +1099,123 @@ TEST(PngScanlineReaderRawTest, InvalidPngs) {
                            image_string.data(), image_string.length(),
                            NULL, NULL, NULL, NULL, NULL));
   }
+}
+
+// Make sure that PNG files are written correctly. We firstly decompress
+// a PNG image; then compress it to a new PNG image; finally verify that
+// the new PNG is the same as the original one. Information to be verified
+// include pixel values, pixel type, and image size.
+//
+// Libpng provides several options for writing a PNG. To verify that
+// PngScanlineWriter works on all of these options, the test uses a rotation
+// of configurations and verifies that all of the rewritten images are good.
+TEST_F(PngScanlineWriterTest, RewritePng) {
+  PngScanlineReaderRaw original_reader;
+  PngScanlineReaderRaw rewritten_reader;
+  PngScanlineWriter png_writer;
+
+  // List of filters supported by libpng.
+  const int png_filter_list[] = {
+    PNG_FILTER_NONE,  // 0x08
+    PNG_FILTER_SUB,   // 0x10
+    PNG_FILTER_UP,    // 0x20
+    PNG_FILTER_AVG,   // 0x40
+    PNG_FILTER_PAETH  // 0x80
+  };
+
+  for (size_t i = 0; i < kValidImageCount; i++) {
+    GoogleString original_image;
+    GoogleString rewritten_image;
+
+    ReadTestFile(kPngSuiteTestDir, kValidImages[i].filename, "png",
+                 &original_image);
+
+    // Initialize a PNG reader for reading the original image.
+    if (original_reader.Initialize(original_image.data(),
+                                   original_image.length()) == false) {
+      // Some images in kValidImages[] have unsupported formats, for example,
+      // GRAY_ALPHA. These images are skipped.
+      continue;
+    }
+
+    // Get the sizes and pixel format of the original image.
+    const size_t width = original_reader.GetImageWidth();
+    const size_t height = original_reader.GetImageHeight();
+    const PixelFormat pixel_format = original_reader.GetPixelFormat();
+
+    // Use a new combination of filter and compression level for writing
+    // this image.
+    const int num_z = Z_FIXED - Z_DEFAULT_STRATEGY + 1;
+    int compression_strategy = Z_DEFAULT_STRATEGY + (i % num_z);
+    int filter_level = png_filter_list[(i / num_z) % 5];
+    PngCompressParams params(filter_level, compression_strategy);
+
+    // Initialize the writer.
+    ASSERT_TRUE(png_writer.Init(width, height, pixel_format));
+    ASSERT_TRUE(png_writer.Initialize(&params, &rewritten_image));
+
+    // Read the scanlines from the original image and write them to the new one.
+    while (original_reader.HasMoreScanLines()) {
+      uint8* scanline = NULL;
+      ASSERT_TRUE(original_reader.ReadNextScanline(
+          reinterpret_cast<void**>(&scanline)));
+      ASSERT_TRUE(png_writer.WriteNextScanline(
+          reinterpret_cast<void*>(scanline)));
+    }
+
+    // Make sure that the readers has exhausted the original image.
+    ASSERT_FALSE(original_reader.HasMoreScanLines());
+    // Make sure that the writer has received all of the image data, and
+    // finalize it.
+    ASSERT_TRUE(png_writer.FinalizeWrite());
+
+    // Now create readers for reading the original and the rewritten images.
+    ASSERT_TRUE(original_reader.Initialize(original_image.data(),
+                                           original_image.length()));
+    ASSERT_TRUE(rewritten_reader.Initialize(rewritten_image.data(),
+                                            rewritten_image.length()));
+
+    // Now make sure that the original and rewritten images have the
+    // same sizes, types, and pixel values.
+    AssertReadersMatch(&original_reader, &rewritten_reader);
+  }
+}
+
+// Attempt to finalize without writing all of the scanlines.
+TEST_F(PngScanlineWriterTest, EarlyFinalize) {
+  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
+  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_FALSE(writer_.FinalizeWrite());
+}
+
+// Write insufficient number of scanlines and do not finalize at the end.
+TEST_F(PngScanlineWriterTest, MissingScanlines) {
+  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
+  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+}
+
+// Write too many scanlines.
+TEST_F(PngScanlineWriterTest, TooManyScanlines) {
+  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
+  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_FALSE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+}
+
+// Write a scanline, and then re-initialize and write too many scanlines.
+TEST_F(PngScanlineWriterTest, ReinitializeAndTooManyScanlines) {
+  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
+  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+
+  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
+  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_FALSE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
 }
 
 }  // namespace

@@ -30,6 +30,8 @@ extern "C" {
 #endif
 }  // extern "C"
 
+#include <setjmp.h>
+#include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -319,6 +321,50 @@ class PngScanlineReaderRaw : public ScanlineReaderInterface {
   scoped_ptr<PngInput> png_input_;
 
   DISALLOW_COPY_AND_ASSIGN(PngScanlineReaderRaw);
+};
+
+// Class PngScanlineWriter writes a PNG image. It supports Gray_8, RGB_888,
+// and RGBA_8888 formats.
+class PngScanlineWriter : public ScanlineWriterInterface {
+ public:
+  PngScanlineWriter();
+  virtual ~PngScanlineWriter();
+
+  // Initialize the basic parameters for writing the image. Size of the image
+  // must be 1-by-1 or larger.
+  virtual bool Init(const size_t width, const size_t height,
+                    PixelFormat pixel_format);
+
+  // Initialize additional parameters for writing the image. You can set
+  // 'params' to NULL to use the default compression configuration.
+  bool Initialize(const PngCompressParams* params,
+                  GoogleString* png_image);
+
+  // Write a scanline with the data provided. Return false in case of error.
+  virtual bool WriteNextScanline(void *scanline_bytes);
+
+  // Finalize write structure once all scanlines are written.
+  // If FinalizeWriter() is called before all of the scanlines have been
+  // written, the object will be reset to the initial state.
+  virtual bool FinalizeWrite();
+
+ private:
+  // Reset the object to the usable state.
+  bool Reset();
+
+  // Validate the input parameters.
+  bool Validate(const PngCompressParams* params,
+                GoogleString* png_image);
+
+ private:
+  size_t width_;
+  size_t height_;
+  size_t row_;
+  PixelFormat pixel_format_;
+  ScopedPngStruct png_struct_;
+  bool was_initialized_;
+
+  DISALLOW_COPY_AND_ASSIGN(PngScanlineWriter);
 };
 
 }  // namespace image_compression

@@ -1064,6 +1064,180 @@ bool PngScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
   return true;
 }
 
+PngScanlineWriter::PngScanlineWriter() :
+  width_(0),
+  height_(0),
+  row_(0),
+  pixel_format_(UNSUPPORTED),
+  png_struct_(ScopedPngStruct::WRITE),
+  was_initialized_(false) {
+}
+
+PngScanlineWriter::~PngScanlineWriter() {
+  if (was_initialized_) {
+    Reset();
+  }
+}
+
+bool PngScanlineWriter::Reset() {
+  width_ = 0;
+  height_ = 0;
+  row_ = 0;
+  pixel_format_ = UNSUPPORTED;
+  if (!png_struct_.reset()) {
+    return false;
+  }
+  was_initialized_ = false;
+  return true;
+}
+
+bool PngScanlineWriter::Validate(const PngCompressParams* params,
+                                 GoogleString* png_image) {
+  if (params != NULL) {
+    // PNG_NO_FILTERS == 0
+    // PNG_ALL_FILTERS == (PNG_FILTER_NONE | PNG_FILTER_SUB | PNG_FILTER_UP | \
+    //                     PNG_FILTER_AVG | PNG_FILTER_PAETH)
+    if (params->filter_level & (~PNG_ALL_FILTERS)) {
+      LOG(DFATAL) << "Filter level must be one of the following values, "
+                  << "or bitwise OR of some of them: "
+                  << "PNG_NO_FILTERS, "
+                  << "PNG_FILTER_NONE, "
+                  << "PNG_FILTER_SUB, "
+                  << "PNG_FILTER_UP, "
+                  << "PNG_FILTER_AVG, "
+                  << "PNG_FILTER_PAETH.";
+    }
+
+    switch (params->compression_strategy) {
+      case Z_DEFAULT_STRATEGY:
+      case Z_FILTERED:
+      case Z_HUFFMAN_ONLY:
+      case Z_RLE:
+      case Z_FIXED:
+        break;
+      default:
+        LOG(DFATAL) << "Compression strategy must be one of the following "
+                    << "values: "
+                    << "Z_DEFAULT_STRATEGY, "
+                    << "Z_FILTERED, "
+                    << "Z_HUFFMAN_ONLY, "
+                    << "Z_RLE, "
+                    << "Z_FIXED.";
+        return false;
+    }
+  }
+
+  if (png_image == NULL) {
+    LOG(DFATAL) << "Ouput PNG image cannot be NULL.";
+    return false;
+  }
+  return true;
+}
+
+bool PngScanlineWriter::Init(const size_t width, const size_t height,
+                             PixelFormat pixel_format) {
+  // Reset the reader if it has been initialized before.
+  if (was_initialized_ && !Reset()) {
+    LOG(DFATAL) << "Failed to re-initialize the writer.";
+    return false;
+  }
+
+  if (!png_struct_.valid()) {
+    LOG(DFATAL) << "Invalid png_struct.";
+    return false;
+  }
+
+  if (width < 1 || height < 1) {
+    LOG(DFATAL) << "Width and height of the image must be positive values.";
+    return false;
+  }
+
+  switch (pixel_format) {
+    case GRAY_8:
+    case RGB_888:
+    case RGBA_8888:
+      break;
+    default:
+      LOG(DFATAL) << "Pixel format must be GRAY_8, RGB_888, or RGBA_8888";
+      return false;
+  }
+
+  width_ = width;
+  height_ = height;
+  pixel_format_ = pixel_format;
+  return true;
+}
+
+// Initialize the basic parameter for writing the image. To use the default
+// compression parameters, set 'params' to NULL.
+bool PngScanlineWriter::Initialize(const PngCompressParams* params,
+                                   GoogleString* png_image) {
+  // Validate input arguments.
+  if (!Validate(params, png_image)) {
+    return false;
+  }
+
+  png_image->clear();
+
+  const int bit_depth = 8;
+  int color_type = -1;
+  switch (pixel_format_) {
+    case GRAY_8:
+      color_type = PNG_COLOR_TYPE_GRAY;
+      break;
+    case RGB_888:
+      color_type = PNG_COLOR_TYPE_RGB;
+      break;
+    default:  // RGBA_8888. Init() has filtered out invalid values.
+      color_type = PNG_COLOR_TYPE_RGB_ALPHA;
+  }
+
+  png_structp png_ptr = png_struct_.png_ptr();
+  png_infop info_ptr = png_struct_.info_ptr();
+
+  if (setjmp(png_jmpbuf(png_ptr)) != 0) {
+    // Jump to here if any error happens.
+    Reset();
+    return false;
+  }
+
+  if (params != NULL) {
+    png_set_compression_strategy(png_ptr, params->compression_strategy);
+    png_set_filter(png_ptr, PNG_FILTER_TYPE_BASE, params->filter_level);
+  }
+
+  png_set_write_fn(png_ptr, png_image, &WritePngToString, &PngFlush);
+  png_set_IHDR(png_ptr, info_ptr, width_, height_, bit_depth, color_type,
+               PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+               PNG_FILTER_TYPE_DEFAULT);
+
+  png_write_info(png_ptr, info_ptr);
+  was_initialized_ = true;
+  return true;
+}
+
+// Write a scanline with the data provided. Return false in case of error.
+bool PngScanlineWriter::WriteNextScanline(void *scanline_bytes) {
+  if (was_initialized_ && row_ < height_) {
+    png_write_row(png_struct_.png_ptr(),
+                  reinterpret_cast<png_bytep>(scanline_bytes));
+    ++row_;
+    return true;
+  }
+  return false;
+}
+
+// Finalize write structure once all scanlines are written.
+bool PngScanlineWriter::FinalizeWrite() {
+  if (was_initialized_ && row_ == height_) {
+    png_write_end(png_struct_.png_ptr(), png_struct_.info_ptr());
+    return true;
+  } else {
+    Reset();
+    return false;
+  }
+}
+
 }  // namespace image_compression
 
 }  // namespace pagespeed
