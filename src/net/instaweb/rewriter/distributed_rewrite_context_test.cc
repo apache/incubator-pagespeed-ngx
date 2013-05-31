@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/fake_filter.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -48,6 +49,30 @@
 namespace net_instaweb {
 
 namespace {
+
+// Hook provided to TestRewriteDriverFactory to add a new filter when a
+// rewrite_driver is created. A CreateFilterCallback must outlive any filters it
+// creates as the filter's id comes from this.
+class CreateFilterCallback
+    : public TestRewriteDriverFactory::CreateFilterCallback {
+ public:
+  CreateFilterCallback(const StringPiece& id, bool blocking)
+      : id_(id.as_string()), blocking_(blocking) {}
+  virtual ~CreateFilterCallback() {}
+
+  virtual HtmlFilter* Done(RewriteDriver* driver) {
+    FakeFilter* filter = new FakeFilter(id_.c_str(), driver);
+    if (blocking_) {
+      filter->set_exceed_deadline(true);
+    }
+    return filter;
+  }
+
+ private:
+  GoogleString id_;
+  bool blocking_;
+  DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
+};
 
 // A class for testing the distributed paths through the rewrite context. It
 // uses the RewriteContextTestBase's "other" RewriteDriver, factory, and options
@@ -333,6 +358,116 @@ TEST_F(DistributedRewriteContextTest, RepeatedTwoFilters) {
   EXPECT_EQ(0, distributed_rewrite_failures_->Get());
   EXPECT_EQ(1, trim_filter_->num_rewrites());  // not distributed
   EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+}
+
+// Test that we can successfully reconstruct a resource built from chained
+// filters when rewrites are distributed.
+TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilter) {
+  // Need to use normal filters that the ServerContext::decoding_driver knows
+  // about so that we can IsPagespeedResource() can recognize the filters in
+  // the chained URL.
+  options_->EnableFilter(RewriteOptions::kCombineCss);
+  options_->EnableFilter(RewriteOptions::kRewriteCss);
+  options_->DistributeFilter(RewriteOptions::kCssFilterId);
+  SetupDistributedTest();
+
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                " div { display: block;  }", 100);
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, RewriteOptions::kCssCombinerId, "1",
+      Encode("", RewriteOptions::kCssFilterId, "0", "a.css", "css"), "css");
+
+  // Fetch the .pagespeed. resource and ensure that the two-filter
+  // reconstruction is distributed properly.
+  GoogleString content;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+                               &response_headers));
+  // Content should be optimized (note that the combiner doesn't do anything in
+  // this case, but it at least ran).
+  EXPECT_EQ("div{display:block}", content);
+  EXPECT_EQ(1, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(0, distributed_rewrite_failures_->Get());
+
+  // Ingress task starts on cc filter, misses HTTP twice, metadata once,
+  // and then fetches its CssFilter input.
+  // CssFilter misses HTTP twice, metadata once, and then distributes.
+  // Distributed task CssFilter misses HTTP twice, metadata once, input resource
+  // once, and then fetches the input resource and inserts the metadata,
+  // original resource, and optimized resource into cache.
+  // Ingress task writes its metadata and optimized to cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(10, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(7, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
+}
+
+// Test that we can successfully reconstruct a resource built from chained
+// filters when rewrites are distributed and make sure that it blocks.
+TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilterBlocks) {
+  // We need to use filters with ids that the decoding driver knows about so
+  // that IsPagespeedResource can recognize the filters in the encoded URL. So
+  // we use a fake CSS filter and combiner. We give the ingress task one of each
+  // and a fake filter to the distributed task, which times out.
+  FakeFilter* fake_css_filter =
+      new FakeFilter(RewriteOptions::kCssFilterId, rewrite_driver());
+  fake_css_filter->set_exceed_deadline(true);
+  FakeFilter* fake_css_combiner =
+      new FakeFilter(RewriteOptions::kCssCombinerId, rewrite_driver());
+  FakeFilter* other_fake_css_filter =
+      new FakeFilter(RewriteOptions::kCssFilterId, other_rewrite_driver());
+  other_fake_css_filter->set_exceed_deadline(true);
+  rewrite_driver()->AppendRewriteFilter(fake_css_filter);
+  rewrite_driver()->AppendRewriteFilter(fake_css_combiner);
+  other_rewrite_driver()->AppendRewriteFilter(other_fake_css_filter);
+
+  // Distribute the CSS filter.
+  options_->DistributeFilter(RewriteOptions::kCssFilterId);
+
+  // Make sure that any cloned drivers get fake CSS filters too.
+  CreateFilterCallback create_filter_callback(RewriteOptions::kCssFilterId,
+                                              true);
+  CreateFilterCallback other_create_filter_callback(
+      RewriteOptions::kCssFilterId, true);
+  factory()->AddCreateFilterCallback(&create_filter_callback);
+  other_factory()->AddCreateFilterCallback(&other_create_filter_callback);
+
+  SetupDistributedTest();
+
+  // This is the encoded URL to reconstruct.
+  GoogleString encoded_url = Encode(
+      kTestDomain, RewriteOptions::kCssCombinerId, "1",
+      Encode("", RewriteOptions::kCssFilterId, "0", "a.css", "css"), "css");
+
+  // Reconstruct the chained rewrite.
+  GoogleString content;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+                               &response_headers));
+  EXPECT_EQ(StrCat(" a :", RewriteOptions::kCssFilterId, ":",
+                   RewriteOptions::kCssCombinerId),
+            content);
+  EXPECT_EQ(1, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(0, distributed_rewrite_failures_->Get());
+
+  // Ingress task starts on cc filter, misses HTTP twice, metadata once,
+  // and then fetches its CssFilter input.
+  // CssFilter misses HTTP twice, metadata once, and then distributes.
+  // Distributed task CssFilter misses HTTP twice, metadata once, input resource
+  // once, and then fetches the input resource and inserts the metadata,
+  // original resource, and optimized resource into cache.
+  // Ingress task writes its metadata and optimized resource to cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(10, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(7, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
 }
 
 // Simulate distributed fetch failure and ensure that we fall back to the

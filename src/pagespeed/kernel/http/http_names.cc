@@ -68,6 +68,8 @@ const char HttpAttributes::kXOriginalContentLength[] =
 const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
 // Warning: The header name is subject to change.
 const char HttpAttributes::kXPsaClientOptions[] = "X-PSA-Client-Options";
+const char HttpAttributes::kXPsaDistributedRewriteBlock[] =
+    "X-PSA-Distributed-Rewrite-Block";
 const char HttpAttributes::kXPsaDistributedRewriteFetch[] =
     "X-PSA-Distributed-Rewrite-Fetch";
 const char HttpAttributes::kXPsaDistributedRewriteForHtml[] =

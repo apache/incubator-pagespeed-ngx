@@ -75,6 +75,10 @@ struct HttpAttributes {
   // A request header for client to specify client options.
   static const char kXPsaClientOptions[];
 
+  // This header indicates to the distributed task that it should not timeout
+  // its rewrite.
+  static const char kXPsaDistributedRewriteBlock[];
+
   // This header is set in distributed rewrite requests that originated from
   // fetch requests (.pagespeed. and IPRO).
   static const char kXPsaDistributedRewriteFetch[];

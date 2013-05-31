@@ -755,6 +755,14 @@ class RewriteContext::DistributedRewriteFetch : public AsyncFetch {
   void DispatchForFetch() {
     DCHECK(fetcher_ != NULL);
     request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteFetch, "");
+    // Nested driver fetches are not supposed to use deadlines, so block the
+    // distributed rewrite.
+    if (rewrite_context_->Driver()->is_nested()) {
+      StringPiece distributed_key =
+          rewrite_context_->Options()->distributed_rewrite_key();
+      request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteBlock,
+                             distributed_key);
+    }
     DispatchHelper();
   }
 
@@ -861,7 +869,15 @@ class RewriteContext::FetchContext {
     }
 
     RewriteDriver* driver = rewrite_context_->Driver();
-    if (driver->is_nested()) {
+    StringPiece expected_key = driver->options()->distributed_rewrite_key();
+    bool distributed_block = false;
+    if (!expected_key.empty() &&
+        driver->request_headers()->HasValue(
+            HttpAttributes::kXPsaDistributedRewriteBlock, expected_key)) {
+      distributed_block = true;
+    }
+
+    if (driver->is_nested() || distributed_block) {
       // If we're being used to help reconstruct a .pagespeed. resource during
       // chained optimizations within HTML, we do not want fetch-style deadlines
       // to be active, as if they trigger, the main rewrite that created us
@@ -874,6 +890,9 @@ class RewriteContext::FetchContext {
       // as it can affect correctness of JS combine, as the names of the
       // OutputResources, and hence the JS variables may turn out not be
       // what was expected.
+
+      // If a distributed request came from a nested driver it will set
+      // kXPsaDistributedRewriteBlock, and likewise we should not set the alarm.
       return;
     }
 
