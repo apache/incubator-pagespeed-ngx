@@ -65,7 +65,7 @@ class JavascriptLibraryIdentification {
 
   LibraryMap libraries_;
 
-  // Valuable-copyable because it is used with CopyOnWrite.
+  // Value-copyable because it is used with CopyOnWrite.
 };
 
 }  // namespace net_instaweb

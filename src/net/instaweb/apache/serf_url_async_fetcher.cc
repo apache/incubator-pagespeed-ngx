@@ -265,8 +265,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
       void* setup_baton, apr_pool_t* pool) {
     SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
     *read_bkt = serf_bucket_socket_create(socket, fetch->bucket_alloc_);
-    apr_status_t status = APR_SUCCESS;
 #if SERF_HTTPS_FETCHING
+    apr_status_t status = APR_SUCCESS;
     if (fetch->using_https_) {
       *read_bkt = serf_bucket_ssl_decrypt_create(*read_bkt,
                                                  fetch->ssl_context_,
