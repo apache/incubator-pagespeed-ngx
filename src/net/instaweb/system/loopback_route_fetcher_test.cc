@@ -18,7 +18,7 @@
 //
 // Unit tests for LoopbackRouteFetcher
 //
-#include "net/instaweb/apache/loopback_route_fetcher.h"
+#include "net/instaweb/system/public/loopback_route_fetcher.h"
 
 #include <cstdlib>
 

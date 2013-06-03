@@ -18,8 +18,8 @@
 // requests based on settings in the rewrite options before passing them on to
 // the backend fetcher.
 
-#ifndef NET_INSTAWEB_APACHE_ADD_HEADERS_FETCHER_H_
-#define NET_INSTAWEB_APACHE_ADD_HEADERS_FETCHER_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_ADD_HEADERS_FETCHER_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_ADD_HEADERS_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -54,4 +54,4 @@ class AddHeadersFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_ADD_HEADERS_FETCHER_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_ADD_HEADERS_FETCHER_H_

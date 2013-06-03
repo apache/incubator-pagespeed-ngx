@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 
 #include <unistd.h>
 #include <cstddef>
@@ -483,7 +483,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
 #if SERF_FLAKY_SLOW_THREADING_TESTS
 
 // Example flake:
-// net/instaweb/apache/serf_url_async_fetcher_test.cc:495: Failure
+// net/instaweb/system/serf_url_async_fetcher_test.cc:495: Failure
 // Value of: ActiveFetches()
 //   Actual: 1
 // Expected: 0

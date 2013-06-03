@@ -16,13 +16,15 @@
 
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/util/public/property_cache.h"
 
 namespace net_instaweb {
 
 class ThreadSystem;
+class Statistics;
 
 SystemRewriteDriverFactory::SystemRewriteDriverFactory(
     ThreadSystem* thread_system)

@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
-#define NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SERF_URL_ASYNC_FETCHER_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_SERF_URL_ASYNC_FETCHER_H_
 
 #include <set>
 #include <vector>
@@ -266,4 +266,4 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_SERF_URL_ASYNC_FETCHER_H_

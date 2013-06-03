@@ -18,8 +18,8 @@
 // the DomainLawyer towards our own IP, as extracted from the incoming
 // connection.
 
-#ifndef NET_INSTAWEB_APACHE_LOOPBACK_ROUTE_FETCHER_H_
-#define NET_INSTAWEB_APACHE_LOOPBACK_ROUTE_FETCHER_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -71,4 +71,4 @@ class LoopbackRouteFetcher : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_LOOPBACK_ROUTE_FETCHER_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_LOOPBACK_ROUTE_FETCHER_H_

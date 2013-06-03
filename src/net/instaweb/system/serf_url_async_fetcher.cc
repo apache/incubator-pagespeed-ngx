@@ -20,7 +20,7 @@
 // interest in a particular URL once the callback completed.  Alternatively,
 // this could be done in a level above the URL fetcher.
 
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 
 #include <cstddef>
 #include <list>
@@ -836,11 +836,12 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   // Transfer fetches from initiate_fetches_ to active_fetches_.  If there's no
-  // new fetches to initiate, check whether the Apache thread is trying to shut
-  // down the worker thread, and return true to indicate "done".  Doesn't do any
-  // work if initiate_fetches_ is empty, but in that case if block_on_empty is
-  // true it will perform a bounded wait for initiate_fetches_nonempty_.  Called
-  // by worker thread and during thread cleanup.
+  // new fetches to initiate, check whether the webserver thread is trying to
+  // shut down the worker thread, and return true to indicate "done".  Doesn't
+  // do any work if initiate_fetches_ is empty, but in that case if
+  // block_on_empty is true it will perform a bounded wait for
+  // initiate_fetches_nonempty_.  Called by worker thread and during thread
+  // cleanup.
   bool TransferFetchesAndCheckDone(bool block_on_empty) {
     // Use a temp to minimize the amount of time we hold the
     // initiate_mutex_ lock, so that the parent thread doesn't get
@@ -898,10 +899,10 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
   void SerfThread() {
-    // Make sure we don't get yet-another copy of signals used by Apache to
-    // shutdown here, to avoid double-free.
+    // Make sure we don't get yet-another copy of signals used by the webserver
+    // to shutdown here, to avoid double-free.
     // TODO(morlovich): Port this to use ThreadSystem stuff, and have
-    // ApacheThreadSystem take care of this automatically.
+    // SystemThreadSystem take care of this automatically.
     apr_setup_signal_thread();
 
     // Initially there's no active fetch work to be done.
