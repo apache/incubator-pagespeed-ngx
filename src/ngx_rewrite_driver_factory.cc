@@ -152,8 +152,6 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             timer(),
             2500,
             message_handler());
-    // Make sure we don't block the nginx event loop
-    fetcher->set_force_threaded(true);
     return fetcher;
   }
 }
@@ -180,20 +178,21 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
+  // TODO(anupama): Remove duplication wrt mod_pagespeed code.
   caches_->SetupCaches(server_context);
 
   server_context->set_enable_property_cache(true);
   PropertyCache* pcache = server_context->page_property_cache();
-  if (pcache->GetCohort(RewriteDriver::kBeaconCohort) == NULL) {
+  const PropertyCache::Cohort* cohort =
     pcache->AddCohort(RewriteDriver::kBeaconCohort);
-  }
-  if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
-    pcache->AddCohort(RewriteDriver::kDomCohort);
-  }
+  server_context->set_beacon_cohort(cohort);
+
+  cohort = pcache->AddCohort(RewriteDriver::kDomCohort);
+  server_context->set_dom_cohort(cohort);
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
-  NgxRewriteOptions* options = new NgxRewriteOptions();
+  NgxRewriteOptions* options = new NgxRewriteOptions(thread_system());
   options->SetRewriteLevel(RewriteOptions::kCoreFilters);
   return options;
 }
@@ -348,10 +347,12 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
 // Note: does not call set_statistics() on the factory.
 Statistics* NgxRewriteDriverFactory::MakeGlobalSharedMemStatistics(
     bool logging, int64 logging_interval_ms,
+    const int64 max_logfile_size_kb,
     const GoogleString& logging_file_base) {
   if (shared_mem_statistics_.get() == NULL) {
     shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
-        "global", logging, logging_interval_ms, logging_file_base));
+        "global", max_logfile_size_kb, logging, logging_interval_ms,
+        logging_file_base));
   }
   DCHECK(!statistics_frozen_);
   statistics_frozen_ = true;
@@ -363,12 +364,14 @@ SharedMemStatistics* NgxRewriteDriverFactory::
 AllocateAndInitSharedMemStatistics(
     const StringPiece& name, const bool logging,
     const int64 logging_interval_ms,
+    const int64 max_logfile_size_kb,
     const GoogleString& logging_file_base) {
   // Note that we create the statistics object in the parent process, and
   // it stays around in the kids but gets reinitialized for them
   // inside ChildInit(), called from pagespeed_child_init.
   SharedMemStatistics* stats = new SharedMemStatistics(
-      logging_interval_ms, StrCat(logging_file_base, name), logging,
+      logging_interval_ms, max_logfile_size_kb,
+      StrCat(logging_file_base, name), logging,
       StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
       file_system(), timer());
   InitStats(stats);
