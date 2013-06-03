@@ -1621,8 +1621,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
   # NOTE: must occur after cache flush, which is why it's in this embedded
   # block.  The flush removes pre-existing beacon results from the pcache.
-  test_filter \
-    prioritize_critical_css,rewrite_css,inline_import_to_link,flatten_css_imports
+  test_filter prioritize_critical_css
   fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
   check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
   CALL_PAT=".*criticalCssBeaconInit("

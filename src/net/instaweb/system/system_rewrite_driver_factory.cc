@@ -16,6 +16,10 @@
 
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 
+#include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/system/public/system_caches.h"
+
 namespace net_instaweb {
 
 class ThreadSystem;
@@ -23,6 +27,17 @@ class ThreadSystem;
 SystemRewriteDriverFactory::SystemRewriteDriverFactory(
     ThreadSystem* thread_system)
     : RewriteDriverFactory(thread_system) {
+}
+
+void SystemRewriteDriverFactory::InitStats(Statistics* statistics) {
+  // Init standard PSOL stats.
+  RewriteDriverFactory::InitStats(statistics);
+
+  // Init System-specific stats.
+  SerfUrlAsyncFetcher::InitStats(statistics);
+  SystemCaches::InitStats(statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 }
 
 }  // namespace net_instaweb

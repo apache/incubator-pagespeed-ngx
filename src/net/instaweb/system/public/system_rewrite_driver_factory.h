@@ -31,6 +31,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // Takes ownership of thread_system.
   explicit SystemRewriteDriverFactory(ThreadSystem* thread_system);
 
+  // Initializes all the statistics objects created transitively by
+  // SystemRewriteDriverFactory.
+  static void InitStats(Statistics* statistics);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteDriverFactory);
 };

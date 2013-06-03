@@ -103,7 +103,7 @@ void CriticalCssBeaconFilter::Summarize(Stylesheet* stylesheet,
 // ...static script from critical_css_beacon.js...
 // pagespeed.criticalCssBeaconInit('beacon_url','page_url','options_hash',
 // To which the caller then appends:
-// ['selector 1','selector 2','selector 3']);
+// ["selector 1","selector 2","selector 3"]);
 GoogleString CriticalCssBeaconFilter::BeaconBoilerplate() {
   const RewriteOptions::BeaconUrl& beacons = driver()->options()->beacon_url();
   const GoogleString& beacon_url =
@@ -127,9 +127,6 @@ GoogleString CriticalCssBeaconFilter::BeaconBoilerplate() {
 }
 
 void CriticalCssBeaconFilter::SummariesDone() {
-  if (driver()->CriticalSelectors() != NULL) {
-    return;
-  }
   // We parse each summary back into component selectors from its
   // comma-separated string, using a StringSet to remove duplicates (they'll be
   // sorted, too, which makes this easier to test).  We re-serialize the set.
@@ -176,7 +173,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
     }
   }
   if (!(driver()->server_context()->critical_selector_finder()->
-        MustBeaconForCandidates(selectors, driver()))) {
+        PrepareForBeaconInsertion(selectors, driver()))) {
     // No beaconing required according to current pcache state and computed
     // selector set.
     return;
@@ -184,7 +181,15 @@ void CriticalCssBeaconFilter::SummariesDone() {
   // Insert the beaconing code.
   GoogleString script = BeaconBoilerplate();
   StrAppend(&script, "[");
-  AppendJoinCollection(&script, selectors, ",");
+  for (StringSet::const_iterator i = selectors.begin();
+       i != selectors.end(); ++i) {
+    if (i != selectors.begin()) {
+      StrAppend(&script, ",");
+    }
+    GoogleString escaped;
+    EscapeToJsStringLiteral(*i, true /* quote */, &escaped);
+    StrAppend(&script, escaped);
+  }
   StrAppend(&script, "]);");
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script_element);
@@ -213,11 +218,7 @@ void CriticalCssBeaconFilter::FindSelectorsFromRuleset(
       // which gets stripped away as it's not JS detectable) is *automatically*
       // critical, and we could also ignore the selector * (:hover is implicitly
       // *:hover).
-      // We're cautious here and escape each selector, as they're culled from a
-      // parse of site css data.
-      GoogleString quoted_and_escaped;
-      EscapeToJsStringLiteral(trimmed, true /* quote */, &quoted_and_escaped);
-      selectors->insert(quoted_and_escaped);
+      selectors->insert(trimmed);
     }
   }
 }

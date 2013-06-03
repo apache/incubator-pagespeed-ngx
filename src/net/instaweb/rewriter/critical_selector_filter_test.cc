@@ -62,9 +62,17 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     server_context()->set_critical_selector_finder(
         new CriticalSelectorFinder(server_context()->beacon_cohort(),
                                    statistics()));
-
     ResetDriver();
-
+    // Set up initial candidates for critical selector beacon
+    StringSet candidates;
+    candidates.insert("div");
+    candidates.insert("*");
+    candidates.insert("span");
+    EXPECT_TRUE(
+        server_context()->critical_selector_finder()->
+        PrepareForBeaconInsertion(candidates, rewrite_driver()));
+    page_->WriteCohort(server_context()->beacon_cohort());
+    ResetDriver();
     // Write out some initial critical selectors for us to work with.
     StringSet selectors;
     selectors.insert("div");
@@ -324,7 +332,7 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   for (int i = 0; i < finder->SupportInterval(); ++i) {
     factory()->mock_timer()->AdvanceMs(
         CriticalSelectorFinder::kMinBeaconIntervalMs);
-    EXPECT_TRUE(finder->MustBeaconForCandidates(selectors, rewrite_driver()));
+    EXPECT_TRUE(finder->PrepareForBeaconInsertion(selectors, rewrite_driver()));
     finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   }
   page_->WriteCohort(server_context()->beacon_cohort());
@@ -369,7 +377,6 @@ TEST_F(CriticalSelectorFilterTest, NoSelectorInfo) {
   ResetDriver();
   ValidateNoChanges("no_sel_info", StrCat(css, "<div>Foo</div>"));
 
-  ResetDriver();
   ValidateNoChanges("no_sel_info", StrCat(css, "<div>Foo</div>"));
 }
 

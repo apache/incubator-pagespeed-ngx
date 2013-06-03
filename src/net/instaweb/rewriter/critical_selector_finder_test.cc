@@ -110,7 +110,58 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     factory()->mock_timer()->AdvanceMs(
         CriticalSelectorFinder::kMinBeaconIntervalMs);
     EXPECT_TRUE(
-        finder_->MustBeaconForCandidates(candidates_, rewrite_driver()));
+        finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver()));
+  }
+
+  // Set up legacy critical selectors value.  We have to do this by hand using
+  // the protos and direct pcache writes, since the new finder by design doesn't
+  // write legacy data.
+  void SetupLegacyCriticalSelectors(bool include_history) {
+    CriticalSelectorSet legacy_selectors;
+    legacy_selectors.add_critical_selectors("#bar");
+    legacy_selectors.add_critical_selectors(".foo");
+    if (include_history) {
+      CriticalSelectorSet::BeaconResponse* first_set =
+          legacy_selectors.add_selector_set_history();
+      first_set->add_selectors("#bar");
+      CriticalSelectorSet::BeaconResponse* second_set =
+          legacy_selectors.add_selector_set_history();
+      second_set->add_selectors("#bar");
+      second_set->add_selectors(".foo");
+    }
+    WriteCriticalSelectorSetToPropertyCache(legacy_selectors);
+  }
+
+  CriticalSelectorSet* RawCriticalSelectorSet(int expected_size) {
+    WriteBackAndResetDriver();
+    scoped_ptr<CriticalSelectorSet> read_selectors(
+        finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
+    if (read_selectors.get() != NULL) {
+      EXPECT_EQ(0, read_selectors->critical_selectors_size());
+      EXPECT_EQ(0, read_selectors->selector_set_history_size());
+      if (read_selectors->selector_evidence_size() != expected_size) {
+        EXPECT_EQ(expected_size, read_selectors->selector_evidence_size());
+        read_selectors.reset(NULL);
+      }
+    }
+    return read_selectors.release();
+  }
+
+  void CheckFooBarBeaconSupport(int support) {
+    // Check for .foo and #bar support, with no support for other beaconed
+    // candidates.
+    scoped_ptr<CriticalSelectorSet> read_selectors(RawCriticalSelectorSet(5));
+    ASSERT_TRUE(read_selectors.get() != NULL);
+    EXPECT_EQ("#bar", read_selectors->selector_evidence(0).selector());
+    EXPECT_EQ(support, read_selectors->selector_evidence(0).support());
+    EXPECT_EQ("#c", read_selectors->selector_evidence(1).selector());
+    EXPECT_EQ(0, read_selectors->selector_evidence(1).support());
+    EXPECT_EQ(".a", read_selectors->selector_evidence(2).selector());
+    EXPECT_EQ(0, read_selectors->selector_evidence(2).support());
+    EXPECT_EQ(".b", read_selectors->selector_evidence(3).selector());
+    EXPECT_EQ(0, read_selectors->selector_evidence(3).support());
+    EXPECT_EQ(".foo", read_selectors->selector_evidence(4).selector());
+    EXPECT_EQ(support, read_selectors->selector_evidence(4).support());
   }
 
   CriticalSelectorFinder* finder_;
@@ -118,27 +169,21 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
 };
 
 TEST_F(CriticalSelectorFinderTest, StoreRestore) {
+  // Before beacon insertion, nothing in pcache.
   CheckCriticalSelectorFinderStats(0, 0, 0);
-  scoped_ptr<CriticalSelectorSet> read_selectors;
-  read_selectors.reset(
+  scoped_ptr<CriticalSelectorSet> read_selectors(
       finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
   EXPECT_TRUE(read_selectors.get() == NULL);
   CheckCriticalSelectorFinderStats(0, 0, 1);
 
+  Beacon();
+  CheckCriticalSelectorFinderStats(0, 0, 2);
   StringSet selectors;
   selectors.insert(".foo");
   selectors.insert("#bar");
-
   finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-  WriteBackAndResetDriver();
-
-  read_selectors.reset(
-      finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
-  ASSERT_TRUE(read_selectors.get() != NULL);
-  ASSERT_EQ(2, read_selectors->selector_evidence_size());
-  EXPECT_EQ("#bar", read_selectors->selector_evidence(0).selector());
-  EXPECT_EQ(".foo", read_selectors->selector_evidence(1).selector());
-  CheckCriticalSelectorFinderStats(1, 0, 1);
+  CheckFooBarBeaconSupport(finder_->SupportInterval());
+  CheckCriticalSelectorFinderStats(1, 0, 2);
 
   // Now test expiration.
   WriteBackAndResetDriver();
@@ -146,7 +191,7 @@ TEST_F(CriticalSelectorFinderTest, StoreRestore) {
   read_selectors.reset(
       finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
   EXPECT_TRUE(read_selectors.get() == NULL);
-  CheckCriticalSelectorFinderStats(1, 1, 1);
+  CheckCriticalSelectorFinderStats(1, 1, 2);
 }
 
 // Verify that writing multiple beacon results are stored and aggregated. The
@@ -177,83 +222,83 @@ TEST_F(CriticalSelectorFinderTest, StoreMultiple) {
   EXPECT_STREQ("#c,.b", CriticalSelectorsString());
 }
 
-// Test migration of legacy critical selectors to the new format (using
-// support).  This tests the case where only critical_selectors were set.
+// Make sure that inserting a non-candidate critical selector has no effect.
+TEST_F(CriticalSelectorFinderTest, StoreNonCandidate) {
+  Beacon();
+  StringSet selectors;
+  selectors.insert(".a");
+  selectors.insert(".noncandidate");
+  selectors.insert("#noncandidate");
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  EXPECT_STREQ(".a", CriticalSelectorsString());
+}
+
+// Test migration of legacy critical selectors to support format during critical
+// selector return.  This tests the case where only critical_selectors were set.
 TEST_F(CriticalSelectorFinderTest, LegacySelectorSetMigration) {
+  SetupLegacyCriticalSelectors(false /* include_history */);
+  // Create a new critical selector set and add it.  The ".a" selector will have
+  // no effect because we haven't Beaconed and it's not considered a candidate.
+  // But the legacy data will have migrated, and we'll add support for ".foo".
+  StringSet selectors;
+  selectors.insert(".a");
+  selectors.insert(".foo");
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  scoped_ptr<CriticalSelectorSet> read_selectors(RawCriticalSelectorSet(2));
+  ASSERT_TRUE(read_selectors.get() != NULL);
+  EXPECT_EQ("#bar", read_selectors->selector_evidence(0).selector());
+  EXPECT_EQ(".foo", read_selectors->selector_evidence(1).selector());
+  EXPECT_EQ(finder_->SupportInterval(),
+            read_selectors->selector_evidence(0).support());
+  EXPECT_EQ(2 * finder_->SupportInterval(),
+            read_selectors->selector_evidence(1).support());
+}
+
+// Test migration of legacy critical selectors to support format during beacon
+// insertion.  This tests the case where only critical_selectors were set.
+TEST_F(CriticalSelectorFinderTest, LegacySelectorSetBeaconMigration) {
+  SetupLegacyCriticalSelectors(false /* include_history */);
   // First set up legacy pcache entry.
   CriticalSelectorSet legacy_selectors;
   legacy_selectors.add_critical_selectors("#bar");
   legacy_selectors.add_critical_selectors(".foo");
   WriteCriticalSelectorSetToPropertyCache(legacy_selectors);
-  // Now create a new critical selector set and add it.
-  StringSet selectors;
-  selectors.insert(".a");
-  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-  WriteBackAndResetDriver();
-
-  scoped_ptr<CriticalSelectorSet> read_selectors(
-      finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
-  ASSERT_TRUE(read_selectors.get() != NULL);
-  ASSERT_EQ(3, read_selectors->selector_evidence_size());
-  EXPECT_EQ(0, read_selectors->critical_selectors_size());
-  EXPECT_EQ(0, read_selectors->selector_set_history_size());
-  EXPECT_EQ("#bar", read_selectors->selector_evidence(0).selector());
-  EXPECT_EQ(".a", read_selectors->selector_evidence(1).selector());
-  EXPECT_EQ(".foo", read_selectors->selector_evidence(2).selector());
-  EXPECT_EQ(finder_->SupportInterval(),
-            read_selectors->selector_evidence(0).support());
-  EXPECT_EQ(finder_->SupportInterval(),
-            read_selectors->selector_evidence(1).support());
-  EXPECT_EQ(finder_->SupportInterval(),
-            read_selectors->selector_evidence(2).support());
+  Beacon();
+  CheckFooBarBeaconSupport(finder_->SupportInterval() - 1);
 }
 
 // Test migration of legacy selector history to the new format (using support).
 // This tests the case where both critical_selectors and selector_set_history
 // were set.
 TEST_F(CriticalSelectorFinderTest, LegacySelectorSetHistoryMigration) {
-  // First set up legacy pcache entry.
-  CriticalSelectorSet legacy_selectors;
-  legacy_selectors.add_critical_selectors("#bar");
-  legacy_selectors.add_critical_selectors(".foo");
-  CriticalSelectorSet::BeaconResponse* first_set =
-      legacy_selectors.add_selector_set_history();
-  first_set->add_selectors("#bar");
-  CriticalSelectorSet::BeaconResponse* second_set =
-      legacy_selectors.add_selector_set_history();
-  second_set->add_selectors(".foo");
-  WriteCriticalSelectorSetToPropertyCache(legacy_selectors);
-  // Now create a new critical selector set and add it.
+  SetupLegacyCriticalSelectors(true /* include_history */);
+  // Create a new critical selector set and add it.  The ".a" selector will have
+  // no effect because we haven't Beaconed and it's not considered a candidate.
+  // But the legacy data will have migrated, and we'll add support for ".foo".
   StringSet selectors;
   selectors.insert(".a");
+  selectors.insert(".foo");
   finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-  WriteBackAndResetDriver();
-
-  scoped_ptr<CriticalSelectorSet> read_selectors(
-      finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
+  scoped_ptr<CriticalSelectorSet> read_selectors(RawCriticalSelectorSet(2));
   ASSERT_TRUE(read_selectors.get() != NULL);
-  ASSERT_EQ(3, read_selectors->selector_evidence_size());
-  EXPECT_EQ(0, read_selectors->critical_selectors_size());
-  EXPECT_EQ(0, read_selectors->selector_set_history_size());
   EXPECT_EQ("#bar", read_selectors->selector_evidence(0).selector());
-  EXPECT_EQ(".a", read_selectors->selector_evidence(1).selector());
-  EXPECT_EQ(".foo", read_selectors->selector_evidence(2).selector());
-  EXPECT_EQ(finder_->SupportInterval(),
+  EXPECT_EQ(".foo", read_selectors->selector_evidence(1).selector());
+  EXPECT_EQ(2 * finder_->SupportInterval(),
             read_selectors->selector_evidence(0).support());
-  EXPECT_EQ(finder_->SupportInterval(),
+  EXPECT_EQ(2 * finder_->SupportInterval(),
             read_selectors->selector_evidence(1).support());
-  EXPECT_EQ(finder_->SupportInterval(),
-            read_selectors->selector_evidence(2).support());
 }
 
 // Make sure we aggregate duplicate beacon results.
 TEST_F(CriticalSelectorFinderTest, DuplicateEntries) {
+  Beacon();
   StringSet beacon_result;
   beacon_result.insert("#bar");
   beacon_result.insert(".foo");
   beacon_result.insert(".a");
   finder_->WriteCriticalSelectorsToPropertyCache(beacon_result,
                                                  rewrite_driver());
+  Beacon();
   beacon_result.clear();
   beacon_result.insert("#bar");
   beacon_result.insert(".foo");
@@ -262,21 +307,22 @@ TEST_F(CriticalSelectorFinderTest, DuplicateEntries) {
                                                  rewrite_driver());
 
   // Now cross-check the critical selector set.
-  scoped_ptr<CriticalSelectorSet> read_selectors(
-      finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
-  ASSERT_EQ(4, read_selectors->selector_evidence_size());
+  scoped_ptr<CriticalSelectorSet> read_selectors(RawCriticalSelectorSet(5));
+  ASSERT_TRUE(read_selectors.get() != NULL);
   EXPECT_EQ("#bar", read_selectors->selector_evidence(0).selector());
-  EXPECT_EQ(".a", read_selectors->selector_evidence(1).selector());
-  EXPECT_EQ(".b", read_selectors->selector_evidence(2).selector());
-  EXPECT_EQ(".foo", read_selectors->selector_evidence(3).selector());
-  EXPECT_EQ(2 * finder_->SupportInterval(),
+  EXPECT_EQ("#c", read_selectors->selector_evidence(1).selector());
+  EXPECT_EQ(".a", read_selectors->selector_evidence(2).selector());
+  EXPECT_EQ(".b", read_selectors->selector_evidence(3).selector());
+  EXPECT_EQ(".foo", read_selectors->selector_evidence(4).selector());
+  EXPECT_EQ(2 * finder_->SupportInterval() - 1,
             read_selectors->selector_evidence(0).support());
-  EXPECT_EQ(finder_->SupportInterval(),
-            read_selectors->selector_evidence(1).support());
-  EXPECT_EQ(finder_->SupportInterval(),
+  EXPECT_EQ(0, read_selectors->selector_evidence(1).support());
+  EXPECT_EQ(finder_->SupportInterval() - 1,
             read_selectors->selector_evidence(2).support());
-  EXPECT_EQ(2 * finder_->SupportInterval(),
+  EXPECT_EQ(finder_->SupportInterval(),
             read_selectors->selector_evidence(3).support());
+  EXPECT_EQ(2 * finder_->SupportInterval() - 1,
+            read_selectors->selector_evidence(4).support());
 }
 
 // Make sure overflow of evidence can't happen, otherwise an attacker can
@@ -303,17 +349,17 @@ TEST_F(CriticalSelectorFinderTest, EvidenceOverflow) {
 TEST_F(CriticalSelectorFinderTest, NoCandidatesNoBeacon) {
   StringSet empty;
   EXPECT_FALSE(
-        finder_->MustBeaconForCandidates(empty, rewrite_driver()));
+        finder_->PrepareForBeaconInsertion(empty, rewrite_driver()));
 }
 
 TEST_F(CriticalSelectorFinderTest, DontRebeaconBeforeTimeout) {
   Beacon();
-  // Now simulate a beacon without timing out.
+  // Now simulate a beacon insertion attempt without timing out.
   WriteBackAndResetDriver();
   factory()->mock_timer()->AdvanceMs(
       CriticalSelectorFinder::kMinBeaconIntervalMs / 2);
   EXPECT_FALSE(
-      finder_->MustBeaconForCandidates(candidates_, rewrite_driver()));
+      finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver()));
   // But we'll re-beacon if some more time passes.
   Beacon();  // kMinBeaconIntervalMs passes in Beacon() call.
 }

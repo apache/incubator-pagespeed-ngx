@@ -77,6 +77,7 @@
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 
 namespace {
 
@@ -1052,11 +1053,41 @@ class BeaconTest : public ServerContextTest {
     server_context()->set_critical_selector_finder(
         new CriticalSelectorFinder(beacon_cohort, statistics()));
     ResetDriver();
+    candidates_.insert("#foo");
+    candidates_.insert(".bar");
+    candidates_.insert("img");
   }
 
   void ResetDriver() {
     rewrite_driver()->Clear();
     rewrite_driver()->StartParse("http://www.example.com");
+  }
+
+  MockPropertyPage* MockPageForUA(StringPiece user_agent) {
+    UserAgentMatcher::DeviceType device_type =
+        server_context()->user_agent_matcher()->GetDeviceTypeForUA(
+            user_agent);
+    StringPiece device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+    GoogleString key = server_context()->GetPagePropertyCacheKey(
+        kUrlPrefix, kOptionsHash, device_type_suffix);
+    MockPropertyPage* page = NewMockPage(key);
+    property_cache_->Read(page);
+    return page;
+  }
+
+  void InsertCssBeacon(StringPiece user_agent) {
+    // Simulate effects on pcache of CSS beacon insertion.
+    rewrite_driver()->set_property_page(MockPageForUA(user_agent));
+    factory()->mock_timer()->AdvanceMs(
+        CriticalSelectorFinder::kMinBeaconIntervalMs);
+    EXPECT_TRUE(
+        server_context()->critical_selector_finder()->PrepareForBeaconInsertion(
+            candidates_, rewrite_driver()));
+    rewrite_driver()->property_page()->WriteCohort(
+        server_context()->beacon_cohort());
+    rewrite_driver()->Clear();
+    ResetDriver();
   }
 
   // Send a beacon through ServerContext::HandleBeacon and verify that the
@@ -1084,22 +1115,11 @@ class BeaconTest : public ServerContextTest {
         user_agent,
         CreateRequestContext()));
 
-    UserAgentMatcher::DeviceType device_type =
-        server_context()->user_agent_matcher()->GetDeviceTypeForUA(
-            user_agent);
-    StringPiece device_type_suffix =
-        UserAgentMatcher::DeviceTypeSuffix(device_type);
-
-    GoogleString key = server_context()->GetPagePropertyCacheKey(
-        kUrlPrefix, kOptionsHash, device_type_suffix);
-
     // Read the property cache value for critical images, and verify that it has
     // the expected value.
-    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-    PropertyCache* property_cache = server_context()->page_property_cache();
-    property_cache->Read(page.get());
-    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        RewriteDriver::kBeaconCohort);
+    scoped_ptr<MockPropertyPage> page(MockPageForUA(user_agent));
+    const PropertyCache::Cohort* cohort =
+        property_cache_->GetCohort(RewriteDriver::kBeaconCohort);
     if (critical_image_hashes != NULL) {
       PropertyValue* property = page->GetProperty(
           cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
@@ -1109,8 +1129,6 @@ class BeaconTest : public ServerContextTest {
 
     if (critical_css_selectors != NULL) {
       rewrite_driver()->set_property_page(page.release());
-      EXPECT_EQ(critical_css_selectors->empty(),
-                rewrite_driver()->CriticalSelectors() == NULL);
       server_context()->critical_selector_finder()->
           GetCriticalSelectorsFromPropertyCache(rewrite_driver(),
                                                 &critical_css_selectors_);
@@ -1122,6 +1140,8 @@ class BeaconTest : public ServerContextTest {
   GoogleString critical_images_property_value_;
   // This field holds data deserialized from the pcache after a BeaconTest call.
   StringSet critical_css_selectors_;
+  // This field holds candidate critical css selectors.
+  StringSet candidates_;
 };
 
 TEST_F(BeaconTest, BasicPcacheSetup) {
@@ -1188,9 +1208,11 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
 }
 
 TEST_F(BeaconTest, HandleBeaconCriticalCss) {
+  InsertCssBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   StringSet critical_css_selector;
   critical_css_selector.insert("#foo");
   critical_css_selector.insert(".bar");
+  critical_css_selector.insert("#noncandidate");
   TestBeacon(NULL, &critical_css_selector,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ("#foo,.bar",
@@ -1198,10 +1220,11 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
 
   // Send another beacon response, and make sure we are storing a history of
   // responses.
-  ResetDriver();
+  InsertCssBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   critical_css_selector.clear();
   critical_css_selector.insert(".bar");
   critical_css_selector.insert("img");
+  critical_css_selector.insert("#noncandidate");
   TestBeacon(NULL, &critical_css_selector,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ("#foo,.bar,img",
@@ -1209,6 +1232,7 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
 }
 
 TEST_F(BeaconTest, EmptyCriticalCss) {
+  InsertCssBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   StringSet empty_critical_selectors;
   TestBeacon(NULL, &empty_critical_selectors,
              UserAgentMatcherTestBase::kChromeUserAgent);

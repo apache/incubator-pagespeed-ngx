@@ -313,8 +313,7 @@ class CriticalCssBeaconOnlyTest : public CriticalCssBeaconFilterTestBase {
   DISALLOW_COPY_AND_ASSIGN(CriticalCssBeaconOnlyTest);
 };
 
-// Right now we never beacon if there's valid pcache data, even if that data
-// corresponds to an earlier version of the page.
+// Make sure we re-beacon if candidate data changes.
 TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
   // Inject pcache entry.
   StringSet selectors;
@@ -329,11 +328,13 @@ TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
   // Check injection
   EXPECT_TRUE(rewrite_driver()->CriticalSelectors() != NULL);
   // Now do the test.
+
   GoogleString input_html = InputHtml(
       StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHref("b.css")));
-  GoogleString expected_html = InputHtml(
-      StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css")));
-  ValidateExpected("already_beaconed", input_html, expected_html);
+  GoogleString expected_html = BeaconHtml(
+      StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css")),
+      kSelectorsInlineAB);
+  ValidateExpectedUrl(kTestDomain, input_html, expected_html);
 }
 
 class CriticalCssBeaconWithCombinerFilterTest

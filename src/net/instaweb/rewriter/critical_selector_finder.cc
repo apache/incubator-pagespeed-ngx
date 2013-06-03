@@ -112,8 +112,13 @@ void UpdateCriticalSelectorSet(
       *critical_selector_set, support_value);
   // Actually add the new_set to the support_map.
   for (StringSet::const_iterator s = new_set.begin(); s != new_set.end(); ++s) {
-    // Allows insertion of absent entries.
-    SaturatingAddTo(support_value, &support_map[*s]);
+    // Only add entries that are already in the support_map
+    // (critical_css_beacon_filter initializes candidate entries to have support
+    // 0).  This avoids a cache-fill DoS with spurious beacon data.
+    SupportMap::iterator entry = support_map.find(*s);
+    if (entry != support_map.end()) {
+      SaturatingAddTo(support_value, &entry->second);
+    }
   }
   WriteSupportMapToCriticalSelectors(support_map, critical_selector_set);
 }
@@ -141,6 +146,31 @@ void WriteCriticalSelectorSetToPropertyCache(
     case kPropertyCacheUpdateOk:
       // Nothing more to do.
       break;
+  }
+}
+
+// Decay support, deleting elements whose support drops to 0.
+void DecaySupportMap(int support_interval, SupportMap* support_map) {
+  SupportMap::iterator next = support_map->begin(), end = support_map->end();
+  while (next != end) {
+    // We increment at the top of the loop so that we can erase curr
+    // without invalidating next.  See:
+    // http://stackoverflow.com/questions/2874441/deleting-elements-from-stl-set-while-iterating
+    SupportMap::iterator curr = next++;
+    // Multiply i->second by the fraction
+    // support_interval / (support_interval + 1)
+    // Using int64 to avoid overflow.
+    int64 support_value = curr->second;
+    support_value *= support_interval;
+    support_value /= support_interval + 1;
+    if (support_value == 0 && curr->second > 0) {
+      // Remove entry when its support falls to 0 (this will expire entries that
+      // should not be candidates; if curr should still be a candidate, we will
+      // re-insert it as part of beaconing).
+      support_map->erase(curr);
+    } else {
+      curr->second = static_cast<int32>(support_value);
+    }
   }
 }
 
@@ -293,7 +323,7 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
       *critical_selectors.get(), cohort_, page, message_handler);
 }
 
-bool CriticalSelectorFinder::MustBeaconForCandidates(
+bool CriticalSelectorFinder::PrepareForBeaconInsertion(
     const StringSet& selectors, RewriteDriver* driver) {
   if (selectors.empty()) {
     // Never instrument when there's nothing to check.
@@ -308,34 +338,37 @@ bool CriticalSelectorFinder::MustBeaconForCandidates(
     critical_selector_set = new CriticalSelectorSet;
     driver->SetCriticalSelectors(critical_selector_set);
   }
-  SupportMap support = ConvertCriticalSelectorsToSupportMap(
+  SupportMap support_map = ConvertCriticalSelectorsToSupportMap(
       *critical_selector_set, SupportInterval());
-  // TODO(jmaessen): Set support to 0 for elements of selectors that are not
-  // already supported (already in another client).
+  bool is_critical_selector_set_changed = false;
   int64 now = driver->timer()->NowMs();
   if (now >= critical_selector_set->next_beacon_timestamp_ms()) {
     // TODO(jmaessen): Add noise to inter-beacon interval.  How?
     // Currently first visit to page after next_beacon_timestamp_ms will beacon.
     critical_selector_set->set_next_beacon_timestamp_ms(
         now + kMinBeaconIntervalMs);
-    // Decay the support map.
-    for (SupportMap::iterator i = support.begin(), end = support.end();
-         i != end; ++i) {
-      // Multiply i->second by the fraction
-      // SupportInterval() / (SupportInterval() + 1)
-      // Using int64 to avoid overflow.
-      int64 support = i->second;
-      support *= SupportInterval();
-      support /= SupportInterval() + 1;
-      i->second = static_cast<int32>(support);
+    DecaySupportMap(SupportInterval(), &support_map);
+    is_critical_selector_set_changed = true;  // Timestamp definitely changed.
+  }
+  // Check to see if candidate selectors are already known to pcache.  Insert
+  // previously-unknown candidates with a support of 0, to indicate that beacon
+  // results for those selectors will be considered valid.  Other selectors
+  // returned in a beacon result will simply be ignored, avoiding DoSing the
+  // pcache.  New candidate selectors cause us to re-beacon.
+  for (StringSet::const_iterator i = selectors.begin(), end = selectors.end();
+       i != end; ++i) {
+    if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
+      is_critical_selector_set_changed = true;
     }
-    WriteSupportMapToCriticalSelectors(support, critical_selector_set);
+  }
+  if (is_critical_selector_set_changed) {
+    WriteSupportMapToCriticalSelectors(support_map, critical_selector_set);
     WriteCriticalSelectorSetToPropertyCache(
         *critical_selector_set, cohort_, driver->property_page(),
         driver->message_handler());
-    return true;
+    driver->property_page()->WriteCohort(cohort_);
   }
-  return false;
+  return is_critical_selector_set_changed;
 }
 
 }  // namespace net_instaweb

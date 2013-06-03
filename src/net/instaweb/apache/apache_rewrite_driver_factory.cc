@@ -549,17 +549,13 @@ void ApacheRewriteDriverFactory::Initialize() {
 }
 
 void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
-  // Init standard PSOL stats.
-  RewriteDriverFactory::InitStats(statistics);
+  // Init standard system stats.
+  SystemRewriteDriverFactory::InitStats(statistics);
 
   // Init Apache-specific stats.
   ApacheServerContext::InitStats(statistics);
   InPlaceResourceRecorder::InitStats(statistics);
   RateController::InitStats(statistics);
-  SerfUrlAsyncFetcher::InitStats(statistics);
-  SystemCaches::InitStats(statistics);
-  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
-  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 
   statistics->AddVariable(kShutdownCount);
 }

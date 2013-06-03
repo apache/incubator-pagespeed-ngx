@@ -88,9 +88,9 @@ class CriticalSelectorFinder {
 
   // Given a set of candidate critical selectors, decide whether beaconing
   // should take place (and if so, decay existing selector evidence).  We should
-  // *always* beacon if there's no critical selector data.  Otherwise
+  // *always* beacon if there's new critical selector data.  Otherwise
   // re-beaconing is based on a time and request interval.
-  bool MustBeaconForCandidates(
+  bool PrepareForBeaconInsertion(
       const StringSet& selector_set, RewriteDriver* driver);
 
   // Gets the SupportInterval for a new beacon result (see comment at top).
