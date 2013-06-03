@@ -46,6 +46,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class Function;
+class GoogleUrl;
 class MessageHandler;
 class ProxyFetch;
 class ProxyFetchPropertyCallbackCollector;
@@ -87,6 +88,17 @@ class ProxyFetchFactory {
       RewriteDriver* driver,
       ProxyFetchPropertyCallbackCollector* property_callback,
       AsyncFetch* original_content_fetch);
+
+  // Initiates the PropertyCache lookup.  See ngx_pagespeed.cc or
+  // proxy_interface.cc for example usage.
+  static ProxyFetchPropertyCallbackCollector* InitiatePropertyCacheLookup(
+      bool is_resource_fetch,
+      const GoogleUrl& request_url,
+      ServerContext* server_context,
+      RewriteOptions* options,
+      AsyncFetch* async_fetch,
+      const bool requires_blink_cohort,
+      bool* added_page_property_callback);
 
   MessageHandler* message_handler() const { return handler_; }
 

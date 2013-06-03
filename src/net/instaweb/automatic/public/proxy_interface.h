@@ -88,6 +88,10 @@ class ProxyInterface : public UrlAsyncFetcher {
       const bool requires_blink_cohort,
       bool* added_page_property_callback);
 
+ protected:
+  // Needed by subclasses when overriding InitiatePropertyCacheLookup.
+  ServerContext* server_context_;  // thread-safe, unowned
+
  private:
   friend class ProxyInterfaceTest;
 
@@ -105,8 +109,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   // infinite fetching loops). This might be the favicon or something...
   bool UrlAndPortMatchThisServer(const GoogleUrl& url);
 
-  // References to unowned objects.
-  ServerContext* server_context_;     // thread-safe
   UrlAsyncFetcher* fetcher_;              // thread-safe
   Timer* timer_;                          // thread-safe
   MessageHandler* handler_;               // thread-safe

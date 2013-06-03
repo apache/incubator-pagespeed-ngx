@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
@@ -43,11 +44,13 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -1142,6 +1145,178 @@ void ProxyFetch::HandleIdleAlarm() {
   driver_->ShowProgress("- Flush injected due to input idleness -");
   driver_->RequestFlush();
   Flush(factory_->message_handler());
+}
+
+namespace {
+
+PropertyCache::CohortVector GetCohortList(
+    bool requires_blink_cohort,
+    const ServerContext* server_context) {
+  PropertyCache* page_property_cache = server_context->page_property_cache();
+  const PropertyCache::CohortVector cohort_list =
+      page_property_cache->GetAllCohorts();
+  if (requires_blink_cohort) {
+    return cohort_list;
+  }
+
+  PropertyCache::CohortVector cohort_list_without_blink;
+  for (int i = 0, m = cohort_list.size(); i < m; ++i) {
+    if (cohort_list[i]->name() == BlinkUtil::kBlinkCohort) {
+      continue;
+    }
+    cohort_list_without_blink.push_back(cohort_list[i]);
+  }
+  return cohort_list_without_blink;
+}
+
+bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
+  const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
+  if (type == NULL) {
+    // No extension or unknown; could be HTML:
+    //   http://www.example.com/
+    //   http://www.example.com/index
+    //   http://www.example.com/index.php
+    return true;
+  }
+
+  // Use a complete switch-statement rather than type()->IsHtmlLike()
+  // so that every time we add a new content-type we make an explicit
+  // decision about whether it should induce a pcache read.
+  //
+  // TODO(jmarantz): currently this returns false for ".txt".  Thus we will
+  // do no optimizations relying on property-cache on HTML files ending with
+  // ".txt".  We should determine whether this is the right thing or not.
+  switch (type->type()) {
+    case ContentType::kHtml:
+    case ContentType::kXhtml:
+    case ContentType::kCeHtml:
+      return true;
+    case ContentType::kJavascript:
+    case ContentType::kCss:
+    case ContentType::kText:
+    case ContentType::kXml:
+    case ContentType::kPng:
+    case ContentType::kGif:
+    case ContentType::kJpeg:
+    case ContentType::kSwf:
+    case ContentType::kWebp:
+    case ContentType::kIco:
+    case ContentType::kPdf:
+    case ContentType::kOther:
+    case ContentType::kJson:
+    case ContentType::kVideo:
+    case ContentType::kOctetStream:
+      return false;
+  }
+  LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()
+              << "; " << type->mime_type() << "; " << type->file_extension();
+  return false;
+}
+
+}  // namespace
+
+ProxyFetchPropertyCallbackCollector*
+    ProxyFetchFactory::InitiatePropertyCacheLookup(
+        const bool is_resource_fetch,
+        const GoogleUrl& request_url,
+        ServerContext* server_context,
+        RewriteOptions* options,
+        AsyncFetch* async_fetch,
+        const bool requires_blink_cohort,
+        bool* added_page_property_callback) {
+  RequestContextPtr request_ctx = async_fetch->request_context();
+  DCHECK(request_ctx.get() != NULL);
+  if (request_ctx->root_trace_context() != NULL) {
+    request_ctx->root_trace_context()->TracePrintf(
+        "PropertyCache lookup start");
+  }
+  StringPiece user_agent =
+      async_fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
+  UserAgentMatcher::DeviceType device_type =
+      server_context->user_agent_matcher()->GetDeviceTypeForUA(user_agent);
+
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+      new ProxyFetchPropertyCallbackCollector(
+          server_context, request_url.Spec(), request_ctx, options,
+          device_type));
+  bool added_callback = false;
+  PropertyPageStarVector property_callbacks;
+
+  ProxyFetchPropertyCallback* property_callback = NULL;
+  ProxyFetchPropertyCallback* fallback_property_callback = NULL;
+  PropertyCache* page_property_cache = server_context->page_property_cache();
+  if (!is_resource_fetch &&
+      server_context->page_property_cache()->enabled() &&
+      UrlMightHavePropertyCacheEntry(request_url) &&
+      async_fetch->request_headers()->method() == RequestHeaders::kGet) {
+    if (options != NULL) {
+      server_context->ComputeSignature(options);
+    }
+    AbstractMutex* mutex = server_context->thread_system()->NewMutex();
+    const StringPiece& device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+    GoogleString page_key = server_context->GetPagePropertyCacheKey(
+        request_url.Spec(), options, device_type_suffix);
+    property_callback = new ProxyFetchPropertyCallback(
+        ProxyFetchPropertyCallback::kPropertyCachePage,
+        page_property_cache, page_key, device_type,
+        callback_collector.get(), mutex);
+    callback_collector->AddCallback(property_callback);
+    added_callback = true;
+    if (added_page_property_callback != NULL) {
+      *added_page_property_callback = true;
+    }
+    // Trigger property cache lookup for the requests which contains query param
+    // as cache key without query params. The result of this lookup will be used
+    // if actual property page does not contains property value.
+    if (options != NULL &&
+        options->use_fallback_property_cache_values()) {
+      GoogleString fallback_page_key;
+      if (request_url.PathAndLeaf() != "/" &&
+          !request_url.PathAndLeaf().empty()) {
+        // Don't bother looking up fallback properties for the root, "/", since
+        // there is nothing to fall back to.
+        fallback_page_key = server_context->GetFallbackPagePropertyCacheKey(
+            request_url, options, device_type_suffix);
+      }
+
+      if (!fallback_page_key.empty()) {
+        fallback_property_callback =
+            new ProxyFetchPropertyCallback(
+                ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
+                page_property_cache, fallback_page_key, device_type,
+                callback_collector.get(),
+                server_context->thread_system()->NewMutex());
+        callback_collector->AddCallback(fallback_property_callback);
+      }
+    }
+  }
+
+  // All callbacks need to be registered before Reads to avoid race.
+  PropertyCache::CohortVector cohort_list_without_blink =
+      GetCohortList(false /* requires_blink_cohort */, server_context);
+  if (property_callback != NULL) {
+    page_property_cache->ReadWithCohorts(
+        requires_blink_cohort ?
+            GetCohortList(
+                true /* requires_blink_cohort */, server_context) :
+            cohort_list_without_blink,
+            property_callback);
+  }
+
+  if (fallback_property_callback != NULL) {
+    // Always read property page with fallback values without blink as there is
+    // no property in BlinkCohort which can used fallback values.
+    page_property_cache->ReadWithCohorts(cohort_list_without_blink,
+                                         fallback_property_callback);
+  }
+
+  if (added_callback) {
+    request_ctx->mutable_timing_info()->PropertyCacheLookupStarted();
+  } else {
+    callback_collector.reset(NULL);
+  }
+  return callback_collector.release();
 }
 
 }  // namespace net_instaweb

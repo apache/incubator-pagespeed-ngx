@@ -23,8 +23,9 @@
 
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/cache_html_flow.h"
-#include "net/instaweb/automatic/public/proxy_interface.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/automatic/public/proxy_interface.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -76,7 +77,6 @@ namespace net_instaweb {
 class AbstractMutex;
 class AsyncFetch;
 class MessageHandler;
-class ProxyFetchPropertyCallbackCollector;
 
 namespace {
 
@@ -408,8 +408,8 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;
     }
-    return ProxyInterface::InitiatePropertyCacheLookup(
-        is_resource_fetch, request_url, options, async_fetch,
+    return ProxyFetchFactory::InitiatePropertyCacheLookup(
+        is_resource_fetch, request_url, server_context_, options, async_fetch,
         requires_blink_cohort, added_page_property_callback);
   }
 
