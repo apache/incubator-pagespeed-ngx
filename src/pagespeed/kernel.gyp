@@ -99,6 +99,7 @@
         'kernel/html/canonical_attributes.cc',
         'kernel/html/explicit_close_tag.cc',
         'kernel/util/platform.cc',
+        'kernel/util/simple_random.cc',
         'kernel/thread/mock_scheduler.cc',
       ],
       'include_dirs': [
@@ -145,6 +146,7 @@
       'target_name': 'pagespeed_cache',
       'type': '<(library)',
       'sources': [
+        'kernel/cache/lru_cache.cc',
         'kernel/cache/purge_set.cc',
        ],
       'dependencies': [

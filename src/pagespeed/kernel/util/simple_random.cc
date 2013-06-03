@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/simple_random.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 

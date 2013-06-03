@@ -16,12 +16,12 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/lru_cache.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
 
 #include <cstddef>
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

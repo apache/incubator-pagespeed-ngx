@@ -18,15 +18,11 @@
 
 // Unit-test the lru cache
 
-#include "net/instaweb/util/public/lru_cache.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
 
 #include <cstddef>
 #include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 const size_t kMaxSize = 100;
