@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -293,7 +294,8 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
     scoped_ptr<GoogleUrl> url_with_psa_off(gurl.CopyAndAddQueryParam(
         RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
     GoogleString escaped_url;
-    HtmlKeywords::Escape(url_with_psa_off->Spec(), &escaped_url);
+    EscapeToJsStringLiteral(url_with_psa_off->Spec(), false,
+                            &escaped_url);
     base_fetch_->Write(StringPrintf(kRedirectPageJs, escaped_url.c_str()),
                        message_handler_);
     base_fetch_->Write("</head><body></body></html>", message_handler_);

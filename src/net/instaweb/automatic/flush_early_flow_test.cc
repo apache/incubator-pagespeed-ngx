@@ -18,6 +18,8 @@
 
 // Unit-tests for FlushEarlyFlow.
 
+#include "net/instaweb/automatic/public/flush_early_flow.h"
+
 #include "net/instaweb/automatic/public/proxy_interface_test_base.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -54,6 +56,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
@@ -244,7 +247,7 @@ const char kFlushEarlyRewrittenHtmlWithScriptPsaOff[] =
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 5</script>"
     "<script type=\"text/javascript\">"
-    "window.location.replace(\"http://test.com/?ModPagespeed=noscript\")"
+    "window.location.replace(\"%s\")"
     "</script>"
     "</head><body></body></html>";
 const char kFlushEarlyRewrittenHtmlLinkScript[] =
@@ -399,6 +402,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   FlushEarlyFlowTest()
       : start_time_ms_(0),
+        request_url_(kTestDomain),
+        noscript_redirect_url_(StrCat(kTestDomain, "?ModPagespeed=noscript")),
         max_age_300_("max-age=300"),
         request_start_time_ms_(-1) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
@@ -452,7 +457,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     headers.Add(HttpAttributes::kSetCookie, "path=/");
 
     headers.SetStatusAndReason(HttpStatus::kOK);
-    mock_url_fetcher_.SetResponse(kTestDomain, headers, kFlushEarlyHtml);
+    mock_url_fetcher_.SetResponse(request_url_, headers, kFlushEarlyHtml);
 
     // Enable FlushSubresourcesFilter filter.
     RewriteOptions* rewrite_options = server_context()->global_options();
@@ -526,7 +531,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                      kMockHashValue, kMockHashValue), "js");
     GoogleString rewritten_img_url_1 = Encode(
         kTestDomain, "ce", kMockHashValue, "1.jpg", "jpg");
-    GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
     GoogleString cookie_script =
         "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
         "(function(){"
@@ -563,8 +567,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
           StrCat("<img src=\"", rewritten_img_url_1.data(), "\"/>").c_str(),
           defer_js_injected_html1.c_str(),
-          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                       redirect_url.c_str()).c_str(),
+          StringPrintf(kNoScriptRedirectFormatter,
+                       noscript_redirect_url_.c_str(),
+                       noscript_redirect_url_.c_str()).c_str(),
           rewritten_css_url_3_.data(),
           defer_js_injected_html2.c_str(),
           defer_js_injected_html3.c_str());
@@ -593,8 +598,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
                  JsDisableFilter::GetJsDisableScriptSnippet(options_),
                  "</script>").c_str(),
-          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                       redirect_url.c_str()).c_str(),
+          StringPrintf(kNoScriptRedirectFormatter,
+                       noscript_redirect_url_.c_str(),
+                       noscript_redirect_url_.c_str()).c_str(),
           rewritten_css_url_3_.data(),
           GetDeferJsCode().c_str(), "");
     } else if (value == UserAgentMatcher::kPrefetchNotSupported) {
@@ -612,15 +618,17 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
           rewritten_img_url_1.data(),
-          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                       redirect_url.c_str()).c_str(),
+          StringPrintf(kNoScriptRedirectFormatter,
+                       noscript_redirect_url_.c_str(),
+                       noscript_redirect_url_.c_str()).c_str(),
           rewritten_css_url_3_.data());
     } else if (redirect_psa_off) {
       return StringPrintf(
           kFlushEarlyRewrittenHtmlWithScriptPsaOff,
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-          rewritten_css_url_3_.data());
+          rewritten_css_url_3_.data(),
+          redirect_url_.data());
     } else {
       GoogleString output_format;
       if (insert_dns_prefetch) {
@@ -640,8 +648,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
           rewritten_img_url_1.data(),
-          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                                 redirect_url.c_str()).c_str(),
+          StringPrintf(kNoScriptRedirectFormatter,
+                       noscript_redirect_url_.c_str(),
+                       noscript_redirect_url_.c_str()).c_str(),
           rewritten_css_url_3_.data());
     }
   }
@@ -973,6 +982,11 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   GoogleString rewritten_js_url_1_;
   GoogleString rewritten_js_url_2_;
   GoogleString rewritten_js_url_3_;
+
+  GoogleString request_url_;
+  GoogleString redirect_url_;
+  GoogleString noscript_redirect_url_;
+
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
 };
@@ -1075,44 +1089,45 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {
   EXPECT_EQ(0, stats.status_counts_size());
 }
 
-// TODO(rahulbansal): Remove the flakiness and uncomment this.
-/*
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // Test that the flush early flow is not triggered when the status code is
   // unstable.
+  request_url_ = "http://test.com/?q=1";
   SetupForFlushEarlyFlow();
+  redirect_url_ = StrCat(request_url_, "&ModPagespeed=noscript");
+  noscript_redirect_url_ = StrCat(request_url_, "&amp;ModPagespeed=noscript");
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
                           "prefetch_link_rel_subresource");
   ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(request_url_, request_headers, true, &text, &headers);
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
   EXPECT_EQ(0, statistics()->FindVariable(
       FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 
-  SetFetchResponse404(kTestDomain);
+  SetFetchResponse404(request_url_);
   // Fetch again so that 404 is populated in response headers.
   // It should redirect to ModPagespeed=noscript in this case.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false,
-      false, true), text);
+      true, false), text);
   EXPECT_EQ(1, statistics()->FindVariable(
       FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 
   // Fetch the url again. This time FlushEarlyFlow should not be triggered as
   // the status code is not stable.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(HttpStatus::kNotFound, headers.status_code());
 
-  // Delete the 404 form cache and again set up for 200 response.
-  lru_cache()->Delete(kTestDomain);
+  // Delete the 404 from cache and again set up for 200 response.
+  lru_cache()->Delete(request_url_);
   SetupForFlushEarlyFlow();
 
   // Flush early flow is again not triggered as the status code is not
@@ -1120,30 +1135,25 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // requests.
   for (int i = 0, n = server_context()->global_options()->
        property_cache_http_status_stability_threshold(); i < n; ++i) {
-    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+    FetchFromProxy(request_url_, request_headers, true, &text, &headers);
     EXPECT_TRUE(text.find("link rel=\"subresource\"") == GoogleString::npos);
   }
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
 
   // Fetch again so that 404 is populated in response headers.
   // It should redirect to ModPagespeed=noscript in this case.
-  // This case simulates the scenario when fetch finishes before the flush
-  // early flow is done.
-  SetFetchResponse404(kTestDomain);
-  TestPropertyCacheWithHeadersAndOutput(
-       kTestDomain, true, true, true, false, false, false,
-       request_headers, &headers, &text);
+  SetFetchResponse404(request_url_);
+  FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false,
-      false, true), text);
+      true, false), text);
   EXPECT_EQ(2, statistics()->FindVariable(
       FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 }
-*/
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestMobile) {
   TestFlushEarlyFlow(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
