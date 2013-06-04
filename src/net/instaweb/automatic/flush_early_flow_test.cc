@@ -405,7 +405,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         request_url_(kTestDomain),
         noscript_redirect_url_(StrCat(kTestDomain, "?ModPagespeed=noscript")),
         max_age_300_("max-age=300"),
-        request_start_time_ms_(-1) {
+        request_start_time_ms_(-1),
+        set_httponly_cookie_(false) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -455,6 +456,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     headers.Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
     headers.Add(HttpAttributes::kSetCookie, "UA=chrome");
     headers.Add(HttpAttributes::kSetCookie, "path=/");
+    if (set_httponly_cookie_) {
+      headers.Add(HttpAttributes::kSetCookie, "a=1; HttpOnly");
+    }
 
     headers.SetStatusAndReason(HttpStatus::kOK);
     mock_url_fetcher_.SetResponse(request_url_, headers, kFlushEarlyHtml);
@@ -989,6 +993,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
+  bool set_httponly_cookie_;
 };
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
@@ -1070,6 +1075,46 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestFallbackPageUsage) {
   const RewriterStats& fallback_stats = logging_info()->rewriter_stats(2);
   EXPECT_EQ(RewriterHtmlApplication::ACTIVE, fallback_stats.html_status());
   EXPECT_EQ(2, fallback_stats.status_counts_size());
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestDisabled) {
+  // Adding a httponly cookie in the response causes flush early to be disabled
+  // for the second request.
+  set_httponly_cookie_ = true;
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_script_tag");
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
+
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::DISABLED, stats.html_status());
+  EXPECT_EQ(0, stats.status_counts_size());
+
+  // Change the fetcher's response to not set the http only cookie. We still
+  // don't flush early.
+  set_httponly_cookie_ = false;
+  SetupForFlushEarlyFlow();
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
+
+  // Clear all the caches. We don't flush early on the first request since we
+  // miss the pcache, but flush early on the second request.
+  lru_cache()->Clear();
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_TRUE(headers.Has(kPsaRewriterHeader));
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {

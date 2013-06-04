@@ -196,6 +196,14 @@ pagespeed.LazyloadImages.prototype.getStyle_ = function(element, property) {
  * @private
  */
 pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
+  if (!this.onload_done_ &&
+      (element.offsetHeight == 0 || element.offsetWidth == 0)) {
+    // The element is most likely hidden.
+    // Since we don't know when the element will become visible, we'll try to
+    // load the image after onload, so that we can improve PLT.
+    return false;
+  }
+
   var element_position = this.getStyle_(element, 'position');
   if (element_position == 'relative') {
     // TODO(ksimbili): Check if this code is still needed. Find out if any other
@@ -206,13 +214,6 @@ pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
     return true;
   }
 
-  if (!this.onload_done_ &&
-      (element.offsetHeight == 0 || element.offsetWidth == 0)) {
-    // The element is most likely hidden.
-    // Since we don't know when the element will become visible, we'll try to
-    // load the image after onload, so that we can improve PLT.
-    return false;
-  }
   var viewport = this.viewport_();
   var rect = element.getBoundingClientRect();
   var top_diff, bottom_diff;
@@ -394,45 +395,51 @@ pagespeed.addHandler = function(elem, ev, func) {
 pagespeed.lazyLoadInit = function(loadAfterOnload, blankImageSrc) {
   var context = new pagespeed.LazyloadImages(blankImageSrc);
   pagespeed['lazyLoadImages'] = context;
+
   // Add an event to the onload handler to check if any new images have now
   // become visible because of reflows or DOM manipulation. If loadAfterOnload
   // is true, load all images on the page.
   var lazy_onload = function() {
     context.onload_done_ = true;
-    // Note that the timeout here should be greater than the timeout for the
-    // delay_images filter to avoid CPU contention between the two filters.
-    window.setTimeout(function() {
-      context.force_load_ = loadAfterOnload;
-      context.loadVisible_();
-    }, 200);
+    context.force_load_ = loadAfterOnload;
+    // Set the buffer to 200 after onload, so that images that are just below
+    // the fold are pre-loaded and scrolling is smoother.
+    context.buffer_ = 200;
+    context.loadVisible_();
   };
+  pagespeed.addHandler(window, 'load', lazy_onload);
+
+  // Pre-load the blank image placeholder.
   if (blankImageSrc.indexOf('data') != 0) {
     new Image().src = blankImageSrc;
   }
-  pagespeed.addHandler(window, 'load', lazy_onload);
-  if (!loadAfterOnload) {
+
+  // Always attach the onscroll, even if the onload option is enabled.
+  var lazy_onscroll = function() {
+    if (context.onload_done_ && loadAfterOnload) {
+      return;
+    }
+
     // NOTE: We don't delay any scroll event by greater than min_scroll_time_.
-    var lazy_onscroll = function() {
-      if (!context.scroll_timer_) {
-        // Check that a scroll_timer_ has not been attached already.
-        var now = new Date().getTime();
-        var timeout_ms = context.min_scroll_time_;
-        if (now - context.last_scroll_time_ > context.min_scroll_time_) {
-          // If the time since the last scroll is greater than min_scroll_time_,
-          // load visible images immediately.
-          timeout_ms = 0;
-        }
-        // Otherwise, load images after min_scroll_time_.
-        context.scroll_timer_ = window.setTimeout(function() {
-          context.last_scroll_time_ = new Date().getTime();
-          context.loadVisible_();
-          context.scroll_timer_ = null;
-        }, timeout_ms);
+    if (!context.scroll_timer_) {
+      // Check that a scroll_timer_ has not been attached already.
+      var now = new Date().getTime();
+      var timeout_ms = context.min_scroll_time_;
+      if (now - context.last_scroll_time_ > context.min_scroll_time_) {
+        // If the time since the last scroll is greater than min_scroll_time_,
+        // load visible images immediately.
+        timeout_ms = 0;
       }
-    };
-    pagespeed.addHandler(window, 'scroll', lazy_onscroll);
-    pagespeed.addHandler(window, 'resize', lazy_onscroll);
-  }
+      // Otherwise, load images after min_scroll_time_.
+      context.scroll_timer_ = window.setTimeout(function() {
+        context.last_scroll_time_ = new Date().getTime();
+        context.loadVisible_();
+        context.scroll_timer_ = null;
+      }, timeout_ms);
+    }
+  };
+  pagespeed.addHandler(window, 'scroll', lazy_onscroll);
+  pagespeed.addHandler(window, 'resize', lazy_onscroll);
 };
 
 pagespeed['lazyLoadInit'] = pagespeed.lazyLoadInit;
