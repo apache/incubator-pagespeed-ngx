@@ -911,6 +911,7 @@
         'instaweb_rewriter_html_option_gperf',
         'instaweb_rewriter_pb',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',
       ],
       'sources': [
         'rewriter/beacon_critical_images_finder.cc',

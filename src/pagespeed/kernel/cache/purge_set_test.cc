@@ -56,7 +56,7 @@ TEST_F(PurgeSetTest, NoEvictionsOnUpdateSameEntry) {
     ++last_eviction_time_ms;
     purge_set_.Put("a", last_eviction_time_ms);
   }
-  EXPECT_EQ(0, purge_set_.invalidation_timestamp_ms());
+  EXPECT_EQ(0, purge_set_.global_invalidation_timestamp_ms());
   EXPECT_FALSE(purge_set_.IsValid("a", 1));
   EXPECT_FALSE(purge_set_.IsValid("a", last_eviction_time_ms));
   EXPECT_TRUE(purge_set_.IsValid("a", last_eviction_time_ms + 1));
@@ -67,7 +67,7 @@ TEST_F(PurgeSetTest, EvictionsOnUpdateNewEntries) {
   for (int i = 0; i < kMaxSize * 10; ++i) {
     purge_set_.Put(StrCat("a", IntegerToString(i)), i + 1);
   }
-  EXPECT_LT(0, purge_set_.invalidation_timestamp_ms());
+  EXPECT_LT(0, purge_set_.global_invalidation_timestamp_ms());
   EXPECT_FALSE(purge_set_.IsValid("a", 1));
   EXPECT_FALSE(purge_set_.IsValid("b", 1));
 
@@ -80,7 +80,7 @@ TEST_F(PurgeSetTest, EvictionsOnUpdateNewEntries) {
 }
 
 TEST_F(PurgeSetTest, Merge) {
-  purge_set_.UpdateInvalidationTimestampMs(10);
+  purge_set_.UpdateGlobalInvalidationTimestampMs(10);
   purge_set_.Put("b", 50);
   EXPECT_FALSE(purge_set_.IsValid("c", 5));
   EXPECT_TRUE(purge_set_.IsValid("c", 20));
@@ -88,7 +88,7 @@ TEST_F(PurgeSetTest, Merge) {
 
   PurgeSet src(kMaxSize);
   src.Put("a", 50);
-  src.UpdateInvalidationTimestampMs(20);
+  src.UpdateGlobalInvalidationTimestampMs(20);
   purge_set_.Merge(src);
   EXPECT_FALSE(purge_set_.IsValid("a", 40));
   EXPECT_FALSE(purge_set_.IsValid("b", 40));
@@ -97,12 +97,12 @@ TEST_F(PurgeSetTest, Merge) {
 }
 
 TEST_F(PurgeSetTest, MergeMaxWins) {
-  purge_set_.UpdateInvalidationTimestampMs(10);
+  purge_set_.UpdateGlobalInvalidationTimestampMs(10);
   purge_set_.Put("a", 40);
   purge_set_.Put("b", 70);
 
   PurgeSet src(kMaxSize);
-  src.UpdateInvalidationTimestampMs(5);  // will be ignored on merge.
+  src.UpdateGlobalInvalidationTimestampMs(5);  // will be ignored on merge.
   src.Put("a", 50);
   src.Put("b", 60);
   purge_set_.Merge(src);

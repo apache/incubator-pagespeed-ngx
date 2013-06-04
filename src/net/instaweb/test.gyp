@@ -260,6 +260,7 @@
         '<(DEPTH)/pagespeed/kernel/base/time_util_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/waveform_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/lru_cache_test.cc',
+        '<(DEPTH)/pagespeed/kernel/cache/purge_context_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/purge_set_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/canonical_attributes_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/doctype_test.cc',

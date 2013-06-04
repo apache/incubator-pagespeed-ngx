@@ -368,4 +368,25 @@ bool MemFileSystem::Unlock(const StringPiece& lock_name,
   return (lock_map_.erase(lock_name.as_string()) == 1);
 }
 
+bool MemFileSystem::WriteFile(const char* filename,
+                              const StringPiece& buffer,
+                              MessageHandler* handler) {
+  bool ret = FileSystem::WriteFile(filename, buffer, handler);
+  if (write_callback_.get() != NULL) {
+    write_callback_.release()->Run(filename);
+  }
+  return ret;
+}
+
+bool MemFileSystem::WriteTempFile(const StringPiece& prefix_name,
+                                  const StringPiece& buffer,
+                                  GoogleString* filename,
+                                  MessageHandler* handler) {
+  bool ret = FileSystem::WriteTempFile(prefix_name, buffer, filename, handler);
+  if (write_callback_.get() != NULL) {
+    write_callback_.release()->Run(*filename);
+  }
+  return ret;
+}
+
 }  // namespace net_instaweb

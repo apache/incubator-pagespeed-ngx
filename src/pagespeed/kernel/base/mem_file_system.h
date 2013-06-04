@@ -22,6 +22,7 @@
 #include <map>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -45,6 +46,8 @@ class Timer;
 // TODO(jmarantz): make threadsafe.
 class MemFileSystem : public FileSystem {
  public:
+  typedef Callback1<const GoogleString&> FileCallback;
+
   explicit MemFileSystem(ThreadSystem* threads, Timer* timer);
   virtual ~MemFileSystem();
 
@@ -121,6 +124,22 @@ class MemFileSystem : public FileSystem {
   int num_output_file_opens() const { return num_output_file_opens_; }
   int num_temp_file_opens() const { return num_temp_file_opens_; }
 
+  // Adds a callback to be called once after a file-write and then
+  // deleted.
+  //
+  // This is intended primarily for testing, and thus is not on the base
+  // class.
+  void set_write_callback(FileCallback* x) { write_callback_.reset(x); }
+
+  virtual bool WriteFile(const char* filename,
+                         const StringPiece& buffer,
+                         MessageHandler* handler);
+  virtual bool WriteTempFile(const StringPiece& prefix_name,
+                             const StringPiece& buffer,
+                             GoogleString* filename,
+                             MessageHandler* handler);
+
+
  private:
   // all_else_mutex_ should be held when calling these.
   inline void UpdateAtime(const StringPiece& path);
@@ -158,6 +177,9 @@ class MemFileSystem : public FileSystem {
   int num_input_file_stats_;
   int num_output_file_opens_;
   int num_temp_file_opens_;
+
+  // Hook to run after a file-write.
+  scoped_ptr<FileCallback> write_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };

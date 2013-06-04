@@ -21,12 +21,17 @@
 namespace net_instaweb {
 
 PurgeSet::PurgeSet(size_t max_size)
-    : invalidation_timestamp_ms_(0),
+    : global_invalidation_timestamp_ms_(0),
       helper_(this),
-      lru_(max_size, &helper_) {
+      lru_(new Lru(max_size, &helper_)) {
 }
 
 PurgeSet::~PurgeSet() {
+}
+
+void PurgeSet::Clear() {
+  lru_->Clear();
+  global_invalidation_timestamp_ms_ = 0;
 }
 
 void PurgeSet::Merge(const PurgeSet& src) {
@@ -54,9 +59,11 @@ void PurgeSet::Merge(const PurgeSet& src) {
   // in sync, so quibbling about an extra O(n) walk thorugh the in-memory
   // data does not seem worthwhile.
 
-  PurgeSet target(lru_.max_bytes_in_cache());
-  Lru::Iterator src_iter = src.lru_.Begin(), src_end = src.lru_.End();
-  Lru::Iterator this_iter = lru_.Begin(), this_end = lru_.End();
+  PurgeSet target(lru_->max_bytes_in_cache());
+  target.UpdateGlobalInvalidationTimestampMs(
+      src.global_invalidation_timestamp_ms_);
+  Lru::Iterator src_iter = src.lru_->Begin(), src_end = src.lru_->End();
+  Lru::Iterator this_iter = lru_->Begin(), this_end = lru_->End();
   while ((src_iter != src_end) && (this_iter != this_end)) {
     if (src_iter.Value() < this_iter.Value()) {
       target.Put(src_iter.Key(), src_iter.Value());
@@ -73,17 +80,33 @@ void PurgeSet::Merge(const PurgeSet& src) {
   for (; this_iter != this_end; ++this_iter) {
     target.Put(this_iter.Key(), this_iter.Value());
   }
-  target.lru_.SwapData(&lru_);
-  lru_.MergeStats(src.lru_);
-  UpdateInvalidationTimestampMs(src.invalidation_timestamp_ms_);
+  target.lru_->SwapData(lru_.get());
+  lru_->MergeStats(*src.lru_);
+
+  UpdateGlobalInvalidationTimestampMs(target.global_invalidation_timestamp_ms_);
+}
+
+void PurgeSet::Put(const GoogleString& key, int64 timestamp_ms) {
+  // Ignore invalidations of individual URLs predating the global
+  // invalidation timestamp.
+  if (timestamp_ms > global_invalidation_timestamp_ms_) {
+    lru_->Put(key, &timestamp_ms);
+  }
 }
 
 bool PurgeSet::IsValid(const GoogleString& key, int64 timestamp_ms) const {
-  if (timestamp_ms <= invalidation_timestamp_ms_) {
+  if (timestamp_ms <= global_invalidation_timestamp_ms_) {
     return false;
   }
-  int64* purge_timestamp_ms = lru_.GetNoFreshen(key);
+  int64* purge_timestamp_ms = lru_->GetNoFreshen(key);
   return ((purge_timestamp_ms == NULL) || (timestamp_ms > *purge_timestamp_ms));
+}
+
+void PurgeSet::Swap(PurgeSet* that) {
+  lru_.swap(that->lru_);  // scoped_ptr::swap
+  std::swap(global_invalidation_timestamp_ms_,
+            that->global_invalidation_timestamp_ms_);
+  helper_.Swap(&that->helper_);
 }
 
 }  // namespace net_instaweb

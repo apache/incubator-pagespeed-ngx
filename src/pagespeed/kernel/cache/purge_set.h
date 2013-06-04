@@ -20,8 +20,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PURGE_SET_H_
 
 #include <algorithm>
+#include <cstddef>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/cache/lru_cache_base.h"
 
@@ -34,25 +36,28 @@ namespace net_instaweb {
 // calling UpdateInvalidationTimestampMs.
 //
 // We bound the cache-purge data to a certain number of bytes.  When
-// we exceed that, we discard old invalidation records, and flush the
-// predating the flushed invalidations.
+// we exceed that, we discard old invalidation records, and bump up
+// the global invalidation timestamp to cover the evicted purges.
 class PurgeSet {
+  class InvalidationTimestampHelper;
+  typedef LRUCacheBase<int64, InvalidationTimestampHelper> Lru;
+
  public:
+  typedef Lru::Iterator Iterator;
+
   explicit PurgeSet(size_t max_size);
   ~PurgeSet();
 
   // Flushes any item in the cache older than timestamp_ms.
-  void UpdateInvalidationTimestampMs(int64 timestamp_ms) {
-    invalidation_timestamp_ms_ = std::max(timestamp_ms,
-                                          invalidation_timestamp_ms_);
+  void UpdateGlobalInvalidationTimestampMs(int64 timestamp_ms) {
+    global_invalidation_timestamp_ms_ =
+        std::max(timestamp_ms, global_invalidation_timestamp_ms_);
   }
 
   // Adds a new cache purge record to the set.  If we spill over our
   // invalidation limit, we will reset the global cache purge-point based
   // on the evicted node.
-  void Put(const GoogleString& key, int64 timestamp_ms) {
-    lru_.Put(key, &timestamp_ms);
-  }
+  void Put(const GoogleString& key, int64 timestamp_ms);
 
   // Merge two invalidation records.
   void Merge(const PurgeSet& src);
@@ -61,7 +66,16 @@ class PurgeSet {
   // key, and against the overall invalidation timestamp/
   bool IsValid(const GoogleString& key, int64 timestamp_ms) const;
 
-  int64 invalidation_timestamp_ms() const { return invalidation_timestamp_ms_; }
+  int64 global_invalidation_timestamp_ms() const {
+    return global_invalidation_timestamp_ms_;
+  }
+
+  Iterator Begin() const { return lru_->Begin(); }
+  Iterator End() const { return lru_->End(); }
+
+  int num_elements() const { return lru_->num_elements(); }
+  void Clear();
+  void Swap(PurgeSet* that);
 
  private:
   class InvalidationTimestampHelper {
@@ -80,7 +94,8 @@ class PurgeSet {
     // Update global invalidation timestamp whenever a purge record is
     // evicted to guarantee that that resource remains purged.
     void EvictNotify(int64 evicted_record_timestamp_ms) {
-      purge_set_->UpdateInvalidationTimestampMs(evicted_record_timestamp_ms);
+      purge_set_->UpdateGlobalInvalidationTimestampMs(
+          evicted_record_timestamp_ms);
     }
 
     // Only replace purge records if the new one is newer.
@@ -88,14 +103,19 @@ class PurgeSet {
       return new_timestamp_ms > old_timestamp_ms;
     }
 
+    void Swap(InvalidationTimestampHelper* that) {
+      std::swap(purge_set_, that->purge_set_);
+    }
+
    private:
     PurgeSet* purge_set_;
   };
 
-  typedef LRUCacheBase<int64, InvalidationTimestampHelper> Lru;
-  int64 invalidation_timestamp_ms_;
+  // Global invalidation timestamp value. Anything with a timestamp older than
+  // this is considered purged already.
+  int64 global_invalidation_timestamp_ms_;
   InvalidationTimestampHelper helper_;
-  Lru lru_;
+  scoped_ptr<Lru> lru_;
 
   DISALLOW_COPY_AND_ASSIGN(PurgeSet);
 };

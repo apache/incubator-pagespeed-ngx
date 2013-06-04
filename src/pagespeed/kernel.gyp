@@ -147,6 +147,7 @@
       'type': '<(library)',
       'sources': [
         'kernel/cache/lru_cache.cc',
+        'kernel/cache/purge_context.cc',
         'kernel/cache/purge_set.cc',
        ],
       'dependencies': [
