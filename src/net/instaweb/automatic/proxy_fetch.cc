@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/queued_alarm.h"
@@ -367,7 +368,7 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
   // If we have not transferred the ownership of PagePropertyCache to
   // ProxyFetch yet, and we have the status code, then write the status_code in
   // PropertyCache.
-  PropertyPage* page = property_page();
+  AbstractPropertyPage* page = fallback_property_page();
   if (page == NULL || status_code_ == HttpStatus::kUnknownStatusCode) {
     return;
   }

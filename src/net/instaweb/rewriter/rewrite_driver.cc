@@ -2284,7 +2284,8 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   // Update the status code of the last request.
   if (status_code_ != HttpStatus::kUnknownStatusCode) {
     UpdatePropertyValueInDomCohort(
-        page, kStatusCodePropertyName, IntegerToString(status_code_));
+        fallback_property_page(),
+        kStatusCodePropertyName, IntegerToString(status_code_));
   }
   if (options()->max_html_parse_bytes() > 0) {
     // Update whether the page exceeded the html parse size limit.

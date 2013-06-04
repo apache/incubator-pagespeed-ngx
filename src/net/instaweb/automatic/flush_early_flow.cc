@@ -429,7 +429,7 @@ void FlushEarlyFlow::FlushEarly() {
       StringToInt(num_rewritten_resources_property_value->value().data(),
                   &num_rewritten_resources_);
     }
-    PropertyValue* status_code_property_value = page->GetProperty(
+    PropertyValue* status_code_property_value = fallback_page->GetProperty(
         cohort, RewriteDriver::kStatusCodePropertyName);
 
     // We do not trigger flush early flow if the status code of the response is
@@ -458,7 +458,7 @@ void FlushEarlyFlow::FlushEarly() {
         // If the flush early info has non-empty resource html, we flush early.
 
         // Check whether to flush lazyload script snippets early.
-        PropertyValue* lazyload_property_value = page->GetProperty(
+        PropertyValue* lazyload_property_value = fallback_page->GetProperty(
             cohort,
             LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName);
         if (lazyload_property_value->has_value() &&

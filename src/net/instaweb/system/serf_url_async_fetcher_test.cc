@@ -68,7 +68,7 @@ const char kProxy[] = "";
 const int kMaxMs = 20000;
 const int kThreadedPollMs = 200;
 const int kWaitTimeoutMs = 5 * 1000;
-const int kFetcherTimeoutMs = 2 * 1000;
+const int kFetcherTimeoutMs = 5 * 1000;
 
 const int kModpagespeedSite = 0;  // TODO(matterbury): These should be an enum?
 const int kGoogleFavicon = 1;
@@ -581,6 +581,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsForGoogleCom) {
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForGoogleComWithBogusCertDir) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   serf_url_async_fetcher_->SetSslCertificatesDir(GTestTempDir());
+  serf_url_async_fetcher_->SetSslCertificatesFile("");
   TestHttpsFails("https://www.google.com");
 }
 

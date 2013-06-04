@@ -84,7 +84,8 @@ const char kBeaconCriticalCssQueryParam[] = "cs";
 
 const int64 kRefreshExpirePercent = 80;
 
-const char kFallbackPageCacheKeySuffix[] = "@";
+const char kFallbackPageCacheKeyQuerySuffix[] = "@";
+const char kFallbackPageCacheKeyBasePathSuffix[] = "#";
 
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
@@ -1107,8 +1108,10 @@ GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
     const GoogleUrl& request_url, const RewriteOptions* options,
     StringPiece device_type_suffix) {
   GoogleString key;
+  GoogleString suffix;
   if (request_url.has_query()) {
     key = request_url.AllExceptQuery().as_string();
+    suffix = kFallbackPageCacheKeyQuerySuffix;
   } else {
     GoogleString url(request_url.spec_c_str());
     int size = url.size();
@@ -1120,9 +1123,10 @@ GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
     }
     GoogleUrl gurl(url);
     key = gurl.AllExceptLeaf().as_string();
+    suffix = kFallbackPageCacheKeyBasePathSuffix;
   }
   return StrCat(GetPagePropertyCacheKey(key, options, device_type_suffix),
-                kFallbackPageCacheKeySuffix);
+                suffix);
 }
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {
