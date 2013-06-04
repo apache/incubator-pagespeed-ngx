@@ -171,17 +171,20 @@ void SuppressPreheadFilter::EndDocument() {
     }
   }
 
+  FlushEarlyInfo* flush_early_info = driver_->flush_early_info();
+
   if (header_fetch_ms >= 0) {
     UpdateFetchLatencyInFlushEarlyProto(header_fetch_ms, driver_);
   } else {
-    driver_->flush_early_info()->clear_average_fetch_latency_ms();
-    driver_->flush_early_info()->clear_last_n_fetch_latencies();
+    flush_early_info->clear_average_fetch_latency_ms();
+    flush_early_info->clear_last_n_fetch_latencies();
   }
 
-  driver_->flush_early_info()->set_pre_head(pre_head_);
+  flush_early_info->set_pre_head(pre_head_);
   // See the description of the HttpOnly cookie in
   // http://tools.ietf.org/html/rfc6265#section-4.1.2.6
-  driver_->flush_early_info()->set_http_only_cookie_present(
+  flush_early_info->set_http_only_cookie_present(
+      flush_early_info->http_only_cookie_present() ||
       response_headers_.HasCookie("HttpOnly", NULL));
   if (!has_charset_) {
     FlushEarlyInfoFinder* finder =

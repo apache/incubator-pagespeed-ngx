@@ -136,9 +136,6 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kIe9UserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelSubresource,
-            user_agent_matcher_->GetPrefetchMechanism(
-                "prefetch_link_rel_subresource"));
   EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kSafariUserAgent));

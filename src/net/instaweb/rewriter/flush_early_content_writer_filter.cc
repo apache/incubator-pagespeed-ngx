@@ -43,15 +43,12 @@
 
 namespace net_instaweb {
 
-const char FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml[] =
-    "<link rel=\"subresource\" href=\"%s\"/>\n";
 const char FlushEarlyContentWriterFilter::kPrefetchImageTagHtml[] =
     "new Image().src=\"%s\";";
 const char FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml[] =
     "<script type=\"psa_prefetch\" src=\"%s\"></script>\n";
 const char FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml[] =
-    "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" "
-    "disabled=\"true\"/>\n";
+    "<link rel=\"stylesheet\" href=\"%s\"/>\n";
 
 const char FlushEarlyContentWriterFilter::kPrefetchStartTimeScript[] =
     "<script type='text/javascript'>"
@@ -64,6 +61,18 @@ const char FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly[] =
 
 const char FlushEarlyContentWriterFilter::kFlushEarlyStyleTemplate[] =
     "<script type=\"text/psa_flush_style\" id=\"%s\">%s</script>";
+
+// This JS snippet is needed to disable all the CSS link tags that are flushed
+// early. Adding the disabled attribute directly to the link tag does not work
+// on some browsers like Firefox.
+const char FlushEarlyContentWriterFilter::kDisableLinkTag[] =
+    "<script type=\"text/javascript\">"
+    "var links = document.getElementsByTagName('link');"
+    "for (var i = 0; i < links.length; ++i) {"
+    "  if (links[i].getAttribute('rel') == 'stylesheet') {"
+    "    links[i].disabled=true;"
+    "  }"
+    "}</script>";
 
 struct ResourceInfo {
  public:
@@ -243,6 +252,10 @@ void FlushEarlyContentWriterFilter::EndDocument() {
 
   if (!flush_early_content_.empty()) {
     WriteToOriginalWriter(flush_early_content_);
+  }
+
+  if (stylesheets_flushed_) {
+    WriteToOriginalWriter(kDisableLinkTag);
   }
 
   if (num_resources_flushed_ > 0) {
@@ -437,11 +450,7 @@ void FlushEarlyContentWriterFilter::EndElement(HtmlElement* element) {
         element->AttributeValue(HtmlName::kDataPagespeedFlushStyle);
     GoogleString css_output = ComputeFlushEarlyCriticalCss(style_id);
     int64 size = css_output.size();
-    if (insert_close_script_) {
-      WriteToOriginalWriter("})()</script>");
-      insert_close_script_ = false;
-    }
-    WriteToOriginalWriter(css_output);
+    StrAppend(&flush_early_content_, css_output.c_str());
     is_flushing_critical_style_element_ = false;
     css_output_content_.clear();
 
@@ -479,6 +488,7 @@ void FlushEarlyContentWriterFilter::Clear() {
   css_output_content_.clear();
   flush_early_content_.clear();
   flush_more_resources_early_if_time_permits_ = false;
+  stylesheets_flushed_ = false;
 }
 
 bool FlushEarlyContentWriterFilter::IsFlushable(
@@ -507,40 +517,36 @@ void FlushEarlyContentWriterFilter::UpdateStats(
   ++num_resources_flushed_;
 }
 
+void FlushEarlyContentWriterFilter::FlushResourceAsImage(StringPiece url) {
+  if (!insert_close_script_) {
+    WriteToOriginalWriter("<script type=\"text/javascript\">"
+                          "(function(){");
+    insert_close_script_ = true;
+  }
+  WriteToOriginalWriter(
+      StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
+}
+
 void FlushEarlyContentWriterFilter::FlushResources(
     StringPiece url, int64 time_to_download,
     bool is_pagespeed_resource, semantic_type::Category category) {
   UpdateStats(time_to_download, is_pagespeed_resource);
 
-  if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-    if (!insert_close_script_) {
-      WriteToOriginalWriter("<script type=\"text/javascript\">"
-                            "(function(){");
-      insert_close_script_ = true;
-    }
-    WriteToOriginalWriter(
-        StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
-  } else if (prefetch_mechanism_ ==
-             UserAgentMatcher::kPrefetchLinkRelSubresource) {
-    WriteToOriginalWriter(
-        StringPrintf(kPrefetchLinkRelSubresourceHtml, url.as_string().c_str()));
+  // All resources using kPrefetchImageTagHtml are flushed together in a
+  // <script> tag. And this script tag is flushed before any otehr resource.
+  if (category == semantic_type::kStylesheet) {
+    StrAppend(&flush_early_content_,
+              StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+    stylesheets_flushed_ = true;
+  } else if (category == semantic_type::kImage) {
+    FlushResourceAsImage(url);
+  } else if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
+    FlushResourceAsImage(url);
   } else if (prefetch_mechanism_ ==
              UserAgentMatcher::kPrefetchLinkScriptTag) {
     if (category == semantic_type::kScript) {
       StrAppend(&flush_early_content_,
                 StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
-    } else if (category == semantic_type::kStylesheet) {
-      StrAppend(&flush_early_content_,
-                StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
-    } else if (category == semantic_type::kImage &&
-        driver_->options()->flush_more_resources_in_ie_and_firefox()) {
-      if (!insert_close_script_) {
-        WriteToOriginalWriter("<script type=\"text/javascript\">"
-                              "(function(){");
-        insert_close_script_ = true;
-      }
-      WriteToOriginalWriter(
-          StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
     }
   }
 }

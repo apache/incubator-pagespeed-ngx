@@ -277,6 +277,7 @@
     ModPagespeedMessageBufferSize 100000
 
     <Location /mod_pagespeed_message>
+        Order allow,deny
         Allow from localhost
         Allow from 127.0.0.1
         SetHandler mod_pagespeed_message

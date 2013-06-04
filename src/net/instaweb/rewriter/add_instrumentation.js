@@ -32,14 +32,16 @@ var pagespeed = window['pagespeed'];
  * @param {string} beaconUrlPrefix The prefix portion of the beacon url.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
  * @param {string} extraParams Additional parameters to be added to the beacon.
+ * @param {string} referer Url of the referer.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
 pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, extraParams,
-                                        htmlUrl) {
+                                        referer, htmlUrl) {
   this.beaconUrlPrefix_ = beaconUrlPrefix;
   this.event_ = event;
   this.extraParams_ = extraParams;
   this.htmlUrl_ = htmlUrl;
+  this.referer_ = referer;
 };
 
 pagespeed['beaconUrl'] = '';
@@ -147,6 +149,9 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   if (this.extraParams_ != '') {
     url += this.extraParams_;
   }
+  if (this.referer_ != '') {
+    url += '&ref=' + encodeURIComponent(this.referer_);
+  }
   url += '&url=' + encodeURIComponent(this.htmlUrl_);
 
   pagespeed['beaconUrl'] = url;
@@ -158,13 +163,14 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
  * @param {string} beaconUrl Url of beacon.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
  * @param {string} extraParams Additional parameters to be added to the beacon.
+ * @param {string} referer Url of the referer.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
 pagespeed.addInstrumentationInit = function(beaconUrl, event, extraParams,
-                                            htmlUrl) {
+                                            referer, htmlUrl) {
 
   var temp = new pagespeed.AddInstrumentation(beaconUrl, event, extraParams,
-                                              htmlUrl);
+                                              referer, htmlUrl);
   if (window.addEventListener) {
     window.addEventListener(event, function() { temp.sendBeacon() }, false);
   } else {
