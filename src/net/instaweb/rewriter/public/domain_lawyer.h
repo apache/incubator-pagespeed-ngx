@@ -330,6 +330,9 @@ class DomainLawyer {
   typedef std::vector<Domain*> DomainVector;          // see AddDomainHelper
   DomainVector wildcarded_domains_;
   bool can_rewrite_domains_;
+  // Indicates if all domains are authorized. If set to true, IsDomainAuthorized
+  // always returns true.
+  bool authorize_all_domains_;
   // If you add more fields here, please be sure to update Merge().
 
   // DomainLawyer is explicitly copyable and assignable.

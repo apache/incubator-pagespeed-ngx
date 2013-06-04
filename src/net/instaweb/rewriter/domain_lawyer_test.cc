@@ -43,6 +43,8 @@ class DomainLawyerTest : public testing::Test {
         port_request_("http://www.nytimes.com:8080/index.html"),
         https_request_("https://www.nytimes.com/index.html"),
         message_handler_(new NullMutex) {
+    domain_lawyer_with_all_domains_authorized_.AddDomain(
+        "*", &message_handler_);
   }
 
   // Syntactic sugar to map a request.
@@ -93,6 +95,7 @@ class DomainLawyerTest : public testing::Test {
   GoogleUrl port_request_;
   GoogleUrl https_request_;
   DomainLawyer domain_lawyer_;
+  DomainLawyer domain_lawyer_with_all_domains_authorized_;
   MockMessageHandler message_handler_;
 };
 
@@ -684,6 +687,9 @@ TEST_F(DomainLawyerTest, RootDomainOfProxySourceNotAuthorized) {
   // It is not OK to rewrite content on external.com.
   EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(context_gurl,
                                                  external_domain));
+  EXPECT_TRUE(
+      domain_lawyer_with_all_domains_authorized_.IsDomainAuthorized(
+          context_gurl, external_domain));
 
   // But it *is* OK to rewrite content on external.com/static.
   external_domain.Reset("http://external.com/static/");

@@ -325,6 +325,10 @@ DomainLawyer::Domain* DomainLawyer::AddDomainHelper(
     return NULL;
   }
 
+  if (authorize && domain_name == "*") {
+    authorize_all_domains_ = true;
+  }
+
   // TODO(matterbury): need better data structures to eliminate the O(N) logic:
   // 1) Use a trie for domain_map_ as we need to find the domain whose trie
   //    path matches the beginning of the given domain_name since we no longer
@@ -518,6 +522,9 @@ bool DomainLawyer::MapRequestToDomain(
 
 bool DomainLawyer::IsDomainAuthorized(const GoogleUrl& original_request,
                                       const GoogleUrl& domain_to_check) const {
+  if (authorize_all_domains_) {
+    return true;
+  }
   bool ret = false;
   if (domain_to_check.is_valid()) {
     if (original_request.is_valid() &&
@@ -865,6 +872,7 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
   }
 
   can_rewrite_domains_ |= src.can_rewrite_domains_;
+  authorize_all_domains_ |= src.authorize_all_domains_;
 }
 
 bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
@@ -962,6 +970,7 @@ GoogleString DomainLawyer::ToString(StringPiece line_prefix) const {
 void DomainLawyer::Clear() {
   STLDeleteValues(&domain_map_);
   can_rewrite_domains_ = false;
+  authorize_all_domains_ = false;
   wildcarded_domains_.clear();
 }
 
