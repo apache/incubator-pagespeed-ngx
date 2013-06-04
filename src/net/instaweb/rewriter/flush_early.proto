@@ -76,7 +76,7 @@ message FlushEarlyInfo {
   optional double average_fetch_latency_ms = 11;
 
   // Whether the server response has http_only_cookie.
-  optional bool http_only_cookie_present = 12 [ default = false ];
+  optional bool http_only_cookie_present = 12;
 }
 
 // FlushEarlyRenderInfo stores information for flushing a request early i.e.

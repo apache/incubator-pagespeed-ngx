@@ -119,7 +119,7 @@ void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
 bool UrlNamer::ResolveToOriginUrl(const RewriteOptions& options,
                                   const StringPiece& referer_url_str,
                                   GoogleUrl* url) const {
-  if (!url->is_valid()) {
+  if (!url->is_valid() || IsProxyEncoded(*url)) {
     return false;
   }
 
