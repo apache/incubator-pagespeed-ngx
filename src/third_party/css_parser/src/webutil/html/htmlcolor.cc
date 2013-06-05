@@ -721,7 +721,7 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
       return &known_color_values[146];
     }
     return NULL;
-  };
+  }
 
   return NULL;
 }  // NOLINT

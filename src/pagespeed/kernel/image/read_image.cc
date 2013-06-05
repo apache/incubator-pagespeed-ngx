@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/webp_optimizer.h"
 
 namespace pagespeed {
 
@@ -53,7 +54,7 @@ bool ReadImage(ImageFormat image_type,
 
     case IMAGE_GIF:
       LOG(INFO) << "Gif image is not supported.";
-      break;
+      return false;
 
     case IMAGE_JPEG:
       {
@@ -67,7 +68,14 @@ bool ReadImage(ImageFormat image_type,
       break;
 
     case IMAGE_WEBP:
-      LOG(INFO) << "WebP image is not supported.";
+      {
+        scoped_ptr<WebpScanlineReader> webp_reader(new WebpScanlineReader());
+        if (webp_reader == NULL ||
+            !webp_reader->Initialize(image_buffer, buffer_length)) {
+          return false;
+        }
+        reader.reset(webp_reader.release());
+      }
       break;
 
     default:

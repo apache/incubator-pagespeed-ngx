@@ -62,7 +62,7 @@ class HtmlTagIndex {
   // If GetIndexMax returns 10, then find will return [0..9).
   int GetIndexMax() const {
     return index_max_;
-  };
+  }
 
   // Set case sensitivity.  This cannot be done after any calls to AddHtmlTag.
   void SetCaseSensitive(bool case_sensitive);

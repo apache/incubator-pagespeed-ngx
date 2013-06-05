@@ -20,8 +20,16 @@
 
 #include <cstdlib>
 
-#include "base/basictypes.h"
 #include "base/logging.h"
+#include "pagespeed/kernel/image/scanline_utils.h"
+
+extern "C" {
+#ifdef USE_SYSTEM_LIBWEBP
+#include "webp/decode.h"
+#else
+#include "third_party/libwebp/webp/decode.h"
+#endif
+}
 
 namespace pagespeed {
 
@@ -231,6 +239,120 @@ bool WebpScanlineWriter::FinalizeWrite() {
              << "; layer size: " << stats_.layer_data_size;
 #endif
 
+  return true;
+}
+
+WebpScanlineReader::WebpScanlineReader()
+  : image_buffer_(NULL),
+    buffer_length_(0),
+    pixel_format_(UNSUPPORTED),
+    height_(0),
+    width_(0),
+    bytes_per_row_(0),
+    row_(0),
+    was_initialized_(false) {
+}
+
+WebpScanlineReader::~WebpScanlineReader() {
+  Reset();
+}
+
+bool WebpScanlineReader::Reset() {
+  image_buffer_ = NULL;
+  buffer_length_ = 0;
+  pixel_format_ = UNSUPPORTED;
+  height_ = 0;
+  width_ = 0;
+  bytes_per_row_ = 0;
+  row_ = 0;
+  pixels_.reset();
+  was_initialized_ = false;
+  return true;
+}
+
+// Initialize the reader with the given image stream. Note that image_buffer
+// must remain unchanged until the *first* call to ReadNextScanline().
+bool WebpScanlineReader::Initialize(const void* image_buffer,
+                                    size_t buffer_length) {
+  if (was_initialized_) {
+    Reset();
+  }
+
+  WebPBitstreamFeatures features;
+  if (WebPGetFeatures(reinterpret_cast<const uint8_t*>(image_buffer),
+                      buffer_length, &features)
+        != VP8_STATUS_OK) {
+    DLOG(ERROR) << "Invalid WebP data.";
+    return false;
+  }
+
+
+  // Determine the pixel format and the number of channels.
+  if (features.has_alpha) {
+    pixel_format_ = RGBA_8888;
+  } else {
+    pixel_format_ = RGB_888;
+  }
+
+  // Copy the information to the object properties.
+  image_buffer_ = reinterpret_cast<const uint8_t*>(image_buffer);
+  buffer_length_ = buffer_length;
+  width_ = features.width;
+  height_ = features.height;
+  bytes_per_row_ = width_ * GetNumChannelsFromPixelFormat(pixel_format_);
+  row_ = 0;
+  was_initialized_ = true;
+
+  return true;
+}
+
+bool WebpScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
+  if (!was_initialized_ || !HasMoreScanLines()) {
+    return false;
+  }
+
+  // The first time ReadNextScanline() is called, we decode the entire image.
+  if (row_ == 0) {
+    pixels_.reset(new uint8_t[bytes_per_row_ * height_]);
+    if (pixels_ == NULL) {
+      Reset();
+      return false;
+    }
+
+     WebPDecoderConfig config;
+     CHECK(WebPInitDecoderConfig(&config));
+
+     // Specify the desired output colorspace:
+     if (pixel_format_ == RGB_888) {
+       config.output.colorspace = MODE_RGB;
+     } else {
+       config.output.colorspace = MODE_RGBA;
+     }
+
+     // Have config.output point to an external buffer:
+     config.output.u.RGBA.rgba = pixels_.get();
+     config.output.u.RGBA.stride = bytes_per_row_;
+     config.output.u.RGBA.size = bytes_per_row_ * height_;
+     config.output.is_external_memory = true;
+
+     bool decode_ok = (WebPDecode(image_buffer_, buffer_length_, &config)
+         == VP8_STATUS_OK);
+
+     // Clean up WebP decoder because it is not needed any more no matter
+     // whether decoding was successful or not.
+     WebPFreeDecBuffer(&config.output);
+
+     if (!decode_ok) {
+       Reset();
+       return false;
+     }
+  }
+
+  // Point output to the corresponding row of the already decoded image.
+  *out_scanline_bytes =
+      static_cast<void*>(pixels_.get() + row_ * bytes_per_row_);
+
+  ++row_;
   return true;
 }
 

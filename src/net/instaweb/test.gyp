@@ -276,6 +276,7 @@
         '<(DEPTH)/pagespeed/kernel/image/jpeg_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_utils_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/png_optimizer_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/webp_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/js/js_minify_test.cc',
         '<(DEPTH)/pagespeed/kernel/sharedmem/inprocess_shared_mem_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/mock_scheduler_test.cc',

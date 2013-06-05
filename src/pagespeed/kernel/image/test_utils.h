@@ -30,10 +30,11 @@ namespace image_compression {
   const char kTestRootDir[] = "/pagespeed/kernel/image/testdata/";
 
 const char kGifTestDir[] = "gif/";
-const char kPngSuiteTestDir[] = "pngsuite/";
-const char kPngSuiteGifTestDir[] = "pngsuite/gif/";
-const char kPngTestDir[] = "png/";
 const char kJpegTestDir[] = "jpeg/";
+const char kPngSuiteGifTestDir[] = "pngsuite/gif/";
+const char kPngSuiteTestDir[] = "pngsuite/";
+const char kPngTestDir[] = "png/";
+const char kWebpTestDir[] = "webp/";
 
 bool ReadFile(const GoogleString& file_name,
               GoogleString* content);
@@ -54,6 +55,15 @@ void DecodeAndCompareImages(
     pagespeed::image_compression::ImageFormat image_format2,
     const void* image_buffer2,
     size_t buffer_length2);
+
+void DecodeAndCompareImagesByPSNR(
+    pagespeed::image_compression::ImageFormat image_format1,
+    const void* image_buffer1,
+    size_t buffer_length1,
+    pagespeed::image_compression::ImageFormat image_format2,
+    const void* image_buffer2,
+    size_t buffer_length2,
+    double min_psnr);
 
 }  // namespace image_compression
 

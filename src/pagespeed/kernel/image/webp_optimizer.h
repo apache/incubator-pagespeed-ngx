@@ -19,8 +19,10 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 #define PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 
+#include <cstddef>
 #include "third_party/libwebp/webp/encode.h"
-
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
@@ -135,6 +137,53 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
   static int ProgressHook(int percent, const WebPPicture* picture);
 
   DISALLOW_COPY_AND_ASSIGN(WebpScanlineWriter);
+};
+
+// WebpScanlineReader decodes WebP images. It returns a scanline (a row of
+// pixels) each time it is called. The output format is RGB_888 if the input
+// image does not have alpha channel, or RGBA_8888 otherwise. Animated WebP
+// is not supported.
+class WebpScanlineReader : public ScanlineReaderInterface {
+ public:
+  WebpScanlineReader();
+  virtual ~WebpScanlineReader();
+
+  // Reset the scanline reader to its initial state.
+  virtual bool Reset();
+
+  // Initialize the reader with the given image stream. Note that image_buffer
+  // must remain unchanged until the *first* call to ReadNextScanline().
+  bool Initialize(const void* image_buffer, size_t buffer_length);
+
+  // Return the next row of pixels. The entire image is decoded the first
+  // time ReadNextScanline() is called, but only one scanline is returned
+  // for each call.
+  virtual bool ReadNextScanline(void** out_scanline_bytes);
+
+  // Return the number of bytes in a row (without padding).
+  virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
+
+  virtual bool HasMoreScanLines() { return (row_ < height_); }
+  virtual PixelFormat GetPixelFormat() { return pixel_format_; }
+  virtual size_t GetImageHeight() { return height_; }
+  virtual size_t GetImageWidth() {  return width_; }
+
+ private:
+  // Buffer and length of the input (compressed) image.
+  const uint8_t* image_buffer_;
+  int buffer_length_;
+
+  PixelFormat pixel_format_;
+  size_t height_;
+  size_t width_;
+  size_t bytes_per_row_;
+  size_t row_;
+  bool was_initialized_;
+
+  // Buffer for holding the decoded pixels.
+  scoped_array<uint8_t> pixels_;
+
+  DISALLOW_COPY_AND_ASSIGN(WebpScanlineReader);
 };
 
 }  // namespace image_compression
