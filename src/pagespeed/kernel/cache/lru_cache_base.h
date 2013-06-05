@@ -102,8 +102,7 @@ class LRUCacheBase {
     if (p != map_.end()) {
       ListNode cell = p->second;
       KeyValuePair* key_value = *cell;
-      lru_ordered_list_.erase(cell);
-      p->second = Freshen(key_value);
+      p->second = Freshen(cell);
       // Note: it's safe to assume the list iterator will remain valid so that
       // the caller can do what's necessary with the pointer.
       // http://stackoverflow.com/questions/759274/
@@ -156,9 +155,8 @@ class LRUCacheBase {
       if (!value_helper_->ShouldReplace(key_value->second, *new_value)) {
         need_to_insert = false;
       } else {
-        lru_ordered_list_.erase(cell);
         if (value_helper_->Equal(*new_value, key_value->second)) {
-          map_iter->second = Freshen(key_value);
+          map_iter->second = Freshen(cell);
           need_to_insert = false;
           ++num_identical_reinserts_;
         } else {
@@ -166,6 +164,7 @@ class LRUCacheBase {
           CHECK_GE(current_bytes_in_cache_, EntrySize(key_value));
           current_bytes_in_cache_ -= EntrySize(key_value);
           delete key_value;
+          lru_ordered_list_.erase(cell);
         }
       }
     }
@@ -179,7 +178,8 @@ class LRUCacheBase {
       if (EvictIfNecessary(key.size() + value_helper_->size(*new_value))) {
         // The new value fits.  Put it in the LRU-list.
         KeyValuePair* kvp = new KeyValuePair(&map_iter->first, *new_value);
-        map_iter->second = Freshen(kvp);
+        lru_ordered_list_.push_front(kvp);
+        map_iter->second = lru_ordered_list_.begin();
         ++num_inserts_;
       } else {
         // The new value was too big to fit.  Remove it from the map.
@@ -300,9 +300,13 @@ class LRUCacheBase {
     return kvp->first->size() + value_helper_->size(kvp->second);
   }
 
-  // This method must be called with key_value not currently in the list.
-  ListNode Freshen(KeyValuePair* key_value) {
-    lru_ordered_list_.push_front(key_value);
+  ListNode Freshen(ListNode cell) {
+    if (cell != lru_ordered_list_.begin()) {
+      lru_ordered_list_.splice(lru_ordered_list_.begin(),
+                               lru_ordered_list_,
+                               cell);
+    }
+
     return lru_ordered_list_.begin();
   }
 
