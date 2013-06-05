@@ -18,6 +18,8 @@
 #include "net/instaweb/rewriter/public/insert_dns_prefetch_filter.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -25,6 +27,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -82,6 +85,38 @@ class InsertDnsPrefetchFilterTest : public RewriteTestBase {
     for (int i = 0; i < info->dns_prefetch_domains_size(); ++i) {
       EXPECT_EQ(stored_domains[i], info->dns_prefetch_domains(i));
     }
+  }
+
+  void CheckLogStatus(RewriterHtmlApplication::Status html_status) {
+    rewrite_driver_->log_record()->WriteLog();
+    for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
+      if (logging_info()->rewriter_stats(i).id() ==
+          RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch) &&
+          logging_info()->rewriter_stats(i).has_html_status()) {
+        EXPECT_EQ(html_status, logging_info()->rewriter_stats(i).html_status());
+        return;
+      }
+    }
+    FAIL();
+  }
+
+  void CheckLogStatus(RewriterHtmlApplication::Status html_status,
+                      RewriterApplication::Status app_status,
+                      int app_status_count) {
+    rewrite_driver_->log_record()->WriteLog();
+    for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
+      if (logging_info()->rewriter_stats(i).id() ==
+          RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch) &&
+          logging_info()->rewriter_stats(i).has_html_status()) {
+        EXPECT_EQ(html_status, logging_info()->rewriter_stats(i).html_status());
+        const RewriteStatusCount& count_applied =
+            logging_info()->rewriter_stats(i).status_counts(0);
+        EXPECT_EQ(app_status, count_applied.application_status());
+        EXPECT_EQ(app_status_count, count_applied.count());
+        return;
+      }
+    }
+    FAIL();
   }
 
   GoogleString CreateHtml(int num_scripts) {
@@ -185,6 +220,7 @@ TEST_F(InsertDnsPrefetchFilterTest,
   Parse("store_domains_in_body", html);
   EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
   CheckPrefetchInfo(0, 0, 0, "");
+  CheckLogStatus(RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
 }
 
 TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsOnlyInBody) {
@@ -275,12 +311,32 @@ TEST_F(InsertDnsPrefetchFilterTest, FullFlowTest) {
   EXPECT_EQ(StrCat("<html>\n", html_output, "\n</html>"), output_);
   CheckPrefetchInfo(6, 9, 6, CreateDomainsVector(6));
   output_.clear();
+  CheckLogStatus(RewriterHtmlApplication::ACTIVE,
+                 RewriterApplication::APPLIED_OK,
+                 8);
 
   // Since the last response caused instability in the domain list, we don't
   // insert any prefetch tags in this rewrite.
   Parse("after_unstable_response", html_input);
   EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
   CheckPrefetchInfo(6, 6, 6, CreateDomainsVector(6));
+  output_.clear();
+}
+
+TEST_F(InsertDnsPrefetchFilterTest, FullFlowTestForLogging) {
+  GoogleString html_input = CreateHtml(10);
+  Parse("store_8_of_10", html_input);
+  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  CheckPrefetchInfo(10, 0, 8, CreateDomainsVector(8));
+  output_.clear();
+
+  html_input = CreateHtml(9);
+  Parse("store_8_of_9", html_input);
+  EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
+  CheckPrefetchInfo(9, 10, 8, CreateDomainsVector(8));
+  CheckLogStatus(RewriterHtmlApplication::ACTIVE,
+                 RewriterApplication::NOT_APPLIED,
+                 1);
   output_.clear();
 }
 

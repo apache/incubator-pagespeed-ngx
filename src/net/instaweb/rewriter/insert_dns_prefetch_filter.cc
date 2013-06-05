@@ -27,6 +27,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -34,6 +35,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -88,6 +90,12 @@ void InsertDnsPrefetchFilter::StartDocumentImpl() {
   user_agent_supports_dns_prefetch_ =
       driver()->server_context()->user_agent_matcher()->SupportsDnsPrefetch(
           driver()->user_agent());
+  RewriterHtmlApplication::Status status = user_agent_supports_dns_prefetch_ ?
+      RewriterHtmlApplication::ACTIVE :
+      RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED;
+  driver()->log_record()->LogRewriterHtmlStatus(
+      RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch),
+      status);
 }
 
 // Write the information about domains gathered in this rewrite into the
@@ -203,7 +211,14 @@ void InsertDnsPrefetchFilter::EndElementImpl(HtmlElement* element) {
           driver()->AddAttribute(link, HtmlName::kRel, tag_to_insert);
           driver()->AddAttribute(link, HtmlName::kHref, StrCat("//", *it));
           driver()->AppendChild(element, link);
+          driver_->log_record()->SetRewriterLoggingStatus(
+              RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch),
+              RewriterApplication::APPLIED_OK);
         }
+      } else {
+        driver_->log_record()->SetRewriterLoggingStatus(
+            RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch),
+            RewriterApplication::NOT_APPLIED);
       }
     }
   }
