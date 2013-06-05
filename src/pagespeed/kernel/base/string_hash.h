@@ -33,7 +33,7 @@ inline IntType HashString(const char* s, size_t len) {
   // This implemention is based on code in
   // third_party/chromium/src/base/hash_tables.h.
   IntType result = 0;
-  for (size_t i = 0; i < len; ++i, ++s) {
+  for (const char* end = s + len; s != end; ++s) {
     result = (result * 131) + CharTransform::Normalize(*s);
   }
   return result;

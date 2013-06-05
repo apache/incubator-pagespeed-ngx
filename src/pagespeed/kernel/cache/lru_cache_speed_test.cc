@@ -58,7 +58,7 @@ class EmptyCallback : public net_instaweb::CacheInterface::Callback {
 
 class TestPayload {
  public:
-  TestPayload(int key_size, int payload_size, int num_keys)
+  TestPayload(int key_size, int payload_size, int num_keys, bool do_puts)
       : cache_size_((key_size + payload_size) * num_keys),
         key_size_(key_size),
         num_keys_(num_keys),
@@ -66,20 +66,34 @@ class TestPayload {
         lru_cache_(cache_size_),
         keys_(num_keys),
         values_(num_keys) {
+    StopBenchmarkTiming();
     RegenerateKeys();
+    GoogleString key_prefix = random_.GenerateHighEntropyString(key_size);
+    GoogleString value_prefix = random_.GenerateHighEntropyString(payload_size);
     for (int k = 0; k < num_keys_; ++k) {
-      values_[k].Assign(random_.GenerateHighEntropyString(payload_size));
+      GoogleString value = value_prefix;
+      OverwriteIndexAtEndOfString(&value, k);
+      values_[k].SwapWithString(&value);
+      keys_[k] = key_prefix;
     }
+    RegenerateKeys();
+    if (do_puts) {
+      DoPuts(0);
+    }
+    StartBenchmarkTiming();
+  }
+
+  void OverwriteIndexAtEndOfString(GoogleString* buffer, int index) {
+    GoogleString index_string =
+        net_instaweb::StrCat("_", net_instaweb::IntegerToString(index));
+    DCHECK_LT(index_string.size(), buffer->size());
+    char* ptr = &(*buffer)[buffer->size() - index_string.size()];
+    memcpy(ptr, index_string.data(), index_string.size());
   }
 
   void RegenerateKeys() {
-    GoogleString prefix = random_.GenerateHighEntropyString(key_size_);
     for (int k = 0; k < num_keys_; ++k) {
-      GoogleString index_string = net_instaweb::IntegerToString(
-          start_index_ + k);
-      keys_[k] = net_instaweb::StrCat(
-          prefix.substr(0, key_size_ - index_string.size()),
-          index_string);
+      OverwriteIndexAtEndOfString(&keys_[k], k + start_index_);
     }
     start_index_ += num_keys_;
   }
@@ -114,7 +128,7 @@ class TestPayload {
 };
 
 static void LRUPuts(int iters) {
-  TestPayload payload(kKeySize, kPayloadSize, kNumKeys);
+  TestPayload payload(kKeySize, kPayloadSize, kNumKeys, false);
   for (int i = 0; i < iters; ++i) {
     payload.lru_cache()->Clear();
     payload.DoPuts(0);
@@ -123,8 +137,7 @@ static void LRUPuts(int iters) {
 }
 
 static void LRUReplaceSameValue(int iters) {
-  TestPayload payload(kKeySize, kPayloadSize, kNumKeys);
-  payload.DoPuts(0);
+  TestPayload payload(kKeySize, kPayloadSize, kNumKeys, true);
   for (int i = 0; i < iters; ++i) {
     payload.DoPuts(0);
   }
@@ -133,8 +146,7 @@ static void LRUReplaceSameValue(int iters) {
 }
 
 static void LRUReplaceNewValue(int iters) {
-  TestPayload payload(kKeySize, kPayloadSize, kNumKeys);
-  payload.DoPuts(0);
+  TestPayload payload(kKeySize, kPayloadSize, kNumKeys, true);
   for (int i = 0; i < iters; ++i) {
     payload.DoPuts(i + 1);
   }
@@ -143,8 +155,7 @@ static void LRUReplaceNewValue(int iters) {
 }
 
 static void LRUGets(int iters) {
-  TestPayload payload(kKeySize, kPayloadSize, kNumKeys);
-  payload.DoPuts(0);
+  TestPayload payload(kKeySize, kPayloadSize, kNumKeys, true);
   for (int i = 0; i < iters; ++i) {
     payload.DoGets();
   }
@@ -152,8 +163,7 @@ static void LRUGets(int iters) {
 }
 
 static void LRUFailedGets(int iters) {
-  TestPayload payload(kKeySize, kPayloadSize, kNumKeys);
-  payload.DoPuts(0);
+  TestPayload payload(kKeySize, kPayloadSize, kNumKeys, true);
   payload.RegenerateKeys();
   for (int i = 0; i < iters; ++i) {
     payload.DoGets();
@@ -162,8 +172,7 @@ static void LRUFailedGets(int iters) {
 }
 
 static void LRUEvictions(int iters) {
-  TestPayload payload(kKeySize, kPayloadSize, kNumKeys);
-  payload.DoPuts(0);
+  TestPayload payload(kKeySize, kPayloadSize, kNumKeys, true);
   for (int i = 0; i < iters; ++i) {
     payload.RegenerateKeys();
     payload.DoPuts(0);
