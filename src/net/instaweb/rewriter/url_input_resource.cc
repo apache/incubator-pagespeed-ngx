@@ -21,6 +21,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/async_fetch_with_lock.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -37,7 +38,6 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -132,13 +132,19 @@ UrlInputResource::~UrlInputResource() {
 }
 
 // Shared fetch callback, used by both Load and LoadAndCallback
-class UrlResourceFetchCallback : public AsyncFetch {
+class UrlResourceFetchCallback : public AsyncFetchWithLock {
  public:
   UrlResourceFetchCallback(ServerContext* server_context,
                            const RewriteOptions* rewrite_options,
+                           const GoogleString& url,
                            HTTPValue* fallback_value,
-                           const RequestContextPtr& request_context)
-      : AsyncFetch(request_context),
+                           const RequestContextPtr& request_context,
+                           MessageHandler* handler)
+      : AsyncFetchWithLock(server_context->lock_hasher(),
+                           request_context,
+                           url,
+                           server_context->lock_manager(),
+                           handler),
         server_context_(server_context),
         rewrite_options_(rewrite_options),
         message_handler_(NULL),
@@ -153,53 +159,6 @@ class UrlResourceFetchCallback : public AsyncFetch {
     }
   }
   virtual ~UrlResourceFetchCallback() {}
-
-  bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
-    message_handler_ = handler;
-    lock_.reset(server_context_->MakeInputLock(url()));
-    GoogleString lock_name(lock_->name());
-    int64 lock_timeout = fetcher->timeout_ms();
-    if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {
-      // Even if the fetcher never explicitly times out requests, they probably
-      // won't succeed after more than 2 minutes.
-      lock_timeout = 2 * Timer::kMinuteMs;
-    } else {
-      // Give a little slack for polling, writing the file, freeing the lock.
-      lock_timeout *= 2;
-    }
-    if (!lock_->TryLockStealOld(lock_timeout)) {
-      lock_.reset(NULL);
-      // TODO(abliss): a per-unit-time statistic would be useful here.
-      if (should_yield()) {
-        message_handler_->Message(
-            kInfo, "%s is already being fetched (lock %s)",
-            url().c_str(), lock_name.c_str());
-        DoneInternal(true /* lock_failure */, false /* resource_ok */);
-        delete this;
-        return false;
-      }
-      message_handler_->Message(
-          kInfo, "%s is being re-fetched asynchronously "
-          "(lock %s held elsewhere)", url().c_str(), lock_name.c_str());
-    } else {
-      message_handler_->Message(kInfo, "%s: Locking (lock %s)",
-                                url().c_str(), lock_name.c_str());
-    }
-
-    fetch_url_ = url();
-
-    UrlNamer* url_namer = server_context_->url_namer();
-
-    fetcher_ = fetcher;
-
-    url_namer->PrepareRequest(
-        rewrite_options_,
-        &fetch_url_,
-        request_headers(),
-        NewCallback(this, &UrlResourceFetchCallback::StartFetchInternal),
-        message_handler_);
-    return true;
-  }
 
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
@@ -285,17 +244,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
       // HTTPValue so that we can successfully extract empty content from it.
       http_value()->Write("", message_handler_);
     }
-    if (lock_.get() != NULL) {
-      message_handler_->Message(
-          kInfo, "%s: Unlocking lock %s with cached=%s, success=%s",
-          url().c_str(), lock_->name().c_str(),
-          cached ? "true" : "false",
-          success ? "true" : "false");
-      lock_->Unlock();
-      lock_.reset(NULL);
-    }
-    DoneInternal(false /* lock_failure */, success /* resource_ok */);
-    delete this;
+    AsyncFetchWithLock::HandleDone(success);
   }
 
   virtual void HandleHeadersComplete() {
@@ -303,13 +252,12 @@ class UrlResourceFetchCallback : public AsyncFetch {
       response_headers()->ComputeCaching();
     }
     http_value_writer()->CheckCanCacheElseClear(response_headers());
+    AsyncFetchWithLock::HandleHeadersComplete();
   }
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
-    return http_value_writer()->Write(content, handler);
-  }
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return true;
+    bool success = http_value_writer()->Write(content, handler);
+    return success && AsyncFetchWithLock::HandleWrite(content, handler);
   }
 
   // The two derived classes differ in how they provide the
@@ -318,26 +266,30 @@ class UrlResourceFetchCallback : public AsyncFetch {
   // cannot rely on the resource still being alive when the callback
   // is called, so it must keep them locally in the class.
   virtual HTTPValue* http_value() = 0;
-  virtual GoogleString url() const = 0;
   virtual HTTPCache* http_cache() = 0;
   virtual HTTPValueWriter* http_value_writer() = 0;
-  // If someone is already fetching this resource, should we yield to them and
-  // try again later?  If so, return true.  Otherwise, if we must fetch the
-  // resource regardless, return false.
-  // TODO(abliss): unit test this
-  virtual bool should_yield() = 0;
 
   void set_no_cache_ok(bool x) { no_cache_ok_ = x; }
 
  protected:
-  virtual void DoneInternal(bool lock_failure, bool resource_ok) {
-  }
-
   ServerContext* server_context_;
   const RewriteOptions* rewrite_options_;
   MessageHandler* message_handler_;
 
  private:
+  virtual bool StartFetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
+    message_handler_ = handler;
+    fetch_url_ = url();
+    UrlNamer* url_namer = server_context_->url_namer();
+    fetcher_ = fetcher;
+    url_namer->PrepareRequest(
+        rewrite_options_,
+        &fetch_url_,
+        request_headers(),
+        NewCallback(this, &UrlResourceFetchCallback::StartFetchInternal),
+        message_handler_);
+    return true;
+  }
   // TODO(jmarantz): consider request_headers.  E.g. will we ever
   // get different resources depending on user-agent?
   HTTPValue fallback_value_;
@@ -373,8 +325,10 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
                        Resource::FreshenCallback* callback)
       : UrlResourceFetchCallback(server_context,
                                  rewrite_options,
+                                 url,
                                  fallback_value,
-                                 rewrite_driver->request_context()),
+                                 rewrite_driver->request_context(),
+                                 server_context->message_handler()),
         url_(url),
         http_cache_(http_cache),
         rewrite_driver_(rewrite_driver),
@@ -384,7 +338,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
         rewrite_options->implicit_cache_ttl_ms());
   }
 
-  virtual void DoneInternal(bool lock_failure, bool resource_ok) {
+  virtual void Finalize(bool lock_failure, bool resource_ok) {
     if (callback_ != NULL) {
       if (!lock_failure) {
         resource_ok &= CheckAndUpdateInputInfo(
@@ -397,10 +351,9 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
   }
 
   virtual HTTPValue* http_value() { return &http_value_; }
-  virtual GoogleString url() const { return url_; }
   virtual HTTPCache* http_cache() { return http_cache_; }
   virtual HTTPValueWriter* http_value_writer() { return &http_value_writer_; }
-  virtual bool should_yield() { return true; }
+  virtual bool ShouldYieldToRedundantFetchInProgress() { return true; }
   virtual bool IsBackgroundFetch() const { return true; }
 
  private:
@@ -440,7 +393,8 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
       FreshenFetchCallback* cb = new FreshenFetchCallback(
           url_, server_context_->http_cache(), server_context_, driver_,
           options_, fallback_http_value(), callback_);
-      cb->Fetch(driver_->async_fetcher(), server_context_->message_handler());
+      AsyncFetchWithLock::Start(
+          driver_->async_fetcher(), cb, server_context_->message_handler());
     } else {
       if (callback_ != NULL) {
         bool success = (find_result == HTTPCache::kFound) &&
@@ -524,8 +478,10 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
                                      const RequestContextPtr& request_context)
       : UrlResourceFetchCallback(resource->server_context(),
                                  resource->rewrite_options(),
+                                 resource->url(),
                                  &resource->fallback_value_,
-                                 request_context),
+                                 request_context,
+                                 resource->server_context()->message_handler()),
         resource_(resource),
         callback_(callback),
         http_value_writer_(http_value(), http_cache()) {
@@ -534,7 +490,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
         resource->rewrite_options()->implicit_cache_ttl_ms());
   }
 
-  virtual void DoneInternal(bool lock_failure, bool resource_ok) {
+  virtual void Finalize(bool lock_failure, bool resource_ok) {
     if (!lock_failure && resource_ok) {
       resource_->set_fetch_response_status(Resource::kFetchStatusOK);
       // Because we've authorized the Fetcher to directly populate the
@@ -577,12 +533,11 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   }
 
   virtual HTTPValue* http_value() { return &resource_->value_; }
-  virtual GoogleString url() const { return resource_->url(); }
   virtual HTTPCache* http_cache() {
     return resource_->server_context()->http_cache();
   }
   virtual HTTPValueWriter* http_value_writer() { return &http_value_writer_; }
-  virtual bool should_yield() { return false; }
+  virtual bool ShouldYieldToRedundantFetchInProgress() { return false; }
 
  private:
   UrlInputResource* resource_;
@@ -611,7 +566,10 @@ void UrlInputResource::LoadAndCallback(NotCacheablePolicy no_cache_policy,
     if (no_cache_policy == Resource::kLoadEvenIfNotCacheable) {
       cb->set_no_cache_ok(true);
     }
-    cb->Fetch(rewrite_driver_->async_fetcher(), message_handler);
+    AsyncFetchWithLock::Start(
+        rewrite_driver_->async_fetcher(),
+        cb,
+        server_context_->message_handler());
   }
 }
 

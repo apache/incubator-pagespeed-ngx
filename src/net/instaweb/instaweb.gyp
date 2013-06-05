@@ -744,6 +744,7 @@
       'sources': [
         # TODO(sligocki): Move http/ files to instaweb_http.
         'http/async_fetch.cc',
+        'http/async_fetch_with_lock.cc',
         'http/cache_url_async_fetcher.cc',
         'http/device_properties.cc',
         'http/external_url_fetcher.cc',
