@@ -1894,6 +1894,30 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_out.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+    // If there is a proxy_cache configured in front of this ngx server,
+    // we expect it to add a X-Cache header with the value of the cache
+    // status (one of HIT, MISS, EXPIRED).
+    if (STR_CASE_EQ_LITERAL(header[i].key, "X-Cache") &&
+        STR_CASE_EQ_LITERAL(header[i].value, "HIT")) {
+      // Bypass content handling by pagespeed modules if this is a cache hit.
+      return ngx_http_next_header_filter(r);
+    }
+  }
+
   switch (ps_create_request_context(
       r, false /* not a resource fetch */)) {
     case CreateRequestContext::kError:

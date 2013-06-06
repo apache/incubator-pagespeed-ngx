@@ -7,7 +7,7 @@ worker_processes  1;
 daemon @@DAEMON@@;
 master_process @@MASTER_PROCESS@@;
 
-error_log "@@TEST_TMP@@/error.log" debug;
+error_log "@@ERROR_LOG@@" debug;
 pid "@@TEST_TMP@@/nginx.pid";
 
 events {
@@ -16,7 +16,16 @@ events {
 
 
 http {
-  access_log "@@TEST_TMP@@/access.log";
+  server_names_hash_bucket_size 128;
+
+  log_format cache '$time_local '
+                   '$upstream_cache_status '
+                   '$http_host $request ($status) '
+                   '"$http_user_agent"';
+  access_log "@@ACCESS_LOG@@" cache;
+
+  proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
+  proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
@@ -48,6 +57,32 @@ http {
 
   pagespeed UseNativeFetcher "@@NATIVE_FETCHER@@";
   @@RESOLVER@@
+
+  server {
+    # This server represents the external caching layer server which
+    # receives user requests and proxies them to the upstream server
+    # running on the PRIMARY_PORT when the response is not available in
+    # the cache. It also services purge requests from the upstream server.
+    listen @@SECONDARY_PORT@@;
+    server_name localhost;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed off;
+
+    location ~ /purge(/.*) {
+      allow all;
+      proxy_cache_purge htmlcache $1$is_args$args;
+    }
+
+    location /mod_pagespeed_test/cachable_rewritten_html/ {
+      proxy_pass http://localhost:8050;
+      proxy_cache_valid 200 30s;
+      proxy_cache htmlcache;
+      proxy_ignore_headers Cache-Control;
+      add_header X-Cache $upstream_cache_status;
+      proxy_cache_key $uri$is_args$args;
+    }
+  }
 
   server {
     listen @@SECONDARY_PORT@@;
@@ -435,6 +470,25 @@ http {
       add_header "" "";
     }
 
+    location ~ /purge(/.*) {
+      # Purge requests have to be proxied to the caching layer server:port
+      # since that is the only one that can service it.
+      allow all;
+      proxy_pass http://localhost:8051;
+    }
+
+    location /mod_pagespeed_test/cachable_rewritten_html/ {
+      # This location has the html files that will be configured to be stored
+      # in the proxy_cache layer.
+      pagespeed DownstreamCacheLifetimeMs 100;
+      pagespeed DownstreamCachePurgeMethod "GET";
+      pagespeed DownstreamCachePurgePathPrefix "/purge";
+      # We use a very small deadline here to force the rewriting to not complete
+      # in the very first attempt.
+      pagespeed RewriteDeadlinePerFlushMs 1;
+      pagespeed RewriteLevel PassThrough;
+      pagespeed EnableFilters collapse_whitespace,extend_cache,recompress_images;
+    }
     # uncomment the following two lines if you're testing memcached
     #pagespeed MemcachedServers "localhost:11211";
     #pagespeed MemcachedThreads 1;
