@@ -24,6 +24,7 @@
 #include <set>
 #include <vector>
 
+#include "base/logging.h"
 #include "base/stringprintf.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
@@ -243,7 +244,11 @@ bool TrimLeadingWhitespace(StringPiece* str);
 bool TrimTrailingWhitespace(StringPiece* str);
 
 // Non-destructive TrimWhitespace.
+// WARNING: in should not point inside output!
 inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
+  DCHECK((in.data() < output->data()) ||
+         (in.data() >= (output->data() + output->length())))
+      << "Illegal argument aliasing in TrimWhitespace";
   StringPiece temp(in);   // Mutable copy
   TrimWhitespace(&temp);  // Modifies temp
   temp.CopyToString(output);
