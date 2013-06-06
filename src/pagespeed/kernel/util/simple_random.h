@@ -20,18 +20,25 @@
 #define PAGESPEED_KERNEL_UTIL_SIMPLE_RANDOM_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
+class AbstractMutex;
 
 // Extremely simplistic pseudo-random number generator from
 // http://www.codeproject.com/Articles/25172/Simple-Random-Number-Generation
 //
 // Do not use this for cryptographic applications.  This is intended
-// for generating high-entropy data that will not compress easily.
+// for generating high-entropy data that will not compress easily.  This class
+// is thread safe.
 class SimpleRandom {
  public:
-  SimpleRandom() : z_(10), w_(25) {}
+  // Mutex should be created specifically for this instance, this class takes
+  // ownership.
+  explicit SimpleRandom(AbstractMutex* mutex)
+      : z_(10), w_(25), mutex_(mutex) {}
   ~SimpleRandom() {}
   int Next();
 
@@ -40,7 +47,7 @@ class SimpleRandom {
  private:
   uint32 z_;
   uint32 w_;
-
+  scoped_ptr<AbstractMutex> mutex_;
   // Copy & assign are OK.
 };
 

@@ -36,6 +36,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/util/simple_random.h"
@@ -59,7 +60,8 @@ class EmptyCallback : public net_instaweb::CacheInterface::Callback {
 class TestPayload {
  public:
   TestPayload(int key_size, int payload_size, int num_keys, bool do_puts)
-      : cache_size_((key_size + payload_size) * num_keys),
+      : random_(new net_instaweb::NullMutex),
+        cache_size_((key_size + payload_size) * num_keys),
         key_size_(key_size),
         num_keys_(num_keys),
         start_index_(0),

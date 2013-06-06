@@ -16,11 +16,14 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 
 int SimpleRandom::Next() {
+  ScopedMutex lock(mutex_.get());
   z_ = 36969 * (z_ & 65535) + (z_ >> 16);
   w_ = 18000 * (w_ & 65535) + (w_ >> 16);
   int pseudo_random_number = (z_ << 16) + w_;
@@ -28,6 +31,7 @@ int SimpleRandom::Next() {
 }
 
 GoogleString SimpleRandom::GenerateHighEntropyString(int size) {
+  ScopedMutex lock(mutex_.get());
   GoogleString value;
   value.reserve(size);
   for (int i = 0; i < size; ++i) {

@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
@@ -207,7 +208,7 @@ TEST_F(GzipInflaterTest, InflateDeflate) {
 }
 
 TEST_F(GzipInflaterTest, InflateDeflateLargeDataHighEntropy) {
-  SimpleRandom random;
+  SimpleRandom random(new NullMutex);
   GoogleString value = random.GenerateHighEntropyString(5 * kStackBufferSize);
   TestInflateDeflate(value);
 }

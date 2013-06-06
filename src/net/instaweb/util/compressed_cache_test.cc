@@ -30,8 +30,8 @@
 #include "net/instaweb/util/public/simple_random.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
@@ -42,7 +42,8 @@ const size_t kMaxSize = 10*kStackBufferSize;
 class CompressedCacheTest : public CacheTestBase {
  protected:
   CompressedCacheTest()
-      : lru_cache_(new LRUCache(kMaxSize)) {
+      : lru_cache_(new LRUCache(kMaxSize)),
+        random_(new NullMutex) {
     CompressedCache::InitStats(&stats_);
     compressed_cache_.reset(new CompressedCache(lru_cache_.get(), &stats_));
   }

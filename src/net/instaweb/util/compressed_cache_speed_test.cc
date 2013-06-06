@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/simple_random.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace {
 
@@ -54,7 +55,7 @@ class EmptyCallback : public net_instaweb::CacheInterface::Callback {
 
 void TestCachePayload(int payload_size, int chunk_size, int iters) {
   GoogleString value;
-  net_instaweb::SimpleRandom random;
+  net_instaweb::SimpleRandom random(new net_instaweb::NullMutex);
   GoogleString chunk = random.GenerateHighEntropyString(chunk_size);
   while (static_cast<int>(value.size()) < payload_size) {
     value += chunk;
