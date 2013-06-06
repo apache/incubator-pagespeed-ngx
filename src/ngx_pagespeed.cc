@@ -29,6 +29,7 @@
 #include <set>
 
 #include "ngx_base_fetch.h"
+#include "ngx_list_iterator.h"
 #include "ngx_message_handler.h"
 #include "ngx_request_context.h"
 #include "ngx_rewrite_driver_factory.h"
@@ -1257,23 +1258,11 @@ bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
   // First check for an X-Forwarded-Proto header.
   const ngx_str_t* x_forwarded_proto_header = NULL;
 
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &(r->headers_in.headers.part);
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-    if (STR_CASE_EQ_LITERAL(header[i].key, "X-Forwarded-Proto")) {
-      x_forwarded_proto_header = &header[i].value;
+  ngx_table_elt_t* header;
+  net_instaweb::NgxListIterator it(&(r->headers_in.headers.part));
+  while ((header = it.Next()) != NULL) {
+    if (STR_CASE_EQ_LITERAL(header->key, "X-Forwarded-Proto")) {
+      x_forwarded_proto_header = &header->value;
       break;
     }
   }
@@ -1282,8 +1271,8 @@ bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
     return false;  // No X-Forwarded-Proto header found.
   }
 
-  StringPiece x_forwarded_proto
-      = str_to_string_piece(*x_forwarded_proto_header);
+  StringPiece x_forwarded_proto =
+      str_to_string_piece(*x_forwarded_proto_header);
 
   if (!STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "http") &&
       !STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "https")) {
@@ -1794,32 +1783,19 @@ void ps_strip_html_headers(ngx_http_request_t* r) {
   // calculate on the fly.
   ngx_http_clear_content_length(r);
 
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &(r->headers_out.headers.part);
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-
+  ngx_table_elt_t* header;
+  net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
     // We also need to strip:
     //   Accept-Ranges
     //    - won't work because our html changes
     //   Vary: Accept-Encoding
     //    - our gzip filter will add this later
-    if (STR_CASE_EQ_LITERAL(header[i].key, "Accept-Ranges") ||
-        (STR_CASE_EQ_LITERAL(header[i].key, "Vary") &&
-         STR_CASE_EQ_LITERAL(header[i].value, "Accept-Encoding"))) {
+    if (STR_CASE_EQ_LITERAL(header->key, "Accept-Ranges") ||
+        (STR_CASE_EQ_LITERAL(header->key, "Vary") &&
+         STR_CASE_EQ_LITERAL(header->value, "Accept-Encoding"))) {
       // Response headers with hash of 0 are excluded from the response.
-      header[i].hash = 0;
+      header->hash = 0;
     }
   }
 }
@@ -1865,28 +1841,15 @@ bool ps_has_stacked_content_encoding(ngx_http_request_t* r) {
 }
 
 ngx_int_t ps_etag_header_filter(ngx_http_request_t* r) {
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &(r->headers_out.headers.part);
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
   u_char* etag = reinterpret_cast<u_char*>(
       const_cast<char*>(kInternalEtagName));
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-
-    if (header[i].key.len == strlen(kInternalEtagName) &&
-        !ngx_strncasecmp(header[i].key.data, etag, header[i].key.len)) {
-      header[i].key.data = reinterpret_cast<u_char*>(const_cast<char*>("ETag"));
-      header[i].key.len = 4;
+  ngx_table_elt_t* header;
+  net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
+    if (header->key.len == strlen(kInternalEtagName) &&
+        !ngx_strncasecmp(header->key.data, etag, header->key.len)) {
+      header->key.data = reinterpret_cast<u_char*>(const_cast<char*>("ETag"));
+      header->key.len = 4;
       r->headers_out.etag = header;
       break;
     }
