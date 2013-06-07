@@ -1674,7 +1674,10 @@ struct RewriteOptions::OptionIdCompare {
 };
 
 void RewriteOptions::InitOptionIdToEnumArray() {
-  DCHECK(option_id_to_property_array_ == NULL);
+  // This method is called first by Initialize, when base properties are
+  // added, then zero or more times when subclass properties are added by
+  // MergeSubclassProperties (e.g. by ApacheConfig::AddProperties).
+  delete [] option_id_to_property_array_;
   option_id_to_property_array_ =
       new const PropertyBase*[all_properties_->size()];
   for (int i = 0, n = all_properties_->size(); i < n; ++i) {
@@ -1698,6 +1701,7 @@ bool RewriteOptions::Terminate() {
 
 void RewriteOptions::MergeSubclassProperties(Properties* properties) {
   all_properties_->Merge(properties);
+  InitOptionIdToEnumArray();
 }
 
 bool RewriteOptions::SetExperimentState(int id) {
