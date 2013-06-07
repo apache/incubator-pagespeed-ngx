@@ -80,6 +80,7 @@
         'http/http_value_test.cc',
         'http/inflating_fetch_test.cc',
         'http/log_record_test.cc',
+        'http/log_record_test_helper.cc',
         'http/mock_url_fetcher_test.cc',
         'http/rate_controlling_url_async_fetcher_test.cc',
         'http/reflecting_test_fetcher_test.cc',
@@ -376,6 +377,7 @@
       'type': '<(library)',
       'dependencies': [
         'test_infrastructure',
+        '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/pagespeed/kernel.gyp:base_test_util',
       ],
       'include_dirs': [
@@ -385,6 +387,7 @@
       'sources': [
         '<(DEPTH)/pagespeed/kernel/html/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
+        'http/log_record_test_helper.cc',
         'rewriter/fake_filter.cc',
         'rewriter/rewrite_test_base.cc',
         'rewriter/test_distributed_fetcher.cc',

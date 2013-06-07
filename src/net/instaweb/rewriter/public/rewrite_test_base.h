@@ -52,6 +52,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 
 namespace net_instaweb {
@@ -64,13 +65,13 @@ class Hasher;
 class HtmlWriterFilter;
 class LRUCache;
 class MessageHandler;
+class MockLogRecord;
 class MockScheduler;
 class RequestHeaders;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
 class WaitUrlAsyncFetcher;
-struct ContentType;
 
 class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
@@ -593,6 +594,12 @@ class RewriteTestBase : public RewriteOptionsTestBase {
         server_context_->page_property_cache(),
         key);
   }
+
+  // Sets MockLogRecord in the driver's request_context.
+  void SetMockLogRecord();
+
+  // Returns the MockLogRecord in the driver.
+  MockLogRecord* mock_log_record();
 
  protected:
   void Init();

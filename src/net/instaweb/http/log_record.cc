@@ -212,34 +212,6 @@ void AbstractLogRecord::LogFlushEarlyActivity(
   flush_early_resource_info->set_in_head(in_head);
 }
 
-void AbstractLogRecord::LogImageRewriteActivity(
-    const char* id,
-    const GoogleString& url,
-    RewriterApplication::Status status,
-    bool is_image_inlined,
-    bool is_critical_image,
-    bool try_low_res_src_insertion,
-    bool low_res_src_inserted,
-    int low_res_data_size) {
-  RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(id, url, status);
-  if (rewriter_info == NULL) {
-    return;
-  }
-
-  ScopedMutex lock(mutex_.get());
-  RewriteResourceInfo* rewrite_resource_info =
-      rewriter_info->mutable_rewrite_resource_info();
-  rewrite_resource_info->set_is_inlined(is_image_inlined);
-  rewrite_resource_info->set_is_critical(is_critical_image);
-  if (try_low_res_src_insertion) {
-    ImageRewriteResourceInfo* image_rewrite_resource_info =
-        rewriter_info->mutable_image_rewrite_resource_info();
-    image_rewrite_resource_info->set_is_low_res_src_inserted(
-        low_res_src_inserted);
-    image_rewrite_resource_info->set_low_res_size(low_res_data_size);
-  }
-}
-
 void AbstractLogRecord::LogJsDisableFilter(const char* id,
                                    bool has_pagespeed_no_defer) {
   RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(

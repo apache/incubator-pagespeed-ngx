@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/log_record_test_helper.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -1100,6 +1101,16 @@ bool RewriteTestBase::AddShard(StringPiece domain, StringPiece shards) {
     server_context()->ComputeSignature(options_);
   }
   return ret;
+}
+
+void RewriteTestBase::SetMockLogRecord() {
+  rewrite_driver_->set_request_context(
+      RequestContext::NewTestRequestContext(new MockLogRecord(
+          factory()->thread_system()->NewMutex())));
+}
+
+MockLogRecord* RewriteTestBase::mock_log_record() {
+  return dynamic_cast<MockLogRecord*>(rewrite_driver_->log_record());
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

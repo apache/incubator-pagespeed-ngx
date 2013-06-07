@@ -50,8 +50,8 @@ RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
 
 RequestContext::RequestContext(AbstractMutex* mutex,
                                Timer* timer,
-                               bool want_log_record)
-    : log_record_(want_log_record ? new LogRecord(mutex) : NULL),
+                               AbstractLogRecord* log_record)
+    : log_record_(log_record),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, mutex),
       using_spdy_(false) {
@@ -69,6 +69,12 @@ RequestContextPtr RequestContext::NewTestRequestContextWithTimer(
     ThreadSystem* thread_system, Timer* timer) {
   return RequestContextPtr(new RequestContext(thread_system->NewMutex(),
                                               timer));
+}
+
+RequestContextPtr RequestContext::NewTestRequestContext(
+    AbstractLogRecord* log_record) {
+  return RequestContextPtr(
+      new RequestContext(log_record->mutex(), NULL, log_record));
 }
 
 AbstractLogRecord* RequestContext::NewSubordinateLogRecord(

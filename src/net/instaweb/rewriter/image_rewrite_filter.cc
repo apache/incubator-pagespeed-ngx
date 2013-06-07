@@ -843,6 +843,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         rewrite_context->TracePrintf("%s", msg.c_str());
       }
     }
+    cached->set_size(rewrite_result == kRewriteOk ? image->output_size() :
+                     image->input_size());
 
     // Try inlining input image if output hasn't been inlined already.
     if (!cached->has_inlined_data()) {
@@ -1258,6 +1260,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
   bool low_res_src_inserted = false;
   bool try_low_res_src_insertion = false;
+  ImageType low_res_image_type = IMAGE_UNKNOWN;
   if (options->Enabled(RewriteOptions::kDelayImages) &&
       (element->keyword() == HtmlName::kImg ||
        element->keyword() == HtmlName::kInput)) {
@@ -1271,11 +1274,13 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         cached->has_low_resolution_inlined_data() &&
         (max_preview_image_index < 0 ||
          image_index < max_preview_image_index)) {
-      ImageType image_type = static_cast<ImageType>(
+      low_res_image_type = static_cast<ImageType>(
           cached->low_resolution_inlined_image_type());
 
-      const ContentType* content_type = Image::TypeToContentType(image_type);
-      DCHECK(content_type != NULL) << "Invalid Image Type: " << image_type;
+      const ContentType* content_type =
+          Image::TypeToContentType(low_res_image_type);
+      DCHECK(content_type != NULL) << "Invalid Image Type: "
+                                   << low_res_image_type;
       if (content_type != NULL) {
         GoogleString data_url;
         DataUrl(*content_type, BASE64, cached->low_resolution_inlined_data(),
@@ -1286,7 +1291,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       } else {
         driver_->message_handler()->Message(kError,
                                             "Invalid low res image type: %d",
-                                            image_type);
+                                            low_res_image_type);
       }
     }
   }
@@ -1301,8 +1306,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
        RewriterApplication::NOT_APPLIED),
       image_inlined,
       is_critical_image,
+      cached->optimizable(),
+      cached->size(),
       try_low_res_src_insertion,
       low_res_src_inserted,
+      low_res_image_type,
       cached->low_resolution_inlined_data().size());
   return rewrote_url;
 }

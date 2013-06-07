@@ -58,6 +58,7 @@ class RequestContext : public RefCounted<RequestContext> {
   }
   static RequestContextPtr NewTestRequestContextWithTimer(
       ThreadSystem* thread_system, Timer* timer);
+  static RequestContextPtr NewTestRequestContext(AbstractLogRecord* log_record);
 
   // Creates a new, unowned AbstractLogRecord, for use by some subordinate
   // action.  Also useful in case of background activity where logging is
@@ -282,7 +283,8 @@ class RequestContext : public RefCounted<RequestContext> {
   // TODO(gee): Fix this, it sucks.
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.
-  RequestContext(AbstractMutex* mutex, Timer* timer, bool want_log_record);
+  RequestContext(AbstractMutex* mutex, Timer* timer,
+                 AbstractLogRecord* log_record);
   // Destructors in refcounted classes should be protected.
   virtual ~RequestContext();
   REFCOUNT_FRIEND_DECLARATION(RequestContext);

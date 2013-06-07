@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/log_record_test_helper.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -54,7 +55,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/enums.pb.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
@@ -72,6 +72,8 @@
 #include "net/instaweb/util/public/timer.h"  // for Timer, etc
 
 namespace net_instaweb {
+
+class AbstractMutex;
 
 namespace {
 
@@ -819,19 +821,6 @@ TEST_F(ImageRewriteTest, ImgTagWithComputeStatistics) {
   EXPECT_EQ(0, rewrite_driver()->dom_stats_filter()->num_inlined_img_tags());
 }
 
-TEST_F(ImageRewriteTest, ImgTagWithRewriterStatsChecking) {
-  options()->EnableFilter(RewriteOptions::kComputeStatistics);
-  RewriteImage("img", kContentTypeJpeg);
-  rewrite_driver_->log_record()->WriteLog();
-  EXPECT_EQ(1, logging_info()->rewriter_stats_size());
-  const RewriterStats& stats = logging_info()->rewriter_stats(0);
-  EXPECT_EQ(RewriterHtmlApplication::ACTIVE, stats.html_status());
-  EXPECT_EQ(1, stats.status_counts_size());
-  EXPECT_EQ(RewriterApplication::APPLIED_OK,
-            stats.status_counts(0).application_status());
-  EXPECT_EQ(3, stats.status_counts(0).count());
-}
-
 TEST_F(ImageRewriteTest, ImgTagWebp) {
   if (RunningOnValgrind()) {
     return;
@@ -1543,6 +1532,65 @@ TEST_F(ImageRewriteTest, NullResizeTest) {
                     " style", " style", false, false);
 }
 
+TEST_F(ImageRewriteTest, TestLoggingWithoutOptimize) {
+  // Make sure we don't resize, if we don't optimize.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  rewrite_driver()->AddFilters();
+  SetMockLogRecord();
+  MockLogRecord* log = mock_log_record();
+  EXPECT_CALL(*log,
+              MockLogImageRewriteActivity(LogImageRewriteActivityMatcher(
+                  StrEq("ic"),
+                  StrEq("http://test.com/IronChef2.gif"),
+                  RewriterApplication::NOT_APPLIED,
+                  false /* is_image_inlined */,
+                  true /* is_critical_image */,
+                  false /* is_url_rewritten */,
+                  24941 /* original size */,
+                  false /* try_low_res_src_insertion */,
+                  false /* low_res_src_inserted */,
+                  IMAGE_UNKNOWN /* low res image type */,
+                  _ /* low_res_data_size */)));
+  // Without resize, it's not optimizable.
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", kChefDims, false, false);
+}
+
+TEST_F(ImageRewriteTest, TestLoggingWithOptimize) {
+  options()->set_image_inline_max_bytes(10000);
+  options()->set_log_url_indices(true);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->set_log_background_rewrites(true);
+  rewrite_driver()->AddFilters();
+  const char kResizedDims[] = " width=48 height=64";
+  SetMockLogRecord();
+  MockLogRecord* log = mock_log_record();
+  EXPECT_CALL(*log,
+              MockLogImageRewriteActivity(LogImageRewriteActivityMatcher(
+                  StrEq("ic"),
+                  StrEq("http://test.com/IronChef2.gif"),
+                  RewriterApplication::APPLIED_OK,
+                  true /* is_image_inlined */,
+                  true /* is_critical_image */,
+                  true /* is_url_rewritten */,
+                  5733 /* rewritten size */,
+                  false /* try_low_res_src_insertion */,
+                  false /* low_res_src_inserted */,
+                  IMAGE_UNKNOWN /* low res image type */,
+                  _ /* low_res_data_size */)));
+  // Without resize, it's not optimizable.
+  // With resize, the image shrinks quite a bit, and we can inline it
+  // given the 10K threshold explicitly set above.  This also strips the
+  // size information, which is now embedded in the image itself anyway.
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
+                    kResizedDims, "", true, true);
+}
+
 TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
   // Make sure we don't resize, if we don't optimize.
   options()->set_allow_logging_urls_in_log_record(true);
@@ -1555,21 +1603,6 @@ TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
   // Without resize, it's not optimizable.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", kChefDims, false, false);
-
-  {
-    ScopedMutex lock(rewrite_driver()->log_record()->mutex());
-    EXPECT_EQ(1, logging_info()->rewriter_info_size());
-    const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
-    EXPECT_EQ("ic", rewriter_info.id());
-    EXPECT_EQ(RewriterApplication::NOT_APPLIED, rewriter_info.status());
-    EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
-    EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
-
-    const RewriteResourceInfo& resource_info =
-        rewriter_info.rewrite_resource_info();
-    EXPECT_FALSE(resource_info.is_inlined());
-    EXPECT_TRUE(resource_info.is_critical());
-  }
 
   // No optimization has been applied. Image type and size are not changed,
   // so the optimzied image does not have these values logged.
@@ -1605,22 +1638,6 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
                     kResizedDims, "", true, true);
 
-  {
-    ScopedMutex lock(rewrite_driver()->log_record()->mutex());
-    EXPECT_EQ(1, logging_info()->rewriter_info_size());
-    const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
-    EXPECT_EQ("ic", rewriter_info.id());
-    EXPECT_EQ(RewriterApplication::APPLIED_OK, rewriter_info.status());
-    EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
-    EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
-    EXPECT_EQ(0, logging_info()->resource_url_info().url_size());
-
-    const RewriteResourceInfo& resource_info =
-        rewriter_info.rewrite_resource_info();
-    EXPECT_TRUE(resource_info.is_inlined());
-    EXPECT_TRUE(resource_info.is_critical());
-  }
-
   // After optimization, the GIF image is converted to a PNG image.
   rewrite_driver()->Clear();
   TestBackgroundRewritingLog(
@@ -1645,8 +1662,6 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimizeAndUrlLogging) {
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
   options()->set_allow_logging_urls_in_log_record(true);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_request_context(
-      RequestContext::NewTestRequestContext(factory()->thread_system()));
 
   const char kResizedDims[] = " width=48 height=64";
   // Without resize, it's not optimizable.
@@ -1657,14 +1672,6 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimizeAndUrlLogging) {
                     kResizedDims, "", true, true);
   TestSingleRewriteWithoutAbs(kChefGifFile, kChefGifFile, kContentTypeGif,
                               kContentTypePng, kResizedDims, "", true, true);
-  ScopedMutex lock(rewrite_driver()->log_record()->mutex());
-  const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
-  EXPECT_EQ(RewriterApplication::APPLIED_OK, rewriter_info.status());
-  EXPECT_EQ(1, logging_info()->resource_url_info().url_size());
-  EXPECT_EQ(0, logging_info()->rewriter_info(0).rewrite_resource_info().
-            original_resource_url_index());
-  EXPECT_EQ("http://test.com/IronChef2.gif",
-            logging_info()->resource_url_info().url(0));
 }
 
 TEST_F(ImageRewriteTest, DimensionStripAfterInline) {

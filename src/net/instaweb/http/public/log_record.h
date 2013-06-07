@@ -167,15 +167,18 @@ class AbstractLogRecord  {
       bool in_head);
 
   // Log a RewriterInfo for the image rewrite filter.
-  void LogImageRewriteActivity(
+  virtual void LogImageRewriteActivity(
       const char* id,
       const GoogleString& url,
       RewriterApplication::Status status,
       bool is_image_inlined,
       bool is_critical_image,
+      bool is_url_rewritten,
+      int size,
       bool try_low_res_src_insertion,
       bool low_res_src_inserted,
-      int low_res_data_size);
+      ImageType low_res_image_type,
+      int low_res_data_size) = 0;
 
   // TODO(gee): Change the callsites.
   void LogJsDisableFilter(const char* id, bool has_pagespeed_no_defer);
@@ -257,6 +260,13 @@ class AbstractLogRecord  {
   // writing failed.
   virtual bool WriteLogImpl() = 0;
 
+  // Helper function which creates a new rewriter logging submessage for
+  // |rewriter_id|, sets status and the url index. It is intended to be called
+  // only inside logging code.
+  RewriterInfo* SetRewriterLoggingStatusHelper(
+      const char* rewriter_id, const GoogleString& url,
+      RewriterApplication::Status status);
+
  private:
   // Called on construction.
   void InitLogging();
@@ -267,13 +277,6 @@ class AbstractLogRecord  {
   // Fill LoggingInfo proto with information collected from LogRewriterStatus
   // and LogRewrite.
   void PopulateRewriterStatusCounts();
-
-  // Helper function which creates a new rewriter logging submessage for
-  // |rewriter_id|, sets status and the url index. It is intended to be called
-  // only inside logging code.
-  RewriterInfo* SetRewriterLoggingStatusHelper(
-      const char* rewriter_id, const GoogleString& url,
-      RewriterApplication::Status status);
 
   // Thus must be set. Implementation constructors must minimally default this
   // to a NullMutex.
@@ -332,6 +335,19 @@ class LogRecord : public AbstractLogRecord {
 
   void SetCacheStatusForCohortInfo(
       int page_type, const GoogleString& cohort, bool found, int key_state) {}
+
+  virtual void LogImageRewriteActivity(
+      const char* id,
+      const GoogleString& url,
+      RewriterApplication::Status status,
+      bool is_image_inlined,
+      bool is_critical_image,
+      bool is_url_rewritten,
+      int size,
+      bool try_low_res_src_insertion,
+      bool low_res_src_inserted,
+      ImageType low_res_image_type,
+      int low_res_data_size) {}
 
   bool WriteLogImpl() { return true; }
 
