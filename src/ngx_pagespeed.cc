@@ -1495,6 +1495,9 @@ CreateRequestContext::Response ps_create_request_context(
   }
 
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
+    // NOTE: We are using the below debug message as is for some of our system
+    // tests. So, be careful about test breakages caused by changing or
+    // removing this line.
     DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
         url_string.c_str());
     return CreateRequestContext::kNotUnderstood;
@@ -1892,6 +1895,19 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   if (content_type == NULL || !content_type->IsHtmlLike()) {
     // Unknown or otherwise non-html content type: skip it.
     return ngx_http_next_header_filter(r);
+  }
+
+  ngx_table_elt_t* header;
+  net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
+    // If there is a proxy_cache configured in front of this ngx server,
+    // we expect it to add a X-Cache header with the value of the cache
+    // status (one of HIT, MISS, EXPIRED).
+    if (STR_CASE_EQ_LITERAL(header->key, "X-Cache") &&
+        STR_CASE_EQ_LITERAL(header->value, "HIT")) {
+      // Bypass content handling by pagespeed modules if this is a cache hit.
+      return ngx_http_next_header_filter(r);
+    }
   }
 
   switch (ps_create_request_context(
