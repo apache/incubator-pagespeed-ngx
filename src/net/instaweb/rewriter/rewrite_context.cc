@@ -2319,7 +2319,11 @@ void RewriteContext::Propagate(bool render_slots) {
   DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
   if (rewrite_done_ && (num_pending_nested_ == 0)) {
     if (render_slots) {
-      Render();
+      if (was_too_busy_) {
+        WillNotRender();
+      } else {
+        Render();
+      }
     }
     CHECK_EQ(num_output_partitions(), static_cast<int>(outputs_.size()));
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
@@ -2329,7 +2333,7 @@ void RewriteContext::Propagate(bool render_slots) {
         if (render_slots_[slot_index]) {
           ResourcePtr resource(outputs_[p]);
           slots_[slot_index]->SetResource(resource);
-          if (render_slots && partition->url_relocatable()) {
+          if (render_slots && partition->url_relocatable() && !was_too_busy_) {
             // This check for relocatable is potentially unsafe in that later
             // filters might still try to relocate the resource.  We deal with
             // this for the current case of javscript by having checks in each

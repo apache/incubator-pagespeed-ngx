@@ -2013,8 +2013,9 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
       statistics()->GetVariable(ImageRewriteFilter::kImageOngoingRewrites);
   ongoing_rewrites->Set(100);
 
-  ValidateExpected("img_in_css", CssLinkHref(kCssFile),
-                   CssLinkHref(out_css_url));
+  // If the nested context is too busy, we don't want the parent to partially
+  // optimize.
+  ValidateNoChanges("img_in_css", CssLinkHref(kCssFile));
 
   GoogleString out_css;
   EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
@@ -2752,6 +2753,26 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   ASSERT_EQ(golden_content.size(), remote_content.size());
   EXPECT_EQ(golden_content, remote_content);  // don't bother if sizes differ...
   */
+}
+
+// If we drop a rewrite because of load, make sure it returns the original URL.
+// This verifies that Issue 707 is fixed.
+TEST_F(ImageRewriteTest, TooBusyReturnsOriginalResource) {
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_max_rewrites_at_once(1);
+  rewrite_driver()->AddFilters();
+
+  // Set the current # of rewrites very high, so we stop doing more rewrites
+  // due to "load".
+  Variable* ongoing_rewrites =
+      statistics()->GetVariable(ImageRewriteFilter::kImageOngoingRewrites);
+  ongoing_rewrites->Set(100);
+
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
+                    false, false);
+  ongoing_rewrites->Set(0);
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
+                    true, false);
 }
 
 }  // namespace net_instaweb
