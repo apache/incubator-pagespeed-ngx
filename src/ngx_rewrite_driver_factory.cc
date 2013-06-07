@@ -381,14 +381,10 @@ AllocateAndInitSharedMemStatistics(
 
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
-  RewriteDriverFactory::InitStats(statistics);
+  SystemRewriteDriverFactory::InitStats(statistics);
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
-  SystemCaches::InitStats(statistics);
-  SerfUrlAsyncFetcher::InitStats(statistics);
-  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
-  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 
   statistics->AddVariable(kShutdownCount);
 }
