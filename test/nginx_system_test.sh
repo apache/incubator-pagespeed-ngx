@@ -254,7 +254,7 @@ function run_post_cache_flush() {
 CACHABLE_HTML_LOC="${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
 PS_HANDLED_HTML="Passing on content handling.*8050/mod_pagespeed_test/cachable"
 PS_HANDLED_HTML=$PS_HANDLED_HTML"_rewritten_html/rewrite_images.html"
-TMP_LOG_LINE="localhost:8051 GET /purge/mod_pagespeed_test/cachable_rewritten_"
+TMP_LOG_LINE="proxy_cache.example.com GET /purge/mod_pagespeed_test/cachable_rewritten_"
 PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/rewrite_images.html.*(200)"
 
 # Number of downstream cache purges should be 0 here.
@@ -264,7 +264,8 @@ check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*0"
 # The 1st request results in a cache miss, non-rewritten response
 # produced by pagespeed code and a subsequent purge request.
 start_test Check for case where rewritten cache should get purged.
-OUT=$($WGET_DUMP $CACHABLE_HTML_LOC/rewrite_images.html)
+WGET_ARGS="--header=Host:proxy_cache.example.com"
+OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
 check_not_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
@@ -274,8 +275,8 @@ check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 # The 2nd request results in a cache miss (because of the previous purge),
 # rewritten response produced by pagespeed code and no new purge requests.
 start_test Check for case where rewritten cache should not get purged.
-WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
-OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
+BLOCKING_WGET_ARGS=$WGET_ARGS" --header=X-PSA-Blocking-Rewrite:psatest"
+OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
@@ -287,7 +288,7 @@ check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 # now present in cache), rewritten response served out from cache and not
 # by pagespeed code and no new purge requests.
 start_test Check for case where there is a rewritten cache hit.
-OUT=$($WGET_DUMP $CACHABLE_HTML_LOC/rewrite_images.html)
+OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: HIT"
 fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1

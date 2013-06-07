@@ -64,7 +64,7 @@ http {
     # running on the PRIMARY_PORT when the response is not available in
     # the cache. It also services purge requests from the upstream server.
     listen @@SECONDARY_PORT@@;
-    server_name localhost;
+    server_name proxy_cache.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed off;
@@ -75,7 +75,7 @@ http {
     }
 
     location /mod_pagespeed_test/cachable_rewritten_html/ {
-      proxy_pass http://localhost:8050;
+      proxy_pass http://localhost:@@PRIMARY_PORT@@;
       proxy_cache_valid 200 30s;
       proxy_cache htmlcache;
       proxy_ignore_headers Cache-Control;
@@ -474,7 +474,8 @@ http {
       # Purge requests have to be proxied to the caching layer server:port
       # since that is the only one that can service it.
       allow all;
-      proxy_pass http://localhost:8051;
+      proxy_pass http://localhost:@@SECONDARY_PORT@@;
+      proxy_set_header Host proxy_cache.example.com;
     }
 
     location /mod_pagespeed_test/cachable_rewritten_html/ {
