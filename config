@@ -83,6 +83,10 @@ else
   buildtype=Release
 fi
 
+# Building with HTTPS fetching enabled pulls in a version of OpenSSL that causes
+# linker errors, so disable it here.
+CFLAGS="$CFLAGS -DSERF_HTTPS_FETCHING=0"
+
 pagespeed_include="\
   $mod_pagespeed_dir \
   $mod_pagespeed_dir/third_party/chromium/src \
