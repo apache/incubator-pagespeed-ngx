@@ -1428,13 +1428,13 @@ start_test The beacon should include the experiment id.
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=2' \
       $EXP_EXTEND_CACHE)
 BEACON_CODE="pagespeed.addInstrumentationInit('/ngx_pagespeed_beacon', 'load',"
-BEACON_CODE+=" '&exptid=2', 'http://experiment.example.com/"
+BEACON_CODE+=" '&exptid=2', '', 'http://experiment.example.com/"
 BEACON_CODE+="mod_pagespeed_example/extend_cache.html');"
 check_from "$OUT" grep "$BEACON_CODE"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=7' \
       $EXP_EXTEND_CACHE)
 BEACON_CODE="pagespeed.addInstrumentationInit('/ngx_pagespeed_beacon', 'load',"
-BEACON_CODE+=" '&exptid=7', 'http://experiment.example.com/"
+BEACON_CODE+=" '&exptid=7', '', 'http://experiment.example.com/"
 BEACON_CODE+="mod_pagespeed_example/extend_cache.html');"
 check_from "$OUT" grep "$BEACON_CODE"
 
