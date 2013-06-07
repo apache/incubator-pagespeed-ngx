@@ -19,24 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_RE2_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_RE2_H_
 
-#include "net/instaweb/util/public/string_util.h"
-
-#include "third_party/re2/src/re2/re2.h"
-
-using re2::RE2;
-
-// Converts a Google StringPiece into an RE2 StringPiece.  These are of course
-// the same basic thing but are declared in distinct namespaces and as far as
-// C++ type-checking is concerned they are incompatible.
-//
-// TODO(jmarantz): In the re2 code itself there are no references to
-// re2::StringPiece, always just plain StringPiece, so if we can
-// arrange to get the right definition #included we should be all set.
-// We could somehow rewrite '#include "re2/stringpiece.h"' to
-// #include Chromium's stringpiece then everything would just work.
-inline re2::StringPiece StringPieceToRe2(StringPiece sp) {
-  return re2::StringPiece(sp.data(), sp.size());
-}
-
+// TODO(morlovich): Remove this forwarding header and change all references.
+#include "pagespeed/kernel/util/re2.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_RE2_H_
