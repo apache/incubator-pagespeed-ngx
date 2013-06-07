@@ -1495,6 +1495,9 @@ CreateRequestContext::Response ps_create_request_context(
   }
 
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
+    // NOTE: We are using the below debug message as is for some of our system
+    // tests. So, be careful about test breakages caused by changing or
+    // removing this line.
     DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
         url_string.c_str());
     return CreateRequestContext::kNotUnderstood;
