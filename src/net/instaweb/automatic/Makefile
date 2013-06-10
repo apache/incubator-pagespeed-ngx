@@ -104,19 +104,20 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_enums_pb.a \
   net/instaweb/libprocess_context.a \
   net/instaweb/libtest_infrastructure.a \
+  pagespeed/libjsminify.a \
+  pagespeed/libpagespeed_base.a \
+  pagespeed/libpagespeed_base_core.a \
+  pagespeed/libpagespeed_base_test_infrastructure.a \
   pagespeed/libpagespeed_cache.a \
   pagespeed/libpagespeed_html.a \
   pagespeed/libpagespeed_html_gperf.a \
   pagespeed/libpagespeed_http.a \
-  pagespeed/libpagespeed_base.a \
-  pagespeed/libpagespeed_base_core.a \
-  pagespeed/libpagespeed_base_test_infrastructure.a \
   pagespeed/libpagespeed_image_processing.a \
-  pagespeed/libpthread_system.a \
-  pagespeed/libpagespeed_thread.a \
-  pagespeed/libutil.a \
-  pagespeed/libjsminify.a \
   pagespeed/libpagespeed_javascript_gperf.a \
+  pagespeed/libpagespeed_sharedmem.a \
+  pagespeed/libpagespeed_thread.a \
+  pagespeed/libpthread_system.a \
+  pagespeed/libutil.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/css_parser/libcss_parser.a \
@@ -186,7 +187,7 @@ CXX = /usr/bin/g++
 TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/third_party/re2/libre2_bench_util.a
 
 build_libraries :
-	cd $(MOD_PAGESPEED_ROOT) && make BUILDTYPE=$(BUILDTYPE)
+	cd $(MOD_PAGESPEED_ROOT) && make CXXFLAGS="$(CXXFLAGS)" BUILDTYPE=$(BUILDTYPE)
 
 endif
 
