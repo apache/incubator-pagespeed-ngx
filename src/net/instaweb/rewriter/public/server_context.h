@@ -38,6 +38,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 
@@ -261,6 +262,10 @@ class ServerContext {
 
   CacheHtmlInfoFinder* cache_html_info_finder() const {
     return cache_html_info_finder_.get();
+  }
+
+  SimpleRandom* simple_random() {
+    return &simple_random_;
   }
 
   void set_cache_html_info_finder(CacheHtmlInfoFinder* finder);
@@ -724,6 +729,10 @@ class ServerContext {
 
   // A convenient central place to store the hostname we're running on.
   GoogleString hostname_;
+
+  // A simple (and always seeded with the same default!) random number
+  // generator.  Do not use for security purposes.
+  SimpleRandom simple_random_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

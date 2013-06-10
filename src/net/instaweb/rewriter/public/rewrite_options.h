@@ -239,6 +239,7 @@ class RewriteOptions {
     kImagePreserveURLs,
     kImageRecompressionQuality,
     kImageResolutionLimitBytes,
+    kImageRewriteRandomDropPercentage,
     kImageWebpRecompressionQuality,
     kImageWebpRecompressionQualityForSmallScreens,
     kImageWebpTimeoutMs,
@@ -1618,6 +1619,13 @@ class RewriteOptions {
   }
   int64 max_image_size_low_resolution_bytes() const {
     return max_image_size_low_resolution_bytes_.value();
+  }
+
+  void set_image_rewrite_random_drop_percentage(int x) {
+    set_option(x, &image_rewrite_random_drop_percentage_);
+  }
+  int image_rewrite_random_drop_percentage() const {
+    return image_rewrite_random_drop_percentage_.value();
   }
 
   void set_experiment_cookie_duration_ms(int64 x) {
@@ -3132,6 +3140,9 @@ class RewriteOptions {
   Option<int64> min_image_size_low_resolution_bytes_;
   // Maximum image size below which low res image is generated.
   Option<int64> max_image_size_low_resolution_bytes_;
+  // Percentage (an integer between 0 and 100 inclusive) of images rewrites to
+  // drop.
+  Option<int> image_rewrite_random_drop_percentage_;
 
   // For proxies operating in in-place mode this allows fetching optimized
   // resources from sites that have MPS, etc configured.

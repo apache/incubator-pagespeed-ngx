@@ -1219,6 +1219,83 @@ TEST_F(ImageRewriteTest, ImageRewriteNoTransformAttribute) {
                     false);  // expect_inline
 }
 
+TEST_F(ImageRewriteTest, ImageRewriteDropAll) {
+  // Test that randomized optimization doesn't rewrite when drop % set to 100
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_rewrite_random_drop_percentage(100);
+  rewrite_driver()->AddFilters();
+
+  for (int i = 0; i < 100; ++i) {
+    TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                      "",      // initial attributes
+                      "",      // final attributes
+                      false,   // expect_rewritten
+                      false);  // expect_inline
+    lru_cache()->Clear();
+    ClearStats();
+  }
+}
+
+TEST_F(ImageRewriteTest, ImageRewriteDropNone) {
+  // Test that randomized optimization always rewrites when drop % set to 0.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_rewrite_random_drop_percentage(0);
+  rewrite_driver()->AddFilters();
+
+  for (int i = 0; i < 100; ++i) {
+    TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                      "",      // initial attributes
+                      "",      // final attributes
+                      true,   // expect_rewritten
+                      false);  // expect_inline
+    lru_cache()->Clear();
+    ClearStats();
+  }
+}
+
+TEST_F(ImageRewriteTest, ImageRewriteDropSometimes) {
+  // Test that randomized optimization sometimes rewrites and sometimes doesn't.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_rewrite_random_drop_percentage(50);
+  rewrite_driver()->AddFilters();
+
+  bool found_rewritten = false;
+  bool found_not_rewritten = false;
+
+  // Boiler-plate fetching stuff.
+  GoogleString initial_url = StrCat(kTestDomain, kBikePngFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kBikePngFile, kContentTypePng, 100);
+  const char html_boilerplate[] = "<img src='%s'%s>";
+  GoogleString html_input =
+      StringPrintf(html_boilerplate, initial_url.c_str(), "");
+
+  // Note that this could flake, but for it to flake we'd have to have 100
+  // heads or 100 tails in a row, a probability of 1.6e-30 when
+  // image_rewrite_percentage is 50.
+  for (int i = 0; i < 100; i++) {
+    ParseUrl(page_url, html_input);
+
+    // Check for single image file in the rewritten page.
+    StringVector image_urls;
+    CollectImgSrcs(initial_url, output_buffer_, &image_urls);
+    EXPECT_EQ(1, image_urls.size());
+    const GoogleString& rewritten_url = image_urls[0];
+    const GoogleUrl rewritten_gurl(rewritten_url);
+    EXPECT_TRUE(rewritten_gurl.is_valid());
+
+    if (initial_url == rewritten_url) {
+      found_not_rewritten = true;
+    } else {
+      found_rewritten = true;
+    }
+
+    if (found_rewritten && found_not_rewritten) {
+      break;
+    }
+  }
+}
+
 TEST_F(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
@@ -1991,6 +2068,34 @@ TEST_F(ImageRewriteTest, RetainExtraHeaders) {
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   TestRetainExtraHeaders(kPuzzleJpgFile, "ic", "jpg");
+}
+
+TEST_F(ImageRewriteTest, DontRandomlyDropImagesInCSS) {
+  // Even with a 100% random drop rate, ensure that we don't drop images in
+  // CSS files.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->set_image_rewrite_random_drop_percentage(100);
+  rewrite_driver()->AddFilters();
+
+  const char kPngFile[] = "a.png";
+  const char kCssFile[] = "a.css";
+  const char kCssTemplate[] = "div{background-image:url(%s)}";
+  AddFileToMockFetcher(StrCat(kTestDomain, kPngFile), kBikePngFile,
+                       kContentTypePng, 100);
+  GoogleString in_css = StringPrintf(kCssTemplate, kPngFile);
+  SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, in_css, 100);
+
+  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
+  GoogleString out_png_url = Encode(kTestDomain, "ic", "0", kPngFile, "png");
+
+  ValidateExpected("img_in_css", CssLinkHref(kCssFile),
+                   CssLinkHref(out_css_url));
+  GoogleString out_css;
+  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
+  GoogleString expected_out_css =
+      StringPrintf(kCssTemplate, out_png_url.c_str());
+  EXPECT_EQ(expected_out_css, out_css);
 }
 
 TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {

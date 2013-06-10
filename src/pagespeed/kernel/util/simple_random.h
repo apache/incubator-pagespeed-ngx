@@ -19,9 +19,9 @@
 #ifndef PAGESPEED_KERNEL_UTIL_SIMPLE_RANDOM_H_
 #define PAGESPEED_KERNEL_UTIL_SIMPLE_RANDOM_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -40,7 +40,7 @@ class SimpleRandom {
   explicit SimpleRandom(AbstractMutex* mutex)
       : z_(10), w_(25), mutex_(mutex) {}
   ~SimpleRandom() {}
-  int Next();
+  uint32 Next();
 
   GoogleString GenerateHighEntropyString(int size);
 

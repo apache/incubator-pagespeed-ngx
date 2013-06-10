@@ -977,6 +977,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedRetainComment "special"
 #ALL_DIRECTIVES ModPagespeedRewriteDeadlinePerFlushMs 10
 #ALL_DIRECTIVES ModPagespeedRewriteLevel CoreFilters
+#ALL_DIRECTIVES ModPagespeedImageRewriteRandomDropPercentage 0
 #ALL_DIRECTIVES ModPagespeedRunExperiment true
 #ALL_DIRECTIVES ModPagespeedShardDomain example.com 1.example.com,2.example.com
 #ALL_DIRECTIVES ModPagespeedSharedMemoryLocks true

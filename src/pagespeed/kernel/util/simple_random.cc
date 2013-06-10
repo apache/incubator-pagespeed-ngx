@@ -16,17 +16,17 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 
-int SimpleRandom::Next() {
+uint32 SimpleRandom::Next() {
   ScopedMutex lock(mutex_.get());
   z_ = 36969 * (z_ & 65535) + (z_ >> 16);
   w_ = 18000 * (w_ & 65535) + (w_ >> 16);
-  int pseudo_random_number = (z_ << 16) + w_;
+  uint32 pseudo_random_number = (z_ << 16) + w_;
   return pseudo_random_number;
 }
 

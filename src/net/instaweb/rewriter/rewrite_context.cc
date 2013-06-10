@@ -3014,6 +3014,10 @@ void AppendInt(GoogleString* out, const char* name, int val,
 
 }  // namespace
 
+bool RewriteContext::IsNestedIn(StringPiece id) const {
+  return parent_ != NULL && id == parent_->id();
+}
+
 GoogleString RewriteContext::ToString(StringPiece prefix) const {
   GoogleString out;
   StrAppend(&out, prefix, "Outputs(", IntegerToString(num_outputs()), "):");

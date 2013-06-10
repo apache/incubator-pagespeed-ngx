@@ -82,6 +82,7 @@ struct OptionName {
 "ImagePreserveURLs",                     RewriteOptions::kImagePreserveURLs
 "ImageRecompressionQuality",             RewriteOptions::kImageRecompressionQuality
 "ImageResolutionLimitBytes",             RewriteOptions::kImageResolutionLimitBytes
+"ImageRewriteRandomDropPercentage",      RewriteOptions::kImageRewriteRandomDropPercentage
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
 "ImageWebpRecompressionQualityForSmallScreens", RewriteOptions::kImageWebpRecompressionQualityForSmallScreens
 "ImageWebpTimeoutMs",                    RewriteOptions::kImageWebpTimeoutMs

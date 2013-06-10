@@ -62,6 +62,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/work_bound.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 
@@ -710,6 +711,22 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     image_rewrites_dropped_intentionally_->Add(1);
     image_rewrites_dropped_decode_failure_->Add(1);
     return kRewriteFailed;
+  }
+
+  // If requested, drop random image rewrites. Eventually, frequently requested
+  // images will get optimized but the long tail won't be optimized much. We're
+  // not particularly concerned about the quality of the PRNG here as it's just
+  // deciding if we should optimize an image or not.
+  int drop_percentage = options->image_rewrite_random_drop_percentage();
+  if (drop_percentage > 0 &&
+      !rewrite_context->IsNestedIn(RewriteOptions::kCssFilterId)) {
+    // Note that we don't randomly drop if this is a nested context of the CSS
+    // filter as we don't want to partially rewrite a CSS file.
+    SimpleRandom* simple_random =
+        rewrite_context->FindServerContext()->simple_random();
+    if (drop_percentage > (simple_random->Next() % 100)) {
+      return kTooBusy;
+    }
   }
 
   Image::CompressionOptions* image_options =

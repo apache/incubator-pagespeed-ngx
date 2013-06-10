@@ -99,7 +99,6 @@
         'kernel/html/canonical_attributes.cc',
         'kernel/html/explicit_close_tag.cc',
         'kernel/util/platform.cc',
-        'kernel/util/simple_random.cc',
         'kernel/thread/mock_scheduler.cc',
       ],
       'include_dirs': [
@@ -245,6 +244,7 @@
       'sources': [
         'kernel/util/fast_wildcard_group.cc',
         'kernel/util/file_system_lock_manager.cc',
+        'kernel/util/simple_random.cc',
         'kernel/util/wildcard.cc',
       ],
       'include_dirs': [

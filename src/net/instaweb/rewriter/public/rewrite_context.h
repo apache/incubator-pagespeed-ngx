@@ -274,6 +274,10 @@ class RewriteContext {
   // Returns true if this is a nested rewriter.
   bool has_parent() const { return parent_ != NULL; }
 
+  // Returns true if this is a child rewriter and its parent has the given
+  // id.
+  bool IsNestedIn(StringPiece id) const;
+
   // Allows a nested rewriter to walk up its parent hierarchy.
   RewriteContext* parent() { return parent_; }
   const RewriteContext* parent() const { return parent_; }
