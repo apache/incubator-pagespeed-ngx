@@ -83,6 +83,11 @@ class RewriteStats {
   Variable* fallback_responses_served() {
     return fallback_responses_served_;
   }
+
+  Variable* num_proactively_freshen_user_facing_request() {
+    return num_proactively_freshen_user_facing_request_;
+  }
+
   Variable* num_conditional_refreshes() { return num_conditional_refreshes_; }
 
   Variable* ipro_served() { return ipro_served_; }
@@ -127,6 +132,7 @@ class RewriteStats {
   Variable* succeeded_filter_resource_fetches_;
   Variable* total_page_load_ms_;
   Variable* fallback_responses_served_;
+  Variable* num_proactively_freshen_user_facing_request_;
   Variable* num_conditional_refreshes_;
   Variable* ipro_served_;
   Variable* ipro_not_in_cache_;

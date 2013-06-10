@@ -180,6 +180,39 @@ class RemoveCommentsFilterOptions
   DISALLOW_COPY_AND_ASSIGN(RemoveCommentsFilterOptions);
 };
 
+// Provides hook to CacheUrlAsyncFetcher to protect the lifetime of the
+// RewriteDriver which owns fetcher, otherwise, fetcher may be deleted
+// by the time background fetch completes.
+class RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks
+    : public CacheUrlAsyncFetcher::AsyncOpHooks {
+ public:
+  explicit RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks(
+      RewriteDriver* rewrite_driver)
+      : rewrite_driver_(rewrite_driver) {
+  }
+
+  virtual ~RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks() {
+  }
+
+  // TODO(pulkitg): Remove session fetchers, so that fetcher can live as long
+  // server is alive and there is no need of
+  // {increment/decrement}_async_events_counts().
+  virtual void StartAsyncOp() {
+    // Increment async_events_counts so that driver will be alive as long as
+    // background fetch happens in CacheUrlAsyncFetcher.
+    rewrite_driver_->increment_async_events_count();
+  }
+
+  virtual void FinishAsyncOp() {
+    rewrite_driver_->decrement_async_events_count();
+  }
+
+ private:
+  RewriteDriver* rewrite_driver_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks);
+};
+
 }  // namespace
 
 class FileSystem;
@@ -231,6 +264,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       dom_stats_filter_(NULL),
       scan_filter_(this),
       controlling_pool_(NULL),
+      cache_url_async_fetcher_async_op_hooks_(
+          new RewriteDriverCacheUrlAsyncFetcherAsyncOpHooks(this)),
       html_worker_(NULL),
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL),
@@ -1295,17 +1330,26 @@ void RewriteDriver::SetSessionFetcher(UrlAsyncFetcher* f) {
 CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
     UrlAsyncFetcher* base_fetcher) {
   CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
-      server_context_->http_cache(), base_fetcher);
+      server_context()->lock_hasher(),
+      server_context()->lock_manager(),
+      server_context()->http_cache(),
+      cache_url_async_fetcher_async_op_hooks_.get(),
+      base_fetcher);
+  RewriteStats* stats = server_context_->rewrite_stats();
   cache_fetcher->set_respect_vary(options()->respect_vary());
   cache_fetcher->set_default_cache_html(options()->default_cache_html());
   cache_fetcher->set_backend_first_byte_latency_histogram(
-      server_context_->rewrite_stats()->backend_latency_histogram());
+      stats->backend_latency_histogram());
   cache_fetcher->set_fallback_responses_served(
-      server_context_->rewrite_stats()->fallback_responses_served());
+      stats->fallback_responses_served());
   cache_fetcher->set_num_conditional_refreshes(
-      server_context_->rewrite_stats()->num_conditional_refreshes());
+      stats->num_conditional_refreshes());
   cache_fetcher->set_serve_stale_if_fetch_error(
       options()->serve_stale_if_fetch_error());
+  cache_fetcher->set_proactively_freshen_user_facing_request(
+      options()->proactively_freshen_user_facing_request());
+  cache_fetcher->set_num_proactively_freshen_user_facing_request(
+      stats->num_proactively_freshen_user_facing_request());
   return cache_fetcher;
 }
 

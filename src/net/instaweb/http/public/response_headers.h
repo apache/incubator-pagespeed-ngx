@@ -43,6 +43,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   ResponseHeaders();
   virtual ~ResponseHeaders();
 
+  // Returns true if the resource with given date and TTL is going to expire
+  // shortly and should hence be proactively re-fetched. All the parameters are
+  // absolute times.
+  static bool IsImminentlyExpiring(
+      int64 start_date_ms, int64 expire_ms, int64 now_ms);
+
   // This will set Date and (if supplied in the first place, Expires)
   // header to now if the delta of date header wrt now_ms is more than
   // a tolerance.  Leaves the ComputeCaching state dirty if it came in

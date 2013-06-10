@@ -40,6 +40,8 @@ const char kResourceFetchConstructFailures[] =
     "resource_fetch_construct_failures";
 const char kNumFlushes[] = "num_flushes";
 const char kFallbackResponsesServed[] = "num_fallback_responses_served";
+const char kProactivelyFreshenUserFacingRequest[] =
+    "num_proactively_freshen_user_facing_request";
 const char kNumConditionalRefreshes[] = "num_conditional_refreshes";
 
 const char kIproServed[] = "ipro_served";
@@ -120,6 +122,7 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddHistogram(kRewriteLatencyHistogram);
   statistics->AddHistogram(kBackendLatencyHistogram);
   statistics->AddVariable(kFallbackResponsesServed);
+  statistics->AddVariable(kProactivelyFreshenUserFacingRequest);
   statistics->AddVariable(kNumConditionalRefreshes);
   statistics->AddVariable(kIproServed);
   statistics->AddVariable(kIproNotInCache);
@@ -180,6 +183,8 @@ RewriteStats::RewriteStats(Statistics* stats,
           stats->GetVariable(kTotalPageLoadMs)),
       fallback_responses_served_(
           stats->GetVariable(kFallbackResponsesServed)),
+      num_proactively_freshen_user_facing_request_(
+          stats->GetVariable(kProactivelyFreshenUserFacingRequest)),
       num_conditional_refreshes_(
           stats->GetVariable(kNumConditionalRefreshes)),
       ipro_served_(stats->GetVariable(kIproServed)),

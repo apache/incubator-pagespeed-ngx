@@ -413,7 +413,8 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual bool IsFresh(const ResponseHeaders& headers) {
     int64 date_ms = headers.date_ms();
     int64 expiry_ms = headers.CacheExpirationTimeMs();
-    return !server_context_->IsImminentlyExpiring(date_ms, expiry_ms);
+    return !ResponseHeaders::IsImminentlyExpiring(
+        date_ms, expiry_ms, server_context_->timer()->NowMs());
   }
 
  private:

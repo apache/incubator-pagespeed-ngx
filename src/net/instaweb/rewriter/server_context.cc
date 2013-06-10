@@ -82,8 +82,6 @@ const char kBeaconOptionsHashQueryParam[] = "oh";
 const char kBeaconCriticalImagesQueryParam[] = "ci";
 const char kBeaconCriticalCssQueryParam[] = "cs";
 
-const int64 kRefreshExpirePercent = 80;
-
 const char kFallbackPageCacheKeyQuerySuffix[] = "@";
 const char kFallbackPageCacheKeyBasePathSuffix[] = "#";
 
@@ -504,45 +502,14 @@ bool ServerContext::IsNonStalePagespeedResource(const GoogleUrl& url) {
   return (is_pagespeed_resource && !is_stale);
 }
 
-bool ServerContext::IsImminentlyExpiring(int64 start_date_ms,
-                                           int64 expire_ms) const {
-  // Consider a resource with 5 minute expiration time (the default
-  // assumed by mod_pagespeed when a potentialy cacheable resource
-  // lacks a cache control header, which happens a lot).  If the
-  // origin TTL was 5 minutes and 4 minutes have expired, then we want
-  // to re-fetch it so that we can avoid expiring the data.
-  //
-  // If we don't do this, then every 5 minutes, someone will see
-  // this page unoptimized.  In a site with very low QPS, including
-  // test instances of a site, this can happen quite often.
-  int64 now_ms = timer()->NowMs();
-  int64 ttl_ms = expire_ms - start_date_ms;
-  // Only proactively refresh resources that have at least our
-  // default expiration of 5 minutes.
-  //
-  // TODO(jmaessen): Lower threshold when If-Modified-Since checking is in
-  // place; consider making this settable.
-  // TODO(pradnya): We will freshen only if ttl is greater than the default
-  // implicit ttl. If the implicit ttl has been overridden by a site, we will
-  // not honor it here. Fix that.
-  if (ttl_ms >= ResponseHeaders::kImplicitCacheTtlMs) {
-    int64 freshen_threshold = std::min(
-        ResponseHeaders::kImplicitCacheTtlMs,
-        ((100 - kRefreshExpirePercent) * ttl_ms) / 100);
-    if (expire_ms - now_ms < freshen_threshold) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void ServerContext::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
   if (!http_cache_->force_caching() && resource->UseHttpCache()) {
     const ResponseHeaders* headers = resource->response_headers();
     int64 start_date_ms = headers->date_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
-    if (IsImminentlyExpiring(start_date_ms, expire_ms)) {
+    if (ResponseHeaders::IsImminentlyExpiring(
+        start_date_ms, expire_ms, timer()->NowMs())) {
       resource->Freshen(NULL, handler);
     }
   }

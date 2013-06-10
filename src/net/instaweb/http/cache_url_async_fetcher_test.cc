@@ -33,9 +33,12 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/abstract_mutex.h"  // for ScopedMutex
+#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/platform.h"
@@ -113,6 +116,19 @@ class MockFetch : public AsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(MockFetch);
 };
 
+class MockCacheUrlAsyncFetcherAsyncOpHooks
+    : public CacheUrlAsyncFetcher::AsyncOpHooks {
+ public:
+  MockCacheUrlAsyncFetcherAsyncOpHooks() {}
+  virtual ~MockCacheUrlAsyncFetcherAsyncOpHooks() {}
+
+  virtual void StartAsyncOp() {}
+  virtual void FinishAsyncOp() {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockCacheUrlAsyncFetcherAsyncOpHooks);
+};
+
 class CacheUrlAsyncFetcherTest : public ::testing::Test {
  protected:
   // Helper class for calling Get and Query methods on cache implementations
@@ -172,12 +188,20 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         ttl_ms_(Timer::kHourMs),
         implicit_cache_ttl_ms_(500 * Timer::kSecondMs),
         cache_result_valid_(true),
-        thread_system_(Platform::CreateThreadSystem()) {
+        thread_system_(Platform::CreateThreadSystem()),
+        scheduler_(thread_system_.get(), &timer_),
+        file_system_(thread_system_.get(), &timer_),
+        lock_manager_(&file_system_, GTestTempDir(), &scheduler_, &handler_) {
     HTTPCache::InitStats(&statistics_);
     http_cache_.reset(new HTTPCache(&lru_cache_, &timer_, &mock_hasher_,
                                     &statistics_));
     cache_fetcher_.reset(
-        new CacheUrlAsyncFetcher(http_cache_.get(), &counting_fetcher_));
+        new CacheUrlAsyncFetcher(
+            &mock_hasher_,
+            &lock_manager_,
+            http_cache_.get(),
+            &mock_async_op_hooks_,
+            &counting_fetcher_));
     // Enable serving of stale content if the fetch fails.
     cache_fetcher_->set_serve_stale_if_fetch_error(true);
 
@@ -526,6 +550,10 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   bool cache_result_valid_;
 
   scoped_ptr<ThreadSystem> thread_system_;
+  MockScheduler scheduler_;
+  MemFileSystem file_system_;
+  FileSystemLockManager lock_manager_;
+  MockCacheUrlAsyncFetcherAsyncOpHooks mock_async_op_hooks_;
 };
 
 TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
@@ -553,6 +581,34 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   EXPECT_EQ(0, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
   EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+
+  cache_fetcher_->set_proactively_freshen_user_facing_request(true);
+  // Advance the time so that cache is about to expire.
+  timer_.AdvanceMs(ttl_ms_ - 3 * 60 * 1000);
+  ClearStats();
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
+                   cache_body_, kBackendFetch, true);
+  // Fetch hits initial cache lookup ...
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(1, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache_->cache_misses()->Get());
+  // Background fetch is triggered to populate the cache with newer value.
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+
+  ClearStats();
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
+                   cache_body_, kBackendFetch, true);
+  // Fetch hits initial cache lookup ...
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(1, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache_->cache_misses()->Get());
+  // No fetch as cache is update with earlier background fetch.
+  EXPECT_EQ(0, counting_fetcher_.fetch_count());
+  EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+  cache_fetcher_->set_proactively_freshen_user_facing_request(false);
 
   // Induce a fetch failure so we are forced to serve stale data from the cache.
   mock_fetcher_.Disable();
@@ -1439,7 +1495,12 @@ TEST_F(CacheUrlAsyncFetcherTest, ERROR) {
 // Ensure that non-cacheable requests get kNotInCacheStatus set when there
 // is no backup fetcher.
 TEST_F(CacheUrlAsyncFetcherTest, NotInCache) {
-  CacheUrlAsyncFetcher fetcher(http_cache_.get(), NULL);
+  CacheUrlAsyncFetcher fetcher(
+      &mock_hasher_,
+      &lock_manager_,
+      http_cache_.get(),
+      &mock_async_op_hooks_,
+      NULL);
   StringAsyncFetch fetch(
       RequestContext::NewTestRequestContext(thread_system_.get()));
   // Note: nocache_url_ is not even in the cache.
@@ -1453,7 +1514,12 @@ TEST_F(CacheUrlAsyncFetcherTest, NotInCache) {
 // Ensure that non-GET requests get kNotInCacheStatus set when there is no
 // backup fetcher.
 TEST_F(CacheUrlAsyncFetcherTest, NotInCachePost) {
-  CacheUrlAsyncFetcher fetcher(http_cache_.get(), NULL);
+  CacheUrlAsyncFetcher fetcher(
+      &mock_hasher_,
+      &lock_manager_,
+      http_cache_.get(),
+      &mock_async_op_hooks_,
+      NULL);
   StringAsyncFetch fetch(
       RequestContext::NewTestRequestContext(thread_system_.get()));
   fetch.request_headers()->set_method(RequestHeaders::kPost);

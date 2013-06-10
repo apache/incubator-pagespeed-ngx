@@ -206,6 +206,11 @@ DEFINE_int64(lru_cache_size_bytes, 10 * 1024 * 1024, "LRU cache size");
 DEFINE_bool(force_caching, false,
             "Ignore caching headers and cache everything.");
 DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
+// TODO(pulkig): Remove proactively_freshen_user_facing_request flag after
+// testing is done.
+DEFINE_bool(proactively_freshen_user_facing_request, false,
+            "Proactively freshen user facing requests if they are about to"
+            "expire in cache.");
 DEFINE_bool(serve_stale_if_fetch_error, true, "Serve stale content if the "
             "fetch results in an error.");
 DEFINE_int32(psa_flush_buffer_limit_bytes,
@@ -531,6 +536,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("serve_stale_if_fetch_error")) {
     options->set_serve_stale_if_fetch_error(FLAGS_serve_stale_if_fetch_error);
+  }
+  if (WasExplicitlySet("proactively_freshen_user_facing_request")) {
+    options->set_proactively_freshen_user_facing_request(
+        FLAGS_proactively_freshen_user_facing_request);
   }
   if (WasExplicitlySet("psa_idle_flush_time_ms")) {
     options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);

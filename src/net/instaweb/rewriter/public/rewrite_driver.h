@@ -26,6 +26,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -56,7 +57,6 @@ class AbstractMutex;
 class AbstractPropertyPage;
 class AddInstrumentationFilter;
 class AsyncFetch;
-class CacheUrlAsyncFetcher;
 class CommonFilter;
 class CriticalCssResult;
 class CriticalLineInfo;
@@ -1405,6 +1405,10 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<RewriteOptions> options_;
 
   RewriteDriverPool* controlling_pool_;  // or NULL if this has custom options.
+
+  // Object which manages CacheUrlAsyncFetcher async operations.
+  scoped_ptr<CacheUrlAsyncFetcher::AsyncOpHooks>
+      cache_url_async_fetcher_async_op_hooks_;
 
   // The default resource encoder
   UrlSegmentEncoder default_encoder_;

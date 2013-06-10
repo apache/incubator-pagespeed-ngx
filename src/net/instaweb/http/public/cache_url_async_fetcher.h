@@ -21,14 +21,17 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class AsyncFetch;
+class Hasher;
 class Histogram;
 class HTTPCache;
 class MessageHandler;
+class NamedLockManager;
 class Variable;
 
 // Composes an asynchronous URL fetcher with an http cache, to
@@ -44,20 +47,49 @@ class Variable;
 // If fetcher == NULL, this will only perform a cache lookup and then call
 // the callback immediately.
 //
+// In case of cache hit and resource is about to expire (80% of TTL or 5 mins
+// which ever is minimum), it will trigger background fetch to freshen the value
+// in cache. Background fetch only be triggered only if async_op_hooks_ != NULL,
+// otherwise, fetcher object accessed by BackgroundFreshenFetch may be deleted
+// by the time origin fetch finishes.
+//
 // TODO(sligocki): In order to use this for fetching resources for rewriting
 // we'd need to integrate resource locking in this class. Do we want that?
 class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  CacheUrlAsyncFetcher(HTTPCache* cache, UrlAsyncFetcher* fetcher)
-      : http_cache_(cache),
+  // Interface for managing async operations in CacheUrlAsyncFetcher. It helps
+  // to protect the lifetime of the injected objects.
+  class AsyncOpHooks {
+   public:
+    AsyncOpHooks() {}
+    virtual ~AsyncOpHooks();
+
+    // Called when CacheUrlAsyncFetcher is about to start async operation.
+    virtual void StartAsyncOp() = 0;
+    // Called when async operation is ended.
+    virtual void FinishAsyncOp() = 0;
+  };
+
+  // None of these are owned by CacheUrlAsyncFetcher.
+  CacheUrlAsyncFetcher(const Hasher* lock_hasher,
+                       NamedLockManager* lock_manager,
+                       HTTPCache* cache,
+                       AsyncOpHooks* async_op_hooks,
+                       UrlAsyncFetcher* fetcher)
+      : lock_hasher_(lock_hasher),
+        lock_manager_(lock_manager),
+        http_cache_(cache),
         fetcher_(fetcher),
+        async_op_hooks_(async_op_hooks),
         backend_first_byte_latency_(NULL),
         fallback_responses_served_(NULL),
         num_conditional_refreshes_(NULL),
+        num_proactively_freshen_user_facing_request_(NULL),
         respect_vary_(false),
         ignore_recent_fetch_failed_(false),
         serve_stale_if_fetch_error_(false),
-        default_cache_html_(false) {
+        default_cache_html_(false),
+        proactively_freshen_user_facing_request_(false) {
   }
   virtual ~CacheUrlAsyncFetcher();
 
@@ -98,6 +130,14 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return num_conditional_refreshes_;
   }
 
+  void set_num_proactively_freshen_user_facing_request(Variable* x) {
+    num_proactively_freshen_user_facing_request_ = x;
+  }
+
+  Variable* num_proactively_freshen_user_facing_request() const {
+    return num_proactively_freshen_user_facing_request_;
+  }
+
   void set_respect_vary(bool x) { respect_vary_ = x; }
   bool respect_vary() const { return respect_vary_; }
 
@@ -119,19 +159,31 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   void set_default_cache_html(bool x) { default_cache_html_ = x; }
   bool default_cache_html() const { return default_cache_html_; }
 
+  void set_proactively_freshen_user_facing_request(bool x) {
+    proactively_freshen_user_facing_request_ = x;
+  }
+  bool proactively_freshen_user_facing_request() const {
+    return proactively_freshen_user_facing_request_;
+  }
+
  private:
   // Not owned by CacheUrlAsyncFetcher.
+  const Hasher* lock_hasher_;
+  NamedLockManager* lock_manager_;
   HTTPCache* http_cache_;
   UrlAsyncFetcher* fetcher_;
+  AsyncOpHooks* async_op_hooks_;
 
   Histogram* backend_first_byte_latency_;  // may be NULL.
   Variable* fallback_responses_served_;  // may be NULL.
   Variable* num_conditional_refreshes_;  // may be NULL.
+  Variable* num_proactively_freshen_user_facing_request_;  // may be NULL.
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;
   bool serve_stale_if_fetch_error_;
   bool default_cache_html_;
+  bool proactively_freshen_user_facing_request_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
 };

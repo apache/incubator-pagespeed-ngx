@@ -1006,6 +1006,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
+      false, &RewriteOptions::proactively_freshen_user_facing_request_, "pfur",
+      kProactivelyFreshenUserFacingRequest,
+      kDirectoryScope,
+      NULL);
+  AddBaseProperty(
       false,
       &RewriteOptions::flush_more_resources_early_if_time_permits_,
       "fretp", kFlushMoreResourcesEarlyIfTimePermits,

@@ -129,6 +129,7 @@ struct OptionName {
 "OverrideCachingTtlMs",                  RewriteOptions::kOverrideCachingTtlMs
 "OverrideIeDocumentMode",                RewriteOptions::kOverrideIeDocumentMode
 "PersistBlinkBlacklist",                 RewriteOptions::kPersistBlinkBlacklist
+"ProactivelyFreshenUserFacingRequest",   RewriteOptions::kProactivelyFreshenUserFacingRequest
 "ProgressiveJpegMinBytes",               RewriteOptions::kProgressiveJpegMinBytes
 "RejectBlacklisted",                     RewriteOptions::kRejectBlacklisted
 "RejectBlacklistedStatusCode",           RewriteOptions::kRejectBlacklistedStatusCode

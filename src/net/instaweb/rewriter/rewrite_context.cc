@@ -2589,8 +2589,11 @@ void RewriteContext::Freshen() {
            input_info.has_date_ms() &&
            input_info.has_index())) {
         ResourcePtr resource(slots_[input_info.index()]->resource());
-        if (stale_rewrite_|| FindServerContext()->IsImminentlyExpiring(
-            input_info.date_ms(), input_info.expiration_time_ms())) {
+        if (stale_rewrite_||
+            ResponseHeaders::IsImminentlyExpiring(
+                input_info.date_ms(),
+                input_info.expiration_time_ms(),
+                FindServerContext()->timer()->NowMs())) {
           RewriteFreshenCallback* callback = NULL;
           if (input_info.has_input_content_hash()) {
             callback = new RewriteFreshenCallback(

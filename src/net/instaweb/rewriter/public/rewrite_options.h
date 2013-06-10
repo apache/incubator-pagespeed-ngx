@@ -282,6 +282,7 @@ class RewriteOptions {
     kOverrideCachingTtlMs,
     kOverrideIeDocumentMode,
     kPersistBlinkBlacklist,
+    kProactivelyFreshenUserFacingRequest,
     kProgressiveJpegMinBytes,
     kPropagateBlinkCacheDeletes,
     kRejectBlacklisted,
@@ -1548,6 +1549,13 @@ class RewriteOptions {
   }
   bool serve_stale_if_fetch_error() const {
     return serve_stale_if_fetch_error_.value();
+  }
+
+  void set_proactively_freshen_user_facing_request(bool x) {
+    set_option(x, &proactively_freshen_user_facing_request_);
+  }
+  bool proactively_freshen_user_facing_request() const {
+    return proactively_freshen_user_facing_request_.value();
   }
 
   void set_enable_flush_early_critical_css(bool x) {
@@ -3033,6 +3041,9 @@ class RewriteOptions {
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;
+  // Proactively freshen user facing request if it is about to expire. So, that
+  // subsequent requests will experience a cache hit.
+  Option<bool> proactively_freshen_user_facing_request_;
   // Whether to flush the inlined critical css rules early.
   Option<bool> enable_flush_early_critical_css_;
   // When default_cache_html_ is false (default) we do not cache

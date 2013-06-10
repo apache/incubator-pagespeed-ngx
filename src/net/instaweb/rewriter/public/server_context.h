@@ -162,10 +162,6 @@ class ServerContext {
   // Is this URL a ref to a Pagespeed resource which is not stale ?
   bool IsNonStalePagespeedResource(const GoogleUrl& url);
 
-  // Returns true if the resource with given date and TTL is going to expire
-  // shortly and should hence be proactively re-fetched.
-  bool IsImminentlyExpiring(int64 start_date_ms, int64 expire_ms) const;
-
   void ComputeSignature(RewriteOptions* rewrite_options) const;
 
   // TODO(jmarantz): check thread safety in Apache.

@@ -20,12 +20,15 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/async_fetch_with_lock.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"  // for AbstractLogRecord
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -171,24 +174,74 @@ class CachePutFetch : public SharedAsyncFetch {
 
 class CacheFindCallback : public HTTPCache::Callback {
  public:
-  CacheFindCallback(const GoogleString& url,
+  class BackgroundFreshenFetch : public AsyncFetchWithLock {
+   public:
+    explicit BackgroundFreshenFetch(
+        const Hasher* lock_hasher,
+        const RequestContextPtr& request_context,
+        const GoogleString& url,
+        NamedLockManager* lock_manager,
+        MessageHandler* message_handler,
+        CacheFindCallback* callback,
+        CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks)
+        : AsyncFetchWithLock(
+              lock_hasher, request_context, url, lock_manager, message_handler),
+          callback_(callback),
+          async_op_hooks_(async_op_hooks) {}
+
+    virtual bool StartFetch(
+        UrlAsyncFetcher* fetcher, MessageHandler* handler) {
+      AsyncFetch* fetch = callback_->WrapCachePutFetchAndConditionalFetch(this);
+      async_op_hooks_->StartAsyncOp();
+      fetcher->Fetch(url(), handler, fetch);
+      return true;
+    }
+
+    virtual void Finalize(bool lock_failure, bool success) {
+      async_op_hooks_->FinishAsyncOp();
+    }
+
+    virtual bool ShouldYieldToRedundantFetchInProgress() {
+      return true;
+    }
+
+    virtual bool IsBackgroundFetch() const { return true; }
+
+   private:
+    CacheFindCallback* callback_;
+    CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks_;
+
+    DISALLOW_COPY_AND_ASSIGN(BackgroundFreshenFetch);
+  };
+
+  CacheFindCallback(const Hasher* lock_hasher,
+                    NamedLockManager* lock_manager,
+                    const GoogleString& url,
                     AsyncFetch* base_fetch,
                     CacheUrlAsyncFetcher* owner,
+                    CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks,
                     MessageHandler* handler)
       : HTTPCache::Callback(base_fetch->request_context()),
+        lock_hasher_(lock_hasher),
+        lock_manager_(lock_manager),
         url_(url),
         base_fetch_(base_fetch),
         cache_(owner->http_cache()),
+        async_op_hooks_(async_op_hooks),
         fetcher_(owner->fetcher()),
         backend_first_byte_latency_(
             owner->backend_first_byte_latency_histogram()),
         fallback_responses_served_(owner->fallback_responses_served()),
         num_conditional_refreshes_(owner->num_conditional_refreshes()),
+        num_proactively_freshen_user_facing_request_(
+            owner->num_proactively_freshen_user_facing_request()),
         handler_(handler),
         respect_vary_(owner->respect_vary()),
         ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()),
         serve_stale_if_fetch_error_(owner->serve_stale_if_fetch_error()),
-        default_cache_html_(owner->default_cache_html()) {
+        default_cache_html_(owner->default_cache_html()),
+        proactively_freshen_user_facing_request_(
+            owner->proactively_freshen_user_facing_request()) {
     // Note that this is a cache lookup: there are no request-headers.  At
     // this level, we have already made a policy decision that any Vary
     // headers present will be ignored (see
@@ -221,6 +274,27 @@ class CacheFindCallback : public HTTPCache::Callback {
           // fact might be useful to the HtmlParser if this is HTML. Perhaps
           // we should add an API for conveying that information.
           base_fetch_->Write(contents, handler_);
+        }
+
+        if (proactively_freshen_user_facing_request_ &&
+            async_op_hooks_ != NULL &&
+            IsImminentlyExpiring(*response_headers())) {
+          // Triggers the background fetch to freshen the value in cache if
+          // resource is about to expire.
+          if (num_proactively_freshen_user_facing_request_ != NULL) {
+            num_proactively_freshen_user_facing_request_->Add(1);
+          }
+          AsyncFetchWithLock* fetch = new BackgroundFreshenFetch(
+              lock_hasher_,
+              base_fetch_->request_context(),
+              url_,
+              lock_manager_,
+              handler_,
+              this,
+              async_op_hooks_);
+          RequestHeaders* request_headers = fetch->request_headers();
+          request_headers->CopyFrom(*base_fetch_->request_headers());
+          AsyncFetchWithLock::Start(fetcher_, fetch, handler_);
         }
 
         base_fetch_->Done(true);
@@ -270,27 +344,7 @@ class CacheFindCallback : public HTTPCache::Callback {
               base_fetch = fallback_fetch;
             }
 
-            CachePutFetch* put_fetch = new CachePutFetch(
-                url_, base_fetch, respect_vary_, default_cache_html_, cache_,
-                backend_first_byte_latency_, handler_);
-            DCHECK_EQ(response_headers(), base_fetch_->response_headers());
-
-            // Remove any Etags added by us before sending the request out.
-            const char* etag = request_headers()->Lookup1(
-                HttpAttributes::kIfNoneMatch);
-            if (etag != NULL &&
-                StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
-              put_fetch->request_headers()->RemoveAll(
-                  HttpAttributes::kIfNoneMatch);
-            }
-
-            ConditionalSharedAsyncFetch* conditional_fetch =
-                new ConditionalSharedAsyncFetch(
-                    put_fetch, fallback_http_value(), handler_);
-            conditional_fetch->set_num_conditional_refreshes(
-                num_conditional_refreshes_);
-
-            base_fetch = conditional_fetch;
+            base_fetch = WrapCachePutFetchAndConditionalFetch(base_fetch);
           }
 
           fetcher_->Fetch(url_, handler_, base_fetch);
@@ -351,20 +405,57 @@ class CacheFindCallback : public HTTPCache::Callback {
   }
   RequestHeaders* request_headers() { return base_fetch_->request_headers(); }
 
+  bool IsImminentlyExpiring(const ResponseHeaders& headers) const {
+    return ResponseHeaders::IsImminentlyExpiring(
+        headers.date_ms(),
+        headers.CacheExpirationTimeMs(),
+        cache_->timer()->NowMs());
+  }
+
+  AsyncFetch* WrapCachePutFetchAndConditionalFetch(AsyncFetch* base_fetch) {
+    CachePutFetch* put_fetch = new CachePutFetch(
+        url_, base_fetch, respect_vary_, default_cache_html_, cache_,
+        backend_first_byte_latency_, handler_);
+    DCHECK_EQ(response_headers(), base_fetch_->response_headers());
+
+    // Remove any Etags added by us before sending the request out. This is the
+    // etags generated by server and upstream original code would not
+    // understand them.
+    const char* etag = request_headers()->Lookup1(
+        HttpAttributes::kIfNoneMatch);
+    if (etag != NULL &&
+        StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
+      put_fetch->request_headers()->RemoveAll(
+          HttpAttributes::kIfNoneMatch);
+    }
+
+    ConditionalSharedAsyncFetch* conditional_fetch =
+        new ConditionalSharedAsyncFetch(
+            put_fetch, fallback_http_value(), handler_);
+    conditional_fetch->set_num_conditional_refreshes(
+        num_conditional_refreshes_);
+    return conditional_fetch;
+  }
+
+  const Hasher* lock_hasher_;
+  NamedLockManager* lock_manager_;
   const GoogleString url_;
   RequestHeaders request_headers_;
   AsyncFetch* base_fetch_;
   HTTPCache* cache_;
+  CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks_;
   UrlAsyncFetcher* fetcher_;
   Histogram* backend_first_byte_latency_;
   Variable* fallback_responses_served_;
   Variable* num_conditional_refreshes_;
+  Variable* num_proactively_freshen_user_facing_request_;
   MessageHandler* handler_;
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;
   bool serve_stale_if_fetch_error_;
   bool default_cache_html_;
+  bool proactively_freshen_user_facing_request_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheFindCallback);
 };
@@ -387,7 +478,14 @@ void CacheUrlAsyncFetcher::Fetch(
     case RequestHeaders::kGet:
       {
         CacheFindCallback* find_callback =
-            new CacheFindCallback(url, base_fetch, this, handler);
+            new CacheFindCallback(
+                lock_hasher_,
+                lock_manager_,
+                url,
+                base_fetch,
+                this,
+                async_op_hooks_,
+                handler);
         http_cache_->Find(url, handler, find_callback);
       }
       return;
@@ -409,6 +507,9 @@ void CacheUrlAsyncFetcher::Fetch(
     base_fetch->response_headers()->set_status_code(kNotInCacheStatus);
     base_fetch->Done(false);
   }
+}
+
+CacheUrlAsyncFetcher::AsyncOpHooks::~AsyncOpHooks() {
 }
 
 }  // namespace net_instaweb
