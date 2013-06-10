@@ -31,6 +31,8 @@
 using google::CommandLineFlagInfo;
 using google::GetCommandLineFlagInfo;
 
+using net_instaweb::RewriteOptions;
+
 // This is used for prefixing file-based locks.
 DEFINE_string(filename_prefix, "/tmp/instaweb/",
               "Filesystem prefix for storing resources.");
@@ -46,91 +48,88 @@ DEFINE_string(distributable_filters, "",
 DEFINE_string(domains, "", "Comma-separated list of domains");
 
 DEFINE_int64(css_outline_min_bytes,
-             net_instaweb::RewriteOptions::kDefaultCssOutlineMinBytes,
+             RewriteOptions::kDefaultCssOutlineMinBytes,
              "Number of bytes above which inline "
              "CSS resources will be outlined.");
 DEFINE_int64(js_outline_min_bytes,
-             net_instaweb::RewriteOptions::kDefaultJsOutlineMinBytes,
+             RewriteOptions::kDefaultJsOutlineMinBytes,
              "Number of bytes above which inline "
              "Javascript resources will be outlined.");
 DEFINE_int64(image_inline_max_bytes,
-             net_instaweb::RewriteOptions::kDefaultImageInlineMaxBytes,
+             RewriteOptions::kDefaultImageInlineMaxBytes,
              "Number of bytes below which images will be inlined.");
 DEFINE_int64(css_image_inline_max_bytes,
-             net_instaweb::RewriteOptions::kDefaultCssImageInlineMaxBytes,
+             RewriteOptions::kDefaultCssImageInlineMaxBytes,
              "Number of bytes below which images in CSS will be inlined.");
 DEFINE_int32(image_recompress_quality,
-             net_instaweb::RewriteOptions::kDefaultImagesRecompressQuality,
+             RewriteOptions::kDefaultImageRecompressQuality,
              "Quality parameter to use while recompressing any image type. "
              "This should be in the range [0,100]. 100 refers to the highest "
              "quality.");
 // Deprecated flag.
-DEFINE_int32(images_recompress_quality,
-             net_instaweb::RewriteOptions::kDefaultImagesRecompressQuality,
-             "Quality parameter to use while recompressing any image type. "
-             "This should be in the range [0,100]. 100 refers to the highest "
-             "quality.");
+DEFINE_int32(images_recompress_quality, -1,
+             "DEPRECATED.  Does nothing.  Use image_recompress_quality.");
 DEFINE_int32(image_jpeg_recompress_quality,
-             net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
+             RewriteOptions::kDefaultImageJpegRecompressQuality,
              "Quality parameter to use while recompressing jpeg images. "
              "This should be in the range [0,100]. 100 refers to the highest "
              "quality.");
 DEFINE_int32(image_jpeg_recompress_quality_for_small_screens,
-             net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
+             RewriteOptions::kDefaultImageJpegRecompressQualityForSmallScreens,
              "Quality parameter to use while recompressing jpeg images "
              "for small screens. This should be in the range [0,100]. 100 "
              "refers to the highest quality. If -1 or not set, "
              "image_jpeg_recompress_quality will be used.");
 DEFINE_int32(image_jpeg_num_progressive_scans,
-             net_instaweb::RewriteOptions::kDefaultImageJpegNumProgressiveScans,
+             RewriteOptions::kDefaultImageJpegNumProgressiveScans,
              "The number of scans, [0,10] to serve for jpeg images that "
              "are encoded as ten-scan progressive jpegs.");
 DEFINE_int32(image_jpeg_num_progressive_scans_for_small_screens,
-             net_instaweb::RewriteOptions::kDefaultImageJpegNumProgressiveScans,
+             RewriteOptions::kDefaultImageJpegNumProgressiveScans,
              "The number of scans, [0,10], to serve to small-screen devices "
              "for jpeg images that are encoded as ten-scan progressive jpegs.");
 DEFINE_int32(image_webp_recompress_quality,
-             net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
+             RewriteOptions::kDefaultImageWebpRecompressQuality,
              "Quality parameter to use while recompressing webp images. "
              "This should be in the range [0,100]. 100 refers to the highest "
              "quality.");
 DEFINE_int32(image_webp_recompress_quality_for_small_screens,
-             net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
+             RewriteOptions::kDefaultImageWebpRecompressQualityForSmallScreens,
              "Quality parameter to use while recompressing webp images "
              "for small screens. This should be in the range [0,100]. 100 "
              "refers to the highest quality. If -1 or not set, "
              "image_webp_recompress_quality will be used.");
 DEFINE_int64(image_webp_timeout_ms,
-             net_instaweb::RewriteOptions::kDefaultImageWebpTimeoutMs,
+             RewriteOptions::kDefaultImageWebpTimeoutMs,
              "The timeout, in milliseconds, for converting images to WebP "
              "format. A negative value means 'no timeout'.");
 DEFINE_int32(
     image_limit_optimized_percent,
-    net_instaweb::RewriteOptions::kDefaultImageLimitOptimizedPercent,
+    RewriteOptions::kDefaultImageLimitOptimizedPercent,
     "Optimized images will be used only if they are less than this percent "
     "size of the original image size.  100 retains any smaller image.");
 DEFINE_int32(
     image_limit_rendered_area_percent,
-    net_instaweb::RewriteOptions::kDefaultImageLimitRenderedAreaPercent,
+    RewriteOptions::kDefaultImageLimitRenderedAreaPercent,
     "Store image's rendered dimensions into property cache only if the "
     "rendered dimensions reduce the image area more than the limit");
 DEFINE_int32(
     image_limit_resize_area_percent,
-    net_instaweb::RewriteOptions::kDefaultImageLimitResizeAreaPercent,
+    RewriteOptions::kDefaultImageLimitResizeAreaPercent,
     "Only attempt to shrink an image on the server if its area is less than "
     "this percent of the original image area.  100 always shrinks the image "
     "if its dimensions are smaller.");
 DEFINE_int64(js_inline_max_bytes,
-             net_instaweb::RewriteOptions::kDefaultJsInlineMaxBytes,
+             RewriteOptions::kDefaultJsInlineMaxBytes,
              "Number of bytes below which javascript will be inlined.");
 DEFINE_int64(css_flatten_max_bytes,
-             net_instaweb::RewriteOptions::kDefaultCssFlattenMaxBytes,
+             RewriteOptions::kDefaultCssFlattenMaxBytes,
              "Number of bytes below which stylesheets will be flattened.");
 DEFINE_int64(css_inline_max_bytes,
-             net_instaweb::RewriteOptions::kDefaultCssInlineMaxBytes,
+             RewriteOptions::kDefaultCssInlineMaxBytes,
              "Number of bytes below which stylesheets will be inlined.");
 DEFINE_int32(image_max_rewrites_at_once,
-             net_instaweb::RewriteOptions::kDefaultImageMaxRewritesAtOnce,
+             RewriteOptions::kDefaultImageMaxRewritesAtOnce,
              "Maximum number of images that will be rewritten simultaneously.");
 DEFINE_bool(ajax_rewriting_enabled, false, "Deprecated. Use "
             "in_place_rewriting_enabled.");
@@ -140,7 +139,7 @@ DEFINE_bool(in_place_wait_for_optimized, false, "Indicates whether in-place "
             "resource optimization should wait to optimize the resource before "
             "responding.");
 DEFINE_int32(in_place_rewrite_deadline_ms,
-             net_instaweb::RewriteOptions::kDefaultRewriteDeadlineMs,
+             RewriteOptions::kDefaultRewriteDeadlineMs,
              "Deadline for rewriting a resource on the in-place serving path. "
              "(--in_place_wait_for_optimized must be set for this to apply.) "
              "After this interval passes, the original unoptimized resource "
@@ -169,13 +168,13 @@ DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
 DEFINE_bool(js_preserve_urls, false, "Boolean to indicate whether JavaScript"
             "URLs should be preserved.");
 DEFINE_int32(rewrite_deadline_per_flush_ms,
-             net_instaweb::RewriteOptions::kDefaultRewriteDeadlineMs,
+             RewriteOptions::kDefaultRewriteDeadlineMs,
              "Deadline to rewrite a resource before putting the rewrite in the "
              "background and returning the original resource. A value of -1 "
              "will result in waiting for all rewrites to complete.");
 DEFINE_int32(
     experiment_cookie_duration_ms,
-    net_instaweb::RewriteOptions::kDefaultExperimentCookieDurationMs,
+    RewriteOptions::kDefaultExperimentCookieDurationMs,
     "Duration after which the experiment cookie used for A/B experiments "
     "should expire on the user's browser.");
 DEFINE_bool(log_background_rewrites, false,
@@ -184,13 +183,13 @@ DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
 DEFINE_bool(log_url_indices, false, "Log URL indices for every rewriter "
             "application.");
 DEFINE_int64(max_html_cache_time_ms,
-             net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
+             RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
              "Default Cache-Control TTL for HTML. "
              "Cache-Control TTL will be set to the lower of this value "
              "and the original TTL.");
 DEFINE_int64(
     min_resource_cache_time_to_rewrite_ms,
-    net_instaweb::RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs,
+    RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs,
     "No resources with Cache-Control TTL less than this will be rewritten.");
 
 DEFINE_string(origin_domain_map, "",
@@ -210,11 +209,11 @@ DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
 DEFINE_bool(serve_stale_if_fetch_error, true, "Serve stale content if the "
             "fetch results in an error.");
 DEFINE_int32(psa_flush_buffer_limit_bytes,
-             net_instaweb::RewriteOptions::kDefaultFlushBufferLimitBytes,
+             RewriteOptions::kDefaultFlushBufferLimitBytes,
              "Whenever more than this much HTML gets buffered, a flush"
              "will be injected.");
 DEFINE_int32(psa_idle_flush_time_ms,
-             net_instaweb::RewriteOptions::kDefaultIdleFlushTimeMs,
+             RewriteOptions::kDefaultIdleFlushTimeMs,
              "If the input HTML stops coming in for this many ms, a flush"
              " will be injected. Use a value <= 0 to disable.");
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
@@ -223,29 +222,29 @@ DEFINE_bool(enable_flush_early_critical_css, false,
             "If true, inlined critical css rules are flushed early if both"
             "flush subresources and critical css filter are enabled");
 DEFINE_int32(max_inlined_preview_images_index,
-             net_instaweb::RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex,
+             RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex,
              "Number of first N images for which low res image is generated. "
              "Negative values will bypass image index check.");
 
 DEFINE_int64(min_image_size_low_resolution_bytes,
-    net_instaweb::RewriteOptions::kDefaultMinImageSizeLowResolutionBytes,
+    RewriteOptions::kDefaultMinImageSizeLowResolutionBytes,
     "Minimum image size above which low res image is generated.");
 
 DEFINE_int64(max_image_size_low_resolution_bytes,
-    net_instaweb::RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes,
+    RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes,
     "Maximum image size below which low res image is generated.");
 
 DEFINE_int64(finder_properties_cache_expiration_time_ms,
-    net_instaweb::RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs,
+    RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs,
     "Cache expiration time for properties of finders in msec.");
 
 DEFINE_int64(finder_properties_cache_refresh_time_ms,
-    net_instaweb::RewriteOptions::kFinderPropertiesCacheRefreshTimeMs,
+    RewriteOptions::kDefaultFinderPropertiesCacheRefreshTimeMs,
     "Cache refresh time for properties of finders in msec.");
 
 DEFINE_int64(
     metadata_cache_staleness_threshold_ms,
-    net_instaweb::RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs,
+    RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs,
     "Maximum time in milliseconds beyond expiry for which a metadata cache "
     "entry may be used in milliseconds.");
 
@@ -277,19 +276,18 @@ DEFINE_bool(test_only_prioritize_critical_css_dont_apply_original_css, false,
             "at onload.");
 
 DEFINE_int64(implicit_cache_ttl_ms,
-             net_instaweb::RewriteOptions::kDefaultImplicitCacheTtlMs,
+             RewriteOptions::kDefaultImplicitCacheTtlMs,
              "The number of milliseconds of cache TTL we assign to resources "
              "that are likely cacheable (e.g. images, js, css, not html) and "
              "have no explicit cache ttl or expiration date.");
 
 DEFINE_int32(property_cache_http_status_stability_threshold,
-             net_instaweb::RewriteOptions::
-             kDefaultPropertyCacheHttpStatusStabilityThreshold,
+             RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold,
              "The number of requests for which the status code should remain "
              "same so that we consider it to be stable.");
 
 DEFINE_int32(max_prefetch_js_elements,
-             net_instaweb::RewriteOptions::kDefaultMaxPrefetchJsElements,
+             RewriteOptions::kDefaultMaxPrefetchJsElements,
              "The number of JS elements to prefetch and download when defer "
              "Javascript filter is enabled.");
 
@@ -306,7 +304,7 @@ DEFINE_bool(flush_more_resources_in_ie_and_firefox, false,
             "Flush more resources if origin is slow to respond in IE and "
             "Firefox.");
 
-DEFINE_bool(avoid_renaming_introspective_javascript, false,
+DEFINE_bool(avoid_renaming_introspective_javascript, true,
             "Don't combine, inline, cache extend, or otherwise modify "
             "javascript in ways that require changing the URL if we see "
             "introspection in the form of "
@@ -333,7 +331,7 @@ DEFINE_bool(enable_extended_instrumentation, false,
             "page that adds more information to the beacon.");
 
 DEFINE_string(blocking_rewrite_key,
-              net_instaweb::RewriteOptions::kDefaultBlockingRewriteKey,
+              RewriteOptions::kDefaultBlockingRewriteKey,
               "Enables rewrites to finish before the response is sent to "
               "the client, if X-PSA-Blocking-Rewrite http request header's "
               "value is same as this flag's value.");
@@ -351,7 +349,7 @@ DEFINE_string(distributed_rewrite_servers, "",
               "Servers can be BNS jobs or host:port pairs.");
 
 DEFINE_int64(distributed_rewrite_timeout_ms,
-             net_instaweb::RewriteOptions::kDefaultDistributedTimeoutMs,
+             RewriteOptions::kDefaultDistributedTimeoutMs,
              "Time to wait for a distributed rewrite to complete before "
              "abandoning it.");
 
@@ -371,7 +369,7 @@ DEFINE_int64(max_combined_js_bytes, -1,
 
 DEFINE_int64(
     blink_html_change_detection_time_ms,
-    net_instaweb::RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
+    RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
     "Time after which we should try to detect if publisher html has changed");
 
 DEFINE_bool(enable_blink_html_change_detection, false,
@@ -395,7 +393,7 @@ DEFINE_bool(enable_prioritizing_scripts, false,
     "data-pagespeed-prioritize attibute.");
 
 DEFINE_int64(max_image_bytes_for_webp_in_css,
-             net_instaweb::RewriteOptions::kDefaultMaxImageBytesForWebpInCss,
+             RewriteOptions::kDefaultMaxImageBytesForWebpInCss,
              "The maximum size of an image in CSS, which we convert to webp.");
 
 DEFINE_bool(override_ie_document_mode, false,
@@ -403,13 +401,13 @@ DEFINE_bool(override_ie_document_mode, false,
             " to that version of IE.");
 
 DEFINE_int64(max_html_parse_bytes,
-             net_instaweb::RewriteOptions::kDefaultMaxHtmlParseBytes,
+             RewriteOptions::kDefaultMaxHtmlParseBytes,
              "The maximum number of bytes in a html that we parse before "
              "redirecting to a page with no rewriting.");
 
 DEFINE_int64(
     metadata_input_errors_cache_ttl_ms,
-    net_instaweb::RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs,
+    RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs,
     "The metadata cache ttl for input resources which are 4xx errors.");
 
 DEFINE_bool(enable_aggressive_rewriters_for_mobile, false,
@@ -421,7 +419,7 @@ DEFINE_string(lazyload_disabled_classes, "",
               "filter is disabled.");
 
 DEFINE_int32(max_rewrite_info_log_size,
-             net_instaweb::RewriteOptions::kDefaultMaxRewriteInfoLogSize,
+             RewriteOptions::kDefaultMaxRewriteInfoLogSize,
              "The maximum number of RewriterInfo submessage stored for a "
              "single request.");
 
@@ -634,10 +632,12 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_inline_only_critical_images(
         FLAGS_inline_only_critical_images);
   }
-  if (WasExplicitlySet("critical_images_beacon_enabled")) {
-    options->set_critical_images_beacon_enabled(
-        FLAGS_critical_images_beacon_enabled);
-  }
+  // Default value for this flag in rewrite_options.cc differs from the flag
+  // setting here, so set it unconditionally (they unintentionally mismatched
+  // before, enabling the critical images beacon here which did nothing except
+  // turn on checks we wanted switched off).
+  options->set_critical_images_beacon_enabled(
+      FLAGS_critical_images_beacon_enabled);
   if (WasExplicitlySet(
           "test_only_prioritize_critical_css_dont_apply_original_css")) {
     options->set_test_only_prioritize_critical_css_dont_apply_original_css(

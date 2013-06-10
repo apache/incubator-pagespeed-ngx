@@ -290,7 +290,7 @@ TEST_F(RewriteOptionsTest, IsRequestDeclinedMerge) {
   two.AddRejectedUrlWildcard("http://www.b.com/b/*");
   MergeOptions(one, two);
 
-  EXPECT_TRUE(options_.IsRequestDeclined("http://www.a.com/b/sdsd13", &headers));
+  EXPECT_TRUE(options_.IsRequestDeclined("http://www.a.com/b/sds13", &headers));
   EXPECT_FALSE(options_.IsRequestDeclined("http://www.a.com/", &headers));
   EXPECT_TRUE(options_.IsRequestDeclined("http://www.b.com/b/", &headers));
 
@@ -1744,12 +1744,12 @@ TEST_F(RewriteOptionsTest, ExperimentPrintTest) {
   options_.SetExperimentState(-7);
   // This should be the core filters.
   EXPECT_EQ("ah,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
-            "ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
+            "ri,cf,jm,cu,cp,md,css:2048,im:3072,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetExperimentState(1);
   EXPECT_EQ("Experiment: 1; ah,ai,ca,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
-            "il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
+            "il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,css:2048,im:3072,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetExperimentState(7);
@@ -1772,8 +1772,9 @@ TEST_F(RewriteOptionsTest, ExperimentUndoOptionsTest) {
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.set_running_experiment(true);
 
-  // Default for this is 2048.
-  EXPECT_EQ(2048L, options_.ImageInlineMaxBytes());
+  // Default for this is kDefaultImageInlineMaxBytes.
+  EXPECT_EQ(RewriteOptions::kDefaultImageInlineMaxBytes,
+            options_.ImageInlineMaxBytes());
   EXPECT_TRUE(options_.AddExperimentSpec(
       "id=1;percent=15;enable=inline_images;"
       "inline_images=1024", &handler));
@@ -1782,7 +1783,8 @@ TEST_F(RewriteOptionsTest, ExperimentUndoOptionsTest) {
   EXPECT_TRUE(options_.AddExperimentSpec(
       "id=2;percent=15;enable=inline_images", &handler));
   options_.SetExperimentState(2);
-  EXPECT_EQ(2048L, options_.ImageInlineMaxBytes());
+  EXPECT_EQ(RewriteOptions::kDefaultImageInlineMaxBytes,
+            options_.ImageInlineMaxBytes());
 }
 
 TEST_F(RewriteOptionsTest, ExperimentOptionsTest) {

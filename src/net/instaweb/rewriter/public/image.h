@@ -91,8 +91,8 @@ class Image {
     CompressionOptions()
         : preferred_webp(WEBP_NONE),
           allow_webp_alpha(false),
-          webp_quality(RewriteOptions::kDefaultImagesRecompressQuality),
-          jpeg_quality(RewriteOptions::kDefaultImagesRecompressQuality),
+          webp_quality(RewriteOptions::kDefaultImageRecompressQuality),
+          jpeg_quality(RewriteOptions::kDefaultImageRecompressQuality),
           progressive_jpeg_min_bytes(
               RewriteOptions::kDefaultProgressiveJpegMinBytes),
           progressive_jpeg(false),

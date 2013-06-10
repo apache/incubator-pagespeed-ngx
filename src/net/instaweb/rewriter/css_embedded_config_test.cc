@@ -169,11 +169,12 @@ TEST_F(CssEmbeddedConfigTest, RewriteJpegProgressive) {
 }
 
 TEST_F(CssEmbeddedConfigTest, InlineImageToCss) {
+  options()->set_css_image_inline_max_bytes(2048);
   AddFilterAndSetup(RewriteOptions::kInlineImages);
   AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFile), kCuppaPngFile,
                        kContentTypePng, 100);
   GoogleString css_link = RewriteImageInCss(kCuppaPngFile);
-  EXPECT_STREQ(EncodedCssUrl("ii"), css_link);
+  EXPECT_STREQ(EncodedCssUrl("ii+cii=2048"), css_link);
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
   EXPECT_TRUE(StringPiece(image_url).starts_with("data:image/png;base64,"));
 }

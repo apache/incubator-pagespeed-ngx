@@ -2380,14 +2380,12 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   scoped_ptr<Image::CompressionOptions> img_options(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
 
-  // Neither option is set, default is -1.
-  EXPECT_EQ(-1, img_options->jpeg_quality);
+  // Neither option is set explicitly, default is 70.
+  EXPECT_EQ(70, img_options->jpeg_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
-  // Base jpeg quality set, but for_small_screens is not, return base quality.
-  ctx.Clear();
+  // Base image quality is set, but for_small_screens is not, return base.
   options()->ClearSignatureForTesting();
-  options()->set_image_jpeg_recompress_quality(85);
   options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
   rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
@@ -2398,12 +2396,24 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
 
   // Base jpeg quality not set, but for_small_screens is, return small_screen.
   options()->ClearSignatureForTesting();
+  options()->set_image_recompress_quality(-1);
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
   rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
   EXPECT_EQ(20, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Neither jpeg quality is set, return -1.
+  options()->ClearSignatureForTesting();
+  options()->set_image_recompress_quality(-1);
+  options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(-1, img_options->jpeg_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Base and for_small_screen options are set, and screen is small;
@@ -2501,8 +2511,8 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   scoped_ptr<Image::CompressionOptions> img_options(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
 
-  // Neither option is set, default is -1.
-  EXPECT_EQ(-1, img_options->webp_quality);
+  // Neither option is set, default is 70.
+  EXPECT_EQ(70, img_options->webp_quality);
   EXPECT_TRUE(ctx.has_use_small_screen_quality());
 
   // Base webp quality set, but for_small_screens is not, return base quality.
@@ -2519,6 +2529,8 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
 
   // Base webp quality not set, but for_small_screens is, return small_screen.
   options()->ClearSignatureForTesting();
+  options()->set_image_recompress_quality(-1);
+  options()->set_image_webp_recompress_quality(-1);
   options()->set_image_webp_recompress_quality_for_small_screens(20);
   rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);

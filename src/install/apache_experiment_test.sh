@@ -77,5 +77,5 @@ start_test Images are different when the url specifies different experiments.
 # computed file sizes).
 IMG_A="$EXAMPLE/images/xPuzzle.jpg.pagespeed.a.ic.fakehash.jpg"
 IMG_B="$EXAMPLE/images/xPuzzle.jpg.pagespeed.b.ic.fakehash.jpg"
-fetch_until $IMG_A 'wc -c' 231192
-fetch_until $IMG_B 'wc -c' 216942
+fetch_until $IMG_A 'wc -c' 102902 "" -le
+fetch_until $IMG_B 'wc -c'  98276 "" -le

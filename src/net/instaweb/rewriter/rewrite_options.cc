@@ -85,12 +85,10 @@ const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
 //
 // jmaessen: For the moment, there's a separate threshold for image inline.
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
-// TODO(jmaessen): Adjust these thresholds in a subsequent CL
-// (Will require re-golding tests.)
 const int64 RewriteOptions::kDefaultCssFlattenMaxBytes = 2048;
-const int64 RewriteOptions::kDefaultCssImageInlineMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultCssImageInlineMaxBytes = 0;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
-const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 3072;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultProgressiveJpegMinBytes = 10240;
@@ -121,14 +119,16 @@ const int RewriteOptions::kDefaultMaxUrlSize = 2083;
 
 // Quality that needs to be used while recompressing any image type.
 // If set to -1, we use source image quality parameters, and is lossless.
-const int64 RewriteOptions::kDefaultImagesRecompressQuality = -1;
+const int64 RewriteOptions::kDefaultImageRecompressQuality = 85;
 
 // Jpeg quality that needs to be used while recompressing. If set to -1, we
-// use source image quality parameters, and is lossless.
+// use the value of image_recompress_quality.
 const int64 RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
+const int64
+RewriteOptions::kDefaultImageJpegRecompressQualityForSmallScreens = 70;
 
 // Number of scans to output for jpeg images when using progressive mode. If set
-// to -1, we do not produce progressive jpegs.
+// to -1, we retain all scans of a progressive jpeg.
 const int64 RewriteOptions::kDefaultImageJpegNumProgressiveScans = -1;
 
 // Percentage savings in order to retain rewritten images; these default
@@ -147,7 +147,9 @@ const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
 
 // WebP quality that needs to be used while recompressing. If set to -1, we
 // use source image quality parameters.
-const int64 RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
+const int64 RewriteOptions::kDefaultImageWebpRecompressQuality = 80;
+const int64
+RewriteOptions::kDefaultImageWebpRecompressQualityForSmallScreens = 70;
 
 // Timeout, in ms, for all WebP conversion attempts for each source
 // image. If negative, does not time out.
@@ -181,8 +183,8 @@ const int RewriteOptions::kDefaultMaxRewriteInfoLogSize = 150;
 
 const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon";
 
-const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = 5;
-const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
+const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = -1;
+const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 3 * 1024;
 const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
     1 * 1024 * 1024;  // 1 MB.
 
@@ -1096,7 +1098,8 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,
       kDirectoryScope,
-      "URL of image used to display prior to loading the lazy image");
+      "URL of image used to display prior to loading the lazy image. "
+      "Empty means use a site-local copy.");
   AddBaseProperty(
       true, &RewriteOptions::inline_only_critical_images_, "ioci",
       kInlineOnlyCriticalImages,
@@ -1119,18 +1122,18 @@ void RewriteOptions::AddProperties() {
       kImageJpegRecompressionQuality,
       kDirectoryScope,
       "Set quality parameter for recompressing jpeg images [-1,100], "
-      "100 Disable the rewriting of image URLs.");
+      "100 is lossless, -1 uses ImageRecompressionQuality");
   // Use kDefaultImageJpegRecompressQuality as default.
   AddBaseProperty(
-      kDefaultImageJpegRecompressQuality,
+      kDefaultImageJpegRecompressQualityForSmallScreens,
       &RewriteOptions::image_jpeg_recompress_quality_for_small_screens_, "iqss",
       kImageJpegRecompressionQualityForSmallScreens,
       kDirectoryScope,
       "Set quality parameter for recompressing jpeg images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
-      "kImageJpegRecompressionQuality.");
+      "ImageJpegRecompressionQuality.");
   AddBaseProperty(
-      kDefaultImagesRecompressQuality,
+      kDefaultImageRecompressQuality,
       &RewriteOptions::image_recompress_quality_, "irq",
       kImageRecompressionQuality,
       kDirectoryScope,
@@ -1169,16 +1172,16 @@ void RewriteOptions::AddProperties() {
       kImageWebpRecompressionQuality,
       kDirectoryScope,
       "Set quality parameter for recompressing webp images [-1,100], "
-      "100 refers to best quality, -1 disables lossy compression.");
+      "100 refers to best quality, -1 uses ImageRecompressionQuality.");
   // Use kDefaultImageWebpRecompressQuality as default.
   AddBaseProperty(
-      kDefaultImageWebpRecompressQuality,
+      kDefaultImageWebpRecompressQualityForSmallScreens,
       &RewriteOptions::image_webp_recompress_quality_for_small_screens_, "iwss",
       kImageWebpRecompressionQualityForSmallScreens,
       kDirectoryScope,
       "Set quality parameter for recompressing webp images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
-      "kImageWebpRecompressionQuality.");
+      "ImageWebpRecompressionQuality.");
   AddBaseProperty(
       kDefaultImageWebpTimeoutMs,
       &RewriteOptions::image_webp_timeout_ms_, "wt",
@@ -1230,8 +1233,8 @@ void RewriteOptions::AddProperties() {
       kImageJpegNumProgressiveScans,
       kDirectoryScope,
       "Number of progressive scans [1,10] to emit when rewriting images as "
-      "ten-scan progressive jpegs. A value of -1 disables rewriting as "
-      "progressive jpegs.");
+      "ten-scan progressive jpegs. "
+      "A value of -1 outputs all progressive scans.");
   // Use kDefaultImageJpegNumProgressiveScans as default.
   AddBaseProperty(
       kDefaultImageJpegNumProgressiveScans,
@@ -1304,7 +1307,7 @@ void RewriteOptions::AddProperties() {
       kDistributedRewriteTimeoutMs, kProcessScope,
       "Time to wait before giving up on a distributed rewrite request.");
   AddBaseProperty(
-      false, &RewriteOptions::avoid_renaming_introspective_javascript_,
+      true, &RewriteOptions::avoid_renaming_introspective_javascript_,
       "aris", kAvoidRenamingIntrospectiveJavascript,
       kDirectoryScope,
       "Don't combine, inline, cache extend, or otherwise modify "

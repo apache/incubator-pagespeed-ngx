@@ -104,8 +104,8 @@
     # ModPagespeedLRUCacheByteLimit        16384
     # ModPagespeedCssFlattenMaxBytes       2048
     # ModPagespeedCssInlineMaxBytes        2048
-    # ModPagespeedCssImageInlineMaxBytes   2048
-    # ModPagespeedImageInlineMaxBytes      2048
+    # ModPagespeedCssImageInlineMaxBytes   0
+    # ModPagespeedImageInlineMaxBytes      3072
     # ModPagespeedJsInlineMaxBytes         2048
     # ModPagespeedCssOutlineMinBytes       3000
     # ModPagespeedJsOutlineMinBytes        3000
@@ -152,11 +152,16 @@
 
     # Settings for image optimization:
     #
-    # Jpeg recompression quality (0 to 100, -1 strips metadata):
-    # ModPagespeedJpegRecompressionQuality -1
+    # Lossy image recompression quality (0 to 100, -1 just strips metadata):
+    # ModPagespeedImageRecompressionQuality 85
     #
-    # WebP recompression quality (0 to 100):
-    # ModPagespeedImageWebpRecompressionQuality 70
+    # Jpeg recompression quality (0 to 100, -1 uses ImageRecompressionQuality):
+    # ModPagespeedJpegRecompressionQuality -1
+    # ModPagespeedJpegRecompressionQualityForSmallScreens 70
+    #
+    # WebP recompression quality (0 to 100, -1 uses ImageRecompressionQuality):
+    # ModPagespeedImageWebpRecompressionQuality 80
+    # ModPagespeedImageWebpRecompressionQualityForSmallScreens 70
     #
     # Timeout for conversions to WebP format, in
     # milliseconds. Negative values mean no timeout is applied. The
@@ -169,6 +174,17 @@
     # Percent of original image area below which image resizing will be
     # attempted:
     # ModPagespeedImageLimitResizeAreaPercent 100
+
+    # Settings for inline preview images
+    #
+    # Setting this to n restricts preview images to the first n images found on
+    # the page.  The default of -1 means preview images can appear anywhere on
+    # the page (if those images appear above the fold).
+    # ModPagespeedMaxInlinedPreviewImagesIndex -1
+
+    # Sets the minimum size in bytes of any image for which a low quality image
+    # is generated.
+    # ModPagespeedMinImageSizeLowResolutionBytes 3072
 
     # When Apache is set up as a browser proxy, mod_pagespeed can record
     # web-sites as they are requested, so that an image of the web is built up
@@ -199,8 +215,9 @@
     # option enabled, mod_pagespeed uses a simple heuristic to decide
     # not to rename JavaScript that it thinks is introspective.
     #
-    # You can turn this off to let mod_pagespeed rename all JS files.
-    ModPagespeedAvoidRenamingIntrospectiveJavascript on
+    # You can uncomment this to let mod_pagespeed rename all JS files.
+    #
+    # ModPagespeedAvoidRenamingIntrospectiveJavascript off
 
     # Certain common JavaScript libraries are available from Google, which acts
     # as a CDN and allows you to benefit from browser caching if a new visitor
@@ -256,6 +273,7 @@
 
     # Uncomment the following line so that ModPagespeed will not cache or
     # rewrite resources with Vary: in the header, e.g. Vary: User-Agent.
+    # Note that ModPagespeed always respects Vary: headers on html content.
     # ModPagespeedRespectVary on
 
     # Uncomment the following line if you want to disable statistics entirely.

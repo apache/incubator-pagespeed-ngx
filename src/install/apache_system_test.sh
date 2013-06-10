@@ -621,8 +621,8 @@ IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 # Identical images, but in the .htaccess file in the custom_options directory we
 # additionally disable core-filter convert_jpeg_to_progressive which gives a
 # larger file.
-fetch_until $IMG_NON_CUSTOM 'wc -c' 216942
-fetch_until $IMG_CUSTOM 'wc -c' 231192
+fetch_until $IMG_NON_CUSTOM 'wc -c' 98276 "" -le
+fetch_until $IMG_CUSTOM 'wc -c' 102902 "" -le
 
 # Test our handling of headers when a FLUSH event occurs.
 # Skip if PHP is not installed to cater for admins who don't want it installed.
@@ -1087,7 +1087,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   start_test Relative images embedded in a CSS file served from a mapped domain
   DIR="mod_pagespeed_test/map_css_embedded"
   URL="http://www.example.com/$DIR/issue494.html"
-  MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.w9O-kBfMWw.css"
+  MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.RTch9OLvuX.css"
   http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
       "grep -c cdn.example.com/$MAPPED_CSS" 1
 

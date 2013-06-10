@@ -595,14 +595,16 @@ class RewriteOptions {
   static const int64 kDefaultImplicitCacheTtlMs;
   static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
   static const char kDefaultBeaconUrl[];
-  static const int64 kDefaultImagesRecompressQuality;
+  static const int64 kDefaultImageRecompressQuality;
   static const int64 kDefaultImageJpegRecompressQuality;
+  static const int64 kDefaultImageJpegRecompressQualityForSmallScreens;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitRenderedAreaPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int64 kDefaultImageResolutionLimitBytes;
   static const int64 kDefaultImageJpegNumProgressiveScans;
   static const int64 kDefaultImageWebpRecompressQuality;
+  static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;

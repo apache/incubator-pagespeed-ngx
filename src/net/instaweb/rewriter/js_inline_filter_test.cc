@@ -254,11 +254,10 @@ TEST_F(JsInlineFilterTest, ConservativeNonInlineCloseScript) {
                        false);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascript) {
+TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascriptByDefault) {
   // If it's unsafe to rename, because it contains fragile introspection like
   // $("script"), we have to leave it at the original url and not inline it.
-  // Dependent on a config option that's off by default, so we turn it on.
-  options()->set_avoid_renaming_introspective_javascript(true);
+  // Dependent on a config option that's on by default.
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
                        "",
@@ -266,7 +265,8 @@ TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascript) {
                        false);  // expect no inlining
 }
 
-TEST_F(JsInlineFilterTest, InlineIntrospectiveJavascriptByDefault) {
+TEST_F(JsInlineFilterTest, DoInlineIntrospectiveJavascript) {
+  options()->set_avoid_renaming_introspective_javascript(false);
   SetHtmlMimetype();
 
   // The same situation as DoNotInlineIntrospectiveJavascript, but in the

@@ -272,9 +272,7 @@ TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveAllURLsOn) {
              false);  // js_extend
 }
 
-TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
-  options()->ClearSignatureForTesting();
-  options()->set_avoid_renaming_introspective_javascript(true);
+TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascriptByDefault) {
   InitTest(kShortTtlSec);
   const char kJsTemplate[] = "<script src=\"%s\"></script>";
   ValidateExpected(
@@ -286,7 +284,9 @@ TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
   EXPECT_STREQ("", AppliedRewriterStringFromLog());
 }
 
-TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascriptByDefault) {
+TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascript) {
+  options()->ClearSignatureForTesting();
+  options()->set_avoid_renaming_introspective_javascript(false);
   InitTest(kShortTtlSec);
   const char kJsTemplate[] = "<script src=\"%s\"></script>";
   ValidateExpected(
