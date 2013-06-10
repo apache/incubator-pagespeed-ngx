@@ -29,7 +29,6 @@
 #include "pthread_shared_mem.h"
 
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -117,11 +116,6 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
   return new MD5Hasher;
-}
-
-UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
-  CHECK(false) << "Nothing should still be using DefaultUrlFetcher()";
-  return NULL;
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {

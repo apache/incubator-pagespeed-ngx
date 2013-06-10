@@ -61,7 +61,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   explicit NgxRewriteDriverFactory(NgxThreadSystem* ngx_thread_system);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
-  virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
