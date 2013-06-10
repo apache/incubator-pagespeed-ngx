@@ -183,6 +183,7 @@ else
   $NGINX_EXECUTABLE -c $PAGESPEED_CONF >& "$TRACE_FILE"
   if [[ $? -ne 0 ]]; then
     echo "FAIL"
+    cat $TRACE_FILE
     if [[ $(grep -c "unknown directive \"proxy_cache_purge\"" $TRACE_FILE) == 1 ]]; then
       echo "This test requires proxy_cache_purge. One way to do this:"
       echo "Run git clone https://github.com/FRiCKLE/ngx_cache_purge.git"
