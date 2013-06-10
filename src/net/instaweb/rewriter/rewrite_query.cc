@@ -17,7 +17,7 @@
 #include <algorithm>  // for std::binary_search
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -109,7 +109,7 @@ static struct Int64QueryParam int64_query_params_[] = {
 template <class HeaderT>
 RewriteQuery::Status RewriteQuery::ScanHeader(
     HeaderT* headers,
-    DeviceProperties* device_properties,
+    RequestProperties* request_properties,
     RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
@@ -124,7 +124,7 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
     const StringPiece name(headers->Name(i));
     const GoogleString& value = headers->Value(i);
-    switch (ScanNameValue(name, value, device_properties, options, handler)) {
+    switch (ScanNameValue(name, value, request_properties, options, handler)) {
       case kNoneFound:
         break;
       case kSuccess:
@@ -204,10 +204,10 @@ RewriteQuery::Status RewriteQuery::Scan(
     options->reset(factory->NewRewriteOptionsForQuery());
   }
 
-  scoped_ptr<DeviceProperties> device_properties;
+  scoped_ptr<RequestProperties> request_properties;
   if (request_headers != NULL) {
-    device_properties.reset(server_context->NewDeviceProperties());
-    device_properties->set_user_agent(
+    request_properties.reset(server_context->NewRequestProperties());
+    request_properties->set_user_agent(
         request_headers->Lookup1(HttpAttributes::kUserAgent));
   }
 
@@ -216,8 +216,8 @@ RewriteQuery::Status RewriteQuery::Scan(
     const GoogleString* value = query_params.value(i);
     if (value != NULL) {
       switch (ScanNameValue(
-          query_params.name(i), *value, device_properties.get(), options->get(),
-          handler)) {
+          query_params.name(i), *value, request_properties.get(),
+          options->get(), handler)) {
         case kNoneFound:
           temp_query_params.Add(query_params.name(i), *value);
           break;
@@ -240,7 +240,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<RequestHeaders>(
-      request_headers, device_properties.get(), options->get(), handler)) {
+      request_headers, request_properties.get(), options->get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -251,7 +251,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<ResponseHeaders>(
-      response_headers, device_properties.get(), options->get(),
+      response_headers, request_properties.get(), options->get(),
       handler)) {
     case kNoneFound:
       break;
@@ -315,7 +315,7 @@ bool RewriteQuery::MayHaveCustomOptions(
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
     const StringPiece& name, const GoogleString& value,
-    DeviceProperties* device_properties, RewriteOptions* options,
+    RequestProperties* request_properties, RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
   if (name == kModPagespeed || name == kPageSpeed) {
@@ -347,7 +347,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     }
   } else if (StringCaseEqual(name, HttpAttributes::kXPsaClientOptions)) {
     if (UpdateRewriteOptionsWithClientOptions(
-        value, device_properties, options)) {
+        value, request_properties, options)) {
       status = kSuccess;
     }
     // We don't want to return kInvalid, which causes 405 (kMethodNotAllowed)
@@ -555,14 +555,14 @@ bool RewriteQuery::ParseClientOptions(
 
 bool RewriteQuery::SetEffectiveImageQualities(
     DeviceProperties::ImageQualityPreference quality_preference,
-    DeviceProperties* device_properties,
+    RequestProperties* request_properties,
     RewriteOptions* options) {
   if (quality_preference == DeviceProperties::kImageQualityDefault ||
-      device_properties == NULL) {
+      request_properties == NULL) {
     return false;
   }
   int webp = -1, jpeg = -1;
-  if (device_properties->GetPreferredImageQualities(
+  if (request_properties->GetPreferredImageQualities(
       quality_preference, &webp, &jpeg)) {
     options->set_image_webp_recompress_quality(webp);
     options->set_image_jpeg_recompress_quality(jpeg);
@@ -572,7 +572,7 @@ bool RewriteQuery::SetEffectiveImageQualities(
 }
 
 bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
-    const GoogleString& client_options, DeviceProperties* device_properties,
+    const GoogleString& client_options, RequestProperties* request_properties,
     RewriteOptions* options) {
   ProxyMode proxy_mode = kProxyModeDefault;
   DeviceProperties::ImageQualityPreference quality_preference =
@@ -589,7 +589,7 @@ bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
     return true;
   } else if (proxy_mode == kProxyModeDefault) {
     return SetEffectiveImageQualities(
-        quality_preference, device_properties, options);
+        quality_preference, request_properties, options);
   }
   DCHECK(false);
   return false;

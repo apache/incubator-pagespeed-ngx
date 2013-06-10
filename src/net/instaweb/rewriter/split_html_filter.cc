@@ -27,7 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
@@ -94,7 +94,7 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 
 void SplitHtmlFilter::StartDocument() {
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
-  disable_filter_ = !rewrite_driver_->device_properties()->SupportsSplitHtml(
+  disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
       rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile());
   static_asset_manager_ =
       rewrite_driver_->server_context()->static_asset_manager();

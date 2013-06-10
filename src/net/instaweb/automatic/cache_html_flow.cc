@@ -24,7 +24,7 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -741,7 +741,7 @@ void CacheHtmlFlow::CacheHtmlHit(FallbackPropertyPage* page) {
 
   bool flushed_split_js =
       new_driver->options()->Enabled(RewriteOptions::kSplitHtml) &&
-      new_driver->device_properties()->SupportsSplitHtml(
+      new_driver->request_properties()->SupportsSplitHtml(
           new_driver->options()->enable_aggressive_rewriters_for_mobile());
   new_driver->ParseText(cached_html);
   new_driver->FinishParseAsync(

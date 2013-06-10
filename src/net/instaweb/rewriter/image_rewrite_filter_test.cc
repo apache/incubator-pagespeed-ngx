@@ -25,7 +25,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -538,7 +538,7 @@ class ImageRewriteTest : public RewriteTestBase {
       RewriteDriver* driver, int screen_width, int screen_height) {
     EXPECT_LT(1, screen_width);
     EXPECT_LT(1, screen_height);
-    rewrite_driver()->device_properties()->SetScreenResolution(
+    rewrite_driver()->request_properties()->SetScreenResolution(
         screen_width, screen_height);
     TimedVariable* rewrites_squashing = statistics()->GetTimedVariable(
         ImageRewriteFilter::kImageRewritesSquashingForMobileScreen);
@@ -2244,7 +2244,7 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   rewrite_driver()->SetUserAgent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ "
       "(KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
-  rewrite_driver()->device_properties()->SetScreenResolution(
+  rewrite_driver()->request_properties()->SetScreenResolution(
       screen_width, screen_height);
 
   ImageDim desired_dim;

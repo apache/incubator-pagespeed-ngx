@@ -30,7 +30,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -72,7 +72,7 @@ void DelayImagesFilter::StartDocument() {
   // Otherwise, the low res images are inserted at the end of the flush window.
   insert_low_res_images_inplace_ = ShouldRewriteInplace();
   lazyload_highres_images_ = driver_->options()->lazyload_highres_images() &&
-      driver_->device_properties()->IsMobile();
+      driver_->request_properties()->IsMobile();
   is_script_inserted_ = false;
 }
 
@@ -226,12 +226,12 @@ void DelayImagesFilter::InsertHighResJs(HtmlElement* body_element) {
 bool DelayImagesFilter::ShouldRewriteInplace() const {
   const RewriteOptions* options = driver_->options();
   return !(options->enable_aggressive_rewriters_for_mobile() &&
-           driver_->device_properties()->IsMobile());
+           driver_->request_properties()->IsMobile());
 }
 
 void DelayImagesFilter::DetermineEnabled() {
   AbstractLogRecord* log_record = driver_->log_record();
-  if (!driver_->device_properties()->SupportsImageInlining()) {
+  if (!driver_->request_properties()->SupportsImageInlining()) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);

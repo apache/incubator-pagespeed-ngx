@@ -22,7 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -59,7 +59,7 @@ void CriticalImagesBeaconFilter::DetermineEnabled() {
   // Default to not enabled.
   set_is_enabled(false);
 
-  if (!driver_->device_properties()->SupportsCriticalImagesBeacon()) {
+  if (!driver_->request_properties()->SupportsCriticalImagesBeacon()) {
     return;
   }
 

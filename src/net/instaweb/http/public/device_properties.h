@@ -72,6 +72,7 @@ class DeviceProperties {
 
  private:
   friend class ImageRewriteTest;
+  friend class RequestProperties;
   FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
   FRIEND_TEST(DevicePropertiesTest, GetScreenGroupIndex);
 

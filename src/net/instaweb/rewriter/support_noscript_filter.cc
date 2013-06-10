@@ -21,7 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -73,8 +73,8 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
 
 bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
   const RewriteOptions* options = rewrite_driver_->options();
-  const DeviceProperties* device_properties =
-      rewrite_driver_->device_properties();
+  const RequestProperties* request_properties =
+      rewrite_driver_->request_properties();
   RewriteOptions::FilterVector js_filters;
   options->GetEnabledFiltersRequiringScriptExecution(&js_filters);
   for (int i = 0, n = js_filters.size(); i < n; ++i) {
@@ -85,14 +85,14 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
       case RewriteOptions::kDeferJavascript:
       case RewriteOptions::kDetectReflowWithDeferJavascript:
       case RewriteOptions::kSplitHtml:
-        filter_enabled = device_properties->SupportsJsDefer(
+        filter_enabled = request_properties->SupportsJsDefer(
             options->enable_aggressive_rewriters_for_mobile());
         break;
       case RewriteOptions::kDedupInlinedImages:
       case RewriteOptions::kDelayImages:
       case RewriteOptions::kLazyloadImages:
       case RewriteOptions::kLocalStorageCache:
-        filter_enabled = device_properties->SupportsImageInlining();
+        filter_enabled = request_properties->SupportsImageInlining();
         break;
       case RewriteOptions::kFlushSubresources:
         filter_enabled = rewrite_driver_->flushed_early();;

@@ -18,7 +18,7 @@
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -81,13 +81,14 @@ bool CssUrlEncoder::Decode(const StringPiece& encoded,
   }
 }
 
-void CssUrlEncoder::SetInliningImages(const DeviceProperties& device_properties,
-                                      ResourceContext* resource_context) {
+void CssUrlEncoder::SetInliningImages(
+    const RequestProperties& request_properties,
+    ResourceContext* resource_context) {
   DCHECK(resource_context != NULL)
       << "null data passed to CssUrlEncoder::SetInliningImages";
 
   resource_context->set_inline_images(
-      device_properties.SupportsImageInlining());
+      request_properties.SupportsImageInlining());
 }
 
 }  // namespace net_instaweb

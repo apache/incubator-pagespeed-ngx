@@ -27,6 +27,7 @@ class GoogleUrl;
 class MessageHandler;
 class QueryParams;
 class RequestHeaders;
+class RequestProperties;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
@@ -90,7 +91,7 @@ class RewriteQuery {
   // and that headers will not grow in this call.
   template <class HeaderT>
   static Status ScanHeader(HeaderT* headers,
-                           DeviceProperties* device_properties,
+                           RequestProperties* request_properties,
                            RewriteOptions* options,
                            MessageHandler* handler);
 
@@ -138,7 +139,7 @@ class RewriteQuery {
   // Examines a name/value pair for options.
   static Status ScanNameValue(const StringPiece& name,
                               const GoogleString& value,
-                              DeviceProperties* device_properties,
+                              RequestProperties* request_properties,
                               RewriteOptions* options,
                               MessageHandler* handler);
 
@@ -157,12 +158,12 @@ class RewriteQuery {
   // Returns true if any option is explicitly set.
   static bool SetEffectiveImageQualities(
       DeviceProperties::ImageQualityPreference quality_preference,
-      DeviceProperties* device_properties,
+      RequestProperties* request_properties,
       RewriteOptions* options);
 
   // Returns true if any option is explicitly set.
   static bool UpdateRewriteOptionsWithClientOptions(
-      const GoogleString& header_value, DeviceProperties* device_properties,
+      const GoogleString& header_value, RequestProperties* request_properties,
       RewriteOptions* options);
 
   // Returns true if a valid ProxyMode parsed and returned.

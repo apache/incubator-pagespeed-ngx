@@ -24,7 +24,7 @@
 
 #include "base/logging.h"               // for operator<<, etc
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -849,7 +849,7 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
       message_handler_, file_system_, default_system_fetcher_);
   rewrite_driver->set_options_for_pool(pool, options);
   rewrite_driver->SetServerContext(this);
-  rewrite_driver->ClearDeviceProperties();
+  rewrite_driver->ClearRequestProperties();
   rewrite_driver->set_request_context(request_ctx);
   if (has_default_distributed_fetcher()) {
     rewrite_driver->set_distributed_fetcher(default_distributed_fetcher_);
@@ -1193,13 +1193,13 @@ void ServerContext::ApplySessionFetchers(const RequestContextPtr& req,
                                          RewriteDriver* driver) {
 }
 
-DeviceProperties* ServerContext::NewDeviceProperties() {
-  DeviceProperties* device_properties =
-      new DeviceProperties(user_agent_matcher());
-  device_properties->SetPreferredImageQualities(
+RequestProperties* ServerContext::NewRequestProperties() {
+  RequestProperties* request_properties =
+      new RequestProperties(user_agent_matcher());
+  request_properties->SetPreferredImageQualities(
       factory_->preferred_webp_qualities(),
       factory_->preferred_jpeg_qualities());
-  return device_properties;
+  return request_properties;
 }
 
 void ServerContext::DeleteCacheOnDestruction(CacheInterface* cache) {

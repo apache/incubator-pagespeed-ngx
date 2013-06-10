@@ -20,7 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -45,7 +45,7 @@ void JsDeferDisabledFilter::DetermineEnabled() {
 }
 
 bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {
-  return driver->device_properties()->SupportsJsDefer(
+  return driver->request_properties()->SupportsJsDefer(
       driver->options()->enable_aggressive_rewriters_for_mobile()) &&
       !driver->flushing_early();
 }

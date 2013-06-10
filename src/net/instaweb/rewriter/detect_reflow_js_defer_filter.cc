@@ -21,7 +21,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -45,7 +45,7 @@ DetectReflowJsDeferFilter::~DetectReflowJsDeferFilter() { }
 
 void DetectReflowJsDeferFilter::StartDocument() {
   script_written_ = false;
-  defer_js_enabled_ = rewrite_driver_->device_properties()->SupportsJsDefer(
+  defer_js_enabled_ = rewrite_driver_->request_properties()->SupportsJsDefer(
       rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile());
 }
 

@@ -47,7 +47,7 @@ class CacheInterface;
 class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalSelectorFinder;
-class DeviceProperties;
+class RequestProperties;
 class ExperimentMatcher;
 class FileSystem;
 class FilenameEncoder;
@@ -582,8 +582,8 @@ class ServerContext {
   // for HTML.
   virtual bool ProxiesHtml() const = 0;
 
-  // Makes a new DeviceProperties.
-  DeviceProperties* NewDeviceProperties();
+  // Makes a new RequestProperties.
+  RequestProperties* NewRequestProperties();
 
   // Puts the cache on a list to be destroyed at the last phase of system
   // shutdown.

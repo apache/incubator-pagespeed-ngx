@@ -34,7 +34,6 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -42,6 +41,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
@@ -412,7 +412,7 @@ void RewriteDriver::Clear() {
   // (as the request is over).
   url_async_fetcher_ = default_url_async_fetcher_;
   STLDeleteElements(&owned_url_async_fetchers_);
-  ClearDeviceProperties();
+  ClearRequestProperties();
   user_agent_.clear();
 }
 
@@ -2448,18 +2448,18 @@ void RewriteDriver::LogStats() {
                                     dom_stats_filter_->num_scripts());
   }
   log_record()->LogDeviceInfo(
-      device_properties_->GetDeviceType(),
-      device_properties_->SupportsImageInlining(),
-      device_properties_->SupportsLazyloadImages(),
-      device_properties_->SupportsCriticalImagesBeacon(),
-      device_properties_->SupportsJsDefer(
+      request_properties_->GetDeviceType(),
+      request_properties_->SupportsImageInlining(),
+      request_properties_->SupportsLazyloadImages(),
+      request_properties_->SupportsCriticalImagesBeacon(),
+      request_properties_->SupportsJsDefer(
           options()->enable_aggressive_rewriters_for_mobile()),
-      device_properties_->SupportsWebp(),
-      device_properties_->SupportsWebpLosslessAlpha(),
-      device_properties_->IsBot(),
-      device_properties_->SupportsSplitHtml(
+      request_properties_->SupportsWebp(),
+      request_properties_->SupportsWebpLosslessAlpha(),
+      request_properties_->IsBot(),
+      request_properties_->SupportsSplitHtml(
           options()->enable_aggressive_rewriters_for_mobile()),
-      device_properties_->CanPreloadResources());
+      request_properties_->CanPreloadResources());
   bool is_xhr = request_headers() != NULL &&
       request_headers()->IsXmlHttpRequest();
   log_record()->LogIsXhr(is_xhr);
@@ -2778,8 +2778,8 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
 // TODO(nikhilmadan): Merge this with SetRequestHeaders.
 void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
   user_agent_string.CopyToString(&user_agent_);
-  ClearDeviceProperties();
-  device_properties_->set_user_agent(user_agent_string);
+  ClearRequestProperties();
+  request_properties_->set_user_agent(user_agent_string);
 }
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
@@ -3092,8 +3092,8 @@ void RewriteDriver::DetermineEnabledFilters() {
   HtmlParse::DetermineEnabledFilters();
 }
 
-void RewriteDriver::ClearDeviceProperties() {
-  device_properties_.reset(new DeviceProperties(
+void RewriteDriver::ClearRequestProperties() {
+  request_properties_.reset(new RequestProperties(
       server_context_->user_agent_matcher()));
 }
 

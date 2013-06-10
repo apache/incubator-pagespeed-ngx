@@ -25,7 +25,7 @@
 
 namespace net_instaweb {
 
-class DeviceProperties;
+class RequestProperties;
 class MessageHandler;
 class ResourceContext;
 
@@ -61,7 +61,7 @@ class CssUrlEncoder : public UrlSegmentEncoder {
                       MessageHandler* handler) const;
 
   // Sets Inlining of image according to the user agent.
-  static void SetInliningImages(const DeviceProperties& device_properties,
+  static void SetInliningImages(const RequestProperties& request_properties,
                                 ResourceContext* resource_context);
 
  private:

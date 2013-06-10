@@ -26,7 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -1073,7 +1073,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     // If the image will be inlined and the local storage cache is enabled, add
     // the LSC marker attribute to this element so that the LSC filter knows to
     // insert the relevant javascript functions.
-    if (driver_->device_properties()->SupportsImageInlining()) {
+    if (driver_->request_properties()->SupportsImageInlining()) {
       LocalStorageCacheFilter::InlineState state;
       LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
                                                    driver_,
@@ -1098,7 +1098,7 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     int64 css_image_inline_max_bytes,
     const CachedResult* cached, ResourceSlot* slot) {
   GoogleString data_url;
-  if (driver_->device_properties()->SupportsImageInlining() &&
+  if (driver_->request_properties()->SupportsImageInlining() &&
       TryInline(css_image_inline_max_bytes, cached, slot, &data_url)) {
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
@@ -1213,7 +1213,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
   // copies implicitly.
   GoogleString data_url;
-  if (driver_->device_properties()->SupportsImageInlining() &&
+  if (driver_->request_properties()->SupportsImageInlining() &&
       (!driver_->options()->inline_only_critical_images() ||
        is_critical_image) &&
       TryInline(driver_->options()->ImageInlineMaxBytes(),
@@ -1270,7 +1270,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     if (!image_inlined &&
         !slot->disable_rendering() &&
         is_critical_image &&
-        driver_->device_properties()->SupportsImageInlining() &&
+        driver_->request_properties()->SupportsImageInlining() &&
         cached->has_low_resolution_inlined_data() &&
         (max_preview_image_index < 0 ||
          image_index < max_preview_image_index)) {
@@ -1546,7 +1546,7 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
 void ImageRewriteFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
   ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, context);
-  CssUrlEncoder::SetInliningImages(*driver_->device_properties(), context);
+  CssUrlEncoder::SetInliningImages(*driver_->request_properties(), context);
   if (SquashImagesForMobileScreenEnabled()) {
     ImageUrlEncoder::SetUserAgentScreenResolution(driver_, context);
   }
@@ -1579,7 +1579,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // CopyFrom parent_context is not sufficient because parent_context checks
     // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
-    ImageUrlEncoder::SetLibWebpLevel(*driver_->device_properties(),
+    ImageUrlEncoder::SetLibWebpLevel(*driver_->request_properties(),
         cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
@@ -1610,7 +1610,7 @@ bool ImageRewriteFilter::SquashImagesForMobileScreenEnabled() const {
   const RewriteOptions* options = driver_->options();
   return options->Enabled(RewriteOptions::kResizeImages) &&
       options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
-      driver_->device_properties()->IsMobile();
+      driver_->request_properties()->IsMobile();
 }
 
 bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(

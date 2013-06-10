@@ -21,7 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -33,7 +33,6 @@
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -99,7 +98,7 @@ void LazyloadImagesFilter::Clear() {
 
 RewriterHtmlApplication::Status LazyloadImagesFilter::ShouldApply(
     RewriteDriver* driver) {
-  if (!driver->device_properties()->SupportsLazyloadImages()) {
+  if (!driver->request_properties()->SupportsLazyloadImages()) {
     return RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED;
   }
   if (driver->flushing_early() ||

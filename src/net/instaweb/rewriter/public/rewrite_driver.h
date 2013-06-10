@@ -62,7 +62,7 @@ class CriticalCssResult;
 class CriticalLineInfo;
 class CriticalSelectorSet;
 class DebugFilter;
-class DeviceProperties;
+class RequestProperties;
 class DomainRewriteFilter;
 class DomStatsFilter;
 class FallbackPropertyPage;
@@ -193,12 +193,12 @@ class RewriteDriver : public HtmlParse {
 
   void SetUserAgent(const StringPiece& user_agent_string);
 
-  const DeviceProperties* device_properties() const {
-    return device_properties_.get();
+  const RequestProperties* request_properties() const {
+    return request_properties_.get();
   }
 
-  // Reinitializes device_properties_, clearing any cached values.
-  void ClearDeviceProperties();
+  // Reinitializes request_properties_, clearing any cached values.
+  void ClearRequestProperties();
 
   // Returns true if the request we're rewriting was made using SPDY.
   bool using_spdy() const { return request_context_->using_spdy(); }
@@ -1487,7 +1487,7 @@ class RewriteDriver : public HtmlParse {
   // Start time for HTML requests. Used for statistics reporting.
   int64 start_time_ms_;
 
-  scoped_ptr<DeviceProperties> device_properties_;
+  scoped_ptr<RequestProperties> request_properties_;
 
   // Helps make sure RewriteDriver and its children are initialized exactly
   // once, allowing for multiple calls to RewriteDriver::Initialize as long

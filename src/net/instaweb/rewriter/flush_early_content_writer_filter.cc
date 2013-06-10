@@ -23,7 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -214,7 +214,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   // tuning the RTT, bandwidth numbers for mobile.
   flush_more_resources_early_if_time_permits_ =
       driver_->options()->flush_more_resources_early_if_time_permits() &&
-      !driver_->device_properties()->IsMobile();
+      !driver_->request_properties()->IsMobile();
 }
 
 void FlushEarlyContentWriterFilter::EndDocument() {
@@ -271,7 +271,7 @@ void FlushEarlyContentWriterFilter::FlushDeferJavascriptEarly() {
   const RewriteOptions* options = driver_->options();
   bool should_flush_early_js_defer_script =
       (split_html_enabled_ || defer_javascript_enabled_) &&
-      driver_->device_properties()->SupportsJsDefer(
+      driver_->request_properties()->SupportsJsDefer(
           driver_->options()->enable_aggressive_rewriters_for_mobile());
   if (should_flush_early_js_defer_script) {
     const StaticAssetManager::StaticAsset& defer_js_module =

@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
@@ -337,7 +337,7 @@ void FlushEarlyFlow::TryStart(
         RewriterHtmlApplication::DISABLED);
     return;
   }
-  if (!driver->device_properties()->CanPreloadResources()) {
+  if (!driver->request_properties()->CanPreloadResources()) {
     driver->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
@@ -405,7 +405,7 @@ FlushEarlyFlow::FlushEarlyFlow(
   // If mobile, do not flush preconnects as it can potentially block useful
   // connections to resources. This is also used to determine whether to
   // flush early the lazy load js snippet.
-  is_mobile_user_agent_ = driver_->device_properties()->IsMobile();
+  is_mobile_user_agent_ = driver_->request_properties()->IsMobile();
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {
