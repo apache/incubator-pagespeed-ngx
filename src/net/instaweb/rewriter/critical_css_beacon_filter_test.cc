@@ -121,15 +121,17 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
 
   GoogleString BeaconScriptFor(StringPiece selectors) {
     GoogleString script = StrCat(
-        "<script src=\"",
-        server_context()->static_asset_manager()->GetAssetUrl(
+        "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+        server_context()->static_asset_manager()->GetAsset(
             StaticAssetManager::kCriticalCssBeaconJs, options()),
-        "\"></script>");
-    StrAppend(
-        &script,
-        "<script type=\"text/javascript\">pagespeed.criticalCssBeaconInit('",
-        options()->beacon_url().http, "','", kTestDomain, "','0',[", selectors,
-        "]);</script>");
+        "pagespeed.selectors=[", selectors, "];");
+    if (factory()->UseBeaconResultsInFilters()) {
+      StrAppend(&script,
+                "pagespeed.criticalCssBeaconInit('",
+                options()->beacon_url().http, "','", kTestDomain,
+                "','0',pagespeed.selectors);");
+    }
+    StrAppend(&script, "</script>");
     return script;
   }
 
@@ -278,6 +280,17 @@ TEST_F(CriticalCssBeaconFilterTest, MixOfGoodAndBad) {
 TEST_F(CriticalCssBeaconFilterTest, EverythingThatParses) {
   GoogleString input_html = InputHtml(
       StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHref("b.css")));
+  GoogleString expected_html = BeaconHtml(
+      StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css")),
+      kSelectorsInlineAB);
+  ValidateExpectedUrl(kTestDomain, input_html, expected_html);
+}
+
+TEST_F(CriticalCssBeaconFilterTest, FalseBeaconResultsGivesEmptyBeaconUrl) {
+  factory()->set_use_beacon_results_in_filters(false);
+  GoogleString input_html = InputHtml(
+      StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHref("b.css")));
+  // BeaconHtml() (via BeaconScriptFor) will use an empty beacon url.
   GoogleString expected_html = BeaconHtml(
       StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css")),
       kSelectorsInlineAB);

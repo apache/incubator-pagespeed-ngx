@@ -77,7 +77,7 @@ class CriticalSelectorFinder {
   // selector_set is added to the existing record of beacon support.  This
   // updates the value in the in-memory property page but does not write the
   // cohort.
-  void WriteCriticalSelectorsToPropertyCache(
+  virtual void WriteCriticalSelectorsToPropertyCache(
       const StringSet& selector_set, RewriteDriver* driver);
 
   // As above, but suitable for use in a beacon context where no RewriteDriver
@@ -94,7 +94,7 @@ class CriticalSelectorFinder {
       const StringSet& selector_set, RewriteDriver* driver);
 
   // Gets the SupportInterval for a new beacon result (see comment at top).
-  int SupportInterval() const {
+  virtual int SupportInterval() const {
     return kDefaultSupportInterval;
   }
 

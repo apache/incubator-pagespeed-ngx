@@ -915,14 +915,15 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink) ||
       (!rewrite_options->Forbidden(RewriteOptions::kInlineImportToLink) &&
-       CriticalSelectorsEnabled())) {
+       (CriticalSelectorsEnabled() ||
+        rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss)))) {
     // If we're converting simple embedded CSS @imports into a href link
     // then we need to do that before any other CSS processing.
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                                statistics()));
   }
   if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
-      !server_context()->factory()->UseBeaconResultsInFilters()) {
+      !server_context()->factory()->UseSelectorFilterForCriticalCss()) {
     // If we're inlining styles that resolved initially, skip outlining
     // css since that works against this.
     // TODO(slamm): Figure out if move_css_to_head needs to be disabled.
@@ -959,9 +960,14 @@ void RewriteDriver::AddPreRenderFilters() {
       EnableRewriteFilter(RewriteOptions::kCssFilterId);
     }
   }
-  if (CriticalSelectorsEnabled()) {
-    // Add both the instrumentation and rewriting filter, in that order.
+  if ((rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
+       server_context()->factory()->UseBeaconResultsInFilters()) ||
+      (rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss) &&
+       server_context()->factory()->UseSelectorFilterForCriticalCss())) {
+    // Add the critical selector instrumentation before the rewriting filter.
     AppendOwnedPreRenderFilter(new CriticalCssBeaconFilter(this));
+  }
+  if (CriticalSelectorsEnabled()) {
     AppendOwnedPreRenderFilter(new CriticalSelectorFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineCss) &&

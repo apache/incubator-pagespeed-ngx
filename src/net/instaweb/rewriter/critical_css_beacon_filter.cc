@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -97,33 +98,42 @@ void CriticalCssBeaconFilter::Summarize(Stylesheet* stylesheet,
   AppendJoinCollection(out, selectors, ",");
 }
 
-// Return the initial portion of the beaconing Javascript.
-// Just requires array of css selector strings plus closing ");"
+// Append the selector list initialization JavaScript to |script|.
 // Right now the result looks like:
-// ...static script from critical_css_beacon.js...
-// pagespeed.criticalCssBeaconInit('beacon_url','page_url','options_hash',
-// To which the caller then appends:
-// ["selector 1","selector 2","selector 3"]);
-GoogleString CriticalCssBeaconFilter::BeaconBoilerplate() {
-  const RewriteOptions::BeaconUrl& beacons = driver()->options()->beacon_url();
-  const GoogleString& beacon_url =
-      driver()->IsHttps() ? beacons.https : beacons.http;
-  StaticAssetManager* static_asset_manager =
-      driver()->server_context()->static_asset_manager();
-  GoogleString script;
-  const GoogleString& script_url = static_asset_manager->GetAssetUrl(
-      StaticAssetManager::kCriticalCssBeaconJs, driver()->options());
-  HtmlElement* external_script = driver()->NewElement(NULL, HtmlName::kScript);
-  InsertNodeAtBodyEnd(external_script);
-  driver()->AddAttribute(external_script, HtmlName::kSrc, script_url);
-  StrAppend(&script, "pagespeed.criticalCssBeaconInit('", beacon_url, "','");
-  EscapeToJsStringLiteral(driver()->google_url().Spec(),
-                          false /* no quote */, &script);
-  GoogleString options_signature_hash =
-      driver()->server_context()->hasher()->Hash(
-          driver()->options()->signature());
-  StrAppend(&script, "','", options_signature_hash, "',");
-  return script;
+//   pagespeed.selectors=["selector 1","selector 2","selector 3"];
+void CriticalCssBeaconFilter::AppendSelectorsInitJs(
+    GoogleString* script, const StringSet& selectors) {
+  StrAppend(script, "pagespeed.selectors=[");
+  for (StringSet::const_iterator i = selectors.begin();
+       i != selectors.end(); ++i) {
+    if (i != selectors.begin()) {
+      StrAppend(script, ",");
+    }
+    EscapeToJsStringLiteral(*i, true /* quote */, script);
+  }
+  StrAppend(script, "];");
+}
+
+// Append the beacon initialization JavaScript to |script|.
+// Right now the result looks like:
+//   pagespeed.criticalCssBeaconInit('beacon_url','page_url','options_hash',
+//        pagespeed.selectors);
+void CriticalCssBeaconFilter::AppendBeaconInitJs(GoogleString* script) {
+  GoogleString beacon_url = driver()->IsHttps() ?
+      driver()->options()->beacon_url().https :
+      driver()->options()->beacon_url().http;
+  GoogleString page_url;
+  EscapeToJsStringLiteral(driver()->google_url().Spec(), false /* add_quotes */,
+                          &page_url);
+  Hasher* hasher = driver()->server_context()->hasher();
+  GoogleString options_hash = hasher->Hash(driver()->options()->signature());
+
+  StrAppend(script,
+            "pagespeed.criticalCssBeaconInit('",
+            beacon_url, "','",
+            page_url, "','",
+            options_hash,
+            "',pagespeed.selectors);");
 }
 
 void CriticalCssBeaconFilter::SummariesDone() {
@@ -178,24 +188,22 @@ void CriticalCssBeaconFilter::SummariesDone() {
     // selector set.
     return;
   }
+
   // Insert the beaconing code.
-  GoogleString script = BeaconBoilerplate();
-  StrAppend(&script, "[");
-  for (StringSet::const_iterator i = selectors.begin();
-       i != selectors.end(); ++i) {
-    if (i != selectors.begin()) {
-      StrAppend(&script, ",");
-    }
-    GoogleString escaped;
-    EscapeToJsStringLiteral(*i, true /* quote */, &escaped);
-    StrAppend(&script, escaped);
-  }
-  StrAppend(&script, "]);");
-  HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
-  InsertNodeAtBodyEnd(script_element);
-  StaticAssetManager* static_asset_manager =
+  StaticAssetManager* asset_manager =
       driver()->server_context()->static_asset_manager();
-  static_asset_manager->AddJsToElement(script, script_element, driver_);
+  GoogleString script = asset_manager->GetAsset(
+      StaticAssetManager::kCriticalCssBeaconJs, driver()->options());
+  AppendSelectorsInitJs(&script, selectors);
+  if (driver()->server_context()->factory()->UseBeaconResultsInFilters()) {
+    // Insert the beaconing initialization code.
+    AppendBeaconInitJs(&script);
+  }
+  HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
+  driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+  InsertNodeAtBodyEnd(script_element);
+  asset_manager->AddJsToElement(script, script_element, driver_);
+
   if (critical_css_beacon_added_count_ != NULL) {
     critical_css_beacon_added_count_->Add(1);
   }

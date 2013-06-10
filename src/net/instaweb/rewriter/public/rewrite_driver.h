@@ -885,7 +885,7 @@ class RewriteDriver : public HtmlParse {
   // therefore enable its prerequisite filters as well.
   bool CriticalSelectorsEnabled() const {
     return (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
-            server_context()->factory()->UseBeaconResultsInFilters());
+            server_context()->factory()->UseSelectorFilterForCriticalCss());
   }
 
   // Return true if we must flatten css imports, either because the filter is
@@ -893,7 +893,8 @@ class RewriteDriver : public HtmlParse {
   bool FlattenCssImportsEnabled() const {
     return (options()->Enabled(RewriteOptions::kFlattenCssImports) ||
             (!options()->Forbidden(RewriteOptions::kFlattenCssImports) &&
-             CriticalSelectorsEnabled()));
+             (CriticalSelectorsEnabled() ||
+              options()->Enabled(RewriteOptions::kComputeCriticalCss))));
   }
 
   // Returns computed critical selector set for this page, or NULL
