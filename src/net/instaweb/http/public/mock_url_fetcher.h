@@ -20,28 +20,28 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_MOCK_URL_FETCHER_H_
 
 #include <map>
-#include "net/instaweb/http/public/request_context.h"
+
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class MessageHandler;
-class RequestHeaders;
 class Timer;
-class Writer;
 
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
 // Meant only for testing.
-class MockUrlFetcher : public UrlFetcher {
+class MockUrlFetcher : public UrlAsyncFetcher {
  public:
   MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true),
                      update_date_headers_(false), omit_empty_writes_(false),
                      fail_after_headers_(false), verify_host_header_(false),
-                     split_writes_(false), timer_(NULL) {}
+                     split_writes_(false), supports_https_(false),
+                     timer_(NULL) {}
   virtual ~MockUrlFetcher();
 
   void SetResponse(const StringPiece& url,
@@ -63,13 +63,16 @@ class MockUrlFetcher : public UrlFetcher {
                               const ResponseHeaders& response_header,
                               const StringPiece& response_body);
 
-  // Fetching unset URLs will cause EXPECT failures as well as return false.
-  virtual bool StreamingFetchUrl(const GoogleString& url,
-                                 const RequestHeaders& request_headers,
-                                 ResponseHeaders* response_headers,
-                                 Writer* response_writer,
-                                 MessageHandler* message_handler,
-                                 const RequestContextPtr& request_context);
+  // Fetching unset URLs will cause EXPECT failures as well as Done(false).
+  virtual void Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch);
+
+  virtual bool SupportsHttps() const { return supports_https_; }
+
+  void set_fetcher_supports_https(bool supports_https) {
+    supports_https_ = supports_https;
+  }
 
   // Indicates that the specified URL should respond with headers and data,
   // but still return a 'false' status.  This is similar to a live fetcher
@@ -118,6 +121,9 @@ class MockUrlFetcher : public UrlFetcher {
   // RecordingFetch caches writes properly and recovers from failure.
   void set_split_writes(bool val) { split_writes_ = val; }
 
+  // If this is non-empty, we will write this out any time we report an error.
+  void set_error_message(const GoogleString& msg) { error_message_ = msg; }
+
  private:
   class HttpResponse {
    public:
@@ -158,6 +164,8 @@ class MockUrlFetcher : public UrlFetcher {
   bool fail_after_headers_;   // Should we call Done(false) after headers?
   bool verify_host_header_;   // Should we verify the Host: header?
   bool split_writes_;         // Should we turn one write into multiple?
+  bool supports_https_;       // Should we claim HTTPS support?
+  GoogleString error_message_;  // If non empty, we write out this on error
   Timer* timer_;              // Timer to use for updating header dates.
 
   DISALLOW_COPY_AND_ASSIGN(MockUrlFetcher);

@@ -33,7 +33,6 @@ namespace net_instaweb {
 
 class CountingUrlAsyncFetcher;
 class DelayCache;
-class FakeUrlAsyncFetcher;
 class FileSystem;
 class Hasher;
 class HtmlFilter;
@@ -55,7 +54,6 @@ class TestDistributedFetcher;
 class ThreadsafeCache;
 class Timer;
 class UrlAsyncFetcher;
-class UrlFetcher;
 class UrlNamer;
 class WaitUrlAsyncFetcher;
 
@@ -106,8 +104,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockTimer* mock_timer() { return mock_timer_; }
   MockHasher* mock_hasher() { return mock_hasher_; }
   MemFileSystem* mem_file_system() { return mem_file_system_; }
-  FakeUrlAsyncFetcher* mock_url_async_fetcher() {
-    return mock_url_async_fetcher_.get();
+  MockUrlFetcher* mock_url_async_fetcher() {
+    return mock_url_fetcher_;
   }
   WaitUrlAsyncFetcher* wait_url_async_fetcher() {
     return wait_url_async_fetcher_.get();
@@ -195,7 +193,6 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
-  virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
@@ -213,10 +210,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   DelayCache* delay_cache_;
   scoped_ptr<ThreadsafeCache> threadsafe_cache_;
   scoped_ptr<LRUCache> lru_cache_;
-  UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;
   TestDistributedFetcher* test_distributed_fetcher_;
-  scoped_ptr<FakeUrlAsyncFetcher> mock_url_async_fetcher_;
   CountingUrlAsyncFetcher* counting_url_async_fetcher_;
   CountingUrlAsyncFetcher* counting_distributed_async_fetcher_;
   scoped_ptr<WaitUrlAsyncFetcher> wait_url_async_fetcher_;

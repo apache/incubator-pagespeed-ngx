@@ -56,7 +56,6 @@ class Statistics;
 class SystemCaches;
 class Timer;
 class UrlAsyncFetcher;
-class UrlFetcher;
 
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
@@ -247,7 +246,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   }
 
  protected:
-  virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual void StopCacheActivity();
 

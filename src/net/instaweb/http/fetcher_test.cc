@@ -18,28 +18,20 @@
 
 #include "net/instaweb/http/public/fetcher_test.h"
 
-#include <utility>                      // for pair, make_pair
-#include <vector>
 #include "base/logging.h"
-#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 const char FetcherTest::kStartDate[] = "Sun, 16 Dec 1979 02:27:45 GMT";
 const char FetcherTest::kHtmlContent[] = "<html><body>Nuts!</body></html>";
@@ -53,8 +45,19 @@ const char FetcherTest::kHeaderValue[] = "header value";
 SimpleStats* FetcherTest::statistics_ = NULL;
 
 FetcherTest::FetcherTest()
-    : mock_async_fetcher_(&mock_fetcher_),
+    : wait_url_async_fetcher_(&mock_fetcher_, new NullMutex),
+      counting_fetcher_(&wait_url_async_fetcher_),
       thread_system_(Platform::CreateThreadSystem()) {
+  mock_fetcher_.set_fail_on_unexpected(false);
+  mock_fetcher_.set_error_message(kErrorMessage);
+
+  ResponseHeaders good_headers, no_cache_headers;
+  GoogleString good_content, no_cache_content;
+
+  Populate("max-age=300", &good_headers, &good_content);
+  Populate("no-cache", &no_cache_headers, &no_cache_content);
+  mock_fetcher_.SetResponse(kGoodUrl, good_headers, good_content);
+  mock_fetcher_.SetResponse(kNotCachedUrl, no_cache_headers, no_cache_content);
 }
 
 void FetcherTest::ValidateMockFetcherResponse(
@@ -72,53 +75,38 @@ void FetcherTest::ValidateMockFetcherResponse(
   }
 }
 
-int FetcherTest::CountFetchesSync(const StringPiece& url, bool expect_success,
-                                  bool check_error_message) {
-  CHECK(sync_fetcher() != NULL);
-  return CountFetchesSync(url, sync_fetcher(),
-                          expect_success, check_error_message);
+int FetcherTest::CountFetchesAsync(
+    const StringPiece& url, bool expect_success, bool* callback_called) {
+  return CountFetchesAsync(url, async_fetcher(),
+                           expect_success, true, callback_called);
 }
 
-int FetcherTest::CountFetchesSync(
-    const StringPiece& url, UrlFetcher* fetcher,
-    bool expect_success, bool check_error_message) {
-  int starting_fetches = mock_fetcher_.num_fetches();
-  GoogleString content;
-  StringWriter content_writer(&content);
-  RequestHeaders request_headers;
-  ResponseHeaders response_headers;
-  bool success = fetcher->StreamingFetchUrl(
-      url.as_string(), request_headers, &response_headers, &content_writer,
-      &message_handler_, RequestContextPtr(NULL));
-  EXPECT_EQ(expect_success, success);
-  ValidateMockFetcherResponse(success, check_error_message, content,
-                              response_headers);
-  return mock_fetcher_.num_fetches() - starting_fetches;
-}
-
-int FetcherTest::CountFetchesAsync(const StringPiece& url, bool expect_success,
-                                   bool* callback_called) {
-  CHECK(async_fetcher() != NULL);
+int FetcherTest::CountFetchesAsync(
+    const StringPiece& url, UrlAsyncFetcher* fetcher,
+    bool expect_success, bool check_error_message, bool* callback_called) {
+  CHECK(fetcher != NULL);
   *callback_called = false;
-  int starting_fetches = mock_fetcher_.num_fetches();
+  int starting_fetches = counting_fetcher_.fetch_start_count();
   CheckCallback* fetch = new CheckCallback(
       RequestContext::NewTestRequestContext(thread_system_.get()),
-      expect_success, callback_called);
-  async_fetcher()->Fetch(url.as_string(), &message_handler_, fetch);
-  return mock_fetcher_.num_fetches() - starting_fetches;
+      expect_success, check_error_message, callback_called);
+  fetcher->Fetch(url.as_string(), &message_handler_, fetch);
+  return counting_fetcher_.fetch_start_count() - starting_fetches;
 }
 
 void FetcherTest::ValidateOutput(const GoogleString& content,
                                  const ResponseHeaders& response_headers) {
   // The detailed header parsing code is tested in
-  // simple_meta_data_test.cc.  But let's check the rseponse code
+  // simple_meta_data_test.cc.  But let's check the response code
   // and the last header here, and make sure we got the content.
   EXPECT_EQ(200, response_headers.status_code());
-  EXPECT_EQ(13, response_headers.NumAttributes());
-  EXPECT_EQ(GoogleString("X-Google-GFE-Response-Body-Transformations"),
-            GoogleString(response_headers.Name(12)));
-  EXPECT_EQ(GoogleString("gunzipped"),
-            GoogleString(response_headers.Value(12)));
+  ASSERT_EQ(11, response_headers.NumAttributes());
+  EXPECT_EQ(GoogleString("P3P"),
+            GoogleString(response_headers.Name(6)));
+  EXPECT_STREQ(
+      "CP=\"This is not a P3P policy! See http://www.google.com/support/"
+      "accounts/bin/answer.py?hl=en&answer=151657 for more info.\"",
+      response_headers.Value(6));
 
   // Verifies that after the headers, we see the content.  Note that this
   // currently assumes 'wget' style output.  Wget takes care of any unzipping.
@@ -127,35 +115,9 @@ void FetcherTest::ValidateOutput(const GoogleString& content,
                        STATIC_STRLEN(start_of_doc)));
 }
 
-
-// MockFetcher
-bool FetcherTest::MockFetcher::StreamingFetchUrl(
-    const GoogleString& url,
-    const RequestHeaders& request_headers,
-    ResponseHeaders* response_headers,
-    Writer* writer,
-    MessageHandler* message_handler,
-    const RequestContextPtr& unused_request_context) {
-  bool ret = false;
-  if (url == kGoodUrl) {
-    ret = Populate("max-age=300", response_headers, writer,
-                   message_handler);
-  } else if (url == kNotCachedUrl) {
-    ret = Populate("no-cache", response_headers, writer,
-                   message_handler);
-  } else {
-    // Note: Non-zero status code must be set.
-    response_headers->set_status_code(HttpStatus::kNotFound);
-    writer->Write(kErrorMessage, message_handler);
-  }
-  ++num_fetches_;
-  return ret;
-}
-
-bool FetcherTest::MockFetcher::Populate(const char* cache_control,
-                                        ResponseHeaders* response_headers,
-                                        Writer* writer,
-                                        MessageHandler* message_handler) {
+void FetcherTest::Populate(const char* cache_control,
+                           ResponseHeaders* response_headers,
+                           GoogleString* content) {
   response_headers->SetStatusAndReason(HttpStatus::kOK);
   response_headers->set_major_version(1);
   response_headers->set_minor_version(1);
@@ -163,28 +125,7 @@ bool FetcherTest::MockFetcher::Populate(const char* cache_control,
   response_headers->Add(HttpAttributes::kDate, kStartDate);
   response_headers->Add(kHeaderName, kHeaderValue);
   response_headers->ComputeCaching();
-  writer->Write(kHtmlContent, message_handler);
-  return true;
-}
-
-
-// MockAsyncFetcher
-void FetcherTest::MockAsyncFetcher::Fetch(const GoogleString& url,
-                                          MessageHandler* handler,
-                                          AsyncFetch* fetch) {
-  bool status = url_fetcher_->StreamingFetchUrl(
-      url, *fetch->request_headers(), fetch->response_headers(), fetch,
-      handler, fetch->request_context());
-  deferred_callbacks_.push_back(std::make_pair(status, fetch));
-}
-
-void FetcherTest::MockAsyncFetcher::CallCallbacks() {
-  for (int i = 0, n = deferred_callbacks_.size(); i < n; ++i) {
-    bool status = deferred_callbacks_[i].first;
-    AsyncFetch* fetch = deferred_callbacks_[i].second;
-    fetch->Done(status);
-  }
-  deferred_callbacks_.clear();
+  *content = kHtmlContent;
 }
 
 void FetcherTest::SetUpTestCase() {

@@ -22,7 +22,6 @@
 #include <cstdlib>  // for exit()
 
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
@@ -50,7 +49,6 @@ class Hasher;
 class MessageHandler;
 class Statistics;
 class UrlAsyncFetcher;
-class UrlFetcher;
 class Writer;
 
 namespace {
@@ -85,12 +83,8 @@ Hasher* FileRewriter::NewHasher() {
   return new MD5Hasher;
 }
 
-UrlFetcher* FileRewriter::DefaultUrlFetcher() {
-  return new WgetUrlFetcher;
-}
-
 UrlAsyncFetcher* FileRewriter::DefaultAsyncUrlFetcher() {
-  return new FakeUrlAsyncFetcher(ComputeUrlFetcher());
+  return new WgetUrlFetcher;
 }
 
 MessageHandler* FileRewriter::DefaultHtmlParseMessageHandler() {

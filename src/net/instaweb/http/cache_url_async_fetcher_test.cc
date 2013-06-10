@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -151,8 +150,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   };
 
   CacheUrlAsyncFetcherTest()
-      : mock_async_fetcher_(&mock_fetcher_),
-        counting_fetcher_(&mock_async_fetcher_),
+      : counting_fetcher_(&mock_fetcher_),
         lru_cache_(1000),
         timer_(MockTimer::kApr_5_2010_ms),
         cache_url_("http://www.example.com/cacheable.html"),
@@ -321,7 +319,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     fetch->set_response_headers(&fetch_response_headers);
     // TODO(sligocki): Make Fetch take a StringPiece.
     cache_fetcher_->Fetch(url.as_string(), &handler_, fetch);
-    // Implementation with LRUCache and FakeUrlAsyncFetcher should
+    // Implementation with LRUCache and MockFetcher should
     // call callbacks synchronously.
     EXPECT_TRUE(fetch_done);
     EXPECT_EQ(success, fetch_success);
@@ -488,7 +486,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   SimpleStats statistics_;
 
   MockUrlFetcher mock_fetcher_;
-  FakeUrlAsyncFetcher mock_async_fetcher_;
   CountingUrlAsyncFetcher counting_fetcher_;
 
   LRUCache lru_cache_;

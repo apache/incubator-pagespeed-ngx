@@ -21,8 +21,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -33,21 +31,18 @@ namespace net_instaweb {
 
 class WaitUrlAsyncFetcher::DelayedFetch {
  public:
-  DelayedFetch(UrlFetcher* base_fetcher, const GoogleString& url,
+  DelayedFetch(UrlAsyncFetcher* base_fetcher, const GoogleString& url,
                MessageHandler* handler, AsyncFetch* base_fetch)
       : base_fetcher_(base_fetcher), url_(url), handler_(handler),
         base_fetch_(base_fetch) {
   }
 
   void FetchNow() {
-    bool status = base_fetcher_->StreamingFetchUrl(
-        url_, *base_fetch_->request_headers(), base_fetch_->response_headers(),
-        base_fetch_, handler_, base_fetch_->request_context());
-    base_fetch_->Done(status);
+    base_fetcher_->Fetch(url_, handler_, base_fetch_);
   }
 
  private:
-  UrlFetcher* base_fetcher_;
+  UrlAsyncFetcher* base_fetcher_;
 
   GoogleString url_;
   MessageHandler* handler_;

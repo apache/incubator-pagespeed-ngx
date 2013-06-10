@@ -14,16 +14,17 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-// Test the async -> sync fetcher adapter and its callback helper
+// Test the blocking w/timeout callback helper.
 
-#include "net/instaweb/http/public/sync_fetcher_adapter.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
+
+#include <algorithm>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -163,49 +164,62 @@ class SyncFetcherAdapterTest : public testing::Test {
   }
 
  protected:
-  bool DoFetch(UrlFetcher* fetcher, Writer* response_writer) {
-    RequestHeaders request_headers;
-    RequestContextPtr ctx(
-        RequestContext::NewTestRequestContext(thread_system_.get()));
-    return fetcher->StreamingFetchUrl("http://www.example.com/",
-                                      request_headers,
-                                      &out_headers_,
-                                      response_writer,
-                                      &handler_,
-                                      ctx);
+  void DoFetch(UrlAsyncFetcher* fetcher, SyncFetcherAdapterCallback* callback) {
+    fetcher->Fetch("http://www.example.com/", &handler_, callback);
+  }
+
+  void Wait(SyncFetcherAdapterCallback* callback, int64 timeout_ms) {
+    bool locked_ok = callback->LockIfNotReleased();
+    ASSERT_TRUE(locked_ok);
+    // Should always succeed since we don't call ->Release
+    // on callback until end of this method.
+    int64 now_ms = timer_->NowMs();
+    for (int64 end_ms = now_ms + timeout_ms;
+         !callback->IsDoneLockHeld() && (now_ms < end_ms);
+         now_ms = timer_->NowMs()) {
+      int64 remaining_ms = std::max(static_cast<int64>(0), end_ms - now_ms);
+      callback->TimedWait(remaining_ms);
+    }
+    callback->Unlock();
   }
 
   void TestSuccessfulFetch(UrlAsyncFetcher* async_fetcher) {
-    SyncFetcherAdapter fetcher(timer_.get(), 1000, async_fetcher,
-                               thread_system_.get());
-
     GoogleString out_str;
     StringWriter out_writer(&out_str);
-    EXPECT_TRUE(DoFetch(&fetcher, &out_writer));
+    RequestContextPtr ctx(
+        RequestContext::NewTestRequestContext(thread_system_.get()));
+
+    SyncFetcherAdapterCallback* callback =
+        new SyncFetcherAdapterCallback(thread_system_.get(), &out_writer, ctx);
+    DoFetch(async_fetcher, callback);
+    Wait(callback, 1000);
+
+    EXPECT_TRUE(callback->IsDone());
+    EXPECT_TRUE(callback->success());
     EXPECT_EQ(kText, out_str);
 
     ConstStringStarVector values;
-    EXPECT_TRUE(out_headers_.Lookup(kHeader, &values));
+    EXPECT_TRUE(callback->response_headers()->Lookup(kHeader, &values));
     ASSERT_EQ(1, values.size());
     EXPECT_EQ(GoogleString(kText), *(values[0]));
+
+    callback->Release();
   }
 
-  void TestFailedFetch(UrlAsyncFetcher* async_fetcher) {
-    SyncFetcherAdapter fetcher(timer_.get(), 1000, async_fetcher,
-                               thread_system_.get());
-    TestFailedFetchSync(&fetcher);
-  }
+  void TestFailedFetch(UrlAsyncFetcher* async_fetcher, int64 timeout_ms) {
+    TrapWriter writer;
+    RequestContextPtr ctx(
+        RequestContext::NewTestRequestContext(thread_system_.get()));
+    SyncFetcherAdapterCallback* callback =
+        new SyncFetcherAdapterCallback(thread_system_.get(), &writer, ctx);
 
-  void TestFailedFetchSync(UrlFetcher* fetcher) {
-    TrapWriter trap_writer;
-    EXPECT_FALSE(DoFetch(fetcher, &trap_writer));
+    async_fetcher->Fetch("http://www.example.com", &handler_, callback);
+    Wait(callback, timeout_ms);
+    EXPECT_FALSE(callback->success());
+    callback->Release();
   }
 
   void TestTimeoutFetch(DelayedFetcher* async_fetcher) {
-    // We use a 1ms timeout here.
-    SyncFetcherAdapter fetcher(
-        timer_.get(), 1, async_fetcher, thread_system_.get());
-
     WorkerTestBase::SyncPoint sync(thread_system_.get());
 
     // We use a sync point to wait for the fetch thread to exit since the
@@ -213,12 +227,10 @@ class SyncFetcherAdapterTest : public testing::Test {
     async_fetcher->set_sync(&sync);
 
     // First let the sync fetcher timeout, and return failure.
-    TestFailedFetchSync(&fetcher);
-
+    TestFailedFetch(async_fetcher, 1 /* one millisecond timeout here */);
     sync.Wait();
   }
 
-  ResponseHeaders out_headers_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
@@ -239,13 +251,13 @@ TEST_F(SyncFetcherAdapterTest, SlowOk) {
 TEST_F(SyncFetcherAdapterTest, QuickFail) {
   DelayedFetcher* async_fetcher = new DelayedFetcher(
       thread_system_.get(), timer_.get(), &handler_, 0, false);
-  TestFailedFetch(async_fetcher);
+  TestFailedFetch(async_fetcher, 1000);
 }
 
 TEST_F(SyncFetcherAdapterTest, SlowFail) {
   DelayedFetcher* async_fetcher = new DelayedFetcher(
       thread_system_.get(), timer_.get(), &handler_, 5, false);
-  TestFailedFetch(async_fetcher);
+  TestFailedFetch(async_fetcher, 1000);
 }
 
 TEST_F(SyncFetcherAdapterTest, TimeoutOk) {

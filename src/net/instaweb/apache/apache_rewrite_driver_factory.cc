@@ -34,14 +34,11 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/in_place_resource_recorder.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
-#include "net/instaweb/http/public/http_dump_url_writer.h"
+#include "net/instaweb/http/public/http_dump_url_async_writer.h"
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
-#include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -197,11 +194,6 @@ NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
   return NULL;
 }
 
-UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
-  LOG(DFATAL) << "In Apache the fetchers are not global, but kept in a map.";
-  return NULL;
-}
-
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   LOG(DFATAL) << "In Apache the fetchers are not global, but kept in a map.";
   return NULL;
@@ -303,19 +295,12 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
       if (config->slurp_read_only()) {
         HttpDumpUrlFetcher* dump_fetcher = new HttpDumpUrlFetcher(
             config->slurp_directory(), file_system(), timer());
-        defer_cleanup(new Deleter<HttpDumpUrlFetcher>(dump_fetcher));
-        fetcher = new FakeUrlAsyncFetcher(dump_fetcher);
+        fetcher = dump_fetcher;
       } else {
         SerfUrlAsyncFetcher* base_fetcher = GetSerfFetcher(config);
-
-        UrlFetcher* sync_fetcher = new SyncFetcherAdapter(
-            timer(), config->blocking_fetch_timeout_ms(), base_fetcher,
-            thread_system());
-        defer_cleanup(new Deleter<UrlFetcher>(sync_fetcher));
-        HttpDumpUrlWriter* dump_writer = new HttpDumpUrlWriter(
-            config->slurp_directory(), sync_fetcher, file_system(), timer());
-        defer_cleanup(new Deleter<HttpDumpUrlWriter>(dump_writer));
-        fetcher = new FakeUrlAsyncFetcher(dump_writer);
+        HttpDumpUrlAsyncWriter* dump_writer = new HttpDumpUrlAsyncWriter(
+            config->slurp_directory(), base_fetcher, file_system(), timer());
+        fetcher = dump_writer;
       }
     } else {
       SerfUrlAsyncFetcher* serf = GetSerfFetcher(config);

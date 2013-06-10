@@ -43,7 +43,6 @@
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_writer.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -241,16 +240,14 @@ void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
   // Figure out if we should be using a slurp fetcher rather than the default
   // system fetcher.
   UrlAsyncFetcher* fetcher = server_context->DefaultSystemFetcher();
-  scoped_ptr<HttpDumpUrlFetcher> sync_fetcher;
-  scoped_ptr<FakeUrlAsyncFetcher> adapter_fetcher;
+  scoped_ptr<HttpDumpUrlFetcher> slurp_fetcher;
 
   ApacheConfig* config = server_context->config();
   if (config->test_proxy() && !config->test_proxy_slurp().empty()) {
-    sync_fetcher.reset(new HttpDumpUrlFetcher(
+    slurp_fetcher.reset(new HttpDumpUrlFetcher(
         config->test_proxy_slurp(), server_context->file_system(),
         server_context->timer()));
-    adapter_fetcher.reset(new FakeUrlAsyncFetcher(sync_fetcher.get()));
-    fetcher = adapter_fetcher.get();
+    fetcher = slurp_fetcher.get();
   }
 
   MessageHandler* handler = server_context->message_handler();

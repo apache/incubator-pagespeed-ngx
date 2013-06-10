@@ -21,7 +21,9 @@
 
 #include <cerrno>
 #include <cstdio>                      // for pclose, popen, FILE
+
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -29,7 +31,6 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace {
 
@@ -73,13 +74,10 @@ void ExternalUrlFetcher::AppendHeaders(const RequestHeaders& request_headers,
   }
 }
 
-bool ExternalUrlFetcher::StreamingFetchUrl(
-    const GoogleString& url,
-    const RequestHeaders& request_headers,
-    ResponseHeaders* response_headers,
-    Writer* writer,
-    MessageHandler* handler,
-    const RequestContextPtr& unused_request_context) {
+void ExternalUrlFetcher::Fetch(
+    const GoogleString& url, MessageHandler* handler, AsyncFetch* fetch) {
+  const RequestHeaders& request_headers = *fetch->request_headers();
+  ResponseHeaders* response_headers = fetch->response_headers();
 
   // Use default user-agent if none is set in headers.
   ConstStringStarVector values;
@@ -105,7 +103,7 @@ bool ExternalUrlFetcher::StreamingFetchUrl(
     handler->Message(kError, "Fetch command popen failed on url %s: %s",
                      url.c_str(), strerror(errno));
   } else {
-    HttpResponseParser parser(response_headers, writer, handler);
+    HttpResponseParser parser(response_headers, fetch, handler);
     ret = parser.Parse(cmd_stdout);
     int exit_status = pclose(cmd_stdout);
     if (exit_status != 0) {
@@ -118,15 +116,15 @@ bool ExternalUrlFetcher::StreamingFetchUrl(
         response_headers->ComputeCaching();
         // TODO(jmarantz): set_headers_complete
         // response_headers->set_headers_complete(true);
-        writer->Write(GetFetchLabel(), handler);
-        writer->Write(" failed: ", handler);
-        writer->Write(url, handler);
-        writer->Write("<br>\nExit Status: ", handler);
-        writer->Write(IntegerToString(exit_status), handler);
+        fetch->Write(GetFetchLabel(), handler);
+        fetch->Write(" failed: ", handler);
+        fetch->Write(url, handler);
+        fetch->Write("<br>\nExit Status: ", handler);
+        fetch->Write(IntegerToString(exit_status), handler);
       }
     }
   }
-  return ret;
+  fetch->Done(ret);
 }
 
 void ExternalUrlFetcher::set_binary(const GoogleString& binary) {

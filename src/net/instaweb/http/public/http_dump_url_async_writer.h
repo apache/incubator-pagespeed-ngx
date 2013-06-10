@@ -62,6 +62,9 @@ class HttpDumpUrlAsyncWriter : public UrlAsyncFetcher {
   // read if its caller does not want gzipped output.
   void set_accept_gzip(bool x) { accept_gzip_ = x; }
 
+  // Print URLs each time they are fetched.
+  void set_print_urls(bool on) { dump_fetcher_.set_print_urls(on); }
+
  private:
   // Helper class to manage individual fetchs.
   class DumpFetch;

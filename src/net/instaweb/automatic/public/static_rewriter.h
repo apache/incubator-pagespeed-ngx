@@ -33,7 +33,6 @@ class MessageHandler;
 class ServerContext;
 class Statistics;
 class UrlAsyncFetcher;
-class UrlFetcher;
 class Writer;
 
 // Implements a baseline RewriteDriverFactory with the simplest possible
@@ -48,7 +47,6 @@ class FileRewriter : public RewriteDriverFactory {
                bool echo_errors_to_stdout);
   virtual ~FileRewriter();
   virtual Hasher* NewHasher();
-  virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();

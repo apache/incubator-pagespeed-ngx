@@ -23,11 +23,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/url_fetcher.h"  // for UrlFetcher
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -59,48 +56,14 @@ class FileSystem;
 class Hasher;
 class HtmlFilter;
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
 class RewriteFilter;
 class Scheduler;
 class UrlAsyncFetcher;
 class UrlNamer;
-class Writer;
 
 namespace {
 
 const int kCacheSize  = 10*1000*1000;
-
-// This class is used to paper-over an unfortunate design choice in
-// RewriteDriverFactory about fetcher ownership.  We'd like to share
-// the Mock Fetcher between multiple TestRewriteDriverFactory instances.
-// But this results in double-deletion problems on shutdown as each
-// factory keeps its fetcher in a scoped_ptr or has equivalent logic.
-//
-// This should be fixed properly but for now we can introduce the
-// right ownership semantics by interposing a transparent ProxyFetcher
-// which is allocated per-factory, but references a real fetcher.
-class ProxyUrlFetcher : public UrlFetcher {
- public:
-  explicit ProxyUrlFetcher(UrlFetcher* fetcher) : fetcher_(fetcher) {}
-  virtual ~ProxyUrlFetcher() {}
-  virtual bool StreamingFetchUrl(const GoogleString& url,
-                                 const RequestHeaders& request_headers,
-                                 ResponseHeaders* response_headers,
-                                 Writer* response_writer,
-                                 MessageHandler* message_handler,
-                                 const RequestContextPtr& request_context) {
-    return fetcher_->StreamingFetchUrl(url,
-                                       request_headers,
-                                       response_headers,
-                                       response_writer,
-                                       message_handler,
-                                       request_context);
-  }
-
- private:
-  UrlFetcher* fetcher_;
-};
 
 class TestServerContext : public ServerContext {
  public:
@@ -128,7 +91,6 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
       mock_timer_(NULL),
       mock_scheduler_(NULL),
       delay_cache_(NULL),
-      proxy_url_fetcher_(NULL),
       mock_url_fetcher_(mock_fetcher),
       test_distributed_fetcher_(test_distributed_fetcher),
       counting_url_async_fetcher_(NULL),
@@ -173,17 +135,9 @@ void TestRewriteDriverFactory::CallFetcherCallbacksForDriver(
   wait_url_async_fetcher_->SetPassThroughMode(pass_through_mode);
 }
 
-UrlFetcher* TestRewriteDriverFactory::DefaultUrlFetcher() {
-  DCHECK(proxy_url_fetcher_ == NULL);
-  proxy_url_fetcher_ = new ProxyUrlFetcher(mock_url_fetcher_);
-  return proxy_url_fetcher_;
-}
-
 UrlAsyncFetcher* TestRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   DCHECK(counting_url_async_fetcher_ == NULL);
-  mock_url_async_fetcher_.reset(new FakeUrlAsyncFetcher(mock_url_fetcher_));
-  counting_url_async_fetcher_ = new CountingUrlAsyncFetcher(
-      mock_url_async_fetcher_.get());
+  counting_url_async_fetcher_ = new CountingUrlAsyncFetcher(mock_url_fetcher_);
   return counting_url_async_fetcher_;
 }
 

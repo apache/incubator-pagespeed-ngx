@@ -31,13 +31,13 @@ namespace net_instaweb {
 class AsyncFetch;
 class AbstractMutex;
 class MessageHandler;
-class UrlFetcher;
 
-// Fake UrlAsyncFetcher which waits to call underlying blocking fetcher until
+// Fake UrlAsyncFetcher which waits to call underlying fetcher until
 // you explicitly call CallCallbacks().
 class WaitUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  WaitUrlAsyncFetcher(UrlFetcher* url_fetcher, AbstractMutex* mutex)
+  WaitUrlAsyncFetcher(UrlAsyncFetcher* url_fetcher,
+                      AbstractMutex* mutex)
       : url_fetcher_(url_fetcher),
         pass_through_mode_(false),
         mutex_(mutex) {
@@ -62,7 +62,7 @@ class WaitUrlAsyncFetcher : public UrlAsyncFetcher {
 
   bool CallCallbacksAndSwitchModesHelper(bool new_mode);
 
-  UrlFetcher* url_fetcher_;
+  UrlAsyncFetcher* url_fetcher_;
   std::vector<DelayedFetch*> delayed_fetches_;
   bool pass_through_mode_;
   scoped_ptr<AbstractMutex> mutex_;

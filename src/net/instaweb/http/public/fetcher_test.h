@@ -21,14 +21,12 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_FETCHER_TEST_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_FETCHER_TEST_H_
 
-#include <utility>  // for pair
-#include <vector>
-
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -39,11 +37,9 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
-class RequestHeaders;
 class ResponseHeaders;
 class SimpleStats;
-class Writer;
+class UrlAsyncFetcher;
 
 class FetcherTest : public testing::Test {
  protected:
@@ -63,103 +59,64 @@ class FetcherTest : public testing::Test {
 
   // Helpful classes for testing.
 
-  // This mock fetcher will only fetch kGoodUrl, returning kHtmlContent.
-  // If you ask for any other URL it will fail.
-  class MockFetcher : public UrlFetcher {
-   public:
-    MockFetcher() : num_fetches_(0) {}
+  // We set up a chain of fetchers:
+  // Counting -> Wait -> Mock, where the mock will only fetch
+  // kGoodUrl and kNotCachedUrl, returning kHtmlContent.
+  WaitUrlAsyncFetcher* wait_fetcher() {
+      return &wait_url_async_fetcher_;
+  }
 
-    virtual bool StreamingFetchUrl(const GoogleString& url,
-                                   const RequestHeaders& request_headers,
-                                   ResponseHeaders* response_headers,
-                                   Writer* response_writer,
-                                   MessageHandler* message_handler,
-                                   const RequestContextPtr& request_context);
-
-    int num_fetches() const { return num_fetches_; }
-
-   private:
-    bool Populate(const char* cache_control, ResponseHeaders* response_headers,
-                  Writer* writer, MessageHandler* message_handler);
-
-    int num_fetches_;
-
-    DISALLOW_COPY_AND_ASSIGN(MockFetcher);
-  };
-
-  // This is a pseudo-asynchronous interface to MockFetcher.  It performs
-  // fetches instantly, but defers calling the callback until the user
-  // calls CallCallbacks().  Then it will execute the deferred callbacks.
-  class MockAsyncFetcher : public UrlAsyncFetcher {
-   public:
-    explicit MockAsyncFetcher(UrlFetcher* url_fetcher)
-        : url_fetcher_(url_fetcher) {}
-
-    virtual void Fetch(const GoogleString& url,
-                       MessageHandler* handler,
-                       AsyncFetch* fetch);
-
-    void CallCallbacks();
-
-   private:
-    UrlFetcher* url_fetcher_;
-    std::vector<std::pair<bool, AsyncFetch*> > deferred_callbacks_;
-
-    DISALLOW_COPY_AND_ASSIGN(MockAsyncFetcher);
-  };
+  CountingUrlAsyncFetcher* counting_fetcher() { return &counting_fetcher_; }
 
   // Callback that just checks correct Done status and keeps track of whether
   // it has been called yet or not.
   class CheckCallback : public StringAsyncFetch {
    public:
     CheckCallback(const RequestContextPtr& ctx, bool expect_success,
+                  bool check_error_message,
                   bool* callback_called)
         : StringAsyncFetch(ctx),
           expect_success_(expect_success),
+          check_error_message_(check_error_message),
           callback_called_(callback_called) {
     }
 
     virtual void HandleDone(bool success) {
       *callback_called_ = true;
       CHECK_EQ(expect_success_, success);
-      ValidateMockFetcherResponse(success, true, buffer(), *response_headers());
+      ValidateMockFetcherResponse(
+          success, check_error_message_, buffer(), *response_headers());
       delete this;
     }
 
+   private:
     bool expect_success_;
+    bool check_error_message_;
     bool* callback_called_;
 
-   private:
     DISALLOW_COPY_AND_ASSIGN(CheckCallback);
   };
 
+  // This checks that response matches the mock response we setup.
   static void ValidateMockFetcherResponse(
       bool success, bool check_error_message, const GoogleString& content,
       const ResponseHeaders& response_headers);
 
-  // Do a URL fetch, and return the number of times the mock fetcher
-  // had to be run to perform the fetch.
-  // Note: You must override sync_fetcher() to return the correct fetcher.
-  int CountFetchesSync(const StringPiece& url, bool expect_success,
-                       bool check_error_message);
-  // Use an explicit fetcher (you don't need to override sync_fetcher()).
-  int CountFetchesSync(const StringPiece& url, UrlFetcher* fetcher,
-                       bool expect_success, bool check_error_message);
-
-  // Initiate an async URL fetch, and return the number of times the mock
+  // Initiate an async URL fetch, and return the number of times the counting
   // fetcher had to be run to perform the fetch.
   // Note: You must override async_fetcher() to return the correct fetcher.
   int CountFetchesAsync(const StringPiece& url, bool expect_success,
                         bool* callback_called);
 
-  // Override these to allow CountFetchesSync or Async respectively.
-  // These are not abstract (= 0) because they only need to be overridden by
-  // classes which want to use CountFetchersSync/Async without specifying the
-  // fetcher in each call.
-  virtual UrlFetcher* sync_fetcher() {
-    LOG(FATAL) << "sync_fetcher() must be overridden before use.";
-    return NULL;
-  };
+  // Like above, but doesn't use async_fetcher(), and lets you opt-out
+  // of checking of error messages
+  int CountFetchesAsync(const StringPiece& url, UrlAsyncFetcher* fetcher,
+                        bool expect_success, bool check_error_message,
+                        bool* callback_called);
+
+  // Override this to allow CountFetchesAsync w/o fetcher argument.
+  // It is not abstract (= 0) because they only need to be overridden by
+  // classes which want to use CountFetchersAsync.
   virtual UrlAsyncFetcher* async_fetcher() {
     LOG(FATAL) << "async_fetcher() must be overridden before use.";
     return NULL;
@@ -176,12 +133,17 @@ class FetcherTest : public testing::Test {
                       const ResponseHeaders& response_headers);
 
   GoogleMessageHandler message_handler_;
-  MockFetcher mock_fetcher_;
-  MockAsyncFetcher mock_async_fetcher_;
+  MockUrlFetcher mock_fetcher_;
+  WaitUrlAsyncFetcher wait_url_async_fetcher_;
+  CountingUrlAsyncFetcher counting_fetcher_;
   scoped_ptr<ThreadSystem> thread_system_;
   static SimpleStats* statistics_;
 
  private:
+  void Populate(const char* cache_control,
+                ResponseHeaders* response_headers,
+                GoogleString* content);
+
   DISALLOW_COPY_AND_ASSIGN(FetcherTest);
 };
 

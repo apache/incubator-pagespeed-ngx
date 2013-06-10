@@ -31,6 +31,7 @@ class CountingUrlAsyncFetcher::CountingFetch : public SharedAsyncFetch {
  public:
   CountingFetch(CountingUrlAsyncFetcher* counter, AsyncFetch* base_fetch)
       : SharedAsyncFetch(base_fetch), counter_(counter) {
+    ++counter_->fetch_start_count_;
   }
 
   virtual bool HandleWrite(const StringPiece& content,
@@ -68,6 +69,7 @@ void CountingUrlAsyncFetcher::Fetch(const GoogleString& url,
 
 void CountingUrlAsyncFetcher::Clear() {
   fetch_count_ = 0;
+  fetch_start_count_ = 0;
   byte_count_ = 0;
   failure_count_ = 0;
   most_recent_fetched_url_ = "";

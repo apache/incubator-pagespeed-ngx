@@ -20,7 +20,9 @@
 
 #include <map>
 #include <utility>                      // for pair
+
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -32,7 +34,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -48,6 +49,7 @@ void MockUrlFetcher::SetResponse(const StringPiece& url,
   // Note: This is a little kludgey, but if you set a normal response and
   // always perform normal GETs you won't even notice that we've set the
   // last_modified_time internally.
+  DCHECK(response_header.headers_complete());
   SetConditionalResponse(url, 0, "" , response_header, response_body);
 }
 
@@ -97,11 +99,11 @@ void MockUrlFetcher::RemoveResponse(const StringPiece& url) {
   }
 }
 
-bool MockUrlFetcher::StreamingFetchUrl(
-    const GoogleString& url, const RequestHeaders& request_headers,
-    ResponseHeaders* response_headers, Writer* response_writer,
-    MessageHandler* message_handler,
-    const RequestContextPtr& unused_request_context) {
+void MockUrlFetcher::Fetch(
+    const GoogleString& url, MessageHandler* message_handler,
+    AsyncFetch* fetch) {
+  const RequestHeaders& request_headers = *fetch->request_headers();
+  ResponseHeaders* response_headers = fetch->response_headers();
   bool ret = false;
   if (enabled_) {
     // Verify that the url and Host: header match.
@@ -141,7 +143,8 @@ bool MockUrlFetcher::StreamingFetchUrl(
         // Otherwise serve a normal 200 OK response.
         response_headers->CopyFrom(response->header());
         if (fail_after_headers_) {
-          return false;
+          fetch->Done(false);
+          return;
         }
         if (update_date_headers_) {
           CHECK(timer_ != NULL);
@@ -153,7 +156,7 @@ bool MockUrlFetcher::StreamingFetchUrl(
         if (!(response->body().empty() && omit_empty_writes_)) {
           if (!split_writes_) {
             // Normal case.
-            response_writer->Write(response->body(), message_handler);
+            fetch->Write(response->body(), message_handler);
           } else {
             // This is used to test Ajax's RecordingFetch's cache recovery.
             int mid = response->body().size() / 2;
@@ -161,10 +164,10 @@ bool MockUrlFetcher::StreamingFetchUrl(
             StringPiece head = body.substr(0, mid);
             StringPiece tail = body.substr(mid, StringPiece::npos);
             if (!(head.empty() && omit_empty_writes_)) {
-              response_writer->Write(head, message_handler);
+              fetch->Write(head, message_handler);
             }
             if (!(tail.empty() && omit_empty_writes_)) {
-              response_writer->Write(tail, message_handler);
+              fetch->Write(tail, message_handler);
             }
           }
         }
@@ -179,7 +182,15 @@ bool MockUrlFetcher::StreamingFetchUrl(
       }
     }
   }
-  return ret;
+
+  if (!ret && !error_message_.empty()) {
+    if (!response_headers->headers_complete()) {
+      response_headers->SetStatusAndReason(HttpStatus::kInternalServerError);
+    }
+    fetch->Write(error_message_, message_handler);
+  }
+
+  fetch->Done(ret);
 }
 
 }  // namespace net_instaweb

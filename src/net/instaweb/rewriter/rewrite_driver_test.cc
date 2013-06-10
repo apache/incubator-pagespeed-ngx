@@ -23,7 +23,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -1205,14 +1204,14 @@ TEST_F(RewriteDriverTest, SetSessionFetcherTest) {
 
   // Load up a different file into a second fetcher.
   // We misappropriate the response_headers from previous fetch for simplicity.
-  MockUrlFetcher mock2;
-  mock2.SetResponse(AbsolutifyUrl("a.css"), response_headers, kFetcher2Css);
+  scoped_ptr<MockUrlFetcher> mock2(new MockUrlFetcher);
+  mock2->SetResponse(AbsolutifyUrl("a.css"), response_headers, kFetcher2Css);
 
   // Switch over to new fetcher, making sure to set two of them to exercise
   // memory management. Note the synchronous mock fetcher we still have to
   // manage ourselves (as the RewriteDriver API is for async ones only).
   RewriteDriver* driver = rewrite_driver();
-  driver->SetSessionFetcher(new FakeUrlAsyncFetcher(&mock2));
+  driver->SetSessionFetcher(mock2.release());
   CountingUrlAsyncFetcher* counter =
       new CountingUrlAsyncFetcher(driver->async_fetcher());
   driver->SetSessionFetcher(counter);

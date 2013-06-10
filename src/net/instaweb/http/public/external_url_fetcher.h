@@ -20,39 +20,32 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_EXTERNAL_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_EXTERNAL_URL_FETCHER_H_
 
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
-#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class MessageHandler;
 class RequestHeaders;
-class ResponseHeaders;
-class Writer;
 
 // Runs an external command ('wget' by default, or 'curl') via popen
 // for blocking URL fetches.
 
 // TODO(vchudnov): Incorporate NetcatUrlFetcher functionality into
 // this class.
-class ExternalUrlFetcher : public UrlFetcher {
+class ExternalUrlFetcher : public UrlAsyncFetcher {
  public:
   ExternalUrlFetcher() {}
   virtual ~ExternalUrlFetcher() {}
 
   // TODO(sligocki): Allow protocol version number (e.g. HTTP/1.1)
   // and request type (e.g. GET, POST, etc.) to be specified.
-  virtual bool StreamingFetchUrl(const GoogleString& url,
-                                 const RequestHeaders& request_headers,
-                                 ResponseHeaders* response_headers,
-                                 Writer* writer,
-                                 MessageHandler* message_handler,
-                                 const RequestContextPtr& request_context);
-
+  virtual void Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch);
 
   // Default user agent to use.
   static const char kDefaultUserAgent[];

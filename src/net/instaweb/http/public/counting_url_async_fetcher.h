@@ -46,7 +46,11 @@ class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 
+  // number of completed fetches.
   int fetch_count() const { return fetch_count_; }
+
+  // number of started fetches
+  int fetch_start_count() const { return fetch_start_count_; }
   int byte_count() const { return byte_count_; }
   int failure_count() const { return failure_count_; }
   GoogleString most_recent_fetched_url() const {
@@ -61,6 +65,7 @@ class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
  private:
   UrlAsyncFetcher* fetcher_;
   int fetch_count_;
+  int fetch_start_count_;
   int byte_count_;
   int failure_count_;
   GoogleString most_recent_fetched_url_;

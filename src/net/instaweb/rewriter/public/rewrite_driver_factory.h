@@ -55,7 +55,6 @@ class Statistics;
 class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
-class UrlFetcher;
 class UrlNamer;
 class UsageDataReporter;
 class UserAgentMatcher;
@@ -109,8 +108,7 @@ class RewriteDriverFactory {
   // be subsequently written so they don't have to be fetched from
   // the Internet again.
   //
-  // You must set the slurp directory prior to calling ComputeUrlFetcher
-  // or ComputeUrlAsyncFetcher.
+  // You must set the slurp directory prior to calling ComputeUrlAsyncFetcher.
   void set_slurp_directory(const StringPiece& directory);
   void set_slurp_read_only(bool read_only);
   void set_slurp_print_urls(bool read_only);
@@ -119,18 +117,14 @@ class RewriteDriverFactory {
   // fecher to return cached versions.
   void set_force_caching(bool u) { force_caching_ = u; }
 
-  // You should either call set_base_url_fetcher,
-  // set_base_url_async_fetcher, or neither.  Do not set both.  If you
-  // want to enable real async fetching, because you are serving or
-  // want to model live traffic, then call set_base_url_async_fetcher
-  // before calling url_fetcher.
+  // You can call set_base_url_async_fetcher to set up real async fetching
+  // for real serving or for modeling of live traffic.
   //
   // These fetchers may be used directly when serving traffic, or they
   // may be aggregated with other fetchers (e.g. for slurping).
   //
-  // You cannot set either base URL fetcher once ComputeUrlFetcher has
+  // You cannot set the base URL fetcher once ComputeUrlAsyncFetcher has
   // been called.
-  void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
   // Takes ownership of distributed_fetcher.
   void set_base_distributed_async_fetcher(UrlAsyncFetcher* distributed_fetcher);
@@ -152,7 +146,7 @@ class RewriteDriverFactory {
   RewriteOptions* default_options() { return default_options_.get(); }
 
   // These accessors are *not* thread-safe.  They must be called once prior
-  // to forking threads, e.g. via ComputeUrlFetcher().
+  // to forking threads, e.g. via ComputeUrlAsyncFetcher().
   Timer* timer();
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolCategory pool);
@@ -163,7 +157,6 @@ class RewriteDriverFactory {
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
   // CreateServerContext.
-  virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
   virtual UrlAsyncFetcher* ComputeDistributedFetcher();
 
@@ -315,7 +308,6 @@ class RewriteDriverFactory {
   // for each of these methods, although they may be overridden via set_
   // methods above.  These methods all instantiate objects and transfer
   // ownership to the caller.
-  virtual UrlFetcher* DefaultUrlFetcher() = 0;
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;
   virtual MessageHandler* DefaultHtmlParseMessageHandler() = 0;
   virtual MessageHandler* DefaultMessageHandler() = 0;
@@ -396,10 +388,8 @@ class RewriteDriverFactory {
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;
   scoped_ptr<FileSystem> file_system_;
-  UrlFetcher* url_fetcher_;
   UrlAsyncFetcher* url_async_fetcher_;
   UrlAsyncFetcher* distributed_async_fetcher_;
-  scoped_ptr<UrlFetcher> base_url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;

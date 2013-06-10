@@ -18,10 +18,12 @@
 
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -29,7 +31,6 @@
 #include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -38,25 +39,29 @@ namespace net_instaweb {
 
 namespace {
 
-// Class for encapuslating objects needed to execute fetches.
+// Class for encapsulating objects needed to execute fetches.
 class MockFetchContainer {
  public:
-  MockFetchContainer(UrlFetcher* fetcher, ThreadSystem* thread_system)
+  MockFetchContainer(UrlAsyncFetcher* fetcher, ThreadSystem* thread_system)
       : fetcher_(fetcher),
-        response_writer_(&response_body_),
-        thread_system_(thread_system) {}
-
-  bool Fetch(const GoogleString& url) {
-    return fetcher_->StreamingFetchUrl(
-        url, request_headers_, &response_headers_, &response_writer_, &handler_,
-        RequestContext::NewTestRequestContext(thread_system_));
+        fetch_(RequestContext::NewTestRequestContext(thread_system),
+               &response_body_),
+        thread_system_(thread_system) {
+    fetch_.set_request_headers(&request_headers_);
+    fetch_.set_response_headers(&response_headers_);
   }
 
-  UrlFetcher* fetcher_;
+  bool Fetch(const GoogleString& url) {
+    fetcher_->Fetch(url, &handler_, &fetch_);
+    EXPECT_TRUE(fetch_.done());
+    return fetch_.success();
+  }
+
+  UrlAsyncFetcher* fetcher_;
+  GoogleString response_body_;
   RequestHeaders request_headers_;
   ResponseHeaders response_headers_;
-  GoogleString response_body_;
-  StringWriter response_writer_;
+  StringAsyncFetch fetch_;
   GoogleMessageHandler handler_;
   ThreadSystem* thread_system_;
 
@@ -252,12 +257,23 @@ TEST_F(MockUrlFetcherTest, UpdateHeaderDates) {
 TEST_F(MockUrlFetcherTest, FailAfterBody) {
   const char kUrl[] = "http://www.example.com/foo.css";
   ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
   RequestHeaders request_headres;
   fetcher_.SetResponse(kUrl, response_headers, "hello");
   fetcher_.SetResponseFailure(kUrl);
   MockFetchContainer fetch(&fetcher_, thread_system_.get());
   EXPECT_FALSE(fetch.Fetch(kUrl));
   EXPECT_EQ("hello", fetch.response_body_);
+}
+
+TEST_F(MockUrlFetcherTest, ErrorMessage) {
+  const char kError[] = "404 Sad Robot";
+  fetcher_.set_fail_on_unexpected(false);
+  fetcher_.set_error_message(kError);
+  RequestHeaders request_headres;
+  MockFetchContainer fetch(&fetcher_, thread_system_.get());
+  EXPECT_FALSE(fetch.Fetch("http://example.com/404"));
+  EXPECT_EQ(kError, fetch.response_body_);
 }
 
 }  // namespace
