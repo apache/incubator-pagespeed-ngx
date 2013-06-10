@@ -28,7 +28,6 @@
 #include "ngx_url_async_fetcher.h"
 #include "pthread_shared_mem.h"
 
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
@@ -36,13 +35,14 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
+#include "net/instaweb/util/public/posix_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
-#include "net/instaweb/util/public/posix_timer.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -381,14 +381,10 @@ AllocateAndInitSharedMemStatistics(
 
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
-  RewriteDriverFactory::InitStats(statistics);
+  SystemRewriteDriverFactory::InitStats(statistics);
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
-  SystemCaches::InitStats(statistics);
-  SerfUrlAsyncFetcher::InitStats(statistics);
-  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
-  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 
   statistics->AddVariable(kShutdownCount);
 }
