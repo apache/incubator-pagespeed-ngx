@@ -1,0 +1,23 @@
+URL: https://code.google.com/p/rdestl/
+Version: r225
+License: MIT
+License File: LICENSE
+
+Description
+Modified and trimmed version of rdestl
+
+Local Modifications:
+
+hash_map.h has been copied to rdestl_hash_map.h with 3 modifications:
+  1. References to rdp::pair has been replaced by std::pair as that
+     class is exposed at the interface.
+
+  2. Tabs & trailing whitespace were removed and the file re-indented by Emacs.
+
+  3. dos2unix to remove trailing CRs.
+
+The original hash_map.h is included verbatim.
+
+Unused .cpp and .h files that duplicate STL functionality have been removed.
+
+
