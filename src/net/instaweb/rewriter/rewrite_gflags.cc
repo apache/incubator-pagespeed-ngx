@@ -299,6 +299,10 @@ DEFINE_int32(max_prefetch_js_elements,
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js.");
 
+DEFINE_bool(disable_rewrite_on_no_transform, true,
+            "Disable any rewrite optimizations if the header contains "
+            "no-transform cache-control.");
+
 DEFINE_bool(lazyload_highres_images, false,
             "Enables experimental lazy load of high res images.");
 
@@ -661,6 +665,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_defer_js_experimental")) {
     options->set_enable_defer_js_experimental(
         FLAGS_enable_defer_js_experimental);
+  }
+  if (WasExplicitlySet("disable_rewrite_on_no_transform")) {
+    options->set_disable_rewrite_on_no_transform(
+        FLAGS_disable_rewrite_on_no_transform);
   }
   if (WasExplicitlySet("flush_more_resources_early_if_time_permits")) {
     options->set_flush_more_resources_early_if_time_permits(

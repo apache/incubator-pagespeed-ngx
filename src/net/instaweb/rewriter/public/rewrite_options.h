@@ -196,6 +196,7 @@ class RewriteOptions {
     kCssOutlineMinBytes,
     kCssPreserveURLs,
     kDefaultCacheHtml,
+    kDisableRewriteOnNoTransform,
     kDistributedRewriteKey,
     kDistributedRewriteServers,
     kDistributedRewriteTimeoutMs,
@@ -1854,6 +1855,13 @@ class RewriteOptions {
     return enable_defer_js_experimental_.value();
   }
 
+  void set_disable_rewrite_on_no_transform(bool x) {
+    set_option(x, &disable_rewrite_on_no_transform_);
+  }
+  bool disable_rewrite_on_no_transform() const {
+    return disable_rewrite_on_no_transform_.value();
+  }
+
   void set_enable_cache_purge(bool x) {
     set_option(x, &enable_cache_purge_);
   }
@@ -3105,6 +3113,9 @@ class RewriteOptions {
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
+
+  // Option to disable rewrite optimizations on no-transform header.
+  Option<bool> disable_rewrite_on_no_transform_;
 
   // Enables the Cache Purge API.  This is not on by default because
   // it requires saving input URLs to each metadata cache entry to

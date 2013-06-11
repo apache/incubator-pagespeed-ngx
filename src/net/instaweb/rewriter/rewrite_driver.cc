@@ -1060,6 +1060,8 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
       rewrite_options->ImageOptimizationEnabled() ||
       rewrite_options->Enabled(RewriteOptions::kResizeImages) ||
+      rewrite_options->Enabled(
+          RewriteOptions::kResizeToRenderedImageDimensions) ||
       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
       rewrite_options->Enabled(RewriteOptions::kJpegSubsampling) ||

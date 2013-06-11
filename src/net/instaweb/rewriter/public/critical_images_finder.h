@@ -27,9 +27,11 @@
 namespace net_instaweb {
 
 class CriticalImages;
+class RenderedImages;
 class RewriteDriver;
 class Statistics;
 class Variable;
+
 
 // The instantiated CriticalImagesFinder is held by ServerContext, meaning
 // there is only 1 per server. CriticalImagesInfo stores all of the request
@@ -55,6 +57,9 @@ class CriticalImagesFinder {
   static const char kCriticalImagesExpiredCount[];
   static const char kCriticalImagesNotFoundCount[];
   static const char kCriticalImagesPropertyName[];
+  // Property name for the rendered image dimensions retreived from webkit
+  // render response for the page.
+  static const char kRenderedImageDimensionsProperty[];
 
   explicit CriticalImagesFinder(Statistics* stats);
   virtual ~CriticalImagesFinder();
@@ -138,6 +143,10 @@ class CriticalImagesFinder {
   // Returns true if the critical images have been extracted from pcache,
   // false otherwise. This is virtual only to be overridden in tests.
   virtual bool IsSetFromPcache(RewriteDriver* driver);
+
+  // Extracts rendered dimensions from property cache.
+  virtual RenderedImages* ExtractRenderedImageDimensionsFromCache(
+      RewriteDriver* driver);
 
  protected:
   // Gets critical images if present in the property cache and updates the

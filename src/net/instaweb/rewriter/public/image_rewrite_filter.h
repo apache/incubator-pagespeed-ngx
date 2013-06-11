@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -48,6 +49,9 @@ class UrlSegmentEncoder;
 class Variable;
 class WorkBound;
 struct ContentType;
+
+typedef std::map<GoogleString, std::pair<int32, int32> >
+    RenderedImageDimensionsMap;
 
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to
@@ -110,6 +114,10 @@ class ImageRewriteFilter : public RewriteFilter {
       int64 image_inline_max_bytes, const CachedResult* cached_result,
       ResourceSlot* slot, GoogleString* data_url);
 
+  // Setup a map for RenderedImages and their dimensions.
+  void SetupRenderedImageDimensionsMap(
+      const RenderedImages& rendered_images);
+
   // The valid contents of a dimension attribute on an image element have one of
   // the following forms: "45%" "45%px" "+45.0%" [45% of browser width; we can't
   // handle this] "45", "+45", "45px", "45arbitraryjunk" "45px%" [45 pixels
@@ -154,6 +162,7 @@ class ImageRewriteFilter : public RewriteFilter {
   //
   // Returns the dimensions to resize to in *desired_dimensions.
   bool ShouldResize(const ResourceContext& context,
+                    const GoogleString& url,
                     Image* image,
                     ImageDim* desired_dimensions);
 
@@ -212,7 +221,8 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Populates width and height with the attributes specified in the
   // image tag (including in an inline style attribute).
-  void GetDimensions(HtmlElement* element, ImageDim* page_dim);
+  void GetDimensions(HtmlElement* element, ImageDim* page_dim,
+                     const HtmlElement::Attribute* src);
 
   // Returns true if there is either a width or height attribute specified,
   // even if they're not parsable.
@@ -226,7 +236,7 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Checks if image is critical to generate low res image for the given image.
   // An image is considered critical if it is in the critical list as determined
-  // by CriticalImageFinder. Images are considered critical if the platform
+  // by CriticalImagesFinder. Images are considered critical if the platform
   // lacks a CriticalImageFinder implementation.
   bool IsHtmlCriticalImage(StringPiece image_url) const;
 
@@ -241,6 +251,8 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Statistics
 
+  // A map for rendered images extracted from CriticalImagesFinder
+  scoped_ptr<RenderedImageDimensionsMap> rendered_images_map_;
   // # of images rewritten successfully.
   Variable* image_rewrites_;
   // # of images that we decided not to rewrite because of size constraint.

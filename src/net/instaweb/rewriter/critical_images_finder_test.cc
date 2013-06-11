@@ -20,8 +20,10 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -369,6 +371,28 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     EXPECT_TRUE(IsHtmlCriticalImage("imgC.jpeg"));
     EXPECT_TRUE(IsCssCriticalImage("imgD.jpeg"));
   }
+}
+
+TEST_F(CriticalImagesFinderTest, TestRenderedImageExtractionFromPropertyCache) {
+  RenderedImages rendered_images;
+  RenderedImages_Image* images = rendered_images.add_image();
+  images->set_src("imageA.jpeg");
+  images->set_rendered_width(40);
+  images->set_rendered_height(54);
+  PropertyPage* page = rewrite_driver()->property_page();
+  UpdateInPropertyCache(rendered_images,
+                        finder()->GetCriticalImagesCohort(),
+                        finder()->kRenderedImageDimensionsProperty,
+                        false /* don't write cohort */, page);
+  // Check if Finder extracts properly.
+  scoped_ptr<RenderedImages> extracted_rendered_images(
+          finder()->ExtractRenderedImageDimensionsFromCache(rewrite_driver()));
+
+  EXPECT_EQ(1, extracted_rendered_images->image_size());
+  EXPECT_STREQ("imageA.jpeg",
+               extracted_rendered_images->image(0).src());
+  EXPECT_EQ(40, extracted_rendered_images->image(0).rendered_width());
+  EXPECT_EQ(54, extracted_rendered_images->image(0).rendered_height());
 }
 
 }  // namespace net_instaweb

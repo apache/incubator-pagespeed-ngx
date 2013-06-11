@@ -64,7 +64,9 @@ class LRUCacheBase {
  public:
   class Iterator {
    public:
-    Iterator(const typename EntryList::const_iterator& iter) : iter_(iter) {}
+    explicit Iterator(const typename EntryList::const_reverse_iterator& iter)
+        : iter_(iter) {
+    }
 
     void operator++() { ++iter_; }
     bool operator==(const Iterator& src) const { return iter_ == src.iter_; }
@@ -80,7 +82,7 @@ class LRUCacheBase {
     }
 
    private:
-    typename EntryList::const_iterator iter_;
+    typename EntryList::const_reverse_iterator iter_;
   };
 
   LRUCacheBase(size_t max_size, ValueHelper* value_helper)
@@ -206,11 +208,6 @@ class LRUCacheBase {
     }
   }
 
-  void SwapData(LRUCacheBase* that) {
-    map_.swap(that->map_);
-    lru_ordered_list_.swap(that->lru_ordered_list_);
-  }
-
   void MergeStats(const LRUCacheBase& src) {
     current_bytes_in_cache_ += src.current_bytes_in_cache_;
     num_evictions_ += src.num_evictions_;
@@ -290,8 +287,9 @@ class LRUCacheBase {
     num_deletes_ = 0;
   }
 
-  Iterator Begin() const { return lru_ordered_list_.begin(); }
-  Iterator End() const { return lru_ordered_list_.end(); }
+  // Iterators for walking cache entires from oldest to youngest.
+  Iterator Begin() const { return Iterator(lru_ordered_list_.rbegin()); }
+  Iterator End() const { return Iterator(lru_ordered_list_.rend()); }
 
  private:
   // TODO(jmarantz): consider accounting for overhead for list cells, map

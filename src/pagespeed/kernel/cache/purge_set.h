@@ -25,9 +25,12 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache_base.h"
 
 namespace net_instaweb {
+
+
 
 // Maintains a bounded collection of cache-purge records.  These can
 // be used to validate data read from a cache.
@@ -45,19 +48,30 @@ class PurgeSet {
  public:
   typedef Lru::Iterator Iterator;
 
+  // Used for sanity checking timestamps read from the cache.flush file,
+  // allowing for small skew and system clock adjustments.  Setting this
+  // to 10 minutes means that we can prevent any cache entries from
+  // being valid for 10 minutes, disabling whatever functionality is
+  // dependent on that.
+  static const int64 kClockSkewAllowanceMs = 10 * Timer::kMinuteMs;
+
   explicit PurgeSet(size_t max_size);
   ~PurgeSet();
 
   // Flushes any item in the cache older than timestamp_ms.
-  void UpdateGlobalInvalidationTimestampMs(int64 timestamp_ms) {
-    global_invalidation_timestamp_ms_ =
-        std::max(timestamp_ms, global_invalidation_timestamp_ms_);
-  }
+  //
+  //
+  // Returns false if this request represents an excessive warp back in
+  // time.
+  bool UpdateGlobalInvalidationTimestampMs(int64 timestamp_ms);
 
   // Adds a new cache purge record to the set.  If we spill over our
   // invalidation limit, we will reset the global cache purge-point based
   // on the evicted node.
-  void Put(const GoogleString& key, int64 timestamp_ms);
+  //
+  // Returns false if this request represents an excessive warp back in
+  // time.
+  bool Put(const GoogleString& key, int64 timestamp_ms);
 
   // Merge two invalidation records.
   void Merge(const PurgeSet& src);
@@ -94,8 +108,7 @@ class PurgeSet {
     // Update global invalidation timestamp whenever a purge record is
     // evicted to guarantee that that resource remains purged.
     void EvictNotify(int64 evicted_record_timestamp_ms) {
-      purge_set_->UpdateGlobalInvalidationTimestampMs(
-          evicted_record_timestamp_ms);
+      purge_set_->EvictNotify(evicted_record_timestamp_ms);
     }
 
     // Only replace purge records if the new one is newer.
@@ -111,9 +124,40 @@ class PurgeSet {
     PurgeSet* purge_set_;
   };
 
+  friend class InvalidationTimestampHelper;
+
+  void EvictNotify(int64 evicted_record_timestamp_ms);
+
+  // Determines whether this timestamp is monotonically increasing from
+  // previous ones encountered.  Small amounts of time-reversal are handled
+  // by setting them to a recently observed time.  Large amounts of
+  // time-reversal cause false to be returned.
+  //
+  // Here several scenarios:
+  //   1. Time goes backward by a few mintues or less:
+  //      a. On purge requests, force monotonically increasing time.
+  //      b. IsValid: we may report false negatives, disabling PageSpeed
+  //         for a few minutes.
+  //   2. Time moves backward by a large amount (>10 minutes):
+  //      a. Purge requests: rejected until time is corrected.  The only
+  //         sure-fire remedy is to delete all caches, restart memcached
+  //         and pagespeed servers.
+  //      b. IsValid: returns false, disabling PageSpeed until the situation
+  //         is corrected.  We view it as unacceptable to bring purged cache
+  //         entries back from the dead.
+  // TODO(jmarantz): add a statistic that gets bumped from IsValid when
+  // a far-future expires is detected.
+  bool SanitizeTimestamp(int64* timestamp_ms);
+
   // Global invalidation timestamp value. Anything with a timestamp older than
   // this is considered purged already.
   int64 global_invalidation_timestamp_ms_;
+
+  // last_invalidation_timestamp_ms is used to keep the data structure invariant
+  // in the face of time jumping backwards.  That can happen if someone resets
+  // the system-clock or there is a correction due to NTP sync, etc.
+  int64 last_invalidation_timestamp_ms_;
+
   InvalidationTimestampHelper helper_;
   scoped_ptr<Lru> lru_;
 

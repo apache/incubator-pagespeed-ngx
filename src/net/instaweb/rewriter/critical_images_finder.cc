@@ -25,10 +25,13 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -160,6 +163,9 @@ const char CriticalImagesFinder::kCriticalImagesExpiredCount[] =
 
 const char CriticalImagesFinder::kCriticalImagesNotFoundCount[] =
     "critical_images_not_found_count";
+
+const char CriticalImagesFinder::kRenderedImageDimensionsProperty[] =
+    "rendered_image_dimensions";
 
 CriticalImagesFinder::CriticalImagesFinder(Statistics* statistics) {
   critical_images_valid_count_ = statistics->GetVariable(
@@ -361,6 +367,35 @@ bool CriticalImagesFinder::UpdateCriticalImages(
   }
   // We updated if either StringSet* was set.
   return (html_critical_images != NULL || css_critical_images != NULL);
+}
+
+RenderedImages* CriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
+    RewriteDriver* driver) {
+  PropertyCacheDecodeResult pcache_status;
+  scoped_ptr<RenderedImages> result(
+      DecodeFromPropertyCache<RenderedImages>(
+          driver,
+          GetCriticalImagesCohort(),
+          kRenderedImageDimensionsProperty,
+          driver->options()->finder_properties_cache_expiration_time_ms(),
+          &pcache_status));
+  switch (pcache_status) {
+    case kPropertyCacheDecodeNotFound:
+      driver->message_handler()->Message(
+          kInfo, "RenderedImage not found in cache");
+      break;
+    case kPropertyCacheDecodeExpired:
+      driver->message_handler()->Message(
+          kInfo, "RenderedImage cache entry expired");
+      break;
+    case kPropertyCacheDecodeParseError:
+      driver->message_handler()->Message(
+          kWarning, "Unable to parse Critical RenderedImage PropertyValue");
+      break;
+    case kPropertyCacheDecodeOk:
+      break;
+  }
+  return result.release();
 }
 
 CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(

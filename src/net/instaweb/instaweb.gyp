@@ -905,6 +905,7 @@
         'instaweb_util',
         'instaweb_core.gyp:instaweb_htmlparse_core',
         'instaweb_flush_early_pb',
+        'instaweb_rendered_image_pb',
         'instaweb_rewriter_html_gperf',
         'instaweb_rewriter_html_option_gperf',
         'instaweb_rewriter_pb',

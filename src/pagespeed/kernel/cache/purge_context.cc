@@ -36,13 +36,6 @@ namespace net_instaweb {
 
 namespace {
 
-// Used for sanity checking timestamps read from the cache.flush file,
-// allowing for small skew and system clock adjustments.  Setting this
-// to 10 minutes means that we can prevent any cache entries from
-// being valid for 10 minutes, disabling whatever functionality is
-// dependent on that.
-const int64 kClockSkewAllowance = 10 * Timer::kMinuteMs;
-
 const int64 kStealLockAfterMs = 2 * Timer::kSecondMs;
 const int64 kTimeoutMs = 3 * Timer::kSecondMs;
 const int kMaxContentionRetries = 2;
@@ -101,7 +94,7 @@ int64 PurgeContext::ParseAndValidateTimestamp(
     file_parse_failures_->Add(1);
     timestamp_ms = 0;
   } else if ((timestamp_ms < 0) ||
-             (timestamp_ms > now_ms + kClockSkewAllowance)) {
+             (timestamp_ms > now_ms + PurgeSet::kClockSkewAllowanceMs)) {
     GoogleString converted_time_string;
     ConvertTimeToString(timestamp_ms, &converted_time_string);
     message_handler_->Info(filename_.c_str(), 1,

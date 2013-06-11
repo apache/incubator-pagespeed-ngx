@@ -18,10 +18,16 @@
 
 #include "pagespeed/kernel/cache/purge_set.h"
 
+#include <vector>
+
+#include "base/logging.h"
+#include "pagespeed/kernel/base/string_util.h"
+
 namespace net_instaweb {
 
 PurgeSet::PurgeSet(size_t max_size)
     : global_invalidation_timestamp_ms_(0),
+      last_invalidation_timestamp_ms_(0),
       helper_(this),
       lru_(new Lru(max_size, &helper_)) {
 }
@@ -33,6 +39,55 @@ void PurgeSet::Clear() {
   lru_->Clear();
   global_invalidation_timestamp_ms_ = 0;
 }
+
+namespace {
+
+// Maintains temporary storage of keys and values for executing a merge.
+// Note that the keys may be of non-trivial size and we'd prefer not
+// to copy the keys from the merge source, but we'll need to copy the
+// keys from this so we can clear it before re-inserting the data in
+// merged order.
+class MergeContext {
+ public:
+  MergeContext(int64 global_invalidation_timestamp_ms,
+               int64 this_num_elements,
+               int64 src_num_elements)
+      : global_invalidation_timestamp_ms_(global_invalidation_timestamp_ms) {
+    int total_size = this_num_elements + src_num_elements;
+    key_copies_.reserve(this_num_elements);
+    keys_.reserve(total_size);
+    values_.reserve(total_size);
+  }
+
+  void AddPurgeCopyingKey(const GoogleString& key, int64 value) {
+    if (value > global_invalidation_timestamp_ms_) {
+      key_copies_.push_back(key);
+      keys_.push_back(&key_copies_.back());
+      values_.push_back(value);
+    }
+  }
+
+  void AddPurgeSharingKey(const GoogleString& key, int64 value) {
+    if (value > global_invalidation_timestamp_ms_) {
+      keys_.push_back(&key);
+      values_.push_back(value);
+    }
+  }
+
+  int size() const { return keys_.size(); }
+  const GoogleString& key(int index) const { return *keys_[index]; }
+  int64 value(int index) const { return values_[index]; }
+
+ private:
+  int64 global_invalidation_timestamp_ms_;
+  StringVector key_copies_;
+  ConstStringStarVector keys_;
+  std::vector<int64> values_;
+
+  DISALLOW_COPY_AND_ASSIGN(MergeContext);
+};
+
+}  // namespace
 
 void PurgeSet::Merge(const PurgeSet& src) {
   // Note that this can almost be implemented using simple ordered
@@ -46,52 +101,102 @@ void PurgeSet::Merge(const PurgeSet& src) {
   // don't have an OutputIterator for our Lru object which must keep two
   // data structures (list & map) synced.  And it's a hard to provide
   // all the STL output-iterator semantics needed for std::merge to work.
+  // We could use std::merge into the vector but note here how we treat
+  // the values from this differently: we need to copy the strings, whereas
+  // for src we can just use StringPiece.
   //
-  // So instead we have a simple merge-sort into 'target', which we
-  // than swap with this->lru_.  This is O(this->size + src.size()).
-  // We might be able to contrive something more sophisticated that's
-  // just O(src.size() + log(this->size())), but then we'd have to
-  // re-do the keep-2-data-structures-in-sync code in LRUCacheBase
-  // using two maps instead of a list and a map.
+  // So instead we have a simple merge-sort into some temp arrays,
+  // clear the LRU cache, then re-populate it from the arrays.  This
+  // is O(this->size + src.size()).  We might be able to contrive
+  // something more sophisticated that's just O(src.size() +
+  // log(this->size())), but then we'd have to re-do the
+  // keep-2-data-structures-in-sync code in LRUCacheBase using two
+  // maps instead of a list and a map.
   //
   // However, the intended usage for this involves re-reading the entire
   // contents from a file on any change in order to keep multiple processes
   // in sync, so quibbling about an extra O(n) walk thorugh the in-memory
   // data does not seem worthwhile.
-
-  PurgeSet target(lru_->max_bytes_in_cache());
-  target.UpdateGlobalInvalidationTimestampMs(
+  global_invalidation_timestamp_ms_ = std::max(
+      global_invalidation_timestamp_ms_,
       src.global_invalidation_timestamp_ms_);
+  MergeContext merge_context(global_invalidation_timestamp_ms_,
+                             lru_->num_elements(),
+                             src.lru_->num_elements());
   Lru::Iterator src_iter = src.lru_->Begin(), src_end = src.lru_->End();
   Lru::Iterator this_iter = lru_->Begin(), this_end = lru_->End();
   while ((src_iter != src_end) && (this_iter != this_end)) {
     if (src_iter.Value() < this_iter.Value()) {
-      target.Put(src_iter.Key(), src_iter.Value());
+      merge_context.AddPurgeSharingKey(src_iter.Key(), src_iter.Value());
       ++src_iter;
     } else {
-      target.Put(this_iter.Key(), this_iter.Value());
+      merge_context.AddPurgeCopyingKey(this_iter.Key(), this_iter.Value());
       ++this_iter;
     }
   }
 
   for (; src_iter != src_end; ++src_iter) {
-    target.Put(src_iter.Key(), src_iter.Value());
+    merge_context.AddPurgeSharingKey(src_iter.Key(), src_iter.Value());
   }
   for (; this_iter != this_end; ++this_iter) {
-    target.Put(this_iter.Key(), this_iter.Value());
+    merge_context.AddPurgeCopyingKey(this_iter.Key(), this_iter.Value());
   }
-  target.lru_->SwapData(lru_.get());
-  lru_->MergeStats(*src.lru_);
 
-  UpdateGlobalInvalidationTimestampMs(target.global_invalidation_timestamp_ms_);
+  lru_->Clear();
+  lru_->ClearStats();
+  last_invalidation_timestamp_ms_ = global_invalidation_timestamp_ms_;
+  for (int i = 0, n = merge_context.size(); i < n; ++i) {
+    CHECK(Put(merge_context.key(i), merge_context.value(i)));
+  }
 }
 
-void PurgeSet::Put(const GoogleString& key, int64 timestamp_ms) {
+bool PurgeSet::UpdateGlobalInvalidationTimestampMs(int64 timestamp_ms) {
+  if (!SanitizeTimestamp(&timestamp_ms)) {
+    return false;
+  }
+  global_invalidation_timestamp_ms_ =
+      std::max(timestamp_ms, global_invalidation_timestamp_ms_);
+  return true;
+}
+
+void PurgeSet::EvictNotify(int64 evicted_record_timestamp_ms) {
+  // We do not call UpdateGlobalInvalidationTimestampMs because we don't
+  // want to silently sanitize the global timestamp to the latest known
+  // timestamp.
+  DCHECK_GE(last_invalidation_timestamp_ms_, evicted_record_timestamp_ms);
+  global_invalidation_timestamp_ms_ =
+      std::max(evicted_record_timestamp_ms, global_invalidation_timestamp_ms_);
+}
+
+bool PurgeSet::Put(const GoogleString& key, int64 timestamp_ms) {
+  if (!SanitizeTimestamp(&timestamp_ms)) {
+    return true;
+  }
   // Ignore invalidations of individual URLs predating the global
   // invalidation timestamp.
   if (timestamp_ms > global_invalidation_timestamp_ms_) {
     lru_->Put(key, &timestamp_ms);
   }
+  return true;
+}
+
+bool PurgeSet::SanitizeTimestamp(int64* timestamp_ms) {
+  int64 amount_in_past_ms = last_invalidation_timestamp_ms_ - *timestamp_ms;
+  if (amount_in_past_ms <= 0) {
+    // Time is moving forward.  All is well.
+    last_invalidation_timestamp_ms_ = *timestamp_ms;
+  } else if (amount_in_past_ms <= kClockSkewAllowanceMs) {
+    // A small clock-skew was detected.  Simply clamp it to our last
+    // known good timestamp, and accept the fact that this may invalidate
+    // a bit into the future.
+    *timestamp_ms = last_invalidation_timestamp_ms_;
+  } else {
+    // Time has moved backward quite a bit.  There is no clear corrective
+    // action that doesn't risk leaving far-future invalidations
+    // in our system, so reject the request.
+    return false;
+  }
+  return true;
 }
 
 bool PurgeSet::IsValid(const GoogleString& key, int64 timestamp_ms) const {

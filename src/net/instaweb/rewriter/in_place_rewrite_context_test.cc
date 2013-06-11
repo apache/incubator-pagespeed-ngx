@@ -938,6 +938,34 @@ TEST_F(InPlaceRewriteContextTest, WaitForOptimizeNoTransform) {
   CheckWarmCache("second_fetch_4");
 }
 
+TEST_F(InPlaceRewriteContextTest, OptimizeOnNoTransformIfOptionFalse) {
+  options()->set_disable_rewrite_on_no_transform(false);
+  Init();
+  FetchAndCheckResponse(cache_jpg_notransform_url_, cache_body_, true,
+                        ttl_ms_, NULL, start_time_ms());
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // into cache. Also the resource gets rewritten and the rewritten resource
+  // gets inserted into cache.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_inserts());
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  ResetHeadersAndStats();
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  FetchAndCheckResponse(cache_jpg_notransform_url_, "good:ic", true,
+                        ttl_ms_/2, etag_, start_time_ms() + ttl_ms_/2);
+  // Second fetch hits the metadata cache and the rewritten resource is served
+  // out.
+  CheckWarmCache("second_fetch_notransform");
+}
+
 TEST_F(InPlaceRewriteContextTest, WaitForOptimizeTimeout) {
   // Confirm that rewrite deadlines cause the original resource to be returned
   // (but caches the optimized) even if in_place_wait_for_optimize is on.

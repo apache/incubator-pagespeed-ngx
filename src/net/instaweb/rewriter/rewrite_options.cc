@@ -1033,6 +1033,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): eliminate experiment or document.
   AddBaseProperty(
+      true,   // By default, don't optimize resource if no-transform is set.
+      &RewriteOptions::disable_rewrite_on_no_transform_, "drnt",
+      kDisableRewriteOnNoTransform,
+      kDirectoryScope,
+      NULL);
+  AddBaseProperty(
       false, &RewriteOptions::enable_cache_purge_, "euci",
       kEnableCachePurge,
       kServerScope,

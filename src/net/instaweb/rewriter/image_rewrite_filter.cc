@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -41,6 +42,7 @@
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -85,6 +87,18 @@ int64 DetermineImageOptions(
         std::min(quality, small_screen_value);
   }
   return quality;
+}
+
+int64 GetPageWidth(const int64 page_height,
+                   const int64 image_width,
+                   const int64 image_height) {
+  return (page_height * image_width + image_height / 2) / image_height;
+}
+
+int64 GetPageHeight(const int64 page_width,
+                    const int64 image_height,
+                    const int64 image_width) {
+  return (page_width * image_height + image_width / 2) / image_width;
 }
 
 }  // namespace
@@ -522,11 +536,33 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddHistogram(kImageWebpOpaqueFailureMs);
 }
 
+void ImageRewriteFilter::SetupRenderedImageDimensionsMap(
+    const RenderedImages& rendered_images) {
+  RenderedImageDimensionsMap* map = new RenderedImageDimensionsMap;
+  for (int i = 0; i < rendered_images.image_size(); ++i) {
+    const RenderedImages_Image& images = rendered_images.image(i);
+    (*map)[images.src()] = std::make_pair(
+        images.rendered_width(), images.rendered_height());
+  }
+  rendered_images_map_.reset(map);
+}
+
 void ImageRewriteFilter::StartDocumentImpl() {
   image_counter_ = 0;
   inlinable_urls_.clear();
   driver_->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::kImageCompressionId, RewriterHtmlApplication::ACTIVE);
+  rendered_images_map_.reset(NULL);
+  if (driver_->options()->Enabled(
+      RewriteOptions::kResizeToRenderedImageDimensions)) {
+    CriticalImagesFinder* finder =
+        driver_->server_context()->critical_images_finder();
+    scoped_ptr<RenderedImages> rendered_images(
+        finder->ExtractRenderedImageDimensionsFromCache(driver_));
+    if (rendered_images != NULL) {
+      SetupRenderedImageDimensionsMap(*rendered_images);
+    }
+  }
 }
 
 // Allocate and initialize CompressionOptions object based on RewriteOptions and
@@ -608,7 +644,7 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
   // desired_image_dims later based on actual image size.
   ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
   const ImageDim* post_resize_dim = &image_dim;
-  if (ShouldResize(*resource_context, image, desired_dim)) {
+  if (ShouldResize(*resource_context, url, image, desired_dim)) {
     const char* message;  // Informational message for logging only.
     if (image->ResizeTo(*desired_dim)) {
       post_resize_dim = desired_dim;
@@ -637,55 +673,75 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
 //
 // Returns the dimensions to resize to in *desired_dimensions.
 bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
+                                      const GoogleString& url,
                                       Image* image,
                                       ImageDim* desired_dim) {
   const RewriteOptions* options = driver_->options();
-  if (!options->Enabled(RewriteOptions::kResizeImages)) {
+  if (!options->Enabled(RewriteOptions::kResizeImages) &&
+      !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions)) {
     return false;
   }
 
-  *desired_dim = resource_context.desired_image_dims();
-  ImageDim image_dim;
-  image->Dimensions(&image_dim);
-
-  UpdateDesiredImageDimsIfNecessary(image_dim, resource_context, desired_dim);
-
-  if (options->Enabled(RewriteOptions::kResizeImages) &&
-      ImageUrlEncoder::HasValidDimension(*desired_dim) &&
-      ImageUrlEncoder::HasValidDimensions(image_dim) &&
-      (image->content_type()->type() != ContentType::kGif ||
-       options->Enabled(RewriteOptions::kConvertGifToPng) ||
-       options->Enabled(RewriteOptions::kDelayImages))) {
-    if (!desired_dim->has_width()) {
-      // Fill in a missing page height:
-      //   page_height * (image_width / image_height),
-      // rounding the result.
-      // To avoid fractions we instead group as
-      //   (page_height * image_width) / image_height and do the
-      // math in int64 to avoid overflow in the numerator.  The additional
-      // image_height / 2 causes us to round rather than truncate.
-      const int64 page_height = desired_dim->height();
-      const int64 image_height = image_dim.height();
-      const int64 page_width =
-          (page_height * image_dim.width() + image_height / 2) / image_height;
-      desired_dim->set_width(static_cast<int32>(page_width));
-    } else if (!desired_dim->has_height()) {
-      // Fill in a missing page width
-      // Math as above, swapping width and height.
-      const int64 page_width = desired_dim->width();
+  if (image->content_type()->type() != ContentType::kGif ||
+      options->Enabled(RewriteOptions::kConvertGifToPng) ||
+      options->Enabled(RewriteOptions::kDelayImages)) {
+    *desired_dim = resource_context.desired_image_dims();
+    ImageDim image_dim;
+    image->Dimensions(&image_dim);
+    if (options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions)) {
+      int32 rendered_width = desired_dim->width();
+      int32 rendered_height = desired_dim->height();
       const int64 image_width = image_dim.width();
-      const int64 page_height =
-          (page_width * image_dim.height() + image_width / 2) / image_width;
-      desired_dim->set_height(static_cast<int32>(page_height));
+      const int64 image_height = image_dim.height();
+      // Respect the aspect ratio of the image when doing the resize.
+      if (rendered_width > rendered_height) {
+        desired_dim->set_width(rendered_width);
+        desired_dim->set_height(static_cast<int32>(GetPageHeight(
+            rendered_width, image_height, image_width)));
+      } else {
+        desired_dim->set_height(rendered_height);
+        desired_dim->set_width(static_cast<int32>(GetPageWidth(
+            rendered_height, image_width, image_height)));
+      }
+    } else {
+      UpdateDesiredImageDimsIfNecessary(
+          image_dim, resource_context, desired_dim);
+      if (options->Enabled(RewriteOptions::kResizeImages) &&
+          ImageUrlEncoder::HasValidDimension(*desired_dim) &&
+          ImageUrlEncoder::HasValidDimensions(image_dim)) {
+        if (!desired_dim->has_width()) {
+          // Fill in a missing page height:
+          //   page_height * (image_width / image_height),
+          // rounding the result.
+          // To avoid fractions we instead group as
+          //   (page_height * image_width) / image_height and do the
+          // math in int64 to avoid overflow in the numerator.  The additional
+          // image_height / 2 causes us to round rather than truncate.
+          const int64 page_height = desired_dim->height();
+          const int64 image_height = image_dim.height();
+          desired_dim->set_width(static_cast<int32>(GetPageWidth(
+              page_height, image_dim.width(), image_height)));
+        } else if (!desired_dim->has_height()) {
+          // Fill in a missing page width
+          // Math as above, swapping width and height.
+          const int64 page_width = desired_dim->width();
+          const int64 image_width = image_dim.width();
+          desired_dim->set_height(static_cast<int32>(GetPageHeight(
+              page_width, image_dim.height(), image_width)));
+        }
+      }
     }
-    const int64 page_area =
-        static_cast<int64>(desired_dim->width()) *
-        desired_dim->height();
-    const int64 image_area =
-        static_cast<int64>(image_dim.width()) * image_dim.height();
-    if (page_area * 100 <
-        image_area * options->image_limit_resize_area_percent()) {
-      return true;
+    if (ImageUrlEncoder::HasValidDimension(*desired_dim) &&
+        ImageUrlEncoder::HasValidDimensions(image_dim)) {
+      const int64 page_area =
+          static_cast<int64>(desired_dim->width()) *
+          desired_dim->height();
+      const int64 image_area =
+          static_cast<int64>(image_dim.width()) * image_dim.height();
+      if (page_area * 100 <
+          image_area * options->image_limit_resize_area_percent()) {
+        return true;
+      }
     }
   }
   return false;
@@ -1067,10 +1123,11 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 
   // In case of RewriteOptions::image_preserve_urls() we do not want to use
   // image dimension information from HTML/CSS.
-  if (options->Enabled(RewriteOptions::kResizeImages) &&
+  if ((options->Enabled(RewriteOptions::kResizeImages) ||
+       options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions))&&
       !driver_->options()->image_preserve_urls()) {
     ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
-    GetDimensions(element, desired_dim);
+    GetDimensions(element, desired_dim, src);
     if (desired_dim->width() == 0 || desired_dim->height() == 0 ||
         (desired_dim->width() == 1 && desired_dim->height() == 1)) {
       // This is either a beacon image, or an attempt to prefetch.  Drop the
@@ -1444,11 +1501,32 @@ bool ImageRewriteFilter::ParseDimensionAttribute(
 }
 
 void ImageRewriteFilter::GetDimensions(HtmlElement* element,
-                                       ImageDim* page_dim) {
+                                       ImageDim* page_dim,
+                                       const HtmlElement::Attribute* src) {
   css_util::StyleExtractor extractor(element);
   css_util::DimensionState state = extractor.state();
   int32 width = extractor.width();
   int32 height = extractor.height();
+  // If the image has rendered dimensions stored in the property cache, update
+  // the desired image dimensions.
+  if (driver_->options()->Enabled(
+      RewriteOptions::kResizeToRenderedImageDimensions) &&
+      rendered_images_map_ != NULL) {
+    StringPiece src_value(src->DecodedValueOrNull());
+    if (!src_value.empty()) {
+      GoogleUrl src_gurl(driver_->base_url(), src_value);
+      if (src_gurl.is_valid()) {
+        RenderedImageDimensionsMap::iterator iterator =
+            rendered_images_map_->find(src_gurl.spec_c_str());
+        if (iterator != rendered_images_map_->end()) {
+          std::pair<int32, int32> &dimensions = iterator->second;
+          page_dim->set_width(dimensions.first);
+          page_dim->set_height(dimensions.second);
+          return;
+        }
+      }
+    }
+  }
   // If we didn't get a height dimension above, but there is a height
   // value in the style attribute, that means there's a height value
   // we can't process. This height will trump the height attribute in the
@@ -1472,8 +1550,6 @@ void ImageRewriteFilter::GetDimensions(HtmlElement* element,
     case css_util::kNoDimensions:
       SetWidthFromAttribute(element, page_dim);
       SetHeightFromAttribute(element, page_dim);
-      break;
-    default:
       break;
   }
 }

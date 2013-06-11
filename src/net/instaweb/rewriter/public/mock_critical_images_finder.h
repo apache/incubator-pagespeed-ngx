@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -44,6 +45,10 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
 
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
 
+  // Extracts rendered image dimensions from property cache.
+  virtual RenderedImages* ExtractRenderedImageDimensionsFromCache(
+      RewriteDriver* driver);
+
   virtual void ComputeCriticalImages(RewriteDriver* driver) {
     ++compute_calls_;
   }
@@ -64,6 +69,11 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
   void set_css_critical_images(StringSet* css_critical_images) {
     css_critical_images_.reset(css_critical_images);
   }
+
+  void set_rendered_images(RenderedImages* rendered_images) {
+    rendered_images_.reset(rendered_images);
+  }
+
   virtual bool IsSetFromPcache(RewriteDriver* driver) {
     return true;
   }
@@ -72,6 +82,7 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
   int compute_calls_;
   scoped_ptr<StringSet> critical_images_;
   scoped_ptr<StringSet> css_critical_images_;
+  scoped_ptr<RenderedImages> rendered_images_;
   DISALLOW_COPY_AND_ASSIGN(MockCriticalImagesFinder);
 };
 

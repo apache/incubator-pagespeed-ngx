@@ -54,6 +54,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -2014,6 +2015,30 @@ TEST_F(ImageRewriteTest, YesTransform) {
                           ">"));
 }
 
+TEST_F(ImageRewriteTest, YesTransformWithOptionFalse) {
+  // Verify rewrite happens even when no-transform is set, if the option is
+  // set to false.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_disable_rewrite_on_no_transform(false);
+  rewrite_driver()->AddFilters();
+
+  GoogleString url = StrCat(kTestDomain, "notransform.png");
+  AddFileToMockFetcher(url, kBikePngFile, kContentTypePng, 100);
+  AddToResponse(url, HttpAttributes::kCacheControl, "no-transform");
+  ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),
+                   StrCat("<img src=",
+                          Encode("http://test.com/", "ic", "0",
+                                 "notransform.png", "png"),
+                          ">"));
+  // Validate twice in case changes in cache from the first request alter the
+  // second.
+  ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),
+                   StrCat("<img src=",
+                          Encode("http://test.com/", "ic", "0",
+                                 "notransform.png", "png"),
+                          ">"));
+}
+
 TEST_F(ImageRewriteTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", true /* append %22 */);
 }
@@ -2869,6 +2894,32 @@ TEST_F(ImageRewriteTest, TooBusyReturnsOriginalResource) {
   ongoing_rewrites->Set(0);
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng, "", "",
                     true, false);
+}
+
+TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
+  MockCriticalImagesFinder* finder =
+      new MockCriticalImagesFinder(statistics());
+  server_context()->set_critical_images_finder(finder);
+  options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  rewrite_driver()->AddFilters();
+  RenderedImages* rendered_images = new RenderedImages;
+  RenderedImages_Image* images = rendered_images->add_image();
+  images->set_src(StrCat(kTestDomain, kChefGifFile));
+  images->set_rendered_width(40);
+  images->set_rendered_height(54);
+  // Original size of kChefGifFile is 192x256
+  finder->set_rendered_images(rendered_images);
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
+                    "", "", true, false);
+  // Check for single image file in the rewritten page.
+  StringVector image_urls;
+  CollectImgSrcs(kChefGifFile, output_buffer_, &image_urls);
+  EXPECT_EQ(1, image_urls.size());
+  const GoogleString& rewritten_url = image_urls[0];
+  GoogleString expected_rewritten_url = StrCat(
+      kTestDomain, "40x54x", kChefGifFile, ".pagespeed.ic.0.png");
+  EXPECT_STREQ(rewritten_url, expected_rewritten_url);
 }
 
 }  // namespace net_instaweb

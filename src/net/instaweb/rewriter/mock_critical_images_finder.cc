@@ -33,6 +33,15 @@ void MockCriticalImagesFinder::UpdateCriticalImagesSetInDriver(
   driver->set_critical_images_info(info);
 }
 
+RenderedImages*
+MockCriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
+    RewriteDriver* driver) {
+  if (rendered_images_.get() != NULL) {
+    return new RenderedImages(*rendered_images_.get());
+  }
+  return NULL;
+}
+
 MockCriticalImagesFinder::~MockCriticalImagesFinder() {}
 
 }  // namespace net_instaweb

@@ -1178,6 +1178,22 @@ TEST_F(RewriteContextTest, HonorNoTransform) {
   EXPECT_EQ(2, lru_cache()->num_misses());   // output resource twice
   EXPECT_EQ(0, lru_cache()->num_inserts());  // name mapping & original
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // Now with the option set to false, no-transform shall NOT be honored and
+  // resource is rewritten.
+  ClearStats();
+  options()->ClearSignatureForTesting();
+  options()->set_disable_rewrite_on_no_transform(false);
+  options()->ComputeSignature();
+  EXPECT_TRUE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                            "a_no_transform.css", "css", &content, &headers));
+  EXPECT_EQ("a", content);
+  // TODO(mpalem): Verify the following comments are accurate.
+  EXPECT_EQ(1, lru_cache()->num_hits());     // original
+  // output resource twice and metadata
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // metadata & output resource
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
 // Verifies that we can rewrite uncacheable resources without caching them.
