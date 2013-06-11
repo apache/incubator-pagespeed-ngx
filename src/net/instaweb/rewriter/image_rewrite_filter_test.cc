@@ -1222,7 +1222,7 @@ TEST_F(ImageRewriteTest, ImageRewriteNoTransformAttribute) {
 TEST_F(ImageRewriteTest, ImageRewriteDropAll) {
   // Test that randomized optimization doesn't rewrite when drop % set to 100
   options()->EnableFilter(RewriteOptions::kRecompressPng);
-  options()->set_image_rewrite_random_drop_percentage(100);
+  options()->set_rewrite_random_drop_percentage(100);
   rewrite_driver()->AddFilters();
 
   for (int i = 0; i < 100; ++i) {
@@ -1239,7 +1239,7 @@ TEST_F(ImageRewriteTest, ImageRewriteDropAll) {
 TEST_F(ImageRewriteTest, ImageRewriteDropNone) {
   // Test that randomized optimization always rewrites when drop % set to 0.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
-  options()->set_image_rewrite_random_drop_percentage(0);
+  options()->set_rewrite_random_drop_percentage(0);
   rewrite_driver()->AddFilters();
 
   for (int i = 0; i < 100; ++i) {
@@ -1256,7 +1256,7 @@ TEST_F(ImageRewriteTest, ImageRewriteDropNone) {
 TEST_F(ImageRewriteTest, ImageRewriteDropSometimes) {
   // Test that randomized optimization sometimes rewrites and sometimes doesn't.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
-  options()->set_image_rewrite_random_drop_percentage(50);
+  options()->set_rewrite_random_drop_percentage(50);
   rewrite_driver()->AddFilters();
 
   bool found_rewritten = false;
@@ -2068,34 +2068,6 @@ TEST_F(ImageRewriteTest, RetainExtraHeaders) {
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   TestRetainExtraHeaders(kPuzzleJpgFile, "ic", "jpg");
-}
-
-TEST_F(ImageRewriteTest, DontRandomlyDropImagesInCSS) {
-  // Even with a 100% random drop rate, ensure that we don't drop images in
-  // CSS files.
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
-  options()->EnableFilter(RewriteOptions::kRewriteCss);
-  options()->set_image_rewrite_random_drop_percentage(100);
-  rewrite_driver()->AddFilters();
-
-  const char kPngFile[] = "a.png";
-  const char kCssFile[] = "a.css";
-  const char kCssTemplate[] = "div{background-image:url(%s)}";
-  AddFileToMockFetcher(StrCat(kTestDomain, kPngFile), kBikePngFile,
-                       kContentTypePng, 100);
-  GoogleString in_css = StringPrintf(kCssTemplate, kPngFile);
-  SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, in_css, 100);
-
-  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
-  GoogleString out_png_url = Encode(kTestDomain, "ic", "0", kPngFile, "png");
-
-  ValidateExpected("img_in_css", CssLinkHref(kCssFile),
-                   CssLinkHref(out_css_url));
-  GoogleString out_css;
-  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
-  GoogleString expected_out_css =
-      StringPrintf(kCssTemplate, out_png_url.c_str());
-  EXPECT_EQ(expected_out_css, out_css);
 }
 
 TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {

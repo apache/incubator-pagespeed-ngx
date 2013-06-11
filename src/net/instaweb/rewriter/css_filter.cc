@@ -65,6 +65,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/util/simple_random.h"
 #include "webutil/css/parser.h"
 
 #include "base/at_exit.h"
@@ -290,6 +291,15 @@ void CssFilter::Context::SetupExternalRewrite(const GoogleUrl& base_gurl,
 void CssFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
+
+  int drop_percentage = Options()->rewrite_random_drop_percentage();
+  if (drop_percentage > 0) {
+    SimpleRandom* simple_random = FindServerContext()->simple_random();
+    if (drop_percentage > (simple_random->Next() % 100)) {
+      return RewriteDone(kTooBusy, 0);
+    }
+  }
+
   bool is_ipro =
       num_slots() == 1 &&
       (slot(0)->LocationString() ==

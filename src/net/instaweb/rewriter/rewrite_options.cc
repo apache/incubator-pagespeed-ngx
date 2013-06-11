@@ -1262,8 +1262,8 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
-      0, &RewriteOptions::image_rewrite_random_drop_percentage_, "irwp",
-      kImageRewriteRandomDropPercentage, kDirectoryScope,
+      0, &RewriteOptions::rewrite_random_drop_percentage_, "rrdp",
+      kRewriteRandomDropPercentage, kDirectoryScope,
       "The percentage of time that pagespeed should randomly drop an "
       "opportunity to optimize an image.  The value should be an integer "
       "between 0 and 100 inclusive.");

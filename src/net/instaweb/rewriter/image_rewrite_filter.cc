@@ -717,7 +717,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   // images will get optimized but the long tail won't be optimized much. We're
   // not particularly concerned about the quality of the PRNG here as it's just
   // deciding if we should optimize an image or not.
-  int drop_percentage = options->image_rewrite_random_drop_percentage();
+  int drop_percentage = options->rewrite_random_drop_percentage();
   if (drop_percentage > 0 &&
       !rewrite_context->IsNestedIn(RewriteOptions::kCssFilterId)) {
     // Note that we don't randomly drop if this is a nested context of the CSS

@@ -207,6 +207,32 @@ TEST_F(CssFilterTest, SimpleRewriteCssTestExternalUnhealthy) {
                              kExpectNoChange);
 }
 
+TEST_F(CssFilterTest, CssRewriteRandomDropAll) {
+  // Test that randomized optimization doesn't rewrite when drop % set to 100
+  options()->ClearSignatureForTesting();
+  options()->set_rewrite_random_drop_percentage(100);
+  server_context()->ComputeSignature(options());
+  for (int i = 0; i < 100; ++i) {
+    ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
+                               kExpectNoChange);
+    lru_cache()->Clear();
+    ClearStats();
+  }
+}
+
+TEST_F(CssFilterTest, CssRewriteRandomDropNone) {
+  // Test that randomized optimization always rewrites when drop % set to 0.
+  options()->ClearSignatureForTesting();
+  options()->set_rewrite_random_drop_percentage(0);
+  server_context()->ComputeSignature(options());
+  for (int i = 0; i < 100; ++i) {
+    ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
+                               kExpectSuccess);
+    lru_cache()->Clear();
+    ClearStats();
+  }
+}
+
 TEST_F(CssFilterTest, RewriteCss404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.css");

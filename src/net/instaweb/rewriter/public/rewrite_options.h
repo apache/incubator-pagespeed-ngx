@@ -239,7 +239,6 @@ class RewriteOptions {
     kImagePreserveURLs,
     kImageRecompressionQuality,
     kImageResolutionLimitBytes,
-    kImageRewriteRandomDropPercentage,
     kImageWebpRecompressionQuality,
     kImageWebpRecompressionQualityForSmallScreens,
     kImageWebpTimeoutMs,
@@ -292,8 +291,9 @@ class RewriteOptions {
     kRespectXForwardedProto,
     kRewriteDeadlineMs,
     kRewriteLevel,
-    kRewriteUncacheableResources,
+    kRewriteRandomDropPercentage,
     kRewriteRequestUrlsEarly,
+    kRewriteUncacheableResources,
     kRunningExperiment,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
@@ -1631,13 +1631,6 @@ class RewriteOptions {
     return max_image_size_low_resolution_bytes_.value();
   }
 
-  void set_image_rewrite_random_drop_percentage(int x) {
-    set_option(x, &image_rewrite_random_drop_percentage_);
-  }
-  int image_rewrite_random_drop_percentage() const {
-    return image_rewrite_random_drop_percentage_.value();
-  }
-
   void set_experiment_cookie_duration_ms(int64 x) {
     set_option(x, &experiment_cookie_duration_ms_);
   }
@@ -1658,6 +1651,14 @@ class RewriteOptions {
   int64 finder_properties_cache_refresh_time_ms() const {
     return finder_properties_cache_refresh_time_ms_.value();
   }
+
+  void set_rewrite_random_drop_percentage(int x) {
+    set_option(x, &rewrite_random_drop_percentage_);
+  }
+  int rewrite_random_drop_percentage() const {
+    return rewrite_random_drop_percentage_.value();
+  }
+
   bool css_preserve_urls() const {
     return css_preserve_urls_.value();
   }
@@ -3155,7 +3156,7 @@ class RewriteOptions {
   Option<int64> max_image_size_low_resolution_bytes_;
   // Percentage (an integer between 0 and 100 inclusive) of images rewrites to
   // drop.
-  Option<int> image_rewrite_random_drop_percentage_;
+  Option<int> rewrite_random_drop_percentage_;
 
   // For proxies operating in in-place mode this allows fetching optimized
   // resources from sites that have MPS, etc configured.

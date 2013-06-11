@@ -82,7 +82,6 @@ struct OptionName {
 "ImagePreserveURLs",                     RewriteOptions::kImagePreserveURLs
 "ImageRecompressionQuality",             RewriteOptions::kImageRecompressionQuality
 "ImageResolutionLimitBytes",             RewriteOptions::kImageResolutionLimitBytes
-"ImageRewriteRandomDropPercentage",      RewriteOptions::kImageRewriteRandomDropPercentage
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
 "ImageWebpRecompressionQualityForSmallScreens", RewriteOptions::kImageWebpRecompressionQualityForSmallScreens
 "ImageWebpTimeoutMs",                    RewriteOptions::kImageWebpTimeoutMs
@@ -138,8 +137,9 @@ struct OptionName {
 "RespectXForwardedProto",                RewriteOptions::kRespectXForwardedProto
 "RewriteDeadlinePerFlushMs",             RewriteOptions::kRewriteDeadlineMs
 "RewriteLevel",                          RewriteOptions::kRewriteLevel
-"RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
+"RewriteRandomDropPercentage",           RewriteOptions::kRewriteRandomDropPercentage
 "RewriteRequestUrlsEarly",               RewriteOptions::kRewriteRequestUrlsEarly
+"RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
 "RunExperiment",                         RewriteOptions::kRunningExperiment
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled

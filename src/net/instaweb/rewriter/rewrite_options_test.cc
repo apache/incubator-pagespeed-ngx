@@ -919,9 +919,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImagePreserveURLs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImagePreserveURLs));
-  EXPECT_STREQ("ImageRewriteRandomDropPercentage",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageRewriteRandomDropPercentage));
   EXPECT_STREQ("ImageWebpRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageWebpRecompressionQuality));
@@ -1063,6 +1060,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("RewriteLevel",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRewriteLevel));
+  EXPECT_STREQ("RewriteRandomDropPercentage",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kRewriteRandomDropPercentage));
   EXPECT_STREQ("RewriteUncacheableResources",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRewriteUncacheableResources));

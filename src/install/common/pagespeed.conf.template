@@ -119,15 +119,6 @@
     #
     # ModPagespeedImageMaxRewritesAtOnce      8
 
-    # Randomly drop image rewrites to increase the chance of optimizing
-    # frequently fetched images and decrease the chance of optimizing
-    # infrequently fetched images. This can save CPU resources. The default
-    # value of this parameter is 0 (no drops).  90 means that an image
-    # fetched once has a 10% probability of being optimized while an image
-    # that is fetched 50 times has a 99.65% probability of being optimized.
-    #
-    # ModPagespeedImageRewriteRandomDropPercentage 90
-
     # You can also customize the number of threads per Apache process
     # mod_pagespeed will use to do resource optimization. Plain
     # "rewrite threads" are used to do short, latency-sensitive work,
@@ -140,6 +131,18 @@
     #
     # ModPagespeedNumRewriteThreads 4
     # ModPagespeedNumExpensiveRewriteThreads 4
+
+    # Randomly drop rewrites (*) to increase the chance of optimizing
+    # frequently fetched resources and decrease the chance of optimizing
+    # infrequently fetched resources. This can reduce CPU load. The default
+    # value of this parameter is 0 (no drops).  90 means that a resourced
+    # fetched once has a 10% probability of being optimized while a resource
+    # that is fetched 50 times has a 99.65% probability of being optimized.
+    #
+    # (*) Currently only CSS files and images are randomly dropped.  Images
+    # within CSS files are not randomly dropped.
+    #
+    # ModPagespeedRewriteRandomDropPercentage 90
 
     # Many filters modify the URLs of resources in HTML files. This is typically
     # harmless but pages whose Javascript expects to read or modify the original
@@ -185,15 +188,6 @@
     # Sets the minimum size in bytes of any image for which a low quality image
     # is generated.
     # ModPagespeedMinImageSizeLowResolutionBytes 3072
-
-    # When Apache is set up as a browser proxy, mod_pagespeed can record
-    # web-sites as they are requested, so that an image of the web is built up
-    # in the directory of the proxy administrator's choosing.  When ReadOnly is
-    # on, only files already present in the SlurpDirectory are served by the
-    # proxy.
-    #
-    # ModPagespeedSlurpDirectory ...
-    # ModPagespeedSlurpReadOnly on
 
     # The maximum URL size is generally limited to about 2k characters
     # due to IE: See http://support.microsoft.com/kb/208427/EN-US.
