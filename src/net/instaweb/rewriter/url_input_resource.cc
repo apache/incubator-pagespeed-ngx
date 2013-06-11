@@ -39,12 +39,14 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -139,7 +141,8 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
                            const GoogleString& url,
                            HTTPValue* fallback_value,
                            const RequestContextPtr& request_context,
-                           MessageHandler* handler)
+                           MessageHandler* handler,
+                           RewriteDriver* driver)
       : AsyncFetchWithLock(server_context->lock_hasher(),
                            request_context,
                            url,
@@ -150,6 +153,7 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
         message_handler_(NULL),
         no_cache_ok_(false),
         fetcher_(NULL),
+        driver_(driver),
         respect_vary_(rewrite_options->respect_vary()),
         resource_cutoff_ms_(
             rewrite_options->min_resource_cache_time_to_rewrite_ms()),
@@ -282,6 +286,20 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
     fetch_url_ = url();
     UrlNamer* url_namer = server_context_->url_namer();
     fetcher_ = fetcher;
+    if (!request_headers()->Has(HttpAttributes::kReferer)) {
+      if (IsBackgroundFetch()) {
+        // Set referer for background fetching, if the referer is missing.
+        request_headers()->Add(HttpAttributes::kReferer,
+                               driver_->base_url().Spec());
+      } else if (driver_->request_headers() != NULL) {
+        const char* referer_str = driver_->request_headers()->Lookup1(
+            HttpAttributes::kReferer);
+        if (referer_str != NULL) {
+          request_headers()->Add(HttpAttributes::kReferer, referer_str);
+        }
+      }
+    }
+
     url_namer->PrepareRequest(
         rewrite_options_,
         &fetch_url_,
@@ -297,6 +315,7 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
   // If this is true, loading of non-cacheable resources will succeed.
   bool no_cache_ok_;
   UrlAsyncFetcher* fetcher_;
+  RewriteDriver* driver_;
   GoogleString fetch_url_;
 
   scoped_ptr<NamedLock> lock_;
@@ -328,7 +347,8 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
                                  url,
                                  fallback_value,
                                  rewrite_driver->request_context(),
-                                 server_context->message_handler()),
+                                 server_context->message_handler(),
+                                 rewrite_driver),
         url_(url),
         http_cache_(http_cache),
         rewrite_driver_(rewrite_driver),
@@ -482,7 +502,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
                                  resource->url(),
                                  &resource->fallback_value_,
                                  request_context,
-                                 resource->server_context()->message_handler()),
+                                 resource->server_context()->message_handler(),
+                                 resource->rewrite_driver()),
         resource_(resource),
         callback_(callback),
         http_value_writer_(http_value(), http_cache()) {

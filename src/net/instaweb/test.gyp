@@ -199,6 +199,7 @@
         'rewriter/support_noscript_filter_test.cc',
         'rewriter/suppress_prehead_filter_test.cc',
         'rewriter/two_level_cache_test.cc',
+        'rewriter/url_input_resource_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_namer_test.cc',
         'rewriter/url_partnership_test.cc',

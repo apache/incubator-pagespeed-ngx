@@ -88,6 +88,7 @@ void MockUrlFetcher::Clear() {
   STLDeleteContainerPairSecondPointers(response_map_.begin(),
                                        response_map_.end());
   response_map_.clear();
+  last_referer_.clear();
 }
 
 void MockUrlFetcher::RemoveResponse(const StringPiece& url) {
@@ -113,6 +114,11 @@ void MockUrlFetcher::Fetch(
       EXPECT_STREQ(gurl.HostAndPort(), host_header);
     }
 
+    if (request_headers.Has(HttpAttributes::kReferer)) {
+      last_referer_ = request_headers.Lookup1(HttpAttributes::kReferer);
+    } else {
+      last_referer_.clear();
+    }
     ResponseMap::iterator iter = response_map_.find(url);
     if (iter != response_map_.end()) {
       const HttpResponse* response = iter->second;

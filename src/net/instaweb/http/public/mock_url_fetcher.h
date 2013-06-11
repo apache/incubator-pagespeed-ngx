@@ -74,6 +74,9 @@ class MockUrlFetcher : public UrlAsyncFetcher {
     supports_https_ = supports_https;
   }
 
+  // Return the referer of this fetching request.
+  const GoogleString& last_referer() { return last_referer_; }
+
   // Indicates that the specified URL should respond with headers and data,
   // but still return a 'false' status.  This is similar to a live fetcher
   // that times out or disconnects while streaming data.
@@ -158,15 +161,16 @@ class MockUrlFetcher : public UrlAsyncFetcher {
   ResponseMap response_map_;
 
   bool enabled_;
-  bool fail_on_unexpected_;   // Should we EXPECT if unexpected url called?
-  bool update_date_headers_;  // Should we update Date headers from timer?
-  bool omit_empty_writes_;    // Should we call ->Write with length 0?
-  bool fail_after_headers_;   // Should we call Done(false) after headers?
-  bool verify_host_header_;   // Should we verify the Host: header?
-  bool split_writes_;         // Should we turn one write into multiple?
-  bool supports_https_;       // Should we claim HTTPS support?
+  bool fail_on_unexpected_;     // Should we EXPECT if unexpected url called?
+  bool update_date_headers_;    // Should we update Date headers from timer?
+  bool omit_empty_writes_;      // Should we call ->Write with length 0?
+  bool fail_after_headers_;     // Should we call Done(false) after headers?
+  bool verify_host_header_;     // Should we verify the Host: header?
+  bool split_writes_;           // Should we turn one write into multiple?
+  bool supports_https_;         // Should we claim HTTPS support?
   GoogleString error_message_;  // If non empty, we write out this on error
-  Timer* timer_;              // Timer to use for updating header dates.
+  Timer* timer_;                // Timer to use for updating header dates.
+  GoogleString last_referer_;   // Referer string.
 
   DISALLOW_COPY_AND_ASSIGN(MockUrlFetcher);
 };

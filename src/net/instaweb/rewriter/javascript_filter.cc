@@ -147,10 +147,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   // TODO(jmarantz): this should be done as a SimpleTextFilter.
   virtual void RewriteSingle(
       const ResourcePtr& input, const OutputResourcePtr& output) {
-    bool is_ipro =
-        num_slots() == 1 &&
-        (slot(0)->LocationString() ==
-            InPlaceRewriteResourceSlot::kIproSlotLocation);
+    bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
     AttachDependentRequestTrace(is_ipro ? "IproProcessJs" : "ProcessJs");
     if (!IsDataUrl(input->url())) {
       TracePrintf("RewriteJs: %s", input->url().c_str());

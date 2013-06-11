@@ -854,7 +854,7 @@ TEST_F(RewriteDriverTest, ResourceCharset) {
   for (int round = 0; round < 2; ++round) {
     ResourcePtr resource(
         rewrite_driver()->CreateInputResourceAbsoluteUnchecked(kUrl));
-    MockResourceCallback mock_callback(resource);
+    MockResourceCallback mock_callback(resource, factory()->thread_system());
     EXPECT_TRUE(resource.get() != NULL);
     server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                                 rewrite_driver()->request_context(),
@@ -893,7 +893,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   // mock_url_fetcher, because it has not been set in that fetcher.
   ResourcePtr resource(
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
-  MockResourceCallback mock_callback(resource);
+  MockResourceCallback mock_callback(resource, factory()->thread_system());
   EXPECT_TRUE(resource.get() != NULL);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                               rewrite_driver()->request_context(),
@@ -908,7 +908,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   // Check that the resource loads cached.
   ResourcePtr resource2(
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
-  MockResourceCallback mock_callback2(resource2);
+  MockResourceCallback mock_callback2(resource2, factory()->thread_system());
   EXPECT_TRUE(resource2.get() != NULL);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                               rewrite_driver()->request_context(),
@@ -923,7 +923,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   // Check that the resource loads updated.
   ResourcePtr resource3(
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
-  MockResourceCallback mock_callback3(resource3);
+  MockResourceCallback mock_callback3(resource3, factory()->thread_system());
   EXPECT_TRUE(resource3.get() != NULL);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                               rewrite_driver()->request_context(),
@@ -958,7 +958,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   EXPECT_TRUE(resource.get() != NULL);
   EXPECT_EQ(&kContentTypeCss, resource->type());
-  MockResourceCallback mock_callback(resource);
+  MockResourceCallback mock_callback(resource, factory()->thread_system());
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                               rewrite_driver()->request_context(),
                               &mock_callback);
@@ -974,7 +974,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   EXPECT_TRUE(resource2.get() != NULL);
   EXPECT_EQ(&kContentTypeCss, resource2->type());
-  MockResourceCallback mock_callback2(resource2);
+  MockResourceCallback mock_callback2(resource2, factory()->thread_system());
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                               rewrite_driver()->request_context(),
                               &mock_callback2);

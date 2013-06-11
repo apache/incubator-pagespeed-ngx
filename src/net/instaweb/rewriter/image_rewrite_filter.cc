@@ -314,10 +314,7 @@ void SetWebpCompressionOptions(
 void ImageRewriteFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  bool is_ipro =
-      num_slots() == 1 &&
-      (slot(0)->LocationString() ==
-          InPlaceRewriteResourceSlot::kIproSlotLocation);
+  bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
   AttachDependentRequestTrace(is_ipro ? "IproProcessImage" : "ProcessImage");
   RewriteDone(
       filter_->RewriteLoadedResourceImpl(this, input_resource, output_resource),

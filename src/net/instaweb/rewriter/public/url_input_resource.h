@@ -46,6 +46,8 @@ class UrlInputResource : public Resource {
     return rewrite_options_;
   }
 
+  RewriteDriver* rewrite_driver() { return rewrite_driver_; }
+
   virtual void Freshen(FreshenCallback* callback, MessageHandler* handler);
 
   // Return whether this type of resource should use the HTTP Cache.
@@ -55,6 +57,7 @@ class UrlInputResource : public Resource {
   virtual bool UseHttpCache() const { return true; }
 
  protected:
+  friend class UrlInputResourceTest;
   virtual bool Load(MessageHandler* message_handler);
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                AsyncCallback* callback,

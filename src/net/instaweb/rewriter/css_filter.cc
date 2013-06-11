@@ -300,10 +300,7 @@ void CssFilter::Context::RewriteSingle(
     }
   }
 
-  bool is_ipro =
-      num_slots() == 1 &&
-      (slot(0)->LocationString() ==
-          InPlaceRewriteResourceSlot::kIproSlotLocation);
+  bool is_ipro = IsNestedIn(RewriteOptions::kInPlaceRewriteId);
   AttachDependentRequestTrace(is_ipro ? "IproProcessCSS" : "ProcessCSS");
   input_resource_ = input_resource;
   output_resource_ = output_resource;

@@ -245,7 +245,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
     var data_src = element.getAttribute('pagespeed_lazy_src');
     if (data_src != null) {
       if ((context.force_load_ || context.isVisible_(element)) &&
-          element.src.indexOf(context.blank_image_src_ != -1)) {
+          element.src.indexOf(context.blank_image_src_) != -1) {
         // Only replace the src if the old value is the one we set. Note that we
         // do a 'contains' match to handle the case when the blank src is a url
         // starting with //. It is possible that a script has already changed

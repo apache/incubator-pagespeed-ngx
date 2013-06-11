@@ -22,27 +22,38 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
+class ThreadSystem;
 
 class MockResourceCallback : public Resource::AsyncCallback {
  public:
-  explicit MockResourceCallback(const ResourcePtr& resource)
-      : Resource::AsyncCallback(resource) {}
+  explicit MockResourceCallback(const ResourcePtr& resource,
+                                ThreadSystem* thread_system)
+      : Resource::AsyncCallback(resource),
+        notify_(thread_system) {
+    CHECK(thread_system);
+}
   virtual ~MockResourceCallback();
 
   virtual void Done(bool lock_failure, bool resource_ok) {
     CHECK(!lock_failure);
     success_ = resource_ok;
     done_ = true;
+    notify_.Notify();
   }
 
   bool success() const { return success_; }
   bool done() const { return done_; }
+  void Wait() {
+    notify_.Wait();
+  }
 
  private:
   bool success_;
   bool done_;
+  WorkerTestBase::SyncPoint notify_;
 
   DISALLOW_COPY_AND_ASSIGN(MockResourceCallback);
 };

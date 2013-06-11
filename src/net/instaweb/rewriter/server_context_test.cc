@@ -328,6 +328,24 @@ class ServerContextTest : public RewriteTestBase {
     return resource;
   }
 
+  void RefererTest(const RequestHeaders* headers,
+                   bool is_background_fetch) {
+    GoogleString url = "test.jpg";
+    rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
+    SetCustomCachingResponse(url, 100, "");
+    GoogleUrl gurl(AbsolutifyUrl(url));
+    ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
+    if (!is_background_fetch) {
+      rewrite_driver()->SetRequestHeaders(*headers);
+    }
+    resource->set_is_background_fetch(is_background_fetch);
+    VerifyContentsCallback callback(resource, "payload");
+    server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
+                                rewrite_driver()->request_context(),
+                                &callback);
+    callback.AssertCalled();
+  }
+
   void DefaultHeaders(ResponseHeaders* headers) {
     SetDefaultLongCacheHeaders(&kContentTypeCss, headers);
   }
@@ -861,7 +879,7 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
 
   ResourcePtr resource1(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource1.get() != NULL);
-  MockResourceCallback callback1(resource1);
+  MockResourceCallback callback1(resource1, factory()->thread_system());
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                               rewrite_driver()->request_context(),
                               &callback1);
@@ -870,7 +888,7 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
 
   ResourcePtr resource2(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource2.get() != NULL);
-  MockResourceCallback callback2(resource2);
+  MockResourceCallback callback2(resource2, factory()->thread_system());
   server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
                               rewrite_driver()->request_context(),
                               &callback2);
@@ -1571,7 +1589,7 @@ TEST_F(ServerContextTest, PartlyFailedFetch) {
   SetBaseUrlForFetch(abs_url);
   ResourcePtr resource = rewrite_driver()->CreateInputResource(gurl);
   ASSERT_TRUE(resource.get() != NULL);
-  MockResourceCallback callback(resource);
+  MockResourceCallback callback(resource, factory()->thread_system());
   rewrite_driver()->ReadAsync(&callback, message_handler());
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
@@ -1834,6 +1852,34 @@ TEST_F(ServerContextTestThreadedCache, RepeatedFetches) {
     // Make sure all cache ops finish, so we can clear them next time.
     mock_scheduler()->AwaitQuiescence();
   }
+}
+
+// Test of referer for BackgroundFetch: When the resource fetching request
+// header misses referer, we set the driver base url as its referer.
+TEST_F(ServerContextTest, TestRefererBackgroundFetch) {
+  RefererTest(NULL, true);
+  EXPECT_EQ(rewrite_driver()->base_url().Spec(),
+            mock_url_fetcher()->last_referer());
+}
+
+// Test of referer for NonBackgroundFetch: When the resource fetching request
+// header misses referer and the original request referer header misses, no
+// referer would be added.
+TEST_F(ServerContextTest, TestRefererNonBackgroundFetch) {
+  RequestHeaders headers;
+  RefererTest(&headers, false);
+  EXPECT_EQ("", mock_url_fetcher()->last_referer());
+}
+
+// Test of referer for NonBackgroundFetch: When the resource fetching request
+// header misses referer but the original request header has referer set, we set
+// this referer as the referer of resource fetching request.
+TEST_F(ServerContextTest, TestRefererNonBackgroundFetchWithDriverRefer) {
+  RequestHeaders headers;
+  const char kReferer[] = "http://other.com/";
+  headers.Add(HttpAttributes::kReferer, kReferer);
+  RefererTest(&headers, false);
+  EXPECT_EQ(kReferer, mock_url_fetcher()->last_referer());
 }
 
 }  // namespace net_instaweb
