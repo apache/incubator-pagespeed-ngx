@@ -63,8 +63,6 @@ class JsDisableFilter : public EmptyHtmlFilter {
 
   static GoogleString GetJsDisableScriptSnippet(const RewriteOptions* options);
 
-  static GoogleString GetImagePrefetchTemplate();
-
  private:
   // Inserts the experimental js enable/disable code.
   void InsertJsDeferExperimentalScript(HtmlElement* element);
@@ -82,7 +80,6 @@ class JsDisableFilter : public EmptyHtmlFilter {
   int prefetch_js_elements_count_;
   int max_prefetch_js_elements_;
   GoogleString prefetch_js_elements_;
-  GoogleString prefetch_image_template_;
   bool should_look_for_prefetch_js_elements_;
   UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
 

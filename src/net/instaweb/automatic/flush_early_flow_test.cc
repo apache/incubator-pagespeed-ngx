@@ -856,6 +856,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   bool set_httponly_cookie_;
 };
 
+// TODO(mpalem): Add tests for max_prefetch_js_elements and defer Js.
+
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
   TestFlushEarlyFlow(NULL, UserAgentMatcher::kPrefetchNotSupported, true);
 }
@@ -1103,6 +1105,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsPrefetch) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
+  custom_options->set_max_prefetch_js_elements(0);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
   server_context()->set_url_namer(&url_namer);
@@ -1187,6 +1190,7 @@ TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
+  custom_options->set_max_prefetch_js_elements(0);
   custom_options->set_flush_more_resources_early_if_time_permits(true);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
@@ -1490,6 +1494,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
+  custom_options->set_max_prefetch_js_elements(0);
 
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
@@ -1519,6 +1524,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kSplitHtml);
+  custom_options->set_max_prefetch_js_elements(0);
 
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());

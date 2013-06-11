@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -50,7 +49,8 @@ Resource::Resource(ServerContext* server_context, const ContentType* type)
       type_(type),
       fetch_response_status_(kFetchStatusNotSet),
       is_background_fetch_(true),
-      enable_cache_purge_(false) {
+      enable_cache_purge_(false),
+      disable_rewrite_on_no_transform_(true) {
 }
 
 Resource::~Resource() {
@@ -68,9 +68,8 @@ bool Resource::IsValidAndCacheable() const {
 bool Resource::IsSafeToRewrite(bool rewrite_uncacheable) const {
   rewrite_uncacheable &= HttpStatusOk();
   RewriteStats* stats = server_context_->rewrite_stats();
-  const RewriteOptions* options = rewrite_options();
   if ((IsValidAndCacheable() || rewrite_uncacheable) &&
-      !(options->disable_rewrite_on_no_transform() &&
+      !(disable_rewrite_on_no_transform_ &&
         response_headers_.HasValue(HttpAttributes::kCacheControl,
                                    "no-transform"))) {
     stats->num_cache_control_rewritable_resources()->Add(1);

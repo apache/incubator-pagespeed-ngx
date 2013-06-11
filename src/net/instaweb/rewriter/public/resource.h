@@ -249,6 +249,9 @@ class Resource : public RefCounted<Resource> {
 
   void set_enable_cache_purge(bool x) { enable_cache_purge_ = x; }
 
+  void set_disable_rewrite_on_no_transform(bool x) {
+    disable_rewrite_on_no_transform_ = x;
+  }
   ServerContext* server_context_;
 
   const ContentType* type_;
@@ -272,6 +275,7 @@ class Resource : public RefCounted<Resource> {
   // is_background_fetch_ to false.
   bool is_background_fetch_;
   bool enable_cache_purge_;
+  bool disable_rewrite_on_no_transform_;
 
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };

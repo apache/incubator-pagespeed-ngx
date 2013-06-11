@@ -89,7 +89,6 @@ void JsDisableFilter::StartDocument() {
   prefetch_mechanism_ =
       rewrite_driver_->user_agent_matcher()->GetPrefetchMechanism(
           rewrite_driver_->user_agent());
-  prefetch_image_template_ = GetImagePrefetchTemplate();
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
@@ -143,20 +142,34 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       InsertJsDeferExperimentalScript(head_node);
       InsertMetaTagForIE(head_node);
     }
-    if (prefetch_js_elements_count_ != 0 &&
-        prefetch_mechanism_ != UserAgentMatcher::kPrefetchImageTag) {
+    if (prefetch_js_elements_count_ != 0) {
       // We have collected some script elements that can be downloaded early.
-      // Add them to the iFrame element here.
       should_look_for_prefetch_js_elements_ = false;
-      HtmlElement* iframe =
-          rewrite_driver_->NewElement(element, HtmlName::kIframe);
-      GoogleString encoded_uri;
-      DataUrl(kContentTypeHtml, BASE64, prefetch_js_elements_, &encoded_uri);
-      rewrite_driver_->AddAttribute(iframe, HtmlName::kSrc, encoded_uri);
-      rewrite_driver_->AddAttribute(iframe, HtmlName::kClass,
-                                    "psa_prefetch_container");
-      rewrite_driver_->AddAttribute(iframe, HtmlName::kStyle, "display:none");
-      rewrite_driver_->PrependChild(element, iframe);
+      // The method to download the scripts differs based on the user agent.
+      // Iframe is used for non-chrome UAs whereas for Chrome, the scripts are
+      // downloaded as Image.src().
+      if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
+        HtmlElement* script = rewrite_driver_->NewElement(element,
+            HtmlName::kScript);
+        rewrite_driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer,
+                                      "");
+        GoogleString script_data = StrCat("(function(){", prefetch_js_elements_,
+                                          "})()");
+        rewrite_driver_->PrependChild(element, script);
+        HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
+            script, script_data);
+        rewrite_driver_->AppendChild(script, script_code);
+      } else {
+        HtmlElement* iframe =
+            rewrite_driver_->NewElement(element, HtmlName::kIframe);
+        GoogleString encoded_uri;
+        DataUrl(kContentTypeHtml, BASE64, prefetch_js_elements_, &encoded_uri);
+        rewrite_driver_->AddAttribute(iframe, HtmlName::kSrc, encoded_uri);
+        rewrite_driver_->AddAttribute(iframe, HtmlName::kClass,
+                                      "psa_prefetch_container");
+        rewrite_driver_->AddAttribute(iframe, HtmlName::kStyle, "display:none");
+        rewrite_driver_->PrependChild(element, iframe);
+      }
     }
   } else {
     HtmlElement::Attribute* src;
@@ -180,16 +193,9 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
           GoogleString escaped_source;
           HtmlKeywords::Escape(src->DecodedValueOrNull(), &escaped_source);
           if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-            HtmlElement* script = rewrite_driver_->NewElement(element,
-                HtmlName::kScript);
-            rewrite_driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer,
-                                          "");
-            GoogleString script_data = StringPrintf(
-                prefetch_image_template_.c_str(), escaped_source.c_str());
-            rewrite_driver_->InsertNodeBeforeNode(element, script);
-            HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
-                script, script_data);
-            rewrite_driver_->AppendChild(script, script_code);
+            StrAppend(&prefetch_js_elements_, StringPrintf(
+                      FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
+                      escaped_source.c_str()));
           } else {
             StrAppend(&prefetch_js_elements_, StringPrintf(
                       FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml,
@@ -260,12 +266,6 @@ GoogleString JsDisableFilter::GetJsDisableScriptSnippet(
   bool defer_js_experimental = options->enable_defer_js_experimental();
   return defer_js_experimental ? JsDisableFilter::kEnableJsExperimental :
       JsDisableFilter::kDisableJsExperimental;
-}
-
-GoogleString JsDisableFilter::GetImagePrefetchTemplate() {
-  GoogleString image_prefetch_template = StrCat("(function(){",
-      FlushEarlyContentWriterFilter::kPrefetchImageTagHtml, "})()");
-  return image_prefetch_template;
 }
 
 }  // namespace net_instaweb
