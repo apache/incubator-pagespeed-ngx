@@ -25,7 +25,16 @@
 namespace net_instaweb {
 namespace {
 
-typedef std::vector<int> IntVector;
+class IntVector : public std::vector<int> {
+ public:
+  void Merge(const IntVector& src) {
+    for (int i = 0, n = src.size(); i < n; ++i) {
+      push_back(src[i]);
+    }
+  }
+
+  // Copy and assign OK.
+};
 
 class CopyOnWriteTest : public testing::Test {
  protected:
@@ -97,6 +106,31 @@ TEST_F(CopyOnWriteTest, NoDefaultCtor) {
   CopyOnWrite<ObjectWithNoDefaultCtor> cow_obj(obj);
   CopyOnWrite<ObjectWithNoDefaultCtor> cow_obj_copy(cow_obj);
   CopyOnWrite<ObjectWithNoDefaultCtor> cow_obj_assigned = cow_obj;
+}
+
+TEST_F(CopyOnWriteTest, MergeOrShareEmptySrc) {
+  CopyOnWrite<IntVector> share(cow_int_vector_a_);
+  CopyOnWrite<IntVector> empty;
+  cow_int_vector_a_.MergeOrShare(empty);
+  EXPECT_EQ(cow_int_vector_a_.get(), share.get()) << "same storage";
+}
+
+TEST_F(CopyOnWriteTest, MergeOrShareEmptyThis) {
+  CopyOnWrite<IntVector> share(cow_int_vector_a_);
+  CopyOnWrite<IntVector> empty;
+  empty.MergeOrShare(cow_int_vector_a_);
+  EXPECT_EQ(cow_int_vector_a_.get(), share.get()) << "same storage";
+  EXPECT_EQ(cow_int_vector_a_.get(), empty.get()) << "same storage";
+}
+
+TEST_F(CopyOnWriteTest, MergeOrShareRequiringClassMerge) {
+  CopyOnWrite<IntVector> share(cow_int_vector_a_);
+  CopyOnWrite<IntVector> three;
+  three.MakeWriteable()->push_back(3);
+  cow_int_vector_a_.MergeOrShare(three);
+  EXPECT_NE(cow_int_vector_a_.get(), share.get()) << "different storage";
+  EXPECT_NE(cow_int_vector_a_.get(), three.get()) << "different storage";
+  EXPECT_EQ(3, cow_int_vector_a_->size());
 }
 
 }  // namespace

@@ -43,6 +43,7 @@ namespace net_instaweb {
 template<class A1>
 class Callback1 {
  public:
+  Callback1() {}
   virtual ~Callback1() {}
   virtual void Run(A1) = 0;
 };
@@ -51,7 +52,7 @@ class Callback1 {
 //  (Member)?Callback_<num-pre-bound-args>_<num-runtime-args>
 
 // TODO(gee): Fill out other useful specializations.
-template<class C, class A1>
+template<class C, class A1, bool DeleteAfterRun>
 class _MemberCallback_0_1 : public Callback1<A1> {
  public:
   typedef void (C::*MemberSignature)(A1);
@@ -64,7 +65,9 @@ class _MemberCallback_0_1 : public Callback1<A1> {
 
   void Run(A1 t) {
     (object_->*member_)(t);
-    delete this;
+    if (DeleteAfterRun) {
+      delete this;
+    }
   }
 
  private:
@@ -72,10 +75,18 @@ class _MemberCallback_0_1 : public Callback1<A1> {
   MemberSignature member_;
 };
 
+// Creates a callback that automatically gets deleted after being run.
 template <class T1, class T2, class A1>
-typename _MemberCallback_0_1<T1, A1>::base*
+typename _MemberCallback_0_1<T1, A1, true>::base*
 NewCallback(T1* obj, void (T2::*member)(A1)) {
-  return new _MemberCallback_0_1<T1, A1>(obj, member);
+  return new _MemberCallback_0_1<T1, A1, true>(obj, member);
+}
+
+// Creates a callback that does not get deleted after being run.
+template <class T1, class T2, class A1>
+typename _MemberCallback_0_1<T1, A1, false>::base*
+NewPermanentCallback(T1* obj, void (T2::*member)(A1)) {
+  return new _MemberCallback_0_1<T1, A1, false>(obj, member);
 }
 
 // Specified by TR1 [4.7.2] Reference modifications.
@@ -88,7 +99,7 @@ struct ConstRef {
   typedef const base_type& type;
 };
 
-template <class T, class P1, class A1>
+template <class T, class P1, class A1, bool DeleteAfterRun>
 class _MemberCallback_1_1 : public Callback1<A1> {
  public:
   typedef Callback1<A1> base;
@@ -109,16 +120,28 @@ class _MemberCallback_1_1 : public Callback1<A1> {
 
   virtual void Run(A1 a1) {
     (object_->*member_)(p1_, a1);
-    delete this;
+    if (DeleteAfterRun) {
+      delete this;
+    }
   }
 };
 
+// Creates a callback that automatically gets deleted after being run.
 template <class T1, class T2, class P1, class A1>
-inline typename _MemberCallback_1_1<T1, P1, A1>::base*
+inline typename _MemberCallback_1_1<T1, P1, A1, true>::base*
 NewCallback(T1* obj,
             void (T2::*member)(P1, A1),
             typename ConstRef<P1>::type p1) {
-  return new _MemberCallback_1_1<T1, P1, A1>(obj, member, p1);
+  return new _MemberCallback_1_1<T1, P1, A1, true>(obj, member, p1);
+}
+
+// Creates a callback that does not get deleted after being run.
+template <class T1, class T2, class P1, class A1>
+inline typename _MemberCallback_1_1<T1, P1, A1, false>::base*
+NewPermanentCallback(T1* obj,
+            void (T2::*member)(P1, A1),
+            typename ConstRef<P1>::type p1) {
+  return new _MemberCallback_1_1<T1, P1, A1, false>(obj, member, p1);
 }
 
 }  // namespace net_instaweb

@@ -2689,26 +2689,14 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     insert_result.first->second->AppendFrom(*it->second);
   }
 
-  if (!src.domain_lawyer_->empty()) {
-    if (domain_lawyer_->empty()) {
-      domain_lawyer_ = src.domain_lawyer_;
-    } else {
-      WriteableDomainLawyer()->Merge(*src.domain_lawyer());
-    }
-  }
+  domain_lawyer_.MergeOrShare(src.domain_lawyer_);
+  javascript_library_identification_.MergeOrShare(
+      src.javascript_library_identification_);
+
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
   lazyload_enabled_classes_.AppendFrom(src.lazyload_enabled_classes_);
-  if (!src.javascript_library_identification_->empty()) {
-    if (javascript_library_identification_->empty()) {
-      javascript_library_identification_ =
-          src.javascript_library_identification_;
-    } else {
-      WriteableJavascriptLibraryIdentification()->Merge(
-          *src.javascript_library_identification_.get());
-    }
-  }
   override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
 
   // Merge url_cache_invalidation_entries_ so that increasing order of timestamp

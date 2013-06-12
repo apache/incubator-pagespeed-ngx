@@ -19,7 +19,6 @@
 #ifndef PAGESPEED_KERNEL_UTIL_COPY_ON_WRITE_H_
 #define PAGESPEED_KERNEL_UTIL_COPY_ON_WRITE_H_
 
-#include "base/logging.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace net_instaweb {
@@ -29,7 +28,8 @@ namespace net_instaweb {
 // time we don't need to modify the copies.
 //
 // T must be copyable and assignable.  It does not need to be derived
-// from any other class.
+// from any other class.  It also must have an empty constructor and,
+// if you want to use MergeOrShare, a Merge method.
 template<class T>
 class CopyOnWrite {
  public:
@@ -65,6 +65,20 @@ class CopyOnWrite {
   }
 
   CopyOnWrite(const CopyOnWrite& src) : reference_(src.reference_) {}
+
+  // Merges in the contents of src into this.  To increase speed and
+  // save memory, this method shares storage with src if this was empty.
+  void MergeOrShare(const CopyOnWrite& src) {
+    // If src is empty then the function is a no-op.
+    if (!src->empty()) {
+      // If this is empty, then we want to make it share src's storage.
+      if ((*this)->empty()) {
+        *this = src;
+      } else {
+        MakeWriteable()->Merge(*src.get());
+      }
+    }
+  }
 
  private:
   typedef RefCountedObj<T> Reference;
