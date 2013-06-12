@@ -21,12 +21,14 @@
 
 #include <cstddef>
 #include <list>
-#include <map>
 #include <utility>  // for pair
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_hash.h"
+#include "third_party/rdestl/rdestl_hash_map.h"
+
 
 namespace net_instaweb {
 
@@ -55,11 +57,12 @@ namespace net_instaweb {
 // ValueType must support copy-construction and assign-by-value.
 template<class ValueType, class ValueHelper>
 class LRUCacheBase {
-  typedef std::pair<const GoogleString*, ValueType> KeyValuePair;
+  typedef std::pair<GoogleString, ValueType> KeyValuePair;
   typedef std::list<KeyValuePair*> EntryList;
   // STL guarantees lifetime of list itererators as long as the node is in list.
   typedef typename EntryList::iterator ListNode;
-  typedef std::map<GoogleString, ListNode> Map;
+
+  typedef rde::hash_map<GoogleString, ListNode, CasePreserveStringHash> Map;
 
  public:
   class Iterator {
@@ -74,7 +77,7 @@ class LRUCacheBase {
 
     const GoogleString& Key() const {
       const KeyValuePair* key_value_pair = *iter_;
-      return *(key_value_pair->first);
+      return key_value_pair->first;
     }
     const ValueType& Value() const {
       const KeyValuePair* key_value_pair = *iter_;
@@ -83,6 +86,8 @@ class LRUCacheBase {
 
    private:
     typename EntryList::const_reverse_iterator iter_;
+
+    // Implicit copy and assign are OK.
   };
 
   LRUCacheBase(size_t max_size, ValueHelper* value_helper)
@@ -179,7 +184,7 @@ class LRUCacheBase {
 
       if (EvictIfNecessary(key.size() + value_helper_->size(*new_value))) {
         // The new value fits.  Put it in the LRU-list.
-        KeyValuePair* kvp = new KeyValuePair(&map_iter->first, *new_value);
+        KeyValuePair* kvp = new KeyValuePair(map_iter->first, *new_value);
         lru_ordered_list_.push_front(kvp);
         map_iter->second = lru_ordered_list_.begin();
         ++num_inserts_;
@@ -236,7 +241,7 @@ class LRUCacheBase {
 
   // Sanity check the cache data structures.
   void SanityCheck() {
-    CHECK(map_.size() == lru_ordered_list_.size());
+    CHECK_EQ(static_cast<size_t>(map_.size()), lru_ordered_list_.size());
     size_t count = 0;
     size_t bytes_used = 0;
 
@@ -245,22 +250,22 @@ class LRUCacheBase {
     for (ListNode cell = lru_ordered_list_.begin(), e = lru_ordered_list_.end();
          cell != e; ++cell, ++count) {
       KeyValuePair* key_value = *cell;
-      typename Map::iterator map_iter = map_.find(*key_value->first);
+      typename Map::iterator map_iter = map_.find(key_value->first);
       CHECK(map_iter != map_.end());
-      CHECK(&map_iter->first == key_value->first);
+      CHECK(map_iter->first == key_value->first);
       CHECK(map_iter->second == cell);
       bytes_used += EntrySize(key_value);
     }
-    CHECK(count == map_.size());
-    CHECK(current_bytes_in_cache_ == bytes_used);
-    CHECK(current_bytes_in_cache_ <= max_bytes_in_cache_);
+    CHECK_EQ(count, static_cast<size_t>(map_.size()));
+    CHECK_EQ(current_bytes_in_cache_, bytes_used);
+    CHECK_LE(current_bytes_in_cache_, max_bytes_in_cache_);
 
     // Walk backward through the list, making sure it's coherent as well.
     count = 0;
     for (typename EntryList::reverse_iterator cell = lru_ordered_list_.rbegin(),
              e = lru_ordered_list_.rend(); cell != e; ++cell, ++count) {
     }
-    CHECK(count == map_.size());
+    CHECK_EQ(count, static_cast<size_t>(map_.size()));
   }
 
   // Clear the entire cache.  Used primarily for testing.  Note that this
@@ -295,7 +300,7 @@ class LRUCacheBase {
   // TODO(jmarantz): consider accounting for overhead for list cells, map
   // cells.
   size_t EntrySize(KeyValuePair* kvp) const {
-    return kvp->first->size() + value_helper_->size(kvp->second);
+    return kvp->first.size() + value_helper_->size(kvp->second);
   }
 
   ListNode Freshen(ListNode cell) {
@@ -317,7 +322,7 @@ class LRUCacheBase {
         CHECK_GE(current_bytes_in_cache_, EntrySize(key_value));
         current_bytes_in_cache_ -= EntrySize(key_value);
         value_helper_->EvictNotify(key_value->second);
-        map_.erase(*key_value->first);
+        map_.erase(key_value->first);
         delete key_value;
         ++num_evictions_;
       }

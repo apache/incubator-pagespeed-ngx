@@ -151,6 +151,7 @@
        ],
       'dependencies': [
         'pagespeed_base',
+        '<(DEPTH)/third_party/rdestl/rdestl.gyp:rdestl',
       ],
       'include_dirs': [
         '<(DEPTH)',
