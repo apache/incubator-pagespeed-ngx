@@ -25,6 +25,12 @@ namespace net_instaweb {
 
 namespace {
 
+const char kMessageAnotherInfo[] = "text another info message";
+const char kMessageError[] = "text error message";
+const char kMessageInfo[] = "text info message";
+const char kMessageNotUsed[] = "text message not used";
+const char kMessageWarning[] = "text warn message";
+
 class MockMessageHandlerTest : public testing::Test {
  protected:
   MockMessageHandlerTest() : handler_(new NullMutex) {}
@@ -37,6 +43,21 @@ class MockMessageHandlerTest : public testing::Test {
     EXPECT_EQ(expectFatal, handler_.MessagesOfType(kFatal));
   }
 
+  void CheckSkippedCounts(int expectSkippedInfo,
+                          int expectSkippedWarn,
+                          int expectSkippedError) {
+    EXPECT_EQ(expectSkippedInfo, handler_.SkippedMessagesOfType(kInfo));
+    EXPECT_EQ(expectSkippedWarn, handler_.SkippedMessagesOfType(kWarning));
+    EXPECT_EQ(expectSkippedError, handler_.SkippedMessagesOfType(kError));
+  }
+
+  void ApplyAllMessages() {
+    handler_.Message(kInfo, kMessageInfo);
+    handler_.Message(kWarning, kMessageWarning);
+    handler_.Message(kError, kMessageError);
+    handler_.Message(kInfo, kMessageAnotherInfo);
+  }
+
   MockMessageHandler handler_;
 };
 
@@ -45,17 +66,17 @@ TEST_F(MockMessageHandlerTest, Simple) {
   EXPECT_EQ(0, handler_.TotalMessages());
   EXPECT_EQ(0, handler_.SeriousMessages());
 
-  handler_.Message(kInfo, "test info message");
+  handler_.Message(kInfo, kMessageInfo);
   EXPECT_EQ(1, handler_.TotalMessages());
   EXPECT_EQ(0, handler_.SeriousMessages());
   CheckCounts(1, 0, 0, 0);
 
-  handler_.Message(kWarning, "text warning message");
+  handler_.Message(kWarning, kMessageWarning);
   EXPECT_EQ(2, handler_.TotalMessages());
   EXPECT_EQ(1, handler_.SeriousMessages());
   CheckCounts(1, 1, 0, 0);
 
-  handler_.Message(kError, "text Error message");
+  handler_.Message(kError, kMessageError);
   EXPECT_EQ(3, handler_.TotalMessages());
   EXPECT_EQ(2, handler_.SeriousMessages());
   CheckCounts(1, 1, 1, 0);
@@ -63,10 +84,46 @@ TEST_F(MockMessageHandlerTest, Simple) {
   // We can't actually test fatal, as it aborts
   // TODO(morlovich) mock the fatal behavior so the test does not crash
 
-  handler_.Message(kInfo, "another test info message");
+  handler_.Message(kInfo, kMessageAnotherInfo);
   EXPECT_EQ(4, handler_.TotalMessages());
   EXPECT_EQ(2, handler_.SeriousMessages());
   CheckCounts(2, 1, 1, 0);
+}
+
+TEST_F(MockMessageHandlerTest, SkippedMessage) {
+  ApplyAllMessages();
+  CheckCounts(2, 1, 1, 0);
+  EXPECT_EQ(4, handler_.TotalMessages());
+  CheckSkippedCounts(0, 0, 0);
+  EXPECT_EQ(0, handler_.TotalSkippedMessages());
+
+  handler_.AddPatternToSkipPrinting(kMessageInfo);
+  ApplyAllMessages();
+  CheckCounts(4, 2, 2, 0);
+  EXPECT_EQ(8, handler_.TotalMessages());
+  CheckSkippedCounts(1, 0, 0);
+  EXPECT_EQ(1, handler_.TotalSkippedMessages());
+
+  handler_.AddPatternToSkipPrinting(kMessageWarning);
+  ApplyAllMessages();
+  CheckCounts(6, 3, 3, 0);
+  EXPECT_EQ(12, handler_.TotalMessages());
+  CheckSkippedCounts(2, 1, 0);
+  EXPECT_EQ(3, handler_.TotalSkippedMessages());
+
+  handler_.AddPatternToSkipPrinting(kMessageError);
+  ApplyAllMessages();
+  CheckCounts(8, 4, 4, 0);
+  EXPECT_EQ(16, handler_.TotalMessages());
+  CheckSkippedCounts(3, 2, 1);
+  EXPECT_EQ(6, handler_.TotalSkippedMessages());
+
+  handler_.AddPatternToSkipPrinting(kMessageNotUsed);
+  ApplyAllMessages();
+  CheckCounts(10, 5, 5, 0);
+  EXPECT_EQ(20, handler_.TotalMessages());
+  CheckSkippedCounts(4, 3, 2);
+  EXPECT_EQ(9, handler_.TotalSkippedMessages());
 }
 
 }  // namespace

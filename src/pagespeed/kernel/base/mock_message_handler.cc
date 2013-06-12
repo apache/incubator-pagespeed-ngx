@@ -26,9 +26,9 @@
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
-
 
 MockMessageHandler::MockMessageHandler(AbstractMutex* mutex)
     : mutex_(mutex) {
@@ -41,7 +41,11 @@ void MockMessageHandler::MessageVImpl(MessageType type,
                                       const char* msg,
                                       va_list args) {
   ScopedMutex hold_mutex(mutex_.get());
-  GoogleMessageHandler::MessageVImpl(type, msg, args);
+  if (ShouldPrintMessage(msg)) {
+    GoogleMessageHandler::MessageVImpl(type, msg, args);
+  } else {
+    ++skipped_message_counts_[type];
+  }
   ++message_counts_[type];
 }
 
@@ -49,18 +53,28 @@ void MockMessageHandler::FileMessageVImpl(MessageType type,
                                           const char* filename, int line,
                                           const char* msg, va_list args) {
   ScopedMutex hold_mutex(mutex_.get());
-  GoogleMessageHandler::FileMessageVImpl(type, filename, line, msg, args);
+  if (ShouldPrintMessage(msg)) {
+    GoogleMessageHandler::FileMessageVImpl(type, filename, line, msg, args);
+  } else {
+    ++skipped_message_counts_[type];
+  }
   ++message_counts_[type];
 }
 
 int MockMessageHandler::MessagesOfType(MessageType type) const {
   ScopedMutex hold_mutex(mutex_.get());
-  return MessagesOfTypeImpl(type);
+  return MessagesOfTypeImpl(message_counts_, type);
 }
 
-int MockMessageHandler::MessagesOfTypeImpl(MessageType type) const {
-  MessageCountMap::const_iterator i = message_counts_.find(type);
-  if (i != message_counts_.end()) {
+int MockMessageHandler::SkippedMessagesOfType(MessageType type) const {
+  ScopedMutex hold_mutex(mutex_.get());
+  return MessagesOfTypeImpl(skipped_message_counts_, type);
+}
+
+int MockMessageHandler::MessagesOfTypeImpl(const MessageCountMap& counts,
+                                           MessageType type) const {
+  MessageCountMap::const_iterator i = counts.find(type);
+  if (i != counts.end()) {
     return i->second;
   } else {
     return 0;
@@ -69,13 +83,18 @@ int MockMessageHandler::MessagesOfTypeImpl(MessageType type) const {
 
 int MockMessageHandler::TotalMessages() const {
   ScopedMutex hold_mutex(mutex_.get());
-  return TotalMessagesImpl();
+  return TotalMessagesImpl(message_counts_);
 }
 
-int MockMessageHandler::TotalMessagesImpl() const {
+int MockMessageHandler::TotalSkippedMessages() const {
+  ScopedMutex hold_mutex(mutex_.get());
+  return TotalMessagesImpl(skipped_message_counts_);
+}
+
+int MockMessageHandler::TotalMessagesImpl(const MessageCountMap& counts) const {
   int total = 0;
-  for (MessageCountMap::const_iterator i = message_counts_.begin();
-       i != message_counts_.end(); ++i) {
+  for (MessageCountMap::const_iterator i = counts.begin();
+       i != counts.end(); ++i) {
     total += i->second;
   }
   return total;
@@ -83,12 +102,23 @@ int MockMessageHandler::TotalMessagesImpl() const {
 
 int MockMessageHandler::SeriousMessages() const {
   ScopedMutex hold_mutex(mutex_.get());
-  return TotalMessagesImpl() - MessagesOfTypeImpl(kInfo);
+  int num = TotalMessagesImpl(message_counts_) -
+       MessagesOfTypeImpl(message_counts_, kInfo);
+  return num;
 }
 
 void MockMessageHandler::set_mutex(AbstractMutex* mutex) {
   mutex_->DCheckUnlocked();
   mutex_.reset(mutex);
+}
+
+void MockMessageHandler::AddPatternToSkipPrinting(
+    const char* pattern) {
+  patterns_to_skip_.Allow(GoogleString(pattern));
+}
+
+bool MockMessageHandler::ShouldPrintMessage(const char* msg) {
+  return !patterns_to_skip_.Match(GoogleString(msg), false);
 }
 
 }  // namespace net_instaweb

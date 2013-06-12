@@ -54,11 +54,20 @@ const char kTimestampVariable[] = "timestamp_";
 
 // Variables to keep for the console. These are the same names used in
 // /mod_pagespeed_statistics.
-// IMPORTANT: Do not include kTimestampVariable here, or else DumpToWriter
-// will hang.
 // TODO(sligocki): Move into statistics_logger.cc and rename to be more
 // descriptive.
 const char* const kImportant[] = {
+  // Variables used in /mod_pagespeed_console
+  "serf_fetch_failure_count", "serf_fetch_request_count",
+  "resource_url_domain_rejections", "resource_url_domain_acceptances",
+  "num_cache_control_not_rewritable_resources",
+  "num_cache_control_rewritable_resources",
+  "cache_backend_misses", "cache_backend_hits", "cache_expirations",
+
+  // Variables used by /mod_pagespeed_temp_statistics_graphs
+  // Note: It's fine that there are duplicates here.
+  // TODO(sligocki): Remove this in favor of the /mod_pagespeed_console vars.
+  // Should we also add other stats for future/other use?
   "num_flushes", "cache_hits", "cache_misses",
   "num_fallback_responses_served", "slurp_404_count", "page_load_count",
   "total_page_load_ms", "num_rewrites_executed", "num_rewrites_dropped",

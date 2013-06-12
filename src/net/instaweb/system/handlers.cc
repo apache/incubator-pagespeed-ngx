@@ -122,7 +122,6 @@ void ConsoleHandler(ServerContext* server_context, Writer* writer,
 
   writer->Write("      </ol>\n"
                 "    </div>\n"
-                "    <div\n"
                 "  </body>\n"
                 "</html>\n", handler);
 }

@@ -105,7 +105,8 @@
         '<(DEPTH)',
       ],
       'dependencies': [
-        'pthread_system',
+        ':pthread_system',
+        ':util',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'export_dependent_settings': [

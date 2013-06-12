@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/util/fast_wildcard_group.h"
 
 namespace net_instaweb {
 
@@ -46,11 +47,21 @@ class MockMessageHandler : public GoogleMessageHandler {
   // Returns total number of messages issued
   int TotalMessages() const;
 
+  // Returns number of messages which are not printed
+  int SkippedMessagesOfType(MessageType type) const;
+
+  // Returns total number of messages which are not printed
+  int TotalSkippedMessages() const;
+
   // Returns number of messages of severity higher than info
   int SeriousMessages() const;
 
   // Takes ownership of the mutex.
   void set_mutex(AbstractMutex* mutex);
+
+  // If a message contains any of the added patterns (sub-strings),
+  // it will not be printed, but will still be counted.
+  void AddPatternToSkipPrinting(const char* pattern);
 
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);
@@ -59,14 +70,22 @@ class MockMessageHandler : public GoogleMessageHandler {
                                 int line, const char* msg, va_list args);
 
  private:
+  // Returns whether the message should be printed.
+  bool ShouldPrintMessage(const char* msg);
+
+ private:
   typedef std::map<MessageType, int> MessageCountMap;
 
   // The Impl versions don't grab the lock themselves
-  int TotalMessagesImpl() const;
-  int MessagesOfTypeImpl(MessageType type) const;
+  int TotalMessagesImpl(const MessageCountMap& counts) const;
+  int MessagesOfTypeImpl(const MessageCountMap& counts,
+                         MessageType type) const;
 
   scoped_ptr<AbstractMutex> mutex_;
   MessageCountMap message_counts_;
+  MessageCountMap skipped_message_counts_;
+  FastWildcardGroup patterns_to_skip_;
+
   DISALLOW_COPY_AND_ASSIGN(MockMessageHandler);
 };
 
