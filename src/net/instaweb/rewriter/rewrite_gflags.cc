@@ -335,6 +335,10 @@ DEFINE_string(experiment_specs, "",
               "'id=7;enable=recompress_images;percent=50+id=2;enable="
               "recompress_images,convert_jpeg_to_progressive;percent=5'.");
 
+DEFINE_bool(enable_cache_purge, false, "Enables the Cache Purge API. This "
+            "requires saving input URLs to each metadata cache entry to "
+            "facilitate fast URL cache invalidation.");
+
 DEFINE_bool(enable_extended_instrumentation, false,
             "If set to true, additional instrumentation js added to that "
             "page that adds more information to the beacon.");
@@ -864,6 +868,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_extended_instrumentation")) {
     options->set_enable_extended_instrumentation(
         FLAGS_enable_extended_instrumentation);
+  }
+  if (WasExplicitlySet("enable_cache_purge")) {
+    options->set_enable_cache_purge(FLAGS_enable_cache_purge);
   }
 
   if (WasExplicitlySet("support_noscript_enabled")) {

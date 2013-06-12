@@ -1316,19 +1316,18 @@ TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
 
   SetTimeMs(start_time_ms() + (3 * ttl_ms_) / 2);
   ResetHeadersAndStats();
-  FetchAndCheckResponse(cache_js_url_, cache_body_, true, ttl_ms_, NULL,
+  FetchAndCheckResponse(cache_js_url_, "good:jm", true,
+                        ResponseHeaders::kImplicitCacheTtlMs, etag_,
                         start_time_ms() + (3 * ttl_ms_) / 2);
-  // The metadata and cache entry is stale now.  Even though
-  // metadata_cache_staleness_threshold_ms is >0, stale rewriting
-  // is disabled in in-place rewrite context and hence we serve the original
-  // resource.
+  // The metadata and cache entry is stale now. We serve the rewritten resource
+  // here, but trigger a fetch and rewrite to update the metadata.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(4, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(0, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());

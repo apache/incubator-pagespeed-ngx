@@ -362,7 +362,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
         if (ttl_ms > 0) {
           return true;
         } else if (
-            rewrite_context_->do_stale_rewrite() &&
+            !rewrite_context_->has_parent() &&
             ttl_ms + options->metadata_cache_staleness_threshold_ms() > 0) {
           rewrite_context_->stale_rewrite_ = true;
           return true;
@@ -1580,8 +1580,7 @@ void RewriteContext::OutputCacheDone(CacheLookupResult* cache_result) {
       OutputResourcePtr output_resource;
       if (create_outputs) {
         if (partition.optimizable() &&
-            CreateOutputResourceForCachedOutput(&partition, stale_rewrite_,
-                                                &output_resource)) {
+            CreateOutputResourceForCachedOutput(&partition, &output_resource)) {
           outputs_.push_back(output_resource);
         } else {
           outputs_.push_back(OutputResourcePtr(NULL));
@@ -1853,8 +1852,7 @@ void RewriteContext::DistributeRewriteDone(bool success) {
 bool RewriteContext::CreateOutputResourceFromContent(
     const CachedResult& cached_result, const ResponseHeaders& response_headers,
     StringPiece content, OutputResourcePtr* output_resource) {
-  if (CreateOutputResourceForCachedOutput(&cached_result, false,
-                                          output_resource)) {
+  if (CreateOutputResourceForCachedOutput(&cached_result, output_resource)) {
     (*output_resource)->response_headers()->CopyFrom(response_headers);
     MessageHandler* message_handler = Driver()->message_handler();
     Writer* writer = (*output_resource)->BeginWrite(message_handler);
@@ -1895,10 +1893,8 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
       // We cannot safely alias resources that are not loaded, as the loading
       // process is threaded, and would therefore race. Therefore, recreate
       // another copy matching the cache data.
-      CreateOutputResourceForCachedOutput(
-          &partitions_->partition(i),
-          false,  // Exact copy of cache data means we won't force hash to zero.
-          &outputs_[i]);
+      CreateOutputResourceForCachedOutput(&partitions_->partition(i),
+                                          &outputs_[i]);
     }
   }
 
@@ -2531,7 +2527,6 @@ void RewriteContext::CollectDependentTopLevel(ContextSet* contexts) {
 
 bool RewriteContext::CreateOutputResourceForCachedOutput(
     const CachedResult* cached_result,
-    bool force_hash_to_zero,
     OutputResourcePtr* output_resource) {
   bool ret = false;
   GoogleUrl gurl(cached_result->url());
@@ -2540,9 +2535,6 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
 
   ResourceNamer namer;
   if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
-    if (force_hash_to_zero) {
-      namer.set_hash(ServerContext::kStaleHash);
-    }
     output_resource->reset(
         new OutputResource(FindServerContext(),
                            gurl.AllExceptLeaf() /* resolved_base */,
@@ -2821,10 +2813,7 @@ void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
     CachedResult* result = output_partition(0);
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
-        CreateOutputResourceForCachedOutput(
-            result,
-            false,  // The cached output resource will not have stale inputs
-            &output_resource)) {
+        CreateOutputResourceForCachedOutput(result, &output_resource)) {
       if (fetch_->requested_hash() != output_resource->hash()) {
         // Try to do a cache look up on the proper hash; if it's available,
         // we can serve it.

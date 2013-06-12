@@ -832,12 +832,8 @@ class RewriteContext {
       MessageHandler* message_handler);
 
   // Creates an output resource that corresponds to a full URL stored in
-  // metadata cache. If force_hash_to_zero is present, we are
-  // processing a stale rewrite, and we should use "0" as the hash
-  // so that the client browser sends a request for the freshened
-  // rewritten resource.
+  // metadata cache.
   bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
-                                           bool force_hash_to_zero,
                                            OutputResourcePtr* output_resource);
 
   // Callback for metadata lookup on fetch path.
@@ -853,10 +849,6 @@ class RewriteContext {
   // kFallbackEmergency) or the system thinks that would avoid a latency
   // spike or overload (kFallbackDiscretional).
   bool CanFetchFallbackToOriginal(FallbackCondition circumstance) const;
-
-  // Whether stale rewrites should be done (only if within
-  // metadata_cache_staleness_threshold_ms).  Default is true.
-  virtual bool do_stale_rewrite() const { return true; }
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;

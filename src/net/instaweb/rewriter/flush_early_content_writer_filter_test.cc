@@ -429,46 +429,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0, false), output_);
 }
 
-TEST_F(FlushEarlyContentWriterFilterTest, CombinedRewrittenUrl) {
-  Clear();
-  GoogleString html_input =
-      "<!DOCTYPE html>"
-      "<html>"
-      "<head>"
-      "<link type=\"text/css\" rel=\"stylesheet\" "
-      "href=\"http://www.test.com/I.e.css+f.css.pagespeed.cc.0.css\" "
-      "media=\"print\"/>"
-      "</head>"
-      "<body>"
-      "</body></html>";
-  GoogleString html_output;
-
-  // Set the User-Agent to prefetch_link_script_tag.
-  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
-  Parse("prefetch_link_script_tag", html_input);
-
-  EXPECT_EQ(RewrittenOutputWithResources(html_output, 0, false), output_);
-  ExpectNumLogRecords(2);
-
-  // Since flush-early does not handle combined URLs, we see this combined
-  // URL not getting flushed and appearing as a non-pagespeed resource
-  // in our logs.
-  ExpectLogRecord(0,
-                  RewriterApplication::NOT_APPLIED,
-                  0,
-                  FlushEarlyResourceInfo::CSS,
-                  FlushEarlyResourceInfo::NON_PAGESPEED,
-                  false /* not affected by bandwidth */,
-                  true /* in HEAD */);
-  ExpectLogRecord(1,
-                  RewriterApplication::NOT_APPLIED,
-                  -1,
-                  FlushEarlyResourceInfo::JS,
-                  FlushEarlyResourceInfo::DEFERJS_SCRIPT,
-                  false /* affected by bandwidth */,
-                  false /* not in HEAD */);
-}
-
 TEST_F(FlushEarlyContentWriterFilterTest, TooManyRewriterInfoRecords) {
   Clear();
   GoogleString html_input = GetOutputWithHash(
@@ -633,36 +593,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources5) {
   options()->DisableFilter(RewriteOptions::kDeferJavascript);
   server_context()->ComputeSignature(options());
   VerifyJsNotFlushed();
-}
-
-TEST_F(FlushEarlyContentWriterFilterTest,
-       DoNotFlushEarlyForStaleMetadataResources) {
-  Clear();
-  // If the metadata entry has expired then the rewritten resources are served
-  // with ServerContext::kStaleHash. Such resources should not be flused early
-  // as they cause double downloading.
-  GoogleString html_input = GetOutputWithHash(
-      "<!DOCTYPE html>"
-      "<html>"
-      "<head>"
-        "<link type=\"text/css\" rel=\"stylesheet\""
-        "href=\"a.css.pagespeed.cf.%s.css\" pagespeed_size=\"1000\"/>"
-        "<link type=\"text/css\" rel=\"stylesheet\""
-        "href=\"d.css.pagespeed.cf.0.css\" pagespeed_size=\"1000\"/>"
-      "</head>"
-      "<body>"
-      "</body></html>");
-  GoogleString html_output;
-
-  Clear();
-  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
-  // d.css is not flushed early since its metadata entry was expired at the time
-  // of rewriting.
-  html_output = GetOutputWithHash(
-      "<link rel=\"stylesheet\" href=\"a.css.pagespeed.cf.%s.css\"/>\n");
-
-  Parse("prefetch_link_script_tag", html_input);
-  EXPECT_EQ(RewrittenOutputWithResources(html_output, 1, true), output_);
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest, CacheablePublicResources1) {

@@ -3916,8 +3916,6 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
   const char kNewDataIn[] = "   newdata  ";
   const GoogleString kOriginalRewriteUrl(Encode(kTestDomain, "tw", "jXd_OF09_s",
                                                 "test.css", "css"));
-  const GoogleString kStaleRewriteUrl(Encode(kTestDomain, "tw", "0",
-                                             "test.css", "css"));
 
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(kTtlMs / 2);
@@ -3958,7 +3956,7 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
   // metadata.
   ValidateExpected("stale",
                    CssLinkHref(kPath),
-                   CssLinkHref(kStaleRewriteUrl));
+                   CssLinkHref(kOriginalRewriteUrl));
   EXPECT_EQ(0, metadata_cache_info().num_misses());
   EXPECT_EQ(0, metadata_cache_info().num_revalidates());
   EXPECT_EQ(1, metadata_cache_info().num_hits());
