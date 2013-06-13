@@ -297,6 +297,7 @@ class RewriteOptions {
     kRewriteUncacheableResources,
     kRunningExperiment,
     kServeStaleIfFetchError,
+    kServeStaleWhileRevalidateThresholdSec,
     kSupportNoScriptEnabled,
     kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
     kUseFallbackPropertyCacheValues,
@@ -1557,6 +1558,13 @@ class RewriteOptions {
   }
   bool proactively_freshen_user_facing_request() const {
     return proactively_freshen_user_facing_request_.value();
+  }
+
+  void set_serve_stale_while_revalidate_threshold_sec(int64 x) {
+    set_option(x, &serve_stale_while_revalidate_threshold_sec_);
+  }
+  int64 serve_stale_while_revalidate_threshold_sec() const {
+    return serve_stale_while_revalidate_threshold_sec_.value();
   }
 
   void set_enable_flush_early_critical_css(bool x) {
@@ -3053,6 +3061,9 @@ class RewriteOptions {
   // Proactively freshen user facing request if it is about to expire. So, that
   // subsequent requests will experience a cache hit.
   Option<bool> proactively_freshen_user_facing_request_;
+  // Threshold for serving stale responses while revalidating in background.
+  // 0 means don't serve stale content.
+  Option<int64> serve_stale_while_revalidate_threshold_sec_;
   // Whether to flush the inlined critical css rules early.
   Option<bool> enable_flush_early_critical_css_;
   // When default_cache_html_ is false (default) we do not cache

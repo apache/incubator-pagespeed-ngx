@@ -1344,6 +1344,8 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
       stats->backend_latency_histogram());
   cache_fetcher->set_fallback_responses_served(
       stats->fallback_responses_served());
+  cache_fetcher->set_fallback_responses_served_while_revalidate(
+      stats->fallback_responses_served_while_revalidate());
   cache_fetcher->set_num_conditional_refreshes(
       stats->num_conditional_refreshes());
   cache_fetcher->set_serve_stale_if_fetch_error(
@@ -1352,6 +1354,8 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
       options()->proactively_freshen_user_facing_request());
   cache_fetcher->set_num_proactively_freshen_user_facing_request(
       stats->num_proactively_freshen_user_facing_request());
+  cache_fetcher->set_serve_stale_while_revalidate_threshold_sec(
+      options()->serve_stale_while_revalidate_threshold_sec());
   return cache_fetcher;
 }
 

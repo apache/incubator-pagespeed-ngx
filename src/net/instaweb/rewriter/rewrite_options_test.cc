@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(181, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(182, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -1075,6 +1075,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ProactivelyFreshenUserFacingRequest",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kProactivelyFreshenUserFacingRequest));
+  EXPECT_STREQ("ServeStaleWhileRevalidateThresholdSec",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kServeStaleWhileRevalidateThresholdSec));
   EXPECT_STREQ("SupportNoScriptEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kSupportNoScriptEnabled));

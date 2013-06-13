@@ -21,7 +21,6 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -83,13 +82,15 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
         async_op_hooks_(async_op_hooks),
         backend_first_byte_latency_(NULL),
         fallback_responses_served_(NULL),
+        fallback_responses_served_while_revalidate_(NULL),
         num_conditional_refreshes_(NULL),
         num_proactively_freshen_user_facing_request_(NULL),
         respect_vary_(false),
         ignore_recent_fetch_failed_(false),
         serve_stale_if_fetch_error_(false),
         default_cache_html_(false),
-        proactively_freshen_user_facing_request_(false) {
+        proactively_freshen_user_facing_request_(false),
+        serve_stale_while_revalidate_threshold_sec_(0) {
   }
   virtual ~CacheUrlAsyncFetcher();
 
@@ -120,6 +121,14 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
 
   Variable* fallback_responses_served() const {
     return fallback_responses_served_;
+  }
+
+  void set_fallback_responses_served_while_revalidate(Variable* x) {
+    fallback_responses_served_while_revalidate_ = x;
+  }
+
+  Variable* fallback_responses_served_while_revalidate() const {
+    return fallback_responses_served_while_revalidate_;
   }
 
   void set_num_conditional_refreshes(Variable* x) {
@@ -156,6 +165,14 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return serve_stale_if_fetch_error_;
   }
 
+  void set_serve_stale_while_revalidate_threshold_sec(int64 x) {
+    serve_stale_while_revalidate_threshold_sec_ = x;
+  }
+
+  int64 serve_stale_while_revalidate_threshold_sec() const {
+    return serve_stale_while_revalidate_threshold_sec_;
+  }
+
   void set_default_cache_html(bool x) { default_cache_html_ = x; }
   bool default_cache_html() const { return default_cache_html_; }
 
@@ -171,11 +188,12 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   const Hasher* lock_hasher_;
   NamedLockManager* lock_manager_;
   HTTPCache* http_cache_;
-  UrlAsyncFetcher* fetcher_;
+  UrlAsyncFetcher* fetcher_;  // may be NULL.
   AsyncOpHooks* async_op_hooks_;
 
   Histogram* backend_first_byte_latency_;  // may be NULL.
   Variable* fallback_responses_served_;  // may be NULL.
+  Variable* fallback_responses_served_while_revalidate_;  // may be NULL.
   Variable* num_conditional_refreshes_;  // may be NULL.
   Variable* num_proactively_freshen_user_facing_request_;  // may be NULL.
 
@@ -184,6 +202,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   bool serve_stale_if_fetch_error_;
   bool default_cache_html_;
   bool proactively_freshen_user_facing_request_;
+  int64 serve_stale_while_revalidate_threshold_sec_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
 };

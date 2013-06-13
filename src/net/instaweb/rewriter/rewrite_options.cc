@@ -1011,6 +1011,15 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);
   AddBaseProperty(
+      true,
+      &RewriteOptions::serve_stale_while_revalidate_threshold_sec_,
+      "sswrt",
+      kServeStaleWhileRevalidateThresholdSec,
+      kDirectoryScope,
+      "Threshold for serving serving stale responses while revalidating in "
+      "background. 0 means don't serve stale content."
+      "Note: Stale response will be served only for non-html requests.");
+  AddBaseProperty(
       false,
       &RewriteOptions::flush_more_resources_early_if_time_permits_,
       "fretp", kFlushMoreResourcesEarlyIfTimePermits,

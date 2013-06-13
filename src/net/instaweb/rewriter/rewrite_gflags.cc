@@ -213,6 +213,10 @@ DEFINE_bool(proactively_freshen_user_facing_request, false,
             "expire in cache.");
 DEFINE_bool(serve_stale_if_fetch_error, true, "Serve stale content if the "
             "fetch results in an error.");
+DEFINE_int64(serve_stale_while_revalidate_threshold_sec, 0, "Threshold for "
+            "serving stale content while revalidating in background."
+            "0 means don't serve stale content."
+            "Note: Stale response will be served only for non-html requests.");
 DEFINE_int32(psa_flush_buffer_limit_bytes,
              RewriteOptions::kDefaultFlushBufferLimitBytes,
              "Whenever more than this much HTML gets buffered, a flush"
@@ -548,6 +552,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("proactively_freshen_user_facing_request")) {
     options->set_proactively_freshen_user_facing_request(
         FLAGS_proactively_freshen_user_facing_request);
+  }
+  if (WasExplicitlySet("serve_stale_while_revalidate_threshold_sec")) {
+    options->set_serve_stale_while_revalidate_threshold_sec(
+        FLAGS_serve_stale_while_revalidate_threshold_sec);
   }
   if (WasExplicitlySet("psa_idle_flush_time_ms")) {
     options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);

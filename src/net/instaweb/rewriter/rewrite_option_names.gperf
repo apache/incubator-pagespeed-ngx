@@ -143,6 +143,7 @@ struct OptionName {
 "RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
 "RunExperiment",                         RewriteOptions::kRunningExperiment
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
+"ServeStaleWhileRevalidateThresholdSec", RewriteOptions::kServeStaleWhileRevalidateThresholdSec
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
 "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss", RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss
 "UseFallbackPropertyCacheValues",        RewriteOptions::kUseFallbackPropertyCacheValues

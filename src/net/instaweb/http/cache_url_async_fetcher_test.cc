@@ -170,6 +170,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         lru_cache_(1000),
         timer_(MockTimer::kApr_5_2010_ms),
         cache_url_("http://www.example.com/cacheable.html"),
+        cache_css_url_("http://www.example.com/cacheable.css"),
         cache_https_html_url_("https://www.example.com/cacheable.html"),
         cache_https_css_url_("https://www.example.com/cacheable.css"),
         nocache_url_("http://www.example.com/non-cacheable.jpg"),
@@ -213,6 +214,11 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         "num_conditional_refreshes");
     cache_fetcher_->set_num_conditional_refreshes(num_conditional_refreshes);
 
+    Variable* fallback_responses_served_while_revalidate_ =
+        statistics_.AddVariable("fallback_responses_served_while_revalidate");
+    cache_fetcher_->set_fallback_responses_served_while_revalidate(
+        fallback_responses_served_while_revalidate_);
+
     int64 now_ms = timer_.NowMs();
 
     // Set fetcher result and headers.
@@ -224,6 +230,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
                               cache_body_);
     cache_headers.Replace(HttpAttributes::kContentType,
                           kContentTypeCss.mime_type());
+    mock_fetcher_.SetResponse(cache_css_url_, cache_headers, cache_body_);
     mock_fetcher_.SetResponse(cache_https_css_url_, cache_headers,
                               cache_body_);
 
@@ -523,6 +530,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   RequestHeaders empty_request_headers_;
 
   const GoogleString cache_url_;
+  const GoogleString cache_css_url_;
   const GoogleString cache_https_html_url_;
   const GoogleString cache_https_css_url_;
   const GoogleString nocache_url_;
@@ -691,6 +699,69 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
   EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, ServeStaleContentWhileRevalidate) {
+  // First css request to warm the cache.
+  ExpectCache(cache_css_url_, cache_body_);
+  ClearStats();
+
+  cache_fetcher_->set_serve_stale_while_revalidate_threshold_sec(
+      Timer::kDayMs * Timer::kSecondMs);
+  // Advance the time so that values in cache is expired.
+  timer_.AdvanceMs(ttl_ms_ + Timer::kHourMs);
+  ClearStats();
+  FetchAndValidate(cache_css_url_, empty_request_headers_, true,
+                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
+  // Fetch hits initial cache lookup ...
+  EXPECT_EQ(1, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+  // Background fetch is triggered to populate the cache with newer value.
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+  // Stale content is served.
+  EXPECT_EQ(1,
+            cache_fetcher_
+                ->fallback_responses_served_while_revalidate()->Get());
+
+  ClearStats();
+  FetchAndValidate(cache_css_url_, empty_request_headers_, true,
+                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
+  // Fetch hits initial cache lookup ...
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(1, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache_->cache_misses()->Get());
+  // No fetch as cache is update with earlier background fetch.
+  EXPECT_EQ(0, counting_fetcher_.fetch_count());
+  EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+  EXPECT_EQ(0,
+            cache_fetcher_
+                ->fallback_responses_served_while_revalidate()->Get());
+
+  // First html request to warm the cache.
+  ExpectCache(cache_url_, cache_body_);
+  ClearStats();
+
+  // Advance the time so that values in cache is expired.
+  timer_.AdvanceMs(ttl_ms_ + Timer::kHourMs);
+  ClearStats();
+  FetchAndValidate(cache_url_, empty_request_headers_, true,
+                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
+  // Fetch hits initial cache lookup ...
+  EXPECT_EQ(1, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+  // Fetch is triggered to populate the cache with newer value.
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+  // Stale content is not served for html requests.
+  EXPECT_EQ(0,
+            cache_fetcher_
+                ->fallback_responses_served_while_revalidate()->Get());
 }
 
 TEST_F(CacheUrlAsyncFetcherTest, CachingWithHttpsHtmlCachingEnabled) {

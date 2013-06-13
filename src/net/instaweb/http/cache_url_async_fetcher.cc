@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -232,6 +233,8 @@ class CacheFindCallback : public HTTPCache::Callback {
         backend_first_byte_latency_(
             owner->backend_first_byte_latency_histogram()),
         fallback_responses_served_(owner->fallback_responses_served()),
+        fallback_responses_served_while_revalidate_(
+            owner->fallback_responses_served_while_revalidate()),
         num_conditional_refreshes_(owner->num_conditional_refreshes()),
         num_proactively_freshen_user_facing_request_(
             owner->num_proactively_freshen_user_facing_request()),
@@ -241,7 +244,9 @@ class CacheFindCallback : public HTTPCache::Callback {
         serve_stale_if_fetch_error_(owner->serve_stale_if_fetch_error()),
         default_cache_html_(owner->default_cache_html()),
         proactively_freshen_user_facing_request_(
-            owner->proactively_freshen_user_facing_request()) {
+            owner->proactively_freshen_user_facing_request()),
+        serve_stale_while_revalidate_threshold_sec_(
+            owner->serve_stale_while_revalidate_threshold_sec()) {
     // Note that this is a cache lookup: there are no request-headers.  At
     // this level, we have already made a policy decision that any Vary
     // headers present will be ignored (see
@@ -276,7 +281,8 @@ class CacheFindCallback : public HTTPCache::Callback {
           base_fetch_->Write(contents, handler_);
         }
 
-        if (proactively_freshen_user_facing_request_ &&
+        if (fetcher_ != NULL &&
+            proactively_freshen_user_facing_request_ &&
             async_op_hooks_ != NULL &&
             IsImminentlyExpiring(*response_headers())) {
           // Triggers the background fetch to freshen the value in cache if
@@ -284,17 +290,7 @@ class CacheFindCallback : public HTTPCache::Callback {
           if (num_proactively_freshen_user_facing_request_ != NULL) {
             num_proactively_freshen_user_facing_request_->Add(1);
           }
-          AsyncFetchWithLock* fetch = new BackgroundFreshenFetch(
-              lock_hasher_,
-              base_fetch_->request_context(),
-              url_,
-              lock_manager_,
-              handler_,
-              this,
-              async_op_hooks_);
-          RequestHeaders* request_headers = fetch->request_headers();
-          request_headers->CopyFrom(*base_fetch_->request_headers());
-          AsyncFetchWithLock::Start(fetcher_, fetch, handler_);
+          TriggerBackgroundFreshenFetch();
         }
 
         base_fetch_->Done(true);
@@ -332,6 +328,10 @@ class CacheFindCallback : public HTTPCache::Callback {
             // TODO(gee): It is possible to cache HEAD results as well, but we
             // must add code to ensure we do not serve GET requests using HEAD
             // responses.
+            if (ServeStaleContentWhileRevalidate(base_fetch)) {
+              // Serve stale content while revalidate in the background.
+              break;
+            }
             if (serve_stale_if_fetch_error_) {
               // If fallback_http_value() is populated, use it in case the
               // fetch fails. Note that this is only populated if the
@@ -376,6 +376,59 @@ class CacheFindCallback : public HTTPCache::Callback {
   }
 
  private:
+  bool ServeStaleContentWhileRevalidate(AsyncFetch* base_fetch) {
+    if (serve_stale_while_revalidate_threshold_sec_ == 0 ||
+        fallback_http_value() == NULL ||
+        fallback_http_value()->Empty()) {
+      return false;
+    }
+    ResponseHeaders* response_headers = base_fetch->response_headers();
+    if (!fallback_http_value()->ExtractHeaders(response_headers, handler_)) {
+      // Returns false if it fails to extract headers.
+      response_headers->Clear();
+      return false;
+    }
+    response_headers->ComputeCaching();
+    const int64 expiry_ms = response_headers->CacheExpirationTimeMs();
+    const int64 now_ms = cache_->timer()->NowMs();
+    const int64 serve_stale_threshold_ms =
+        serve_stale_while_revalidate_threshold_sec_ * 1000;
+    if (now_ms > expiry_ms +  serve_stale_threshold_ms ||
+        response_headers->IsHtmlLike()) {
+      // Serve non-html request with fallback http value if resource
+      // was expired within serve_stale_while_revalidate_threshold_ms_.
+      response_headers->Clear();
+      return false;
+    }
+    if (fallback_responses_served_while_revalidate_ != NULL) {
+      fallback_responses_served_while_revalidate_->Add(1);
+    }
+    base_fetch_->HeadersComplete();
+    StringPiece contents;
+    fallback_http_value()->ExtractContents(&contents);
+    base_fetch_->Write(contents, handler_);
+
+    // Issue a background fetch to update the cache with a fresh value so
+    // that future request will be responded with fresh content.
+    TriggerBackgroundFreshenFetch();
+    base_fetch_->Done(true);
+    return true;
+  }
+
+  void TriggerBackgroundFreshenFetch() {
+    AsyncFetchWithLock* fetch = new BackgroundFreshenFetch(
+        lock_hasher_,
+        base_fetch_->request_context(),
+        url_,
+        lock_manager_,
+        handler_,
+        this,
+        async_op_hooks_);
+    RequestHeaders* request_headers = fetch->request_headers();
+    request_headers->CopyFrom(*base_fetch_->request_headers());
+    AsyncFetchWithLock::Start(fetcher_, fetch, handler_);
+  }
+
   bool ShouldReturn304() const {
     if (ConditionalHeadersMatch(HttpAttributes::kIfNoneMatch,
                                 HttpAttributes::kEtag)) {
@@ -447,6 +500,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   UrlAsyncFetcher* fetcher_;
   Histogram* backend_first_byte_latency_;
   Variable* fallback_responses_served_;
+  Variable* fallback_responses_served_while_revalidate_;
   Variable* num_conditional_refreshes_;
   Variable* num_proactively_freshen_user_facing_request_;
   MessageHandler* handler_;
@@ -456,6 +510,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   bool serve_stale_if_fetch_error_;
   bool default_cache_html_;
   bool proactively_freshen_user_facing_request_;
+  int64 serve_stale_while_revalidate_threshold_sec_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheFindCallback);
 };
