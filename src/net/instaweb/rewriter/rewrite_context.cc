@@ -1119,7 +1119,12 @@ class RewriteContext::FetchContext {
     rewrite_context_->FixFetchFallbackHeaders(async_fetch_->response_headers());
     // Use the most conservative Cache-Control considering all inputs.
     ApplyInputCacheControl(async_fetch_->response_headers());
-    AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
+    if (!detached_) {
+      // If we're detached then we don't know what the state of the metadata is
+      // here as the Rewrite() could still be ongoing in the low-priority
+      // thread.  So only add metadata to the response when not detached.
+      AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
+    }
     async_fetch_->set_content_length(contents.size());
     async_fetch_->HeadersComplete();
     bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
