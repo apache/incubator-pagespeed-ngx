@@ -76,7 +76,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     server_context()->set_dom_cohort(dom_cohort);
 
     server_context()->set_critical_images_finder(
-        new BeaconCriticalImagesFinder(beacon_cohort, statistics()));
+        new BeaconCriticalImagesFinder(
+            beacon_cohort, factory()->nonce_generator(), statistics()));
     MockPropertyPage* page = NewMockPage("http://example.com");
     rewrite_driver()->set_property_page(page);
     pcache->set_enabled(true);

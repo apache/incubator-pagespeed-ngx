@@ -45,6 +45,7 @@ class MockScheduler;
 class MockTimer;
 class MockTimeCache;
 class MockUrlFetcher;
+class NonceGenerator;
 class ServerContext;
 class RewriteDriver;
 class RewriteFilter;
@@ -196,6 +197,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
+  virtual NonceGenerator* DefaultNonceGenerator();
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* server_context);
   virtual UrlNamer* DefaultUrlNamer();

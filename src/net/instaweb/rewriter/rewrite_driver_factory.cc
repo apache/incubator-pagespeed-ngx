@@ -56,6 +56,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
 
@@ -215,6 +216,10 @@ void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
   filename_encoder_.reset(e);
 }
 
+void RewriteDriverFactory::set_nonce_generator(NonceGenerator* gen) {
+  nonce_generator_.reset(gen);
+}
+
 void RewriteDriverFactory::set_url_namer(UrlNamer* url_namer) {
   url_namer_.reset(url_namer);
 }
@@ -243,6 +248,18 @@ FileSystem* RewriteDriverFactory::file_system() {
     file_system_.reset(DefaultFileSystem());
   }
   return file_system_.get();
+}
+
+NonceGenerator* RewriteDriverFactory::nonce_generator() {
+  if (nonce_generator_ == NULL) {
+    nonce_generator_.reset(DefaultNonceGenerator());
+  }
+  return nonce_generator_.get();
+}
+
+NonceGenerator* RewriteDriverFactory::DefaultNonceGenerator() {
+  // By default return NULL (no nonce generator).
+  return NULL;
 }
 
 Timer* RewriteDriverFactory::DefaultTimer() {
@@ -325,7 +342,7 @@ CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
   // TODO(pulkitg): Don't create BeaconCriticalImagesFinder if beacon cohort is
   // not added.
   return new BeaconCriticalImagesFinder(
-      server_context->beacon_cohort(), statistics());
+      server_context->beacon_cohort(), nonce_generator(), statistics());
 }
 
 CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
@@ -333,7 +350,7 @@ CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
   // TODO(pulkitg): Don't create CriticalSelectorFinder if beacon cohort is
   // not added.
   return new CriticalSelectorFinder(
-      server_context->beacon_cohort(), statistics());
+      server_context->beacon_cohort(), nonce_generator(), statistics());
 }
 
 FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {

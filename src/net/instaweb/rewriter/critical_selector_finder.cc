@@ -191,9 +191,10 @@ const char CriticalSelectorFinder::kCriticalSelectorsNotFoundCount[] =
 const int64 CriticalSelectorFinder::kMinBeaconIntervalMs = 5 * Timer::kSecondMs;
 
 CriticalSelectorFinder::CriticalSelectorFinder(
-    const PropertyCache::Cohort* cohort, Statistics* statistics) {
-  cohort_ = cohort;
-
+    const PropertyCache::Cohort* cohort,
+    NonceGenerator* nonce_generator, Statistics* statistics)
+    : cohort_(cohort),
+      nonce_generator_(nonce_generator) {
   critical_selectors_valid_count_ = statistics->GetTimedVariable(
       kCriticalSelectorsValidCount);
   critical_selectors_expired_count_ = statistics->GetTimedVariable(

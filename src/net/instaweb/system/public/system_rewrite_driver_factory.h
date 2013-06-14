@@ -23,6 +23,8 @@
 
 namespace net_instaweb {
 
+class NonceGenerator;
+class Statistics;
 class ThreadSystem;
 
 // A server context with features specific to a psol port on a unix system.
@@ -34,6 +36,9 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes all the statistics objects created transitively by
   // SystemRewriteDriverFactory.
   static void InitStats(Statistics* statistics);
+
+  // Creates a HashedNonceGenerator initialized with data from /dev/random.
+  NonceGenerator* DefaultNonceGenerator();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteDriverFactory);

@@ -48,7 +48,9 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     const PropertyCache::Cohort* beacon_cohort =
         SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
     server_context()->set_beacon_cohort(beacon_cohort);
-    finder_ = new CriticalSelectorFinder(beacon_cohort, statistics());
+    finder_ = new CriticalSelectorFinder(beacon_cohort,
+                                         factory()->nonce_generator(),
+                                         statistics());
     server_context()->set_critical_selector_finder(finder_);
     candidates_.insert("#bar");
     candidates_.insert(".a");

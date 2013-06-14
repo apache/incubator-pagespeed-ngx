@@ -94,6 +94,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     // Set up and register a beacon finder.
     CriticalSelectorFinder* finder =
         new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                   factory()->nonce_generator(),
                                    statistics());
     server_context()->set_critical_selector_finder(finder);
     // Set up contents of CSS files.

@@ -61,6 +61,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     server_context()->set_beacon_cohort(beacon_cohort);
     server_context()->set_critical_selector_finder(
         new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                   factory()->nonce_generator(),
                                    statistics()));
     ResetDriver();
     // Set up initial candidates for critical selector beacon

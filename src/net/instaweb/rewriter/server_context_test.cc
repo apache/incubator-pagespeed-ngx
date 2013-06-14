@@ -1067,9 +1067,11 @@ class BeaconTest : public ServerContextTest {
         SetupCohort(property_cache_, RewriteDriver::kBeaconCohort);
     server_context()->set_beacon_cohort(beacon_cohort);
     server_context()->set_critical_images_finder(
-        new BeaconCriticalImagesFinder(beacon_cohort, statistics()));
+        new BeaconCriticalImagesFinder(
+            beacon_cohort, factory()->nonce_generator(), statistics()));
     server_context()->set_critical_selector_finder(
-        new CriticalSelectorFinder(beacon_cohort, statistics()));
+        new CriticalSelectorFinder(
+            beacon_cohort, factory()->nonce_generator(), statistics()));
     ResetDriver();
     candidates_.insert("#foo");
     candidates_.insert(".bar");

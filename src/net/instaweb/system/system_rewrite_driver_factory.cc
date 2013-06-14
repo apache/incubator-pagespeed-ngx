@@ -16,14 +16,19 @@
 
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/util/input_file_nonce_generator.h"
 
 namespace net_instaweb {
 
-class ThreadSystem;
+class MessageHandler;
 class Statistics;
 
 SystemRewriteDriverFactory::SystemRewriteDriverFactory(
@@ -40,6 +45,17 @@ void SystemRewriteDriverFactory::InitStats(Statistics* statistics) {
   SystemCaches::InitStats(statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
+}
+
+NonceGenerator* SystemRewriteDriverFactory::DefaultNonceGenerator() {
+  MessageHandler* handler = message_handler();
+  FileSystem::InputFile* random_file =
+      file_system()->OpenInputFile("/dev/urandom", handler);
+  CHECK(random_file != NULL) << "Couldn't open /dev/urandom";
+  // Now use the key to construct an InputFileNonceGenerator.  Passing in a NULL
+  // random_file here will create a generator that will fail on first access.
+  return new InputFileNonceGenerator(random_file, file_system(),
+                                     thread_system()->NewMutex(), handler);
 }
 
 }  // namespace net_instaweb

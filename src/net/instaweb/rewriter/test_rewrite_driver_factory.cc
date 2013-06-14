@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/util/mock_nonce_generator.h"
 
 namespace net_instaweb {
 
@@ -56,6 +57,7 @@ class FileSystem;
 class Hasher;
 class HtmlFilter;
 class MessageHandler;
+class NonceGenerator;
 class RewriteFilter;
 class Scheduler;
 class UrlAsyncFetcher;
@@ -153,6 +155,11 @@ FileSystem* TestRewriteDriverFactory::DefaultFileSystem() {
   timer();  // ensures that mock_timer_ is initialized.
   mem_file_system_ = new MemFileSystem(thread_system(), mock_timer_);
   return mem_file_system_;
+}
+
+NonceGenerator* TestRewriteDriverFactory::DefaultNonceGenerator() {
+  DCHECK(thread_system() != NULL);
+  return new MockNonceGenerator(thread_system()->NewMutex());
 }
 
 Timer* TestRewriteDriverFactory::DefaultTimer() {

@@ -246,6 +246,9 @@
       'sources': [
         'kernel/util/fast_wildcard_group.cc',
         'kernel/util/file_system_lock_manager.cc',
+        'kernel/util/hashed_nonce_generator.cc',
+        'kernel/util/input_file_nonce_generator.cc',
+        'kernel/util/nonce_generator.cc',
         'kernel/util/simple_random.cc',
         'kernel/util/wildcard.cc',
       ],
@@ -256,6 +259,19 @@
         'pagespeed_base',
         'pagespeed_thread',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
+      ],
+    },
+    {
+      'target_name': 'util_test_util',
+      'type': '<(library)',
+      'sources': [
+        'kernel/util/mock_nonce_generator.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'util',
       ],
     },
     {

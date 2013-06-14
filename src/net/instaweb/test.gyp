@@ -296,6 +296,9 @@
         '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/file_system_lock_manager_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/hashed_nonce_generator_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/input_file_nonce_generator_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/nonce_generator_test_base.cc',
         '<(DEPTH)/pagespeed/kernel/util/re2_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/wildcard_group.cc',
         '<(DEPTH)/pagespeed/kernel/util/wildcard_group_test.cc',
@@ -381,6 +384,7 @@
         'test_infrastructure',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/pagespeed/kernel.gyp:base_test_util',
+        '<(DEPTH)/pagespeed/kernel.gyp:util_test_util',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',

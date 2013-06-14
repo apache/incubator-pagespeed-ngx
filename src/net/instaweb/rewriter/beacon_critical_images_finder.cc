@@ -23,9 +23,12 @@
 namespace net_instaweb {
 
 BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(
-    const PropertyCache::Cohort* cohort, Statistics* stats)
+    const PropertyCache::Cohort* cohort,
+    NonceGenerator* nonce_generator,
+    Statistics* stats)
     : CriticalImagesFinder(stats),
-      cohort_(cohort) {}
+      cohort_(cohort),
+      nonce_generator_(nonce_generator) { }
 
 BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 }

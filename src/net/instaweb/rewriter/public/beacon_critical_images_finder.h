@@ -29,14 +29,18 @@
 
 namespace net_instaweb {
 
+class NonceGenerator;
 class Statistics;
 
 // Support critical (above the fold) image detection through a javascript beacon
 // on the client.
 class BeaconCriticalImagesFinder : public CriticalImagesFinder {
  public:
+  // All constructor args are owned by the caller.
   BeaconCriticalImagesFinder(
-      const PropertyCache::Cohort* cohort, Statistics* stats);
+      const PropertyCache::Cohort* cohort,
+      NonceGenerator* nonce_generator,
+      Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 
   virtual bool IsMeaningful(const RewriteDriver* driver) const {
@@ -80,6 +84,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   static const int kBeaconNumSetsToKeep = 10;
 
   const PropertyCache::Cohort* cohort_;
+  NonceGenerator* nonce_generator_;
 };
 
 }  // namespace net_instaweb

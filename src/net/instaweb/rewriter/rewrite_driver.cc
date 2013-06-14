@@ -2667,8 +2667,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
       server_context_, mapped_path, unmapped_path, base_url,
       full_name, options(), kind));
 
-  if (options()->max_url_size()
-      < (static_cast<int>(resource->url().size()) + extra_len)) {
+  if (options()->max_url_size() < (resource->url().size() + extra_len)) {
     resource.clear();
     return resource;
   }

@@ -27,6 +27,7 @@ namespace net_instaweb {
 
 class CriticalSelectorSet;
 class MessageHandler;
+class NonceGenerator;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
@@ -51,8 +52,12 @@ class CriticalSelectorFinder {
   static const char kCriticalSelectorsPropertyName[];
   static const int64 kMinBeaconIntervalMs;
 
+  // All of the passed-in constructor arguments are owned by the caller.  If
+  // critical selector data is being received from a trusted source,
+  // nonce_generator may be NULL.
   CriticalSelectorFinder(
-      const PropertyCache::Cohort* cohort, Statistics* stats);
+      const PropertyCache::Cohort* cohort,
+      NonceGenerator* nonce_generator, Statistics* stats);
   virtual ~CriticalSelectorFinder();
 
   static void InitStats(Statistics* statistics);
@@ -106,6 +111,7 @@ class CriticalSelectorFinder {
   static const int kDefaultSupportInterval = 10;
 
   const PropertyCache::Cohort* cohort_;
+  NonceGenerator* nonce_generator_;
 
   TimedVariable* critical_selectors_valid_count_;
   TimedVariable* critical_selectors_expired_count_;
