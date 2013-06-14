@@ -22,27 +22,6 @@
   },
   'targets': [
     {
-      # TODO(morlovich): This is a compatibility target and should get removed
-      # eventually.
-      'target_name': 'instaweb_util_core',
-      'type': '<(library)',
-      'dependencies': [
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-        '<(DEPTH)',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(instaweb_root)',
-          '<(DEPTH)',
-        ],
-      },
-    },
-    {
       'target_name': 'instaweb_htmlparse_core',
       'type': '<(library)',
       'dependencies': [
@@ -57,7 +36,8 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
-        'instaweb_util_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
       'sources': [
         'http/semantic_type.cc',
@@ -77,9 +57,10 @@
       'target_name': 'instaweb_rewriter_html',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_util_core',
         'instaweb_htmlparse_core',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
       'sources': [
         'rewriter/collapse_whitespace_filter.cc',
@@ -98,7 +79,8 @@
         ],
       },
       'export_dependent_settings': [
-        'instaweb_util_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         'instaweb_htmlparse_core',
       ]
     },
@@ -107,9 +89,10 @@
       'type': 'executable',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
-        'instaweb_util_core',
         'instaweb_htmlparse_core',
         'instaweb_rewriter_html',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
       'sources': [
         'rewriter/html_minifier_main.cc',
