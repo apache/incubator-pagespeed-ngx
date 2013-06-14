@@ -38,7 +38,14 @@ bool TimeToString(int64 time, GoogleString* time_string,
     time_sec = time / 1000;
   }
   struct tm time_buf;
+#if defined(WIN32)
+  struct tm* time_info = NULL;
+  if (_gmtime_s(&time_buf, &time_sec) == 0) {
+    time_info = &time_buf;
+  }
+#else
   struct tm* time_info = gmtime_r(&time_sec, &time_buf);
+#endif
   if ((time_info == NULL) ||
       (time_buf.tm_wday < 0) ||
       (time_buf.tm_wday > 6) ||
