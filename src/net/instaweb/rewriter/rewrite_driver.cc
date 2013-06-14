@@ -2649,7 +2649,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   OutputResourcePtr resource;
   int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
                       + ContentType::MaxProducedExtensionLength();
-  if (max_leaf_size > static_cast<int>(options()->max_url_segment_size())) {
+  if (max_leaf_size > options()->max_url_segment_size()) {
     return resource;
   }
 
@@ -2667,7 +2667,8 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
       server_context_, mapped_path, unmapped_path, base_url,
       full_name, options(), kind));
 
-  if (options()->max_url_size() < (resource->url().size() + extra_len)) {
+  if (options()->max_url_size()
+      < (static_cast<int>(resource->url().size()) + extra_len)) {
     resource.clear();
     return resource;
   }
