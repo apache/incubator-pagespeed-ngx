@@ -21,6 +21,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 
+#include "net/instaweb/rewriter/public/cacheable_resource_base.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -32,7 +33,7 @@ class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
 
-class UrlInputResource : public Resource {
+class UrlInputResource : public CacheableResourceBase {
  public:
   UrlInputResource(RewriteDriver* rewrite_driver,
                    const RewriteOptions* options,
@@ -50,18 +51,11 @@ class UrlInputResource : public Resource {
 
   virtual void Freshen(FreshenCallback* callback, MessageHandler* handler);
 
-  // Return whether this type of resource should use the HTTP Cache.
-  // TODO(jmarantz): move the guts of ServerContext::ReadAsync (including
-  // the callback class) into url_input_resource.cc and access via
-  // LoadAndCallback, to reduce the implementation complexity.
-  virtual bool UseHttpCache() const { return true; }
-
  protected:
   friend class UrlInputResourceTest;
-  virtual bool Load(MessageHandler* message_handler);
-  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
-                               AsyncCallback* callback,
-                               MessageHandler* message_handler);
+  virtual void LoadAndSaveToCache(NotCacheablePolicy not_cacheable_policy,
+                                  AsyncCallback* callback,
+                                  MessageHandler* message_handler);
 
  private:
   GoogleString url_;

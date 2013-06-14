@@ -22,12 +22,12 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for Resource, etc
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/string.h"  // for GoogleString
 #include "pagespeed/kernel/base/string_util.h"  // for StrCat, etc
@@ -49,12 +49,12 @@ class UrlInputResourceTest : public RewriteTestBase {
     RewriteOptions options(factory()->thread_system());
     ResourcePtr resource(new UrlInputResource(rewrite_driver(),
         &options, &kContentTypeJpeg, url));
+    RequestContextPtr request_context(
+        RequestContext::NewTestRequestContext(factory()->thread_system()));
     resource->set_is_background_fetch(is_background_fetch);
     MockResourceCallback cb(resource, factory()->thread_system());
-    (dynamic_cast<UrlInputResource*>(resource.get()))->LoadAndCallback(
-        Resource::kLoadEvenIfNotCacheable,
-        &cb,
-        message_handler());
+    resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                        request_context, &cb);
     cb.Wait();
     ASSERT_TRUE(cb.done());
     ASSERT_TRUE(cb.success());

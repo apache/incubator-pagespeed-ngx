@@ -38,8 +38,20 @@ DataUrlInputResource::DataUrlInputResource(const GoogleString* url,
       encoding_(encoding),
       encoded_contents_(encoded_contents) {
   // Make sure we auto-load.
-  LoadAndCallback(kLoadEvenIfNotCacheable, NULL,
-                  server_context->message_handler());
+  if (DecodeDataUrlContent(encoding_, encoded_contents_,
+                           &decoded_contents_) &&
+      value_.Write(decoded_contents_, server_context->message_handler())) {
+    // Note that we do not set caching headers here.
+    // This is because they are expensive to compute; and should not be used
+    // for this resource anyway, as it has UseHttpCache() false, and provides
+    // IsValidAndCacheable() and an ALWAYS_VALID output of
+    // FillInPartitionInputInfo.
+    response_headers_.set_major_version(1);
+    response_headers_.set_minor_version(1);
+    response_headers_.SetStatusAndReason(HttpStatus::kOK);
+    response_headers_.Add(HttpAttributes::kContentType, type_->mime_type());
+    value_.SetHeaders(&response_headers_);
+  }
 }
 
 DataUrlInputResource::~DataUrlInputResource() {}
@@ -56,26 +68,9 @@ void DataUrlInputResource::FillInPartitionInputInfo(
 
 void DataUrlInputResource::LoadAndCallback(
     NotCacheablePolicy not_cacheable_policy,
-    AsyncCallback* callback,
-    MessageHandler* message_handler) {
-  if (!loaded() &&
-      DecodeDataUrlContent(encoding_, encoded_contents_,
-                           &decoded_contents_) &&
-      value_.Write(decoded_contents_, message_handler)) {
-    // Note that we do not set caching headers here.
-    // This is because they are expensive to compute; and should not be used
-    // for this resource anyway, as it has UseHttpCache() false, and provides
-    // IsValidAndCacheable() and an ALWAYS_VALID output of
-    // FillInPartitionInputInfo.
-    response_headers_.set_major_version(1);
-    response_headers_.set_minor_version(1);
-    response_headers_.SetStatusAndReason(HttpStatus::kOK);
-    response_headers_.Add(HttpAttributes::kContentType, type_->mime_type());
-    value_.SetHeaders(&response_headers_);
-  }
-  if (callback != NULL) {
-    callback->Done(false /* lock_failure */, loaded());
-  }
+    const RequestContextPtr& request_context,
+    AsyncCallback* callback) {
+  callback->Done(false /* lock_failure */, loaded());
 }
 
 }  // namespace net_instaweb

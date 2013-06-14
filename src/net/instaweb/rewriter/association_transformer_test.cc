@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/association_transformer.h"
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/css_url_counter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -46,12 +47,12 @@ class DummyResource : public Resource {
 
   virtual const RewriteOptions* rewrite_options() const { return NULL; }
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
-                               AsyncCallback* callback,
-                               MessageHandler* handler) {
+                               const RequestContextPtr& request_context,
+                               AsyncCallback* callback) {
     callback->Done(false, false);
   }
 
-  virtual bool UseHttpCache() const { return true; }
+  virtual bool UseHttpCache() const { return false; }
 
  private:
   GoogleString url_;

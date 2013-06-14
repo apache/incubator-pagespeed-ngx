@@ -119,8 +119,8 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
                                    const RewriteOptions* options,
                                    const ContentType* type,
                                    const StringPiece& url)
-    : Resource((rewrite_driver == NULL ? NULL :
-                rewrite_driver->server_context()), type),
+    : CacheableResourceBase((rewrite_driver == NULL ? NULL :
+                            rewrite_driver->server_context()), type),
       url_(url.data(), url.size()),
       rewrite_driver_(rewrite_driver),
       rewrite_options_(options),
@@ -135,7 +135,7 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
 UrlInputResource::~UrlInputResource() {
 }
 
-// Shared fetch callback, used by both Load and LoadAndCallback
+// Shared fetch callback, used by both LoadAndCallback and Freshen.
 class UrlResourceFetchCallback : public AsyncFetchWithLock {
  public:
   UrlResourceFetchCallback(ServerContext* server_context,
@@ -236,7 +236,7 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
       cached = AddToCache(success && http_value_writer()->has_buffered());
       // Unless the client code explicitly opted into dealing with potentially
       // uncacheable content (by passing in kLoadEvenIfNotCacheable to
-      // LoadAndCallback) we turn it into a fetch failure so we do not
+      // LoadAsync) we turn it into a fetch failure so we do not
       // end up inadvertently rewriting something that's private or highly
       // volatile.
       if ((!cached && !no_cache_ok_) || !http_value_writer()->has_buffered()) {
@@ -455,19 +455,6 @@ bool UrlInputResource::IsValidAndCacheable() const {
       respect_vary_, response_headers_);
 }
 
-bool UrlInputResource::Load(MessageHandler* handler) {
-  // I believe a deep static analysis would reveal this function
-  // cannot be reached.  However, the typing rules of C++ do not allow
-  // us to omit the definition.
-  //
-  // Resource::Load is a protected abstract method.  It's called in
-  // the default implementation of Resource::LoadAndCallback.
-  // UrlInputResource::LoadAndCallback overrides that, however, and
-  // does not call Load(), so this function cannot be reached.
-  LOG(DFATAL) << "Blocking Load should never be called for UrlInputResource";
-  return false;
-}
-
 void UrlInputResource::Freshen(Resource::FreshenCallback* callback,
                                MessageHandler* handler) {
   // TODO(jmarantz): use if-modified-since
@@ -571,30 +558,27 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   DISALLOW_COPY_AND_ASSIGN(UrlReadAsyncFetchCallback);
 };
 
-void UrlInputResource::LoadAndCallback(NotCacheablePolicy no_cache_policy,
-                                       AsyncCallback* callback,
-                                       MessageHandler* message_handler) {
+void UrlInputResource::LoadAndSaveToCache(NotCacheablePolicy no_cache_policy,
+                                          AsyncCallback* callback,
+                                          MessageHandler* message_handler) {
   CHECK(callback != NULL) << "A callback must be supplied, or else it will "
       "not be possible to determine when it's safe to delete the resource.";
   CHECK(this == callback->resource().get())
       << "The callback must keep a reference to the resource";
   CHECK(rewrite_driver_ != NULL)
       << "Must provide a RewriteDriver for resources that will get fetched.";
-  if (loaded()) {
-    callback->Done(true, true);
-  } else {
-    UrlReadAsyncFetchCallback* cb =
-        new UrlReadAsyncFetchCallback(callback,
-                                      this,
-                                      rewrite_driver_->request_context());
-    if (no_cache_policy == Resource::kLoadEvenIfNotCacheable) {
-      cb->set_no_cache_ok(true);
-    }
-    AsyncFetchWithLock::Start(
-        rewrite_driver_->async_fetcher(),
-        cb,
-        server_context_->message_handler());
+  DCHECK(!loaded()) << "Shouldn't get this far if already loaded.";
+  UrlReadAsyncFetchCallback* cb =
+      new UrlReadAsyncFetchCallback(callback,
+                                    this,
+                                    rewrite_driver_->request_context());
+  if (no_cache_policy == Resource::kLoadEvenIfNotCacheable) {
+    cb->set_no_cache_ok(true);
   }
+  AsyncFetchWithLock::Start(
+      rewrite_driver_->async_fetcher(),
+      cb,
+      server_context_->message_handler());
 }
 
 }  // namespace net_instaweb

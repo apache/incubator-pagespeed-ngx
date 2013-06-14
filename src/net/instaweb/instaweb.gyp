@@ -1156,6 +1156,7 @@
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
         'rewriter/cache_html_filter.cc',
+        'rewriter/cacheable_resource_base.cc',
         'rewriter/common_filter.cc',
         'rewriter/compute_visible_text_filter.cc',
         'rewriter/collect_flush_early_content_filter.cc',

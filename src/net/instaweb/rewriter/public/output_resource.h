@@ -23,6 +23,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -63,8 +64,8 @@ class OutputResource : public Resource {
                  OutputResourceKind kind);
 
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
-                               AsyncCallback* callback,
-                               MessageHandler* handler);
+                               const RequestContextPtr& request_context,
+                               AsyncCallback* callback);
   // NOTE: url() will crash if resource has does not have a hash set yet.
   // Specifically, this will occur if the resource has not been completely
   // written yet. Before that point, the final URL cannot be known.

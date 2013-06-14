@@ -83,6 +83,23 @@ bool Resource::IsSafeToRewrite(bool rewrite_uncacheable) const {
   }
 }
 
+void Resource::LoadAsync(
+    NotCacheablePolicy not_cacheable_policy,
+    const RequestContextPtr& request_context,
+    AsyncCallback* callback) {
+  DCHECK(callback->resource().get() == this);
+  if (loaded()) {
+    RefreshIfImminentlyExpiring();
+    callback->Done(false /* lock_failure */, true /* resource_ok */);
+  } else {
+    // Let the subclass handle it.
+    LoadAndCallback(not_cacheable_policy, request_context, callback);
+  }
+}
+
+void Resource::RefreshIfImminentlyExpiring() {
+}
+
 GoogleString Resource::ContentsHash() const {
   DCHECK(IsValidAndCacheable());
   return server_context_->contents_hasher()->Hash(contents());

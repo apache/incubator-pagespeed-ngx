@@ -39,15 +39,13 @@ const int64 kTimestampUnset = 0;
 namespace net_instaweb {
 
 FileInputResource::FileInputResource(ServerContext* server_context,
-                                     const RewriteOptions* options,
                                      const ContentType* type,
                                      const StringPiece& url,
                                      const StringPiece& filename)
     : Resource(server_context, type),
       url_(url.data(), url.size()),
       filename_(filename.data(), filename.size()),
-      last_modified_time_sec_(kTimestampUnset),
-      rewrite_options_(options) {
+      last_modified_time_sec_(kTimestampUnset) {
 }
 
 FileInputResource::~FileInputResource() {
@@ -122,9 +120,11 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
 
 // Note: We do not save this resource to the HttpCache, so it will be
 // reloaded for every request.
-void FileInputResource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
-                                        AsyncCallback* callback,
-                                        MessageHandler* handler) {
+void FileInputResource::LoadAndCallback(
+    NotCacheablePolicy not_cacheable_policy,
+    const RequestContextPtr& request_context,
+    AsyncCallback* callback) {
+  MessageHandler* handler = server_context()->message_handler();
   if (!loaded()) {
     // Load the file from disk.  Make sure we correctly read a timestamp
     // before loading the file.  A failure (say due to EINTR) on the

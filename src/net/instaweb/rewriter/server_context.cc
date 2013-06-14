@@ -204,23 +204,6 @@ const char ServerContext::kCacheKeyResourceNamePrefix[] = "rname/";
 // alters them.
 const char ServerContext::kResourceEtagValue[] = "W/\"0\"";
 
-class ReadAsyncHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
- public:
-  ReadAsyncHttpCacheCallback(
-      Resource::NotCacheablePolicy not_cacheable_policy,
-      Resource::AsyncCallback* resource_callback,
-      ServerContext* server_context,
-      const RequestContextPtr& request_context);
-  virtual ~ReadAsyncHttpCacheCallback();
-  virtual void Done(HTTPCache::FindResult find_result);
-
- private:
-  Resource::AsyncCallback* resource_callback_;
-  ServerContext* server_context_;
-  Resource::NotCacheablePolicy not_cacheable_policy_;
-  DISALLOW_COPY_AND_ASSIGN(ReadAsyncHttpCacheCallback);
-};
-
 class GlobalOptionsRewriteDriverPool : public RewriteDriverPool {
  public:
   explicit GlobalOptionsRewriteDriverPool(ServerContext* context)
@@ -486,121 +469,16 @@ bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
 
 void ServerContext::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
-  if (!http_cache_->force_caching() && resource->UseHttpCache()) {
-    const ResponseHeaders* headers = resource->response_headers();
-    int64 start_date_ms = headers->date_ms();
-    int64 expire_ms = headers->CacheExpirationTimeMs();
-    if (ResponseHeaders::IsImminentlyExpiring(
-        start_date_ms, expire_ms, timer()->NowMs())) {
-      resource->Freshen(NULL, handler);
-    }
-  }
+  resource->RefreshIfImminentlyExpiring();
 }
 
-ReadAsyncHttpCacheCallback::ReadAsyncHttpCacheCallback(
-    Resource::NotCacheablePolicy not_cacheable_policy,
-    Resource::AsyncCallback* resource_callback,
-    ServerContext* server_context,
-    const RequestContextPtr& request_context)
-    : OptionsAwareHTTPCacheCallback(
-          resource_callback->resource()->rewrite_options(),
-          request_context),
-      resource_callback_(resource_callback),
-      server_context_(server_context),
-      not_cacheable_policy_(not_cacheable_policy) {
-}
-
-ReadAsyncHttpCacheCallback::~ReadAsyncHttpCacheCallback() {
-}
-
-void ReadAsyncHttpCacheCallback::Done(HTTPCache::FindResult find_result) {
-  ResourcePtr resource(resource_callback_->resource());
-  MessageHandler* handler = server_context_->message_handler();
-
-  // Note, we pass lock_failure==false to the resource callbacks
-  // when we are taking action based on the cache.  We haven't locked,
-  // but we didn't fail-to-lock.  Resource callbacks need to know if
-  // the lock failed, because they will delete expired cache metadata
-  // if they have the lock, or if the lock was not needed, but they
-  // should not delete it if they fail to lock.
-  switch (find_result) {
-    case HTTPCache::kFound:
-      resource->Link(http_value(), handler);
-      resource->response_headers()->CopyFrom(*response_headers());
-      resource->DetermineContentType();
-      server_context_->RefreshIfImminentlyExpiring(resource.get(), handler);
-      resource_callback_->Done(false /* lock_failure */,
-                               true /* resource_ok */);
-      break;
-    case HTTPCache::kRecentFetchFailed:
-      // TODO(jmarantz): in this path, should we try to fetch again
-      // sooner than 5 minutes?  The issue is that in this path we are
-      // serving for the user, not for a rewrite.  This could get
-      // frustrating, even if the software is functioning as intended,
-      // because a missing resource that is put in place by a site
-      // admin will not be checked again for 5 minutes.
-      //
-      // The "good" news is that if the admin is willing to crank up
-      // logging to 'info' then http_cache.cc will log the
-      // 'remembered' failure.
-      resource_callback_->Done(false /* lock_failure */,
-                               false /* resource_ok */);
-      break;
-    case HTTPCache::kRecentFetchNotCacheable:
-      switch (not_cacheable_policy_) {
-        case Resource::kLoadEvenIfNotCacheable:
-          resource->LoadAndCallback(not_cacheable_policy_,
-                                    resource_callback_, handler);
-          break;
-        case Resource::kReportFailureIfNotCacheable:
-          resource_callback_->Done(false /* lock_failure */,
-                                   false /* resource_ok */);
-          break;
-        default:
-          LOG(DFATAL) << "Unexpected not_cacheable_policy_!";
-          resource_callback_->Done(false /* lock_failure */,
-                                   false /* resource_ok */);
-          break;
-      }
-      break;
-    case HTTPCache::kNotFound:
-      // If not, load it asynchronously.
-      // Link the fallback value which can be used if the fetch fails.
-      resource->LinkFallbackValue(fallback_http_value());
-      resource->LoadAndCallback(not_cacheable_policy_,
-                                resource_callback_, handler);
-      break;
-  }
-  delete this;
-}
-
-// TODO(sligocki): Move into Resource::LoadAndCallback. This would simplify
-// the logic and allow removal of UseHttpCache()
+// TODO(morlovich): Remove compat method
 void ServerContext::ReadAsync(
     Resource::NotCacheablePolicy not_cacheable_policy,
     const RequestContextPtr& request_context,
     Resource::AsyncCallback* callback) {
-  // If the resource is not already loaded, and this type of resource (e.g.
-  // URL vs File vs Data) is cacheable, then try to load it.
   ResourcePtr resource = callback->resource();
-  if (resource->loaded()) {
-    RefreshIfImminentlyExpiring(resource.get(), message_handler_);
-    callback->Done(false /* lock_failure */, true /* resource_ok */);
-  } else if (resource->UseHttpCache()) {
-    ReadAsyncHttpCacheCallback* read_async_http_cache_callback =
-        new ReadAsyncHttpCacheCallback(not_cacheable_policy,
-                                       callback,
-                                       this,
-                                       request_context);
-    // Don't log timing for background-fetched resources.
-    read_async_http_cache_callback->set_is_background(
-        resource->is_background_fetch());
-    http_cache_->Find(resource->url(), message_handler_,
-                      read_async_http_cache_callback);
-  } else {
-    resource->LoadAndCallback(not_cacheable_policy, callback,
-                              message_handler_);
-  }
+  resource->LoadAsync(not_cacheable_policy, request_context, callback);
 }
 
 NamedLock* ServerContext::MakeCreationLock(const GoogleString& name) {

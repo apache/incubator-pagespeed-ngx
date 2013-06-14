@@ -20,7 +20,7 @@
 // pages, but we generate these urls as a result of image inlining and
 // this confuses subsequent filters in certain cases.
 
-#include "base/logging.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -34,8 +34,6 @@
 namespace net_instaweb {
 
 class InputInfo;
-class MessageHandler;
-class RewriteOptions;
 class ServerContext;
 struct ContentType;
 
@@ -72,17 +70,13 @@ class DataUrlInputResource : public Resource {
                                         InputInfo* input);
 
   virtual GoogleString url() const { return *url_.get(); }
-  virtual const RewriteOptions* rewrite_options() const {
-    LOG(DFATAL) << "Unexpected call to DataUrlInputResource::rewrite_options()";
-    return NULL;
-  }
 
   virtual bool UseHttpCache() const { return false; }
 
  protected:
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
-                               AsyncCallback* callback,
-                               MessageHandler* message_handler);
+                               const RequestContextPtr& request_context,
+                               AsyncCallback* callback);
 
  private:
   DataUrlInputResource(const GoogleString* url,

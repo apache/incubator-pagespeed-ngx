@@ -2007,8 +2007,8 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
     GoogleString filename;
     if (options()->file_load_policy()->ShouldLoadFromFile(url, &filename)) {
-      resource.reset(new FileInputResource(server_context_, options(), type,
-                                           url_string, filename));
+      resource.reset(
+          new FileInputResource(server_context_, type, url_string, filename));
     } else {
       // If the scheme is https and the fetcher doesn't support https, map
       // the URL to what will ultimately be fetched to see if that will be
