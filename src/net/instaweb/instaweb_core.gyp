@@ -22,8 +22,14 @@
   },
   'targets': [
     {
+      # PSI relies on this library, so we keep it for backwards compatibility.
+      # However, it doesn't build on OS X if it has no code, so we also inject
+      # a dummy source file
       'target_name': 'instaweb_htmlparse_core',
       'type': '<(library)',
+      'sources': [
+        'htmlparse/dummy.cc',
+      ],
       'dependencies': [
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_html',
       ],
