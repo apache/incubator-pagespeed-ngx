@@ -768,6 +768,14 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
 
   request_rec* request = filter->r;
 
+  // Escape ASAP if we're in unplugged mode.
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  if (server_context->config()->unplugged()) {
+    ap_remove_output_filter(filter);
+    return ap_pass_brigade(filter->next, bb);
+  }
+
   // This should always be set by handle_as_in_place() in instaweb_handler.cc.
   InPlaceResourceRecorder* recorder =
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
@@ -837,6 +845,15 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
     return APR_SUCCESS;
   }
 
+  request_rec* request = filter->r;
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  // Escape ASAP if we're in unplugged mode.
+  if (server_context->config()->unplugged()) {
+    ap_remove_output_filter(filter);
+    return ap_pass_brigade(filter->next, bb);
+  }
+
   // This should always be set by handle_as_in_place() in instaweb_handler.cc.
   InPlaceResourceRecorder* recorder =
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
@@ -849,7 +866,7 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
        bucket = APR_BUCKET_NEXT(bucket)) {
     if (APR_BUCKET_IS_EOS(bucket)) {
       ResponseHeaders response_headers;
-      ApacheRequestToResponseHeaders(*filter->r, &response_headers, NULL);
+      ApacheRequestToResponseHeaders(*request, &response_headers, NULL);
 
       // Note: For some reason Apache never actually sets the Date header in
       // request->headers_out, but without it set we consider it uncacheable,
