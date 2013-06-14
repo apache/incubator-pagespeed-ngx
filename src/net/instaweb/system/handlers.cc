@@ -16,25 +16,16 @@
 
 #include "net/instaweb/system/public/handlers.h"
 
-#include <vector>
-
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/system/public/system_console_suggestions.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
+extern const char* CSS_console_css;
+extern const char* JS_console_js;
+
 // Handler which serves PSOL console.
 void ConsoleHandler(ServerContext* server_context, Writer* writer,
                     MessageHandler* handler) {
-  SystemConsoleSuggestionsFactory suggestions_factory(
-      server_context->statistics());
-  suggestions_factory.GenerateSuggestions();
-  const std::vector<ConsoleSuggestion>* suggestions =
-      suggestions_factory.suggestions();
-
   // TODO(sligocki): Move static content to a data2cc library.
   writer->Write("<!DOCTYPE html>\n"
                 "<html>\n"
@@ -48,7 +39,6 @@ void ConsoleHandler(ServerContext* server_context, Writer* writer,
                 "    }\n"
                 "    #top-bar {\n"
                 "      width: 100%;\n"
-                "      //background-color: green;\n"
                 "      border-bottom: 0.1em solid black;\n"
                 "    }\n"
                 "    #title {\n"
@@ -67,17 +57,10 @@ void ConsoleHandler(ServerContext* server_context, Writer* writer,
                 "    #metric-name {\n"
                 "      text-align: center;\n"
                 "    }\n"
-                "    #menu {\n"
-                "      float: left;\n"
-                "      width: 15%;\n"
-                "      height: 100%;\n"
-                "      border-right: 0.1em solid black;\n"
-                "    }\n"
-                "    #suggestions {\n"
-                "      float: left;\n"
-                "      height: 100%;\n"
-                "    }\n"
                 "  </style>\n"
+                "  <style>", handler);
+  writer->Write(CSS_console_css, handler);
+  writer->Write("</style>\n"
                 "  <body>\n"
                 "    <div id='top-bar'>\n"
                 "      <span id='title'>PSOL Console</span>\n"
@@ -88,40 +71,16 @@ void ConsoleHandler(ServerContext* server_context, Writer* writer,
                 "      </div> -->\n"
                 "    </div>\n"
                 "\n"
-                "    <div id='menu'>\n"
-                "      <ul>\n"
-                // TODO(sligocki): Add links here.
-                "        <li>Statistics monitoring</li>\n"
-                "        <li>Enabled domains</li>\n"
-                "        <li>...</li>\n"
-                "      </ul>\n"
-                "    </div>\n"
-                "\n"
                 "    <div id='suggestions'>\n"
                 "      <p>\n"
-                "        Notable issues (Click through for the links for \n"
-                "        info on how to fix these problems):\n"
+                "        Notable issues:\n"
                 "      </p>\n"
-                "      <ol>\n", handler);
-
-  for (int i = 0, n = suggestions->size(); i < n; ++i) {
-    // TODO(sligocki): Sanitize url and message? Or at least check
-    // for sanity.
-    // TODO(sligocki): Only list top N suggestions or only issues which are
-    // problematic enough (currently we list all issues including things like:
-    // "Fetch failure rate: 0.00%")
-    if (suggestions->at(i).doc_url.empty()) {
-      writer->Write(StringPrintf("        <li>%s</li>\n",
-                                 suggestions->at(i).message.c_str()), handler);
-    } else {
-      writer->Write(StringPrintf("        <li><a href='%s'>%s</a></li>\n",
-                                 suggestions->at(i).doc_url.c_str(),
-                                 suggestions->at(i).message.c_str()), handler);
-    }
-  }
-
-  writer->Write("      </ol>\n"
+                "      <div id='pagespeed-graphs-container'></div>\n"
                 "    </div>\n"
+                "    <script src='https://www.google.com/jsapi'></script>\n"
+                "    <script>", handler);
+  writer->Write(JS_console_js, handler);
+  writer->Write("</script>\n"
                 "  </body>\n"
                 "</html>\n", handler);
 }

@@ -1,0 +1,178 @@
+/* net/instaweb/system/console.css */
+/*
+ * Copyright 2012 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @fileoverview Styles for the mod_pagespeed console.
+ *
+ * @author sarahdw@google.com (Sarah Dapul-Weberman)
+ * @author bvb@google.com (Ben VanBerkum)
+ * @author joseantonio@google.com (Jose Antonio Martinez)
+ */
+
+@charset "UTF-8";
+
+/*------------------------------------------------------------------
+  eric meyer's reset
+  ------------------------------------------------------------------*/
+html,body,div,span,applet,object,iframe,
+h1,h2,h3,h4,h5,h6,p,blockquote,pre,
+a,abbr,acronym,address,big,cite,code,
+del,dfn,em,font,img,ins,kbd,q,s,samp,
+small,strike,strong,sub,sup,tt,var,
+dl,dt,dd,ol,ul,li,
+fieldset,form,label,legend,
+table,caption,tbody,tfoot,thead,tr,th,td {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  font-weight: inherit;
+  font-style: inherit;
+  font-size: 100%;
+  font-family: inherit;
+  vertical-align: baseline;
+}
+body {
+  line-height: 1;
+  color: black;
+  background: white;
+}
+ol,ul {
+  list-style: none;
+}
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+caption,th,td {
+  text-align: left;
+  font-weight: normal;
+}
+blockquote:before,blockquote:after,
+q:before,q:after {
+  content: "";
+}
+blockquote,q {
+  quotes: "" "";
+}
+input::-moz-focus-inner {
+  border: 0;
+}
+input[type="text"], select {
+  -moz-border-bottom-colors: none;
+  -moz-border-image: none;
+  -moz-border-left-colors: none;
+  -moz-border-right-colors: none;
+  -moz-border-top-colors: none;
+  background-color: #FFFFFF;
+  border-color: #C0C0C0 #D9D9D9 #D9D9D9;
+  border-right: 1px solid #D9D9D9;
+  border-style: solid;
+  border-width: 1px;
+  color: #333333;
+  display: inline-block;
+  height: 29px;
+  line-height: 27px;
+  padding-left: 8px;
+  margin-top: 3px;
+  vertical-align: top;
+}
+
+input.small[type="text"] {
+  height: 20px;
+  line-height: 27px;
+}
+/*------------------------------------------------------------------
+@global Type
+------------------------------------------------------------------*/
+body,body input,body button,body td {
+  font-family: "Arial", "Helvetica", sans-serif;
+  color: #222;
+  font-size:13px;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+h1,h2,h3,h4,h5 {
+  font-size: 16px;
+  line-height:24px;
+  font-weight: normal;
+  color: #222;
+}
+li {
+  line-height: 17px;
+}
+a {
+  text-decoration: none;
+  color: #15c;
+  cursor: pointer;
+}
+a:visited {
+  color: #61c;
+}
+a:hover {
+  text-decoration: underline;
+}
+a:active {
+  text-decoration: underline;
+  color: #d14836;
+}
+a.secondary {
+  text-decoration: none;
+  color: #2D9AE3;
+}
+iframe {
+  border: 0px;
+}
+strong, b {
+  font-weight:bold;
+}
+em {
+  font-style: italic;
+}
+.clearfix:before, .clearfix:after { content: "\0020"; display: block; height: 0; overflow: hidden; } /*i'm leaving these in case we end up needing them*/
+.clearfix:after { clear: both; }
+.clearfix { zoom: 1; }
+
+/*------------------------------------------------------------------
+mod rules
+------------------------------------------------------------------*/
+
+.pagespeed-widgets {
+  background-color: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  box-shadow: 0 15px 10px -10px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+  float: left;
+  margin: 20px 0 0 20px;
+  min-width: 500px;
+}
+.pagespeed-widgets.errors {
+  margin: 20px 0 10px 20px;
+  min-width: 1022px;
+  width: 90%;
+}
+.pagespeed-widgets-topbar {
+  background-color: #F2F2F2;
+  border-bottom:1px solid #E5E5E5;
+  height: 35px;
+  width: 100%;
+}
+.pagespeed-widgets-topbar .pagespeed-title {
+  font-weight: bold;
+  padding: 10px 0 4px 20px;
+  width: 85%;
+  float: left;
+}
+

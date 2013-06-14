@@ -615,8 +615,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
 #NO_PER_VHOST_STATS # Overrides "ModPagespeedUsePerVHostStatistics on" above.
 #NO_PER_VHOST_STATS ModPagespeedUsePerVHostStatistics off
 
-# TODO(sligocki): Turn this on once we enforce max size of logging file.
-ModPagespeedStatisticsLogging off
+ModPagespeedStatisticsLogging on
 ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 # TODO(sligocki): Get rid of this once this is integrated into console.
 <Location /mod_pagespeed_temp_statistics_graphs>
