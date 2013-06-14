@@ -100,6 +100,13 @@ class LRUCacheBase {
     Clear();
   }
 
+  // Resets the max size in the cache.  This does not take effect immediately;
+  // e.g. if you are shrinking the cache size, this call will not evict
+  // anything.  Only when something new is put into the cache will we evict.
+  void set_max_bytes_in_cache(size_t max_size) {
+    max_bytes_in_cache_ = max_size;
+  }
+
   // Returns a pointer to the stored value, or NULL if not found, freshening
   // the entry in the lru-list.  Note: this pointer is safe to use until the
   // next call to Put or Delete in the cache.

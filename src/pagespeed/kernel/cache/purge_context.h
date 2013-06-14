@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/purge_set.h"
+#include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
@@ -48,6 +49,7 @@ class Variable;
 class PurgeContext {
  public:
   typedef Callback1<bool> BoolCallback;
+  typedef Callback1<const CopyOnWrite<PurgeSet>&> PurgeSetCallback;
 
   // The source-of-truth of the purge data is kept in files.  These files
   // are checked for changes via stat every 5 seconds.
@@ -60,6 +62,7 @@ class PurgeContext {
   static const char kContentions[];
   static const char kFileParseFailures[];
   static const char kFileWriteFailures[];
+  static const char kStatCalls[];
 
   PurgeContext(StringPiece filename,
                FileSystem* file_system,
@@ -92,11 +95,16 @@ class PurgeContext {
   void SetCachePurgeGlobalTimestampMs(int64 timestamp_ms,
                                       BoolCallback* callback);
 
-  // Determines whether a URL is valid at time timestamp_ms.  This
-  // method is also responsible for periodically updating the
-  // purge-set from disk if enough time has expired, and thus is
-  // non-const.
-  bool IsValid(StringPiece url, int64 timestamp_ms);
+  // Periodically updates the purge-set from disk if enough time has
+  // expired.  This can be called on every request.
+  void PollFileSystem();
+
+  // To test whether URLs are purged, you must capture a PurgeSet by registering
+  // a callback.  The PurgeSet is passed to the callback using a CopyOnWrite
+  // wrapper so that the callback can efficiently share the storage.
+  //
+  // IsValid calls can then be made using the PurgeSet captured by the callback.
+  void SetUpdateCallback(PurgeSetCallback* cb);
 
  private:
   friend class PurgeContextTest;
@@ -116,6 +124,7 @@ class PurgeContext {
   // called with interprocess_lock_ held as the writes are made atomic
   // via write-to-temp + rename.
   void ReadPurgeFile(PurgeSet* purges_from_file);
+  void ReadFileAndCallCallbackIfChanged();
 
   // Combines the purges_from_file with pending_purges_ and purge_set_,
   // serializes the result into *buffer for writing back to the file.
@@ -185,7 +194,7 @@ class PurgeContext {
   Timer* timer_;
 
   scoped_ptr<AbstractMutex> mutex_;
-  PurgeSet purge_set_;                     // protected by mutex_
+  CopyOnWrite<PurgeSet> purge_set_;        // protected by mutex_
   PurgeSet pending_purges_;                // protected by mutex_
   BoolCallbackVector pending_callbacks_;   // protected by mutex_
   int64 last_file_check_ms_;               // protected_by mutex_
@@ -201,6 +210,8 @@ class PurgeContext {
   Variable* file_write_failures_;
 
   MessageHandler* message_handler_;
+
+  scoped_ptr<PurgeSetCallback> update_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(PurgeContext);
 };

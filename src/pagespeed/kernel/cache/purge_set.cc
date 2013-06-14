@@ -22,22 +22,47 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/time_util.h"
 
 namespace net_instaweb {
 
+PurgeSet::PurgeSet()
+    : global_invalidation_timestamp_ms_(kInitialTimestampMs),
+      last_invalidation_timestamp_ms_(0),
+      helper_(this),
+      lru_(new Lru(1, &helper_)) {  // 1 byte max size till someone sets it.
+}
+
 PurgeSet::PurgeSet(size_t max_size)
-    : global_invalidation_timestamp_ms_(0),
+    : global_invalidation_timestamp_ms_(kInitialTimestampMs),
       last_invalidation_timestamp_ms_(0),
       helper_(this),
       lru_(new Lru(max_size, &helper_)) {
 }
 
+PurgeSet::PurgeSet(const PurgeSet& src)
+    : global_invalidation_timestamp_ms_(kInitialTimestampMs),
+      last_invalidation_timestamp_ms_(0),
+      helper_(this),
+      lru_(new Lru(src.lru_->max_bytes_in_cache(), &helper_)) {
+  Merge(src);
+}
+
 PurgeSet::~PurgeSet() {
+}
+
+PurgeSet& PurgeSet::operator=(const PurgeSet& src) {
+  if (&src != this) {
+    Clear();
+    lru_->set_max_bytes_in_cache(src.lru_->max_bytes_in_cache());
+    Merge(src);
+  }
+  return *this;
 }
 
 void PurgeSet::Clear() {
   lru_->Clear();
-  global_invalidation_timestamp_ms_ = 0;
+  global_invalidation_timestamp_ms_ = kInitialTimestampMs;
 }
 
 namespace {
@@ -200,7 +225,7 @@ bool PurgeSet::SanitizeTimestamp(int64* timestamp_ms) {
 }
 
 bool PurgeSet::IsValid(const GoogleString& key, int64 timestamp_ms) const {
-  if (timestamp_ms <= global_invalidation_timestamp_ms_) {
+  if (timestamp_ms < global_invalidation_timestamp_ms_) {
     return false;
   }
   int64* purge_timestamp_ms = lru_->GetNoFreshen(key);
@@ -212,6 +237,58 @@ void PurgeSet::Swap(PurgeSet* that) {
   std::swap(global_invalidation_timestamp_ms_,
             that->global_invalidation_timestamp_ms_);
   helper_.Swap(&that->helper_);
+}
+
+bool PurgeSet::Equals(const PurgeSet& that) const {
+  if (this == &that) {
+    return true;
+  }
+
+  if (global_invalidation_timestamp_ms_ !=
+      that.global_invalidation_timestamp_ms_) {
+    return false;
+  }
+
+  if (lru_->num_elements() != that.lru_->num_elements()) {
+    return false;
+  }
+
+  Lru::Iterator that_iter = that.lru_->Begin(), that_end = that.lru_->End();
+  Lru::Iterator this_iter = lru_->Begin(), this_end = lru_->End();
+  for (; this_iter != this_end; ++this_iter, ++that_iter) {
+    DCHECK(that_iter != that_end);
+    if ((that_iter.Value() != this_iter.Value()) ||
+        (that_iter.Key() != this_iter.Key())) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool PurgeSet::empty() const {
+  return ((global_invalidation_timestamp_ms_ == kInitialTimestampMs) &&
+          (lru_->num_elements() == 0));
+}
+
+GoogleString PurgeSet::ToString() const {
+  GoogleString str("Global@");
+  GoogleString buf;
+  if (ConvertTimeToString(global_invalidation_timestamp_ms_, &buf)) {
+    StrAppend(&str, buf);
+  } else {
+    StrAppend(&str, Integer64ToString(global_invalidation_timestamp_ms_));
+  }
+  Lru::Iterator this_iter = lru_->Begin(), this_end = lru_->End();
+  for (; this_iter != this_end; ++this_iter) {
+    StrAppend(&str, "\n", this_iter.Key(), "@");
+    buf.clear();
+    if (ConvertTimeToString(this_iter.Value(), &buf)) {
+      StrAppend(&str, buf);
+    } else {
+      StrAppend(&str, Integer64ToString(this_iter.Value()));
+    }
+  }
+  return str;
 }
 
 }  // namespace net_instaweb

@@ -23,6 +23,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
@@ -42,6 +43,10 @@ class PurgeSetTest : public testing::Test {
   DISALLOW_COPY_AND_ASSIGN(PurgeSetTest);
 };
 
+TEST_F(PurgeSetTest, Empty) {
+  EXPECT_TRUE(purge_set_.empty());
+}
+
 TEST_F(PurgeSetTest, SimpleInvaldations) {
   EXPECT_TRUE(purge_set_.IsValid("a", 1));
   ASSERT_TRUE(purge_set_.Put("a", 2));
@@ -56,7 +61,7 @@ TEST_F(PurgeSetTest, NoEvictionsOnUpdateSameEntry) {
     ++last_eviction_time_ms;
     ASSERT_TRUE(purge_set_.Put("a", last_eviction_time_ms));
   }
-  EXPECT_EQ(0, purge_set_.global_invalidation_timestamp_ms());
+  EXPECT_FALSE(purge_set_.has_global_invalidation_timestamp_ms());
   EXPECT_FALSE(purge_set_.IsValid("a", 1));
   EXPECT_FALSE(purge_set_.IsValid("a", last_eviction_time_ms));
   EXPECT_TRUE(purge_set_.IsValid("a", last_eviction_time_ms + 1));
@@ -75,7 +80,7 @@ TEST_F(PurgeSetTest, EvictionsOnUpdateNewEntries) {
   // whether they are before or after the global invalidation
   // timestamp.
   for (int i = 0; i < kMaxSize * 10; ++i) {
-    EXPECT_FALSE(purge_set_.IsValid(StrCat("a", IntegerToString(i)), i + 1));
+    EXPECT_FALSE(purge_set_.IsValid(StrCat("a", IntegerToString(i)), i));
   }
 }
 
@@ -92,7 +97,7 @@ TEST_F(PurgeSetTest, Merge) {
   purge_set_.Merge(src);
   EXPECT_FALSE(purge_set_.IsValid("a", 40));
   EXPECT_FALSE(purge_set_.IsValid("b", 40));
-  EXPECT_FALSE(purge_set_.IsValid("c", 20));
+  EXPECT_FALSE(purge_set_.IsValid("c", 19));
   EXPECT_TRUE(purge_set_.IsValid("c", 40));
 }
 
@@ -121,7 +126,7 @@ TEST_F(PurgeSetTest, SlightSkew) {
   ASSERT_TRUE(purge_set_.Put("a", 10));
   ASSERT_TRUE(purge_set_.UpdateGlobalInvalidationTimestampMs(8));  // clamped
   EXPECT_FALSE(purge_set_.IsValid("b", 9));
-  EXPECT_FALSE(purge_set_.IsValid("b", 10));
+  EXPECT_TRUE(purge_set_.IsValid("b", 10));
   EXPECT_TRUE(purge_set_.IsValid("b", 11));
 }
 
@@ -131,6 +136,45 @@ TEST_F(PurgeSetTest, TooMuchSkew) {
   EXPECT_TRUE(purge_set_.IsValid("b", 9));
   EXPECT_TRUE(purge_set_.IsValid("b", 10));
   EXPECT_TRUE(purge_set_.IsValid("b", 11));
+}
+
+TEST_F(PurgeSetTest, Equals) {
+  ASSERT_TRUE(purge_set_.Put("a", 100));
+  EXPECT_TRUE(purge_set_.Equals(purge_set_));
+  EXPECT_FALSE(purge_set_.IsValid("a", 99));
+  EXPECT_TRUE(purge_set_.IsValid("a", 101));
+  PurgeSet other(kMaxSize);
+  EXPECT_FALSE(purge_set_.Equals(other));
+  EXPECT_TRUE(other.Put("a", 99));
+  EXPECT_FALSE(purge_set_.Equals(other));
+  EXPECT_TRUE(other.Put("a", 100));
+  EXPECT_TRUE(purge_set_.Equals(other));
+  ASSERT_TRUE(purge_set_.UpdateGlobalInvalidationTimestampMs(101));
+  EXPECT_FALSE(purge_set_.Equals(other));
+}
+
+TEST_F(PurgeSetTest, CopyConstruct) {
+  ASSERT_TRUE(purge_set_.UpdateGlobalInvalidationTimestampMs(8));
+  ASSERT_TRUE(purge_set_.Put("a", 100));
+  PurgeSet other(purge_set_);
+  EXPECT_TRUE(purge_set_.Equals(other));
+}
+
+TEST_F(PurgeSetTest, Assign) {
+  ASSERT_TRUE(purge_set_.UpdateGlobalInvalidationTimestampMs(8));
+  ASSERT_TRUE(purge_set_.Put("a", 100));
+  PurgeSet other(kMaxSize);
+  other = purge_set_;
+  EXPECT_TRUE(purge_set_.Equals(other));
+}
+
+TEST_F(PurgeSetTest, ToString) {
+  ASSERT_TRUE(purge_set_.UpdateGlobalInvalidationTimestampMs(
+      MockTimer::kApr_5_2010_ms));
+  ASSERT_TRUE(purge_set_.Put("a",
+                             MockTimer::kApr_5_2010_ms + Timer::kSecondMs));
+  EXPECT_STREQ("Global@Mon, 05 Apr 2010 18:51:26 GMT\n"
+               "a@Mon, 05 Apr 2010 18:51:27 GMT", purge_set_.ToString());
 }
 
 }  // namespace net_instaweb

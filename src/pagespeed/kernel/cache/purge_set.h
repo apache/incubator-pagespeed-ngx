@@ -55,8 +55,19 @@ class PurgeSet {
   // dependent on that.
   static const int64 kClockSkewAllowanceMs = 10 * Timer::kMinuteMs;
 
+  // The default constructor makes a 1-byte invalidation set.  Use
+  // set_max_size after construction.  The default constructor is
+  // needed for CopyOnWrite.
+  PurgeSet();
+
   explicit PurgeSet(size_t max_size);
+  PurgeSet(const PurgeSet& src);
   ~PurgeSet();
+
+  // Call this immediately after construction.
+  void set_max_size(size_t x) { lru_->set_max_bytes_in_cache(x); }
+
+  PurgeSet& operator=(const PurgeSet& src);
 
   // Flushes any item in the cache older than timestamp_ms.
   //
@@ -84,12 +95,21 @@ class PurgeSet {
     return global_invalidation_timestamp_ms_;
   }
 
+  bool has_global_invalidation_timestamp_ms() const {
+    return global_invalidation_timestamp_ms_ != kInitialTimestampMs;
+  }
+
   Iterator Begin() const { return lru_->Begin(); }
   Iterator End() const { return lru_->End(); }
 
   int num_elements() const { return lru_->num_elements(); }
   void Clear();
   void Swap(PurgeSet* that);
+
+  bool Equals(const PurgeSet& that) const;
+  bool empty() const;
+
+  GoogleString ToString() const;
 
  private:
   class InvalidationTimestampHelper {
@@ -126,6 +146,8 @@ class PurgeSet {
 
   friend class InvalidationTimestampHelper;
 
+  static const int64 kInitialTimestampMs = -1;
+
   void EvictNotify(int64 evicted_record_timestamp_ms);
 
   // Determines whether this timestamp is monotonically increasing from
@@ -161,7 +183,8 @@ class PurgeSet {
   InvalidationTimestampHelper helper_;
   scoped_ptr<Lru> lru_;
 
-  DISALLOW_COPY_AND_ASSIGN(PurgeSet);
+  // Explicit copy-constructor and assign-operator are provided so
+  // this class can be used for CopyOnWrite.
 };
 
 }  // namespace net_instaweb

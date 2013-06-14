@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/time_util.h"
 #include "pagespeed/kernel/cache/lru_cache_base.h"
+#include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
 
@@ -42,8 +43,8 @@ const int kMaxContentionRetries = 2;
 
 }  // namespace
 
-const char PurgeContext::kCancellations[] = "purge_cancellations";
-const char PurgeContext::kContentions[] = "purge_contentions";
+const char PurgeContext::kCancellations[]     = "purge_cancellations";
+const char PurgeContext::kContentions[]       = "purge_contentions";
 const char PurgeContext::kFileParseFailures[] = "purge_file_parse_failures";
 const char PurgeContext::kFileWriteFailures[] = "purge_file_write_failures";
 
@@ -60,7 +61,6 @@ PurgeContext::PurgeContext(StringPiece filename,
       file_system_(file_system),
       timer_(timer),
       mutex_(thread_system->NewMutex()),
-      purge_set_(max_bytes_in_cache),
       pending_purges_(max_bytes_in_cache),
       last_file_check_ms_(0),
       waiting_for_interprocess_lock_(false),
@@ -72,6 +72,7 @@ PurgeContext::PurgeContext(StringPiece filename,
       file_parse_failures_(statistics->GetVariable(kFileParseFailures)),
       file_write_failures_(statistics->GetVariable(kFileWriteFailures)),
       message_handler_(handler) {
+  purge_set_.MakeWriteable()->set_max_size(max_bytes_in_cache_);
 }
 
 PurgeContext::~PurgeContext() {
@@ -392,36 +393,57 @@ void PurgeContext::AddPurgeUrl(StringPiece url, int64 timestamp_ms,
   }
 }
 
-bool PurgeContext::IsValid(StringPiece url, int64 timestamp_ms) {
-  ScopedMutex lock(mutex_.get());
+void PurgeContext::PollFileSystem() {
+  mutex_->Lock();
   int64 now_ms = timer_->NowMs();
   int64 delta_ms = now_ms - last_file_check_ms_;
   if (!reading_ && delta_ms >= kCheckCacheIntervalMs) {
-    last_file_check_ms_ = now_ms;
-
-    // Unlock the mutex while reading the file.
-    PurgeSet purges_from_file(max_bytes_in_cache_);
-
-    // Note that we don't take the global lock to read the file.
-    // However note that when we *write* the file we write to a temp
-    // and then rename, so we can't read half a file.
-    //
-    // Release mutex_ while reading the file, but set reading_ so
-    // no one else tries to read at the same time, but instead
-    // just returns whatever data is already in purge_set_.
     reading_ = true;
+    last_file_check_ms_ = now_ms;
     mutex_->Unlock();
-    ReadPurgeFile(&purges_from_file);
+    ReadFileAndCallCallbackIfChanged();
     mutex_->Lock();
     reading_ = false;
-
-    purge_set_.Swap(&purges_from_file);
-
-    // Note that we don't merge in pending_purges_ in this flow.  Only
-    // when we grab the lock and write the file do we merge in the
-    // pending_purges_.
   }
-  return purge_set_.IsValid(url.as_string(), timestamp_ms);
+  mutex_->Unlock();
+}
+
+void PurgeContext::ReadFileAndCallCallbackIfChanged() {
+  CopyOnWrite<PurgeSet> purges_from_file;
+  PurgeSet* mutable_purges_from_file = purges_from_file.MakeWriteable();
+  mutable_purges_from_file->set_max_size(max_bytes_in_cache_);
+  bool call_callback = false;
+
+  // Note that we don't hold the global lock while reading the file.
+  // But under mutex we have set reading_ so another thread doesn't
+  // try a concurrent read.
+  DCHECK(reading_);
+  ReadPurgeFile(mutable_purges_from_file);
+
+  {
+    ScopedMutex lock(mutex_.get());
+    if (!purge_set_->Equals(*purges_from_file)) {
+      purge_set_ = purges_from_file;
+      if (update_callback_ != NULL) {
+        // We don't want to call the update callback while holding the
+        // lock.  Also note that even though we will release the lock
+        // before calling the callback, purge_set_ will not be mutated
+        // until our caller sets reading_ to false.
+        call_callback = true;
+      }
+    }
+  }
+  if (call_callback) {
+    update_callback_->Run(purges_from_file);
+  }
+
+  // Note that we don't merge in pending_purges_ in this flow.  Only
+  // when we grab the lock and write the file do we merge in the
+  // pending_purges_.
+}
+
+void PurgeContext::SetUpdateCallback(PurgeSetCallback* cb) {
+  update_callback_.reset(cb);
 }
 
 }  // namespace net_instaweb
