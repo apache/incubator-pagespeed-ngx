@@ -42,7 +42,6 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
-#include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -295,7 +294,7 @@ void CssFilter::Context::RewriteSingle(
   int drop_percentage = Options()->rewrite_random_drop_percentage();
   if (drop_percentage > 0) {
     SimpleRandom* simple_random = FindServerContext()->simple_random();
-    if (drop_percentage > (simple_random->Next() % 100)) {
+    if (drop_percentage > static_cast<int>(simple_random->Next() % 100)) {
       return RewriteDone(kTooBusy, 0);
     }
   }

@@ -38,11 +38,9 @@
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
-#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -777,7 +775,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     // filter as we don't want to partially rewrite a CSS file.
     SimpleRandom* simple_random =
         rewrite_context->FindServerContext()->simple_random();
-    if (drop_percentage > (simple_random->Next() % 100)) {
+    if (drop_percentage > static_cast<int>(simple_random->Next() % 100)) {
       return kTooBusy;
     }
   }

@@ -19,8 +19,9 @@
 #ifndef PAGESPEED_KERNEL_HTTP_CACHING_HEADERS_H_
 #define PAGESPEED_KERNEL_HTTP_CACHING_HEADERS_H_
 
-#include "base/basictypes.h"
 #include "base/logging.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
@@ -28,8 +29,6 @@ namespace net_instaweb {
 // it can conveniently reference GoogleString etc.  We will move
 // all the files in pagespeed/... to be in namespace pagespeed in a
 // future change.
-
-class ContentType;
 
 // Class to embody computing caching info for Resources.
 // This class has two advantages over static functions in resource_util:

@@ -220,7 +220,7 @@ class CountHistogram : public Histogram {
  public:
   CountHistogram() : count_(0) {}
   virtual ~CountHistogram();
-  virtual void Add(const double value) {
+  virtual void Add(double value) {
     ScopedMutex hold(lock());
     ++count_;
   }
