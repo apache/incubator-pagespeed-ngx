@@ -112,7 +112,8 @@ fi
 # General system tests
 
 if ${FIRST_RUN:-false}; then
-  CACHABLE_HTML_LOC="${HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
+  CACHABLE_HTML_DIR="${HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
+  CACHABLE_HTML_LOC="$CACHABLE_HTML_DIR/downstream_caching.html"
   STATS_URL="${HOSTNAME}/mod_pagespeed_statistics"
 
   # Number of downstream cache purges should be 0 here.
@@ -120,13 +121,13 @@ if ${FIRST_RUN:-false}; then
   check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*0"
 
   start_test Check for case where rewritten cache should get purged.
-  OUT=$($WGET_DUMP $CACHABLE_HTML_LOC/rewrite_images.html)
+  OUT=$($WGET_DUMP $CACHABLE_HTML_LOC)
   check_not_from "$OUT" egrep -q "pagespeed.ic"
   fetch_until $STATS_URL 'grep -c downstream_cache_purges:\s*1' 1
 
   start_test Check for case where rewritten cache should not get purged.
   WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
-  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
+  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC)
   check_from "$OUT" egrep -q "pagespeed.ic"
 
   # Number of downstream cache purges should still be 1.
