@@ -63,6 +63,16 @@ const char* const kImportant[] = {
   "num_cache_control_not_rewritable_resources",
   "num_cache_control_rewritable_resources",
   "cache_backend_misses", "cache_backend_hits", "cache_expirations",
+  "css_filter_parse_failures", "css_filter_blocks_rewritten",
+  "javascript_minification_failures", "javascript_blocks_minified",
+  "image_rewrites", "image_rewrites_dropped_nosaving_resize",
+  "image_rewrites_dropped_nosaving_noresize",
+  "image_norewrites_high_resolution",
+  "image_rewrites_dropped_decode_failure"
+  "image_rewrites_dropped_server_write_fail"
+  "image_rewrites_dropped_mime_type_unknown"
+  "image_norewrites_high_resolution",
+  "css_combine_opportunities", "css_file_count_reduction",
 
   // Variables used by /mod_pagespeed_temp_statistics_graphs
   // Note: It's fine that there are duplicates here.

@@ -181,14 +181,14 @@ pagespeed.statistics.sum = function(statArray) {
 };
 
 /**
- * Statistic which has the value of a ratio of sub-statistics.
- * For example: Cache hit rate = (cache hits) / (total cache requests).
+ * Statistic which has the value of a percent of sub-statistics.
+ * For example: Cache hit percent = 100 * (cache hits) / (total cache requests).
  *
  * @param {Object} numStat    Numerator statistic.
  * @param {Object} denomStat  Denominator statistic.
- * @return {Object}  Statistic representing ratio result.
+ * @return {Object}  Statistic representing percent result.
  */
-pagespeed.statistics.ratio = function(numStat, denomStat) {
+pagespeed.statistics.percent = function(numStat, denomStat) {
   var stat = {};
   stat.varsNeeded = new goog.structs.Set();
   stat.varsNeeded.addAll(numStat.varsNeeded);
@@ -202,10 +202,24 @@ pagespeed.statistics.ratio = function(numStat, denomStat) {
     if (denom == 0) {
       return 0.0;
     } else {
-      return numStat.evaluate(variableGetter) / denom;
+      return 100 * numStat.evaluate(variableGetter) / denom;
     }
   };
   return stat;
+};
+
+/**
+ * Statistic for common pattern: bad / (bad + good)
+ * For example: Cache miss % = 100 * cache misses / (cache misses + cache hits)
+ *
+ * @param {Object} badStat   Numerator statistic.
+ * @param {Object} goodStat  Added to badStat to get denominator.
+ * @return {Object}  Statistic representing percent result.
+ */
+pagespeed.statistics.percent_total = function(badStat, goodStat) {
+  return pagespeed.statistics.percent(
+      badStat,
+      pagespeed.statistics.sum([badStat, goodStat]));
 };
 
 /**
@@ -227,27 +241,50 @@ pagespeed.startConsole = function() {
 pagespeed.Console.prototype.initGraphs = function() {
   var v = pagespeed.statistics.variable;
   var sum = pagespeed.statistics.sum;
-  var ratio = pagespeed.statistics.ratio;
+  var percent = pagespeed.statistics.percent;
+  var percent_total = pagespeed.statistics.percent_total;
 
   this.addGraph('Resources not loaded because of fetch failures',
-                ratio(v('serf_fetch_failure_count'),
-                      v('serf_fetch_request_count')));
+                percent(v('serf_fetch_failure_count'),
+                        v('serf_fetch_request_count')));
   this.addGraph("Resources not rewritten because domain wasn't authorized",
-                ratio(v('resource_url_domain_rejections'),
-                      sum([v('resource_url_domain_rejections'),
-                           v('resource_url_domain_acceptances')])));
+                percent_total(v('resource_url_domain_rejections'),
+                              v('resource_url_domain_acceptances')));
   this.addGraph('Resources not rewritten because of restrictive ' +
                 'Cache-Control headers',
-                ratio(v('num_cache_control_not_rewritable_resources'),
-                      sum([v('num_cache_control_not_rewritable_resources'),
-                           v('num_cache_control_rewritable_resources')])));
+                percent_total(v('num_cache_control_not_rewritable_resources'),
+                              v('num_cache_control_rewritable_resources')));
   var totalCacheCalls = sum([v('cache_backend_misses'),
                              v('cache_backend_hits')]);
   this.addGraph('Cache misses',
-                ratio(v('cache_backend_misses'), totalCacheCalls));
+                percent(v('cache_backend_misses'), totalCacheCalls));
   this.addGraph('Cache lookups that were expired',
-                ratio(v('cache_expirations'), totalCacheCalls));
-  // TODO(sligocki): Add other notable issues graphs.
+                percent(v('cache_expirations'), totalCacheCalls));
+  this.addGraph('CSS files not rewritten because of parse errors',
+                percent_total(v('css_filter_parse_failures'),
+                              v('css_filter_blocks_rewritten')));
+  this.addGraph('JavaScript minification failures',
+                percent_total(v('javascript_minification_failures'),
+                              v('javascript_blocks_minified')));
+  var goodImageResults =
+      sum([v('image_rewrites'),
+           v('image_rewrites_dropped_nosaving_resize'),
+           v('image_rewrites_dropped_nosaving_noresize')]);
+  var badImageResults =
+      sum([v('image_norewrites_high_resolution'),
+           v('image_rewrites_dropped_decode_failure'),
+           v('image_rewrites_dropped_server_write_fail'),
+           v('image_rewrites_dropped_mime_type_unknown'),
+           v('image_norewrites_high_resolution')]);
+  this.addGraph('Image rewrite failures',
+                percent_total(badImageResults, goodImageResults));
+  /* TODO(sligocki): Get CSS combine stat working.
+     Note: This stat is also generally much higher than the rest and also
+     less important, we should de-prioritize it as well.
+  this.addGraph('CSS combine opportunities missed', percent(
+      v('css_combine_opportunities') - v('css_file_count_reduction'),
+      v('css_combine_opportunities')));
+  */
 };
 
 /**
