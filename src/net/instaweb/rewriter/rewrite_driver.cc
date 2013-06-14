@@ -2649,7 +2649,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   OutputResourcePtr resource;
   int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
                       + ContentType::MaxProducedExtensionLength();
-  if (max_leaf_size > options()->max_url_segment_size()) {
+  if (max_leaf_size > static_cast<int>(options()->max_url_segment_size())) {
     return resource;
   }
 
