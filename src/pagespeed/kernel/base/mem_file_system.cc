@@ -22,6 +22,7 @@
 #include <map>
 #include <utility>
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/file_system.h"
@@ -134,12 +135,9 @@ void MemFileSystem::UpdateAtime(const StringPiece& path) {
 }
 
 void MemFileSystem::UpdateMtime(const StringPiece& path) {
-  // TODO(sligocki): Rename this to account for broader use.
-  if (atime_enabled_) {
-    int64 now_us = timer_->NowUs();
-    int64 now_s = now_us / Timer::kSecondUs;
-    mtime_map_[path.as_string()] = now_s;
-  }
+  int64 now_us = timer_->NowUs();
+  int64 now_s = now_us / Timer::kSecondUs;
+  mtime_map_[path.as_string()] = now_s;
 }
 
 void MemFileSystem::Clear() {
@@ -262,7 +260,7 @@ bool MemFileSystem::RenameFileHelper(const char* old_file,
                                      const char* new_file,
                                      MessageHandler* handler) {
   ScopedMutex lock(all_else_mutex_.get());
-  UpdateAtime(new_file);
+
   if (strcmp(old_file, new_file) == 0) {
     handler->Error(old_file, 0, "Cannot move a file to itself");
     return false;
@@ -276,6 +274,12 @@ bool MemFileSystem::RenameFileHelper(const char* old_file,
 
   string_map_[new_file] = iter->second;
   string_map_.erase(iter);
+
+  UpdateAtime(new_file);
+  atime_map_.erase(old_file);
+  mtime_map_[new_file] = mtime_map_[old_file];
+  mtime_map_.erase(old_file);
+
   return true;
 }
 
@@ -351,6 +355,7 @@ BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               MessageHandler* handler) {
   ScopedMutex lock(lock_map_mutex_.get());
 
+  DCHECK_EQ(timer, timer_);
   GoogleString name = lock_name.as_string();
   int64 now = timer->NowMs();
   if (lock_map_.count(name) != 0 &&

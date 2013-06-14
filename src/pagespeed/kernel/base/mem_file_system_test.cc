@@ -31,10 +31,9 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
-
-class Timer;
 
 class MemFileSystemTest : public FileSystemTest {
  protected:
@@ -59,7 +58,6 @@ class MemFileSystemTest : public FileSystemTest {
     return 0;
   }
 
- private:
   scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   MemFileSystem mem_file_system_;
@@ -125,6 +123,24 @@ TEST_F(MemFileSystemTest, TestAtime) {
 
 TEST_F(MemFileSystemTest, TestMtime) {
   TestMtime();
+}
+
+TEST_F(MemFileSystemTest, TestMtimeWithAtimeDisabled) {
+  mem_file_system_.set_atime_enabled(false);
+  TestMtime();
+}
+
+TEST_F(MemFileSystemTest, MtimeAtimeAcrossRename) {
+  const int kCurrentTimeSec = 12345;
+  mem_file_system_.set_advance_time_on_update(false, &timer_);
+  timer_.SetTimeMs(kCurrentTimeSec * Timer::kSecondMs);
+  ASSERT_TRUE(file_system()->WriteFileAtomic("my.file", "hello, world",
+                                             &handler_));
+  int64 mtime_sec = 0, atime_sec = 0;
+  ASSERT_TRUE(file_system()->Mtime("my.file", &mtime_sec, &handler_));
+  EXPECT_EQ(kCurrentTimeSec, mtime_sec);
+  ASSERT_TRUE(file_system()->Atime("my.file", &atime_sec, &handler_));
+  EXPECT_EQ(kCurrentTimeSec, atime_sec);
 }
 
 TEST_F(MemFileSystemTest, TestDirInfo) {
