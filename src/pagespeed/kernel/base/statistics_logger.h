@@ -71,9 +71,12 @@ class StatisticsLogger {
                            StatisticsLogfileReader* reader,
                            std::vector<int64>* list_of_timestamps,
                            VarMap* parsed_var_data) const;
+  // Parse a string into a map of variable name -> value.
+  // Note: parsed_var_data StringPieces point into logfile_var_data and thus
+  // have same lifetime as it.
   void ParseVarDataIntoMap(StringPiece logfile_var_data,
-                           const std::set<GoogleString>& var_titles,
-                           VarMap* parsed_var_data) const;
+                           std::map<StringPiece, StringPiece>* parsed_var_data)
+      const;
   void PrintVarDataAsJSON(const VarMap& parsed_var_data, Writer* writer,
                           MessageHandler* message_handler) const;
   void PrintTimestampListAsJSON(const std::vector<int64>& list_of_timestamps,

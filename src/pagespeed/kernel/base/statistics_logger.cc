@@ -123,7 +123,7 @@ void StatisticsLogger::DumpJSON(
 void StatisticsLogger::ParseDataFromReader(
     const std::set<GoogleString>& var_titles,
     StatisticsLogfileReader* reader,
-    std::vector<int64>* list_of_timestamps, VarMap* parsed_var_data) const {
+    std::vector<int64>* timestamps, VarMap* var_values) const {
   // curr_timestamp starts as 0 because we need to compare it to the first
   // timestamp pulled from the file. The current timestamp should always be
   // less than the timestamp after it due to the fact that the logfile dumps
@@ -132,34 +132,41 @@ void StatisticsLogger::ParseDataFromReader(
   // Stores data associated with current timestamp.
   GoogleString data;
   while (reader->ReadNextDataBlock(&curr_timestamp, &data)) {
-    list_of_timestamps->push_back(curr_timestamp);
-    // Add the variable data to a Map.
-    //
-    // Note: Histogram writing and reading code has been removed, so we just
-    // ignore any histogram data (for backwards compatibility.
-    size_t end_index_of_var_data = data.find("histogram#");
-    StringPiece var_data = StringPiece(data).substr(0, end_index_of_var_data);
-    ParseVarDataIntoMap(var_data, var_titles, parsed_var_data);
+    // Parse variable data.
+    std::map<StringPiece, StringPiece> parsed_var_data;
+    ParseVarDataIntoMap(data, &parsed_var_data);
+
+    timestamps->push_back(curr_timestamp);
+    // Push all variable values. Note: We only save the variables listed in
+    // var_titles, the rest are disregarded.
+    for (std::set<GoogleString>::const_iterator iter = var_titles.begin();
+         iter != var_titles.end(); ++iter) {
+      const GoogleString& var_title = *iter;
+
+      std::map<StringPiece, StringPiece>::const_iterator value_iter =
+          parsed_var_data.find(var_title);
+      if (value_iter != parsed_var_data.end()) {
+        (*var_values)[var_title].push_back(value_iter->second.as_string());
+      } else {
+        // If data is not available in this segment, we just push 0 as a place
+        // holder. We must push something or else it will be ambiguous which
+        // timestamp corresponds to which variable values.
+        (*var_values)[var_title].push_back("0");
+      }
+    }
   }
 }
 
-// Takes a block of variable data and separates it into a map of
-// the variables that have been queried.
 void StatisticsLogger::ParseVarDataIntoMap(
-    StringPiece logfile_var_data, const std::set<GoogleString>& var_titles,
-    VarMap* parsed_var_data) const {
-  std::vector<StringPiece> vars;
-  SplitStringPieceToVector(logfile_var_data, "\n", &vars, true);
-  for (size_t i = 0; i < vars.size(); ++i) {
-    size_t end_index_of_name = vars[i].find_first_of(":");
-    GoogleString var_name = vars[i].substr(0, end_index_of_name).as_string();
-    // If the variable is one that hasn't been queried for, ignore it.
-    if (var_titles.find(var_name) == var_titles.end()) {
-      continue;
-    }
-    GoogleString value_as_string =
-        vars[i].substr(end_index_of_name + 2).as_string();
-    (*parsed_var_data)[var_name].push_back(value_as_string);
+    StringPiece logfile_var_data,
+    std::map<StringPiece, StringPiece>* parsed_var_data) const {
+  std::vector<StringPiece> lines;
+  SplitStringPieceToVector(logfile_var_data, "\n", &lines, true);
+  for (size_t i = 0; i < lines.size(); ++i) {
+    size_t end_index_of_name = lines[i].find_first_of(":");
+    StringPiece var_name = lines[i].substr(0, end_index_of_name);
+    StringPiece var_value_string = lines[i].substr(end_index_of_name + 2);
+    (*parsed_var_data)[var_name] = var_value_string;
   }
 }
 
@@ -227,7 +234,6 @@ StatisticsLogfileReader::StatisticsLogfileReader(
           message_handler_(message_handler) {
 }
 
-
 StatisticsLogfileReader::~StatisticsLogfileReader() {
 }
 
@@ -246,10 +252,9 @@ bool StatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
     size_t newline_pos = BufferFind("\n", offset);
     // Separate the current timestamp from the rest of the data in the buffer.
     size_t timestamp_size = STATIC_STRLEN("timestamp: ");
-    // Note: We cannot use StringPiece here because StringToInt64 is too dumb.
-    GoogleString timestamp_int_as_str =
-        buffer_.substr(offset + timestamp_size, newline_pos - timestamp_size);
-    StringToInt64(timestamp_int_as_str, timestamp);
+    StringPiece timestamp_str = StringPiece(buffer_).substr(
+        offset + timestamp_size, newline_pos - timestamp_size);
+    StringToInt64(timestamp_str, timestamp);
     // Before ReadNextDataBlock returns, it finds the next occurrence of the
     // full string "timestamp: " so that it knows it contains the full data
     // block. It then separates the data block from the rest of the data,

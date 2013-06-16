@@ -81,23 +81,24 @@ class StatisticsLoggerTest : public ::testing::Test {
     return var_data;
   }
 
-  GoogleString CreateFakeLogfile(GoogleString* var_data,
-                                 std::set<GoogleString>* var_titles) {
+  void CreateFakeLogfile(std::set<GoogleString>* var_titles) {
     // Populate variable data.
-    *var_data = CreateVariableDataResponse(false, true);
     var_titles->insert("num_flushes");
     var_titles->insert("slurp_404_count");
     var_titles->insert("cache_hits");
     var_titles->insert("cache_misses");
 
-    GoogleString logfile_input;
-    StrAppend(&logfile_input, "timestamp: 1300000000005\n", *var_data);
-    StrAppend(&logfile_input, "timestamp: 1300000000010\n", *var_data);
-    StrAppend(&logfile_input, "timestamp: 1300000000015\n", *var_data);
-    StrAppend(&logfile_input, "timestamp: 1300000000020\n", *var_data);
-    return logfile_input;
+    GoogleString var_data = CreateVariableDataResponse(false, true);
+
+    file_system_.WriteFile(kLogFile,
+                           StrCat("timestamp: 1300000000005\n", var_data,
+                                  "timestamp: 1300000000010\n", var_data,
+                                  "timestamp: 1300000000015\n", var_data,
+                                  "timestamp: 1300000000020\n", var_data),
+                           &handler_);
   }
 
+  // Methods defined here to get around private access restrictions.
   void ParseDataFromReader(const std::set<GoogleString>& var_titles,
                            StatisticsLogfileReader* reader,
                            std::vector<int64>* list_of_timestamps,
@@ -105,10 +106,10 @@ class StatisticsLoggerTest : public ::testing::Test {
     logger_.ParseDataFromReader(var_titles, reader, list_of_timestamps,
                                 parsed_var_data);
   }
-  void ParseVarDataIntoMap(StringPiece logfile_var_data,
-                           const std::set<GoogleString>& var_titles,
-                           VarMap* parsed_var_data) {
-    logger_.ParseVarDataIntoMap(logfile_var_data, var_titles, parsed_var_data);
+  void ParseVarDataIntoMap(
+      StringPiece logfile_var_data,
+      std::map<StringPiece, StringPiece>* parsed_var_data) {
+    logger_.ParseVarDataIntoMap(logfile_var_data, parsed_var_data);
   }
   void PrintJSON(const std::vector<int64>& list_of_timestamps,
                  const VarMap& parsed_var_data,
@@ -125,17 +126,11 @@ class StatisticsLoggerTest : public ::testing::Test {
 };
 
 TEST_F(StatisticsLoggerTest, TestParseDataFromReader) {
-  GoogleString var_data;
   std::set<GoogleString> var_titles;
-  GoogleString logfile_input = CreateFakeLogfile(&var_data, &var_titles);
-  StringPiece logfile_input_piece(logfile_input);
-  GoogleString file_name;
-  bool success = file_system_.WriteTempFile("/prefix/", logfile_input_piece,
-                                            &file_name, &handler_);
-  EXPECT_TRUE(success);
+  CreateFakeLogfile(&var_titles);
 
   FileSystem::InputFile* log_file =
-      file_system_.OpenInputFile(file_name.c_str(), &handler_);
+      file_system_.OpenInputFile(kLogFile, &handler_);
   GoogleString output;
   int64 start_time = 1300000000000LL;
   int64 end_time = 1400000000000LL;
@@ -235,61 +230,76 @@ TEST_F(StatisticsLoggerTest, TestNextDataBlock) {
 // Creates fake logfile data and tests that the data containing the variable
 // timeseries information is accurately parsed.
 TEST_F(StatisticsLoggerTest, TestParseVarData) {
-  VarMap parsed_var_data;
+  std::map<StringPiece, StringPiece> parsed_var_data;
   GoogleString var_data = CreateVariableDataResponse(true, true);
-  const StringPiece var_data_piece(var_data);
-  std::set<GoogleString> var_titles;
-  var_titles.insert("num_flushes");
-  var_titles.insert("slurp_404_count");
-  var_titles.insert("not_a_variable");
-  ParseVarDataIntoMap(var_data_piece, var_titles, &parsed_var_data);
 
+  ParseVarDataIntoMap(var_data, &parsed_var_data);
+
+  // All 5 variables get set in parsed_var_data.
+  EXPECT_EQ(5, parsed_var_data.size());
   EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("num_flushes"));
+  EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("cache_hits"));
+  EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("cache_misses"));
   EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("slurp_404_count"));
+  // Including random_unused_var, which we won't care about.
+  EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("random_unused_var"));
 
-  // Test that map does not update variables that are not queried.
-  EXPECT_EQ(parsed_var_data.end(), parsed_var_data.find("cache_hits"));
+  // Variables not in the log do not get added.
   EXPECT_EQ(parsed_var_data.end(), parsed_var_data.find("not_a_variable"));
-  EXPECT_EQ(parsed_var_data.end(), parsed_var_data.find("random_unused_var"));
 
   // Test that map correctly adds data on initial run.
-  EXPECT_EQ(1, parsed_var_data["num_flushes"].size());
-  EXPECT_EQ("300", parsed_var_data["num_flushes"][0]);
+  EXPECT_EQ("300", parsed_var_data["num_flushes"]);
 
   // Test that map is updated correctly when new data is added.
   GoogleString var_data_2 = CreateVariableDataResponse(true, false);
-  const StringPiece var_data_piece_2(var_data_2);
-  ParseVarDataIntoMap(var_data_piece_2, var_titles, &parsed_var_data);
-  EXPECT_EQ(2, parsed_var_data["num_flushes"].size());
-  EXPECT_EQ("300", parsed_var_data["num_flushes"][0]);
-  EXPECT_EQ("310", parsed_var_data["num_flushes"][1]);
+  parsed_var_data.clear();
+  ParseVarDataIntoMap(var_data_2, &parsed_var_data);
+  EXPECT_EQ("310", parsed_var_data["num_flushes"]);
 }
 
-// Takes fake logfile data and parses it. It then checks that PrintJSONResponse
-// accurately outputs a valid JSON object given the parsed variable data.
-TEST_F(StatisticsLoggerTest, TestPrintJSONResponse) {
-  GoogleString var_data, var_data_2;
+// Using fake logfile, make sure JSON output is not malformed.
+TEST_F(StatisticsLoggerTest, NoMalformedJson) {
   std::set<GoogleString> var_titles;
-  CreateFakeLogfile(&var_data, &var_titles);
+  CreateFakeLogfile(&var_titles);
 
-  VarMap parsed_var_data;
-  ParseVarDataIntoMap(var_data, var_titles, &parsed_var_data);
+  GoogleString json_dump;
+  StringWriter writer(&json_dump);
+  logger_.DumpJSON(var_titles, 1300000000000, 1300000000100, 5,
+                   &writer, &handler_);
 
-  var_data_2 = CreateVariableDataResponse(false, false);
-  ParseVarDataIntoMap(var_data_2, var_titles, &parsed_var_data);
-
-  // Populate timestamp data.
-  std::vector<int64> list_of_timestamps;
-  int64 starting_timestamp = 1342567288580LL;
-  for (int i = 0; i < 5; ++i) {
-    list_of_timestamps.push_back(starting_timestamp + i*5);
-  }
-  GoogleString dump;
-  StringWriter writer(&dump);
-  PrintJSON(list_of_timestamps, parsed_var_data, &writer, &handler_);
   Json::Value complete_json;
   Json::Reader json_reader;
-  EXPECT_TRUE(json_reader.parse(dump.c_str(), complete_json)) << dump;
+  EXPECT_TRUE(json_reader.parse(json_dump.c_str(), complete_json)) << json_dump;
+}
+
+// Make sure we return sensible results when there is data missing from log.
+// This is not just to deal with data corruption, but any time the set of
+// logged variables changes.
+TEST_F(StatisticsLoggerTest, ConsistentNumberArgs) {
+  // foo and bar only recorded at certain timestamps.
+  file_system_.WriteFile(kLogFile,
+                         "timestamp: 1000\n"
+                         "timestamp: 2000\n"
+                         "foo: 2\n"
+                         "bar: 20\n"
+                         "timestamp: 3000\n"
+                         "bar: 30\n"
+                         "timestamp: 4000\n"
+                         "foo: 4\n",
+                         &handler_);
+
+  GoogleString json_dump;
+  StringWriter writer(&json_dump);
+
+  std::set<GoogleString> var_titles;
+  var_titles.insert("foo");
+  var_titles.insert("bar");
+  logger_.DumpJSON(var_titles, 1000, 4000, 1000, &writer, &handler_);
+
+  // The notable check here is that all the arrays are the same length.
+  EXPECT_EQ("{\"timestamps\": [1000, 2000, 3000, 4000],\"variables\": {"
+            "\"bar\": [0, 20, 30, 0],"
+            "\"foo\": [0, 2, 0, 4]}}", json_dump);
 }
 
 }  // namespace net_instaweb
