@@ -267,19 +267,8 @@ class ServerContext {
     store_outputs_in_file_system_ = store;
   }
 
-  void RefreshIfImminentlyExpiring(Resource* resource,
-                                   MessageHandler* handler) const;
-
   RewriteStats* rewrite_stats() const { return rewrite_stats_; }
   MessageHandler* message_handler() const { return message_handler_; }
-
-  // Loads contents of resource asynchronously, calling callback when
-  // done.  If the resource contents are cached, the callback will
-  // be called directly, rather than asynchronously.  The resource
-  // will be passed to the callback, with its contents and headers filled in.
-  void ReadAsync(Resource::NotCacheablePolicy not_cacheable_policy,
-                 const RequestContextPtr& request_context,
-                 Resource::AsyncCallback* callback);
 
   // Allocate an NamedLock to guard the creation of the given resource.  If the
   // object is expensive to create, this lock should be held during its creation

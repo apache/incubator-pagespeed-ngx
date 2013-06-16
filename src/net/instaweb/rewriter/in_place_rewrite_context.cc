@@ -563,8 +563,8 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
         MessageHandler* handler = server_context->message_handler();
         NonHttpResourceCallback* callback = new NonHttpResourceCallback(
             resource, proxy_mode_, this, fetch, handler);
-        server_context->ReadAsync(Resource::kLoadEvenIfNotCacheable,
-                                  Driver()->request_context(), callback);
+        resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                            Driver()->request_context(), callback);
       }
     }
   } else {

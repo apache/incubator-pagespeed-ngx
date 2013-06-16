@@ -1876,7 +1876,7 @@ void RewriteContext::OutputCacheRevalidate(
   for (int i = 0, n = to_revalidate.size(); i < n; ++i) {
     InputInfo* input_info = to_revalidate[i];
     ResourcePtr resource = slots_[input_info->index()]->resource();
-    FindServerContext()->ReadAsync(
+    resource->LoadAsync(
         Resource::kReportFailureIfNotCacheable,
         Driver()->request_context(),
         new ResourceRevalidateCallback(this, resource, input_info));
@@ -1993,7 +1993,7 @@ void RewriteContext::FetchInputs() {
             noncache_policy = Resource::kLoadEvenIfNotCacheable;
           }
         }
-        FindServerContext()->ReadAsync(
+        resource->LoadAsync(
             noncache_policy, Driver()->request_context(),
             new ResourceFetchCallback(this, resource, i));
       }

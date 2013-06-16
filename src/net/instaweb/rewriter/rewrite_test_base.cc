@@ -922,7 +922,9 @@ class HttpCallback : public HTTPCache::Callback {
 
 bool RewriteTestBase::ReadIfCached(const ResourcePtr& resource) {
   BlockingResourceCallback callback(resource);
-  rewrite_driver()->ReadAsync(&callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
   CHECK(callback.done());
   if (callback.success()) {
     CHECK(resource->loaded());
@@ -933,7 +935,9 @@ bool RewriteTestBase::ReadIfCached(const ResourcePtr& resource) {
 void RewriteTestBase::InitiateResourceRead(
     const ResourcePtr& resource) {
   DeferredResourceCallback* callback = new DeferredResourceCallback(resource);
-  rewrite_driver()->ReadAsync(callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      callback);
 }
 
 HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(

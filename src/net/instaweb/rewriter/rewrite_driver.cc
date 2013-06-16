@@ -2038,14 +2038,6 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   return resource;
 }
 
-void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
-                              MessageHandler* handler) {
-  // TODO(jmarantz): fix call-sites and eliminate this wrapper.
-  server_context_->ReadAsync(Resource::kReportFailureIfNotCacheable,
-                             request_context(),
-                             callback);
-}
-
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   if (response_headers_ != NULL) {

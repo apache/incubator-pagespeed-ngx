@@ -58,7 +58,6 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/query_params.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
@@ -465,20 +464,6 @@ bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
   RewriteFilter* filter;
   return decoding_driver_->DecodeOutputResourceName(
       url, &namer, &kind, &filter);
-}
-
-void ServerContext::RefreshIfImminentlyExpiring(
-    Resource* resource, MessageHandler* handler) const {
-  resource->RefreshIfImminentlyExpiring();
-}
-
-// TODO(morlovich): Remove compat method
-void ServerContext::ReadAsync(
-    Resource::NotCacheablePolicy not_cacheable_policy,
-    const RequestContextPtr& request_context,
-    Resource::AsyncCallback* callback) {
-  ResourcePtr resource = callback->resource();
-  resource->LoadAsync(not_cacheable_policy, request_context, callback);
 }
 
 NamedLock* ServerContext::MakeCreationLock(const GoogleString& name) {

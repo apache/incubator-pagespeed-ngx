@@ -552,13 +552,6 @@ class RewriteDriver : public HtmlParse {
   bool MayRewriteUrl(const GoogleUrl& domain_url,
                      const GoogleUrl& input_url) const;
 
-  // Loads contents of resource asynchronously, calling callback when
-  // done.  If the resource contents are cached, the callback will
-  // be called directly, rather than asynchronously.  The resource
-  // will be passed to the callback, with its contents and headers filled in.
-  void ReadAsync(Resource::AsyncCallback* callback,
-                 MessageHandler* message_handler);
-
   // Returns the appropriate base gurl to be used for resolving hrefs
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.

@@ -321,9 +321,9 @@ class ServerContextTest : public RewriteTestBase {
     rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
     ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
     VerifyContentsCallback callback(resource, "payload");
-    server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
-                                rewrite_driver()->request_context(),
-                                &callback);
+    resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                        rewrite_driver()->request_context(),
+                        &callback);
     callback.AssertCalled();
     return resource;
   }
@@ -340,9 +340,9 @@ class ServerContextTest : public RewriteTestBase {
     }
     resource->set_is_background_fetch(is_background_fetch);
     VerifyContentsCallback callback(resource, "payload");
-    server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
-                                rewrite_driver()->request_context(),
-                                &callback);
+    resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                        rewrite_driver()->request_context(),
+                        &callback);
     callback.AssertCalled();
   }
 
@@ -858,7 +858,9 @@ TEST_F(ServerContextTest, TestNonCacheable) {
   ASSERT_TRUE(resource.get() != NULL);
 
   VerifyContentsCallback callback(resource, kContents);
-  rewrite_driver()->ReadAsync(&callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
   callback.AssertCalled();
 
   HTTPValue value_out;
@@ -880,18 +882,18 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
   ResourcePtr resource1(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource1.get() != NULL);
   MockResourceCallback callback1(resource1, factory()->thread_system());
-  server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
-                              rewrite_driver()->request_context(),
-                              &callback1);
+  resource1->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                       rewrite_driver()->request_context(),
+                       &callback1);
   EXPECT_TRUE(callback1.done());
   EXPECT_FALSE(callback1.success());
 
   ResourcePtr resource2(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource2.get() != NULL);
   MockResourceCallback callback2(resource2, factory()->thread_system());
-  server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
-                              rewrite_driver()->request_context(),
-                              &callback2);
+  resource2->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                       rewrite_driver()->request_context(),
+                       &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
 }
@@ -912,7 +914,9 @@ TEST_F(ServerContextTest, TestVaryOption) {
   ASSERT_TRUE(resource.get() != NULL);
 
   VerifyContentsCallback callback(resource, kContents);
-  rewrite_driver()->ReadAsync(&callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
   callback.AssertCalled();
   EXPECT_FALSE(resource->IsValidAndCacheable());
 
@@ -1592,7 +1596,9 @@ TEST_F(ServerContextTest, PartlyFailedFetch) {
   ResourcePtr resource = rewrite_driver()->CreateInputResource(gurl);
   ASSERT_TRUE(resource.get() != NULL);
   MockResourceCallback callback(resource, factory()->thread_system());
-  rewrite_driver()->ReadAsync(&callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
   EXPECT_FALSE(resource->IsValidAndCacheable());
@@ -1617,12 +1623,16 @@ TEST_F(ServerContextTest, LoadFromFileReadAsync) {
   ResourcePtr resource(
       rewrite_driver()->CreateInputResource(test_url));
   VerifyContentsCallback callback(resource, kContents);
-  rewrite_driver()->ReadAsync(&callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
   callback.AssertCalled();
 
   resource = rewrite_driver()->CreateInputResource(test_url);
   VerifyContentsCallback callback2(resource, kContents);
-  rewrite_driver()->ReadAsync(&callback2, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback2);
   callback2.AssertCalled();
 }
 
@@ -1672,7 +1682,9 @@ TEST_F(ServerContextTest, FillInPartitionInputInfo) {
   GoogleUrl gurl(kUrl);
   ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
   VerifyContentsCallback callback(resource, kContents);
-  rewrite_driver()->ReadAsync(&callback, message_handler());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
   callback.AssertCalled();
 
   InputInfo with_hash, without_hash;
