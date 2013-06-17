@@ -49,8 +49,7 @@ class StatisticsLoggerTest : public ::testing::Test {
   typedef StatisticsLogger::VarMap VarMap;
 
   StatisticsLoggerTest()
-      // This time is in the afternoon of 17 July 2012.
-      : timer_(1342567288560ULL),
+      : timer_(MockTimer::kApr_5_2010_ms),
         thread_system_(Platform::CreateThreadSystem()),
         handler_(thread_system_->NewMutex()),
         file_system_(thread_system_.get(), &timer_),
@@ -81,21 +80,25 @@ class StatisticsLoggerTest : public ::testing::Test {
     return var_data;
   }
 
-  void CreateFakeLogfile(std::set<GoogleString>* var_titles) {
+  void CreateFakeLogfile(std::set<GoogleString>* var_titles, int64* start_time,
+                         int64* end_time, int64* granularity_ms) {
     // Populate variable data.
     var_titles->insert("num_flushes");
     var_titles->insert("slurp_404_count");
     var_titles->insert("cache_hits");
     var_titles->insert("cache_misses");
 
+    *start_time = MockTimer::kApr_5_2010_ms;
+    *granularity_ms = kLoggingIntervalMs;
+    *end_time = *start_time + 4 * (*granularity_ms);
+
     GoogleString var_data = CreateVariableDataResponse(false, true);
 
-    file_system_.WriteFile(kLogFile,
-                           StrCat("timestamp: 1300000000005\n", var_data,
-                                  "timestamp: 1300000000010\n", var_data,
-                                  "timestamp: 1300000000015\n", var_data,
-                                  "timestamp: 1300000000020\n", var_data),
-                           &handler_);
+    GoogleString log;
+    for (int64 time = *start_time; time < *end_time; time += *granularity_ms) {
+      StrAppend(&log, "timestamp: ", Integer64ToString(time), "\n", var_data);
+    }
+    file_system_.WriteFile(kLogFile, log, &handler_);
   }
 
   // Methods defined here to get around private access restrictions.
@@ -127,14 +130,12 @@ class StatisticsLoggerTest : public ::testing::Test {
 
 TEST_F(StatisticsLoggerTest, TestParseDataFromReader) {
   std::set<GoogleString> var_titles;
-  CreateFakeLogfile(&var_titles);
+  int64 start_time, end_time, granularity_ms;
+  CreateFakeLogfile(&var_titles, &start_time, &end_time, &granularity_ms);
 
   FileSystem::InputFile* log_file =
       file_system_.OpenInputFile(kLogFile, &handler_);
   GoogleString output;
-  int64 start_time = 1300000000000LL;
-  int64 end_time = 1400000000000LL;
-  int64 granularity_ms = 2;
   StatisticsLogfileReader reader(log_file, start_time, end_time,
                                  granularity_ms, &handler_);
   std::vector<int64> list_of_timestamps;
@@ -162,37 +163,45 @@ TEST_F(StatisticsLoggerTest, TestNextDataBlock) {
       "#200.000000#205.000000#1.000000"
       "#1000.000000#1005.000000#1.000000"
       "#2000.000000#2005.000000#1.000000\n";
-  int64 start_time = 1300000000000LL;  // Randomly chosen times.
-  int64 end_time = 1400000000000LL;
+  int64 initial_timestamp = MockTimer::kApr_5_2010_ms;
+  int64 start_time = initial_timestamp - Timer::kDayMs;
+  int64 end_time = initial_timestamp + Timer::kDayMs;
   int64 granularity_ms = 5;
-  int64 initial_timestamp = 1342567288560LL;
+  GoogleString input;
   // Add two working cases.
-  GoogleString input = "timestamp: " +
-                       Integer64ToString(initial_timestamp) + "\n";
   // Test without histogram.
-  const GoogleString first_var_data =  "num_flushes: 300\n";
-  input += first_var_data;
-  input += "timestamp: " + Integer64ToString(initial_timestamp + 20) + "\n";
-  const GoogleString second_var_data = "num_flushes: 305\n" + histogram_data;
-  input += second_var_data;
+  GoogleString first_var_data = "num_flushes: 300\n";
+  StrAppend(&input,
+            "timestamp: ", Integer64ToString(initial_timestamp), "\n",
+            first_var_data);
+  // Test with histogram.
+  GoogleString second_var_data = StrCat("num_flushes: 305\n", histogram_data);
+  StrAppend(&input,
+            "timestamp: ", Integer64ToString(initial_timestamp + 20), "\n",
+            second_var_data);
 
   // Add case that purposefully fails granularity requirements (The difference
   // between this timestamp and the previous one is only 2ms, whereas the
   // desired granularity is 5ms).
-  input += "timestamp: " + Integer64ToString(initial_timestamp + 22) + "\n";
-  const GoogleString third_var_data = "num_flushes: 310\n" + histogram_data;
-  input += third_var_data;
+  const GoogleString third_var_data =
+      StrCat("num_flushes: 310\n", histogram_data);
+  StrAppend(&input,
+            "timestamp: ", Integer64ToString(initial_timestamp + 22), "\n",
+            third_var_data);
 
   // Add case that purposefully fails start_time requirements.
-  input += "timestamp: 1200000000000\n";
-  input += third_var_data;
+  StrAppend(&input,
+            "timestamp: ", Integer64ToString(start_time - Timer::kDayMs), "\n",
+            third_var_data);
   // Add case that purposefully fails end_time requirements.
-  input += "timestamp: 1500000000000\n";
-  input += third_var_data;
+  StrAppend(&input,
+            "timestamp: ", Integer64ToString(end_time + Timer::kDayMs), "\n",
+            third_var_data);
   // Add working case to make sure data output continues despite previous
   // requirements failing.
-  input += "timestamp: " + Integer64ToString(initial_timestamp + 50) + "\n";
-  input += third_var_data;
+  StrAppend(&input,
+            "timestamp: ", Integer64ToString(initial_timestamp + 50), "\n",
+            third_var_data);
   StringPiece input_piece(input);
   GoogleString file_name;
 
@@ -260,11 +269,12 @@ TEST_F(StatisticsLoggerTest, TestParseVarData) {
 // Using fake logfile, make sure JSON output is not malformed.
 TEST_F(StatisticsLoggerTest, NoMalformedJson) {
   std::set<GoogleString> var_titles;
-  CreateFakeLogfile(&var_titles);
+  int64 start_time, end_time, granularity_ms;
+  CreateFakeLogfile(&var_titles, &start_time, &end_time, &granularity_ms);
 
   GoogleString json_dump;
   StringWriter writer(&json_dump);
-  logger_.DumpJSON(var_titles, 1300000000000, 1300000000100, 5,
+  logger_.DumpJSON(var_titles, start_time, end_time, granularity_ms,
                    &writer, &handler_);
 
   Json::Value complete_json;
