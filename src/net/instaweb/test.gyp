@@ -106,7 +106,6 @@
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/common_filter_test.cc',
         'rewriter/compute_visible_text_filter_test.cc',
-        'rewriter/console_suggestions_test.cc',
         'rewriter/critical_css_beacon_filter_test.cc',
         'rewriter/critical_css_filter_test.cc',
         'rewriter/critical_css_finder_test.cc',
