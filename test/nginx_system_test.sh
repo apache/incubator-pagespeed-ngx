@@ -68,7 +68,7 @@ function keepalive_test() {
 
   for ((i=0; i < 100; i++)); do
     for accept_encoding in "" "-H \"Accept-Encoding:gzip\""; do
-      if [ -z "$POST_DATA" ]; then 
+      if [ -z "$POST_DATA" ]; then
         curl -m 1 -S -s -v $accept_encoding -H "Host: $HOST_NAME" \
           $URL $URL $URL $URL $URL > /dev/null \
           2>>"$TEST_TMP/$CURL_LOG_FILE"
@@ -179,7 +179,7 @@ if $USE_VALGRIND; then
   echo "  valgrind $NGINX_EXECUTABLE -c $PAGESPEED_CONF"
   read
 else
-  TRACE_FILE="$TEST_TMP/conf_loading_trace" 
+  TRACE_FILE="$TEST_TMP/conf_loading_trace"
   $NGINX_EXECUTABLE -c $PAGESPEED_CONF >& "$TRACE_FILE"
   if [[ $? -ne 0 ]]; then
     echo "FAIL"
@@ -251,12 +251,11 @@ function run_post_cache_flush() {
 # nginx-specific system tests
 
 # Tests related to rewritten response (downstream) caching.
-
 CACHABLE_HTML_LOC="${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
 PS_HANDLED_HTML="Passing on content handling.*8050/mod_pagespeed_test/cachable"
-PS_HANDLED_HTML=$PS_HANDLED_HTML"_rewritten_html/rewrite_images.html"
+PS_HANDLED_HTML=$PS_HANDLED_HTML"_rewritten_html/downstream_caching.html"
 TMP_LOG_LINE="proxy_cache.example.com GET /purge/mod_pagespeed_test/cachable_rewritten_"
-PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/rewrite_images.html.*(200)"
+PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
 
 # Number of downstream cache purges should be 0 here.
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
@@ -266,7 +265,7 @@ check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*0"
 # produced by pagespeed code and a subsequent purge request.
 start_test Check for case where rewritten cache should get purged.
 WGET_ARGS="--header=Host:proxy_cache.example.com"
-OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
+OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_not_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
@@ -277,7 +276,7 @@ check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 # rewritten response produced by pagespeed code and no new purge requests.
 start_test Check for case where rewritten cache should not get purged.
 BLOCKING_WGET_ARGS=$WGET_ARGS" --header=X-PSA-Blocking-Rewrite:psatest"
-OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
+OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
@@ -289,7 +288,7 @@ check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 # now present in cache), rewritten response served out from cache and not
 # by pagespeed code and no new purge requests.
 start_test Check for case where there is a rewritten cache hit.
-OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/rewrite_images.html)
+OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: HIT"
 fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
@@ -740,8 +739,8 @@ IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 # Identical images, but in the location block for the custom_options directory
 # we additionally disable core-filter convert_jpeg_to_progressive which gives a
 # larger file.
-fetch_until $IMG_NON_CUSTOM 'wc -c' 216942
-fetch_until $IMG_CUSTOM 'wc -c' 231192
+fetch_until $IMG_NON_CUSTOM 'wc -c' 98276 "" -le
+fetch_until $IMG_CUSTOM 'wc -c' 102902 "" -le
 
 # Test our handling of headers when a FLUSH event occurs.
 start_test PHP is enabled.
@@ -1171,7 +1170,7 @@ WGET_ARGS=""
 start_test Relative images embedded in a CSS file served from a mapped domain
 DIR="mod_pagespeed_test/map_css_embedded"
 URL="http://www.example.com/$DIR/issue494.html"
-MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.w9O-kBfMWw.css"
+MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.RTch9OLvuX.css"
 http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
     "grep -c cdn.example.com/$MAPPED_CSS" 1
 
@@ -1271,7 +1270,7 @@ http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP \
   --header 'X-PSA-Blocking-Rewrite: junk' \
   $URL > $OUTFILE
 check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
-  
+
 http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
   'grep -c [.]pagespeed[.]' 1
 
@@ -1471,8 +1470,8 @@ start_test Images are different when the url specifies different experiments.
 
 IMG_A="$EXP_EXAMPLE/images/xPuzzle.jpg.pagespeed.a.ic.fakehash.jpg"
 IMG_B="$EXP_EXAMPLE/images/xPuzzle.jpg.pagespeed.b.ic.fakehash.jpg"
-http_proxy=$SECONDARY_HOSTNAME fetch_until $IMG_A 'wc -c' 231192
-http_proxy=$SECONDARY_HOSTNAME fetch_until $IMG_B 'wc -c' 216942
+http_proxy=$SECONDARY_HOSTNAME fetch_until $IMG_A 'wc -c' 102902 "" -le
+http_proxy=$SECONDARY_HOSTNAME fetch_until $IMG_B 'wc -c'  98276 "" -le
 
 start_test Analytics javascript is added for the experimental group.
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=2' \
