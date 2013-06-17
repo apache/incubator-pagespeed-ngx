@@ -49,8 +49,6 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_multipart_encoder.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -527,6 +525,12 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
 
   // An inline script.
   if (src == NULL || src->DecodedValueOrNull() == NULL) {
+    NextCombination();
+    return;
+  }
+
+  // Don't combine scripts with the pagespeed_no_defer attribute.
+  if (element->FindAttribute(HtmlName::kPagespeedNoDefer) != NULL) {
     NextCombination();
     return;
   }

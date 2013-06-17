@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -1073,6 +1072,13 @@ TEST_F(JsCombineFilterTest, TestMaxCombinedJsSize) {
   VerifyCombined(scripts[3], MultiUrl(kJsUrl3, kJsUrl4));
   VerifyUse(scripts[4], kJsUrl3);
   VerifyUse(scripts[5], kJsUrl4);
+}
+
+TEST_F(JsCombineFilterTest, NoCombineNoDeferAttribute) {
+  ValidateNoChanges(
+      "pagespeed_no_defer",
+      StrCat("<script src=", kJsUrl1, " pagespeed_no_defer></script>",
+             "<script src=", kJsUrl2, "></script>"));
 }
 
 }  // namespace net_instaweb
