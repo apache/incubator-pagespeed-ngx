@@ -72,7 +72,9 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   virtual ~JsCombiner() {
   }
 
-  virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
+  virtual bool ResourceCombinable(
+      Resource* resource, GoogleString* failure_reason,
+      MessageHandler* handler) {
     // Get the charset for the given resource.
     StringPiece this_charset = RewriteFilter::GetCharsetForScript(
         resource, attribute_charset_, rewrite_driver_->containing_charset());
@@ -83,6 +85,8 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
     if (num_urls() == 0) {
       combined_charset_ = this_charset;
     } else if (!StringCaseEqual(combined_charset_, this_charset)) {
+      *failure_reason = StrCat("Charset mismatch; combination thus far is ",
+                               combined_charset_, " file is ", this_charset);
       return false;
     }
 
@@ -92,11 +96,13 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
     // (escape-free) in some contexts. As a conservative approximation, we just
     // look for the text
     if (resource->contents().find("use strict") != StringPiece::npos) {
+      *failure_reason = "Combining strict mode files unsupported";
       return false;
     }
     const RewriteOptions* options = rewrite_driver_->options();
     if (options->avoid_renaming_introspective_javascript() &&
         JavascriptCodeBlock::UnsafeToRename(resource->contents())) {
+      *failure_reason = "File seems to look for its URL";
       return false;
     }
 

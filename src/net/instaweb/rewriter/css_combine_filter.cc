@@ -44,7 +44,6 @@
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -55,6 +54,7 @@
 
 namespace net_instaweb {
 
+class MessageHandler;
 class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
 
@@ -85,14 +85,15 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
     return (parser.errors_seen_mask() == Css::Parser::kNoError);
   }
 
-  virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
+  virtual bool ResourceCombinable(Resource* resource,
+                                  GoogleString* failure_reason,
+                                  MessageHandler* handler) {
     // If this CSS file is not parseable it may have errors that will break
     // the rest of the files combined with this one. So we should not include
     // it in the combination.
     // TODO(sligocki): Just do the CSS parsing and rewriting here.
     if (!CleanParse(resource->contents())) {
-      handler->Message(kInfo, "Failed to combine %s because of parse error.",
-                       resource->url().c_str());
+      *failure_reason = "CSS parse error";
       // TODO(sligocki): All parse failures are repeated twice because we will
       // try to combine them in the normal combination, then we'll try again
       // with this as the first of a new combination.
@@ -103,8 +104,13 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
     // @import in the middle will be ignored.
     // TODO(sligocki): Do CSS parsing and rewriting here so that we can
     // git rid of this restriction.
-    return ((num_urls() == 0)
-            || !CssTagScanner::HasImport(resource->contents(), handler));
+    if ((num_urls() != 0) &&
+        CssTagScanner::HasImport(resource->contents(), handler)) {
+      *failure_reason = "Can't have @import in middle of CSS";
+      return false;
+    }
+
+    return true;
   }
 
   OutputResourcePtr MakeOutput() {

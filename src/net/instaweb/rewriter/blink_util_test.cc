@@ -60,12 +60,13 @@ TEST_F(BlinkUtilTest, IsJsonEmpty) {
 }
 
 TEST_F(BlinkUtilTest, EscapeString) {
-  GoogleString str1 = "<stuff\xe2\x80\xa8>\n\\n";
+  GoogleString str1 = "<stuff\xe2\x80\xa8>\n\\n <script>var i = 0;</script>";
   BlinkUtil::EscapeString(&str1);
-  EXPECT_EQ("__psa_lt;stuff\\u2028__psa_gt;\n\\n", str1);
+  EXPECT_EQ("<stuff\\u2028>\n\\n <script>var i = 0;<\\/script>",
+            str1);
   GoogleString str2 = "<|  |\\n";  // Has couple of U+2028's betwen the |
   BlinkUtil::EscapeString(&str2);
-  EXPECT_EQ("__psa_lt;|\\u2028\\u2028|\\n", str2);
+  EXPECT_EQ("<|\\u2028\\u2028|\\n", str2);
 }
 
 }  // namespace

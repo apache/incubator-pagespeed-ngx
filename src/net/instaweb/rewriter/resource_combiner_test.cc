@@ -98,9 +98,14 @@ class TestCombineFilter : public RewriteFilter {
     }
 
     virtual bool ResourceCombinable(Resource* resource,
+                                    GoogleString* failure_reason,
                                     MessageHandler* /*handler*/) {
       EXPECT_TRUE(resource->HttpStatusOk());
-      return resource->contents() != kVetoText;
+      if (resource->contents() == kVetoText) {
+        *failure_reason = "Contents match veto text";
+        return false;
+      }
+      return true;
     }
   };
 

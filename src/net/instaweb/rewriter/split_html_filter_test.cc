@@ -57,6 +57,7 @@ const char kHtmlInputPart1[] =
       "</div>"
       "<span id=\"between\"> This is in between </span>"
       "<div id=\"inspiration\">"
+         "<script></script>"
          "<img src=\"image11\">"
       "</div>";
 
@@ -108,12 +109,13 @@ const char kSplitHtmlMiddleWithoutPanelStubs[] =
       "</div>"
       "<span id=\"between\"> This is in between </span>"
       "<div id=\"inspiration\">"
+         "<script></script>"
          "<img src=\"image11\">"
       "</div>";
 
 const char kSplitHtmlBelowTheFoldData[] =
-       "{\"panel-id.0\":[{\"instance_html\":\"__psa_lt;div id=\\\"inspiration\\\" panel-id=\\\"panel-id.0\\\"__psa_gt;__psa_lt;img src=\\\"image11\\\"__psa_gt;__psa_lt;/div__psa_gt;__psa_lt;h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"__psa_gt; This is after Inspirations __psa_lt;/h3__psa_gt;\"}],"
-       "\"panel-id.1\":[{\"instance_html\":\"__psa_lt;img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\"__psa_gt;\"}]}";
+       "{\"panel-id.0\":[{\"instance_html\":\"<div id=\\\"inspiration\\\" panel-id=\\\"panel-id.0\\\"><script><\\/script><img src=\\\"image11\\\"></div><h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"> This is after Inspirations </h3>\"}],"
+       "\"panel-id.1\":[{\"instance_html\":\"<img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\">\"}]}";
 
 const char kHtmlInputForLazyload[] = "<html><head></head><body></body></html>";
 
@@ -360,8 +362,8 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
-                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
+                   "\"<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>\"}]}", "false"));
   GoogleString input(StringPrintf(kHtmlInputForIgnoreScript, "", ""));
   Parse("split_ignore_script1", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
@@ -375,8 +377,8 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
-                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
+                   "\"<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>\"}]}", "false"));
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "",
                                     "<script></script><noscript></noscript>");
   Parse("split_ignore_script2", input);
@@ -392,8 +394,8 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
-                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
+                   "\"<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>\"}]}", "false"));
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript,
                                     "<script></script><noscript></noscript>",
                                     "<script></script><noscript></noscript>");
@@ -411,10 +413,10 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
-                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;"
-                   "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
+                   "\"<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>"
+                   "<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>\"}]}", "false"));
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "", "");
   Parse("split_ignore_script4", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
@@ -428,10 +430,10 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
   GoogleString expected_output_suffix(
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
-                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;"
-                   "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
+                   "\"<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>"
+                   "<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>\"}]}", "false"));
   GoogleString input = StringPrintf(
       kHtmlInputForIgnoreScript,
       "<script></script><noscript></noscript>"

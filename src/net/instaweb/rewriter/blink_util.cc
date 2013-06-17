@@ -173,24 +173,16 @@ void ClearArrayIfAllEmpty(Json::Value* json) {
 }
 
 void EscapeString(GoogleString* str) {
-  // TODO(sriharis):  Check whether we need to do any other escaping.  Also
-  // change the escaping of '<' and '>' to use standard '\u' mechanism.
+  // Escape </script> to <\/script>.
+  GlobalReplaceSubstring("</script>", "<\\/script>", str);
+
+  // TODO(sriharis):  Check whether we need to do any other escaping.
   int num_replacements = 0;
   GoogleString tmp;
   const int length = str->length();
   for (int i = 0; i < length; ++i) {
     const unsigned char c = (*str)[i];
     switch (c) {
-      case '<': {
-        ++num_replacements;
-        tmp.append("__psa_lt;");
-        break;
-      }
-      case '>': {
-        ++num_replacements;
-        tmp.append("__psa_gt;");
-        break;
-      }
       case 0xe2: {
         if ((i + 2 < length) && ((*str)[i + 1] == '\x80')) {
           if ((*str)[i + 2] == '\xa8') {
