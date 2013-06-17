@@ -1005,12 +1005,9 @@ void RewriteDriver::AddPreRenderFilters() {
   if (CriticalSelectorsEnabled()) {
     AppendOwnedPreRenderFilter(new CriticalSelectorFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineCss) &&
-      !rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CSS minification and flattening a chance to
-    // run before we decide what counts as "small".  We skip inlining if we're
-    // already going to prioritize critical CSS, as that inlines more
-    // selectively based on actual demand for CSS rules.
+    // run before we decide what counts as "small".
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssInlineFilter(this));
   }

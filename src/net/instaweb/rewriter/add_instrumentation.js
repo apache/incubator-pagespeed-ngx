@@ -133,10 +133,6 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
     if (bcsi != '') {
       url += '&b_csi=' + bcsi;
     }
-    var bci = pagespeed['panelLoader']['getCriticalImagesInfoString']();
-    if (bci != '') {
-      url += '&bci=' + bci;
-    }
   }
   if (pagespeed['criticalCss']) {
     var cc = pagespeed['criticalCss'];

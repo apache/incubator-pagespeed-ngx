@@ -89,6 +89,10 @@ void CssInlineFilter::StartDocumentImpl() {
 CssInlineFilter::~CssInlineFilter() {}
 
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
+  // Don't inline if the CSS element is under <noscript>.
+  if (noscript_element() != NULL) {
+    return;
+  }
   HtmlElement::Attribute* href = NULL;
   const char* media = NULL;
   if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&

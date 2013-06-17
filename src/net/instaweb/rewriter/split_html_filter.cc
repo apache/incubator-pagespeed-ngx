@@ -71,8 +71,6 @@ const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
     "<script type=\"text/javascript\" src=\"%s\"></script>"
     "<script type=\"text/javascript\">"
       "pagespeed.panelLoaderInit();"
-      "pagespeed.panelLoader.invokedFromSplit();"
-      "pagespeed.panelLoader.loadCriticalData({});"
       "pagespeed.panelLoader.bufferNonCriticalData(%s, %s);"
     "</script>\n</body></html>\n";
 

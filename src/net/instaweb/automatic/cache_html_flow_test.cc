@@ -238,9 +238,7 @@ const char kBlinkOutputCommon[] =
     "</body></html>"
     "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
     "<script type=\"text/javascript\">"
-    "pagespeed.panelLoaderInit();"
-    "pagespeed.panelLoader.invokedFromSplit();"
-    "pagespeed.panelLoader.loadCriticalData({});</script>\n"
+    "pagespeed.panelLoaderInit();</script>\n"
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n";
 
@@ -1159,9 +1157,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
   StrAppend(&expected_html,
       "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
       "<script type=\"text/javascript\">"
-      "pagespeed.panelLoaderInit();"
-      "pagespeed.panelLoader.invokedFromSplit();"
-      "pagespeed.panelLoader.loadCriticalData({});</script>\n"
+      "pagespeed.panelLoaderInit();</script>\n"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n",
       kCookieScript,
@@ -1240,9 +1236,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "</body></html>"
       "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
       "<script type=\"text/javascript\">"
-      "pagespeed.panelLoaderInit();"
-      "pagespeed.panelLoader.invokedFromSplit();"
-      "pagespeed.panelLoader.loadCriticalData({});</script>\n"
+      "pagespeed.panelLoaderInit();</script>\n"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n"
       "%s"  // kCookieScript

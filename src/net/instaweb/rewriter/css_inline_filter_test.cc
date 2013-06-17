@@ -315,6 +315,41 @@ TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
                    StringPrintf(html_format, kXhtmlDtd, inlined_css));
 }
 
+TEST_F(CssInlineFilterTest, DontInlineInNoscript) {
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  rewrite_driver()->AddFilters();
+
+  const char kCssUrl[] = "a.css";
+  const char kCss[] = "div {display:block;}";
+
+  SetResponseWithDefaultHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
+
+  GoogleString html_input =
+      StrCat("<noscript><link rel=stylesheet href=\"", kCssUrl,
+             "\"></noscript>");
+
+  ValidateNoChanges("noscript_noinline", html_input);
+}
+
+TEST_F(CssInlineFilterTest, InlineAndPrioritizeCss) {
+  // Make sure we interact with Critical CSS properly, including in cached
+  // case.
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  options()->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
+  rewrite_driver()->AddFilters();
+
+  const char kCssUrl[] = "a.css";
+  const char kCss[] = "div {display:block;}";
+
+  SetResponseWithDefaultHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
+
+  GoogleString html_input =
+      StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">");
+  GoogleString html_output= StrCat("<style>", kCss, "</style>");
+
+  ValidateExpected("inline_prioritize", html_input, html_output);
+}
+
 TEST_F(CssInlineFilterTest, InlineCombined) {
   // Make sure we interact with CSS combiner properly, including in cached
   // case.
