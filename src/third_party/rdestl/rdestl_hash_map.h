@@ -264,7 +264,7 @@ class hash_map
     if (m_numUsed * TLoadFactor4 >= m_capacity * 4)
       grow();
 
-    hash_value_t hash;
+    hash_value_t hash = 0;
     node* n = find_for_insert(v.first, &hash);
     if (n->is_occupied())
     {
