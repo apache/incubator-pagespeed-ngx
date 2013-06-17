@@ -88,7 +88,12 @@ void MockUrlFetcher::Clear() {
   STLDeleteContainerPairSecondPointers(response_map_.begin(),
                                        response_map_.end());
   response_map_.clear();
-  last_referer_.clear();
+  // We don't have to protect response_map_ here, since only single
+  // setup/teardown would be called at a time.
+  {
+    ScopedMutex lock(mutex_.get());
+    last_referer_.clear();
+  }
 }
 
 void MockUrlFetcher::RemoveResponse(const StringPiece& url) {
@@ -106,18 +111,43 @@ void MockUrlFetcher::Fetch(
   const RequestHeaders& request_headers = *fetch->request_headers();
   ResponseHeaders* response_headers = fetch->response_headers();
   bool ret = false;
-  if (enabled_) {
+
+  bool enabled;
+  bool verify_host_header;
+  bool fail_after_headers;
+  bool update_date_headers;
+  bool omit_empty_writes;
+  bool fail_on_unexpected;
+  bool split_writes;
+  GoogleString error_message;
+  Timer* timer;
+  {
+    ScopedMutex lock(mutex_.get());
+    enabled = enabled_;
+    verify_host_header = verify_host_header_;
+    timer = timer_;
+    fail_after_headers = fail_after_headers_;
+    update_date_headers = update_date_headers_;
+    omit_empty_writes = omit_empty_writes_;
+    fail_on_unexpected = fail_on_unexpected_;
+    error_message = error_message_;
+    split_writes = split_writes_;
+  }
+  if (enabled) {
     // Verify that the url and Host: header match.
-    if (verify_host_header_) {
+    if (verify_host_header) {
       const char* host_header = request_headers.Lookup1(HttpAttributes::kHost);
       GoogleUrl gurl(url);
       EXPECT_STREQ(gurl.HostAndPort(), host_header);
     }
-
-    if (request_headers.Has(HttpAttributes::kReferer)) {
-      last_referer_ = request_headers.Lookup1(HttpAttributes::kReferer);
-    } else {
-      last_referer_.clear();
+    const char* referer = request_headers.Lookup1(HttpAttributes::kReferer);
+    {
+      ScopedMutex lock(mutex_.get());
+      if (referer == NULL) {
+        last_referer_.clear();
+      } else {
+        last_referer_ = referer;
+      }
     }
     ResponseMap::iterator iter = response_map_.find(url);
     if (iter != response_map_.end()) {
@@ -148,19 +178,19 @@ void MockUrlFetcher::Fetch(
       } else {
         // Otherwise serve a normal 200 OK response.
         response_headers->CopyFrom(response->header());
-        if (fail_after_headers_) {
+        if (fail_after_headers) {
           fetch->Done(false);
           return;
         }
-        if (update_date_headers_) {
-          CHECK(timer_ != NULL);
+        if (update_date_headers) {
+          CHECK(timer != NULL);
           // Update Date headers.
           response_headers->SetDate(timer_->NowMs());
         }
         response_headers->ComputeCaching();
 
-        if (!(response->body().empty() && omit_empty_writes_)) {
-          if (!split_writes_) {
+        if (!(response->body().empty() && omit_empty_writes)) {
+          if (!split_writes) {
             // Normal case.
             fetch->Write(response->body(), message_handler);
           } else {
@@ -169,10 +199,10 @@ void MockUrlFetcher::Fetch(
             StringPiece body = response->body();
             StringPiece head = body.substr(0, mid);
             StringPiece tail = body.substr(mid, StringPiece::npos);
-            if (!(head.empty() && omit_empty_writes_)) {
+            if (!(head.empty() && omit_empty_writes)) {
               fetch->Write(head, message_handler);
             }
-            if (!(tail.empty() && omit_empty_writes_)) {
+            if (!(tail.empty() && omit_empty_writes)) {
               fetch->Write(tail, message_handler);
             }
           }
@@ -183,17 +213,17 @@ void MockUrlFetcher::Fetch(
       // resource that we don't have. So fail if we do.
       //
       // If you want a 404 response, you must explicitly use SetResponse.
-      if (fail_on_unexpected_) {
+      if (fail_on_unexpected) {
         EXPECT_TRUE(false) << "Requested unset url " << url;
       }
     }
   }
 
-  if (!ret && !error_message_.empty()) {
+  if (!ret && !error_message.empty()) {
     if (!response_headers->headers_complete()) {
       response_headers->SetStatusAndReason(HttpStatus::kInternalServerError);
     }
-    fetch->Write(error_message_, message_handler);
+    fetch->Write(error_message, message_handler);
   }
 
   fetch->Done(ret);
