@@ -25,7 +25,8 @@ extra_names=(Googlebot-Image bingbot Yahoo! about.ask.com
 Baiduspider BackRub Gigabot OntoSpider Lycos YodaoBot YandexBot
 bitlybot vcbot Ruby Mediapartners-Google msnbot-UDiscovery WordPress
 facebookplatform facebookexternalhit Arachni PHP Python HttpClient expo9
-RPT-HTTPClient proximic GrapeshotCrawler Google-StructuredDataTestingTool)
+RPT-HTTPClient proximic GrapeshotCrawler Google-StructuredDataTestingTool
+Googlebot-Mobile)
 
 cd /tmp
 wget -O all.genbot.$$ http://www.robotstxt.org/db/all.txt
