@@ -48,9 +48,7 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     const PropertyCache::Cohort* beacon_cohort =
         SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
     server_context()->set_beacon_cohort(beacon_cohort);
-    finder_ = new CriticalSelectorFinder(beacon_cohort,
-                                         factory()->nonce_generator(),
-                                         statistics());
+    finder_ = CreateFinder(beacon_cohort);
     server_context()->set_critical_selector_finder(finder_);
     candidates_.insert("#bar");
     candidates_.insert(".a");
@@ -58,6 +56,13 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     candidates_.insert("#c");
     candidates_.insert(".foo");
     ResetDriver();
+  }
+
+  virtual CriticalSelectorFinder* CreateFinder(
+      const PropertyCache::Cohort* cohort) {
+    return new CriticalSelectorFinder(cohort,
+                                      factory()->nonce_generator(),
+                                      statistics());
   }
 
   void ResetDriver() {
@@ -364,6 +369,56 @@ TEST_F(CriticalSelectorFinderTest, DontRebeaconBeforeTimeout) {
       finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver()));
   // But we'll re-beacon if some more time passes.
   Beacon();  // kMinBeaconIntervalMs passes in Beacon() call.
+}
+
+// If IsVerificationEnabled returns false, then a beacon result
+// replaces any previous results.
+class UnverifiedCriticalSelectorFinder : public CriticalSelectorFinder {
+ public:
+  UnverifiedCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
+                                   Statistics* stats)
+      : CriticalSelectorFinder(cohort, NULL, stats) {}
+  virtual ~UnverifiedCriticalSelectorFinder() {}
+
+ protected:
+  virtual bool ShouldReplacePriorResult() const { return true; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(UnverifiedCriticalSelectorFinder);
+};
+
+// Test that unverified results apply.
+class UnverifiedSelectorsTest : public CriticalSelectorFinderTest {
+ protected:
+  virtual CriticalSelectorFinder* CreateFinder(
+      const PropertyCache::Cohort* cohort) {
+    return new UnverifiedCriticalSelectorFinder(cohort, statistics());
+  }
+};
+
+TEST_F(UnverifiedSelectorsTest, NonCandidatesAreStored) {
+  Beacon();
+  StringSet selectors;
+  selectors.insert(".a");
+  selectors.insert(".noncandidate");
+  selectors.insert("#noncandidate");
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  EXPECT_STREQ("#noncandidate,.a,.noncandidate", CriticalSelectorsString());
+}
+
+// Each beacon replaces previous results.
+TEST_F(UnverifiedSelectorsTest, MultipleResultsReplace) {
+  Beacon();
+  StringSet selectors;
+  selectors.insert(".noncandidate");
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  EXPECT_STREQ(".noncandidate", CriticalSelectorsString());
+
+  selectors.clear();
+  selectors.insert(".another");
+  Beacon();
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  EXPECT_STREQ(".another", CriticalSelectorsString());
 }
 
 }  // namespace

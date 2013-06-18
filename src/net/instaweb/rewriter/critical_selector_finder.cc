@@ -288,6 +288,26 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
   if (page == NULL) {
     return;
   }
+
+  if (ShouldReplacePriorResult()) {
+    // TODO(slamm): Call UpdateCriticalSelectorSet instead of building
+    //     CriticalSelectorSet here.
+    // The selector_set comes from a trusted source. Overwrite any previous
+    // selectors without checking the support of the new selectors.
+    CriticalSelectorSet trusted_critical_selectors;
+    int support_interval = SupportInterval();
+    for (StringSet::const_iterator s = selector_set.begin();
+         s != selector_set.end(); ++s) {
+      CriticalSelectorSet::SelectorEvidence* evidence =
+          trusted_critical_selectors.add_selector_evidence();
+      evidence->set_selector(*s);
+      evidence->set_support(support_interval);
+    }
+    WriteCriticalSelectorSetToPropertyCache(trusted_critical_selectors, cohort_,
+                                            page, message_handler);
+    return;
+  }
+
   // We first need to read the current critical selectors in the property cache,
   // then update it with the new set if it exists, or create it if it doesn't.
   PropertyCacheDecodeResult decode_result;
@@ -329,6 +349,12 @@ bool CriticalSelectorFinder::PrepareForBeaconInsertion(
   if (selectors.empty()) {
     // Never instrument when there's nothing to check.
     return false;
+  }
+  if (ShouldReplacePriorResult()) {
+    // The computed critical selectors will replace any previous results
+    // without checking their support map (because they will come from a
+    // trusted source. Therfore, skip the support map write.
+    return true;
   }
   DCHECK(driver->property_page() != NULL);
   CriticalSelectorSet* critical_selector_set = driver->CriticalSelectors();

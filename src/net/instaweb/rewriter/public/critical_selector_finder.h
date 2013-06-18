@@ -103,6 +103,10 @@ class CriticalSelectorFinder {
     return kDefaultSupportInterval;
   }
 
+ protected:
+  // Returns true if a beacon result should replace all previous results.
+  virtual bool ShouldReplacePriorResult() const { return false; }
+
   // TODO(morlovich): Add an API for enabling the appropriate instrumentation
   // filter; once it's clear when the configuration resolving takes place.
 
