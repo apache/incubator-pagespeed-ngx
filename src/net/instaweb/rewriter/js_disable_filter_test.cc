@@ -203,6 +203,11 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
 TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
   rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kChrome15UserAgent);
   options()->set_max_prefetch_js_elements(3);
+  const GoogleString src_url = "//abc.org/m/load.php?debug=false&amp;"
+      "lang=en&amp;modules=startup&amp;only=scripts&amp;*";
+  // Verify JS escaping works as expected and not HTML escaping.
+  const GoogleString escaped_src = "//abc.org/m/load.php?debug=false&lang=en&"
+      "modules=startup&only=scripts&*";
 
   const GoogleString expected = StrCat(
       "<head>"
@@ -212,7 +217,7 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"2\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
-      "<script pagespeed_orig_src=\"blah4\" type=\"text/psajs\""
+      "<script pagespeed_orig_src=\"", src_url, "\" type=\"text/psajs\""
       " orig_index=\"3\">hi4</script>"
       "<script pagespeed_orig_src=\"blah5\" type=\"text/psajs\""
       " orig_index=\"4\">Not a prefetch candidate</script>"
@@ -222,7 +227,7 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       "<script pagespeed_no_defer=\"\">(function(){"
       "new Image().src=\"blah1\";"
       "new Image().src=\"blah2\";"
-      "new Image().src=\"blah4\";})()"
+      "new Image().src=\"", escaped_src, "\";})()"
       "</script></body>");
 
   html_parse()->SetWriter(&write_to_string_);
@@ -232,14 +237,14 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       "<script></script>"
       "<script src=\"blah1\" random=\"true\">hi1");
   html_parse()->Flush();
-  html_parse()->ParseText(
-      "</script>"
+  GoogleString html_input = StrCat("</script>"
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
-      "<script src=\"blah4\">hi4</script>"
+      "<script src=\"", src_url, "\">hi4</script>"
       "<script src=\"blah5\">Not a prefetch candidate</script>"
       "</head><body>"
       "</body>");
+  html_parse()->ParseText(html_input);
   html_parse()->FinishParse();
   EXPECT_STREQ(expected, output_buffer_);
 }

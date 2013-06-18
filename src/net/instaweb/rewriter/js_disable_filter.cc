@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/data_url.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -191,12 +192,14 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
         if (should_look_for_prefetch_js_elements_ &&
             prefetch_js_elements_count_ < max_prefetch_js_elements_) {
           GoogleString escaped_source;
-          HtmlKeywords::Escape(src->DecodedValueOrNull(), &escaped_source);
           if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
+            EscapeToJsStringLiteral(src->DecodedValueOrNull(), false,
+                                    &escaped_source);
             StrAppend(&prefetch_js_elements_, StringPrintf(
                       FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
                       escaped_source.c_str()));
           } else {
+            HtmlKeywords::Escape(src->DecodedValueOrNull(), &escaped_source);
             StrAppend(&prefetch_js_elements_, StringPrintf(
                       FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml,
                       escaped_source.c_str()));
