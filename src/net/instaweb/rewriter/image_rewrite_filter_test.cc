@@ -784,6 +784,52 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_EQ(is_resized, image_info.is_resized());
   }
 
+  void TestForRenderedDimensions(MockCriticalImagesFinder* finder,
+                                 int width, int height,
+                                 int expected_width, int expected_height) {
+    RenderedImages* rendered_images = new RenderedImages;
+    RenderedImages_Image* images = rendered_images->add_image();
+    images->set_src(StrCat(kTestDomain, kChefGifFile));
+    if (width != 0) {
+      images->set_rendered_width(width);
+    }
+    if (height != 0) {
+      images->set_rendered_height(height);
+    }
+    // Original size of kChefGifFile is 192x256
+    finder->set_rendered_images(rendered_images);
+    TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
+                      "", "", true, false);
+    // Check for single image file in the rewritten page.
+    StringVector image_urls;
+    CollectImgSrcs(kChefGifFile, output_buffer_, &image_urls);
+    EXPECT_EQ(1, image_urls.size());
+    const GoogleString& rewritten_url = image_urls[0];
+    GoogleString expected_rewritten_url;
+    if (width == 0 || height == 0) {
+      // If width or height are 0, we would have cleared the desired
+      // dimensions.
+      expected_rewritten_url = StrCat(
+          kTestDomain, "x", kChefGifFile, ".pagespeed.ic.0.png");
+    } else {
+      expected_rewritten_url = StrCat(
+          kTestDomain, UintToString(width), "x", UintToString(height), "x",
+          kChefGifFile, ".pagespeed.ic.0.png");
+    }
+    EXPECT_STREQ(rewritten_url, expected_rewritten_url);
+    GoogleString output_png;
+    EXPECT_TRUE(FetchResourceUrl(rewritten_url, &output_png));
+    // Check if we resized to rendered dimensions.
+    scoped_ptr<Image> image(
+        NewImage(output_png, rewritten_url, server_context_->filename_prefix(),
+                 new Image::CompressionOptions(),
+                 timer(), &message_handler_));
+    ImageDim image_dim;
+    image->Dimensions(&image_dim);
+    EXPECT_EQ(expected_width, image_dim.width());
+    EXPECT_EQ(expected_height, image_dim.height());
+  }
+
   virtual RequestContextPtr CreateRequestContext() {
     return RequestContextPtr(test_request_context_);
   }
@@ -2903,23 +2949,10 @@ TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
   options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
   rewrite_driver()->AddFilters();
-  RenderedImages* rendered_images = new RenderedImages;
-  RenderedImages_Image* images = rendered_images->add_image();
-  images->set_src(StrCat(kTestDomain, kChefGifFile));
-  images->set_rendered_width(40);
-  images->set_rendered_height(54);
-  // Original size of kChefGifFile is 192x256
-  finder->set_rendered_images(rendered_images);
-  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
-                    "", "", true, false);
-  // Check for single image file in the rewritten page.
-  StringVector image_urls;
-  CollectImgSrcs(kChefGifFile, output_buffer_, &image_urls);
-  EXPECT_EQ(1, image_urls.size());
-  const GoogleString& rewritten_url = image_urls[0];
-  GoogleString expected_rewritten_url = StrCat(
-      kTestDomain, "40x54x", kChefGifFile, ".pagespeed.ic.0.png");
-  EXPECT_STREQ(rewritten_url, expected_rewritten_url);
+  TestForRenderedDimensions(finder, 100, 70, 100, 70);
+  TestForRenderedDimensions(finder, 100, 0, 192, 256);
+  TestForRenderedDimensions(finder, 0, 70, 192, 256);
+  TestForRenderedDimensions(finder, 0, 0, 192, 256);
 }
 
 }  // namespace net_instaweb

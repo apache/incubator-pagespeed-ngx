@@ -99,6 +99,30 @@ int64 GetPageHeight(const int64 page_width,
   return (page_width * image_height + image_width / 2) / image_width;
 }
 
+void SetDesiredDimensionsIfRequired(ImageDim* desired_dim,
+                                    const ImageDim& image_dim) {
+  int32 page_width = desired_dim->width();  // Rendered width.
+  int32 page_height = desired_dim->height();  // Rendered height.
+  const int64 image_width = image_dim.width();
+  const int64 image_height = image_dim.height();
+  if (!desired_dim->has_width()) {
+    // Fill in a missing page height:
+    //   page_height * (image_width / image_height),
+    // rounding the result.
+    // To avoid fractions we instead group as
+    //   (page_height * image_width) / image_height and do the
+    // math in int64 to avoid overflow in the numerator.  The additional
+    // image_height / 2 causes us to round rather than truncate.
+    desired_dim->set_height(page_height);
+    desired_dim->set_width(static_cast<int32>(GetPageWidth(
+        page_height, image_width, image_height)));
+  } else if (!desired_dim->has_height()) {
+    desired_dim->set_width(page_width);
+    desired_dim->set_height(static_cast<int32>(GetPageHeight(
+        page_width, image_height, image_width)));
+  }
+}
+
 }  // namespace
 
 // Expose kRelatedFilters and kRelatedOptions as class variables for the benefit
@@ -687,46 +711,15 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
     ImageDim image_dim;
     image->Dimensions(&image_dim);
     if (options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions)) {
-      int32 rendered_width = desired_dim->width();
-      int32 rendered_height = desired_dim->height();
-      const int64 image_width = image_dim.width();
-      const int64 image_height = image_dim.height();
       // Respect the aspect ratio of the image when doing the resize.
-      if (rendered_width > rendered_height) {
-        desired_dim->set_width(rendered_width);
-        desired_dim->set_height(static_cast<int32>(GetPageHeight(
-            rendered_width, image_height, image_width)));
-      } else {
-        desired_dim->set_height(rendered_height);
-        desired_dim->set_width(static_cast<int32>(GetPageWidth(
-            rendered_height, image_width, image_height)));
-      }
+      SetDesiredDimensionsIfRequired(desired_dim, image_dim);
     } else {
       UpdateDesiredImageDimsIfNecessary(
           image_dim, resource_context, desired_dim);
       if (options->Enabled(RewriteOptions::kResizeImages) &&
           ImageUrlEncoder::HasValidDimension(*desired_dim) &&
           ImageUrlEncoder::HasValidDimensions(image_dim)) {
-        if (!desired_dim->has_width()) {
-          // Fill in a missing page height:
-          //   page_height * (image_width / image_height),
-          // rounding the result.
-          // To avoid fractions we instead group as
-          //   (page_height * image_width) / image_height and do the
-          // math in int64 to avoid overflow in the numerator.  The additional
-          // image_height / 2 causes us to round rather than truncate.
-          const int64 page_height = desired_dim->height();
-          const int64 image_height = image_dim.height();
-          desired_dim->set_width(static_cast<int32>(GetPageWidth(
-              page_height, image_dim.width(), image_height)));
-        } else if (!desired_dim->has_height()) {
-          // Fill in a missing page width
-          // Math as above, swapping width and height.
-          const int64 page_width = desired_dim->width();
-          const int64 image_width = image_dim.width();
-          desired_dim->set_height(static_cast<int32>(GetPageHeight(
-              page_width, image_dim.height(), image_width)));
-        }
+        SetDesiredDimensionsIfRequired(desired_dim, image_dim);
       }
     }
     if (ImageUrlEncoder::HasValidDimension(*desired_dim) &&
@@ -1126,8 +1119,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
       !driver_->options()->image_preserve_urls()) {
     ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
     GetDimensions(element, desired_dim, src);
-    if (desired_dim->width() == 0 || desired_dim->height() == 0 ||
-        (desired_dim->width() == 1 && desired_dim->height() == 1)) {
+    if ((desired_dim->width() == 0 || desired_dim->height() == 0 ||
+         (desired_dim->width() == 1 && desired_dim->height() == 1))) {
       // This is either a beacon image, or an attempt to prefetch.  Drop the
       // desired dimensions so that the image is not resized.
       resource_context->clear_desired_image_dims();
@@ -1518,9 +1511,11 @@ void ImageRewriteFilter::GetDimensions(HtmlElement* element,
             rendered_images_map_->find(src_gurl.spec_c_str());
         if (iterator != rendered_images_map_->end()) {
           std::pair<int32, int32> &dimensions = iterator->second;
-          page_dim->set_width(dimensions.first);
-          page_dim->set_height(dimensions.second);
-          return;
+          if (dimensions.first != 0 && dimensions.second != 0) {
+            page_dim->set_width(dimensions.first);
+            page_dim->set_height(dimensions.second);
+            return;
+          }
         }
       }
     }

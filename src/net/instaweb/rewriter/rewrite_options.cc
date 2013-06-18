@@ -1828,6 +1828,9 @@ void RewriteOptions::DisallowResourcesForProxy() {
 
   // Breaks some sites.
   Disallow("*connect.facebook.net/*");
+  // Changing the url breaks the simpleviewer flash-based slideshow gallery due
+  // to cross domain policy violations.
+  Disallow("*simpleviewer.js*");
 
   // The following options are not really troublesome, but we want to disallow
   // them anyway.
