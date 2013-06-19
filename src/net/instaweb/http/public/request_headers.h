@@ -62,6 +62,11 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   // not set even for XmlHttp requests.
   bool IsXmlHttpRequest() const;
 
+  // Calling this method on an object that will not have any mutating
+  // operations called on it afterwards will ensure that it will not do any
+  // lazy initialization behind the scenes.
+  void PopulateLazyCaches() { PopulateMap(); }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RequestHeaders);
 };

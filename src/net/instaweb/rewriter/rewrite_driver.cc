@@ -243,6 +243,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flushing_early_(false),
       is_lazyload_script_flushed_(false),
       release_driver_(false),
+      made_downstream_purge_attempt_(false),
       write_property_cache_dom_cohort_(false),
       rewrites_to_delete_(0),
       should_skip_parsing_(kNotSet),
@@ -294,8 +295,10 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 
 void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   DCHECK(request_headers_.get() == NULL);
-  request_headers_.reset(new RequestHeaders());
-  request_headers_->CopyFrom(headers);
+  RequestHeaders* new_request_headers = new RequestHeaders();
+  new_request_headers->CopyFrom(headers);
+  new_request_headers->PopulateLazyCaches();
+  request_headers_.reset(new_request_headers);
 }
 
 void RewriteDriver::set_request_context(const RequestContextPtr& x) {
@@ -371,6 +374,7 @@ void RewriteDriver::Clear() {
   DCHECK(!flush_requested_);
   cleanup_on_fetch_complete_ = false;
   release_driver_ = false;
+  made_downstream_purge_attempt_ = false;
   write_property_cache_dom_cohort_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
@@ -2242,8 +2246,9 @@ void RewriteDriver::PurgeDownstreamCache(const GoogleString& purge_url,
       new StringAsyncFetchWithAsyncCountUpdates(request_context(), this);
   // Add a purge-related header so that the purge request does not
   // get us into a loop.
-  request_headers()->Add(kPsaPurgeRequest, "1");
-  dummy_fetch->set_request_headers(request_headers());
+  dummy_fetch->request_headers()->CopyFrom(*request_headers());
+  dummy_fetch->request_headers()->Add(kPsaPurgeRequest, "1");
+  made_downstream_purge_attempt_ = true;
 
   message_handler()->Message(kInfo, "Purge url is %s", purge_url.c_str());
   async_fetcher()->Fetch(purge_url, message_handler(), dummy_fetch);
@@ -2261,6 +2266,7 @@ void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
   // is decremented at the end of the fetch.
   if (request_headers() != NULL &&
       request_headers()->Lookup1(kPsaPurgeRequest) == NULL &&
+      !made_downstream_purge_attempt_ &&
       google_url().is_valid() &&
       ShouldPurgeRewrittenResponse() &&
       RewriteDriver::GetPurgeUrl(google_url(), options(),

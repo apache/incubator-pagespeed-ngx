@@ -251,7 +251,7 @@ class RewriteDriver : public HtmlParse {
   // has been constructed or recycled.
   void SetRequestHeaders(const RequestHeaders& headers);
 
-  RequestHeaders* request_headers() const {
+  const RequestHeaders* request_headers() const {
     return request_headers_.get();
   }
 
@@ -1270,6 +1270,10 @@ class RewriteDriver : public HtmlParse {
   // Set to true if RewriteDriver can be released.
   bool release_driver_;
 
+  // Set to true if we are keeping the driver alive to make a purge request to
+  // a downstream cache, so we don't keep trying to do it.
+  bool made_downstream_purge_attempt_;
+
   // Tracks whether any filter that uses the dom cohort of the property cache is
   // enabled. Writes to the property cache for this cohort are predicated on
   // this.
@@ -1307,7 +1311,7 @@ class RewriteDriver : public HtmlParse {
 
   // request_headers_ is a copy of the Fetch's request headers, and it
   // stays alive until the rewrite driver is recycled or deleted.
-  scoped_ptr<RequestHeaders> request_headers_;
+  scoped_ptr<const RequestHeaders> request_headers_;
 
   int status_code_;  // Status code of response for this request.
 
