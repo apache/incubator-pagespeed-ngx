@@ -107,30 +107,67 @@ inline bool StringToInt64(const GoogleString& in, int64* out) {
 // Returns an empty string if '=' was not found.
 StringPiece PieceAfterEquals(const StringPiece& piece);
 
-class EmptyString {
- public:
-  static const StringPiece kEmptyString;
-};
 
-// TODO(jmarantz): use overloading instead of default args and get
-// rid of this statically constructed global object.
+GoogleString StrCat(const StringPiece& a, const StringPiece& b);
 GoogleString StrCat(const StringPiece& a, const StringPiece& b,
-                    const StringPiece& c = EmptyString::kEmptyString,
-                    const StringPiece& d = EmptyString::kEmptyString,
-                    const StringPiece& e = EmptyString::kEmptyString,
-                    const StringPiece& f = EmptyString::kEmptyString,
-                    const StringPiece& g = EmptyString::kEmptyString,
-                    const StringPiece& h = EmptyString::kEmptyString);
+                    const StringPiece& c);
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d);
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d,
+                    const StringPiece& e);
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d,
+                    const StringPiece& e, const StringPiece& f);
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d,
+                    const StringPiece& e, const StringPiece& f,
+                    const StringPiece& g);
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d,
+                    const StringPiece& e, const StringPiece& f,
+                    const StringPiece& g, const StringPiece& h);
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d,
+                    const StringPiece& e, const StringPiece& f,
+                    const StringPiece& g, const StringPiece& h,
+                    const StringPiece& i);
 
+inline void StrAppend(GoogleString* target, const StringPiece& a) {
+  a.AppendToString(target);
+}
 void StrAppend(GoogleString* target,
-               const StringPiece& a,
-               const StringPiece& b = EmptyString::kEmptyString,
-               const StringPiece& c = EmptyString::kEmptyString,
-               const StringPiece& d = EmptyString::kEmptyString,
-               const StringPiece& e = EmptyString::kEmptyString,
-               const StringPiece& f = EmptyString::kEmptyString,
-               const StringPiece& g = EmptyString::kEmptyString,
-               const StringPiece& h = EmptyString::kEmptyString);
+               const StringPiece& a, const StringPiece& b);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c, const StringPiece& d);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c, const StringPiece& d,
+               const StringPiece& e);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c, const StringPiece& d,
+               const StringPiece& e, const StringPiece& f);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c, const StringPiece& d,
+               const StringPiece& e, const StringPiece& f,
+               const StringPiece& g);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c, const StringPiece& d,
+               const StringPiece& e, const StringPiece& f,
+               const StringPiece& g, const StringPiece& h);
+void StrAppend(GoogleString* target,
+               const StringPiece& a, const StringPiece& b,
+               const StringPiece& c, const StringPiece& d,
+               const StringPiece& e, const StringPiece& f,
+               const StringPiece& g, const StringPiece& h,
+               const StringPiece& i);
 
 // Split sp into pieces that are separated by any character in the given string
 // of separators, and push those pieces in order onto components.
@@ -281,7 +318,7 @@ bool StringEqualConcat(const StringPiece& str, const StringPiece& first,
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
     return (StringCaseCompare(s1, s2) < 0);
-  };
+  }
 };
 
 struct CharStarCompareSensitive {
@@ -293,13 +330,13 @@ struct CharStarCompareSensitive {
 struct StringCompareSensitive {
   bool operator()(const GoogleString& s1, const GoogleString& s2) const {
     return (strcmp(s1.c_str(), s2.c_str()) < 0);
-  };
+  }
 };
 
 struct StringCompareInsensitive {
   bool operator()(const GoogleString& s1, const GoogleString& s2) const {
     return (StringCaseCompare(s1, s2) < 0);
-  };
+  }
 };
 
 // Parse a list of integers into a vector. Empty values are ignored.

@@ -26,6 +26,79 @@
 
 namespace net_instaweb {
 
+GoogleString StrCat(const StringPiece& a, const StringPiece& b) {
+  GoogleString res;
+  res.reserve(a.size() + b.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  return res;
+}
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c) {
+  GoogleString res;
+  res.reserve(a.size() + b.size() + c.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  c.AppendToString(&res);
+  return res;
+}
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d) {
+  GoogleString res;
+  res.reserve(a.size() + b.size() + c.size() + d.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  c.AppendToString(&res);
+  d.AppendToString(&res);
+  return res;
+}
+GoogleString StrCat(const StringPiece& a, const StringPiece& b,
+                    const StringPiece& c, const StringPiece& d,
+                    const StringPiece& e) {
+  GoogleString res;
+  res.reserve(a.size() + b.size() + c.size() + d.size() + e.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  c.AppendToString(&res);
+  d.AppendToString(&res);
+  e.AppendToString(&res);
+  return res;
+}
+GoogleString StrCat(const StringPiece& a,
+                    const StringPiece& b,
+                    const StringPiece& c,
+                    const StringPiece& d,
+                    const StringPiece& e,
+                    const StringPiece& f) {
+  GoogleString res;
+  res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  c.AppendToString(&res);
+  d.AppendToString(&res);
+  e.AppendToString(&res);
+  f.AppendToString(&res);
+  return res;
+}
+GoogleString StrCat(const StringPiece& a,
+                    const StringPiece& b,
+                    const StringPiece& c,
+                    const StringPiece& d,
+                    const StringPiece& e,
+                    const StringPiece& f,
+                    const StringPiece& g) {
+  GoogleString res;
+  res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() +
+              g.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  c.AppendToString(&res);
+  d.AppendToString(&res);
+  e.AppendToString(&res);
+  f.AppendToString(&res);
+  g.AppendToString(&res);
+  return res;
+}
 GoogleString StrCat(const StringPiece& a,
                     const StringPiece& b,
                     const StringPiece& c,
@@ -47,7 +120,110 @@ GoogleString StrCat(const StringPiece& a,
   h.AppendToString(&res);
   return res;
 }
+GoogleString StrCat(const StringPiece& a,
+                    const StringPiece& b,
+                    const StringPiece& c,
+                    const StringPiece& d,
+                    const StringPiece& e,
+                    const StringPiece& f,
+                    const StringPiece& g,
+                    const StringPiece& h,
+                    const StringPiece& i) {
+  GoogleString res;
+  res.reserve(a.size() + b.size() + c.size() + d.size() + e.size() + f.size() +
+              g.size() + h.size() + i.size());
+  a.AppendToString(&res);
+  b.AppendToString(&res);
+  c.AppendToString(&res);
+  d.AppendToString(&res);
+  e.AppendToString(&res);
+  f.AppendToString(&res);
+  g.AppendToString(&res);
+  h.AppendToString(&res);
+  i.AppendToString(&res);
+  return res;
+}
 
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b) {
+  target->reserve(target->size() +
+                  a.size() + b.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+}
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+}
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c,
+               const StringPiece& d) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size() + d.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+  d.AppendToString(target);
+}
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c,
+               const StringPiece& d,
+               const StringPiece& e) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size() + d.size() + e.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+  d.AppendToString(target);
+  e.AppendToString(target);
+}
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c,
+               const StringPiece& d,
+               const StringPiece& e,
+               const StringPiece& f) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size() + d.size() + e.size() +
+                  f.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+  d.AppendToString(target);
+  e.AppendToString(target);
+  f.AppendToString(target);
+}
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c,
+               const StringPiece& d,
+               const StringPiece& e,
+               const StringPiece& f,
+               const StringPiece& g) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size() + d.size() + e.size() +
+                  f.size() + g.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+  d.AppendToString(target);
+  e.AppendToString(target);
+  f.AppendToString(target);
+  g.AppendToString(target);
+}
 void StrAppend(GoogleString* target,
                const StringPiece& a,
                const StringPiece& b,
@@ -68,6 +244,29 @@ void StrAppend(GoogleString* target,
   f.AppendToString(target);
   g.AppendToString(target);
   h.AppendToString(target);
+}
+void StrAppend(GoogleString* target,
+               const StringPiece& a,
+               const StringPiece& b,
+               const StringPiece& c,
+               const StringPiece& d,
+               const StringPiece& e,
+               const StringPiece& f,
+               const StringPiece& g,
+               const StringPiece& h,
+               const StringPiece& i) {
+  target->reserve(target->size() +
+                  a.size() + b.size() + c.size() + d.size() + e.size() +
+                  f.size() + g.size() + h.size() + i.size());
+  a.AppendToString(target);
+  b.AppendToString(target);
+  c.AppendToString(target);
+  d.AppendToString(target);
+  e.AppendToString(target);
+  f.AppendToString(target);
+  g.AppendToString(target);
+  h.AppendToString(target);
+  i.AppendToString(target);
 }
 
 void SplitStringPieceToVector(const StringPiece& sp,
@@ -419,7 +618,5 @@ bool SplitStringPieceToIntegerVector(
   }
   return true;
 }
-
-const StringPiece EmptyString::kEmptyString;
 
 }  // namespace net_instaweb
