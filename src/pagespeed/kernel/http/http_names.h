@@ -103,6 +103,10 @@ struct HttpAttributes {
   // is the serialized metadata.
   static const char kXPsaResponseMetadata[];
 
+  // This header is set when request for the below the fold chunk of the split
+  // html response.
+  static const char kXPsaSplitBtf[];
+
   static const char kXRequestedWith[];
 
   // This header is set on optimized responses to indicate the original

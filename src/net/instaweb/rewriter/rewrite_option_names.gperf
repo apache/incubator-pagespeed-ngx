@@ -142,6 +142,7 @@ struct OptionName {
 "RewriteRequestUrlsEarly",               RewriteOptions::kRewriteRequestUrlsEarly
 "RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
 "RunExperiment",                         RewriteOptions::kRunningExperiment
+"ServeSplitHtmlInTwoChunks",             RewriteOptions::kServeSplitHtmlInTwoChunks
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "ServeStaleWhileRevalidateThresholdSec", RewriteOptions::kServeStaleWhileRevalidateThresholdSec
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled

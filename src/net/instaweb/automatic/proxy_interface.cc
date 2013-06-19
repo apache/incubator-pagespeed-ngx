@@ -181,7 +181,7 @@ bool ProxyInterface::UrlAndPortMatchThisServer(const GoogleUrl& url) {
 void ProxyInterface::Fetch(const GoogleString& requested_url_string,
                            MessageHandler* handler,
                            AsyncFetch* async_fetch) {
-  const GoogleUrl requested_url(requested_url_string);
+  GoogleUrl requested_url(requested_url_string);
   const bool is_get_or_head =
       (async_fetch->request_headers()->method() == RequestHeaders::kGet) ||
       (async_fetch->request_headers()->method() == RequestHeaders::kHead);
@@ -192,6 +192,8 @@ void ProxyInterface::Fetch(const GoogleString& requested_url_string,
     async_fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     async_fetch->Done(false);
   } else {
+    server_context_->ScanSplitHtmlRequest(async_fetch->request_context(),
+                                          &requested_url);
     // Try to handle this as a .pagespeed. resource.
     if (is_get_or_head && server_context_->IsPagespeedResource(requested_url)) {
       pagespeed_requests_->IncBy(1);

@@ -854,6 +854,20 @@ ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
   return OptionsBoolPair(query_options.release(), success);
 }
 
+void ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
+                                         GoogleUrl* url) const {
+  QueryParams query_params;
+  query_params.Parse(url->Query());
+
+  if (query_params.RemoveAll(HttpAttributes::kXPsaSplitBtf)) {
+    ctx->set_is_split_btf_request(true);
+    GoogleString query_string = query_params.empty() ? "" :
+          StrCat("?", query_params.ToString());
+    url->Reset(
+        StrCat(url->AllExceptQuery(), query_string, url->AllAfterQuery()));
+  }
+}
+
 RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
                                                 RewriteOptions* domain_options,
                                                 RewriteOptions* query_options) {

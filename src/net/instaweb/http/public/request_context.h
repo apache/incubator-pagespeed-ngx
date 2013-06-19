@@ -108,6 +108,11 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
+  // Indicates whether the request for the below the fold portion of the split
+  // html response.
+  bool is_split_btf_request() const { return is_split_btf_request_; }
+  void set_is_split_btf_request(bool x) { is_split_btf_request_ = x; }
+
   // Prepare the AbstractLogRecord for a subsequent call to WriteLog.  This
   // might include propagating information collected in the RequestContext,
   // TimingInfo for example, to the underlying logging infrastructure.
@@ -302,6 +307,7 @@ class RequestContext : public RefCounted<RequestContext> {
   scoped_ptr<AbstractLogRecord> background_rewrite_log_record_;
 
   bool using_spdy_;
+  bool is_split_btf_request_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

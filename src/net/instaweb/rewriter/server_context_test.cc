@@ -652,6 +652,28 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
             output->url());
 }
 
+TEST_F(ServerContextTest, ScanSplitHtmlRequest) {
+  RequestContextPtr ctx(CreateRequestContext());
+  GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  server_context()->ScanSplitHtmlRequest(ctx, &gurl);
+  EXPECT_TRUE(ctx->is_split_btf_request());
+  EXPECT_EQ(GoogleUrl("http://test.com/"), gurl);
+
+  gurl.Reset("http://test.com/?a=b&X-PSA-Split-Btf=2");
+  ctx.reset(CreateRequestContext());
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  server_context()->ScanSplitHtmlRequest(ctx, &gurl);
+  EXPECT_TRUE(ctx->is_split_btf_request());
+  EXPECT_EQ(GoogleUrl("http://test.com/?a=b"), gurl);
+
+  ctx.reset(CreateRequestContext());
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  server_context()->ScanSplitHtmlRequest(ctx, &gurl);
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  EXPECT_EQ(GoogleUrl("http://test.com/?a=b"), gurl);
+}
+
 class MockRewriteFilter : public RewriteFilter {
  public:
   explicit MockRewriteFilter(RewriteDriver* driver)

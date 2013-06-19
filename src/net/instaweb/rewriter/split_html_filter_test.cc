@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
@@ -34,6 +35,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
@@ -209,6 +211,42 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
 }
 
+TEST_F(SplitHtmlFilterTest,
+       SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoATF) {
+  options_->set_serve_split_html_in_two_chunks(true);
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
+  panel->set_start_xpath("div[@id = \"container\"]/div[4]");
+  panel = config->add_panels();
+  panel->set_start_xpath("img[3]");
+  panel->set_end_marker_xpath("h1[@id = \"footer\"]");
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   "/split_with_pcache.html?X-PSA-Split-Btf=1",
+                   1, blink_js_url_));
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
+}
+
+TEST_F(SplitHtmlFilterTest,
+       SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoBTF) {
+  options_->set_serve_split_html_in_two_chunks(true);
+  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
+  panel->set_start_xpath("div[@id = \"container\"]/div[4]");
+  panel = config->add_panels();
+  panel->set_start_xpath("img[3]");
+  panel->set_end_marker_xpath("h1[@id = \"footer\"]");
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  EXPECT_EQ(kSplitHtmlBelowTheFoldData, output_);
+}
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushingCachedHtml) {
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
@@ -335,6 +373,79 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
   rewrite_driver()->set_critical_line_info(info);
   options_->set_critical_line_config("");
   Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_, "{}", "false"));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+  EXPECT_EQ(expected_output, output_);
+  VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksATF) {
+  CriticalLineInfo* info = new CriticalLineInfo;
+  rewrite_driver()->set_critical_line_info(info);
+  options_->set_critical_line_config("");
+  options_->set_serve_split_html_in_two_chunks(true);
+  Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   "/split_without_xpaths.html?X-PSA-Split-Btf=1",
+                   1, blink_js_url_));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+  EXPECT_EQ(expected_output, output_);
+  VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
+}
+
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksBTF) {
+  CriticalLineInfo* info = new CriticalLineInfo;
+  rewrite_driver()->set_critical_line_info(info);
+  options_->set_critical_line_config("");
+  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  options_->set_serve_split_html_in_two_chunks(true);
+  Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   "/split_without_xpaths.html?X-PSA-Split-Btf=1",
+                   1, blink_js_url_));
+  EXPECT_EQ("{}", output_);
+  VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksATF) {
+  rewrite_driver()->set_critical_line_info(NULL);
+  options_->set_serve_split_html_in_two_chunks(true);
+  const GoogleString html(StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  Parse("split_cache_miss", html);
+  EXPECT_EQ(html, output_);
+  VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksBTF) {
+  rewrite_driver()->set_critical_line_info(NULL);
+  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  options_->set_serve_split_html_in_two_chunks(true);
+  const GoogleString html(StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  Parse("split_cache_miss", html);
+  EXPECT_EQ(html, output_);
+  VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfo) {
+  rewrite_driver()->set_critical_line_info(NULL);
+  const GoogleString html(StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  Parse("split_cache_miss", html);
   GoogleString expected_output(kSplitHtmlPrefix);
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_, "{}", "false"));

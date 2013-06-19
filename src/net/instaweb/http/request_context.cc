@@ -45,7 +45,8 @@ RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
     : log_record_(new LogRecord(logging_mutex)),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, logging_mutex),
-      using_spdy_(false) {
+      using_spdy_(false),
+      is_split_btf_request_(false) {
 }
 
 RequestContext::RequestContext(AbstractMutex* mutex,
@@ -54,7 +55,8 @@ RequestContext::RequestContext(AbstractMutex* mutex,
     : log_record_(log_record),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, mutex),
-      using_spdy_(false) {
+      using_spdy_(false),
+      is_split_btf_request_(false) {
 }
 
 RequestContext::~RequestContext() {

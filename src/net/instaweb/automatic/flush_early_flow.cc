@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -58,6 +59,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace {
 
@@ -331,7 +333,8 @@ void FlushEarlyFlow::TryStart(
     return;
   }
   if (driver->request_headers() == NULL ||
-      driver->request_headers()->method() != RequestHeaders::kGet) {
+      driver->request_headers()->method() != RequestHeaders::kGet ||
+      driver->request_context()->is_split_btf_request()) {
     driver->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
         RewriterHtmlApplication::DISABLED);

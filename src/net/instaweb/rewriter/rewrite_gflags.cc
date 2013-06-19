@@ -211,6 +211,8 @@ DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
 DEFINE_bool(proactively_freshen_user_facing_request, false,
             "Proactively freshen user facing requests if they are about to"
             "expire in cache.");
+DEFINE_bool(serve_split_html_in_two_chunks, false,
+            "Whether to serve the split html response in two chunks.");
 DEFINE_bool(serve_stale_if_fetch_error, true, "Serve stale content if the "
             "fetch results in an error.");
 DEFINE_int64(serve_stale_while_revalidate_threshold_sec, 0, "Threshold for "
@@ -556,6 +558,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("serve_stale_while_revalidate_threshold_sec")) {
     options->set_serve_stale_while_revalidate_threshold_sec(
         FLAGS_serve_stale_while_revalidate_threshold_sec);
+  }
+  if (WasExplicitlySet("serve_split_html_in_two_chunks")) {
+    options->set_serve_split_html_in_two_chunks(
+        FLAGS_serve_split_html_in_two_chunks);
   }
   if (WasExplicitlySet("psa_idle_flush_time_ms")) {
     options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);

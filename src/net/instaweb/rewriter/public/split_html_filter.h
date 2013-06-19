@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/json_writer.h"
+#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -61,6 +62,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
   static const char kSplitInit[];
   static const char kSplitSuffixJsFormatString[];
+  static const char kSplitTwoChunkSuffixJsFormatString[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlFilter();
@@ -126,8 +128,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
 
   void WriteString(const StringPiece& str);
 
-  void Cleanup();
-
   // Inserts lazy load and other scripts needed for split initialization into
   // the head element. If no head tag in the page, it inserts one before
   // body tag.
@@ -160,6 +160,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   Json::FastWriter fast_writer_;
   scoped_ptr<JsonWriter> json_writer_;
   Writer* original_writer_;
+  NullWriter null_writer_;
   const CriticalLineInfo* critical_line_info_;  // Owned by rewrite_driver_.
   GoogleString current_panel_id_;
   StringPiece url_;
@@ -168,6 +169,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool disable_filter_;
   bool inside_pagespeed_no_defer_script_;
   int num_low_res_images_inlined_;
+  bool serve_response_in_two_chunks_;
   HtmlElement* current_panel_parent_element_;
   StaticAssetManager* static_asset_manager_;  // Owned by rewrite_driver_.
   ScriptTagScanner script_tag_scanner_;

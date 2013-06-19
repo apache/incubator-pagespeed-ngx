@@ -1001,6 +1001,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Disable the rewriting of Javascript URLs.");
   AddBaseProperty(
+      false, &RewriteOptions::serve_split_html_in_two_chunks_, "sstc",
+      kServeSplitHtmlInTwoChunks,
+      kDirectoryScope,
+      "Serve the split html response in two chunks");
+  AddBaseProperty(
       true, &RewriteOptions::serve_stale_if_fetch_error_, "ss",
       kServeStaleIfFetchError,
       kDirectoryScope,

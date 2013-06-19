@@ -27,9 +27,11 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -46,6 +48,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
@@ -74,6 +77,46 @@ const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
       "pagespeed.panelLoader.bufferNonCriticalData(%s, %s);"
     "</script>\n</body></html>\n";
 
+const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
+    "<script type=\"text/javascript\">"
+    "function loadXMLDoc() {"
+    "\n  var xmlhttp;"
+    "\n  if (window.XMLHttpRequest) {"
+    "\n     xmlhttp=new XMLHttpRequest();"
+    "\n  } else {"
+    "\n     xmlhttp=new ActiveXObject(\"Microsoft.XMLHTTP\");"
+    "\n  }"
+    "\n  xmlhttp.onreadystatechange = function() {"
+    "\n  if (xmlhttp.readyState==4 && xmlhttp.status==200) {"
+    "\n    var t = JSON.parse(xmlhttp.responseText);"
+    "\n    if (pagespeed.panelLoader) {"
+    "\n      pagespeed.panelLoader.bufferNonCriticalData(t, false);"
+    "\n    } else { "
+    "\n      pagespeed['split_non_critical'] = t; }"
+    "\n    }"
+    "\n  }"
+    "\n  xmlhttp.open(\"GET\",\"%s\",true);"
+    "\n  xmlhttp.send();"
+    "\n}"
+    "loadXMLDoc();"
+    "pagespeed.num_low_res_images_inlined=%d;</script>"
+    "<script type=\"text/javascript\">"
+    "\nwindow.setTimeout(function() {"
+    "  var blink_js = document.createElement('script');"
+    "  blink_js.src=\"%s\";"
+    "  blink_js.setAttribute('onload', \""
+    "    pagespeed.panelLoaderInit();"
+    "    if (pagespeed['split_non_critical']) {"
+    "      pagespeed.panelLoader.bufferNonCriticalData("
+    "          pagespeed['split_non_critical'], false);"
+    "    }\");"
+    "  document.body.appendChild(blink_js);"
+    "}, 300);"
+    "if(document.body.scrollTop==0) {"
+    "  scrollTo(0, 1);"
+    "}</script>\n"
+    "</body></html>\n";
+
 // At StartElement, if element is panel instance push a new json to capture
 // contents of instance to the json stack.
 // All the emitBytes are captured into the top json until a new panel
@@ -91,9 +134,22 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 }
 
 void SplitHtmlFilter::StartDocument() {
+  critical_line_info_ = NULL;
+  panel_id_to_spec_.clear();
+  xpath_map_.clear();
+  element_json_stack_.clear();
+  xpath_units_.clear();
+  num_children_stack_.clear();
+
+  ProcessCriticalLineConfig();
+
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
-      rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile());
+      rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile()) ||
+      // Disable this filter if a two chunked response is requested and we have
+      // no critical line info.
+      (critical_line_info_ == NULL &&
+       options_->serve_split_html_in_two_chunks());
   static_asset_manager_ =
       rewrite_driver_->server_context()->static_asset_manager();
   if (disable_filter_) {
@@ -101,14 +157,19 @@ void SplitHtmlFilter::StartDocument() {
     return;
   }
 
-  panel_id_to_spec_.clear();
-  xpath_map_.clear();
-  element_json_stack_.clear();
-  xpath_units_.clear();
-  num_children_stack_.clear();
-  json_writer_.reset(new JsonWriter(rewrite_driver_->writer(),
-                                    &element_json_stack_));
   original_writer_ = rewrite_driver_->writer();
+  // TODO(nikhilmadan): RewriteOptions::serve_split_html_in_two_chunks is
+  // currently incompatible with cache html. Fix this.
+  serve_response_in_two_chunks_ = options_->serve_split_html_in_two_chunks()
+      && !disable_filter_;
+  if (serve_response_in_two_chunks_ &&
+      rewrite_driver_->request_context()->is_split_btf_request()) {
+    flush_head_enabled_ = false;
+    original_writer_ = &null_writer_;
+    set_writer(&null_writer_);
+  }
+  json_writer_.reset(new JsonWriter(original_writer_,
+                                    &element_json_stack_));
   current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
@@ -121,20 +182,13 @@ void SplitHtmlFilter::StartDocument() {
   // StartPanelInstance sets the json writer. For the base panel, we don't want
   // the writer to be set.
   set_writer(original_writer_);
-  ProcessCriticalLineConfig();
 
   InvokeBaseHtmlFilterStartDocument();
 }
 
-void SplitHtmlFilter::Cleanup() {
-  // Delete the root object pushed in StartDocument;
-  delete element_json_stack_[0].second;
-  element_json_stack_.pop_back();
-  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
-}
-
 void SplitHtmlFilter::EndDocument() {
   InvokeBaseHtmlFilterEndDocument();
+  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
 
   if (disable_filter_) {
     return;
@@ -147,7 +201,8 @@ void SplitHtmlFilter::EndDocument() {
   json.append(*(element_json_stack_[0].second));
 
   ServeNonCriticalPanelContents(json[0]);
-  Cleanup();
+  delete element_json_stack_[0].second;
+  element_json_stack_.pop_back();
 }
 
 void SplitHtmlFilter::WriteString(const StringPiece& str) {
@@ -155,22 +210,38 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
-  GoogleString non_critical_json = fast_writer_.write(json);
-  BlinkUtil::StripTrailingNewline(&non_critical_json);
-  BlinkUtil::EscapeString(&non_critical_json);
-  WriteString(StringPrintf(
-      kSplitSuffixJsFormatString,
-      num_low_res_images_inlined_,
-      GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
-      non_critical_json.c_str(),
-      rewrite_driver_->flushing_cached_html() ? "true" : "false"));
-  if (!json.empty()) {
-    rewrite_driver_->log_record()->SetRewriterLoggingStatus(
-        RewriteOptions::FilterId(RewriteOptions::kSplitHtml),
-        RewriterApplication::APPLIED_OK);
-    ScopedMutex lock(rewrite_driver_->log_record()->mutex());
-    rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
-        ->set_json_size(non_critical_json.size());
+  if (!serve_response_in_two_chunks_ ||
+      rewrite_driver_->request_context()->is_split_btf_request()) {
+    GoogleString non_critical_json = fast_writer_.write(json);
+    BlinkUtil::StripTrailingNewline(&non_critical_json);
+    BlinkUtil::EscapeString(&non_critical_json);
+    if (!serve_response_in_two_chunks_) {
+      WriteString(StringPrintf(
+          kSplitSuffixJsFormatString,
+          num_low_res_images_inlined_,
+          GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
+          non_critical_json.c_str(),
+          rewrite_driver_->flushing_cached_html() ? "true" : "false"));
+    } else {
+      WriteString(non_critical_json.c_str());
+    }
+    if (!json.empty()) {
+      rewrite_driver_->log_record()->SetRewriterLoggingStatus(
+          RewriteOptions::FilterId(RewriteOptions::kSplitHtml),
+          RewriterApplication::APPLIED_OK);
+      ScopedMutex lock(rewrite_driver_->log_record()->mutex());
+      rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
+          ->set_json_size(non_critical_json.size());
+    }
+  } else {
+    scoped_ptr<GoogleUrl> gurl(
+        rewrite_driver_->google_url().CopyAndAddQueryParam(
+            HttpAttributes::kXPsaSplitBtf, "1"));
+    WriteString(StringPrintf(
+        kSplitTwoChunkSuffixJsFormatString,
+        gurl->PathAndLeaf().data(),
+        num_low_res_images_inlined_,
+        GetBlinkJsUrl(options_, static_asset_manager_).c_str()));
   }
   HtmlWriterFilter::Flush();
 }
@@ -178,8 +249,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
 void SplitHtmlFilter::ProcessCriticalLineConfig() {
   const GoogleString& critical_line_config_from_options =
        options_->critical_line_config();
-  if (rewrite_driver_->critical_line_info() == NULL &&
-      !critical_line_config_from_options.empty()) {
+  if (!critical_line_config_from_options.empty()) {
     CriticalLineInfo* critical_line_info = new CriticalLineInfo;
     StringPieceVector xpaths;
     SplitStringPieceToVector(critical_line_config_from_options, ",",
@@ -268,7 +338,10 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
     current_panel_parent_element_ = element->parent();
     current_panel_id_ = GetPanelIdForInstance(element);
   }
-  original_writer_ = rewrite_driver_->writer();
+  if (!serve_response_in_two_chunks_ ||
+      !rewrite_driver_->request_context()->is_split_btf_request()) {
+    original_writer_ = rewrite_driver_->writer();
+  }
   set_writer(json_writer_.get());
 }
 
