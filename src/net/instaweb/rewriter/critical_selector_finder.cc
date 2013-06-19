@@ -170,7 +170,7 @@ CriticalSelectorSet FreshCriticalSelectorSet(
 }
 
 void ClearInvalidNonces(
-    const uint64 now_ms, CriticalSelectorSet* critical_selector_set) {
+    const int64 now_ms, CriticalSelectorSet* critical_selector_set) {
   // Invalidate expired entries, and if no valid entries remain then delete all
   // outstanding entries.
   bool found_valid_nonce = false;
@@ -195,7 +195,7 @@ void ClearInvalidNonces(
 // Generate a nonce and record the existence of a beacon with that nonce sent at
 // timestamp_ms, before returning the new nonce.
 GoogleString AddNonceToCriticalSelectors(
-    const uint64 timestamp_ms, NonceGenerator* nonce_generator,
+    const int64 timestamp_ms, NonceGenerator* nonce_generator,
     CriticalSelectorSet* critical_selector_set) {
   GoogleString nonce;
   CHECK(nonce_generator != NULL);
@@ -233,7 +233,7 @@ GoogleString AddNonceToCriticalSelectors(
 // nonce value and timestamp.  These entries will be reused by
 // AddNonceToCriticalSelectors.
 bool ValidateAndExpireNonce(int64 now_ms, StringPiece nonce,
-                   CriticalSelectorSet* critical_selector_set) {
+                            CriticalSelectorSet* critical_selector_set) {
   if (nonce.empty()) {
     // Someone sent us a clearly bogus beacon result.
     return false;
@@ -470,12 +470,12 @@ GoogleString CriticalSelectorFinder::PrepareForBeaconInsertion(
   SupportMap support_map = ConvertCriticalSelectorsToSupportMap(
       *critical_selector_set, SupportInterval());
   bool is_critical_selector_set_changed = false;
-  int64 now = timer_->NowMs();
-  if (now >= critical_selector_set->next_beacon_timestamp_ms()) {
+  int64 now_ms = timer_->NowMs();
+  if (now_ms >= critical_selector_set->next_beacon_timestamp_ms()) {
     // TODO(jmaessen): Add noise to inter-beacon interval.  How?
     // Currently first visit to page after next_beacon_timestamp_ms will beacon.
     critical_selector_set->set_next_beacon_timestamp_ms(
-        now + kMinBeaconIntervalMs);
+        now_ms + kMinBeaconIntervalMs);
     is_critical_selector_set_changed = true;  // Timestamp definitely changed.
   }
   // Check to see if candidate selectors are already known to pcache.  Insert
@@ -491,7 +491,7 @@ GoogleString CriticalSelectorFinder::PrepareForBeaconInsertion(
   }
   if (is_critical_selector_set_changed) {
     nonce = AddNonceToCriticalSelectors(
-        now, nonce_generator_, critical_selector_set);
+        now_ms, nonce_generator_, critical_selector_set);
     WriteSupportMapToCriticalSelectors(support_map, critical_selector_set);
     WriteCriticalSelectorSetToPropertyCache(
         *critical_selector_set, cohort_, driver->property_page(),
