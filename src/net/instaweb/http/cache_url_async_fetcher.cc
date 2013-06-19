@@ -260,6 +260,9 @@ class CacheFindCallback : public HTTPCache::Callback {
       case HTTPCache::kFound: {
         VLOG(1) << "Found in cache: " << url_;
         http_value()->ExtractHeaders(response_headers(), handler_);
+        response_headers()->ComputeCaching();
+        bool is_imminently_expiring =
+            IsImminentlyExpiring(*response_headers());
 
         // Respond with a 304 if the If-Modified-Since / If-None-Match values
         // are equal to those in the request.
@@ -284,7 +287,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         if (fetcher_ != NULL &&
             proactively_freshen_user_facing_request_ &&
             async_op_hooks_ != NULL &&
-            IsImminentlyExpiring(*response_headers())) {
+            is_imminently_expiring) {
           // Triggers the background fetch to freshen the value in cache if
           // resource is about to expire.
           if (num_proactively_freshen_user_facing_request_ != NULL) {
