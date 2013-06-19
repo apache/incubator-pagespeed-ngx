@@ -822,7 +822,6 @@
         'util/null_statistics.cc',
         'util/property_cache.cc',
         'util/queued_alarm.cc',
-        'util/ref_counted.cc',
         'util/request_trace.cc',
         'util/split_statistics.cc',
         'util/split_writer.cc',
