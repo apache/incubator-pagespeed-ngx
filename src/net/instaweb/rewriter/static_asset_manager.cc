@@ -58,6 +58,7 @@ extern const char* JS_delay_images_inline;
 extern const char* JS_delay_images_inline_opt;
 extern const char* JS_extended_instrumentation;
 extern const char* JS_extended_instrumentation_opt;
+extern const char* JS_ghost_click_buster_opt;
 extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
@@ -170,6 +171,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kLazyloadImagesJs]->file_name = "lazyload_images";
   assets_[kDetectReflowJs]->file_name = "detect_reflow";
   assets_[kDeterministicJs]->file_name = "deterministic";
+  assets_[kGhostClickBusterJs]->file_name = "ghost_click_buster";
   assets_[kLocalStorageCacheJs]->file_name = "local_storage_cache";
 
   // Initialize compiled javascript strings->
@@ -191,6 +193,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kLazyloadImagesJs]->js_optimized = JS_lazyload_images_opt;
   assets_[kDetectReflowJs]->js_optimized = JS_detect_reflow_opt;
   assets_[kDeterministicJs]->js_optimized = JS_deterministic_opt;
+  assets_[kGhostClickBusterJs]->js_optimized = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_optimized = JS_local_storage_cache_opt;
 
   // Initialize cleartext javascript strings->
@@ -210,6 +213,8 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kLazyloadImagesJs]->js_debug = JS_lazyload_images;
   assets_[kDetectReflowJs]->js_debug = JS_detect_reflow;
   assets_[kDeterministicJs]->js_debug = JS_deterministic;
+  // GhostClickBuster uses goog.require, which needs to be minifed always.
+  assets_[kGhostClickBusterJs]->js_debug = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
 
   assets_[kBlankGif]->file_name = "1";

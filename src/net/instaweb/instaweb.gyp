@@ -354,6 +354,20 @@
       ]
     },
     {
+      'target_name': 'instaweb_ghost_click_buster_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'ghost_click_buster_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/ghost_click_buster_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_js_defer_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1132,6 +1146,7 @@
         'instaweb_extended_instrumentation_data2c',
         'instaweb_extended_instrumentation_opt_data2c',
         'instaweb_flush_early_pb',
+        'instaweb_ghost_click_buster_opt_data2c',
         'instaweb_http',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',

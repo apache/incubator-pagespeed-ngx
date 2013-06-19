@@ -56,9 +56,10 @@ class StaticAssetManager {
     kDeferJs,
     kDelayImagesJs,
     kDelayImagesInlineJs,
-    kDeterministicJs,
-    kLazyloadImagesJs,
     kDetectReflowJs,
+    kDeterministicJs,
+    kGhostClickBusterJs,
+    kLazyloadImagesJs,
     kLocalStorageCacheJs,
     kExtendedInstrumentationJs,
     kEndOfModules,  // Keep this as the last enum value.

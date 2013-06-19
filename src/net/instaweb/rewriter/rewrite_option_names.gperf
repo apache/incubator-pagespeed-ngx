@@ -65,13 +65,13 @@ struct OptionName {
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
 "EnablePrioritizingScripts",             RewriteOptions::kEnablePrioritizingScripts
 "EnableRewriting",                       RewriteOptions::kEnabled
+"ExperimentCookieDurationMs",            RewriteOptions::kExperimentCookieDurationMs
 "ExperimentSlot",                        RewriteOptions::kExperimentSlot
 "FinderPropertiesCacheExpirationTimeMs", RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
 "FlushHtml",                             RewriteOptions::kFlushHtml
 "FlushMoreResourcesEarlyIfTimePermits",  RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits
 "ForbidAllDisabledFilters",              RewriteOptions::kForbidAllDisabledFilters
-"ExperimentCookieDurationMs",            RewriteOptions::kExperimentCookieDurationMs
 "IdleFlushTimeMs",                       RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                   RewriteOptions::kImageInlineMaxBytes
 "ImageJpegNumProgressiveScans",          RewriteOptions::kImageJpegNumProgressiveScans
@@ -145,6 +145,7 @@ struct OptionName {
 "ServeSplitHtmlInTwoChunks",             RewriteOptions::kServeSplitHtmlInTwoChunks
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "ServeStaleWhileRevalidateThresholdSec", RewriteOptions::kServeStaleWhileRevalidateThresholdSec
+"ServeGhostClickBusterWithSplitHtml",    RewriteOptions::kServeGhostClickBusterWithSplitHtml
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
 "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss", RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss
 "UseFallbackPropertyCacheValues",        RewriteOptions::kUseFallbackPropertyCacheValues

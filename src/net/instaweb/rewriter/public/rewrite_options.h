@@ -297,6 +297,7 @@ class RewriteOptions {
     kRewriteUncacheableResources,
     kRunningExperiment,
     kServeSplitHtmlInTwoChunks,
+    kServeGhostClickBusterWithSplitHtml,
     kServeStaleIfFetchError,
     kServeStaleWhileRevalidateThresholdSec,
     kSupportNoScriptEnabled,
@@ -1559,6 +1560,13 @@ class RewriteOptions {
   }
   bool serve_stale_if_fetch_error() const {
     return serve_stale_if_fetch_error_.value();
+  }
+
+  void set_serve_ghost_click_buster_with_split_html(bool x) {
+    set_option(x, &serve_ghost_click_buster_with_split_html_);
+  }
+  bool serve_ghost_click_buster_with_split_html() const {
+    return serve_ghost_click_buster_with_split_html_.value();
   }
 
   void set_proactively_freshen_user_facing_request(bool x) {
@@ -3070,6 +3078,8 @@ class RewriteOptions {
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;
+  // Should we serve ghost click buster code when split html is enabled.
+  Option<bool> serve_ghost_click_buster_with_split_html_;
   // Proactively freshen user facing request if it is about to expire. So, that
   // subsequent requests will experience a cache hit.
   Option<bool> proactively_freshen_user_facing_request_;
@@ -3412,3 +3422,4 @@ class RewriteOptions {
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
+

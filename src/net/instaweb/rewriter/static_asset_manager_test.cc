@@ -138,7 +138,8 @@ TEST_F(StaticAssetManagerTest, TestJsDebug) {
     StaticAssetManager::StaticAsset module =
         static_cast<StaticAssetManager::StaticAsset>(i);
     GoogleString script(manager_->GetAsset(module, options_));
-    if (module != StaticAssetManager::kBlankGif) {
+    if (module != StaticAssetManager::kBlankGif &&
+        module != StaticAssetManager::kGhostClickBusterJs) {
       EXPECT_NE(GoogleString::npos, script.find("/*"))
           << "There should be some comments in the debug code";
     }

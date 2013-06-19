@@ -1507,6 +1507,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Allows defer_javascript and defer_iframe for mobile browsers");
 
+  AddBaseProperty(
+      false, &RewriteOptions::serve_ghost_click_buster_with_split_html_,
+      "sgcbsh", kServeGhostClickBusterWithSplitHtml,
+      kDirectoryScope, "Serve ghost click buster code along with split html");
+
   AddRequestProperty(
       -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet");
   AddBaseProperty(

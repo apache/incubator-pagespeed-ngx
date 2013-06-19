@@ -455,6 +455,9 @@ DEFINE_bool(rewrite_uncacheable_resources, false,
 DEFINE_bool(enable_fix_reflow, false,
             "Fix reflows due to deferred execution of javascript.");
 
+DEFINE_bool(serve_ghost_click_buster_with_split_html, false,
+            "Whether ghost click buster code is served along with split_html.");
+
 namespace net_instaweb {
 
 namespace {
@@ -846,6 +849,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("in_place_preemptive_rewrite_javascript")) {
     options->set_in_place_preemptive_rewrite_javascript(
         FLAGS_in_place_preemptive_rewrite_javascript);
+  }
+  if (WasExplicitlySet("serve_ghost_click_buster_with_split_html")) {
+    options->set_serve_ghost_click_buster_with_split_html(
+        FLAGS_serve_ghost_click_buster_with_split_html);
   }
 
   MessageHandler* handler = factory->message_handler();

@@ -55,8 +55,7 @@ namespace net_instaweb {
 const char SplitHtmlFilter::kSplitInit[] =
     "<script type=\"text/javascript\">"
     "window[\"pagespeed\"] = window[\"pagespeed\"] || {};"
-    "var pagespeed = window[\"pagespeed\"];</script>"
-    "<script type=\"text/javascript\">"
+    "var pagespeed = window[\"pagespeed\"];"
     "pagespeed.splitOnload = function() {"
     "pagespeed.num_high_res_images_loaded++;"
     "if (pagespeed.panelLoader && pagespeed.num_high_res_images_loaded == "
@@ -368,6 +367,14 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
     StrAppend(&defer_js_with_blink, "<head>");
   }
 
+  if (options_->serve_ghost_click_buster_with_split_html()) {
+    StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">");
+    StringPiece ghost_click_buster_js =
+        static_asset_manager_->GetAsset(StaticAssetManager::kGhostClickBusterJs,
+                                        options_);
+    StrAppend(&defer_js_with_blink, ghost_click_buster_js);
+    StrAppend(&defer_js_with_blink, "</script>");
+  }
   StrAppend(&defer_js_with_blink, kSplitInit);
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");

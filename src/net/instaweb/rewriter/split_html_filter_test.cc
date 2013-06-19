@@ -558,6 +558,31 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
   VerifyAppliedRewriters("sh");
 }
 
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithGhostClickBuster) {
+  options_->ClearSignatureForTesting();
+  options_->set_serve_ghost_click_buster_with_split_html(true);
+  options_->set_critical_line_config("h1[2]");
+  GoogleString expected_output_suffix(
+      StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                   0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
+                   "\"<h1 panel-id=\\\"panel-id.0\\\">"
+                   "</h1>\"}]}", "false"));
+  GoogleString input(StringPrintf(kHtmlInputForIgnoreScript, "", ""));
+  Parse("split_ignore_script1", input);
+  StaticAssetManager* static_asset_manager =
+        rewrite_driver_->server_context()->static_asset_manager();
+
+  EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
+                         StrCat("<script type=\"text/javascript\">",
+                                static_asset_manager->GetAsset(
+                                    StaticAssetManager::kGhostClickBusterJs,
+                                    options_), "</script>",
+                                SplitHtmlFilter::kSplitInit).c_str(),
+                         "", "",
+                         expected_output_suffix.c_str()).c_str(), output_);
+  VerifyAppliedRewriters("sh");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
