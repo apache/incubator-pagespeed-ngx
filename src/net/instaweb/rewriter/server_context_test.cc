@@ -1075,7 +1075,8 @@ class BeaconTest : public ServerContextTest {
             beacon_cohort, factory()->nonce_generator(), statistics()));
     server_context()->set_critical_selector_finder(
         new CriticalSelectorFinder(
-            beacon_cohort, factory()->nonce_generator(), statistics()));
+            beacon_cohort, timer(),
+            factory()->nonce_generator(), statistics()));
     ResetDriver();
     candidates_.insert("#foo");
     candidates_.insert(".bar");
@@ -1105,9 +1106,10 @@ class BeaconTest : public ServerContextTest {
     rewrite_driver()->set_property_page(MockPageForUA(user_agent));
     factory()->mock_timer()->AdvanceMs(
         CriticalSelectorFinder::kMinBeaconIntervalMs);
-    EXPECT_TRUE(
+    last_nonce_ =
         server_context()->critical_selector_finder()->PrepareForBeaconInsertion(
-            candidates_, rewrite_driver()));
+            candidates_, rewrite_driver());
+    EXPECT_FALSE(last_nonce_.empty());
     rewrite_driver()->property_page()->WriteCohort(
         server_context()->beacon_cohort());
     rewrite_driver()->Clear();
@@ -1130,7 +1132,7 @@ class BeaconTest : public ServerContextTest {
     }
 
     if (critical_css_selectors != NULL) {
-      StrAppend(&beacon_url, "&cs=");
+      StrAppend(&beacon_url, "&n=", last_nonce_, "&cs=");
       AppendJoinCollection(&beacon_url, *critical_css_selectors, ",");
     }
 
@@ -1166,6 +1168,7 @@ class BeaconTest : public ServerContextTest {
   StringSet critical_css_selectors_;
   // This field holds candidate critical css selectors.
   StringSet candidates_;
+  GoogleString last_nonce_;
 };
 
 TEST_F(BeaconTest, BasicPcacheSetup) {

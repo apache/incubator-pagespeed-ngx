@@ -21,6 +21,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -31,6 +32,7 @@ class NonceGenerator;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
+class Timer;
 
 // Interface to store/retrieve critical selector information in the property
 // cache.  We store a "support value" for each possible critical selector in the
@@ -51,12 +53,17 @@ class CriticalSelectorFinder {
   static const char kCriticalSelectorsNotFoundCount[];
   static const char kCriticalSelectorsPropertyName[];
   static const int64 kMinBeaconIntervalMs;
+  static const int64 kBeaconTimeoutIntervalMs;
+  // A nonce value that's valid, used as a placeholder when nonce generation is
+  // switched off.
+  static const char kValidNonce[];
 
   // All of the passed-in constructor arguments are owned by the caller.  If
-  // critical selector data is being received from a trusted source,
+  // critical selector data is being received from a trusted source
+  // (ShouldReplacePriorResult() must return true in this case), timer and
   // nonce_generator may be NULL.
   CriticalSelectorFinder(
-      const PropertyCache::Cohort* cohort,
+      const PropertyCache::Cohort* cohort, Timer* timer,
       NonceGenerator* nonce_generator, Statistics* stats);
   virtual ~CriticalSelectorFinder();
 
@@ -81,21 +88,27 @@ class CriticalSelectorFinder {
   // Updates the critical selectors in the property cache.  Support for the new
   // selector_set is added to the existing record of beacon support.  This
   // updates the value in the in-memory property page but does not write the
-  // cohort.
+  // cohort.  If results are obtained from a trusted source
+  // (ShouldReplacePriorResult() must return true) then nonce may be NULL.
   virtual void WriteCriticalSelectorsToPropertyCache(
-      const StringSet& selector_set, RewriteDriver* driver);
+      const StringSet& selector_set, StringPiece nonce,
+      RewriteDriver* driver);
 
   // As above, but suitable for use in a beacon context where no RewriteDriver
-  // is available.
+  // is available.  If results are obtained from a trusted source
+  // (ShouldReplacePriorResult() must return true) then nonce may be NULL.
   void WriteCriticalSelectorsToPropertyCache(
-      const StringSet& selector_set, const PropertyCache* cache,
-      PropertyPage* page, MessageHandler* message_handler);
+      const StringSet& selector_set, StringPiece nonce,
+      const PropertyCache* cache, PropertyPage* page,
+      MessageHandler* message_handler);
 
   // Given a set of candidate critical selectors, decide whether beaconing
-  // should take place (and if so, decay existing selector evidence).  We should
-  // *always* beacon if there's new critical selector data.  Otherwise
-  // re-beaconing is based on a time and request interval.
-  bool PrepareForBeaconInsertion(
+  // should take place.  We should *always* beacon if there's new critical
+  // selector data.  Otherwise re-beaconing is based on a time and request
+  // interval.  Returns beacon nonce if beaconing should occur, otherwise
+  // returns an empty string.  Returns kValidNonce if nonces aren't being used
+  // (ShouldReplacePriorResult() returns true).
+  GoogleString PrepareForBeaconInsertion(
       const StringSet& selector_set, RewriteDriver* driver);
 
   // Gets the SupportInterval for a new beacon result (see comment at top).
@@ -115,6 +128,7 @@ class CriticalSelectorFinder {
   static const int kDefaultSupportInterval = 10;
 
   const PropertyCache::Cohort* cohort_;
+  Timer* timer_;
   NonceGenerator* nonce_generator_;
 
   TimedVariable* critical_selectors_valid_count_;

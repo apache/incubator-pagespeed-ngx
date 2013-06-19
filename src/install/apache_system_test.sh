@@ -1633,8 +1633,11 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
   OPTIONS_HASH=$( \
     sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+  NONCE=$( \
+    sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
+    $FETCH_FILE)
   BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
-  BEACON_DATA="oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
+  BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
   run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
   # Now make sure we see the correct critical css rules.
   fetch_until $URL \

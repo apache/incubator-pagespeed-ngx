@@ -118,7 +118,8 @@ void CriticalCssBeaconFilter::AppendSelectorsInitJs(
 // Right now the result looks like:
 //   pagespeed.criticalCssBeaconInit('beacon_url','page_url','options_hash',
 //        pagespeed.selectors);
-void CriticalCssBeaconFilter::AppendBeaconInitJs(GoogleString* script) {
+void CriticalCssBeaconFilter::AppendBeaconInitJs(
+    StringPiece nonce, GoogleString* script) {
   GoogleString beacon_url = driver()->IsHttps() ?
       driver()->options()->beacon_url().https :
       driver()->options()->beacon_url().http;
@@ -127,13 +128,10 @@ void CriticalCssBeaconFilter::AppendBeaconInitJs(GoogleString* script) {
                           &page_url);
   Hasher* hasher = driver()->server_context()->hasher();
   GoogleString options_hash = hasher->Hash(driver()->options()->signature());
-
   StrAppend(script,
             "pagespeed.criticalCssBeaconInit('",
-            beacon_url, "','",
-            page_url, "','",
-            options_hash,
-            "',pagespeed.selectors);");
+            beacon_url, "','", page_url, "','",
+            options_hash, "','", nonce, "',pagespeed.selectors);");
 }
 
 void CriticalCssBeaconFilter::SummariesDone() {
@@ -182,8 +180,9 @@ void CriticalCssBeaconFilter::SummariesDone() {
         continue;
     }
   }
-  if (!(driver()->server_context()->critical_selector_finder()->
-        PrepareForBeaconInsertion(selectors, driver()))) {
+  GoogleString nonce = driver()->server_context()->critical_selector_finder()->
+      PrepareForBeaconInsertion(selectors, driver());
+  if (nonce.empty()) {
     // No beaconing required according to current pcache state and computed
     // selector set.
     return;
@@ -197,7 +196,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
   AppendSelectorsInitJs(&script, selectors);
   if (driver()->server_context()->factory()->UseBeaconResultsInFilters()) {
     // Insert the beaconing initialization code.
-    AppendBeaconInitJs(&script);
+    AppendBeaconInitJs(nonce, &script);
   }
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
   driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");

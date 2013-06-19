@@ -66,13 +66,15 @@ pagespeed['computeCriticalSelectors'] = pagespeed.computeCriticalSelectors;
  * @param {string} optionsHash The hash of the rewrite options. This is required
  *     to perform the property cache lookup when the beacon is handled by the
  *     sever.
+ * @param {string} nonce The nonce send by the server.
  * @param {Array.<string>} selectors List of the selectors on the page.
  */
 pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash,
-                                       selectors) {
+                                       nonce, selectors) {
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
+  this.nonce_ = nonce;
   this.selectors_ = selectors;
 };
 
@@ -133,7 +135,7 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function() {
 
   var critical_selectors = pagespeed.computeCriticalSelectors(this.selectors_);
 
-  var data = 'oh=' + this.optionsHash_;
+  var data = 'oh=' + this.optionsHash_ + '&n=' + this.nonce_;
   data += '&cs=';
   for (var i = 0; i < critical_selectors.length; ++i) {
     var tmp = (i > 0) ? ',' : '';
@@ -182,10 +184,11 @@ pagespeed.addHandler = function(elem, ev, func) {
  * @param {string} beaconUrl The URL on the server to send the beacon to.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  * @param {string} optionsHash The hash of the rewrite options.
+ * @param {string} nonce The nonce set by the server.
  * @param {Array.<string>} selectors List of the selectors on the page.
  */
 pagespeed.criticalCssBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
-                                           selectors) {
+                                           nonce, selectors) {
   // Verify that the browser supports the APIs we need and bail out early if we
   // don't.
   if (!document.querySelectorAll) {
@@ -193,7 +196,7 @@ pagespeed.criticalCssBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
   }
 
   var temp = new pagespeed.CriticalCssBeacon(beaconUrl, htmlUrl, optionsHash,
-                                             selectors);
+                                             nonce, selectors);
   // Add event to the onload handler to scan selectors and beacon back which
   // apply to critical elements.
   var beacon_onload = function() {

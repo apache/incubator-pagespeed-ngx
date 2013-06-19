@@ -61,26 +61,19 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     server_context()->set_beacon_cohort(beacon_cohort);
     server_context()->set_critical_selector_finder(
         new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                   timer(),
                                    factory()->nonce_generator(),
                                    statistics()));
     ResetDriver();
     // Set up initial candidates for critical selector beacon
-    StringSet candidates;
-    candidates.insert("div");
-    candidates.insert("*");
-    candidates.insert("span");
-    EXPECT_TRUE(
-        server_context()->critical_selector_finder()->
-        PrepareForBeaconInsertion(candidates, rewrite_driver()));
-    page_->WriteCohort(server_context()->beacon_cohort());
-    ResetDriver();
+    candidates_.insert("div");
+    candidates_.insert("*");
+    candidates_.insert("span");
     // Write out some initial critical selectors for us to work with.
     StringSet selectors;
     selectors.insert("div");
     selectors.insert("*");
-    server_context()->critical_selector_finder()->
-        WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-    page_->WriteCohort(server_context()->beacon_cohort());
+    WriteCriticalSelectorsToPropertyCache(selectors);
 
     // Some weird but valid CSS.
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
@@ -99,6 +92,20 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     rewrite_driver()->set_property_page(page_);
     pcache_->Read(page_);
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
+  }
+
+  void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
+    factory()->mock_timer()->AdvanceMs(
+        CriticalSelectorFinder::kMinBeaconIntervalMs);
+    last_nonce_ =
+        server_context()->critical_selector_finder()->
+        PrepareForBeaconInsertion(candidates_, rewrite_driver());
+    EXPECT_FALSE(last_nonce_.empty());
+    ResetDriver();
+    server_context()->critical_selector_finder()->
+        WriteCriticalSelectorsToPropertyCache(
+            selectors, last_nonce_, rewrite_driver());
+    page_->WriteCohort(server_context()->beacon_cohort());
   }
 
   GoogleString WrapForJsLoad(StringPiece orig_css) {
@@ -127,6 +134,8 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
   CriticalSelectorFilter* filter_;  // owned by the driver;
   PropertyCache* pcache_;
   PropertyPage* page_;
+  StringSet candidates_;
+  GoogleString last_nonce_;
 };
 
 TEST_F(CriticalSelectorFilterTest, BasicOperation) {
@@ -302,7 +311,6 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   GoogleString critical_css_div = "div{display:inline-block}";
   GoogleString critical_css_span = "span{display:inline-block}";
   GoogleString critical_css_div_span = "div,span{display:inline-block}";
-
   // Check what we compute for a page with div.
   ValidateExpected("with_div", StrCat(css, "<div>Foo</div>"),
                    StrCat("<style>", critical_css_div, "</style>",
@@ -315,9 +323,7 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   // system would.
   StringSet selectors;
   selectors.insert("span");
-  CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
-  finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-  page_->WriteCohort(server_context()->beacon_cohort());
+  WriteCriticalSelectorsToPropertyCache(selectors);
 
   // Note that calling ResetDriver() just resets the state in the
   // driver. Whatever has been written to the property & metadata caches so far
@@ -330,13 +336,10 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
 
   // Now send enough beacons to eliminate support for div; only span should be
   // left.
+  CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
   for (int i = 0; i < finder->SupportInterval(); ++i) {
-    factory()->mock_timer()->AdvanceMs(
-        CriticalSelectorFinder::kMinBeaconIntervalMs);
-    EXPECT_TRUE(finder->PrepareForBeaconInsertion(selectors, rewrite_driver()));
-    finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+    WriteCriticalSelectorsToPropertyCache(selectors);
   }
-  page_->WriteCohort(server_context()->beacon_cohort());
   ResetDriver();
   ValidateExpected("with_span", StrCat(css, "<span>Foo</span>"),
                    StrCat("<style>", critical_css_span, "</style>",

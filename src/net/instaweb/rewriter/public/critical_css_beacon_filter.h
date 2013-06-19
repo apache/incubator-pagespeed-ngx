@@ -77,7 +77,7 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   void AppendSelectorsInitJs(GoogleString* script, const StringSet& selectors);
 
   // Append the beaconing initialization JavaScript.
-  void AppendBeaconInitJs(GoogleString* script);
+  void AppendBeaconInitJs(StringPiece nonce, GoogleString* script);
 
   // The total number of times the beacon is added to a page.
   Variable* critical_css_beacon_added_count_;

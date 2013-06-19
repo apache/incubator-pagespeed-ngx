@@ -16,10 +16,12 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
+#include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
+
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -32,7 +34,7 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/base64_util.h"
 
 namespace net_instaweb {
 
@@ -76,7 +78,7 @@ const char kEvilUrl[] = "http://evil.com/d.css";
 // Common setup / result generation code for all tests
 class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
  public:
-  CriticalCssBeaconFilterTestBase() { }
+  CriticalCssBeaconFilterTestBase() : expected_nonce_(0) { }
   virtual ~CriticalCssBeaconFilterTestBase() { }
 
  protected:
@@ -94,6 +96,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     // Set up and register a beacon finder.
     CriticalSelectorFinder* finder =
         new CriticalSelectorFinder(server_context()->beacon_cohort(),
+                                   server_context()->timer(),
                                    factory()->nonce_generator(),
                                    statistics());
     server_context()->set_critical_selector_finder(finder);
@@ -130,7 +133,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
       StrAppend(&script,
                 "pagespeed.criticalCssBeaconInit('",
                 options()->beacon_url().http, "','", kTestDomain,
-                "','0',pagespeed.selectors);");
+                "','0','", ExpectedNonce(), "',pagespeed.selectors);");
     }
     StrAppend(&script, "</script>");
     return script;
@@ -145,7 +148,19 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
                   BeaconScriptFor(selectors), "</body>");
   }
 
+  GoogleString ExpectedNonce() {
+    GoogleString result;
+    StringPiece nonce_piece(reinterpret_cast<char*>(&expected_nonce_),
+                            sizeof(expected_nonce_));
+    Web64Encode(nonce_piece, &result);
+    result.resize(11);
+    ++expected_nonce_;
+    return result;
+  }
+
  private:
+  uint64 expected_nonce_;
+
   DISALLOW_COPY_AND_ASSIGN(CriticalCssBeaconFilterTestBase);
 };
 
@@ -304,7 +319,7 @@ TEST_F(CriticalCssBeaconFilterTest, FalseBeaconResultsGivesEmptyBeaconUrl) {
 class CriticalCssBeaconOnlyTest : public CriticalCssBeaconFilterTestBase {
  public:
   CriticalCssBeaconOnlyTest() { }
-  virtual ~CriticalCssBeaconOnlyTest() { }
+  virtual ~CriticalCssBeaconOnlyTest() { LOG(INFO) << "Destructor"; }
 
  protected:
   virtual void SetUp() {
@@ -334,8 +349,11 @@ TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
   selectors.insert("div ul > li");
   selectors.insert("p");
   selectors.insert("span");  // Doesn't occur in our CSS
-  server_context()->critical_selector_finder()->
-      WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
+  RewriteDriver* driver = rewrite_driver();
+  GoogleString nonce = finder->PrepareForBeaconInsertion(selectors, driver);
+  EXPECT_EQ(ExpectedNonce(), nonce);
+  finder->WriteCriticalSelectorsToPropertyCache(selectors, nonce, driver);
   // Force cohort to persist.
   rewrite_driver()->property_page()->WriteCohort(
       server_context()->beacon_cohort());
@@ -349,6 +367,7 @@ TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
       StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css")),
       kSelectorsInlineAB);
   ValidateExpectedUrl(kTestDomain, input_html, expected_html);
+  LOG(INFO) << "Test complete";
 }
 
 class CriticalCssBeaconWithCombinerFilterTest

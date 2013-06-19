@@ -80,6 +80,7 @@ const char kBeaconEtsQueryParam[] = "ets";
 const char kBeaconOptionsHashQueryParam[] = "oh";
 const char kBeaconCriticalImagesQueryParam[] = "ci";
 const char kBeaconCriticalCssQueryParam[] = "cs";
+const char kBeaconNonceQueryParam[] = "n";
 
 const char kFallbackPageCacheKeyQuerySuffix[] = "@";
 const char kFallbackPageCacheKeyBasePathSuffix[] = "#";
@@ -124,7 +125,8 @@ class BeaconPropertyCallback : public PropertyPage {
       const RequestContextPtr& request_context,
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set,
-      StringSet* critical_css_selector_set)
+      StringSet* critical_css_selector_set,
+      StringPiece nonce)
       : PropertyPage(kPropertyCachePage, key, request_context,
                      server_context->thread_system()->NewMutex(),
                      server_context->page_property_cache()),
@@ -132,6 +134,7 @@ class BeaconPropertyCallback : public PropertyPage {
         html_critical_images_set_(html_critical_images_set),
         css_critical_images_set_(css_critical_images_set),
         critical_css_selector_set_(critical_css_selector_set) {
+    nonce.CopyToString(&nonce_);
   }
 
   const PropertyCache::CohortVector CohortList() {
@@ -151,7 +154,7 @@ class BeaconPropertyCallback : public PropertyPage {
     if (critical_css_selector_set_ != NULL) {
       server_context_->critical_selector_finder()->
           WriteCriticalSelectorsToPropertyCache(
-              *critical_css_selector_set_,
+              *critical_css_selector_set_, nonce_,
               server_context_->page_property_cache(), this,
               server_context_->message_handler());
     }
@@ -165,6 +168,7 @@ class BeaconPropertyCallback : public PropertyPage {
   scoped_ptr<StringSet> html_critical_images_set_;
   scoped_ptr<StringSet> css_critical_images_set_;
   scoped_ptr<StringSet> critical_css_selector_set_;
+  GoogleString nonce_;
   DISALLOW_COPY_AND_ASSIGN(BeaconPropertyCallback);
 };
 
@@ -592,6 +596,12 @@ bool ServerContext::HandleBeacon(StringPiece params,
         CommaSeparatedStringToSet(*query_param_str));
   }
 
+  StringPiece nonce;
+  query_param_str = query_params.Lookup1(kBeaconNonceQueryParam);
+  if (query_param_str != NULL) {
+    nonce.set(query_param_str->data(), query_param_str->size());
+  }
+
   // Store the critical information in the property cache. This is done by
   // looking up the property page for the URL specified in the beacon, and
   // performing the page update and cohort write in
@@ -613,7 +623,8 @@ bool ServerContext::HandleBeacon(StringPiece params,
         this, key, request_context,
         html_critical_images_set.release(),
         css_critical_images_set.release(),
-        critical_css_selector_set.release());
+        critical_css_selector_set.release(),
+        nonce);
     page_property_cache()->ReadWithCohorts(beacon_property_cb->CohortList(),
                                            beacon_property_cb);
   }

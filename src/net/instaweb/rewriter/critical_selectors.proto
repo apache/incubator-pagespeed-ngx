@@ -25,7 +25,7 @@ package net_instaweb;
 // This represents aggregated list of all selectors of the CSS that was needed
 // to render the above-the-fold portion of a page.
 //
-// Next free id: 6
+// Next free id: 7
 // TODO(jmaessen): Keep track of information on inputs to detect
 // changes to HTML.  (CL in progress)
 message CriticalSelectorSet {
@@ -37,6 +37,15 @@ message CriticalSelectorSet {
   message SelectorEvidence {
     optional string selector = 1 [default = ""];
     optional int32 support = 2 [default = 0];
+  }
+  // The PendingNonce proto describes the nonce of a beacon request that is
+  // still valid (no response received, not timed out).  Note that these entries
+  // might be cleared but left in place within the containing
+  // CriticalSelectorSet when they expire or the corresponding beacon result
+  // arrives.
+  message PendingNonce {
+    optional int64 timestamp_ms = 1 [default = 0];
+    optional string nonce = 2 [default = ""];
   }
 
   // The set of all selectors that were guarding the CSS that got applied for
@@ -61,4 +70,7 @@ message CriticalSelectorSet {
   // for their criticality.  Support is added by beacon results, but decays
   // exponentially over time.
   repeated SelectorEvidence selector_evidence = 5;
+
+  // This represents the valid beacon nonce values that will be accepted.
+  repeated PendingNonce pending_nonce = 6;
 }
