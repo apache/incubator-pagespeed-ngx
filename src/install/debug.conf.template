@@ -616,7 +616,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
 #NO_PER_VHOST_STATS ModPagespeedUsePerVHostStatistics off
 
 ModPagespeedStatisticsLogging on
-ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
+ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 # TODO(sligocki): Get rid of this once this is integrated into console.
 <Location /mod_pagespeed_temp_statistics_graphs>
     SetHandler mod_pagespeed_temp_statistics_graphs
@@ -624,7 +624,7 @@ ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 
 #STATS_LOGGING ModPagespeedStatistics on
 #STATS_LOGGING ModPagespeedStatisticsLogging on
-#STATS_LOGGING ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
+#STATS_LOGGING ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #STATS_LOGGING ModPagespeedStatisticsLoggingIntervalMs 10
 
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
@@ -954,6 +954,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedLoadFromFileMatch "^http://example.com/" /var/html/example/
 #ALL_DIRECTIVES ModPagespeedLoadFromFileRule allow /var/html/example/
 #ALL_DIRECTIVES ModPagespeedLoadFromFileRuleMatch Disallow \.php.css$
+#ALL_DIRECTIVES ModPagespeedLogDir /tmp/log/
 #ALL_DIRECTIVES ModPagespeedLogRewriteTiming false
 #ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
 #ALL_DIRECTIVES ModPagespeedMapOriginDomain example.com localhost
@@ -987,7 +988,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedStatisticsLogging true
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsCSS "example.com/css.css"
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsJS "example.com/js.js"
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile /tmp/log/stats.log
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off

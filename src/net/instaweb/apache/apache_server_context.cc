@@ -110,16 +110,13 @@ void ApacheServerContext::InitStats(Statistics* statistics) {
   UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
 
-bool ApacheServerContext::InitFileCachePath() {
-  GoogleString file_cache_path = config()->file_cache_path();
-  if (file_system()->IsDir(file_cache_path.c_str(),
-                           message_handler()).is_true()) {
+bool ApacheServerContext::InitPath(const GoogleString& path) {
+  if (file_system()->IsDir(path.c_str(), message_handler()).is_true()) {
     return true;
   }
-  bool ok = file_system()->RecursivelyMakeDir(file_cache_path,
-                                              message_handler());
+  bool ok = file_system()->RecursivelyMakeDir(path, message_handler());
   if (ok) {
-    apache_factory_->AddCreatedDirectory(file_cache_path);
+    apache_factory_->AddCreatedDirectory(path);
   }
   return ok;
 }

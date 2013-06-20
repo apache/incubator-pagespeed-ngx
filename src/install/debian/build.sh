@@ -88,6 +88,8 @@ do_package_in_fakeroot() {
   FAKEROOTFILE=$(mktemp -t fakeroot.tmp.XXXXXX) || exit 1
   fakeroot -s "${FAKEROOTFILE}" -- \
     chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MOD_PAGESPEED_CACHE}
+  fakeroot -s "${FAKEROOTFILE}" -- \
+    chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MOD_PAGESPEED_LOG}
   fakeroot -i "${FAKEROOTFILE}" -- \
     dpkg-deb -b "${STAGEDIR}" .
   rm -f "${FAKEROOTFILE}"
@@ -253,6 +255,7 @@ APACHE_MODULEDIR="/usr/lib/apache2/modules"
 APACHE_CONFDIR="/etc/apache2/mods-available"
 APACHE_CONF_D_DIR="/etc/apache2/conf.d"
 MOD_PAGESPEED_CACHE="/var/cache/mod_pagespeed"
+MOD_PAGESPEED_LOG="/var/log/mod_pagespeed"
 APACHE_USER="www-data"
 COMMENT_OUT_DEFLATE=
 SSL_CERT_DIR="/etc/ssl/certs"

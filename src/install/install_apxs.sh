@@ -20,6 +20,7 @@ PAGESPEED_JS_MINIFY_PATH="${BUILD_ROOT}/js_minify"
 
 BINDIR=${BINDIR:-"/usr/local/bin"}
 MOD_PAGESPEED_CACHE=${MOD_PAGESPEED_CACHE:-"/var/cache/mod_pagespeed"}
+MOD_PAGESPEED_LOG=${MOD_PAGESPEED_LOG:-"/var/log/mod_pagespeed"}
 APACHE_CONF_FILENAME=${APACHE_CONF_FILENAME:-"httpd.conf"}
 MODPAGESPEED_SO_NAME=${MODPAGESPEED_SO_NAME:-"mod_pagespeed.so"}
 MODPAGESPEED_SO24_NAME=${MODPAGESPEED_SO24_NAME:-"mod_pagespeed_ap24.so"}
@@ -257,7 +258,8 @@ do_install "${MODPAGESPEED_FILE_USER}" "${MODPAGESPEED_FILE_GROUP}" "-m 644" \
   "${SRC_ROOT}/net/instaweb/genfiles/conf/pagespeed_libraries.conf" \
   "${MODPAGESPEED_CONFDIR}/${LIBRARIES_CONF_NAME}" &&
 do_install "${APACHE_USER}" "${APACHE_GROUP}" "-m 755 -d" \
-  "${MOD_PAGESPEED_CACHE}" \
+  "${MOD_PAGESPEED_CACHE}" &&
+do_install "${APACHE_USER}" "${APACHE_GROUP}" "-m 755 -d" "${MOD_PAGESPEED_LOG}"
 ); then
   MODPAGESPEED_LOAD_LINE="Include ${MODPAGESPEED_CONFDIR}/${MODPAGESPEED_CONF_NAME}"
   if ! grep -q "${MODPAGESPEED_LOAD_LINE}" "${APACHE_CONF_FILE}"; then

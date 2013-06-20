@@ -74,6 +74,7 @@ rm -rf "$RPM_BUILD_ROOT"
 /etc/cron.daily/mod-pagespeed
 /usr/bin/pagespeed_js_minify
 %attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MOD_PAGESPEED_CACHE@@
+%attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MOD_PAGESPEED_LOG@@
 
 #------------------------------------------------------------------------------
 #   Pre install script

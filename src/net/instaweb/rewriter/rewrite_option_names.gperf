@@ -193,6 +193,7 @@ struct OptionName {
 "FileCacheSizeKb",                       RewriteOptions::kFileCacheCleanSizeKb
 "LRUCacheByteLimit",                     RewriteOptions::kLruCacheByteLimit
 "LRUCacheKbPerProcess",                  RewriteOptions::kLruCacheKbPerProcess
+"LogDir",                                RewriteOptions::kLogDir
 "RateLimitBackgroundFetches",            RewriteOptions::kRateLimitBackgroundFetches
 "SharedMemoryLocks",                     RewriteOptions::kUseSharedMemLocking
 "SlurpDirectory",                        RewriteOptions::kSlurpDirectory
@@ -204,7 +205,6 @@ struct OptionName {
 "StatisticsLogging",                     RewriteOptions::kStatisticsLoggingEnabled
 "StatisticsLoggingChartsCSS",            RewriteOptions::kStatisticsLoggingChartsCSS
 "StatisticsLoggingChartsJS",             RewriteOptions::kStatisticsLoggingChartsJS
-"StatisticsLoggingFile",                 RewriteOptions::kStatisticsLoggingFile
 "StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
 "StatisticsLoggingMaxFileSizeKb",        RewriteOptions::kStatisticsLoggingMaxFileSizeKb
 "TestProxy",                             RewriteOptions::kTestProxy

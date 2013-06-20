@@ -90,9 +90,6 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_statistics_logging_enabled(bool x) {
     set_option(x, &statistics_logging_enabled_);
   }
-  const GoogleString& statistics_logging_file_prefix() const {
-    return statistics_logging_file_prefix_.value();
-  }
   int64 statistics_logging_max_file_size_kb() const {
     return statistics_logging_max_file_size_kb_.value();
   }
@@ -101,9 +98,6 @@ class SystemRewriteOptions : public RewriteOptions {
   }
   const GoogleString& statistics_logging_charts_js() const {
     return statistics_logging_charts_js_.value();
-  }
-  void set_statistics_logging_file_prefix(GoogleString x) {
-    set_option(x, &statistics_logging_file_prefix_);
   }
   int64 statistics_logging_interval_ms() const {
     return statistics_logging_interval_ms_.value();
@@ -114,13 +108,15 @@ class SystemRewriteOptions : public RewriteOptions {
   const GoogleString& file_cache_path() const {
     return file_cache_path_.value();
   }
-  void set_file_cache_path(GoogleString x) {
+  void set_file_cache_path(const GoogleString& x) {
     set_option(x, &file_cache_path_);
   }
+  const GoogleString& log_dir() const { return log_dir_.value(); }
+  void set_log_dir(const GoogleString& x) { set_option(x, &log_dir_); }
   const GoogleString& memcached_servers() const {
     return memcached_servers_.value();
   }
-  void set_memcached_servers(GoogleString x) {
+  void set_memcached_servers(const GoogleString& x) {
     set_option(x, &memcached_servers_);
   }
   int memcached_threads() const {
@@ -141,7 +137,7 @@ class SystemRewriteOptions : public RewriteOptions {
   const GoogleString& fetcher_proxy() const {
     return fetcher_proxy_.value();
   }
-  void set_fetcher_proxy(GoogleString x) {
+  void set_fetcher_proxy(const GoogleString& x) {
     set_option(x, &fetcher_proxy_);
   }
 
@@ -190,11 +186,11 @@ class SystemRewriteOptions : public RewriteOptions {
 
   Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;
+  Option<GoogleString> log_dir_;
 
   // comma-separated list of host[:port].  See AprMemCache::AprMemCache
   // for code that parses it.
   Option<GoogleString> memcached_servers_;
-  Option<GoogleString> statistics_logging_file_prefix_;
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;

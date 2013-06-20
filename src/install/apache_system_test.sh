@@ -94,17 +94,15 @@ fi
 # Grab a timestamp now so that we can check that logging works.
 # Also determine where the log file is.
 if [ $statistics_logging_enabled = "1" ]; then
-  MOD_PAGESPEED_STATS_PREFIX="$(\
-    sed -n 's/^ ModPagespeedStatisticsLoggingFile //p' \
-    $APACHE_DEBUG_PAGESPEED_CONF)"
-  MOD_PAGESPEED_STATS_PREFIX="$(\
-    echo $MOD_PAGESPEED_STATS_PREFIX | sed -n 's/\"//gp')"
+  MOD_PAGESPEED_LOG_DIR="$(
+    sed -n 's/^ ModPagespeedLogDir //p' $APACHE_DEBUG_PAGESPEED_CONF |
+    sed -n 's/\"//gp')"
   # Wipe the logs so we get a clean start.
-  rm $MOD_PAGESPEED_STATS_PREFIX*
+  rm $MOD_PAGESPEED_LOG_DIR/*
   # The specific log file that the console will use.
   # If per-vhost stats is enabled, this is the main vhost suffix ":0".
   # If per-vhost stats is not enabled, this is the global suffix "global".
-  MOD_PAGESPEED_STATS_LOG="${MOD_PAGESPEED_STATS_PREFIX}:0"
+  MOD_PAGESPEED_STATS_LOG="${MOD_PAGESPEED_LOG_DIR}/stats_log_:0"
   START_TIME=$(date +%s)000 # We need this in milliseconds.
   sleep 2; # Make sure we're around long enough to log stats.
 fi

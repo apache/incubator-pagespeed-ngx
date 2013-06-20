@@ -90,11 +90,11 @@ MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
 MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
 	echo $(APACHE_ROOT)/mods-available; fi)
 
-# Determines where mod_pagespeed should write files.
+# Determines where mod_pagespeed should put cache.
 MOD_PAGESPEED_CACHE = /var/cache/mod_pagespeed
 
-# Determines where statistics should be logged.
-MOD_PAGESPEED_STATS_LOG = /var/log/mod_pagespeed_stats.log
+# Determines where mod_pagespeed should write various logs.
+MOD_PAGESPEED_LOG = /var/log/mod_pagespeed
 
 # The username used to run apache.  This is needed to create the directory
 # used to store mod_pagespeed files and cache data.
@@ -117,6 +117,7 @@ echo_vars :
 	@echo "   APACHE_START=$(APACHE_START)"
 	@echo "   APACHE_STOP_COMMAND=$(APACHE_STOP_COMMAND)"
 	@echo "   MOD_PAGESPEED_CACHE=$(MOD_PAGESPEED_CACHE)"
+	@echo "   MOD_PAGESPEED_LOG=$(MOD_PAGESPEED_LOG)"
 	@echo "   MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)"
 	@echo "   MODS_AVAILABLE_DIR=$(MODS_AVAILABLE_DIR)"
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
@@ -359,7 +360,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_TERTIARY_PORT@@!$(APACHE_TERTIARY_PORT)!g" \
 	    -e "s!@@TEST_PROXY_ORIGIN@@!$(TEST_PROXY_ORIGIN)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
-	    -e "s!@@MOD_PAGESPEED_STATS_LOG@@!$(MOD_PAGESPEED_STATS_LOG)!g" \
+	    -e "s!@@MOD_PAGESPEED_LOG@@!$(MOD_PAGESPEED_LOG)!g" \
 	    -e "s!@@SSL_CERT_DIR@@!$(SSL_CERT_DIR)!g" \
 	    -e "s!@@SSL_CERT_FILE_COMMAND@@!$(SSL_CERT_FILE_COMMAND)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
@@ -442,9 +443,13 @@ mod_pagespeed_file_root :
 	mkdir -p $(MOD_PAGESPEED_CACHE)-alt
 	chown -R $(APACHE_USER) $(MOD_PAGESPEED_CACHE)-alt
 
+	mkdir -p $(MOD_PAGESPEED_LOG)
+	chown -R $(APACHE_USER) $(MOD_PAGESPEED_LOG)
+
 flush_disk_cache :
 	rm -rf $(MOD_PAGESPEED_CACHE)
 	$(MAKE) MOD_PAGESPEED_CACHE=$(MOD_PAGESPEED_CACHE) \
+		MOD_PAGESPEED_LOG=$(MOD_PAGESPEED_LOG) \
 		APACHE_USER=$(APACHE_USER) mod_pagespeed_file_root
 
 # Starts Apache server
@@ -544,7 +549,8 @@ enable_ports_and_file_access :
 	done
 	set -x; \
 	for dir in $(MOD_PAGESPEED_CACHE) \
-	           $(MOD_PAGESPEED_CACHE)-alt; do \
+	           $(MOD_PAGESPEED_CACHE)-alt \
+	           $(MOD_PAGESPEED_LOG) ; do \
 	  mkdir -p $$dir; \
 	  chown $(APACHE_USER) $$dir; \
 	  chcon -R --reference=$(APACHE_DOC_ROOT) $$dir; \

@@ -153,6 +153,7 @@ const char kModPagespeedLoadFromFileMatch[] = "ModPagespeedLoadFromFileMatch";
 const char kModPagespeedLoadFromFileRule[] = "ModPagespeedLoadFromFileRule";
 const char kModPagespeedLoadFromFileRuleMatch[] =
     "ModPagespeedLoadFromFileRuleMatch";
+const char kModPagespeedLogDir[] = "ModPagespeedLogDir";
 const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
 const char kModPagespeedMapProxyDomain[] = "ModPagespeedMapProxyDomain";
 const char kModPagespeedMapRewriteDomain[] = "ModPagespeedMapRewriteDomain";
@@ -165,6 +166,8 @@ const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
 const char kModPagespeedRunExperiment[] = "ModPagespeedRunExperiment";
 const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
+const char kModPagespeedStatisticsLoggingFile[] =
+    "ModPagespeedStatisticsLoggingFile";
 const char kModPagespeedTrackOriginalContentLength[] =
     "ModPagespeedTrackOriginalContentLength";
 const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
@@ -943,6 +946,26 @@ bool give_apache_user_permissions(ApacheRewriteDriverFactory* factory) {
   return ret;
 }
 
+// Create directory and make sure permissions are set correctly so that
+// Apache processes can read and write from it.
+const char* init_dir(ApacheServerContext* server_context,
+                     apr_pool_t* pool,
+                     const char* directive_name,
+                     const char* path) {
+  const char* ret = NULL;
+  if (*path != '/') {
+    ret = apr_pstrcat(pool, directive_name, " ", path,
+                      " must start with a slash.", NULL);
+  } else {
+    if (!server_context->InitPath(path) ||
+        !give_apache_user_permissions(server_context->apache_factory())) {
+      ret = apr_pstrcat(pool, "Directory ", path, " could not be created "
+                        "or permissions could not be set.", NULL);
+    }
+  }
+  return ret;
+}
+
 // Hook from Apache for initialization after config is read.
 // Initialize statistics, set appropriate directory permissions, etc.
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
@@ -1370,16 +1393,16 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   // would catch this directive but miss the call to
   // give_apache_user_permissions.
   if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
-    if (*arg != '/') {
-      ret = apr_pstrcat(cmd->pool, kModPagespeedFileCachePath, " ", arg,
-                        " must start with a slash.", NULL);
-    } else {
+    ret = init_dir(server_context, cmd->pool, kModPagespeedFileCachePath, arg);
+    if (ret == NULL) {
       config->set_file_cache_path(arg);
-      if (!server_context->InitFileCachePath() ||
-          !give_apache_user_permissions(factory)) {
-        ret = apr_pstrcat(cmd->pool, "Directory ", arg,
-                          " does not exist and can't be created.", NULL);
-      }
+    }
+    return ret;
+  }
+  if (StringCaseEqual(directive, kModPagespeedLogDir)) {
+    ret = init_dir(server_context, cmd->pool, kModPagespeedLogDir, arg);
+    if (ret == NULL) {
+      config->set_log_dir(arg);
     }
     return ret;
   }
@@ -1487,15 +1510,16 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseOption<bool>(
         factory, cmd,
         &ApacheRewriteDriverFactory::set_track_original_content_length, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedNumShards) ||
-             StringCaseEqual(directive, kModPagespeedUrlPrefix) ||
-             StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
-             StringCaseEqual(directive, kModPagespeedDisableForBots) ||
-             StringCaseEqual(directive,
+  } else if (StringCaseEqual(directive,
                              kModPagespeedCollectRefererStatistics) ||
+             StringCaseEqual(directive, kModPagespeedDisableForBots) ||
+             StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
              StringCaseEqual(directive, kModPagespeedHashRefererStatistics) ||
+             StringCaseEqual(directive, kModPagespeedNumShards) ||
+             StringCaseEqual(directive, kModPagespeedStatisticsLoggingFile) ||
              StringCaseEqual(directive,
-                             kModPagespeedRefererStatisticsOutputLevel)) {
+                             kModPagespeedRefererStatisticsOutputLevel) ||
+             StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedUsePerVHostStatistics)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
@@ -1779,6 +1803,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedHashRefererStatistics,
         "Deprecated.  Does nothing."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRefererStatisticsOutputLevel,
+        "Deprecated.  Does nothing."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingFile,
         "Deprecated.  Does nothing."),
 
   // All one parameter options that can only be specified at the server level.

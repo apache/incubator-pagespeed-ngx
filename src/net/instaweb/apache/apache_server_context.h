@@ -55,7 +55,7 @@ class ApacheServerContext : public SystemServerContext {
   GoogleString hostname_identifier() { return hostname_identifier_; }
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
   ApacheConfig* config();
-  bool InitFileCachePath();
+  bool InitPath(const GoogleString& path);
 
   // These return configuration objects that hold settings from
   // <ModPagespeedIf spdy> and <ModPagespeedIf !spdy> sections of configuration.

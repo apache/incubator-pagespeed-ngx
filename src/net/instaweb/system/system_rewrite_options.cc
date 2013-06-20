@@ -62,6 +62,9 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty("", &SystemRewriteOptions::file_cache_path_, "afcp",
                     RewriteOptions::kFileCachePath,
                     "Set the path for file cache");
+  AddSystemProperty("", &SystemRewriteOptions::log_dir_, "ald",
+                    RewriteOptions::kLogDir,
+                    "Directory to store mod_pagespeed logs in.");
   AddSystemProperty("", &SystemRewriteOptions::memcached_servers_, "ams",
                     RewriteOptions::kMemcachedServers,
                     "Comma-separated list of servers e.g. "
@@ -92,14 +95,6 @@ void SystemRewriteOptions::AddProperties() {
                     &SystemRewriteOptions::statistics_logging_interval_ms_,
                     "asli", RewriteOptions::kStatisticsLoggingIntervalMs,
                     "How often to log statistics, in milliseconds.");
-  AddSystemProperty("", &SystemRewriteOptions::statistics_logging_file_prefix_,
-                    // TODO(sligocki): Should we update the option name to
-                    // kStatisticsLoggingFilePrefix to clarify? Or just bring
-                    // back a general Pagespeed directory to put all these
-                    // log files in?
-                    "aslf", RewriteOptions::kStatisticsLoggingFile,
-                    "Filename prefix for where to log statistics if they're "
-                        "being collected.");
   AddSystemProperty(100 * 1024 /* 100 Megabytes */,
                     &SystemRewriteOptions::statistics_logging_max_file_size_kb_,
                     "aslfs", RewriteOptions::kStatisticsLoggingMaxFileSizeKb,

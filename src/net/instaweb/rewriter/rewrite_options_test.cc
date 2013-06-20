@@ -1198,6 +1198,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("LRUCacheKbPerProcess",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kLruCacheKbPerProcess));
+  EXPECT_STREQ("LogDir",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLogDir));
   EXPECT_STREQ("MemcachedServers",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kMemcachedServers));
@@ -1237,9 +1240,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("StatisticsLoggingChartsJS",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsLoggingChartsJS));
-  EXPECT_STREQ("StatisticsLoggingFile",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingFile));
   EXPECT_STREQ("StatisticsLoggingIntervalMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsLoggingIntervalMs));

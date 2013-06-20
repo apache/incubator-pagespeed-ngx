@@ -51,9 +51,7 @@ apache_vm_system_tests :
 	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
 	$(MAKE) FAST_RESTART=1 apache_debug_shared_mem_lock_sanity_test
 	$(MAKE) apache_debug_https_fetch_test
-	# The stats logging test is disabled as it has permission issues
-	# when package building (issue 559).
-	# $(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
+	$(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
 	$(MAKE) FAST_RESTART=1 apache_debug_all_directives_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
@@ -65,9 +63,6 @@ apache_vm_system_tests :
 # TODO(jmarantz): fix this.
 apache_system_tests : apache_vm_system_tests
 	$(MAKE) FAST_RESTART=1 apache_debug_serf_empty_header_test
-	# TODO(sligocki): Get this test working in VMs and move it to
-	# apache_vm_system_tests.
-	$(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
 	$(MAKE) apache_install_conf
 	$(MAKE) FAST_RESTART=1 apache_debug_restart
 

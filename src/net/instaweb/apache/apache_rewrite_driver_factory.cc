@@ -512,15 +512,20 @@ SharedMemStatistics* ApacheRewriteDriverFactory::
   // Note that we create the statistics object in the parent process, and
   // it stays around in the kids but gets reinitialized for them
   // inside ChildInit(), called from pagespeed_child_init.
-  //
-  // TODO(jmarantz): it appears that filename_prefix() is not actually
-  // established at the time of this construction, calling into question
-  // whether we are naming our shared-memory segments correctly.
+  GoogleString log_filename;
+  bool logging_enabled = false;
+  if (!options->log_dir().empty()) {
+    // Only enable statistics logging if a log_dir() is actually specified.
+    log_filename = StrCat(options->log_dir(), "/stats_log_", name);
+    logging_enabled = options->statistics_logging_enabled();
+  }
   SharedMemStatistics* stats = new SharedMemStatistics(
       options->statistics_logging_interval_ms(),
       options->statistics_logging_max_file_size_kb(),
-      StrCat(options->statistics_logging_file_prefix(), name),
-      options->statistics_logging_enabled(),
+      log_filename, logging_enabled,
+      // TODO(jmarantz): it appears that filename_prefix() is not actually
+      // established at the time of this construction, calling into question
+      // whether we are naming our shared-memory segments correctly.
       StrCat(filename_prefix(), name), shared_mem_runtime(),
       message_handler(), file_system(), timer());
   InitStats(stats);
