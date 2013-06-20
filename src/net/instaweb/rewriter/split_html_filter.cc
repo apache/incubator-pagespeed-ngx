@@ -27,11 +27,12 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_properties.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -161,11 +162,25 @@ void SplitHtmlFilter::StartDocument() {
   // currently incompatible with cache html. Fix this.
   serve_response_in_two_chunks_ = options_->serve_split_html_in_two_chunks()
       && !disable_filter_;
-  if (serve_response_in_two_chunks_ &&
-      rewrite_driver_->request_context()->is_split_btf_request()) {
-    flush_head_enabled_ = false;
-    original_writer_ = &null_writer_;
-    set_writer(&null_writer_);
+  if (serve_response_in_two_chunks_) {
+    if (rewrite_driver_->request_context()->is_split_btf_request()) {
+      flush_head_enabled_ = false;
+      original_writer_ = &null_writer_;
+      set_writer(&null_writer_);
+    } else if (options_->max_html_cache_time_ms() > 0) {
+      // If max html cache time is > 0, set the cache time for the ATF chunk
+      // accordingly. Also, mark the html as private, and strip the pragma and
+      // age headers.
+      ResponseHeaders* response_headers =
+          rewrite_driver_->mutable_response_headers();
+      response_headers->ComputeCaching();
+      response_headers->SetDateAndCaching(
+          response_headers->date_ms(), options_->max_html_cache_time_ms(),
+          ", private");
+      response_headers->RemoveAll(HttpAttributes::kAge);
+      response_headers->RemoveAll(HttpAttributes::kPragma);
+      response_headers->ComputeCaching();
+    }
   }
   json_writer_.reset(new JsonWriter(original_writer_,
                                     &element_json_stack_));

@@ -168,7 +168,7 @@ const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength = -1;
 const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
 // Maximum JS elements to prefetch early when defer JS filter is enabled.
-const int RewriteOptions::kDefaultMaxPrefetchJsElements = 6;
+const int RewriteOptions::kDefaultMaxPrefetchJsElements = 0;
 
 #ifdef NDEBUG
 const int RewriteOptions::kDefaultRewriteDeadlineMs = 10;

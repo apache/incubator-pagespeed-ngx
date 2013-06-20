@@ -156,11 +156,14 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilter(html_writer_filter_.get());
 
     response_headers_.set_status_code(HttpStatus::kOK);
-    response_headers_.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 0);
-    rewrite_driver_->set_response_headers_ptr(&response_headers_);
+    response_headers_.SetDateAndCaching(
+        MockTimer::kApr_5_2010_ms, 10000, ",no-cache");
+    response_headers_.Add(HttpAttributes::kPragma, "no-cache");
+    response_headers_.Add(HttpAttributes::kAge, "1000");
+    rewrite_driver()->set_response_headers_ptr(&response_headers_);
     output_.clear();
     StaticAssetManager* static_asset_manager =
-        rewrite_driver_->server_context()->static_asset_manager();
+        rewrite_driver()->server_context()->static_asset_manager();
     blink_js_url_ = static_asset_manager->GetAssetUrl(
         StaticAssetManager::kBlinkJs, options_).c_str();
   }
@@ -182,11 +185,11 @@ class SplitHtmlFilterTest : public RewriteTestBase {
 
   GoogleString output_;
   const char* blink_js_url_;
+  ResponseHeaders response_headers_;
 
  private:
   StringWriter writer_;
   RequestHeaders request_headers_;
-  ResponseHeaders response_headers_;
   SplitHtmlFilter* split_html_filter_;
 };
 
@@ -230,6 +233,38 @@ TEST_F(SplitHtmlFilterTest,
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
                    kSplitHtmlMiddle, suffix),
             output_);
+  EXPECT_STREQ("1000", response_headers_.Lookup1(HttpAttributes::kAge));
+  EXPECT_STREQ("no-cache", response_headers_.Lookup1(HttpAttributes::kPragma));
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &values));
+  EXPECT_STREQ("max-age=10,no-cache", JoinStringStar(values, ","));
+}
+
+TEST_F(SplitHtmlFilterTest,
+       SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoATFAndCacheTime) {
+  options_->set_max_html_cache_time_ms(30000);
+  options_->set_serve_split_html_in_two_chunks(true);
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
+  panel->set_start_xpath("div[@id = \"container\"]/div[4]");
+  panel = config->add_panels();
+  panel->set_start_xpath("img[3]");
+  panel->set_end_marker_xpath("h1[@id = \"footer\"]");
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   "/split_with_pcache.html?X-PSA-Split-Btf=1",
+                   1, blink_js_url_));
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kAge));
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kPragma));
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &values));
+  EXPECT_STREQ("max-age=30,private", JoinStringStar(values, ","));
 }
 
 TEST_F(SplitHtmlFilterTest,
