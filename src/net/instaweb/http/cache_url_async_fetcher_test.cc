@@ -46,12 +46,18 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/worker_test_base.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
 namespace {
+
+const char kStartFetchPrefix[] = "start_fetch";
+const char kFetchTriggeredPrefix[] = "fetch_triggered";
+const char kDelayedFetchFinishPrefix[] = "delayed_fetch_finish";
 
 class MockFetch : public AsyncFetch {
  public:
@@ -119,17 +125,54 @@ class MockFetch : public AsyncFetch {
 class MockCacheUrlAsyncFetcherAsyncOpHooks
     : public CacheUrlAsyncFetcher::AsyncOpHooks {
  public:
-  MockCacheUrlAsyncFetcherAsyncOpHooks() {}
-  virtual ~MockCacheUrlAsyncFetcherAsyncOpHooks() {}
+  MockCacheUrlAsyncFetcherAsyncOpHooks()
+      : count_(0) {}
+  virtual ~MockCacheUrlAsyncFetcherAsyncOpHooks() {
+    // Check both StartAsyncOp() and FinishAsyncOp() should be called same
+    // number of times.
+    EXPECT_EQ(0, count_);
+  }
 
-  virtual void StartAsyncOp() {}
-  virtual void FinishAsyncOp() {}
+  virtual void StartAsyncOp() {
+    ++count_;
+  }
+
+  virtual void FinishAsyncOp() {
+    --count_;
+    ASSERT_GE(count_, 0);
+  }
 
  private:
+  int count_;
   DISALLOW_COPY_AND_ASSIGN(MockCacheUrlAsyncFetcherAsyncOpHooks);
 };
 
+class DelayedMockUrlFetcher : public MockUrlFetcher {
+ public:
+  explicit DelayedMockUrlFetcher(ThreadSynchronizer* sync)
+      : MockUrlFetcher(),
+        sync_(sync) {}
+  virtual void Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch) {
+    sync_->Signal(kFetchTriggeredPrefix);
+    sync_->Wait(kStartFetchPrefix);
+    MockUrlFetcher::Fetch(url, message_handler, fetch);
+  }
+
+ private:
+  ThreadSynchronizer* sync_;
+  DISALLOW_COPY_AND_ASSIGN(DelayedMockUrlFetcher);
+};
+
 class CacheUrlAsyncFetcherTest : public ::testing::Test {
+ public:
+  void TriggerDelayedFetchAndValidate() {
+    FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
+                     cache_body_, kBackendFetch, true);
+    thread_synchronizer_->Signal(kDelayedFetchFinishPrefix);
+  }
+
  protected:
   // Helper class for calling Get and Query methods on cache implementations
   // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
@@ -166,8 +209,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   };
 
   CacheUrlAsyncFetcherTest()
-      : counting_fetcher_(&mock_fetcher_),
-        lru_cache_(1000),
+      : lru_cache_(1000),
         timer_(MockTimer::kApr_5_2010_ms),
         cache_url_("http://www.example.com/cacheable.html"),
         cache_css_url_("http://www.example.com/cacheable.css"),
@@ -190,6 +232,9 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         implicit_cache_ttl_ms_(500 * Timer::kSecondMs),
         cache_result_valid_(true),
         thread_system_(Platform::CreateThreadSystem()),
+        thread_synchronizer_(new ThreadSynchronizer(thread_system_.get())),
+        mock_fetcher_(thread_synchronizer_.get()),
+        counting_fetcher_(&mock_fetcher_),
         scheduler_(thread_system_.get(), &timer_),
         file_system_(thread_system_.get(), &timer_),
         lock_manager_(&file_system_, GTestTempDir(), &scheduler_, &handler_) {
@@ -516,9 +561,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
 
   SimpleStats statistics_;
 
-  MockUrlFetcher mock_fetcher_;
-  CountingUrlAsyncFetcher counting_fetcher_;
-
   LRUCache lru_cache_;
   MockTimer timer_;
   MockHasher mock_hasher_;
@@ -558,6 +600,9 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   bool cache_result_valid_;
 
   scoped_ptr<ThreadSystem> thread_system_;
+  scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
+  DelayedMockUrlFetcher mock_fetcher_;
+  CountingUrlAsyncFetcher counting_fetcher_;
   MockScheduler scheduler_;
   MemFileSystem file_system_;
   FileSystemLockManager lock_manager_;
@@ -592,7 +637,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
 
   cache_fetcher_->set_proactively_freshen_user_facing_request(true);
   // Advance the time so that cache is about to expire.
-  timer_.AdvanceMs(ttl_ms_ - 3 * 60 * 1000);
+  timer_.AdvanceMs(ttl_ms_ - 3 * Timer::kMinuteMs);
   ClearStats();
   FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
@@ -1605,6 +1650,48 @@ TEST_F(CacheUrlAsyncFetcherTest, NotInCachePost) {
   EXPECT_FALSE(fetch.success());
   EXPECT_EQ(CacheUrlAsyncFetcher::kNotInCacheStatus,
             fetch.response_headers()->status_code());
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, TestParallelBackgroundFreshenCalls) {
+  ClearStats();
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
+                   cache_body_, kBackendFetch, true);
+  cache_fetcher_->set_proactively_freshen_user_facing_request(true);
+  // Advance the time so that cache is about to expire.
+  timer_.AdvanceMs(ttl_ms_ - 3 * Timer::kMinuteMs);
+  QueuedWorkerPool pool(1, "test", thread_system_.get());
+  QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
+  ClearStats();
+  thread_synchronizer_->EnableForPrefix(kFetchTriggeredPrefix);
+  thread_synchronizer_->EnableForPrefix(kStartFetchPrefix);
+  thread_synchronizer_->EnableForPrefix(kDelayedFetchFinishPrefix);
+
+  // Start a fetch on Thread 1. This fetch will be delayed until another fetch
+  // finishes on different thread and second fetch fails to acquire lock.
+  // Order of the sequence:
+  // 1) Fetch is triggered which issue a background fetch and able to acquire
+  //    lock but this fetch is delayed until another fetch is also triggered.
+  // 2) Second fetch is triggered and tries to acquire a lock but fails to do
+  //    so.
+  // 3) After second fetch is finished it signals first fetch.
+  sequence->Add(
+      MakeFunction(
+          static_cast<CacheUrlAsyncFetcherTest*>(this),
+          &CacheUrlAsyncFetcherTest::TriggerDelayedFetchAndValidate));
+  thread_synchronizer_->Wait(kFetchTriggeredPrefix);
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
+                   cache_body_, kBackendFetch, true);
+  thread_synchronizer_->Signal(kStartFetchPrefix);
+  thread_synchronizer_->Wait(kDelayedFetchFinishPrefix);
+  // Fetch hits initial cache lookup for the fetches...
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(2, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache_->cache_misses()->Get());
+  // Background fetch is triggered to populate the cache with newer value. But
+  // only fetch is able to update the value.
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
 }
 
 }  // namespace

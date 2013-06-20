@@ -188,18 +188,19 @@ class CacheFindCallback : public HTTPCache::Callback {
         : AsyncFetchWithLock(
               lock_hasher, request_context, url, lock_manager, message_handler),
           callback_(callback),
-          async_op_hooks_(async_op_hooks) {}
+          async_op_hooks_(async_op_hooks) {
+      async_op_hooks_->StartAsyncOp();
+    }
+
+    virtual ~BackgroundFreshenFetch() {
+      async_op_hooks_->FinishAsyncOp();
+    }
 
     virtual bool StartFetch(
         UrlAsyncFetcher* fetcher, MessageHandler* handler) {
       AsyncFetch* fetch = callback_->WrapCachePutFetchAndConditionalFetch(this);
-      async_op_hooks_->StartAsyncOp();
       fetcher->Fetch(url(), handler, fetch);
       return true;
-    }
-
-    virtual void Finalize(bool lock_failure, bool success) {
-      async_op_hooks_->FinishAsyncOp();
     }
 
     virtual bool ShouldYieldToRedundantFetchInProgress() {
