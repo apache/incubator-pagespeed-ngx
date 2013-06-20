@@ -545,9 +545,9 @@ enable_ports_and_file_access :
 	set -x; \
 	for dir in $(MOD_PAGESPEED_CACHE) \
 	           $(MOD_PAGESPEED_CACHE)-alt; do \
-	  mkdir $$dir; \
+	  mkdir -p $$dir; \
 	  chown $(APACHE_USER) $$dir; \
-	  chcon -R -t httpd_sys_content_t $$dir; \
+	  chcon -R --reference=$(APACHE_DOC_ROOT) $$dir; \
 	done
 
 # Hooks for tests we can only run in development due to needing extensive
