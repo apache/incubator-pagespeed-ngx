@@ -658,20 +658,20 @@ TEST_F(ServerContextTest, ScanSplitHtmlRequest) {
   EXPECT_FALSE(ctx->is_split_btf_request());
   server_context()->ScanSplitHtmlRequest(ctx, &gurl);
   EXPECT_TRUE(ctx->is_split_btf_request());
-  EXPECT_EQ(GoogleUrl("http://test.com/"), gurl);
+  EXPECT_EQ("http://test.com/", gurl.Spec());
 
   gurl.Reset("http://test.com/?a=b&X-PSA-Split-Btf=2");
   ctx.reset(CreateRequestContext());
   EXPECT_FALSE(ctx->is_split_btf_request());
   server_context()->ScanSplitHtmlRequest(ctx, &gurl);
   EXPECT_TRUE(ctx->is_split_btf_request());
-  EXPECT_EQ(GoogleUrl("http://test.com/?a=b"), gurl);
+  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
 
   ctx.reset(CreateRequestContext());
   EXPECT_FALSE(ctx->is_split_btf_request());
   server_context()->ScanSplitHtmlRequest(ctx, &gurl);
   EXPECT_FALSE(ctx->is_split_btf_request());
-  EXPECT_EQ(GoogleUrl("http://test.com/?a=b"), gurl);
+  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
 }
 
 class MockRewriteFilter : public RewriteFilter {
