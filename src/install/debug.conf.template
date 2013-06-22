@@ -307,7 +307,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName secondary.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeed on
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_secondary"
   ModPagespeedCompressMetadataCache false
 
   ModPagespeedMapProxyDomain secondary.example.com/gstatic_images \
@@ -342,7 +342,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName www.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
@@ -353,7 +353,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName origin.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
@@ -364,7 +364,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName cdn.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
@@ -377,7 +377,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName forbidden.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedBlockingRewriteKey psatest
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
   # Start with all core filters enabled ...
   ModPagespeedRewriteLevel CoreFilters
   # ... then forbid these filters ...
@@ -395,7 +395,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName max_cacheable_content_length.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedBlockingRewriteKey psatest
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_javascript
   ModPagespeedMaxCacheableContentLength 85
@@ -405,7 +405,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName xheader.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
   ModPagespeedXHeaderValue "UNSPECIFIED VERSION"
 </VirtualHost>
@@ -413,7 +413,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName domain_hyperlinks_on.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
   # Don't actually try to rewrite any resources; the ones in
   # rewrite_domains.html don't actually exist.
@@ -427,7 +427,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName domain_hyperlinks_off.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
   # Don't actually try to rewrite any resources; the ones in
   # rewrite_domains.html don't actually exist.
@@ -441,7 +441,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName client_domain_rewrite.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
   # Don't actually try to rewrite any resources; the ones in
   # rewrite_domains.html don't actually exist.
@@ -457,7 +457,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName url_attribute.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
   # Don't actually try to rewrite any resources; the ones in
   # rewrite_domains.html don't actually exist.
@@ -479,7 +479,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName absolute_urls.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
   # This is used for testing that we don't load resources from
   # absolute urls during resource reconstruction unless they're for
@@ -500,7 +500,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName modpagespeed.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
 
   ModPagespeed off
   ServerAlias www.modpagespeed.com
@@ -540,7 +540,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName proxy.pm.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
   # The usual cache location so that it gets cleared for on_cache_flush tests.
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
 
   # We have to fetch through our localhost proxy to get to our other vhosts.
   ModPagespeedFetchProxy "localhost:@@APACHE_SECONDARY_PORT@@"
@@ -576,7 +576,7 @@ ModPagespeedUsePerVHostStatistics on
   ServerName ipro.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
 </VirtualHost>
 
@@ -586,7 +586,7 @@ ModPagespeedUsePerVHostStatistics on
   ServerName imagebeacon.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters lazyload_images
   ModPagespeedCriticalImagesBeaconEnabled true
@@ -599,11 +599,11 @@ ModPagespeedUsePerVHostStatistics on
 </VirtualHost>
 
 # Test host for shared memory cache.
-ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8192
+ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8192
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName shmcache.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/with_shm"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_with_shm"
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -676,7 +676,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
 #PURGING_COVERAGE    ModPagespeedEnableUrlCacheInvalidation on
 #PURGING_COVERAGE    ModPagespeedCompressMetadataCache on
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 #COVERAGE   ModPagespeedCompressMetadataCache true
 #COVERAGE   ModPagespeedRewriteLevel AllFilters
 #COVERAGE   ModPagespeedEnableFilters elide_attributes
@@ -714,7 +714,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #COVERAGE <VirtualHost *:8081>
 #COVERAGE   ModPagespeed on
 #COVERAGE
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt/"
+#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt"
 #COVERAGE   ModPagespeedRewriteLevel PassThrough
 #COVERAGE
 #COVERAGE   # ModPagespeedSlurpDirectory ...
@@ -739,12 +739,12 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #PROXY
 #PROXY   # Turn these declarations back on during testing if you are
 #PROXY   # having trouble distinguishing which server is saying what.
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
+#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@logs/error_log"
+#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@logs/access_log" common
 #PROXY
 #PROXY   ModPagespeed on
 #PROXY
-#PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@/"
+#PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@"
 #PROXY
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY   ModPagespeedEnableFilters extend_cache
@@ -762,7 +762,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
 #PROXY
 #PROXY   ModPagespeed off
-#PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
+#PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt"
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY </VirtualHost>
 
@@ -774,7 +774,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #SLURP Listen 8081
 #SLURP Listen 8082
 #SLURP <VirtualHost *:8080>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@/"
+#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@"
 #SLURP   ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
 #SLURP   ModPagespeedSlurpReadOnly on
 #SLURP </VirtualHost>
@@ -783,11 +783,11 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 #SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
 #SLURP
 #SLURP   ModPagespeed off
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
+#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt"
 #SLURP   ModPagespeedRewriteLevel PassThrough
 #SLURP </VirtualHost>
 #SLURP <VirtualHost *:8082>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2/"
+#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2"
 #SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
 #SLURP   ModPagespeedSlurpReadOnly off
 #SLURP   ModPagespeedDomain *
@@ -842,7 +842,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
   ServerName embed_config_html.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
 
   ModPagespeedAddOptionsToUrls on
   ModPagespeedJpegRecompressionQuality 73
@@ -857,7 +857,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
   ServerName embed_config_resources.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
 
   ModPagespeedAddOptionsToUrls on
   # Note that we do not set the jpeg quality here, but take
@@ -879,7 +879,7 @@ ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName mpsoff.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/mpsoff/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpsoff"
   ModPagespeed off
 </VirtualHost>
 
@@ -889,7 +889,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 <VirtualHost 127.0.0.2:@@APACHE_TERTIARY_PORT@@>
   ServerName loopbackfetch.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/loopbackfetch/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_loopbackfetch"
   ModPagespeedCriticalImagesBeaconEnabled false
 </VirtualHost>
 

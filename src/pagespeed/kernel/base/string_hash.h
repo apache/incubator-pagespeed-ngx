@@ -93,6 +93,23 @@ struct CaseFoldStringEqual {
   }
 };
 
+struct CasePreserveStringPieceHash {
+  size_t operator()(StringPiece str) const {
+    return HashString<CasePreserve, size_t>(str.data(), str.size());
+  }
+};
+
+struct CaseFoldStringPieceHash {
+  size_t operator()(StringPiece str) const {
+    return HashString<CaseFold, size_t>(str.data(), str.size());
+  }
+};
+struct CaseFoldStringPieceEqual {
+  bool operator()(StringPiece a, StringPiece b) const {
+    return MemCaseEqual(a.data(), a.size(), b.data(), b.size());
+  }
+};
+
 }  // namespace net_instaweb
 
 #endif  // PAGESPEED_KERNEL_BASE_STRING_HASH_H_

@@ -267,6 +267,26 @@ TEST_F(SplitHtmlFilterTest,
   EXPECT_STREQ("max-age=30,private", JoinStringStar(values, ","));
 }
 
+TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFAndNoBTF) {
+  options_->set_serve_split_html_in_two_chunks(true);
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
+  // Use a non-existent xpath.
+  panel->set_start_xpath("div[@id = \"abcd\"]/div[4]");
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   "", 1, blink_js_url_));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+
+  EXPECT_EQ(expected_output, output_);
+}
+
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoBTF) {
   options_->set_serve_split_html_in_two_chunks(true);
@@ -428,8 +448,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksATF) {
   GoogleString expected_output(kSplitHtmlPrefix);
   GoogleString suffix(
       StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
-                   "/split_without_xpaths.html?X-PSA-Split-Btf=1",
-                   1, blink_js_url_));
+                   "", 1, blink_js_url_));
   StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
             kSplitHtmlMiddleWithoutPanelStubs,
             kHtmlInputPart2, suffix);

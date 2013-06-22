@@ -79,7 +79,11 @@ const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
 
 const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "<script type=\"text/javascript\">"
-    "function loadXMLDoc() {"
+    "function loadXMLDoc(url) {"
+    "\n  if (!url) {"
+    "\n    pagespeed['split_non_critical'] = {};"
+    "\n    return;"
+    "\n  }"
     "\n  var xmlhttp;"
     "\n  if (window.XMLHttpRequest) {"
     "\n     xmlhttp=new XMLHttpRequest();"
@@ -95,10 +99,10 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "\n      pagespeed['split_non_critical'] = t; }"
     "\n    }"
     "\n  }"
-    "\n  xmlhttp.open(\"GET\",\"%s\",true);"
+    "\n  xmlhttp.open(\"GET\",url,true);"
     "\n  xmlhttp.send();"
     "\n}"
-    "loadXMLDoc();"
+    "loadXMLDoc(%s);"
     "pagespeed.num_low_res_images_inlined=%d;</script>"
     "<script type=\"text/javascript\">"
     "\nwindow.setTimeout(function() {"
@@ -253,7 +257,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
             HttpAttributes::kXPsaSplitBtf, "1"));
     WriteString(StringPrintf(
         kSplitTwoChunkSuffixJsFormatString,
-        gurl->PathAndLeaf().data(),
+        json.empty() ? "" : gurl->PathAndLeaf().data(),
         num_low_res_images_inlined_,
         GetBlinkJsUrl(options_, static_asset_manager_).c_str()));
   }

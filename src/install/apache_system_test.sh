@@ -909,8 +909,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   echo Clear out our existing state before we begin the test.
   echo $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
   $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
-  echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
-  $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
+  echo $SUDO touch ${MOD_PAGESPEED_CACHE}_secondary/cache.flush
+  $SUDO touch ${MOD_PAGESPEED_CACHE}_secondary/cache.flush
   sleep 1
 
   URL_PATH=cache_flush_test.html?PageSpeedFilters=inline_css
@@ -941,7 +941,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   echo ".class myclass { color: $COLOR1; }" >$TMP_CSS_FILE
   $SUDO cp $TMP_CSS_FILE $CSS_FILE
 
-  # We might have stale cache for 5 minutes, so the result might stay
+  # We might have stale cache for 5 seconds, so the result might stay
   # $COLOR0, but we can't really test for that since the child process
   # handling this request might not have it in cache.
   # fetch_until $URL 'grep -c $COLOR0' 1
@@ -972,8 +972,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # fetch_until $SECONDARY_URL 'grep -c blue' 1
 
   # Now flush the secondary cache too so it can see the change to $COLOR1.
-  echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
-  $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
+  echo $SUDO touch ${MOD_PAGESPEED_CACHE}_secondary/cache.flush
+  $SUDO touch ${MOD_PAGESPEED_CACHE}_secondary/cache.flush
   sleep 1
   http_proxy=$SECONDARY_HOSTNAME fetch_until $SECONDARY_URL "grep -c $COLOR1" 1
 
