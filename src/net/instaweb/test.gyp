@@ -274,6 +274,7 @@
         '<(DEPTH)/pagespeed/kernel/http/query_params_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/gif_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_converter_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/image_resizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_utils_test.cc',

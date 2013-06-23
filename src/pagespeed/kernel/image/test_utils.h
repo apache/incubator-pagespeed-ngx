@@ -35,6 +35,7 @@ const char kPngSuiteGifTestDir[] = "pngsuite/gif/";
 const char kPngSuiteTestDir[] = "pngsuite/";
 const char kPngTestDir[] = "png/";
 const char kWebpTestDir[] = "webp/";
+const char kResizedTestDir[] = "resized/";
 
 bool ReadFile(const GoogleString& file_name,
               GoogleString* content);
