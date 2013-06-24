@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/rewriter/public/device_properties.h"
 
 #include <vector>
 

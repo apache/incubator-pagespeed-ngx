@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "net/instaweb/rewriter/public/device_properties.h"
+
 #include <vector>
 
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -71,8 +72,8 @@ TEST_F(DevicePropertiesTest, GetScreenGroupIndex) {
 }
 
 TEST_F(DevicePropertiesTest, GetPreferredImageQualitiesGood) {
-  vector<int> webp_vector(kWebpArray, kWebpArray + arraysize(kWebpArray));
-  vector<int> jpeg_vector(kJpegArray, kJpegArray + arraysize(kJpegArray));
+  std::vector<int> webp_vector(kWebpArray, kWebpArray + arraysize(kWebpArray));
+  std::vector<int> jpeg_vector(kJpegArray, kJpegArray + arraysize(kJpegArray));
 
   DeviceProperties device_properties(&user_agent_matcher_);
   device_properties.SetPreferredImageQualities(&webp_vector, &jpeg_vector);
@@ -113,8 +114,10 @@ TEST_F(DevicePropertiesTest, GetPreferredImageQualitiesGood) {
 }
 
 TEST_F(DevicePropertiesTest, GetPreferredImageQualitiesBad) {
-  vector<int> webp_vector(kWebpArray, kWebpArray + arraysize(kWebpArray) - 1);
-  vector<int> jpeg_vector(kJpegArray, kJpegArray + arraysize(kJpegArray) - 1);
+  std::vector<int> webp_vector(kWebpArray,
+                               kWebpArray + arraysize(kWebpArray) - 1);
+  std::vector<int> jpeg_vector(kJpegArray,
+                               kJpegArray + arraysize(kJpegArray) - 1);
 
   DeviceProperties device_properties(&user_agent_matcher_);
   device_properties.set_user_agent(kMediumUserAgent);

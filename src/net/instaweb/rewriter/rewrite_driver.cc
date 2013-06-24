@@ -41,7 +41,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
@@ -109,6 +108,7 @@
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -299,6 +299,7 @@ void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   new_request_headers->CopyFrom(headers);
   new_request_headers->PopulateLazyCaches();
   request_headers_.reset(new_request_headers);
+  request_properties_->ParseRequestHeaders(*request_headers_.get());
 }
 
 void RewriteDriver::set_request_context(const RequestContextPtr& x) {

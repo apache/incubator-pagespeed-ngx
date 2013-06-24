@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "net/instaweb/http/public/request_properties.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 
 #include <vector>
 
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/device_properties.h"
+#include "net/instaweb/rewriter/public/downstream_caching_directives.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -25,6 +26,7 @@ namespace net_instaweb {
 
 RequestProperties::RequestProperties(UserAgentMatcher* matcher)
     : device_properties_(new DeviceProperties(matcher)),
+      downstream_caching_directives_(new DownstreamCachingDirectives()),
       supports_image_inlining_(kNotSet),
       supports_js_defer_(kNotSet),
       supports_lazyload_images_(kNotSet),
@@ -39,10 +41,20 @@ void RequestProperties::set_user_agent(const StringPiece& user_agent_string) {
   device_properties_->set_user_agent(user_agent_string);
 }
 
+void RequestProperties::ParseRequestHeaders(
+    const RequestHeaders& request_headers) {
+  downstream_caching_directives_->ParseCapabilityListFromRequestHeaders(
+                                      request_headers);
+}
+
+
 bool RequestProperties::SupportsImageInlining() const {
   if (supports_image_inlining_ == kNotSet) {
     supports_image_inlining_ =
-        device_properties_->SupportsImageInlining() ? kTrue : kFalse;
+        (downstream_caching_directives_->SupportsImageInlining() &&
+         device_properties_->SupportsImageInlining()) ?
+        kTrue :
+        kFalse;
   }
   return (supports_image_inlining_ == kTrue);
 }
@@ -50,7 +62,10 @@ bool RequestProperties::SupportsImageInlining() const {
 bool RequestProperties::SupportsLazyloadImages() const {
   if (supports_lazyload_images_ == kNotSet) {
     supports_lazyload_images_ =
-        device_properties_->SupportsLazyloadImages() ? kTrue : kFalse;
+        (downstream_caching_directives_->SupportsLazyloadImages() &&
+         device_properties_->SupportsLazyloadImages()) ?
+        kTrue :
+        kFalse;
   }
   return (supports_lazyload_images_ == kTrue);
 }
@@ -68,7 +83,10 @@ bool RequestProperties::SupportsCriticalImagesBeacon() const {
 bool RequestProperties::SupportsJsDefer(bool allow_mobile) const {
   if (supports_js_defer_ == kNotSet) {
     supports_js_defer_ =
-        device_properties_->SupportsJsDefer(allow_mobile) ? kTrue : kFalse;
+        (downstream_caching_directives_->SupportsJsDefer() &&
+         device_properties_->SupportsJsDefer(allow_mobile)) ?
+        kTrue :
+        kFalse;
   }
   return (supports_js_defer_ == kTrue);
 }
@@ -76,7 +94,10 @@ bool RequestProperties::SupportsJsDefer(bool allow_mobile) const {
 bool RequestProperties::SupportsWebp() const {
   if (supports_webp_ == kNotSet) {
     supports_webp_ =
-        device_properties_->SupportsWebp() ? kTrue : kFalse;
+        (downstream_caching_directives_->SupportsWebp() &&
+         device_properties_->SupportsWebp()) ?
+        kTrue :
+        kFalse;
   }
   return (supports_webp_ == kTrue);
 }
@@ -84,7 +105,10 @@ bool RequestProperties::SupportsWebp() const {
 bool RequestProperties::SupportsWebpLosslessAlpha() const {
   if (supports_webp_lossless_alpha_ == kNotSet) {
     supports_webp_lossless_alpha_ =
-        device_properties_->SupportsWebpLosslessAlpha() ? kTrue : kFalse;
+        (downstream_caching_directives_->SupportsWebpLosslessAlpha() &&
+         device_properties_->SupportsWebpLosslessAlpha()) ?
+        kTrue :
+        kFalse;
   }
   return (supports_webp_lossless_alpha_ == kTrue);
 }

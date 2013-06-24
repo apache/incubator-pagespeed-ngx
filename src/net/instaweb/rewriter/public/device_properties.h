@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NET_INSTAWEB_HTTP_PUBLIC_DEVICE_PROPERTIES_H_
-#define NET_INSTAWEB_HTTP_PUBLIC_DEVICE_PROPERTIES_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_DEVICE_PROPERTIES_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_DEVICE_PROPERTIES_H_
 
 #include <vector>
 
@@ -109,4 +109,4 @@ class DeviceProperties {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTTP_PUBLIC_DEVICE_PROPERTIES_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_DEVICE_PROPERTIES_H_

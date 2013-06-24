@@ -12,28 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NET_INSTAWEB_HTTP_PUBLIC_REQUEST_PROPERTIES_H_
-#define NET_INSTAWEB_HTTP_PUBLIC_REQUEST_PROPERTIES_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_REQUEST_PROPERTIES_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_REQUEST_PROPERTIES_H_
 
 #include <vector>
 
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
 
 namespace net_instaweb {
 
+class DownstreamCachingDirectives;
+class RequestHeaders;
+
 // This class keeps track of the request properties of the client, which are
 // for the most part learned from the UserAgent string and specific request
-// headers that indicate what optimizations are supported.
+// headers that indicate what optimizations are supported. It relies on
+// DeviceProperties and DownstreamCachingDirectives objects for deciding
+// on support for a given capability.
 class RequestProperties {
  public:
   explicit RequestProperties(UserAgentMatcher* matcher);
   virtual ~RequestProperties();
 
+  // Sets the user agent string on the underlying DeviceProperties object.
   void set_user_agent(const StringPiece& user_agent_string);
+  // Calls ParseCapabilityListFromRequestHeaders on the underlying
+  // DownstreamCachingDirectives object.
+  void ParseRequestHeaders(const RequestHeaders& request_headers);
+
   bool SupportsImageInlining() const;
   bool SupportsLazyloadImages() const;
   bool SupportsCriticalImagesBeacon() const;
@@ -65,6 +76,7 @@ class RequestProperties {
   void SetScreenResolution(int width, int height) const;
 
   scoped_ptr<DeviceProperties> device_properties_;
+  scoped_ptr<DownstreamCachingDirectives> downstream_caching_directives_;
 
   mutable LazyBool supports_image_inlining_;
   mutable LazyBool supports_js_defer_;
@@ -77,4 +89,4 @@ class RequestProperties {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTTP_PUBLIC_REQUEST_PROPERTIES_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_REQUEST_PROPERTIES_H_

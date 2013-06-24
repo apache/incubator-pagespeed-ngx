@@ -17,7 +17,6 @@
 #include <algorithm>  // for std::binary_search
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -30,6 +29,7 @@
 #include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"

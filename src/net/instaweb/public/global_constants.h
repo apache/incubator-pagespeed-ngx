@@ -51,6 +51,14 @@ const char kPsaLastModified[] = "X-PSA-Last-Modified";
 // an infinite loop).
 const char kPsaPurgeRequest[] = "X-PSA-Purge-Request";
 
+// Header used to specify a comma-separated list of optimization-related
+// capabilities which are to be supported in the response. For e.g. "ii"
+// could mean image inlining is supported. These are used by the
+// downstream caching layer to communicate to the pagespeed server,
+// the optimizations/capabilties that are going to be factored into
+// the cache's fragmentation logic.
+const char kPsaCapabilityList[] = "PS-CapabilityList";
+
 // Noscript element that redirects to PageSpeed=noscript.  This is applied
 // when a filter that inserts custom javascript is enabled.
 const char kNoScriptRedirectFormatter[] =

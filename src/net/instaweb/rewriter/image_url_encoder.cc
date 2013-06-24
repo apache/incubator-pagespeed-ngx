@@ -18,8 +18,8 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/request_properties.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
