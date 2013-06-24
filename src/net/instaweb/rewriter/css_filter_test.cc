@@ -1330,6 +1330,13 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       "body{font:13px/1.231,clean;*font-size:small;*font:x-small;"
       "font-family:Arial!important}" },
+
+    // https://code.google.com/p/modpagespeed/issues/detail?id=722
+    { ".a { color: red; }\n"
+      "@import url('foo.css');\n"
+      ".b { color: blue; }\n",
+
+      ".a{color:red}@import url('foo.css');.b{color:#00f}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

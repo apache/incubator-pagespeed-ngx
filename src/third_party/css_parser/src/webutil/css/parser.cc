@@ -2233,6 +2233,7 @@ Import* Parser::ParseImport() {
 
 void Parser::ParseAtRule(Stylesheet* stylesheet) {
   Tracer trace(__func__, this);
+  DCHECK(stylesheet != NULL);
 
   SkipSpace();
   DCHECK_LT(in_, end_);
@@ -2242,24 +2243,35 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
   // in case the @-rule cannot be parsed correctly.
   const char* at_rule_start = in_;
   const uint64 start_errors_seen_mask = errors_seen_mask_;
+  bool error = false;  // Did we hit an error parsing at-rule?
   in_++;
 
   UnicodeText ident = ParseIdent();
 
   // @import string|uri medium-list ? ;
   if (StringCaseEquals(ident, "import")) {
-    scoped_ptr<Import> import(ParseImport());
-    if (import.get() && stylesheet) {
-      stylesheet->mutable_imports().push_back(import.release());
+    if (!stylesheet->rulesets().empty()) {
+      ReportParsingError(kImportError, "@import found after rulesets.");
+      error = true;
     } else {
-      ReportParsingError(kImportError, "Failed to parse import");
-      SkipPastDelimiter(';');
+      scoped_ptr<Import> import(ParseImport());
+      if (import.get()) {
+        stylesheet->mutable_imports().push_back(import.release());
+      } else {
+        ReportParsingError(kImportError, "Failed to parse import.");
+        SkipPastDelimiter(';');
+      }
     }
 
   // @charset string ;
   } else if (StringCaseEquals(ident, "charset")) {
-    UnicodeText s = ParseCharset();
-    stylesheet->mutable_charsets().push_back(s);
+    if (!stylesheet->rulesets().empty() || !stylesheet->imports().empty()) {
+      ReportParsingError(kCharsetError, "@charset found after other rules.");
+      error = true;
+    } else {
+      UnicodeText s = ParseCharset();
+      stylesheet->mutable_charsets().push_back(s);
+    }
 
   // @media medium-list { ruleset-list }
   } else if (StringCaseEquals(ident, "media")) {
@@ -2307,6 +2319,10 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     string ident_string(ident.utf8_data(), ident.utf8_length());
     ReportParsingError(kAtRuleError, StringPrintf(
         "Cannot parse unknown @-statement: %s", ident_string.c_str()));
+    error = true;
+  }
+
+  if (error) {
     // We can only preserve the @-rule if it is correctly terminated. If it
     // is not (because we reach EOF before it terminates) we must preserve
     // the error.

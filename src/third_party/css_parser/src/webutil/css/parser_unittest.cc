@@ -2391,4 +2391,16 @@ TEST_F(ParserTest, ParseMediaQueries) {
   EXPECT_EQ(r->ToString(), q->ToString());
 }
 
+TEST_F(ParserTest, ImportInMiddle) {
+  scoped_ptr<Parser> p(new Parser(".a { color: red; }\n"
+                                  "@import url('foo.css');\n"
+                                  ".b { color: blue; }\n"));
+  scoped_ptr<Stylesheet> s(p->ParseStylesheet());
+  EXPECT_EQ(0, s->imports().size());
+  EXPECT_EQ(2, s->rulesets().size());
+  EXPECT_EQ(Parser::kImportError, p->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n.a {color: #ff0000}\n.b {color: #0000ff}\n",
+            s->ToString());
+}
+
 }  // namespace Css
