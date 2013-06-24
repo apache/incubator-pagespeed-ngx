@@ -105,7 +105,13 @@ pagespeed.Console = function() {
       'baselineColor': '#E5E5E5'
     },
     'vAxis': {
+      'format': '#.###%',
       'minValue': 0,
+      // TODO(sligocki): Should we lock all graphs to be 0-100%? Currently
+      // the max value auto-scales leading to graphs with max values around
+      // 0.05%, etc. These don't really seem notable, it seems like it would
+      // be better not to draw too much attention to these.
+      //'maxValue': 1,  // 100%
       'viewWindowMode': 'explicit',
       'viewWindow': {
         'min': 0
@@ -182,7 +188,7 @@ pagespeed.statistics.sum = function(statArray) {
 
 /**
  * Statistic which has the value of a percent of sub-statistics.
- * For example: Cache hit percent = 100 * (cache hits) / (total cache requests).
+ * For example: Cache hit percent = (cache hits) / (total cache requests).
  *
  * @param {Object} numStat    Numerator statistic.
  * @param {Object} denomStat  Denominator statistic.
@@ -202,7 +208,7 @@ pagespeed.statistics.percent = function(numStat, denomStat) {
     if (denom == 0) {
       return 0.0;
     } else {
-      return 100 * numStat.evaluate(variableGetter) / denom;
+      return numStat.evaluate(variableGetter) / denom;
     }
   };
   return stat;
@@ -210,7 +216,7 @@ pagespeed.statistics.percent = function(numStat, denomStat) {
 
 /**
  * Statistic for common pattern: bad / (bad + good)
- * For example: Cache miss % = 100 * cache misses / (cache misses + cache hits)
+ * For example: Cache miss % = cache misses / (cache misses + cache hits)
  *
  * @param {Object} badStat   Numerator statistic.
  * @param {Object} goodStat  Added to badStat to get denominator.
