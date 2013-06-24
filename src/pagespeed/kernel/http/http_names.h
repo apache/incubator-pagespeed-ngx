@@ -114,6 +114,9 @@ struct HttpAttributes {
   // content length.
   static const char kXOriginalContentLength[];
   static const char kXUACompatible[];
+
+  // The config to be used fo the split html xpath.
+  static const char kXPsaSplitConfig[];
 };
 
 namespace HttpStatus {

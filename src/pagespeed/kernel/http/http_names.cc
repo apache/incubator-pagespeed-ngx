@@ -86,7 +86,7 @@ const char HttpAttributes::kXPsaResponseMetadata[] =
 const char HttpAttributes::kXPsaSplitBtf[] = "X-PSA-Split-Btf";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
 const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
-
+const char HttpAttributes::kXPsaSplitConfig[] = "X-PSA-Split-Config";
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   switch (rc) {

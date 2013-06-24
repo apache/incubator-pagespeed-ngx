@@ -93,6 +93,9 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   // Returns the panel id of the panel whose xpath matched with element.
   GoogleString MatchPanelIdForElement(HtmlElement* element);
 
+  // Returns a string representation of the critical line config.
+  GoogleString GenerateCriticalLineConfigString();
+
   // Returns true if element is sibling of the current start element on top of
   // stack.
   bool IsElementSiblingOfCurrentPanel(HtmlElement* element);

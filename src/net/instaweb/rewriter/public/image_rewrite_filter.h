@@ -61,6 +61,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // Statistic names:
   static const char kImageNoRewritesHighResolution[];
   static const char kImageOngoingRewrites[];
+  static const char kImageResizedUsingRenderedDimensions[];
   static const char kImageRewriteLatencyFailedMs[];
   static const char kImageRewriteLatencyOkMs[];
   static const char kImageRewritesDroppedDecodeFailure[];
@@ -255,6 +256,8 @@ class ImageRewriteFilter : public RewriteFilter {
   scoped_ptr<RenderedImageDimensionsMap> rendered_images_map_;
   // # of images rewritten successfully.
   Variable* image_rewrites_;
+  // # of images resized using rendered dimensions;
+  Variable* image_resized_using_rendered_dimensions_;
   // # of images that we decided not to rewrite because of size constraint.
   Variable* image_norewrites_high_resolution_;
   // # of images that we decided not to serve rewritten. This could be because

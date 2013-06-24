@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
@@ -100,9 +101,10 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "\n    }"
     "\n  }"
     "\n  xmlhttp.open(\"GET\",url,true);"
+    "\n  xmlhttp.setRequestHeader('%s', '%s');"
     "\n  xmlhttp.send();"
     "\n}"
-    "loadXMLDoc(%s);"
+    "loadXMLDoc(\"%s\");"
     "pagespeed.num_low_res_images_inlined=%d;</script>"
     "<script type=\"text/javascript\">"
     "\nwindow.setTimeout(function() {"
@@ -257,6 +259,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
             HttpAttributes::kXPsaSplitBtf, "1"));
     WriteString(StringPrintf(
         kSplitTwoChunkSuffixJsFormatString,
+        HttpAttributes::kXPsaSplitConfig,
+        GenerateCriticalLineConfigString().c_str(),
         json.empty() ? "" : gurl->PathAndLeaf().data(),
         num_low_res_images_inlined_,
         GetBlinkJsUrl(options_, static_asset_manager_).c_str()));
@@ -264,14 +268,36 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   HtmlWriterFilter::Flush();
 }
 
+GoogleString SplitHtmlFilter::GenerateCriticalLineConfigString() {
+  GoogleString out;
+  for (int i = 0; i < critical_line_info_->panels_size(); ++i) {
+    const Panel& panel = critical_line_info_->panels(i);
+    StrAppend(&out, panel.start_xpath());
+    if (panel.has_end_marker_xpath()) {
+      StrAppend(&out, ":", panel.end_marker_xpath());
+    }
+    StrAppend(&out, ",");
+  }
+  return out;
+}
+
 void SplitHtmlFilter::ProcessCriticalLineConfig() {
-  const GoogleString& critical_line_config_from_options =
-       options_->critical_line_config();
-  if (!critical_line_config_from_options.empty()) {
+  GoogleString critical_line_config;
+  const RequestHeaders* request_headers = rewrite_driver_->request_headers();
+  if (request_headers != NULL) {
+    const char* header = request_headers->Lookup1(
+        HttpAttributes::kXPsaSplitConfig);
+    if (header != NULL) {
+      critical_line_config = header;
+    }
+  }
+  if (critical_line_config.empty()) {
+    critical_line_config = options_->critical_line_config();
+  }
+  if (!critical_line_config.empty()) {
     CriticalLineInfo* critical_line_info = new CriticalLineInfo;
     StringPieceVector xpaths;
-    SplitStringPieceToVector(critical_line_config_from_options, ",",
-                             &xpaths, true);
+    SplitStringPieceToVector(critical_line_config, ",", &xpaths, true);
     for (int i = 0, n = xpaths.size(); i < n; i++) {
       StringPieceVector xpath_pair;
       SplitStringPieceToVector(xpaths[i], ":", &xpath_pair, true);

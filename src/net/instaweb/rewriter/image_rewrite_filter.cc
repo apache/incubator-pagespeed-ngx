@@ -189,6 +189,8 @@ const char kImageRewriteUses[] = "image_rewrite_uses";
 const char kImageInline[] = "image_inline";
 const char ImageRewriteFilter::kImageOngoingRewrites[] =
     "image_ongoing_rewrites";
+const char ImageRewriteFilter::kImageResizedUsingRenderedDimensions[] =
+    "image_resized_using_rendered_dimensions";
 const char kImageWebpRewrites[] = "image_webp_rewrites";
 const char ImageRewriteFilter::kInlinableImageUrlsPropertyName[] =
     "ImageRewriter-inlinable-urls";
@@ -414,6 +416,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
       image_counter_(0) {
   Statistics* stats = server_context_->statistics();
   image_rewrites_ = stats->GetVariable(kImageRewrites);
+  image_resized_using_rendered_dimensions_ =
+      stats->GetVariable(kImageResizedUsingRenderedDimensions);
   image_norewrites_high_resolution_ = stats->GetVariable(
       kImageNoRewritesHighResolution);
   image_rewrites_dropped_intentionally_ =
@@ -515,6 +519,7 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
 #endif
 
   statistics->AddVariable(kImageRewrites);
+  statistics->AddVariable(kImageResizedUsingRenderedDimensions);
   statistics->AddVariable(kImageNoRewritesHighResolution);
   statistics->AddVariable(kImageRewritesDroppedIntentionally);
   statistics->AddVariable(kImageRewritesDroppedDecodeFailure);
@@ -1520,6 +1525,7 @@ void ImageRewriteFilter::GetDimensions(HtmlElement* element,
         if (iterator != rendered_images_map_->end()) {
           std::pair<int32, int32> &dimensions = iterator->second;
           if (dimensions.first != 0 && dimensions.second != 0) {
+            image_resized_using_rendered_dimensions_->Add(1);
             page_dim->set_width(dimensions.first);
             page_dim->set_height(dimensions.second);
             return;

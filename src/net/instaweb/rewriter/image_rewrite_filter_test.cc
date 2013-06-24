@@ -828,6 +828,14 @@ class ImageRewriteTest : public RewriteTestBase {
     image->Dimensions(&image_dim);
     EXPECT_EQ(expected_width, image_dim.width());
     EXPECT_EQ(expected_height, image_dim.height());
+    Variable* resized_using_rendered_dimensions = statistics()->GetVariable(
+        ImageRewriteFilter::kImageResizedUsingRenderedDimensions);
+    if (width == 0 || height == 0) {
+      EXPECT_EQ(0, resized_using_rendered_dimensions->Get());
+    } else {
+      EXPECT_EQ(1, resized_using_rendered_dimensions->Get());
+    }
+    resized_using_rendered_dimensions->Clear();
   }
 
   virtual RequestContextPtr CreateRequestContext() {
