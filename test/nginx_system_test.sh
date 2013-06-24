@@ -1032,7 +1032,7 @@ NUM_INITIAL_FLUSHES_C=$(cache_flush_count_scraper c)
 # Now change the file to $COLOR1.
 echo ".class myclass { color: $COLOR1; }" > "$CSS_FILE"
 
-# We expect to have a stale cache for 5 minutes, so the result should stay
+# We expect to have a stale cache for 5 seconds, so the result should stay
 # $COLOR0.  This only works because we have only one worker process.  If we had
 # more than one then the worker process handling this request might be different
 # than the one that got the previous one, and it wouldn't be in cache.
@@ -1542,8 +1542,11 @@ BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
 ESCAPED_URL=$(sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
 OPTIONS_HASH=$( \
   sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+NONCE=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
+  $FETCH_FILE)
 BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
-BEACON_DATA="oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
+BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
 
 # See the comments about 204 responses and --no-http-keep-alive above.
 OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
