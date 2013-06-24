@@ -20,12 +20,14 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -131,6 +133,17 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
 
   virtual bool AddHtmlTags() const { return false; }
 
+  void ValidateRewriterLogging(RewriterHtmlApplication::Status html_status) {
+    rewrite_driver()->log_record()->WriteLog();
+
+    const LoggingInfo& logging_info =
+        *rewrite_driver()->log_record()->logging_info();
+    ASSERT_EQ(1, logging_info.rewriter_stats_size());
+    const RewriterStats& rewriter_stats = logging_info.rewriter_stats(0);
+    EXPECT_EQ("pr", rewriter_stats.id());
+    EXPECT_EQ(html_status, rewriter_stats.html_status());
+  }
+
   CriticalSelectorFilter* filter_;  // owned by the driver;
   PropertyCache* pcache_;
   PropertyPage* page_;
@@ -160,6 +173,7 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
       StrCat("<head>", critical_css, "</head>",
              "<body><div>Stuff</div>",
              LoadRestOfCss(css), "</body>"));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
 }
 
 TEST_F(CriticalSelectorFilterTest, EmptyBlock) {
@@ -178,6 +192,7 @@ TEST_F(CriticalSelectorFilterTest, EmptyBlock) {
       StrCat("<head></head>"
              "<body><div>Stuff</div>",
              LoadRestOfCss(css), "</body>"));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
 }
 
 TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
@@ -192,6 +207,7 @@ TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
       "</head>"
       "<body><div>Stuff</div></body>");
   ValidateNoChanges("on_ie", html);
+  ValidateRewriterLogging(RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
 }
 
 TEST_F(CriticalSelectorFilterTest, NoScript) {
@@ -222,6 +238,7 @@ TEST_F(CriticalSelectorFilterTest, NoScript) {
              css2,  // noscript, so not marked for JS load.
              WrapForJsLoad(css3),
              JsLoader(), "</body>"));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
 }
 
 TEST_F(CriticalSelectorFilterTest, Alternate) {
@@ -382,6 +399,7 @@ TEST_F(CriticalSelectorFilterTest, NoSelectorInfo) {
   ValidateNoChanges("no_sel_info", StrCat(css, "<div>Foo</div>"));
 
   ValidateNoChanges("no_sel_info", StrCat(css, "<div>Foo</div>"));
+  ValidateRewriterLogging(RewriterHtmlApplication::PROPERTY_CACHE_MISS);
 }
 
 TEST_F(CriticalSelectorFilterTest, ResolveUrlsProperly) {
@@ -399,6 +417,7 @@ TEST_F(CriticalSelectorFilterTest, DoNotLazyLoadIfNothingRewritten) {
   ValidateNoChanges("not_loaded", StrCat(CssLinkHref("a.css"),
                                          CssLinkHref("b.css")));
   CallFetcherCallbacks();
+  // Skip ValidateRewriterLogging because fetcher interferes with WriteLog.
 }
 
 class CriticalSelectorWithRewriteCssFilterTest

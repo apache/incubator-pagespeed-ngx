@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
@@ -38,6 +39,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -411,8 +413,15 @@ void CriticalSelectorFilter::DetermineEnabled() {
   // X-UA-Compatible, which can come in both meta and header flavors. Once we
   // have a good way of detecting this case, we can enable us for strict IE10.
   // Note: the UA logic should be the same in CriticalCssBeaconFilter.
-  bool can_run = (driver_->CriticalSelectors() != NULL) &&
-                 !driver_->user_agent_matcher()->IsIe(driver_->user_agent());
+  bool is_ie = driver_->user_agent_matcher()->IsIe(driver_->user_agent());
+  bool can_run = !is_ie && driver_->CriticalSelectors() != NULL;
+  driver_->log_record()->LogRewriterHtmlStatus(
+      RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
+      (can_run ?
+       RewriterHtmlApplication::ACTIVE :
+       (is_ie ?
+        RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED :
+        RewriterHtmlApplication::PROPERTY_CACHE_MISS)));
   set_is_enabled(can_run);
 }
 
