@@ -2672,11 +2672,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       // allows statistics to work if ngx_pagespeed gets turned on via
       // .htaccess or query param.
       if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics = cfg_m->driver_factory->MakeGlobalSharedMemStatistics(
-            config->statistics_logging_enabled(),
-            config->statistics_logging_interval_ms(),
-            config->statistics_logging_max_file_size_kb(),
-            config->statistics_logging_file_prefix());
+        statistics = \
+            cfg_m->driver_factory->MakeGlobalSharedMemStatistics(*config);
       }
 
       // The hostname identifier is used by the shared memory statistics

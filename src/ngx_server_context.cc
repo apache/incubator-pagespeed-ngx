@@ -83,11 +83,7 @@ void NgxServerContext::CreateLocalStatistics(
     Statistics* global_statistics) {
   local_statistics_ =
       ngx_factory_->AllocateAndInitSharedMemStatistics(
-          hostname_identifier(),
-          config()->statistics_logging_enabled(),
-          config()->statistics_logging_interval_ms(),
-          config()->statistics_logging_max_file_size_kb(),
-          config()->statistics_logging_file_prefix());
+          hostname_identifier(), *config());
   split_statistics_.reset(new SplitStatistics(
       ngx_factory_->thread_system(), local_statistics_, global_statistics));
   // local_statistics_ was ::InitStat'd by AllocateAndInitSharedMemStatistics,
