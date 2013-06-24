@@ -87,6 +87,7 @@ location ~ "^/ngx_pagespeed_static/" { }
 location ~ "^/ngx_pagespeed_beacon$" { }
 location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
 location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
+location /pagespeed_console { allow 127.0.0.1; deny all; }
 ```
 
 To confirm that the module is loaded, fetch a page and check that you see the
