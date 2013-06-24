@@ -148,6 +148,7 @@ struct OptionName {
 "ServeGhostClickBusterWithSplitHtml",    RewriteOptions::kServeGhostClickBusterWithSplitHtml
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
 "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss", RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss
+"UseBlankImageForInlinePreview",         RewriteOptions::kUseBlankImageForInlinePreview
 "UseFallbackPropertyCacheValues",        RewriteOptions::kUseFallbackPropertyCacheValues
 "UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
 "XHeaderValue",                          RewriteOptions::kXModPagespeedHeaderValue

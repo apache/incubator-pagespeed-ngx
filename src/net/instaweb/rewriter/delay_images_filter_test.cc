@@ -48,6 +48,7 @@ const char kSmallPngFile[] = "BikeCrashIcn.png";
 // libjpeg are yeilding different low_res_image_data.
 const char kSampleJpegData[] = "data:image/jpeg;base64*";
 const char kSampleWebpData[] = "data:image/webp;base64*";
+const char kSamplePngData[] = "data:image/png;base64*";
 
 const char kHeadHtml[] = "<head></head>";
 
@@ -338,6 +339,43 @@ TEST_F(DelayImagesFilterTest, DelayImageWithUnescapedQueryParam) {
       GetNoscript(),
       GenerateRewrittenImageTag("http://test.com/1.webp?a=b&c=d",
                                 kSampleWebpData),
+      "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageWithBlankImage) {
+  options()->set_use_blank_image_for_inline_preview(true);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head><body>"
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  // Inlined image will be a blank png instead of a low res webp.
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      GenerateRewrittenImageTag("http://test.com/1.webp", kSamplePngData),
+      "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageWithBlankImageOnMobile) {
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
+  options()->set_use_blank_image_for_inline_preview(true);
+  AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  GoogleString input_html = "<head></head><body>"
+      "<img src=\"http://test.com/1.jpeg\"/>"
+      "</body>";
+  // Inlined image will be a blank png instead of a low res Jpeg.
+  // Even for the mobile user agent, the image is inlined if its a blank image.
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      GenerateRewrittenImageTag("http://test.com/1.jpeg", kSamplePngData),
       "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }

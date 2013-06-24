@@ -263,6 +263,10 @@ DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
             "lazyload images should load images when onload is fired. If "
             "false, images are loaded onscroll.");
 
+DEFINE_bool(use_blank_image_for_inline_preview, false, "Boolean to decide "
+            "whether to use blank image for inline preview or a low resolution "
+            "version of the original image.");
+
 DEFINE_bool(use_fallback_property_cache_values, false,
             "Boolean indicating whether to use fallback property cache "
             "values(i.e. without query params) in case actual values are not "
@@ -650,6 +654,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("lazyload_images_after_onload")) {
     options->set_lazyload_images_after_onload(
         FLAGS_lazyload_images_after_onload);
+  }
+  if (WasExplicitlySet("use_blank_image_for_inline_preview")) {
+    options->set_use_blank_image_for_inline_preview(
+        FLAGS_use_blank_image_for_inline_preview);
   }
   if (WasExplicitlySet("use_fallback_property_cache_values")) {
     options->set_use_fallback_property_cache_values(

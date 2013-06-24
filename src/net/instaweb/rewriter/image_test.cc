@@ -1141,6 +1141,23 @@ TEST_F(ImageTest, DrawImage) {
             canvas->output_size());
 }
 
+TEST_F(ImageTest, BlankWhiteImage) {
+  int width = 1000, height = 1000;
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+
+  options->use_white_for_blank_image = true;
+  ImagePtr blank(BlankImageWithOptions(width, height, IMAGE_PNG, GTestTempDir(),
+                                       &timer_, &handler_, options));
+  bool loaded = blank->EnsureLoaded(false);
+  EXPECT_EQ(loaded, true);
+  EXPECT_GT(blank->Contents().size(), 0);
+
+  ImageDim blank_dim;
+  blank->Dimensions(&blank_dim);
+  EXPECT_EQ(blank_dim.width(), width);
+  EXPECT_EQ(blank_dim.height(), height);
+}
+
 // Test OpenCV bug where width * height of image could be allocated on the
 // stack. kLarge is a 10000x10000 image, so it will try to allocate > 100MB
 // on the stack, which should overflow the stack and SEGV.

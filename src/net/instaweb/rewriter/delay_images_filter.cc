@@ -225,8 +225,9 @@ void DelayImagesFilter::InsertHighResJs(HtmlElement* body_element) {
 
 bool DelayImagesFilter::ShouldRewriteInplace() const {
   const RewriteOptions* options = driver_->options();
-  return !(options->enable_aggressive_rewriters_for_mobile() &&
-           driver_->request_properties()->IsMobile());
+  return (options->use_blank_image_for_inline_preview() ||
+          !(options->enable_aggressive_rewriters_for_mobile() &&
+            driver_->request_properties()->IsMobile()));
 }
 
 void DelayImagesFilter::DetermineEnabled() {

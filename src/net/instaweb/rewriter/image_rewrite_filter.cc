@@ -952,10 +952,19 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->retain_color_sampling = false;
       image_options->jpeg_num_progressive_scans =
           options->image_jpeg_num_progressive_scans();
-      scoped_ptr<Image> low_image(
-          NewImage(image->Contents(), input_resource->url(),
-                   server_context_->filename_prefix(), image_options,
-                   driver_->timer(), message_handler));
+
+      scoped_ptr<Image> low_image;
+      if (driver_->options()->use_blank_image_for_inline_preview()) {
+        image_options->use_white_for_blank_image = true;
+        low_image.reset(BlankImageWithOptions(image_width, image_height,
+            IMAGE_PNG, server_context_->filename_prefix(),
+            driver_->timer(), message_handler, image_options));
+        low_image->EnsureLoaded(true);
+      } else {
+        low_image.reset(NewImage(image->Contents(), input_resource->url(),
+            server_context_->filename_prefix(), image_options,
+            driver_->timer(), message_handler));
+      }
       low_image->SetTransformToLowRes();
       if (image->Contents().size() > low_image->Contents().size()) {
         // TODO(pulkitg): Add a some sort of guarantee on how small inline
@@ -1303,7 +1312,6 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       image_rewrite_uses_->Add(1);
       rewrote_url = true;
     }
-
     if (options->Enabled(RewriteOptions::kInsertImageDimensions) &&
         (element->keyword() == HtmlName::kImg ||
          element->keyword() == HtmlName::kInput) &&

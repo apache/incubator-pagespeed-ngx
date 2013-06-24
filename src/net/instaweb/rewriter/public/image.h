@@ -105,6 +105,7 @@ class Image {
           retain_color_profile(false),
           retain_color_sampling(false),
           retain_exif_data(false),
+          use_white_for_blank_image(false),
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans),
           webp_conversion_timeout_ms(-1),
@@ -129,6 +130,7 @@ class Image {
     bool retain_color_profile;
     bool retain_color_sampling;
     bool retain_exif_data;
+    bool use_white_for_blank_image;
     int64 jpeg_num_progressive_scans;
     int64 webp_conversion_timeout_ms;
 

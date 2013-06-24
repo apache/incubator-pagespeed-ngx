@@ -1126,6 +1126,11 @@ void RewriteOptions::AddProperties() {
       "URL of image used to display prior to loading the lazy image. "
       "Empty means use a site-local copy.");
   AddBaseProperty(
+      false, &RewriteOptions::use_blank_image_for_inline_preview_, "biip",
+      kUseBlankImageForInlinePreview,
+      kDirectoryScope,
+      "Use a blank image for inline preview");
+  AddBaseProperty(
       true, &RewriteOptions::inline_only_critical_images_, "ioci",
       kInlineOnlyCriticalImages,
       kDirectoryScope,

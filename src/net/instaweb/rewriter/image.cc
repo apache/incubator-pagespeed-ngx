@@ -828,7 +828,12 @@ bool ImageImpl::LoadOpenCvEmpty() {
     try {
       opencv_image_ = cvCreateImage(cvSize(dims_.width(), dims_.height()),
                                     depth, channels);
-      cvSetZero(opencv_image_);
+      if (options_->use_white_for_blank_image) {
+        cvSet(opencv_image_, cvScalarAll(255), 0);
+      } else {
+        cvSetZero(opencv_image_);
+      }
+      changed_ = true;
       ok = true;
     } catch (cv::Exception& e) {
       handler_->Message(

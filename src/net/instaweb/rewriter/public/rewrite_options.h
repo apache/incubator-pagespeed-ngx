@@ -302,6 +302,7 @@ class RewriteOptions {
     kServeStaleWhileRevalidateThresholdSec,
     kSupportNoScriptEnabled,
     kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
+    kUseBlankImageForInlinePreview,
     kUseFallbackPropertyCacheValues,
     kUseSmartDiffInBlink,
     kXModPagespeedHeaderValue,
@@ -1640,6 +1641,13 @@ class RewriteOptions {
   }
   int max_inlined_preview_images_index() const {
     return max_inlined_preview_images_index_.value();
+  }
+
+  void set_use_blank_image_for_inline_preview(bool x) {
+    set_option(x, &use_blank_image_for_inline_preview_);
+  }
+  bool use_blank_image_for_inline_preview() const {
+    return use_blank_image_for_inline_preview_.value();
   }
 
   void set_min_image_size_low_resolution_bytes(int64 x) {
@@ -3105,6 +3113,9 @@ class RewriteOptions {
   // The initial image url to load in the lazyload images filter. If this is not
   // specified, we use a 1x1 inlined image.
   Option<GoogleString> lazyload_images_blank_url_;
+  // Whether inline preview should use a blank image instead of a low resolution
+  // version of the original image.
+  Option<bool> use_blank_image_for_inline_preview_;
   // By default, inline_images will inline only critical images. However, some
   // people may want to inline all images (both critical and non-critical). If
   // set to false, all images will be inlined within the html.
