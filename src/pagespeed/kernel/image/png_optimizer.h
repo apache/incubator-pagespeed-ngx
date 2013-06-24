@@ -41,7 +41,7 @@ namespace pagespeed {
 
 namespace image_compression {
 
-class PngInput;
+class ScanlineStreamInput;
 
 struct PngCompressParams {
   PngCompressParams(int level, int strategy);
@@ -318,7 +318,7 @@ class PngScanlineReaderRaw : public ScanlineReaderInterface {
   // png_input_ stores a pointer to the input image stream. It also keeps
   // tracking the length of data that libpng has read. It is initialized
   // in Initialize() and is updated in ReadNextScanline().
-  scoped_ptr<PngInput> png_input_;
+  scoped_ptr<ScanlineStreamInput> png_input_;
 
   DISALLOW_COPY_AND_ASSIGN(PngScanlineReaderRaw);
 };

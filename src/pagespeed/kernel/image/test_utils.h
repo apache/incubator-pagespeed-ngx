@@ -20,6 +20,7 @@
 #define PAGESPEED_KERNEL_IMAGE_TEST_UTILS_H_
 
 #include <cstddef>
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/read_image.h"
 
@@ -36,6 +37,98 @@ const char kPngSuiteTestDir[] = "pngsuite/";
 const char kPngTestDir[] = "png/";
 const char kWebpTestDir[] = "webp/";
 const char kResizedTestDir[] = "resized/";
+
+struct ImageCompressionInfo {
+ public:
+  ImageCompressionInfo(const char* a_filename,
+                       size_t a_original_size,
+                       size_t a_compressed_size_best,
+                       size_t a_compressed_size_default,
+                       int a_width,
+                       int a_height,
+                       int a_original_bit_depth,
+                       int a_original_color_type,
+                       int a_compressed_bit_depth,
+                       int a_compressed_color_type) :
+      filename(a_filename),
+      original_size(a_original_size),
+      compressed_size_best(a_compressed_size_best),
+      compressed_size_default(a_compressed_size_default),
+      width(a_width),
+      height(a_height),
+      original_bit_depth(a_original_bit_depth),
+      original_color_type(a_original_color_type),
+      compressed_bit_depth(a_compressed_bit_depth),
+      compressed_color_type(a_compressed_color_type) {
+    }
+
+ public:
+  const char* filename;
+  size_t original_size;
+  size_t compressed_size_best;
+  size_t compressed_size_default;
+  int width;
+  int height;
+  int original_bit_depth;
+  int original_color_type;
+  int compressed_bit_depth;
+  int compressed_color_type;
+};
+
+struct GoldImageCompressionInfo : public ImageCompressionInfo {
+ public:
+  GoldImageCompressionInfo(const char* a_filename,
+                           size_t a_original_size,
+                           size_t a_compressed_size_best,
+                           size_t a_compressed_size_default,
+                           int a_width,
+                           int a_height,
+                           int a_original_bit_depth,
+                           int a_original_color_type,
+                           int a_compressed_bit_depth,
+                           int a_compressed_color_type,
+                           bool a_transparency) :
+      ImageCompressionInfo(a_filename,
+                           a_original_size,
+                           a_compressed_size_best,
+                           a_compressed_size_default,
+                           a_width,
+                           a_height,
+                           a_original_bit_depth,
+                           a_original_color_type,
+                           a_compressed_bit_depth,
+                           a_compressed_color_type),
+      transparency(a_transparency) {
+  }
+
+ public:
+  bool transparency;
+};
+
+const GoldImageCompressionInfo kValidGifImages[] = {
+  { "basi0g01", 153, 166, 166, 32, 32, 8, 3, 1, 3, false },
+  { "basi0g02", 185, 112, 112, 32, 32, 8, 3, 2, 3, false },
+  { "basi0g04", 344, 144, 186, 32, 32, 8, 3, 4, 3, false },
+  { "basi0g08", 1736, 116, 714, 32, 32, 8, 3, 8, 0, false },
+  { "basi3p01", 138, 96, 96, 32, 32, 8, 3, 1, 3, false },
+  { "basi3p02", 186, 115, 115, 32, 32, 8, 3, 2, 3, false },
+  { "basi3p04", 344, 185, 185, 32, 32, 8, 3, 4, 3, false },
+  { "basi3p08", 1737, 1270, 1270, 32, 32, 8, 3, 8, 3, false },
+  { "basn0g01", 153, 166, 166, 32, 32, 8, 3, 1, 3, false },
+  { "basn0g02", 185, 112, 112, 32, 32, 8, 3, 2, 3, false },
+  { "basn0g04", 344, 144, 186, 32, 32, 8, 3, 4, 3, false },
+  { "basn0g08", 1736, 116, 714, 32, 32, 8, 3, 8, 0, false },
+  { "basn3p01", 138, 96, 96, 32, 32, 8, 3, 1, 3, false },
+  { "basn3p02", 186, 115, 115, 32, 32, 8, 3, 2, 3, false },
+  { "basn3p04", 344, 185, 185, 32, 32, 8, 3, 4, 3, false },
+  { "basn3p08", 1737, 1270, 1270, 32, 32, 8, 3, 8, 3, false },
+
+  // These files have been transformed by rounding the original png
+  // 8-bit alpha channel into a 1-bit alpha channel for gif.
+  { "tr-basi4a08", 467, 239, 316, 32, 32, 8, 3, 8, 3, true },
+  { "tr-basn4a08", 467, 239, 316, 32, 32, 8, 3, 8, 3, true },
+};
+const size_t kValidGifImageCount = arraysize(kValidGifImages);
 
 bool ReadFile(const GoogleString& file_name,
               GoogleString* content);

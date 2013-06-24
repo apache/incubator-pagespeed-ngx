@@ -16,6 +16,7 @@
 
 // Author: Bryan McQuade
 
+#include <stdbool.h>
 #include <cstdlib>
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -35,7 +36,10 @@ using pagespeed::image_compression::kGifTestDir;
 using pagespeed::image_compression::kPngSuiteTestDir;
 using pagespeed::image_compression::kPngSuiteGifTestDir;
 using pagespeed::image_compression::kPngTestDir;
+using pagespeed::image_compression::kValidGifImageCount;
+using pagespeed::image_compression::kValidGifImages;
 using pagespeed::image_compression::GifReader;
+using pagespeed::image_compression::ImageCompressionInfo;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PngCompressParams;
 using pagespeed::image_compression::PngOptimizer;
@@ -239,19 +243,6 @@ void AssertReadersMatch(ScanlineReaderInterface* reader1,
   ASSERT_FALSE(reader2->HasMoreScanLines());
 }
 
-struct ImageCompressionInfo {
-  const char* filename;
-  size_t original_size;
-  size_t compressed_size_best;
-  size_t compressed_size_default;
-  int width;
-  int height;
-  int original_bit_depth;
-  int original_color_type;
-  int compressed_bit_depth;
-  int compressed_color_type;
-};
-
 // These images were obtained from
 // http://www.libpng.org/pub/png/pngsuite.html
 ImageCompressionInfo kValidImages[] = {
@@ -410,30 +401,6 @@ ImageCompressionInfo kValidImages[] = {
   { "z09n2c08", 224, 224, 1956, 32, 32, 8, 2, 8, 2 },
 };
 
-ImageCompressionInfo kValidGifImages[] = {
-  { "basi0g01", 153, 166, 166, 32, 32, 8, 3, 1, 3 },
-  { "basi0g02", 185, 112, 112, 32, 32, 8, 3, 2, 3 },
-  { "basi0g04", 344, 144, 186, 32, 32, 8, 3, 4, 3 },
-  { "basi0g08", 1736, 116, 714, 32, 32, 8, 3, 8, 0 },
-  { "basi3p01", 138, 96, 96, 32, 32, 8, 3, 1, 3 },
-  { "basi3p02", 186, 115, 115, 32, 32, 8, 3, 2, 3 },
-  { "basi3p04", 344, 185, 185, 32, 32, 8, 3, 4, 3 },
-  { "basi3p08", 1737, 1270, 1270, 32, 32, 8, 3, 8, 3 },
-  { "basn0g01", 153, 166, 166, 32, 32, 8, 3, 1, 3 },
-  { "basn0g02", 185, 112, 112, 32, 32, 8, 3, 2, 3 },
-  { "basn0g04", 344, 144, 186, 32, 32, 8, 3, 4, 3 },
-  { "basn0g08", 1736, 116, 714, 32, 32, 8, 3, 8, 0 },
-  { "basn3p01", 138, 96, 96, 32, 32, 8, 3, 1, 3 },
-  { "basn3p02", 186, 115, 115, 32, 32, 8, 3, 2, 3 },
-  { "basn3p04", 344, 185, 185, 32, 32, 8, 3, 4, 3 },
-  { "basn3p08", 1737, 1270, 1270, 32, 32, 8, 3, 8, 3 },
-
-  // These files have been transformed by rounding the original png
-  // 8-bit alpha channel into a 1-bit alpha channel for gif.
-  { "tr-basi4a08", 467, 239, 316, 32, 32, 8, 3, 8, 3 },
-  { "tr-basn4a08", 467, 239, 316, 32, 32, 8, 3, 8, 3 },
-};
-
 const char* kInvalidFiles[] = {
   "emptyfile",
   "x00n0g01",
@@ -520,7 +487,6 @@ bool InitializeEntireReader(const GoogleString& image_string,
 }
 
 const size_t kValidImageCount = arraysize(kValidImages);
-const size_t kValidGifImageCount = arraysize(kValidGifImages);
 const size_t kInvalidFileCount = arraysize(kInvalidFiles);
 const size_t kOpaqueImagesWithAlphaCount = arraysize(kOpaqueImagesWithAlpha);
 

@@ -45,58 +45,6 @@ extern "C" {
 
 using pagespeed::image_compression::PngCompressParams;
 
-namespace pagespeed {
-
-namespace image_compression {
-
-// Define PngInput before its use in ReadPngFromStream().
-class PngInput {
- public:
-  PngInput()
-    : data_(NULL), length_(0), offset_(0) {
-  }
-
-  void Reset() {
-    data_ = NULL;
-    length_ = 0;
-    offset_ = 0;
-  }
-
-  void Initialize(const void* image_buffer, size_t buffer_length) {
-    data_ = static_cast<const char*>(image_buffer);
-    length_ = buffer_length;
-    offset_ = 0;
-  }
-
-  void Initialize(const GoogleString& image_string) {
-    data_ = static_cast<const char*>(image_string.data());
-    length_ = image_string.length();
-    offset_ = 0;
-  }
-
-  const char* data() {
-    return data_;
-  }
-  png_size_t length() {
-    return length_;
-  }
-  png_size_t offset() {
-    return offset_;
-  }
-  void set_offset(png_size_t val) {
-    offset_ = val;
-  }
-
- private:
-  const char* data_;
-  png_size_t length_;
-  png_size_t offset_;
-};
-
-}  // namespace image_compression
-
-}  // namespace pagespeed
-
 namespace {
 
 // we use these four combinations because different images seem to benefit from
@@ -114,8 +62,8 @@ const size_t kParamCount = arraysize(kPngCompressionParams);
 void ReadPngFromStream(png_structp read_ptr,
                        png_bytep data,
                        png_size_t length) {
-  pagespeed::image_compression::PngInput* input =
-    reinterpret_cast<pagespeed::image_compression::PngInput*>(
+  pagespeed::image_compression::ScanlineStreamInput* input =
+    reinterpret_cast<pagespeed::image_compression::ScanlineStreamInput*>(
       png_get_io_ptr(read_ptr));
 
   if (input->offset() + length <= input->length()) {
@@ -392,7 +340,7 @@ bool PngReader::ReadPng(const GoogleString& body,
                         png_infop info_ptr,
                         int transforms,
                         bool require_opaque) const {
-    PngInput input;
+    ScanlineStreamInput input;
     input.Initialize(body);
 
     if (setjmp(png_jmpbuf(png_ptr))) {
@@ -911,7 +859,7 @@ bool PngScanlineReaderRaw::Initialize(const void* image_buffer,
                                       size_t buffer_length) {
   // Allocate and initialize png_input_, if that has not been done.
   if (png_input_ == NULL) {
-    png_input_.reset(new PngInput());
+    png_input_.reset(new ScanlineStreamInput());
     if (png_input_ == NULL) {
       return false;
     }

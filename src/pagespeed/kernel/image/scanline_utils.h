@@ -19,7 +19,9 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_SCANLINE_UTILS_H_
 #define PAGESPEED_KERNEL_IMAGE_SCANLINE_UTILS_H_
 
-#include "base/basictypes.h"
+#include <cstddef>
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
 namespace pagespeed {
@@ -33,6 +35,62 @@ namespace image_compression {
 //   RGBA_8888: 4
 //
 size_t GetNumChannelsFromPixelFormat(PixelFormat format);
+
+// Palette for RGBA_8888.
+//
+struct PaletteRGBA {
+  uint8 red_;
+  uint8 green_;
+  uint8 blue_;
+  uint8 alpha_;
+};
+
+// ScanlineStreamInput stores the data stream that will be used by a scanline
+// reader. It also stores the position of the stream that the scanline reader
+// should start to read.
+//
+class ScanlineStreamInput {
+ public:
+  ScanlineStreamInput()
+    : data_(NULL), length_(0), offset_(0) {
+  }
+
+  void Reset() {
+    data_ = NULL;
+    length_ = 0;
+    offset_ = 0;
+  }
+
+  void Initialize(const void* image_buffer, size_t buffer_length) {
+    data_ = static_cast<const char*>(image_buffer);
+    length_ = buffer_length;
+    offset_ = 0;
+  }
+
+  void Initialize(const GoogleString& image_string) {
+    data_ = static_cast<const char*>(image_string.data());
+    length_ = image_string.length();
+    offset_ = 0;
+  }
+
+  const char* data() {
+    return data_;
+  }
+  size_t length() {
+    return length_;
+  }
+  size_t offset() {
+    return offset_;
+  }
+  void set_offset(size_t val) {
+    offset_ = val;
+  }
+
+ private:
+  const char* data_;
+  size_t length_;
+  size_t offset_;
+};
 
 }  // namespace image_compression
 

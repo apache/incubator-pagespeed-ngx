@@ -18,10 +18,12 @@
 
 #include "pagespeed/kernel/image/read_image.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include "base/logging.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
@@ -53,8 +55,15 @@ bool ReadImage(ImageFormat image_type,
       break;
 
     case IMAGE_GIF:
-      LOG(INFO) << "Gif image is not supported.";
-      return false;
+      {
+        scoped_ptr<GifScanlineReaderRaw> gif_reader(new GifScanlineReaderRaw());
+        if (gif_reader == NULL ||
+            !gif_reader->Initialize(image_buffer, buffer_length)) {
+          return false;
+        }
+        reader.reset(gif_reader.release());
+      }
+      break;
 
     case IMAGE_JPEG:
       {
@@ -79,7 +88,7 @@ bool ReadImage(ImageFormat image_type,
       break;
 
     default:
-      LOG(INFO) << "Invalid image type.";
+      LOG(DFATAL) << "Invalid image type.";
       return false;
   }
 
