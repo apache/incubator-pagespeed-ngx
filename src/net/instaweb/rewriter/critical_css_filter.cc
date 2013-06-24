@@ -460,27 +460,22 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
 }
 
 GoogleString CriticalCssFilter::DecodeUrl(const GoogleString& url) {
-  StringVector decoded_urls;
-  GoogleUrl gurl(url);
-  StringPiece decoded_url = url;
-  // Decode the url if it is pagespeed encoded.
-  if (driver_->DecodeUrl(gurl, &decoded_urls)) {
-    // PrioritizeCriticalCss is ahead of combine_css.
-    // So ideally, we should never have combined urls here.
-    DCHECK_EQ(decoded_urls.size(), 1U)
-        << "Found combined css url " << url
-        << " (rewriting " << driver_->url() << ")";
-    decoded_url.set(decoded_urls.at(0).c_str(), decoded_urls.at(0).size());
-  } else {
-    driver_->InfoHere("Critical CSS: Unable to decode URL: %s", url.data());
-  }
-
-  GoogleUrl link_url(driver_->base_url(), decoded_url);
-  if (!link_url.is_valid()) {
+  GoogleUrl gurl(driver_->base_url(), url);
+  if (!gurl.is_valid()) {
     return "";
   }
-
-  return link_url.Spec().as_string();
+  StringVector decoded_urls;
+  // Decode the url if it is pagespeed encoded.
+  if (driver_->DecodeUrl(gurl, &decoded_urls)) {
+    if (decoded_urls.size() == 1) {
+      return decoded_urls.at(0);
+    } else {
+      driver_->InfoHere("Critical CSS: Unable to process combined URL: %s",
+                        url.data());
+      return "";
+    }
+  }
+  return gurl.Spec().as_string();
 }
 
 const CriticalCssResult_LinkRules* CriticalCssFilter::GetLinkRules(

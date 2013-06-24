@@ -502,6 +502,9 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  <link rel='stylesheet' href='Hi there!' type='text/css'>"
       "  World!\n"
       "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
+      "  Hey!\n"
+      "  <link rel='stylesheet' href='"
+      "http://test.com/I.a.css+b.css.pagespeed.cc.0.css' type='text/css'>\n"
       "</body>\n";
 
   GoogleString expected_html = StrCat(
@@ -513,10 +516,15 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  <link rel='stylesheet' href='Hi there!' type='text/css'>"
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
+      "  Hey!\n"
+      "  <link rel='stylesheet' href='"
+      "http://test.com/I.a.css+b.css.pagespeed.cc.0.css' type='text/css'>\n"
       "</body>\n"
       "<noscript id=\"psa_add_styles\">"
       "<link rel='stylesheet' href='Hi there!' type='text/css'>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
+      "<link rel='stylesheet' href='"
+      "http://test.com/I.a.css+b.css.pagespeed.cc.0.css' type='text/css'>"
       "</noscript>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
@@ -526,7 +534,7 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  'total_original_external_size': 33,"
       "  'total_overhead_size': 21,"
       "  'num_replaced_links': 1,"
-      "  'num_unreplaced_links': 1"
+      "  'num_unreplaced_links': 2"
       "};"
       "</script>");
 
@@ -537,11 +545,10 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
   ExpApplicationVector exp_application_counts;
   exp_application_counts.push_back(
       make_pair(RewriterApplication::APPLIED_OK, 1));
-  // TODO(slamm): There is either a bug in this test case, or in the code,
-  // because it is not treating the url as invalid.
-  // PROPERTY_NOT_FOUND
   exp_application_counts.push_back(
       make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::INPUT_URL_INVALID, 1));
   ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
                           exp_application_counts);
 
