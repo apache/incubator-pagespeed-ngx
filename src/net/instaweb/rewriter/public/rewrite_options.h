@@ -310,6 +310,7 @@ class RewriteOptions {
 
     // Options that require special handling, e.g. non-scalar values
     kAllow,
+    kBlockingRewriteRefererUrls,
     kDisableFilters,
     kDisallow,
     kDistributableFilters,  // For experimentation, may be removed later.
@@ -1964,6 +1965,20 @@ class RewriteOptions {
     set_option(p.as_string(), &blocking_rewrite_key_);
   }
 
+  void EnableBlockingRewriteForRefererUrlPattern(
+      const StringPiece& url_pattern) {
+    Modify();
+    blocking_rewrite_referer_urls_.Allow(url_pattern);
+  }
+
+  bool IsBlockingRewriteEnabledForReferer(const StringPiece& url) const {
+    return blocking_rewrite_referer_urls_.Match(url, false);
+  }
+
+  bool IsBlockingRewriteRefererUrlPatternPresent() const {
+    return blocking_rewrite_referer_urls_.num_wildcards() > 0;
+  }
+
   bool rewrite_uncacheable_resources() const {
     return rewrite_uncacheable_resources_.value();
   }
@@ -3402,6 +3417,9 @@ class RewriteOptions {
   FastWildcardGroup allow_resources_;
   FastWildcardGroup retain_comments_;
   FastWildcardGroup lazyload_enabled_classes_;
+  // When certain url patterns are in the referer we want to do a blocking
+  // rewrite.
+  FastWildcardGroup blocking_rewrite_referer_urls_;
 
   // Using StringPiece here is safe since all entries in this map have static
   // strings as the key.

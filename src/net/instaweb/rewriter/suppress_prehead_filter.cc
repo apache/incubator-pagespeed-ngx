@@ -98,7 +98,7 @@ void SuppressPreheadFilter::StartElement(HtmlElement* element) {
   if (!seen_first_head_ && noscript_element_ == NULL) {
     if (element->keyword() == HtmlName::kHtml) {
       seen_start_html_ = true;
-    } else if (seen_start_html_ && element->keyword() == HtmlName::kHead) {
+    } else if (element->keyword() == HtmlName::kHead) {
       HtmlWriterFilter::StartElement(element);
       // If the element is Head, flush the node and set seen_first_head_.
       // If HtmlWriterFilter is holding off any bytes due to

@@ -117,6 +117,8 @@ enum VHostHandling {
 const char kModPagespeedIf[] = "<ModPagespeedIf";
 
 const char kModPagespeedAllow[] = "ModPagespeedAllow";
+const char kModPagespeedBlockingRewriteRefererUrls[] =
+    "ModPagespeedBlockingRewriteRefererUrls";
 const char kModPagespeedCreateSharedMemoryMetadataCache[] =
     "ModPagespeedCreateSharedMemoryMetadataCache";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
@@ -1845,6 +1847,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),
+  APACHE_CONFIG_OPTION(kModPagespeedBlockingRewriteRefererUrls,
+                       "wildcard_spec for referer urls which trigger blocking "
+                       "rewrites"),
 
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedCustomFetchHeader,

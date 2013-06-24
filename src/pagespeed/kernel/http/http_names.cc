@@ -67,6 +67,9 @@ const char HttpAttributes::kXGoogleRequestEventId[] =
 const char HttpAttributes::kXOriginalContentLength[] =
     "X-Original-Content-Length";
 const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
+const char HttpAttributes::kXPsaBlockingRewriteMode[] =
+    "X-PSA-Blocking-Rewrite-Mode";
+const char HttpAttributes::kXPsaBlockingRewriteModeSlow[] = "slow";
 // Warning: The header name is subject to change.
 const char HttpAttributes::kXPsaClientOptions[] = "X-PSA-Client-Options";
 const char HttpAttributes::kXPsaDistributedRewriteBlock[] =

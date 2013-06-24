@@ -72,6 +72,13 @@ struct HttpAttributes {
   // If this header's value matches the configured blocking rewrite key, then
   // all rewrites are completed before the response is sent to the client.
   static const char kXPsaBlockingRewrite[];
+  // This header determines how the blocking rewrite will behave; will it wait
+  // for async events or not.
+  static const char kXPsaBlockingRewriteMode[];
+  // Value of the kXPsaBlockingRewriteMode header which makes the blocking
+  // rewrite wait for async events.
+  // TODO(bharathbhushan): Does this belong somewhere else?
+  static const char kXPsaBlockingRewriteModeSlow[];
 
   // A request header for client to specify client options.
   static const char kXPsaClientOptions[];

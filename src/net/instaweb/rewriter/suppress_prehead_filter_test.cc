@@ -295,6 +295,32 @@ TEST_F(SuppressPreheadFilterTest, XmlTagsBeforeDocType) {
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
   EXPECT_EQ("</head><body></body></html>", output_);
+  EXPECT_EQ("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
+            "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\""
+            "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\">"
+            "<head profile=\"blah\">",
+            rewrite_driver()->flush_early_info()->pre_head());
+}
+
+TEST_F(SuppressPreheadFilterTest, NoStartHtml) {
+  InitResources();
+  const char html_input[] =
+      "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\""
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
+      "<head profile=\"blah\">"
+      "</head>"
+      "<body></body></html>";
+
+  // pre head is suppressed if the dummy head was flushed early.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ("</head><body></body></html>", output_);
+  EXPECT_EQ("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\""
+            "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">"
+            "<head profile=\"blah\">",
+            rewrite_driver()->flush_early_info()->pre_head());
 }
 
 TEST_F(SuppressPreheadFilterTest, NoHead) {

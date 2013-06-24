@@ -2313,6 +2313,10 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
       RetainComment(arg);
       break;
     }
+    case kBlockingRewriteRefererUrls: {
+      EnableBlockingRewriteForRefererUrlPattern(arg);
+      break;
+    }
     default:
       return RewriteOptions::kOptionNameUnknown;
   }
@@ -2724,6 +2728,8 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
   lazyload_enabled_classes_.AppendFrom(src.lazyload_enabled_classes_);
+  blocking_rewrite_referer_urls_.AppendFrom(
+      src.blocking_rewrite_referer_urls_);
   override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
 
   // Merge url_cache_invalidation_entries_ so that increasing order of timestamp
@@ -2906,6 +2912,8 @@ void RewriteOptions::ComputeSignature() {
   StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
   StrAppend(&signature_, "LDC:", lazyload_enabled_classes_.Signature(), "_");
+  StrAppend(&signature_, "BRRU:",
+            blocking_rewrite_referer_urls_.Signature(), "_");
   StrAppend(&signature_, "UCI:");
   for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
     const UrlCacheInvalidationEntry& entry =

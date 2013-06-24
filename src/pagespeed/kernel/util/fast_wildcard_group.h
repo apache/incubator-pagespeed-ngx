@@ -114,6 +114,9 @@ class FastWildcardGroup {
 
   GoogleString Signature() const;
 
+  // Return the number of configured wildcards.
+  int num_wildcards() const { return wildcards_.size(); }
+
  private:
   // Special values for rolling hash size.
   static const int32 kUncompiled = -1;

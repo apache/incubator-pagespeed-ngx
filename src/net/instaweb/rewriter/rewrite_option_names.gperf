@@ -155,6 +155,7 @@ struct OptionName {
 #
 # Options that require special handling, e.g. non-scalar values.
 "Allow",                                 RewriteOptions::kAllow
+"BlockingRewriteRefererUrls",            RewriteOptions::kBlockingRewriteRefererUrls
 "DisableFilters",                        RewriteOptions::kDisableFilters
 "Disallow",                              RewriteOptions::kDisallow
 "DistributableFilters",                  RewriteOptions::kDistributableFilters

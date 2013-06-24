@@ -233,6 +233,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       parsing_(false),
       waiting_(kNoWait),
       fully_rewrite_on_flush_(false),
+      fast_blocking_rewrite_(true),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       flush_occurred_(false),
@@ -419,6 +420,7 @@ void RewriteDriver::Clear() {
   detached_fetch_main_path_complete_ = false;
   client_id_.clear();
   fully_rewrite_on_flush_ = false;
+  fast_blocking_rewrite_ = true;
   num_inline_preview_images_ = 0;
   num_flushed_early_pagespeed_resources_ = 0;
   num_bytes_in_ = 0;
@@ -2467,6 +2469,7 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
     AppendBool(&out, "HaveBackgroundFetchRewrite()",
                HaveBackgroundFetchRewrite());
     AppendBool(&out, "fully_rewrite_on_flush", fully_rewrite_on_flush_);
+    AppendBool(&out, "fast_blocking_rewrite", fast_blocking_rewrite_);
     AppendBool(&out, "cleanup_on_fetch_complete", cleanup_on_fetch_complete_);
     AppendBool(&out, "flush_requested", flush_requested_);
     AppendBool(&out, "flush_occurred", flush_occurred_);
@@ -3010,6 +3013,27 @@ void RewriteDriver::EnableBlockingRewrite(RequestHeaders* request_headers) {
       // interpreting the value as a comma separated list of keys and avoid
       // removing this header unconditionally.
       request_headers->RemoveAll(HttpAttributes::kXPsaBlockingRewrite);
+    }
+  }
+  if (!fully_rewrite_on_flush() &&
+      options()->IsBlockingRewriteRefererUrlPatternPresent()) {
+    const char* referer = request_headers->Lookup1(
+        HttpAttributes::kReferer);
+    if (referer != NULL &&
+        options()->IsBlockingRewriteEnabledForReferer(referer)) {
+      set_fully_rewrite_on_flush(true);
+    }
+  }
+  if (fully_rewrite_on_flush()) {
+    const char* blocking_rewrite_mode(request_headers->Lookup1(
+        HttpAttributes::kXPsaBlockingRewriteMode));
+    if (blocking_rewrite_mode != NULL) {
+      StringPiece mode(HttpAttributes::kXPsaBlockingRewriteModeSlow);
+      if (blocking_rewrite_mode == mode) {
+        // Don't wait for async events.
+        set_fast_blocking_rewrite(false);
+      }
+      request_headers->RemoveAll(HttpAttributes::kXPsaBlockingRewriteMode);
     }
   }
 }

@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(185, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(186, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -1123,6 +1123,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("RetainComment",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRetainComment));
+  EXPECT_STREQ("BlockingRewriteRefererUrls",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kBlockingRewriteRefererUrls));
 
   // 2-arg options
   EXPECT_STREQ("CustomFetchHeader",
@@ -1395,6 +1398,15 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
   EXPECT_EQ(RewriteOptions::kOptionOk,
             options_.ParseAndSetOptionFromEnum1(
                 RewriteOptions::kRetainComment, "*port*", &msg, &handler));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kBlockingRewriteRefererUrls,
+                "http://www.test.com/*", &msg, &handler));
+  EXPECT_TRUE(options_.IsBlockingRewriteRefererUrlPatternPresent());
+  EXPECT_TRUE(options_.IsBlockingRewriteEnabledForReferer(
+      "http://www.test.com/"));
+  EXPECT_FALSE(options_.IsBlockingRewriteEnabledForReferer(
+      "http://www.testa.com/"));
   EXPECT_TRUE(options_.IsRetainedComment("important"));
   EXPECT_FALSE(options_.IsRetainedComment("silly"));
 }

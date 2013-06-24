@@ -151,6 +151,9 @@ class RewriteDriver : public HtmlParse {
   static const char kSubresourcesPropertyName[];
   // Status codes of previous responses.
   static const char kStatusCodePropertyName[];
+  // Value of the kXPsaBlockingRewriteMode header which causes the blocking
+  // rewrite to wait for async events.
+  static const char kXPsaBlockingRewriteModeSlow[];
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
@@ -665,6 +668,17 @@ class RewriteDriver : public HtmlParse {
     return fully_rewrite_on_flush_;
   }
 
+  // This is relevant only when fully_rewrite_on_flush is true.
+  // When this is set to true, Flush of HTML will not wait for async events
+  // while it does wait when it is set to false.
+  void set_fast_blocking_rewrite(bool x) {
+    fast_blocking_rewrite_ = x;
+  }
+
+  bool fast_blocking_rewrite() const {
+    return fast_blocking_rewrite_;
+  }
+
   // If the value of X-PSA-Blocking-Rewrite request header matches the blocking
   // rewrite key, set fully_rewrite_on_flush flag.
   void EnableBlockingRewrite(RequestHeaders* request_headers);
@@ -1050,9 +1064,10 @@ class RewriteDriver : public HtmlParse {
   bool IsDone(WaitMode wait_mode, bool deadline_reached);
 
   // Always wait for pending async events during shutdown or while waiting for
-  // the completion of all rewriting.
+  // the completion of all rewriting (except in fast_blocking_rewrite mode).
   bool WaitForPendingAsyncEvents(WaitMode wait_mode) {
-    return wait_mode == kWaitForShutDown || fully_rewrite_on_flush_;
+    return wait_mode == kWaitForShutDown ||
+        (fully_rewrite_on_flush_ && !fast_blocking_rewrite_);
   }
 
   // Portion of flush that happens asynchronously off the scheduler
@@ -1241,6 +1256,10 @@ class RewriteDriver : public HtmlParse {
   // use a deadline. This means rewriting of HTML may be slow, and hence
   // should not be used for online traffic.
   bool fully_rewrite_on_flush_;
+
+  // If this is true, we don't wait for async events before flushing bytes to
+  // the client during a blocking rewrite; else we do wait for async events.
+  bool fast_blocking_rewrite_;
 
   // If this is true, this RewriteDriver should Cleanup() itself when it
   // finishes handling the current fetch.

@@ -124,6 +124,49 @@ class RewriteDriverTest : public RewriteTestBase {
     ParseUrl(kTestDomain, input_html);
   }
 
+  void TestBlockingRewrite(RequestHeaders* request_headers,
+                           bool expected_blocking_rewrite,
+                           bool expected_fast_blocking_rewrite) {
+    rewrite_driver()->EnableBlockingRewrite(request_headers);
+    EXPECT_EQ(expected_blocking_rewrite,
+              rewrite_driver()->fully_rewrite_on_flush());
+    EXPECT_EQ(expected_fast_blocking_rewrite,
+              rewrite_driver()->fast_blocking_rewrite());
+    // Reset the flags to their default values after the test.
+    rewrite_driver()->set_fully_rewrite_on_flush(false);
+    rewrite_driver()->set_fast_blocking_rewrite(true);
+    EXPECT_FALSE(request_headers->Has(
+        HttpAttributes::kXPsaBlockingRewrite));
+    EXPECT_FALSE(request_headers->Has(
+        HttpAttributes::kXPsaBlockingRewriteMode));
+  }
+
+  void TestPendingEventsIsDone(bool wait_for_completion) {
+    EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
+    EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+
+    IncrementAsyncEventsCount();
+    EXPECT_FALSE(IsDone(RewriteDriver::kWaitForShutDown, false));
+    EXPECT_EQ(wait_for_completion,
+              IsDone(RewriteDriver::kWaitForCompletion, false));
+    DecrementAsyncEventsCount();
+
+    EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
+    EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  }
+
+  void TestPendingEventsDriverCleanup(bool blocking_rewrite,
+                                      bool fast_blocking_rewrite) {
+    RewriteDriver* other_driver =
+        server_context()->NewRewriteDriver(CreateRequestContext());
+    other_driver->set_fully_rewrite_on_flush(blocking_rewrite);
+    other_driver->set_fast_blocking_rewrite(fast_blocking_rewrite);
+    other_driver->increment_async_events_count();
+    other_driver->Cleanup();
+    other_driver->decrement_async_events_count();
+    EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
@@ -1544,49 +1587,82 @@ TEST_F(RewriteDriverTest, RenderDoneTest) {
             filter->src());
 }
 
+TEST_F(RewriteDriverTest, BlockingRewriteFlagTest) {
+  RequestHeaders request_headers;
+  RewriteDriver* driver = rewrite_driver();
+  options()->ClearSignatureForTesting();
+  options()->set_blocking_rewrite_key("blocking");
+  options()->ComputeSignature();
+
+  // case 1.
+  TestBlockingRewrite(&request_headers, false, true);
+
+  // case 2.
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewrite, "not-blocking");
+  TestBlockingRewrite(&request_headers, false, true);
+
+  // case 3.
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewrite, "blocking");
+  TestBlockingRewrite(&request_headers, true, true);
+
+  // case 4.
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewrite, "blocking");
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewriteMode, "junk");
+  TestBlockingRewrite(&request_headers, true, true);
+
+  // case 5.
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewrite, "blocking");
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewriteMode, "slow");
+  TestBlockingRewrite(&request_headers, true, false);
+
+  options()->ClearSignatureForTesting();
+  options()->EnableBlockingRewriteForRefererUrlPattern("http://example.com");
+  options()->ComputeSignature();
+
+  // case 6.
+  request_headers.Add(HttpAttributes::kReferer, "http://junk.com/");
+  driver->EnableBlockingRewrite(&request_headers);
+  TestBlockingRewrite(&request_headers, false, true);
+
+  // case 7.
+  request_headers.RemoveAll(HttpAttributes::kReferer);
+  request_headers.Add(HttpAttributes::kReferer, "http://example.com");
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewriteMode, "junk");
+  TestBlockingRewrite(&request_headers, true, true);
+
+  // case 8.
+  request_headers.RemoveAll(HttpAttributes::kReferer);
+  request_headers.Add(HttpAttributes::kReferer, "http://example.com");
+  request_headers.Add(HttpAttributes::kXPsaBlockingRewriteMode, "slow");
+  TestBlockingRewrite(&request_headers, true, false);
+}
+
 TEST_F(RewriteDriverTest, PendingAsyncEventsTest) {
   RewriteDriver* driver = rewrite_driver();
+
   driver->set_fully_rewrite_on_flush(true);
+  driver->set_fast_blocking_rewrite(true);
+  TestPendingEventsIsDone(true);
 
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
-
-  IncrementAsyncEventsCount();
-  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForShutDown, false));
-  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForCompletion, false));
-  DecrementAsyncEventsCount();
-
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  // Only when we are doing a slow blocking rewrite (waiting for async events),
+  // IsDone() returns false for kWaitForCompletion.
+  driver->set_fully_rewrite_on_flush(true);
+  driver->set_fast_blocking_rewrite(false);
+  TestPendingEventsIsDone(false);
 
   driver->set_fully_rewrite_on_flush(false);
+  driver->set_fast_blocking_rewrite(true);
+  TestPendingEventsIsDone(true);
 
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
-
-  IncrementAsyncEventsCount();
-  EXPECT_FALSE(IsDone(RewriteDriver::kWaitForShutDown, false));
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
-  DecrementAsyncEventsCount();
-
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForShutDown, false));
-  EXPECT_TRUE(IsDone(RewriteDriver::kWaitForCompletion, false));
+  driver->set_fully_rewrite_on_flush(false);
+  driver->set_fast_blocking_rewrite(false);
+  TestPendingEventsIsDone(true);
 
   // Make sure we properly cleanup as well.
-  RewriteDriver* other_driver =
-    server_context()->NewRewriteDriver(CreateRequestContext());
-  other_driver->increment_async_events_count();
-  other_driver->Cleanup();
-  other_driver->decrement_async_events_count();
-  EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
-
-  RewriteDriver* other_driver2 =
-    server_context()->NewRewriteDriver(CreateRequestContext());
-  other_driver2->set_fully_rewrite_on_flush(true);
-  other_driver2->increment_async_events_count();
-  other_driver2->Cleanup();
-  other_driver2->decrement_async_events_count();
-  EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
+  TestPendingEventsDriverCleanup(false, false);
+  TestPendingEventsDriverCleanup(false, true);
+  TestPendingEventsDriverCleanup(true, false);
+  TestPendingEventsDriverCleanup(true, true);
 }
 
 // Test classes created for using a managed rewrite driver, so that downstream
