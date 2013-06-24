@@ -125,16 +125,11 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void SharedCircularBufferInit(bool is_root);
   // Build global shared-memory statistics.  This is invoked if at least
   // one server context (global or VirtualHost) enables statistics.
-  Statistics* MakeGlobalSharedMemStatistics(bool logging,
-                                            int64 logging_interval_ms,
-                                            const int64 max_logfile_size_kb,
-                                            const GoogleString& logging_file);
+  Statistics* MakeGlobalSharedMemStatistics(const NgxRewriteOptions& options);
 
   // Creates and ::Initializes a shared memory statistics object.
   SharedMemStatistics* AllocateAndInitSharedMemStatistics(
-      const StringPiece& name, const bool logging,
-      const int64 logging_interval_ms, const int64 max_logfile_size_kb,
-      const GoogleString& logging_file);
+      const StringPiece& name, const NgxRewriteOptions& options);
 
   NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; }
   void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }

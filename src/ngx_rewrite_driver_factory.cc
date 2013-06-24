@@ -340,13 +340,10 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
 // help with the settings if needed.
 // Note: does not call set_statistics() on the factory.
 Statistics* NgxRewriteDriverFactory::MakeGlobalSharedMemStatistics(
-    bool logging, int64 logging_interval_ms,
-    const int64 max_logfile_size_kb,
-    const GoogleString& logging_file_base) {
+    const NgxRewriteOptions& options) {
   if (shared_mem_statistics_.get() == NULL) {
     shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
-        "global", max_logfile_size_kb, logging, logging_interval_ms,
-        logging_file_base));
+        "global", options));
   }
   DCHECK(!statistics_frozen_);
   statistics_frozen_ = true;
@@ -356,16 +353,22 @@ Statistics* NgxRewriteDriverFactory::MakeGlobalSharedMemStatistics(
 
 SharedMemStatistics* NgxRewriteDriverFactory::
 AllocateAndInitSharedMemStatistics(
-    const StringPiece& name, const bool logging,
-    const int64 logging_interval_ms,
-    const int64 max_logfile_size_kb,
-    const GoogleString& logging_file_base) {
+    const StringPiece& name,
+    const NgxRewriteOptions& options) {
+  GoogleString log_filename;
+  bool logging_enabled = false;
+  if (!options.log_dir().empty()) {
+    // Only enable statistics logging if a log_dir() is actually specified.
+    log_filename = StrCat(options.log_dir(), "/stats_log_", name);
+    logging_enabled = options.statistics_logging_enabled();
+  }
   // Note that we create the statistics object in the parent process, and
   // it stays around in the kids but gets reinitialized for them
   // inside ChildInit(), called from pagespeed_child_init.
   SharedMemStatistics* stats = new SharedMemStatistics(
-      logging_interval_ms, max_logfile_size_kb,
-      StrCat(logging_file_base, name), logging,
+      options.statistics_logging_interval_ms(),
+      options.statistics_logging_max_file_size_kb(),
+      log_filename, logging_enabled,
       StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
       file_system(), timer());
   InitStats(stats);
