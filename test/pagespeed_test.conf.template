@@ -69,40 +69,59 @@ http {
 
     pagespeed off;
 
+    # By default, the UserAgent-dependent-Pagespeed-capability-list prefix
+    # for the proxy_cache_key is set to "" and the associated PS-CapabilityList
+    # header that is sent to the upstream pagespeed server is set to
+    # "NoCapabilitiesSpecified". Requests are set to bypass the cache by default
+    # unless they match one of the 5 "Cache-fragment blocks" specified below.
     set $ua_dependent_ps_capability_list "";
+    set $ps_capability_list_header_value "NoCapabilitiesSpecified";
     set $bypass_cache 1;
+    # Cache-fragment 1: User Agents that support lazyload-images (ll),
+    # inline-images (ii) and defer-javascript (dj). Note that the logic
+    # in cache fragments 4 and 5 below ensure that this block ends up
+    # mapping to only desktop UAs that support ll, ii and dj.
     if ($http_user_agent ~* "Chrome/|Firefox/|MSIE |Safari|Wget") {
-      # User Agents that support lazyload-images (ll), inline-images (ii) and
-      # defer-javascript (dj).
       set $ua_dependent_ps_capability_list "ll,ii,dj:";
+      set $ps_capability_list_header_value "ll,ii,dj";
       set $bypass_cache 0;
     }
+    # Cache-fragment 2: User Agents that support lazyload-images (ll),
+    # inline-images (ii), defer-javascript (dj), webp (jw) and webp-lossless
+    # (ws). Note that the logic in cache fragments 4 and 5 below ensure that
+    # this block ends up mapping to only desktop UAs that support ll, ii, dj,
+    # jw and ws.
     if ($http_user_agent ~*
         "Chrome/[2][3-9]+\.|Chrome/[[3-9][0-9]+\.|Chrome/[0-9]{3,}\.") {
-      # User Agents that support lazyload-images (ll), inline-images (ii),
-      # defer-javascript (dj), webp (jw) and webp-lossless (ws).
       set $ua_dependent_ps_capability_list "ll,ii,dj,jw,ws:";
+      set $ps_capability_list_header_value "ll,ii,dj,jw,ws";
       set $bypass_cache 0;
     }
-
-    # All User Agents that represent
-    # 1) mobiles
-    # 2) tablets
-    # 3) desktop browsers that do not have defer-javascript capability at a minimum
-    # are made to go to the pagespeed server directly bypassing the proxy_cache.
+    # Cache-fragment 3: User Agents that do not have defer-javascript capability
+    # at a minimum use the "NoUADependentCapabilitiesAllowed" header value to
+    # get all of the non-UA-dependent optimizations applied to them. Note that
+    # the logic in cache fragments 4 and 5 below ensure that this blocks ends
+    # up mapping only desktop UAs.
     if ($http_user_agent ~* "Firefox/[1-2]\.|MSIE [5-8]\.") {
       set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
+      set $ps_capability_list_header_value "NoUADependentCapabilitiesAllowed";
+      set $bypass_cache 0;
     }
-    if ($http_user_agent ~* "Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo") {
-      # These are Mobile User Agents. We don't cache responses for these.
-      set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
-    }
+    # Cache-fragment 4: User Agents that map to tablets use the
+    # "NoUADependentCapabilitiesAllowed" header value to get all of the
+    # non-UA-dependent optimizations applied to them.
     if ($http_user_agent ~* "Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
-      # These are Tablet User Agents. We don't cache responses for these.
-      set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
+      set $ua_dependent_ps_capability_list "tablet.";
+      set $ps_capability_list_header_value "NoUADependentCapabilitiesAllowed";
+      set $bypass_cache 0;
+    }
+    # Cache-fragment 4: User Agents that map to mobiles use the
+    # "NoUADependentCapabilitiesAllowed" header value to get all of the
+    # non-UA-dependent optimizations applied to them.
+    if ($http_user_agent ~* "Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo") {
+      set $ua_dependent_ps_capability_list "mobile.";
+      set $ps_capability_list_header_value "NoUADependentCapabilitiesAllowed";
+      set $bypass_cache 0;
     }
     
     location ~ /purge(/.*) {
@@ -117,6 +136,7 @@ http {
       proxy_ignore_headers Cache-Control;
       add_header X-Cache $upstream_cache_status;
       proxy_cache_key $ua_dependent_ps_capability_list$uri$is_args$args;
+      proxy_set_header PS-CapabilityList $ps_capability_list_header_value;
       proxy_cache_bypass $bypass_cache;
     }
   }
