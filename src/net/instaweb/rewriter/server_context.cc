@@ -855,7 +855,11 @@ ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
 }
 
 void ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
-                                         GoogleUrl* url) const {
+                                         const RewriteOptions* options,
+                                         GoogleUrl* url) {
+  if (options == NULL || !options->Enabled(RewriteOptions::kSplitHtml)) {
+    return;
+  }
   QueryParams query_params;
   query_params.Parse(url->Query());
 

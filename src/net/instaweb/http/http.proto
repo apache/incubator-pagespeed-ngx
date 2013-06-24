@@ -60,6 +60,7 @@ message HttpRequestHeaders {
     CONNECT = 8;
     INVALID = 9;  // Originally ERROR, but that is a macro in C++.
     PATCH = 10;
+    PURGE = 11;
   };
 
   // Note: the URL is not part of this protobuf, as it's typically kept

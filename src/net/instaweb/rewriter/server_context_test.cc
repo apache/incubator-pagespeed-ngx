@@ -652,26 +652,46 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
             output->url());
 }
 
-TEST_F(ServerContextTest, ScanSplitHtmlRequest) {
+TEST_F(ServerContextTest, ScanSplitHtmlRequestSplitEnabled) {
+  options()->EnableFilter(RewriteOptions::kSplitHtml);
   RequestContextPtr ctx(CreateRequestContext());
   GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
   EXPECT_FALSE(ctx->is_split_btf_request());
-  server_context()->ScanSplitHtmlRequest(ctx, &gurl);
+  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
   EXPECT_TRUE(ctx->is_split_btf_request());
   EXPECT_EQ("http://test.com/", gurl.Spec());
 
   gurl.Reset("http://test.com/?a=b&X-PSA-Split-Btf=2");
   ctx.reset(CreateRequestContext());
   EXPECT_FALSE(ctx->is_split_btf_request());
-  server_context()->ScanSplitHtmlRequest(ctx, &gurl);
+  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
   EXPECT_TRUE(ctx->is_split_btf_request());
   EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
 
   ctx.reset(CreateRequestContext());
   EXPECT_FALSE(ctx->is_split_btf_request());
-  server_context()->ScanSplitHtmlRequest(ctx, &gurl);
+  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
   EXPECT_FALSE(ctx->is_split_btf_request());
   EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+}
+
+TEST_F(ServerContextTest, ScanSplitHtmlRequestOptionsNull) {
+  RequestContextPtr ctx(CreateRequestContext());
+  GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  server_context()->ScanSplitHtmlRequest(ctx, NULL, &gurl);
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  EXPECT_EQ("http://test.com/?X-PSA-Split-Btf=1", gurl.Spec());
+}
+
+TEST_F(ServerContextTest, ScanSplitHtmlRequestSplitDisabled) {
+  options()->DisableFilter(RewriteOptions::kSplitHtml);
+  RequestContextPtr ctx(CreateRequestContext());
+  GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_FALSE(ctx->is_split_btf_request());
+  EXPECT_EQ("http://test.com/?X-PSA-Split-Btf=1", gurl.Spec());
 }
 
 class MockRewriteFilter : public RewriteFilter {

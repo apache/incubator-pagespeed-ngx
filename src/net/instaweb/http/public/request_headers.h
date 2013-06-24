@@ -32,7 +32,7 @@ class Writer;
 class RequestHeaders : public Headers<HttpRequestHeaders> {
  public:
   enum Method { kOptions, kGet, kHead, kPost, kPut, kDelete, kTrace, kConnect,
-                kPatch, kError };
+                kPatch, kPurge, kError };
 
   RequestHeaders();
 

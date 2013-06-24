@@ -481,6 +481,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
     ServerContext::OptionsBoolPair query_options_success =
         server_context->GetQueryOptions(&gurl, request_headers.get(),
                                         &response_headers);
+    ServerContext::ScanSplitHtmlRequest(request_context, options, &gurl);
+
     if (!query_options_success.second) {
       ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
                     "Request not rewritten because PageSpeed "

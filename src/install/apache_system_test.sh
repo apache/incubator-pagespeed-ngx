@@ -116,12 +116,12 @@ if ${FIRST_RUN:-false}; then
 
   # Number of downstream cache purges should be 0 here.
   CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-  check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*0"
+  check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*0"
 
   start_test Check for case where rewritten cache should get purged.
   OUT=$($WGET_DUMP $CACHABLE_HTML_LOC)
   check_not_from "$OUT" egrep -q "pagespeed.ic"
-  fetch_until $STATS_URL 'grep -c downstream_cache_purges:\s*1' 1
+  fetch_until $STATS_URL 'grep -c downstream_cache_purge_attempts:\s*1' 1
 
   start_test Check for case where rewritten cache should not get purged.
   WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
@@ -130,7 +130,7 @@ if ${FIRST_RUN:-false}; then
 
   # Number of downstream cache purges should still be 1.
   CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-  check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*1"
+  check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*1"
 fi
 
 start_test Check for correct default X-Mod-Pagespeed header format.

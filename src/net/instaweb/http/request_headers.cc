@@ -69,6 +69,7 @@ void RequestHeaders::set_method(Method method) {
     case kTrace:       proto_->set_method(HttpRequestHeaders::TRACE);   break;
     case kConnect:     proto_->set_method(HttpRequestHeaders::CONNECT); break;
     case kPatch:       proto_->set_method(HttpRequestHeaders::PATCH);   break;
+    case kPurge:       proto_->set_method(HttpRequestHeaders::PURGE);   break;
     case kError:       proto_->set_method(HttpRequestHeaders::INVALID); break;
   }
 }
@@ -84,6 +85,7 @@ RequestHeaders::Method RequestHeaders::method() const {
     case HttpRequestHeaders::TRACE:       return kTrace;
     case HttpRequestHeaders::CONNECT:     return kConnect;
     case HttpRequestHeaders::PATCH:       return kPatch;
+    case HttpRequestHeaders::PURGE:       return kPurge;
     case HttpRequestHeaders::INVALID:     return kError;
   }
   DLOG(FATAL) << "Invalid method";
@@ -101,6 +103,7 @@ const char* RequestHeaders::method_string() const {
     case HttpRequestHeaders::TRACE:       return "TRACE";
     case HttpRequestHeaders::CONNECT:     return "CONNECT";
     case HttpRequestHeaders::PATCH:       return "PATCH";
+    case HttpRequestHeaders::PURGE:       return "PURGE";
     case HttpRequestHeaders::INVALID:     return "ERROR";
   }
   DLOG(FATAL) << "Invalid method";

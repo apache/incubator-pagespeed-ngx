@@ -400,6 +400,22 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_LT(7500, bytes_count);
 }
 
+// Tests that when the fetcher requests using a different request method,
+// PURGE in this case, it gets the expected response.
+TEST_F(SerfUrlAsyncFetcherTest, FetchUsingDifferentRequestMethod) {
+  request_headers(kModpagespeedSite)->set_method(RequestHeaders::kPurge);
+  StartFetches(kModpagespeedSite, kModpagespeedSite);
+  ASSERT_EQ(1, WaitTillDone(kModpagespeedSite, kModpagespeedSite, kMaxMs));
+  ASSERT_TRUE(fetches_[kModpagespeedSite]->IsDone());
+  EXPECT_LT(static_cast<size_t>(0), contents(kModpagespeedSite).size());
+  EXPECT_EQ(501,  // PURGE method not implemented in test apache servers.
+            response_headers(kModpagespeedSite)->status_code());
+  EXPECT_TRUE(
+      contents(kModpagespeedSite).find(
+          "PURGE to /mod_pagespeed_example/index.html not supported.") !=
+      GoogleString::npos);
+}
+
 // Tests that when the fetcher requests gzipped data it gets it.  Note
 // that the callback is delivered content that must be explicitly unzipped.
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {

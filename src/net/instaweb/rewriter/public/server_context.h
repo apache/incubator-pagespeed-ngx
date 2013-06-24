@@ -342,7 +342,9 @@ class ServerContext {
   // Checks the url for the split html BTF query param. If present, it strips
   // the param from the url, and sets a bit in the request context indicating
   // the request is for the split BTF chunk.
-  void ScanSplitHtmlRequest(const RequestContextPtr& ctx, GoogleUrl* url) const;
+  static void ScanSplitHtmlRequest(const RequestContextPtr& ctx,
+                                   const RewriteOptions* options,
+                                   GoogleUrl* url);
 
   // Returns any custom options required for this request, incorporating
   // any domain-specific options from the UrlNamer, options set in query-params,

@@ -192,8 +192,6 @@ void ProxyInterface::Fetch(const GoogleString& requested_url_string,
     async_fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     async_fetch->Done(false);
   } else {
-    server_context_->ScanSplitHtmlRequest(async_fetch->request_context(),
-                                          &requested_url);
     // Try to handle this as a .pagespeed. resource.
     if (is_get_or_head && server_context_->IsPagespeedResource(requested_url)) {
       pagespeed_requests_->IncBy(1);
@@ -276,8 +274,8 @@ void ProxyInterface::ProxyRequestCallback(
   RewriteOptions* options = server_context_->GetCustomOptions(
       async_fetch->request_headers(), domain_options, query_options);
   GoogleString url_string;
-  RequestHeaders* request_headers = async_fetch->request_headers();
   request_url->Spec().CopyToString(&url_string);
+  RequestHeaders* request_headers = async_fetch->request_headers();
   if (options != NULL &&
       options->IsRequestDeclined(url_string, request_headers)) {
     rejected_requests_->IncBy(1);
@@ -292,6 +290,9 @@ void ProxyInterface::ProxyRequestCallback(
     delete options;
     return;
   }
+  ServerContext::ScanSplitHtmlRequest(
+      async_fetch->request_context(), options, request_url.get());
+  request_url->Spec().CopyToString(&url_string);
 
   if (options != NULL && options->rewrite_request_urls_early()) {
     const UrlNamer* url_namer = server_context_->url_namer();

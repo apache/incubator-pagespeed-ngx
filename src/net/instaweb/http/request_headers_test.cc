@@ -48,6 +48,7 @@ TEST_F(RequestHeadersTest, TestMethods) {
   EXPECT_EQ(RequestHeaders::kDelete, CheckMethod(RequestHeaders::kDelete));
   EXPECT_EQ(RequestHeaders::kTrace, CheckMethod(RequestHeaders::kTrace));
   EXPECT_EQ(RequestHeaders::kConnect, CheckMethod(RequestHeaders::kConnect));
+  EXPECT_EQ(RequestHeaders::kPurge, CheckMethod(RequestHeaders::kPurge));
 }
 
 TEST_F(RequestHeadersTest, TestMethodStrings) {
@@ -59,6 +60,7 @@ TEST_F(RequestHeadersTest, TestMethodStrings) {
   EXPECT_STREQ("DELETE", CheckMethodString(RequestHeaders::kDelete));
   EXPECT_STREQ("TRACE", CheckMethodString(RequestHeaders::kTrace));
   EXPECT_STREQ("CONNECT", CheckMethodString(RequestHeaders::kConnect));
+  EXPECT_STREQ("PURGE", CheckMethodString(RequestHeaders::kPurge));
 }
 
 TEST_F(RequestHeadersTest, RemoveAllWithPrefix) {

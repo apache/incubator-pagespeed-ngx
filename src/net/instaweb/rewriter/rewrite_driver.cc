@@ -159,7 +159,6 @@ namespace {
 
 const int kTestTimeoutMs = 10000;
 
-const char kDownstreamCachePurges[] = "downstream_cache_purges";
 
 // Implementation of RemoveCommentsFilter::OptionsInterface that wraps
 // a RewriteOptions instance.
@@ -800,7 +799,6 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   MetaTagFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
-  statistics->AddVariable(kDownstreamCachePurges);
 }
 
 void RewriteDriver::Terminate() {
@@ -1707,6 +1705,10 @@ class StringAsyncFetchWithAsyncCountUpdates : public StringAsyncFetch {
   virtual ~StringAsyncFetchWithAsyncCountUpdates() { }
 
   virtual void HandleDone(bool success) {
+    if (response_headers()->status_code() == HttpStatus::kOK) {
+      driver_->server_context()->rewrite_stats()->
+          successful_downstream_cache_purges()->Add(1);
+    }
     StringAsyncFetch::HandleDone(success);
     driver_->decrement_async_events_count();
     delete this;
@@ -2249,6 +2251,9 @@ void RewriteDriver::PurgeDownstreamCache(const GoogleString& purge_url,
   // get us into a loop.
   dummy_fetch->request_headers()->CopyFrom(*request_headers());
   dummy_fetch->request_headers()->Add(kPsaPurgeRequest, "1");
+  if (purge_method == "PURGE") {
+    dummy_fetch->request_headers()->set_method(RequestHeaders::kPurge);
+  }
   made_downstream_purge_attempt_ = true;
 
   message_handler()->Message(kInfo, "Purge url is %s", purge_url.c_str());
@@ -2277,7 +2282,7 @@ void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
     // use the same request headers as the request (and hence the same
     // UserAgent etc.).
     PurgeDownstreamCache(purge_url, purge_method);
-    server_context_->statistics()->GetVariable(kDownstreamCachePurges)->Add(1);
+    server_context_->rewrite_stats()->downstream_cache_purge_attempts()->Add(1);
   } else {
     server_context_->ReleaseRewriteDriver(this);
   }

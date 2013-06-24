@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -1644,6 +1645,8 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheEnabled) {
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://test.com/abcdefg/",
                counting_url_async_fetcher()->most_recent_fetched_url());
+  EXPECT_EQ(1, factory()->rewrite_stats()->
+                   downstream_cache_purge_attempts()->Get());
 }
 
 TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheDisabled) {
@@ -1673,6 +1676,8 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheDisabled) {
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://test.com/test/b.css",
                counting_url_async_fetcher()->most_recent_fetched_url());
+  EXPECT_EQ(0, factory()->rewrite_stats()->
+                   downstream_cache_purge_attempts()->Get());
 }
 
 TEST_F(DownstreamCacheWithPossiblePurgeTest,
@@ -1694,6 +1699,8 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest,
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://test.com/test/b.css",
                counting_url_async_fetcher()->most_recent_fetched_url());
+  EXPECT_EQ(0, factory()->rewrite_stats()->
+                   downstream_cache_purge_attempts()->Get());
 }
 
 TEST_F(DownstreamCacheWithPossiblePurgeTest,
@@ -1726,6 +1733,8 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest,
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://test.com/",
                counting_url_async_fetcher()->most_recent_fetched_url());
+  EXPECT_EQ(1, factory()->rewrite_stats()->
+                   downstream_cache_purge_attempts()->Get());
 }
 
 TEST_F(DownstreamCacheWithNoPossiblePurgeTest, DownstreamCacheNoInitRewrites) {
@@ -1746,6 +1755,8 @@ TEST_F(DownstreamCacheWithNoPossiblePurgeTest, DownstreamCacheNoInitRewrites) {
   // is processed fully, and available for the checks below.
   factory()->ShutDown();
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, factory()->rewrite_stats()->
+                   downstream_cache_purge_attempts()->Get());
 }
 
 }  // namespace

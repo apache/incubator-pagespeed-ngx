@@ -44,6 +44,12 @@ class RewriteStats {
   static const char kResourceUrlDomainAcceptances[];
   static const char kResourceUrlDomainRejections[];
 
+  // Variable tracking number of downstream cache purges issued.
+  static const char kDownstreamCachePurgeAttempts[];
+  // Variable tracking number of downstream cache purges that were
+  // successful (200s).
+  static const char kSuccessfulDownstreamCachePurges[];
+
   RewriteStats(Statistics* stats, ThreadSystem* thread_system, Timer* timer);
   ~RewriteStats();
 
@@ -98,6 +104,13 @@ class RewriteStats {
   Variable* ipro_not_in_cache() { return ipro_not_in_cache_; }
   Variable* ipro_not_rewritable() { return ipro_not_rewritable_; }
 
+  Variable* downstream_cache_purge_attempts() {
+    return downstream_cache_purge_attempts_;
+  }
+  Variable* successful_downstream_cache_purges() {
+    return successful_downstream_cache_purges_;
+  }
+
   Histogram* beacon_timings_ms_histogram() {
     return beacon_timings_ms_histogram_;
   }
@@ -142,6 +155,8 @@ class RewriteStats {
   Variable* ipro_served_;
   Variable* ipro_not_in_cache_;
   Variable* ipro_not_rewritable_;
+  Variable* downstream_cache_purge_attempts_;
+  Variable* successful_downstream_cache_purges_;
 
   Histogram* beacon_timings_ms_histogram_;
   Histogram* fetch_latency_histogram_;

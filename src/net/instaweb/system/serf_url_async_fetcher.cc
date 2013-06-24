@@ -64,7 +64,6 @@ enum HttpsOptions {
   kAllowCertificateNotYetValid          = 1 << 3,
 };
 
-const char kFetchMethod[] = "GET";
 }  // namespace
 
 extern "C" {
@@ -652,7 +651,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     fetch->FixUserAgent();
 
     *req_bkt = serf_request_bucket_request_create_for_host(
-        request, kFetchMethod,
+        request, request_headers->method_string(),
         url_path, NULL,
         serf_request_get_alloc(request), host);
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);

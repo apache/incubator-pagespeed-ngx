@@ -98,6 +98,11 @@ const char RewriteStats::kResourceUrlDomainAcceptances[] =
 const char RewriteStats::kResourceUrlDomainRejections[] =
     "resource_url_domain_rejections";
 
+const char RewriteStats::kDownstreamCachePurgeAttempts[] =
+    "downstream_cache_purge_attempts";
+const char RewriteStats::kSuccessfulDownstreamCachePurges[] =
+    "successful_downstream_cache_purges";
+
 // In Apache, this is called in the root process to establish shared memory
 // boundaries prior to the primary initialization of RewriteDriverFactories.
 //
@@ -130,6 +135,8 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddVariable(kIproServed);
   statistics->AddVariable(kIproNotInCache);
   statistics->AddVariable(kIproNotRewritable);
+  statistics->AddVariable(kDownstreamCachePurgeAttempts);
+  statistics->AddVariable(kSuccessfulDownstreamCachePurges);
   statistics->AddTimedVariable(kTotalFetchCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
@@ -195,6 +202,10 @@ RewriteStats::RewriteStats(Statistics* stats,
       ipro_served_(stats->GetVariable(kIproServed)),
       ipro_not_in_cache_(stats->GetVariable(kIproNotInCache)),
       ipro_not_rewritable_(stats->GetVariable(kIproNotRewritable)),
+      downstream_cache_purge_attempts_(
+          stats->GetVariable(kDownstreamCachePurgeAttempts)),
+      successful_downstream_cache_purges_(
+          stats->GetVariable(kSuccessfulDownstreamCachePurges)),
       beacon_timings_ms_histogram_(
           stats->GetHistogram(kBeaconTimingsMsHistogram)),
       fetch_latency_histogram_(
