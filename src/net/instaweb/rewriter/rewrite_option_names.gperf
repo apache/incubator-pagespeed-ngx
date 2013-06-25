@@ -54,7 +54,6 @@ struct OptionName {
 "DomainShardCount",                      RewriteOptions::kDomainShardCount
 "DownstreamCacheLifetimeMs",             RewriteOptions::kDownstreamCacheLifetimeMs
 "DownstreamCachePurgeMethod",            RewriteOptions::kDownstreamCachePurgeMethod
-"DownstreamCachePurgePathPrefix",        RewriteOptions::kDownstreamCachePurgePathPrefix
 "DownstreamCacheRewrittenPercentageThreshold", RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold
 "EnableAggressiveRewritersForMobile",    RewriteOptions::kEnableAggressiveRewritersForMobile
 "EnableBlinkHtmlChangeDetection",        RewriteOptions::kEnableBlinkHtmlChangeDetection
@@ -162,6 +161,7 @@ struct OptionName {
 "Disallow",                              RewriteOptions::kDisallow
 "DistributableFilters",                  RewriteOptions::kDistributableFilters
 "Domain",                                RewriteOptions::kDomain
+"DownstreamCachePurgeLocationPrefix",    RewriteOptions::kDownstreamCachePurgeLocationPrefix
 "EnableFilters",                         RewriteOptions::kEnableFilters
 "ExperimentVariable",                    RewriteOptions::kExperimentVariable
 "ExperimentSpec",                        RewriteOptions::kExperimentSpec

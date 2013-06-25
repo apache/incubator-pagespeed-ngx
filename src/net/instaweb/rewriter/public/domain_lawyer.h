@@ -133,9 +133,13 @@ class DomainLawyer {
   // Adds a simple domain to the set that can be rewritten.  No
   // mapping or sharding will be performed.  Returns false if the
   // domain syntax was not acceptable.  Wildcards (*, ?) may be used in
-  // the domain_name.   Careless use of wildcards can expose the user to
+  // the domain_name.  Careless use of wildcards can expose the user to
   // XSS attacks.
   bool AddDomain(const StringPiece& domain_name, MessageHandler* handler);
+
+  // Adds a simple domain to the set that is known but not authorized for
+  // rewriting. Observes all other constraints mentioned for AddDomain.
+  bool AddKnownDomain(const StringPiece& domain_name, MessageHandler* handler);
 
   // Adds a domain mapping, to assist with serving resources from
   // cookieless domains or CDNs.  This implicitly calls AddDomain(to_domain)

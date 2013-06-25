@@ -147,8 +147,10 @@ ModPagespeedEnableFilters add_instrumentation
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cachable_rewritten_html" >
     ModPagespeedRewriteDeadlinePerFlushMs 1
     ModPagespeedDownstreamCacheLifetimeMs 100
-    ModPagespeedDownstreamCachePurgePathPrefix "/mypurgepath"
-    ModPagespeedDownstreamCachePurgeMethod "GET"
+    # Assume that Varnish (or any other downstream cache) is running at
+    # localhost:8020.
+    ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020"
+    ModPagespeedDownstreamCachePurgeMethod "PURGE"
     ModPagespeedRewriteLevel PassThrough
     ModPagespeedEnableFilters collapse_whitespace,extend_cache,recompress_images
 </Directory>

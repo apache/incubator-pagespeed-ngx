@@ -1014,9 +1014,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("DownstreamCachePurgeMethod",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kDownstreamCachePurgeMethod));
-  EXPECT_STREQ("DownstreamCachePurgePathPrefix",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDownstreamCachePurgePathPrefix));
   EXPECT_STREQ(
       "DownstreamCacheRewrittenPercentageThreshold",
       RewriteOptions::LookupOptionEnum(
@@ -1111,6 +1108,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableFilters",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableFilters));
+  EXPECT_STREQ("DownstreamCachePurgeLocationPrefix",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kDownstreamCachePurgeLocationPrefix));
   EXPECT_STREQ("ExperimentVariable",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kExperimentVariable));
@@ -1363,6 +1363,26 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
                 &msg, &handler));
   EXPECT_TRUE(options_.domain_lawyer()->IsDomainAuthorized(main, content)) <<
       options_.domain_lawyer()->ToString();
+
+  // Downstream cache purge location prefix.
+  // 1) Valid location.
+  GoogleUrl valid_downstream_cache("http://caching-layer.example.com:8118");
+  EXPECT_FALSE(options_.domain_lawyer()->IsOriginKnown(valid_downstream_cache));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kDownstreamCachePurgeLocationPrefix,
+                "http://caching-layer.example.com:8118/mypurgepath",
+                &msg, &handler));
+  EXPECT_TRUE(options_.domain_lawyer()->IsOriginKnown(valid_downstream_cache));
+  EXPECT_EQ("http://caching-layer.example.com:8118/mypurgepath",
+            options_.downstream_cache_purge_location_prefix());
+  // 2) Invalid location.
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kDownstreamCachePurgeLocationPrefix,
+                "",
+                &msg, &handler));
+  EXPECT_EQ("Downstream cache purge location prefix is invalid.", msg);
 
   // Experiments.
   EXPECT_EQ(RewriteOptions::kOptionOk,

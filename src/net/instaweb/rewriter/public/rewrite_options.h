@@ -206,7 +206,6 @@ class RewriteOptions {
     kDomainShardCount,
     kDownstreamCacheLifetimeMs,
     kDownstreamCachePurgeMethod,
-    kDownstreamCachePurgePathPrefix,
     kDownstreamCacheRewrittenPercentageThreshold,
     kEnableAggressiveRewritersForMobile,
     kEnableBlinkDashboard,
@@ -318,6 +317,7 @@ class RewriteOptions {
     kDisallow,
     kDistributableFilters,  // For experimentation, may be removed later.
     kDomain,
+    kDownstreamCachePurgeLocationPrefix,
     kEnableFilters,
     kExperimentVariable,
     kExperimentSpec,
@@ -607,7 +607,6 @@ class RewriteOptions {
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultDownstreamCacheLifetimeMs;
   static const char kDefaultDownstreamCachePurgeMethod[];
-  static const char kDefaultDownstreamCachePurgePathPrefix[];
   static const int64 kDefaultDownstreamCacheRewrittenPercentageThreshold;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
@@ -1769,11 +1768,11 @@ class RewriteOptions {
     set_option(p.as_string(), &downstream_cache_purge_method_);
   }
 
-  const GoogleString& downstream_cache_purge_path_prefix() const {
-    return downstream_cache_purge_path_prefix_.value();
+  const GoogleString& downstream_cache_purge_location_prefix() const {
+    return downstream_cache_purge_location_prefix_.value();
   }
-  void set_downstream_cache_purge_path_prefix(const StringPiece& p) {
-    set_option(p.as_string(), &downstream_cache_purge_path_prefix_);
+  void set_downstream_cache_purge_location_prefix(const StringPiece& p) {
+    set_option(p.as_string(), &downstream_cache_purge_location_prefix_);
   }
 
   void set_downstream_cache_rewritten_percentage_threshold(int64 x) {
@@ -3290,8 +3289,8 @@ class RewriteOptions {
   // downstream caches (e.g. proxy_cache, Varnish).
   Option<GoogleString> downstream_cache_purge_method_;
 
-  // The path prefix to be used for purging the cached responses.
-  Option<GoogleString> downstream_cache_purge_path_prefix_;
+  // The host:port/path prefix to be used for purging the cached responses.
+  Option<GoogleString> downstream_cache_purge_location_prefix_;
 
   // Threshold for amount of rewriting finished before the response was served
   // out (expressed as a percentage) and simultaneously stored in the downstream

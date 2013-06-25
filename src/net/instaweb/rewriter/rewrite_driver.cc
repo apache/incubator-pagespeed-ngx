@@ -2208,13 +2208,8 @@ bool RewriteDriver::GetPurgeUrl(const GoogleUrl& page_url,
                                 const RewriteOptions* options,
                                 GoogleString* purge_url,
                                 GoogleString* purge_method) {
-  StringPiece full_url = page_url.Spec();
-  StringPiece path = page_url.PathAndLeaf();
-  int url_prefix_length = full_url.size() - path.size();
-  *purge_url = StrCat(
-      full_url.substr(0, url_prefix_length),
-      options->downstream_cache_purge_path_prefix(),
-      path);
+  *purge_url = StrCat(options->downstream_cache_purge_location_prefix(),
+                      page_url.PathAndLeaf());
   *purge_method = options->downstream_cache_purge_method();
   return (!purge_url->empty() && !purge_method->empty());
 }

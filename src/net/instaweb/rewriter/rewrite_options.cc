@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_rw_lock.h"
@@ -199,7 +200,6 @@ const int64 RewriteOptions::kDefaultFinderPropertiesCacheRefreshTimeMs =
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 const int64 RewriteOptions::kDefaultDownstreamCacheLifetimeMs = 0;
 const char RewriteOptions::kDefaultDownstreamCachePurgeMethod[] = "PURGE";
-const char RewriteOptions::kDefaultDownstreamCachePurgePathPrefix[] = "";
 const int64
     RewriteOptions::kDefaultDownstreamCacheRewrittenPercentageThreshold = 95;
 const int RewriteOptions::kDefaultExperimentTrafficPercent = 50;
@@ -1475,14 +1475,6 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Method to be used for purging responses from the downstream cache");
   AddBaseProperty(
-      kDefaultDownstreamCachePurgePathPrefix,
-      &RewriteOptions::downstream_cache_purge_path_prefix_,
-      "dcppp",
-      kDownstreamCachePurgePathPrefix,
-      kDirectoryScope,
-      "Path prefix to be used for purging responses from the downstream "
-      "cache");
-  AddBaseProperty(
       kDefaultDownstreamCacheRewrittenPercentageThreshold,
       &RewriteOptions::downstream_cache_rewritten_percentage_threshold_,
       "dcrpt",
@@ -2306,6 +2298,21 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
       }
       break;
     }
+    case kDownstreamCachePurgeLocationPrefix: {
+      GoogleUrl gurl(arg);
+      if (gurl.is_valid()) {
+        // The host:port location where purge requests are to be sent should
+        // be made "known" to the DomainLawyer so that when the
+        // LoopbackRouteFetcher tries to send the request, it does not consider
+        // this an invalid domain.
+        WriteableDomainLawyer()->AddKnownDomain(gurl.HostAndPort(), handler);
+        set_downstream_cache_purge_location_prefix(arg);
+      } else {
+        *msg = "Downstream cache purge location prefix is invalid.";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
     case kExperimentVariable: {
       int slot;
       bool ok = StringToInt(arg, &slot);
@@ -2703,6 +2710,10 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     InsertExperimentSpecInVector(spec);
   }
 
+  if (src.downstream_cache_purge_location_prefix_.was_set()) {
+    set_downstream_cache_purge_location_prefix(
+      src.downstream_cache_purge_location_prefix());
+  }
   for (int i = 0, n = src.custom_fetch_headers_.size(); i < n; ++i) {
     NameValue* nv = src.custom_fetch_headers_[i];
     AddCustomFetchHeader(nv->name, nv->value);

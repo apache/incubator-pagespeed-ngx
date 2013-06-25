@@ -293,6 +293,11 @@ bool DomainLawyer::AddDomain(const StringPiece& domain_name,
   return (AddDomainHelper(domain_name, true, true, false, handler) != NULL);
 }
 
+bool DomainLawyer::AddKnownDomain(const StringPiece& domain_name,
+                                  MessageHandler* handler) {
+  return (AddDomainHelper(domain_name, false, false, false, handler) != NULL);
+}
+
 GoogleString DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
   // Ensure that the following specifications are treated identically:
   //     www.google.com

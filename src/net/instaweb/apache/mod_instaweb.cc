@@ -128,6 +128,8 @@ const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
 const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
 const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
 const char kModPagespeedDomain[] = "ModPagespeedDomain";
+const char kModPagespeedDownstreamCachePurgeLocationPrefix[] =
+    "ModPagespeedDownstreamCachePurgeLocationPrefix";
 const char kModPagespeedEnableFilters[] = "ModPagespeedEnableFilters";
 const char kModPagespeedFetchHttps[] = "ModPagespeedFetchHttps";
 const char kModPagespeedFetchProxy[] = "ModPagespeedFetchProxy";
@@ -1784,6 +1786,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisableForBots, "No longer used."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDownstreamCachePurgeLocationPrefix,
+        "The host:port/path prefix to be used for purging requests from "
+        "the downstream cache."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
         "Comma-separated list of enabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedForbidFilters,
