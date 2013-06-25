@@ -368,6 +368,20 @@
       ]
     },
     {
+      'target_name': 'instaweb_panel_loader_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'panel_loader_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/panel_loader_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_js_defer_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1149,6 +1163,7 @@
         'instaweb_flush_early_pb',
         'instaweb_ghost_click_buster_opt_data2c',
         'instaweb_http',
+        'instaweb_panel_loader_opt_data2c',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',

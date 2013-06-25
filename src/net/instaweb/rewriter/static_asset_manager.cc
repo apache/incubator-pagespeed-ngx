@@ -59,6 +59,7 @@ extern const char* JS_delay_images_inline_opt;
 extern const char* JS_extended_instrumentation;
 extern const char* JS_extended_instrumentation_opt;
 extern const char* JS_ghost_click_buster_opt;
+extern const char* JS_panel_loader_opt;
 extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
@@ -90,17 +91,13 @@ const char StaticAssetManager::kDefaultLibraryUrlPrefix[] = "/psajs/";
 // etc.) has it's own implementation.
 struct StaticAssetManager::Asset {
   const char* file_name;
-  const char* js_optimized;
-  const char* js_debug;
+  GoogleString js_optimized;
+  GoogleString js_debug;
   GoogleString js_opt_hash;
   GoogleString js_debug_hash;
   GoogleString opt_url;
   GoogleString debug_url;
   ContentType content_type;
-
-  // Only use these for gif content type.
-  int js_debug_len;
-  int js_optimized_len;
 };
 
 StaticAssetManager::StaticAssetManager(
@@ -159,6 +156,8 @@ void StaticAssetManager::InitializeAssetStrings() {
   // Initialize file names.
   assets_[kAddInstrumentationJs]->file_name = "add_instrumentation";
   assets_[kExtendedInstrumentationJs]->file_name = "extended_instrumentation";
+  GoogleString blink_js_string =
+      StrCat(JS_js_defer_opt, "\n", JS_panel_loader_opt);
   assets_[kBlinkJs]->file_name = "blink";
   assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
   assets_[kCriticalCssBeaconJs]->file_name = "critical_css_beacon";
@@ -178,8 +177,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kAddInstrumentationJs]->js_optimized = JS_add_instrumentation_opt;
   assets_[kExtendedInstrumentationJs]->js_optimized =
       JS_extended_instrumentation_opt;
-  // Fetching the blink JS is not currently supported->
-  assets_[kBlinkJs]->js_optimized = "// Unsupported";
+  assets_[kBlinkJs]->js_optimized = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_optimized =
       JS_client_domain_rewriter_opt;
   assets_[kCriticalCssBeaconJs]->js_optimized = JS_critical_css_beacon_opt;
@@ -201,7 +199,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kExtendedInstrumentationJs]->js_debug = JS_extended_instrumentation;
   // Fetching the blink JS is not currently supported-> Add a comment in as the
   // unit test expects debug code to include comments->
-  assets_[kBlinkJs]->js_debug = "/* Unsupported */";
+  assets_[kBlinkJs]->js_debug = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
   assets_[kCriticalCssBeaconJs]->js_debug = JS_critical_css_beacon;
   assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
@@ -218,11 +216,9 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
 
   assets_[kBlankGif]->file_name = "1";
-  assets_[kBlankGif]->js_optimized = GIF_blank;
-  assets_[kBlankGif]->js_debug = GIF_blank;
+  assets_[kBlankGif]->js_optimized.append(GIF_blank, GIF_blank_len);
+  assets_[kBlankGif]->js_debug.append(GIF_blank, GIF_blank_len);
   assets_[kBlankGif]->content_type = kContentTypeGif;
-  assets_[kBlankGif]->js_optimized_len = GIF_blank_len;
-  assets_[kBlankGif]->js_debug_len = GIF_blank_len;
 
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
@@ -257,24 +253,14 @@ void StaticAssetManager::InitializeAssetUrls() {
                               "_debug.", asset->js_debug_hash,
                               asset->content_type.file_extension());
   }
-
-  // Blink does not currently use the hash in the URL, so it is special cased
-  // here.
-  GoogleString blink_js_url = StrCat(
-      url_namer_->get_proxy_domain(),
-      library_url_prefix_,
-      assets_[kBlinkJs]->file_name,
-      assets_[kBlinkJs]->content_type.file_extension());
-  assets_[kBlinkJs]->debug_url = blink_js_url;
-  assets_[kBlinkJs]->opt_url = blink_js_url;
 }
 
 const char* StaticAssetManager::GetAsset(
     const StaticAsset& module, const RewriteOptions* options) const {
   CHECK(module != kEndOfModules);
   return options->Enabled(RewriteOptions::kDebug) ?
-      assets_[module]->js_debug :
-      assets_[module]->js_optimized;
+      assets_[module]->js_debug.c_str() :
+      assets_[module]->js_optimized.c_str();
 }
 
 void StaticAssetManager::AddJsToElement(
@@ -329,11 +315,7 @@ bool StaticAssetManager::GetAsset(StringPiece file_name,
   if (p != file_name_to_module_map_.end()) {
     CHECK_GT(assets_.size(), static_cast<size_t>(p->second));
     Asset* asset = assets_[p->second];
-    if (asset->content_type.IsImage()) {
-      content->set(asset->js_optimized, asset->js_optimized_len);
-    } else {
-      *content = is_debug ? asset->js_debug : asset->js_optimized;
-    }
+    *content = is_debug ? asset->js_debug : asset->js_optimized;
     if (cache_header) {
       StringPiece hash = is_debug ? asset->js_debug_hash : asset->js_opt_hash;
       if (hash == names[1]) {  // compare hash

@@ -77,7 +77,7 @@ class StaticAssetManagerTest : public RewriteTestBase {
 };
 
 TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
-  const char blink_url[] = "http://proxy-domain/psajs/blink.js";
+  const char blink_url[] = "http://proxy-domain/psajs/blink.0.js";
   EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
                                                 options_));
 }
@@ -97,7 +97,7 @@ TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
   manager_->set_gstatic_hash(
       StaticAssetManager::kBlinkJs, StaticAssetManager::kGStaticBase, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
-  const char blink_url[] = "http://proxy-domain/psajs/blink.js";
+  const char blink_url[] = "http://proxy-domain/psajs/blink_debug.0.js";
   EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
                                                 options_));
 }
@@ -139,6 +139,7 @@ TEST_F(StaticAssetManagerTest, TestJsDebug) {
         static_cast<StaticAssetManager::StaticAsset>(i);
     GoogleString script(manager_->GetAsset(module, options_));
     if (module != StaticAssetManager::kBlankGif &&
+        module != StaticAssetManager::kBlinkJs &&
         module != StaticAssetManager::kGhostClickBusterJs) {
       EXPECT_NE(GoogleString::npos, script.find("/*"))
           << "There should be some comments in the debug code";

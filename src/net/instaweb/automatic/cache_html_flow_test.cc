@@ -236,7 +236,7 @@ const char kBlinkOutputCommon[] =
     "<!--GooglePanel end panel-id-0.1-->"
     "</div>"
     "</body></html>"
-    "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
+    "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoaderInit();</script>\n"
     "<script type=\"text/javascript\">"
@@ -1155,7 +1155,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
       "</script>");
 
   StrAppend(&expected_html,
-      "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
+      "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoaderInit();</script>\n"
       "<script type=\"text/javascript\">"
@@ -1234,7 +1234,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "<!--GooglePanel end panel-id-0.0-->"
       "</div>"
       "</body></html>"
-      "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
+      "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoaderInit();</script>\n"
       "<script type=\"text/javascript\">"

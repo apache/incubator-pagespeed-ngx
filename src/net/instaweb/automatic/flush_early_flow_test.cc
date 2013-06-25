@@ -351,7 +351,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetSplitHtmlSuffixCode() {
     return StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                        0, "/psajs/blink.js", "{}", "false");
+                        0, "/psajs/blink.0.js", "{}", "false");
   }
 
   GoogleString NoScriptRedirectHtml() {
@@ -418,8 +418,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     GoogleString cookie_script = kCookieScript;
     GoogleString rewritten_html;
 
-    GoogleString expected_deferjs_url = split_html_enabled ? "/psajs/blink.js" :
-          "/psajs/js_defer.0.js";
+    GoogleString expected_deferjs_url = split_html_enabled ?
+        "/psajs/blink.0.js" : "/psajs/js_defer.0.js";
 
 
     // Get rewritten html.

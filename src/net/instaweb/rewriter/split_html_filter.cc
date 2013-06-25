@@ -62,7 +62,7 @@ const char SplitHtmlFilter::kSplitInit[] =
     "pagespeed.num_high_res_images_loaded++;"
     "if (pagespeed.panelLoader && pagespeed.num_high_res_images_loaded == "
     "pagespeed.num_low_res_images_inlined) {"
-    "pagespeed.panelLoader.loadData(null);"
+    "pagespeed.panelLoader.loadData();"
     "}};"
     "pagespeed.num_high_res_images_loaded=0;"
     "</script>";
