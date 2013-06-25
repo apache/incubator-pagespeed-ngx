@@ -319,8 +319,14 @@ pagespeed.Console.prototype.addGraph = function(title, urlFragment, stat) {
       'https://developers.google.com/speed/pagespeed/module/console#' +
           urlFragment;
   graph.value = stat;
-  graph.lineChart = new google.visualization.LineChart(
-      pagespeed.createGraphDiv(title, graph.docUrl, this.graphs_.length));
+  // Unique identifying number.
+  graph.num = this.graphs_.length;
+  // Added to title, only set once data is loaded.
+  graph.overallPercent = null;
+  graph.priority = null;
+  // Created once data is loaded.
+  graph.dataTable = null;
+  graph.lineChart = null;
 
   this.graphs_.push(graph);
   this.varsNeeded_.addAll(stat.varsNeeded);
@@ -392,7 +398,7 @@ pagespeed.Console.prototype.loadJsonData = function(
       return;
     }
     var json_data = JSON.parse(this.responseText);
-    mpsConsole.updateGraphsFromJsonData(json_data);
+    mpsConsole.drawGraphsFromJsonData(json_data);
   };
 
   xhr.open('GET', queryString);
@@ -400,11 +406,12 @@ pagespeed.Console.prototype.loadJsonData = function(
 };
 
 /**
- * Use JSON data to update all graphs.
+ * Use JSON data to create and draw all graphs.
+ * TODO(sligocki): Allow updating graphs, not just adding new ones.
  *
  * @param {*} data  Parsed JSON data from backend.
  */
-pagespeed.Console.prototype.updateGraphsFromJsonData = function(data) {
+pagespeed.Console.prototype.drawGraphsFromJsonData = function(data) {
   this.variables_ = data['variables'];
   // TODO(sligocki): Convert to {Array.<Date>}.
   this.timestamps_ = data['timestamps'];
@@ -434,7 +441,21 @@ pagespeed.Console.prototype.updateGraphsFromJsonData = function(data) {
             }
           }(this.variables_)));
     }
-    this.updateGraph(this.graphs_[i], this.timestamps_, statTimeSeries);
+    this.graphs_[i].overallPercent = statTimeSeries[statTimeSeries.length - 1];
+    // TODO(sligocki): This just sets the priority equal to the overall
+    // long-run stat average. But we may want to prioritize different
+    // issues different amounts.
+    this.graphs_[i].priority = this.graphs_[i].overallPercent;
+    this.graphs_[i].dataTable =
+        this.buildDataTable(this.graphs_[i].title,
+                            this.timestamps_, statTimeSeries);
+  }
+
+  // Sort by priority (highest priority first).
+  this.graphs_.sort(function(a, b) { return b.priority - a.priority; });
+
+  for (var i = 0; i < this.graphs_.length; i++) {
+    this.drawGraph(this.graphs_[i]);
   }
 };
 
@@ -456,32 +477,25 @@ pagespeed.Console.prototype.checkDataValidity = function(
 };
 
 /**
- * Update a specific graph with the computed statistic time series.
+ * Build the google.visualization.DataTable for given data.
  *
- * @param {Object} graph  The graph to update.
- * @param {Array.<number>} timestamps  x-coords of the new graph.
- * @param {Array.<number>} statTimeSeries  y-coords of the new graph.
+ * @param {string} title  Label for values.
+ * @param {Array.<number>} timestamps      x-coords of the graph.
+ * @param {Array.<number>} statTimeSeries  y-coords of the graph.
+ * @return {Object}  The data table.
  */
-pagespeed.Console.prototype.updateGraph = function(
-    graph, timestamps, statTimeSeries) {
+pagespeed.Console.prototype.buildDataTable = function(
+    title, timestamps, statTimeSeries) {
   // Build data table.
-  var dataTable = this.createDataTable(graph.title);
+  var dataTable = this.createDataTable(title);
   for (var i = 0; i < timestamps.length; i++) {
     dataTable.addRow([new Date(timestamps[i]), statTimeSeries[i]]);
   }
   if (dataTable.getNumberOfRows() == 0) {
-    pagespeed.error('Data failed to load for graph ' + graph.title);
+    pagespeed.error('Data failed to load for graph ' + title);
   }
 
-  // Draw graph.
-  graph.lineChart.draw(dataTable, this.lineChartOptions_);
-
-  /* TODO(sligocki): Add auto-update functionality.
-  if (this.updatePaused_) {
-    this.updatePaused_ = false;
-    this.startAutoUpdate();
-  }
-  */
+  return dataTable;
 };
 
 /**
@@ -499,6 +513,28 @@ pagespeed.Console.prototype.createDataTable = function(title) {
   return dataTable;
 };
 
+/**
+ * Add and draw a graph which has already had its dataTable set.
+ * TODO(sligocki): Allow updating graphs, not just adding new ones.
+ *
+ * @param {Object} graph  The graph to add.
+ */
+pagespeed.Console.prototype.drawGraph = function(graph) {
+  graph.lineChart = new google.visualization.LineChart(
+      pagespeed.createGraphDiv(graph.title, graph.overallPercent, graph.docUrl,
+                               graph.num));
+
+  // Draw graph.
+  graph.lineChart.draw(graph.dataTable, this.lineChartOptions_);
+
+  /* TODO(sligocki): Add auto-update functionality.
+  if (this.updatePaused_) {
+    this.updatePaused_ = false;
+    this.startAutoUpdate();
+  }
+  */
+};
+
 // Methods for creating HTML content
 
 /**
@@ -506,15 +542,17 @@ pagespeed.Console.prototype.createDataTable = function(title) {
  * the div in which the graph will be drawn.
  *
  * @param {string} title     The title of the graph.
- * @param {string} docUrl   Documentation URL.
+ * @param {number} percent   overall percent for summary.
+ * @param {string} docUrl    Documentation URL.
  * @param {number} graphNum  Unique number for this graph.
  * @return {Element}  The div in which to draw the graph.
  */
-pagespeed.createGraphDiv = function(title, docUrl, graphNum) {
+pagespeed.createGraphDiv = function(title, percent, docUrl, graphNum) {
   var wholeDiv = document.createElement('div');
   wholeDiv.setAttribute('class', 'pagespeed-widgets');
 
-  wholeDiv.appendChild(pagespeed.createGraphTitleBar(title, docUrl, graphNum));
+  wholeDiv.appendChild(pagespeed.createGraphTitleBar(title, percent, docUrl,
+                                                     graphNum));
 
   var graph = document.createElement('div');
   graph.setAttribute('class', 'pagespeed-graph');
@@ -530,19 +568,21 @@ pagespeed.createGraphDiv = function(title, docUrl, graphNum) {
  * Creates the title and dropdown menu of each graph.
  *
  * @param {string} title     The title of the graph.
- * @param {string} docUrl   Documentation URL.
+ * @param {number} percent   overall percent for summary.
+ * @param {string} docUrl    Documentation URL.
  * @param {number} graphNum  Unique number for this graph.
  * @return {Element}  The full title bar div.
  */
 pagespeed.createGraphTitleBar = function(
-    title, docUrl, graphNum) {
+    title, percent, docUrl, graphNum) {
   var topBar = document.createElement('div');
   topBar.setAttribute('class', 'pagespeed-widgets-topbar');
 
   var titleSpan = document.createElement('span');
   titleSpan.setAttribute('class', 'pagespeed-title');
   titleSpan.setAttribute('id', 'pagespeed-title' + graphNum);
-  titleSpan.innerHTML = title + ' (<a href="' + docUrl + '">doc</a>)';
+  titleSpan.innerHTML = title + ': ' + (100 * percent).toFixed(2) + '%' +
+          ' (<a href="' + docUrl + '">doc</a>)';
   topBar.appendChild(titleSpan);
 
   // TODO(sligocki): Add other things here, like drop-down option menu.
