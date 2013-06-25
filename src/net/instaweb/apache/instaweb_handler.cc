@@ -966,12 +966,14 @@ bool IsBeaconUrl(const RewriteOptions::BeaconUrl& beacons,
   // Check if the full path without query parameters equals the beacon URL,
   // either the http or https version (we're too lazy to check specifically).
   // This handles both GETs, which include query parameters, and POSTs,
-  // which don't.
+  // which will only have the originating url in the query params.
   if (!gurl.is_valid()) {
     return false;
   }
-  return (gurl.PathSansQuery() == beacons.http ||
-          gurl.PathSansQuery() == beacons.https);
+  // Ignore query params in the beacon URLs. Normally the beacon URL won't have
+  // a query param, but it could have been added using ModPagespeedBeaconUrl.
+  return (gurl.PathSansQuery() == beacons.http_in ||
+          gurl.PathSansQuery() == beacons.https_in);
 }
 
 }  // namespace

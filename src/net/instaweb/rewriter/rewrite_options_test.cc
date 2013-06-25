@@ -2139,6 +2139,15 @@ TEST_F(RewriteOptionsTest, ParseBeaconUrl) {
                                              &beacon_url));
   EXPECT_STREQ("http://" + url, beacon_url.http);
   EXPECT_STREQ("https://" + url2 + "?foo=bar", beacon_url.https);
+  EXPECT_STREQ("http://" + url, beacon_url.http_in);
+  EXPECT_STREQ("https://" + url2, beacon_url.https_in);
+
+  EXPECT_TRUE(RewriteOptions::ParseBeaconUrl("/mod_pagespeed_beacon?a=b",
+                                             &beacon_url));
+  EXPECT_STREQ("/mod_pagespeed_beacon?a=b", beacon_url.http);
+  EXPECT_STREQ("/mod_pagespeed_beacon?a=b", beacon_url.https);
+  EXPECT_STREQ("/mod_pagespeed_beacon", beacon_url.http_in);
+  EXPECT_STREQ("/mod_pagespeed_beacon", beacon_url.https_in);
 }
 
 TEST_F(RewriteOptionsTest, AccessOptionByIdAndEnum) {

@@ -22,8 +22,8 @@
 #include <utility>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -532,13 +532,19 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
   return std::binary_search(filters, end, filter);
 }
 
-// Strip the "ets=" query param from then end of the beacon URLs.
-void StripBeaconUrlQueryParam(GoogleString* url) {
+// Strips the "ets=" query param (if present) from the end of url and strips all
+// query params from url and assigns to url_no_query_param.
+void StripBeaconUrlQueryParam(GoogleString* url,
+                              GoogleString* url_no_query_param) {
   if (StringPiece(*url).ends_with("ets=")) {
     // Strip the ? or & in front of ets= as well.
     int chars_to_strip = STATIC_STRLEN("ets=") + 1;
     url->resize(url->size() - chars_to_strip);
   }
+
+  StringPieceVector url_split;
+  SplitStringUsingSubstr(*url, "?", &url_split);
+  url_split[0].CopyToString(url_no_query_param);
 }
 
 }  // namespace
@@ -606,9 +612,10 @@ bool RewriteOptions::ParseBeaconUrl(const StringPiece& in, BeaconUrl* out) {
   }
 
   // We used to require that the query param end with "ets=", but no longer
-  // do, so strip it if it's present.
-  StripBeaconUrlQueryParam(&out->http);
-  StripBeaconUrlQueryParam(&out->https);
+  // do, so strip it if it's present. We also assign http_in and https_in to the
+  // beacon URL stripped of their query params, if any are present.
+  StripBeaconUrlQueryParam(&out->http, &out->http_in);
+  StripBeaconUrlQueryParam(&out->https, &out->https_in);
 
   return true;
 }
@@ -1088,7 +1095,8 @@ void RewriteOptions::AddProperties() {
 
   // This is not Plain Old Data, so we initialize it here.
   const RewriteOptions::BeaconUrl kDefaultBeaconUrls =
-      { kDefaultBeaconUrl, kDefaultBeaconUrl };
+      { kDefaultBeaconUrl, kDefaultBeaconUrl,
+        kDefaultBeaconUrl, kDefaultBeaconUrl };
   AddBaseProperty(
       kDefaultBeaconUrls, &RewriteOptions::beacon_url_, "bu",
       kBeaconUrl,

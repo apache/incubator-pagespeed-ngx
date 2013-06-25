@@ -377,9 +377,18 @@ class RewriteOptions {
     kEndOfOptions
   };
 
+  // We allow query params to be set in custom beacon URLs through the
+  // ModPagespeedBeaconUrl option, but we don't use those query params for
+  // validation of a beacon URL. The http and https fields should be the URLs
+  // that beacon responses are to be sent to, while http_in and https_in are the
+  // fields that should be validated on the server to verify if a URL is a
+  // beacon request (they are just a precomputation of the corresponding
+  // outbound URL with query params stripped).
   struct BeaconUrl {
     GoogleString http;
     GoogleString https;
+    GoogleString http_in;
+    GoogleString https_in;
   };
 
   struct NameValue {
