@@ -196,6 +196,7 @@
         'rewriter/server_context_test.cc',
         'rewriter/shared_cache_test.cc',
         'rewriter/split_html_filter_test.cc',
+        'rewriter/split_html_helper_filter_test.cc',
         'rewriter/static_asserts_test.cc',
         'rewriter/static_asset_manager_test.cc',
         'rewriter/strip_non_cacheable_filter_test.cc',

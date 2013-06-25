@@ -152,6 +152,7 @@ class RewriteOptions {
     kRewriteStyleAttributes,
     kRewriteStyleAttributesWithUrl,
     kSplitHtml,
+    kSplitHtmlHelper,
     kSpriteImages,
     kSquashImagesForMobileScreen,
     kStripImageColorProfile,

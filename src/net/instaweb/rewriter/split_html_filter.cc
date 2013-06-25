@@ -31,7 +31,6 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
@@ -39,14 +38,13 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_config.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
-#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
@@ -140,21 +138,17 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 }
 
 void SplitHtmlFilter::StartDocument() {
-  critical_line_info_ = NULL;
-  panel_id_to_spec_.clear();
-  xpath_map_.clear();
   element_json_stack_.clear();
-  xpath_units_.clear();
   num_children_stack_.clear();
 
-  ProcessCriticalLineConfig();
+  config_.reset(new SplitHtmlConfig(rewrite_driver_));
 
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
       rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile()) ||
       // Disable this filter if a two chunked response is requested and we have
       // no critical line info.
-      (critical_line_info_ == NULL &&
+      (config_->critical_line_info() == NULL &&
        options_->serve_split_html_in_two_chunks());
   static_asset_manager_ =
       rewrite_driver_->server_context()->static_asset_manager();
@@ -221,7 +215,6 @@ void SplitHtmlFilter::StartDocument() {
 
 void SplitHtmlFilter::EndDocument() {
   InvokeBaseHtmlFilterEndDocument();
-  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
 
   if (disable_filter_) {
     return;
@@ -283,8 +276,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
 
 GoogleString SplitHtmlFilter::GenerateCriticalLineConfigString() {
   GoogleString out;
-  for (int i = 0; i < critical_line_info_->panels_size(); ++i) {
-    const Panel& panel = critical_line_info_->panels(i);
+  for (int i = 0; i < config_->critical_line_info()->panels_size(); ++i) {
+    const Panel& panel = config_->critical_line_info()->panels(i);
     StrAppend(&out, panel.start_xpath());
     if (panel.has_end_marker_xpath()) {
       StrAppend(&out, ":", panel.end_marker_xpath());
@@ -292,72 +285,6 @@ GoogleString SplitHtmlFilter::GenerateCriticalLineConfigString() {
     StrAppend(&out, ",");
   }
   return out;
-}
-
-void SplitHtmlFilter::ProcessCriticalLineConfig() {
-  GoogleString critical_line_config;
-  const RequestHeaders* request_headers = rewrite_driver_->request_headers();
-  if (request_headers != NULL) {
-    const char* header = request_headers->Lookup1(
-        HttpAttributes::kXPsaSplitConfig);
-    if (header != NULL) {
-      critical_line_config = header;
-    }
-  }
-  if (critical_line_config.empty()) {
-    critical_line_config = options_->critical_line_config();
-  }
-  if (!critical_line_config.empty()) {
-    CriticalLineInfo* critical_line_info = new CriticalLineInfo;
-    StringPieceVector xpaths;
-    SplitStringPieceToVector(critical_line_config, ",", &xpaths, true);
-    for (int i = 0, n = xpaths.size(); i < n; i++) {
-      StringPieceVector xpath_pair;
-      SplitStringPieceToVector(xpaths[i], ":", &xpath_pair, true);
-      Panel* panel = critical_line_info->add_panels();
-      panel->set_start_xpath(xpath_pair[0].data(), xpath_pair[0].length());
-      if (xpath_pair.size() == 2) {
-        panel->set_end_marker_xpath(
-            xpath_pair[1].data(), xpath_pair[1].length());
-      }
-    }
-    rewrite_driver_->set_critical_line_info(critical_line_info);
-  }
-  critical_line_info_ = rewrite_driver_->critical_line_info();
-  if (critical_line_info_ != NULL) {
-    ComputePanels(*critical_line_info_, &panel_id_to_spec_);
-    PopulateXpathMap(*critical_line_info_);
-  }
-}
-
-void SplitHtmlFilter::ComputePanels(
-    const CriticalLineInfo& critical_line_info,
-    PanelIdToSpecMap* panel_id_to_spec) {
-  for (int i = 0; i < critical_line_info.panels_size(); ++i) {
-    const Panel& panel = critical_line_info.panels(i);
-    const GoogleString panel_id =
-        StrCat(BlinkUtil::kPanelId, ".", IntegerToString(i));
-    (*panel_id_to_spec)[panel_id] = &panel;
-  }
-}
-
-void SplitHtmlFilter::PopulateXpathMap(
-    const CriticalLineInfo& critical_line_info) {
-  for (int i = 0; i < critical_line_info.panels_size(); ++i) {
-    const Panel& panel = critical_line_info.panels(i);
-    PopulateXpathMap(panel.start_xpath());
-    if (panel.has_end_marker_xpath()) {
-      PopulateXpathMap(panel.end_marker_xpath());
-    }
-  }
-}
-
-void SplitHtmlFilter::PopulateXpathMap(const GoogleString& xpath) {
-  if (xpath_map_.find(xpath) == xpath_map_.end()) {
-    XpathUnits* xpath_units = new XpathUnits();
-    ParseXpath(xpath, xpath_units);
-    xpath_map_[xpath] = xpath_units;
-  }
 }
 
 bool SplitHtmlFilter::IsElementSiblingOfCurrentPanel(HtmlElement* element) {
@@ -563,12 +490,13 @@ void SplitHtmlFilter::AppendJsonData(Json::Value* dictionary,
 }
 
 GoogleString SplitHtmlFilter::MatchPanelIdForElement(HtmlElement* element) {
-  if (critical_line_info_ == NULL) {
+  if (config_->critical_line_info() == NULL) {
     return "";
   }
-  for (int i = 0; i < critical_line_info_->panels_size(); i++) {
-    const Panel& panel = critical_line_info_->panels(i);
-    if (ElementMatchesXpath(element, *(xpath_map_[panel.start_xpath()]))) {
+  for (int i = 0; i < config_->critical_line_info()->panels_size(); i++) {
+    const Panel& panel = config_->critical_line_info()->panels(i);
+    if (ElementMatchesXpath(
+        element, *((*config_->xpath_map())[panel.start_xpath()]))) {
       return StrCat(BlinkUtil::kPanelId, ".", IntegerToString(i));
     }
   }
@@ -580,14 +508,16 @@ bool SplitHtmlFilter::IsEndMarkerForCurrentPanel(HtmlElement* element) {
     return false;
   }
 
-  if (panel_id_to_spec_.find(current_panel_id_) == panel_id_to_spec_.end()) {
+  PanelIdToSpecMap* panel_id_to_spec = config_->panel_id_to_spec();
+  if (panel_id_to_spec->find(current_panel_id_) == panel_id_to_spec->end()) {
     LOG(DFATAL) << "Invalid Panelid: "
                 << current_panel_id_ << " for url " << url_;
     return false;
   }
-  const Panel& panel = *(panel_id_to_spec_[current_panel_id_]);
+  const Panel& panel = *((*panel_id_to_spec)[current_panel_id_]);
   return panel.has_end_marker_xpath() ?
-      ElementMatchesXpath(element, *(xpath_map_[panel.end_marker_xpath()])) :
+      ElementMatchesXpath(
+          element, *((*config_->xpath_map())[panel.end_marker_xpath()])) :
       false;
 }
 
@@ -611,27 +541,6 @@ GoogleString SplitHtmlFilter::GetPanelIdForInstance(HtmlElement* element) {
     }
   }
   return panel_id_value;
-}
-
-bool SplitHtmlFilter::ParseXpath(const GoogleString& xpath,
-                                 std::vector<XpathUnit>* xpath_units) {
-  static const char* kXpathWithChildNumber = "(\\w+)(\\[(\\d+)\\])";
-  static const char* kXpathWithId = "(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])";
-  StringPieceVector list;
-  net_instaweb::SplitStringUsingSubstr(xpath, "/", &list);
-  for (int j = 0, n = list.size(); j < n; j++) {
-    XpathUnit unit;
-    GoogleString str;
-    StringPiece match = list[j];
-    if (!RE2::FullMatch(StringPieceToRe2(match), kXpathWithChildNumber,
-                        &unit.tag_name, &str, &unit.child_number)) {
-      GoogleString str1;
-      RE2::FullMatch(StringPieceToRe2(match), kXpathWithId, &unit.tag_name,
-                     &str, &str1, &unit.attribute_value);
-    }
-    xpath_units->push_back(unit);
-  }
-  return true;
 }
 
 bool SplitHtmlFilter::ElementMatchesXpath(

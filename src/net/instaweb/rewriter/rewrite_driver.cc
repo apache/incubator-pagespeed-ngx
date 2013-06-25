@@ -122,6 +122,7 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
+#include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
@@ -908,6 +909,9 @@ void RewriteDriver::AddPreRenderFilters() {
 
   if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
     AddOwnedEarlyPreRenderFilter(new DecodeRewrittenUrlsFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kSplitHtmlHelper)) {
+    AddOwnedEarlyPreRenderFilter(new SplitHtmlHelperFilter(this));
   }
 
   // We disable combine_css and combine_javascript when flush_subresources is

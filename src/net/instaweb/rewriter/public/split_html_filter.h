@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_FILTER_H_
 
-#include <map>
 #include <vector>
 
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
@@ -34,24 +33,13 @@
 
 namespace net_instaweb {
 
-struct XpathUnit {
-  GoogleString tag_name;
-  GoogleString attribute_value;
-  int child_number;
-};
-
-class CriticalLineInfo;
 class HtmlElement;
-class Panel;
 class RewriteDriver;
 class RewriteOptions;
+class SplitHtmlConfig;
 class StaticAssetManager;
 class Writer;
-
-typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
-typedef std::vector<XpathUnit> XpathUnits;
-// Map of xpath to XpathUnits.
-typedef std::map<GoogleString, XpathUnits*> XpathMap;
+class XpathUnit;
 
 // Splits the incoming html content into above the fold html and below the
 // fold json based on critical line specification stored in property cache.
@@ -117,15 +105,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   // to panel_id
   bool IsEndMarkerForCurrentPanel(HtmlElement* element);
 
-  // Processes the critical line config.
-  void ProcessCriticalLineConfig();
-
-  // Populates the xpath map for all panels.
-  void PopulateXpathMap(const CriticalLineInfo& critical_line_info);
-
-  // Populates the xpath map for a particular xpath string.
-  void PopulateXpathMap(const GoogleString& xpath);
-
   // Appends dict to the dictionary array
   void AppendJsonData(Json::Value* dictionary, const Json::Value& dict);
 
@@ -139,12 +118,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool ElementMatchesXpath(const HtmlElement* element,
                            const std::vector<XpathUnit>& xpath_units);
 
-  bool ParseXpath(const GoogleString& xpath,
-                  std::vector<XpathUnit>* xpath_units);
-
-  void ComputePanels(const CriticalLineInfo& critical_line_info,
-                     PanelIdToSpecMap* panel_id_to_spec);
-
   void InvokeBaseHtmlFilterStartDocument();
 
   void InvokeBaseHtmlFilterStartElement(HtmlElement* element);
@@ -154,17 +127,14 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   void InvokeBaseHtmlFilterEndDocument();
 
   RewriteDriver* rewrite_driver_;
+  scoped_ptr<SplitHtmlConfig> config_;
   const RewriteOptions* options_;
-  PanelIdToSpecMap panel_id_to_spec_;
-  XpathMap xpath_map_;
   std::vector<ElementJsonPair> element_json_stack_;
-  std::vector<std::vector<XpathUnit> > xpath_units_;
   std::vector<int> num_children_stack_;
   Json::FastWriter fast_writer_;
   scoped_ptr<JsonWriter> json_writer_;
   Writer* original_writer_;
   NullWriter null_writer_;
-  const CriticalLineInfo* critical_line_info_;  // Owned by rewrite_driver_.
   GoogleString current_panel_id_;
   StringPiece url_;
   bool script_written_;

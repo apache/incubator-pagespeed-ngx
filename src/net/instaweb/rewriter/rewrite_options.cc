@@ -291,6 +291,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kPrioritizeCriticalCss,
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
+  RewriteOptions::kSplitHtmlHelper,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
   RewriteOptions::kStripScripts,
 };
@@ -475,6 +476,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "cu", "Rewrite Style Attributes With Url" },
   { RewriteOptions::kSplitHtml,
     "sh", "Split Html" },
+  { RewriteOptions::kSplitHtmlHelper,
+    "se", "Split Html Helper" },
   { RewriteOptions::kSpriteImages,
     RewriteOptions::kImageCombineId, "Sprite Images" },
   { RewriteOptions::kSquashImagesForMobileScreen,
