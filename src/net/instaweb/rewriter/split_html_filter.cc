@@ -161,11 +161,14 @@ void SplitHtmlFilter::StartDocument() {
   // TODO(nikhilmadan): RewriteOptions::serve_split_html_in_two_chunks is
   // currently incompatible with cache html. Fix this.
   serve_response_in_two_chunks_ = options_->serve_split_html_in_two_chunks()
-      && !disable_filter_;
+      && !disable_filter_ &&
+      rewrite_driver_->request_context()->split_request_type() !=
+      RequestContext::SPLIT_FULL;
   if (serve_response_in_two_chunks_) {
     ResponseHeaders* response_headers =
         rewrite_driver_->mutable_response_headers();
-    if (rewrite_driver_->request_context()->is_split_btf_request()) {
+    if (rewrite_driver_->request_context()->split_request_type() ==
+        RequestContext::SPLIT_BELOW_THE_FOLD) {
       flush_head_enabled_ = false;
       original_writer_ = &null_writer_;
       set_writer(&null_writer_);
@@ -181,7 +184,8 @@ void SplitHtmlFilter::StartDocument() {
       response_headers->RemoveAll(HttpAttributes::kPragma);
       response_headers->ComputeCaching();
     }
-    if (!rewrite_driver_->request_context()->is_split_btf_request() &&
+    if (rewrite_driver_->request_context()->split_request_type() !=
+        RequestContext::SPLIT_BELOW_THE_FOLD &&
         options_->serve_xhr_access_control_headers()) {
       // TODO(ksimbili): Do this only for XHR requests and only for the prefetch
       // requests.
@@ -237,7 +241,8 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   if (!serve_response_in_two_chunks_ ||
-      rewrite_driver_->request_context()->is_split_btf_request()) {
+      rewrite_driver_->request_context()->split_request_type() ==
+      RequestContext::SPLIT_BELOW_THE_FOLD) {
     GoogleString non_critical_json = fast_writer_.write(json);
     BlinkUtil::StripTrailingNewline(&non_critical_json);
     BlinkUtil::EscapeString(&non_critical_json);
@@ -262,7 +267,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   } else {
     scoped_ptr<GoogleUrl> gurl(
         rewrite_driver_->google_url().CopyAndAddQueryParam(
-            HttpAttributes::kXPsaSplitBtf, "1"));
+            HttpAttributes::kXSplit, HttpAttributes::kXSplitBelowTheFold));
     WriteString(StringPrintf(
         kSplitTwoChunkSuffixJsFormatString,
         HttpAttributes::kXPsaSplitConfig,
@@ -323,7 +328,8 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
     current_panel_id_ = GetPanelIdForInstance(element);
   }
   if (!serve_response_in_two_chunks_ ||
-      !rewrite_driver_->request_context()->is_split_btf_request()) {
+      rewrite_driver_->request_context()->split_request_type() !=
+      RequestContext::SPLIT_BELOW_THE_FOLD) {
     original_writer_ = rewrite_driver_->writer();
   }
   set_writer(json_writer_.get());

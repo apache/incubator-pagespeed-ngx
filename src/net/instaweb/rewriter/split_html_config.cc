@@ -96,6 +96,22 @@ void PopulateXpathMap(
 }  // namespace
 
 SplitHtmlConfig::SplitHtmlConfig(RewriteDriver* driver) {
+  UpdateCriticalLineInfoInDriver(driver);
+  critical_line_info_ = driver->critical_line_info();
+  if (critical_line_info_ != NULL) {
+    ComputePanels(*critical_line_info_, &panel_id_to_spec_);
+    PopulateXpathMap(*critical_line_info_, &xpath_map_);
+  }
+}
+
+SplitHtmlConfig::~SplitHtmlConfig() {
+  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
+}
+
+void SplitHtmlConfig::UpdateCriticalLineInfoInDriver(RewriteDriver* driver) {
+  if (driver->critical_line_info() != NULL) {
+    return;
+  }
   GoogleString critical_line_config;
   const RequestHeaders* request_headers = driver->request_headers();
   if (request_headers != NULL) {
@@ -125,15 +141,6 @@ SplitHtmlConfig::SplitHtmlConfig(RewriteDriver* driver) {
     }
     driver->set_critical_line_info(critical_line_info);
   }
-  critical_line_info_ = driver->critical_line_info();
-  if (critical_line_info_ != NULL) {
-    ComputePanels(*critical_line_info_, &panel_id_to_spec_);
-    PopulateXpathMap(*critical_line_info_, &xpath_map_);
-  }
-}
-
-SplitHtmlConfig::~SplitHtmlConfig() {
-  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
 }
 
 }  // namespace net_instaweb

@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -182,6 +183,16 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     EXPECT_EQ(expected_size, actual_size);
   }
 
+  void SetBtfRequest() {
+    rewrite_driver()->request_context()->set_split_request_type(
+        RequestContext::SPLIT_BELOW_THE_FOLD);
+  }
+
+  void SetAtfRequest() {
+    rewrite_driver()->request_context()->set_split_request_type(
+        RequestContext::SPLIT_ABOVE_THE_FOLD);
+  }
+
   GoogleString output_;
   RequestHeaders request_headers_;
   const char* blink_js_url_;
@@ -218,6 +229,7 @@ TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoATF) {
   rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"container\"]/div[4]");
@@ -225,6 +237,8 @@ TEST_F(SplitHtmlFilterTest,
   panel->set_start_xpath("img[3]");
   panel->set_end_marker_xpath("h1[@id = \"footer\"]");
   rewrite_driver()->set_critical_line_info(config);
+  rewrite_driver()->AddOwnedEarlyPreRenderFilter(
+      new SplitHtmlHelperFilter(rewrite_driver()));
 
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   GoogleString suffix(
@@ -232,7 +246,7 @@ TEST_F(SplitHtmlFilterTest,
           SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
           HttpAttributes::kXPsaSplitConfig,
           "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],",
-          "/split_with_pcache.html?X-PSA-Split-Btf=1",
+          "/split_with_pcache.html?x_split=btf",
           1, blink_js_url_));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
                    kSplitHtmlMiddle, suffix),
@@ -249,6 +263,7 @@ TEST_F(SplitHtmlFilterTest,
   rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_max_html_cache_time_ms(30000);
   options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"container\"]/div[4]");
@@ -263,7 +278,7 @@ TEST_F(SplitHtmlFilterTest,
           SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
           HttpAttributes::kXPsaSplitConfig,
           "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],",
-          "/split_with_pcache.html?X-PSA-Split-Btf=1",
+          "/split_with_pcache.html?x_split=btf",
           1, blink_js_url_));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
                    kSplitHtmlMiddle, suffix),
@@ -281,6 +296,7 @@ TEST_F(SplitHtmlFilterTest,
 
 TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFAndNoBTF) {
   options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   // Use a non-existent xpath.
@@ -300,9 +316,36 @@ TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFAndNoBTF) {
   EXPECT_EQ(expected_output, output_);
 }
 
+TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFWithFlushAndHelper) {
+  options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
+  options_->set_critical_line_config("div[@id = \"abcd\"]/div[4]");
+  rewrite_driver()->AddOwnedEarlyPreRenderFilter(
+      new SplitHtmlHelperFilter(rewrite_driver()));
+
+  html_parse()->SetWriter(&write_to_string_);
+  html_parse()->StartParse("http://example.com");
+  html_parse()->ParseText(kHtmlInputPart1);
+  html_parse()->Flush();
+  html_parse()->ParseText(kHtmlInputPart2);
+  html_parse()->FinishParse();
+
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   HttpAttributes::kXPsaSplitConfig,
+                   "div[@id = \"abcd\"]/div[4],", "", 1, blink_js_url_));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+
+  EXPECT_EQ(expected_output, output_buffer_);
+}
+
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlATFWithAccessControlHeaders) {
   options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
   options_->set_serve_xhr_access_control_headers(true);
   options_->set_access_control_allow_origin("google.com");
   CriticalLineInfo* config = new CriticalLineInfo;
@@ -327,7 +370,7 @@ TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoBTF) {
   rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_serve_split_html_in_two_chunks(true);
-  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  SetBtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"container\"]/div[4]");
@@ -343,7 +386,7 @@ TEST_F(SplitHtmlFilterTest,
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithRequestHeaderDriverHavingNoCriticalLineInfoBTF) {
   options_->set_serve_split_html_in_two_chunks(true);
-  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  SetBtfRequest();
   rewrite_driver()->set_critical_line_info(NULL);
   request_headers_.Add(
       HttpAttributes::kXPsaSplitConfig,
@@ -356,7 +399,7 @@ TEST_F(SplitHtmlFilterTest,
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithRequestHeaderDriverHavingCriticalLineInfoBTF) {
   options_->set_serve_split_html_in_two_chunks(true);
-  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  SetBtfRequest();
   CriticalLineInfo* config = new CriticalLineInfo;
   Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"blah\"]/div[5]");
@@ -367,7 +410,7 @@ TEST_F(SplitHtmlFilterTest,
   rewrite_driver()->SetRequestHeaders(request_headers_);
 
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
-  EXPECT_EQ(kSplitHtmlBelowTheFoldData, output_);
+  EXPECT_EQ("{}", output_);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushingCachedHtml) {
@@ -519,6 +562,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksATF) {
   rewrite_driver()->set_critical_line_info(info);
   options_->set_critical_line_config("");
   options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
   Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   GoogleString expected_output(kSplitHtmlPrefix);
   GoogleString suffix(
@@ -533,13 +577,12 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksATF) {
   VerifyJsonSize(0);
 }
 
-
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsTwoChunksBTF) {
   rewrite_driver()->SetRequestHeaders(request_headers_);
   CriticalLineInfo* info = new CriticalLineInfo;
   rewrite_driver()->set_critical_line_info(info);
   options_->set_critical_line_config("");
-  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  SetBtfRequest();
   options_->set_serve_split_html_in_two_chunks(true);
   Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ("{}", output_);
@@ -561,7 +604,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksATF) {
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoInfoTwoChunksBTF) {
   rewrite_driver()->SetRequestHeaders(request_headers_);
   rewrite_driver()->set_critical_line_info(NULL);
-  rewrite_driver()->request_context()->set_is_split_btf_request(true);
+  SetBtfRequest();
   options_->set_serve_split_html_in_two_chunks(true);
   const GoogleString html(StrCat(kHtmlInputPart1, kHtmlInputPart2));
   Parse("split_cache_miss", html);

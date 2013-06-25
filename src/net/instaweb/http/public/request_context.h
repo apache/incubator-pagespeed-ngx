@@ -44,6 +44,13 @@ typedef RefCountedPtr<RequestContext> RequestContextPtr;
 // explicit transfer of ownership in these cases.
 class RequestContext : public RefCounted<RequestContext> {
  public:
+  // Types of split html request.
+  enum SplitRequestType {
+    SPLIT_FULL,
+    SPLIT_ABOVE_THE_FOLD,
+    SPLIT_BELOW_THE_FOLD,
+  };
+
   // |logging_mutex| will be passed to the request context's AbstractLogRecord,
   // which will take ownership of it. If you will be doing logging in a real
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
@@ -108,10 +115,13 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
-  // Indicates whether the request for the below the fold portion of the split
-  // html response.
-  bool is_split_btf_request() const { return is_split_btf_request_; }
-  void set_is_split_btf_request(bool x) { is_split_btf_request_ = x; }
+  // Indicates the type of split html request.
+  SplitRequestType split_request_type() const {
+    return split_request_type_;
+  }
+  void set_split_request_type(SplitRequestType type) {
+    split_request_type_ = type;
+  }
 
   // Prepare the AbstractLogRecord for a subsequent call to WriteLog.  This
   // might include propagating information collected in the RequestContext,
@@ -307,7 +317,7 @@ class RequestContext : public RefCounted<RequestContext> {
   scoped_ptr<AbstractLogRecord> background_rewrite_log_record_;
 
   bool using_spdy_;
-  bool is_split_btf_request_;
+  SplitRequestType split_request_type_;;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

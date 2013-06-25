@@ -95,7 +95,9 @@ const char HttpAttributes::kXPsaRequestMetadata[] =
 // pagespeed servers.
 const char HttpAttributes::kXPsaResponseMetadata[] =
     "X-PSA-Response-Metadata";
-const char HttpAttributes::kXPsaSplitBtf[] = "X-PSA-Split-Btf";
+const char HttpAttributes::kXSplit[] = "x_split";
+const char HttpAttributes::kXSplitAboveTheFold[] = "atf";
+const char HttpAttributes::kXSplitBelowTheFold[] = "btf";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
 const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
 const char HttpAttributes::kXPsaSplitConfig[] = "X-PSA-Split-Config";

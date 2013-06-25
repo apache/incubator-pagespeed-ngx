@@ -334,7 +334,8 @@ void FlushEarlyFlow::TryStart(
   }
   if (driver->request_headers() == NULL ||
       driver->request_headers()->method() != RequestHeaders::kGet ||
-      driver->request_context()->is_split_btf_request()) {
+      driver->request_context()->split_request_type() ==
+      RequestContext::SPLIT_BELOW_THE_FOLD) {
     driver->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
         RewriterHtmlApplication::DISABLED);

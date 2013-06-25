@@ -198,7 +198,8 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
       element, driver(), &category);
   if (category == semantic_type::kImage &&
       src != NULL && src->DecodedValueOrNull() != NULL &&
-      !driver()->request_context()->is_split_btf_request()) {
+      driver()->request_context()->split_request_type() !=
+      RequestContext::SPLIT_BELOW_THE_FOLD) {
     if (element_json_stack_.size() > 1) {
       // For a below-the-fold image, insert a pagespeed_no_transform attribute
       // to prevent inline-preview-images filter from doing any rewriting.

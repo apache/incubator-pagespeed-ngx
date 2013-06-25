@@ -655,43 +655,57 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
 TEST_F(ServerContextTest, ScanSplitHtmlRequestSplitEnabled) {
   options()->EnableFilter(RewriteOptions::kSplitHtml);
   RequestContextPtr ctx(CreateRequestContext());
-  GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
-  EXPECT_FALSE(ctx->is_split_btf_request());
+  GoogleUrl gurl("http://test.com/?x_split=btf");
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
-  EXPECT_TRUE(ctx->is_split_btf_request());
+  EXPECT_EQ(RequestContext::SPLIT_BELOW_THE_FOLD, ctx->split_request_type());
   EXPECT_EQ("http://test.com/", gurl.Spec());
 
-  gurl.Reset("http://test.com/?a=b&X-PSA-Split-Btf=2");
+  gurl.Reset("http://test.com/?a=b&x_split=btf");
   ctx.reset(CreateRequestContext());
-  EXPECT_FALSE(ctx->is_split_btf_request());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
-  EXPECT_TRUE(ctx->is_split_btf_request());
+  EXPECT_EQ(RequestContext::SPLIT_BELOW_THE_FOLD, ctx->split_request_type());
+  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+
+  gurl.Reset("http://test.com/?a=b&x_split=atf");
+  ctx.reset(CreateRequestContext());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
+  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_EQ(RequestContext::SPLIT_ABOVE_THE_FOLD, ctx->split_request_type());
+  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+
+  gurl.Reset("http://test.com/?a=b&x_split=junk");
+  ctx.reset(CreateRequestContext());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
+  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
 
   ctx.reset(CreateRequestContext());
-  EXPECT_FALSE(ctx->is_split_btf_request());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
-  EXPECT_FALSE(ctx->is_split_btf_request());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
 }
 
 TEST_F(ServerContextTest, ScanSplitHtmlRequestOptionsNull) {
   RequestContextPtr ctx(CreateRequestContext());
-  GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
-  EXPECT_FALSE(ctx->is_split_btf_request());
+  GoogleUrl gurl("http://test.com/?x_split=btf");
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   server_context()->ScanSplitHtmlRequest(ctx, NULL, &gurl);
-  EXPECT_FALSE(ctx->is_split_btf_request());
-  EXPECT_EQ("http://test.com/?X-PSA-Split-Btf=1", gurl.Spec());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
+  EXPECT_EQ("http://test.com/?x_split=btf", gurl.Spec());
 }
 
 TEST_F(ServerContextTest, ScanSplitHtmlRequestSplitDisabled) {
   options()->DisableFilter(RewriteOptions::kSplitHtml);
   RequestContextPtr ctx(CreateRequestContext());
-  GoogleUrl gurl("http://test.com/?X-PSA-Split-Btf=1");
-  EXPECT_FALSE(ctx->is_split_btf_request());
+  GoogleUrl gurl("http://test.com/?x_split=btf");
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
   server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
-  EXPECT_FALSE(ctx->is_split_btf_request());
-  EXPECT_EQ("http://test.com/?X-PSA-Split-Btf=1", gurl.Spec());
+  EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
+  EXPECT_EQ("http://test.com/?x_split=btf", gurl.Spec());
 }
 
 class MockRewriteFilter : public RewriteFilter {

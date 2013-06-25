@@ -861,10 +861,17 @@ void ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
     return;
   }
   QueryParams query_params;
+  // TODO(bharathbhushan): Can we use the results of any earlier query parse?
   query_params.Parse(url->Query());
 
-  if (query_params.RemoveAll(HttpAttributes::kXPsaSplitBtf)) {
-    ctx->set_is_split_btf_request(true);
+  const GoogleString* value = query_params.Lookup1(HttpAttributes::kXSplit);
+  if (value != NULL) {
+    if (HttpAttributes::kXSplitBelowTheFold == (*value)) {
+      ctx->set_split_request_type(RequestContext::SPLIT_BELOW_THE_FOLD);
+    } else if (HttpAttributes::kXSplitAboveTheFold == (*value)) {
+      ctx->set_split_request_type(RequestContext::SPLIT_ABOVE_THE_FOLD);
+    }
+    query_params.RemoveAll(HttpAttributes::kXSplit);
     GoogleString query_string = query_params.empty() ? "" :
           StrCat("?", query_params.ToString());
     url->Reset(

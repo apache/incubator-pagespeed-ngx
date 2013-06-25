@@ -56,6 +56,10 @@ class SplitHtmlConfig {
     return critical_line_info_;
   }
 
+  // Updates the critical line info in the driver based on the RequestHeaders /
+  // RewriteOptions in the driver.
+  static void UpdateCriticalLineInfoInDriver(RewriteDriver* driver);
+
   XpathMap* xpath_map() { return &xpath_map_; }
   PanelIdToSpecMap* panel_id_to_spec() { return &panel_id_to_spec_; }
 
