@@ -252,8 +252,6 @@ function run_post_cache_flush() {
 
 # Tests related to rewritten response (downstream) caching.
 CACHABLE_HTML_LOC="${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
-PS_HANDLED_HTML="Passing on content handling.*8050/mod_pagespeed_test/cachable"
-PS_HANDLED_HTML=$PS_HANDLED_HTML"_rewritten_html/downstream_caching.html"
 TMP_LOG_LINE="proxy_cache.example.com GET /purge/mod_pagespeed_test/cachable_rewritten_"
 PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
 
@@ -269,7 +267,6 @@ OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_not_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
-check [ $(grep -ce "$PS_HANDLED_HTML" $ERROR_LOG) = 1 ];
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 2nd request results in a cache miss (because of the previous purge),
@@ -281,7 +278,6 @@ check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
 check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*1"
-check [ $(grep -ce "$PS_HANDLED_HTML" $ERROR_LOG) = 2 ];
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 3rd request results in a cache hit (because the previous response is
@@ -292,7 +288,6 @@ OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: HIT"
 fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
-check [ $(grep -ce "$PS_HANDLED_HTML" $ERROR_LOG) = 2 ];
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 start_test Check for correct default X-Page-Speed header format.
