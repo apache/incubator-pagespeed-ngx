@@ -25,9 +25,9 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/rde_hash_map.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_hash.h"
-#include "third_party/rdestl/rdestl_hash_map.h"
 
 
 namespace net_instaweb {

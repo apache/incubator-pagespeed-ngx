@@ -30,14 +30,4 @@ cc_library(
         "type_traits.h",
         "utility.h",
     ],
-    includes = [
-        # This include-path allows us to consistently include
-        # "third_party/rdestl/rdest_hash_map.h" from our code,
-        # even though in google3 the path from root is
-        # third_party/instaweb/src/third_party/rdestl.  In open
-        # source, those top 3 segments are not there.
-        "../..",
-    ],
-    deps = [
-    ],
 )
