@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -348,6 +349,7 @@ enum Response {
   kPagespeedDisabled,
   kBeacon,
   kStatistics,
+  kConsole,
   kMessages,
   kPagespeedSubrequest,
   kNotHeadOrGet,
@@ -1472,6 +1474,9 @@ CreateRequestContext::Response ps_create_request_context(
       || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
     return CreateRequestContext::kStatistics;
   }
+  if (url.PathSansQuery() == "/pagespeed_console") {
+    return CreateRequestContext::kConsole;
+  }
   if (url.PathSansQuery() == "/ngx_pagespeed_message") {
     return CreateRequestContext::kMessages;
   }
@@ -1925,6 +1930,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kBeacon:
     case CreateRequestContext::kStaticContent:
     case CreateRequestContext::kStatistics:
+    case CreateRequestContext::kConsole:
     case CreateRequestContext::kMessages:
     case CreateRequestContext::kPagespeedSubrequest:
     case CreateRequestContext::kPagespeedDisabled:
@@ -2149,6 +2155,20 @@ void ps_write_handler_response(const StringPiece& output,
 void ps_write_handler_response(const StringPiece& output, ngx_http_request_t* r,
                             net_instaweb::Timer* timer) {
   ps_write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
+}
+
+ngx_int_t ps_console_handler(
+    ngx_http_request_t* r,
+    net_instaweb::NgxServerContext* server_context) {
+  net_instaweb::NgxRewriteDriverFactory* factory =
+      static_cast<net_instaweb::NgxRewriteDriverFactory*>(
+          server_context->factory());
+  net_instaweb::MessageHandler* message_handler = factory->message_handler();
+  GoogleString output;
+  net_instaweb::StringWriter writer(&output);
+  ConsoleHandler(server_context, &writer, message_handler);
+  ps_write_handler_response(output, r, factory->timer());
+  return NGX_OK;
 }
 
 // TODO(oschaaf): port SPDY specific functionality, shmcache stats
@@ -2445,7 +2465,7 @@ void ps_beacon_body_handler(ngx_http_request_t* r) {
   StringPiece request_body;
   bool ok = ps_request_body_to_string_piece(r, &request_body);
   GoogleString beacon_data = net_instaweb::StrCat(
-      query_param_beacon_data, "&", request_body); 
+      query_param_beacon_data, "&", request_body);
   if (ok) {
     ps_beacon_handler_helper(r, beacon_data.c_str());
     ngx_http_finalize_request(r, NGX_HTTP_NO_CONTENT);
@@ -2508,6 +2528,8 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
       return ps_static_handler(r);
     case CreateRequestContext::kStatistics:
       return ps_statistics_handler(r, cfg_s->server_context);
+    case CreateRequestContext::kConsole:
+      return ps_console_handler(r, cfg_s->server_context);
     case CreateRequestContext::kMessages:
       return ps_messages_handler(r, cfg_s->server_context);
     case CreateRequestContext::kOk:
