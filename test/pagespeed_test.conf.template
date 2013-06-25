@@ -39,6 +39,10 @@ http {
   # critical images to be inlined, so we just disable the option here.
   pagespeed CriticalImagesBeaconEnabled false;
 
+  pagespeed Statistics on;
+  pagespeed StatisticsLogging on;
+  pagespeed LogDir "@@TEST_TMP@@/logdir";
+
   server {
     # Sets up a logical home-page server on
     # max-cacheable-content-length.example.com.  This server is only used to
@@ -104,7 +108,7 @@ http {
       set $ua_dependent_ps_capability_list "";
       set $bypass_cache 1;
     }
-    
+
     location ~ /purge(/.*) {
       allow all;
       proxy_cache_purge htmlcache $ua_dependent_ps_capability_list$1$is_args$args;

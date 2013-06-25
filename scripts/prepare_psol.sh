@@ -63,6 +63,8 @@ rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --include="apr_memcache2.c" \
   --include="loopback_route_fetcher.cc" \
   --include="add_headers_fetcher.cc" \
+  --include="console_css_out.cc" \
+  --include="console_out.cc" \
   --include="dense_hash_map" \
   --include="dense_hash_set" \
   --include="sparse_hash_map" \
