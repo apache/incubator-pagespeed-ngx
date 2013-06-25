@@ -95,6 +95,10 @@ class CachingHeaders {
 
   int status_code() const { return status_code_; }
 
+  // Generates a cache-control string for disabling caching, that is strictly
+  // more conservative than the existing cache-control string.
+  GoogleString GenerateDisabledCacheControl();
+
  private:
   void ParseCacheControlIfNecessary();
 

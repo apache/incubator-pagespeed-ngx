@@ -273,6 +273,7 @@
         '<(DEPTH)/pagespeed/kernel/html/html_keywords_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/html_name_test.cc',
         '<(DEPTH)/pagespeed/kernel/html/html_parse_test.cc',
+        '<(DEPTH)/pagespeed/kernel/http/caching_headers_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/content_type_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/google_url_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/query_params_test.cc',

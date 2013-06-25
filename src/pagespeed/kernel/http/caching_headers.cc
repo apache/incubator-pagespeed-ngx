@@ -17,12 +17,13 @@
 
 #include "pagespeed/kernel/http/caching_headers.h"
 
+#include <vector>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/time_util.h"
-#include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
@@ -318,6 +319,29 @@ bool CachingHeaders::ComputeHasExplicitNoCacheDirective() {
   }
 
   return false;
+}
+
+GoogleString CachingHeaders::GenerateDisabledCacheControl() {
+  GoogleString new_cache_control(HttpAttributes::kNoCacheMaxAge0);
+  StringPieceVector pieces, name_value;
+  if (Lookup(HttpAttributes::kCacheControl, &pieces)) {
+    for (int i = 0, n = pieces.size(); i < n; ++i) {
+      name_value.clear();
+      SplitStringPieceToVector(pieces[i], "=", &name_value, true);
+      if (!name_value.empty()) {
+        StringPiece name = name_value[0];
+        TrimWhitespace(&name);
+        // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9.1
+        if (!StringCaseEqual(name, HttpAttributes::kNoCache) &&
+            !StringCaseEqual(name, HttpAttributes::kMaxAge) &&
+            !StringCaseEqual(name, HttpAttributes::kPrivate) &&
+            !StringCaseEqual(name, HttpAttributes::kPublic)) {
+          StrAppend(&new_cache_control, ", ", pieces[i]);
+        }
+      }
+    }
+  }
+  return new_cache_control;
 }
 
 }  // namespace net_instaweb
