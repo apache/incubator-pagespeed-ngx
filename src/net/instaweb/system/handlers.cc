@@ -91,7 +91,7 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
                   "<pre>\n"
                   "  ModPagespeedStatistics on\n"
                   "  ModPagespeedStatisticsLogging on\n"
-                  "  ModPagespeedLogFile /var/log/mod_pagespeed\n"
+                  "  ModPagespeedLogFile /var/log/pagespeed\n"
                   "</pre>\n"
                   "<p>\n"
                   "  See <a href='https://developers.google.com/speed/pagespe"

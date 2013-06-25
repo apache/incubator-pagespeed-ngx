@@ -296,11 +296,11 @@
     # Enable logging of mod_pagespeed statistics, needed for the console.
     ModPagespeedStatisticsLogging on
 
-    <Location /mod_pagespeed_console>
+    <Location /pagespeed_console>
         Order allow,deny
         Allow from localhost
         Allow from 127.0.0.1
-        SetHandler mod_pagespeed_console
+        SetHandler pagespeed_console
     </Location>
 
     # Page /mod_pagespeed_message lets you view the latest messages from

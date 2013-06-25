@@ -87,7 +87,7 @@ namespace {
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
 const char kTempStatisticsGraphsHandler[] =
     "mod_pagespeed_temp_statistics_graphs";
-const char kConsoleHandler[] = "mod_pagespeed_console";
+const char kConsoleHandler[] = "pagespeed_console";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
 const char kLogRequestHeadersHandler[] = "mod_pagespeed_log_request_headers";
@@ -642,7 +642,7 @@ void instaweb_static_handler(request_rec* request,
 }
 
 // TODO(sligocki): This handler is currently unused, integrate this into
-// the mod_pagespeed_console.
+// the pagespeed_console.
 apr_status_t instaweb_statistics_graphs_handler(
     request_rec* request, ApacheConfig* config,
     ApacheMessageHandler* message_handler) {

@@ -1338,7 +1338,7 @@ flushes,image_ongoing_rewrites"
   done
 
   start_test Statistics console is available.
-  CONSOLE_URL=http://$HOSTNAME/mod_pagespeed_console
+  CONSOLE_URL=http://$HOSTNAME/pagespeed_console
   CONSOLE_HTML=$OUTDIR/console.html
   $WGET_DUMP $CONSOLE_URL > $CONSOLE_HTML
   check grep -q "console" $CONSOLE_HTML

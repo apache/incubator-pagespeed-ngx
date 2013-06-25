@@ -94,7 +94,7 @@ MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
 MOD_PAGESPEED_CACHE = /var/cache/mod_pagespeed
 
 # Determines where mod_pagespeed should write various logs.
-MOD_PAGESPEED_LOG = /var/log/mod_pagespeed
+MOD_PAGESPEED_LOG = /var/log/pagespeed
 
 # The username used to run apache.  This is needed to create the directory
 # used to store mod_pagespeed files and cache data.
