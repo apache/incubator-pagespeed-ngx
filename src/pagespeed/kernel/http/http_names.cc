@@ -48,9 +48,14 @@ const char HttpAttributes::kIfModifiedSince[] = "If-Modified-Since";
 const char HttpAttributes::kIfNoneMatch[] = "If-None-Match";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
-const char HttpAttributes::kNoCache[] = "max-age=0, no-cache";
+const char HttpAttributes::kMaxAge[] = "max-age";
+const char HttpAttributes::kNoCache[] = "no-cache";
+const char HttpAttributes::kNoCacheMaxAge0[] = "max-age=0, no-cache";
+const char HttpAttributes::kNoStore[] = "no-store";
 const char HttpAttributes::kPragma[] = "Pragma";
+const char HttpAttributes::kPrivate[] = "private";
 const char HttpAttributes::kProxyAuthorization[] = "Proxy-Authorization";
+const char HttpAttributes::kPublic[] = "public";
 const char HttpAttributes::kReferer[] = "Referer";  // sic
 const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie[] = "Set-Cookie";

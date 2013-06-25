@@ -506,6 +506,12 @@ check_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1"
 check_not_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1, 1"
 check_from "$HTML_HEADERS" egrep -q 'Cache-Control: max-age=0, no-cache'
 
+start_test Make sure nostore on a subdirectory is retained
+URL=$TEST_ROOT/nostore/nostore.html
+HTML_HEADERS=$($WGET_DUMP $URL)
+check_from "$HTML_HEADERS" egrep -q \
+  'Cache-Control: max-age=0, no-cache, no-store'
+
 start_test Custom headers remain on resources, but cache should be 1 year.
 URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
 echo $WGET_DUMP $URL

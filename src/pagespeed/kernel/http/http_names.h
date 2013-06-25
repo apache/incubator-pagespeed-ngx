@@ -53,9 +53,14 @@ struct HttpAttributes {
   static const char kIfNoneMatch[];
   static const char kLastModified[];
   static const char kLocation[];
+  static const char kMaxAge[];
   static const char kNoCache[];
+  static const char kNoCacheMaxAge0[];
+  static const char kNoStore[];
   static const char kPragma[];
+  static const char kPrivate[];
   static const char kProxyAuthorization[];
+  static const char kPublic[];
   static const char kReferer[];  // sic
   static const char kServer[];
   static const char kSetCookie[];

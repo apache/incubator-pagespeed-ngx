@@ -61,6 +61,10 @@ void DisableDownstreamHeaderFilters(request_rec* request);
 // Debug utility for printing Apache headers to stdout
 void PrintHeaders(request_rec* request);
 
+// Updates caching headers to ensure the resulting response is not cached.
+// Removes any max-age specification, and adds max-age=0, no-cache.
+void DisableCaching(request_rec* request);
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_HEADER_UTIL_H_

@@ -750,13 +750,21 @@ apr_status_t instaweb_fix_headers_filter(
     return ap_pass_brigade(filter->next, bb);
   }
 
-  // TODO(sligocki): Move inside PSOL.
-  // Turn off caching for the HTTP requests.
-  apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
-                HttpAttributes::kNoCache);
-  apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
-  apr_table_unset(request->headers_out, HttpAttributes::kExpires);
-  apr_table_unset(request->headers_out, HttpAttributes::kEtag);
+  // TODO(sligocki): Consider moving inside PSOL.  Note that this is a
+  // little thornier than it looks because PSOL headers are different
+  // from Apache headers and to share code easily we'd have to
+  // translate.  We can do that easily but it seems like a waste of
+  // CPU time since this will occur on every HTML request.  However,
+  // there is hope in pagespeed/kernel/http/caching_headers.h, which
+  // provides an abstracted interface to any underlying representation.
+  // We could build on that pattern to do platform-independent header
+  // manipulations in PSOL rather than direct calls to ResponseHeaders.
+  //
+  // TODO(jmarantz): merge this logic with that in
+  // ResponseHeaders::CacheControlValuesToPreserve and
+  // ServerContext::ApplyInputCacheControl
+  DisableCaching(request);
+
   // TODO(sligocki): Why remove ourselves? Is it to assure that this filter
   // only looks at the first bucket in the brigade?
   ap_remove_output_filter(filter);

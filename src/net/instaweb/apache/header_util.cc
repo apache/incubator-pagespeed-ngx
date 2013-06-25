@@ -158,4 +158,37 @@ void PrintHeaders(request_rec* request) {
   fflush(stdout);
 }
 
+void DisableCaching(request_rec* request) {
+  // Turn off caching for the HTTP requests.
+  const char* cache_control = apr_table_get(request->headers_out,
+                                            HttpAttributes::kCacheControl);
+  GoogleString new_cache_control(HttpAttributes::kNoCacheMaxAge0);
+  if (cache_control != NULL) {
+    StringPieceVector pieces, name_value;
+    SplitStringPieceToVector(cache_control, ",", &pieces, true);
+    for (int i = 0, n = pieces.size(); i < n; ++i) {
+      name_value.clear();
+      TrimWhitespace(&pieces[i]);
+      SplitStringPieceToVector(pieces[i], "=", &name_value, true);
+      if (!name_value.empty()) {
+        StringPiece name = name_value[0];
+        TrimWhitespace(&name);
+        // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9.1
+        if (!StringCaseEqual(name, HttpAttributes::kNoCache) &&
+            !StringCaseEqual(name, HttpAttributes::kMaxAge) &&
+            !StringCaseEqual(name, HttpAttributes::kPrivate) &&
+            !StringCaseEqual(name, HttpAttributes::kPublic)) {
+          StrAppend(&new_cache_control, ", ", pieces[i]);
+        }
+      }
+    }
+  }
+
+  apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
+                new_cache_control.c_str());
+  apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
+  apr_table_unset(request->headers_out, HttpAttributes::kExpires);
+  apr_table_unset(request->headers_out, HttpAttributes::kEtag);
+}
+
 }  // namespace net_instaweb

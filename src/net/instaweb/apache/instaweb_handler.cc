@@ -553,7 +553,7 @@ void write_handler_response(const StringPiece& output,
 
 void write_handler_response(const StringPiece& output, request_rec* request) {
   write_handler_response(output, request,
-                         kContentTypeHtml, HttpAttributes::kNoCache);
+                         kContentTypeHtml, HttpAttributes::kNoCacheMaxAge0);
 }
 
 // Returns request URL if it was a .pagespeed. rewritten resource URL.
@@ -809,7 +809,7 @@ apr_status_t instaweb_statistics_handler(
 
   if (json) {
     write_handler_response(output, request,
-                           kContentTypeJson, HttpAttributes::kNoCache);
+                           kContentTypeJson, HttpAttributes::kNoCacheMaxAge0);
   } else {
     write_handler_response(output, request);
   }
@@ -957,7 +957,7 @@ apr_status_t instaweb_beacon_handler(request_rec* request,
                                          HttpAttributes::kUserAgent);
   server_context->HandleBeacon(data, user_agent, request_context);
   apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
-                HttpAttributes::kNoCache);
+                HttpAttributes::kNoCacheMaxAge0);
   return HTTP_NO_CONTENT;
 }
 
