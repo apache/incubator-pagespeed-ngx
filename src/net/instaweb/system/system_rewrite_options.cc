@@ -64,7 +64,7 @@ void SystemRewriteOptions::AddProperties() {
                     "Set the path for file cache");
   AddSystemProperty("", &SystemRewriteOptions::log_dir_, "ald",
                     RewriteOptions::kLogDir,
-                    "Directory to store mod_pagespeed logs in.");
+                    "Directory to store logs in.");
   AddSystemProperty("", &SystemRewriteOptions::memcached_servers_, "ams",
                     RewriteOptions::kMemcachedServers,
                     "Comma-separated list of servers e.g. "
@@ -80,6 +80,10 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty(true, &SystemRewriteOptions::statistics_enabled_, "ase",
                     RewriteOptions::kStatisticsEnabled,
                     "Whether to collect cross-process statistics.");
+  AddSystemProperty("/pagespeed_statistics",
+                    &SystemRewriteOptions::statistics_handler_path_, "ashp",
+                    RewriteOptions::kStatisticsHandlerPath,
+                    "Absolute path URL to statistics handler.");
   AddSystemProperty("", &SystemRewriteOptions::statistics_logging_charts_css_,
                     "aslcc", RewriteOptions::kStatisticsLoggingChartsCSS,
                     "Where to find an offline copy of the Google Charts Tools "

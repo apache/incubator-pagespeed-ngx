@@ -364,6 +364,7 @@ class RewriteOptions {
     kSslCertDirectory,
     kSslCertFile,
     kStatisticsEnabled,
+    kStatisticsHandlerPath,
     kStatisticsLoggingChartsCSS,
     kStatisticsLoggingChartsJS,
     kStatisticsLoggingEnabled,

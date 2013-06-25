@@ -20,6 +20,9 @@
  * Fetches JSON statistics data from server to draw graphs over time of
  * various "notable issues".
  *
+ * PRECONDITIONS: pagespeedStatisticsUrl must be set in JavaScript and
+ * <script src='https://www.google.com/jsapi'></script> must be loaded in HTML.
+ *
  * @author sligocki@google.com (Shawn Ligocki)
  * @author sarahdw@google.com (Sarah Dapul-Weberman)
  * @author bvb@google.com (Ben VanBerkum)
@@ -60,7 +63,7 @@ pagespeed.Console = function() {
 
   /**
    * Names of variables needed for loading all graphs. Set by addGraph(),
-   * used in request to mod_pagespeed server.
+   * used in request to pagespeed server.
    * @type {goog.structs.Set.<string>}
    * @private
    */
@@ -358,7 +361,7 @@ pagespeed.Console.prototype.startConsole = function() {
  */
 pagespeed.Console.prototype.createQueryUrl = function(
     varNames, startTime, endTime, granularityMs) {
-  var queryString = '/mod_pagespeed_statistics?json';
+  var queryString = pagespeedStatisticsUrl + '?json';
   queryString += '&start_time=' + startTime.getTime();
   queryString += '&end_time=' + endTime.getTime();
   queryString += '&granularity=' + granularityMs;

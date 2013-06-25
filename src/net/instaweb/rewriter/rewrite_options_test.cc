@@ -752,7 +752,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(188, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(189, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -1234,6 +1234,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("Statistics",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsEnabled));
+  EXPECT_STREQ("StatisticsHandlerPath",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kStatisticsHandlerPath));
   EXPECT_STREQ("StatisticsLogging",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kStatisticsLoggingEnabled));
@@ -2224,5 +2227,3 @@ TEST_F(RewriteOptionsTest, AccessAcrossThreads) {
 }
 
 }  // namespace net_instaweb
-
-

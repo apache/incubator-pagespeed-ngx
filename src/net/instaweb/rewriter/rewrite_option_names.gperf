@@ -206,6 +206,7 @@ struct OptionName {
 "SslCertDirectory",                      RewriteOptions::kSslCertDirectory
 "SslCertFile",                           RewriteOptions::kSslCertFile
 "Statistics",                            RewriteOptions::kStatisticsEnabled
+"StatisticsHandlerPath",                 RewriteOptions::kStatisticsHandlerPath
 "StatisticsLogging",                     RewriteOptions::kStatisticsLoggingEnabled
 "StatisticsLoggingChartsCSS",            RewriteOptions::kStatisticsLoggingChartsCSS
 "StatisticsLoggingChartsJS",             RewriteOptions::kStatisticsLoggingChartsJS

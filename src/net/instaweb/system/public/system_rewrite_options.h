@@ -84,6 +84,12 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_statistics_enabled(bool x) {
     set_option(x, &statistics_enabled_);
   }
+  const GoogleString& statistics_handler_path() const {
+    return statistics_handler_path_.value();
+  }
+  void set_statistics_handler_path(const GoogleString& x) {
+    set_option(x, &statistics_handler_path_);
+  }
   bool statistics_logging_enabled() const {
     return statistics_logging_enabled_.value();
   }
@@ -164,6 +170,10 @@ class SystemRewriteOptions : public RewriteOptions {
 
   virtual SystemRewriteOptions* Clone() const;
   virtual SystemRewriteOptions* NewOptions() const;
+
+ protected:
+  // Apache and Nginx options classes need access to this.
+  Option<GoogleString> statistics_handler_path_;
 
  private:
   // Keeps the properties added by this subclass.  These are merged into

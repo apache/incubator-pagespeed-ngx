@@ -1787,13 +1787,6 @@ check_from "$LARGE_OUT" grep -q window.location=".*&ModPagespeed=off"
 fetch_until -save $URL 'grep -c window.location=".*&ModPagespeed=off"' 0
 check_not fgrep -q pagespeed.ic $FETCH_FILE
 
-# Simple test just to make sure the console loads and has some generated
-# content on it (for example, if you have a typo in a statistics name, that
-# will only fail at runtime when the console is loaded).
-start_test mod_pagespeed_console
-OUT=$($WGET_DUMP http://$HOSTNAME/mod_pagespeed_console)
-check_from "$OUT" grep -q "Resources not loaded because of fetch failure"
-
 function scrape_secondary_stat {
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
     http://secondary.example.com/mod_pagespeed_statistics/ | \

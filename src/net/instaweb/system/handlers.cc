@@ -31,8 +31,7 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
   bool statistics_enabled = options->statistics_enabled();
   bool logging_enabled = options->statistics_logging_enabled();
   bool log_dir_set = !options->log_dir().empty();
-  if (/* This is failing in tests. TODO(sligocki): Fix. statistics_enabled && */
-      logging_enabled && log_dir_set) {
+  if (statistics_enabled && logging_enabled && log_dir_set) {
     // TODO(sligocki): Move static content to a data2cc library.
     writer->Write("<!DOCTYPE html>\n"
                   "<html>\n"
@@ -59,6 +58,9 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
                   "      <div id='pagespeed-graphs-container'></div>\n"
                   "    </div>\n"
                   "    <script src='https://www.google.com/jsapi'></script>\n"
+                  "    <script>var pagespeedStatisticsUrl = '", handler);
+    writer->Write(options->statistics_handler_path(), handler);
+    writer->Write("'</script>\n"
                   "    <script>", handler);
     writer->Write(JS_console_js, handler);
     writer->Write("</script>\n"
