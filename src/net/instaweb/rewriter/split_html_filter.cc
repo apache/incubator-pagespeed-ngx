@@ -169,6 +169,8 @@ void SplitHtmlFilter::StartDocument() {
   serve_response_in_two_chunks_ = options_->serve_split_html_in_two_chunks()
       && !disable_filter_;
   if (serve_response_in_two_chunks_) {
+    ResponseHeaders* response_headers =
+        rewrite_driver_->mutable_response_headers();
     if (rewrite_driver_->request_context()->is_split_btf_request()) {
       flush_head_enabled_ = false;
       original_writer_ = &null_writer_;
@@ -177,8 +179,6 @@ void SplitHtmlFilter::StartDocument() {
       // If max html cache time is > 0, set the cache time for the ATF chunk
       // accordingly. Also, mark the html as private, and strip the pragma and
       // age headers.
-      ResponseHeaders* response_headers =
-          rewrite_driver_->mutable_response_headers();
       response_headers->ComputeCaching();
       response_headers->SetDateAndCaching(
           response_headers->date_ms(), options_->max_html_cache_time_ms(),
@@ -186,6 +186,19 @@ void SplitHtmlFilter::StartDocument() {
       response_headers->RemoveAll(HttpAttributes::kAge);
       response_headers->RemoveAll(HttpAttributes::kPragma);
       response_headers->ComputeCaching();
+    }
+    if (!rewrite_driver_->request_context()->is_split_btf_request() &&
+        options_->serve_xhr_access_control_headers()) {
+      // TODO(ksimbili): Do this only for XHR requests and only for the prefetch
+      // requests.
+      // Serve Access-Control headers only for ATF request.
+      StringPiece allow_origin = options_->access_control_allow_origin();
+      if (!allow_origin.empty()) {
+        response_headers->Add(HttpAttributes::kAccessControlAllowOrigin,
+                              allow_origin);
+      }
+      response_headers->Add(HttpAttributes::kAccessControlAllowCredentials,
+                            "true");
     }
   }
   json_writer_.reset(new JsonWriter(original_writer_,

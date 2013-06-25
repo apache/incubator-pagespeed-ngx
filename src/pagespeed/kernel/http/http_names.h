@@ -29,6 +29,8 @@ namespace net_instaweb {
 // to use these shared constants.
 struct HttpAttributes {
   static const char kAcceptEncoding[];
+  static const char kAccessControlAllowOrigin[];
+  static const char kAccessControlAllowCredentials[];
   static const char kAge[];
   static const char kAllow[];
   static const char kAuthorization[];

@@ -25,6 +25,7 @@ struct OptionName {
   net_instaweb::RewriteOptions::OptionEnum option_enum;
 };
 %%
+"AccessControlAllowOrigin",              RewriteOptions::kAccessControlAllowOrigin
 "AddOptionsToUrls",                      RewriteOptions::kAddOptionsToUrls
 "AllowLoggingUrlsInLogRecord",           RewriteOptions::kAllowLoggingUrlsInLogRecord
 "AlwaysRewriteCss",                      RewriteOptions::kAlwaysRewriteCss
@@ -146,6 +147,7 @@ struct OptionName {
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "ServeStaleWhileRevalidateThresholdSec", RewriteOptions::kServeStaleWhileRevalidateThresholdSec
 "ServeGhostClickBusterWithSplitHtml",    RewriteOptions::kServeGhostClickBusterWithSplitHtml
+"ServeXhrAccessControlHeaders",          RewriteOptions::kServeXhrAccessControlHeaders
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
 "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss", RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss
 "UseBlankImageForInlinePreview",         RewriteOptions::kUseBlankImageForInlinePreview

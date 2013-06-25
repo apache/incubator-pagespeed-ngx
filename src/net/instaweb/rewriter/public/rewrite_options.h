@@ -175,6 +175,7 @@ class RewriteOptions {
   // Any new Option added, should have a corresponding enum here and this should
   // be passed in when Add*Property is called in AddProperties().
   enum OptionEnum {
+    kAccessControlAllowOrigin,
     kAddOptionsToUrls,
     kAllowLoggingUrlsInLogRecord,
     kAlwaysRewriteCss,
@@ -298,6 +299,7 @@ class RewriteOptions {
     kRunningExperiment,
     kServeSplitHtmlInTwoChunks,
     kServeGhostClickBusterWithSplitHtml,
+    kServeXhrAccessControlHeaders,
     kServeStaleIfFetchError,
     kServeStaleWhileRevalidateThresholdSec,
     kSupportNoScriptEnabled,
@@ -1571,6 +1573,13 @@ class RewriteOptions {
     return serve_ghost_click_buster_with_split_html_.value();
   }
 
+  void set_serve_xhr_access_control_headers(bool x) {
+    set_option(x, &serve_xhr_access_control_headers_);
+  }
+  bool serve_xhr_access_control_headers() const {
+    return serve_xhr_access_control_headers_.value();
+  }
+
   void set_proactively_freshen_user_facing_request(bool x) {
     set_option(x, &proactively_freshen_user_facing_request_);
   }
@@ -2144,6 +2153,13 @@ class RewriteOptions {
   }
   const GoogleString& non_cacheables_for_cache_partial_html() const {
     return non_cacheables_for_cache_partial_html_.value();
+  }
+
+  void set_access_control_allow_origin(const StringPiece& p) {
+    set_option(p.as_string(), &access_control_allow_origin_);
+  }
+  const GoogleString& access_control_allow_origin() const {
+    return access_control_allow_origin_.value();
   }
 
   void set_enable_fix_reflow(bool x) {
@@ -3103,6 +3119,8 @@ class RewriteOptions {
   Option<bool> serve_stale_if_fetch_error_;
   // Should we serve ghost click buster code when split html is enabled.
   Option<bool> serve_ghost_click_buster_with_split_html_;
+  // Should we serve access control headers in response headers.
+  Option<bool> serve_xhr_access_control_headers_;
   // Proactively freshen user facing request if it is about to expire. So, that
   // subsequent requests will experience a cache hit.
   Option<bool> proactively_freshen_user_facing_request_;
@@ -3365,6 +3383,9 @@ class RewriteOptions {
   // Non cacheables used when partial HTML is cached.
   Option<GoogleString> non_cacheables_for_cache_partial_html_;
 
+  // Value to be used with Access-Control-Allow-Origin header.
+  Option<GoogleString> access_control_allow_origin_;
+
   // Fix reflows due to defer js.
   Option<bool> enable_fix_reflow_;
 
@@ -3451,4 +3472,3 @@ class RewriteOptions {
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
-

@@ -268,6 +268,10 @@ TEST_F(SplitHtmlFilterTest,
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
                    kSplitHtmlMiddle, suffix),
             output_);
+  EXPECT_EQ(NULL, response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowOrigin));
+  EXPECT_EQ(NULL, response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowCredentials));
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kAge));
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kPragma));
   ConstStringStarVector values;
@@ -294,6 +298,29 @@ TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFAndNoBTF) {
             kHtmlInputPart2, suffix);
 
   EXPECT_EQ(expected_output, output_);
+}
+
+TEST_F(SplitHtmlFilterTest,
+       SplitTwoChunksHtmlATFWithAccessControlHeaders) {
+  options_->set_serve_split_html_in_two_chunks(true);
+  options_->set_serve_xhr_access_control_headers(true);
+  options_->set_access_control_allow_origin("google.com");
+  CriticalLineInfo* config = new CriticalLineInfo;
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   HttpAttributes::kXPsaSplitConfig, "", "", 1, blink_js_url_));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+  EXPECT_EQ(expected_output, output_);
+  EXPECT_STREQ("google.com", response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowOrigin));
+  EXPECT_STREQ("true", response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowCredentials));
 }
 
 TEST_F(SplitHtmlFilterTest,

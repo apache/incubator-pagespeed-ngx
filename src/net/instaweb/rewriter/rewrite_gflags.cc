@@ -462,6 +462,13 @@ DEFINE_bool(enable_fix_reflow, false,
 DEFINE_bool(serve_ghost_click_buster_with_split_html, false,
             "Whether ghost click buster code is served along with split_html.");
 
+DEFINE_bool(serve_xhr_access_control_headers, false,
+            "If set to true, adds access control headers to response headers.");
+
+DEFINE_string(access_control_allow_origin, "",
+              "Origin to be mentioned with 'Access-Control-Allow-Origin' "
+              "response header.");
+
 namespace net_instaweb {
 
 namespace {
@@ -861,6 +868,13 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("serve_ghost_click_buster_with_split_html")) {
     options->set_serve_ghost_click_buster_with_split_html(
         FLAGS_serve_ghost_click_buster_with_split_html);
+  }
+  if (WasExplicitlySet("serve_xhr_access_control_headers")) {
+    options->set_serve_xhr_access_control_headers(
+        FLAGS_serve_xhr_access_control_headers);
+  }
+  if (WasExplicitlySet("access_control_allow_origin")) {
+    options->set_access_control_allow_origin(FLAGS_access_control_allow_origin);
   }
 
   MessageHandler* handler = factory->message_handler();

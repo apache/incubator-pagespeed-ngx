@@ -1517,6 +1517,17 @@ void RewriteOptions::AddProperties() {
       "sgcbsh", kServeGhostClickBusterWithSplitHtml,
       kDirectoryScope, "Serve ghost click buster code along with split html");
 
+  AddBaseProperty(
+      false, &RewriteOptions::serve_xhr_access_control_headers_,
+      "shach", kServeXhrAccessControlHeaders,
+      kDirectoryScope, "Serve access control headers with response headers");
+
+  AddBaseProperty(
+      "", &RewriteOptions::access_control_allow_origin_,
+      "acao", kAccessControlAllowOrigin,
+      kDirectoryScope,
+      "Origin to be used with Access-Control-Allow-Origin header");
+
   AddRequestProperty(
       -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet");
   AddBaseProperty(
