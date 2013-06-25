@@ -251,25 +251,32 @@ pagespeed.Console.prototype.initGraphs = function() {
   var percent_total = pagespeed.statistics.percent_total;
 
   this.addGraph('Resources not loaded because of fetch failures',
+                'fetch-failure',
                 percent(v('serf_fetch_failure_count'),
                         v('serf_fetch_request_count')));
   this.addGraph("Resources not rewritten because domain wasn't authorized",
+                'not-authorized',
                 percent_total(v('resource_url_domain_rejections'),
                               v('resource_url_domain_acceptances')));
   this.addGraph('Resources not rewritten because of restrictive ' +
-                'Cache-Control headers',
+                  'Cache-Control headers',
+                'cache-control',
                 percent_total(v('num_cache_control_not_rewritable_resources'),
                               v('num_cache_control_rewritable_resources')));
   var totalCacheCalls = sum([v('cache_backend_misses'),
                              v('cache_backend_hits')]);
   this.addGraph('Cache misses',
+                'cache-miss',
                 percent(v('cache_backend_misses'), totalCacheCalls));
   this.addGraph('Cache lookups that were expired',
+                'cache-expired',
                 percent(v('cache_expirations'), totalCacheCalls));
   this.addGraph('CSS files not rewritten because of parse errors',
+                'css-error',
                 percent_total(v('css_filter_parse_failures'),
                               v('css_filter_blocks_rewritten')));
   this.addGraph('JavaScript minification failures',
+                'js-error',
                 percent_total(v('javascript_minification_failures'),
                               v('javascript_blocks_minified')));
   var goodImageResults =
@@ -279,15 +286,18 @@ pagespeed.Console.prototype.initGraphs = function() {
   var badImageResults =
       sum([v('image_norewrites_high_resolution'),
            v('image_rewrites_dropped_decode_failure'),
-           v('image_rewrites_dropped_server_write_fail'),
+           v('image_rewrites_dropped_due_to_load'),
            v('image_rewrites_dropped_mime_type_unknown'),
-           v('image_norewrites_high_resolution')]);
+           v('image_rewrites_dropped_server_write_fail')]);
   this.addGraph('Image rewrite failures',
+                'image-error',
                 percent_total(badImageResults, goodImageResults));
   /* TODO(sligocki): Get CSS combine stat working.
      Note: This stat is also generally much higher than the rest and also
      less important, we should de-prioritize it as well.
-  this.addGraph('CSS combine opportunities missed', percent(
+  this.addGraph('CSS combine opportunities missed',
+                'css-combine-error',
+                percent(
       v('css_combine_opportunities') - v('css_file_count_reduction'),
       v('css_combine_opportunities')));
   */
@@ -298,15 +308,19 @@ pagespeed.Console.prototype.initGraphs = function() {
  * need to fetch.
  *
  * @param {string} title  Name of the graph.
+ * @param {string} urlFragment  Id on documentation page to link to.
  * @param {Object} stat   Statistic to graph.
  * @return {Object}  The graph spec (used in tests).
  */
-pagespeed.Console.prototype.addGraph = function(title, stat) {
+pagespeed.Console.prototype.addGraph = function(title, urlFragment, stat) {
   var graph = {};
   graph.title = title;
+  graph.docUrl =
+      'https://developers.google.com/speed/pagespeed/module/console#' +
+          urlFragment;
   graph.value = stat;
   graph.lineChart = new google.visualization.LineChart(
-      pagespeed.createGraphDiv(title, this.graphs_.length));
+      pagespeed.createGraphDiv(title, graph.docUrl, this.graphs_.length));
 
   this.graphs_.push(graph);
   this.varsNeeded_.addAll(stat.varsNeeded);
@@ -492,14 +506,15 @@ pagespeed.Console.prototype.createDataTable = function(title) {
  * the div in which the graph will be drawn.
  *
  * @param {string} title     The title of the graph.
+ * @param {string} docUrl   Documentation URL.
  * @param {number} graphNum  Unique number for this graph.
  * @return {Element}  The div in which to draw the graph.
  */
-pagespeed.createGraphDiv = function(title, graphNum) {
+pagespeed.createGraphDiv = function(title, docUrl, graphNum) {
   var wholeDiv = document.createElement('div');
   wholeDiv.setAttribute('class', 'pagespeed-widgets');
 
-  wholeDiv.appendChild(pagespeed.createGraphTitleBar(title, graphNum));
+  wholeDiv.appendChild(pagespeed.createGraphTitleBar(title, docUrl, graphNum));
 
   var graph = document.createElement('div');
   graph.setAttribute('class', 'pagespeed-graph');
@@ -515,18 +530,19 @@ pagespeed.createGraphDiv = function(title, graphNum) {
  * Creates the title and dropdown menu of each graph.
  *
  * @param {string} title     The title of the graph.
+ * @param {string} docUrl   Documentation URL.
  * @param {number} graphNum  Unique number for this graph.
  * @return {Element}  The full title bar div.
  */
 pagespeed.createGraphTitleBar = function(
-    title, graphNum) {
+    title, docUrl, graphNum) {
   var topBar = document.createElement('div');
   topBar.setAttribute('class', 'pagespeed-widgets-topbar');
 
   var titleSpan = document.createElement('span');
   titleSpan.setAttribute('class', 'pagespeed-title');
   titleSpan.setAttribute('id', 'pagespeed-title' + graphNum);
-  titleSpan.innerHTML = title;
+  titleSpan.innerHTML = title + ' (<a href="' + docUrl + '">doc</a>)';
   topBar.appendChild(titleSpan);
 
   // TODO(sligocki): Add other things here, like drop-down option menu.

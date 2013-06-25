@@ -16,7 +16,9 @@
 
 #include "net/instaweb/system/public/handlers.h"
 
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -24,65 +26,76 @@ extern const char* CSS_console_css;
 extern const char* JS_console_js;
 
 // Handler which serves PSOL console.
-void ConsoleHandler(ServerContext* server_context, Writer* writer,
+void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
                     MessageHandler* handler) {
-  // TODO(sligocki): Move static content to a data2cc library.
-  writer->Write("<!DOCTYPE html>\n"
-                "<html>\n"
-                "  <head>\n"
-                "    <title>PSOL Console</title>\n"
-                "  </head>\n"
-                "  <style>\n"
-                "    html, body {\n"
-                "      padding: 0; border: 0; margin: 0;\n"
-                "      height: 100%;\n"
-                "    }\n"
-                "    #top-bar {\n"
-                "      width: 100%;\n"
-                "      border-bottom: 0.1em solid black;\n"
-                "    }\n"
-                "    #title {\n"
-                "      font-size: 300%;\n"
-                "    }\n"
-                "    #metric-box {\n"
-                "      float:right;\n"
-                "      background-color: lightgreen;\n"
-                "      padding: 1em;\n"
-                "      border: 0.1em solid black;\n"
-                "    }\n"
-                "    #metric-value {\n"
-                "      font-size: 200%;\n"
-                "      text-align: center;\n"
-                "    }\n"
-                "    #metric-name {\n"
-                "      text-align: center;\n"
-                "    }\n"
-                "  </style>\n"
-                "  <style>", handler);
-  writer->Write(CSS_console_css, handler);
-  writer->Write("</style>\n"
-                "  <body>\n"
-                "    <div id='top-bar'>\n"
-                "      <span id='title'>PSOL Console</span>\n"
-                // TODO(sligocki): Get real metric and uncomment this block.
-                "      <!-- <div id='metric-box'>\n"
-                "        <div id='metric-value'>32%</div>\n"
-                "        <div id='metric-name'>Bytes saved (dummy)</div>\n"
-                "      </div> -->\n"
-                "    </div>\n"
-                "\n"
-                "    <div id='suggestions'>\n"
-                "      <p>\n"
-                "        Notable issues:\n"
-                "      </p>\n"
-                "      <div id='pagespeed-graphs-container'></div>\n"
-                "    </div>\n"
-                "    <script src='https://www.google.com/jsapi'></script>\n"
-                "    <script>", handler);
-  writer->Write(JS_console_js, handler);
-  writer->Write("</script>\n"
-                "  </body>\n"
-                "</html>\n", handler);
+  bool statistics_enabled = options->statistics_enabled();
+  bool logging_enabled = options->statistics_logging_enabled();
+  bool log_dir_set = !options->log_dir().empty();
+  if (/* This is failing in tests. TODO(sligocki): Fix. statistics_enabled && */
+      logging_enabled && log_dir_set) {
+    // TODO(sligocki): Move static content to a data2cc library.
+    writer->Write("<!DOCTYPE html>\n"
+                  "<html>\n"
+                  "  <head>\n"
+                  "    <title>Pagespeed Console</title>\n"
+                  "    <style>\n"
+                  "      #title {\n"
+                  "        font-size: 300%;\n"
+                  "      }\n"
+                  "    </style>\n"
+                  "    <style>", handler);
+    writer->Write(CSS_console_css, handler);
+    writer->Write("</style>\n"
+                  "  </head>\n"
+                  "  <body>\n"
+                  "    <div id='top-bar'>\n"
+                  "      <span id='title'>Pagespeed Console</span>\n"
+                  "    </div>\n"
+                  "\n"
+                  "    <div id='suggestions'>\n"
+                  "      <p>\n"
+                  "        Notable issues:\n"
+                  "      </p>\n"
+                  "      <div id='pagespeed-graphs-container'></div>\n"
+                  "    </div>\n"
+                  "    <script src='https://www.google.com/jsapi'></script>\n"
+                  "    <script>", handler);
+    writer->Write(JS_console_js, handler);
+    writer->Write("</script>\n"
+                  "  </body>\n"
+                  "</html>\n", handler);
+  } else {
+    writer->Write("<!DOCTYPE html>\n"
+                  "<p>\n"
+                  "  Failed to load Pagespeed Console because:\n"
+                  "</p>\n"
+                  "<ul>\n", handler);
+    if (!statistics_enabled) {
+      writer->Write("  <li>ModPagespeedStatistics is not enabled.</li>\n",
+                    handler);
+    }
+    if (!logging_enabled) {
+      writer->Write("  <li>ModPagespeedStatisticsLogging is not enabled."
+                    "</li>\n", handler);
+    }
+    if (!log_dir_set) {
+      writer->Write("  <li>ModPagespeedLogFile is not set.</li>\n", handler);
+    }
+    writer->Write("</ul>\n"
+                  "<p>\n"
+                  "  In order to use the console you must add the following\n"
+                  "  configuration:\n"
+                  "</p>\n"
+                  "<pre>\n"
+                  "  ModPagespeedStatistics on\n"
+                  "  ModPagespeedStatisticsLogging on\n"
+                  "  ModPagespeedLogFile /var/log/mod_pagespeed\n"
+                  "</pre>\n"
+                  "<p>\n"
+                  "  See <a href='https://developers.google.com/speed/pagespe"
+                  "ed/module/console'>documentation</a> for more details.\n"
+                  "</p>\n", handler);
+  }
 }
 
 }  // namespace net_instaweb

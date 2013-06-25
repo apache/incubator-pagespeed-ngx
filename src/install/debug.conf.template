@@ -276,12 +276,6 @@ ModPagespeedCustomFetchHeader x-other False
   SetHandler mod_pagespeed_log_request_headers
 </Location>
 
-# Enable console handler in debug.conf so that we can use it without exposing
-# the config to users in pagespeed.conf.template.
-<Location /mod_pagespeed_console>
-  SetHandler mod_pagespeed_console
-</Location>
-
 ModPagespeedInPlaceResourceOptimization on
 
 ModPagespeedRespectXForwardedProto on
@@ -615,8 +609,6 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
 #NO_PER_VHOST_STATS # Overrides "ModPagespeedUsePerVHostStatistics on" above.
 #NO_PER_VHOST_STATS ModPagespeedUsePerVHostStatistics off
 
-ModPagespeedStatisticsLogging on
-ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
 # TODO(sligocki): Get rid of this once this is integrated into console.
 <Location /mod_pagespeed_temp_statistics_graphs>
     SetHandler mod_pagespeed_temp_statistics_graphs
