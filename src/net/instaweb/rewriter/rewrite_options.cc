@@ -1055,7 +1055,7 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::enable_defer_js_experimental_, "edje",
       kEnableDeferJsExperimental,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): eliminate experiment or document.
+      "Enable experimental options in defer javascript.");
   AddBaseProperty(
       true,   // By default, don't optimize resource if no-transform is set.
       &RewriteOptions::disable_rewrite_on_no_transform_, "drnt",
@@ -1426,7 +1426,7 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::critical_line_config_, "clc",
       kCriticalLineConfig,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      "Critical line xpath config for use by the split html filter.");
   AddBaseProperty(
       -1, &RewriteOptions::override_caching_ttl_ms_, "octm",
       kOverrideCachingTtlMs,
