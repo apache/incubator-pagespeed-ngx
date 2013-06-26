@@ -306,6 +306,8 @@ typedef struct {
   // there as well.
   net_instaweb::NgxServerContext* server_context;
   net_instaweb::ProxyFetchFactory* proxy_fetch_factory;
+  // Only used while parsing config.  After we merge cfg_s and cfg_m you most
+  // likely want cfg_s->server_context->config() as options here will be NULL.
   net_instaweb::NgxRewriteOptions* options;
   net_instaweb::MessageHandler* handler;
 } ps_srv_conf_t;
@@ -2166,7 +2168,7 @@ ngx_int_t ps_console_handler(
   net_instaweb::MessageHandler* message_handler = factory->message_handler();
   GoogleString output;
   net_instaweb::StringWriter writer(&output);
-  ConsoleHandler(server_context, &writer, message_handler);
+  ConsoleHandler(server_context->config(), &writer, message_handler);
   ps_write_handler_response(output, r, factory->timer());
   return NGX_OK;
 }
