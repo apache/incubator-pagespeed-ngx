@@ -121,9 +121,9 @@ class ApacheConfig : public SystemRewriteOptions {
   static void AddApacheProperty(typename OptionClass::ValueType default_value,
                                 OptionClass RewriteOptionsSubclass::*offset,
                                 const char* id,
-                                OptionEnum option_enum,
+                                StringPiece option_name,
                                 const char* help) {
-    AddProperty(default_value, offset, id, option_enum,
+    AddProperty(default_value, offset, id, option_name,
                 RewriteOptions::kServerScope, help,
                 apache_properties_);
   }

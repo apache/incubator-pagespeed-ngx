@@ -2063,8 +2063,7 @@ void ApacheProcessContext::InstallCommands() {
     if (option->help_text() != NULL) {
       // Store the fully-qualified option name in a string-array that
       // lasts until the module is destructed.
-      StrAppend(&cmd_names_[i], "ModPagespeed",
-                RewriteOptions::LookupOptionEnum(option->option_enum()));
+      StrAppend(&cmd_names_[i], "ModPagespeed", option->option_name());
       cmd->name = cmd_names_[i].c_str();
       cmd->func = reinterpret_cast<const char*(*)()>(ParseDirective);
       cmd->cmd_data = NULL;

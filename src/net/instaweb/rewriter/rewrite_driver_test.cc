@@ -103,7 +103,7 @@ class RewriteDriverTest : public RewriteTestBase {
     options()->set_downstream_cache_lifetime_ms(downstream_cache_lifetime_ms);
     options()->set_downstream_cache_purge_method(downstream_cache_purge_method);
     GoogleString msg;
-    options()->ParseAndSetOptionFromEnum1(
+    options()->ParseAndSetOptionFromName1(
         RewriteOptions::kDownstreamCachePurgeLocationPrefix,
         "http://localhost:1234/purge", &msg,
         message_handler());

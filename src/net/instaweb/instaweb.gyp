@@ -766,21 +766,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_rewriter_html_option_gperf',
-      'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/rewriter',
-      },
-      'dependencies': [
-        '<(DEPTH)/pagespeed/kernel.gyp:util',
-      ],
-      'sources': [
-        'rewriter/rewrite_option_names.gperf',
-      ],
-      'includes': [
-        'gperf.gypi',
-      ],
-    },
-    {
       # TODO: break this up into sub-libs (mocks, real, etc)
       'target_name': 'instaweb_util',
       'type': '<(library)',
@@ -963,7 +948,6 @@
         'instaweb_flush_early_pb',
         'instaweb_rendered_image_pb',
         'instaweb_rewriter_html_gperf',
-        'instaweb_rewriter_html_option_gperf',
         'instaweb_rewriter_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',

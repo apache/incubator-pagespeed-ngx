@@ -40,6 +40,8 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/dense_hash_map.h"
+#include "pagespeed/kernel/base/rde_hash_map.h"
+#include "pagespeed/kernel/base/string_hash.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 #include "pagespeed/kernel/util/fast_wildcard_group.h"
 #include "pagespeed/kernel/util/wildcard.h"
@@ -72,12 +74,10 @@ class RequestHeaders;
 // and so property-list-merging takes place at Initialization time.
 class RewriteOptions {
  public:
-  // If you add or remove anything from this list, you need to update the
-  // kFilterVectorStaticInitializer array in rewrite_options.cc and the
-  // LookupOptionEnumTest method in rewrite_options_test.cc.  If you add
-  // image-related options or css-related options, you must add them
-  // to the kRelatedFilters and kRelatedOptions lists in css_filter.cc
-  // and image_rewrite_filter.cc.
+  // If you add or remove anything from this list, you must also update the
+  // kFilterVectorStaticInitializer array in rewrite_options.cc.  If you add
+  // an image-related filter or a css-related filter, you must add it to the
+  // kRelatedFilters array in image_rewrite_filter.cc and/or css_filter.cc.
   enum Filter {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
@@ -173,211 +173,203 @@ class RewriteOptions {
     kEnabledUnplugged,
   };
 
-  // Any new Option added, should have a corresponding enum here and this should
-  // be passed in when Add*Property is called in AddProperties().
-  enum OptionEnum {
-    kAccessControlAllowOrigin,
-    kAddOptionsToUrls,
-    kAllowLoggingUrlsInLogRecord,
-    kAlwaysRewriteCss,
-    kAnalyticsID,
-    kAvoidRenamingIntrospectiveJavascript,
-    kBeaconReinstrumentTimeSec,
-    kBeaconUrl,
-    kBlinkMaxHtmlSizeRewritable,
-    kCacheInvalidationTimestamp,
-    kCacheSmallImagesUnrewritten,
-    kClientDomainRewrite,
-    kCombineAcrossPaths,
-    kCompressMetadataCache,
-    kCriticalImagesBeaconEnabled,
-    kCriticalLineConfig,
-    kCssFlattenMaxBytes,
-    kCssImageInlineMaxBytes,
-    kCssInlineMaxBytes,
-    kCssOutlineMinBytes,
-    kCssPreserveURLs,
-    kDefaultCacheHtml,
-    kDisableRewriteOnNoTransform,
-    kDistributedRewriteKey,
-    kDistributedRewriteServers,
-    kDistributedRewriteTimeoutMs,
-    kDomainRewriteHyperlinks,
-    kDomainShardCount,
-    kDownstreamCacheLifetimeMs,
-    kDownstreamCachePurgeMethod,
-    kDownstreamCacheRewrittenPercentageThreshold,
-    kEnableAggressiveRewritersForMobile,
-    kEnableBlinkDashboard,
-    kEnableBlinkHtmlChangeDetection,
-    kEnableBlinkHtmlChangeDetectionLogging,
-    kEnableDeferJsExperimental,
-    kEnableCachePurge,
-    kEnableFlushEarlyCriticalCss,
-    kEnableFixReflow,
-    kEnableExtendedInstrumentation,
-    kEnableFlushSubresourcesExperimental,
-    kEnableLazyLoadHighResImages,
-    kEnablePrioritizingScripts,
-    kEnabled,
-    kExperimentCookieDurationMs,
-    kExperimentSlot,
-    kFinderPropertiesCacheExpirationTimeMs,
-    kFinderPropertiesCacheRefreshTimeMs,
-    kFlushBufferLimitBytes,
-    kFlushHtml,
-    kFlushMoreResourcesEarlyIfTimePermits,
-    kForbidAllDisabledFilters,
-    kIdleFlushTimeMs,
-    kImageInlineMaxBytes,
-    kImageJpegNumProgressiveScans,
-    kImageJpegNumProgressiveScansForSmallScreens,
-    kImageJpegRecompressionQuality,
-    kImageJpegRecompressionQualityForSmallScreens,
-    kImageLimitOptimizedPercent,
-    kImageLimitRenderedAreaPercent,
-    kImageLimitResizeAreaPercent,
-    kImageMaxRewritesAtOnce,
-    kImagePreserveURLs,
-    kImageRecompressionQuality,
-    kImageResolutionLimitBytes,
-    kImageWebpRecompressionQuality,
-    kImageWebpRecompressionQualityForSmallScreens,
-    kImageWebpTimeoutMs,
-    kImplicitCacheTtlMs,
-    kInPlaceResourceOptimization,
-    kInPlaceWaitForOptimized,
-    kInPlacePreemptiveRewriteCss,
-    kInPlacePreemptiveRewriteCssImages,
-    kInPlacePreemptiveRewriteImages,
-    kInPlacePreemptiveRewriteJavascript,
-    kInPlaceRewriteDeadlineMs,
-    kIncreaseSpeedTracking,
-    kInlineOnlyCriticalImages,
-    kJsInlineMaxBytes,
-    kJsOutlineMinBytes,
-    kJsPreserveURLs,
-    kLazyloadImagesAfterOnload,
-    kLazyloadImagesBlankUrl,
-    kLogBackgroundRewrite,
-    kLogRewriteTiming,
-    kLogUrlIndices,
-    kLowercaseHtmlNames,
-    kMaxCacheableResponseContentLength,
-    kMaxCombinedJsBytes,
-    kMaxHtmlCacheTimeMs,
-    kMaxHtmlParseBytes,
-    kMaxImageBytesForWebpInCss,
-    kMaxImageSizeLowResolutionBytes,
-    kMaxInlinedPreviewImagesIndex,
-    kMaxPrefetchJsElements,
-    kMaxRewriteInfoLogSize,
-    kMaxUrlSegmentSize,
-    kMaxUrlSize,
-    kMetadataCacheStalenessThresholdMs,
-    kMinImageSizeLowResolutionBytes,
-    kMinResourceCacheTimeToRewriteMs,
-    kModifyCachingHeaders,
-    kNonCacheablesForCachePartialHtml,
-    kObliviousPagespeedUrls,
-    kOverrideCachingTtlMs,
-    kOverrideIeDocumentMode,
-    kPersistBlinkBlacklist,
-    kProactivelyFreshenUserFacingRequest,
-    kProgressiveJpegMinBytes,
-    kPropagateBlinkCacheDeletes,
-    kRejectBlacklisted,
-    kRejectBlacklistedStatusCode,
-    kReportUnloadTime,
-    kRespectVary,
-    kRespectXForwardedProto,
-    kRewriteDeadlineMs,
-    kRewriteLevel,
-    kRewriteRandomDropPercentage,
-    kRewriteRequestUrlsEarly,
-    kRewriteUncacheableResources,
-    kRunningExperiment,
-    kServeSplitHtmlInTwoChunks,
-    kServeGhostClickBusterWithSplitHtml,
-    kServeXhrAccessControlHeaders,
-    kServeStaleIfFetchError,
-    kServeStaleWhileRevalidateThresholdSec,
-    kSupportNoScriptEnabled,
-    kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
-    kUseBlankImageForInlinePreview,
-    kUseFallbackPropertyCacheValues,
-    kUseSmartDiffInBlink,
-    kXModPagespeedHeaderValue,
-    kXPsaBlockingRewrite,
-
-    // Options that require special handling, e.g. non-scalar values
-    kAllow,
-    kBlockingRewriteRefererUrls,
-    kDisableFilters,
-    kDisallow,
-    kDistributableFilters,  // For experimentation, may be removed later.
-    kDomain,
-    kDownstreamCachePurgeLocationPrefix,
-    kEnableFilters,
-    kExperimentVariable,
-    kExperimentSpec,
-    kForbidFilters,
-    kRetainComment,
-
-    // 2-argument ones:
-    kCustomFetchHeader,
-    kLoadFromFile,
-    kLoadFromFileMatch,
-    kLoadFromFileRule,
-    kLoadFromFileRuleMatch,
-    kMapOriginDomain,
-    kMapRewriteDomain,
-    kMapProxyDomain,
-    kShardDomain,
-
-    // 3-argument ones:
-    kUrlValuedAttribute,
-    kLibrary,
-
-    // apache/ or system/ specific:
-    kCacheFlushFilename,
-    kCacheFlushPollIntervalSec,
-    kExperimentalFetchFromModSpdy,
-    kFetchHttps,
-    kFetcherProxy,
-    kFetcherTimeOutMs,
-    kFileCacheCleanInodeLimit,
-    kFileCacheCleanIntervalMs,
-    kFileCacheCleanSizeKb,
-    kFileCachePath,
-    kLogDir,
-    kLruCacheByteLimit,
-    kLruCacheKbPerProcess,
-    kMemcachedServers,
-    kMemcachedThreads,
-    kMemcachedTimeoutUs,
-    kMessageBufferSize,
-    kRateLimitBackgroundFetches,
-    kSlurpDirectory,
-    kSlurpFlushLimit,
-    kSlurpReadOnly,
-    kSslCertDirectory,
-    kSslCertFile,
-    kStatisticsEnabled,
-    kStatisticsHandlerPath,
-    kStatisticsLoggingChartsCSS,
-    kStatisticsLoggingChartsJS,
-    kStatisticsLoggingEnabled,
-    kStatisticsLoggingIntervalMs,
-    kStatisticsLoggingMaxFileSizeKb,
-    kTestProxy,
-    kTestProxySlurp,
-    kUseSharedMemLocking,
-
-    // This is used as a marker for unknown options, as well as to denote
-    // how many options the PSOL library itself knows about.
-    kEndOfOptions
-  };
+  // Any new Option added should have a corresponding name here that must be
+  // passed in when Add*Property is called in AddProperties(). You must also
+  // update the LookupOptionByNameTest method in rewrite_options_test.cc. If
+  // you add an image-related option or css-related option you must also add
+  // it to the kRelatedOptions array in image_rewrite_filter.cc and/or
+  // css_filter.cc.
+  static const char kAccessControlAllowOrigin[];
+  static const char kAddOptionsToUrls[];
+  static const char kAllowLoggingUrlsInLogRecord[];
+  static const char kAlwaysRewriteCss[];
+  static const char kAnalyticsID[];
+  static const char kAvoidRenamingIntrospectiveJavascript[];
+  static const char kBeaconReinstrumentTimeSec[];
+  static const char kBeaconUrl[];
+  static const char kBlinkMaxHtmlSizeRewritable[];
+  static const char kCacheInvalidationTimestamp[];
+  static const char kCacheSmallImagesUnrewritten[];
+  static const char kClientDomainRewrite[];
+  static const char kCombineAcrossPaths[];
+  static const char kCriticalImagesBeaconEnabled[];
+  static const char kCriticalLineConfig[];
+  static const char kCssFlattenMaxBytes[];
+  static const char kCssImageInlineMaxBytes[];
+  static const char kCssInlineMaxBytes[];
+  static const char kCssOutlineMinBytes[];
+  static const char kCssPreserveURLs[];
+  static const char kDefaultCacheHtml[];
+  static const char kDisableRewriteOnNoTransform[];
+  static const char kDistributedRewriteKey[];
+  static const char kDistributedRewriteServers[];
+  static const char kDistributedRewriteTimeoutMs[];
+  static const char kDomainRewriteHyperlinks[];
+  static const char kDomainShardCount[];
+  static const char kDownstreamCacheLifetimeMs[];
+  static const char kDownstreamCachePurgeMethod[];
+  static const char kDownstreamCacheRewrittenPercentageThreshold[];
+  static const char kEnableAggressiveRewritersForMobile[];
+  static const char kEnableBlinkHtmlChangeDetection[];
+  static const char kEnableBlinkHtmlChangeDetectionLogging[];
+  static const char kEnableCachePurge[];
+  static const char kEnableDeferJsExperimental[];
+  static const char kEnableExtendedInstrumentation[];
+  static const char kEnableFixReflow[];
+  static const char kEnableFlushEarlyCriticalCss[];
+  static const char kEnableLazyLoadHighResImages[];
+  static const char kEnablePrioritizingScripts[];
+  static const char kEnabled[];
+  static const char kExperimentCookieDurationMs[];
+  static const char kExperimentSlot[];
+  static const char kFetcherTimeOutMs[];
+  static const char kFinderPropertiesCacheExpirationTimeMs[];
+  static const char kFinderPropertiesCacheRefreshTimeMs[];
+  static const char kFlushBufferLimitBytes[];
+  static const char kFlushHtml[];
+  static const char kFlushMoreResourcesEarlyIfTimePermits[];
+  static const char kForbidAllDisabledFilters[];
+  static const char kIdleFlushTimeMs[];
+  static const char kImageInlineMaxBytes[];
+  static const char kImageJpegNumProgressiveScans[];
+  static const char kImageJpegNumProgressiveScansForSmallScreens[];
+  static const char kImageJpegRecompressionQuality[];
+  static const char kImageJpegRecompressionQualityForSmallScreens[];
+  static const char kImageLimitOptimizedPercent[];
+  static const char kImageLimitRenderedAreaPercent[];
+  static const char kImageLimitResizeAreaPercent[];
+  static const char kImageMaxRewritesAtOnce[];
+  static const char kImagePreserveURLs[];
+  static const char kImageRecompressionQuality[];
+  static const char kImageResolutionLimitBytes[];
+  static const char kImageWebpRecompressionQuality[];
+  static const char kImageWebpRecompressionQualityForSmallScreens[];
+  static const char kImageWebpTimeoutMs[];
+  static const char kImplicitCacheTtlMs[];
+  static const char kIncreaseSpeedTracking[];
+  static const char kInlineOnlyCriticalImages[];
+  static const char kInPlacePreemptiveRewriteCss[];
+  static const char kInPlacePreemptiveRewriteCssImages[];
+  static const char kInPlacePreemptiveRewriteImages[];
+  static const char kInPlacePreemptiveRewriteJavascript[];
+  static const char kInPlaceResourceOptimization[];
+  static const char kInPlaceRewriteDeadlineMs[];
+  static const char kInPlaceWaitForOptimized[];
+  static const char kJsInlineMaxBytes[];
+  static const char kJsOutlineMinBytes[];
+  static const char kJsPreserveURLs[];
+  static const char kLazyloadImagesAfterOnload[];
+  static const char kLazyloadImagesBlankUrl[];
+  static const char kLogBackgroundRewrite[];
+  static const char kLogRewriteTiming[];
+  static const char kLogUrlIndices[];
+  static const char kLowercaseHtmlNames[];
+  static const char kMaxCacheableResponseContentLength[];
+  static const char kMaxCombinedJsBytes[];
+  static const char kMaxHtmlCacheTimeMs[];
+  static const char kMaxHtmlParseBytes[];
+  static const char kMaxImageBytesForWebpInCss[];
+  static const char kMaxImageSizeLowResolutionBytes[];
+  static const char kMaxInlinedPreviewImagesIndex[];
+  static const char kMaxPrefetchJsElements[];
+  static const char kMaxRewriteInfoLogSize[];
+  static const char kMaxUrlSegmentSize[];
+  static const char kMaxUrlSize[];
+  static const char kMetadataCacheStalenessThresholdMs[];
+  static const char kMinImageSizeLowResolutionBytes[];
+  static const char kMinResourceCacheTimeToRewriteMs[];
+  static const char kModifyCachingHeaders[];
+  static const char kNonCacheablesForCachePartialHtml[];
+  static const char kObliviousPagespeedUrls[];
+  static const char kOverrideCachingTtlMs[];
+  static const char kPersistBlinkBlacklist[];
+  static const char kProactivelyFreshenUserFacingRequest[];
+  static const char kProgressiveJpegMinBytes[];
+  static const char kRejectBlacklisted[];
+  static const char kRejectBlacklistedStatusCode[];
+  static const char kReportUnloadTime[];
+  static const char kRespectVary[];
+  static const char kRespectXForwardedProto[];
+  static const char kRewriteDeadlineMs[];
+  static const char kRewriteLevel[];
+  static const char kRewriteRandomDropPercentage[];
+  static const char kRewriteRequestUrlsEarly[];
+  static const char kRewriteUncacheableResources[];
+  static const char kRunningExperiment[];
+  static const char kServeGhostClickBusterWithSplitHtml[];
+  static const char kServeSplitHtmlInTwoChunks[];
+  static const char kServeStaleIfFetchError[];
+  static const char kServeStaleWhileRevalidateThresholdSec[];
+  static const char kServeXhrAccessControlHeaders[];
+  static const char kSupportNoScriptEnabled[];
+  static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
+  static const char kUseBlankImageForInlinePreview[];
+  static const char kUseFallbackPropertyCacheValues[];
+  static const char kUseSmartDiffInBlink[];
+  static const char kXModPagespeedHeaderValue[];
+  static const char kXPsaBlockingRewrite[];
+  // Options that require special handling, e.g. non-scalar values
+  static const char kAllow[];
+  static const char kBlockingRewriteRefererUrls[];
+  static const char kDisableFilters[];
+  static const char kDisallow[];
+  static const char kDistributableFilters[];  // For experimentation.
+  static const char kDomain[];
+  static const char kDownstreamCachePurgeLocationPrefix[];
+  static const char kEnableFilters[];
+  static const char kExperimentVariable[];
+  static const char kExperimentSpec[];
+  static const char kForbidFilters[];
+  static const char kRetainComment[];
+  // 2-argument ones:
+  static const char kCustomFetchHeader[];
+  static const char kLoadFromFile[];
+  static const char kLoadFromFileMatch[];
+  static const char kLoadFromFileRule[];
+  static const char kLoadFromFileRuleMatch[];
+  static const char kMapOriginDomain[];
+  static const char kMapProxyDomain[];
+  static const char kMapRewriteDomain[];
+  static const char kShardDomain[];
+  // 3-argument ones:
+  static const char kLibrary[];
+  static const char kUrlValuedAttribute[];
+  // apache/ or system/ specific:
+  // TODO(matterbury): move these to system_rewrite_options.cc?
+  static const char kCacheFlushFilename[];
+  static const char kCacheFlushPollIntervalSec[];
+  static const char kCompressMetadataCache[];
+  static const char kExperimentalFetchFromModSpdy[];
+  static const char kFetcherProxy[];
+  static const char kFetchHttps[];
+  static const char kFileCacheCleanInodeLimit[];
+  static const char kFileCacheCleanIntervalMs[];
+  static const char kFileCacheCleanSizeKb[];
+  static const char kFileCachePath[];
+  static const char kLogDir[];
+  static const char kLruCacheByteLimit[];
+  static const char kLruCacheKbPerProcess[];
+  static const char kMemcachedServers[];
+  static const char kMemcachedThreads[];
+  static const char kMemcachedTimeoutUs[];
+  static const char kRateLimitBackgroundFetches[];
+  static const char kSlurpDirectory[];
+  static const char kSlurpFlushLimit[];
+  static const char kSlurpReadOnly[];
+  static const char kSslCertDirectory[];
+  static const char kSslCertFile[];
+  static const char kStatisticsEnabled[];
+  static const char kStatisticsHandlerPath[];
+  static const char kStatisticsLoggingChartsCSS[];
+  static const char kStatisticsLoggingChartsJS[];
+  static const char kStatisticsLoggingEnabled[];
+  static const char kStatisticsLoggingIntervalMs[];
+  static const char kStatisticsLoggingMaxFileSizeKb[];
+  static const char kTestProxy[];
+  static const char kTestProxySlurp[];
+  static const char kUseSharedMemLocking[];
+  // The option name you have when you don't have an option name.
+  static const char kNullOption[];
 
   // We allow query params to be set in custom beacon URLs through the
   // ModPagespeedBeaconUrl option, but we don't use those query params for
@@ -487,10 +479,10 @@ class RewriteOptions {
   // Properties that are independent of type.
   class PropertyBase {
    public:
-    PropertyBase(const char* id, OptionEnum option_enum)
+    PropertyBase(const char* id, StringPiece option_name)
         : id_(id),
           help_text_(NULL),
-          option_enum_(option_enum),
+          option_name_(option_name),
           scope_(kDirectoryScope),
           do_not_use_for_signature_computation_(false),
           index_(-1) {
@@ -516,13 +508,13 @@ class RewriteOptions {
 
     void set_index(int index) { index_ = index; }
     const char* id() const { return id_; }
-    OptionEnum option_enum() const { return option_enum_; }
+    StringPiece option_name() const { return option_name_; }
     int index() const { return index_; }
 
    private:
     const char* id_;
     const char* help_text_;
-    OptionEnum option_enum_;  // To know where this is in all_options_.
+    StringPiece option_name_;  // Key into all_options_.
     OptionScope scope_;
     bool do_not_use_for_signature_computation_;  // Default is false.
     int index_;
@@ -548,7 +540,7 @@ class RewriteOptions {
     const char* id() const { return property()->id(); }
     const char* help_text() const { return property()->help_text(); }
     OptionScope scope() const { return property()->scope(); }
-    OptionEnum option_enum() const { return property()->option_enum(); }
+    StringPiece option_name() const { return property()->option_name(); }
     bool is_used_for_signature_computation() const {
       return property()->is_used_for_signature_computation();
     }
@@ -1097,45 +1089,31 @@ class RewriteOptions {
   // Advanced option parsing, that can understand non-scalar values
   // (unlike SetOptionFromName), and which is extensible by platforms.
   // Returns whether succeeded or the kind of failure, and writes the
-  // diagnostic into *msg. These are implemented in terms of the
-  // corresponding ParseAndSetOptionFromEnumN methods.
-  OptionSettingResult ParseAndSetOptionFromName1(
+  // diagnostic into *msg.
+  virtual OptionSettingResult ParseAndSetOptionFromName1(
       StringPiece name, StringPiece arg,
       GoogleString* msg, MessageHandler* handler);
 
-  OptionSettingResult ParseAndSetOptionFromName2(
+  virtual OptionSettingResult ParseAndSetOptionFromName2(
       StringPiece name, StringPiece arg1, StringPiece arg2,
       GoogleString* msg, MessageHandler* handler);
 
-  OptionSettingResult ParseAndSetOptionFromName3(
+  virtual OptionSettingResult ParseAndSetOptionFromName3(
       StringPiece name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
       GoogleString* msg, MessageHandler* handler);
 
-  // See description of ParseAndSetOptionFromName1 above. This is the step
-  // of that function that occurs after the name has been turned into an
-  // enum.
-  virtual OptionSettingResult ParseAndSetOptionFromEnum1(
-      OptionEnum name, StringPiece arg,
-      GoogleString* msg, MessageHandler* handler);
-
-  virtual OptionSettingResult ParseAndSetOptionFromEnum2(
-      OptionEnum name, StringPiece arg1, StringPiece arg2,
-      GoogleString* msg, MessageHandler* handler);
-
-  virtual OptionSettingResult ParseAndSetOptionFromEnum3(
-      OptionEnum name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
-      GoogleString* msg, MessageHandler* handler);
-
-  // Given an option specified as an enum, set its value.
-  OptionSettingResult SetOptionFromEnum(OptionEnum option_enum,
-                                        StringPiece value);
+  // Given an option's name and a scalar value (cf. ParseAndSetOptionFromNameX),
+  // set the option to the parsed value. The scalar types supported are those
+  // for which we have a ParseFromString method below - currently supports
+  // bool, EnabledEnum, int, int64, GoogleString, RewriteLevel, and BeaconUrl.
+  OptionSettingResult SetOptionFromName(StringPiece name, StringPiece value);
 
   // Returns the id and value of the specified option-enum in *id and *value.
   // Sets *was_set to true if this option has been altered from the default.
   //
   // If this option was not found, false is returned, and *id, *was_set, and
   // *value will be left unassigned.
-  bool OptionValue(OptionEnum option_enum, const char** id,
+  bool OptionValue(StringPiece option_name, const char** id,
                    bool* was_set, GoogleString* value) const;
 
   // Set all of the options to their values specified in the option set.
@@ -2389,18 +2367,17 @@ class RewriteOptions {
   // Returns kEndOfFilters if the id isn't known.
   static Filter LookupFilterById(const StringPiece& filter_id);
 
-  // Looks up an option id and returns the corresponding enum, or kEndOfOptions
-  // if the id is not found.  Example, takes "ii" and returns
-  // kDefaultImageInlineMaxBytes.
-  static OptionEnum LookupOptionEnumById(const StringPiece& option_id);
+  // Looks up an option id/name and returns the corresponding PropertyBase if
+  // found, or NULL if the id/name is not found.
+  static const PropertyBase* LookupOptionById(StringPiece option_id);
+  static const PropertyBase* LookupOptionByName(StringPiece option_name);
 
-  // Returns the option name corresponding to the option enum.
-  static const char* LookupOptionEnum(OptionEnum option_enum) {
-    return (option_enum < kEndOfOptions) ?
-        option_enum_to_name_array_[option_enum] : NULL;
-  }
+  // Looks up an option id and returns the corresponding name, or kNullOption
+  // if the id is not found. Example: for "ii" it returns "ImageInlineMaxBytes".
+  static const StringPiece LookupOptionNameById(StringPiece option_id);
 
-  static OptionEnum LookupOption(const StringPiece& option_name);
+  // Determine if the given option name is valid/known.
+  static bool IsValidOptionName(StringPiece name);
 
   // Return the list of all options.  Used to initialize the configuration
   // vector to the Apache configuration system.
@@ -2431,8 +2408,8 @@ class RewriteOptions {
     // (e.g. Timer::kHourMs) which does not have a linkable address.
     Property(ValueType default_value,
              const char* id,
-             OptionEnum option_enum)
-        : PropertyBase(id, option_enum),
+             StringPiece option_name)
+        : PropertyBase(id, option_name),
           default_value_(default_value) {
     }
 
@@ -2471,8 +2448,8 @@ class RewriteOptions {
     PropertyLeaf(ValueType default_value,
                  OptionOffset offset,
                  const char* id,
-                 OptionEnum option_enum)
-        : Property<ValueType>(default_value, id, option_enum),
+                 StringPiece option_name)
+        : Property<ValueType>(default_value, id, option_name),
           offset_(offset) {
     }
 
@@ -2524,10 +2501,10 @@ class RewriteOptions {
     // The signature of the Merge implementation must match the base-class.  The
     // caller is responsible for ensuring that only the same typed Options are
     // compared.  In RewriteOptions::Merge this is guaranteed because the
-    // vector<OptionBase*> all_options_ is sorted on option_enum().  We DCHECK
-    // that the option_enum of this and src are the same.
+    // vector<OptionBase*> all_options_ is sorted on option_name().  We DCHECK
+    // that the option_name of this and src are the same.
     virtual void Merge(const OptionBase* src) {
-      DCHECK(option_enum() == src->option_enum());
+      DCHECK(option_name() == src->option_name());
       MergeHelper(static_cast<const OptionTemplateBase*>(src));
     }
 
@@ -2687,13 +2664,13 @@ class RewriteOptions {
       typename OptionClass::ValueType default_value,
       OptionClass RewriteOptionsSubclass::*offset,
       const char* id,
-      OptionEnum option_enum,
+      StringPiece option_name,
       OptionScope scope,
       const char* help_text,
       Properties* properties) {
     PropertyBase* property =
         new PropertyLeaf<RewriteOptionsSubclass, OptionClass>(
-            default_value, offset, id, option_enum);
+            default_value, offset, id, option_name);
     property->set_scope(scope);
     property->set_help_text(help_text);
     properties->push_back(property);
@@ -2776,6 +2753,7 @@ class RewriteOptions {
   static Properties* all_properties_;      // includes subclass properties
 
   FRIEND_TEST(RewriteOptionsTest, ExperimentMergeTest);
+  FRIEND_TEST(RewriteOptionsTest, LookupOptionByNameTest);
 
   // Helper functions to check if given header need to be blocked.
   bool HasRejectedHeader(const StringPiece& header_name,
@@ -2873,16 +2851,22 @@ class RewriteOptions {
       UrlCacheInvalidationEntryVector;
   typedef dense_hash_map<GoogleString, int64> UrlCacheInvalidationMap;
 
+  // Sigh. The folding Hash struct is required so that we ignore case when
+  // inserting. The folding Equal struct is required for looking up. Damned
+  // if I know why one needs to specify both.
+  typedef rde::hash_map<StringPiece, const PropertyBase*,
+                        CaseFoldStringPieceHash, /* TLoadFactor4 = */ 6,
+                        CaseFoldStringPieceEqual> PropertyNameMap;
+
   // Private methods to help add properties to
   // RewriteOptions::properties_.  Subclasses define their own
   // versions of these to add to their own private property-lists, and
   // subsequently merge them into RewriteOptions::all_properties_ via
   // MergeSubclassProperties.
   //
-  // This version a property without a unique option_enum_ field.
-  // kEndOfOptions will be used for the enum, and thus
-  // SetOptionFromName cannot be used for options associated with such
-  // properties.
+  // This version is for a property without a unique option_name_ field.
+  // kNullOption will be used for the name, and thus SetOptionFromName cannot
+  // be used for options associated with such properties.
   //
   // TODO(jmarantz): This method should be removed and such properties
   // should be moved into RequestContext.
@@ -2890,20 +2874,20 @@ class RewriteOptions {
   static void AddRequestProperty(typename OptionClass::ValueType default_value,
                                  OptionClass RewriteOptionsSubclass::*offset,
                                  const char* id) {
-    AddProperty(default_value, offset, id, kEndOfOptions, kProcessScope,
+    AddProperty(default_value, offset, id, kNullOption, kProcessScope,
                 NULL, properties_);
   }
 
-  // Adds a property with a unique option_enum_ field, allowing use of
+  // Adds a property with a unique option_name_ field, allowing use of
   // SetOptionFromName.
   template<class RewriteOptionsSubclass, class OptionClass>
   static void AddBaseProperty(typename OptionClass::ValueType default_value,
                               OptionClass RewriteOptionsSubclass::*offset,
                               const char* id,
-                              OptionEnum option_enum,
+                              StringPiece option_name,
                               OptionScope scope,
                               const char* help) {
-    AddProperty(default_value, offset, id, option_enum, scope, help,
+    AddProperty(default_value, offset, id, option_name, scope, help,
                 properties_);
   }
 
@@ -2916,23 +2900,21 @@ class RewriteOptions {
   // Fix any option conflicts (e.g., if two options are mutually exclusive, then
   // disable one.)
   void ResolveConflicts();
-  // Initialize the option-enum to option-name array for fast lookups by
-  // OptionEnum.
-  static void InitOptionEnumToNameArray();
   // Initialize the Filter id to enum reverse array used for fast lookups.
   static void InitFilterIdToEnumArray();
-  static void InitOptionIdToEnumArray();
+  static void InitOptionIdToPropertyArray();
+  static void InitOptionNameToPropertyArray();
   // If str match a cacheable family pattern then returns the
   // PrioritizeVisibleContentFamily that it matches, else returns NULL.
   const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
       const StringPiece str) const;
 
-  // Helper for converting the result of SetOptionFromEnum into
+  // Helper for converting the result of SetOptionFromName into
   // a status/message pair. The returned result may be adjusted from the passed
-  // in one (in particular when option_enum is kEndOfOptions).
+  // in one (in particular when option_name is kNullOption).
   OptionSettingResult FormatSetOptionMessage(
-      OptionSettingResult result, OptionEnum option_enum, StringPiece name,
-      StringPiece value, GoogleString* msg);
+      OptionSettingResult result, StringPiece name, StringPiece value,
+      GoogleString* msg);
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().
@@ -2969,15 +2951,15 @@ class RewriteOptions {
   static GoogleString ToString(RewriteLevel x);
   static GoogleString ToString(const BeaconUrl& beacon_url);
 
-  // Returns true if p1's's enum is less than p2's. Used to order
-  // all_properties_.
-  static bool PropertyLessThanByEnum(PropertyBase* p1, PropertyBase* p2) {
-    return p1->option_enum() < p2->option_enum();
+  // Returns true if p1's option_name is less than p2's. Used to order
+  // all_properties_ and all_options_.
+  static bool PropertyLessThanByOptionName(PropertyBase* p1, PropertyBase* p2) {
+    return StringCaseCompare(p1->option_name(), p2->option_name()) < 0;
   }
 
-  // Returns true if option's enum is less than arg.
-  static bool OptionEnumLessThanArg(OptionBase* option, OptionEnum arg) {
-    return option->option_enum() < arg;
+  // Returns true if option's name is less than arg.
+  static bool OptionNameLessThanArg(OptionBase* option, StringPiece arg) {
+    return StringCaseCompare(option->option_name(), arg) < 0;
   }
 
   // Returns true if e1's timestamp is less than e2's.
@@ -3399,24 +3381,20 @@ class RewriteOptions {
   // Fix reflows due to defer js.
   Option<bool> enable_fix_reflow_;
 
-  // Be sure to update constructor if when new fields is added so that they
-  // are added to all_options_, which is used for Merge, and eventually,
-  // Compare.
+  // Be sure to update constructor when new fields are added so that they are
+  // added to all_options_, which is used for Merge, and eventually, Compare.
   OptionBaseVector all_options_;
   size_t initialized_options_;  // Counts number of options initialized so far.
-
-  // Array of option names indexed by corresponding OptionEnum.
-  static const char* option_enum_to_name_array_[kEndOfOptions];
 
   // Reverse map from filter id string to corresponding Filter enum.  Note
   // that this is not indexed by filter enum; it's indexed alphabetically by id.
   static const FilterEnumToIdAndNameEntry* filter_id_to_enum_array_[
       kEndOfFilters];
 
-  // Reverse map from option id string to corresponding PropertyBase,
-  // from which it is possible to find the 2-4 letter id.  Note that
-  // this is not indexed by option enum; it's indexed alphabetically
-  // by id.
+  // Reverse map from option name string to corresponding PropertyBase.
+  static PropertyNameMap* option_name_to_property_map_;
+
+  // Reverse map from option id string to corresponding PropertyBase.
   static const PropertyBase** option_id_to_property_array_;
 
   // When compiled for debug, we lazily check whether the all the Option<>

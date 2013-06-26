@@ -37,8 +37,281 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/rde_hash_map.h"
 
 namespace net_instaweb {
+
+// Option names.
+// TODO(matterbury): Evaluate these filters to check which ones aren't global,
+// rather are (say) Apache specific, and move them out.
+const char RewriteOptions::kAddOptionsToUrls[] = "AddOptionsToUrls";
+const char RewriteOptions::kAccessControlAllowOrigin[] =
+    "AccessControlAllowOrigin";
+const char RewriteOptions::kAllowLoggingUrlsInLogRecord[] =
+    "AllowLoggingUrlsInLogRecord";
+const char RewriteOptions::kAlwaysRewriteCss[] = "AlwaysRewriteCss";
+const char RewriteOptions::kAnalyticsID[] = "AnalyticsID";
+const char RewriteOptions::kAvoidRenamingIntrospectiveJavascript[] =
+    "AvoidRenamingIntrospectiveJavascript";
+const char RewriteOptions::kBeaconReinstrumentTimeSec[] =
+    "BeaconReinstrumentTimeSec";
+const char RewriteOptions::kBeaconUrl[] = "BeaconUrl";
+const char RewriteOptions::kBlinkMaxHtmlSizeRewritable[] =
+    "BlinkMaxHtmlSizeRewritable";
+const char RewriteOptions::kCacheInvalidationTimestamp[] =
+    "CacheInvalidationTimestamp";
+const char RewriteOptions::kCacheSmallImagesUnrewritten[] =
+    "CacheSmallImagesUnrewritten";
+const char RewriteOptions::kClientDomainRewrite[] = "ClientDomainRewrite";
+const char RewriteOptions::kCombineAcrossPaths[] = "CombineAcrossPaths";
+const char RewriteOptions::kCompressMetadataCache[] = "CompressMetadataCache";
+const char RewriteOptions::kCriticalImagesBeaconEnabled[] =
+    "CriticalImagesBeaconEnabled";
+const char RewriteOptions::kCriticalLineConfig[] = "CriticalLineConfig";
+const char RewriteOptions::kCssFlattenMaxBytes[] = "CssFlattenMaxBytes";
+const char RewriteOptions::kCssImageInlineMaxBytes[] = "CssImageInlineMaxBytes";
+const char RewriteOptions::kCssInlineMaxBytes[] = "CssInlineMaxBytes";
+const char RewriteOptions::kCssOutlineMinBytes[] = "CssOutlineMinBytes";
+const char RewriteOptions::kCssPreserveURLs[] = "CssPreserveURLs";
+const char RewriteOptions::kDefaultCacheHtml[] = "DefaultCacheHtml";
+const char RewriteOptions::kDisableRewriteOnNoTransform[] =
+    "DisableRewriteOnNoTransform";
+const char RewriteOptions::kDistributedRewriteKey[] = "DistributedRewriteKey";
+const char RewriteOptions::kDistributedRewriteServers[] =
+    "DistributedRewriteServers";
+const char RewriteOptions::kDistributedRewriteTimeoutMs[] =
+    "DistributedRewriteTimeoutMs";
+const char RewriteOptions::kDomainRewriteHyperlinks[] =
+    "DomainRewriteHyperlinks";
+const char RewriteOptions::kDomainShardCount[] = "DomainShardCount";
+const char RewriteOptions::kDownstreamCacheLifetimeMs[] =
+    "DownstreamCacheLifetimeMs";
+const char RewriteOptions::kDownstreamCachePurgeMethod[] =
+    "DownstreamCachePurgeMethod";
+const char RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold[] =
+    "DownstreamCacheRewrittenPercentageThreshold";
+const char RewriteOptions::kEnableAggressiveRewritersForMobile[] =
+    "EnableAggressiveRewritersForMobile";
+const char RewriteOptions::kEnableBlinkHtmlChangeDetection[] =
+    "EnableBlinkHtmlChangeDetection";
+const char RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging[] =
+    "EnableBlinkHtmlChangeDetectionLogging";
+const char RewriteOptions::kEnableDeferJsExperimental[] =
+    "EnableDeferJsExperimental";
+const char RewriteOptions::kEnableCachePurge[] = "EnableCachePurge";
+const char RewriteOptions::kEnableFlushEarlyCriticalCss[] =
+    "EnableFlushEarlyCriticalCss";
+const char RewriteOptions::kEnableFixReflow[] = "EnableFixReflow";
+const char RewriteOptions::kEnableExtendedInstrumentation[] =
+    "EnableExtendedInstrumentation";
+const char RewriteOptions::kEnableLazyLoadHighResImages[] =
+    "EnableLazyLoadHighResImages";
+const char RewriteOptions::kEnablePrioritizingScripts[] =
+    "EnablePrioritizingScripts";
+const char RewriteOptions::kEnabled[] = "EnableRewriting";
+const char RewriteOptions::kExperimentCookieDurationMs[] =
+    "ExperimentCookieDurationMs";
+const char RewriteOptions::kExperimentSlot[] = "ExperimentSlot";
+const char RewriteOptions::kFetcherProxy[] = "FetchProxy";
+const char RewriteOptions::kFinderPropertiesCacheExpirationTimeMs[] =
+    "FinderPropertiesCacheExpirationTimeMs";
+const char RewriteOptions::kFinderPropertiesCacheRefreshTimeMs[] =
+    "FinderPropertiesCacheRefreshTimeMs";
+const char RewriteOptions::kFlushBufferLimitBytes[] = "FlushBufferLimitBytes";
+const char RewriteOptions::kFlushHtml[] = "FlushHtml";
+const char RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits[] =
+    "FlushMoreResourcesEarlyIfTimePermits";
+const char RewriteOptions::kForbidAllDisabledFilters[] =
+    "ForbidAllDisabledFilters";
+const char RewriteOptions::kIdleFlushTimeMs[] = "IdleFlushTimeMs";
+const char RewriteOptions::kImageInlineMaxBytes[] = "ImageInlineMaxBytes";
+const char RewriteOptions::kImageJpegNumProgressiveScans[] =
+    "ImageJpegNumProgressiveScans";
+const char RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens[] =
+    "ImageJpegNumProgressiveScansForSmallScreens";
+const char RewriteOptions::kImageJpegRecompressionQuality[] =
+    "JpegRecompressionQuality";
+const char RewriteOptions::kImageJpegRecompressionQualityForSmallScreens[] =
+    "JpegRecompressionQualityForSmallScreens";
+const char RewriteOptions::kImageLimitOptimizedPercent[] =
+    "ImageLimitOptimizedPercent";
+const char RewriteOptions::kImageLimitRenderedAreaPercent[] =
+    "ImageLimitRenderedAreaPercent";
+const char RewriteOptions::kImageLimitResizeAreaPercent[] =
+    "ImageLimitResizeAreaPercent";
+const char RewriteOptions::kImageMaxRewritesAtOnce[] = "ImageMaxRewritesAtOnce";
+const char RewriteOptions::kImagePreserveURLs[] = "ImagePreserveURLs";
+const char RewriteOptions::kImageRecompressionQuality[] =
+    "ImageRecompressionQuality";
+const char RewriteOptions::kImageResolutionLimitBytes[] =
+    "ImageResolutionLimitBytes";
+const char RewriteOptions::kImageWebpRecompressionQuality[] =
+    "ImageWebpRecompressionQuality";
+const char RewriteOptions::kImageWebpRecompressionQualityForSmallScreens[] =
+    "ImageWebpRecompressionQualityForSmallScreens";
+const char RewriteOptions::kImageWebpTimeoutMs[] = "ImageWebpTimeoutMs";
+const char RewriteOptions::kImplicitCacheTtlMs[] = "ImplicitCacheTtlMs";
+const char RewriteOptions::kInPlaceResourceOptimization[] =
+    "InPlaceResourceOptimization";
+const char RewriteOptions::kInPlaceWaitForOptimized[] =
+    "InPlaceWaitForOptimized";
+const char RewriteOptions::kInPlacePreemptiveRewriteCss[] =
+    "InPlacePreemptiveRewriteCss";
+const char RewriteOptions::kInPlacePreemptiveRewriteCssImages[] =
+    "InPlacePreemptiveRewriteCssImages";
+const char RewriteOptions::kInPlacePreemptiveRewriteImages[] =
+    "InPlacePreemptiveRewriteImages";
+const char RewriteOptions::kInPlacePreemptiveRewriteJavascript[] =
+    "InPlacePreemptiveRewriteJavascript";
+const char RewriteOptions::kInPlaceRewriteDeadlineMs[] =
+    "InPlaceRewriteDeadlineMs";
+const char RewriteOptions::kIncreaseSpeedTracking[] = "IncreaseSpeedTracking";
+const char RewriteOptions::kInlineOnlyCriticalImages[] =
+    "InlineOnlyCriticalImages";
+const char RewriteOptions::kJsInlineMaxBytes[] = "JsInlineMaxBytes";
+const char RewriteOptions::kJsOutlineMinBytes[] = "JsOutlineMinBytes";
+const char RewriteOptions::kJsPreserveURLs[] = "JsPreserveURLs";
+const char RewriteOptions::kLazyloadImagesAfterOnload[] =
+    "LazyloadImagesAfterOnload";
+const char RewriteOptions::kLazyloadImagesBlankUrl[] = "LazyloadImagesBlankUrl";
+const char RewriteOptions::kLogBackgroundRewrite[] = "LogBackgroundRewrite";
+const char RewriteOptions::kLogRewriteTiming[] = "LogRewriteTiming";
+const char RewriteOptions::kLogUrlIndices[] = "LogUrlIndices";
+const char RewriteOptions::kLowercaseHtmlNames[] = "LowercaseHtmlNames";
+const char RewriteOptions::kMaxCacheableResponseContentLength[] =
+    "MaxCacheableContentLength";
+const char RewriteOptions::kMaxCombinedJsBytes[] = "MaxCombinedJsBytes";
+const char RewriteOptions::kMaxHtmlCacheTimeMs[] = "MaxHtmlCacheTimeMs";
+const char RewriteOptions::kMaxHtmlParseBytes[] = "MaxHtmlParseBytes";
+const char RewriteOptions::kMaxImageBytesForWebpInCss[] =
+    "MaxImageBytesForWebpInCss";
+const char RewriteOptions::kMaxImageSizeLowResolutionBytes[] =
+    "MaxImageSizeLowResolutionBytes";
+const char RewriteOptions::kMaxInlinedPreviewImagesIndex[] =
+    "MaxInlinedPreviewImagesIndex";
+const char RewriteOptions::kMaxPrefetchJsElements[] = "MaxPrefetchJsElements";
+const char RewriteOptions::kMaxRewriteInfoLogSize[] = "MaxRewriteInfoLogSize";
+const char RewriteOptions::kMaxUrlSegmentSize[] = "MaxSegmentLength";
+const char RewriteOptions::kMaxUrlSize[] = "MaxUrlSize";
+const char RewriteOptions::kMetadataCacheStalenessThresholdMs[] =
+    "MetadataCacheStalenessThresholdMs";
+const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
+    "MinImageSizeLowResolutionBytes";
+const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
+    "MinResourceCacheTimeToRewriteMs";
+const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
+const char RewriteOptions::kNonCacheablesForCachePartialHtml[] =
+    "NonCacheablesForCachePartialHtml";
+const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
+const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
+const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
+const char RewriteOptions::kProactivelyFreshenUserFacingRequest[] =
+    "ProactivelyFreshenUserFacingRequest";
+const char RewriteOptions::kProgressiveJpegMinBytes[] =
+    "ProgressiveJpegMinBytes";
+const char RewriteOptions::kRejectBlacklisted[] = "RejectBlacklisted";
+const char RewriteOptions::kRejectBlacklistedStatusCode[] =
+    "RejectBlacklistedStatusCode";
+const char RewriteOptions::kReportUnloadTime[] = "ReportUnloadTime";
+const char RewriteOptions::kRespectVary[] = "RespectVary";
+const char RewriteOptions::kRespectXForwardedProto[] = "RespectXForwardedProto";
+const char RewriteOptions::kRewriteDeadlineMs[] = "RewriteDeadlinePerFlushMs";
+const char RewriteOptions::kRewriteLevel[] = "RewriteLevel";
+const char RewriteOptions::kRewriteRandomDropPercentage[] =
+    "RewriteRandomDropPercentage";
+const char RewriteOptions::kRewriteUncacheableResources[] =
+    "RewriteUncacheableResources";
+const char RewriteOptions::kRewriteRequestUrlsEarly[] =
+    "RewriteRequestUrlsEarly";
+const char RewriteOptions::kRunningExperiment[] = "RunExperiment";
+const char RewriteOptions::kServeGhostClickBusterWithSplitHtml[] =
+    "ServeGhostClickBusterWithSplitHtml";
+const char RewriteOptions::kServeSplitHtmlInTwoChunks[] =
+    "ServeSplitHtmlInTwoChunks";
+const char RewriteOptions::kServeStaleIfFetchError[] = "ServeStaleIfFetchError";
+const char RewriteOptions::kServeStaleWhileRevalidateThresholdSec[] =
+    "ServeStaleWhileRevalidateThresholdSec";
+const char RewriteOptions::kServeXhrAccessControlHeaders[] =
+    "ServeXhrAccessControlHeaders";
+const char RewriteOptions::kSupportNoScriptEnabled[] = "SupportNoScriptEnabled";
+const char
+    RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[] =
+    "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss";
+const char RewriteOptions::kUseBlankImageForInlinePreview[] =
+    "UseBlankImageForInlinePreview";
+const char RewriteOptions::kUseFallbackPropertyCacheValues[] =
+    "UseFallbackPropertyCacheValues";
+const char RewriteOptions::kUseSmartDiffInBlink[] = "UseSmartDiffInBlink";
+const char RewriteOptions::kXModPagespeedHeaderValue[] =
+    "XHeaderValue";
+const char RewriteOptions::kXPsaBlockingRewrite[] = "BlockingRewriteKey";
+const char RewriteOptions::kAllow[] = "Allow";
+const char RewriteOptions::kBlockingRewriteRefererUrls[] =
+    "BlockingRewriteRefererUrls";
+const char RewriteOptions::kDisableFilters[] = "DisableFilters";
+const char RewriteOptions::kDisallow[] = "Disallow";
+const char RewriteOptions::kDistributableFilters[] = "DistributableFilters";
+const char RewriteOptions::kDomain[] = "Domain";
+const char RewriteOptions::kDownstreamCachePurgeLocationPrefix[] =
+    "DownstreamCachePurgeLocationPrefix";
+const char RewriteOptions::kEnableFilters[] = "EnableFilters";
+const char RewriteOptions::kExperimentVariable[] = "ExperimentVariable";
+const char RewriteOptions::kExperimentSpec[] = "ExperimentSpec";
+const char RewriteOptions::kForbidFilters[] = "ForbidFilters";
+const char RewriteOptions::kRetainComment[] = "RetainComment";
+const char RewriteOptions::kCustomFetchHeader[] = "CustomFetchHeader";
+const char RewriteOptions::kLoadFromFile[] = "LoadFromFile";
+const char RewriteOptions::kLoadFromFileMatch[] = "LoadFromFileMatch";
+const char RewriteOptions::kLoadFromFileRule[] = "LoadFromFileRule";
+const char RewriteOptions::kLoadFromFileRuleMatch[] = "LoadFromFileRuleMatch";
+const char RewriteOptions::kMapOriginDomain[] = "MapOriginDomain";
+const char RewriteOptions::kMapRewriteDomain[] = "MapRewriteDomain";
+const char RewriteOptions::kMapProxyDomain[] = "MapProxyDomain";
+const char RewriteOptions::kShardDomain[] = "ShardDomain";
+const char RewriteOptions::kUrlValuedAttribute[] = "UrlValuedAttribute";
+const char RewriteOptions::kLibrary[] = "Library";
+const char RewriteOptions::kCacheFlushFilename[] = "CacheFlushFilename";
+const char RewriteOptions::kCacheFlushPollIntervalSec[] =
+    "CacheFlushPollIntervalSec";
+const char RewriteOptions::kExperimentalFetchFromModSpdy[] =
+    "ExperimentalFetchFromModSpdy";
+const char RewriteOptions::kFetchHttps[] = "FetchHttps";
+const char RewriteOptions::kFetcherTimeOutMs[] = "FetcherTimeOutMs";
+const char RewriteOptions::kFileCacheCleanInodeLimit[] =
+    "FileCacheInodeLimit";
+const char RewriteOptions::kFileCacheCleanIntervalMs[] =
+    "FileCacheCleanIntervalMs";
+const char RewriteOptions::kFileCacheCleanSizeKb[] = "FileCacheSizeKb";
+const char RewriteOptions::kFileCachePath[] = "FileCachePath";
+const char RewriteOptions::kLogDir[] = "LogDir";
+const char RewriteOptions::kLruCacheByteLimit[] = "LRUCacheByteLimit";
+const char RewriteOptions::kLruCacheKbPerProcess[] = "LRUCacheKbPerProcess";
+const char RewriteOptions::kMemcachedServers[] = "MemcachedServers";
+const char RewriteOptions::kMemcachedThreads[] = "MemcachedThreads";
+const char RewriteOptions::kMemcachedTimeoutUs[] = "MemcachedTimeoutUs";
+const char RewriteOptions::kRateLimitBackgroundFetches[] =
+    "RateLimitBackgroundFetches";
+const char RewriteOptions::kSlurpDirectory[] = "SlurpDirectory";
+const char RewriteOptions::kSlurpFlushLimit[] = "SlurpFlushLimit";
+const char RewriteOptions::kSlurpReadOnly[] = "SlurpReadOnly";
+const char RewriteOptions::kSslCertDirectory[] = "SslCertDirectory";
+const char RewriteOptions::kSslCertFile[] = "SslCertFile";
+const char RewriteOptions::kStatisticsEnabled[] = "Statistics";
+const char RewriteOptions::kStatisticsHandlerPath[] = "StatisticsHandlerPath";
+const char RewriteOptions::kStatisticsLoggingChartsCSS[] =
+    "StatisticsLoggingChartsCSS";
+const char RewriteOptions::kStatisticsLoggingChartsJS[] =
+    "StatisticsLoggingChartsJS";
+const char RewriteOptions::kStatisticsLoggingEnabled[] =
+    "StatisticsLogging";
+const char RewriteOptions::kStatisticsLoggingIntervalMs[] =
+    "StatisticsLoggingIntervalMs";
+const char RewriteOptions::kStatisticsLoggingMaxFileSizeKb[] =
+    "StatisticsLoggingMaxFileSizeKb";
+const char RewriteOptions::kTestProxy[] = "TestProxy";
+const char RewriteOptions::kTestProxySlurp[] = "TestProxySlurp";
+const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
+const char RewriteOptions::kNullOption[] = "";
 
 // RewriteFilter prefixes
 const char RewriteOptions::kCacheExtenderId[] = "ce";
@@ -219,11 +492,11 @@ const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
 // By default, reinstrument every 6 hours.
 const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 6 * 60 * 60;
 
-const char* RewriteOptions::option_enum_to_name_array_[
-    RewriteOptions::kEndOfOptions];
-
 const RewriteOptions::FilterEnumToIdAndNameEntry*
     RewriteOptions::filter_id_to_enum_array_[RewriteOptions::kEndOfFilters];
+
+RewriteOptions::PropertyNameMap*
+    RewriteOptions::option_name_to_property_map_ = NULL;
 
 const RewriteOptions::PropertyBase**
     RewriteOptions::option_id_to_property_array_ = NULL;
@@ -1665,7 +1938,7 @@ void RewriteOptions::Properties::Merge(Properties* properties) {
                           properties->property_vector_.begin(),
                           properties->property_vector_.end());
   std::sort(property_vector_.begin(), property_vector_.end(),
-            RewriteOptions::PropertyLessThanByEnum);
+            RewriteOptions::PropertyLessThanByOptionName);
   for (int i = 0, n = property_vector_.size(); i < n; ++i) {
     property_vector_[i]->set_index(i);
   }
@@ -1686,10 +1959,10 @@ bool RewriteOptions::Initialize() {
   if (Properties::Initialize(&properties_)) {
     Properties::Initialize(&all_properties_);
     AddProperties();
-    InitOptionEnumToNameArray();
     InitFilterIdToEnumArray();
     all_properties_->Merge(properties_);
-    InitOptionIdToEnumArray();
+    InitOptionIdToPropertyArray();
+    InitOptionNameToPropertyArray();
     return true;
   }
   return false;
@@ -1731,7 +2004,7 @@ struct RewriteOptions::OptionIdCompare {
   }
 };
 
-void RewriteOptions::InitOptionIdToEnumArray() {
+void RewriteOptions::InitOptionIdToPropertyArray() {
   // This method is called first by Initialize, when base properties are
   // added, then zero or more times when subclass properties are added by
   // MergeSubclassProperties (e.g. by ApacheConfig::AddProperties).
@@ -1746,12 +2019,32 @@ void RewriteOptions::InitOptionIdToEnumArray() {
             OptionIdCompare());
 }
 
+void RewriteOptions::InitOptionNameToPropertyArray() {
+  // This method is called first by Initialize, when base properties are
+  // added, then zero or more times when subclass properties are added by
+  // MergeSubclassProperties (e.g. by ApacheConfig::AddProperties).
+  delete option_name_to_property_map_;
+  option_name_to_property_map_ = new PropertyNameMap;
+  for (int i = 0, n = all_properties_->size(); i < n; ++i) {
+    PropertyBase* prop = all_properties_->property(i);
+    StringPiece name(prop->option_name());
+    if (!name.empty()) {
+      option_name_to_property_map_->insert(PropertyNameMap::value_type(name,
+                                                                       prop));
+    }
+  }
+}
+
 bool RewriteOptions::Terminate() {
   if (Properties::Terminate(&properties_)) {
-    Properties::Terminate(&all_properties_);
     DCHECK(option_id_to_property_array_ != NULL);
     delete [] option_id_to_property_array_;
     option_id_to_property_array_ = NULL;
+    DCHECK(option_name_to_property_map_ != NULL);
+    option_name_to_property_map_->clear();
+    delete option_name_to_property_map_;
+    option_name_to_property_map_ = NULL;
+    Properties::Terminate(&all_properties_);
     return true;
   }
   return false;
@@ -1759,7 +2052,8 @@ bool RewriteOptions::Terminate() {
 
 void RewriteOptions::MergeSubclassProperties(Properties* properties) {
   all_properties_->Merge(properties);
-  InitOptionIdToEnumArray();
+  InitOptionIdToPropertyArray();
+  InitOptionNameToPropertyArray();
 }
 
 bool RewriteOptions::SetExperimentState(int id) {
@@ -2169,21 +2463,39 @@ RewriteOptions::Filter RewriteOptions::LookupFilterById(
   return (*it)->filter_enum;
 }
 
-RewriteOptions::OptionEnum RewriteOptions::LookupOptionEnumById(
-    const StringPiece& option_id) {
+const RewriteOptions::PropertyBase* RewriteOptions::LookupOptionById(
+    StringPiece option_id) {
   const PropertyBase** end =
       option_id_to_property_array_ + all_properties_->size();
   const PropertyBase** it = std::lower_bound(
       option_id_to_property_array_, end, option_id, OptionIdCompare());
-
   // We use lower_bound because it's O(log n) so relatively efficient, but
   // we must double-check its result as it doesn't guarantee an exact match.
   // Note that std::binary_search provides an exact match but only a bool
   // result and not the actual object we were searching for.
-  if ((it == end) || (option_id != (*it)->id())) {
-    return kEndOfOptions;
+  return ((it == end || option_id != (*it)->id()) ? NULL : *it);
+}
+
+const RewriteOptions::PropertyBase* RewriteOptions::LookupOptionByName(
+    StringPiece option_name) {
+  // There are many options without a name, and it doesn't make sense to
+  // find "the one" with an empty name, so short-circuit that early.
+  if (option_name.empty()) {
+    return NULL;
   }
-  return (*it)->option_enum();
+  PropertyNameMap::iterator
+      end = option_name_to_property_map_->end(),
+      pos = option_name_to_property_map_->find(option_name);
+  return (pos == end ? NULL : pos->second);
+}
+
+const StringPiece RewriteOptions::LookupOptionNameById(StringPiece option_id) {
+  const PropertyBase* option = LookupOptionById(option_id);
+  return (option == NULL ? StringPiece() : option->option_name());
+}
+
+bool RewriteOptions::IsValidOptionName(StringPiece name) {
+  return (LookupOptionByName(name) != NULL);
 }
 
 bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
@@ -2202,18 +2514,17 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value, GoogleString* msg) {
-  OptionEnum option_enum = LookupOption(name);
   OptionSettingResult result = kOptionNameUnknown;
-  if (option_enum != kEndOfOptions) {
-    result = SetOptionFromEnum(option_enum, value);
+  if (IsValidOptionName(name)) {
+    result = SetOptionFromName(name, value);
   }
-  return FormatSetOptionMessage(result, option_enum, name, value, msg);
+  return FormatSetOptionMessage(result, name, value, msg);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
-    OptionSettingResult result, OptionEnum option_enum, StringPiece name,
-    StringPiece value, GoogleString* msg) {
-  if (option_enum == kEndOfOptions) {
+    OptionSettingResult result, StringPiece name, StringPiece value,
+    GoogleString* msg) {
+  if (!IsValidOptionName(name)) {
     // Not a mapped option.
     SStringPrintf(msg, "Option %s not mapped.", name.as_string().c_str());
     return kOptionNameUnknown;
@@ -2233,229 +2544,167 @@ RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
-    StringPiece name, StringPiece arg, GoogleString* msg,
-    MessageHandler* handler) {
-  OptionSettingResult result = kOptionNameUnknown;
-
-  // We first handle the simple scalar stuff.
-  OptionEnum option_enum = LookupOption(name);
-  if (option_enum != kEndOfOptions) {
-    result = SetOptionFromEnum(option_enum, arg);
-  }
-
+    StringPiece name, StringPiece arg,
+    GoogleString* msg, MessageHandler* handler) {
+  OptionSettingResult result = SetOptionFromName(name, arg);
   if (result != RewriteOptions::kOptionNameUnknown) {
-    return FormatSetOptionMessage(result, option_enum, name, arg, msg);
+    return FormatSetOptionMessage(result, name, arg, msg);
   }
 
-  return ParseAndSetOptionFromEnum1(option_enum, arg, msg, handler);
+  // Assume all goes well; if not, set result accordingly.
+  result = RewriteOptions::kOptionOk;
+
+  // TODO(matterbury): use a hash map for faster lookup/switching.
+  if (StringCaseEqual(name, kAllow)) {
+      Allow(arg);
+  } else if (StringCaseEqual(name, kDisableFilters)) {
+    if (!DisableFiltersByCommaSeparatedList(arg, handler)) {
+      *msg = "Failed to disable some filters.";
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kDisallow)) {
+    Disallow(arg);
+  } else if (StringCaseEqual(name, kDistributableFilters)) {
+    DistributeFiltersByCommaSeparatedList(arg, handler);
+  } else if (StringCaseEqual(name, kDomain)) {
+    WriteableDomainLawyer()->AddDomain(arg, handler);
+  } else if (StringCaseEqual(name, kDownstreamCachePurgeLocationPrefix)) {
+    GoogleUrl gurl(arg);
+    if (gurl.is_valid()) {
+      // The host:port location where purge requests are to be sent should
+      // be made "known" to the DomainLawyer so that when the
+      // LoopbackRouteFetcher tries to send the request, it does not consider
+      // this an invalid domain.
+      WriteableDomainLawyer()->AddKnownDomain(gurl.HostAndPort(), handler);
+      set_downstream_cache_purge_location_prefix(arg);
+    } else {
+      *msg = "Downstream cache purge location prefix is invalid.";
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kEnableFilters)) {
+    if (!EnableFiltersByCommaSeparatedList(arg, handler)) {
+      *msg = "Failed to enable some filters.";
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kExperimentVariable)) {
+    int slot;
+    if (!StringToInt(arg, &slot) || slot < 1 || slot > 5) {
+      *msg = "must be an integer between 1 and 5";
+      result = RewriteOptions::kOptionValueInvalid;
+    } else {
+      set_experiment_ga_slot(slot);
+    }
+  } else if (StringCaseEqual(name, kExperimentSpec)) {
+    if (!AddExperimentSpec(arg, handler)) {
+      *msg = "not a valid experiment spec";
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kForbidFilters)) {
+    if (!ForbidFiltersByCommaSeparatedList(arg, handler)) {
+      *msg = "Failed to forbid some filters.";
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kRetainComment)) {
+    RetainComment(arg);
+  } else if (StringCaseEqual(name, kBlockingRewriteRefererUrls)) {
+      EnableBlockingRewriteForRefererUrlPattern(arg);
+  } else {
+    result = RewriteOptions::kOptionNameUnknown;
+  }
+  return result;
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName2(
     StringPiece name, StringPiece arg1, StringPiece arg2,
     GoogleString* msg, MessageHandler* handler) {
-  OptionEnum option_enum = LookupOption(name);
-  return ParseAndSetOptionFromEnum2(option_enum, arg1, arg2, msg, handler);
+  // Assume all goes well; if not, set result accordingly.
+  OptionSettingResult result = RewriteOptions::kOptionOk;
+
+  // TODO(matterbury): use a hash map for faster lookup/switching.
+  if (StringCaseEqual(name, kCustomFetchHeader)) {
+    AddCustomFetchHeader(arg1, arg2);
+  } else if (StringCaseEqual(name, kLoadFromFile)) {
+    file_load_policy()->Associate(arg1, arg2);
+  } else if (StringCaseEqual(name, kLoadFromFileMatch)) {
+    if (!file_load_policy()->AssociateRegexp(arg1, arg2, msg)) {
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kLoadFromFileRule) ||
+             StringCaseEqual(name, kLoadFromFileRuleMatch)) {
+    bool is_regexp = (name == kLoadFromFileRuleMatch);
+    bool allow;
+    if (StringCaseEqual(arg1, "Allow")) {
+      allow = true;
+    } else if (StringCaseEqual(arg1, "Disallow")) {
+      allow = false;
+    } else {
+      *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
+      return RewriteOptions::kOptionValueInvalid;
+    }
+    if (!file_load_policy()->AddRule(arg2.as_string(),
+                                     is_regexp, allow, msg)) {
+      result = RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (StringCaseEqual(name, kMapOriginDomain)) {
+    WriteableDomainLawyer()->AddOriginDomainMapping(arg1, arg2, handler);
+  } else if (StringCaseEqual(name, kMapProxyDomain)) {
+    WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, "", handler);
+  } else if (StringCaseEqual(name, kMapRewriteDomain)) {
+    WriteableDomainLawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
+  } else if (StringCaseEqual(name, kShardDomain)) {
+    WriteableDomainLawyer()->AddShard(arg1, arg2, handler);
+  } else {
+    result = RewriteOptions::kOptionNameUnknown;
+  }
+  return result;
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName3(
     StringPiece name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
     GoogleString* msg, MessageHandler* handler) {
-  OptionEnum option_enum = LookupOption(name);
-  return ParseAndSetOptionFromEnum3(option_enum, arg1, arg2, arg3,
-                                    msg, handler);
-}
-
-RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
-    OptionEnum name, StringPiece arg,
-    GoogleString* msg, MessageHandler* handler) {
-  switch (name) {
-    case kAllow:
-      Allow(arg);
-      break;
-    case kDisableFilters: {
-      bool ok = DisableFiltersByCommaSeparatedList(arg, handler);
-      if (!ok) {
-        *msg = "Failed to disable some filters.";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
+  // Assume all goes well; if not, set result accordingly.
+  OptionSettingResult result = RewriteOptions::kOptionOk;
+  if (StringCaseEqual(name, kUrlValuedAttribute)) {
+    // Examples:
+    //   UrlValuedAttribute span src Hyperlink
+    //     - <span src=...> indicates a hyperlink
+    //   UrlValuedAttribute hr imgsrc Image
+    //     - <hr image=...> indicates an image resource
+    semantic_type::Category category;
+    if (!semantic_type::ParseCategory(arg3, &category)) {
+      *msg = StrCat("Invalid resource category: ", arg3);
+      result = RewriteOptions::kOptionValueInvalid;
+    } else {
+      AddUrlValuedAttribute(arg1, arg2, category);
     }
-    case kDisallow:
-      Disallow(arg);
-      break;
-    case kDistributableFilters: {
-      DistributeFiltersByCommaSeparatedList(arg, handler);
-      break;
+  } else if (StringCaseEqual(name, kLibrary)) {
+    // Library bytes md5 canonical_url
+    // Examples:
+    //   Library 43567 5giEj_jl-Ag5G8 http://www.example.com/url.js
+    int64 bytes;
+    if (!StringToInt64(arg1, &bytes) || bytes < 0) {
+      *msg = "Library size must be a positive 64-bit integer";
+      result = RewriteOptions::kOptionValueInvalid;
+    } else if (!RegisterLibrary(bytes, arg2, arg3)) {
+      *msg = StrCat("Format is size md5 url; bad md5 ", arg2, " or URL ", arg3);
+      result = RewriteOptions::kOptionValueInvalid;
     }
-    case kDomain:
-      WriteableDomainLawyer()->AddDomain(arg, handler);
-      break;
-    case kEnableFilters: {
-      bool ok = EnableFiltersByCommaSeparatedList(arg, handler);
-      if (!ok) {
-        *msg = "Failed to enable some filters.";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    }
-    case kDownstreamCachePurgeLocationPrefix: {
-      GoogleUrl gurl(arg);
-      if (gurl.is_valid()) {
-        // The host:port location where purge requests are to be sent should
-        // be made "known" to the DomainLawyer so that when the
-        // LoopbackRouteFetcher tries to send the request, it does not consider
-        // this an invalid domain.
-        WriteableDomainLawyer()->AddKnownDomain(gurl.HostAndPort(), handler);
-        set_downstream_cache_purge_location_prefix(arg);
-      } else {
-        *msg = "Downstream cache purge location prefix is invalid.";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    }
-    case kExperimentVariable: {
-      int slot;
-      bool ok = StringToInt(arg, &slot);
-      if (!ok || slot < 1 || slot > 5) {
-        *msg = "must be an integer between 1 and 5";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      set_experiment_ga_slot(slot);
-      break;
-    }
-    case kExperimentSpec: {
-      bool ok = AddExperimentSpec(arg, handler);
-      if (!ok) {
-        *msg = "not a valid experiment spec";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    }
-    case kForbidFilters: {
-      if (!ForbidFiltersByCommaSeparatedList(arg, handler)) {
-        *msg = "Failed to forbid some filters.";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    }
-    case kRetainComment: {
-      RetainComment(arg);
-      break;
-    }
-    case kBlockingRewriteRefererUrls: {
-      EnableBlockingRewriteForRefererUrlPattern(arg);
-      break;
-    }
-    default:
-      return RewriteOptions::kOptionNameUnknown;
+  } else if (StringCaseEqual(name, kMapProxyDomain)) {
+    WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, arg3, handler);
+  } else {
+    result = RewriteOptions::kOptionNameUnknown;
   }
-  return RewriteOptions::kOptionOk;
+  return result;
 }
 
-RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum2(
-    OptionEnum name, StringPiece arg1, StringPiece arg2,
-    GoogleString* msg, MessageHandler* handler) {
-  switch (name) {
-    case kCustomFetchHeader:
-      AddCustomFetchHeader(arg1, arg2);
-      break;
-    case kLoadFromFile:
-      file_load_policy()->Associate(arg1, arg2);
-      break;
-    case kLoadFromFileMatch:
-      if (!file_load_policy()->AssociateRegexp(arg1, arg2, msg)) {
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    case kLoadFromFileRule:
-    case kLoadFromFileRuleMatch: {
-      bool is_regexp = (name == kLoadFromFileRuleMatch);
-      bool allow;
-      if (StringCaseEqual(arg1, "Allow")) {
-        allow = true;
-      } else if (StringCaseEqual(arg1, "Disallow")) {
-        allow = false;
-      } else {
-        *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      if (!file_load_policy()->AddRule(arg2.as_string(),
-                                       is_regexp, allow, msg)) {
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    }
-    case kMapOriginDomain:
-      WriteableDomainLawyer()->AddOriginDomainMapping(arg1, arg2, handler);
-      break;
-    case  kMapProxyDomain:
-      WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, "", handler);
-      break;
-    case kMapRewriteDomain:
-      WriteableDomainLawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
-      break;
-    case kShardDomain:
-      WriteableDomainLawyer()->AddShard(arg1, arg2, handler);
-      break;
-    default:
-      return RewriteOptions::kOptionNameUnknown;
-  }
-  return RewriteOptions::kOptionOk;
-}
-
-RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum3(
-    OptionEnum name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
-    GoogleString* msg, MessageHandler* handler) {
-  switch (name) {
-    case kUrlValuedAttribute: {
-      // Examples:
-      //   UrlValuedAttribute span src Hyperlink
-      //     - <span src=...> indicates a hyperlink
-      //   UrlValuedAttribute hr imgsrc Image
-      //     - <hr image=...> indicates an image resource
-      semantic_type::Category category;
-      if (!semantic_type::ParseCategory(arg3, &category)) {
-        *msg = StrCat("Invalid resource category: ", arg3);
-        return RewriteOptions::kOptionValueInvalid;
-      } else {
-        AddUrlValuedAttribute(arg1, arg2, category);
-      }
-      break;
-    }
-    case kLibrary: {
-      // Library bytes md5 canonical_url
-      // Examples:
-      //   Library 43567 5giEj_jl-Ag5G8 http://www.example.com/url.js
-      int64 bytes;
-      if (!StringToInt64(arg1, &bytes) || bytes < 0) {
-        *msg = "Library size must be a positive 64-bit integer";
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      if (!RegisterLibrary(bytes, arg2, arg3)) {
-        *msg = StrCat("Format is size md5 url; bad md5 ", arg2, " or URL ",
-                      arg3);
-        return RewriteOptions::kOptionValueInvalid;
-      }
-      break;
-    }
-    case kMapProxyDomain: {
-      WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, arg3, handler);
-      break;
-    }
-    default:
-      return RewriteOptions::kOptionNameUnknown;
-  }
-  return RewriteOptions::kOptionOk;
-}
-
-RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromEnum(
-    OptionEnum option_enum, StringPiece value) {
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
+    StringPiece name, StringPiece value) {
   OptionBaseVector::iterator it = std::lower_bound(
-      all_options_.begin(), all_options_.end(), option_enum,
-      RewriteOptions::OptionEnumLessThanArg);
+      all_options_.begin(), all_options_.end(), name,
+      RewriteOptions::OptionNameLessThanArg);
   if (it != all_options_.end()) {
     OptionBase* option = *it;
-    if (option->option_enum() == option_enum) {
+    if (StringCaseEqual(name, option->option_name())) {
       if (!option->SetFromString(value.as_string())) {
         return kOptionValueInvalid;
       } else {
@@ -2466,16 +2715,16 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromEnum(
   return kOptionNameUnknown;
 }
 
-bool RewriteOptions::OptionValue(OptionEnum option_enum,
+bool RewriteOptions::OptionValue(StringPiece name,
                                  const char** id,
                                  bool* was_set,
                                  GoogleString* value) const {
   OptionBaseVector::const_iterator it = std::lower_bound(
-      all_options_.begin(), all_options_.end(), option_enum,
-      RewriteOptions::OptionEnumLessThanArg);
+      all_options_.begin(), all_options_.end(), name,
+      RewriteOptions::OptionNameLessThanArg);
   if (it != all_options_.end()) {
     OptionBase* option = *it;
-    if (option->option_enum() == option_enum) {
+    if (StringCaseEqual(name, option->option_name())) {
       *value = option->ToString();
       *id = option->id();
       *was_set = option->was_set();

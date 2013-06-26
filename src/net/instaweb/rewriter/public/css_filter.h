@@ -91,6 +91,9 @@ class CssFilter : public RewriteFilter {
   static void Initialize();
   static void Terminate();
 
+  // Add this filters related options to the given vector.
+  static void AddRelatedOptions(StringPieceVector* target);
+
   // Note: AtExitManager needs to be initialized or you get a nasty error:
   // Check failed: false. Tried to RegisterCallback without an AtExitManager.
   // This is called by Initialize.
@@ -126,9 +129,13 @@ class CssFilter : public RewriteFilter {
       CssFilter::Context* rewriter, RewriteContext* parent,
       CssHierarchy* hierarchy);
 
-  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
-  virtual const RewriteOptions::OptionEnum* RelatedOptions(
-      int* num_options) const;
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const {
+    *num_filters = merged_filters_size_;
+    return merged_filters_;
+  }
+  virtual const StringPieceVector* RelatedOptions() const {
+    return related_options_;
+  }
 
  protected:
   virtual RewriteContext* MakeRewriteContext();
@@ -232,6 +239,13 @@ class CssFilter : public RewriteFilter {
   Variable* num_flatten_imports_complex_queries_;
 
   CssUrlEncoder encoder_;
+
+  // The filters related to this filter.
+  static const RewriteOptions::Filter* merged_filters_;
+  static int merged_filters_size_;
+
+  // The options related to this filter.
+  static StringPieceVector* related_options_;
 
   DISALLOW_COPY_AND_ASSIGN(CssFilter);
 };

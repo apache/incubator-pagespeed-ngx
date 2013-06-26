@@ -130,17 +130,12 @@ class RewriteFilter : public CommonFilter {
   // is expected to return a pointer to a static vector.
   virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
 
-  // Determines which options are related to this RewriteFilter.
-  //
-  // The vector is returned in numerically increasing order so binary_search
-  // is possible.
-  //
-  // *num_options is set to the size of this array.
-  //
-  // Ownership of the filter-vector is not transferred to the caller; it
-  // is expected to return a pointer to a static vector.
-  virtual const RewriteOptions::OptionEnum* RelatedOptions(
-      int* num_options) const;
+  // Return the names of options related to this RewriteFilter in
+  // case-insensitive alphabetical order. NULL means there are none.
+  // Ownership of the vector is not transferred to the caller.
+  virtual const StringPieceVector* RelatedOptions() const {
+    return NULL;
+  }
 
  protected:
   // This class logs using id().

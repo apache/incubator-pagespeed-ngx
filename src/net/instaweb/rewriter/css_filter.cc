@@ -139,7 +139,7 @@ const RewriteOptions::Filter kRelatedFilters[] = {
 };
 const int kRelatedFiltersSize = arraysize(kRelatedFilters);
 
-const RewriteOptions::OptionEnum kRelatedOptions[] = {
+const char* const kRelatedOptions[] = {
   RewriteOptions::kCssFlattenMaxBytes,
   RewriteOptions::kCssImageInlineMaxBytes,
   RewriteOptions::kCssPreserveURLs,
@@ -147,14 +147,13 @@ const RewriteOptions::OptionEnum kRelatedOptions[] = {
   RewriteOptions::kMaxUrlSegmentSize,
   RewriteOptions::kMaxUrlSize,
 };
-const int kRelatedOptionsSize = arraysize(kRelatedOptions);
-
-const RewriteOptions::Filter* kMergedFilters = NULL;
-int merged_filters_size = 0;
-const RewriteOptions::OptionEnum* kMergedOptions = NULL;
-int merged_options_size = 0;
 
 }  // namespace
+
+const RewriteOptions::Filter* CssFilter::merged_filters_ = NULL;
+int CssFilter::merged_filters_size_ = 0;
+
+StringPieceVector* CssFilter::related_options_ = NULL;
 
 // Statistics variable names.
 const char CssFilter::kBlocksRewritten[] = "css_filter_blocks_rewritten";
@@ -785,28 +784,24 @@ T* MergeArrays(const T* a, int a_size, const T* b, int b_size, int* out_size) {
 void CssFilter::Initialize() {
   InitializeAtExitManager();
 
-  CHECK(kMergedFilters == NULL);
-  CHECK(kMergedOptions == NULL);
-
+  CHECK(merged_filters_ == NULL);
 #ifndef NDEBUG
   for (int i = 1; i < kRelatedFiltersSize; ++i) {
     CHECK_LT(kRelatedFilters[i - 1], kRelatedFilters[i])
         << "kRelatedFilters not in enum-value order";
   }
-  for (int i = 1; i < kRelatedOptionsSize; ++i) {
-    CHECK_LT(kRelatedOptions[i - 1], kRelatedOptions[i])
-        << "kRelatedOptions not in enum-value order";
-  }
 #endif
 
-  kMergedFilters = MergeArrays(ImageRewriteFilter::kRelatedFilters,
-                               ImageRewriteFilter::kRelatedFiltersSize,
-                               kRelatedFilters, kRelatedFiltersSize,
-                               &merged_filters_size);
-  kMergedOptions = MergeArrays(ImageRewriteFilter::kRelatedOptions,
-                               ImageRewriteFilter::kRelatedOptionsSize,
-                               kRelatedOptions, kRelatedOptionsSize,
-                               &merged_options_size);
+  merged_filters_ = MergeArrays(ImageRewriteFilter::kRelatedFilters,
+                                ImageRewriteFilter::kRelatedFiltersSize,
+                                kRelatedFilters, kRelatedFiltersSize,
+                                &merged_filters_size_);
+
+  CHECK(related_options_ == NULL);
+  related_options_ = new StringPieceVector;
+  ImageRewriteFilter::AddRelatedOptions(related_options_);
+  CssFilter::AddRelatedOptions(related_options_);
+  std::sort(related_options_->begin(), related_options_->end());
 }
 
 void CssFilter::Terminate() {
@@ -816,12 +811,18 @@ void CssFilter::Terminate() {
     at_exit_manager = NULL;
   }
 
-  CHECK(kMergedFilters != NULL);
-  CHECK(kMergedOptions != NULL);
-  delete [] kMergedFilters;
-  delete [] kMergedOptions;
-  kMergedFilters = NULL;
-  kMergedOptions = NULL;
+  CHECK(merged_filters_ != NULL);
+  delete [] merged_filters_;
+  merged_filters_ = NULL;
+  CHECK(related_options_ != NULL);
+  delete related_options_;
+  related_options_ = NULL;
+}
+
+void CssFilter::AddRelatedOptions(StringPieceVector* target) {
+  for (int i = 0, n = arraysize(kRelatedOptions); i < n; ++i) {
+    target->push_back(kRelatedOptions[i]);
+  }
 }
 
 void CssFilter::InitializeAtExitManager() {
@@ -1098,18 +1099,6 @@ RewriteContext* CssFilter::MakeNestedFlatteningContextInNewSlot(
                                                          rewriter, hierarchy);
   context->AddSlot(slot);
   return context;
-}
-
-const RewriteOptions::Filter* CssFilter::RelatedFilters(
-    int* num_filters) const {
-  *num_filters = merged_filters_size;
-  return kMergedFilters;
-}
-
-const RewriteOptions::OptionEnum* CssFilter::RelatedOptions(
-    int* num_options) const {
-  *num_options = merged_options_size;
-  return kMergedOptions;
 }
 
 }  // namespace net_instaweb

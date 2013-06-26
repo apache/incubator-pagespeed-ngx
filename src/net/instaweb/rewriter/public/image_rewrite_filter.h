@@ -19,6 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
+#include <map>
+#include <utility>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -29,7 +32,6 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
-#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -40,6 +42,7 @@ namespace net_instaweb {
 class CachedResult;
 class ImageDim;
 class Histogram;
+class RenderedImages;
 class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
@@ -95,12 +98,13 @@ class ImageRewriteFilter : public RewriteFilter {
 
   static const RewriteOptions::Filter kRelatedFilters[];
   static const int kRelatedFiltersSize;
-  static const RewriteOptions::OptionEnum kRelatedOptions[];
-  static const int kRelatedOptionsSize;
 
   explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
   static void InitStats(Statistics* statistics);
+  static void Initialize();
+  static void Terminate();
+  static void AddRelatedOptions(StringPieceVector* target);
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
@@ -180,8 +184,9 @@ class ImageRewriteFilter : public RewriteFilter {
       bool is_css);
 
   virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
-  virtual const RewriteOptions::OptionEnum* RelatedOptions(
-      int* num_options) const;
+  virtual const StringPieceVector* RelatedOptions() const {
+    return related_options_;
+  }
 
   // Disable all filters listed in kRelatedFilters in options.
   static void DisableRelatedFilters(RewriteOptions* options);
@@ -318,6 +323,9 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Sets of variables and histograms for various conversions to WebP.
   Image::ConversionVariables webp_conversion_variables_;
+
+  // The options related to this filter.
+  static StringPieceVector* related_options_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);
 };

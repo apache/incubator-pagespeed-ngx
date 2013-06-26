@@ -19,9 +19,11 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
 #include <limits.h>
-#include <utility>
 
 #include <algorithm>                    // for min
+#include <utility>
+#include <vector>
+
 #include "base/logging.h"               // for CHECK, etc
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -123,10 +125,26 @@ void SetDesiredDimensionsIfRequired(ImageDim* desired_dim,
   }
 }
 
+const char* const kRelatedOptions[] = {
+  RewriteOptions::kImageJpegNumProgressiveScans,
+  RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
+  RewriteOptions::kImageJpegRecompressionQuality,
+  RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
+  RewriteOptions::kImageLimitOptimizedPercent,
+  RewriteOptions::kImageLimitResizeAreaPercent,
+  RewriteOptions::kImageMaxRewritesAtOnce,
+  RewriteOptions::kImagePreserveURLs,
+  RewriteOptions::kImageRecompressionQuality,
+  RewriteOptions::kImageResolutionLimitBytes,
+  RewriteOptions::kImageWebpRecompressionQuality,
+  RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
+  RewriteOptions::kProgressiveJpegMinBytes
+};
+
 }  // namespace
 
-// Expose kRelatedFilters and kRelatedOptions as class variables for the benefit
-// of static-init-time merging in css_filter.cc.
+// Expose kRelatedFilters as a class variable for the benefit of
+// static-init-time merging in css_filter.cc.
 const RewriteOptions::Filter ImageRewriteFilter::kRelatedFilters[] = {
   RewriteOptions::kConvertGifToPng,
   RewriteOptions::kConvertJpegToProgressive,
@@ -145,22 +163,7 @@ const RewriteOptions::Filter ImageRewriteFilter::kRelatedFilters[] = {
 };
 const int ImageRewriteFilter::kRelatedFiltersSize = arraysize(kRelatedFilters);
 
-const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
-  RewriteOptions::kImageJpegNumProgressiveScans,
-  RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
-  RewriteOptions::kImageJpegRecompressionQuality,
-  RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
-  RewriteOptions::kImageLimitOptimizedPercent,
-  RewriteOptions::kImageLimitResizeAreaPercent,
-  RewriteOptions::kImageMaxRewritesAtOnce,
-  RewriteOptions::kImagePreserveURLs,
-  RewriteOptions::kImageRecompressionQuality,
-  RewriteOptions::kImageResolutionLimitBytes,
-  RewriteOptions::kImageWebpRecompressionQuality,
-  RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
-  RewriteOptions::kProgressiveJpegMinBytes
-};
-const int ImageRewriteFilter::kRelatedOptionsSize = arraysize(kRelatedOptions);
+StringPieceVector* ImageRewriteFilter::related_options_ = NULL;
 
 // names for Statistics variables.
 const char ImageRewriteFilter::kImageRewrites[] = "image_rewrites";
@@ -512,10 +515,6 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
     CHECK_LT(kRelatedFilters[i - 1], kRelatedFilters[i])
         << "kRelatedFilters not in enum-value order";
   }
-  for (int i = 1; i < kRelatedOptionsSize; ++i) {
-    CHECK_LT(kRelatedOptions[i - 1], kRelatedOptions[i])
-        << "kRelatedOptions not in enum-value order";
-  }
 #endif
 
   statistics->AddVariable(kImageRewrites);
@@ -572,6 +571,25 @@ void ImageRewriteFilter::SetupRenderedImageDimensionsMap(
         images.rendered_width(), images.rendered_height());
   }
   rendered_images_map_.reset(map);
+}
+
+void ImageRewriteFilter::Initialize() {
+  CHECK(related_options_ == NULL);
+  related_options_ = new StringPieceVector;
+  ImageRewriteFilter::AddRelatedOptions(ImageRewriteFilter::related_options_);
+  std::sort(related_options_->begin(), related_options_->end());
+}
+
+void ImageRewriteFilter::Terminate() {
+  CHECK(related_options_ != NULL);
+  delete related_options_;
+  related_options_ = NULL;
+}
+
+void ImageRewriteFilter::AddRelatedOptions(StringPieceVector* target) {
+  for (int i = 0, n = arraysize(kRelatedOptions); i < n; ++i) {
+    target->push_back(kRelatedOptions[i]);
+  }
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {
@@ -1755,12 +1773,6 @@ const RewriteOptions::Filter* ImageRewriteFilter::RelatedFilters(
     int* num_filters) const {
   *num_filters = kRelatedFiltersSize;
   return kRelatedFilters;
-}
-
-const RewriteOptions::OptionEnum* ImageRewriteFilter::RelatedOptions(
-    int* num_options) const {
-  *num_options = kRelatedOptionsSize;
-  return kRelatedOptions;
 }
 
 void ImageRewriteFilter::DisableRelatedFilters(RewriteOptions* options) {

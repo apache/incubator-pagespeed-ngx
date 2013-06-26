@@ -659,8 +659,7 @@ TEST_F(RewriteOptionsTest, SetDefaultRewriteLevel) {
 void RewriteOptionsTest::TestSetOptionFromName(bool test_log_variant) {
   NullMessageHandler handler;
 
-  // TODO(sriharis):  Add tests for all Options here, like in
-  // LookupOptionEnumTest.
+  // TODO(sriharis): Add tests for all Options here per LookupOptionByNameTest.
 
   TestNameSet(RewriteOptions::kOptionOk,
               test_log_variant,
@@ -747,525 +746,253 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
   TestSetOptionFromName(true);
 }
 
-// All the option names are explicitly enumerated here. Modifications are
+// All the base option names are explicitly enumerated here. Modifications are
 // handled by the explicit tests. Additions/deletions are handled by checking
-// kEndOfOptions explicitly (and assuming we add/delete an option value when we
+// the count explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
-TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(189, RewriteOptions::kEndOfOptions);
-  EXPECT_STREQ("AddOptionsToUrls",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kAddOptionsToUrls));
-  EXPECT_STREQ("AllowLoggingUrlsInLogRecord",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kAllowLoggingUrlsInLogRecord));
-  EXPECT_STREQ("AlwaysRewriteCss",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kAlwaysRewriteCss));
-  EXPECT_STREQ("AnalyticsID",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kAnalyticsID));
-  EXPECT_STREQ("AvoidRenamingIntrospectiveJavascript",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kAvoidRenamingIntrospectiveJavascript));
-  EXPECT_STREQ("BeaconReinstrumentTimeSec",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kBeaconReinstrumentTimeSec));
-  EXPECT_STREQ("BeaconUrl",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kBeaconUrl));
-  EXPECT_STREQ("BlinkMaxHtmlSizeRewritable",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kBlinkMaxHtmlSizeRewritable));
-  EXPECT_STREQ("BlockingRewriteKey",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kXPsaBlockingRewrite));
-  EXPECT_STREQ("CacheSmallImagesUnrewritten",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCacheSmallImagesUnrewritten));
-  EXPECT_STREQ("CombineAcrossPaths",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCombineAcrossPaths));
-  EXPECT_STREQ("CompressMetadataCache",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCompressMetadataCache));
-  EXPECT_STREQ("ClientDomainRewrite",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kClientDomainRewrite));
-  EXPECT_STREQ("CriticalImagesBeaconEnabled",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCriticalImagesBeaconEnabled));
-  EXPECT_STREQ("CriticalLineConfig",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCriticalLineConfig));
-  EXPECT_STREQ("CssFlattenMaxBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCssFlattenMaxBytes));
-  EXPECT_STREQ("CssImageInlineMaxBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCssImageInlineMaxBytes));
-  EXPECT_STREQ("CssInlineMaxBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCssInlineMaxBytes));
-  EXPECT_STREQ("CssOutlineMinBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCssOutlineMinBytes));
-  EXPECT_STREQ("CssPreserveURLs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCssPreserveURLs));
-  EXPECT_STREQ("DefaultCacheHtml",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDefaultCacheHtml));
-  EXPECT_STREQ("DistributedRewriteKey",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDistributedRewriteKey));
-  EXPECT_STREQ("DistributedRewriteServers",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDistributedRewriteServers));
-  EXPECT_STREQ("DistributedRewriteTimeoutMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDistributedRewriteTimeoutMs));
-  EXPECT_STREQ("DomainRewriteHyperlinks",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDomainRewriteHyperlinks));
-  EXPECT_STREQ("DomainShardCount",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDomainShardCount));
-  EXPECT_STREQ("EnableAggressiveRewritersForMobile",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableAggressiveRewritersForMobile));
-  EXPECT_STREQ("EnableBlinkHtmlChangeDetection",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableBlinkHtmlChangeDetection));
-  EXPECT_STREQ("EnableBlinkHtmlChangeDetectionLogging",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging));
-  EXPECT_STREQ("EnableCachePurge",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableCachePurge));
-  EXPECT_STREQ("EnableDeferJsExperimental",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableDeferJsExperimental));
-  EXPECT_STREQ("EnableExtendedInstrumentation",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableExtendedInstrumentation));
-  EXPECT_STREQ("EnableFixReflow",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableFixReflow));
-  EXPECT_STREQ("EnableFlushSubresourcesExperimental",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableFlushSubresourcesExperimental));
-  EXPECT_STREQ("UseFallbackPropertyCacheValues",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kUseFallbackPropertyCacheValues));
-  EXPECT_STREQ("EnablePrioritizingScripts",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnablePrioritizingScripts));
-  EXPECT_STREQ("EnableRewriting",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnabled));
-  EXPECT_STREQ("FinderPropertiesCacheExpirationTimeMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFinderPropertiesCacheExpirationTimeMs));
-  EXPECT_STREQ("FlushBufferLimitBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFlushBufferLimitBytes));
-  EXPECT_STREQ("FlushHtml",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFlushHtml));
-  EXPECT_STREQ("ObliviousPagespeedUrls",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kObliviousPagespeedUrls));
-  EXPECT_STREQ("FlushMoreResourcesEarlyIfTimePermits",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits));
-  EXPECT_STREQ("ForbidAllDisabledFilters",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kForbidAllDisabledFilters));
-  EXPECT_STREQ("ExperimentCookieDurationMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kExperimentCookieDurationMs));
-  EXPECT_STREQ("IdleFlushTimeMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kIdleFlushTimeMs));
-  EXPECT_STREQ("ImageInlineMaxBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageInlineMaxBytes));
-  EXPECT_STREQ("ImageJpegNumProgressiveScans",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageJpegNumProgressiveScans));
-  EXPECT_STREQ("ImageJpegNumProgressiveScansForSmallScreens",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::
-                   kImageJpegNumProgressiveScansForSmallScreens));
-  EXPECT_STREQ("ImageLimitOptimizedPercent",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageLimitOptimizedPercent));
-  EXPECT_STREQ("ImageLimitRenderedAreaPercent",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageLimitRenderedAreaPercent));
-  EXPECT_STREQ("ImageLimitResizeAreaPercent",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageLimitResizeAreaPercent));
-  EXPECT_STREQ("ImageMaxRewritesAtOnce",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageMaxRewritesAtOnce));
-  EXPECT_STREQ("ImageResolutionLimitBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageResolutionLimitBytes));
-  EXPECT_STREQ("ImageRecompressionQuality",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageRecompressionQuality));
-  EXPECT_STREQ("ImagePreserveURLs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImagePreserveURLs));
-  EXPECT_STREQ("ImageWebpRecompressionQuality",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageWebpRecompressionQuality));
-  EXPECT_STREQ("ImageWebpRecompressionQualityForSmallScreens",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::
-                   kImageWebpRecompressionQualityForSmallScreens));
-  EXPECT_STREQ("ImageWebpTimeoutMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageWebpTimeoutMs));
-  EXPECT_STREQ("ImplicitCacheTtlMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImplicitCacheTtlMs));
-  EXPECT_STREQ("InPlaceResourceOptimization",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlaceResourceOptimization));
-  EXPECT_STREQ("InPlacePreemptiveRewriteCss",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlacePreemptiveRewriteCss));
-  EXPECT_STREQ("InPlacePreemptiveRewriteCssImages",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlacePreemptiveRewriteCssImages));
-  EXPECT_STREQ("InPlacePreemptiveRewriteImages",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlacePreemptiveRewriteImages));
-  EXPECT_STREQ("InPlacePreemptiveRewriteJavascript",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlacePreemptiveRewriteJavascript));
-  EXPECT_STREQ("InPlaceRewriteDeadlineMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlaceRewriteDeadlineMs));
-  EXPECT_STREQ("InPlaceWaitForOptimized",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInPlaceWaitForOptimized));
-  EXPECT_STREQ("InlineOnlyCriticalImages",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kInlineOnlyCriticalImages));
-  EXPECT_STREQ("JpegRecompressionQuality",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImageJpegRecompressionQuality));
-  EXPECT_STREQ("JpegRecompressionQualityForSmallScreens",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::
-                   kImageJpegRecompressionQualityForSmallScreens));
-  EXPECT_STREQ("JsInlineMaxBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kJsInlineMaxBytes));
-  EXPECT_STREQ("JsOutlineMinBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kJsOutlineMinBytes));
-  EXPECT_STREQ("LazyloadImagesBlankUrl",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLazyloadImagesBlankUrl));
-  EXPECT_STREQ("JsPreserveURLs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kJsPreserveURLs));
-  EXPECT_STREQ("LazyloadImagesAfterOnload",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLazyloadImagesAfterOnload));
-  EXPECT_STREQ("LogRewriteTiming",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLogRewriteTiming));
-  EXPECT_STREQ("LowercaseHtmlNames",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLowercaseHtmlNames));
-  EXPECT_STREQ("MaxCacheableContentLength",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxCacheableResponseContentLength));
-  EXPECT_STREQ("MaxHtmlCacheTimeMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxHtmlCacheTimeMs));
-  EXPECT_STREQ("MaxImageBytesForWebpInCss",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxImageBytesForWebpInCss));
-  EXPECT_STREQ("MaxImageSizeLowResolutionBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxImageSizeLowResolutionBytes));
-  EXPECT_STREQ("MaxInlinedPreviewImagesIndex",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxInlinedPreviewImagesIndex));
-  EXPECT_STREQ("MaxSegmentLength",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxUrlSegmentSize));
-  EXPECT_STREQ("MaxUrlSize",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMaxUrlSize));
-  EXPECT_STREQ("MetadataCacheStalenessThresholdMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMetadataCacheStalenessThresholdMs));
-  EXPECT_STREQ("DownstreamCacheLifetimeMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDownstreamCacheLifetimeMs));
-  EXPECT_STREQ("DownstreamCachePurgeMethod",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDownstreamCachePurgeMethod));
-  EXPECT_STREQ(
-      "DownstreamCacheRewrittenPercentageThreshold",
-      RewriteOptions::LookupOptionEnum(
-          RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold));
-  EXPECT_STREQ("MinImageSizeLowResolutionBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMinImageSizeLowResolutionBytes));
-  EXPECT_STREQ("MinResourceCacheTimeToRewriteMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMinResourceCacheTimeToRewriteMs));
-  EXPECT_STREQ("ModifyCachingHeaders",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kModifyCachingHeaders));
-  EXPECT_STREQ("OverrideCachingTtlMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kOverrideCachingTtlMs));
-  EXPECT_STREQ("OverrideIeDocumentMode",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kOverrideIeDocumentMode));
-  EXPECT_STREQ("PersistBlinkBlacklist",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kPersistBlinkBlacklist));
-  EXPECT_STREQ("ProgressiveJpegMinBytes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kProgressiveJpegMinBytes));
-  EXPECT_STREQ("RejectBlacklisted",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRejectBlacklisted));
-  EXPECT_STREQ("RejectBlacklistedStatusCode",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRejectBlacklistedStatusCode));
-  EXPECT_STREQ("RespectVary",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRespectVary));
-  EXPECT_STREQ("RespectXForwardedProto",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRespectXForwardedProto));
-  EXPECT_STREQ("RewriteDeadlinePerFlushMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRewriteDeadlineMs));
-  EXPECT_STREQ("RewriteLevel",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRewriteLevel));
-  EXPECT_STREQ("RewriteRandomDropPercentage",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRewriteRandomDropPercentage));
-  EXPECT_STREQ("RewriteUncacheableResources",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRewriteUncacheableResources));
-  EXPECT_STREQ("RunExperiment",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRunningExperiment));
-  EXPECT_STREQ("ServeStaleIfFetchError",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kServeStaleIfFetchError));
-  EXPECT_STREQ("ProactivelyFreshenUserFacingRequest",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kProactivelyFreshenUserFacingRequest));
-  EXPECT_STREQ("ServeStaleWhileRevalidateThresholdSec",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kServeStaleWhileRevalidateThresholdSec));
-  EXPECT_STREQ("SupportNoScriptEnabled",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kSupportNoScriptEnabled));
-  EXPECT_STREQ(
-      "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss",
-      RewriteOptions::LookupOptionEnum(
-          RewriteOptions::kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss));
-  EXPECT_STREQ("UseSmartDiffInBlink",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kUseSmartDiffInBlink));
-  EXPECT_STREQ("XHeaderValue",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kXModPagespeedHeaderValue));
+TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
+  // Use macro so that the failure message tells us the name of the option
+  // failing the test (using a function would obscure that) and to ensure we
+  // add every tested name to the set of tested names for further checks below.
+  std::set<StringPiece> tested_names;
+#define PassLookupOptionByName(name) \
+  EXPECT_TRUE(NULL != RewriteOptions::LookupOptionByName(name)); \
+  tested_names.insert(name)
+
+  // Generic options that are registered by name by AddProperty().
+  PassLookupOptionByName(RewriteOptions::kAddOptionsToUrls);
+  PassLookupOptionByName(RewriteOptions::kAccessControlAllowOrigin);
+  PassLookupOptionByName(RewriteOptions::kAllowLoggingUrlsInLogRecord);
+  PassLookupOptionByName(RewriteOptions::kAlwaysRewriteCss);
+  PassLookupOptionByName(RewriteOptions::kAnalyticsID);
+  PassLookupOptionByName(RewriteOptions::kAvoidRenamingIntrospectiveJavascript);
+  PassLookupOptionByName(RewriteOptions::kBeaconReinstrumentTimeSec);
+  PassLookupOptionByName(RewriteOptions::kBeaconUrl);
+  PassLookupOptionByName(RewriteOptions::kBlinkMaxHtmlSizeRewritable);
+  PassLookupOptionByName(RewriteOptions::kCacheInvalidationTimestamp);
+  PassLookupOptionByName(RewriteOptions::kCacheSmallImagesUnrewritten);
+  PassLookupOptionByName(RewriteOptions::kClientDomainRewrite);
+  PassLookupOptionByName(RewriteOptions::kCombineAcrossPaths);
+  PassLookupOptionByName(RewriteOptions::kCriticalImagesBeaconEnabled);
+  PassLookupOptionByName(RewriteOptions::kCriticalLineConfig);
+  PassLookupOptionByName(RewriteOptions::kCssFlattenMaxBytes);
+  PassLookupOptionByName(RewriteOptions::kCssImageInlineMaxBytes);
+  PassLookupOptionByName(RewriteOptions::kCssInlineMaxBytes);
+  PassLookupOptionByName(RewriteOptions::kCssOutlineMinBytes);
+  PassLookupOptionByName(RewriteOptions::kCssPreserveURLs);
+  PassLookupOptionByName(RewriteOptions::kDefaultCacheHtml);
+  PassLookupOptionByName(RewriteOptions::kDisableRewriteOnNoTransform);
+  PassLookupOptionByName(RewriteOptions::kDistributedRewriteKey);
+  PassLookupOptionByName(RewriteOptions::kDistributedRewriteServers);
+  PassLookupOptionByName(RewriteOptions::kDistributedRewriteTimeoutMs);
+  PassLookupOptionByName(RewriteOptions::kDomainRewriteHyperlinks);
+  PassLookupOptionByName(RewriteOptions::kDomainShardCount);
+  PassLookupOptionByName(RewriteOptions::kDownstreamCacheLifetimeMs);
+  PassLookupOptionByName(RewriteOptions::kDownstreamCachePurgeMethod);
+  PassLookupOptionByName(RewriteOptions::
+                         kDownstreamCacheRewrittenPercentageThreshold);
+  PassLookupOptionByName(RewriteOptions::kEnableAggressiveRewritersForMobile);
+  PassLookupOptionByName(RewriteOptions::kEnableBlinkHtmlChangeDetection);
+  PassLookupOptionByName(RewriteOptions::
+                         kEnableBlinkHtmlChangeDetectionLogging);
+  PassLookupOptionByName(RewriteOptions::kEnableCachePurge);
+  PassLookupOptionByName(RewriteOptions::kEnableDeferJsExperimental);
+  PassLookupOptionByName(RewriteOptions::kEnableExtendedInstrumentation);
+  PassLookupOptionByName(RewriteOptions::kEnableFixReflow);
+  PassLookupOptionByName(RewriteOptions::kEnableFlushEarlyCriticalCss);
+  PassLookupOptionByName(RewriteOptions::kEnableLazyLoadHighResImages);
+  PassLookupOptionByName(RewriteOptions::kEnablePrioritizingScripts);
+  PassLookupOptionByName(RewriteOptions::kEnabled);
+  PassLookupOptionByName(RewriteOptions::kExperimentCookieDurationMs);
+  PassLookupOptionByName(RewriteOptions::kExperimentSlot);
+  PassLookupOptionByName(RewriteOptions::kFetcherTimeOutMs);
+  PassLookupOptionByName(RewriteOptions::
+                         kFinderPropertiesCacheExpirationTimeMs);
+  PassLookupOptionByName(RewriteOptions::kFinderPropertiesCacheRefreshTimeMs);
+  PassLookupOptionByName(RewriteOptions::kFlushBufferLimitBytes);
+  PassLookupOptionByName(RewriteOptions::kFlushHtml);
+  PassLookupOptionByName(RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits);
+  PassLookupOptionByName(RewriteOptions::kForbidAllDisabledFilters);
+  PassLookupOptionByName(RewriteOptions::kIdleFlushTimeMs);
+  PassLookupOptionByName(RewriteOptions::kImageInlineMaxBytes);
+  PassLookupOptionByName(RewriteOptions::kImageJpegNumProgressiveScans);
+  PassLookupOptionByName(RewriteOptions::
+                         kImageJpegNumProgressiveScansForSmallScreens);
+  PassLookupOptionByName(RewriteOptions::kImageJpegRecompressionQuality);
+  PassLookupOptionByName(RewriteOptions::
+                         kImageJpegRecompressionQualityForSmallScreens);
+  PassLookupOptionByName(RewriteOptions::kImageLimitOptimizedPercent);
+  PassLookupOptionByName(RewriteOptions::kImageLimitRenderedAreaPercent);
+  PassLookupOptionByName(RewriteOptions::kImageLimitResizeAreaPercent);
+  PassLookupOptionByName(RewriteOptions::kImageMaxRewritesAtOnce);
+  PassLookupOptionByName(RewriteOptions::kImagePreserveURLs);
+  PassLookupOptionByName(RewriteOptions::kImageRecompressionQuality);
+  PassLookupOptionByName(RewriteOptions::kImageResolutionLimitBytes);
+  PassLookupOptionByName(RewriteOptions::kImageWebpRecompressionQuality);
+  PassLookupOptionByName(RewriteOptions::
+                         kImageWebpRecompressionQualityForSmallScreens);
+  PassLookupOptionByName(RewriteOptions::kImageWebpTimeoutMs);
+  PassLookupOptionByName(RewriteOptions::kImplicitCacheTtlMs);
+  PassLookupOptionByName(RewriteOptions::kIncreaseSpeedTracking);
+  PassLookupOptionByName(RewriteOptions::kInlineOnlyCriticalImages);
+  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCss);
+  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCssImages);
+  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteImages);
+  PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteJavascript);
+  PassLookupOptionByName(RewriteOptions::kInPlaceResourceOptimization);
+  PassLookupOptionByName(RewriteOptions::kInPlaceRewriteDeadlineMs);
+  PassLookupOptionByName(RewriteOptions::kInPlaceWaitForOptimized);
+  PassLookupOptionByName(RewriteOptions::kInlineOnlyCriticalImages);
+  PassLookupOptionByName(RewriteOptions::kJsInlineMaxBytes);
+  PassLookupOptionByName(RewriteOptions::kJsOutlineMinBytes);
+  PassLookupOptionByName(RewriteOptions::kJsPreserveURLs);
+  PassLookupOptionByName(RewriteOptions::kLazyloadImagesAfterOnload);
+  PassLookupOptionByName(RewriteOptions::kLazyloadImagesBlankUrl);
+  PassLookupOptionByName(RewriteOptions::kLogBackgroundRewrite);
+  PassLookupOptionByName(RewriteOptions::kLogRewriteTiming);
+  PassLookupOptionByName(RewriteOptions::kLogUrlIndices);
+  PassLookupOptionByName(RewriteOptions::kLowercaseHtmlNames);
+  PassLookupOptionByName(RewriteOptions::kMaxCacheableResponseContentLength);
+  PassLookupOptionByName(RewriteOptions::kMaxCombinedJsBytes);
+  PassLookupOptionByName(RewriteOptions::kMaxHtmlCacheTimeMs);
+  PassLookupOptionByName(RewriteOptions::kMaxHtmlParseBytes);
+  PassLookupOptionByName(RewriteOptions::kMaxImageBytesForWebpInCss);
+  PassLookupOptionByName(RewriteOptions::kMaxImageSizeLowResolutionBytes);
+  PassLookupOptionByName(RewriteOptions::kMaxInlinedPreviewImagesIndex);
+  PassLookupOptionByName(RewriteOptions::kMaxPrefetchJsElements);
+  PassLookupOptionByName(RewriteOptions::kMaxRewriteInfoLogSize);
+  PassLookupOptionByName(RewriteOptions::kMaxUrlSegmentSize);
+  PassLookupOptionByName(RewriteOptions::kMaxUrlSize);
+  PassLookupOptionByName(RewriteOptions::kMetadataCacheStalenessThresholdMs);
+  PassLookupOptionByName(RewriteOptions::kMinImageSizeLowResolutionBytes);
+  PassLookupOptionByName(RewriteOptions::kMinResourceCacheTimeToRewriteMs);
+  PassLookupOptionByName(RewriteOptions::kModifyCachingHeaders);
+  PassLookupOptionByName(RewriteOptions::kNonCacheablesForCachePartialHtml);
+  PassLookupOptionByName(RewriteOptions::kObliviousPagespeedUrls);
+  PassLookupOptionByName(RewriteOptions::kOverrideCachingTtlMs);
+  PassLookupOptionByName(RewriteOptions::kPersistBlinkBlacklist);
+  PassLookupOptionByName(RewriteOptions::kProactivelyFreshenUserFacingRequest);
+  PassLookupOptionByName(RewriteOptions::kProgressiveJpegMinBytes);
+  PassLookupOptionByName(RewriteOptions::kRejectBlacklisted);
+  PassLookupOptionByName(RewriteOptions::kRejectBlacklistedStatusCode);
+  PassLookupOptionByName(RewriteOptions::kReportUnloadTime);
+  PassLookupOptionByName(RewriteOptions::kRespectVary);
+  PassLookupOptionByName(RewriteOptions::kRespectXForwardedProto);
+  PassLookupOptionByName(RewriteOptions::kRewriteDeadlineMs);
+  PassLookupOptionByName(RewriteOptions::kRewriteLevel);
+  PassLookupOptionByName(RewriteOptions::kRewriteRandomDropPercentage);
+  PassLookupOptionByName(RewriteOptions::kRewriteRequestUrlsEarly);
+  PassLookupOptionByName(RewriteOptions::kRewriteUncacheableResources);
+  PassLookupOptionByName(RewriteOptions::kRunningExperiment);
+  PassLookupOptionByName(RewriteOptions::kServeGhostClickBusterWithSplitHtml);
+  PassLookupOptionByName(RewriteOptions::kServeSplitHtmlInTwoChunks);
+  PassLookupOptionByName(RewriteOptions::kServeStaleIfFetchError);
+  PassLookupOptionByName(RewriteOptions::kServeXhrAccessControlHeaders);
+  PassLookupOptionByName(RewriteOptions::
+                         kServeStaleWhileRevalidateThresholdSec);
+  PassLookupOptionByName(RewriteOptions::kSupportNoScriptEnabled);
+  PassLookupOptionByName(RewriteOptions::
+                         kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss);
+  PassLookupOptionByName(RewriteOptions::kUseBlankImageForInlinePreview);
+  PassLookupOptionByName(RewriteOptions::kUseFallbackPropertyCacheValues);
+  PassLookupOptionByName(RewriteOptions::kUseSmartDiffInBlink);
+  PassLookupOptionByName(RewriteOptions::kXModPagespeedHeaderValue);
+  PassLookupOptionByName(RewriteOptions::kXPsaBlockingRewrite);
+
+  // Now go through the named options in all_properties_ and check that each
+  // one has been tested.
+  int named_properties = 0;
+  for (int i = 0, n = RewriteOptions::all_properties_->size(); i < n; ++i) {
+    StringPiece name =
+        RewriteOptions::all_properties_->property(i)->option_name();
+    if (!name.empty()) {
+      ++named_properties;
+      EXPECT_NE(tested_names.end(), tested_names.find(name))
+          << name << " has not been tested!";
+    }
+  }
+  EXPECT_EQ(named_properties, tested_names.size());
+
+  // Check that case doesn't matter when looking up directives.
+  PassLookupOptionByName("EnableRewriting");  // As declared.
+  PassLookupOptionByName("eNaBlErEWrItIng");  // mutated.
+}
+
+// All the non-base option names are explicitly enumerated here. Modifications
+// are handled by the explicit tests. Additions/deletions are NOT handled.
+TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
+  // Use macro so that the failure message tells us the name of the option
+  // failing the test; using a function would obscure that.
+#define FailLookupOptionByName(name) \
+  EXPECT_TRUE(NULL == RewriteOptions::LookupOptionByName(name))
+
+  // The following are not accessible by name, they are handled explicitly
+  // by name comparison. We could/should test them all using their setters,
+  // though -some- of them are (cf. ParseAndSetOptionFromName1/2/3 following).
 
   // Non-scalar options
-  EXPECT_STREQ("Allow",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kAllow));
-  EXPECT_STREQ("DisableFilters",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDisableFilters));
-  EXPECT_STREQ("Disallow",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDisallow));
-  EXPECT_STREQ("DistributableFilters",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDistributableFilters));
-  EXPECT_STREQ("Domain",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDomain));
-  EXPECT_STREQ("EnableFilters",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableFilters));
-  EXPECT_STREQ("DownstreamCachePurgeLocationPrefix",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kDownstreamCachePurgeLocationPrefix));
-  EXPECT_STREQ("ExperimentVariable",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kExperimentVariable));
-  EXPECT_STREQ("ExperimentSpec",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kExperimentSpec));
-  EXPECT_STREQ("ForbidFilters",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kForbidFilters));
-  EXPECT_STREQ("RetainComment",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRetainComment));
-  EXPECT_STREQ("BlockingRewriteRefererUrls",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kBlockingRewriteRefererUrls));
+  FailLookupOptionByName(RewriteOptions::kAllow);
+  FailLookupOptionByName(RewriteOptions::kBlockingRewriteRefererUrls);
+  FailLookupOptionByName(RewriteOptions::kDisableFilters);
+  FailLookupOptionByName(RewriteOptions::kDisallow);
+  FailLookupOptionByName(RewriteOptions::kDistributableFilters);
+  FailLookupOptionByName(RewriteOptions::kDomain);
+  FailLookupOptionByName(RewriteOptions::kDownstreamCachePurgeLocationPrefix);
+  FailLookupOptionByName(RewriteOptions::kEnableFilters);
+  FailLookupOptionByName(RewriteOptions::kExperimentVariable);
+  FailLookupOptionByName(RewriteOptions::kExperimentSpec);
+  FailLookupOptionByName(RewriteOptions::kForbidFilters);
+  FailLookupOptionByName(RewriteOptions::kRetainComment);
 
   // 2-arg options
-  EXPECT_STREQ("CustomFetchHeader",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCustomFetchHeader));
-  EXPECT_STREQ("LoadFromFile",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLoadFromFile));
-  EXPECT_STREQ("LoadFromFileMatch",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLoadFromFileMatch));
-  EXPECT_STREQ("LoadFromFileRule",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLoadFromFileRule));
-  EXPECT_STREQ("LoadFromFileRuleMatch",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLoadFromFileRuleMatch));
-  EXPECT_STREQ("MapOriginDomain",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMapOriginDomain));
-  EXPECT_STREQ("MapProxyDomain",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMapProxyDomain));
-  EXPECT_STREQ("MapRewriteDomain",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMapRewriteDomain));
-  EXPECT_STREQ("ShardDomain",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kShardDomain));
+  FailLookupOptionByName(RewriteOptions::kCustomFetchHeader);
+  FailLookupOptionByName(RewriteOptions::kLoadFromFile);
+  FailLookupOptionByName(RewriteOptions::kLoadFromFileMatch);
+  FailLookupOptionByName(RewriteOptions::kLoadFromFileRule);
+  FailLookupOptionByName(RewriteOptions::kLoadFromFileRuleMatch);
+  FailLookupOptionByName(RewriteOptions::kMapOriginDomain);
+  FailLookupOptionByName(RewriteOptions::kMapProxyDomain);
+  FailLookupOptionByName(RewriteOptions::kMapRewriteDomain);
+  FailLookupOptionByName(RewriteOptions::kShardDomain);
 
   // 3-arg options
-  EXPECT_STREQ("UrlValuedAttribute",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kUrlValuedAttribute));
-  EXPECT_STREQ("Library",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLibrary));
+  FailLookupOptionByName(RewriteOptions::kUrlValuedAttribute);
+  FailLookupOptionByName(RewriteOptions::kLibrary);
 
   // system/ and apache/ options.
-  EXPECT_STREQ("CacheFlushFilename",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCacheFlushFilename));
-  EXPECT_STREQ("CacheFlushPollIntervalSec",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCacheFlushPollIntervalSec));
-  EXPECT_STREQ("ExperimentalFetchFromModSpdy",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kExperimentalFetchFromModSpdy));
-  EXPECT_STREQ(StringPiece("FetchHttps"),
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFetchHttps));
-  EXPECT_STREQ("FetchProxy",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFetcherProxy));
-  EXPECT_STREQ("FetcherTimeOutMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFetcherTimeOutMs));
-  EXPECT_STREQ("FileCacheCleanIntervalMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFileCacheCleanIntervalMs));
-  EXPECT_STREQ("FileCachePath",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFileCachePath));
-  EXPECT_STREQ("FileCacheSizeKb",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFileCacheCleanSizeKb));
-  EXPECT_STREQ("FileCacheInodeLimit",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFileCacheCleanInodeLimit));
-  EXPECT_STREQ("LRUCacheByteLimit",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLruCacheByteLimit));
-  EXPECT_STREQ("LRUCacheKbPerProcess",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLruCacheKbPerProcess));
-  EXPECT_STREQ("LogDir",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kLogDir));
-  EXPECT_STREQ("MemcachedServers",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMemcachedServers));
-  EXPECT_STREQ("MemcachedThreads",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMemcachedThreads));
-  EXPECT_STREQ("MemcachedTimeoutUs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kMemcachedTimeoutUs));
-  EXPECT_STREQ("NonCacheablesForCachePartialHtml",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kNonCacheablesForCachePartialHtml));
-  EXPECT_STREQ("RateLimitBackgroundFetches",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRateLimitBackgroundFetches));
-  EXPECT_STREQ("SharedMemoryLocks",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kUseSharedMemLocking));
-  EXPECT_STREQ("SlurpDirectory",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kSlurpDirectory));
-  EXPECT_STREQ("SlurpFlushLimit",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kSlurpFlushLimit));
-  EXPECT_STREQ("SlurpReadOnly",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kSlurpReadOnly));
-  EXPECT_STREQ("Statistics",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsEnabled));
-  EXPECT_STREQ("StatisticsHandlerPath",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsHandlerPath));
-  EXPECT_STREQ("StatisticsLogging",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingEnabled));
-  EXPECT_STREQ("StatisticsLoggingChartsCSS",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingChartsCSS));
-  EXPECT_STREQ("StatisticsLoggingChartsJS",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingChartsJS));
-  EXPECT_STREQ("StatisticsLoggingIntervalMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingIntervalMs));
-  EXPECT_STREQ("StatisticsLoggingMaxFileSizeKb",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kStatisticsLoggingMaxFileSizeKb));
-  EXPECT_STREQ("TestProxy",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kTestProxy));
-  EXPECT_STREQ("TestProxySlurp",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kTestProxySlurp));
-  // End Apache-specific option tests (so please don't add tests for generic
-  // options here).
+  FailLookupOptionByName(RewriteOptions::kCacheFlushFilename);
+  FailLookupOptionByName(RewriteOptions::kCacheFlushPollIntervalSec);
+  FailLookupOptionByName(RewriteOptions::kCompressMetadataCache);
+  FailLookupOptionByName(RewriteOptions::kExperimentalFetchFromModSpdy);
+  FailLookupOptionByName(RewriteOptions::kFetchHttps);
+  FailLookupOptionByName(RewriteOptions::kFetcherProxy);
+  FailLookupOptionByName(RewriteOptions::kFileCacheCleanIntervalMs);
+  FailLookupOptionByName(RewriteOptions::kFileCachePath);
+  FailLookupOptionByName(RewriteOptions::kFileCacheCleanSizeKb);
+  FailLookupOptionByName(RewriteOptions::kFileCacheCleanInodeLimit);
+  FailLookupOptionByName(RewriteOptions::kLogDir);
+  FailLookupOptionByName(RewriteOptions::kLruCacheByteLimit);
+  FailLookupOptionByName(RewriteOptions::kLruCacheKbPerProcess);
+  FailLookupOptionByName(RewriteOptions::kMemcachedServers);
+  FailLookupOptionByName(RewriteOptions::kMemcachedThreads);
+  FailLookupOptionByName(RewriteOptions::kMemcachedTimeoutUs);
+  FailLookupOptionByName(RewriteOptions::kRateLimitBackgroundFetches);
+  FailLookupOptionByName(RewriteOptions::kUseSharedMemLocking);
+  FailLookupOptionByName(RewriteOptions::kSlurpDirectory);
+  FailLookupOptionByName(RewriteOptions::kSlurpFlushLimit);
+  FailLookupOptionByName(RewriteOptions::kSlurpReadOnly);
+  FailLookupOptionByName(RewriteOptions::kStatisticsEnabled);
+  FailLookupOptionByName(RewriteOptions::kStatisticsHandlerPath);
+  FailLookupOptionByName(RewriteOptions::kStatisticsLoggingEnabled);
+  FailLookupOptionByName(RewriteOptions::kStatisticsLoggingChartsCSS);
+  FailLookupOptionByName(RewriteOptions::kStatisticsLoggingChartsJS);
+  FailLookupOptionByName(RewriteOptions::kStatisticsLoggingIntervalMs);
+  FailLookupOptionByName(RewriteOptions::kStatisticsLoggingMaxFileSizeKb);
+  FailLookupOptionByName(RewriteOptions::kTestProxy);
+  FailLookupOptionByName(RewriteOptions::kTestProxySlurp);
 }
 
 TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName1) {
-  // This tests mostly the interaction between ParseAndSetOptionFromName1
-  // and ParseAndSetOptionFromEnum1. The individual cases in the latter
-  // are mostly covered by its own test.
   GoogleString msg;
   NullMessageHandler handler;
 
@@ -1299,24 +1026,19 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName1) {
             options_.ParseAndSetOptionFromName1(
                 "EnableFilters", "no_such_filter", &msg, &handler));
   EXPECT_EQ("Failed to enable some filters.", msg);
-}
-
-TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
-  GoogleString msg;
-  NullMessageHandler handler;
 
   // Disallow/Allow.
   options_.Disallow("*");
   EXPECT_FALSE(options_.IsAllowed("example.com"));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kAllow, "*.com", &msg, &handler));
   EXPECT_TRUE(options_.IsAllowed("example.com"));
   EXPECT_TRUE(options_.IsAllowed("evil.com"));
   EXPECT_FALSE(options_.IsAllowed("example.org"));
 
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kDisallow, "*evil*", &msg, &handler));
   EXPECT_TRUE(options_.IsAllowed("example.com"));
   EXPECT_FALSE(options_.IsAllowed("evil.com"));
@@ -1327,19 +1049,19 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kDebug));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kOutlineCss));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kDisableFilters, "debug,outline_css",
                 &msg, &handler));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kDebug));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kOutlineCss));
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kDisableFilters, "nosuch",
                 &msg, &handler));
   EXPECT_EQ("Failed to disable some filters.", msg);
 
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kForbidFilters, "debug",
                 &msg, &handler));
   EXPECT_FALSE(
@@ -1348,7 +1070,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
       options_.Forbidden(options_.FilterId(RewriteOptions::kDebug)));
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kForbidFilters, "nosuch",
                 &msg, &handler));
   EXPECT_EQ("Failed to forbid some filters.", msg);
@@ -1358,7 +1080,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
   GoogleUrl content("http://static.example.com");
   EXPECT_FALSE(options_.domain_lawyer()->IsDomainAuthorized(main, content));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kDomain, "static.example.com",
                 &msg, &handler));
   EXPECT_TRUE(options_.domain_lawyer()->IsDomainAuthorized(main, content)) <<
@@ -1369,7 +1091,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
   GoogleUrl valid_downstream_cache("http://caching-layer.example.com:8118");
   EXPECT_FALSE(options_.domain_lawyer()->IsOriginKnown(valid_downstream_cache));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kDownstreamCachePurgeLocationPrefix,
                 "http://caching-layer.example.com:8118/mypurgepath",
                 &msg, &handler));
@@ -1378,7 +1100,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
             options_.downstream_cache_purge_location_prefix());
   // 2) Invalid location.
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kDownstreamCachePurgeLocationPrefix,
                 "",
                 &msg, &handler));
@@ -1386,7 +1108,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
 
   // Experiments.
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kExperimentSpec,
                 "id=2;enable=recompress_png;percent=50",
                 &msg, &handler));
@@ -1399,19 +1121,19 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
       spec->enabled_filters().IsSet(RewriteOptions::kRecompressPng));
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kExperimentSpec, "@)#@(#@(#@)((#)@",
                 &msg, &handler));
   EXPECT_EQ("not a valid experiment spec", msg);
 
   EXPECT_NE(4, options_.experiment_ga_slot());
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kExperimentVariable, "4", &msg, &handler));
   EXPECT_EQ(4, options_.experiment_ga_slot());
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kExperimentVariable, "10", &msg, &handler));
   EXPECT_EQ("must be an integer between 1 and 5", msg);
 
@@ -1419,10 +1141,10 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
   EXPECT_FALSE(options_.IsRetainedComment("important"));
   EXPECT_FALSE(options_.IsRetainedComment("silly"));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kRetainComment, "*port*", &msg, &handler));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum1(
+            options_.ParseAndSetOptionFromName1(
                 RewriteOptions::kBlockingRewriteRefererUrls,
                 "http://www.test.com/*", &msg, &handler));
   EXPECT_TRUE(options_.IsBlockingRewriteRefererUrlPatternPresent());
@@ -1435,9 +1157,6 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
 }
 
 TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName2) {
-  // This tests mostly the interaction between ParseAndSetOptionFromName2
-  // and ParseAndSetOptionFromEnum2. The individual cases in the latter
-  // are mostly covered by its own test.
   GoogleString msg;
   NullMessageHandler handler;
 
@@ -1465,11 +1184,6 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName2) {
             options_.ParseAndSetOptionFromName2(
                 "LoadFromFileRule", "weird", "42", &msg, &handler));
   EXPECT_EQ("Argument 1 must be either 'Allow' or 'Disallow'", msg);
-}
-
-TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
-  GoogleString msg;
-  NullMessageHandler handler;
 
   // Various LoadFromFile options.
   GoogleString file_out;
@@ -1477,7 +1191,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
   EXPECT_FALSE(
       options_.file_load_policy()->ShouldLoadFromFile(url1, &file_out));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum2(
+            options_.ParseAndSetOptionFromName2(
                 RewriteOptions::kLoadFromFile, "http://www.example.com",
                 "/example/", &msg, &handler));
   EXPECT_TRUE(
@@ -1486,7 +1200,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
 
   GoogleUrl url2("http://www.example.com/styles/b.css");
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum2(
+            options_.ParseAndSetOptionFromName2(
                 RewriteOptions::kLoadFromFileMatch,
                 "^http://www.example.com/styles/([^/]*)", "/style/\\1",
                 &msg, &handler));
@@ -1495,7 +1209,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
   EXPECT_EQ("/style/b.css", file_out);
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum2(
+            options_.ParseAndSetOptionFromName2(
                 RewriteOptions::kLoadFromFileMatch,
                 "[a-", "/style/\\1",
                 &msg, &handler));
@@ -1503,7 +1217,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
             "(Must start with '^'.)", msg);
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum2(
+            options_.ParseAndSetOptionFromName2(
                 RewriteOptions::kLoadFromFileRuleMatch,
                 "Allow", "[a-",
                 &msg, &handler));
@@ -1511,7 +1225,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
 
   GoogleUrl url3("http://www.example.com/images/a.png");
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum2(
+            options_.ParseAndSetOptionFromName2(
                 RewriteOptions::kLoadFromFileRule,
                 "Disallow", "/example/images/",
                 &msg, &handler));
@@ -1520,7 +1234,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
 
   GoogleUrl url4("http://www.example.com/images/a.jpeg");
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum2(
+            options_.ParseAndSetOptionFromName2(
                 RewriteOptions::kLoadFromFileRuleMatch,
                 "Allow", "\\.jpeg", &msg, &handler));
   EXPECT_FALSE(
@@ -1532,7 +1246,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
   // Domain lawyer options.
   scoped_ptr<RewriteOptions> options2(new RewriteOptions(&thread_system_));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options2->ParseAndSetOptionFromEnum2(
+            options2->ParseAndSetOptionFromName2(
                 RewriteOptions::kMapOriginDomain,
                 "localhost/example", "www.example.com",
                 &msg, &handler));
@@ -1544,7 +1258,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
   scoped_ptr<RewriteOptions> options3(new RewriteOptions(&thread_system_));
   // This is an option 2 or 3, so test 2 here and 3 below.
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options3->ParseAndSetOptionFromEnum3(
+            options3->ParseAndSetOptionFromName3(
                 RewriteOptions::kMapProxyDomain,
                 "mainsite.com/static", "static.mainsite.com", "",
                 &msg, &handler));
@@ -1556,7 +1270,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
 
   scoped_ptr<RewriteOptions> options4(new RewriteOptions(&thread_system_));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options4->ParseAndSetOptionFromEnum2(
+            options4->ParseAndSetOptionFromName2(
                 RewriteOptions::kMapRewriteDomain,
                 "cdn.example.com", "*example.com",
                 &msg, &handler));
@@ -1566,7 +1280,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
 
   scoped_ptr<RewriteOptions> options5(new RewriteOptions(&thread_system_));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options5->ParseAndSetOptionFromEnum2(
+            options5->ParseAndSetOptionFromName2(
                 RewriteOptions::kShardDomain,
                 "https://www.example.com",
                 "https://example1.cdn.com,https://example2.cdn.com",
@@ -1582,9 +1296,6 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
 }
 
 TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName3) {
-  // This tests mostly the interaction between ParseAndSetOptionFromName3
-  // and ParseAndSetOptionFromEnum3. The individual cases in the latter
-  // are mostly covered by its own test.
   GoogleString msg;
   NullMessageHandler handler;
 
@@ -1622,7 +1333,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName3) {
   // Domain lawyer.
   scoped_ptr<RewriteOptions> options(new RewriteOptions(&thread_system_));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options->ParseAndSetOptionFromEnum3(
+            options->ParseAndSetOptionFromName3(
                 RewriteOptions::kMapProxyDomain,
                 "myproxy.com/static",
                 "static.origin.com",
@@ -1636,18 +1347,13 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName3) {
             "http://static.origin.com/ Auth "
                 "ProxyDomain:http://myproxy.cdn.com/\n",
             options->domain_lawyer()->ToString());
-}
-
-TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum3) {
-  GoogleString msg;
-  NullMessageHandler handler;
 
   options_.EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
   GoogleString sig;
   options_.javascript_library_identification()->AppendSignature(&sig);
   EXPECT_EQ("", sig);
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.ParseAndSetOptionFromEnum3(
+            options_.ParseAndSetOptionFromName3(
                 RewriteOptions::kLibrary, "43567", "5giEj_jl-Ag5G8",
                 "http://www.example.com/url.js",
                 &msg, &handler));
@@ -1656,7 +1362,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum3) {
   EXPECT_EQ("S:43567_H:5giEj_jl-Ag5G8_J:http://www.example.com/url.js", sig);
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.ParseAndSetOptionFromEnum3(
+            options_.ParseAndSetOptionFromName3(
                 RewriteOptions::kLibrary, "43567", "#@#)@(#@)",
                 "http://www.example.com/url.js",
                 &msg, &handler));
@@ -2121,18 +1827,14 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
   EXPECT_EQ(RewriteOptions::kEndOfFilters,
             RewriteOptions::LookupFilterById(NULL));
 
-  EXPECT_EQ(RewriteOptions::kEndOfOptions,
-            RewriteOptions::LookupOptionEnumById("  "));
   EXPECT_EQ(RewriteOptions::kAnalyticsID,
-            RewriteOptions::LookupOptionEnumById("ig"));
+            RewriteOptions::LookupOptionNameById("ig"));
   EXPECT_EQ(RewriteOptions::kImageJpegRecompressionQuality,
-            RewriteOptions::LookupOptionEnumById("iq"));
-  EXPECT_EQ(RewriteOptions::kEndOfOptions,
-            RewriteOptions::LookupOptionEnumById("junk"));
-  EXPECT_EQ(RewriteOptions::kEndOfOptions,
-            RewriteOptions::LookupOptionEnumById(""));
-  EXPECT_EQ(RewriteOptions::kEndOfOptions,
-            RewriteOptions::LookupOptionEnumById(NULL));
+            RewriteOptions::LookupOptionNameById("iq"));
+  EXPECT_TRUE(RewriteOptions::LookupOptionNameById("  ").empty());
+  EXPECT_TRUE(RewriteOptions::LookupOptionNameById("junk").empty());
+  EXPECT_TRUE(RewriteOptions::LookupOptionNameById("").empty());
+  EXPECT_TRUE(RewriteOptions::LookupOptionNameById(NULL).empty());
 }
 
 TEST_F(RewriteOptionsTest, ParseBeaconUrl) {
@@ -2173,7 +1875,7 @@ TEST_F(RewriteOptionsTest, ParseBeaconUrl) {
   EXPECT_STREQ("/mod_pagespeed_beacon", beacon_url.https_in);
 }
 
-TEST_F(RewriteOptionsTest, AccessOptionByIdAndEnum) {
+TEST_F(RewriteOptionsTest, AccessOptionByIdAndName) {
   const char* id = NULL;
   GoogleString value;
   bool was_set = false;
@@ -2181,15 +1883,14 @@ TEST_F(RewriteOptionsTest, AccessOptionByIdAndEnum) {
       RewriteOptions::kImageJpegRecompressionQuality, &id, &was_set, &value));
   EXPECT_FALSE(was_set);
   EXPECT_STREQ("iq", id);
-  const RewriteOptions::OptionEnum kBogusOptionEnum =
-      static_cast<RewriteOptions::OptionEnum>(-1);
+  const StringPiece kBogusOptionName("bogosity!");
   EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
-            options_.SetOptionFromEnum(kBogusOptionEnum, ""));
+            options_.SetOptionFromName(kBogusOptionName, ""));
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
-            options_.SetOptionFromEnum(
+            options_.SetOptionFromName(
                 RewriteOptions::kImageJpegRecompressionQuality, "garbage"));
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options_.SetOptionFromEnum(
+            options_.SetOptionFromName(
                 RewriteOptions::kImageJpegRecompressionQuality, "63"));
   id = NULL;
   EXPECT_TRUE(options_.OptionValue(
@@ -2198,7 +1899,7 @@ TEST_F(RewriteOptionsTest, AccessOptionByIdAndEnum) {
   EXPECT_STREQ("iq", id);
   EXPECT_STREQ("63", value);
 
-  EXPECT_FALSE(options_.OptionValue(kBogusOptionEnum, &id, &was_set, &value));
+  EXPECT_FALSE(options_.OptionValue(kBogusOptionName, &id, &was_set, &value));
 }
 
 TEST_F(RewriteOptionsTest, AccessAcrossThreads) {

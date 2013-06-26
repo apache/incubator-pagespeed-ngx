@@ -776,6 +776,7 @@ void RewriteDriver::Initialize() {
   ++initialized_count_;
   if (initialized_count_ == 1) {
     RewriteOptions::Initialize();
+    ImageRewriteFilter::Initialize();
     CssFilter::Initialize();
   }
 }
@@ -808,8 +809,9 @@ void RewriteDriver::Terminate() {
   // Clean up statics.
   --initialized_count_;
   if (initialized_count_ == 0) {
-    RewriteOptions::Terminate();
     CssFilter::Terminate();
+    ImageRewriteFilter::Terminate();
+    RewriteOptions::Terminate();
   }
 }
 
