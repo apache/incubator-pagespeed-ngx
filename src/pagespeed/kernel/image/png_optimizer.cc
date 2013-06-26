@@ -846,6 +846,7 @@ bool PngScanlineReaderRaw::Reset() {
   bytes_per_row_ = 0;
   row_ = 0;
   was_initialized_ = false;
+  row_pointers_.reset();
   if (!png_struct_.reset()) {
     return false;
   }
@@ -964,9 +965,7 @@ bool PngScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
   // In case libpng has an error, program will jump to the following 'setjmp',
   // which will have value of non-zero. To clean up memory properly, we have
   // to define row_pointers before 'setjmp' and clean it up when error happens.
-  scoped_array<png_bytep> row_pointers;
   if (setjmp(png_jmpbuf(png_ptr)) != 0) {
-    row_pointers.reset();
     Reset();
     return false;
   }
@@ -986,17 +985,17 @@ bool PngScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
       // is called, we decode the entire image into image_buffer_.
       if (image_buffer_ != NULL) {
         // Initialize an array of pointers, which specify the address of rows.
-        row_pointers.reset(new png_bytep[height_]);
-        if (row_pointers == NULL) {
+        row_pointers_.reset(new png_bytep[height_]);
+        if (row_pointers_ == NULL) {
           Reset();
           return false;
         }
         for (size_t i = 0; i < height_; ++i) {
-          row_pointers[i] = image_buffer_.get() + i * bytes_per_row_;
+          row_pointers_[i] = image_buffer_.get() + i * bytes_per_row_;
         }
 
         // Decode the entire image. The results are stored in image_buffer_.
-        png_read_image(png_ptr, row_pointers.get());
+        png_read_image(png_ptr, row_pointers_.get());
       }
     }
     if (image_buffer_ == NULL) {
@@ -1017,6 +1016,7 @@ bool PngScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
   }
 
   ++row_;
+  row_pointers_.reset();
   return true;
 }
 
