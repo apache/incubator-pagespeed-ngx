@@ -36,7 +36,7 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
     writer->Write("<!DOCTYPE html>\n"
                   "<html>\n"
                   "  <head>\n"
-                  "    <title>Pagespeed Console</title>\n"
+                  "    <title>PageSpeed Console</title>\n"
                   "    <style>\n"
                   "      #title {\n"
                   "        font-size: 300%;\n"
@@ -48,7 +48,7 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
                   "  </head>\n"
                   "  <body>\n"
                   "    <div id='top-bar'>\n"
-                  "      <span id='title'>Pagespeed Console</span>\n"
+                  "      <span id='title'>PageSpeed Console</span>\n"
                   "    </div>\n"
                   "\n"
                   "    <div id='suggestions'>\n"
@@ -69,33 +69,26 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
   } else {
     writer->Write("<!DOCTYPE html>\n"
                   "<p>\n"
-                  "  Failed to load Pagespeed Console because:\n"
+                  "  Failed to load PageSpeed Console because:\n"
                   "</p>\n"
                   "<ul>\n", handler);
     if (!statistics_enabled) {
-      writer->Write("  <li>ModPagespeedStatistics is not enabled.</li>\n",
+      writer->Write("  <li>Statistics is not enabled.</li>\n",
                     handler);
     }
     if (!logging_enabled) {
-      writer->Write("  <li>ModPagespeedStatisticsLogging is not enabled."
+      writer->Write("  <li>StatisticsLogging is not enabled."
                     "</li>\n", handler);
     }
     if (!log_dir_set) {
-      writer->Write("  <li>ModPagespeedLogFile is not set.</li>\n", handler);
+      writer->Write("  <li>LogDir is not set.</li>\n", handler);
     }
     writer->Write("</ul>\n"
                   "<p>\n"
-                  "  In order to use the console you must add the following\n"
-                  "  configuration:\n"
-                  "</p>\n"
-                  "<pre>\n"
-                  "  ModPagespeedStatistics on\n"
-                  "  ModPagespeedStatisticsLogging on\n"
-                  "  ModPagespeedLogFile /var/log/pagespeed\n"
-                  "</pre>\n"
-                  "<p>\n"
-                  "  See <a href='https://developers.google.com/speed/pagespe"
-                  "ed/module/console'>documentation</a> for more details.\n"
+                  "  In order to use the console you must configure these\n"
+                  "  options. See the <a href='https://developers.google.com/"
+                  "speed/pagespeed/module/console'>console documentation</a>\n"
+                  "  for more details.\n"
                   "</p>\n", handler);
   }
 }
