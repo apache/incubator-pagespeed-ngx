@@ -84,8 +84,6 @@ const char RewriteOptions::kDistributedRewriteTimeoutMs[] =
 const char RewriteOptions::kDomainRewriteHyperlinks[] =
     "DomainRewriteHyperlinks";
 const char RewriteOptions::kDomainShardCount[] = "DomainShardCount";
-const char RewriteOptions::kDownstreamCacheLifetimeMs[] =
-    "DownstreamCacheLifetimeMs";
 const char RewriteOptions::kDownstreamCachePurgeMethod[] =
     "DownstreamCachePurgeMethod";
 const char RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold[] =
@@ -471,7 +469,6 @@ const int64 RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs =
 const int64 RewriteOptions::kDefaultFinderPropertiesCacheRefreshTimeMs =
     (3 * Timer::kHourMs) / 2;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
-const int64 RewriteOptions::kDefaultDownstreamCacheLifetimeMs = 0;
 const char RewriteOptions::kDefaultDownstreamCachePurgeMethod[] = "PURGE";
 const int64
     RewriteOptions::kDefaultDownstreamCacheRewrittenPercentageThreshold = 95;
@@ -1733,13 +1730,6 @@ void RewriteOptions::AddProperties() {
       kMetadataCacheStalenessThresholdMs,
       kDirectoryScope,
       NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
-  AddBaseProperty(
-      kDefaultDownstreamCacheLifetimeMs,
-      &RewriteOptions::downstream_cache_lifetime_ms_,
-      "dcl",
-      kDownstreamCacheLifetimeMs,
-      kDirectoryScope,
-      "Time for which responses ought to be cached in the downstream cache");
   AddBaseProperty(
       kDefaultDownstreamCachePurgeMethod,
       &RewriteOptions::downstream_cache_purge_method_,

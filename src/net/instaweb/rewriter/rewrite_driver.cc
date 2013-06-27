@@ -2217,7 +2217,7 @@ bool RewriteDriver::GetPurgeUrl(const GoogleUrl& page_url,
 }
 
 bool RewriteDriver::ShouldPurgeRewrittenResponse() {
-  if (options()->downstream_cache_lifetime_ms() <= 0) {
+  if (options()->downstream_cache_purge_location_prefix().empty()) {
     // Downstream caching is not enabled.
     return false;
   }

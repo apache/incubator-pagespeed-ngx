@@ -96,16 +96,15 @@ class RewriteDriverTest : public RewriteTestBase {
   // Helper method used by various DownstreamCache*Test
   // test classes to setup options related to downstream cache handling.
   void SetUpOptionsForDownstreamCacheTesting(
-      int downstream_cache_lifetime_ms,
-      const StringPiece& downstream_cache_purge_method) {
+      const StringPiece& downstream_cache_purge_method,
+      const StringPiece& downstream_cache_purge_location_prefix) {
     options()->ClearSignatureForTesting();
     options()->set_downstream_cache_rewritten_percentage_threshold(95);
-    options()->set_downstream_cache_lifetime_ms(downstream_cache_lifetime_ms);
     options()->set_downstream_cache_purge_method(downstream_cache_purge_method);
     GoogleString msg;
     options()->ParseAndSetOptionFromName1(
         RewriteOptions::kDownstreamCachePurgeLocationPrefix,
-        "http://localhost:1234/purge", &msg,
+        downstream_cache_purge_location_prefix, &msg,
         message_handler());
     options()->ComputeSignature();
   }
@@ -1699,7 +1698,7 @@ class DownstreamCacheWithNoPossiblePurgeTest : public RewriteDriverTest {
 };
 
 TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheEnabled) {
-  SetUpOptionsForDownstreamCacheTesting(100, "GET");
+  SetUpOptionsForDownstreamCacheTesting("GET", "http://localhost:1234/purge");
   // Use a wait fetcher so that the response does not get a chance to get
   // rewritten.
   SetupWaitFetcher();
@@ -1729,7 +1728,7 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheEnabled) {
 }
 
 TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheDisabled) {
-  SetUpOptionsForDownstreamCacheTesting(0, "GET");
+  SetUpOptionsForDownstreamCacheTesting("GET", "");
   // Use a wait fetcher so that the response does not get a chance to get
   // rewritten.
   SetupWaitFetcher();
@@ -1761,7 +1760,7 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheDisabled) {
 
 TEST_F(DownstreamCacheWithPossiblePurgeTest,
        DownstreamCache100PercentRewritten) {
-  SetUpOptionsForDownstreamCacheTesting(100, "GET");
+  SetUpOptionsForDownstreamCacheTesting("GET", "http://localhost:1234/purge");
   // Do not use a wait fetcher here because we want both the fetches (for a.css
   // and b.css) and their rewrites to finish before the response is served out.
   SetupResponsesForDownstreamCacheTesting();
@@ -1783,7 +1782,7 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest,
 }
 
 TEST_F(DownstreamCacheWithNoPossiblePurgeTest, DownstreamCacheNoInitRewrites) {
-  SetUpOptionsForDownstreamCacheTesting(100, "GET");
+  SetUpOptionsForDownstreamCacheTesting("GET", "http://localhost:1234/purge");
   // Use a wait fetcher so that the response does not get a chance to get
   // rewritten.
   SetupWaitFetcher();

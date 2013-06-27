@@ -14,4 +14,4 @@ source "$this_dir/system_test_helpers.sh" || exit 1
 
 echo Test that we can rewrite an HTTPS resource from a domain with a valid cert.
 fetch_until $TEST_ROOT/https_fetch/https_fetch.html \
-  'grep -c /https_gstatic_dot_com/1.gif.pagespeed.ce' 1
+  'grep -c /https_gstatic_dot_com/devconsole/xpss-architecture.png.pagespeed.ic' 1
