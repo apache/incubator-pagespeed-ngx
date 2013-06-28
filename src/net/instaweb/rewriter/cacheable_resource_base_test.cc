@@ -28,12 +28,11 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"  // for GoogleString
-#include "pagespeed/kernel/base/string_util.h"  // for StrCat, etc
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
-
 
 namespace net_instaweb {
 
@@ -48,11 +47,15 @@ const char kContent[] = "content!";
 class TestResource : public CacheableResourceBase {
  public:
   explicit TestResource(ServerContext* context)
-      : CacheableResourceBase(context, NULL),
+      : CacheableResourceBase("test", context, NULL),
         cache_control_("public,max-age=1000"),
         load_calls_(0),
         freshen_calls_(0),
         fail_fetch_(false) {}
+
+  static void InitStats(Statistics* stats) {
+    CacheableResourceBase::InitStats("test", stats);
+  }
 
   virtual GoogleString url() const { return kTestUrl; }
   virtual const RewriteOptions* rewrite_options() const {
@@ -124,17 +127,37 @@ class TestResource : public CacheableResourceBase {
   bool fail_fetch_;
 };
 
+}  // namespace
+
 class CacheableResourceBaseTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    TestResource::InitStats(server_context()->statistics());
 
     resource_.reset(new TestResource(server_context()));
   }
 
+  void CheckStats(TestResource* resource,
+                  int expect_hits,
+                  int expect_recent_fetch_failures,
+                  int expect_recent_uncacheables_treated_as_miss,
+                  int expect_recent_uncacheables_treated_as_failure,
+                  int expect_misses) {
+    EXPECT_EQ(expect_hits,
+              resource->hits_->Get());
+    EXPECT_EQ(expect_recent_fetch_failures,
+              resource->recent_fetch_failures_->Get());
+    EXPECT_EQ(expect_recent_uncacheables_treated_as_miss,
+              resource->recent_uncacheables_treated_as_miss_->Get());
+    EXPECT_EQ(expect_recent_uncacheables_treated_as_failure,
+              resource->recent_uncacheables_treated_as_failure_->Get());
+    EXPECT_EQ(expect_misses,
+              resource->misses_->Get());
+  }
+
   RefCountedPtr<TestResource> resource_;
 };
-
 
 TEST_F(CacheableResourceBaseTest, BasicCached) {
   MockResourceCallback callback(ResourcePtr(resource_.get()),
@@ -148,6 +171,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   EXPECT_EQ(kContent, resource_->contents());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // 2nd read should be cached.
   resource_->Reset();
@@ -162,6 +186,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   EXPECT_EQ(kContent, resource_->contents());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 1, 0, 0, 0, 1);
 
   // Make sure freshening happens. The rest resource defaults to 1000 sec ttl,
   // so forward time 900 seconds ahead.
@@ -178,6 +203,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   EXPECT_EQ(kContent, resource_->contents());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(1, resource_->freshen_calls());
+  CheckStats(resource_.get(), 2, 0, 0, 0, 1);
 }
 
 TEST_F(CacheableResourceBaseTest, Private) {
@@ -193,6 +219,7 @@ TEST_F(CacheableResourceBaseTest, Private) {
   EXPECT_FALSE(callback.success());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // The non-cacheability should be cached.
   resource_->Reset();
@@ -206,6 +233,7 @@ TEST_F(CacheableResourceBaseTest, Private) {
   EXPECT_FALSE(callback2.success());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 0, 0, 1, 1);
 }
 
 TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
@@ -223,6 +251,7 @@ TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
   EXPECT_EQ(kContent, resource_->contents());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // Since it's non-cacheable, but we have kLoadEvenIfNotCacheable
   // set, we should re-fetch it.
@@ -238,6 +267,7 @@ TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
   EXPECT_EQ(kContent, resource_->contents());
   EXPECT_EQ(2, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 0, 1, 0, 1);
 }
 
 TEST_F(CacheableResourceBaseTest, FetchFailure) {
@@ -253,6 +283,7 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
   EXPECT_FALSE(callback.success());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // Failure should get cached, and we should take advantage of it.
   resource_->Reset();
@@ -266,6 +297,7 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
   EXPECT_FALSE(callback2.success());
   EXPECT_EQ(1, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 1, 0, 0, 1);
 
   // Now advance time, should force a refetch.
   int64 remember_sec =
@@ -282,8 +314,7 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
   EXPECT_FALSE(callback3.success());
   EXPECT_EQ(2, resource_->load_calls());
   EXPECT_EQ(0, resource_->freshen_calls());
+  CheckStats(resource_.get(), 0, 1, 0, 0, 2);
 }
-
-}  // namespace
 
 }  // namespace net_instaweb

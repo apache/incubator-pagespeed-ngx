@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -37,7 +38,9 @@ struct ContentType;
 class HTTPCache;
 class MessageHandler;
 class RewriteOptions;
+class Statistics;
 class Timer;
+class Variable;
 
 class CacheableResourceBase : public Resource {
  public:
@@ -48,9 +51,12 @@ class CacheableResourceBase : public Resource {
  protected:
   class LoadHttpCacheCallback;
 
-  CacheableResourceBase(ServerContext* server_context, const ContentType* type)
-      : Resource(server_context, type) {}
+  // Note: InitStats(stat_prefix) must have been called before.
+  CacheableResourceBase(StringPiece stat_prefix,
+                        ServerContext* server_context, const ContentType* type);
   virtual ~CacheableResourceBase();
+
+  static void InitStats(StringPiece stat_prefix, Statistics* statistics);
 
   virtual void RefreshIfImminentlyExpiring();
 
@@ -70,11 +76,19 @@ class CacheableResourceBase : public Resource {
   virtual const RewriteOptions* rewrite_options() const = 0;
 
  private:
+  friend class CacheableResourceBaseTest;
+
   HTTPCache* http_cache() const { return server_context()->http_cache(); }
   Timer* timer() const { return server_context()->timer(); }
   MessageHandler* message_handler() const {
     return server_context()->message_handler();
   }
+
+  Variable* hits_;
+  Variable* recent_fetch_failures_;
+  Variable* recent_uncacheables_treated_as_miss_;
+  Variable* recent_uncacheables_treated_as_failure_;
+  Variable* misses_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheableResourceBase);
 };

@@ -799,6 +799,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   LocalStorageCacheFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
+  UrlInputResource::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
 }
 

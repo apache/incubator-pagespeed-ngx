@@ -119,8 +119,8 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
                                    const RewriteOptions* options,
                                    const ContentType* type,
                                    const StringPiece& url)
-    : CacheableResourceBase((rewrite_driver == NULL ? NULL :
-                            rewrite_driver->server_context()), type),
+    : CacheableResourceBase("url_input_resource",
+                            rewrite_driver->server_context(), type),
       url_(url.data(), url.size()),
       rewrite_driver_(rewrite_driver),
       rewrite_options_(options),
@@ -133,6 +133,10 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
 }
 
 UrlInputResource::~UrlInputResource() {
+}
+
+void UrlInputResource::InitStats(Statistics* stats) {
+  CacheableResourceBase::InitStats("url_input_resource", stats);
 }
 
 // Shared fetch callback, used by both LoadAndCallback and Freshen.
@@ -459,13 +463,8 @@ void UrlInputResource::Freshen(Resource::FreshenCallback* callback,
   // For now this is much like Load(), except we do not
   // touch our value, but just the cache
   HTTPCache* http_cache = server_context()->http_cache();
-  if (rewrite_driver_ != NULL) {
-    // Ensure that the rewrite driver is alive until the freshen is completed.
-    rewrite_driver_->increment_async_events_count();
-  } else {
-    LOG(DFATAL) << "rewrite_driver_ must be non-NULL while freshening";
-    return;
-  }
+  // Ensure that the rewrite driver is alive until the freshen is completed.
+  rewrite_driver_->increment_async_events_count();
 
   FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
       url_, server_context(), rewrite_driver_, rewrite_options_, callback);
@@ -563,8 +562,6 @@ void UrlInputResource::LoadAndSaveToCache(NotCacheablePolicy no_cache_policy,
       "not be possible to determine when it's safe to delete the resource.";
   CHECK(this == callback->resource().get())
       << "The callback must keep a reference to the resource";
-  CHECK(rewrite_driver_ != NULL)
-      << "Must provide a RewriteDriver for resources that will get fetched.";
   DCHECK(!loaded()) << "Shouldn't get this far if already loaded.";
   UrlReadAsyncFetchCallback* cb =
       new UrlReadAsyncFetchCallback(callback,

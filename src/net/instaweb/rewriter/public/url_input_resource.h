@@ -32,14 +32,14 @@ struct ContentType;
 class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
+class Statistics;
 
 class UrlInputResource : public CacheableResourceBase {
  public:
-  UrlInputResource(RewriteDriver* rewrite_driver,
-                   const RewriteOptions* options,
-                   const ContentType* type,
-                   const StringPiece& url);
+  // Created only from RewriteDriver::CreateInputResource*
   virtual ~UrlInputResource();
+
+  static void InitStats(Statistics* stats);
 
   virtual bool IsValidAndCacheable() const;
   virtual GoogleString url() const { return url_; }
@@ -58,9 +58,13 @@ class UrlInputResource : public CacheableResourceBase {
                                   MessageHandler* message_handler);
 
  private:
+  friend class RewriteDriver;
+  UrlInputResource(RewriteDriver* rewrite_driver,
+                   const RewriteOptions* options,
+                   const ContentType* type,
+                   const StringPiece& url);
+
   GoogleString url_;
-  // This may be NULL. However, it should always be set if we fetch or freshen
-  // the resource.
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* rewrite_options_;
   bool respect_vary_;

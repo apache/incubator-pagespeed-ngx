@@ -24,9 +24,22 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+namespace {
+
+const char kHitSuffix[] = "_hit";
+const char kRecentFetchFailureSuffix[] = "_recent_fetch_failure";
+const char kRecentUncacheableTreatedAsMiss[] =
+    "_recent_uncacheable_treated_as_miss";
+const char kRecentUncacheableTreatedAsFailure[] =
+    "_recent_uncacheable_treated_as_failure";
+const char kMissSuffix[] = "_miss";
+
+}  // namespace
 
 class CacheableResourceBase::LoadHttpCacheCallback
     : public OptionsAwareHTTPCacheCallback {
@@ -74,6 +87,7 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
   // should not delete it if they fail to lock.
   switch (find_result) {
     case HTTPCache::kFound:
+      resource_->hits_->Add(1);
       resource_->Link(http_value(), handler);
       resource_->response_headers()->CopyFrom(*response_headers());
       resource_->DetermineContentType();
@@ -82,6 +96,7 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
                                true /* resource_ok */);
       break;
     case HTTPCache::kRecentFetchFailed:
+      resource_->recent_fetch_failures_->Add(1);
       // TODO(jmarantz): in this path, should we try to fetch again
       // sooner than 5 minutes, especially if this is not a background
       // fetch, but rather one for serving the user? This could get
@@ -98,10 +113,12 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
     case HTTPCache::kRecentFetchNotCacheable:
       switch (not_cacheable_policy_) {
         case Resource::kLoadEvenIfNotCacheable:
+          resource_->recent_uncacheables_treated_as_miss_->Add(1);
           resource_->LoadAndSaveToCache(not_cacheable_policy_,
                                         resource_callback_, handler);
           break;
         case Resource::kReportFailureIfNotCacheable:
+          resource_->recent_uncacheables_treated_as_failure_->Add(1);
           resource_callback_->Done(false /* lock_failure */,
                                    false /* resource_ok */);
           break;
@@ -113,6 +130,7 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
       }
       break;
     case HTTPCache::kNotFound:
+      resource_->misses_->Add(1);
       // If not, load it asynchronously.
       // Link the fallback value which can be used if the fetch fails.
       resource_->LinkFallbackValue(fallback_http_value());
@@ -123,7 +141,33 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
   delete this;
 }
 
+CacheableResourceBase::CacheableResourceBase(
+    StringPiece stat_prefix, ServerContext* server_context,
+    const ContentType* type)
+    : Resource(server_context, type) {
+  Statistics* stats = server_context->statistics();
+  hits_ = stats->GetVariable(StrCat(stat_prefix, kHitSuffix));
+  recent_fetch_failures_ =
+      stats->GetVariable(StrCat(stat_prefix, kRecentFetchFailureSuffix));
+  recent_uncacheables_treated_as_miss_ =
+      stats->GetVariable(StrCat(stat_prefix, kRecentUncacheableTreatedAsMiss));
+  recent_uncacheables_treated_as_failure_ =
+      stats->GetVariable(StrCat(stat_prefix,
+                                kRecentUncacheableTreatedAsFailure));
+  misses_ = stats->GetVariable(StrCat(stat_prefix, kMissSuffix));
+}
+
 CacheableResourceBase::~CacheableResourceBase() {
+}
+
+void CacheableResourceBase::InitStats(StringPiece stat_prefix,
+                                      Statistics* stats) {
+  stats->AddVariable(StrCat(stat_prefix, kHitSuffix));
+  stats->AddVariable(StrCat(stat_prefix, kRecentFetchFailureSuffix));
+  stats->AddVariable(StrCat(stat_prefix, kRecentUncacheableTreatedAsMiss));
+  stats->AddVariable(StrCat(stat_prefix,
+                            kRecentUncacheableTreatedAsFailure));
+  stats->AddVariable(StrCat(stat_prefix, kMissSuffix));
 }
 
 void CacheableResourceBase::RefreshIfImminentlyExpiring() {
