@@ -37,6 +37,7 @@ class FileSystem;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
+class Scheduler;
 class Statistics;
 class ThreadSystem;
 class Variable;
@@ -62,6 +63,7 @@ class PurgeContext {
   static const char kContentions[];
   static const char kFileParseFailures[];
   static const char kFileWriteFailures[];
+  static const char kFileWrites[];
   static const char kStatCalls[];
 
   PurgeContext(StringPiece filename,
@@ -70,11 +72,23 @@ class PurgeContext {
                int max_bytes_in_cache,
                ThreadSystem* thread_system,
                NamedLockManager* lock_manager,
+               Scheduler* scheduler,
                Statistics* statistics,
                MessageHandler* handler);
   ~PurgeContext();
 
   static void InitStats(Statistics* statistics);
+
+  // By default, PurgeContext will try to acquire the lock and write the
+  // cache.purge file as soon as it is called.  This may present a significant
+  // load to the file system, causing delays.
+  //
+  // In a multi-threaded or asynchronous environment (e.g. any environment
+  // other than Apache HTTPD pre-fork MPM), it is desirable to batch up
+  // requests for a time (e.g. 1 second) before writing the updated cache file.
+  void set_request_batching_delay_ms(int64 delay_ms) {
+    request_batching_delay_ms_ = delay_ms;
+  }
 
   // Adds a URL to the purge-set, atomically updating the purge
   // file, and transmitting the results to the system, attempting
@@ -174,6 +188,11 @@ class PurgeContext {
   // to aid in testing lock contention.
   GoogleString LockName() const { return StrCat(filename_, "-lock"); }
 
+  // Initiates a scheduler-alarm to call GrabLockAndUpdate after a
+  // small delay.  The delay is used to batch bursts of cache-purge
+  // file updates, thereby rate-limiting disk-writes.
+  void WaitForTimerAndGrabLock();
+
   // Attempts to grab a lock for the cache-purge file, calling
   // UpdateCachePurgeFile if successful, and CancelCachePurgeFile
   // if we failed to grab the lock.
@@ -204,11 +223,15 @@ class PurgeContext {
 
   int max_bytes_in_cache_;
 
+  int64 request_batching_delay_ms_;
+
   Variable* cancellations_;
   Variable* contentions_;
   Variable* file_parse_failures_;
   Variable* file_write_failures_;
+  Variable* file_writes_;
 
+  Scheduler* scheduler_;
   MessageHandler* message_handler_;
 
   scoped_ptr<PurgeSetCallback> update_callback_;

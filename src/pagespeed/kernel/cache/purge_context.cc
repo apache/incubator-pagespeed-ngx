@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/time_util.h"
 #include "pagespeed/kernel/cache/lru_cache_base.h"
+#include "pagespeed/kernel/thread/scheduler.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 
 namespace net_instaweb {
@@ -47,6 +48,7 @@ const char PurgeContext::kCancellations[]     = "purge_cancellations";
 const char PurgeContext::kContentions[]       = "purge_contentions";
 const char PurgeContext::kFileParseFailures[] = "purge_file_parse_failures";
 const char PurgeContext::kFileWriteFailures[] = "purge_file_write_failures";
+const char PurgeContext::kFileWrites[]        = "purge_file_writes";
 
 PurgeContext::PurgeContext(StringPiece filename,
                            FileSystem* file_system,
@@ -54,6 +56,7 @@ PurgeContext::PurgeContext(StringPiece filename,
                            int max_bytes_in_cache,
                            ThreadSystem* thread_system,
                            NamedLockManager* lock_manager,
+                           Scheduler* scheduler,
                            Statistics* statistics,
                            MessageHandler* handler)
     : filename_(filename.data(), filename.size()),
@@ -67,10 +70,13 @@ PurgeContext::PurgeContext(StringPiece filename,
       reading_(false),
       num_consecutive_failures_(0),
       max_bytes_in_cache_(max_bytes_in_cache),
+      request_batching_delay_ms_(0),
       cancellations_(statistics->GetVariable(kCancellations)),
       contentions_(statistics->GetVariable(kContentions)),
       file_parse_failures_(statistics->GetVariable(kFileParseFailures)),
       file_write_failures_(statistics->GetVariable(kFileWriteFailures)),
+      file_writes_(statistics->GetVariable(kFileWrites)),
+      scheduler_(scheduler),
       message_handler_(handler) {
   purge_set_.MakeWriteable()->set_max_size(max_bytes_in_cache_);
 }
@@ -82,6 +88,7 @@ void PurgeContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCancellations);
   statistics->AddVariable(kContentions);
   statistics->AddVariable(kFileParseFailures);
+  statistics->AddVariable(kFileWrites);
   statistics->AddVariable(kFileWriteFailures);
 }
 
@@ -323,6 +330,7 @@ bool PurgeContext::WritePurgeFile(const GoogleString& buffer) {
   GoogleString temp_filename;
 
   // Atomicly write file so we don't have to acquire the lock to read it.
+  file_writes_->Add(1);
   return (file_system_->WriteTempFile(filename_.c_str(), buffer,
                                       &temp_filename, message_handler_) &&
           file_system_->RenameFile(temp_filename.c_str(), filename_.c_str(),
@@ -341,6 +349,8 @@ void PurgeContext::CancelCachePurgeFile() {
     // We are giving up on these pending invalidations rather than having
     // them take effect at some random time in the future.
     pending_purges_.Clear();
+
+    waiting_for_interprocess_lock_ = false;
   }
 
   // All the purges in the queue failed :(.  Maybe the clients
@@ -348,6 +358,19 @@ void PurgeContext::CancelCachePurgeFile() {
   cancellations_->Add(callbacks.size());
   for (int i = 0, n = callbacks.size(); i < n; ++i) {
     callbacks[i]->Run(false);
+  }
+}
+
+void PurgeContext::WaitForTimerAndGrabLock() {
+  if (request_batching_delay_ms_ == 0) {
+    GrabLockAndUpdate();
+  } else {
+    int64 alarm_time_us =
+        timer_->NowUs() + request_batching_delay_ms_ * Timer::kMsUs;
+    scheduler_->AddAlarm(alarm_time_us,
+                         MakeFunction(this,
+                                      &PurgeContext::GrabLockAndUpdate,
+                                      &PurgeContext::CancelCachePurgeFile));
   }
 }
 
@@ -372,7 +395,7 @@ void PurgeContext::SetCachePurgeGlobalTimestampMs(
     pending_callbacks_.push_back(callback);
   }
   if (grab_lock) {
-    GrabLockAndUpdate();
+    WaitForTimerAndGrabLock();
   }
 }
 
@@ -389,7 +412,7 @@ void PurgeContext::AddPurgeUrl(StringPiece url, int64 timestamp_ms,
     pending_callbacks_.push_back(callback);
   }
   if (grab_lock) {
-    GrabLockAndUpdate();
+    WaitForTimerAndGrabLock();
   }
 }
 
