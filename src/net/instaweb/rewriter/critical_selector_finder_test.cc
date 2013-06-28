@@ -106,8 +106,7 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     ASSERT_EQ(kPropertyCacheUpdateOk, result);
   }
 
-  void WriteCriticalSelectorsToPropertyCache(
-      const StringSet& selectors) {
+  void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
     finder_->WriteCriticalSelectorsToPropertyCache(
         selectors, last_nonce_, rewrite_driver());
   }

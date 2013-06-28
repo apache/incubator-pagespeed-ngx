@@ -154,11 +154,12 @@ class BeaconPropertyCallback : public PropertyPage {
         html_critical_images_set_.get(), css_critical_images_set_.get(),
         server_context_->beacon_cohort(), this);
     if (critical_css_selector_set_ != NULL) {
-      BeaconCriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
-          *critical_css_selector_set_, nonce_,
-          server_context_->page_property_cache(),
-          server_context_->beacon_cohort(), this,
-          server_context_->message_handler(), server_context_->timer());
+      BeaconCriticalSelectorFinder::
+          WriteCriticalSelectorsToPropertyCacheFromBeacon(
+              *critical_css_selector_set_, nonce_,
+              server_context_->page_property_cache(),
+              server_context_->beacon_cohort(), this,
+              server_context_->message_handler(), server_context_->timer());
     }
 
     WriteCohort(server_context_->beacon_cohort());

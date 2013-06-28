@@ -80,7 +80,7 @@ class CriticalSelectorFinder {
 
   // As above, but suitable for use in a beacon context where no RewriteDriver
   // is available.
-  static void WriteCriticalSelectorsToPropertyCache(
+  static void WriteCriticalSelectorsToPropertyCacheStatic(
       const StringSet& selector_set, StringPiece nonce, int support_interval,
       bool should_replace_prior_result, const PropertyCache* cache,
       const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
@@ -129,7 +129,7 @@ class BeaconCriticalSelectorFinder : public CriticalSelectorFinder {
                                Statistics* stats)
       : CriticalSelectorFinder(cohort, timer, nonce_generator, stats) {}
 
-  static void WriteCriticalSelectorsToPropertyCache(
+  static void WriteCriticalSelectorsToPropertyCacheFromBeacon(
       const StringSet& selector_set, StringPiece none,
       const PropertyCache* cache, const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page, MessageHandler* message_handler,

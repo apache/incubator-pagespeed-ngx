@@ -87,13 +87,13 @@ const StringSet& CriticalSelectorFinder::GetCriticalSelectors(
 
 void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
     const StringSet& selector_set, StringPiece nonce, RewriteDriver* driver) {
-  WriteCriticalSelectorsToPropertyCache(
+  WriteCriticalSelectorsToPropertyCacheStatic(
       selector_set, nonce, SupportInterval(), ShouldReplacePriorResult(),
       driver->server_context()->page_property_cache(), cohort_,
       driver->property_page(), driver->message_handler(), driver->timer());
 }
 
-void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
+void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCacheStatic(
     const StringSet& selector_set, StringPiece nonce, int support_interval,
     bool should_replace_prior_result, const PropertyCache* cache,
     const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
@@ -159,11 +159,12 @@ GoogleString CriticalSelectorFinder::PrepareForBeaconInsertion(
       driver->property_page(), nonce_generator_, driver->timer());
 }
 
-void BeaconCriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
+void
+BeaconCriticalSelectorFinder::WriteCriticalSelectorsToPropertyCacheFromBeacon(
     const StringSet& selector_set, StringPiece nonce,
     const PropertyCache* cache, const PropertyCache::Cohort* cohort,
     AbstractPropertyPage* page, MessageHandler* message_handler, Timer* timer) {
-  return CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
+  return CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCacheStatic(
       selector_set, nonce, kDefaultSupportInterval, false, cache, cohort, page,
       message_handler, timer);
 }
