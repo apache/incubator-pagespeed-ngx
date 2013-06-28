@@ -333,8 +333,8 @@ void CriticalSelectorFilter::StartDocumentImpl() {
   ServerContext* context = driver()->server_context();
 
   // Read critical selector info from pcache.
-  context->critical_selector_finder()->GetCriticalSelectorsFromPropertyCache(
-      driver(), &critical_selectors_);
+  critical_selectors_ =
+      context->critical_selector_finder()->GetCriticalSelectors(driver());
 
   // Compute corresponding cache key suffix
   GoogleString all_selectors = JoinCollection(critical_selectors_, ",");
@@ -413,8 +413,10 @@ void CriticalSelectorFilter::DetermineEnabled() {
   // X-UA-Compatible, which can come in both meta and header flavors. Once we
   // have a good way of detecting this case, we can enable us for strict IE10.
   // Note: the UA logic should be the same in CriticalCssBeaconFilter.
+  const StringSet& critical_selectors = driver_->server_context()
+      ->critical_selector_finder()->GetCriticalSelectors(driver_);
   bool is_ie = driver_->user_agent_matcher()->IsIe(driver_->user_agent());
-  bool can_run = !is_ie && driver_->CriticalSelectors() != NULL;
+  bool can_run = !is_ie && !critical_selectors.empty();
   driver_->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
       (can_run ?

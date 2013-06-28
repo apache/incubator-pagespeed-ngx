@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -60,11 +61,9 @@ class AsyncFetch;
 class CommonFilter;
 class CriticalCssResult;
 class CriticalLineInfo;
-class CriticalSelectorSet;
 class DebugFilter;
-class RequestProperties;
-class DomainRewriteFilter;
 class DomStatsFilter;
+class DomainRewriteFilter;
 class FallbackPropertyPage;
 class FileSystem;
 class FlushEarlyInfo;
@@ -76,6 +75,7 @@ class MessageHandler;
 class OutputResource;
 class PropertyPage;
 class RequestHeaders;
+class RequestProperties;
 class RequestTrace;
 class ResourceContext;
 class ResourceNamer;
@@ -873,10 +873,19 @@ class RewriteDriver : public HtmlParse {
     return critical_images_info_.get();
   }
 
-  // Indicate whether critical_images_info was set explicitly by a call
-  // to set_critical_images_info.
-  bool critical_images_info_was_set() const {
-    return critical_images_info_was_set_;
+  // This should only be called by the CriticalSelectorFinder. Normal users
+  // should call CriticalSelectorFinder::IsCriticalImage.
+  // TODO(jud): Remove when the finders reside in RewriteDriver and manage their
+  // own state.
+  CriticalSelectorInfo* critical_selector_info() {
+    return critical_selector_info_.get();
+  }
+
+  // This should only be called by the CriticalSelectorFinder.
+  // TODO(jud): Remove when the finders reside in RewriteDriver and manage their
+  // own state.
+  void set_critical_selector_info(CriticalSelectorInfo* info) {
+    critical_selector_info_.reset(info);
   }
 
   // Inserts the critical images present on the requested html page. It takes
@@ -885,7 +894,6 @@ class RewriteDriver : public HtmlParse {
   // management of critical_images_info that CriticalImagesFinder provides.
   void set_critical_images_info(CriticalImagesInfo* critical_images_info) {
     critical_images_info_.reset(critical_images_info);
-    critical_images_info_was_set_ = true;
   }
 
   // Return true if we must prioritize critical selectors, and we should
@@ -903,20 +911,6 @@ class RewriteDriver : public HtmlParse {
              (CriticalSelectorsEnabled() ||
               options()->Enabled(RewriteOptions::kComputeCriticalCss))));
   }
-
-  // Returns computed critical selector set for this page, or NULL
-  // if not available. Should only be called from HTML-safe thread context.
-  // (parser thread or Render() callbacks). The returned value is owned by
-  // the rewrite driver.
-  CriticalSelectorSet* CriticalSelectors();
-
-  // Sets computed critical selector set for this page.  Should only be called
-  // from HTML-safe thread context.  Ownership transfers to the rewrite_driver.
-  // Caller is reponsible for updating the property cache.  NOTE: should only be
-  // called from the CriticalSelectorFinder or from test code.
-  // TODO(jmaessen): refactor this away when critical selector finder resides in
-  // the rewrite_driver and keeps its own state.
-  void SetCriticalSelectors(CriticalSelectorSet* selectors);
 
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
@@ -1460,18 +1454,12 @@ class RewriteDriver : public HtmlParse {
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 
-  // Stores all the critical image info for the current URL.
+  // The critical image finder and critical selector finder will lazy-init these
+  // fields.
   scoped_ptr<CriticalImagesInfo> critical_images_info_;
-
-  // Indicate whether critical_images_info_ has been set explicitly.  This
-  // distinguishes the default NULL value from an explicitly-set NULL value.
-  bool critical_images_info_was_set_;
+  scoped_ptr<CriticalSelectorInfo> critical_selector_info_;
 
   scoped_ptr<CriticalCssResult> critical_css_result_;
-
-  // We lazy-initialize critical_selector_info_ from the finder.
-  bool critical_selector_info_computed_;
-  scoped_ptr<CriticalSelectorSet> critical_selector_info_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;

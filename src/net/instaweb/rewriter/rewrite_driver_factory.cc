@@ -349,9 +349,9 @@ CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
     ServerContext* server_context) {
   // TODO(pulkitg): Don't create CriticalSelectorFinder if beacon cohort is
   // not added.
-  return new CriticalSelectorFinder(
-      server_context->beacon_cohort(),
-      timer(), nonce_generator(), statistics());
+  return new BeaconCriticalSelectorFinder(server_context->beacon_cohort(),
+                                          timer(), nonce_generator(),
+                                          statistics());
 }
 
 FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {

@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
@@ -1130,9 +1131,9 @@ class BeaconTest : public ServerContextTest {
         new BeaconCriticalImagesFinder(
             beacon_cohort, factory()->nonce_generator(), statistics()));
     server_context()->set_critical_selector_finder(
-        new CriticalSelectorFinder(
-            beacon_cohort, timer(),
-            factory()->nonce_generator(), statistics()));
+        new BeaconCriticalSelectorFinder(beacon_cohort, timer(),
+                                         factory()->nonce_generator(),
+                                         statistics()));
     ResetDriver();
     candidates_.insert("#foo");
     candidates_.insert(".bar");
@@ -1160,11 +1161,9 @@ class BeaconTest : public ServerContextTest {
   void InsertCssBeacon(StringPiece user_agent) {
     // Simulate effects on pcache of CSS beacon insertion.
     rewrite_driver()->set_property_page(MockPageForUA(user_agent));
-    factory()->mock_timer()->AdvanceMs(
-        CriticalSelectorFinder::kMinBeaconIntervalMs);
-    last_nonce_ =
-        server_context()->critical_selector_finder()->PrepareForBeaconInsertion(
-            candidates_, rewrite_driver());
+    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    last_nonce_ = server_context()->critical_selector_finder()
+        ->PrepareForBeaconInsertion(candidates_, rewrite_driver());
     EXPECT_FALSE(last_nonce_.empty());
     rewrite_driver()->property_page()->WriteCohort(
         server_context()->beacon_cohort());
@@ -1211,9 +1210,8 @@ class BeaconTest : public ServerContextTest {
 
     if (critical_css_selectors != NULL) {
       rewrite_driver()->set_property_page(page.release());
-      server_context()->critical_selector_finder()->
-          GetCriticalSelectorsFromPropertyCache(rewrite_driver(),
-                                                &critical_css_selectors_);
+      critical_css_selectors_ = server_context()->critical_selector_finder()
+          ->GetCriticalSelectors(rewrite_driver());
     }
   }
 

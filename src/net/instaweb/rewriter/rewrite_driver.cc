@@ -47,13 +47,12 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
-#include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
-#include "net/instaweb/rewriter/public/cache_html_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/cache_html_filter.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
@@ -275,7 +274,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       fallback_property_page_(NULL),
       owns_property_page_(false),
       device_type_(UserAgentMatcher::kDesktop),
-      critical_selector_info_computed_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
@@ -394,8 +392,6 @@ void RewriteDriver::Clear() {
     DCHECK(!fetch_queued_);
     DCHECK_EQ(0, pending_async_events_);
   }
-  critical_selector_info_computed_ = false;
-  critical_selector_info_.reset(NULL);
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 
@@ -439,9 +435,10 @@ void RewriteDriver::Clear() {
   }
   start_time_ms_ = 0;
 
+  critical_css_result_.reset(NULL);
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
-  critical_css_result_.reset(NULL);
+  critical_selector_info_.reset(NULL);
 
   if (owns_property_page_) {
     delete fallback_property_page_;
@@ -2672,8 +2669,8 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
       server_context_, mapped_path, unmapped_path, base_url,
       full_name, options(), kind));
 
-  if (options()->max_url_size()
-      < (static_cast<int>(resource->url().size()) + extra_len)) {
+  if (options()->max_url_size() <
+      (static_cast<int>(resource->url().size()) + extra_len)) {
     resource.clear();
     return resource;
   }
@@ -2953,24 +2950,6 @@ void RewriteDriver::set_unowned_fallback_property_page(
 
 void RewriteDriver::increment_num_inline_preview_images() {
   ++num_inline_preview_images_;
-}
-
-CriticalSelectorSet* RewriteDriver::CriticalSelectors() {
-  if (!critical_selector_info_computed_) {
-    if (server_context_->critical_selector_finder() != NULL) {
-      critical_selector_info_.reset(
-          server_context_->critical_selector_finder()
-              ->DecodeCriticalSelectorsFromPropertyCache(this));
-    }
-    critical_selector_info_computed_ = true;
-  }
-  return critical_selector_info_.get();
-}
-
-void RewriteDriver::SetCriticalSelectors(CriticalSelectorSet* selectors) {
-  DCHECK(server_context_->critical_selector_finder() != NULL);
-  critical_selector_info_.reset(selectors);
-  critical_selector_info_computed_ = true;
 }
 
 void RewriteDriver::increment_async_events_count() {

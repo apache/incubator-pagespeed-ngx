@@ -24,12 +24,14 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -62,10 +64,9 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     server_context()->set_dom_cohort(dom_cohort);
     server_context()->set_beacon_cohort(beacon_cohort);
     server_context()->set_critical_selector_finder(
-        new CriticalSelectorFinder(server_context()->beacon_cohort(),
-                                   timer(),
-                                   factory()->nonce_generator(),
-                                   statistics()));
+        new BeaconCriticalSelectorFinder(server_context()->beacon_cohort(),
+                                         timer(), factory()->nonce_generator(),
+                                         statistics()));
     ResetDriver();
     // Set up initial candidates for critical selector beacon
     candidates_.insert("div");
@@ -97,11 +98,9 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
   }
 
   void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
-    factory()->mock_timer()->AdvanceMs(
-        CriticalSelectorFinder::kMinBeaconIntervalMs);
-    last_nonce_ =
-        server_context()->critical_selector_finder()->
-        PrepareForBeaconInsertion(candidates_, rewrite_driver());
+    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    last_nonce_ = server_context()->critical_selector_finder()
+        ->PrepareForBeaconInsertion(candidates_, rewrite_driver());
     EXPECT_FALSE(last_nonce_.empty());
     ResetDriver();
     server_context()->critical_selector_finder()->

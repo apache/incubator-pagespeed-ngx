@@ -19,14 +19,14 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_SELECTOR_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_SELECTOR_FINDER_H_
 
+#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
-class CriticalSelectorSet;
 class MessageHandler;
 class NonceGenerator;
 class RewriteDriver;
@@ -34,29 +34,25 @@ class Statistics;
 class TimedVariable;
 class Timer;
 
+// This struct contains all the state that the finder needs, and will be held by
+// the RewriteDriver. The critical_selectors field will be lazily initialized
+// with the aggregate set of critical selectors strings from the protobuf entry,
+// and should only need to be computed once per request (by
+// UpdateCriticalSelectorInfoInDriver).
+struct CriticalSelectorInfo {
+  StringSet critical_selectors;
+  CriticalKeys proto;
+};
+
 // Interface to store/retrieve critical selector information in the property
-// cache.  We store a "support value" for each possible critical selector in the
-// property cache.  When a beacon result arrives, the support for each critical
-// selector in the result is increased by SupportInterval().  When a new beacon
-// is sent, existing support is decayed by multiplying by
-// SupportInterval()/(SupportInterval()+1) and rounding down.  This means that a
-// single selector returned with a beacon will be considered critical until
-// SupportInterval() subsequent beacons have been injected.  Because support
-// decays exponentially, repeated support for a selector in multiple beacon
-// results cause that selector to be considered critical longer: two beacon
-// results will expire after somewhat less than twice as long, three after
-// rather less than three times as long, and so forth.
+// cache. See critical_finder_support_util.h for a description on how critical
+// selectors are stored and updated.
 class CriticalSelectorFinder {
  public:
   static const char kCriticalSelectorsValidCount[];
   static const char kCriticalSelectorsExpiredCount[];
   static const char kCriticalSelectorsNotFoundCount[];
   static const char kCriticalSelectorsPropertyName[];
-  static const int64 kMinBeaconIntervalMs;
-  static const int64 kBeaconTimeoutIntervalMs;
-  // A nonce value that's valid, used as a placeholder when nonce generation is
-  // switched off.
-  static const char kValidNonce[];
 
   // All of the passed-in constructor arguments are owned by the caller.  If
   // critical selector data is being received from a trusted source
@@ -69,23 +65,11 @@ class CriticalSelectorFinder {
 
   static void InitStats(Statistics* statistics);
 
-  // Reads the recorded selector set from the property cache, and unmarshals it
-  // into *critical_selectors.  Abstracts away the handling of multiple beacon
-  // results.  Call this in preference to the method below.  Returns false and
-  // empties *critical_selectors if no valid critical image set is available.
-  static bool GetCriticalSelectorsFromPropertyCache(
-      RewriteDriver* driver, StringSet* critical_selectors);
+  bool IsCriticalSelector(RewriteDriver* driver, const GoogleString& selector);
 
-  // DON'T CALL THIS unless you are RewriteDriver; call
-  // GetCriticalSelectorsFromPropertyCache instead.  Reads the recorded selector
-  // set from the property cache, and demarshals it.  Allocates a fresh object,
-  // transferring ownership of it to the caller.  May return NULL if no
-  // currently valid set is available.
-  // TODO(jmaessen): Remove when state is contained in finder itself.
-  CriticalSelectorSet* DecodeCriticalSelectorsFromPropertyCache(
-      RewriteDriver* driver);
+  const StringSet& GetCriticalSelectors(RewriteDriver* driver);
 
-  // Updates the critical selectors in the property cache.  Support for the new
+  // Updates the critical selectors in the property cache. Support for the new
   // selector_set is added to the existing record of beacon support.  This
   // updates the value in the in-memory property page but does not write the
   // cohort.  If results are obtained from a trusted source
@@ -95,12 +79,12 @@ class CriticalSelectorFinder {
       RewriteDriver* driver);
 
   // As above, but suitable for use in a beacon context where no RewriteDriver
-  // is available.  If results are obtained from a trusted source
-  // (ShouldReplacePriorResult() must return true) then nonce may be NULL.
-  void WriteCriticalSelectorsToPropertyCache(
-      const StringSet& selector_set, StringPiece nonce,
-      const PropertyCache* cache, PropertyPage* page,
-      MessageHandler* message_handler);
+  // is available.
+  static void WriteCriticalSelectorsToPropertyCache(
+      const StringSet& selector_set, StringPiece nonce, int support_interval,
+      bool should_replace_prior_result, const PropertyCache* cache,
+      const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
+      MessageHandler* message_handler, Timer* timer);
 
   // Given a set of candidate critical selectors, decide whether beaconing
   // should take place.  We should *always* beacon if there's new critical
@@ -111,10 +95,8 @@ class CriticalSelectorFinder {
   GoogleString PrepareForBeaconInsertion(
       const StringSet& selector_set, RewriteDriver* driver);
 
-  // Gets the SupportInterval for a new beacon result (see comment at top).
-  virtual int SupportInterval() const {
-    return kDefaultSupportInterval;
-  }
+  // Gets the SupportInterval for a new beacon result.
+  virtual int SupportInterval() const = 0;
 
  protected:
   // Returns true if a beacon result should replace all previous results.
@@ -124,8 +106,10 @@ class CriticalSelectorFinder {
   // filter; once it's clear when the configuration resolving takes place.
 
  private:
-  // Default support interval
-  static const int kDefaultSupportInterval = 10;
+  // RewriteDriver holds all of the state from the CriticalSelectorFinder. This
+  // function should be called to update that state from the property cache
+  // before it is used.
+  void UpdateCriticalSelectorInfoInDriver(RewriteDriver* driver);
 
   const PropertyCache::Cohort* cohort_;
   Timer* timer_;
@@ -136,6 +120,27 @@ class CriticalSelectorFinder {
   TimedVariable* critical_selectors_not_found_count_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalSelectorFinder);
+};
+
+class BeaconCriticalSelectorFinder : public CriticalSelectorFinder {
+ public:
+  BeaconCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
+                               Timer* timer, NonceGenerator* nonce_generator,
+                               Statistics* stats)
+      : CriticalSelectorFinder(cohort, timer, nonce_generator, stats) {}
+
+  static void WriteCriticalSelectorsToPropertyCache(
+      const StringSet& selector_set, StringPiece none,
+      const PropertyCache* cache, const PropertyCache::Cohort* cohort,
+      AbstractPropertyPage* page, MessageHandler* message_handler,
+      Timer* timer);
+
+ private:
+  // Default support interval.
+  static const int kDefaultSupportInterval = 10;
+
+  // Gets the SupportInterval for a new beacon result (see comment at top).
+  virtual int SupportInterval() const { return kDefaultSupportInterval; }
 };
 
 }  // namespace net_instaweb
