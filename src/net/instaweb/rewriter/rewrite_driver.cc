@@ -2908,7 +2908,7 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
     result = true;
   } else {
     const DomainLawyer* domain_lawyer = options()->domain_lawyer();
-    result = domain_lawyer->WillDomainChange(input_base.Origin());
+    result = domain_lawyer->WillDomainChange(input_base);
   }
 
   if (proxy_mode != NULL) {

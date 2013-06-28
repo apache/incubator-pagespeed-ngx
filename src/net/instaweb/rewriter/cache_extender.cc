@@ -126,9 +126,16 @@ bool CacheExtender::ShouldRewriteResource(
   if (url_namer->ProxyMode()) {
     return !url_namer->IsProxyEncoded(origin_gurl);
   }
-  StringPiece origin = origin_gurl.Origin();
   const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-  return lawyer->WillDomainChange(origin);
+
+  // We return true for IsProxyMapped so when reconstructing
+  // MAPPED_DOMAIN/file.pagespeed.ce.HASH.ext.  We won't be changing
+  // the domain (WillDomainChange==false) but we want this function
+  // to return true so that we can reconstruct the cache-extension and
+  // serve the result with long public caching.  Without IsProxyMapped,
+  // we'd serve the result with cache-control:private,max-age=300.
+  return (lawyer->IsProxyMapped(origin_gurl) ||
+          lawyer->WillDomainChange(origin_gurl));
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {

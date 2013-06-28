@@ -91,6 +91,11 @@ class DomainLawyerTest : public testing::Test {
     return domain_lawyer_.AddShard(domain, shards, &message_handler_);
   }
 
+  bool WillDomainChange(StringPiece url) {
+    GoogleUrl gurl(domain_lawyer_.NormalizeDomainName(url));
+    return domain_lawyer_.WillDomainChange(gurl);
+  }
+
   GoogleUrl orig_request_;
   GoogleUrl port_request_;
   GoogleUrl https_request_;
@@ -814,6 +819,19 @@ TEST_F(DomainLawyerTest, ProxyExternalResourceToCDN) {
                           &mapped_domain_name, &resolved_request));
   EXPECT_FALSE(MapRequest(context_gurl, "http://origin.com/gifar.gif",
                           &mapped_domain_name, &resolved_request));
+
+  GoogleUrl proxy_url("http://proxy.com/external/a.b");
+  EXPECT_TRUE(domain_lawyer_.IsProxyMapped(proxy_url));
+  GoogleUrl non_proxy_url("http://proxy.com/a.b");
+  EXPECT_FALSE(domain_lawyer_.IsProxyMapped(non_proxy_url));
+  GoogleUrl origin_url("http://origin.com/static/a.b");
+  EXPECT_FALSE(domain_lawyer_.IsProxyMapped(origin_url));
+  GoogleUrl non_origin_url("http://origin.com/a.b");
+  EXPECT_FALSE(domain_lawyer_.IsProxyMapped(non_origin_url));
+  GoogleUrl cdn_url("http://cdn.com/external/a.b");
+  EXPECT_TRUE(domain_lawyer_.IsProxyMapped(cdn_url));
+  GoogleUrl non_cdn_url("http://cdn.com/a.b");
+  EXPECT_FALSE(domain_lawyer_.IsProxyMapped(non_cdn_url));
 }
 
 TEST_F(DomainLawyerTest, ProxyExternalResourceFromHttps) {
@@ -1056,28 +1074,36 @@ TEST_F(DomainLawyerTest, ShardHttps) {
 TEST_F(DomainLawyerTest, WillDomainChange) {
   ASSERT_TRUE(AddShard("foo.com", "bar1.com,bar2.com"));
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com", "http://origin.com"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com/"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com/"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://origin.com/"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://bar1.com/"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://bar2.com/"));
-  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://cdn.com/"));
-  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://other_domain.com/"));
+  EXPECT_TRUE(WillDomainChange("http://foo.com/"));
+  EXPECT_TRUE(WillDomainChange("foo.com/"));
+  EXPECT_TRUE(WillDomainChange("http://foo.com"));
+  EXPECT_TRUE(WillDomainChange("foo.com"));
+  EXPECT_TRUE(WillDomainChange("http://origin.com/"));
+  EXPECT_TRUE(WillDomainChange("http://bar1.com/"));
+  EXPECT_TRUE(WillDomainChange("http://bar2.com/"));
+  EXPECT_FALSE(WillDomainChange("http://cdn.com/"));
+  EXPECT_FALSE(WillDomainChange("http://other_domain.com/"));
+}
+
+TEST_F(DomainLawyerTest, WillDomainChangeSubdirectory) {
+  ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com",
+                                      "http://origin.com/subdir"));
+  EXPECT_FALSE(WillDomainChange("http://origin.com/"));
+  EXPECT_FALSE(WillDomainChange("http://origin.com/subdirx"));
+  EXPECT_TRUE(WillDomainChange("http://origin.com/subdir/x"));
 }
 
 TEST_F(DomainLawyerTest, WillDomainChangeOnlyOneShard) {
   ASSERT_TRUE(AddShard("foo.com", "bar1.com"));
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com", "http://origin.com"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com/"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com/"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com"));
-  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://origin.com/"));
-  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://bar1.com/"));
-  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://cdn.com/"));
-  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://other_domain.com/"));
+  EXPECT_TRUE(WillDomainChange("http://foo.com/"));
+  EXPECT_TRUE(WillDomainChange("foo.com/"));
+  EXPECT_TRUE(WillDomainChange("http://foo.com"));
+  EXPECT_TRUE(WillDomainChange("foo.com"));
+  EXPECT_TRUE(WillDomainChange("http://origin.com/"));
+  EXPECT_FALSE(WillDomainChange("http://bar1.com/"));
+  EXPECT_FALSE(WillDomainChange("http://cdn.com/"));
+  EXPECT_FALSE(WillDomainChange("http://other_domain.com/"));
 }
 
 TEST_F(DomainLawyerTest, MapRewriteToOriginDomain) {

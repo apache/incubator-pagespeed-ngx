@@ -897,9 +897,8 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
   return sharded;
 }
 
-bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
-  GoogleUrl domain_gurl(NormalizeDomainName(domain_name));
-  Domain* domain = FindDomain(domain_gurl), *mapped_domain = domain;
+bool DomainLawyer::WillDomainChange(const GoogleUrl& gurl) const {
+  Domain* domain = FindDomain(gurl), *mapped_domain = domain;
   if (domain != NULL) {
     // First check a mapping based on AddRewriteDomainMapping.
     mapped_domain = domain->rewrite_domain();
@@ -927,6 +926,17 @@ bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
     }
   }
   return domain != mapped_domain;
+}
+
+bool DomainLawyer::IsProxyMapped(const GoogleUrl& gurl) const {
+  Domain* domain = FindDomain(gurl);
+  if (domain != NULL) {
+    Domain* origin = domain->origin_domain();
+    if ((origin != NULL) && origin->is_proxy()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool DomainLawyer::DoDomainsServeSameContent(

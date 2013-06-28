@@ -246,10 +246,15 @@ class DomainLawyer {
   void Clear();
   bool empty() const { return domain_map_.empty(); }
 
-  // Determines whether a resource of the given domain name is going
-  // to change due to RewriteDomain mapping or domain sharding.  Note
-  // that this does not account for the actual domain shard selected.
-  bool WillDomainChange(const StringPiece& domain_name) const;
+  // Determines whether a resource is going to change domains due to
+  // RewriteDomain mapping or domain sharding.  Note that this does
+  // not account for the actual domain shard selected.
+  //
+  // The entire URL should be passed in, not just the domain name.
+  bool WillDomainChange(const GoogleUrl& url) const;
+
+  // Determines whether a URL's domain was proxy-mapped from a different origin.
+  bool IsProxyMapped(const GoogleUrl& url) const;
 
   // Determines whether any resources might be domain-mapped, either
   // via sharding or rewriting.
@@ -285,6 +290,7 @@ class DomainLawyer {
 
  private:
   class Domain;
+  friend class DomainLawyerTest;
 
   typedef bool (Domain::*SetDomainFn)(Domain* domain, MessageHandler* handler);
 
