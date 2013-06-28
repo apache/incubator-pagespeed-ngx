@@ -69,14 +69,12 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
-#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
 class AsyncFetch;
-class MessageHandler;
 
 namespace {
 
@@ -96,7 +94,6 @@ const char kWindowsUserAgent[] =
 
 const char kBlackListUserAgent[] =
     "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:15.0) Gecko/20120427 Firefox/2.0a1";
-const char kNumPrepareRequestCalls[] = "num_prepare_request_calls";
 
 const char kWhitespace[] = "                  ";
 
@@ -337,43 +334,6 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectStringAsyncFetch);
 };
 
-// This class creates a proxy URL naming rule that encodes an "owner" domain
-// and an "origin" domain, all inside a fixed proxy-domain.
-class FakeUrlNamer : public UrlNamer {
- public:
-  explicit FakeUrlNamer(Statistics* statistics)
-      : options_(NULL),
-        num_prepare_request_calls_(
-            statistics->GetVariable(kNumPrepareRequestCalls)) {
-    set_proxy_domain("http://proxy-domain");
-  }
-
-  // Given the request url and request headers, generate the rewrite options.
-  virtual void DecodeOptions(const GoogleUrl& request_url,
-                             const RequestHeaders& request_headers,
-                             Callback* callback,
-                             MessageHandler* handler) const {
-    callback->Run((options_ == NULL) ? NULL : options_->Clone());
-  }
-
-  virtual void PrepareRequest(const RewriteOptions* rewrite_options,
-                              GoogleString* url,
-                              RequestHeaders* request_headers,
-                              Callback1<bool>* callback,
-                              MessageHandler* handler) {
-    num_prepare_request_calls_->Add(1);
-    UrlNamer::PrepareRequest(
-        rewrite_options, url, request_headers, callback, handler);
-  }
-
-  void set_options(RewriteOptions* options) { options_ = options; }
-
- private:
-  RewriteOptions* options_;
-  Variable* num_prepare_request_calls_;
-  DISALLOW_COPY_AND_ASSIGN(FakeUrlNamer);
-};
-
 class ProxyInterfaceWithDelayCache : public ProxyInterface {
  public:
   ProxyInterfaceWithDelayCache(const StringPiece& hostname, int port,
@@ -419,24 +379,6 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
   GoogleString key_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceWithDelayCache);
-};
-
-// This class is used to simulate HandleDone(false).
-class FlakyFakeUrlNamer : public FakeUrlNamer {
- public:
-  explicit FlakyFakeUrlNamer(Statistics* statistics)
-    : FakeUrlNamer(statistics) {}
-
-  virtual bool Decode(const GoogleUrl& request_url,
-                      GoogleUrl* owner_domain,
-                      GoogleString* decoded) const {
-    return true;
-  }
-
-  virtual bool IsAuthorized(const GoogleUrl& request_url,
-                            const RewriteOptions& options) const {
-    return false;
-  }
 };
 
 }  // namespace
@@ -533,6 +475,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     options_->Disallow("*blacklist*");
 
     InitializeOutputs(options_.get());
+    SetRewriteOptions(options_.get());
+
     server_context()->ComputeSignature(options_.get());
 
     ProxyInterfaceTestBase::SetUp();
@@ -540,13 +484,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, server_context(), statistics()));
 
-    statistics()->AddVariable(kNumPrepareRequestCalls);
-    fake_url_namer_.reset(new FakeUrlNamer(statistics()));
-    fake_url_namer_->set_options(options_.get());
-    flaky_fake_url_namer_.reset(new FlakyFakeUrlNamer(statistics()));
-    flaky_fake_url_namer_->set_options(options_.get());
+    server_context()->url_namer()->set_proxy_domain("http://proxy-domain");
 
-    server_context()->set_url_namer(fake_url_namer_.get());
     server_context()->set_cache_html_info_finder(new CacheHtmlInfoFinder());
 
     SetTimeMs(MockTimer::kApr_5_2010_ms);
@@ -817,8 +756,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     GlobalReplaceSubstring("__psa_gt;", ">", str);
   }
 
-  scoped_ptr<FakeUrlNamer> fake_url_namer_;
-  scoped_ptr<FlakyFakeUrlNamer> flaky_fake_url_namer_;
+  // TODO(nikhilmadan): This is super fragile as RewriteTestBase also has
+  // an options_ member.
   scoped_ptr<RewriteOptions> options_;
   GoogleString start_time_string_;
 
@@ -1005,7 +944,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlMissExperimentSetCookie) {
 
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
-  EXPECT_EQ(2, values.size());
+  ASSERT_EQ(2, values.size());
   EXPECT_STREQ("PageSpeedExperiment=3", (*(values[1])).substr(0, 21));
   GoogleString expires_str;
   ConvertTimeToString(MockTimer::kApr_5_2010_ms + 1000, &expires_str);
@@ -1090,17 +1029,13 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
                                 kCssContent, kHtmlCacheTimeSec * 2);
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "c.css"), kContentTypeCss,
                                 kCssContent, kHtmlCacheTimeSec * 2);
-  options_->ClearSignatureForTesting();
   options_.reset(server_context()->NewOptions());
   options_->EnableFilter(RewriteOptions::kCachePartialHtml);
   options_->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
   options_->set_non_cacheables_for_cache_partial_html(
       "class=item,id=beforeItems");
-
   server_context()->ComputeSignature(options_.get());
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(options_.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(options_.get());
 
   GoogleString text;
   ResponseHeaders response_headers;
@@ -1196,9 +1131,6 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
   options_->ClearSignatureForTesting();
   options_->EnableFilter(RewriteOptions::kDelayImages);
   server_context()->ComputeSignature(options_.get());
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(options_.get());
-  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   ResponseHeaders response_headers;

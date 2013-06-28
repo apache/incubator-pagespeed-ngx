@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
 #include "base/logging.h"
+#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/async_fetch_with_lock.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -35,7 +36,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -286,7 +286,6 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
   virtual bool StartFetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     message_handler_ = handler;
     fetch_url_ = url();
-    UrlNamer* url_namer = server_context_->url_namer();
     fetcher_ = fetcher;
     if (!request_headers()->Has(HttpAttributes::kReferer)) {
       if (IsBackgroundFetch()) {
@@ -302,12 +301,11 @@ class UrlResourceFetchCallback : public AsyncFetchWithLock {
       }
     }
 
-    url_namer->PrepareRequest(
+    server_context_->rewrite_options_manager()->PrepareRequest(
         rewrite_options_,
         &fetch_url_,
         request_headers(),
-        NewCallback(this, &UrlResourceFetchCallback::StartFetchInternal),
-        message_handler_);
+        NewCallback(this, &UrlResourceFetchCallback::StartFetchInternal));
     return true;
   }
   // TODO(jmarantz): consider request_headers.  E.g. will we ever

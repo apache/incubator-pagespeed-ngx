@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "base/logging.h"
+#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -679,12 +680,11 @@ void ProxyFetch::SetupForHtml() {
 }
 
 void ProxyFetch::StartFetch() {
-  factory_->server_context_->url_namer()->PrepareRequest(
+  factory_->server_context_->rewrite_options_manager()->PrepareRequest(
       Options(),
       &url_,
       request_headers(),
-      NewCallback(this, &ProxyFetch::DoFetch),
-      factory_->handler_);
+      NewCallback(this, &ProxyFetch::DoFetch));
 }
 
 void ProxyFetch::DoFetch(bool prepare_success) {

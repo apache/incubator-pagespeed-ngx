@@ -953,6 +953,7 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',
       ],
       'sources': [
+        'config/rewrite_options_manager.cc',
         'rewriter/beacon_critical_images_finder.cc',
         'rewriter/cache_html_info_finder.cc',
         'rewriter/critical_images_finder.cc',

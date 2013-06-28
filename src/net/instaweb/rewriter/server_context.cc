@@ -23,6 +23,7 @@
 #include <set>
 
 #include "base/logging.h"               // for operator<<, etc
+#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -308,6 +309,7 @@ ServerContext::~ServerContext() {
   decoding_driver_.reset(NULL);
 }
 
+// TODO(gee): These methods are out of order with respect to the .h #tech-debt
 void ServerContext::InitWorkersAndDecodingDriver() {
   html_workers_ = factory_->WorkerPool(RewriteDriverFactory::kHtmlWorkers);
   rewrite_workers_ = factory_->WorkerPool(
@@ -882,6 +884,7 @@ void ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
   }
 }
 
+// TODO(gee): Seems like this should all be in RewriteOptionsManager.
 RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
                                                 RewriteOptions* domain_options,
                                                 RewriteOptions* query_options) {
@@ -983,6 +986,10 @@ GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {
   rewrite_options->ComputeSignature();
+}
+
+void ServerContext::SetRewriteOptionsManager(RewriteOptionsManager* rom) {
+  rewrite_options_manager_.reset(rom);
 }
 
 bool ServerContext::IsExcludedAttribute(const char* attribute) {

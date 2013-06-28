@@ -64,16 +64,6 @@ class ProxyInterface : public UrlAsyncFetcher {
                      MessageHandler* handler,
                      AsyncFetch* async_fetch);
 
-  // Callback function passed to UrlNamer to finish handling requests once we
-  // have rewrite_options for requests that are being proxied.
-  void ProxyRequestCallback(
-      bool is_resource_fetch,
-      GoogleUrl* request_url,
-      AsyncFetch* async_fetch,
-      RewriteOptions* domain_options,
-      RewriteOptions* query_options,
-      MessageHandler* handler);
-
   // Is this url_string well-formed enough to proxy through?
   bool IsWellFormedUrl(const GoogleUrl& url);
 
@@ -103,6 +93,12 @@ class ProxyInterface : public UrlAsyncFetcher {
                     AsyncFetch* async_fetch,
                     MessageHandler* handler);
 
+  // Callback function which runs once we have rewrite_options for requests that
+  // are being proxied.
+  struct RequestData;
+  void GetRewriteOptionsDone(RequestData* request_data,
+                             RewriteOptions* query_options);
+
   PropertyCache::CohortVector GetCohortList(bool requires_blink_cohort) const;
 
   // If the URL and port are for this server, don't proxy those (to avoid
@@ -111,7 +107,6 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   UrlAsyncFetcher* fetcher_;              // thread-safe
   Timer* timer_;                          // thread-safe
-  MessageHandler* handler_;               // thread-safe
 
   // This server's hostname and port (to avoid making circular requests).
   // TODO(sligocki): This assumes we will only be called as one hostname,

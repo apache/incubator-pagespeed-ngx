@@ -408,9 +408,7 @@ TEST_F(ProxyInterfaceTest, SkipPropertyCacheLookupIfUrlBlacklisted) {
       server_context()->global_options()->Clone());
 
   custom_options->AddRejectedUrlWildcard(AbsolutifyUrl("blacklist*"));
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   logging_info()->Clear();
   mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
@@ -486,23 +484,22 @@ TEST_F(ProxyInterfaceTest, RedirectRequestWhenDomainRewriterEnabled) {
   custom_options->EnableFilter(RewriteOptions::kRewriteDomains);
   custom_options->WriteableDomainLawyer()->AddTwoProtocolRewriteDomainMapping(
       "www.example.com", "m.example.com", &handler);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
   set_text = "<html></html>";
   mock_url_fetcher_.SetResponse(url, set_headers, set_text);
   FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
 
   // Headers and body are correct for a Get request.
-  EXPECT_EQ("HTTP/1.0 302 Found\r\n"
-            "Content-Type: text/html\r\n"
-            "Location: http://www.example.com/\r\n"
-            "X-Background-Fetch: 0\r\n"
-            "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
-            "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
-            "Cache-Control: max-age=0, private\r\n"
-            "X-Page-Speed: \r\n"
-            "HeadersComplete: 1\r\n\r\n", get_headers.ToString());
+  EXPECT_STREQ("HTTP/1.0 302 Found\r\n"
+               "Content-Type: text/html\r\n"
+               "Location: http://www.example.com/\r\n"
+               "X-Background-Fetch: 0\r\n"
+               "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+               "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+               "Cache-Control: max-age=0, private\r\n"
+               "X-Page-Speed: \r\n"
+               "HeadersComplete: 1\r\n\r\n",
+               get_headers.ToString());
 }
 
 TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
@@ -590,9 +587,7 @@ TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedUrls) {
       server_context()->global_options()->Clone());
 
   custom_options->AddRejectedUrlWildcard(AbsolutifyUrl("block*"));
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   FetchFromProxy("blocked", false, &text, &response_headers);
   EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
@@ -611,9 +606,7 @@ TEST_F(ProxyInterfaceTest, RewriteUrlsEarly) {
   custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
       "test.com", "pagespeed.test.com/test.com", &handler);
   custom_options->set_rewrite_request_urls_early(true);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
   FetchFromProxy("http://pagespeed.test.com/test.com/index.html", true,
                  &text, &response_headers);
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
@@ -634,9 +627,7 @@ TEST_F(ProxyInterfaceTest, RewriteUrlsEarlyUsingReferer) {
   custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
       "test.com", "pagespeed.test.com/test.com", &handler);
   custom_options->set_rewrite_request_urls_early(true);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
   request_headers.Replace(HttpAttributes::kReferer,
                           "http://pagespeed.test.com/test.com/");
   FetchFromProxy("http://pagespeed.test.com/index.html", request_headers, true,
@@ -658,9 +649,7 @@ TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedHeaders) {
                                             "*Chrome*");
   custom_options->AddRejectedHeaderWildcard(HttpAttributes::kXForwardedFor,
                                             "10.3.4.*");
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   request_headers.Add(HttpAttributes::kUserAgent, "Firefox");
   request_headers.Add(HttpAttributes::kXForwardedFor, "10.0.0.11");
@@ -1145,9 +1134,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->set_cache_invalidation_timestamp(timer()->NowMs());
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   ClearStats();
   text.clear();
@@ -1246,9 +1233,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
       server_context()->global_options()->Clone());
   custom_options_1->AddUrlCacheInvalidationEntry(
       AbsolutifyUrl("foo.bar"), timer()->NowMs(), true);
-  ProxyUrlNamer url_namer_1;
-  url_namer_1.set_options(custom_options_1.get());
-  server_context()->set_url_namer(&url_namer_1);
+  SetRewriteOptions(custom_options_1.get());
 
   ClearStats();
   text.clear();
@@ -1278,9 +1263,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // caches.
   custom_options_2->AddUrlCacheInvalidationEntry(
       AbsolutifyUrl("text.html"), timer()->NowMs(), true);
-  ProxyUrlNamer url_namer_2;
-  url_namer_2.set_options(custom_options_2.get());
-  server_context()->set_url_namer(&url_namer_2);
+  SetRewriteOptions(custom_options_2.get());
 
   ClearStats();
   text.clear();
@@ -2106,10 +2089,8 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   custom_options->set_cache_invalidation_timestamp(timer()->NowMs());
   AdvanceTimeUs(Timer::kMsUs);
 
-  // Inject the custom options into the flow via a custom URL namer.
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  // Inject the custom options into the flow via a RewriteOptionsManager.
+  SetRewriteOptions(custom_options.get());
 
   // Use EncodeNormal because it matches the logic used by ProxyUrlNamer.
   const GoogleString kExtendedBackgroundImage =
@@ -2131,7 +2112,7 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
   options->EnableFilter(RewriteOptions::kRewriteCss);
   options->set_min_resource_cache_time_to_rewrite_ms(
       kHtmlCacheTimeSec * Timer::kSecondMs);
-  server_context()->ComputeSignature(options);
+  SetRewriteOptions(options);
 
   SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);

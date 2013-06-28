@@ -23,6 +23,7 @@
 #include "net/instaweb/automatic/public/cache_html_flow.h"
 #include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -39,7 +40,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
@@ -63,47 +63,15 @@ const char kRejectedRequestCount[] = "publisher-rejected-requests";
 const char kRejectedRequestHtmlResponse[] = "Unable to serve "
     "content as the content is blocked by the administrator of the domain.";
 
-// Provides a callback whose Done() function is executed once we have
-// rewrite options.
-// TODO(gee): Use MemberCallback_1_1 once it's available.
-class ProxyInterfaceUrlNamerCallback {
- public:
-  ProxyInterfaceUrlNamerCallback(
-      bool is_resource_fetch,
-      GoogleUrl* request_url,
-      AsyncFetch* async_fetch,
-      ProxyInterface* proxy_interface,
-      RewriteOptions* query_options,
-      MessageHandler* handler)
-      : is_resource_fetch_(is_resource_fetch),
-        request_url_(request_url),
-        async_fetch_(async_fetch),
-        property_callback_(NULL),
-        handler_(handler),
-        proxy_interface_(proxy_interface),
-        query_options_(query_options) {
-  }
-  virtual ~ProxyInterfaceUrlNamerCallback() {}
-  virtual void Done(RewriteOptions* rewrite_options) {
-    proxy_interface_->ProxyRequestCallback(
-        is_resource_fetch_, request_url_, async_fetch_, rewrite_options,
-        query_options_, handler_);
-    delete this;
-  }
-
- private:
-  bool is_resource_fetch_;
-  GoogleUrl* request_url_;
-  AsyncFetch* async_fetch_;
-  ProxyFetchPropertyCallbackCollector* property_callback_;
-  MessageHandler* handler_;
-  ProxyInterface* proxy_interface_;
-  RewriteOptions* query_options_;
-
-  DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceUrlNamerCallback);
-};
-
 }  // namespace
+
+struct ProxyInterface::RequestData {
+  bool is_resource_fetch;
+  scoped_ptr<GoogleUrl> request_url;
+  AsyncFetch* async_fetch;
+  RewriteOptions* query_options;
+  MessageHandler* handler;
+};
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ServerContext* server_context,
@@ -111,7 +79,6 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
     : server_context_(server_context),
       fetcher_(NULL),
       timer_(NULL),
-      handler_(server_context->message_handler()),
       hostname_(hostname.as_string()),
       port_(port),
       all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
@@ -221,6 +188,7 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
 
   // Stripping PageSpeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
+  // TODO(gee): Move this into RewriteOptionsManager #tech-debt
   ServerContext::OptionsBoolPair query_options_success =
       server_context_->GetQueryOptions(gurl.get(),
                                        async_fetch->request_headers(),
@@ -236,18 +204,19 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   }
 
   // Owned by ProxyInterfaceUrlNamerCallback.
-  GoogleUrl* released_gurl(gurl.release());
+  GoogleUrl* released_gurl = gurl.release();
 
-  ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
-      new ProxyInterfaceUrlNamerCallback(is_resource_fetch, released_gurl,
-                                         async_fetch, this,
-                                         query_options_success.first, handler);
+  RequestData* request_data = new RequestData;
+  request_data->is_resource_fetch = is_resource_fetch;
+  request_data->request_url.reset(released_gurl);
+  request_data->async_fetch = async_fetch;
+  request_data->query_options = query_options_success.first;
+  request_data->handler = handler;
 
-    server_context_->url_namer()->DecodeOptions(
-      *released_gurl, *async_fetch->request_headers(),
-      NewCallback(proxy_interface_url_namer_callback,
-                  &ProxyInterfaceUrlNamerCallback::Done),
-      handler);
+  server_context_->rewrite_options_manager()->GetRewriteOptions(
+      *released_gurl,
+      *async_fetch->request_headers(),
+      NewCallback(this, &ProxyInterface::GetRewriteOptionsDone, request_data));
 }
 
 ProxyFetchPropertyCallbackCollector*
@@ -263,14 +232,15 @@ ProxyFetchPropertyCallbackCollector*
       requires_blink_cohort, added_page_property_callback);
 }
 
-void ProxyInterface::ProxyRequestCallback(
-    bool is_resource_fetch,
-    GoogleUrl* url,
-    AsyncFetch* async_fetch,
-    RewriteOptions* domain_options,
-    RewriteOptions* query_options,
-    MessageHandler* handler) {
-  scoped_ptr<GoogleUrl> request_url(url);
+void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
+                                           RewriteOptions* domain_options) {
+  scoped_ptr<RequestData> request_data_deleter(request_data);
+  bool is_resource_fetch = request_data->is_resource_fetch;
+  GoogleUrl* request_url = request_data->request_url.get();
+  AsyncFetch* async_fetch = request_data->async_fetch;
+  RewriteOptions* query_options = request_data->query_options;
+  MessageHandler* handler = request_data->handler;
+
   RewriteOptions* options = server_context_->GetCustomOptions(
       async_fetch->request_headers(), domain_options, query_options);
   GoogleString url_string;
@@ -291,15 +261,14 @@ void ProxyInterface::ProxyRequestCallback(
     return;
   }
   ServerContext::ScanSplitHtmlRequest(
-      async_fetch->request_context(), options, request_url.get());
+      async_fetch->request_context(), options, request_url);
   request_url->Spec().CopyToString(&url_string);
 
   if (options != NULL && options->rewrite_request_urls_early()) {
     const UrlNamer* url_namer = server_context_->url_namer();
     StringPiece referer(async_fetch->request_headers()->Lookup1(
         HttpAttributes::kReferer));
-    if (url_namer->ResolveToOriginUrl(
-        *options, referer, request_url.get())) {
+    if (url_namer->ResolveToOriginUrl(*options, referer, request_url)) {
       // Update the headers accordingly if the request url changes.
       async_fetch->request_headers()->Replace(
           HttpAttributes::kHost, request_url->Origin());

@@ -692,9 +692,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     scoped_ptr<RewriteOptions> custom_options(
         server_context()->global_options()->Clone());
     custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
-    ProxyUrlNamer url_namer;
-    url_namer.set_options(custom_options.get());
-    server_context()->set_url_namer(&url_namer);
+    SetRewriteOptions(custom_options.get());
 
     GoogleString text;
     RequestHeaders request_headers;
@@ -903,9 +901,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestFallbackPageUsage) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->set_use_fallback_property_cache_values(true);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   // Setting up mock responses for the url and fallback url.
   GoogleString url = StrCat(kTestDomain, "a.html?query=some");
@@ -1083,9 +1079,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsImageTag) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1106,9 +1100,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsPrefetch) {
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->set_max_prefetch_js_elements(0);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1163,9 +1155,8 @@ TEST_F(FlushEarlyFlowTest,
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kInsertDnsPrefetch);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
+
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
@@ -1192,9 +1183,8 @@ TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
   custom_options->set_max_prefetch_js_elements(0);
   custom_options->set_flush_more_resources_early_if_time_permits(true);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
+
   GoogleString text;
   RequestHeaders request_headers;
   // Useragent is set to Firefox/ 9.0 because all flush early flow, defer
@@ -1273,9 +1263,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1428,9 +1416,7 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1495,10 +1481,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->set_max_prefetch_js_elements(0);
-
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   GoogleString text;
   ResponseHeaders headers;
@@ -1525,10 +1508,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kSplitHtml);
   custom_options->set_max_prefetch_js_elements(0);
-
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   GoogleString text;
   ResponseHeaders headers;
@@ -1616,9 +1596,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
 
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  server_context()->set_url_namer(&url_namer);
+  SetRewriteOptions(custom_options.get());
 
   // Add critical css rules.
   MockCriticalCssFinder* critical_css_finder =
