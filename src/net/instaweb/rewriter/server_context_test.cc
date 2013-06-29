@@ -656,57 +656,57 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
 TEST_F(ServerContextTest, ScanSplitHtmlRequestSplitEnabled) {
   options()->EnableFilter(RewriteOptions::kSplitHtml);
   RequestContextPtr ctx(CreateRequestContext());
-  GoogleUrl gurl("http://test.com/?x_split=btf");
+  GoogleString url("http://test.com/?x_split=btf");
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_TRUE(server_context()->ScanSplitHtmlRequest(ctx, options(), &url));
   EXPECT_EQ(RequestContext::SPLIT_BELOW_THE_FOLD, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/", gurl.Spec());
+  EXPECT_EQ("http://test.com/", url);
 
-  gurl.Reset("http://test.com/?a=b&x_split=btf");
+  url = "http://test.com/?a=b&x_split=btf";
   ctx.reset(CreateRequestContext());
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_TRUE(server_context()->ScanSplitHtmlRequest(ctx, options(), &url));
   EXPECT_EQ(RequestContext::SPLIT_BELOW_THE_FOLD, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+  EXPECT_EQ("http://test.com/?a=b", url);
 
-  gurl.Reset("http://test.com/?a=b&x_split=atf");
+  url = "http://test.com/?a=b&x_split=atf";
   ctx.reset(CreateRequestContext());
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_TRUE(server_context()->ScanSplitHtmlRequest(ctx, options(), &url));
   EXPECT_EQ(RequestContext::SPLIT_ABOVE_THE_FOLD, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+  EXPECT_EQ("http://test.com/?a=b", url);
 
-  gurl.Reset("http://test.com/?a=b&x_split=junk");
+  url = "http://test.com/?a=b&x_split=junk";
   ctx.reset(CreateRequestContext());
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_TRUE(server_context()->ScanSplitHtmlRequest(ctx, options(), &url));
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+  EXPECT_EQ("http://test.com/?a=b", url);
 
   ctx.reset(CreateRequestContext());
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_FALSE(server_context()->ScanSplitHtmlRequest(ctx, options(), &url));
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/?a=b", gurl.Spec());
+  EXPECT_EQ("http://test.com/?a=b", url);
 }
 
 TEST_F(ServerContextTest, ScanSplitHtmlRequestOptionsNull) {
   RequestContextPtr ctx(CreateRequestContext());
-  GoogleUrl gurl("http://test.com/?x_split=btf");
+  GoogleString url("http://test.com/?x_split=btf");
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, NULL, &gurl);
+  EXPECT_FALSE(server_context()->ScanSplitHtmlRequest(ctx, NULL, &url));
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/?x_split=btf", gurl.Spec());
+  EXPECT_EQ("http://test.com/?x_split=btf", url);
 }
 
 TEST_F(ServerContextTest, ScanSplitHtmlRequestSplitDisabled) {
   options()->DisableFilter(RewriteOptions::kSplitHtml);
   RequestContextPtr ctx(CreateRequestContext());
-  GoogleUrl gurl("http://test.com/?x_split=btf");
+  GoogleString url("http://test.com/?x_split=btf");
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  server_context()->ScanSplitHtmlRequest(ctx, options(), &gurl);
+  EXPECT_FALSE(server_context()->ScanSplitHtmlRequest(ctx, options(), &url));
   EXPECT_EQ(RequestContext::SPLIT_FULL, ctx->split_request_type());
-  EXPECT_EQ("http://test.com/?x_split=btf", gurl.Spec());
+  EXPECT_EQ("http://test.com/?x_split=btf", url);
 }
 
 class MockRewriteFilter : public RewriteFilter {

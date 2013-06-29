@@ -179,7 +179,7 @@ class RewriteOptions {
   // you add an image-related option or css-related option you must also add
   // it to the kRelatedOptions array in image_rewrite_filter.cc and/or
   // css_filter.cc.
-  static const char kAccessControlAllowOrigin[];
+  static const char kAccessControlAllowOrigins[];
   static const char kAddOptionsToUrls[];
   static const char kAllowLoggingUrlsInLogRecord[];
   static const char kAlwaysRewriteCss[];
@@ -228,6 +228,7 @@ class RewriteOptions {
   static const char kFlushHtml[];
   static const char kFlushMoreResourcesEarlyIfTimePermits[];
   static const char kForbidAllDisabledFilters[];
+  static const char kHideRefererUsingMeta[];
   static const char kIdleFlushTimeMs[];
   static const char kImageInlineMaxBytes[];
   static const char kImageJpegNumProgressiveScans[];
@@ -2141,11 +2142,18 @@ class RewriteOptions {
     return non_cacheables_for_cache_partial_html_.value();
   }
 
-  void set_access_control_allow_origin(const StringPiece& p) {
-    set_option(p.as_string(), &access_control_allow_origin_);
+  void set_access_control_allow_origins(const StringPiece& p) {
+    set_option(p.as_string(), &access_control_allow_origins_);
   }
-  const GoogleString& access_control_allow_origin() const {
-    return access_control_allow_origin_.value();
+  const GoogleString& access_control_allow_origins() const {
+    return access_control_allow_origins_.value();
+  }
+
+  void set_hide_referer_using_meta(bool x) {
+    set_option(x, &hide_referer_using_meta_);
+  }
+  bool hide_referer_using_meta() const {
+    return hide_referer_using_meta_.value();
   }
 
   void set_enable_fix_reflow(bool x) {
@@ -3373,8 +3381,13 @@ class RewriteOptions {
   // Non cacheables used when partial HTML is cached.
   Option<GoogleString> non_cacheables_for_cache_partial_html_;
 
-  // Value to be used with Access-Control-Allow-Origin header.
-  Option<GoogleString> access_control_allow_origin_;
+  // Comma seperated list of origins that are allowed to make cross-origin
+  // requests. These domain requests are served with
+  // Access-Control-Allow-Origin header.
+  Option<GoogleString> access_control_allow_origins_;
+
+  // If set to true, hides the referer by adding meta tag to the HTML.
+  Option<bool> hide_referer_using_meta_;
 
   // Fix reflows due to defer js.
   Option<bool> enable_fix_reflow_;

@@ -761,7 +761,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
 
   // Generic options that are registered by name by AddProperty().
   PassLookupOptionByName(RewriteOptions::kAddOptionsToUrls);
-  PassLookupOptionByName(RewriteOptions::kAccessControlAllowOrigin);
+  PassLookupOptionByName(RewriteOptions::kAccessControlAllowOrigins);
   PassLookupOptionByName(RewriteOptions::kAllowLoggingUrlsInLogRecord);
   PassLookupOptionByName(RewriteOptions::kAlwaysRewriteCss);
   PassLookupOptionByName(RewriteOptions::kAnalyticsID);
@@ -812,6 +812,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kFlushHtml);
   PassLookupOptionByName(RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits);
   PassLookupOptionByName(RewriteOptions::kForbidAllDisabledFilters);
+  PassLookupOptionByName(RewriteOptions::kHideRefererUsingMeta);
   PassLookupOptionByName(RewriteOptions::kIdleFlushTimeMs);
   PassLookupOptionByName(RewriteOptions::kImageInlineMaxBytes);
   PassLookupOptionByName(RewriteOptions::kImageJpegNumProgressiveScans);

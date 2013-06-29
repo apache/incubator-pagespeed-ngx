@@ -859,29 +859,31 @@ ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
   return OptionsBoolPair(query_options.release(), success);
 }
 
-void ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
+bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
                                          const RewriteOptions* options,
-                                         GoogleUrl* url) {
+                                         GoogleString* url) {
   if (options == NULL || !options->Enabled(RewriteOptions::kSplitHtml)) {
-    return;
+    return false;
   }
+  GoogleUrl gurl(*url);
   QueryParams query_params;
   // TODO(bharathbhushan): Can we use the results of any earlier query parse?
-  query_params.Parse(url->Query());
+  query_params.Parse(gurl.Query());
 
   const GoogleString* value = query_params.Lookup1(HttpAttributes::kXSplit);
-  if (value != NULL) {
-    if (HttpAttributes::kXSplitBelowTheFold == (*value)) {
-      ctx->set_split_request_type(RequestContext::SPLIT_BELOW_THE_FOLD);
-    } else if (HttpAttributes::kXSplitAboveTheFold == (*value)) {
-      ctx->set_split_request_type(RequestContext::SPLIT_ABOVE_THE_FOLD);
-    }
-    query_params.RemoveAll(HttpAttributes::kXSplit);
-    GoogleString query_string = query_params.empty() ? "" :
-          StrCat("?", query_params.ToString());
-    url->Reset(
-        StrCat(url->AllExceptQuery(), query_string, url->AllAfterQuery()));
+  if (value == NULL) {
+    return false;
   }
+  if (HttpAttributes::kXSplitBelowTheFold == (*value)) {
+    ctx->set_split_request_type(RequestContext::SPLIT_BELOW_THE_FOLD);
+  } else if (HttpAttributes::kXSplitAboveTheFold == (*value)) {
+    ctx->set_split_request_type(RequestContext::SPLIT_ABOVE_THE_FOLD);
+  }
+  query_params.RemoveAll(HttpAttributes::kXSplit);
+  GoogleString query_string = query_params.empty() ? "" :
+        StrCat("?", query_params.ToString());
+  *url = StrCat(gurl.AllExceptQuery(), query_string, gurl.AllAfterQuery());
+  return true;
 }
 
 // TODO(gee): Seems like this should all be in RewriteOptionsManager.

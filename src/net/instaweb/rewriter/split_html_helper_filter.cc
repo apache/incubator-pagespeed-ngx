@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_config.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -105,7 +106,10 @@ void SplitHtmlHelperFilter::StartDocumentImpl() {
     critical_images_info->html_critical_images.clear();
     critical_images_info->css_critical_images.clear();
     critical_images_info->is_set_from_pcache = false;
+  } else {
+    driver()->set_critical_images_info(new CriticalImagesInfo);
   }
+  driver()->critical_images_info()->is_set_from_split_html = true;
 
   // Push the base panel.
   StartPanelInstance(static_cast<HtmlElement*>(NULL), "");
@@ -206,13 +210,15 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
       element->AddAttribute(
           driver()->MakeName(HtmlName::kPagespeedNoTransform),
           "", HtmlElement::NO_QUOTE);
-    } else if (driver()->critical_images_info() != NULL) {
+    } else {
       // For an above-the-fold image, insert the url as a critical image.
       GoogleUrl image_gurl(driver()->base_url(),
                            src->DecodedValueOrNull());
       if (image_gurl.is_valid()) {
         GoogleString url(image_gurl.spec_c_str());
-        driver()->critical_images_info()->html_critical_images.insert(url);
+        CriticalImagesFinder* finder =
+            driver()->server_context()->critical_images_finder();
+        finder->AddHtmlCriticalImage(url, driver());
       }
     }
   }

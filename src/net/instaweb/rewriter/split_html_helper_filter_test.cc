@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -57,10 +58,9 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
   }
 
   void CheckCriticalImage(GoogleString url) {
-    CriticalImagesInfo* critical_images_info =
-        rewrite_driver()->critical_images_info();
-    EXPECT_NE(critical_images_info->html_critical_images.end(),
-              critical_images_info->html_critical_images.find(url));
+    CriticalImagesFinder* finder =
+        rewrite_driver()->server_context()->critical_images_finder();
+    EXPECT_TRUE(finder->IsHtmlCriticalImage(url, rewrite_driver()));
   }
 
   void CheckLoggingStatus(RewriterHtmlApplication::Status status) {
@@ -125,6 +125,21 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithCriticalImages) {
   rewrite_driver()->set_critical_images_info(critical_images_info);
   CheckNumCriticalImages(2);
 
+  ValidateExpected(
+      "split_helper_atf",
+      "<div id='a'><img src='1.jpeg'></div>"
+      "<div id='b'><img src='2.jpeg'></div>"
+      "<div id='c'><img src='3.jpeg'></div>",
+      "<div id='a'><img src='1.jpeg'></div>"
+      "<div id='b'><img src='2.jpeg' pagespeed_no_transform=></div>"
+      "<div id='c'><img src='3.jpeg' pagespeed_no_transform=></div>");
+  CheckNumCriticalImages(1);
+  CheckCriticalImage("http://test.com/1.jpeg");
+  CheckLoggingStatus(RewriterHtmlApplication::ACTIVE);
+}
+
+TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithNullCriticalImages) {
+  rewrite_driver()->set_critical_images_info(NULL);
   ValidateExpected(
       "split_helper_atf",
       "<div id='a'><img src='1.jpeg'></div>"

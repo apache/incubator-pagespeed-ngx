@@ -260,9 +260,10 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     delete options;
     return;
   }
-  ServerContext::ScanSplitHtmlRequest(
-      async_fetch->request_context(), options, request_url);
-  request_url->Spec().CopyToString(&url_string);
+  if (ServerContext::ScanSplitHtmlRequest(
+      async_fetch->request_context(), options, &url_string)) {
+    request_url->Reset(url_string);
+  }
 
   if (options != NULL && options->rewrite_request_urls_early()) {
     const UrlNamer* url_namer = server_context_->url_namer();

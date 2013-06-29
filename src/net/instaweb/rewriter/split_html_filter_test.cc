@@ -225,6 +225,31 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
 }
 
+TEST_F(SplitHtmlFilterTest, SplitHtmlAddMetaReferer) {
+  rewrite_driver()->SetRequestHeaders(request_headers_);
+  options_->set_hide_referer_using_meta(true);
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
+  panel->set_start_xpath("div[@id = \"container\"]/div[4]");
+  panel = config->add_panels();
+  panel->set_start_xpath("img[3]");
+  panel->set_end_marker_xpath("h1[@id = \"footer\"]");
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_,
+                                   kSplitHtmlBelowTheFoldData, "false"));
+  EXPECT_EQ(StrCat("<html><head>",
+                   SplitHtmlFilter::kMetaReferer,
+                   "\n<script>blah</script>", SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
+  VerifyAppliedRewriters(
+      RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+  VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
+}
+
 TEST_F(SplitHtmlFilterTest,
        SplitTwoChunksHtmlWithDriverHavingCriticalLineInfoATF) {
   rewrite_driver()->SetRequestHeaders(request_headers_);
@@ -342,12 +367,13 @@ TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFWithFlushAndHelper) {
   EXPECT_EQ(expected_output, output_buffer_);
 }
 
-TEST_F(SplitHtmlFilterTest,
-       SplitTwoChunksHtmlATFWithAccessControlHeaders) {
+TEST_F(SplitHtmlFilterTest, ATFHeadersWithAllowAllOrigins) {
+  request_headers_.Add(HttpAttributes::kOrigin, "abc.com");
+  rewrite_driver()->SetRequestHeaders(request_headers_);
   options_->set_serve_split_html_in_two_chunks(true);
   SetAtfRequest();
   options_->set_serve_xhr_access_control_headers(true);
-  options_->set_access_control_allow_origin("google.com");
+  options_->set_access_control_allow_origins("*");
   CriticalLineInfo* config = new CriticalLineInfo;
   rewrite_driver()->set_critical_line_info(config);
 
@@ -360,9 +386,61 @@ TEST_F(SplitHtmlFilterTest,
             kSplitHtmlMiddleWithoutPanelStubs,
             kHtmlInputPart2, suffix);
   EXPECT_EQ(expected_output, output_);
-  EXPECT_STREQ("google.com", response_headers_.Lookup1(
+  EXPECT_STREQ("abc.com", response_headers_.Lookup1(
       HttpAttributes::kAccessControlAllowOrigin));
   EXPECT_STREQ("true", response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowCredentials));
+}
+
+TEST_F(SplitHtmlFilterTest, ATFHeadersCrossOriginAllowed) {
+  request_headers_.Add(HttpAttributes::kOrigin, "http://cross-domain.com");
+  rewrite_driver()->SetRequestHeaders(request_headers_);
+  options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
+  options_->set_serve_xhr_access_control_headers(true);
+  options_->set_access_control_allow_origins(
+      "example.com, *cross-domain.com, abc.com");
+  CriticalLineInfo* config = new CriticalLineInfo;
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   HttpAttributes::kXPsaSplitConfig, "", "", 1, blink_js_url_));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+  EXPECT_EQ(expected_output, output_);
+  EXPECT_STREQ("http://cross-domain.com", response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowOrigin));
+  EXPECT_STREQ("true", response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowCredentials));
+}
+
+TEST_F(SplitHtmlFilterTest, ATFHeadersCrossOriginDisAllowed) {
+  request_headers_.Add(HttpAttributes::kOrigin, "disallowed-domain.com");
+  rewrite_driver()->SetRequestHeaders(request_headers_);
+  options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
+  options_->set_serve_xhr_access_control_headers(true);
+  options_->set_access_control_allow_origins(
+      "example.com, cross-domain.com, http://disallowed-domain.com, abc.com");
+  CriticalLineInfo* config = new CriticalLineInfo;
+  rewrite_driver()->set_critical_line_info(config);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   HttpAttributes::kXPsaSplitConfig, "", "", 1, blink_js_url_));
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+  EXPECT_EQ(expected_output, output_);
+  EXPECT_EQ(NULL, response_headers_.Lookup1(
+      HttpAttributes::kAccessControlAllowOrigin));
+  EXPECT_STREQ(NULL, response_headers_.Lookup1(
       HttpAttributes::kAccessControlAllowCredentials));
 }
 

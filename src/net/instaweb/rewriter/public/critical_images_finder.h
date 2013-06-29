@@ -42,10 +42,13 @@ class Variable;
 // RewriteDriver and eliminate CriticalImagesInfo. Revisit this when updating
 // this class to support multiple beacon response.
 struct CriticalImagesInfo {
-  CriticalImagesInfo() : is_set_from_pcache(false) {}
+  CriticalImagesInfo()
+      : is_set_from_pcache(false),
+        is_set_from_split_html(false) {}
   StringSet html_critical_images;
   StringSet css_critical_images;
   bool is_set_from_pcache;
+  bool is_set_from_split_html;
 };
 
 
@@ -92,11 +95,11 @@ class CriticalImagesFinder {
   // implementation of this function returns meaningful results and provide a
   // default behavior if it does not.  If no critical set value has been
   // obtained, returns false (not critical).
-  virtual bool IsHtmlCriticalImage(const GoogleString& image_url,
-                                   RewriteDriver* driver);
+  bool IsHtmlCriticalImage(const GoogleString& image_url,
+                           RewriteDriver* driver);
 
-  virtual bool IsCssCriticalImage(const GoogleString& image_url,
-                                  RewriteDriver* driver);
+  bool IsCssCriticalImage(const GoogleString& image_url,
+                          RewriteDriver* driver);
 
   // Get the critical image sets. Returns an empty set if there is no critical
   // image information.
@@ -148,12 +151,20 @@ class CriticalImagesFinder {
   virtual RenderedImages* ExtractRenderedImageDimensionsFromCache(
       RewriteDriver* driver);
 
+  // Adds the given url to the html critical image set for the driver.
+  void AddHtmlCriticalImage(const GoogleString& url,
+                            RewriteDriver* driver);
+
  protected:
   // Gets critical images if present in the property cache and updates the
   // critical_images set in RewriteDriver with the obtained set.  If you
   // override this method, driver->critical_images_info() must not return NULL
   // after this function has been called.
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
+
+  virtual GoogleString GetKeyForUrl(const GoogleString& url) {
+    return url;
+  }
 
   // Extracts the critical images from the given property_value into
   // critical_images_info, after checking if the property value is still valid

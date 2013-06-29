@@ -144,6 +144,13 @@ ModPagespeedEnableFilters add_instrumentation
     ModPagespeedImageWebpRecompressionQuality 65
 </Directory>
 
+# Enable split_html
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/split_html/" >
+    ModPagespeedEnableFilters split_html,split_html_helper,lazyload_images
+    ModPagespeedServeSplitHtmlInTwoChunks on
+    ModPagespeedCriticalLineConfig div[@id="container"]/div[4]
+</Directory>
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cachable_rewritten_html" >
     ModPagespeedRewriteDeadlinePerFlushMs 1
     # Assume that Varnish (or any other downstream cache) is running at
@@ -590,7 +597,7 @@ ModPagespeedUsePerVHostStatistics on
   ModPagespeedEnableFilters lazyload_images
   ModPagespeedCriticalImagesBeaconEnabled true
 
-  # add_instrumention tests beacon handling with no handler specified, while
+  # add_instrumentation tests beacon handling with no handler specified, while
   # here we test it with a handler (that should do nothing).
   <Location /mod_pagespeed_beacon>
     SetHandler mod_pagespeed_beacon

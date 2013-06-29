@@ -51,6 +51,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   static const char kSplitInit[];
   static const char kSplitSuffixJsFormatString[];
   static const char kSplitTwoChunkSuffixJsFormatString[];
+  static const char kMetaReferer[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlFilter();
@@ -125,6 +126,12 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   void InvokeBaseHtmlFilterEndElement(HtmlElement* element);
 
   void InvokeBaseHtmlFilterEndDocument();
+
+  // Returns true, if the cross-origin is allowed by looking it up in
+  // RewriteOptions::access_control_allow_origins()
+  // Note: The cross-origin must match exactly inclusing the protocol.
+  // The only wildcard supported is '*' which means allow all domains.
+  bool IsAllowedCrossDomainRequest(StringPiece cross_origin);
 
   RewriteDriver* rewrite_driver_;
   scoped_ptr<SplitHtmlConfig> config_;

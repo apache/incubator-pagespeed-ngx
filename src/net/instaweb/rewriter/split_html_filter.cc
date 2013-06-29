@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
@@ -49,6 +50,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/util/fast_wildcard_group.h"
 
 namespace net_instaweb {
 
@@ -121,6 +123,9 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "}</script>\n"
     "</body></html>\n";
 
+const char SplitHtmlFilter::kMetaReferer[] =
+    "<meta name=\"referrer\" content=\"never\">";
+
 // At StartElement, if element is panel instance push a new json to capture
 // contents of instance to the json stack.
 // All the emitBytes are captured into the top json until a new panel
@@ -135,6 +140,19 @@ SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
 }
 
 SplitHtmlFilter::~SplitHtmlFilter() {
+}
+
+bool SplitHtmlFilter::IsAllowedCrossDomainRequest(StringPiece cross_origin) {
+  FastWildcardGroup wildcards;
+  if (!cross_origin.empty()) {
+    StringPieceVector allowed_cross_origins;
+    SplitStringPieceToVector(options_->access_control_allow_origins(), ", ",
+                             &allowed_cross_origins, true);
+    for (int i = 0, n = allowed_cross_origins.size(); i < n; ++i) {
+      wildcards.Allow(allowed_cross_origins[i]);
+    }
+  }
+  return wildcards.Match(cross_origin, false);
 }
 
 void SplitHtmlFilter::StartDocument() {
@@ -187,16 +205,19 @@ void SplitHtmlFilter::StartDocument() {
     if (rewrite_driver_->request_context()->split_request_type() !=
         RequestContext::SPLIT_BELOW_THE_FOLD &&
         options_->serve_xhr_access_control_headers()) {
-      // TODO(ksimbili): Do this only for XHR requests and only for the prefetch
-      // requests.
-      // Serve Access-Control headers only for ATF request.
-      StringPiece allow_origin = options_->access_control_allow_origin();
-      if (!allow_origin.empty()) {
-        response_headers->Add(HttpAttributes::kAccessControlAllowOrigin,
-                              allow_origin);
+      const RequestHeaders* request_headers =
+          rewrite_driver_->request_headers();
+      if (request_headers != NULL) {
+        // Origin header should be seen if it is a cross-origin request.
+        StringPiece cross_origin =
+            request_headers->Lookup1(HttpAttributes::kOrigin);
+        if (IsAllowedCrossDomainRequest(cross_origin)) {
+          response_headers->Add(HttpAttributes::kAccessControlAllowOrigin,
+                                cross_origin);
+          response_headers->Add(HttpAttributes::kAccessControlAllowCredentials,
+                                "true");
+        }
       }
-      response_headers->Add(HttpAttributes::kAccessControlAllowCredentials,
-                            "true");
     }
   }
   json_writer_.reset(new JsonWriter(original_writer_,
@@ -356,6 +377,9 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
   GoogleString defer_js_with_blink = "";
   if (include_head) {
     StrAppend(&defer_js_with_blink, "<head>");
+    if (options_->hide_referer_using_meta()) {
+      StrAppend(&defer_js_with_blink, kMetaReferer);
+    }
   }
 
   if (options_->serve_ghost_click_buster_with_split_html()) {
@@ -450,6 +474,14 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
       }
     }
     InvokeBaseHtmlFilterStartElement(element);
+    if (element->keyword() == HtmlName::kHead) {
+      // Add meta referer.
+      if (options_->hide_referer_using_meta()) {
+        HtmlCharactersNode* meta_node =
+            rewrite_driver_->NewCharactersNode(element, kMetaReferer);
+        Characters(meta_node);
+      }
+    }
   }
 }
 

@@ -57,6 +57,7 @@ struct HttpAttributes {
   static const char kNoCache[];
   static const char kNoCacheMaxAge0[];
   static const char kNoStore[];
+  static const char kOrigin[];
   static const char kPragma[];
   static const char kPrivate[];
   static const char kProxyAuthorization[];

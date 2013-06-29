@@ -45,8 +45,8 @@ namespace net_instaweb {
 // TODO(matterbury): Evaluate these filters to check which ones aren't global,
 // rather are (say) Apache specific, and move them out.
 const char RewriteOptions::kAddOptionsToUrls[] = "AddOptionsToUrls";
-const char RewriteOptions::kAccessControlAllowOrigin[] =
-    "AccessControlAllowOrigin";
+const char RewriteOptions::kAccessControlAllowOrigins[] =
+    "AccessControlAllowOrigins";
 const char RewriteOptions::kAllowLoggingUrlsInLogRecord[] =
     "AllowLoggingUrlsInLogRecord";
 const char RewriteOptions::kAlwaysRewriteCss[] = "AlwaysRewriteCss";
@@ -121,6 +121,7 @@ const char RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits[] =
     "FlushMoreResourcesEarlyIfTimePermits";
 const char RewriteOptions::kForbidAllDisabledFilters[] =
     "ForbidAllDisabledFilters";
+const char RewriteOptions::kHideRefererUsingMeta[] = "HideRefererUsingMeta";
 const char RewriteOptions::kIdleFlushTimeMs[] = "IdleFlushTimeMs";
 const char RewriteOptions::kImageInlineMaxBytes[] = "ImageInlineMaxBytes";
 const char RewriteOptions::kImageJpegNumProgressiveScans[] =
@@ -1789,10 +1790,17 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope, "Serve access control headers with response headers");
 
   AddBaseProperty(
-      "", &RewriteOptions::access_control_allow_origin_,
-      "acao", kAccessControlAllowOrigin,
+      "", &RewriteOptions::access_control_allow_origins_,
+      "acao", kAccessControlAllowOrigins,
       kDirectoryScope,
-      "Origin to be used with Access-Control-Allow-Origin header");
+      "Comma seperated list of origins that are allowed to make cross-origin "
+      "requests");
+
+  AddBaseProperty(
+      false, &RewriteOptions::hide_referer_using_meta_,
+      "hrum", kHideRefererUsingMeta,
+      kDirectoryScope,
+      "Hides the referer by adding meta tag to the HTML");
 
   AddRequestProperty(
       -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet");

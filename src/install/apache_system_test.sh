@@ -462,6 +462,18 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimiz
 # is tuned to avoid that.
 check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
 
+SPLIT_HTML_ATF=$TEST_ROOT"/split_html/split.html?x_split=atf"
+wget -O - $URL $SPLIT_HTML_ATF > $FETCHED
+check grep -q '/mod_pagespeed_test/split_html/split.html?x_split=btf' $FETCHED
+check grep -q '/mod_pagespeed_static/blink' $FETCHED
+check grep -q '<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->' $FETCHED
+check grep -v 'pagespeed_lazy_src' $FETCHED
+
+SPLIT_HTML_BTF=$TEST_ROOT"/split_html/split.html?x_split=atf"
+wget -O - $URL $SPLIT_HTML_BTF > $FETCHED
+check grep -q 'panel-id.0' $FETCHED
+check grep -q 'pagespeed_lazy_src' $FETCHED
+
 start_test quality of jpeg output images
 IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"

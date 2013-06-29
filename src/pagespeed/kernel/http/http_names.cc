@@ -52,6 +52,7 @@ const char HttpAttributes::kMaxAge[] = "max-age";
 const char HttpAttributes::kNoCache[] = "no-cache";
 const char HttpAttributes::kNoCacheMaxAge0[] = "max-age=0, no-cache";
 const char HttpAttributes::kNoStore[] = "no-store";
+const char HttpAttributes::kOrigin[] = "Origin";
 const char HttpAttributes::kPragma[] = "Pragma";
 const char HttpAttributes::kPrivate[] = "private";
 const char HttpAttributes::kProxyAuthorization[] = "Proxy-Authorization";
