@@ -432,6 +432,7 @@
         '<(DEPTH)/pagespeed/kernel/html/html_parse_speed_test.cc',
         'rewriter/css_minify_speed_test.cc',
         'rewriter/domain_lawyer_speed_test.cc',
+        'rewriter/image_speed_test.cc',
         'rewriter/rewrite_driver_speed_test.cc',
         'util/compressed_cache_speed_test.cc',
         'util/deque_speed_test.cc',
