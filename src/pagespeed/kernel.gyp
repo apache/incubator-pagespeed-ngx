@@ -191,11 +191,11 @@
       'dependencies': [
         ':pagespeed_base_core',
         ':pagespeed_html_gperf',
-        ':pagespeed_http',
+        ':pagespeed_http_core',
       ],
     },
     {
-      'target_name': 'pagespeed_http',
+      'target_name': 'pagespeed_http_core',
       'type': '<(library)',
       'sources': [
         'kernel/http/caching_headers.cc',
@@ -207,6 +207,20 @@
       'dependencies': [
         'pagespeed_base_core',
         '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
+      ],
+    },
+    {
+      'target_name': 'pagespeed_http',
+      'type': '<(library)',
+      'sources': [
+        'kernel/http/user_agent_normalizer.cc',
+      ],
+      'dependencies': [
+        'pagespeed_http_core',
+        'util',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
       ],
     },
     {

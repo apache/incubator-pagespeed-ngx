@@ -25,6 +25,7 @@
 
 using re2::RE2;
 
+typedef re2::StringPiece Re2StringPiece;
 // Converts a Google StringPiece into an RE2 StringPiece.  These are of course
 // the same basic thing but are declared in distinct namespaces and as far as
 // C++ type-checking is concerned they are incompatible.
@@ -36,6 +37,10 @@ using re2::RE2;
 // #include Chromium's stringpiece then everything would just work.
 inline re2::StringPiece StringPieceToRe2(StringPiece sp) {
   return re2::StringPiece(sp.data(), sp.size());
+}
+
+inline StringPiece Re2ToStringPiece(re2::StringPiece sp) {
+  return StringPiece(sp.data(), sp.size());
 }
 
 

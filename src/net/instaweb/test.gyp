@@ -277,6 +277,7 @@
         '<(DEPTH)/pagespeed/kernel/http/content_type_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/google_url_test.cc',
         '<(DEPTH)/pagespeed/kernel/http/query_params_test.cc',
+        '<(DEPTH)/pagespeed/kernel/http/user_agent_normalizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/gif_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_converter_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_resizer_test.cc',

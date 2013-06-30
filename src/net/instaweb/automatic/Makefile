@@ -113,6 +113,7 @@ BASE_LIBS = \
   pagespeed/libpagespeed_html.a \
   pagespeed/libpagespeed_html_gperf.a \
   pagespeed/libpagespeed_http.a \
+  pagespeed/libpagespeed_http_core.a \
   pagespeed/libpagespeed_image_processing.a \
   pagespeed/libpagespeed_javascript_gperf.a \
   pagespeed/libpagespeed_sharedmem.a \

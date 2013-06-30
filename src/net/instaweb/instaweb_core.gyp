@@ -141,7 +141,7 @@
                 '<(LIB_DIR)/net/instaweb/libinstaweb_rewriter_html.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_html.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_html_gperf.a',
-                '<(LIB_DIR)/pagespeed/libpagespeed_http.a',
+                '<(LIB_DIR)/pagespeed/libpagespeed_http_core.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_base_core.a',
                 '<(LIB_DIR)/build/temp_gyp/libgoogleurl.a',
                 '<(LIB_DIR)/base/libbase.a',
