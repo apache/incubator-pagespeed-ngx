@@ -145,7 +145,7 @@ const char kHtmlInputWithMinifiedJs[] =
     "<head>"
     "<script pagespeed_orig_type=\"text/javascript\" "
     "type=\"text/psajs\" orig_index=\"0\">var a=\"hello\";</script>"
-    "%s</head>"
+    "</head>"
     "<body>\n"
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
@@ -161,7 +161,7 @@ const char kHtmlInputWithMinifiedJs[] =
           "</div>"
       "</div>"
     "</div>"
-    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
+    "%s<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
     "</body></html>";
 
 const char kHtmlInputWithExtraCommentAndNonCacheable[] =
@@ -216,7 +216,7 @@ const char kHtmlInputForNoBlink[] =
     "<html><head></head><body></body></html>";
 
 const char kBlinkOutputCommon[] =
-    "<html><head>%s</head><body>"
+    "<html><head></head><body>"
     "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
     "url='%s?ModPagespeed=noscript'\" />"
     "<style><!--table,div,span,font,p{display:none} --></style>"
@@ -233,7 +233,7 @@ const char kBlinkOutputCommon[] =
     "<!--GooglePanel end panel-id-0.1-->"
     "</div>"
     "</body></html>"
-    "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
+    "%s<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoaderInit();</script>\n"
     "<script type=\"text/javascript\">"
@@ -427,8 +427,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
 
   void InitializeOutputs(RewriteOptions* options) {
     blink_output_partial_ = StringPrintf(
-        kBlinkOutputCommon, GetJsDisableScriptSnippet(options).c_str(),
-        kTestUrl, kTestUrl);
+        kBlinkOutputCommon, kTestUrl, kTestUrl,
+        GetJsDisableScriptSnippet(options).c_str());
     blink_output_ = StrCat(blink_output_partial_.c_str(), kCookieScript,
                            StringPrintf(kBlinkOutputSuffix, "image1"));
     noblink_output_ = StrCat("<html><head></head><body>",
@@ -436,21 +436,25 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
                                           kNoBlinkUrl, kNoBlinkUrl),
                              "</body></html>");
     blink_output_with_cacheable_panels_no_cookies_ =
-        StrCat(StringPrintf(kBlinkOutputCommon, GetJsDisableScriptSnippet(
-            options).c_str(), "http://test.com/flaky.html",
-                            "http://test.com/flaky.html"),
+        StrCat(StringPrintf(kBlinkOutputCommon, "http://test.com/flaky.html",
+                            "http://test.com/flaky.html",
+                            GetJsDisableScriptSnippet(options).c_str()),
                kBlinkOutputWithCacheablePanelsNoCookiesSuffix);
     blink_output_with_cacheable_panels_cookies_ =
-        StrCat(StringPrintf(kBlinkOutputCommon, GetJsDisableScriptSnippet(
-            options).c_str(), "http://test.com/cache.html",
-                            "http://test.com/cache.html"),
+        StrCat(StringPrintf(kBlinkOutputCommon, "http://test.com/cache.html",
+                            "http://test.com/cache.html",
+                            GetJsDisableScriptSnippet(options).c_str()),
                kBlinkOutputWithCacheablePanelsCookiesSuffix);
   }
 
   GoogleString GetJsDisableScriptSnippet(RewriteOptions* options) {
-    return StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-                  JsDisableFilter::GetJsDisableScriptSnippet(options),
-                  "</script>");
+    if (options->enable_defer_js_experimental()) {
+      return StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                    JsDisableFilter::kEnableJsExperimental,
+                    "</script>");
+    } else {
+      return "";
+    }
   }
 
   virtual void SetUp() {
@@ -1053,7 +1057,6 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
   GoogleString expected_html = StrCat(
       "<html>\n<head>\n"
       "  <title>Example</title>\n",
-      GetJsDisableScriptSnippet(options_.get()),
       "</head>\n"
       "<body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
@@ -1090,6 +1093,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
       "</script>");
 
   StrAppend(&expected_html,
+      GetJsDisableScriptSnippet(options_.get()),
       "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoaderInit();</script>\n"
@@ -1148,7 +1152,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
   UnEscapeString(&text);
 
   const char kBlinkOutputWithInlinePreviewImages[] =
-      "<html><head>%s</head><body>"
+      "<html><head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
       "url='%s?ModPagespeed=noscript'\" />"
       "<style><!--table,div,span,font,p{display:none} --></style>"
@@ -1166,7 +1170,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "<!--GooglePanel end panel-id-0.0-->"
       "</div>"
       "</body></html>"
-      "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
+      "%s<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoaderInit();</script>\n"
       "<script type=\"text/javascript\">"
@@ -1177,10 +1181,11 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>";  // NOLINT
 
   GoogleString inlined_image_wildcard =
-      StringPrintf(kBlinkOutputWithInlinePreviewImages,
-                   GetJsDisableScriptSnippet(options_.get()).c_str(), kTestUrl,
-                   kTestUrl, "<img pagespeed_high_res_src=\"image1\" "
-                   "src=\"data:image/jpeg;base64*", kCookieScript);
+      StringPrintf(kBlinkOutputWithInlinePreviewImages, kTestUrl, kTestUrl,
+                   "<img pagespeed_high_res_src=\"image1\" "
+                   "src=\"data:image/jpeg;base64*",
+                   GetJsDisableScriptSnippet(options_.get()).c_str(),
+                   kCookieScript);
   EXPECT_TRUE(Wildcard(inlined_image_wildcard).Match(text))
       << "Expected:\n" << inlined_image_wildcard << "\n\nGot:\n" << text;
 }
@@ -1199,8 +1204,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlOverThreshold) {
       "smalltest.html", true, &text, &response_headers);
 
   GoogleString SmallHtmlOutput =
-      StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body>A small test html."
+      StrCat("<html><head></head><body>A small test html.",
+             GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>");
   EXPECT_STREQ(SmallHtmlOutput, text);
@@ -1372,8 +1377,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithHttpsUrl) {
   FetchFromProxy("https://test.com/noblink_text.html", true, request_headers,
                  &text, &response_headers, false);
   EXPECT_STREQ(
-      StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body>"
+      StrCat("<html><head></head><body>",
+             GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
@@ -1422,7 +1427,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlushSubresources) {
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowUrlCacheInvalidation) {
   GoogleString text;
   ResponseHeaders response_headers;
-  GoogleString htmlOutput =
+  GoogleString htmlOutput = StrCat(
+    "<html><head></head>"
     "<body>\n"
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
@@ -1437,13 +1443,13 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowUrlCacheInvalidation) {
              "<img src=\"image4\">"
           "</div>"
       "</div>"
-    "</div>"
+    "</div>",
+    GetJsDisableScriptSnippet(options_.get()),
     "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
-    "</body></html>";
+    "</body></html>");
 
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
-  EXPECT_STREQ(StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-                      "</head>", htmlOutput), text);
+  EXPECT_STREQ(htmlOutput, text);
 
   // Cache lookup for original plain text and Blink Cohort
   // all miss.
@@ -1498,8 +1504,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowUrlCacheInvalidation) {
   // passthrough by blink.
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
 
-  EXPECT_STREQ(StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-                      "</head>", htmlOutput), text);
+  EXPECT_STREQ(htmlOutput, text);
   // 1 Miss for original plain text
   EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -1533,8 +1538,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowDataMissDelayCache) {
   FetchFromProxyWithDelayCache(
       "text.html", true, request_headers, proxy_interface,
       &text, &response_headers);
-
-  GoogleString htmlOutput =
+  GoogleString htmlOutput = StrCat(
+    "<html><head></head>"
     "<body>\n"
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
@@ -1549,12 +1554,12 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowDataMissDelayCache) {
              "<img src=\"image4\">"
           "</div>"
       "</div>"
-    "</div>"
+    "</div>",
+    GetJsDisableScriptSnippet(options_.get()),
     "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
-    "</body></html>";
+    "</body></html>");
 
-  EXPECT_STREQ(StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-                      "</head>", htmlOutput), text);
+  EXPECT_STREQ(htmlOutput, text);
 
   EXPECT_STREQ("text/html; charset=utf-8",
                response_headers.Lookup1(HttpAttributes::kContentType));
@@ -1588,8 +1593,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
   EXPECT_STREQ(
-      StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body>"
+      StrCat("<html><head>"
+             "</head><body>",
+             GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(
@@ -1601,8 +1607,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
   EXPECT_STREQ(
-      StrCat("<html><head>", GetJsDisableScriptSnippet(options_.get()),
-             "</head><body>"
+      StrCat("<html><head>"
+             "</head><body>",
+             GetJsDisableScriptSnippet(options_.get()),
              "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
              "</script></body></html>"), text);
   EXPECT_EQ(0, statistics()->FindVariable(

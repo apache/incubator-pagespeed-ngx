@@ -1658,11 +1658,7 @@ deferJsNs.deferInit = function() {
     return;
   }
 
-  if (window.localStorage) {
-    deferJsNs.DeferJs.isExperimentalMode =
-        window.localStorage['defer_js_experimental'];
-  }
-
+  deferJsNs.DeferJs.isExperimentalMode = pagespeed['defer_js_experimental'];
   pagespeed.highPriorityDeferJs = new deferJsNs.DeferJs();
   pagespeed.highPriorityDeferJs.setType(
     deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE);

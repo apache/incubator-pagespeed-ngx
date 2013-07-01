@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -38,22 +38,13 @@ class RewriteOptions;
 //     <script src="1.js">var a = 1...</script>
 //   </noscript>
 //
-class JsDisableFilter : public EmptyHtmlFilter {
+class JsDisableFilter : public CommonFilter {
  public:
   explicit JsDisableFilter(RewriteDriver* driver);
   ~JsDisableFilter();
 
   static const char kEnableJsExperimental[];
-  static const char kDisableJsExperimental[];
   static const char kElementOnloadCode[];
-
-  virtual void StartDocument();
-
-  virtual void StartElement(HtmlElement* element);
-
-  virtual void EndElement(HtmlElement* element);
-
-  virtual void EndDocument();
 
   virtual void DetermineEnabled();
 
@@ -61,11 +52,17 @@ class JsDisableFilter : public EmptyHtmlFilter {
     return "JsDisableFilter";
   }
 
-  static GoogleString GetJsDisableScriptSnippet(const RewriteOptions* options);
-
  private:
+  virtual void StartDocumentImpl();
+
+  virtual void StartElementImpl(HtmlElement* element);
+
+  virtual void EndElementImpl(HtmlElement* element);
+
+  virtual void EndDocument();
+
   // Inserts the experimental js enable/disable code.
-  void InsertJsDeferExperimentalScript(HtmlElement* element);
+  void InsertJsDeferExperimentalScript();
 
   // Insert meta tag with 'X-UA-Compatible'. This will avoid IE going to quirks
   // mode. More information about this can be found in
@@ -75,7 +72,6 @@ class JsDisableFilter : public EmptyHtmlFilter {
   RewriteDriver* rewrite_driver_;
   ScriptTagScanner script_tag_scanner_;
   int index_;
-  bool defer_js_experimental_script_written_;
   bool ie_meta_tag_written_;
   int prefetch_js_elements_count_;
   int max_prefetch_js_elements_;

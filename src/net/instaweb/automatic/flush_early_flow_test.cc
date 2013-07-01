@@ -360,18 +360,26 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                         noscript_redirect_url_.c_str());
   }
 
+  GoogleString GetJsDisableScriptSnippet() {
+    if (options_->enable_defer_js_experimental()) {
+      return StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                    JsDisableFilter::kEnableJsExperimental,
+                    "</script>");
+    } else {
+      return "";
+    }
+  }
+
   GoogleString RewrittenHtmlWithDeferJs(bool split_html_enabled,
                                         const GoogleString& image_tag,
                                         bool is_ie) {
-    GoogleString defer_js_injected_html1 = StrCat(
-        "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-        JsDisableFilter::GetJsDisableScriptSnippet(options_),
-        "</script>", split_html_enabled ? SplitHtmlFilter::kSplitInit : "");
-    GoogleString defer_js_injected_html2, defer_js_injected_html3;
+    GoogleString defer_js_injected_html1, defer_js_injected_html3;
+    GoogleString defer_js_injected_html2 = GetJsDisableScriptSnippet();
     if (split_html_enabled) {
+      defer_js_injected_html1 = SplitHtmlFilter::kSplitInit;
       defer_js_injected_html3 = GetSplitHtmlSuffixCode();
     } else {
-      defer_js_injected_html2 = GetDeferJsCode();
+      StrAppend(&defer_js_injected_html2, GetDeferJsCode());
     }
     const char kCompatibleMetaTag[] =
         "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">";
