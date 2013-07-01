@@ -216,6 +216,7 @@ PAGESPEED_EXPECTED_FAILURES="
   ~convert_meta_tags~
   ~In-place resource optimization~
   ~keepalive with html rewriting~
+  ~Make sure nostore on a subdirectory is retained~
 "
 
 # The existing system test takes its arguments as positional parameters, and
@@ -257,7 +258,7 @@ PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
 
 # Number of downstream cache purges should be 0 here.
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
-check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*0"
+check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*0"
 
 # The 1st request results in a cache miss, non-rewritten response
 # produced by pagespeed code and a subsequent purge request.
@@ -266,7 +267,7 @@ WGET_ARGS="--header=Host:proxy_cache.example.com"
 OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_not_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
-fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
+fetch_until $STATISTICS_URL 'grep -c downstream_cache_purge_attempts:\s*1' 1
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 2nd request results in a cache miss (because of the previous purge),
@@ -277,7 +278,7 @@ OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
-check_from "$CURRENT_STATS" egrep -q "downstream_cache_purges:\s*1"
+check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*1"
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 3rd request results in a cache hit (because the previous response is
@@ -287,7 +288,7 @@ start_test Check for case where there is a rewritten cache hit.
 OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: HIT"
-fetch_until $STATISTICS_URL 'grep -c downstream_cache_purges:\s*1' 1
+fetch_until $STATISTICS_URL 'grep -c downstream_cache_purge_attempts:\s*1' 1
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 start_test Check for correct default X-Page-Speed header format.
@@ -789,8 +790,7 @@ start_test MapProxyDomain
 # depends on MapProxyDomain in pagespeed_test.conf.template
 URL=$EXAMPLE_ROOT/proxy_external_resource.html
 echo Rewrite HTML with reference to a proxyable image.
-fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
-    'grep -c 1.gif.pagespeed' 1
+fetch_until -save -recursive $URL 'grep -c pss-architecture.png.pagespeed.ic' 1
 
 # To make sure that we can reconstruct the proxied content by going back
 # to the origin, we must avoid hitting the output cache.
@@ -800,8 +800,9 @@ fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
 # virtual host attached to a different cache.
 #
 # With the proper hash, we'll get a long cache lifetime.
-SECONDARY_HOST="http://mpd.example.com/gstatic_images"
-PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/*1.gif.pagespeed*)"
+SECONDARY_HOST="http://mpd.example.com/gstatic_images/devconsole"
+PROXIED_IMAGE="$SECONDARY_HOST/$(basename \
+    $OUTDIR/*pss-architecture.png.pagespeed.ic*)"
 WGET_ARGS="--save-headers"
 
 start_test $PROXIED_IMAGE expecting one year cache.
@@ -811,7 +812,8 @@ http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
 # With the wrong hash, we'll get a short cache lifetime (and also no output
 # cache hit.
 WRONG_HASH="0"
-PROXIED_IMAGE="$SECONDARY_HOST/1.gif.pagespeed.ce.$WRONG_HASH.jpg"
+PROXIED_IMAGE="$SECONDARY_HOST/\
+xpss-architecture.png.pagespeed.ic.$WRONG_HASH.jpg"
 start_test Fetching $PROXIED_IMAGE expecting short private cache.
 http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
     "grep -c max-age=300,private" 1
@@ -1511,6 +1513,12 @@ function check_failures_and_exit() {
   echo "PASS."
   exit 0
 }
+
+start_test Make sure nostore on a subdirectory is retained
+URL=$TEST_ROOT/nostore/nostore.html
+HTML_HEADERS=$($WGET_DUMP $URL)
+check_from "$HTML_HEADERS" egrep -q \
+  'Cache-Control: max-age=0, no-cache, no-store'
 
 start_test Custom headers remain on resources, but cache should be 1 year.
 URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
