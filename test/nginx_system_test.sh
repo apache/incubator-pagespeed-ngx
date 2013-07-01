@@ -216,7 +216,6 @@ PAGESPEED_EXPECTED_FAILURES="
   ~convert_meta_tags~
   ~In-place resource optimization~
   ~keepalive with html rewriting~
-  ~Make sure nostore on a subdirectory is retained~
 "
 
 # The existing system test takes its arguments as positional parameters, and

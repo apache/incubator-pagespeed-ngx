@@ -145,6 +145,7 @@ if [ $ngx_found = yes ]; then
   NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
     $ps_src/log_message_handler.h \
     $ps_src/ngx_base_fetch.h \
+    $ps_src/ngx_caching_headers.h \
     $ps_src/ngx_fetch.h \
     $ps_src/ngx_list_iterator.h \
     $ps_src/ngx_message_handler.h \
@@ -159,6 +160,7 @@ if [ $ngx_found = yes ]; then
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ps_src/log_message_handler.cc \
     $ps_src/ngx_base_fetch.cc \
+    $ps_src/ngx_caching_headers.cc \
     $ps_src/ngx_fetch.cc \
     $ps_src/ngx_list_iterator.cc \
     $ps_src/ngx_message_handler.cc \
