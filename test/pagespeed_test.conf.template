@@ -515,7 +515,6 @@ http {
     location /mod_pagespeed_test/cachable_rewritten_html/ {
       # This location has the html files that will be configured to be stored
       # in the proxy_cache layer.
-      pagespeed DownstreamCacheLifetimeMs 100;
       pagespeed DownstreamCachePurgeMethod "GET";
       pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:8051/purge";
       # We use a very small deadline here to force the rewriting to not complete
