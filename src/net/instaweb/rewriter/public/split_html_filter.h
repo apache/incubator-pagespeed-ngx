@@ -48,9 +48,9 @@ class XpathUnit;
 // EndDocument. It directly writes to the http request.
 class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
-  static const char kSplitInit[];
   static const char kSplitSuffixJsFormatString[];
   static const char kSplitTwoChunkSuffixJsFormatString[];
+  static const char kLoadHiResImages[];
   static const char kMetaReferer[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
@@ -148,7 +148,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool flush_head_enabled_;
   bool disable_filter_;
   bool inside_pagespeed_no_defer_script_;
-  int num_low_res_images_inlined_;
   bool serve_response_in_two_chunks_;
   HtmlElement* current_panel_parent_element_;
   StaticAssetManager* static_asset_manager_;  // Owned by rewrite_driver_.

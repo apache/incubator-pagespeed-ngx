@@ -162,7 +162,7 @@ const char kRewrittenHtmlWithDeferJs[] =
     " orig_index=\"2\"></script>"
     "<script pagespeed_orig_src=\"http://www.domain1.com/private.js\""
     " type=\"text/psajs\" orig_index=\"3\"></script>"
-    "%s</head>"
+    "</head>"
     "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
@@ -351,7 +351,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetSplitHtmlSuffixCode() {
     return StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                        0, "/psajs/blink.0.js", "{}", "false");
+                        "/psajs/blink.0.js", SplitHtmlFilter::kLoadHiResImages,
+                        "{}", "false");
   }
 
   GoogleString NoScriptRedirectHtml() {
@@ -373,10 +374,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   GoogleString RewrittenHtmlWithDeferJs(bool split_html_enabled,
                                         const GoogleString& image_tag,
                                         bool is_ie) {
-    GoogleString defer_js_injected_html1, defer_js_injected_html3;
+    GoogleString defer_js_injected_html3;
     GoogleString defer_js_injected_html2 = GetJsDisableScriptSnippet();
     if (split_html_enabled) {
-      defer_js_injected_html1 = SplitHtmlFilter::kSplitInit;
       defer_js_injected_html3 = GetSplitHtmlSuffixCode();
     } else {
       StrAppend(&defer_js_injected_html2, GetDeferJsCode());
@@ -388,7 +388,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         kRewrittenHtmlWithDeferJs, (is_ie ? kCompatibleMetaTag : ""),
         rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
         rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-        image_tag.data(), defer_js_injected_html1.c_str(),
+        image_tag.data(),
         NoScriptRedirectHtml().c_str(), rewritten_css_url_3_.data(),
         defer_js_injected_html2.c_str(),
         defer_js_injected_html3.c_str());

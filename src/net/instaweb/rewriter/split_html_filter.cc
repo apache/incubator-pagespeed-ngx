@@ -54,32 +54,21 @@
 
 namespace net_instaweb {
 
-const char SplitHtmlFilter::kSplitInit[] =
-    "<script type=\"text/javascript\">"
-    "window[\"pagespeed\"] = window[\"pagespeed\"] || {};"
-    "var pagespeed = window[\"pagespeed\"];"
-    "pagespeed.splitOnload = function() {"
-    "pagespeed.num_high_res_images_loaded++;"
-    "if (pagespeed.panelLoader && pagespeed.num_high_res_images_loaded == "
-    "pagespeed.num_low_res_images_inlined) {"
-    "pagespeed.panelLoader.loadData();"
-    "}};"
-    "pagespeed.num_high_res_images_loaded=0;"
-    "</script>";
-
 // TODO(rahulbansal): We are sending an extra close body and close html tag.
 // Fix that.
 const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
-    "<script type=\"text/javascript\">"
-    "pagespeed.num_low_res_images_inlined=%d;</script>"
     "<script type=\"text/javascript\" src=\"%s\"></script>"
     "<script type=\"text/javascript\">"
+      "%s"
       "pagespeed.panelLoaderInit();"
       "pagespeed.panelLoader.bufferNonCriticalData(%s, %s);"
     "</script>\n</body></html>\n";
 
 const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "<script type=\"text/javascript\">"
+    "if(document.body.scrollTop==0) {"
+    "  scrollTo(0, 1);"
+    "}"
     "function loadXMLDoc(url) {"
     "\n  if (!url) {"
     "\n    pagespeed['split_non_critical'] = {};"
@@ -105,9 +94,8 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "\n  xmlhttp.send();"
     "\n}"
     "loadXMLDoc(\"%s\");"
-    "pagespeed.num_low_res_images_inlined=%d;</script>"
-    "<script type=\"text/javascript\">"
     "\nwindow.setTimeout(function() {"
+    "  %s"
     "  var blink_js = document.createElement('script');"
     "  blink_js.src=\"%s\";"
     "  blink_js.setAttribute('onload', \""
@@ -118,10 +106,22 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "    }\");"
     "  document.body.appendChild(blink_js);"
     "}, 300);"
-    "if(document.body.scrollTop==0) {"
-    "  scrollTo(0, 1);"
-    "}</script>\n"
+    "</script>\n"
     "</body></html>\n";
+
+const char SplitHtmlFilter::kLoadHiResImages[] =
+    "function psa_replace_high_res_for_tag(str) {"
+     "var images=document.getElementsByTagName(str);"
+     "for (var i=0;i<images.length;++i) {"
+      "var high_res_src=images[i].getAttribute('pagespeed_high_res_src');"
+      "var src=images[i].getAttribute('src');"
+      "if (high_res_src && src != high_res_src && src.indexOf('data:') != -1){"
+        "images[i].src=high_res_src;"
+      "}"
+     "}"
+    "};"
+    "psa_replace_high_res_for_tag('img');"
+    "psa_replace_high_res_for_tag('input');";
 
 const char SplitHtmlFilter::kMetaReferer[] =
     "<meta name=\"referrer\" content=\"never\">";
@@ -225,7 +225,6 @@ void SplitHtmlFilter::StartDocument() {
   current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
-  num_low_res_images_inlined_ = 0;
   current_panel_parent_element_ = NULL;
   inside_pagespeed_no_defer_script_ = false;
 
@@ -270,8 +269,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
     if (!serve_response_in_two_chunks_) {
       WriteString(StringPrintf(
           kSplitSuffixJsFormatString,
-          num_low_res_images_inlined_,
           GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
+          kLoadHiResImages,
           non_critical_json.c_str(),
           rewrite_driver_->flushing_cached_html() ? "true" : "false"));
     } else {
@@ -294,7 +293,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
         HttpAttributes::kXPsaSplitConfig,
         GenerateCriticalLineConfigString().c_str(),
         json.empty() ? "" : gurl->PathAndLeaf().data(),
-        num_low_res_images_inlined_,
+        kLoadHiResImages,
         GetBlinkJsUrl(options_, static_asset_manager_).c_str()));
   }
   HtmlWriterFilter::Flush();
@@ -390,7 +389,6 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
     StrAppend(&defer_js_with_blink, ghost_click_buster_js);
     StrAppend(&defer_js_with_blink, "</script>");
   }
-  StrAppend(&defer_js_with_blink, kSplitInit);
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");
   }
@@ -459,18 +457,16 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     // Suppress these bytes since they belong to a panel.
     HtmlWriterFilter::StartElement(element);
   } else {
-    if (element->keyword() == HtmlName::kImg) {
+    if (element->keyword() == HtmlName::kImg ||
+        element->keyword() == HtmlName::kInput) {
       HtmlElement::Attribute* pagespeed_high_res_src_attr =
-          element->FindAttribute(HtmlName::HtmlName::kPagespeedHighResSrc);
+          element->FindAttribute(HtmlName::kPagespeedHighResSrc);
       HtmlElement::Attribute* onload =
           element->FindAttribute(HtmlName::kOnload);
       if (pagespeed_high_res_src_attr != NULL &&
           pagespeed_high_res_src_attr->DecodedValueOrNull() != NULL &&
           onload != NULL && onload->DecodedValueOrNull() != NULL) {
-        num_low_res_images_inlined_++;
-        GoogleString overridden_onload = StrCat("pagespeed.splitOnload();",
-            onload->DecodedValueOrNull());
-        onload->SetValue(overridden_onload);
+        element->DeleteAttribute(HtmlName::kOnload);
       }
     }
     InvokeBaseHtmlFilterStartElement(element);
