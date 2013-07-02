@@ -82,15 +82,13 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
 
   GoogleString CreateInitString(StringPiece beacon_url,
                                 StringPiece event,
-                                StringPiece extra_params,
-                                StringPiece referer) {
+                                StringPiece extra_params) {
     GoogleString url;
     EscapeToJsStringLiteral(rewrite_driver()->google_url().Spec(), false, &url);
     GoogleString str = "pagespeed.addInstrumentationInit(";
     StrAppend(&str, "'", beacon_url, "', ");
     StrAppend(&str, "'", event, "', ");
     StrAppend(&str, "'", extra_params, "', ");
-    StrAppend(&str, "'", referer, "', ");
     StrAppend(&str, "'", url, "');");
     return str;
   }
@@ -105,7 +103,7 @@ TEST_F(AddInstrumentationFilterTest, ScriptInjection) {
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().http, "load", "", "")) !=
+          options()->beacon_url().http, "load", "")) !=
               GoogleString::npos);
 }
 
@@ -114,7 +112,7 @@ TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigation) {
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().http, "beforeunload", "", "")) !=
+          options()->beacon_url().http, "beforeunload", "")) !=
               GoogleString::npos);
 }
 
@@ -124,7 +122,7 @@ TEST_F(AddInstrumentationFilterTest, TestScriptInjectionWithHttps) {
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().https, "load", "", "")) !=
+          options()->beacon_url().https, "load", "")) !=
               GoogleString::npos);
 }
 
@@ -137,7 +135,7 @@ TEST_F(AddInstrumentationFilterTest,
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().https, "beforeunload", "", "")) !=
+          options()->beacon_url().https, "beforeunload", "")) !=
               GoogleString::npos);
 }
 
@@ -152,7 +150,7 @@ TEST_F(AddInstrumentationFilterTest, TestExperimentIdReporting) {
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().http, "load", "&exptid=2", "")) !=
+          options()->beacon_url().http, "load", "&exptid=2")) !=
               GoogleString::npos);
 }
 
@@ -162,7 +160,7 @@ TEST_F(AddInstrumentationFilterTest, TestExtendedInstrumentation) {
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().http, "load", "", "")) !=
+          options()->beacon_url().http, "load", "")) !=
               GoogleString::npos);
   EXPECT_TRUE(output_buffer_.find("getResourceTimingData=function()") !=
               GoogleString::npos);
@@ -181,20 +179,8 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(
-          options()->beacon_url().http, "load", "&hft=200&ft=500&s_ttfb=300",
-          "")) != GoogleString::npos) << output_buffer_;
-}
-
-// Test that header referer reporting is done correctly.
-TEST_F(AddInstrumentationFilterTest, TestHeadersReferer) {
-  RequestHeaders headers;
-  headers.Add(HttpAttributes::kReferer, "www.abc.com");
-  rewrite_driver()->SetRequestHeaders(headers);
-  RunInjection();
-  EXPECT_TRUE(output_buffer_.find(
-      CreateInitString(
-          options()->beacon_url().http, "load", "", "www.abc.com"))
-              != GoogleString::npos);
+          options()->beacon_url().http, "load", "&hft=200&ft=500&s_ttfb=300"))
+              != GoogleString::npos) << output_buffer_;
 }
 
 

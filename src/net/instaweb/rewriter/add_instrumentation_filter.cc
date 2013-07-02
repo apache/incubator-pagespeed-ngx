@@ -186,20 +186,10 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
                           false, /* no quotes */
                           &html_url);
 
-  const RequestHeaders* request_headers = driver_->request_headers();
-  GoogleString referer_url;
-  if (request_headers != NULL) {
-    const char* referer = request_headers->Lookup1(HttpAttributes::kReferer);
-    if (referer != NULL) {
-      referer_url = referer;
-    }
-  }
-
   GoogleString init_js = "\npagespeed.addInstrumentationInit(";
   StrAppend(&init_js, "'", *beacon_url, "', ");
   StrAppend(&init_js, "'", js_event, "', ");
   StrAppend(&init_js, "'", extra_params, "', ");
-  StrAppend(&init_js, "'", referer_url, "', ");
   StrAppend(&init_js, "'", html_url, "');");
 
   StrAppend(&js, init_js);
