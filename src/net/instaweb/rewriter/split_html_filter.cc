@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -288,11 +289,13 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
     scoped_ptr<GoogleUrl> gurl(
         rewrite_driver_->google_url().CopyAndAddQueryParam(
             HttpAttributes::kXSplit, HttpAttributes::kXSplitBelowTheFold));
+    GoogleString escaped_url;
+    EscapeToJsStringLiteral(gurl->PathAndLeaf(), false, &escaped_url);
     WriteString(StringPrintf(
         kSplitTwoChunkSuffixJsFormatString,
         HttpAttributes::kXPsaSplitConfig,
         GenerateCriticalLineConfigString().c_str(),
-        json.empty() ? "" : gurl->PathAndLeaf().data(),
+        json.empty() ? "" : escaped_url.c_str(),
         kLoadHiResImages,
         GetBlinkJsUrl(options_, static_asset_manager_).c_str()));
   }

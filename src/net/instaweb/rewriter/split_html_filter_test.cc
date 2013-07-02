@@ -265,13 +265,14 @@ TEST_F(SplitHtmlFilterTest,
   rewrite_driver()->AddOwnedEarlyPreRenderFilter(
       new SplitHtmlHelperFilter(rewrite_driver()));
 
-  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  Parse("split_with_pcache?\"test",
+        StrCat(kHtmlInputPart1, kHtmlInputPart2));
   GoogleString suffix(
       StringPrintf(
           SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
           HttpAttributes::kXPsaSplitConfig,
           "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],",
-          "/split_with_pcache.html?x_split=btf",
+          "/split_with_pcache?%22test.html&x_split=btf",
           SplitHtmlFilter::kLoadHiResImages,
           blink_js_url_));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix,
