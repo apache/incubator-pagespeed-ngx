@@ -29,6 +29,7 @@
 #include <set>
 
 #include "ngx_base_fetch.h"
+#include "ngx_caching_headers.h"
 #include "ngx_list_iterator.h"
 #include "ngx_message_handler.h"
 #include "ngx_request_context.h"
@@ -1762,6 +1763,17 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
 // Based on ngx_http_add_cache_control.
 ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
+  // First strip existing cache-control headers.
+  ngx_table_elt_t* header;
+  net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
+    if (STR_CASE_EQ_LITERAL(header->key, "Cache-Control")) {
+      // Response headers with hash of 0 are excluded from the response.
+      header->hash = 0;
+    }
+  }
+
+  // Now add our new cache control header.
   if (r->headers_out.cache_control.elts == NULL) {
     ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
                                   1, sizeof(ngx_table_elt_t *));
@@ -1980,7 +1992,9 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
 
   if (options->modify_caching_headers()) {
     // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
-    ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
+    net_instaweb::NgxCachingHeaders caching_headers(r);
+    ps_set_cache_control(r, string_piece_to_pool_string(
+        r->pool, caching_headers.GenerateDisabledCacheControl()));
 
     // Pagespeed html doesn't need etags: it should never be cached.
     ngx_http_clear_etag(r);

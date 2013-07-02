@@ -568,6 +568,12 @@ http {
     # As opposed to mod_pagespeed, our default for aris is 'on'
     pagespeed AvoidRenamingIntrospectiveJavascript off;
 
+    location /mod_pagespeed_test/nostore {
+      add_header "Cache-Control" "max-age=12345";
+      add_header "Cache-Control" "public, no-store";
+      add_header "Cache-Control" "max-age=14";
+    }
+
     location /mod_pagespeed_test/forbid_all_disabled/disabled {
       # Prevent the enabling of these filters for files in this directory
       # -and- all subdirectories.
