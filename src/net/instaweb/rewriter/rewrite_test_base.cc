@@ -387,9 +387,8 @@ void RewriteTestBase::DefaultResponseHeaders(
     const ContentType& content_type, int64 ttl_sec,
     ResponseHeaders* response_headers) {
   SetDefaultLongCacheHeaders(&content_type, response_headers);
-  response_headers->Replace(HttpAttributes::kCacheControl,
-                           StrCat("public, max-age=",
-                                  Integer64ToString(ttl_sec)));
+  response_headers->SetDateAndCaching(
+      timer()->NowMs(), ttl_sec * Timer::kSecondMs, ", public");
   response_headers->ComputeCaching();
 }
 

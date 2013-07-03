@@ -2548,7 +2548,7 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
   for (int i = 0; i < 2 * kThresh; ++i) {
     GoogleString file_name = IntegerToString(i);
     SetResponseWithDefaultHeaders(
-        file_name, kContentTypeCss, kCss, Timer::kYearMs * Timer::kSecondMs);
+        file_name, kContentTypeCss, kCss, Timer::kYearMs / Timer::kSecondMs);
   }
 
   // We use a sync point here to wedge the combining filter, and then have

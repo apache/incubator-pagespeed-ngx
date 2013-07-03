@@ -1953,4 +1953,15 @@ TEST_F(ServerContextTest, TestRefererNonBackgroundFetchWithDriverRefer) {
   EXPECT_EQ(kReferer, mock_url_fetcher()->last_referer());
 }
 
+// Regression test for RewriteTestBase::DefaultResponseHeaders, which is based
+// on ServerContext methods. It used to not set 'Expires' correctly.
+TEST_F(ServerContextTest, RewriteTestBaseDefaultResponseHeaders) {
+  ResponseHeaders headers;
+  DefaultResponseHeaders(kContentTypeCss, 100 /* ttl_sec */, &headers);
+  int64 expire_time_ms = 0;
+  ASSERT_TRUE(
+      headers.ParseDateHeader(HttpAttributes::kExpires, &expire_time_ms));
+  EXPECT_EQ(timer()->NowMs() + 100 * Timer::kSecondMs, expire_time_ms);
+}
+
 }  // namespace net_instaweb
