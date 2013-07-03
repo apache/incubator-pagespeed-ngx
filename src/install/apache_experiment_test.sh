@@ -47,9 +47,9 @@ check_not_from "$OUT" fgrep 'PageSpeedExperiment='
 
 start_test The beacon should include the experiment id.
 OUT=$($WGET_DUMP --header='Cookie: PageSpeedExperiment=2' $EXTEND_CACHE)
-check_from "$OUT" grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon', 'load', '&exptid=2', '', 'http://localhost[:0-9]*/mod_pagespeed_example/extend_cache.html');"
+check_from "$OUT" grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon', 'load', '&exptid=2', 'http://localhost[:0-9]*/mod_pagespeed_example/extend_cache.html');"
 OUT=$($WGET_DUMP --header='Cookie: PageSpeedExperiment=7' $EXTEND_CACHE)
-check_from "$OUT" grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon', 'load', '&exptid=7', '', 'http://localhost[:0-9]*/mod_pagespeed_example/extend_cache.html');"
+check_from "$OUT" grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon', 'load', '&exptid=7', 'http://localhost[:0-9]*/mod_pagespeed_example/extend_cache.html');"
 
 start_test The no-experiment group beacon should not include an experiment id.
 OUT=$($WGET_DUMP --header='Cookie: PageSpeedExperiment=0' $EXTEND_CACHE)
