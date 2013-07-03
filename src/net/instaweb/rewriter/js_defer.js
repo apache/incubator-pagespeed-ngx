@@ -1059,8 +1059,12 @@ deferJsNs.DeferJs.prototype.setUp = function() {
   if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {
     // TODO(ksimbili): Support IE8
     document.getElementsByTagName = function(tagName) {
+      try {
       return document.querySelectorAll(
           tagName + ':not([' + me.psaNotProcessed_ + '])');
+      } catch (err) {
+        return me.origGetElementsByTagName_.call(document, tagName);
+      }
     }
   }
 
