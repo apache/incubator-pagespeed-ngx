@@ -349,7 +349,7 @@ enum Response {
   kStatistics,
   kMessages,
   kPagespeedSubrequest,
-  kNotHeadOrGet,
+  kUnsupportedRequestMethod,
   kErrorResponse,
 };
 }  // namespace CreateRequestContext
@@ -1507,8 +1507,12 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kBeacon;
   }
 
-  if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
-    return CreateRequestContext::kNotHeadOrGet;
+  if (r->method == NGX_HTTP_POST) {
+    if (is_resource_fetch) {
+      return CreateRequestContext::kUnsupportedRequestMethod;
+    }
+  } else if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+    return CreateRequestContext::kUnsupportedRequestMethod;
   }
 
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
@@ -1924,7 +1928,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedSubrequest:
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
-    case CreateRequestContext::kNotHeadOrGet:
+    case CreateRequestContext::kUnsupportedRequestMethod:
     case CreateRequestContext::kErrorResponse:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
@@ -2482,7 +2486,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
     case CreateRequestContext::kPagespeedSubrequest:
-    case CreateRequestContext::kNotHeadOrGet:
+    case CreateRequestContext::kUnsupportedRequestMethod:
     case CreateRequestContext::kErrorResponse:
       return NGX_DECLINED;
     case CreateRequestContext::kBeacon:
