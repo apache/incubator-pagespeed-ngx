@@ -70,7 +70,7 @@ extern ngx_module_t ngx_pagespeed;
 #define DBG(r, args...)                                       \
   ngx_log_error(NGX_LOG_DEBUG, (r)->connection->log, 0, args)
 #define PDBG(ctx, args...)                                       \
-  ngx_log_error(NGX_LOG_DEBUG, (ctx)->pagespeed_connection->log, 0, args)
+  ngx_log_error(NGX_LOG_DEBUG, (ctx)->r->connection->log, 0, args)
 #define CDBG(cf, args...)                                     \
   ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
 
@@ -340,7 +340,7 @@ ngx_int_t ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev);
 
 void ps_connection_read_handler(ngx_event_t* ev);
 
-ngx_int_t ps_create_connection(ps_request_ctx_t* ctx);
+ngx_int_t ps_create_connection(ps_request_ctx_t* ctx, int fd);
 
 namespace CreateRequestContext {
 enum Response {
@@ -367,6 +367,8 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
                           ps_request_ctx_t* ctx,
                           ps_srv_conf_t* cfg_s,
                           ngx_chain_t* in);
+
+ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
@@ -779,20 +781,15 @@ void ps_release_request_context(void* data) {
     ctx->base_fetch = NULL;
   }
 
+  if (ctx->pagespeed_connection != NULL) {
+    // Tell pagespeed connection ctx has been released.
+    ctx->pagespeed_connection->error = 1;
+  }
+
+
   if (ctx->inflater_ != NULL) {
     delete ctx->inflater_;
     ctx->inflater_ = NULL;
-  }
-
-  // Close the connection, delete the events attached with it, and free it to
-  // Nginx's connection pool
-  if (ctx->pagespeed_connection != NULL) {
-    ngx_close_connection(ctx->pagespeed_connection);
-    ctx->pipe_fd = -1;
-  }
-
-  if (ctx->pipe_fd != -1) {
-    close(ctx->pipe_fd);
   }
 
   delete ctx;
@@ -915,171 +912,137 @@ ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
       ngx_http_get_module_ctx(r, ngx_pagespeed));
 }
 
-// Returns:
-//   NGX_OK: pagespeed is done, request complete
-//   NGX_AGAIN: pagespeed still working, needs to be called again later
-//   NGX_ERROR: error
-ngx_int_t ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
-  bool done;
-  int rc;
-  char chr;
-  do {
-    rc = read(ctx->pipe_fd, &chr, 1);
-  } while (rc == -1 && errno == EINTR);  // Retry on EINTR.
+ngx_int_t ps_async_wait_response(ngx_http_request_t *r) {
+  ps_request_ctx_t *ctx = ps_get_request_context(r);
+  CHECK(ctx != NULL);
 
-  // read() should only ever return 0 (closed), 1 (data), or -1 (error).
-  CHECK(rc == -1 || rc == 0 || rc == 1);
+  r->count++;
+  r->write_event_handler = ngx_http_request_empty_handler;
+  ps_set_buffered(r, true);
+  // We don't need to add a timer here, as it will be set by nginx.
+  return NGX_DONE;
+}
 
-  if (rc == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      PDBG(ctx, "no data to read from pagespeed yet");
-      return NGX_AGAIN;
-    } else {
-      perror("ps_connection_read_handler");
-      return NGX_ERROR;
-    }
-  } else {
-    // We're done iff we read 0 bytes because that means the pipe was closed.
-    done = (rc == 0);
-  }
+ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+  ngx_int_t rc;
+  ngx_chain_t *cl = NULL;
 
-  // Get output from pagespeed.
-  if (ctx->is_resource_fetch && !ctx->sent_headers) {
-    // For resource fetches, the first pipe-byte tells us headers are available
-    // for fetching.
-    rc = ctx->base_fetch->CollectHeaders(&ctx->r->headers_out);
-    if (rc != NGX_OK) {
-      PDBG(ctx, "problem with CollectHeaders");
-      return rc;
-    }
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "ps fetch handler: %V", &r->uri);
 
-    ngx_http_send_header(ctx->r);
-    ctx->sent_headers = true;
-  } else {
-    // For proxy fetches and subsequent resource fetch pipe-bytes, the response
-    // body is available for (partial) fetching.
-    ngx_chain_t* cl;
-    rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
-    if (rc != NGX_OK) {
-      PDBG(ctx, "problem with CollectAccumulatedWrites");
-      return rc;
-    }
-
-    PDBG(ctx, "pagespeed update: %p, done: %d", cl, done);
-
-    if (cl == NULL) {
-      rc = string_piece_to_buffer_chain(
-          ctx->r->pool, "", &cl, false /* send_last_buf */);
-      if (rc != NGX_OK) {
-        PDBG(ctx, "problem with string_piece_to_buffer_chain");
-        return rc;
+  if (!r->header_sent) {
+    // collect response headers from pagespeed
+    if (ctx->is_resource_fetch || ctx->modify_headers) {
+      ngx_http_clean_header(r);
+      rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
+      if (rc == NGX_ERROR) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
       }
     }
-    // Pass the optimized content along to later body filters.
-    // From Weibin: This function should be called mutiple times. Store the
-    // whole file in one chain buffers is too aggressive. It could consume
-    // too much memory in busy servers.
-    rc = ngx_http_next_body_filter(ctx->r, cl);
-    if (rc == NGX_AGAIN && done) {
-      ctx->write_pending = 1;
-      return NGX_OK;
+
+    // send response headers
+    rc = ngx_http_next_header_filter(r);
+
+    // standard nginx send header check see ngx_http_send_response
+    if (rc == NGX_ERROR || rc > NGX_OK) {
+      return ngx_http_filter_finalize_request(r, NULL, rc);
     }
 
-    if (rc != NGX_OK) {
+    ctx->write_pending = (rc == NGX_AGAIN);
+
+    if (r->header_only) {
+      ctx->fetch_done = true;
       return rc;
     }
+    ps_set_buffered(r, true);
   }
 
-  return done ? NGX_OK : NGX_AGAIN;
-}
+  // collect response body from pagespeed
+  // Pass the optimized content along to later body filters.
+  // From Weibin: This function should be called mutiple times. Store the
+  // whole file in one chain buffers is too aggressive. It could consume
+  // too much memory in busy servers.
 
-void ps_writer(ngx_http_request_t* r) {
-  ngx_connection_t* c = r->connection;
-  ngx_event_t* wev = c->write;
+  rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
+  PDBG(ctx, "CollectAccumulatedWrites, %d", rc);
 
-  ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
-                 "http pagespeed writer handler: \"%V?%V\"",
-                 &r->uri, &r->args);
-
-  if (wev->timedout) {
-    ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
-                  "client timed out");
-    c->timedout = 1;
-
-    ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
-    return;
+  if (rc == NGX_ERROR) {
+    ps_set_buffered(r, false);
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  int rc = ngx_http_next_body_filter(r, NULL);
-  ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                 "http pagespeed writer output filter: %d, \"%V?%V\"",
-                 rc, &r->uri, &r->args);
-  if (rc == NGX_AGAIN) {
-    return;
+  if (rc == NGX_AGAIN && cl == NULL) {
+    // there is no body buffer to send now.
+    return NGX_AGAIN;
   }
 
-  r->write_event_handler = ngx_http_request_empty_handler;
-  ngx_http_finalize_request(r, rc);
-}
-
-ngx_int_t ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r) {
-  r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
-
-  r->read_event_handler = ngx_http_request_empty_handler;
-  r->write_event_handler = ps_writer;
-
-  ngx_event_t* wev = r->connection->write;
-  ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
-      ngx_http_get_module_loc_conf(r, ngx_http_core_module));
-  ngx_add_timer(wev, clcf->send_timeout);
-
-  if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
-    return NGX_ERROR;
+  if (rc == NGX_OK) {
+    ps_set_buffered(r, false);
+    ctx->fetch_done = true;
   }
 
-  return NGX_OK;
+  return ps_base_fetch_filter(r, cl);
 }
 
 void ps_connection_read_handler(ngx_event_t* ev) {
   CHECK(ev != NULL);
-
   ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
   CHECK(c != NULL);
 
-  ps_request_ctx_t* ctx =
-      static_cast<ps_request_ctx_t*>(c->data);
-  CHECK(ctx != NULL);
+  int rc;
 
-  int rc = ps_update(ctx, ev);
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
-                 "http pagespeed connection read handler rc: %d", rc);
+  // request has been finalized, do nothing just clear the pipe
+  if (c->error) {
+    do {
+      char chr[256];
+      rc = read(c->fd, chr, 256);
+    } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
 
-  if (rc == NGX_AGAIN) {
-    // Request needs more work by pagespeed.
-    rc = ngx_handle_read_event(ev, 0);
-    CHECK(rc == NGX_OK);
-  } else if (rc == NGX_OK) {
-    // Pagespeed is done.  Stop watching the pipe.  If we still have data to
-    // write, set a write handler so we can get called back to make our write.
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    ps_set_buffered(ctx->r, false);
-    if (ctx->write_pending) {
-      if (ngx_http_set_pagespeed_write_handler(ctx->r) != NGX_OK) {
-        ngx_http_finalize_request(ctx->r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-      }
-    } else {
-      ngx_http_finalize_request(ctx->r, NGX_DONE);
+    if (rc == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      return;
     }
-  } else if (rc == NGX_ERROR) {
-    ngx_http_finalize_request(ctx->r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-  } else {
-    CHECK(false);
+
+    // write peer close or error occur
+    ngx_close_connection(c);
+    return;
   }
+
+  ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(c->data);
+  CHECK(ctx != NULL);
+  ngx_http_request_t *r = ctx->r;
+  CHECK(r != NULL);
+
+  // clear the pipe
+  do {
+    char chr[256];
+    rc = read(c->fd, chr, 256);
+  } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
+
+  if (rc == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    ctx->pagespeed_connection = NULL;
+    ngx_close_connection(c);
+    return ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+  }
+
+  // AGAIN or rc == 0
+
+  if (rc == 0) {
+    // Close the pipe here to avoid SIGPIPE
+    // Done will be check in RequestCollection.
+    ctx->pagespeed_connection = NULL;
+    ngx_close_connection(c);
+  }
+
+  if (ctx->fetch_done) {
+    return;
+  }
+
+  ngx_http_finalize_request(r, ps_base_fetch_handler(r));
 }
 
-ngx_int_t ps_create_connection(ps_request_ctx_t* ctx) {
-  ngx_connection_t* c = ngx_get_connection(
-      ctx->pipe_fd, ctx->r->connection->log);
+ngx_int_t ps_create_connection(ps_request_ctx_t* ctx, int pipe_fd) {
+  ngx_connection_t* c = ngx_get_connection(pipe_fd, ctx->r->connection->log);
   if (c == NULL) {
     return NGX_ERROR;
   }
@@ -1520,6 +1483,7 @@ CreateRequestContext::Response ps_create_request_context(
   }
 
   int file_descriptors[2];
+
   int rc = pipe(file_descriptors);
   if (rc != 0) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pipe() failed");
@@ -1529,25 +1493,29 @@ CreateRequestContext::Response ps_create_request_context(
   if (ngx_nonblocking(file_descriptors[0]) == -1) {
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
                   ngx_nonblocking_n " pipe[0] failed");
+    close(file_descriptors[0]);
+    close(file_descriptors[1]);
     return CreateRequestContext::kError;
   }
 
   if (ngx_nonblocking(file_descriptors[1]) == -1) {
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
                   ngx_nonblocking_n " pipe[1] failed");
+    close(file_descriptors[0]);
+    close(file_descriptors[1]);
     return CreateRequestContext::kError;
   }
 
   ps_request_ctx_t* ctx = new ps_request_ctx_t();
 
   ctx->r = r;
-  ctx->pipe_fd = file_descriptors[0];
   ctx->is_resource_fetch = is_resource_fetch;
   ctx->write_pending = false;
   ctx->pagespeed_connection = NULL;
 
-  rc = ps_create_connection(ctx);
+  rc = ps_create_connection(ctx, file_descriptors[0]);
   if (rc != NGX_OK) {
+    close(file_descriptors[0]);
     close(file_descriptors[1]);
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "ps_create_request_context: "
@@ -1713,6 +1681,30 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   }
 }
 
+ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+
+  if (ctx == NULL || ctx->base_fetch == NULL) {
+    return ngx_http_next_body_filter(r, in);
+  }
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed write filter \"%V\"", &r->uri);
+
+  // send response body
+  if (in || ctx->write_pending) {
+    ngx_int_t rc = ngx_http_next_body_filter(r, in);
+    ctx->write_pending = (rc == NGX_AGAIN);
+    if (rc == NGX_OK && !ctx->fetch_done) {
+      return NGX_AGAIN;
+    }
+    return rc;
+  }
+
+  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
+}
+
+
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
@@ -1738,7 +1730,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   CHECK(r->err_status == 0);                                         // NOLINT
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http pagespeed filter \"%V\"", &r->uri);
+                 "http pagespeed body filter \"%V\"", &r->uri);
 
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
@@ -1755,8 +1747,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     ps_send_to_pagespeed(r, ctx, cfg_s, in);
   }
 
-  ps_set_buffered(r, true);
-  return NGX_AGAIN;
+  return ps_base_fetch_filter(r, NULL);
 }
 
 #ifndef ngx_http_clear_etag
@@ -1995,43 +1986,12 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   }
 
   const net_instaweb::RewriteOptions* options = ctx->driver->options();
-
   ps_strip_html_headers(r);
+  ctx->modify_headers = options->modify_caching_headers();
 
-  if (options->modify_caching_headers()) {
-    // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
-    net_instaweb::NgxCachingHeaders caching_headers(r);
-    ps_set_cache_control(r, string_piece_to_pool_string(
-        r->pool, caching_headers.GenerateDisabledCacheControl()));
-
-    // Pagespeed html doesn't need etags: it should never be cached.
-    ngx_http_clear_etag(r);
-
-    // An html page may change without the underlying file changing, because of
-    // how resources are included.  Pagespeed adds cache control headers for
-    // resources instead of using the last modified header.
-    ngx_http_clear_last_modified(r);
-  }
-
+  ps_set_buffered(r, true);
   r->filter_need_in_memory = 1;
-
-  // Set the "X-Page-Speed: VERSION" header.
-  ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(
-      ngx_list_push(&r->headers_out.headers));
-  if (x_pagespeed == NULL) {
-    return NGX_ERROR;
-  }
-  // Tell ngx_http_header_filter_module to include this header in the response.
-  x_pagespeed->hash = 1;
-
-  ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
-  // It's safe to use c_str here because once we're handling requests the
-  // rewrite options are frozen and won't change out from under us.
-  x_pagespeed->value.data = reinterpret_cast<u_char*>(const_cast<char*>(
-      options->x_header_value().c_str()));
-  x_pagespeed->value.len = options->x_header_value().size();
-
-  return ngx_http_next_header_filter(r);
+  return NGX_AGAIN;
 }
 
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
@@ -2521,9 +2481,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
-  // Tell nginx we're still working on this one.
-  r->count++;
-  return NGX_DONE;
+  return ps_async_wait_response(r);
 }
 
 ngx_int_t ps_phase_handler(ngx_http_request_t *r,
@@ -2547,6 +2505,54 @@ ngx_int_t ps_phase_handler(ngx_http_request_t *r,
   ngx_http_finalize_request(r, rc);
   return NGX_OK;
 }
+
+namespace fix_headers {
+ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+
+ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t *r) {
+  ps_request_ctx_t *ctx = ps_get_request_context(r);
+  if (r != r->main || ctx == NULL
+      || !ctx->modify_headers || ctx->is_resource_fetch) {
+    return ngx_http_next_header_filter(r);
+  }
+
+  // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
+  net_instaweb::NgxCachingHeaders caching_headers(r);
+  ps_set_cache_control(r, string_piece_to_pool_string(
+      r->pool, caching_headers.GenerateDisabledCacheControl()));
+
+  // Pagespeed html doesn't need etags: it should never be cached.
+  ngx_http_clear_etag(r);
+
+  // An html page may change without the underlying file changing, because of
+  // how resources are included.  Pagespeed adds cache control headers for
+  // resources instead of using the last modified header.
+  ngx_http_clear_last_modified(r);
+
+  // Clear expires
+  if (r->headers_out.expires) {
+    r->headers_out.expires->hash = 0;
+    r->headers_out.expires = NULL;
+  }
+
+  // ngx_http_header_filter will set up correct date header
+  if (r->headers_out.date) {
+    r->headers_out.date->hash = 0;
+    r->headers_out.date = NULL;
+  }
+
+  return ngx_http_next_header_filter(r);
+}
+
+void ps_html_rewrite_fix_headers_filter_init() {
+  ngx_http_next_header_filter = ngx_http_top_header_filter;
+  ngx_http_top_header_filter = ps_html_rewrite_fix_headers_filter;
+}
+
+}  // namespace fix_headers
+
+using fix_headers::ps_html_rewrite_fix_headers_filter_init;
+
 
 // preaccess_handler should be at generic phase before try_files
 ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
@@ -2604,6 +2610,8 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
   // filter, and content handler will run in every server block.  This is ok,
   // because they will notice that the server context is NULL and do nothing.
   if (cfg_m->driver_factory != NULL) {
+    ps_html_rewrite_fix_headers_filter_init();
+
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_header_filter;
 
