@@ -84,12 +84,13 @@ typedef struct {
   net_instaweb::NgxBaseFetch* base_fetch;
   net_instaweb::RewriteDriver* driver;
   bool data_received;
-  int pipe_fd;
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
   bool is_resource_fetch;
   bool sent_headers;
   bool write_pending;
+  bool fetch_done;
+  bool modify_headers;
   net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 

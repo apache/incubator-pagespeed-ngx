@@ -101,9 +101,12 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
   return true;
 }
 
+// should only be called in nginx thread
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   if (done_called_ && last_buf_sent_) {
-    return NGX_DECLINED;
+    // OK means HandleDone has been called
+    *link_ptr = NULL;
+    return NGX_OK;
   }
 
   int rc = ngx_psol::string_piece_to_buffer_chain(
@@ -117,23 +120,21 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 
   if (done_called_) {
     last_buf_sent_ = true;
+    return NGX_OK;
   }
 
-  return NGX_OK;
+  return NGX_AGAIN;
 }
 
 // There may also be a race condition if this is called between the last Write()
 // and Done() such that we're sending an empty buffer with last_buf set, which I
 // think nginx will reject.
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
+  ngx_int_t rc = NGX_DECLINED;
+  *link_ptr = NULL;
   Lock();
-  ngx_int_t rc = CopyBufferToNginx(link_ptr);
+  rc = CopyBufferToNginx(link_ptr);
   Unlock();
-
-  if (rc == NGX_DECLINED) {
-    *link_ptr = NULL;
-    return NGX_OK;
-  }
   return rc;
 }
 
