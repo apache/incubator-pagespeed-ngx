@@ -313,8 +313,6 @@ typedef struct {
   net_instaweb::MessageHandler* handler;
 } ps_loc_conf_t;
 
-ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
-
 void* ps_create_srv_conf(ngx_conf_t* cf);
 
 char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
