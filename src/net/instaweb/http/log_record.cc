@@ -363,7 +363,12 @@ void AbstractLogRecord::LogImageBackgroundRewriteActivity(
     bool is_recompressed,
     ImageType original_image_type,
     ImageType optimized_image_type,
-    bool is_resized) {
+    bool is_resized,
+    int original_width,
+    int original_height,
+    bool is_resized_using_rendered_dimensions,
+    int resized_width,
+    int resized_height) {
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
     return;
@@ -403,6 +408,12 @@ void AbstractLogRecord::LogImageBackgroundRewriteActivity(
   }
 
   image_rewrite_resource_info->set_is_resized(is_resized);
+  image_rewrite_resource_info->set_original_width(original_width);
+  image_rewrite_resource_info->set_original_height(original_height);
+  image_rewrite_resource_info->set_is_resized_using_rendered_dimensions(
+      is_resized_using_rendered_dimensions);
+  image_rewrite_resource_info->set_resized_width(resized_width);
+  image_rewrite_resource_info->set_resized_height(resized_height);
 }
 
 void AbstractLogRecord::SetBackgroundRewriteInfo(

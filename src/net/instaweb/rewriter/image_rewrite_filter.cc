@@ -254,7 +254,12 @@ void LogImageBackgroundRewriteActivity(
     bool is_recompressed,
     ImageType original_image_type,
     ImageType optimized_image_type,
-    bool is_resized) {
+    bool is_resized,
+    int original_width,
+    int original_height,
+    bool is_resized_using_rendered_dimensions,
+    int resized_width,
+    int resized_height) {
   const RewriteOptions* options = driver->options();
   if (!options->log_background_rewrites()) {
     return;
@@ -270,7 +275,8 @@ void LogImageBackgroundRewriteActivity(
   // Write log for background rewrites.
   log_record->LogImageBackgroundRewriteActivity(status, url, id, original_size,
       optimized_size, is_recompressed, original_image_type,
-      optimized_image_type, is_resized);
+      optimized_image_type, is_resized, original_width, original_height,
+      is_resized_using_rendered_dimensions, resized_width, resized_height);
 }
 
 }  // namespace
@@ -280,14 +286,17 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   Context(int64 css_image_inline_max_bytes,
           ImageRewriteFilter* filter, RewriteDriver* driver,
           RewriteContext* parent, ResourceContext* resource_context,
-          bool is_css, int html_index, bool in_noscript_element)
+          bool is_css, int html_index, bool in_noscript_element,
+          bool is_resized_using_rendered_dimensions)
       : SingleRewriteContext(driver, parent, resource_context),
         css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
         driver_(driver),
         is_css_(is_css),
         html_index_(html_index),
-        in_noscript_element_(in_noscript_element) {}
+        in_noscript_element_(in_noscript_element),
+        is_resized_using_rendered_dimensions_(
+            is_resized_using_rendered_dimensions) {}
   virtual ~Context() {}
 
   virtual void Render();
@@ -314,6 +323,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   bool is_css_;
   const int html_index_;
   bool in_noscript_element_;
+  bool is_resized_using_rendered_dimensions_;
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
@@ -1028,11 +1038,16 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
                                  static_cast<unsigned>(image->output_size()));
   }
 
+  const ImageDim& post_resize_dim =
+      resource_context.desired_image_dims();
   LogImageBackgroundRewriteActivity(driver(),
       rewrite_result == kRewriteOk ?
           RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED,
       input_resource->url(), LoggingId(), original_size, optimized_size,
-      is_recompressed, original_image_type, optimized_image_type, is_resized);
+      is_recompressed, original_image_type, optimized_image_type, is_resized,
+      image_width, image_height,
+      rewrite_context->is_resized_using_rendered_dimensions_,
+      post_resize_dim.width(), post_resize_dim.height());
 
   return rewrite_result;
 }
@@ -1143,6 +1158,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                               HtmlElement::Attribute* src) {
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
   const RewriteOptions* options = driver_->options();
+  bool is_resized_using_rendered_dimensions = false;
 
   // In case of RewriteOptions::image_preserve_urls() we do not want to use
   // image dimension information from HTML/CSS.
@@ -1150,7 +1166,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
        options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions))&&
       !driver_->options()->image_preserve_urls()) {
     ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
-    GetDimensions(element, desired_dim, src);
+    GetDimensions(element, desired_dim, src,
+                  &is_resized_using_rendered_dimensions);
     if ((desired_dim->width() == 0 || desired_dim->height() == 0 ||
          (desired_dim->width() == 1 && desired_dim->height() == 1))) {
       // This is either a beacon image, or an attempt to prefetch.  Drop the
@@ -1178,7 +1195,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                    this, driver_, NULL /*not nested */,
                                    resource_context.release(),
                                    false /*not css */, image_counter_++,
-                                   noscript_element() != NULL);
+                                   noscript_element() != NULL,
+                                   is_resized_using_rendered_dimensions);
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
     if (driver_->options()->image_preserve_urls()) {
@@ -1522,13 +1540,17 @@ bool ImageRewriteFilter::ParseDimensionAttribute(
   return true;
 }
 
-void ImageRewriteFilter::GetDimensions(HtmlElement* element,
-                                       ImageDim* page_dim,
-                                       const HtmlElement::Attribute* src) {
+void ImageRewriteFilter::GetDimensions(
+    HtmlElement* element,
+    ImageDim* page_dim,
+    const HtmlElement::Attribute* src,
+    bool* is_resized_using_rendered_dimensions) {
   css_util::StyleExtractor extractor(element);
   css_util::DimensionState state = extractor.state();
   int32 width = extractor.width();
   int32 height = extractor.height();
+  int32 rendered_width = 0;
+  int32 rendered_height = 0;
   // If the image has rendered dimensions stored in the property cache, update
   // the desired image dimensions.
   if (driver_->options()->Enabled(
@@ -1543,10 +1565,8 @@ void ImageRewriteFilter::GetDimensions(HtmlElement* element,
         if (iterator != rendered_images_map_->end()) {
           std::pair<int32, int32> &dimensions = iterator->second;
           if (dimensions.first != 0 && dimensions.second != 0) {
-            image_resized_using_rendered_dimensions_->Add(1);
-            page_dim->set_width(dimensions.first);
-            page_dim->set_height(dimensions.second);
-            return;
+            rendered_width = dimensions.first;
+            rendered_height = dimensions.second;
           }
         }
       }
@@ -1576,6 +1596,22 @@ void ImageRewriteFilter::GetDimensions(HtmlElement* element,
       SetWidthFromAttribute(element, page_dim);
       SetHeightFromAttribute(element, page_dim);
       break;
+  }
+
+  // If the area of image using rendered dimensions is less than the dimensions
+  // from the style or image tag attributes, then only resize using rendered
+  // dimensions.
+  int64 rendered_area = rendered_width * rendered_height;
+  int64 image_attribute_area = page_dim->width() * page_dim->height();
+  // Note: we check for image_attribute_area = 1 (-1 * -1 = 1) when we have
+  // -1(unset) for both height and width from the image attributes.
+  if (rendered_area != 0 && ((image_attribute_area != 1 &&
+       rendered_area < image_attribute_area) ||
+      (image_attribute_area == 1))) {
+    page_dim->set_width(rendered_width);
+    page_dim->set_height(rendered_height);
+    *is_resized_using_rendered_dimensions = true;
+    image_resized_using_rendered_dimensions_->Add(1);
   }
 }
 
@@ -1675,7 +1711,8 @@ RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
                      this, driver_, NULL /*not nested */,
                      resource_context, false /*not css */,
                      kNotCriticalIndex,
-                     false /*not in noscript */);
+                     false /*not in noscript */,
+                     false /*not resized by rendered dimensions*/);
 }
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
@@ -1701,7 +1738,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
                                  this, NULL /* driver*/, parent,
                                  cloned_context, true /*is css */,
                                  kNotCriticalIndex,
-                                 false /*not in noscript */);
+                                 false /*not in noscript */,
+                                 false /*not resized by rendered dimensions*/);
   context->AddSlot(slot);
   return context;
 }
@@ -1716,7 +1754,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
   }
   Context* context = new Context(
       0 /*No Css inling */, this, NULL /* driver */, parent, resource_context,
-      false /*not css */, kNotCriticalIndex, false /*not in noscript */);
+      false /*not css */, kNotCriticalIndex, false /*not in noscript */,
+      false /*not resized by rendered dimensions*/);
   context->AddSlot(slot);
   return context;
 }

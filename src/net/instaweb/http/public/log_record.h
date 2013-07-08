@@ -121,7 +121,12 @@ class AbstractLogRecord  {
       bool is_recompressed,
       ImageType original_image_type,
       ImageType optimized_image_type,
-      bool is_resized);
+      bool is_resized,
+      int original_width,
+      int original_height,
+      bool is_resized_using_rendered_dimensions,
+      int resized_width,
+      int resized_height);
 
   // Atomically sets is_html_response in the logging proto.
   void SetIsHtml(bool is_html);

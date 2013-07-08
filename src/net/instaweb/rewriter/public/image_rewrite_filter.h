@@ -225,10 +225,13 @@ class ImageRewriteFilter : public RewriteFilter {
                        const ImageType image_type,
                        CachedResult* cached);
 
-  // Populates width and height with the attributes specified in the
-  // image tag (including in an inline style attribute).
+  // Populates width and height from either the attributes specified in the
+  // image tag (including in an inline style attribute) or from the rendered
+  // dimensions and sets is_resized_using_rendered_dimensions to true if
+  // dimensions are taken from rendered dimensions.
   void GetDimensions(HtmlElement* element, ImageDim* page_dim,
-                     const HtmlElement::Attribute* src);
+                     const HtmlElement::Attribute* src,
+                     bool* is_resized_using_rendered_dimensions);
 
   // Returns true if there is either a width or height attribute specified,
   // even if they're not parsable.
