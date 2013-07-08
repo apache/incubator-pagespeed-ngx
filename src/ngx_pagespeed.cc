@@ -1505,7 +1505,9 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kBeacon;
   }
 
-  if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+  if (is_resource_fetch &&
+      r->method != NGX_HTTP_GET &&
+      r->method != NGX_HTTP_HEAD) {
     return CreateRequestContext::kNotHeadOrGet;
   }
 
