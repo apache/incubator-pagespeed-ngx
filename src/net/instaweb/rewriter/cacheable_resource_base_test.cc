@@ -18,15 +18,17 @@
 
 #include "net/instaweb/rewriter/public/cacheable_resource_base.h"
 
-#include "base/logging.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for Resource, etc
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"  // for GoogleString
@@ -36,73 +38,25 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
-class RewriteOptions;
-
 namespace {
 
-const char kTestUrl[] = "http://www.example.com";
+const char kTestUrl[] = "http://www.example.com/";
 const char kContent[] = "content!";
 
 class TestResource : public CacheableResourceBase {
  public:
-  explicit TestResource(ServerContext* context)
-      : CacheableResourceBase("test", context, NULL),
-        cache_control_("public,max-age=1000"),
-        load_calls_(0),
-        freshen_calls_(0),
-        fail_fetch_(false) {}
+  explicit TestResource(RewriteDriver* rewrite_driver)
+      : CacheableResourceBase("test", rewrite_driver, NULL) {
+  }
 
   static void InitStats(Statistics* stats) {
     CacheableResourceBase::InitStats("test", stats);
   }
 
   virtual GoogleString url() const { return kTestUrl; }
-  virtual const RewriteOptions* rewrite_options() const {
-    return server_context()->global_options();
-  }
 
-  virtual void LoadAndSaveToCache(NotCacheablePolicy not_cacheable_policy,
-                                  AsyncCallback* callback,
-                                  MessageHandler* message_handler) {
-    ++load_calls_;
-    if (fail_fetch_) {
-      server_context()->http_cache()->RememberFetchFailed(
-          kTestUrl, message_handler);
-      callback->Done(false /* no lock trouble*/, false);
-      return;
-    }
-
-    ResponseHeaders response_headers;
-    server_context()->SetDefaultLongCacheHeaders(
-        &kContentTypeText, &response_headers);
-    response_headers.RemoveAll(HttpAttributes::kCacheControl);
-    response_headers.Add(HttpAttributes::kCacheControl, cache_control_);
-    response_headers.ComputeCaching();
-
-    bool cacheable = !server_context()->http_cache()->IsAlreadyExpired(
-                         NULL, response_headers);
-
-    HTTPValue result;
-    result.Write(kContent, message_handler);
-    result.SetHeaders(&response_headers);
-    EXPECT_TRUE(Link(&result, message_handler));
-
-    if (cacheable) {
-      server_context()->http_cache()->Put(kTestUrl, &result, message_handler);
-    } else {
-      server_context()->http_cache()->RememberNotCacheable(
-          kTestUrl, true, message_handler);
-    }
-
-    bool ok = cacheable || (not_cacheable_policy == kLoadEvenIfNotCacheable);
-
-    callback->Done(false /* no lock trouble*/, ok);
-  }
-
-  virtual void Freshen(FreshenCallback* callback, MessageHandler* handler) {
-    CHECK(callback == NULL) << "Non-null Callback Freshen unimplemented";
-    ++freshen_calls_;
+  virtual bool IsValidAndCacheableImpl(const ResponseHeaders& headers) const {
+    return !server_context()->http_cache()->IsAlreadyExpired(NULL, headers);
   }
 
   // Wipe any loaded values, but not the configuration.
@@ -113,18 +67,32 @@ class TestResource : public CacheableResourceBase {
     Link(&empty_value, server_context()->message_handler());
     LinkFallbackValue(&empty_value);
   }
+};
 
-  int load_calls() const { return load_calls_; }
-  int freshen_calls() const { return freshen_calls_; }
+class MockFreshenCallback : public Resource::FreshenCallback {
+ public:
+  MockFreshenCallback(const ResourcePtr& resource,
+                      InputInfo* input_info)
+      : FreshenCallback(resource),
+        input_info_(input_info),
+        done_(false),
+        extend_success_(false) {
+  }
 
-  void set_cache_control(StringPiece c) { c.CopyToString(&cache_control_); }
-  void set_fail_fetch(bool f) { fail_fetch_ = f; }
+  virtual InputInfo* input_info() { return input_info_; }
+
+  virtual void Done(bool lock_failure, bool extend_success) {
+    done_ = true;
+    extend_success_ = extend_success;
+  }
+
+  bool done() const { return done_; }
+  bool extend_success() const { return extend_success_; }
 
  private:
-  GoogleString cache_control_;
-  int load_calls_;
-  int freshen_calls_;
-  bool fail_fetch_;
+  InputInfo* input_info_;
+  bool done_;
+  bool extend_success_;
 };
 
 }  // namespace
@@ -135,7 +103,7 @@ class CacheableResourceBaseTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     TestResource::InitStats(server_context()->statistics());
 
-    resource_.reset(new TestResource(server_context()));
+    resource_.reset(new TestResource(rewrite_driver()));
   }
 
   void CheckStats(TestResource* resource,
@@ -160,6 +128,9 @@ class CacheableResourceBaseTest : public RewriteTestBase {
 };
 
 TEST_F(CacheableResourceBaseTest, BasicCached) {
+  SetResponseWithDefaultHeaders(kTestUrl, kContentTypeText,
+                                kContent, 1000);
+
   MockResourceCallback callback(ResourcePtr(resource_.get()),
                                 server_context()->thread_system());
   resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
@@ -169,8 +140,7 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
   EXPECT_EQ(kContent, resource_->contents());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // 2nd read should be cached.
@@ -184,11 +154,10 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
   EXPECT_EQ(kContent, resource_->contents());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 1, 0, 0, 0, 1);
 
-  // Make sure freshening happens. The rest resource defaults to 1000 sec ttl,
+  // Make sure freshening happens. The rest resource is set to 1000 sec ttl,
   // so forward time 900 seconds ahead.
   AdvanceTimeMs(900 * Timer::kSecondMs);
   resource_->Reset();
@@ -201,13 +170,17 @@ TEST_F(CacheableResourceBaseTest, BasicCached) {
   EXPECT_TRUE(callback3.done());
   EXPECT_TRUE(callback3.success());
   EXPECT_EQ(kContent, resource_->contents());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(1, resource_->freshen_calls());
+  // Freshening resulted in an extra fetch
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 2, 0, 0, 0, 1);
 }
 
 TEST_F(CacheableResourceBaseTest, Private) {
-  resource_->set_cache_control("private");
+  ResponseHeaders response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
+  response_headers.Add(HttpAttributes::kCacheControl, "private");
+  SetFetchResponse(kTestUrl, response_headers, kContent);
+
   MockResourceCallback callback(ResourcePtr(resource_.get()),
                                 server_context()->thread_system());
 
@@ -217,8 +190,7 @@ TEST_F(CacheableResourceBaseTest, Private) {
                        &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // The non-cacheability should be cached.
@@ -231,14 +203,17 @@ TEST_F(CacheableResourceBaseTest, Private) {
                        &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_FALSE(callback2.success());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 1, 1);
 }
 
 TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
   // This test private + kLoadEvenIfNotCacheable.
-  resource_->set_cache_control("private");
+  ResponseHeaders response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeText, &response_headers);
+  response_headers.Add(HttpAttributes::kCacheControl, "private");
+  SetFetchResponse(kTestUrl, response_headers, kContent);
+
   MockResourceCallback callback(ResourcePtr(resource_.get()),
                                 server_context()->thread_system());
 
@@ -249,8 +224,7 @@ TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
   EXPECT_EQ(kContent, resource_->contents());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // Since it's non-cacheable, but we have kLoadEvenIfNotCacheable
@@ -265,13 +239,12 @@ TEST_F(CacheableResourceBaseTest, PrivateForFetch) {
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
   EXPECT_EQ(kContent, resource_->contents());
-  EXPECT_EQ(2, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 1, 0, 1);
 }
 
 TEST_F(CacheableResourceBaseTest, FetchFailure) {
-  resource_->set_fail_fetch(true);
+  SetFetchFailOnUnexpected(false);
   MockResourceCallback callback(ResourcePtr(resource_.get()),
                                 server_context()->thread_system());
 
@@ -281,8 +254,7 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
                        &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 0, 0, 0, 1);
 
   // Failure should get cached, and we should take advantage of it.
@@ -295,8 +267,7 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
                        &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_FALSE(callback2.success());
-  EXPECT_EQ(1, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 1, 0, 0, 1);
 
   // Now advance time, should force a refetch.
@@ -312,9 +283,52 @@ TEST_F(CacheableResourceBaseTest, FetchFailure) {
                        &callback3);
   EXPECT_TRUE(callback3.done());
   EXPECT_FALSE(callback3.success());
-  EXPECT_EQ(2, resource_->load_calls());
-  EXPECT_EQ(0, resource_->freshen_calls());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   CheckStats(resource_.get(), 0, 1, 0, 0, 2);
+}
+
+TEST_F(CacheableResourceBaseTest, FreshenInfo) {
+  SetResponseWithDefaultHeaders(kTestUrl, kContentTypeText,
+                                kContent, 1000);
+
+  MockResourceCallback callback(ResourcePtr(resource_.get()),
+                                server_context()->thread_system());
+  resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                       RequestContext::NewTestRequestContext(
+                           server_context()->thread_system()),
+                       &callback);
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_TRUE(callback.done());
+  EXPECT_TRUE(callback.success());
+
+  InputInfo input_info;
+  resource_->FillInPartitionInputInfo(Resource::kIncludeInputHash,
+                                      &input_info);
+  InputInfo input_info2 = input_info;
+
+  // Move time ahead so freshening actually does something.
+  AdvanceTimeMs(900 * Timer::kSecondMs);
+
+  MockFreshenCallback freshen_cb(ResourcePtr(resource_.get()), &input_info);
+  resource_->Freshen(&freshen_cb, message_handler());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  EXPECT_TRUE(freshen_cb.done());
+  EXPECT_TRUE(freshen_cb.extend_success());
+
+  // Expiration time must have moved ahead, too.
+  EXPECT_EQ(1000 * Timer::kSecondMs + timer()->NowMs(),
+            input_info.expiration_time_ms());
+
+  // The above freshened from fetches, now we should be able to do it
+  // from cache as well.
+  MockFreshenCallback freshen_cb2(ResourcePtr(resource_.get()), &input_info2);
+  resource_->Freshen(&freshen_cb2, message_handler());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  EXPECT_TRUE(freshen_cb.done());
+  EXPECT_TRUE(freshen_cb.extend_success());
+  EXPECT_EQ(1000 * Timer::kSecondMs + timer()->NowMs(),
+            input_info2.expiration_time_ms());
 }
 
 }  // namespace net_instaweb

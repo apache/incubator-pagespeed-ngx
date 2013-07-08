@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -31,8 +32,6 @@ namespace net_instaweb {
 
 class Hasher;
 class MessageHandler;
-class NamedLock;
-class NamedLockManager;
 class UrlAsyncFetcher;
 
 // Creates an AsyncFetch object which tries to acquire lock before fetching
