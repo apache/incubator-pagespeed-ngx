@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -1143,6 +1144,21 @@ void RewriteTestBase::SetMockLogRecord() {
 
 MockLogRecord* RewriteTestBase::mock_log_record() {
   return dynamic_cast<MockLogRecord*>(rewrite_driver_->log_record());
+}
+
+GoogleString RewriteTestBase::GetLazyloadScriptHtml() {
+  return StrCat(
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      LazyloadImagesFilter::GetLazyloadJsSnippet(
+          options(), server_context()->static_asset_manager()),
+      "</script>");
+}
+
+GoogleString RewriteTestBase::GetLazyloadPostscriptHtml() {
+  return StrCat(
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+        LazyloadImagesFilter::kOverrideAttributeFunctions,
+      "</script>");
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

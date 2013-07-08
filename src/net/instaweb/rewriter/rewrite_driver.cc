@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <list>
 #include <map>
+#include <memory>
 #include <set>
 #include <utility>  // for std::pair
 #include <vector>
@@ -120,6 +121,7 @@
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_config.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
@@ -775,6 +777,7 @@ void RewriteDriver::Initialize() {
     RewriteOptions::Initialize();
     ImageRewriteFilter::Initialize();
     CssFilter::Initialize();
+    SplitHtmlConfig::Initialize();
   }
 }
 
@@ -810,6 +813,7 @@ void RewriteDriver::Terminate() {
     CssFilter::Terminate();
     ImageRewriteFilter::Terminate();
     RewriteOptions::Terminate();
+    SplitHtmlConfig::Terminate();
   }
 }
 

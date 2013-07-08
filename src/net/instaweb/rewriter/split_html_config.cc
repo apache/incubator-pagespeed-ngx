@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/split_html_config.h"
 
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "net/instaweb/http/public/request_headers.h"
@@ -37,6 +38,11 @@
 #include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
+
+// Regular expressions which are used to validate and parse the xpaths for the
+// below-the-fold panels.
+RE2* xpath_with_id_pattern_ = NULL;
+RE2* xpath_with_child_pattern_ = NULL;
 
 namespace {
 
@@ -53,20 +59,17 @@ void ComputePanels(
 
 bool ParseXpath(const GoogleString& xpath,
                 std::vector<XpathUnit>* xpath_units) {
-  // TODO(bharathbhushan): Can we compile and reuse the REs?
-  static const char* kXpathWithChildNumber = "(\\w+)(\\[(\\d+)\\])";
-  static const char* kXpathWithId = "(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])";
   StringPieceVector list;
   net_instaweb::SplitStringUsingSubstr(xpath, "/", &list);
   for (int j = 0, n = list.size(); j < n; ++j) {
     XpathUnit unit;
     GoogleString str;
     StringPiece match = list[j];
-    if (!RE2::FullMatch(StringPieceToRe2(match), kXpathWithChildNumber,
+    if (!RE2::FullMatch(StringPieceToRe2(match), *xpath_with_child_pattern_,
                         &unit.tag_name, &str, &unit.child_number)) {
       GoogleString str1;
-      RE2::FullMatch(StringPieceToRe2(match), kXpathWithId, &unit.tag_name,
-                     &str, &str1, &unit.attribute_value);
+      RE2::FullMatch(StringPieceToRe2(match), *xpath_with_id_pattern_,
+                     &unit.tag_name, &str, &str1, &unit.attribute_value);
     }
     xpath_units->push_back(unit);
   }
@@ -108,6 +111,18 @@ SplitHtmlConfig::~SplitHtmlConfig() {
   STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
 }
 
+void SplitHtmlConfig::Initialize() {
+  xpath_with_id_pattern_ = new RE2("(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])");
+  xpath_with_child_pattern_ = new RE2("(\\w+)(\\[(\\d+)\\])");
+}
+
+void SplitHtmlConfig::Terminate() {
+  delete xpath_with_id_pattern_;
+  xpath_with_id_pattern_ = NULL;
+  delete xpath_with_child_pattern_;
+  xpath_with_child_pattern_ = NULL;
+}
+
 void SplitHtmlConfig::UpdateCriticalLineInfoInDriver(RewriteDriver* driver) {
   if (driver->critical_line_info() != NULL) {
     return;
@@ -127,8 +142,7 @@ void SplitHtmlConfig::UpdateCriticalLineInfoInDriver(RewriteDriver* driver) {
   if (!critical_line_config.empty()) {
     CriticalLineInfo* critical_line_info = new CriticalLineInfo;
     StringPieceVector xpaths;
-    SplitStringPieceToVector(critical_line_config, ",",
-                             &xpaths, true);
+    SplitStringPieceToVector(critical_line_config, ",", &xpaths, true);
     for (int i = 0, n = xpaths.size(); i < n; i++) {
       StringPieceVector xpath_pair;
       SplitStringPieceToVector(xpaths[i], ":", &xpath_pair, true);

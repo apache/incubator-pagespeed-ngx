@@ -74,7 +74,7 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
     rendered_images_.reset(rendered_images);
   }
 
-  virtual bool IsSetFromPcache(RewriteDriver* driver) {
+  virtual bool IsCriticalImageInfoPresent(RewriteDriver* driver) {
     return true;
   }
 
@@ -87,8 +87,8 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
 };
 
 // This is currently used only to get a property cache miss in tests.
-// This just forwards UpdateCriticalImagesSetInDriver and IsSetFromPcache to the
-// abstract base class CriticalImagesFinder.
+// This just forwards UpdateCriticalImagesSetInDriver and
+// IsCriticalImageInfoPresent to the abstract base class CriticalImagesFinder.
 class ForwardingMockCriticalImagesFinder : public MockCriticalImagesFinder {
  public:
   explicit ForwardingMockCriticalImagesFinder(Statistics* stats) :
@@ -99,8 +99,8 @@ class ForwardingMockCriticalImagesFinder : public MockCriticalImagesFinder {
   virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
     return NULL;
   }
-  virtual bool IsSetFromPcache(RewriteDriver* driver) {
-    return CriticalImagesFinder::IsSetFromPcache(driver);
+  virtual bool IsCriticalImageInfoPresent(RewriteDriver* driver) {
+    return CriticalImagesFinder::IsCriticalImageInfoPresent(driver);
   }
 };
 

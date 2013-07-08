@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 
 #include <map>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -105,10 +106,10 @@ void SplitHtmlHelperFilter::StartDocumentImpl() {
   if (critical_images_info != NULL) {
     critical_images_info->html_critical_images.clear();
     critical_images_info->css_critical_images.clear();
-    critical_images_info->is_set_from_pcache = false;
   } else {
     driver()->set_critical_images_info(new CriticalImagesInfo);
   }
+  driver()->critical_images_info()->is_critical_image_info_present = true;
   driver()->critical_images_info()->is_set_from_split_html = true;
 
   // Push the base panel.

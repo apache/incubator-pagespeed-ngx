@@ -57,21 +57,6 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilter(lazyload_images_filter_.get());
   }
 
-  GoogleString GetScriptHtml(const StringPiece& script) {
-    return StrCat("<script type=\"text/javascript\"",
-                  " pagespeed_no_defer=\"\"", ">", script, "</script>");
-  }
-
-  GoogleString GetLazyloadScriptHtml() {
-    return GetScriptHtml(
-        LazyloadImagesFilter::GetLazyloadJsSnippet(
-            options(), server_context()->static_asset_manager()));
-  }
-
-  GoogleString GetOverrideAttributesScriptHtml() {
-    return GetScriptHtml(LazyloadImagesFilter::kOverrideAttributeFunctions);
-  }
-
   GoogleString GenerateRewrittenImageTag(
       const StringPiece& tag,
       const StringPiece& url,
@@ -148,7 +133,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
                     "<input src=\"12.jpg\"/>"
                     "<img src=\"1.jpg\" onload=\"blah();\"/>"
                     "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>",
-                    GetOverrideAttributesScriptHtml(),
+                    GetLazyloadPostscriptHtml(),
                     "</body>")));
   EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(
@@ -187,7 +172,7 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
                      "img", "http://www.1.com/img1", ""),
                  GenerateRewrittenImageTag(
                      "img", "img2", ""),
-                 GetOverrideAttributesScriptHtml(),
+                 GetLazyloadPostscriptHtml(),
                  "</body>")));
   EXPECT_EQ(3, logging_info()->rewriter_info().size());
   ExpectLogRecord(0, RewriterApplication::NOT_APPLIED, true, false);
@@ -230,7 +215,7 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
                      "img", "http://www.1.com/critical2", ""),
                  "<img src=\"critical3\"/>"
                  "<img src=\"", rewritten_url, "\"/>",
-                 GetOverrideAttributesScriptHtml(),
+                 GetLazyloadPostscriptHtml(),
                  "</body>")));
   EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(0, RewriterApplication::NOT_APPLIED, false, true);
@@ -273,7 +258,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
              "<body>",
              GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
-             GetOverrideAttributesScriptHtml(),
+             GetLazyloadPostscriptHtml(),
              "</body>"));
 }
 
@@ -293,16 +278,16 @@ TEST_F(LazyloadImagesFilterTest, MultipleBodies) {
           "<body>",
           GetLazyloadScriptHtml(),
           GenerateRewrittenImageTag("img", "1.jpg", ""),
-          GetOverrideAttributesScriptHtml(),
+          GetLazyloadPostscriptHtml(),
           StrCat(
               "</body><body></body><body>"
               "<script></script>",
               GenerateRewrittenImageTag("img", "2.jpg", ""),
-              GetOverrideAttributesScriptHtml()),
+              GetLazyloadPostscriptHtml()),
           StrCat(
               "<script></script>",
               GenerateRewrittenImageTag("img", "3.jpg", ""),
-              GetOverrideAttributesScriptHtml(),
+              GetLazyloadPostscriptHtml(),
               "<script></script>",
               "</body>")));
 }
@@ -316,7 +301,7 @@ TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
       StrCat("<body>",
              GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
-             GetOverrideAttributesScriptHtml(),
+             GetLazyloadPostscriptHtml(),
              "</body>"));
 }
 
@@ -345,7 +330,7 @@ TEST_F(LazyloadImagesFilterTest, CustomImageUrl) {
       StrCat("<body>",
              GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
-             GetOverrideAttributesScriptHtml(),
+             GetLazyloadPostscriptHtml(),
              "</body>"));
 }
 

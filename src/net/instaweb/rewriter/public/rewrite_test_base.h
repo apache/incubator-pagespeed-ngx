@@ -604,6 +604,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Returns the MockLogRecord in the driver.
   MockLogRecord* mock_log_record();
 
+  // Helper methods to return js/html snippets related to lazyload images.
+  GoogleString GetLazyloadScriptHtml();
+  GoogleString GetLazyloadPostscriptHtml();
+
  protected:
   void Init();
 

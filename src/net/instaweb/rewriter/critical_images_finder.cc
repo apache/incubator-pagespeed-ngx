@@ -269,7 +269,7 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
         cohort, kCriticalImagesPropertyName);
     info = ExtractCriticalImagesFromCache(driver, property_value);
     if (info != NULL) {
-      info->is_set_from_pcache = true;
+      info->is_critical_image_info_present = true;
       driver->log_record()->SetNumHtmlCriticalImages(
           info->html_critical_images.size());
       driver->log_record()->SetNumCssCriticalImages(
@@ -435,9 +435,9 @@ CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
   return critical_images_info;
 }
 
-bool CriticalImagesFinder::IsSetFromPcache(RewriteDriver* driver) {
+bool CriticalImagesFinder::IsCriticalImageInfoPresent(RewriteDriver* driver) {
   UpdateCriticalImagesSetInDriver(driver);
-  return driver->critical_images_info()->is_set_from_pcache;
+  return driver->critical_images_info()->is_critical_image_info_present;
 }
 
 void CriticalImagesFinder::AddHtmlCriticalImage(
