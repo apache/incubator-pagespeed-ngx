@@ -169,6 +169,9 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void set_use_native_fetcher(bool x) {
     use_native_fetcher_ = x;
   }
+  void set_rate_limit_background_fetches(bool x) {
+    rate_limit_background_fetches_ = x;
+  }
 
   // We use a beacon handler to collect data for critical images,
   // css, etc., so filters should be configured accordingly.
@@ -211,6 +214,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
   bool use_native_fetcher_;
+  bool rate_limit_background_fetches_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
