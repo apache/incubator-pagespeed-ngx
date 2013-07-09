@@ -29,6 +29,8 @@
 #include "pthread_shared_mem.h"
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/rate_controller.h"
+#include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -124,8 +126,10 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
 
+  UrlAsyncFetcher* fetcher = NULL;
+
   if (use_native_fetcher_) {
-    net_instaweb::NgxUrlAsyncFetcher* fetcher =
+    ngx_url_async_fetcher_ =
         new net_instaweb::NgxUrlAsyncFetcher(
             fetcher_proxy,
             log_,
@@ -134,10 +138,9 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             resolver_,
             thread_system(),
             message_handler());
-    ngx_url_async_fetcher_ = fetcher;
-    return fetcher;
+    fetcher = ngx_url_async_fetcher_;
   } else {
-    net_instaweb::SerfUrlAsyncFetcher* fetcher =
+    net_instaweb::SerfUrlAsyncFetcher* serf_fetcher =
         new net_instaweb::SerfUrlAsyncFetcher(
             fetcher_proxy,
             NULL,
@@ -146,8 +149,37 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             timer(),
             2500,
             message_handler());
-    return fetcher;
+    fetcher = serf_fetcher;
   }
+
+  SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
+      default_options());
+  if (rate_limit_background_fetches_) {
+    // Unfortunately, we need stats for load-shedding.
+    if (system_options->statistics_enabled()) {
+      // TODO(oschaaf): mps bases this multiplier on the configured
+      // num_rewrite_threads_ which we don't have (yet).
+      int multiplier = 4;
+      fetcher = new RateControllingUrlAsyncFetcher(
+          fetcher,
+          500 * multiplier /* max queue size */,
+          multiplier /* requests/host */,
+          500 * multiplier /* queued per host */,
+          thread_system(),
+          statistics());
+      if (ngx_url_async_fetcher_ == NULL) {
+        defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(
+            static_cast<net_instaweb::SerfUrlAsyncFetcher*>(fetcher)));
+      } else  {
+        defer_cleanup(new Deleter<net_instaweb::NgxUrlAsyncFetcher>(
+            ngx_url_async_fetcher_));
+      }
+    } else {
+      message_handler()->Message(
+          kError, "Can't enable fetch rate-limiting without statistics");
+    }
+  }
+  return fetcher;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
@@ -379,6 +411,8 @@ AllocateAndInitSharedMemStatistics(
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
   SystemRewriteDriverFactory::InitStats(statistics);
+  RewriteDriverFactory::InitStats(statistics);
+  RateController::InitStats(statistics);
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);

@@ -195,6 +195,17 @@ NgxRewriteOptions::ParseAndSetOptions(
         } else {
           result = RewriteOptions::kOptionValueInvalid;
         }
+      } else if (IsDirective(directive, "RateLimitBackgroundFetches")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        if (IsDirective(arg, "on")) {
+          driver_factory->set_rate_limit_background_fetches(true);
+          result = RewriteOptions::kOptionOk;
+        } else if (IsDirective(arg, "off")) {
+          driver_factory->set_rate_limit_background_fetches(false);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
       } else {
         result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
       }
