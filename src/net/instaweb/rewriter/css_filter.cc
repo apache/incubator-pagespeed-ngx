@@ -924,12 +924,15 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
   }
   rewriter->SetupInlineRewrite(element, text);
 
-  // Get the applicable media and charset. If the charset on the link doesn't
-  // agree with that of the source page, we can't flatten.
+  // Get the applicable media and charset. As style elements can't have a
+  // charset attribute pass NULL to GetApplicableCharset instead of 'element'.
+  // If the resulting charset for the style element doesn't agree with that of
+  // the source page, we can't flatten (though that should be impossible since
+  // we only look at meta elements and headers in this case).
   CssHierarchy* hierarchy = rewriter->mutable_hierarchy();
   GetApplicableMedia(element, hierarchy->mutable_media());
   hierarchy->set_flattening_succeeded(
-      GetApplicableCharset(element, hierarchy->mutable_charset()));
+      GetApplicableCharset(NULL, hierarchy->mutable_charset()));
   if (!hierarchy->flattening_succeeded()) {
     num_flatten_imports_charset_mismatch_->Add(1);
   }
