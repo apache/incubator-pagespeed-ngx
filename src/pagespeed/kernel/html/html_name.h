@@ -158,6 +158,7 @@ class HtmlName {
     kOpen,
     kOptgroup,
     kOption,
+    kOrigIndex,
     kOther,
     kP,
     kPagespeedHighResSrc,

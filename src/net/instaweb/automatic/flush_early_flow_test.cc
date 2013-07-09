@@ -352,7 +352,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   GoogleString GetSplitHtmlSuffixCode() {
     return StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                         "/psajs/blink.0.js", SplitHtmlFilter::kLoadHiResImages,
-                        "{}", "false");
+                        4, "{}", "false");
   }
 
   GoogleString NoScriptRedirectHtml() {

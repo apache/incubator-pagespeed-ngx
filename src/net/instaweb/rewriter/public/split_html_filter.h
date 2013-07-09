@@ -149,6 +149,8 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool disable_filter_;
   bool inside_pagespeed_no_defer_script_;
   bool serve_response_in_two_chunks_;
+  int last_script_index_before_panel_stub_;
+  bool panel_seen_;
   HtmlElement* current_panel_parent_element_;
   StaticAssetManager* static_asset_manager_;  // Owned by rewrite_driver_.
   ScriptTagScanner script_tag_scanner_;

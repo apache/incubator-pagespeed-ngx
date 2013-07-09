@@ -55,6 +55,13 @@ function createInnerHtmlElements(tagName, innerHTML) {
   // Transfer all instances over to a document fragment
   var docFragment = getDocument().createDocumentFragment();
   while (element.childNodes.length > 0) {
+    if (element.childNodes[0].tagName) {
+      // psa_not_processed attributes are required for deferJs. Inserting these
+      // attributes before adding to DOM is much cheaper (in the order of
+      // ~500ms-2s on mobile), hence adding this code here.
+      element.setAttribute('psa_not_processed', '');
+      element.setAttribute('priority_psa_not_processed', '');
+    }
     docFragment.appendChild(element.childNodes[0]);
   }
   return docFragment;

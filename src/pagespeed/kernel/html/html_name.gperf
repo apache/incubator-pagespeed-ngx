@@ -145,6 +145,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "open",                       HtmlName::kOpen
 "optgroup",                   HtmlName::kOptgroup
 "option",                     HtmlName::kOption
+"orig_index",                 HtmlName::kOrigIndex
 "other",                      HtmlName::kOther
 "p",                          HtmlName::kP
 "pagespeed_high_res_src",     HtmlName::kPagespeedHighResSrc

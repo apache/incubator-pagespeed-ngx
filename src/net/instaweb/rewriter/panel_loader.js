@@ -270,9 +270,6 @@ pagespeed.PanelLoader.prototype.bufferNonCriticalData = function(
   if (this.state == NON_CRITICAL_LOADED) {
     return;
   }
-  if (this.state == CRITICAL_DATA_LOADED) {
-    this.readyToLoadNonCritical = true;
-  }
   this.nonCriticalData = data;
   this.nonCriticalDataPresent = true;
   this.loadData();

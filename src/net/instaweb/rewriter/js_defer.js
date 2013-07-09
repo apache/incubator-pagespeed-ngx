@@ -1033,9 +1033,6 @@ deferJsNs.DeferJs.prototype.setUp = function() {
     }
   }
 
-  if (this.queue_.length > 0) {
-    this.setNotProcessedAttributeForNodes();
-  }
   // override AddEventListeners.
   this.overrideAddEventListeners();
 
@@ -1668,10 +1665,12 @@ deferJsNs.deferInit = function() {
     deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE);
   pagespeed.highPriorityDeferJs.setPsaNotProcessed(
     deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED);
+  pagespeed.highPriorityDeferJs.setNotProcessedAttributeForNodes();
   pagespeed.lowPriorityDeferJs = new deferJsNs.DeferJs();
   pagespeed.lowPriorityDeferJs.setType(deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
   pagespeed.lowPriorityDeferJs.setPsaNotProcessed(
     deferJsNs.DeferJs.PSA_NOT_PROCESSED);
+  pagespeed.lowPriorityDeferJs.setNotProcessedAttributeForNodes();
   pagespeed.deferJs = pagespeed.highPriorityDeferJs;
 
   pagespeed.deferJs.noDeferCreateElementOverride();

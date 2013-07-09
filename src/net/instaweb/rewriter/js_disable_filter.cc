@@ -227,9 +227,9 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
             rewrite_driver_->MakeName(HtmlName::kType), "text/psajs",
             HtmlElement::DOUBLE_QUOTE);
       }
-      element->AddAttribute(
-          rewrite_driver_->MakeName("orig_index"), IntegerToString(index_++),
-          HtmlElement::DOUBLE_QUOTE);
+      element->AddAttribute(rewrite_driver_->MakeName(HtmlName::kOrigIndex),
+                            IntegerToString(index_++),
+                            HtmlElement::DOUBLE_QUOTE);
     }
   }
 

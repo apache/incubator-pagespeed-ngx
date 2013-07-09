@@ -61,6 +61,7 @@ const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
     "<script type=\"text/javascript\" src=\"%s\"></script>"
     "<script type=\"text/javascript\">"
       "%s"
+      "pagespeed.lastScriptIndexBeforePanelStub=%d;"
       "pagespeed.panelLoaderInit();"
       "pagespeed.panelLoader.bufferNonCriticalData(%s, %s);"
     "</script>\n</body></html>\n";
@@ -102,6 +103,7 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "  var blink_js = document.createElement('script');"
     "  blink_js.src=\"%s\";"
     "  blink_js.setAttribute('onload', \""
+    "    pagespeed.lastScriptIndexBeforePanelStub=%d;"
     "    pagespeed.panelLoaderInit();"
     "    if (pagespeed['split_non_critical']) {"
     "      pagespeed.panelLoader.bufferNonCriticalData("
@@ -145,6 +147,8 @@ SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
     : SuppressPreheadFilter(rewrite_driver),
       rewrite_driver_(rewrite_driver),
       options_(rewrite_driver->options()),
+      last_script_index_before_panel_stub_(-1),
+      panel_seen_(false),
       current_panel_parent_element_(NULL),
       static_asset_manager_(NULL),
       script_tag_scanner_(rewrite_driver) {
@@ -169,6 +173,8 @@ bool SplitHtmlFilter::IsAllowedCrossDomainRequest(StringPiece cross_origin) {
 void SplitHtmlFilter::StartDocument() {
   element_json_stack_.clear();
   num_children_stack_.clear();
+  panel_seen_ = false;
+  last_script_index_before_panel_stub_ = -1;
 
   config_.reset(new SplitHtmlConfig(rewrite_driver_));
 
@@ -282,6 +288,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
           kSplitSuffixJsFormatString,
           GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
           kLoadHiResImages,
+          last_script_index_before_panel_stub_,
           non_critical_json.c_str(),
           rewrite_driver_->flushing_cached_html() ? "true" : "false"));
     } else {
@@ -307,7 +314,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
         GenerateCriticalLineConfigString().c_str(),
         json.empty() ? "" : escaped_url.c_str(),
         kLoadHiResImages,
-        GetBlinkJsUrl(options_, static_asset_manager_).c_str()));
+        GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
+        last_script_index_before_panel_stub_));
   }
   HtmlWriterFilter::Flush();
 }
@@ -357,6 +365,7 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
   // Push new Json
   element_json_stack_.push_back(std::make_pair(element, new_json));
   if (element != NULL) {
+    panel_seen_ = true;
     current_panel_parent_element_ = element->parent();
     current_panel_id_ = GetPanelIdForInstance(element);
   }
@@ -418,6 +427,20 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     return;
   }
 
+  if (!panel_seen_ &&
+      element->keyword() == HtmlName::kScript) {
+    // Store the script index before panel stub for ATF script execution.
+    HtmlElement::Attribute* script_index_attr =
+        element->FindAttribute(HtmlName::kOrigIndex);
+    if (script_index_attr != NULL) {
+      StringPiece script_index_str = script_index_attr->DecodedValueOrNull();
+      int script_index = -1;
+      if (!script_index_str.empty() &&
+          StringToInt(script_index_str, &script_index)) {
+        last_script_index_before_panel_stub_ = script_index;
+      }
+    }
+  }
   if (element->FindAttribute(HtmlName::kPagespeedNoDefer) &&
       element_json_stack_.size() > 1 ) {
     HtmlElement::Attribute* src = NULL;
