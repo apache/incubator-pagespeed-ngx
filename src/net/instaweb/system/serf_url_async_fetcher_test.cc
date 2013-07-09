@@ -591,14 +591,14 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForSelfSignedCert) {
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsForGoogleCom) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
-  TestHttpsSucceeds("https://www.google.com", "<!doctype html>");
+  TestHttpsSucceeds("https://www.google.com/intl/en/about/", "<!DOCTYPE html>");
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForGoogleComWithBogusCertDir) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   serf_url_async_fetcher_->SetSslCertificatesDir(GTestTempDir());
   serf_url_async_fetcher_->SetSslCertificatesFile("");
-  TestHttpsFails("https://www.google.com");
+  TestHttpsFails("https://www.google.com/intl/en/about/");
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsWhenEnabled) {
