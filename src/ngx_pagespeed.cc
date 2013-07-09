@@ -973,7 +973,13 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     ps_set_buffered(r, false);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
+
   // rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DECLINED
+
+  if (rc == NGX_AGAIN && cl == NULL) {
+    // there is no body buffer to send now.
+    return NGX_AGAIN;
+  }
 
   if (rc == NGX_OK) {
     ps_set_buffered(r, false);
@@ -995,9 +1001,9 @@ void ps_connection_read_handler(ngx_event_t* ev) {
   // request has been finalized, do nothing just clear the pipe
   if (c->error) {
     do {
-      char chr;
-      rc = read(c->fd, &chr, 1);
-    } while (rc == -1 && errno == EINTR);  // Retry on EINTR.
+      char chr[256];
+      rc = read(c->fd, chr, 256);
+    } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
 
     if (rc == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
       return;
@@ -1013,23 +1019,21 @@ void ps_connection_read_handler(ngx_event_t* ev) {
   ngx_http_request_t *r = ctx->r;
   CHECK(r != NULL);
 
+  // clear the pipe
   do {
-    char chr;
-    rc = read(c->fd, &chr, 1);
-  } while (rc == -1 && errno == EINTR);  // Retry on EINTR.
+    char chr[256];
+    rc = read(c->fd, chr, 256);
+  } while (rc > 0 || (rc == -1 && errno == EINTR));  // Retry on EINTR.
 
-  // read() should only ever return 0 (closed), 1 (data), or -1 (error).
-  CHECK(rc == -1 || rc == 0 || rc == 1);
+  if (rc == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    ctx->pagespeed_connection = NULL;
+    ngx_close_connection(c);
+    return ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+  }
 
-  if (rc == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      PDBG(ctx, "no data to read from pagespeed yet");
-      return;
-    } else {
-      perror("ps_connection_read_handler");
-      return ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    }
-  } else if (rc == 0) {
+  // AGAIN or rc == 0
+
+  if (rc == 0) {
     // Close the pipe here to avoid SIGPIPE
     // Done will be check in RequestCollection.
     ctx->pagespeed_connection = NULL;

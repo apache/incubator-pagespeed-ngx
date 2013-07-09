@@ -109,6 +109,12 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
     return NGX_OK;
   }
 
+  // there is no buffer to send
+  if (!done_called_ && buffer_.empty()) {
+    *link_ptr = NULL;
+    return NGX_AGAIN;
+  }
+
   int rc = ngx_psol::string_piece_to_buffer_chain(
       request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
   if (rc != NGX_OK) {
@@ -130,8 +136,7 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 // and Done() such that we're sending an empty buffer with last_buf set, which I
 // think nginx will reject.
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
-  ngx_int_t rc = NGX_DECLINED;
-  *link_ptr = NULL;
+  ngx_int_t rc;
   Lock();
   rc = CopyBufferToNginx(link_ptr);
   Unlock();
