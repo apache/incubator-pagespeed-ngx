@@ -487,6 +487,15 @@ TEST_F(RewriteQueryTest, MultipleInt64Params) {
   EXPECT_EQ(2, options->domain_shard_count());
 }
 
+TEST_F(RewriteQueryTest, OptionsNotArbitrary) {
+  // Security sanity check: trying to set beacon URL
+  // externally should not succeed.
+  RewriteOptions* options =
+      ParseAndScan(kHtmlUrl, StrCat("PageSpeed", RewriteOptions::kBeaconUrl,
+                                    "=", "evil.com"), "");
+  EXPECT_TRUE(options == NULL);
+}
+
 TEST_F(RewriteQueryTest, OutputQueryandHeaders) {
   GoogleString output_query, output_headers;
   ParseAndScan(kHtmlUrl, "ModPagespeedCssInlineMaxBytes=3"
