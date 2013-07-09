@@ -2373,6 +2373,9 @@ class RewriteOptions {
   // Returns kEndOfFilters if the id isn't known.
   static Filter LookupFilterById(const StringPiece& filter_id);
 
+  // Convert the filter name to a Filter.
+  static Filter LookupFilter(const StringPiece& filter_name);
+
   // Looks up an option id/name and returns the corresponding PropertyBase if
   // found, or NULL if the id/name is not found.
   static const PropertyBase* LookupOptionById(StringPiece option_id);
@@ -2902,7 +2905,6 @@ class RewriteOptions {
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
-  static Filter LookupFilter(const StringPiece& filter_name);
   // Fix any option conflicts (e.g., if two options are mutually exclusive, then
   // disable one.)
   void ResolveConflicts();
