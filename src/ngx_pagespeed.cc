@@ -368,6 +368,8 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
                           ps_srv_conf_t* cfg_s,
                           ngx_chain_t* in);
 
+ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in);
+
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 ngx_int_t ps_header_filter(ngx_http_request_t* r);
@@ -988,7 +990,7 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     // ctx->base_fetch = NULL;
   }
 
-  return ngx_http_next_body_filter(r, cl);
+  return ps_write_filter(r, cl);
 }
 
 void ps_connection_read_handler(ngx_event_t* ev) {
@@ -1038,6 +1040,10 @@ void ps_connection_read_handler(ngx_event_t* ev) {
     // Done will be check in RequestCollection.
     ctx->pagespeed_connection = NULL;
     ngx_close_connection(c);
+  }
+
+  if (ctx->fetch_done) {
+    return;
   }
 
   ngx_http_finalize_request(r, ps_fetch_handler(r));
@@ -1691,7 +1697,7 @@ ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "ps write filter \"%V\"", &r->uri);
+                 "http pagespeed write filter \"%V\"", &r->uri);
 
   // send response body
   if (in || ctx->write_pending) {
@@ -1732,7 +1738,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   CHECK(r->err_status == 0);                                         // NOLINT
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http pagespeed filter \"%V\"", &r->uri);
+                 "http pagespeed body filter \"%V\"", &r->uri);
 
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.

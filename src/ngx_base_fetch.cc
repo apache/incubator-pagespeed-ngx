@@ -105,6 +105,7 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   if (done_called_ && last_buf_sent_) {
     // OK means HandleDone has been called
+    assert(0);
     *link_ptr = NULL;
     return NGX_OK;
   }
