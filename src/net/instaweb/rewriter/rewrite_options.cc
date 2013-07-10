@@ -504,32 +504,37 @@ RewriteOptions::Properties* RewriteOptions::all_properties_ = NULL;
 
 namespace {
 
+// When you change this, remember to update the documentation:
+//    doc/en/speed/pagespeed/module/config_filters.html
+// The documentation there includes the filter groups "rewrite_images" and
+// "extend_cache" which expand to multiple filters, all of which need to be
+// listed here.
 const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
-  RewriteOptions::kConvertGifToPng,
-  RewriteOptions::kConvertJpegToProgressive,
+  RewriteOptions::kConvertGifToPng,                // rewrite_images
+  RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
   RewriteOptions::kConvertMetaTags,
   RewriteOptions::kConvertPngToJpeg,
-  RewriteOptions::kExtendCacheCss,
-  RewriteOptions::kExtendCacheImages,
-  RewriteOptions::kExtendCacheScripts,
+  RewriteOptions::kExtendCacheCss,                 // extend_cache
+  RewriteOptions::kExtendCacheImages,              // extend_cache
+  RewriteOptions::kExtendCacheScripts,             // extend_cache
   RewriteOptions::kFallbackRewriteCssUrls,
   RewriteOptions::kFlattenCssImports,
   RewriteOptions::kInlineCss,
-  RewriteOptions::kInlineImages,
+  RewriteOptions::kInlineImages,                   // rewrite_images
   RewriteOptions::kInlineImportToLink,
   RewriteOptions::kInlineJavascript,
-  RewriteOptions::kJpegSubsampling,
-  RewriteOptions::kRecompressJpeg,
-  RewriteOptions::kRecompressPng,
-  RewriteOptions::kRecompressWebp,
-  RewriteOptions::kResizeImages,
+  RewriteOptions::kJpegSubsampling,                // rewrite_images
+  RewriteOptions::kRecompressJpeg,                 // rewrite_images
+  RewriteOptions::kRecompressPng,                  // rewrite_images
+  RewriteOptions::kRecompressWebp,                 // rewrite_images
+  RewriteOptions::kResizeImages,                   // rewrite_images
   RewriteOptions::kRewriteCss,
   RewriteOptions::kRewriteJavascript,
   RewriteOptions::kRewriteStyleAttributesWithUrl,
-  RewriteOptions::kStripImageColorProfile,
-  RewriteOptions::kStripImageMetaData,
+  RewriteOptions::kStripImageColorProfile,         // rewrite_images
+  RewriteOptions::kStripImageMetaData,             // rewrite_images
 };
 
 // Note: all Core filters are Test filters as well.  For maintainability,
@@ -2370,6 +2375,7 @@ bool RewriteOptions::AddByNameToFilterSet(
     // here will be invokable by outside people, so they better not crash
     // if that happens!
     if (option == "rewrite_images") {
+      // Every filter here needs to be listed in kCoreFilterSet as well.
       set->Insert(kConvertGifToPng);
       set->Insert(kConvertJpegToProgressive);
       set->Insert(kInlineImages);
@@ -2378,18 +2384,20 @@ bool RewriteOptions::AddByNameToFilterSet(
       set->Insert(kRecompressPng);
       set->Insert(kRecompressWebp);
       set->Insert(kResizeImages);
-      set->Insert(kStripImageMetaData);
       set->Insert(kStripImageColorProfile);
+      set->Insert(kStripImageMetaData);
     } else if (option == "recompress_images") {
+      // Every filter here needs to be listed under "rewrite_images" as well.
       set->Insert(kConvertGifToPng);
       set->Insert(kConvertJpegToProgressive);
       set->Insert(kJpegSubsampling);
       set->Insert(kRecompressJpeg);
       set->Insert(kRecompressPng);
       set->Insert(kRecompressWebp);
-      set->Insert(kStripImageMetaData);
       set->Insert(kStripImageColorProfile);
+      set->Insert(kStripImageMetaData);
     } else if (option == "extend_cache") {
+      // Every filter here needs to be listed in kCoreFilterSet as well.
       set->Insert(kExtendCacheCss);
       set->Insert(kExtendCacheImages);
       set->Insert(kExtendCacheScripts);
