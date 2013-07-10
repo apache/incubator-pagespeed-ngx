@@ -26,59 +26,43 @@ namespace net_instaweb {
 
 class BotCheckerTest : public testing::Test {};
 
-// Updated test case for Baidu
-TEST_F(BotCheckerTest, DetectUserAgentBaidu1) {
-  const char user_agent[] = "Baiduspider+"
-               "(+http://www.baidu.com/search/spider.htm)";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
+TEST_F(BotCheckerTest, DetectUserAgents) {
+  // Spider.
+  EXPECT_TRUE(BotChecker::Lookup(
+      "Baiduspider+(+http://www.baidu.com/search/spider.htm)"));
+  EXPECT_TRUE(BotChecker::Lookup(
+      "Baiduspider+(+http://help.baidu.jp/system/05.html)"));
+  EXPECT_TRUE(BotChecker::Lookup(
+      "BaidusSpIDER+(+http://help.baidu.jp/system/05.html)"));
 
-TEST_F(BotCheckerTest, Msnbot) {
-  const char user_agent[] = "msnbot-UDiscovery/2.0b";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
+  // Bot.
+  EXPECT_TRUE(BotChecker::Lookup("msnbot-UDiscovery/2.0b"));
+  EXPECT_TRUE(BotChecker::Lookup(
+      "Mozilla/5.0 (compatible; bingbot/2.0;"
+      "+http://www.bing.com/bingbot.htm)"));
+  EXPECT_TRUE(BotChecker::Lookup("bitlybot"));
+  EXPECT_TRUE(BotChecker::Lookup("bitlyBoT"));
 
-TEST_F(BotCheckerTest, Mediapartners) {
-  const char user_agent[] = "Mediapartners-Google";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
+  // Crawl.
+  EXPECT_TRUE(BotChecker::Lookup("CrAwLER"));
 
-TEST_F(BotCheckerTest, DetectUserAgentBaidu2) {
-  const char user_agent[] = "Baiduspider+"
-               "(+http://help.baidu.jp/system/05.html)";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
-// Case for bot user-agent with no version
-TEST_F(BotCheckerTest, DetectUserAgentWithNoVersion) {
-  const char user_agent[] = "Mozilla/5.0 (compatible; Yahoo! Slurp;"
-               "http://help.yahoo.com/help/us/ysearch/slurp)";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
+  // In map.
+  EXPECT_TRUE(BotChecker::Lookup("Mediapartners-Google"));
+  EXPECT_TRUE(BotChecker::Lookup(
+      "Mozilla/5.0 (compatible; Yahoo! Slurp;"
+      "http://help.yahoo.com/help/us/ysearch/slurp)"));
+  EXPECT_TRUE(BotChecker::Lookup(
+      "Mozilla/5.0 (compatible; Ask Jeeves/Teoma;"
+      "+http://about.ask.com/en/docs/about/webmasters.shtml"));
 
-// Case for bot user-agent "application/version"
-TEST_F(BotCheckerTest, DetectUserAgentWithVersion) {
-  const char user_agent[] = "Mozilla/5.0 (compatible; bingbot/2.0;"
-               "+http://www.bing.com/bingbot.htm)";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
+  // Empty.
+  EXPECT_TRUE(BotChecker::Lookup(""));
 
-// Case for bot user-agent "http://domain/version"
-TEST_F(BotCheckerTest, DetectUserAgentWithDomain) {
-  const char user_agent[] = "Mozilla/5.0 (compatible; Ask Jeeves/Teoma;"
-               "+http://about.ask.com/en/docs/about/webmasters.shtml";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
-
-// Case for comma separated bot agents.
-TEST_F(BotCheckerTest, DetectCommaSeparatedUserAgent) {
-  const char user_agent[] = "bitlybot,gzip(gfe)";
-  EXPECT_TRUE(BotChecker::Lookup(user_agent));
-}
-
-// Case for non-bot
-TEST_F(BotCheckerTest, DetectUserAgentWithNoBot) {
-  const char user_agent[] = "Wget/1.12 (linux-gnu)";
-  EXPECT_FALSE(BotChecker::Lookup(user_agent));
+  // Wget.
+  EXPECT_FALSE(BotChecker::Lookup("Wget/1.12 (linux-gnu)"));
+  EXPECT_FALSE(BotChecker::Lookup(
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+      "Chrome/28.0.1500.71 Safari/537.36"));
 }
 
 }  // namespace net_instaweb

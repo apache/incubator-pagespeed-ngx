@@ -96,6 +96,8 @@ class DedupInlinedImagesTest : public RewriteTestBase,
     options()->EnableFilter(RewriteOptions::kDedupInlinedImages);
     options()->set_image_inline_max_bytes(2000);
     rewrite_driver()->AddFilters();
+    rewrite_driver()->SetUserAgent(
+        UserAgentMatcherTestBase::kChrome18UserAgent);
 
     AddFileToMockFetcher(StrCat(kTestDomain, kCuppaPngFilename),
                          kCuppaPngFilename, kContentTypePng, 100);

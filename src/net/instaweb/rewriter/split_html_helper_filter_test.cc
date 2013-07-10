@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
@@ -52,6 +53,8 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    rewrite_driver()->SetUserAgent(
+        UserAgentMatcherTestBase::kChrome18UserAgent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 

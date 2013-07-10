@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -148,12 +149,13 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     RewriteTestBase::SetUp();
 
-    rewrite_driver()->SetUserAgent("");
     rewrite_driver()->SetWriter(&writer_);
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
     html_writer_filter_->set_writer(&writer_);
     rewrite_driver()->AddFilter(html_writer_filter_.get());
+    rewrite_driver()->SetUserAgent(
+        UserAgentMatcherTestBase::kChrome18UserAgent);
 
     response_headers_.set_status_code(HttpStatus::kOK);
     response_headers_.SetDateAndCaching(

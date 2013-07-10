@@ -19,100 +19,37 @@ namespace net_instaweb {
 ### These names are either application names or domain names of BOTs.
 ### This is not a complete list of BOTs names -- just the ones we want
 ### to scan for now.
-### The script to get the following names is generate_bots_list.sh.
 about.ask.com
-AITCSRobot
-AlkalineBOT
+A6-Indexer
+Apache-HttpClient
 Arachni
-AraybOt
-ArchitextSpider
-ASpider
 BackRub
-Baiduspider
-BaySpider
-bbot
-bingbot
-bitlybot
-borg-bot
-BoxSeaBot
-BSpider
-Checkbot
-Confuzzledbot
-CoolBot
-CrawlPaper
-CydralSpider
-dienstspider
-DIIbot
-dlw3robot
-DNAbot
-DragonBot
-EIT-Link-Verifier-Robot
-ESISmartSpider
+BingPreview
 expo9
 facebookexternalhit
 facebookplatform
-FastCrawler
-Fish-Search-Robot
-Freecrawl
-gammaSpider
-Gigabot
-Googlebot
-Googlebot-Image
-Googlebot-Mobile
+Genieo
 Google-StructuredDataTestingTool
-GrapeshotCrawler
 HttpClient
-iajaBot
-InfoSpiders
-JBot
-JCrawler
-Jobot
-JoeBot
-JubiiRobot
-KO_Yappo_Robot
 Lycos
 Mediapartners-Google
-MindCrawler
-MOMspider
-MSNBOT
-msnbot-UDiscovery
-NDSpider
-OntoSpider
-PerlCrawler
 PHP
-PortalBSpider
 proximic
-psbot
 Python
-RixBot
-RoboCrawl
-Robot
-Roverbot
 RPT-HTTPClient
 Ruby
-SimBot
-Solbot
-Spider
-SpiderBot
-spiderline
-tarspider
-TechBOT
-UCSD-Crawler
-uptimebot
-vcbot
-Verticrawlbot
-void-bot
-VWbot_K
-wired-digital-newsbot
 WordPress
-w@pSpider
 Yahoo!
-YandexBot
-YodaoBot
 %%
 
-// TODO:(fangfei) check other cases
 bool BotChecker::Lookup(const StringPiece& user_agent) {
+  // Check if the user agent is empty, or contains bot / crawl / spider.
+  if (user_agent.empty() ||
+      FindIgnoreCase(user_agent, "bot") != -1 ||
+      FindIgnoreCase(user_agent, "crawl") != -1 ||
+      FindIgnoreCase(user_agent, "spider") != -1) {
+    return true;
+  }
   // check whether the whole string is in database
   if (RobotDetect::Lookup(user_agent.data(), user_agent.size()) != NULL) {
     return true;
