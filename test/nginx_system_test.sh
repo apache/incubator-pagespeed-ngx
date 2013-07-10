@@ -92,7 +92,8 @@ function keepalive_test() {
     | grep -v "^\\* Connection.*left intact"\
     | grep -v "^} \\[data not shown"\
     | grep -v "^\\* upload completely sent off"\
-    | grep -v "^\\*   Trying.*\\.\\.\\. connected")
+    | grep -v "^\\* connected"\
+    | grep -v "^\\*   Trying.*\\.\\.\\.")
 
   # Nothing should remain after that.
   check [ -z "$OUT" ]
