@@ -105,6 +105,8 @@ class ScanlineResizer : public ScanlineReaderInterface {
   int width_;
   int height_;
   int elements_per_row_;
+
+  // TODO(huibao): Remove 'row_' and use 'resizer_y_->out_row_' instead.
   int row_;
 
   // Buffer for storing the intermediate results.

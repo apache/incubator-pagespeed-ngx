@@ -352,6 +352,7 @@ class ResizeColArea : public ResizeCol {
   int elements_per_row_4_;
   int in_row_;
   int out_row_;
+  int num_out_rows_;
   bool need_more_scanlines_;
   BufferType grid_area_;
   BufferType half_grid_area_;
@@ -379,6 +380,7 @@ bool ResizeColArea<InputType, BufferType>::Initialize(
   half_grid_area_ = grid_area_ / 2;
   in_row_ = 0;
   out_row_ = 0;
+  num_out_rows_ = out_size;
   need_more_scanlines_ = true;
   elements_per_row_ = elements_per_output_row;
   // elements_per_row_4_ is the largest multiplier of 4 which is smaller than
@@ -483,10 +485,12 @@ void ResizeColArea<InputType, BufferType>::Resize(const void* in_data_ptr,
     // If 'last_weight_' is not 0 or 1, the current input scanline shall
     // be used for computing the next output scanline too.
     ++out_row_;
-    BufferType weight = static_cast<BufferType>(table.last_weight_);
-    if (weight > 0 && weight < 1) {
-      weight = static_cast<BufferType>(table_[out_row_].first_weight_);
-      AppendFirstRow(in_data, weight);
+    if (out_row_ < num_out_rows_) {
+      BufferType weight = static_cast<BufferType>(table.last_weight_);
+      if (weight > 0 && weight < 1) {
+        weight = static_cast<BufferType>(table_[out_row_].first_weight_);
+        AppendFirstRow(in_data, weight);
+      }
     }
   }
   ++in_row_;
