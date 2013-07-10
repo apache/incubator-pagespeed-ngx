@@ -20,7 +20,6 @@
 
 #include <csetjmp>
 #include <cstddef>
-#include <cstdlib>
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -431,6 +430,26 @@ bool OptimizeWebp(const GoogleString& original_jpeg, int configured_quality,
                                        compressed_webp);
 }
 
+// Helper function to initialize picture object from WebP decode buffer.
+static bool WebPDecBufferToPicture(const WebPDecBuffer* const buf,
+                                   WebPPicture* const picture) {
+  const WebPYUVABuffer* const yuva = &buf->u.YUVA;
+  if ((yuva->u_stride != yuva->v_stride) || (buf->colorspace != MODE_YUVA)) {
+    return false;
+  }
+  picture->width = buf->width;
+  picture->height = buf->height;
+  picture->y = yuva->y;
+  picture->u = yuva->u;
+  picture->v = yuva->v;
+  picture->a = yuva->a;
+  picture->y_stride = yuva->y_stride;
+  picture->uv_stride = yuva->u_stride;
+  picture->a_stride = yuva->a_stride;
+  picture->colorspace = WEBP_YUV420A;
+  return true;
+}
+
 bool ReduceWebpImageQuality(const GoogleString& original_webp,
                             int quality, GoogleString* compressed_webp) {
   if (quality < 1) {
@@ -443,13 +462,14 @@ bool ReduceWebpImageQuality(const GoogleString& original_webp,
 
   const uint8* webp = reinterpret_cast<const uint8*>(original_webp.data());
   const int webp_size = original_webp.size();
-  // At the recommendation of skal@, we decompress and recompress in YUV space
-  // here.  We used to do this for jpeg conversion (as evidenced by the code
-  // above), but there are subtle differences between webp and jpeg YUV space
-  // conversions that require an adjustment step that was never implemented (see
-  // http://en.wikipedia.org/wiki/YCbCr).  Here, however, it makes conversions
-  // less lossy and allows us to operate exclusively on the downsampled image --
-  // and of course we're operating in the webp yuv space in both cases.
+  // At the recommendation of skal@, we decompress and recompress in YUV(A)
+  // space here. We used to do this for jpeg conversion (as evidenced by the
+  // code above), but there are subtle differences between webp and jpeg YUV
+  // space conversions that require an adjustment step that was never
+  // implemented (see http://en.wikipedia.org/wiki/YCbCr).
+  // Here, however, it makes conversions less lossy and allows us to operate
+  // exclusively on the downsampled image, and of course we're operating in the
+  // webp YUV(A) space in both cases.
   WebPConfig config;
   if (WebPConfigPreset(&config, WEBP_PRESET_DEFAULT, quality) == 0) {
     // Couldn't set up preset.
@@ -460,25 +480,23 @@ bool ReduceWebpImageQuality(const GoogleString& original_webp,
     // Couldn't set up picture due to library version mismatch.
     return false;
   }
-  picture.colorspace = WEBP_YUV420;
-  picture.writer = &GoogleStringWebpWriter;
-  picture.custom_ptr = reinterpret_cast<void*>(compressed_webp);
-  // Note: decode yields YUV420, the only colorspace currently used in lossy
-  // webp.
-  picture.y =
-      WebPDecodeYUV(webp, webp_size, &picture.width, &picture.height,
-                    &picture.u, &picture.v,
-                    &picture.y_stride, &picture.uv_stride);
-  if (picture.y == NULL) {
-    // WebPDecodeYUV call failed.
-    return false;
+
+  WebPDecoderConfig dec_config;
+  WebPInitDecoderConfig(&dec_config);
+  WebPDecBuffer* const output_buffer = &dec_config.output;
+  output_buffer->colorspace = MODE_YUVA;
+  bool success = ((WebPDecode(webp, webp_size, &dec_config) == VP8_STATUS_OK) &&
+                  WebPDecBufferToPicture(output_buffer, &picture));
+  if (success) {
+    picture.writer = &GoogleStringWebpWriter;
+    picture.custom_ptr = reinterpret_cast<void*>(compressed_webp);
+
+    success = WebPEncode(&config, &picture);
   }
-  bool result = WebPEncode(&config, &picture);
-  // We own picture.y (which also allocates space for uv).  As a result, we
-  // can't call WebPPictureFree(&picture), which assumes it did the allocation /
-  // management.
-  free(picture.y);
-  return result;
+
+  WebPFreeDecBuffer(output_buffer);
+
+  return success;
 }
 
 }  // namespace net_instaweb

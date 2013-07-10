@@ -1066,23 +1066,25 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else {
     const char* url = InstawebContext::MakeRequestUrl(*config, request);
     // Do not try to rewrite our own sub-request.
-    if (url != NULL && !is_pagespeed_subrequest(request)) {
+    if (url != NULL) {
       GoogleUrl gurl(url);
-      // For the beacon accept any method; for all others only allow GETs.
-      if (IsBeaconUrl(server_context->global_options()->beacon_url(), gurl)) {
+      if (!gurl.is_valid()) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                      "Ignoring invalid URL: %s", gurl.spec_c_str());
+      } else if (IsBeaconUrl(server_context->global_options()->beacon_url(),
+                             gurl)) {
         ret = instaweb_beacon_handler(request, server_context);
+      // For the beacon accept any method; for all others only allow GETs.
       } else if (request->method_number != M_GET) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                       "Not rewriting non-GET %d of %s",
                       request->method_number, gurl.spec_c_str());
-      } else if (!gurl.is_valid()) {
-        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
-                      "Ignoring invalid URL: %s", gurl.spec_c_str());
       } else if (gurl.PathSansLeaf() ==
                  ApacheRewriteDriverFactory::kStaticAssetPrefix) {
         instaweb_static_handler(request, server_context);
         ret = OK;
-      } else if (handle_as_resource(server_context, request, &gurl, url)) {
+      } else if (!is_pagespeed_subrequest(request) &&
+                 handle_as_resource(server_context, request, &gurl, url)) {
         ret = OK;
       }
     }

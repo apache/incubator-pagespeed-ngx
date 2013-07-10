@@ -209,6 +209,7 @@
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_namer_test.cc',
         'rewriter/url_partnership_test.cc',
+        'rewriter/webp_optimizer_test.cc',
         'spriter/libpng_image_library_test.cc',
         'spriter/image_spriter_test.cc',
         'system/apr_mem_cache_test.cc',
