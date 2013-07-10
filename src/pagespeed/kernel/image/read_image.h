@@ -19,7 +19,7 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_READ_IMAGE_H_
 #define PAGESPEED_KERNEL_IMAGE_READ_IMAGE_H_
 
-#include "base/basictypes.h"
+#include <cstddef>
 #include "pagespeed/kernel/image/scanline_interface.h"
 
 namespace pagespeed {
@@ -33,6 +33,16 @@ enum ImageFormat {
   IMAGE_GIF,
   IMAGE_WEBP
 };
+
+// TODO(huibao): Add an overload function
+// CreateScanlineReader(const void* image_buffer, size_t buffer_length).
+
+// Return a scanline image reader. The following formats are supported:
+// IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, and IMAGE_WEBP.
+//
+ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
+                                              const void* image_buffer,
+                                              size_t buffer_length);
 
 // Decode the image stream and return the image information. Use non-null
 // pointers to retrieve the informatin you need, and use null pointers to

@@ -61,6 +61,20 @@ pagespeed.PanelLoader.prototype.loadData = function() {
 
     this.changePageLoadState(NON_CRITICAL_LOADED);
 
+    // Scroll to the hash fragment when it is given, as it can be found
+    // in Non-Critical panels loaded just now.
+    var hash = window.location.hash;
+    if (hash && hash[0] == '#') {
+      // Make sure the hash fragment refers to an element, since it can
+      // be "parameters" of Ajax applications.
+      if (document.getElementById(hash.slice(1))) {
+        // Use window.location.replace() here rather than a more popular
+        // technique <element>.scrollIntoView() to let browsers track on
+        // the element even if it gets moved/resized later on by scripts,
+        // such as deferJs and window.setTimeout().
+        window.location.replace(hash);
+      }
+    }
 
     if (window.pagespeed && window.pagespeed.deferJs) {
       window.pagespeed.deferJs.registerScriptTags();

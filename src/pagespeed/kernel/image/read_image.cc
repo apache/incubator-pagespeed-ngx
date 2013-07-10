@@ -32,6 +32,58 @@ namespace pagespeed {
 
 namespace image_compression {
 
+// Create a scanline image reader.
+ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
+                                              const void* image_buffer,
+                                              size_t buffer_length) {
+  switch (image_type) {
+    case IMAGE_PNG:
+      {
+        scoped_ptr<PngScanlineReaderRaw> png_reader(new PngScanlineReaderRaw());
+        if (png_reader != NULL &&
+            png_reader->Initialize(image_buffer, buffer_length)) {
+          return png_reader.release();
+        }
+      }
+      break;
+
+    case IMAGE_GIF:
+      {
+        scoped_ptr<GifScanlineReaderRaw> gif_reader(new GifScanlineReaderRaw());
+        if (gif_reader != NULL &&
+            gif_reader->Initialize(image_buffer, buffer_length)) {
+          return gif_reader.release();
+        }
+      }
+      break;
+
+    case IMAGE_JPEG:
+      {
+        scoped_ptr<JpegScanlineReader> jpeg_reader(new JpegScanlineReader());
+        if (jpeg_reader != NULL &&
+            jpeg_reader->Initialize(image_buffer, buffer_length)) {
+          return jpeg_reader.release();
+        }
+      }
+      break;
+
+    case IMAGE_WEBP:
+      {
+        scoped_ptr<WebpScanlineReader> webp_reader(new WebpScanlineReader());
+        if (webp_reader != NULL &&
+            webp_reader->Initialize(image_buffer, buffer_length)) {
+          return webp_reader.release();
+        }
+      }
+      break;
+
+    default:
+      LOG(DFATAL) << "Invalid image type.";
+  }
+
+  return NULL;
+}
+
 bool ReadImage(ImageFormat image_type,
                const void* image_buffer,
                size_t buffer_length,
@@ -42,54 +94,9 @@ bool ReadImage(ImageFormat image_type,
                size_t* stride) {
   // Instantiate and initialize the reader based on image type.
   scoped_ptr<ScanlineReaderInterface> reader;
-  switch (image_type) {
-    case IMAGE_PNG:
-      {
-        scoped_ptr<PngScanlineReaderRaw> png_reader(new PngScanlineReaderRaw());
-        if (png_reader == NULL ||
-            !png_reader->Initialize(image_buffer, buffer_length)) {
-          return false;
-        }
-        reader.reset(png_reader.release());
-      }
-      break;
-
-    case IMAGE_GIF:
-      {
-        scoped_ptr<GifScanlineReaderRaw> gif_reader(new GifScanlineReaderRaw());
-        if (gif_reader == NULL ||
-            !gif_reader->Initialize(image_buffer, buffer_length)) {
-          return false;
-        }
-        reader.reset(gif_reader.release());
-      }
-      break;
-
-    case IMAGE_JPEG:
-      {
-        scoped_ptr<JpegScanlineReader> jpeg_reader(new JpegScanlineReader());
-        if (jpeg_reader == NULL ||
-            !jpeg_reader->Initialize(image_buffer, buffer_length)) {
-          return false;
-        }
-        reader.reset(jpeg_reader.release());
-      }
-      break;
-
-    case IMAGE_WEBP:
-      {
-        scoped_ptr<WebpScanlineReader> webp_reader(new WebpScanlineReader());
-        if (webp_reader == NULL ||
-            !webp_reader->Initialize(image_buffer, buffer_length)) {
-          return false;
-        }
-        reader.reset(webp_reader.release());
-      }
-      break;
-
-    default:
-      LOG(DFATAL) << "Invalid image type.";
-      return false;
+  reader.reset(CreateScanlineReader(image_type, image_buffer, buffer_length));
+  if (reader.get() == NULL) {
+    return false;
   }
 
   // The following information is available after the reader is initialized.
