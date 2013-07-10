@@ -263,7 +263,7 @@ void CachingHeaders::ParseCacheControlIfNecessary() {
         } else if (value.starts_with("private")) {
           // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html :
           // "private" [ "=" <"> 1#field-name <"> ] ; Section 14.9.1
-          // So we must use 'starts_width' rather than test for equality.
+          // So we must use 'starts_with' rather than test for equality.
           private_ = true;
         } else if (value.starts_with("no-cache")) {
           // "no-cache" [ "=" <"> 1#field-name <"> ]; Section 14.9.1
@@ -278,6 +278,8 @@ void CachingHeaders::ParseCacheControlIfNecessary() {
           } else {
             cache_control_parse_error_ = true;
           }
+        } else if (value == "must-revalidate") {
+          must_revalidate_ = true;
         }
       }
     }
