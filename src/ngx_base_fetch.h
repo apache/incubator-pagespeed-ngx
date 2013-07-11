@@ -101,9 +101,8 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Lock must be acquired first.
   // Returns:
-  //   NGX_DECLINED: nothing to send, short circuit.  Buffer not allocated.
   //   NGX_ERROR: failure
-  //   NGX_AGAIN: success
+  //   NGX_AGAIN: still has buffer to send, need to checkout link_ptr
   //   NGX_OK: done, HandleDone has been called
   // Allocates an nginx buffer, copies our buffer_ contents into it, clears
   // buffer_.

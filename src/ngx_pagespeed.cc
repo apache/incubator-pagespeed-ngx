@@ -913,7 +913,7 @@ ngx_int_t ps_async_wait_response(ngx_http_request_t *r) {
   r->count++;
   r->write_event_handler = ngx_http_request_empty_handler;
   ps_set_buffered(r, true);
-  // TODO(chaizhenhua): add timer
+  // TODO(chaizhenhua): do we need timer here?
   return NGX_DONE;
 }
 
@@ -954,8 +954,9 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     ctx->write_pending = (rc == NGX_AGAIN);
 
     if (r->header_only) {
-      // TODO(chaizhenhua): ctx->base_fetch->Release();
-      // ctx->base_fetch = NULL;
+      ctx->base_fetch->Release();
+      ctx->base_fetch = NULL;
+
       ctx->fetch_done = true;
       return rc;
     }
@@ -976,18 +977,17 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  // rc == NGX_OK || rc == NGX_AGAIN || rc == NGX_DECLINED
-
   if (rc == NGX_AGAIN && cl == NULL) {
     // there is no body buffer to send now.
     return NGX_AGAIN;
   }
 
   if (rc == NGX_OK) {
+    ctx->base_fetch->Release();
+    ctx->base_fetch = NULL;
+
     ps_set_buffered(r, false);
     ctx->fetch_done = true;
-    // TODO(chaizhenhua): ctx->base_fetch->Release();
-    // ctx->base_fetch = NULL;
   }
 
   return ps_write_filter(r, cl);
@@ -1489,8 +1489,7 @@ CreateRequestContext::Response ps_create_request_context(
   }
 
   int file_descriptors[2];
-  // TODO(chaizhenhua): let NgxBaseFetch to take the care of pipe close to
-  // avoid pipe broken signal
+
   int rc = pipe(file_descriptors);
   if (rc != 0) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pipe() failed");
@@ -1691,7 +1690,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
 ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  // TODO(chaizhenhua): check r != r->main
   if (ctx == NULL || ctx->base_fetch == NULL) {
     return ngx_http_next_body_filter(r, in);
   }
