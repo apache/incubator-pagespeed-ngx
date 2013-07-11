@@ -78,7 +78,15 @@ process_template() (
     -e "s#@@MOD_PAGESPEED_LOG@@#${MOD_PAGESPEED_LOG}#g" \
     -e "s#@@MODPAGESPEED_ENABLE_UPDATES@@#${MODPAGESPEED_ENABLE_UPDATES}#g" \
     -e "s#@@COMMENT_OUT_DEFLATE@@#${COMMENT_OUT_DEFLATE}#g" \
+    -e "s#@@SSL_CERT_DIR@@#${SSL_CERT_DIR}#g" \
+    -e "s#@@SSL_CERT_FILE_COMMAND@@#${SSL_CERT_FILE_COMMAND}#g" \
     > "$TMPLOUT" <<< "$TMPLINCL"
+
+  if grep "@@" "$TMPLOUT"; then
+    echo "ERROR: $TMPLOUT contains @@-variables that were not"
+    echo "substituted by installer.include."
+    exit 1
+  fi
 )
 
 # Setup the installation directory hierachy in the package staging area.
