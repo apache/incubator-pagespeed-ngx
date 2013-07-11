@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <set>
 #include <utility>
 
@@ -188,6 +189,10 @@ const char RewriteOptions::kMaxImageSizeLowResolutionBytes[] =
     "MaxImageSizeLowResolutionBytes";
 const char RewriteOptions::kMaxInlinedPreviewImagesIndex[] =
     "MaxInlinedPreviewImagesIndex";
+const char RewriteOptions::kMaxLowResImageSizeBytes[] =
+    "MaxLowResImageSizeBytes";
+const char RewriteOptions::kMaxLowResToHighResImageSizePercentage[] =
+    "MaxLowResToHighResImageSizePercentage";
 const char RewriteOptions::kMaxPrefetchJsElements[] = "MaxPrefetchJsElements";
 const char RewriteOptions::kMaxRewriteInfoLogSize[] = "MaxRewriteInfoLogSize";
 const char RewriteOptions::kMaxUrlSegmentSize[] = "MaxSegmentLength";
@@ -489,6 +494,13 @@ const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
 
 // By default, reinstrument every 6 hours.
 const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 6 * 60 * 60;
+
+// By default, all images are inline-previewed irrespective of size.
+const int64 RewriteOptions::kDefaultMaxLowResImageSizeBytes = -1;
+
+// By default, all images are inline-previewed, as long as the low-res size is
+// lesser than the full-res size.
+const int RewriteOptions::kDefaultMaxLowResToFullResImageSizePercentage = 100;
 
 const RewriteOptions::FilterEnumToIdAndNameEntry*
     RewriteOptions::filter_id_to_enum_array_[RewriteOptions::kEndOfFilters];
@@ -1830,6 +1842,22 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       false, &RewriteOptions::enable_fix_reflow_, "efr", kEnableFixReflow,
       kDirectoryScope, NULL);   // Not applicable for mod_pagespeed.
+
+  AddBaseProperty(
+      kDefaultMaxLowResImageSizeBytes,
+      &RewriteOptions::max_low_res_image_size_bytes_,
+      "lris",
+      kMaxLowResImageSizeBytes,
+      kDirectoryScope,
+      NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
+
+  AddBaseProperty(
+      kDefaultMaxLowResToFullResImageSizePercentage,
+      &RewriteOptions::max_low_res_to_full_res_image_size_percentage_,
+      "lrhrs",
+      kMaxLowResToHighResImageSizePercentage,
+      kDirectoryScope,
+      NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
 
   // Test-only, so no enum.
   AddRequestProperty(

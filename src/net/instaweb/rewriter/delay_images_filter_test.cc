@@ -747,4 +747,60 @@ TEST_F(DelayImagesFilterTest, DelayImagesScriptDebug) {
       << "There should still be some comments in the debug code";
 }
 
+TEST_F(DelayImagesFilterTest, DelayImageBasicTest) {
+  options()->DisableFilter(RewriteOptions::kInlineImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      GenerateRewrittenImageTag("http://test.com/1.webp", kSampleWebpData),
+      "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageSizeLimitTest) {
+  options()->DisableFilter(RewriteOptions::kInlineImages);
+  // If the low res is small, the image is not inline previewed.
+  options()->set_max_low_res_image_size_bytes(615);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageSizePercentageLimitTest) {
+  options()->DisableFilter(RewriteOptions::kInlineImages);
+  // If the low-res-size / full-res-size > 0.3, the image is not inline
+  // previewed.
+  options()->set_max_low_res_to_full_res_image_size_percentage(30);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      "<img src=\"http://test.com/1.webp\"/>"
+      "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
 }  // namespace net_instaweb

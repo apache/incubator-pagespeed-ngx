@@ -125,6 +125,17 @@ void SetDesiredDimensionsIfRequired(ImageDim* desired_dim,
   }
 }
 
+// Returns true if the low-res image can be inline-previewed.
+bool ShouldInlinePreview(const int64 low_res_size, const int64 full_res_size,
+                         const RewriteOptions* options) {
+  bool low_res_is_small = options->max_low_res_image_size_bytes() < 0 ||
+      low_res_size <= options->max_low_res_image_size_bytes();
+  bool low_res_smaller_than_full_res =
+      low_res_size * 100 < full_res_size *
+      options->max_low_res_to_full_res_image_size_percentage();
+  return (low_res_is_small && low_res_smaller_than_full_res);
+}
+
 const char* const kRelatedOptions[] = {
   RewriteOptions::kImageJpegNumProgressiveScans,
   RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
@@ -999,9 +1010,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
             driver_->timer(), message_handler));
       }
       low_image->SetTransformToLowRes();
-      if (image->Contents().size() > low_image->Contents().size()) {
-        // TODO(pulkitg): Add a some sort of guarantee on how small inline
-        // images will be.
+      if (ShouldInlinePreview(low_image->Contents().size(),
+                              image->Contents().size(), options)) {
         if (resource_context.mobile_user_agent()) {
           ResizeLowQualityImage(low_image.get(), input_resource, cached);
         } else {

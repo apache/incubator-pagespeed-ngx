@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
 
+#include <memory>
+
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -191,6 +193,17 @@ DEFINE_int64(
     min_resource_cache_time_to_rewrite_ms,
     RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs,
     "No resources with Cache-Control TTL less than this will be rewritten.");
+DEFINE_int64(
+    max_low_res_image_size_bytes,
+    RewriteOptions::kDefaultMaxLowResImageSizeBytes,
+    "Maximum size (in bytes) of the low resolution image which will be "
+    "inline-previewed in html.");
+DEFINE_int32(
+    max_low_res_to_full_res_image_size_percentage,
+    RewriteOptions::kDefaultMaxLowResToFullResImageSizePercentage,
+    "The maximum ratio of the size of low-res image to its full-res image "
+    "when the image will be inline-previewed in html. This is an integer "
+    "ranging from 0 to 100 (inclusive).");
 
 DEFINE_string(origin_domain_map, "",
               "Semicolon-separated list of origin_domain maps. "
@@ -877,6 +890,14 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("access_control_allow_origins")) {
     options->set_access_control_allow_origins(
         FLAGS_access_control_allow_origins);
+  }
+  if (WasExplicitlySet("max_low_res_image_size_bytes")) {
+    options->set_max_low_res_image_size_bytes(
+        FLAGS_max_low_res_image_size_bytes);
+  }
+  if (WasExplicitlySet("max_low_res_to_full_res_image_size_percentage")) {
+    options->set_max_low_res_to_full_res_image_size_percentage(
+        FLAGS_max_low_res_to_full_res_image_size_percentage);
   }
 
   MessageHandler* handler = factory->message_handler();

@@ -271,6 +271,8 @@ class RewriteOptions {
   static const char kMaxImageBytesForWebpInCss[];
   static const char kMaxImageSizeLowResolutionBytes[];
   static const char kMaxInlinedPreviewImagesIndex[];
+  static const char kMaxLowResImageSizeBytes[];
+  static const char kMaxLowResToHighResImageSizePercentage[];
   static const char kMaxPrefetchJsElements[];
   static const char kMaxRewriteInfoLogSize[];
   static const char kMaxUrlSegmentSize[];
@@ -595,6 +597,8 @@ class RewriteOptions {
   static const int64 kDefaultMaxHtmlCacheTimeMs;
   static const int64 kDefaultMaxHtmlParseBytes;
   static const int64 kDefaultMaxImageBytesForWebpInCss;
+  static const int64 kDefaultMaxLowResImageSizeBytes;
+  static const int kDefaultMaxLowResToFullResImageSizePercentage;
   static const int64 kDefaultMetadataInputErrorsCacheTtlMs;
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const char kDefaultDownstreamCachePurgeMethod[];
@@ -2163,6 +2167,20 @@ class RewriteOptions {
     return enable_fix_reflow_.value();
   }
 
+  void set_max_low_res_image_size_bytes(int64 x) {
+    set_option(x, &max_low_res_image_size_bytes_);
+  }
+  int64 max_low_res_image_size_bytes() const {
+    return max_low_res_image_size_bytes_.value();
+  }
+
+  void set_max_low_res_to_full_res_image_size_percentage(int x) {
+    set_option(x, &max_low_res_to_full_res_image_size_percentage_);
+  }
+  int max_low_res_to_full_res_image_size_percentage() const {
+    return max_low_res_to_full_res_image_size_percentage_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -3393,6 +3411,13 @@ class RewriteOptions {
 
   // Fix reflows due to defer js.
   Option<bool> enable_fix_reflow_;
+
+  // Options to control the edge-case behaviour of inline-previewed images. The
+  // idea is to avoid inline-previewing when:
+  // a. low-res image is large.
+  // b. low-res image is not small enough compared to the full-res version.
+  Option<int64> max_low_res_image_size_bytes_;
+  Option<int> max_low_res_to_full_res_image_size_percentage_;
 
   // Be sure to update constructor when new fields are added so that they are
   // added to all_options_, which is used for Merge, and eventually, Compare.
