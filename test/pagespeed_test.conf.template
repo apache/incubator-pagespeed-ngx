@@ -516,7 +516,7 @@ http {
       # This location has the html files that will be configured to be stored
       # in the proxy_cache layer.
       pagespeed DownstreamCachePurgeMethod "GET";
-      pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:8051/purge";
+      pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
       # We use a very small deadline here to force the rewriting to not complete
       # in the very first attempt.
       pagespeed RewriteDeadlinePerFlushMs 1;
