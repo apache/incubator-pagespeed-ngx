@@ -49,11 +49,11 @@
       'target_name': 'instaweb_add_instrumentation_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'add_instrumentation',
       },
       'sources': [
-        'rewriter/add_instrumentation.js',
+        'genfiles/rewriter/add_instrumentation_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -77,11 +77,11 @@
       'target_name': 'instaweb_extended_instrumentation_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'extended_instrumentation',
       },
       'sources': [
-        'rewriter/extended_instrumentation.js',
+        'genfiles/rewriter/extended_instrumentation_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -105,11 +105,11 @@
       'target_name': 'instaweb_client_domain_rewriter_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'client_domain_rewriter',
       },
       'sources': [
-        'rewriter/client_domain_rewriter.js',
+        'genfiles/rewriter/client_domain_rewriter_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -133,11 +133,11 @@
       'target_name': 'instaweb_critical_css_beacon_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'critical_css_beacon',
       },
       'sources': [
-        'rewriter/critical_css_beacon.js',
+        'genfiles/rewriter/critical_css_beacon_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -161,11 +161,11 @@
       'target_name': 'instaweb_critical_images_beacon_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'critical_images_beacon',
       },
       'sources': [
-        'rewriter/critical_images_beacon.js',
+        'genfiles/rewriter/critical_images_beacon_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -189,11 +189,11 @@
       'target_name': 'instaweb_dedup_inlined_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'dedup_inlined_images',
       },
       'sources': [
-        'rewriter/dedup_inlined_images.js',
+        'genfiles/rewriter/dedup_inlined_images_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -217,11 +217,11 @@
       'target_name': 'instaweb_defer_iframe_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'defer_iframe',
       },
       'sources': [
-        'rewriter/defer_iframe.js',
+        'genfiles/rewriter/defer_iframe_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -245,11 +245,11 @@
       'target_name': 'instaweb_delay_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'delay_images',
       },
       'sources': [
-        'rewriter/delay_images.js',
+        'genfiles/rewriter/delay_images_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -273,11 +273,11 @@
       'target_name': 'instaweb_delay_images_inline_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'delay_images_inline',
       },
       'sources': [
-        'rewriter/delay_images_inline.js',
+        'genfiles/rewriter/delay_images_inline_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -301,11 +301,11 @@
       'target_name': 'instaweb_detect_reflow_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'detect_reflow',
       },
       'sources': [
-        'rewriter/detect_reflow.js',
+        'genfiles/rewriter/detect_reflow_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -329,11 +329,11 @@
       'target_name': 'instaweb_deterministic_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'deterministic',
       },
       'sources': [
-        'rewriter/deterministic.js',
+        'genfiles/rewriter/deterministic_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -385,11 +385,11 @@
       'target_name': 'instaweb_js_defer_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'js_defer',
       },
       'sources': [
-        'rewriter/js_defer.js',
+        'genfiles/rewriter/js_defer_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -413,11 +413,11 @@
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'lazyload_images',
       },
       'sources': [
-        'rewriter/lazyload_images.js',
+        'genfiles/rewriter/lazyload_images_dbg.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -441,11 +441,11 @@
       'target_name': 'instaweb_local_storage_cache_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'local_storage_cache',
       },
       'sources': [
-        'rewriter/local_storage_cache.js',
+        'genfiles/rewriter/local_storage_cache_dbg.js',
       ],
       'includes': [
         'data2c.gypi',

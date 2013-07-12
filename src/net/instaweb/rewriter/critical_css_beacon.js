@@ -23,7 +23,8 @@
  * @author jud@google.com (Jud Porter)
  */
 
-// TODO(jud): Reuse and share code with critical_images_beacon.js.
+goog.require('pagespeedutils');
+
 
 // Exporting functions using quoted attributes to prevent js compiler from
 // renaming them.
@@ -79,49 +80,6 @@ pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash,
 };
 
 /**
- * Send the beacon as an AJAX POST request to the server.
- * @param {string} data The data to be sent in the POST.
- * @return {boolean} Return true if the request was sent.
- * @private
- */
-pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function(data) {
-  var httpRequest;
-  // TODO(jud): Use the closure goog.net.Xhrlo.send function here once we have
-  // closure lib support in our static JS files.
-  if (window.XMLHttpRequest) { // Mozilla, Safari, ...
-    httpRequest = new XMLHttpRequest();
-  } else if (window.ActiveXObject) { // IE
-    try {
-      httpRequest = new ActiveXObject('Msxml2.XMLHTTP');
-    }
-    catch (e) {
-      try {
-        httpRequest = new ActiveXObject('Microsoft.XMLHTTP');
-      }
-      catch (e2) {}
-    }
-  }
-  if (!httpRequest) {
-    return false;
-  }
-
-  // We send the page url in the query param instead of the POST body to assist
-  // load balancers or other systems that want to route the beacon based on the
-  // originating page.
-  // TODO(jud): Handle long URLs correctly. We should send a signal back to the
-  // server indicating that we couldn't send the beacon because the URL was too
-  // long, so that the server will stop instrumenting pages.
-  var query_param_char = this.beaconUrl_.indexOf('?') == -1 ? '?' : '&';
-  var url = this.beaconUrl_ + query_param_char + 'url=' +
-      encodeURIComponent(this.htmlUrl_);
-  httpRequest.open('POST', url);
-  httpRequest.setRequestHeader(
-      'Content-Type', 'application/x-www-form-urlencoded');
-  httpRequest.send(data);
-  return true;
-};
-
-/**
  * Check if CSS selectors apply to DOM elements that are visible on initial page
  * load.
  * @private
@@ -152,31 +110,7 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function() {
   pagespeed['criticalCssBeaconData'] = data;
   // TODO(jud): This beacon should coordinate with the add_instrumentation JS
   // so that only one beacon request is sent if both filters are enabled.
-  this.sendBeacon_(data);
-};
-
-/**
- * Runs the function when event is triggered.
- * @param {Window|Element} elem Element to attach handler.
- * @param {string} ev Name of the event.
- * @param {function()} func New onload handler.
- *
- * TODO(nikhilmadan): Avoid duplication with the DeferJs code.
- */
-pagespeed.addHandler = function(elem, ev, func) {
-  if (elem.addEventListener) {
-    elem.addEventListener(ev, func, false);
-  } else if (elem.attachEvent) {
-    elem.attachEvent('on' + ev, func);
-  } else {
-    var oldHandler = elem['on' + ev];
-    elem['on' + ev] = function() {
-      func.call(this);
-      if (oldHandler) {
-        oldHandler.call(this);
-      }
-    };
-  }
+  pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data);
 };
 
 /**
@@ -206,7 +140,7 @@ pagespeed.criticalCssBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
       temp.checkCssSelectors_();
     }, 0);
   };
-  pagespeed.addHandler(window, 'load', beacon_onload);
+  pagespeedutils.addHandler(window, 'load', beacon_onload);
 };
 
 pagespeed['criticalCssBeaconInit'] = pagespeed.criticalCssBeaconInit;

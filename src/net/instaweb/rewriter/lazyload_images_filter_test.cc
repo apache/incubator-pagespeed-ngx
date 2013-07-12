@@ -388,8 +388,8 @@ TEST_F(LazyloadImagesFilterTest, LazyloadScriptDebug) {
   InitLazyloadImagesFilter(true);
   Parse("debug",
         "<head></head><body><img src=\"1.jpg\"></body>");
-  EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
-      << "There should still be some comments in the debug code";
+  EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
+      << "There should be no comments in the debug code";
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySlider) {

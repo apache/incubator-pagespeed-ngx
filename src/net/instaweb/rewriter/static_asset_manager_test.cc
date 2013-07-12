@@ -138,11 +138,11 @@ TEST_F(StaticAssetManagerTest, TestJsDebug) {
     StaticAssetManager::StaticAsset module =
         static_cast<StaticAssetManager::StaticAsset>(i);
     GoogleString script(manager_->GetAsset(module, options_));
-    if (module != StaticAssetManager::kBlankGif &&
-        module != StaticAssetManager::kBlinkJs &&
-        module != StaticAssetManager::kGhostClickBusterJs) {
-      EXPECT_NE(GoogleString::npos, script.find("/*"))
-          << "There should be some comments in the debug code";
+    if (module != StaticAssetManager::kBlankGif) {
+      // Debug code is also put through the closure compiler to resolve any uses
+      // of goog.require. As part of this, comments also get stripped out.
+      EXPECT_EQ(GoogleString::npos, script.find("/*"))
+          << "There should be no comments in the debug code";
     }
   }
 }

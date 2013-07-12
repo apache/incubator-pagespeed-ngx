@@ -21,6 +21,8 @@
  * @author atulvasu@google.com (Atul Vasu)
  */
 
+goog.require('pagespeedutils');
+
 // Defer javascript will be executed in two phases. First phase will be for
 // high priority scripts and second phase is for low priority scripts. Order
 // of execution will be:
@@ -511,7 +513,7 @@ deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
   if (this.isWebKit()) {
     new Image().src = url;
   } else {
-    this.prefetchScriptsHtml_ += "<" + "script type='psa_prefetch' src='" +
+    this.prefetchScriptsHtml_ += '<' + "script type='psa_prefetch' src='" +
         url + "'><\/script>";
   }
 };
@@ -533,7 +535,7 @@ deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
   } else {
     // ||'ed with empty string to make sure the the value of str is not
     // undefined or null.
-    var str = script.innerHTML || script.textContent || script.data || "";
+    var str = script.innerHTML || script.textContent || script.data || '';
     this.addStr(str, script, opt_pos);
   }
 };
@@ -624,7 +626,7 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
       me.runNext();
     };
     deferJsNs.addOnload(script, runNextHandler);
-    deferJsNs.addHandler(script, 'error', runNextHandler);
+    pagespeedutils.addHandler(script, 'error', runNextHandler);
     if (me.getIEVersion() < 9) {
       var stateChangeHandler = function() {
         if (script.readyState == 'complete' ||
@@ -632,9 +634,9 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
           script.onreadystatechange = null;
           runNextHandler();
         }
-      }
+      };
 
-      deferJsNs.addHandler(script, 'readystatechange', stateChangeHandler);
+      pagespeedutils.addHandler(script, 'readystatechange', stateChangeHandler);
     }
     script.setAttribute('src', url);
     // If a script node with src also has a node inside it
@@ -1024,7 +1026,7 @@ deferJsNs.DeferJs.prototype.setUp = function() {
         try {
           // Shadow document.all
           var propertyDescriptor = { configurable: true };
-          propertyDescriptor.get = function() { return undefined;}
+          propertyDescriptor.get = function() { return undefined; };
           Object.defineProperty(document, 'all', propertyDescriptor);
         } catch (err) {
           this.log('Exception while overriding document.all.', err);
@@ -1051,7 +1053,7 @@ deferJsNs.DeferJs.prototype.setUp = function() {
     var node = me.origGetElementById_.call(document, str);
     return node == null ||
         node.hasAttribute(me.psaNotProcessed_) ? null : node;
-  }
+  };
 
   if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {
     // TODO(ksimbili): Support IE8
@@ -1062,7 +1064,7 @@ deferJsNs.DeferJs.prototype.setUp = function() {
       } catch (err) {
         return me.origGetElementsByTagName_.call(document, tagName);
       }
-    }
+    };
   }
 
   // Overriding createElement().
@@ -1083,10 +1085,10 @@ deferJsNs.DeferJs.prototype.setUp = function() {
         }
       };
       deferJsNs.addOnload(elem, onload);
-      deferJsNs.addHandler(elem, 'error', onload);
+      pagespeedutils.addHandler(elem, 'error', onload);
     }
     return elem;
-  }
+  };
 };
 
 /**
@@ -1378,20 +1380,20 @@ deferJsNs.DeferJs.prototype.overrideAddEventListeners = function() {
     document.addEventListener = function(eventName, func, capture) {
       psaAddEventListener(document, eventName, func, capture,
                           me.origDocAddEventListener_);
-    }
+    };
     window.addEventListener = function(eventName, func, capture) {
       psaAddEventListener(window, eventName, func, capture,
                           me.origWindowAddEventListener_);
-    }
+    };
   } else if (window.attachEvent) {
     document.attachEvent = function(eventName, func) {
       psaAddEventListener(document, eventName, func, undefined,
                           me.origDocAttachEvent_);
-    }
+    };
     window.attachEvent = function(eventName, func) {
       psaAddEventListener(window, eventName, func, undefined,
                           me.origWindowAttachEvent_);
-    }
+    };
   }
 };
 
@@ -1465,7 +1467,7 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
     // 'load' cannot bubble.
     customEvent['currentTarget'] = elem;
     func.call(elem, customEvent);
-  }
+  };
   if (!deferJs.eventListernersMap_[deferJsEvent]) {
     deferJs.eventListernersMap_[deferJsEvent] = [];
   }
@@ -1535,32 +1537,9 @@ deferJsNs.DeferJs.prototype['registerScriptTags'] =
  * @param {!function()} func New onload handler.
  */
 deferJsNs.addOnload = function(elem, func) {
-  deferJsNs.addHandler(elem, 'load', func);
+  pagespeedutils.addHandler(elem, 'load', func);
 };
 pagespeed['addOnload'] = deferJsNs.addOnload;
-
-/**
- * Runs the function when event is triggered.
- * @param {HTMLDocument|Window|Element} elem Element to attach handler.
- * @param {!string} eventName Name of the event.
- * @param {!function()} func New onload handler.
- */
-deferJsNs.addHandler = function(elem, eventName, func) {
-  if (elem.addEventListener) {
-    elem.addEventListener(eventName, func, false);
-  } else if (elem.attachEvent) {
-    elem.attachEvent('on' + eventName, func);
-  } else {
-    var oldHandler = elem['on' + eventName];
-    elem['on' + eventName] = function() {
-      func.call(this);
-      if (oldHandler) {
-        oldHandler.call(this);
-      }
-    }
-  }
-};
-pagespeed['addHandler'] = deferJsNs.addHandler;
 
 /**
  * @return {boolean} true if browser is Firefox.
@@ -1636,10 +1615,10 @@ deferJsNs.DeferJs.prototype.noDeferCreateElementOverride = function() {
         }
       };
       deferJsNs.addOnload(elem, onload);
-      deferJsNs.addHandler(elem, 'error', onload);
+      pagespeedutils.addHandler(elem, 'error', onload);
     }
     return elem;
-  }
+  };
 };
 
 /**
@@ -1695,5 +1674,5 @@ deferJsNs.startDeferJs = function() {
   pagespeed.deferJs.execute();
 };
 deferJsNs['startDeferJs'] = deferJsNs.startDeferJs;
-deferJsNs.addHandler(document, 'DOMContentLoaded', deferJsNs.startDeferJs);
+pagespeedutils.addHandler(document, 'DOMContentLoaded', deferJsNs.startDeferJs);
 deferJsNs.addOnload(window, deferJsNs.startDeferJs);

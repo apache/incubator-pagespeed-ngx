@@ -743,8 +743,8 @@ TEST_F(DelayImagesFilterTest, DelayImagesScriptDebug) {
                        kContentTypeJpeg, 100);
   Parse("debug",
         "<head></head><body><img src=\"http://test.com/1.jpeg\"/></body>");
-  EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
-      << "There should still be some comments in the debug code";
+  EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
+      << "There should be no comments in the debug code";
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageBasicTest) {
