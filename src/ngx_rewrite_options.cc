@@ -109,7 +109,6 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
   return RewriteOptions::kOptionOk;
 }
 
-
 RewriteOptions::OptionSettingResult
     NgxRewriteOptions::ParseAndSetOptionFromEnum1(
         OptionEnum directive, StringPiece arg,
@@ -129,9 +128,27 @@ RewriteOptions::OptionSettingResult
       directive, arg, msg, handler);
 }
 
+RewriteOptions::OptionSettingResult ParseAndSetOptionHelper(
+    StringPiece option_value,
+    NgxRewriteDriverFactory* driver_factory,
+    void (NgxRewriteDriverFactory::*set_option_method)(bool)) {
+  bool parsed_value;
+  if (StringCaseEqual(option_value, "on") ||
+      StringCaseEqual(option_value, "true")) {
+    parsed_value = true;
+  } else if (StringCaseEqual(option_value, "off") ||
+             StringCaseEqual(option_value, "false")) {
+    parsed_value = false;
+  } else {
+    return RewriteOptions::kOptionValueInvalid;
+  }
+
+  (driver_factory->*set_option_method)(parsed_value);
+  return RewriteOptions::kOptionOk;
+}
+
 // Very similar to apache/mod_instaweb::ParseDirective.
-const char*
-NgxRewriteOptions::ParseAndSetOptions(
+const char* NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
     NgxRewriteDriverFactory* driver_factory) {
   CHECK_GE(n_args, 1);
@@ -153,62 +170,33 @@ NgxRewriteOptions::ParseAndSetOptions(
     // TODO(morlovich): Remove these special hacks, and handle these via
     // ParseAndSetOptionFromEnum1.
     if (IsDirective(directive, "UsePerVHostStatistics")) {
-        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
-        if (IsDirective(arg, "on")) {
-          driver_factory->set_use_per_vhost_statistics(true);
-          result = RewriteOptions::kOptionOk;
-        } else if (IsDirective(arg, "off")) {
-          driver_factory->set_use_per_vhost_statistics(false);
-          result = RewriteOptions::kOptionOk;
-        } else {
-          result = RewriteOptions::kOptionValueInvalid;
-        }
-      } else if (IsDirective(directive, "InstallCrashHandler")) {
-        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
-        if (IsDirective(arg, "on")) {
-          driver_factory->set_install_crash_handler(true);
-          result = RewriteOptions::kOptionOk;
-        } else if (IsDirective(arg, "off")) {
-          driver_factory->set_install_crash_handler(false);
-          result = RewriteOptions::kOptionOk;
-        } else {
-          result = RewriteOptions::kOptionValueInvalid;
-        }
-      } else if (IsDirective(directive, "MessageBufferSize")) {
-        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
-        int message_buffer_size;
-        bool ok = StringToInt(arg.as_string(), &message_buffer_size);
-        if (ok && message_buffer_size >= 0) {
-          driver_factory->set_message_buffer_size(message_buffer_size);
-          result = RewriteOptions::kOptionOk;
-        } else {
-          result = RewriteOptions::kOptionValueInvalid;
-        }
-      } else if (IsDirective(directive, "UseNativeFetcher")) {
-        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
-        if (IsDirective(arg, "on")) {
-          driver_factory->set_use_native_fetcher(true);
-          result = RewriteOptions::kOptionOk;
-        } else if (IsDirective(arg, "off")) {
-          driver_factory->set_use_native_fetcher(false);
-          result = RewriteOptions::kOptionOk;
-        } else {
-          result = RewriteOptions::kOptionValueInvalid;
-        }
-      } else if (IsDirective(directive, "RateLimitBackgroundFetches")) {
-        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
-        if (IsDirective(arg, "on")) {
-          driver_factory->set_rate_limit_background_fetches(true);
-          result = RewriteOptions::kOptionOk;
-        } else if (IsDirective(arg, "off")) {
-          driver_factory->set_rate_limit_background_fetches(false);
-          result = RewriteOptions::kOptionOk;
-        } else {
-          result = RewriteOptions::kOptionValueInvalid;
-        }
+      result = ParseAndSetOptionHelper(
+          arg, driver_factory,
+          &NgxRewriteDriverFactory::set_use_per_vhost_statistics);
+    } else if (IsDirective(directive, "InstallCrashHandler")) {
+      result = ParseAndSetOptionHelper(
+          arg, driver_factory,
+          &NgxRewriteDriverFactory::set_install_crash_handler);
+    } else if (IsDirective(directive, "MessageBufferSize")) {
+      int message_buffer_size;
+      bool ok = StringToInt(arg.as_string(), &message_buffer_size);
+      if (ok && message_buffer_size >= 0) {
+        driver_factory->set_message_buffer_size(message_buffer_size);
+        result = RewriteOptions::kOptionOk;
       } else {
-        result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
+        result = RewriteOptions::kOptionValueInvalid;
       }
+    } else if (IsDirective(directive, "UseNativeFetcher")) {
+      result = ParseAndSetOptionHelper(
+          arg, driver_factory,
+          &NgxRewriteDriverFactory::set_use_native_fetcher);
+    } else if (IsDirective(directive, "RateLimitBackgroundFetches")) {
+      result = ParseAndSetOptionHelper(
+          arg, driver_factory,
+          &NgxRewriteDriverFactory::set_rate_limit_background_fetches);
+    } else {
+      result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
+    }
   } else if (n_args == 3) {
     // Short-term special handling, until this moves to common code.
     // TODO(morlovich): Clean this up.
