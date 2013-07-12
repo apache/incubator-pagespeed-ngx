@@ -91,6 +91,8 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
   ngx_uint_t buffer_size = sp.size() + 1;
   char* s = static_cast<char*>(ngx_palloc(pool, buffer_size));
   if (s == NULL) {
+    LOG(ERROR) << "string_piece_to_pool_string: ngx_palloc() returned NULL";
+    DCHECK(false);
     return NULL;
   }
   sp.copy(s, buffer_size /* max to copy */);
@@ -377,6 +379,12 @@ char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
 void ps_ignore_sigpipe();
+
+void ps_write_handler_response(const StringPiece& output,
+                               ngx_http_request_t* r,
+                               net_instaweb::ContentType content_type,
+                               const StringPiece& cache_control,
+                               net_instaweb::Timer* timer);
 
 ngx_command_t ps_commands[] = {
   { ngx_string("pagespeed"),
@@ -2026,8 +2034,6 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   return ngx_http_next_header_filter(r);
 }
 
-// TODO(oschaaf): make ps_static_handler use ps_write_handler_response? for now,
-// minimize the diff
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
@@ -2046,59 +2052,9 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
     return NGX_DECLINED;
   }
 
-  // Set and send headers.
-  r->headers_out.status = NGX_HTTP_OK;
-
-  // Content length
-  r->headers_out.content_length_n = file_contents.size();
-
-  // Content type
-  StringPiece content_type_sp(content_type.mime_type());
-  r->headers_out.content_type_len = content_type_sp.length();
-  r->headers_out.content_type.len = content_type_sp.length();
-  r->headers_out.content_type.data = reinterpret_cast<u_char*>(
-      string_piece_to_pool_string(r->pool, content_type_sp));
-  if (r->headers_out.content_type.data == NULL) {
-    return NGX_ERROR;
-  }
-  // ngx_http_test_content_type() will recalculate this if we null it
-  r->headers_out.content_type_lowcase = NULL;
-
-  // Cache control
-  char* cache_control_s = string_piece_to_pool_string(r->pool, cache_header);
-  if (cache_control_s == NULL) {
-    return NGX_ERROR;
-  }
-  ps_set_cache_control(r, cache_control_s);
-
-  if (net_instaweb::FindIgnoreCase(cache_header, "private") ==
-      static_cast<int>(StringPiece::npos)) {
-    ngx_table_elt_t* etag = static_cast<ngx_table_elt_t*>(
-        ngx_list_push(&r->headers_out.headers));
-    if (etag == NULL) {
-      return NGX_ERROR;
-    }
-
-    etag->hash = 1;  // Include this header in the output.
-    etag->key.len = 4;
-    etag->key.data = reinterpret_cast<u_char*>(const_cast<char*>("ETag"));
-    etag->value.len = 5;
-    etag->value.data = reinterpret_cast<u_char*>(const_cast<char*>("W/\"0\""));
-    r->headers_out.etag = etag;
-  }
-
-  ngx_http_send_header(r);
-
-  // Send the body.
-  ngx_chain_t* out;
-  ngx_int_t rc = string_piece_to_buffer_chain(
-      r->pool, file_contents, &out, true /* send_last_buf */);
-  if (rc == NGX_ERROR) {
-    return NGX_ERROR;
-  }
-  CHECK(rc == NGX_OK);
-
-  return ngx_http_output_filter(r, out);
+  ps_write_handler_response(file_contents, r, content_type, cache_header,
+                            cfg_s->server_context->factory()->timer());
+  return NGX_OK;
 }
 
 ngx_int_t send_out_headers_and_body(
@@ -2149,6 +2105,16 @@ void ps_write_handler_response(const StringPiece& output,
   response_headers.SetLastModified(now_ms);
   response_headers.Add(net_instaweb::HttpAttributes::kCacheControl,
                        cache_control);
+
+  char* cache_control_s = string_piece_to_pool_string(r->pool, cache_control);
+  if (cache_control_s != NULL) {
+    if (net_instaweb::FindIgnoreCase(cache_control, "private") ==
+        static_cast<int>(StringPiece::npos)) {
+      response_headers.Add(net_instaweb::HttpAttributes::kEtag,
+                           "W/\"0\"");
+    }
+  }
+
   send_out_headers_and_body(r, response_headers, output.as_string());
 }
 
