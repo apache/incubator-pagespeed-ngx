@@ -1644,4 +1644,23 @@ start_test keepalive with static resources
 keepalive_test "keepalive-static.example.com"\
   "/ngx_pagespeed_static/js_defer.0.js" ""
 
+
+test_filter ngx_pagespeed_static defer js served with correct headers.
+# First, determine which hash js_defer is served with. We need a correct hash
+# to get it served up with an Etag, which is one of the things we want to test.
+URL="$HOSTNAME/mod_pagespeed_example/defer_javascript.html?PageSpeed=on&PageSpeedFilters=defer_javascript"
+OUT=$($WGET_DUMP $URL)
+HASH=$(echo $OUT \
+  | grep --only-matching "/js_defer\\.*\([^.]\)*.js" | cut -d '.' -f 2)
+
+JS_URL="$HOSTNAME/ngx_pagespeed_static/js_defer.$HASH.js"
+JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $JS_URL 2>&1)
+check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
+check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
+# Nginx's gzip module clears etags, which we don't want. Make sure we have it.
+check_from "$JS_HEADERS" egrep -qi 'Etag: W/"0"'
+check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
+
 check_failures_and_exit
