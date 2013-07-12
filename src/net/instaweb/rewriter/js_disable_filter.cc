@@ -148,17 +148,10 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
       // The method to download the scripts differs based on the user agent.
       // Iframe is used for non-chrome UAs whereas for Chrome, the scripts are
       // downloaded as Image.src().
-      if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-        HtmlElement* script = rewrite_driver_->NewElement(element,
-            HtmlName::kScript);
-        rewrite_driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer,
-                                      "");
-        GoogleString script_data = StrCat("(function(){", prefetch_js_elements_,
-                                          "})()");
-        rewrite_driver_->PrependChild(element, script);
+      if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkTag) {
         HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
-            script, script_data);
-        rewrite_driver_->AppendChild(script, script_code);
+            element, prefetch_js_elements_);
+        rewrite_driver_->AppendChild(element, script_code);
       } else {
         HtmlElement* iframe =
             rewrite_driver_->NewElement(element, HtmlName::kIframe);
@@ -191,11 +184,11 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
         if (should_look_for_prefetch_js_elements_ &&
             prefetch_js_elements_count_ < max_prefetch_js_elements_) {
           GoogleString escaped_source;
-          if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
+          if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkTag) {
             EscapeToJsStringLiteral(src->DecodedValueOrNull(), false,
                                     &escaped_source);
             StrAppend(&prefetch_js_elements_, StringPrintf(
-                      FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
+                      FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml,
                       escaped_source.c_str()));
           } else {
             HtmlKeywords::Escape(src->DecodedValueOrNull(), &escaped_source);

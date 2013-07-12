@@ -180,10 +180,9 @@ const char kRewrittenHtmlForRedirect[] =
     "</script>"
     "</head><body></body></html>";
 
-const char kFlushEarlyRewrittenHtmlImageTag[] =
-    "<script type=\"text/javascript\">(function(){"
-    "new Image().src=\"%s\";"
-    "new Image().src=\"%s\";})()</script>"
+const char kFlushEarlyRewrittenHtmlLinkTag[] =
+    "<link rel=\"stylesheet\" href=\"%s\"/>\n"
+    "<link rel=\"stylesheet\" href=\"%s\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\"/>\n"
@@ -192,13 +191,12 @@ const char kFlushEarlyRewrittenHtmlImageTag[] =
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 5</script>";
 
-const char kFlushEarlyRewrittenHtmlImageTagInsertDnsPrefetch[] =
-    "<script type=\"text/javascript\">(function(){"
-    "new Image().src=\"%s\";"
-    "new Image().src=\"%s\";})()</script>"
+const char kFlushEarlyRewrittenHtmlLinkTagInsertDnsPrefetch[] =
     "<link rel=\"dns-prefetch\" href=\"//www.domain1.com\">"
     "<link rel=\"dns-prefetch\" href=\"//www.domain2.com\">"
     "<link rel=\"dns-prefetch\" href=\"//www.domain3.com\">"
+    "<link rel=\"stylesheet\" href=\"%s\"/>\n"
+    "<link rel=\"stylesheet\" href=\"%s\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\"/>\n"
@@ -488,7 +486,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
               FlushEarlyContentWriterFilter::kDisableLinkTag);
         }
         break;
-      case UserAgentMatcher::kPrefetchImageTag:
+      case UserAgentMatcher::kPrefetchLinkTag:
         if (defer_js_enabled) {
           flush_early_html = StringPrintf(
               kFlushEarlyRewrittenHtmlWithLazyloadDeferJsScript,
@@ -498,14 +496,16 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         } else {
           GoogleString output_format;
           if (insert_dns_prefetch) {
-            output_format = kFlushEarlyRewrittenHtmlImageTagInsertDnsPrefetch;
+            output_format = kFlushEarlyRewrittenHtmlLinkTagInsertDnsPrefetch;
           } else {
-            output_format = kFlushEarlyRewrittenHtmlImageTag;
+            output_format = kFlushEarlyRewrittenHtmlLinkTag;
           }
           flush_early_html = StringPrintf(
               output_format.c_str(),
-              rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-              rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
+              rewritten_css_url_1_.data(),
+              rewritten_css_url_2_.data(),
+              rewritten_js_url_1_.data(),
+              rewritten_js_url_2_.data(),
               rewritten_css_url_3_.data(),
               FlushEarlyContentWriterFilter::kDisableLinkTag);
         }
@@ -822,7 +822,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           HttpAttributes::kUserAgent,
           UserAgentMatcherTestBase::kAndroidChrome21UserAgent);
     } else {
-      request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
+      request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_link_tag");
     }
 
     FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
@@ -1069,12 +1069,12 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestMobile) {
   TestFlushEarlyFlow(UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
-                     UserAgentMatcher::kPrefetchImageTag, false);
+                     UserAgentMatcher::kPrefetchLinkTag, false);
 }
 
-TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestImageTag) {
-  TestFlushEarlyFlow("prefetch_image_tag",
-                     UserAgentMatcher::kPrefetchImageTag, true);
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkTag) {
+  TestFlushEarlyFlow("prefetch_link_tag",
+                     UserAgentMatcher::kPrefetchLinkTag, true);
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkScript) {
@@ -1082,7 +1082,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkScript) {
                      UserAgentMatcher::kPrefetchLinkScriptTag, true);
 }
 
-TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsImageTag) {
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsLinkTag) {
   SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
@@ -1091,14 +1091,14 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsImageTag) {
 
   GoogleString text;
   RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
+  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_link_tag");
   ResponseHeaders headers;
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_STREQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, true, false, true), text);
+      UserAgentMatcher::kPrefetchLinkTag, true, false, true), text);
   VerifyCharset(&headers);
 }
 
@@ -1134,14 +1134,14 @@ TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestError) {
       "", UserAgentMatcher::kPrefetchNotSupported, true);
 }
 
-TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestImageTag) {
+TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestLinkTag) {
   ExperimentalFlushEarlyFlowTestHelper(
-      "prefetch_image_tag", UserAgentMatcher::kPrefetchImageTag, false);
+      "prefetch_link_tag", UserAgentMatcher::kPrefetchLinkTag, false);
 }
 
-TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestImageTagError) {
+TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestLinkTagError) {
   ExperimentalFlushEarlyFlowTestHelper(
-      "prefetch_image_tag", UserAgentMatcher::kPrefetchImageTag, true);
+      "prefetch_link_tag", UserAgentMatcher::kPrefetchLinkTag, true);
 }
 
 TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestLinkScript) {
@@ -1167,7 +1167,7 @@ TEST_F(FlushEarlyFlowTest,
 
   GoogleString text;
   RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
+  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_link_tag");
   ResponseHeaders headers;
 
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
@@ -1179,7 +1179,7 @@ TEST_F(FlushEarlyFlowTest,
   // Fetch the url again. This time InsertDnsPrefetch filter should applied.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_STREQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, false, true, true), text);
+      UserAgentMatcher::kPrefetchLinkTag, false, true, true), text);
 }
 
 TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
@@ -1300,7 +1300,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
       "<head>"
       "<script type=\"text/javascript\">(function(){"
       "new Image().src=\"http://test.com/1.jpg.pagespeed.ce.%s.jpg\";"
-      "new Image().src=\"%s\";})()</script>"
+      "})()</script>"
+      "<link rel=\"stylesheet\" href=\"%s\"/>\n"
       "<link rel=\"stylesheet\" href=\"%s\"/>\n"
       "%s"
       "<script type='text/javascript'>"
@@ -1316,8 +1317,9 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
       "<body>%s"
       "<script src=\"%s\"></script>"
       "Hello, mod_pagespeed!</body></html>",
-      kMockHashValue, rewritten_js_url_3_.c_str(),
+      kMockHashValue,
       rewritten_css_url_1_.c_str(),
+      rewritten_js_url_3_.c_str(),
       FlushEarlyContentWriterFilter::kDisableLinkTag,
       rewritten_css_url_1_.c_str(),
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
@@ -1352,7 +1354,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
                                 kHtmlCacheTimeSec * 2);
   GoogleString text;
   RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
+  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_link_tag");
 
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 

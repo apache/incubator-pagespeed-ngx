@@ -4133,4 +4133,80 @@ TEST_F(RewriteContextTest, ShutdownBeforeFetch) {
   EXPECT_EQ(HttpStatus::kInternalServerError, response_headers.status_code());
 }
 
+TEST_F(RewriteContextTest, InlineContextWithImplicitTtl) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  options()->set_implicit_cache_ttl_ms(100 * Timer::kSecondMs);
+  options()->set_css_inline_max_bytes(2);  // so css_inline filter will bail.
+  options()->set_rewrite_deadline_ms(1);
+
+  // Avoid noise by disabling other filters. This is so that only InlineCss
+  // and CacheExtender filters are effecting the cache hits and misses.
+  options()->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options()->ComputeSignature();
+  rewrite_driver()->AddFilters();
+
+  SetCacheDelayUs(2000);  // so that rewrite deadline is hit.
+  ResponseHeaders headers;
+  int64 now_ms = http_cache()->timer()->NowMs();
+  const char kContent[] = "Example";
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetDateAndCaching(now_ms, 600 * Timer::kSecondMs);
+  GoogleString css_url = AbsolutifyUrl("text.css");
+  SetFetchResponse(css_url, headers, kContent);
+
+  GoogleString rewritten_url =
+      Encode(kTestDomain, "ce", "0", "text.css", "css");
+
+  // The first request does not get rewritten because the deadline is 1 ms
+  // and the cache delay is 2 ms. However, the rewrites happen asynchronously
+  // in the background though the HTML is served out.
+  ValidateNoChanges("ce_enabled", CssLinkHref(css_url));
+  rewrite_driver()->WaitForCompletion();
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());  // ci, ce and original text.css
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // // ci, ce and original text.css
+  ClearStats();
+
+  // The resources are rewritten in the background and are ready for the
+  // subsequent request.
+  ValidateExpected("ce_enabled", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  rewrite_driver()->WaitForCompletion();
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  ClearStats();
+
+  // Advance time to past 100 s which is the implicit cache ttl. We should get
+  // the same cache hits as the resource ttl is used instead of implicit ttl.
+  // Also the rewritten resource is served from the cache.
+  AdvanceTimeMs(120 * Timer::kSecondMs);
+  ValidateExpected("ce_enabled", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  rewrite_driver()->WaitForCompletion();
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  ClearStats();
+
+  // Advance time by the ttl on the resource, now we should see a different
+  // number of cache hits and misses. And the original resource is served
+  // because the rewrite deadline is smaller than the cache delay. Also the
+  // metadata is no longer valid because the resource ttl has expired.
+  AdvanceTimeMs(600 * Timer::kSecondMs);
+  GoogleString output;
+  ResponseHeaders headers1;
+  ValidateNoChanges("ce_enabled", CssLinkHref(css_url));
+  rewrite_driver()->WaitForCompletion();
+  // One extra lookup for text.css and its a hit.
+  EXPECT_EQ(3, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  // All the resources expired and re-inserted. ci, ce and text.css.
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  ClearStats();
+}
+
 }  // namespace net_instaweb

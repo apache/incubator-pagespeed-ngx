@@ -183,12 +183,12 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
         kHtmlInputPrivateCacheableResources);
     GoogleString html_output;
 
-    rewrite_driver()->SetUserAgent("prefetch_image_tag");
+    rewrite_driver()->SetUserAgent("prefetch_link_tag");
     html_output = GetOutputWithHash(
         "<link rel=\"stylesheet\" href=\"a.css\"/>\n"
         "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.%s.css\"/>\n");
 
-    Parse("prefetch_image_tag", html_input);
+    Parse("prefetch_link_tag", html_input);
     EXPECT_EQ(RewrittenOutputWithResources(html_output, 2, true), output_);
   }
 
@@ -343,26 +343,26 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
                   false /* not affected by bandwidth */,
                   false /* not in HEAD */);
 
-  // Set the User-Agent to prefetch_image_tag.
+  // Set the User-Agent to prefetch_link_tag.
   Clear();
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   html_output = GetOutputWithHash(
       "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.%s.js\";"
       "new Image().src=\"http://www.test.com/e.jpg.pagespeed.ce.%s.jpg\";})()"
       "</script>"
       "<link rel=\"dns-prefetch\" href=\"//test.com\">"
       "<link rel=\"prefetch\" href=\"//test1.com\">"
-      "<script type=\"text/javascript\">"
-      "(function(){new Image().src=\"d.js.pagespeed.ce.%s.js\";})()</script>"
-      "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.%s.css\"/>\n");
+      "<link rel=\"stylesheet\" "
+      "href=\"http://www.test.com/c.js.pagespeed.jm.%s.js\"/>\n"
+      "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.%s.css\"/>\n"
+      "<link rel=\"stylesheet\" href=\"d.js.pagespeed.ce.%s.js\"/>\n");
 
-  Parse("prefetch_image_tag", html_input);
+  Parse("prefetch_link_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 4, true), output_);
 
   // Enable defer_javasript. We will flush JS resources only if time permits.
   Clear();
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   server_context()->ComputeSignature(options());
@@ -373,11 +373,12 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "</script>"
       "<link rel=\"dns-prefetch\" href=\"//test.com\">"
       "<link rel=\"prefetch\" href=\"//test1.com\">"
-      "<script type=\"text/javascript\">"
-      "(function(){"
-      "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.%s.js\";"
-      "new Image().src=\"d.js.pagespeed.ce.%s.js\";})()</script>"
-      "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.%s.css\"/>\n");
+      "<link rel=\"stylesheet\" href=\""
+      "d.css.pagespeed.cf.%s.css\"/>\n"
+      "<link rel=\"stylesheet\" href=\""
+      "http://www.test.com/c.js.pagespeed.jm.%s.js\"/>\n"
+      "<link rel=\"stylesheet\" href=\""
+      "d.js.pagespeed.ce.%s.js\"/>\n");
 
   Parse("defer_javasript", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 4, true), output_);
@@ -421,11 +422,11 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
   Parse("prefetch_link_script_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0, false), output_);
 
-  // Set the User-Agent to prefetch_image_tag.
+  // Set the User-Agent to prefetch_link_tag.
   output_.clear();
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
 
-  Parse("prefetch_image_tag", html_input);
+  Parse("prefetch_link_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0, false), output_);
 }
 
@@ -562,22 +563,21 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources3) {
       kHtmlInputPrivateCacheableResources);
   GoogleString html_output;
 
-  // Set the User-Agent to prefetch_image_tag.
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  // Set the User-Agent to prefetch_link_tag.
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   html_output = GetOutputWithHash(
-      "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.%s.js\";"
-      "})()</script>"
       "<link rel=\"stylesheet\" href=\"a.css\"/>\n"
+      "<link rel=\"stylesheet\" href=\""
+      "http://www.test.com/c.js.pagespeed.jm.%s.js\"/>\n"
       "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.%s.css\"/>\n");
 
-  Parse("prefetch_image_tag", html_input);
+  Parse("prefetch_link_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 3, true), output_);
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources4) {
   // Enable defer_javasript. We don't flush JS resources now.
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->DisableFilter(RewriteOptions::kSplitHtml);
@@ -587,7 +587,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources4) {
 
 TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources5) {
   // Enable split_html. We don't flush JS resources now.
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kSplitHtml);
   options()->DisableFilter(RewriteOptions::kDeferJavascript);
@@ -616,14 +616,13 @@ TEST_F(FlushEarlyContentWriterFilterTest,
 
   // Disallow one of the public cacheable resources.
   options()->Disallow("*f.css*");
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   html_output = GetOutputWithHash(
-      "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"http://www.test.com/h.js.pagespeed.jm.%s.js\";"
-      "})()</script>"
-      "<link rel=\"stylesheet\" href=\"f.css\"/>\n");
+      "<link rel=\"stylesheet\" href=\"f.css\"/>\n"
+      "<link rel=\"stylesheet\" href=\""
+      "http://www.test.com/h.js.pagespeed.jm.%s.js\"/>\n");
 
-  Parse("prefetch_image_tag", html_input);
+  Parse("prefetch_link_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 2, true), output_);
   ExpectNumLogRecords(4);
   // f.css is public cacheable CSS and flush early is applied.
@@ -667,15 +666,14 @@ TEST_F(FlushEarlyContentWriterFilterTest,
       kHtmlInputPublicCacheableResources);
   GoogleString html_output;
 
-  // Set the User-Agent to prefetch_image_tag.
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  // Set the User-Agent to prefetch_link_tag.
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   html_output = GetOutputWithHash(
-      "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"http://www.test.com/h.js.pagespeed.jm.%s.js\";"
-      "})()</script>");
+      "<link rel=\"stylesheet\" href=\""
+      "http://www.test.com/h.js.pagespeed.jm.%s.js\"/>\n");
 
-  Parse("prefetch_image_tag", html_input);
-  EXPECT_EQ(RewrittenOutputWithResources(html_output, 1, false), output_);
+  Parse("prefetch_link_tag", html_input);
+  EXPECT_EQ(RewrittenOutputWithResources(html_output, 1, true), output_);
   ExpectNumLogRecords(4);
   // f.css is public cacheable CSS.
   ExpectLogRecord(0,
@@ -742,7 +740,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsScript) {
       StringPrintf(kPrefetchScript, 4));
 
   Clear();
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
   options()->set_enable_flush_early_critical_css(true);
@@ -769,7 +767,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, DontFlushEarlyStyleIfFlagDisabled) {
   GoogleString html_output = StringPrintf(kPrefetchScript, 0);
 
   Clear();
-  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
   options()->set_enable_flush_early_critical_css(false);

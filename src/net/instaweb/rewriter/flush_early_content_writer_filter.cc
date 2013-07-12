@@ -352,7 +352,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
             !(defer_javascript_enabled_ || split_html_enabled_);
         FlushEarlyResourceInfo::ResourceType resource_type =
             GetResourceType(gurl, is_pagespeed_resource);
-        if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+        if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkTag ||
              can_flush_js_for_prefetch_link_script_tag) &&
             IsFlushable(gurl, resource_type) && size > 0) {
           // TODO(pulkitg): Add size of private resources also.
@@ -395,7 +395,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
         if (category == semantic_type::kImage) {
           time_to_download = size / kConnectionSpeedBytesPerMs;
           bool is_prefetch_mechanism_ok =
-              (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+              (prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkTag ||
                prefetch_mechanism_ ==
                    UserAgentMatcher::kPrefetchLinkScriptTag);
           bool is_bandwidth_available = (size > 0) &&
@@ -533,15 +533,17 @@ void FlushEarlyContentWriterFilter::FlushResources(
   UpdateStats(time_to_download, is_pagespeed_resource);
 
   // All resources using kPrefetchImageTagHtml are flushed together in a
-  // <script> tag. And this script tag is flushed before any otehr resource.
+  // <script> tag. And this script tag is flushed before any other resource.
   if (category == semantic_type::kStylesheet) {
     StrAppend(&flush_early_content_,
               StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
     stylesheets_flushed_ = true;
   } else if (category == semantic_type::kImage) {
     FlushResourceAsImage(url);
-  } else if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-    FlushResourceAsImage(url);
+  } else if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkTag) {
+    StrAppend(&flush_early_content_,
+              StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+    stylesheets_flushed_ = true;
   } else if (prefetch_mechanism_ ==
              UserAgentMatcher::kPrefetchLinkScriptTag) {
     if (category == semantic_type::kScript) {

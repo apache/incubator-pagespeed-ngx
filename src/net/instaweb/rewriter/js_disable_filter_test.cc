@@ -218,11 +218,10 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       "<script pagespeed_orig_src=\"blah5\" type=\"text/psajs\""
       " orig_index=\"4\">Not a prefetch candidate</script>"
       "</head><body>"
-      "<script pagespeed_no_defer=\"\">(function(){"
-      "new Image().src=\"blah1\";"
-      "new Image().src=\"blah2\";"
-      "new Image().src=\"", escaped_src, "\";})()"
-      "</script></body>");
+      "<link rel=\"stylesheet\" href=\"blah1\"/>\n"
+      "<link rel=\"stylesheet\" href=\"blah2\"/>\n"
+      "<link rel=\"stylesheet\" href=\"", escaped_src, "\"/>\n"
+      "</body>");
 
   html_parse()->SetWriter(&write_to_string_);
   html_parse()->StartParse("http://example.com");

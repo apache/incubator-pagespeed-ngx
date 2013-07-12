@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <utility>                      // for pair
 #include <vector>
+#include <memory>
 
 #include "base/logging.h"
 #include "net/instaweb/config/rewrite_options_manager.h"
@@ -1527,11 +1528,14 @@ void RewriteContext::SetPartitionKey() {
 
 void RewriteContext::AddRecheckDependency() {
   int64 ttl_ms = Options()->implicit_cache_ttl_ms();
+  int64 now_ms = FindServerContext()->timer()->NowMs();
   if (num_slots() == 1) {
     ResourcePtr resource(slot(0)->resource());
     switch (resource->fetch_response_status()) {
-      case Resource::kFetchStatusNotSet:
       case Resource::kFetchStatusOK:
+        ttl_ms = std::max(ttl_ms, (resource->CacheExpirationTimeMs() - now_ms));
+        break;
+      case Resource::kFetchStatusNotSet:
       case Resource::kFetchStatusOther:
         break;
       case Resource::kFetchStatus4xxError:
@@ -1543,7 +1547,6 @@ void RewriteContext::AddRecheckDependency() {
         break;
     }
   }
-  int64 now_ms = FindServerContext()->timer()->NowMs();
   InputInfo* force_recheck = partitions_->add_other_dependency();
   force_recheck->set_type(InputInfo::CACHED);
   force_recheck->set_expiration_time_ms(now_ms + ttl_ms);
