@@ -773,6 +773,24 @@ TEST_F(ResponseHeadersTest, TestSetDateAndCaching) {
   EXPECT_EQ(expected_headers, response_headers_.ToString());
 }
 
+TEST_F(ResponseHeadersTest, CommaSeparatedEmptyValues) {
+  const GoogleString comma_headers = StrCat(
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
+      "Cache-Control: \r\n"
+      "Vary: Accept-Encoding, User-Agent\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(comma_headers);
+  EXPECT_TRUE(response_headers_.Has(HttpAttributes::kCacheControl));
+  EXPECT_STREQ("", response_headers_.Lookup1(HttpAttributes::kCacheControl));
+
+  response_headers_.Clear();
+  response_headers_.Add(HttpAttributes::kCacheControl, "");
+  EXPECT_TRUE(response_headers_.Has(HttpAttributes::kCacheControl));
+}
+
 TEST_F(ResponseHeadersTest, TestReserializingCommaValues) {
   const GoogleString comma_headers = StrCat(
       "HTTP/1.0 0 (null)\r\n"

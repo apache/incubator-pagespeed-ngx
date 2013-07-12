@@ -235,10 +235,14 @@ template<class Proto> void Headers<Proto>::AddToMap(
     if (IsCommaSeparatedField(name)) {
       StringPieceVector split;
       SplitStringPieceToVector(value, ",", &split, true);
-      for (int i = 0, n = split.size(); i < n; ++i) {
-        StringPiece val = split[i];
-        TrimWhitespace(&val);
-        map_->Add(name, val);
+      if (split.size() > 0) {
+        for (int i = 0, n = split.size(); i < n; ++i) {
+          StringPiece val = split[i];
+          TrimWhitespace(&val);
+          map_->Add(name, val);
+        }
+      } else {
+        map_->Add(name, value);
       }
     } else {
       map_->Add(name, value);
