@@ -31,7 +31,7 @@ var pagespeed = window['pagespeed'];
  * @constructor
  */
 pagespeed.DelayImages = function() {
-  /*
+  /**
    * Boolean that controls whether the event handlers for lazy load are already
    * registered.
    * @type {boolean}
@@ -39,7 +39,7 @@ pagespeed.DelayImages = function() {
    */
   this.lazyLoadHighResHandlersRegistered_ = false;
 
-  /*
+  /**
    * Boolean that controls the logic to replace low res images with high res
    * only once.
    * @type {boolean}

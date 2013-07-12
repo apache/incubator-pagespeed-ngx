@@ -35,7 +35,7 @@ var pagespeed = window['pagespeed'];
  * @param {string} mappedDomainNames for which the url is to be rewritten.
  */
 pagespeed.ClientDomainRewriter = function(mappedDomainNames) {
-  /*
+  /**
    * @private
    */
   this.mappedDomainNames_ = mappedDomainNames;

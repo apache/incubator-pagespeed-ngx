@@ -276,10 +276,8 @@ TEST_F(SplitHtmlFilterTest,
       StringPrintf(
           SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
           HttpAttributes::kXPsaSplitConfig,
-          "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],",
-          "/split_with_pcache?%22test.html&x_split=btf",
-          SplitHtmlFilter::kLoadHiResImages,
-          blink_js_url_, 2));
+          "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],", "1",
+          SplitHtmlFilter::kLoadHiResImages, blink_js_url_, 2));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix,
                    kSplitHtmlMiddle, suffix),
             output_);
@@ -309,10 +307,8 @@ TEST_F(SplitHtmlFilterTest,
       StringPrintf(
           SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
           HttpAttributes::kXPsaSplitConfig,
-          "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],",
-          "/split_with_pcache.html?x_split=btf",
-          SplitHtmlFilter::kLoadHiResImages,
-          blink_js_url_, 2));
+          "div[@id = \"container\"]/div[4],img[3]:h1[@id = \"footer\"],", "1",
+          SplitHtmlFilter::kLoadHiResImages, blink_js_url_, 2));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix,
                    kSplitHtmlMiddle, suffix),
             output_);

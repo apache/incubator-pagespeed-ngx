@@ -71,11 +71,13 @@ const char SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString[] =
     "if(document.body.scrollTop==0) {"
     "  scrollTo(0, 1);"
     "}"
-    "function loadXMLDoc(url) {"
-    "\n  if (!url) {"
+    "function loadXMLDoc(should_load) {"
+    "\n  if (!should_load) {"
     "\n    pagespeed['split_non_critical'] = {};"
     "\n    return;"
     "\n  }"
+    "\n  var url=window.location.toString();"
+    "\n  url=url.replace('x_split=atf', 'x_split=btf');"
     "\n  var xmlhttp;"
     "\n  if (window.XMLHttpRequest) {"
     "\n     xmlhttp=new XMLHttpRequest();"
@@ -312,7 +314,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
         kSplitTwoChunkSuffixJsFormatString,
         HttpAttributes::kXPsaSplitConfig,
         GenerateCriticalLineConfigString().c_str(),
-        json.empty() ? "" : escaped_url.c_str(),
+        json.empty() ? "" : "1",
         kLoadHiResImages,
         GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
         last_script_index_before_panel_stub_));
