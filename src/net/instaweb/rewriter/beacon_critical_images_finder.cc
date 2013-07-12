@@ -61,7 +61,7 @@ bool BeaconCriticalImagesFinder::IsMeaningful(
   CriticalImagesInfo* info = driver->critical_images_info();
   // The finder is meaningful if the critical images info was set by the split
   // html helper.
-  if (info != NULL && info->is_set_from_split_html) {
+  if (info != NULL && info->is_critical_image_info_present) {
     return true;
   }
   return driver->options()->critical_images_beacon_enabled() &&

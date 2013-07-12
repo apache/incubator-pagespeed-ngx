@@ -18,11 +18,10 @@
 
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 
-#include <map>
+#include <memory>
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -151,7 +150,6 @@ SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
       options_(rewrite_driver->options()),
       last_script_index_before_panel_stub_(-1),
       panel_seen_(false),
-      current_panel_parent_element_(NULL),
       static_asset_manager_(NULL),
       script_tag_scanner_(rewrite_driver) {
 }
@@ -174,11 +172,11 @@ bool SplitHtmlFilter::IsAllowedCrossDomainRequest(StringPiece cross_origin) {
 
 void SplitHtmlFilter::StartDocument() {
   element_json_stack_.clear();
-  num_children_stack_.clear();
   panel_seen_ = false;
   last_script_index_before_panel_stub_ = -1;
 
-  config_.reset(new SplitHtmlConfig(rewrite_driver_));
+  config_ = rewrite_driver_->split_html_config();
+  state_.reset(new SplitHtmlState(config_));
 
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
@@ -241,10 +239,8 @@ void SplitHtmlFilter::StartDocument() {
   }
   json_writer_.reset(new JsonWriter(original_writer_,
                                     &element_json_stack_));
-  current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
-  current_panel_parent_element_ = NULL;
   inside_pagespeed_no_defer_script_ = false;
 
   // Push the base panel.
@@ -335,16 +331,6 @@ GoogleString SplitHtmlFilter::GenerateCriticalLineConfigString() {
   return out;
 }
 
-bool SplitHtmlFilter::IsElementSiblingOfCurrentPanel(HtmlElement* element) {
-  return current_panel_parent_element_ != NULL &&
-      current_panel_parent_element_ == element->parent();
-}
-
-bool SplitHtmlFilter::IsElementParentOfCurrentPanel(HtmlElement* element) {
-  return current_panel_parent_element_ != NULL &&
-      current_panel_parent_element_ == element;
-}
-
 void SplitHtmlFilter::EndPanelInstance() {
   json_writer_->UpdateDictionary();
 
@@ -352,9 +338,10 @@ void SplitHtmlFilter::EndPanelInstance() {
   scoped_ptr<Json::Value> dictionary(element_json_pair.second);
   element_json_stack_.pop_back();
   Json::Value* parent_dictionary = element_json_stack_.back().second;
-  AppendJsonData(&((*parent_dictionary)[current_panel_id_]), *dictionary);
-  current_panel_parent_element_ = NULL;
-  current_panel_id_ = "";
+  AppendJsonData(&((*parent_dictionary)[state_->current_panel_id()]),
+                 *dictionary);
+  state_->set_current_panel_parent_element(NULL);
+  state_->set_current_panel_id("");
   set_writer(original_writer_);
 }
 
@@ -368,8 +355,8 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
   element_json_stack_.push_back(std::make_pair(element, new_json));
   if (element != NULL) {
     panel_seen_ = true;
-    current_panel_parent_element_ = element->parent();
-    current_panel_id_ = GetPanelIdForInstance(element);
+    state_->set_current_panel_parent_element(element->parent());
+    state_->set_current_panel_id(GetPanelIdForInstance(element));
   }
   if (!serve_response_in_two_chunks_ ||
       rewrite_driver_->request_context()->split_request_type() !=
@@ -455,41 +442,25 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     }
   }
 
-  if (!num_children_stack_.empty()) {
-    // Ignore some of the non-rendered tags for numbering the children. This
-    // helps avoid mismatches due to combine_javascript combining differently
-    // and creating different numbers of script nodes in different rewrites.
-    // This also helps when combine_css combines link tags or styles differently
-    // in different rewrites.
-    if (element->keyword() != HtmlName::kScript &&
-        element->keyword() != HtmlName::kNoscript &&
-        element->keyword() != HtmlName::kStyle &&
-        element->keyword() != HtmlName::kLink) {
-      num_children_stack_.back()++;;
-    }
-    num_children_stack_.push_back(0);
-  } else if (element->keyword() == HtmlName::kBody) {
-    // Start the stack only once body is encountered.
-    num_children_stack_.push_back(0);
-  }
+  state_->UpdateNumChildrenStack(element);
 
   if (element->keyword() == HtmlName::kBody && !script_written_) {
     InsertSplitInitScripts(element);
   }
 
-  if (IsEndMarkerForCurrentPanel(element)) {
+  if (state_->IsEndMarkerForCurrentPanel(element)) {
     EndPanelInstance();
   }
 
-  GoogleString panel_id = MatchPanelIdForElement(element);
+  GoogleString panel_id = state_->MatchPanelIdForElement(element);
   // if panel_id is empty, then element didn't match with any start xpath of
   // panel specs
   if (!panel_id.empty()) {
     InsertPanelStub(element, panel_id);
     MarkElementWithPanelId(element, panel_id);
     StartPanelInstance(element);
-  } else if (IsElementSiblingOfCurrentPanel(element)) {
-    MarkElementWithPanelId(element, current_panel_id_);
+  } else if (state_->IsElementSiblingOfCurrentPanel(element)) {
+    MarkElementWithPanelId(element, state_->current_panel_id());
   }
   if (element_json_stack_.size() > 1) {
     // Suppress these bytes since they belong to a panel.
@@ -532,10 +503,10 @@ void SplitHtmlFilter::EndElement(HtmlElement* element) {
     return;
   }
 
-  if (!num_children_stack_.empty()) {
-    num_children_stack_.pop_back();
+  if (!state_->num_children_stack()->empty()) {
+    state_->num_children_stack()->pop_back();
   }
-  if (IsElementParentOfCurrentPanel(element) ||
+  if (state_->IsElementParentOfCurrentPanel(element) ||
       (element->parent() == NULL &&
        element_json_stack_.back().first == element)) {
     EndPanelInstance();
@@ -561,38 +532,6 @@ void SplitHtmlFilter::AppendJsonData(Json::Value* dictionary,
   dictionary->append(dict);
 }
 
-GoogleString SplitHtmlFilter::MatchPanelIdForElement(HtmlElement* element) {
-  if (config_->critical_line_info() == NULL) {
-    return "";
-  }
-  for (int i = 0; i < config_->critical_line_info()->panels_size(); i++) {
-    const Panel& panel = config_->critical_line_info()->panels(i);
-    if (ElementMatchesXpath(
-        element, *((*config_->xpath_map())[panel.start_xpath()]))) {
-      return StrCat(BlinkUtil::kPanelId, ".", IntegerToString(i));
-    }
-  }
-  return "";
-}
-
-bool SplitHtmlFilter::IsEndMarkerForCurrentPanel(HtmlElement* element) {
-  if (current_panel_parent_element_ == NULL) {
-    return false;
-  }
-
-  PanelIdToSpecMap* panel_id_to_spec = config_->panel_id_to_spec();
-  if (panel_id_to_spec->find(current_panel_id_) == panel_id_to_spec->end()) {
-    LOG(DFATAL) << "Invalid Panelid: "
-                << current_panel_id_ << " for url " << url_;
-    return false;
-  }
-  const Panel& panel = *((*panel_id_to_spec)[current_panel_id_]);
-  return panel.has_end_marker_xpath() ?
-      ElementMatchesXpath(
-          element, *((*config_->xpath_map())[panel.end_marker_xpath()])) :
-      false;
-}
-
 void SplitHtmlFilter::MarkElementWithPanelId(HtmlElement* element,
                                          const GoogleString& panel_id) {
   element->AddAttribute(rewrite_driver_->MakeName(BlinkUtil::kPanelId),
@@ -613,30 +552,6 @@ GoogleString SplitHtmlFilter::GetPanelIdForInstance(HtmlElement* element) {
     }
   }
   return panel_id_value;
-}
-
-bool SplitHtmlFilter::ElementMatchesXpath(
-    const HtmlElement* element, const std::vector<XpathUnit>& xpath_units) {
-  int j = xpath_units.size() - 1, k = num_children_stack_.size() - 2;
-  for (; j >= 0 && k >= 0; j--, k--, element = element->parent()) {
-    if (element->name_str() !=  xpath_units[j].tag_name) {
-      return false;
-    }
-    if (!xpath_units[j].attribute_value.empty()) {
-      return (element->AttributeValue(HtmlName::kId) != NULL &&
-          element->AttributeValue(HtmlName::kId) ==
-              xpath_units[j].attribute_value);
-    } else if (xpath_units[j].child_number == num_children_stack_[k]) {
-      continue;
-    } else {
-      return false;
-    }
-  }
-
-  if (j < 0 && k < 0) {
-    return true;
-  }
-  return false;
 }
 
 const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(

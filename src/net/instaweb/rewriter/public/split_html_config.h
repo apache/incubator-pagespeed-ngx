@@ -28,6 +28,7 @@
 namespace net_instaweb {
 
 class CriticalLineInfo;
+class HtmlElement;
 class Panel;
 class RewriteDriver;
 
@@ -58,28 +59,96 @@ class SplitHtmlConfig {
   static void Initialize();
   static void Terminate();
 
-  const CriticalLineInfo* critical_line_info() {
-    return critical_line_info_;
-  }
-
   // Updates the critical line info in the driver based on the RequestHeaders /
   // RewriteOptions in the driver.
   static void UpdateCriticalLineInfoInDriver(RewriteDriver* driver);
 
-  XpathMap* xpath_map() { return &xpath_map_; }
-  PanelIdToSpecMap* panel_id_to_spec() { return &panel_id_to_spec_; }
+  const CriticalLineInfo* critical_line_info() const {
+    return critical_line_info_;
+  }
+
+  const XpathMap* xpath_map() const {
+    return &xpath_map_;
+  }
+
+  const PanelIdToSpecMap* panel_id_to_spec() const {
+    return &panel_id_to_spec_;
+  }
+
+  const RewriteDriver* driver() const { return driver_; }
 
  private:
+  // Not owned by this class.
+  RewriteDriver* driver_;
+
   const CriticalLineInfo* critical_line_info_;  // Owned by rewrite_driver_.
 
   // Maps the string representation of the xpath to its parsed representation.
   XpathMap xpath_map_;
 
   // Maps the panel's id to its Panel specification protobuf.
-  // TODO(bharathbhushan): Can we get rid of this?
   PanelIdToSpecMap panel_id_to_spec_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlConfig);
+};
+
+// Represents the filter state necessary to perform the split.
+class SplitHtmlState {
+ public:
+  explicit SplitHtmlState(const SplitHtmlConfig* config);
+  ~SplitHtmlState();
+
+  std::vector<int>* num_children_stack() { return &num_children_stack_; }
+
+  bool ElementMatchesXpath(
+      const HtmlElement* element,
+      const std::vector<XpathUnit>& xpath_units) const;
+
+  // Returns the panel id of the panel whose xpath matched with element.
+  GoogleString MatchPanelIdForElement(HtmlElement* element) const;
+
+  // Returns true if element is sibling of the current start element on top of
+  // stack.
+  bool IsElementSiblingOfCurrentPanel(HtmlElement* element) const;
+
+  // Returns true if element is the parent of current panel
+  bool IsElementParentOfCurrentPanel(HtmlElement* element) const;
+
+  // Returns true if element matches with the end_marker for panel corresponding
+  // to panel_id
+  bool IsEndMarkerForCurrentPanel(HtmlElement* element) const;
+
+  const HtmlElement* current_panel_parent_element() const {
+    return current_panel_parent_element_;
+  }
+
+  void set_current_panel_parent_element(HtmlElement* element) {
+    current_panel_parent_element_ = element;
+  }
+
+  const GoogleString& current_panel_id() const {
+    return current_panel_id_;
+  }
+
+  void set_current_panel_id(const GoogleString& panel_id) {
+    current_panel_id_ = panel_id;
+  }
+
+  void UpdateNumChildrenStack(const HtmlElement* element);
+
+ private:
+  // Not owned by this class.
+  const SplitHtmlConfig* config_;
+
+  // Number of children for each element on the element stack.
+  std::vector<int> num_children_stack_;
+
+  // Not owned by this class.
+  HtmlElement* current_panel_parent_element_;
+
+  GoogleString current_panel_id_;
+
+  DISALLOW_COPY_AND_ASSIGN(SplitHtmlState);
 };
 
 }  // namespace net_instaweb

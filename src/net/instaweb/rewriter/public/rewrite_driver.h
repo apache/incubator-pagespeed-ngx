@@ -84,6 +84,7 @@ class RewriteContext;
 class RewriteDriverPool;
 class RewriteFilter;
 class ScopedMutex;
+class SplitHtmlConfig;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
@@ -863,6 +864,8 @@ class RewriteDriver : public HtmlParse {
   // the ownership of critical_line_info.
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
 
+  const SplitHtmlConfig* split_html_config();
+
   CriticalCssResult* critical_css_result() const;
   // Sets the Critical CSS rules info in the driver and the ownership of
   // the rules stays with the driver.
@@ -1453,6 +1456,8 @@ class RewriteDriver : public HtmlParse {
   UserAgentMatcher::DeviceType device_type_;
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
+
+  scoped_ptr<SplitHtmlConfig> split_html_config_;
 
   // The critical image finder and critical selector finder will lazy-init these
   // fields.

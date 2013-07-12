@@ -43,12 +43,10 @@ class Variable;
 // this class to support multiple beacon response.
 struct CriticalImagesInfo {
   CriticalImagesInfo()
-      : is_critical_image_info_present(false),
-        is_set_from_split_html(false) {}
+      : is_critical_image_info_present(false) {}
   StringSet html_critical_images;
   StringSet css_critical_images;
   bool is_critical_image_info_present;
-  bool is_set_from_split_html;
 };
 
 

@@ -3070,6 +3070,16 @@ void RewriteDriver::set_critical_line_info(
   critical_line_info_.reset(critical_line_info);
 }
 
+// The split html config is lazily constructed on first access. Since the
+// split-html-filter and the split-html-helper-filter access this from the html
+// parsing thread, the lazy construction does not need mutex protection.
+const SplitHtmlConfig* RewriteDriver::split_html_config() {
+  if (split_html_config_ == NULL) {
+    split_html_config_.reset(new SplitHtmlConfig(this));
+  }
+  return split_html_config_.get();
+}
+
 CriticalCssResult* RewriteDriver::critical_css_result() const {
   return critical_css_result_.get();
 }

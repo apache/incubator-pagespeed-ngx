@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/split_html_config.h"
 
 #include <memory>
+#include <utility>
 
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
@@ -50,7 +51,8 @@ class SplitHtmlConfigTest : public RewriteTestBase {
                        const GoogleString& tag,
                        const GoogleString& attribute_value,
                        int child_number) {
-    const XpathUnits& units = *((*config->xpath_map())[xpath]);
+    XpathMap::const_iterator it = config->xpath_map()->find(xpath);
+    const XpathUnits& units = *it->second;
     EXPECT_EQ(1, units.size());
     EXPECT_EQ(tag, units[0].tag_name);
     EXPECT_EQ(attribute_value, units[0].attribute_value);
@@ -69,7 +71,9 @@ class SplitHtmlConfigTest : public RewriteTestBase {
                       const GoogleString& start_xpath,
                       const GoogleString& end_marker_xpath) {
     GoogleString panelid_str = StringPrintf("panel-id.%d", panelid);
-    const Panel& panel = *(*config->panel_id_to_spec())[panelid_str];
+    PanelIdToSpecMap::const_iterator it =
+        config->panel_id_to_spec()->find(panelid_str);
+    const Panel& panel = *it->second;
     EXPECT_EQ(start_xpath, panel.start_xpath());
     EXPECT_EQ(end_marker_xpath, panel.end_marker_xpath());
   }
