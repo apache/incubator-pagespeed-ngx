@@ -917,7 +917,7 @@ ngx_int_t ps_async_wait_response(ngx_http_request_t *r) {
   return NGX_DONE;
 }
 
-ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
+ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   ngx_int_t rc;
   ngx_chain_t *cl = NULL;
@@ -946,9 +946,6 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     ctx->write_pending = (rc == NGX_AGAIN);
 
     if (r->header_only) {
-      ctx->base_fetch->Release();
-      ctx->base_fetch = NULL;
-
       ctx->fetch_done = true;
       return rc;
     }
@@ -975,9 +972,6 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
   }
 
   if (rc == NGX_OK) {
-    ctx->base_fetch->Release();
-    ctx->base_fetch = NULL;
-
     ps_set_buffered(r, false);
     ctx->fetch_done = true;
   }
@@ -1038,7 +1032,7 @@ void ps_connection_read_handler(ngx_event_t* ev) {
     return;
   }
 
-  ngx_http_finalize_request(r, ps_fetch_handler(r));
+  ngx_http_finalize_request(r, ps_base_fetch_handler(r));
 }
 
 ngx_int_t ps_create_connection(ps_request_ctx_t* ctx, int pipe_fd) {
