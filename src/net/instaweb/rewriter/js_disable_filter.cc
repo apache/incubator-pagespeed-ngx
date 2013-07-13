@@ -151,7 +151,7 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
       if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchLinkTag) {
         HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
             element, prefetch_js_elements_);
-        rewrite_driver_->AppendChild(element, script_code);
+        rewrite_driver_->PrependChild(element, script_code);
       } else {
         HtmlElement* iframe =
             rewrite_driver_->NewElement(element, HtmlName::kIframe);

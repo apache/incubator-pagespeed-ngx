@@ -230,14 +230,14 @@ TEST_F(JsDisableFilterTest, PrefetchScriptWithImageTemplate) {
       "<script></script>"
       "<script src=\"blah1\" random=\"true\">hi1");
   html_parse()->Flush();
-  GoogleString html_input = StrCat("</script>"
+  html_parse()->ParseText(StrCat("</script>"
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
       "<script src=\"", src_url, "\">hi4</script>"
       "<script src=\"blah5\">Not a prefetch candidate</script>"
-      "</head><body>"
-      "</body>");
-  html_parse()->ParseText(html_input);
+      "</head><body>"));
+  html_parse()->Flush();
+  html_parse()->ParseText("</body>");
   html_parse()->FinishParse();
   EXPECT_STREQ(expected, output_buffer_);
 }
