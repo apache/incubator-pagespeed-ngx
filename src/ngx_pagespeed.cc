@@ -368,7 +368,7 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
                           ps_srv_conf_t* cfg_s,
                           ngx_chain_t* in);
 
-ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in);
+ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
@@ -926,14 +926,6 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
                  "ps fetch handler: %V", &r->uri);
 
   if (!r->header_sent) {
-#if 0
-    if (ctx->fetch_checker) {
-      rc = ctx->fetch_checker(r);
-      if (rc != NGX_OK) {
-        return rc;
-      }
-    }
-#endif
     // collect response headers from pagespeed
     if (ctx->is_resource_fetch || ctx->modify_headers) {
       ngx_http_clean_header(r);
@@ -990,7 +982,7 @@ ngx_int_t ps_fetch_handler(ngx_http_request_t *r) {
     ctx->fetch_done = true;
   }
 
-  return ps_write_filter(r, cl);
+  return ps_base_fetch_filter(r, cl);
 }
 
 void ps_connection_read_handler(ngx_event_t* ev) {
@@ -1687,7 +1679,7 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   }
 }
 
-ngx_int_t ps_write_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   if (ctx == NULL || ctx->base_fetch == NULL) {
@@ -1753,7 +1745,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     ps_send_to_pagespeed(r, ctx, cfg_s, in);
   }
 
-  return ps_write_filter(r, NULL);
+  return ps_base_fetch_filter(r, NULL);
 }
 
 #ifndef ngx_http_clear_etag
@@ -2009,29 +2001,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     // resources instead of using the last modified header.
     ngx_http_clear_last_modified(r);
   }
-#if 0
-  r->filter_need_in_memory = 1;
 
-  // Set the "X-Page-Speed: VERSION" header.
-  ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(
-      ngx_list_push(&r->headers_out.headers));
-  if (x_pagespeed == NULL) {
-    return NGX_ERROR;
-  }
-  // Tell ngx_http_header_filter_module to include this header in the response.
-  x_pagespeed->hash = 1;
-
-  ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
-  // It's safe to use c_str here because once we're handling requests the
-  // rewrite options are frozen and won't change out from under us.
-  x_pagespeed->value.data = reinterpret_cast<u_char*>(const_cast<char*>(
-      options->x_header_value().c_str()));
-  x_pagespeed->value.len = options->x_header_value().size();
-
-  if (r->header_only) {
-    ctx->proxy_fetch->Done(true /* success */);
-  }
-#endif
   ps_set_buffered(r, true);
   r->filter_need_in_memory = 1;
   return NGX_AGAIN;
