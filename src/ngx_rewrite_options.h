@@ -85,9 +85,8 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   OptionSettingResult ParseAndSetOptions0(
       StringPiece directive, GoogleString* msg, MessageHandler* handler);
 
-  // These are called via RewriteOptions::ParseAndSetOptionFromName[123]
-  virtual OptionSettingResult ParseAndSetOptionFromEnum1(
-      OptionEnum name, StringPiece arg,
+  virtual OptionSettingResult ParseAndSetOptionFromName1(
+      StringPiece name, StringPiece arg,
       GoogleString* msg, MessageHandler* handler);
 
   // We may want to override 2- and 3-argument versions as well in the future,
@@ -109,8 +108,8 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static void add_ngx_option(typename OptionClass::ValueType default_value,
                              OptionClass RewriteOptionsSubclass::*offset,
                              const char* id,
-                             OptionEnum option_enum) {
-    AddProperty(default_value, offset, id, option_enum, ngx_properties_);
+                             StringPiece option_name) {
+    AddProperty(default_value, offset, id, option_name, ngx_properties_);
   }
 
   // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
