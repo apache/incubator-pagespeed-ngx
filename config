@@ -95,6 +95,7 @@ pagespeed_include="\
   $mod_pagespeed_dir/third_party/protobuf/src \
   $mod_pagespeed_dir/third_party/re2/src \
   $mod_pagespeed_dir/out/$buildtype/obj/gen \
+  $mod_pagespeed_dir/out/$buildtype/obj/gen/protoc_out/instaweb \
   $mod_pagespeed_dir/third_party/apr/src/include \
   $mod_pagespeed_dir/third_party/aprutil/src/include \
   $mod_pagespeed_dir/third_party/apr/gen/arch/$os_name/$arch_name/include \
