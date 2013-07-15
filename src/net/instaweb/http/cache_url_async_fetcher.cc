@@ -332,7 +332,7 @@ class CacheFindCallback : public HTTPCache::Callback {
             // TODO(gee): It is possible to cache HEAD results as well, but we
             // must add code to ensure we do not serve GET requests using HEAD
             // responses.
-            if (ServeStaleContentWhileRevalidate(base_fetch)) {
+            if (ServedStaleContentWhileRevalidate(base_fetch)) {
               // Serve stale content while revalidate in the background.
               break;
             }
@@ -380,7 +380,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   }
 
  private:
-  bool ServeStaleContentWhileRevalidate(AsyncFetch* base_fetch) {
+  bool ServedStaleContentWhileRevalidate(AsyncFetch* base_fetch) {
     if (serve_stale_while_revalidate_threshold_sec_ == 0 ||
         fallback_http_value() == NULL ||
         fallback_http_value()->Empty()) {
@@ -407,6 +407,14 @@ class CacheFindCallback : public HTTPCache::Callback {
     if (fallback_responses_served_while_revalidate_ != NULL) {
       fallback_responses_served_while_revalidate_->Add(1);
     }
+    // CacheControl header is changed to private, max-age=0 to avoid caching
+    // of the resource either by browser or intermediate proxy as stale
+    // content should be served only for this request, any future requests
+    // should be served with fresh content.
+    response_headers->Replace(HttpAttributes::kCacheControl,
+                              "private, max-age=0");
+    response_headers->RemoveAll(HttpAttributes::kExpires);
+    response_headers->ComputeCaching();
     base_fetch_->HeadersComplete();
     StringPiece contents;
     fallback_http_value()->ExtractContents(&contents);

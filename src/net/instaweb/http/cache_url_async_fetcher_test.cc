@@ -361,6 +361,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   enum FetchType {
     kBackendFetch = 0,
     kFallbackFetch = 1,
+    kServeStaleContentWhileRevalidate = 2,
   };
 
   void SetDefaultHeaders(const ContentType& content_type,
@@ -410,6 +411,15 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
       EXPECT_STREQ(
           FallbackSharedAsyncFetch::kStaleWarningHeaderValue,
           fetch_response_headers.Lookup1(HttpAttributes::kWarning));
+    }
+    if (fetch_type == kServeStaleContentWhileRevalidate) {
+      EXPECT_TRUE(
+          fetch_response_headers.HasValue(HttpAttributes::kCacheControl,
+                                          "private"));
+      EXPECT_TRUE(
+          fetch_response_headers.HasValue(HttpAttributes::kCacheControl,
+                                          "max-age=0"));
+      EXPECT_FALSE(fetch_response_headers.Has(HttpAttributes::kExpires));
     }
     // TODO(sligocki): Move this out of this function and just check at caller.
     EXPECT_STREQ(expected_response, fetch_content);
@@ -757,7 +767,8 @@ TEST_F(CacheUrlAsyncFetcherTest, ServeStaleContentWhileRevalidate) {
   timer_.AdvanceMs(ttl_ms_ + Timer::kHourMs);
   ClearStats();
   FetchAndValidate(cache_css_url_, empty_request_headers_, true,
-                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
+                   HttpStatus::kOK, cache_body_,
+                   kServeStaleContentWhileRevalidate, true);
   // Fetch hits initial cache lookup ...
   EXPECT_EQ(1, http_cache_->cache_expirations()->Get());
   EXPECT_EQ(0, http_cache_->cache_hits()->Get());
