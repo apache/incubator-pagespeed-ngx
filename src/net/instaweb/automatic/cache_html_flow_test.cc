@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -338,11 +339,13 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
  public:
   ProxyInterfaceWithDelayCache(const StringPiece& hostname, int port,
                                ServerContext* manager, Statistics* stats,
-                               DelayCache* delay_cache)
+                               DelayCache* delay_cache,
+                               TestRewriteDriverFactory* factory)
       : ProxyInterface(hostname, port, manager, stats),
         manager_(manager),
         delay_cache_(delay_cache),
-        key_("") {
+        key_(""),
+        factory_(factory) {
   }
 
   // Initiates the PropertyCache look up.
@@ -361,7 +364,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
     PropertyCache* pcache = manager_->page_property_cache();
     const PropertyCache::Cohort* cohort =
         pcache->GetCohort(BlinkUtil::kBlinkCohort);
-    key_ = pcache->CacheKey(key_base, cohort);
+    key_ = factory_->cache_property_store()->CacheKey(key_base, cohort);
     delay_cache_->DelayKey(key_);
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;
@@ -377,6 +380,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
   ServerContext* manager_;
   DelayCache* delay_cache_;
   GoogleString key_;
+  TestRewriteDriverFactory* factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceWithDelayCache);
 };
@@ -1531,7 +1535,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowDataMissDelayCache) {
   ProxyInterfaceWithDelayCache* proxy_interface =
       new ProxyInterfaceWithDelayCache("localhost", 80,
                                        server_context(), statistics(),
-                                       delay_cache());
+                                       delay_cache(), factory());
   proxy_interface_.reset(proxy_interface);
   RequestHeaders request_headers;
   GetDefaultRequestHeaders(&request_headers);

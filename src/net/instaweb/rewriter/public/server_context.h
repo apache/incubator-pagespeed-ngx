@@ -45,6 +45,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class CacheHtmlInfoFinder;
 class CacheInterface;
+class CachePropertyStore;
 class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalSelectorFinder;
@@ -59,6 +60,7 @@ class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
+class PropertyStore;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
@@ -196,10 +198,12 @@ class ServerContext {
 
   Timer* timer() const { return http_cache_->timer(); }
 
-  void MakePropertyCaches(CacheInterface* backend_cache);
-
   HTTPCache* http_cache() const { return http_cache_.get(); }
   void set_http_cache(HTTPCache* x) { http_cache_.reset(x); }
+
+  // Creates PagePropertyCache object with the provided PropertyStore object.
+  void MakePagePropertyCache(PropertyStore* property_store);
+
   PropertyCache* page_property_cache() const {
     return page_property_cache_.get();
   }
@@ -539,10 +543,6 @@ class ServerContext {
     return available_rewrite_drivers_.get();
   }
 
-  // Builds a PropertyCache given a key prefix and a CacheInterface.
-  PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
-                                   CacheInterface* cache) const;
-
   // Returns the current server hostname.
   const GoogleString& hostname() const {
     return hostname_;
@@ -586,6 +586,31 @@ class ServerContext {
   // Puts the cache on a list to be destroyed at the last phase of system
   // shutdown.
   void DeleteCacheOnDestruction(CacheInterface* cache);
+
+  void set_cache_property_store(CachePropertyStore* p);
+
+  // Creates CachePropertyStore object which will be used by PagePropertyCache.
+  PropertyStore* CreatePropertyStore(CacheInterface* cache_backend);
+
+  // Establishes a new Cohort for this property.
+  // This will also call CachePropertyStore::AddCohort() if CachePropertyStore
+  // is used.
+  const PropertyCache::Cohort* AddCohort(
+      const GoogleString& cohort_name,
+      PropertyCache* pcache);
+
+  // Establishes a new Cohort to be backed by the specified CacheInterface.
+  // NOTE: Does not take ownership of the CacheInterface object.
+  // This also calls CachePropertyStore::AddCohort() to set the cache backend
+  // for the given cohort.
+  const PropertyCache::Cohort* AddCohortWithCache(
+      const GoogleString& cohort_name,
+      CacheInterface* cache,
+      PropertyCache* pcache);
+
+  // Returns the cache backend associated with CachePropertyStore.
+  // Returns NULL if non-CachePropertyStore is used.
+  const CacheInterface* pcache_cache_backend();
 
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
@@ -720,6 +745,8 @@ class ServerContext {
   // A simple (and always seeded with the same default!) random number
   // generator.  Do not use for security purposes.
   SimpleRandom simple_random_;
+
+  scoped_ptr<CachePropertyStore> cache_property_store_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

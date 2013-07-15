@@ -217,6 +217,7 @@
         'util/async_cache_test.cc',
         'util/base64_test.cc',
         'util/cache_batcher_test.cc',
+        'util/cache_property_store_test.cc',
         'util/cache_stats_test.cc',
         'util/charset_util_test.cc',
         'util/chunking_writer_test.cc',

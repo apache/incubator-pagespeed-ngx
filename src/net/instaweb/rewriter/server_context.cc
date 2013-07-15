@@ -51,6 +51,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -1007,23 +1008,16 @@ void ServerContext::set_enable_property_cache(bool enabled) {
   }
 }
 
-// TODO(jmarantz): simplify the cache ownership model so that the layered
-// caches don't own one another; the ServerContext owns all the caches.
-void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
-  // The property caches are L2-only.  We cannot use the L1 cache because
-  // this data can get stale quickly.
-  page_property_cache_.reset(MakePropertyCache(
-      PropertyCache::kPagePropertyCacheKeyPrefix, backend_cache));
-}
-
-PropertyCache* ServerContext::MakePropertyCache(
-    const GoogleString& cache_key_prefix, CacheInterface* cache) const {
+void ServerContext::MakePagePropertyCache(PropertyStore* property_store) {
   PropertyCache* pcache = new PropertyCache(
-      cache_key_prefix, cache, timer(), statistics(), thread_system_);
+      property_store,
+      timer(),
+      statistics(),
+      thread_system_);
+  // TODO(pulkitg): Remove set_enabled method from property_cache.
   pcache->set_enabled(enable_property_cache_);
-  return pcache;
+  page_property_cache_.reset(pcache);
 }
-
 
 void ServerContext::set_cache_html_info_finder(CacheHtmlInfoFinder* finder) {
   cache_html_info_finder_.reset(finder);
@@ -1065,6 +1059,50 @@ RequestProperties* ServerContext::NewRequestProperties() {
 
 void ServerContext::DeleteCacheOnDestruction(CacheInterface* cache) {
   factory_->TakeOwnership(cache);
+}
+
+const PropertyCache::Cohort* ServerContext::AddCohort(
+    const GoogleString& cohort_name,
+    PropertyCache* pcache) {
+  return AddCohortWithCache(cohort_name, NULL, pcache);
+}
+
+const PropertyCache::Cohort* ServerContext::AddCohortWithCache(
+    const GoogleString& cohort_name,
+    CacheInterface* cache,
+    PropertyCache* pcache) {
+  CHECK(pcache->GetCohort(cohort_name) == NULL) << cohort_name
+                                                << " is added twice.";
+  if (cache_property_store_ != NULL) {
+    if (cache != NULL) {
+      cache_property_store_->AddCohortWithCache(cohort_name, cache);
+    } else {
+      cache_property_store_->AddCohort(cohort_name);
+    }
+  }
+  return pcache->AddCohort(cohort_name);
+}
+
+void ServerContext::set_cache_property_store(CachePropertyStore* p) {
+  cache_property_store_.reset(p);
+}
+
+PropertyStore* ServerContext::CreatePropertyStore(
+    CacheInterface* cache_backend) {
+  CachePropertyStore* cache_property_store =
+      new CachePropertyStore(CachePropertyStore::kPagePropertyCacheKeyPrefix,
+                             cache_backend,
+                             timer(),
+                             statistics());
+  set_cache_property_store(cache_property_store);
+  return cache_property_store;
+}
+
+const CacheInterface* ServerContext::pcache_cache_backend() {
+  if (cache_property_store_ == NULL) {
+    return NULL;
+  }
+  return cache_property_store_->cache_backend();
 }
 
 }  // namespace net_instaweb

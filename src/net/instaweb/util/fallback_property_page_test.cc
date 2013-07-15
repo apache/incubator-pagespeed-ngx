@@ -21,6 +21,7 @@
 #include <cstddef>
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -45,11 +46,15 @@ class FallbackPropertyPageTest : public testing::Test {
   FallbackPropertyPageTest()
       : lru_cache_(kMaxCacheSize),
         timer_(MockTimer::kApr_5_2010_ms),
+        cache_property_store_("test/", &lru_cache_, &timer_, &stats_),
         thread_system_(Platform::CreateThreadSystem()),
-        property_cache_("test/", &lru_cache_, &timer_, &stats_,
+        property_cache_(&cache_property_store_,
+                        &timer_,
+                        &stats_,
                         thread_system_.get()) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
+    cache_property_store_.AddCohort(cohort_->name());
   }
 
   // Sets both actual and fallback property page.
@@ -102,6 +107,7 @@ class FallbackPropertyPageTest : public testing::Test {
   LRUCache lru_cache_;
   MockTimer timer_;
   SimpleStats stats_;
+  CachePropertyStore cache_property_store_;
   scoped_ptr<ThreadSystem> thread_system_;
   PropertyCache property_cache_;
   const PropertyCache::Cohort* cohort_;

@@ -358,15 +358,18 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   // even without this flag, but we should do it differently, storing
   // only the content compressed and putting in content-encoding:gzip
   // so that mod_gzip doesn't have to recompress on every request.
+  CacheInterface* property_store_cache = NULL;
   if (config->compress_metadata_cache()) {
     metadata_cache = new CompressedCache(metadata_cache, stats);
     server_context->DeleteCacheOnDestruction(metadata_cache);
     CacheInterface* compressed_l2 = new CompressedCache(metadata_l2, stats);
     server_context->DeleteCacheOnDestruction(compressed_l2);
-    server_context->MakePropertyCaches(compressed_l2);
+    property_store_cache = compressed_l2;
   } else {
-    server_context->MakePropertyCaches(metadata_l2);
+    property_store_cache = metadata_l2;
   }
+  server_context->MakePagePropertyCache(
+      server_context->CreatePropertyStore(property_store_cache));
   server_context->set_metadata_cache(metadata_cache);
 }
 

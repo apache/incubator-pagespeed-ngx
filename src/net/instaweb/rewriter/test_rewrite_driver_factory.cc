@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
@@ -182,7 +183,10 @@ void TestRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
                                         hasher(), statistics());
   server_context->set_http_cache(http_cache);
   server_context->set_metadata_cache(delay_cache_);
-  server_context->MakePropertyCaches(delay_cache_);
+  cache_property_store_ =
+      new CachePropertyStore("test/", delay_cache_, timer(), statistics());
+  server_context->set_cache_property_store(cache_property_store_);
+  server_context->MakePagePropertyCache(cache_property_store_);
   TakeOwnership(delay_cache_);
 }
 
@@ -275,6 +279,7 @@ void TestRewriteDriverFactory::AdvanceTimeMs(int64 delta_ms) {
 const PropertyCache::Cohort* TestRewriteDriverFactory::SetupCohort(
     PropertyCache* cache, const GoogleString& cohort_name) {
   PropertyCache::InitCohortStats(cohort_name, statistics());
+  cache_property_store_->AddCohort(cohort_name);
   return cache->AddCohort(cohort_name);
 }
 

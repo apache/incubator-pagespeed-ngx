@@ -22,6 +22,7 @@
 
 #include <cstddef>
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
@@ -50,12 +51,16 @@ class PropertyCacheTest : public testing::Test {
   PropertyCacheTest()
       : lru_cache_(kMaxCacheSize),
         timer_(MockTimer::kApr_5_2010_ms),
+        cache_property_store_("test/", &lru_cache_, &timer_, &stats_),
         thread_system_(Platform::CreateThreadSystem()),
-        property_cache_("test/", &lru_cache_, &timer_, &stats_,
+        property_cache_(&cache_property_store_,
+                        &timer_,
+                        &stats_,
                         thread_system_.get()) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
     PropertyCache::InitCohortStats(kCohortName2, &stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
+    cache_property_store_.AddCohort(cohort_->name());
   }
 
   // Performs a Read/Modify/Write transaction intended for a cold
@@ -119,6 +124,7 @@ class PropertyCacheTest : public testing::Test {
   LRUCache lru_cache_;
   MockTimer timer_;
   SimpleStats stats_;
+  CachePropertyStore cache_property_store_;
   scoped_ptr<ThreadSystem> thread_system_;
   PropertyCache property_cache_;
   const PropertyCache::Cohort* cohort_;
@@ -242,9 +248,14 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
   // Now imagine we are on a second server, which is trying to write
   // an older value into the same physical cache.  Make sure we don't let it.
   MockTimer timer2(MockTimer::kApr_5_2010_ms - 100);
-  PropertyCache property_cache2("test/", &lru_cache_, &timer2, &stats_,
+  CachePropertyStore cache_property_store2(
+      "test/", &lru_cache_, &timer2, &stats_);
+  PropertyCache property_cache2(&cache_property_store2,
+                                &timer2,
+                                &stats_,
                                 thread_system_.get());
   property_cache2.AddCohort(kCohortName1);
+  cache_property_store2.AddCohort(kCohortName1);
   const PropertyCache::Cohort* cohort2 = property_cache2.GetCohort(
       kCohortName1);
   {
@@ -277,8 +288,9 @@ TEST_F(PropertyCacheTest, EmptyReadNewPropertyWasRead) {
 TEST_F(PropertyCacheTest, TwoCohorts) {
   EXPECT_EQ(cohort_, property_cache_.GetCohort(kCohortName1));
   EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
-  const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(
-      kCohortName2);
+  const PropertyCache::Cohort* cohort2 =
+      property_cache_.AddCohort(kCohortName2);
+  cache_property_store_.AddCohort(kCohortName2);
   ReadWriteInitial(kCacheKey1, "Value1");
   EXPECT_EQ(2, lru_cache_.num_misses()) << "one miss per cohort";
   EXPECT_EQ(1, lru_cache_.num_inserts()) << "only cohort1 written";
@@ -405,8 +417,9 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
 
 TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
   timer_.SetTimeMs(MockTimer::kApr_5_2010_ms);
-  const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(
-      kCohortName2);
+  const PropertyCache::Cohort* cohort2 =
+      property_cache_.AddCohort(kCohortName2);
+  cache_property_store_.AddCohort(kCohortName2);
   MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
   property_cache_.Read(&page);
   page.UpdateValue(cohort_, kPropertyName1, "Value1");
@@ -477,7 +490,7 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
 
       // Unknown Cohort. No crashes.
       scoped_ptr<PropertyCache::Cohort> unknown_cohort(
-          new PropertyCache::Cohort("unknown_cohort", NULL));
+          new PropertyCache::Cohort("unknown_cohort"));
       page.DeleteProperty(cohort_, kPropertyName2);
       EXPECT_TRUE(page.valid());
     }
@@ -493,7 +506,8 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
 
   // Add a second cohort backed by the second cache.
   const PropertyCache::Cohort* cohort2 =
-      property_cache_.AddCohortWithCache(kCohortName2, &second_cache);
+      property_cache_.AddCohort(kCohortName2);
+  cache_property_store_.AddCohortWithCache(kCohortName2, &second_cache);
 
   // Verify the first cohort behaves as expected.
   ReadWriteInitial(kCacheKey1, "Value1");
@@ -559,8 +573,9 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
   EXPECT_EQ(cohort_, property_cache_.GetCohort(kCohortName1));
   EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
 
-  const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(
-      kCohortName2);
+  const PropertyCache::Cohort* cohort2 =
+      property_cache_.AddCohort(kCohortName2);
+  cache_property_store_.AddCohort(kCohortName2);
   ReadWriteInitial(kCacheKey1, "Value1");
   EXPECT_EQ(2, lru_cache_.num_misses()) << "one miss per cohort";
   EXPECT_EQ(1, lru_cache_.num_inserts()) << "only cohort1 written";

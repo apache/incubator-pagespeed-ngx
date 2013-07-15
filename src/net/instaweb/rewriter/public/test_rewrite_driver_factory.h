@@ -31,6 +31,7 @@
 
 namespace net_instaweb {
 
+class CachePropertyStore;
 class CountingUrlAsyncFetcher;
 class DelayCache;
 class FileSystem;
@@ -190,6 +191,10 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   const PropertyCache::Cohort*  SetupCohort(
       PropertyCache* cache, const GoogleString& cohort_name);
 
+  CachePropertyStore* cache_property_store() {
+    return cache_property_store_;
+  }
+
  protected:
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
@@ -229,6 +234,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<CreateFilterCallback*> filter_callback_vector_;
   std::vector<CreateRewriterCallback*> rewriter_callback_vector_;
   std::vector<PlatformSpecificConfigurationCallback*> platform_config_vector_;
+  CachePropertyStore* cache_property_store_;
 };
 
 }  // namespace net_instaweb

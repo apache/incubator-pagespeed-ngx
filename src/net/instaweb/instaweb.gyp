@@ -812,6 +812,7 @@
 
         'util/async_cache.cc',
         'util/cache_batcher.cc',
+        'util/cache_property_store.cc',
         'util/cache_stats.cc',
         'util/charset_util.cc',
         'util/chunking_writer.cc',
@@ -832,6 +833,7 @@
         'util/null_rw_lock.cc',
         'util/null_statistics.cc',
         'util/property_cache.cc',
+        'util/property_store.cc',
         'util/queued_alarm.cc',
         'util/request_trace.cc',
         'util/split_statistics.cc',
