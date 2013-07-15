@@ -111,11 +111,11 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
 
 
 RewriteOptions::OptionSettingResult
-    NgxRewriteOptions::ParseAndSetOptionFromEnum1(
-        OptionEnum directive, StringPiece arg,
+    NgxRewriteOptions::ParseAndSetOptionFromName1(
+        StringPiece name, StringPiece arg,
         GoogleString* msg, MessageHandler* handler) {
   // FileCachePath needs error checking.
-  if (directive == kFileCachePath) {
+  if (StringCaseEqual(name, kFileCachePath)) {
     if (!StringCaseStartsWith(arg, "/")) {
       *msg = "must start with a slash";
       return RewriteOptions::kOptionValueInvalid;
@@ -125,8 +125,8 @@ RewriteOptions::OptionSettingResult
   // TODO(jefftk): port these (no enums for them yet, even!)
   //  DangerPermitFetchFromUnknownHosts, FetchWithGzip, ForceCaching
 
-  return SystemRewriteOptions::ParseAndSetOptionFromEnum1(
-      directive, arg, msg, handler);
+  return SystemRewriteOptions::ParseAndSetOptionFromName1(
+      name, arg, msg, handler);
 }
 
 // Very similar to apache/mod_instaweb::ParseDirective.
