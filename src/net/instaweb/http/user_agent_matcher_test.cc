@@ -127,16 +127,16 @@ TEST_F(UserAgentMatcherTest, DoesNotSupportBlink) {
 
 TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   const RequestHeaders headers;
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkTag,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
-                "prefetch_link_tag"));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkTag,
+                "prefetch_image_tag"));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kChromeUserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kIe9UserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkTag,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kSafariUserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
@@ -147,13 +147,13 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
                 NULL));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_->GetPrefetchMechanism(""));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkTag,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kAndroidChrome21UserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_->GetPrefetchMechanism(
                 kIPhoneUserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkTag,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_->GetPrefetchMechanism(
                 kIPadUserAgent));
 }

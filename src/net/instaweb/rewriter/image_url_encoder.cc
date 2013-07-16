@@ -43,11 +43,6 @@ const char kMobileUserAgentKey[] = "m";
 const char kUserAgentScreenResolutionKey[] = "sr";
 const char kSmallScreenKey[] = "ss";
 
-// Area threshold that determines whether we use
-// Image*RecompressionQualityForSmallScreens to set WebP/Jpeg quality.
-// The intent is for phones and small tablets (e.g., Nexus 7) to be in.
-const int kSmallScreenSizeThresholdArea = 1280 * 800;
-
 bool IsValidCode(char code) {
   return ((code == kCodeSeparator) ||
           (code == kCodeWebpLossy) ||
@@ -106,6 +101,8 @@ void CheckScreenResolutionOrder() {
 #endif
 
 }  // namespace
+
+const int ImageUrlEncoder::kSmallScreenSizeThresholdArea = 1280 * 800;
 
 ImageUrlEncoder::~ImageUrlEncoder() { }
 

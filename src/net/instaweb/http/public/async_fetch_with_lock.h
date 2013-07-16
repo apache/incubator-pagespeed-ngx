@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -32,10 +31,12 @@ namespace net_instaweb {
 
 class Hasher;
 class MessageHandler;
+class NamedLock;
+class NamedLockManager;
 class UrlAsyncFetcher;
 
-// Creates an AsyncFetch object which tries to acquire lock before fetching
-// content. Start() will returns false, if it fails to acquire lock.
+// AsyncFetch object which tries to acquire lock before fetching content.
+// Start() will returns false, if it fails to acquire lock.
 // Note that acquiring a lock will fail if same resource is fetching somewhere
 // else.
 // Caller will call the Start() which will try to acquire a lock and internally
@@ -68,12 +69,8 @@ class AsyncFetchWithLock : public AsyncFetch {
 
   // This will first try to acquire lock and triggers fetch by calling
   // StartFetch() if successful.
-  // Returns false, if it fails to acquire lock and deletes the
-  // async_fetch_with_lock.
-  static bool Start(
-      UrlAsyncFetcher* fetcher,
-      AsyncFetchWithLock* async_fetch_with_lock,
-      MessageHandler* handler);
+  // Returns false, if it fails to acquire lock and deletes this.
+  bool Start(UrlAsyncFetcher* fetcher);
 
   // Url to be fetched.
   const GoogleString& url() const { return url_; }
@@ -109,9 +106,6 @@ class AsyncFetchWithLock : public AsyncFetch {
  private:
   // Makes a lock used for fetching.
   NamedLock* MakeInputLock(const GoogleString& url);
-
-  // Set the lock which is acquired during the fetch.
-  void set_lock(NamedLock* lock) { lock_.reset(lock); }
 
   NamedLockManager* lock_manager_;  // Owned by server_context.
   scoped_ptr<NamedLock> lock_;

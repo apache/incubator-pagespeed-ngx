@@ -438,7 +438,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         async_op_hooks_);
     RequestHeaders* request_headers = fetch->request_headers();
     request_headers->CopyFrom(*base_fetch_->request_headers());
-    AsyncFetchWithLock::Start(fetcher_, fetch, handler_);
+    fetch->Start(fetcher_);
   }
 
   bool ShouldReturn304() const {

@@ -58,6 +58,11 @@ class MessageHandler;
 //       Webp requested, for mobile user agent, page missing dimensions.
 class ImageUrlEncoder : public UrlSegmentEncoder {
  public:
+  // Area threshold that determines whether we use
+  // Image*RecompressionQualityForSmallScreens to set WebP/Jpeg quality.
+  // The intent is for phones and small tablets (e.g., Nexus 7) to be in.
+  static const int kSmallScreenSizeThresholdArea;
+
   ImageUrlEncoder() {}
   virtual ~ImageUrlEncoder();
 

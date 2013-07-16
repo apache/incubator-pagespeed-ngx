@@ -66,7 +66,7 @@ class UserAgentMatcher {
 
   enum PrefetchMechanism {
     kPrefetchNotSupported,
-    kPrefetchLinkTag,
+    kPrefetchImageTag,
     kPrefetchLinkScriptTag,
   };
 
@@ -150,7 +150,8 @@ class UserAgentMatcher {
   FastWildcardGroup blink_mobile_whitelist_;
   FastWildcardGroup supports_webp_;
   FastWildcardGroup supports_webp_lossless_alpha_;
-  FastWildcardGroup supports_prefetch_link_tag_;
+  FastWildcardGroup supports_prefetch_link_rel_subresource_;
+  FastWildcardGroup supports_prefetch_image_tag_;
   FastWildcardGroup supports_prefetch_link_script_tag_;
   FastWildcardGroup supports_dns_prefetch_;
   FastWildcardGroup mobile_user_agents_;

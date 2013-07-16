@@ -518,10 +518,7 @@ void CacheableResourceBase::LoadHttpCacheCallback::LoadAndSaveToCache() {
   if (not_cacheable_policy_ == Resource::kLoadEvenIfNotCacheable) {
     cb->set_no_cache_ok(true);
   }
-  AsyncFetchWithLock::Start(
-      resource_->rewrite_driver()->async_fetcher(),
-      cb,
-      resource_->server_context()->message_handler());
+  cb->Start(resource_->rewrite_driver()->async_fetcher());
 }
 
 // HTTPCache::Callback which checks if we have a fresh response in the cache.
@@ -554,8 +551,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
       FreshenFetchCallback* cb = new FreshenFetchCallback(
           url_, server_context_->http_cache(), server_context_, driver_,
           options_, fallback_http_value(), resource_, callback_);
-      AsyncFetchWithLock::Start(
-          driver_->async_fetcher(), cb, server_context_->message_handler());
+      cb->Start(driver_->async_fetcher());
     } else {
       if (callback_ != NULL) {
         bool success = (find_result == HTTPCache::kFound) &&

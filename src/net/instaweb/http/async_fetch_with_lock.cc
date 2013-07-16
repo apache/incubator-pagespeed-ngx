@@ -56,15 +56,11 @@ AsyncFetchWithLock::~AsyncFetchWithLock() {
                         << "url: " << url_;
 }
 
-bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher,
-                               AsyncFetchWithLock* async_fetch_with_lock,
-                               MessageHandler* handler) {
-  const GoogleString& url = async_fetch_with_lock->url();
-  NamedLock* lock = async_fetch_with_lock->MakeInputLock(url);
-  async_fetch_with_lock->set_lock(lock);
+bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
+  lock_.reset(MakeInputLock(url()));
 
   // lock_name will be needed after lock might be deleted.
-  GoogleString lock_name(lock->name());
+  GoogleString lock_name(lock_->name());
   int64 lock_timeout = fetcher->timeout_ms();
   if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {
     // Even if the fetcher never explicitly times out requests, they probably
@@ -75,26 +71,25 @@ bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher,
     lock_timeout += kLockTimeoutSlackMs;
   }
 
-  if (!lock->TryLockStealOld(lock_timeout)) {
-    async_fetch_with_lock->set_lock(NULL);
+  if (!lock_->TryLockStealOld(lock_timeout)) {
+    lock_.reset(NULL);
     // TODO(abliss): a per-unit-time statistic would be useful here.
-    if (async_fetch_with_lock->ShouldYieldToRedundantFetchInProgress()) {
-      handler->Message(
+    if (ShouldYieldToRedundantFetchInProgress()) {
+      message_handler_->Message(
           kInfo, "%s is already being fetched (lock %s)",
-          url.c_str(), lock_name.c_str());
-      async_fetch_with_lock->Finalize(
-          true /* lock_failure */, false /* success */);
-      delete async_fetch_with_lock;
+          url().c_str(), lock_name.c_str());
+      Finalize(true /* lock_failure */, false /* success */);
+      delete this;
       return false;
     }
-    handler->Message(
+    message_handler_->Message(
         kInfo, "%s is being re-fetched asynchronously "
-        "(lock %s held elsewhere)", url.c_str(), lock_name.c_str());
+        "(lock %s held elsewhere)", url().c_str(), lock_name.c_str());
   } else {
-    handler->Message(kInfo, "%s: Locking (lock %s)",
-                              url.c_str(), lock_name.c_str());
+    message_handler_->Message(kInfo, "%s: Locking (lock %s)",
+                              url().c_str(), lock_name.c_str());
   }
-  return async_fetch_with_lock->StartFetch(fetcher, handler);
+  return StartFetch(fetcher, message_handler_);
 }
 
 void AsyncFetchWithLock::HandleDone(bool success) {

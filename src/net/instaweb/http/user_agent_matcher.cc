@@ -58,7 +58,7 @@ const char* kImageInliningWhitelist[] = {
   "google command line rewriter",
   "webp",
   "webp-la",
-  "prefetch_link_tag",
+  "prefetch_image_tag",
   "prefetch_link_script_tag",
 };
 const char* kImageInliningBlacklist[] = {
@@ -167,7 +167,7 @@ const char* kInsertDnsPrefetchWhitelist[] = {
   "*MSIE *",
   "*Wget*",
   // The following user agents are used only for internal testing
-  "prefetch_link_tag",
+  "prefetch_image_tag",
 };
 
 const char* kInsertDnsPrefetchBlacklist[] = {
@@ -218,11 +218,11 @@ const char* kMobileUserAgentBlacklist[] = {
 };
 
 // TODO(mmohabey): Tune this to include more browsers.
-const char* kSupportsPrefetchLinkTag[] = {
+const char* kSupportsPrefetchImageTag[] = {
   "*Chrome/*",
   "*Safari/*",
   // User agent used only for internal testing
-  "prefetch_link_tag",
+  "prefetch_image_tag",
 };
 
 const char* kSupportsPrefetchLinkScriptTag[] = {
@@ -294,8 +294,8 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kWebpLosslessAlphaBlacklist); i < n; ++i) {
     supports_webp_lossless_alpha_.Disallow(kWebpLosslessAlphaBlacklist[i]);
   }
-  for (int i = 0, n = arraysize(kSupportsPrefetchLinkTag); i < n; ++i) {
-    supports_prefetch_link_tag_.Allow(kSupportsPrefetchLinkTag[i]);
+  for (int i = 0, n = arraysize(kSupportsPrefetchImageTag); i < n; ++i) {
+    supports_prefetch_image_tag_.Allow(kSupportsPrefetchImageTag[i]);
   }
   for (int i = 0, n = arraysize(kSupportsPrefetchLinkScriptTag); i < n; ++i) {
     supports_prefetch_link_script_tag_.Allow(kSupportsPrefetchLinkScriptTag[i]);
@@ -382,8 +382,8 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
 
 UserAgentMatcher::PrefetchMechanism UserAgentMatcher::GetPrefetchMechanism(
     const StringPiece& user_agent) const {
-  if (supports_prefetch_link_tag_.Match(user_agent, false)) {
-    return kPrefetchLinkTag;
+  if (supports_prefetch_image_tag_.Match(user_agent, false)) {
+    return kPrefetchImageTag;
   } else if (supports_prefetch_link_script_tag_.Match(user_agent, false)) {
     return kPrefetchLinkScriptTag;
   }
