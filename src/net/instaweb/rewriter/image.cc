@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
+#include <stdbool.h>
 #include <algorithm>
 #include <cstddef>
 
@@ -97,6 +98,9 @@ const int64 kQualityForJpegWithUnkownQuality = 85;
 }  // namespace ImageHeaders
 
 namespace {
+
+const char kGifString[] = "gif";
+const char kPngString[] = "png";
 
 // To estimate the number of bytes from the number of pixels, we divide
 // by a magic ratio.  The 'correct' ratio is of course dependent on the
@@ -971,7 +975,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
     // If we already resized, drop data and work with original image.
     UndoChange();
   }
-  bool ok = opencv_image_ != NULL || EnsureLoaded(true);
+  bool ok = opencv_image_ != NULL || EnsureLoaded(false);
   if (ok) {
     IplImage* rescaled_image =
         cvCreateImage(cvSize(new_dim.width(), new_dim.height()),
@@ -1093,13 +1097,40 @@ bool ImageImpl::ComputeOutputContents() {
           }
           break;
         case IMAGE_PNG:
-          png_reader.reset(new pagespeed::image_compression::PngReader);
-          ok = ComputeOutputContentsFromPngReader(
-              string_for_image,
-              png_reader.get(),
-              (resized || options_->recompress_png),
-              "png",
-              Image::ConversionVariables::FROM_PNG);
+          {
+            // If the original image was a GIF and has been resized,
+            // its type would have been converted to PNG. So for logging
+            // purpose we need to find out the original type from the
+            // original contents.
+
+            // TODO(huibao): Remove resetting 'image_type_' and 'dims_'
+            // when OpenCV is removed.
+            Image::ConversionVariables::VariableType original_type =
+                Image::ConversionVariables::FROM_PNG;
+            const char* original_type_name = kPngString;
+            ImageDim original_dims = dims_;
+            if (resized) {
+              // ComputeImageType() computes the image type from
+              // original_contents_ and stores it in image_type_.
+              ImageType current_type = image_type_;
+              ComputeImageType();
+              if (image_type_ == IMAGE_GIF) {
+                original_type = Image::ConversionVariables::FROM_GIF;
+                original_type_name = kGifString;
+              }
+              image_type_ = current_type;
+              dims_ = original_dims;
+            }
+
+            png_reader.reset(new pagespeed::image_compression::PngReader);
+            ok = ComputeOutputContentsFromPngReader(
+                string_for_image,
+                png_reader.get(),
+                (resized || options_->recompress_png),
+                original_type_name,
+                original_type);
+            }
+
           break;
         case IMAGE_GIF:
           if (options_->convert_gif_to_png || low_quality_enabled_) {
@@ -1108,7 +1139,7 @@ bool ImageImpl::ComputeOutputContents() {
                 string_for_image,
                 png_reader.get(),
                 true /* fall_back_to_png */,
-                "gif",
+                kGifString,
                 Image::ConversionVariables::FROM_GIF);
           }
           break;
