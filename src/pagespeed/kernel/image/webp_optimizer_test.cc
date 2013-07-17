@@ -35,6 +35,7 @@ using pagespeed::image_compression::PngScanlineReaderRaw;
 using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
+using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::WebpScanlineReader;
 using pagespeed::image_compression::WebpScanlineWriter;
@@ -83,20 +84,23 @@ class WebpScanlineReaderTest : public testing::Test {
     // WebP only supports RGB_888 and RGBA_8888.
     ASSERT_TRUE(pixel_format == RGB_888 || pixel_format == RGBA_8888);
 
-    // Initialize the writer.
-    WebpScanlineWriter webp_writer;
-    ASSERT_TRUE(webp_writer.Init(width, height, pixel_format));
-    ASSERT_TRUE(webp_writer.InitializeWrite(webp_config, webp_image));
+    // Create a WebP writer.
+    scoped_ptr<ScanlineWriterInterface> webp_writer(
+        CreateScanlineWriter(pagespeed::image_compression::IMAGE_WEBP,
+                             pixel_format, width, height, &webp_config,
+                             webp_image));
+    ASSERT_NE(reinterpret_cast<ScanlineWriterInterface*>(NULL),
+              webp_writer.get());
 
     // Read the scanlines from the original image and write them to the new one.
     while (png_reader.HasMoreScanLines()) {
       uint8* scanline = NULL;
       ASSERT_TRUE(png_reader.ReadNextScanline(
           reinterpret_cast<void**>(&scanline)));
-      ASSERT_TRUE(webp_writer.WriteNextScanline(
+      ASSERT_TRUE(webp_writer->WriteNextScanline(
           reinterpret_cast<void*>(scanline)));
     }
-    ASSERT_TRUE(webp_writer.FinalizeWrite());
+    ASSERT_TRUE(webp_writer->FinalizeWrite());
   }
 
  protected:

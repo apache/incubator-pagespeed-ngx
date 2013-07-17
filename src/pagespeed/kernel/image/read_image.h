@@ -20,6 +20,7 @@
 #define PAGESPEED_KERNEL_IMAGE_READ_IMAGE_H_
 
 #include <cstddef>
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
 namespace pagespeed {
@@ -44,6 +45,16 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
                                               const void* image_buffer,
                                               size_t buffer_length);
 
+// Return a scanline image reader. The following formats are supported:
+// IMAGE_PNG, IMAGE_JPEG, and IMAGE_WEBP.
+ScanlineWriterInterface* CreateScanlineWriter(
+    ImageFormat image_type,     // Type of the image to write
+    PixelFormat pixel_format,   // Pixel format, RGB_888 etc
+    size_t width,               // Width, in pixels, of the image
+    size_t height,              // Height, in pixels, of the image
+    const void* config,         // Configuration for the output image
+    GoogleString* image_data);  // Output image
+
 // Decode the image stream and return the image information. Use non-null
 // pointers to retrieve the informatin you need, and use null pointers to
 // ignore other information.
@@ -58,7 +69,6 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
 // the number of bytes between the starting points of adjacent rows. Garbage
 // bytes may be padded to the end of rows in order to make "stride" a multiplier
 // of 4.
-//
 bool ReadImage(ImageFormat image_type,
                const void* image_buffer,
                size_t buffer_length,

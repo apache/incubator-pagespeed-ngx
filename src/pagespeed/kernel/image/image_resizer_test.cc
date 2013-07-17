@@ -16,7 +16,6 @@
 
 // Author: Huibao Lin
 
-#include <setjmp.h>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
@@ -24,6 +23,7 @@
 #include "pagespeed/kernel/image/image_resizer.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/test_utils.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
@@ -117,35 +117,21 @@ ScanlineWriterInterface* CreateWriter(PixelFormat pixel_format,
                                       GoogleString* image_data,
                                       GoogleString* file_ext) {
   if (pixel_format == GRAY_8) {
-    JpegScanlineWriter* jpeg_writer = new JpegScanlineWriter();
-    if (jpeg_writer != NULL) {
-      JpegCompressionOptions jpeg_options;
-      jpeg_options.lossy = true;
-      jpeg_options.lossy_options.quality = 100;
-
-      jmp_buf env;
-      if (setjmp(env)) {
-        // This code is run only when libjpeg hit an error, and called
-        // longjmp(env).
-        jpeg_writer->AbortWrite();
-      } else {
-        jpeg_writer->SetJmpBufEnv(&env);
-        jpeg_writer->Init(width, height, pixel_format);
-        jpeg_writer->SetJpegCompressParams(jpeg_options);
-        jpeg_writer->InitializeWrite(image_data);
-      }
-      *file_ext = "jpg";
-    }
-    return reinterpret_cast<ScanlineWriterInterface*>(jpeg_writer);
+    *file_ext = "jpg";
+    JpegCompressionOptions jpeg_config;
+    jpeg_config.lossy = true;
+    jpeg_config.lossy_options.quality = 100;
+    return reinterpret_cast<ScanlineWriterInterface*>(
+        CreateScanlineWriter(pagespeed::image_compression::IMAGE_JPEG,
+                             pixel_format, width, height, &jpeg_config,
+                             image_data));
   } else {
-    WebpScanlineWriter* webp_writer = new WebpScanlineWriter();
-    if (webp_writer != NULL) {
-      WebpConfiguration webp_config;  // Use lossless by default
-      webp_writer->Init(width, height, pixel_format);
-      webp_writer->InitializeWrite(webp_config, image_data);
-      *file_ext = "webp";
-    }
-    return reinterpret_cast<ScanlineWriterInterface*>(webp_writer);
+    *file_ext = "webp";
+    WebpConfiguration webp_config;  // Use lossless by default
+    return reinterpret_cast<ScanlineWriterInterface*>(
+        CreateScanlineWriter(pagespeed::image_compression::IMAGE_WEBP,
+                             pixel_format, width, height, &webp_config,
+                             image_data));
   }
 }
 

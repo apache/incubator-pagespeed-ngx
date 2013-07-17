@@ -18,12 +18,14 @@
 
 #include "pagespeed/kernel/image/read_image.h"
 
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include "base/logging.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/gif_reader.h"
+#include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
@@ -81,6 +83,79 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
       LOG(DFATAL) << "Invalid image type.";
   }
 
+  return NULL;
+}
+
+// Return a scanline image writer.
+ScanlineWriterInterface* CreateScanlineWriter(
+    ImageFormat image_type,
+    PixelFormat pixel_format,
+    size_t width,
+    size_t height,
+    const void* config,
+    GoogleString* image_data) {
+  switch (image_type) {
+    case pagespeed::image_compression::IMAGE_JPEG:
+      {
+        scoped_ptr<JpegScanlineWriter> writer(new JpegScanlineWriter());
+        if (writer != NULL) {
+          const JpegCompressionOptions* jpeg_config =
+              reinterpret_cast<const JpegCompressionOptions*>(config);
+
+          // TODO(huibao): Set up error handling inside JpegScanlineWriter.
+          // Remove 'setjmp' from the clients and remove the 'SetJmpBufEnv'
+          // method.
+          jmp_buf env;
+          if (setjmp(env)) {
+            // This code is run only when libjpeg hit an error, and called
+            // longjmp(env).
+            writer->AbortWrite();
+            return NULL;
+          }
+
+          writer->SetJmpBufEnv(&env);
+          if (writer->Init(width, height, pixel_format)) {
+            writer->SetJpegCompressParams(*jpeg_config);
+            if (writer->InitializeWrite(image_data)) {
+              return reinterpret_cast<ScanlineWriterInterface*>(
+                  writer.release());
+            }
+          }
+        }
+      }
+      break;
+
+    case pagespeed::image_compression::IMAGE_PNG:
+      {
+        scoped_ptr<PngScanlineWriter> writer(new PngScanlineWriter());
+        if (writer != NULL) {
+          const PngCompressParams* png_config =
+              reinterpret_cast<const PngCompressParams*>(config);
+          if (writer->Init(width, height, pixel_format) &&
+              writer->Initialize(png_config, image_data)) {
+            return reinterpret_cast<ScanlineWriterInterface*>(writer.release());
+          }
+        }
+      }
+      break;
+
+    case pagespeed::image_compression::IMAGE_WEBP:
+      {
+        scoped_ptr<WebpScanlineWriter> writer(new WebpScanlineWriter());
+        if (writer != NULL) {
+          const WebpConfiguration* webp_config =
+              reinterpret_cast<const WebpConfiguration*>(config);
+          if (writer->Init(width, height, pixel_format) &&
+              writer->InitializeWrite(*webp_config, image_data)) {
+            return reinterpret_cast<ScanlineWriterInterface*>(writer.release());
+          }
+        }
+      }
+      break;
+
+    default:
+      LOG(FATAL) << "Invalid image type";
+  }
   return NULL;
 }
 

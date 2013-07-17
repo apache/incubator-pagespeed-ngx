@@ -50,6 +50,7 @@ using pagespeed::image_compression::PngScanlineReader;
 using pagespeed::image_compression::PngScanlineWriter;
 using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::ScanlineReaderInterface;
+using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::ScopedPngStruct;
 
 // Structure that holds metadata and actual pixel data for a decoded
@@ -496,8 +497,15 @@ class PngScanlineWriterTest : public testing::Test {
     : params_(PngCompressParams(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY)) {
   }
 
+  bool Initialize() {
+    writer_.reset(CreateScanlineWriter(
+        pagespeed::image_compression::IMAGE_PNG, pixel_format_, width_,
+        height_, &params_, &output_));
+    return (writer_ != NULL);
+  }
+
  protected:
-  PngScanlineWriter writer_;
+  scoped_ptr<ScanlineWriterInterface> writer_;
   GoogleString output_;
   PngCompressParams params_;
   unsigned char scanline_[3];
@@ -1078,7 +1086,6 @@ TEST(PngScanlineReaderRawTest, InvalidPngs) {
 TEST_F(PngScanlineWriterTest, RewritePng) {
   PngScanlineReaderRaw original_reader;
   PngScanlineReaderRaw rewritten_reader;
-  PngScanlineWriter png_writer;
 
   // List of filters supported by libpng.
   const int png_filter_list[] = {
@@ -1117,15 +1124,17 @@ TEST_F(PngScanlineWriterTest, RewritePng) {
     PngCompressParams params(filter_level, compression_strategy);
 
     // Initialize the writer.
-    ASSERT_TRUE(png_writer.Init(width, height, pixel_format));
-    ASSERT_TRUE(png_writer.Initialize(&params, &rewritten_image));
+    writer_.reset(CreateScanlineWriter(
+        pagespeed::image_compression::IMAGE_PNG, pixel_format, width,
+        height, &params, &rewritten_image));
+    ASSERT_NE(static_cast<ScanlineWriterInterface *>(NULL), writer_.get());
 
     // Read the scanlines from the original image and write them to the new one.
     while (original_reader.HasMoreScanLines()) {
       uint8* scanline = NULL;
       ASSERT_TRUE(original_reader.ReadNextScanline(
           reinterpret_cast<void**>(&scanline)));
-      ASSERT_TRUE(png_writer.WriteNextScanline(
+      ASSERT_TRUE(writer_->WriteNextScanline(
           reinterpret_cast<void*>(scanline)));
     }
 
@@ -1133,7 +1142,7 @@ TEST_F(PngScanlineWriterTest, RewritePng) {
     ASSERT_FALSE(original_reader.HasMoreScanLines());
     // Make sure that the writer has received all of the image data, and
     // finalize it.
-    ASSERT_TRUE(png_writer.FinalizeWrite());
+    ASSERT_TRUE(writer_->FinalizeWrite());
 
     // Now create readers for reading the original and the rewritten images.
     ASSERT_TRUE(original_reader.Initialize(original_image.data(),
@@ -1149,39 +1158,34 @@ TEST_F(PngScanlineWriterTest, RewritePng) {
 
 // Attempt to finalize without writing all of the scanlines.
 TEST_F(PngScanlineWriterTest, EarlyFinalize) {
-  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
-  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
-  ASSERT_FALSE(writer_.FinalizeWrite());
+  ASSERT_TRUE(Initialize());
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_FALSE(writer_->FinalizeWrite());
 }
 
 // Write insufficient number of scanlines and do not finalize at the end.
 TEST_F(PngScanlineWriterTest, MissingScanlines) {
-  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
-  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(Initialize());
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
 }
 
 // Write too many scanlines.
 TEST_F(PngScanlineWriterTest, TooManyScanlines) {
-  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
-  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
-  ASSERT_FALSE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(Initialize());
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_FALSE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
 }
 
 // Write a scanline, and then re-initialize and write too many scanlines.
 TEST_F(PngScanlineWriterTest, ReinitializeAndTooManyScanlines) {
-  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
-  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(Initialize());
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
 
-  ASSERT_TRUE(writer_.Init(width_, height_, pixel_format_));
-  ASSERT_TRUE(writer_.Initialize(&params_, &output_));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
-  ASSERT_TRUE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
-  ASSERT_FALSE(writer_.WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(Initialize());
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+  ASSERT_FALSE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
 }
 
 }  // namespace
