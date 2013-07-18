@@ -56,7 +56,7 @@ class CriticalCssFilter : public EmptyHtmlFilter {
 
   static const char kAddStylesScript[];
   static const char kStatsScriptTemplate[];
-  static const char kNoscriptStylesId[];
+  static const char kNoscriptStylesClass[];
   static const char kMoveScriptId[];
   static const char kApplyFlushEarlyCssTemplate[];
   static const char kInvokeFlushEarlyCssTemplate[];

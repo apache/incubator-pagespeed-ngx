@@ -62,9 +62,14 @@ const char CriticalCssFilter::kAddStylesScript[] =
     "  if (stylesAdded) return;"
     "  stylesAdded = true;"
     "  var div = document.createElement(\"div\");"
-    "  var styleElement = document.getElementById(\"psa_add_styles\");"
-    "  div.innerHTML = styleElement.textContent || styleElement.innerHTML || "
-    "                  styleElement.data || \"\";"
+    "  var styleText = \"\";"
+    "  var styleElements = document.getElementsByClassName(\"psa_add_styles\");"
+    "  for (var i = 0; i < styleElements.length; ++i) {"
+    "    styleText += styleElements[i].textContent ||"
+    "                 styleElements[i].innerHTML || "
+    "                 styleElements[i].data || \"\";"
+    "  }"
+    "  div.innerHTML = styleText;"
     "  document.body.appendChild(div);"
     "};"
     "if (window.addEventListener) {"
@@ -115,7 +120,7 @@ const char CriticalCssFilter::kApplyFlushEarlyCssTemplate[] =
 const char CriticalCssFilter::kInvokeFlushEarlyCssTemplate[] =
     "applyFlushedCriticalCss(\"%s\", \"%s\");";
 
-const char CriticalCssFilter::kNoscriptStylesId[] = "psa_add_styles";
+const char CriticalCssFilter::kNoscriptStylesClass[] = "psa_add_styles";
 const char CriticalCssFilter::kMoveScriptId[] = "psa_flush_style_early";
 
 // TODO(slamm): Check charset like CssInlineFilter::ShouldInline().
@@ -253,7 +258,8 @@ void CriticalCssFilter::EndDocument() {
   if (num_replaced_links_ > 0 && !driver_->flushing_early()) {
     HtmlElement* noscript_element =
         driver_->NewElement(NULL, HtmlName::kNoscript);
-    driver_->AddAttribute(noscript_element, HtmlName::kId, kNoscriptStylesId);
+    driver_->AddAttribute(noscript_element, HtmlName::kClass,
+                          kNoscriptStylesClass);
     driver_->InsertNodeBeforeCurrent(noscript_element);
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),

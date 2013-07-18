@@ -126,9 +126,9 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   // can cause downloads to be in a different order too.
   if (element == noscript_element()) {
     if (driver()->options()->enable_flush_early_critical_css()) {
-      const char* style_id = noscript_element()->AttributeValue(HtmlName::kId);
-      if (style_id != NULL && StringCaseEqual(style_id,
-          CriticalCssFilter::kNoscriptStylesId)) {
+      const char* cls = noscript_element()->AttributeValue(HtmlName::kClass);
+      if (cls != NULL &&
+          StringCaseEqual(cls, CriticalCssFilter::kNoscriptStylesClass)) {
         should_collect_critical_css_ = true;
       }
     }

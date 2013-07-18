@@ -1565,7 +1565,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>"
       "</head>"
       "<body>%sHello, mod_pagespeed!</body></html>"
-      "<noscript id=\"psa_add_styles\">"
+      "<noscript class=\"psa_add_styles\">"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"*1.css*\">"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"*2.css*\"></noscript>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">"

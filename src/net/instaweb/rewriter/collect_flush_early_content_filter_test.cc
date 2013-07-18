@@ -101,11 +101,11 @@ TEST_F(CollectFlushEarlyContentFilterTest, WithNoScriptCssAddStyles) {
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"
       "<head>"
-      "<noscript id=\"psa_add_styles\">"
+      "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "</noscript></head>"
       "<body>"
-      "<noscript id=\"psa_add_styles\">"
+      "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
       "</noscript></body></html>";
 

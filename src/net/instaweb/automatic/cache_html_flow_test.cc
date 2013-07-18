@@ -1084,7 +1084,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
       "</body>\n</html>"
-      "<noscript id=\"psa_add_styles\">"
+      "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
       "<style type='text/css'>t {color: turquoise }</style>"
