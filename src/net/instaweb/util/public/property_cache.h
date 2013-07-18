@@ -96,6 +96,7 @@
 #include <vector>
 
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -314,8 +315,6 @@ class AbstractPropertyPage {
   // Deletes a property given the property name.
   virtual void DeleteProperty(const PropertyCache::Cohort* cohort,
                               const StringPiece& property_name) = 0;
-
-  virtual const GoogleString& key() const = 0;
 };
 
 
@@ -388,8 +387,6 @@ class PropertyPage : public AbstractPropertyPage {
   void DeleteProperty(const PropertyCache::Cohort* cohort,
                       const StringPiece& property_name);
 
-  const GoogleString& key() const { return key_; }
-
   AbstractLogRecord* log_record() {
     return request_context_->log_record();
   }
@@ -416,7 +413,9 @@ class PropertyPage : public AbstractPropertyPage {
   // TODO(pulkitg): Instead of passing full PropertyCache object, just pass
   // objects which PropertyPage needs.
   PropertyPage(PageType page_type,
-               const StringPiece& key,
+               StringPiece url,
+               StringPiece options_signature_hash,
+               UserAgentMatcher::DeviceType device_type,
                const RequestContextPtr& request_context,
                AbstractMutex* mutex,
                PropertyCache* property_cache);
@@ -460,7 +459,9 @@ class PropertyPage : public AbstractPropertyPage {
       CohortDataMap;
   CohortDataMap cohort_data_map_;
   scoped_ptr<AbstractMutex> mutex_;
-  GoogleString key_;
+  GoogleString url_;
+  GoogleString options_signature_hash_;
+  UserAgentMatcher::DeviceType device_type_;
   RequestContextPtr request_context_;
   bool was_read_;
   PropertyCache* property_cache_;  // Owned by the caller.

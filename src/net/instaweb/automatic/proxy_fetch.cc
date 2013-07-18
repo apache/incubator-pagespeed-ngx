@@ -186,14 +186,20 @@ void ProxyFetchFactory::RegisterFinishedFetch(ProxyFetch* fetch) {
 ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
     PageType page_type,
     PropertyCache* property_cache,
-    const StringPiece& key,
+    const StringPiece& url,
+    const StringPiece& options_signature_hash,
     UserAgentMatcher::DeviceType device_type,
     ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
     : PropertyPage(
-          page_type, key, collector->request_context(), mutex, property_cache),
+          page_type,
+          url,
+          options_signature_hash,
+          device_type,
+          collector->request_context(),
+          mutex,
+          property_cache),
       page_type_(page_type),
-      device_type_(device_type),
       collector_(collector) {
 }
 
@@ -1250,18 +1256,21 @@ ProxyFetchPropertyCallbackCollector*
       server_context->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
       async_fetch->request_headers()->method() == RequestHeaders::kGet) {
+    GoogleString options_signature_hash;
     if (options != NULL) {
       server_context->ComputeSignature(options);
+      options_signature_hash =
+          server_context->GetRewriteOptionsSignatureHash(options);
     }
     AbstractMutex* mutex = server_context->thread_system()->NewMutex();
-    const StringPiece& device_type_suffix =
-        UserAgentMatcher::DeviceTypeSuffix(device_type);
-    GoogleString page_key = server_context->GetPagePropertyCacheKey(
-        request_url.Spec(), options, device_type_suffix);
     property_callback = new ProxyFetchPropertyCallback(
         ProxyFetchPropertyCallback::kPropertyCachePage,
-        page_property_cache, page_key, device_type,
-        callback_collector.get(), mutex);
+        page_property_cache,
+        request_url.Spec(),
+        options_signature_hash,
+        device_type,
+        callback_collector.get(),
+        mutex);
     callback_collector->AddCallback(property_callback);
     added_callback = true;
     if (added_page_property_callback != NULL) {
@@ -1272,20 +1281,23 @@ ProxyFetchPropertyCallbackCollector*
     // if actual property page does not contains property value.
     if (options != NULL &&
         options->use_fallback_property_cache_values()) {
-      GoogleString fallback_page_key;
+      GoogleString fallback_page_url;
       if (request_url.PathAndLeaf() != "/" &&
           !request_url.PathAndLeaf().empty()) {
         // Don't bother looking up fallback properties for the root, "/", since
         // there is nothing to fall back to.
-        fallback_page_key = server_context->GetFallbackPagePropertyCacheKey(
-            request_url, options, device_type_suffix);
+        fallback_page_url =
+            FallbackPropertyPage::GetFallbackPageUrl(request_url);
       }
 
-      if (!fallback_page_key.empty()) {
+      if (!fallback_page_url.empty()) {
         fallback_property_callback =
             new ProxyFetchPropertyCallback(
                 ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
-                page_property_cache, fallback_page_key, device_type,
+                page_property_cache,
+                fallback_page_url,
+                options_signature_hash,
+                device_type,
                 callback_collector.get(),
                 server_context->thread_system()->NewMutex());
         callback_collector->AddCallback(fallback_property_callback);

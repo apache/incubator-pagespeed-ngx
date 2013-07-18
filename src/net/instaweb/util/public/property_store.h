@@ -21,6 +21,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_STORE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_STORE_H_
 
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -43,18 +44,19 @@ class PropertyStore {
   // BoolCallback is called with true if values are populated successfully
   // in PropertyPage.
   // PropertyPage object is used to validate the entries looked up from cache.
-  // TODO(pulkitg): Change Get() and Put() function to take url, rewrite
-  // options signature hash, device type as a separate and move PropertyCache
-  // key generation function to PropertyStore.
   virtual void Get(
-      const GoogleString& key,
+      const GoogleString& url,
+      const GoogleString& options_signature_hash,
+      UserAgentMatcher::DeviceType device_type,
       const PropertyCache::Cohort* cohort,
       PropertyPage* page,
       BoolCallback* done) = 0;
 
   // Write to storage system for the given key.
   virtual void Put(
-      const GoogleString& key,
+      const GoogleString& url,
+      const GoogleString& options_signature_hash,
+      UserAgentMatcher::DeviceType device_type,
       const PropertyCache::Cohort* cohort,
       const PropertyCacheValues* values) = 0;
 

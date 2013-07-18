@@ -25,8 +25,9 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -139,7 +140,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
             page_type, page_property_cache(), RewriteTestBase::kTestDomain,
-            UserAgentMatcher::kDesktop, collector, mutex);
+            "hash", UserAgentMatcher::kDesktop, collector, mutex);
     EXPECT_EQ(page_type, callback->page_type());
     collector->AddCallback(callback);
     return callback;

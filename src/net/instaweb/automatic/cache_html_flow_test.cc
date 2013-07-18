@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
@@ -356,15 +357,20 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
       AsyncFetch* async_fetch,
       const bool requires_blink_cohort,
       bool* added_page_property_callback) {
-    GoogleString key_base(request_url.Spec().as_string());
+    GoogleString options_signature_hash;
     if (options != NULL) {
       manager_->ComputeSignature(options);
-      key_base = StrCat(request_url.Spec(), "_", options->signature());
+      options_signature_hash =
+          manager_->GetRewriteOptionsSignatureHash(options);
     }
     PropertyCache* pcache = manager_->page_property_cache();
     const PropertyCache::Cohort* cohort =
         pcache->GetCohort(BlinkUtil::kBlinkCohort);
-    key_ = factory_->cache_property_store()->CacheKey(key_base, cohort);
+    key_ = factory_->cache_property_store()->CacheKey(
+        request_url.Spec(),
+        options_signature_hash,
+        UserAgentMatcher::kDesktop,
+        cohort);
     delay_cache_->DelayKey(key_);
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;

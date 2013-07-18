@@ -22,6 +22,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_PROPERTY_PAGE_H_
 
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -33,9 +34,14 @@ class MockPropertyPage : public PropertyPage {
  public:
   MockPropertyPage(ThreadSystem* thread_system,
                    PropertyCache* property_cache,
-                   const StringPiece& key)
+                   const StringPiece& url,
+                   const StringPiece& options_signature_hash,
+                   UserAgentMatcher::DeviceType device_type)
       : PropertyPage(
-          kPropertyCachePage, key,
+          kPropertyCachePage,
+          url,
+          options_signature_hash,
+          device_type,
           RequestContext::NewTestRequestContext(thread_system),
           thread_system->NewMutex(), property_cache),
         called_(false),

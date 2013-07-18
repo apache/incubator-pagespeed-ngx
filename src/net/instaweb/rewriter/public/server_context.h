@@ -365,23 +365,9 @@ class ServerContext {
                                    RewriteOptions* domain_options,
                                    RewriteOptions* query_options);
 
-  // Returns the page property cache key to be used for the proxy interface
-  // flow.  options is expected to be frozen.
-  GoogleString GetPagePropertyCacheKey(StringPiece url,
-                                       const RewriteOptions* options,
-                                       StringPiece device_type_suffix);
-
-  GoogleString GetPagePropertyCacheKey(StringPiece url,
-                                       StringPiece options_signature_hash,
-                                       StringPiece device_type_suffix);
-
-  // Returns the page property cache key for the page containing fallback
-  // values (i.e. wihtout query params or without leaf) to be used for the proxy
-  // interface flow.
-  // Options are expected to be frozen.
-  GoogleString GetFallbackPagePropertyCacheKey(const GoogleUrl& request_url,
-                                               const RewriteOptions* options,
-                                               StringPiece device_type_suffix);
+  // Returns the RewriteOptions signature hash.
+  // Returns empty string if RewriteOptions is NULL.
+  GoogleString GetRewriteOptionsSignatureHash(const RewriteOptions* options);
 
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,

@@ -84,9 +84,6 @@ const char kBeaconCriticalImagesQueryParam[] = "ci";
 const char kBeaconCriticalCssQueryParam[] = "cs";
 const char kBeaconNonceQueryParam[] = "n";
 
-const char kFallbackPageCacheKeyQuerySuffix[] = "@";
-const char kFallbackPageCacheKeyBasePathSuffix[] = "#";
-
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
   HttpAttributes::kCacheControl,
@@ -123,13 +120,16 @@ class BeaconPropertyCallback : public PropertyPage {
  public:
   BeaconPropertyCallback(
       ServerContext* server_context,
-      const StringPiece& key,
+      StringPiece url,
+      StringPiece options_signature_hash,
+      UserAgentMatcher::DeviceType device_type,
       const RequestContextPtr& request_context,
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set,
       StringSet* critical_css_selector_set,
       StringPiece nonce)
-      : PropertyPage(kPropertyCachePage, key, request_context,
+      : PropertyPage(kPropertyCachePage, url, options_signature_hash,
+                     device_type, request_context,
                      server_context->thread_system()->NewMutex(),
                      server_context->page_property_cache()),
         server_context_(server_context),
@@ -617,16 +617,13 @@ bool ServerContext::HandleBeacon(StringPiece params,
       critical_css_selector_set != NULL) {
     UserAgentMatcher::DeviceType device_type =
         user_agent_matcher()->GetDeviceTypeForUA(user_agent);
-    StringPiece device_type_suffix =
-        UserAgentMatcher::DeviceTypeSuffix(device_type);
-
-    GoogleString key = GetPagePropertyCacheKey(
-        url_query_param.Spec(),
-        *options_hash_param,
-        device_type_suffix);
 
     BeaconPropertyCallback* beacon_property_cb = new BeaconPropertyCallback(
-        this, key, request_context,
+        this,
+        url_query_param.Spec(),
+        *options_hash_param,
+        device_type,
+        request_context,
         html_critical_images_set.release(),
         css_critical_images_set.release(),
         critical_css_selector_set.release(),
@@ -939,52 +936,12 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
   return custom_options.release();
 }
 
-GoogleString ServerContext::GetPagePropertyCacheKey(
-    StringPiece url, const RewriteOptions* options,
-    StringPiece device_type_suffix) {
-  GoogleString options_signature_hash;
-  if (options != NULL) {
-    // Should we use lock_hasher() instead of hasher() below?
-    options_signature_hash = hasher()->Hash(options->signature());
+GoogleString ServerContext::GetRewriteOptionsSignatureHash(
+    const RewriteOptions* options) {
+  if (options == NULL) {
+    return "";
   }
-  return GetPagePropertyCacheKey(
-      url, options_signature_hash, device_type_suffix);
-}
-
-GoogleString ServerContext::GetPagePropertyCacheKey(
-    StringPiece url, StringPiece options_signature_hash,
-    StringPiece device_type_suffix) {
-  GoogleString result(url.as_string());
-  if (!options_signature_hash.empty()) {
-    StrAppend(&result, "_", options_signature_hash);
-  }
-  StrAppend(&result, device_type_suffix);
-  return result;
-}
-
-GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
-    const GoogleUrl& request_url, const RewriteOptions* options,
-    StringPiece device_type_suffix) {
-  GoogleString key;
-  GoogleString suffix;
-  if (request_url.has_query()) {
-    key = request_url.AllExceptQuery().as_string();
-    suffix = kFallbackPageCacheKeyQuerySuffix;
-  } else {
-    GoogleString url(request_url.spec_c_str());
-    int size = url.size();
-    if (url[size - 1] == '/') {
-      // It's common for site admins to canonicalize urls by redirecting "/a/b"
-      // to "/a/b/".  In order to more effectively share fallback properties, we
-      // strip the trailing '/' before dropping down a level.
-      url.resize(size - 1);
-    }
-    GoogleUrl gurl(url);
-    key = gurl.AllExceptLeaf().as_string();
-    suffix = kFallbackPageCacheKeyBasePathSuffix;
-  }
-  return StrCat(GetPagePropertyCacheKey(key, options, device_type_suffix),
-                suffix);
+  return hasher()->Hash(options->signature());
 }
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {

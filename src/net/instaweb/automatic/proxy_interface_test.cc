@@ -50,7 +50,6 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
@@ -181,10 +180,8 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
 
   int GetStatusCodeInPropertyCache(const GoogleString& url) {
     PropertyCache* pcache = page_property_cache();
-    StringPiece device_type_suffix =
-        UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop);
-    GoogleString cache_key = StrCat(url, device_type_suffix);
-    scoped_ptr<MockPropertyPage> page(NewMockPage(cache_key));
+    scoped_ptr<MockPropertyPage> page(
+        NewMockPage(url, "", UserAgentMatcher::kDesktop));
     const PropertyCache::Cohort* cohort = pcache->GetCohort(
         RewriteDriver::kDomCohort);
     PropertyValue* value;
@@ -208,33 +205,6 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
       default:
         return UserAgentMatcherTestBase::kChromeUserAgent;
     }
-  }
-
-  void TestOptionsAndDeviceTypeUsedInCacheKey(
-      UserAgentMatcher::DeviceType device_type) {
-    GoogleUrl gurl("http://www.test.com/");
-    StringAsyncFetch callback(
-        RequestContext::NewTestRequestContext(
-            server_context()->thread_system()));
-
-    const GoogleString& user_agent =
-        GetDefaultUserAgentForDeviceType(device_type);
-    RequestHeaders request_headers;
-    request_headers.Replace(HttpAttributes::kUserAgent, user_agent);
-    callback.set_request_headers(&request_headers);
-    scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
-        proxy_interface_->InitiatePropertyCacheLookup(
-        false, gurl, options(), &callback, false, NULL));
-    EXPECT_NE(static_cast<ProxyFetchPropertyCallbackCollector*>(NULL),
-              callback_collector.get());
-    PropertyPage* page = callback_collector->property_page();
-    EXPECT_NE(static_cast<PropertyPage*>(NULL), page);
-    server_context()->ComputeSignature(options());
-    GoogleString expected = StrCat(
-        gurl.Spec(), "_",
-        server_context_->hasher()->Hash(options()->signature()),
-        UserAgentMatcher::DeviceTypeSuffix(device_type));
-    EXPECT_EQ(expected, page->key());
   }
 
   void DisableAjax() {
@@ -3112,11 +3082,6 @@ TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
   // other.src not rewritten
   EXPECT_TRUE(text.find("<other src=\"http://src.example.com/null\"") !=
               GoogleString::npos);
-}
-
-TEST_F(ProxyInterfaceTest, TestOptionsAndDeviceTypeUsedInCacheKey) {
-  TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kMobile);
-  TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kDesktop);
 }
 
 TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsageWithQueryParams) {

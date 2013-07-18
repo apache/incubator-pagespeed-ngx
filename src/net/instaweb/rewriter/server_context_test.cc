@@ -1149,11 +1149,8 @@ class BeaconTest : public ServerContextTest {
     UserAgentMatcher::DeviceType device_type =
         server_context()->user_agent_matcher()->GetDeviceTypeForUA(
             user_agent);
-    StringPiece device_type_suffix =
-        UserAgentMatcher::DeviceTypeSuffix(device_type);
-    GoogleString key = server_context()->GetPagePropertyCacheKey(
-        kUrlPrefix, kOptionsHash, device_type_suffix);
-    MockPropertyPage* page = NewMockPage(key);
+    MockPropertyPage* page = NewMockPage(
+        kUrlPrefix, kOptionsHash, device_type);
     property_cache_->Read(page);
     return page;
   }
@@ -1231,14 +1228,8 @@ TEST_F(BeaconTest, BasicPcacheSetup) {
   UserAgentMatcher::DeviceType device_type =
       server_context()->user_agent_matcher()->GetDeviceTypeForUA(
           UserAgentMatcherTestBase::kChromeUserAgent);
-  StringPiece device_type_suffix =
-      UserAgentMatcher::DeviceTypeSuffix(device_type);
-  GoogleString key = server_context()->GetPagePropertyCacheKey(
-      kUrlPrefix,
-      kOptionsHash,
-      device_type_suffix);
-
-  scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+  scoped_ptr<MockPropertyPage> page(
+      NewMockPage(kUrlPrefix, kOptionsHash, device_type));
   property_cache_->Read(page.get());
   PropertyValue* property = page->GetProperty(cohort, "critical_images");
   EXPECT_FALSE(property->has_value());
@@ -1691,20 +1682,6 @@ TEST_F(ServerContextTest, LoadFromFileReadAsync) {
                       rewrite_driver()->request_context(),
                       &callback2);
   callback2.AssertCalled();
-}
-
-TEST_F(ServerContextTest, TestGetFallbackPagePropertyCacheKey) {
-  GoogleString fallback_path("http://www.abc.com/b/");
-  GoogleString device_type_suffix("0");
-  GoogleUrl url_query(StrCat(fallback_path, "?c=d"));
-  GoogleUrl url_base_path(StrCat(fallback_path, "c/"));
-
-  EXPECT_EQ(StrCat(fallback_path, device_type_suffix, "@"),
-            server_context()->GetFallbackPagePropertyCacheKey(
-                url_query, NULL, device_type_suffix));
-  EXPECT_EQ(StrCat(fallback_path, device_type_suffix, "#"),
-            server_context()->GetFallbackPagePropertyCacheKey(
-                url_base_path, NULL, device_type_suffix));
 }
 
 namespace {

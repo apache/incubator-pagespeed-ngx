@@ -249,7 +249,9 @@ void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
         cohort_data_map_.find(cohort);
     CHECK(cohort_itr != cohort_data_map_.end());
     property_cache_->property_store()->Get(
-        key(),
+        url_,
+        options_signature_hash_,
+        device_type_,
         cohort,
         this,
         NewCallback(collector, &CallbackCollector::Done));
@@ -336,16 +338,20 @@ AbstractPropertyPage::~AbstractPropertyPage() {
 
 PropertyPage::PropertyPage(
     PageType page_type,
-    const StringPiece& key,
+    StringPiece url,
+    StringPiece options_signature_hash,
+    UserAgentMatcher::DeviceType device_type,
     const RequestContextPtr& request_context,
     AbstractMutex* mutex,
     PropertyCache* property_cache)
-      : mutex_(mutex),
-        key_(key.as_string()),
-        request_context_(request_context),
-        was_read_(false),
-        property_cache_(property_cache),
-        page_type_(page_type) {
+    : mutex_(mutex),
+      url_(url.as_string()),
+      options_signature_hash_(options_signature_hash.as_string()),
+      device_type_(device_type),
+      request_context_(request_context),
+      was_read_(false),
+      property_cache_(property_cache),
+      page_type_(page_type) {
 }
 
 PropertyPage::~PropertyPage() {
@@ -421,7 +427,8 @@ void PropertyPage::WriteCohort(const PropertyCache::Cohort* cohort) {
     PropertyCacheValues values;
     if (EncodePropertyCacheValues(cohort, &values) ||
         HasPropertyValueDeleted(cohort)) {
-      property_cache_->property_store()->Put(key(), cohort, &values);
+      property_cache_->property_store()->Put(
+          url_, options_signature_hash_, device_type_, cohort, &values);
     }
   }
 }

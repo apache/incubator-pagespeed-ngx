@@ -347,9 +347,10 @@ void ProxyInterfaceTestBase::TestPropertyCacheWithHeadersAndOutput(
     const PropertyCache::Cohort* cohort =
         pcache->GetCohort(RewriteDriver::kDomCohort);
     delay_http_cache_key = AbsolutifyUrl(url);
-    delay_pcache_key = factory()->cache_property_store()->CacheKey(StrCat(
+    delay_pcache_key = factory()->cache_property_store()->CacheKey(
         delay_http_cache_key,
-        UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop)),
+        "",
+        UserAgentMatcher::kDesktop,
         cohort);
     delay_cache()->DelayKey(delay_pcache_key);
     if (thread_pcache) {

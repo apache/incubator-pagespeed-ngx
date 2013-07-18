@@ -134,14 +134,13 @@ class ProxyFetchPropertyCallback : public PropertyPage {
  public:
   ProxyFetchPropertyCallback(PageType page_type,
                              PropertyCache* property_cache,
-                             const StringPiece& key,
+                             const StringPiece& url,
+                             const StringPiece& options_signature_hash,
                              UserAgentMatcher::DeviceType device_type,
                              ProxyFetchPropertyCallbackCollector* collector,
                              AbstractMutex* mutex);
 
   PageType page_type() const { return page_type_; }
-
-  UserAgentMatcher::DeviceType device_type() const { return device_type_; }
 
   // Delegates to collector_'s IsCacheValid.
   virtual bool IsCacheValid(int64 write_timestamp_ms) const;

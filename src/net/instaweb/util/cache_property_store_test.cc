@@ -42,10 +42,11 @@ namespace {
 const size_t kMaxCacheSize = 100;
 const char kCohortName1[] = "cohort1";
 const char kCohortName2[] = "cohort2";
-const char kKey[] = "www.test.com/sample.html";
+const char kUrl[] = "www.test.com/sample.html";
 const char kParsableContent[] =
     "value { name: 'prop1' value: 'value1' }";
 const char kNonParsableContent[] = "random";
+const char kOptionsSignatureHash[] = "hash";
 
 }  // namespace
 
@@ -67,7 +68,12 @@ class CachePropertyStoreTest : public testing::Test {
 
   void SetUp() {
     page_.reset(
-        new MockPropertyPage(thread_system_.get(), &property_cache_, kKey));
+        new MockPropertyPage(
+            thread_system_.get(),
+            &property_cache_,
+            kUrl,
+            kOptionsSignatureHash,
+            UserAgentMatcher::kDesktop));
     property_cache_.Read(page_.get());
   }
 
@@ -104,7 +110,9 @@ class CachePropertyStoreTest : public testing::Test {
 
 TEST_F(CachePropertyStoreTest, TestNoResultAvailable) {
   cache_property_store_.Get(
-      kKey,
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
       cohort_,
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
@@ -114,9 +122,16 @@ TEST_F(CachePropertyStoreTest, TestNoResultAvailable) {
 TEST_F(CachePropertyStoreTest, TestResultAvailable) {
   PropertyCacheValues values;
   values.ParseFromString(kParsableContent);
-  cache_property_store_.Put(kKey, cohort_, &values);
+  cache_property_store_.Put(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_,
+      &values);
   cache_property_store_.Get(
-      kKey,
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
       cohort_,
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
@@ -125,9 +140,15 @@ TEST_F(CachePropertyStoreTest, TestResultAvailable) {
 
 TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
   SharedString put_buffer(kNonParsableContent);
-  lru_cache_.Put(cache_property_store_.CacheKey(kKey, cohort_), &put_buffer);
+  lru_cache_.Put(cache_property_store_.CacheKey(kUrl,
+                                                kOptionsSignatureHash,
+                                                UserAgentMatcher::kDesktop,
+                                                cohort_),
+                 &put_buffer);
   cache_property_store_.Get(
-      kKey,
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
       cohort_,
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
@@ -141,27 +162,45 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
   const PropertyCache::Cohort* cohort2 =
       property_cache_.AddCohort(kCohortName2);
   cache_property_store_.AddCohortWithCache(kCohortName2, &second_cache);
-  MockPropertyPage page(thread_system_.get(), &property_cache_, kKey);
+  MockPropertyPage page(thread_system_.get(),
+                        &property_cache_,
+                        kUrl,
+                        kOptionsSignatureHash,
+                        UserAgentMatcher::kDesktop);
   property_cache_.Read(&page);
   PropertyCacheValues values;
   values.ParseFromString(kParsableContent);
   lru_cache_.ClearStats();
   second_cache.ClearStats();
   // Insert the value for cohort1.
-  cache_property_store_.Put(kKey, cohort_, &values);
+  cache_property_store_.Put(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_,
+      &values);
   // Get the value for cohort1.
   cache_property_store_.Get(
-      kKey,
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
       cohort_,
       &page,
       NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
   EXPECT_EQ(CacheInterface::kAvailable, page.GetCacheState(cohort_));
 
   // Insert the value for cohort2.
-  cache_property_store_.Put(kKey, cohort2, &values);
+  cache_property_store_.Put(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort2,
+      &values);
   // Get the value for cohort2.
   cache_property_store_.Get(
-      kKey,
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
       cohort2,
       &page,
       NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
@@ -174,6 +213,21 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
                    1,  /* Cache hit */
                    0,  /* Cache miss */
                    1  /* Cache inserts */);
+}
+
+TEST_F(CachePropertyStoreTest, TestPropertyCacheKeyMethod) {
+  GoogleString cache_key = cache_property_store_.CacheKey(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_);
+  GoogleString expected = StrCat(
+      "test/",
+      kUrl, "_",
+      kOptionsSignatureHash,
+      UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop), "@",
+      cohort_->name());
+  EXPECT_EQ(expected, cache_key);
 }
 
 }  // namespace net_instaweb

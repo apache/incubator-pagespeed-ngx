@@ -20,8 +20,10 @@
 
 #include <cstddef>
 
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_property_store.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -33,13 +35,14 @@
 
 namespace net_instaweb {
 
-const size_t kMaxCacheSize = 100;
+const size_t kMaxCacheSize = 200;
 const char kCohortName1[] = "cohort1";
 const char kCacheKey1[] = "Key1";
 const char kCacheKey2[] = "Key2";
 const char kPropertyName1[] = "prop1";
 const char kValue1[] = "value1";
 const char kValue2[] = "value2";
+const char kOptionsSignatureHash[] = "hash";
 
 class FallbackPropertyPageTest : public testing::Test {
  protected:
@@ -60,9 +63,17 @@ class FallbackPropertyPageTest : public testing::Test {
   // Sets both actual and fallback property page.
   void SetupFallbackPage() {
     PropertyPage* actual_property_page = new MockPropertyPage(
-        thread_system_.get(), &property_cache_, kCacheKey1);
+        thread_system_.get(),
+        &property_cache_,
+        kCacheKey1,
+        kOptionsSignatureHash,
+        UserAgentMatcher::kDesktop);
     PropertyPage* fallback_property_page = new MockPropertyPage(
-        thread_system_.get(), &property_cache_, kCacheKey2);
+        thread_system_.get(),
+        &property_cache_,
+        kCacheKey2,
+        kOptionsSignatureHash,
+        UserAgentMatcher::kDesktop);
     fallback_page_.reset(new FallbackPropertyPage(
         actual_property_page, fallback_property_page));
     property_cache_.Read(actual_property_page);
@@ -118,7 +129,11 @@ class FallbackPropertyPageTest : public testing::Test {
 
 TEST_F(FallbackPropertyPageTest, TestIfNoFallbackPageSet) {
   PropertyPage* actual_property_page = new MockPropertyPage(
-      thread_system_.get(), &property_cache_, kCacheKey1);
+      thread_system_.get(),
+      &property_cache_,
+      kCacheKey1,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop);
   fallback_page_.reset(new FallbackPropertyPage(actual_property_page, NULL));
   property_cache_.Read(actual_property_page);
   fallback_page_->UpdateValue(cohort_, kPropertyName1, kValue1);
@@ -198,6 +213,18 @@ TEST_F(FallbackPropertyPageTest, TestWriteCohortIfFallbackPageIsSet) {
   SetupFallbackPage();
 
   CheckValueIsPresent(kValue1);
+}
+
+TEST_F(FallbackPropertyPageTest, TestGetFallbackPageUrl) {
+  GoogleString fallback_path("http://www.abc.com/b/");
+  GoogleString device_type_suffix("0");
+  GoogleUrl url_query(StrCat(fallback_path, "?c=d"));
+  GoogleUrl url_base_path(StrCat(fallback_path, "c/"));
+
+  EXPECT_EQ(StrCat(fallback_path, "@fallback"),
+            FallbackPropertyPage::GetFallbackPageUrl(url_query));
+  EXPECT_EQ(StrCat(fallback_path, "#fallback"),
+            FallbackPropertyPage::GetFallbackPageUrl(url_base_path));
 }
 
 }  // namespace net_instaweb

@@ -113,22 +113,35 @@ class CachePropertyStoreCacheCallback : public CacheInterface::Callback {
 }  // namespace
 
 GoogleString CachePropertyStore::CacheKey(
-    const StringPiece& key, const PropertyCache::Cohort* cohort) const {
-  return StrCat(cache_key_prefix_, key, "@", cohort->name());
+    const StringPiece& url,
+    const StringPiece& options_signature_hash,
+    UserAgentMatcher::DeviceType device_type,
+    const PropertyCache::Cohort* cohort) const {
+  return StrCat(
+      cache_key_prefix_,
+      url, "_",
+      options_signature_hash,
+      UserAgentMatcher::DeviceTypeSuffix(device_type), "@",
+      cohort->name());
 }
 
-void CachePropertyStore::Get(const GoogleString& key,
+void CachePropertyStore::Get(const GoogleString& url,
+                             const GoogleString& options_signature_hash,
+                             UserAgentMatcher::DeviceType device_type,
                              const PropertyCache::Cohort* cohort,
                              PropertyPage* page,
                              BoolCallback* done) {
   CohortCacheMap::iterator cohort_itr = cohort_cache_map_.find(cohort->name());
   CHECK(cohort_itr != cohort_cache_map_.end());
-  const GoogleString cache_key = CacheKey(key, cohort);
+  const GoogleString cache_key = CacheKey(
+      url, options_signature_hash, device_type, cohort);
   cohort_itr->second->Get(
       cache_key, new CachePropertyStoreCacheCallback(cohort, page, done));
 }
 
-void CachePropertyStore::Put(const GoogleString& key,
+void CachePropertyStore::Put(const GoogleString& url,
+                             const GoogleString& options_signature_hash,
+                             UserAgentMatcher::DeviceType device_type,
                              const PropertyCache::Cohort* cohort,
                              const PropertyCacheValues* values) {
   GoogleString value;
@@ -136,7 +149,8 @@ void CachePropertyStore::Put(const GoogleString& key,
   values->SerializeToZeroCopyStream(&sstream);
   CohortCacheMap::iterator cohort_itr = cohort_cache_map_.find(cohort->name());
   CHECK(cohort_itr != cohort_cache_map_.end());
-  const GoogleString cache_key = CacheKey(key, cohort);
+  const GoogleString cache_key = CacheKey(
+      url, options_signature_hash, device_type, cohort);
   cohort_itr->second->PutSwappingString(cache_key, &value);
 }
 

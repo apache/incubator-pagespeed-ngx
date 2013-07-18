@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -61,9 +62,11 @@ apr_status_t apache_cleanup(void* object) {
 // Tracks a single property-cache lookup.
 class PropertyCallback : public PropertyPage {
  public:
-  PropertyCallback(RewriteDriver* driver,
-                   ThreadSystem* thread_system,
-                   const StringPiece& key);
+  PropertyCallback(const StringPiece& url,
+                   const StringPiece& options_signature_hash,
+                   UserAgentMatcher::DeviceType device_type,
+                   RewriteDriver* driver,
+                   ThreadSystem* thread_system);
 
   virtual void Done(bool success);
 
