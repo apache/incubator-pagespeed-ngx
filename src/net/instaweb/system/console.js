@@ -584,8 +584,15 @@ pagespeed.createGraphTitleBar = function(
   var titleSpan = document.createElement('span');
   titleSpan.setAttribute('class', 'pagespeed-title');
   titleSpan.setAttribute('id', 'pagespeed-title' + graphNum);
-  titleSpan.innerHTML = title + ': ' + (100 * percent).toFixed(2) + '%' +
-          ' (<a href="' + docUrl + '">doc</a>)';
+
+  titleSpan.appendChild(document.createTextNode(
+      title + ': ' + (100 * percent).toFixed(2) + '% ('));
+  var a = document.createElement('a');
+  a.setAttribute('href', docUrl);
+  a.appendChild(document.createTextNode('doc'));
+  titleSpan.appendChild(a);
+  titleSpan.appendChild(document.createTextNode(')'));
+
   topBar.appendChild(titleSpan);
 
   // TODO(sligocki): Add other things here, like drop-down option menu.
