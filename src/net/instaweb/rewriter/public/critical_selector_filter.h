@@ -48,6 +48,10 @@ class CriticalSelectorFilter : public CssSummarizerBase {
  public:
   static const char kAddStylesFunction[];
   static const char kAddStylesInvocation[];
+  static const char kApplyFlushEarlyCss[];
+  static const char kInvokeFlushEarlyCssTemplate[];
+  static const char kMoveScriptId[];
+  static const char kNoscriptStylesClass[];
 
   explicit CriticalSelectorFilter(RewriteDriver* rewrite_driver);
   virtual ~CriticalSelectorFilter();
@@ -91,6 +95,11 @@ class CriticalSelectorFilter : public CssSummarizerBase {
                        HtmlElement* element,
                        HtmlCharactersNode* char_node);
 
+  bool IsCssFlushedEarly(const GoogleString& url) const;
+  void ApplyCssFlushedEarly(HtmlElement* element,
+                            const GoogleString& style_id,
+                            const char* media);
+
   // Selectors that are critical for this page.
   // These are just copied over from the finder and turned into a set for easier
   // membership checking.
@@ -109,6 +118,9 @@ class CriticalSelectorFilter : public CssSummarizerBase {
 
   // True if we rendered any block at all.
   bool any_rendered_;
+
+  // True if flush early script to move links has been added.
+  bool is_flush_script_added_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalSelectorFilter);
 };
