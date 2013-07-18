@@ -127,10 +127,10 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   }
 
   UrlAsyncFetcher* fetcher = NULL;
-
+  SerfUrlAsyncFetcher* serf_fetcher = NULL;
+  
   if (use_native_fetcher_) {
-    ngx_url_async_fetcher_ =
-        new net_instaweb::NgxUrlAsyncFetcher(
+    ngx_url_async_fetcher_ = new NgxUrlAsyncFetcher(
             fetcher_proxy,
             log_,
             resolver_timeout_,
@@ -140,8 +140,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             message_handler());
     fetcher = ngx_url_async_fetcher_;
   } else {
-    net_instaweb::SerfUrlAsyncFetcher* serf_fetcher =
-        new net_instaweb::SerfUrlAsyncFetcher(
+    serf_fetcher = new SerfUrlAsyncFetcher(
             fetcher_proxy,
             NULL,
             thread_system(),
@@ -167,12 +166,10 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
           500 * multiplier /* queued per host */,
           thread_system(),
           statistics());
-      if (ngx_url_async_fetcher_ == NULL) {
-        defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(
-            static_cast<net_instaweb::SerfUrlAsyncFetcher*>(fetcher)));
-      } else  {
-        defer_cleanup(new Deleter<net_instaweb::NgxUrlAsyncFetcher>(
-            ngx_url_async_fetcher_));
+      if (serf_fetcher != NULL) {
+        defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(serf_fetcher));
+      } else if (ngx_url_async_fetcher_ != NULL) {
+        defer_cleanup(new Deleter<NgxUrlAsyncFetcher>(ngx_url_async_fetcher_));
       }
     } else {
       message_handler()->Message(
