@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <cstddef>
 #include <cstdlib>
+#include <memory>
 #include <vector>
 
 #include "apr_pools.h"
@@ -357,6 +358,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     EXPECT_EQ(HttpStatus::kOK, response_headers(index)->status_code());
     EXPECT_EQ(0, statistics_->GetVariable(
         SerfStats::kSerfFetchCertErrors)->Get());
+    EXPECT_STREQ(content_starts_[index],
+                 contents(index).substr(0, content_starts_[index].size()));
   }
 
   // Convenience getters.
