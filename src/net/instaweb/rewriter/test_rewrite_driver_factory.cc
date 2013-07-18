@@ -184,7 +184,8 @@ void TestRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   server_context->set_http_cache(http_cache);
   server_context->set_metadata_cache(delay_cache_);
   cache_property_store_ =
-      new CachePropertyStore("test/", delay_cache_, timer(), statistics());
+      new CachePropertyStore(
+          "test/", delay_cache_, timer(), statistics(), thread_system());
   server_context->set_cache_property_store(cache_property_store_);
   server_context->MakePagePropertyCache(cache_property_store_);
   TakeOwnership(delay_cache_);

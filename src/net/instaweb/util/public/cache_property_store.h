@@ -39,6 +39,7 @@ namespace net_instaweb {
 class CacheInterface;
 class PropertyCacheValues;
 class Statistics;
+class ThreadSystem;
 class Timer;
 
 class CachePropertyStore : public PropertyStore {
@@ -52,7 +53,8 @@ class CachePropertyStore : public PropertyStore {
   CachePropertyStore(const GoogleString& cache_key_prefix,
                      CacheInterface* cache,
                      Timer* timer,
-                     Statistics* stats);
+                     Statistics* stats,
+                     ThreadSystem* thread_system);
   virtual ~CachePropertyStore();
 
   // Cache lookup is initiated for the given cohort and results are populated
@@ -60,7 +62,7 @@ class CachePropertyStore : public PropertyStore {
   virtual void Get(const GoogleString& url,
                    const GoogleString& options_signature_hash,
                    UserAgentMatcher::DeviceType device_type,
-                   const PropertyCache::Cohort* cohort,
+                   const PropertyCache::CohortVector& cohort_list,
                    PropertyPage* page,
                    BoolCallback* done);
 
@@ -97,6 +99,7 @@ class CachePropertyStore : public PropertyStore {
   CacheInterface* default_cache_;
   Timer* timer_;
   Statistics* stats_;
+  ThreadSystem* thread_system_;
   DISALLOW_COPY_AND_ASSIGN(CachePropertyStore);
 };
 

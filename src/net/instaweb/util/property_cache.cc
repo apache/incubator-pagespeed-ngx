@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/callback.h"
 
@@ -58,44 +57,6 @@ inline int NumberOfSetBits64(uint64 i) {
 }
 
 }  // namespace
-
-// Tracks multiple cache lookups.  When they are all complete, page->Done() is
-// called.
-//
-// TODO(jmarantz): refactor this to put the capability in CacheInterface, adding
-// API support for a batched lookup.  Caches that have direct support for that
-// may have a more efficient implementation for this.
-class PropertyPage::CallbackCollector {
- public:
-  CallbackCollector(PropertyPage* page, int num_pending, AbstractMutex* mutex)
-      : page_(page),
-        pending_(num_pending),
-        success_(false),
-        mutex_(mutex) {
-  }
-
-  void Done(bool success) {
-    bool done = false;
-    {
-      ScopedMutex lock(mutex_.get());
-      success_ |= success;  // Declare victory a if *any* lookups completed.
-      --pending_;
-      done = (pending_ == 0);
-    }
-    if (done) {
-      page_->CallDone(success_);
-      delete this;
-    }
-  }
-
- private:
-  PropertyPage* page_;
-  int pending_;
-  bool success_;
-  scoped_ptr<AbstractMutex> mutex_;
-
-  DISALLOW_COPY_AND_ASSIGN(CallbackCollector);
-};
 
 PropertyCache::PropertyCache(PropertyStore* property_store,
                              Timer* timer,
@@ -241,21 +202,13 @@ void PropertyPage::Abort() {
 void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
   DCHECK(!cohort_list.empty());
   SetupCohorts(cohort_list);
-  CallbackCollector* collector = new CallbackCollector(
-      this, cohort_list.size(), property_cache_->thread_system()->NewMutex());
-  for (int j = 0, n = cohort_list.size(); j < n; ++j) {
-    const PropertyCache::Cohort* cohort = cohort_list[j];
-    PropertyPage::CohortDataMap::iterator cohort_itr =
-        cohort_data_map_.find(cohort);
-    CHECK(cohort_itr != cohort_data_map_.end());
-    property_cache_->property_store()->Get(
-        url_,
-        options_signature_hash_,
-        device_type_,
-        cohort,
-        this,
-        NewCallback(collector, &CallbackCollector::Done));
-  }
+  property_cache_->property_store()->Get(
+      url_,
+      options_signature_hash_,
+      device_type_,
+      cohort_list,
+      this,
+      NewCallback(this, &PropertyPage::CallDone));
 }
 
 bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {

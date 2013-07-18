@@ -56,7 +56,8 @@ class CachePropertyStoreTest : public testing::Test {
      : lru_cache_(kMaxCacheSize),
        timer_(MockTimer::kApr_5_2010_ms),
        thread_system_(Platform::CreateThreadSystem()),
-       cache_property_store_("test/", &lru_cache_, &timer_, &stats_),
+       cache_property_store_(
+           "test/", &lru_cache_, &timer_, &stats_, thread_system_.get()),
        property_cache_(&cache_property_store_,
                        &timer_,
                        &stats_,
@@ -64,6 +65,7 @@ class CachePropertyStoreTest : public testing::Test {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_.AddCohort(kCohortName1);
+    cohort_list_.push_back(cohort_);
   }
 
   void SetUp() {
@@ -102,6 +104,7 @@ class CachePropertyStoreTest : public testing::Test {
   CachePropertyStore cache_property_store_;
   PropertyCache property_cache_;
   const PropertyCache::Cohort* cohort_;
+  PropertyCache::CohortVector cohort_list_;
   scoped_ptr<MockPropertyPage> page_;
 
  private:
@@ -113,7 +116,7 @@ TEST_F(CachePropertyStoreTest, TestNoResultAvailable) {
       kUrl,
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
-      cohort_,
+      cohort_list_,
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
   EXPECT_EQ(CacheInterface::kNotFound, page_->GetCacheState(cohort_));
@@ -132,7 +135,7 @@ TEST_F(CachePropertyStoreTest, TestResultAvailable) {
       kUrl,
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
-      cohort_,
+      cohort_list_,
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
@@ -149,10 +152,78 @@ TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
       kUrl,
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
-      cohort_,
+      cohort_list_,
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
+}
+
+TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
+  PropertyCache::InitCohortStats(kCohortName2, &stats_);
+  const PropertyCache::Cohort* cohort2 =
+      property_cache_.AddCohort(kCohortName2);
+  cache_property_store_.AddCohort(kCohortName2);
+  MockPropertyPage page(thread_system_.get(),
+                        &property_cache_,
+                        kUrl,
+                        kOptionsSignatureHash,
+                        UserAgentMatcher::kDesktop);
+  property_cache_.Read(&page);
+  PropertyCacheValues values;
+  values.ParseFromString(kParsableContent);
+  cohort_list_.push_back(cohort2);
+  lru_cache_.ClearStats();
+  cache_property_store_.Get(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_list_,
+      &page,
+      NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
+  ExpectCacheStats(&lru_cache_,
+                   0,  /* Cache hit */
+                   2,  /* Cache miss */
+                   0  /* Cache inserts */);
+
+  lru_cache_.ClearStats();
+  // Insert the value for cohort1.
+  cache_property_store_.Put(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_,
+      &values);
+  cache_property_store_.Get(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_list_,
+      &page,
+      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
+  ExpectCacheStats(&lru_cache_,
+                   1,  /* Cache hit */
+                   1,  /* Cache miss */
+                   1  /* Cache inserts */);
+
+  lru_cache_.ClearStats();
+  // Insert the value for cohort2.
+  cache_property_store_.Put(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort2,
+      &values);
+  cache_property_store_.Get(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_list_,
+      &page,
+      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
+  ExpectCacheStats(&lru_cache_,
+                   2,  /* Cache hit */
+                   0,  /* Cache miss */
+                   1  /* Cache inserts */);
 }
 
 TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
@@ -162,11 +233,12 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
   const PropertyCache::Cohort* cohort2 =
       property_cache_.AddCohort(kCohortName2);
   cache_property_store_.AddCohortWithCache(kCohortName2, &second_cache);
-  MockPropertyPage page(thread_system_.get(),
-                        &property_cache_,
-                        kUrl,
-                        kOptionsSignatureHash,
-                        UserAgentMatcher::kDesktop);
+  MockPropertyPage page(
+      thread_system_.get(),
+      &property_cache_,
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop);
   property_cache_.Read(&page);
   PropertyCacheValues values;
   values.ParseFromString(kParsableContent);
@@ -179,16 +251,6 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
       UserAgentMatcher::kDesktop,
       cohort_,
       &values);
-  // Get the value for cohort1.
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_,
-      &page,
-      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
-  EXPECT_EQ(CacheInterface::kAvailable, page.GetCacheState(cohort_));
-
   // Insert the value for cohort2.
   cache_property_store_.Put(
       kUrl,
@@ -196,14 +258,16 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
       UserAgentMatcher::kDesktop,
       cohort2,
       &values);
-  // Get the value for cohort2.
+  // Get the value for cohort1 and cohort2.
+  cohort_list_.push_back(cohort2);
   cache_property_store_.Get(
       kUrl,
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
-      cohort2,
+      cohort_list_,
       &page,
       NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
+  EXPECT_EQ(CacheInterface::kAvailable, page.GetCacheState(cohort_));
   EXPECT_EQ(CacheInterface::kAvailable, page.GetCacheState(cohort2));
   ExpectCacheStats(&lru_cache_,
                    1,  /* Cache hit */

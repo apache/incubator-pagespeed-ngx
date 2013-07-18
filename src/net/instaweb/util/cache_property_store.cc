@@ -24,11 +24,14 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/property_cache.pb.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 
 namespace net_instaweb {
@@ -39,11 +42,13 @@ const char CachePropertyStore::kPagePropertyCacheKeyPrefix[] = "prop_page/";
 CachePropertyStore::CachePropertyStore(const GoogleString& cache_key_prefix,
                                        CacheInterface* cache,
                                        Timer* timer,
-                                       Statistics* stats)
+                                       Statistics* stats,
+                                       ThreadSystem* thread_system)
     : cache_key_prefix_(cache_key_prefix),
       default_cache_(cache),
       timer_(timer),
-      stats_(stats) {
+      stats_(stats),
+      thread_system_(thread_system) {
 }
 
 CachePropertyStore::~CachePropertyStore() {
@@ -51,6 +56,43 @@ CachePropertyStore::~CachePropertyStore() {
 }
 
 namespace {
+
+// Tracks multiple cache lookups.  When they are all complete, page->Done() is
+// called.
+//
+// TODO(pulkitg): Use CacheInterface::MultiGet() instead of using
+// CacheInterface::Get() for each cohort.
+class CachePropertyStoreCallbackCollector {
+ public:
+  CachePropertyStoreCallbackCollector(
+      Callback1<bool>* done, int num_pending, AbstractMutex* mutex)
+      : done_(done),
+        pending_(num_pending),
+        success_(false),
+        mutex_(mutex) {
+  }
+
+  void Done(bool success) {
+    {
+      ScopedMutex lock(mutex_.get());
+      success_ |= success;  // Declare victory a if *any* lookups completed.
+      --pending_;
+      if (pending_ > 0) {
+        return;
+      }
+    }
+    done_->Run(success_);
+    delete this;
+  }
+
+ private:
+  Callback1<bool>* done_;
+  int pending_;
+  bool success_;
+  scoped_ptr<AbstractMutex> mutex_;
+
+  DISALLOW_COPY_AND_ASSIGN(CachePropertyStoreCallbackCollector);
+};
 
 // Helper class to receive low-level cache callbacks, decode them
 // as properties.
@@ -128,15 +170,24 @@ GoogleString CachePropertyStore::CacheKey(
 void CachePropertyStore::Get(const GoogleString& url,
                              const GoogleString& options_signature_hash,
                              UserAgentMatcher::DeviceType device_type,
-                             const PropertyCache::Cohort* cohort,
+                             const PropertyCache::CohortVector& cohort_list,
                              PropertyPage* page,
                              BoolCallback* done) {
-  CohortCacheMap::iterator cohort_itr = cohort_cache_map_.find(cohort->name());
-  CHECK(cohort_itr != cohort_cache_map_.end());
-  const GoogleString cache_key = CacheKey(
-      url, options_signature_hash, device_type, cohort);
-  cohort_itr->second->Get(
-      cache_key, new CachePropertyStoreCacheCallback(cohort, page, done));
+  CachePropertyStoreCallbackCollector* collector =
+      new CachePropertyStoreCallbackCollector(
+          done, cohort_list.size(), thread_system_->NewMutex());
+  for (int j = 0, n = cohort_list.size(); j < n; ++j) {
+    const PropertyCache::Cohort* cohort = cohort_list[j];
+    CohortCacheMap::iterator cohort_itr =
+        cohort_cache_map_.find(cohort->name());
+    CHECK(cohort_itr != cohort_cache_map_.end());
+    const GoogleString cache_key = CacheKey(
+        url, options_signature_hash, device_type, cohort);
+    cohort_itr->second->Get(cache_key, new CachePropertyStoreCacheCallback(
+        cohort,
+        page,
+        NewCallback(collector, &CachePropertyStoreCallbackCollector::Done)));
+  }
 }
 
 void CachePropertyStore::Put(const GoogleString& url,

@@ -1050,7 +1050,8 @@ PropertyStore* ServerContext::CreatePropertyStore(
       new CachePropertyStore(CachePropertyStore::kPagePropertyCacheKeyPrefix,
                              cache_backend,
                              timer(),
-                             statistics());
+                             statistics(),
+                             thread_system_);
   set_cache_property_store(cache_property_store);
   return cache_property_store;
 }

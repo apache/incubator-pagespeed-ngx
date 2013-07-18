@@ -49,8 +49,9 @@ class FallbackPropertyPageTest : public testing::Test {
   FallbackPropertyPageTest()
       : lru_cache_(kMaxCacheSize),
         timer_(MockTimer::kApr_5_2010_ms),
-        cache_property_store_("test/", &lru_cache_, &timer_, &stats_),
         thread_system_(Platform::CreateThreadSystem()),
+        cache_property_store_(
+            "test/", &lru_cache_, &timer_, &stats_, thread_system_.get()),
         property_cache_(&cache_property_store_,
                         &timer_,
                         &stats_,
@@ -118,8 +119,8 @@ class FallbackPropertyPageTest : public testing::Test {
   LRUCache lru_cache_;
   MockTimer timer_;
   SimpleStats stats_;
-  CachePropertyStore cache_property_store_;
   scoped_ptr<ThreadSystem> thread_system_;
+  CachePropertyStore cache_property_store_;
   PropertyCache property_cache_;
   const PropertyCache::Cohort* cohort_;
 

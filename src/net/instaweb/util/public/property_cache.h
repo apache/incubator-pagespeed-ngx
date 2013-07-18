@@ -424,9 +424,6 @@ class PropertyPage : public AbstractPropertyPage {
   virtual void Done(bool success) = 0;
 
  private:
-  class CallbackCollector;
-  friend class CallbackCollector;
-
   void SetupCohorts(const PropertyCache::CohortVector& cohort_list);
 
   // Generates PropertyCacheValues object from all the properties in the given

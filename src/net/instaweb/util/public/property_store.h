@@ -40,15 +40,16 @@ class PropertyStore {
 
   typedef Callback1<bool> BoolCallback;
 
-  // Populates the values field and call the BoolCallback after lookup is done.
-  // BoolCallback is called with true if values are populated successfully
-  // in PropertyPage.
+  // Populates the values field for all the cohorts present in the cohort_list
+  // and call the BoolCallback after lookup of all the cohorts are done.
+  // BoolCallback is called with true if at least one of the cohorts lookup is
+  // succeeded.
   // PropertyPage object is used to validate the entries looked up from cache.
   virtual void Get(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
       UserAgentMatcher::DeviceType device_type,
-      const PropertyCache::Cohort* cohort,
+      const PropertyCache::CohortVector& cohort_list,
       PropertyPage* page,
       BoolCallback* done) = 0;
 
