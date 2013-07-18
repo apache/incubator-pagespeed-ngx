@@ -410,7 +410,7 @@ void QueuedWorkerPool::Sequence::CancelPendingFunctions() {
     ScopedMutex lock(sequence_mutex_.get());
     work_queue_.swap(cancel_queue);
   }
-  UpdateWaveform(queue_size_, -cancel_queue.size());
+  UpdateWaveform(queue_size_, -static_cast<int>(cancel_queue.size()));
   while (!cancel_queue.empty()) {
     Function* f = cancel_queue.front();
     cancel_queue.pop_front();

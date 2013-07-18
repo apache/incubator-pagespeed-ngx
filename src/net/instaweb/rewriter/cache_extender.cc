@@ -128,8 +128,8 @@ bool CacheExtender::ShouldRewriteResource(
   }
   const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
 
-  // We return true for IsProxyMapped so when reconstructing
-  // MAPPED_DOMAIN/file.pagespeed.ce.HASH.ext.  We won't be changing
+  // We return true for IsProxyMapped because when reconstructing
+  // MAPPED_DOMAIN/file.pagespeed.ce.HASH.ext we won't be changing
   // the domain (WillDomainChange==false) but we want this function
   // to return true so that we can reconstruct the cache-extension and
   // serve the result with long public caching.  Without IsProxyMapped,
