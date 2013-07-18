@@ -2034,7 +2034,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       if (mapped_gurl.SchemeIs("http") ||
           (mapped_gurl.SchemeIs("https") &&
            url_async_fetcher_->SupportsHttps())) {
-        resource.reset(new UrlInputResource(this, options(), type, url_string));
+        resource.reset(new UrlInputResource(this, type, url_string));
       } else {
         message_handler()->Message(
             kInfo, "Cannot fetch url '%s': as %s is not supported",

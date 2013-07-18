@@ -63,6 +63,7 @@ class AsyncFetchWithLock : public AsyncFetch {
   AsyncFetchWithLock(const Hasher* hasher,
                      const RequestContextPtr& request_context,
                      const GoogleString& url,
+                     const GoogleString& cache_key,
                      NamedLockManager* lock_manager,
                      MessageHandler* message_handler);
   virtual ~AsyncFetchWithLock();
@@ -74,6 +75,9 @@ class AsyncFetchWithLock : public AsyncFetch {
 
   // Url to be fetched.
   const GoogleString& url() const { return url_; }
+
+  // Cache key to be locked.
+  const GoogleString& cache_key() const { return cache_key_; }
 
  protected:
   // If someone is already fetching this resource, should we yield to them and
@@ -111,6 +115,7 @@ class AsyncFetchWithLock : public AsyncFetch {
   scoped_ptr<NamedLock> lock_;
   const Hasher* lock_hasher_;  // Used to compute named lock names.
   GoogleString url_;
+  GoogleString cache_key_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithLock);

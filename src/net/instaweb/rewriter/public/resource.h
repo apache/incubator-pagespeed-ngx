@@ -168,6 +168,12 @@ class Resource : public RefCounted<Resource> {
   // Gets the absolute URL of the resource
   virtual GoogleString url() const = 0;
 
+  // Gets the cache key for resource. This may be different from URL
+  // if the resource is e.g. UA-dependent.
+  virtual GoogleString cache_key() const {
+    return url();
+  }
+
   // Computes the content-type (and charset) based on response_headers and
   // extension, and sets it via SetType.
   void DetermineContentType();

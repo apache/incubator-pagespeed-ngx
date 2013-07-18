@@ -23,14 +23,11 @@
 
 #include "net/instaweb/rewriter/public/cacheable_resource_base.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 struct ContentType;
-class ResponseHeaders;
 class RewriteDriver;
-class RewriteOptions;
 class Statistics;
 
 class UrlInputResource : public CacheableResourceBase {
@@ -40,21 +37,12 @@ class UrlInputResource : public CacheableResourceBase {
 
   static void InitStats(Statistics* stats);
 
-  virtual GoogleString url() const { return url_; }
-
- protected:
-  friend class UrlInputResourceTest;
-  virtual bool IsValidAndCacheableImpl(const ResponseHeaders& headers) const;
-
  private:
   friend class RewriteDriver;
+  friend class UrlInputResourceTest;
   UrlInputResource(RewriteDriver* rewrite_driver,
-                   const RewriteOptions* options,
                    const ContentType* type,
                    const StringPiece& url);
-
-  GoogleString url_;
-  bool respect_vary_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlInputResource);
 };

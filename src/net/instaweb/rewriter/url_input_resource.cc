@@ -19,27 +19,21 @@
 
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
-#include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
-                                   const RewriteOptions* options,
                                    const ContentType* type,
                                    const StringPiece& url)
-    : CacheableResourceBase("url_input_resource", rewrite_driver, type),
-      url_(url.data(), url.size()),
-      respect_vary_(rewrite_options()->respect_vary()) {
+    : CacheableResourceBase("url_input_resource", url, url /* cache_key */,
+                            type, rewrite_driver) {
   response_headers()->set_implicit_cache_ttl_ms(
-      options->implicit_cache_ttl_ms());
-  set_enable_cache_purge(options->enable_cache_purge());
+      rewrite_options()->implicit_cache_ttl_ms());
   set_disable_rewrite_on_no_transform(
-      options->disable_rewrite_on_no_transform());
+      rewrite_options()->disable_rewrite_on_no_transform());
 }
 
 UrlInputResource::~UrlInputResource() {
@@ -47,38 +41,6 @@ UrlInputResource::~UrlInputResource() {
 
 void UrlInputResource::InitStats(Statistics* stats) {
   CacheableResourceBase::InitStats("url_input_resource", stats);
-}
-
-bool UrlInputResource::IsValidAndCacheableImpl(
-    const ResponseHeaders& headers) const {
-  if (headers.status_code() != HttpStatus::kOK) {
-    return false;
-  }
-
-  bool cacheable = true;
-  if (respect_vary_) {
-    // Conservatively assume that the request has cookies, since the site may
-    // want to serve different content based on the cookie. If we consider the
-    // response to be cacheable here, we will serve the optimized version
-    // without contacting the origin which would be against the webmaster's
-    // intent. We also don't have cookies available at lookup time, so we
-    // cannot try to use this response only when the request doesn't have a
-    // cookie.
-    cacheable = headers.VaryCacheable(true);
-  } else {
-    cacheable = headers.IsProxyCacheable();
-  }
-  // If we are setting a TTL for HTML, we cannot rewrite any resource
-  // with a shorter TTL.
-  cacheable &= (headers.cache_ttl_ms() >=
-                rewrite_options()->min_resource_cache_time_to_rewrite_ms());
-
-  if (!cacheable && !http_cache()->force_caching()) {
-    return false;
-  }
-
-  // NULL is OK here since we make the request_headers ourselves.
-  return !http_cache()->IsAlreadyExpired(NULL, headers);
 }
 
 }  // namespace net_instaweb

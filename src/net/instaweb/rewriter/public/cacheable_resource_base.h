@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -38,6 +39,7 @@ struct ContentType;
 class HTTPCache;
 class HTTPValue;
 class MessageHandler;
+class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
@@ -47,34 +49,43 @@ class Variable;
 
 class CacheableResourceBase : public Resource {
  public:
+  // All the public methods here implement the Resource API.
+
   // All subclasses of this use the HTTP cache.
   virtual bool UseHttpCache() const { return true; }
 
   virtual bool IsValidAndCacheable() const;
 
-  // Implementation of loading. This checks the cache, and fetches the resource
-  // if appropriate.
+  // This checks the cache, and fetches the resource if appropriate.
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                const RequestContextPtr& request_context,
                                AsyncCallback* callback);
 
-  // Implementation of freshening.
   virtual void Freshen(FreshenCallback* callback, MessageHandler* handler);
-
-  // Overridden from Resource.
   virtual void RefreshIfImminentlyExpiring();
+  virtual GoogleString url() const { return url_; }
+  virtual GoogleString cache_key() const { return cache_key_; }
 
  protected:
   // Note: InitStats(stat_prefix) must have been called before.
-  CacheableResourceBase(StringPiece stat_prefix, RewriteDriver* rewrite_driver,
-                        const ContentType* type);
+  CacheableResourceBase(StringPiece stat_prefix,
+                        StringPiece url,
+                        StringPiece cache_key,
+                        const ContentType* type,
+                        RewriteDriver* rewrite_driver);
   virtual ~CacheableResourceBase();
 
   static void InitStats(StringPiece stat_prefix, Statistics* statistics);
 
-  // Required to be overridden by subclass to define cacheability policy.
-  virtual bool IsValidAndCacheableImpl(
-      const ResponseHeaders& headers) const = 0;
+  // Permits the subclass to alter request headers used for a fetch.
+  // Default implementation does nothing.
+  virtual void PrepareRequestHeaders(RequestHeaders* headers);
+
+  // Permits the subclass to alter the response headers returned from a
+  // fetch before the entry gets added to the cache.
+  // Default implementation does nothing.
+  // Note: ComputeCaching hasn't been called yet at time this is invoked.
+  virtual void PrepareResponseHeaders(ResponseHeaders* headers);
 
   HTTPCache* http_cache() const { return server_context()->http_cache(); }
   RewriteDriver* rewrite_driver() const { return rewrite_driver_; }
@@ -95,11 +106,17 @@ class CacheableResourceBase : public Resource {
                                  const HTTPValue& value,
                                  Resource::FreshenCallback* callback);
 
+  // Implementation for IsValidAndCacheable, and also lets us check the headers
+  // before updating the resource
+  bool IsValidAndCacheableImpl(const ResponseHeaders& headers) const;
 
   Timer* timer() const { return server_context()->timer(); }
   MessageHandler* message_handler() const {
     return server_context()->message_handler();
   }
+
+  GoogleString url_;
+  GoogleString cache_key_;
 
   RewriteDriver* rewrite_driver_;
   Variable* hits_;

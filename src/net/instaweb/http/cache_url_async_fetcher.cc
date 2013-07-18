@@ -21,14 +21,12 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/async_fetch_with_lock.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"  // for AbstractLogRecord
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -186,7 +184,8 @@ class CacheFindCallback : public HTTPCache::Callback {
         CacheFindCallback* callback,
         CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks)
         : AsyncFetchWithLock(
-              lock_hasher, request_context, url, lock_manager, message_handler),
+              lock_hasher, request_context, url, url /* cache_key*/,
+              lock_manager, message_handler),
           callback_(callback),
           async_op_hooks_(async_op_hooks) {
       async_op_hooks_->StartAsyncOp();

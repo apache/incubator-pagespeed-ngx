@@ -63,6 +63,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
   FetchCallbackBase(ServerContext* server_context,
                     const RewriteOptions* rewrite_options,
                     const GoogleString& url,
+                    const GoogleString& cache_key,
                     HTTPValue* fallback_value,
                     const RequestContextPtr& request_context,
                     MessageHandler* handler,
@@ -71,6 +72,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
       : AsyncFetchWithLock(server_context->lock_hasher(),
                            request_context,
                            url,
+                           cache_key,
                            server_context->lock_manager(),
                            handler),
         resource_(resource),
@@ -197,6 +199,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
           server_context_->rewrite_stats()->num_conditional_refreshes());
       fetch = conditional_fetch;
     }
+    resource_->PrepareRequestHeaders(fetch->request_headers());
     fetcher_->Fetch(fetch_url_, message_handler_, fetch);
   }
 
@@ -206,6 +209,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
     ResponseHeaders* headers = response_headers();
     // Merge in any extra response headers.
     headers->UpdateFrom(*extra_response_headers());
+    resource_->PrepareResponseHeaders(headers);
     headers->ComputeCaching();
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
     if (success && !headers->IsErrorStatus()) {
@@ -215,18 +219,20 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
       if (resource_->IsValidAndCacheableImpl(*headers)) {
         HTTPValue* value = http_value();
         value->SetHeaders(headers);
-        http_cache()->Put(url(), value, message_handler_);
+        http_cache()->Put(resource_->cache_key(), value, message_handler_);
         return true;
       } else {
         http_cache()->RememberNotCacheable(
-            url(), headers->status_code() == HttpStatus::kOK,
+            resource_->cache_key(), headers->status_code() == HttpStatus::kOK,
             message_handler_);
       }
     } else {
       if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
-        http_cache()->RememberFetchDropped(url(), message_handler_);
+        http_cache()->RememberFetchDropped(resource_->cache_key(),
+                                           message_handler_);
       } else {
-        http_cache()->RememberFetchFailed(url(), message_handler_);
+        http_cache()->RememberFetchFailed(resource_->cache_key(),
+                                          message_handler_);
       }
     }
     return false;
@@ -265,6 +271,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
 class CacheableResourceBase::FreshenFetchCallback : public FetchCallbackBase {
  public:
   FreshenFetchCallback(const GoogleString& url,
+                       const GoogleString& cache_key,
                        HTTPCache* http_cache,
                        ServerContext* server_context,
                        RewriteDriver* rewrite_driver,
@@ -275,6 +282,7 @@ class CacheableResourceBase::FreshenFetchCallback : public FetchCallbackBase {
       : FetchCallbackBase(server_context,
                           rewrite_options,
                           url,
+                          cache_key,
                           fallback_value,
                           rewrite_driver->request_context(),
                           server_context->message_handler(),
@@ -334,6 +342,7 @@ class CacheableResourceBase::LoadFetchCallback
       : FetchCallbackBase(resource->server_context(),
                           resource->rewrite_options(),
                           resource->url(),
+                          resource->cache_key(),
                           &resource->fallback_value_,
                           request_context,
                           resource->server_context()->message_handler(),
@@ -529,6 +538,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
     : public OptionsAwareHTTPCacheCallback {
  public:
   FreshenHttpCacheCallback(const GoogleString& url,
+                           const GoogleString& cache_key,
                            ServerContext* server_context,
                            RewriteDriver* driver,
                            const RewriteOptions* options,
@@ -536,6 +546,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
                            Resource::FreshenCallback* callback)
       : OptionsAwareHTTPCacheCallback(options, driver->request_context()),
         url_(url),
+        cache_key_(cache_key),
         server_context_(server_context),
         driver_(driver),
         options_(options),
@@ -549,8 +560,8 @@ class CacheableResourceBase::FreshenHttpCacheCallback
     if (find_result == HTTPCache::kNotFound) {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
-          url_, server_context_->http_cache(), server_context_, driver_,
-          options_, fallback_http_value(), resource_, callback_);
+          url_, cache_key_, server_context_->http_cache(), server_context_,
+          driver_, options_, fallback_http_value(), resource_, callback_);
       cb->Start(driver_->async_fetcher());
     } else {
       if (callback_ != NULL) {
@@ -576,6 +587,7 @@ class CacheableResourceBase::FreshenHttpCacheCallback
 
  private:
   GoogleString url_;
+  GoogleString cache_key_;
   ServerContext* server_context_;
   RewriteDriver* driver_;
   const RewriteOptions* options_;
@@ -587,10 +599,17 @@ class CacheableResourceBase::FreshenHttpCacheCallback
 };
 
 CacheableResourceBase::CacheableResourceBase(
-    StringPiece stat_prefix, RewriteDriver* rewrite_driver,
-    const ContentType* type)
+    StringPiece stat_prefix,
+    StringPiece url,
+    StringPiece cache_key,
+    const ContentType* type,
+    RewriteDriver* rewrite_driver)
     : Resource(rewrite_driver->server_context(), type),
+      url_(url.data(), url.size()),
+      cache_key_(cache_key.data(), cache_key.size()),
       rewrite_driver_(rewrite_driver) {
+  set_enable_cache_purge(rewrite_options()->enable_cache_purge());
+
   Statistics* stats = server_context()->statistics();
   hits_ = stats->GetVariable(StrCat(stat_prefix, kHitSuffix));
   recent_fetch_failures_ =
@@ -608,6 +627,38 @@ CacheableResourceBase::~CacheableResourceBase() {
 
 bool CacheableResourceBase::IsValidAndCacheable() const {
   return IsValidAndCacheableImpl(*response_headers());
+}
+
+bool CacheableResourceBase::IsValidAndCacheableImpl(
+    const ResponseHeaders& headers) const {
+  if (headers.status_code() != HttpStatus::kOK) {
+    return false;
+  }
+
+  bool cacheable = true;
+  if (rewrite_options()->respect_vary()) {
+    // Conservatively assume that the request has cookies, since the site may
+    // want to serve different content based on the cookie. If we consider the
+    // response to be cacheable here, we will serve the optimized version
+    // without contacting the origin which would be against the webmaster's
+    // intent. We also don't have cookies available at lookup time, so we
+    // cannot try to use this response only when the request doesn't have a
+    // cookie.
+    cacheable = headers.VaryCacheable(true);
+  } else {
+    cacheable = headers.IsProxyCacheable();
+  }
+  // If we are setting a TTL for HTML, we cannot rewrite any resource
+  // with a shorter TTL.
+  cacheable &= (headers.cache_ttl_ms() >=
+                rewrite_options()->min_resource_cache_time_to_rewrite_ms());
+
+  if (!cacheable && !http_cache()->force_caching()) {
+    return false;
+  }
+
+  // NULL is OK here since we make the request_headers ourselves.
+  return !http_cache()->IsAlreadyExpired(NULL, headers);
 }
 
 void CacheableResourceBase::InitStats(StringPiece stat_prefix,
@@ -641,12 +692,11 @@ void CacheableResourceBase::LoadAndCallback(
                                 callback, this);
 
   cache_callback->set_is_background(is_background_fetch());
-  http_cache()->Find(url(), message_handler(), cache_callback);
+  http_cache()->Find(cache_key(), message_handler(), cache_callback);
 }
 
 void CacheableResourceBase::Freshen(Resource::FreshenCallback* callback,
                                     MessageHandler* handler) {
-  GoogleString url_str = url();
   // TODO(jmarantz): use if-modified-since
   // For now this is much like Load(), except we do not
   // touch our value, but just the cache
@@ -655,11 +705,11 @@ void CacheableResourceBase::Freshen(Resource::FreshenCallback* callback,
   rewrite_driver_->increment_async_events_count();
 
   FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
-      url_str, server_context(), rewrite_driver_, rewrite_options(), this,
-      callback);
+      url(), cache_key(), server_context(), rewrite_driver_, rewrite_options(),
+      this, callback);
   // Lookup the cache before doing the fetch since the response may have already
   // been fetched elsewhere.
-  http_cache->Find(url_str, handler, freshen_callback);
+  http_cache->Find(cache_key(), handler, freshen_callback);
 }
 
 bool CacheableResourceBase::UpdateInputInfoForFreshen(
@@ -686,6 +736,12 @@ bool CacheableResourceBase::UpdateInputInfoForFreshen(
 
 const RewriteOptions* CacheableResourceBase::rewrite_options() const {
   return rewrite_driver_->options();
+}
+
+void CacheableResourceBase::PrepareRequestHeaders(RequestHeaders* headers) {
+}
+
+void CacheableResourceBase::PrepareResponseHeaders(ResponseHeaders* headers) {
 }
 
 }  // namespace net_instaweb

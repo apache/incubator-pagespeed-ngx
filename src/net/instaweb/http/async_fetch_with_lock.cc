@@ -42,22 +42,24 @@ AsyncFetchWithLock::AsyncFetchWithLock(
     const Hasher* hasher,
     const RequestContextPtr& request_context,
     const GoogleString& url,
+    const GoogleString& cache_key,
     NamedLockManager* lock_manager,
     MessageHandler* message_handler)
     : AsyncFetch(request_context),
       lock_manager_(lock_manager),
       lock_hasher_(hasher),
       url_(url),
+      cache_key_(cache_key),
       message_handler_(message_handler) {
 }
 
 AsyncFetchWithLock::~AsyncFetchWithLock() {
   DCHECK(lock_ == NULL) << "Fetch is completed without deleting the lock for "
-                        << "url: " << url_;
+                        << "cache key: " << cache_key_ << "url: " << url_;
 }
 
 bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
-  lock_.reset(MakeInputLock(url()));
+  lock_.reset(MakeInputLock(cache_key()));
 
   // lock_name will be needed after lock might be deleted.
   GoogleString lock_name(lock_->name());
@@ -77,17 +79,17 @@ bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
     if (ShouldYieldToRedundantFetchInProgress()) {
       message_handler_->Message(
           kInfo, "%s is already being fetched (lock %s)",
-          url().c_str(), lock_name.c_str());
+          cache_key().c_str(), lock_name.c_str());
       Finalize(true /* lock_failure */, false /* success */);
       delete this;
       return false;
     }
     message_handler_->Message(
         kInfo, "%s is being re-fetched asynchronously "
-        "(lock %s held elsewhere)", url().c_str(), lock_name.c_str());
+        "(lock %s held elsewhere)", cache_key().c_str(), lock_name.c_str());
   } else {
     message_handler_->Message(kInfo, "%s: Locking (lock %s)",
-                              url().c_str(), lock_name.c_str());
+                              cache_key().c_str(), lock_name.c_str());
   }
   return StartFetch(fetcher, message_handler_);
 }
@@ -96,7 +98,7 @@ void AsyncFetchWithLock::HandleDone(bool success) {
   if (lock_.get() != NULL) {
     message_handler_->Message(
         kInfo, "%s: Unlocking lock %s with, success=%s",
-        url().c_str(), lock_->name().c_str(),
+        cache_key().c_str(), lock_->name().c_str(),
         success ? "true" : "false");
     lock_->Unlock();
     lock_.reset(NULL);

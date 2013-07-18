@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for Resource, etc
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
@@ -46,9 +45,8 @@ class UrlInputResourceTest : public RewriteTestBase {
                                     const GoogleString& expected_referer) {
     PrepareResourceFetch(url);
     SetBaseUrlForFetch(base_url);
-    RewriteOptions options(factory()->thread_system());
-    ResourcePtr resource(new UrlInputResource(rewrite_driver(),
-        &options, &kContentTypeJpeg, url));
+    ResourcePtr resource(
+        new UrlInputResource(rewrite_driver(), &kContentTypeJpeg, url));
     RequestContextPtr request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
     resource->set_is_background_fetch(is_background_fetch);

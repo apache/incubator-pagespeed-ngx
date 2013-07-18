@@ -146,6 +146,7 @@
         'rewriter/flush_early_content_writer_filter_test.cc',
         'rewriter/flush_html_filter_test.cc',
         'rewriter/google_analytics_filter_test.cc',
+        'rewriter/google_font_service_input_resource_test.cc',
         'rewriter/handle_noscript_redirect_filter_test.cc',
         'rewriter/html_attribute_quote_removal_test.cc',
         'rewriter/image_combine_filter_test.cc',
