@@ -781,6 +781,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kCssOutlineMinBytes);
   PassLookupOptionByName(RewriteOptions::kCssPreserveURLs);
   PassLookupOptionByName(RewriteOptions::kDefaultCacheHtml);
+  PassLookupOptionByName(RewriteOptions::kDisableBackgroundFetchesForBots);
   PassLookupOptionByName(RewriteOptions::kDisableRewriteOnNoTransform);
   PassLookupOptionByName(RewriteOptions::kDistributedRewriteKey);
   PassLookupOptionByName(RewriteOptions::kDistributedRewriteServers);

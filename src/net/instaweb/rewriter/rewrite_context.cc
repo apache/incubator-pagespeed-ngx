@@ -616,16 +616,21 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
   ResourceFetchCallback(RewriteContext* rc, const ResourcePtr& r,
                         int slot_index)
       : Resource::AsyncCallback(r),
+        rewrite_context_(rc),
         delegate_(rc, r, slot_index) {
   }
 
   virtual ~ResourceFetchCallback() {}
   virtual void Done(bool lock_failure, bool resource_ok) {
+    if (lock_failure) {
+      rewrite_context_->ok_to_write_output_partitions_ = false;
+    }
     delegate_.Done(!lock_failure && resource_ok);
     delete this;
   }
 
  private:
+  RewriteContext* rewrite_context_;
   ResourceCallbackUtils delegate_;
 };
 

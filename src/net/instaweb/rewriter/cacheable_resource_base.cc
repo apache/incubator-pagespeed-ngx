@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -515,6 +516,13 @@ void CacheableResourceBase::LoadHttpCacheCallback::Done(
 }
 
 void CacheableResourceBase::LoadHttpCacheCallback::LoadAndSaveToCache() {
+  if (resource_->ShouldSkipBackgroundFetch()) {
+    // Note that this isn't really a lock failure, but we treat them the same
+    // way.
+    resource_callback_->Done(true /* lock_failure */,
+                             false /* resource_ok */);
+    return;
+  }
   CHECK(resource_callback_ != NULL)
       << "A callback must be supplied, or else it will "
           "not be possible to determine when it's safe to delete the resource.";
@@ -557,7 +565,8 @@ class CacheableResourceBase::FreshenHttpCacheCallback
   virtual ~FreshenHttpCacheCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
-    if (find_result == HTTPCache::kNotFound) {
+    if (find_result == HTTPCache::kNotFound &&
+        !resource_->ShouldSkipBackgroundFetch()) {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
           url_, cache_key_, server_context_->http_cache(), server_context_,
@@ -742,6 +751,12 @@ void CacheableResourceBase::PrepareRequestHeaders(RequestHeaders* headers) {
 }
 
 void CacheableResourceBase::PrepareResponseHeaders(ResponseHeaders* headers) {
+}
+
+bool CacheableResourceBase::ShouldSkipBackgroundFetch() const {
+  return is_background_fetch() &&
+      rewrite_options()->disable_background_fetches_for_bots() &&
+      rewrite_driver()->request_properties()->IsBot();
 }
 
 }  // namespace net_instaweb

@@ -91,6 +91,10 @@ class CacheableResourceBase : public Resource {
   RewriteDriver* rewrite_driver() const { return rewrite_driver_; }
   const RewriteOptions* rewrite_options() const;
 
+  // Returns a bool indicating whether we should skip triggering a background
+  // fetch.
+  bool ShouldSkipBackgroundFetch() const;
+
  private:
   class FreshenHttpCacheCallback;
   class LoadHttpCacheCallback;

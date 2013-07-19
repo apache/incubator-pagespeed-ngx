@@ -200,6 +200,7 @@ class RewriteOptions {
   static const char kCssOutlineMinBytes[];
   static const char kCssPreserveURLs[];
   static const char kDefaultCacheHtml[];
+  static const char kDisableBackgroundFetchesForBots[];
   static const char kDisableRewriteOnNoTransform[];
   static const char kDistributedRewriteKey[];
   static const char kDistributedRewriteServers[];
@@ -1895,6 +1896,13 @@ class RewriteOptions {
     return disable_rewrite_on_no_transform_.value();
   }
 
+  void set_disable_background_fetches_for_bots(bool x) {
+    set_option(x, &disable_background_fetches_for_bots_);
+  }
+  bool disable_background_fetches_for_bots() const {
+    return disable_background_fetches_for_bots_.value();
+  }
+
   void set_enable_cache_purge(bool x) {
     set_option(x, &enable_cache_purge_);
   }
@@ -3211,6 +3219,9 @@ class RewriteOptions {
 
   // Option to disable rewrite optimizations on no-transform header.
   Option<bool> disable_rewrite_on_no_transform_;
+
+  // Option to disable pre-emptive background fetches for bot requests.
+  Option<bool> disable_background_fetches_for_bots_;
 
   // Enables the Cache Purge API.  This is not on by default because
   // it requires saving input URLs to each metadata cache entry to

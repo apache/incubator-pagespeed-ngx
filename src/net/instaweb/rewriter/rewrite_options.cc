@@ -77,6 +77,8 @@ const char RewriteOptions::kCssPreserveURLs[] = "CssPreserveURLs";
 const char RewriteOptions::kDefaultCacheHtml[] = "DefaultCacheHtml";
 const char RewriteOptions::kDisableRewriteOnNoTransform[] =
     "DisableRewriteOnNoTransform";
+const char RewriteOptions::kDisableBackgroundFetchesForBots[] =
+    "DisableBackgroundFetchesForBots";
 const char RewriteOptions::kDistributedRewriteKey[] = "DistributedRewriteKey";
 const char RewriteOptions::kDistributedRewriteServers[] =
     "DistributedRewriteServers";
@@ -1344,6 +1346,12 @@ void RewriteOptions::AddProperties() {
       kEnableDeferJsExperimental,
       kDirectoryScope,
       "Enable experimental options in defer javascript.");
+  AddBaseProperty(
+      false,
+      &RewriteOptions::disable_background_fetches_for_bots_, "dbfb",
+      kDisableBackgroundFetchesForBots,
+      kDirectoryScope,
+      "Disable pre-emptive background fetches on bot requests.");
   AddBaseProperty(
       true,   // By default, don't optimize resource if no-transform is set.
       &RewriteOptions::disable_rewrite_on_no_transform_, "drnt",

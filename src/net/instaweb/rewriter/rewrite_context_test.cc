@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -2870,6 +2871,115 @@ TEST_F(RewriteContextTest, RenderCompletesCacheAsync) {
   ValidateExpected("trimmable_async",
                    CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+}
+
+TEST_F(RewriteContextTest, TestDisableBackgroundRewritesForBots) {
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  options()->ClearSignatureForTesting();
+  options()->set_disable_background_fetches_for_bots(true);
+  options()->ComputeSignature();
+
+  // Bot user agent. No fetches triggered.
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ValidateNoChanges("initial", CssLinkHref("a.css"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+
+  ClearStats();
+  // Non-bot user agent. Fetch and rewrite triggered.
+  rewrite_driver()->SetUserAgent("new");
+  ValidateExpected(
+      "initial",
+      CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(3, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+
+  ClearStats();
+  // Bot user agent. HTML is rewritten.
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ValidateExpected(
+      "initial",
+      CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+
+  // Advance close to expiry, so that freshen is triggered.
+  AdvanceTimeMs(kOriginTtlMs * 9 / 10);
+
+  ClearStats();
+  // Bot user agent. HTML is rewritten, but no fetches are triggered.
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ValidateExpected(
+      "initial",
+      CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+
+  ClearStats();
+  // Non-bot user agent. Freshen triggers a fetch.
+  rewrite_driver()->SetUserAgent("new");
+  ValidateExpected(
+      "initial",
+      CssLinkHref("a.css"),
+      CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+
+  // Advance beyond expiry.
+  AdvanceTimeMs(kOriginTtlMs * 2);
+
+  ClearStats();
+  // Bot user agent. No fetches are triggered.
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ValidateNoChanges("initial", CssLinkHref("a.css"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(3, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
 }
 
 TEST_F(RewriteContextTest, TestFreshen) {
