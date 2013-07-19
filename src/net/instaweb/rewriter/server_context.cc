@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
@@ -250,6 +251,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       dom_cohort_(NULL),
       blink_cohort_(NULL),
       beacon_cohort_(NULL),
+      critical_line_cohort_(NULL),
       available_rewrite_drivers_(new GlobalOptionsRewriteDriverPool(this)),
       trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),
@@ -995,6 +997,11 @@ void ServerContext::set_critical_selector_finder(
 
 void ServerContext::set_flush_early_info_finder(FlushEarlyInfoFinder* finder) {
   flush_early_info_finder_.reset(finder);
+}
+
+void ServerContext::set_critical_line_info_finder(
+    CriticalLineInfoFinder* finder) {
+  critical_line_info_finder_.reset(finder);
 }
 
 RewriteDriverPool* ServerContext::SelectDriverPool(bool using_spdy) {

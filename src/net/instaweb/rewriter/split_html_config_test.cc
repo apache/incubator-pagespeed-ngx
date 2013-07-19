@@ -25,9 +25,11 @@
 
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
+#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -39,7 +41,8 @@ class SplitHtmlConfigTest : public RewriteTestBase {
   SplitHtmlConfigTest() {}
 
   const CriticalLineInfo* critical_line_info() {
-    return rewrite_driver()->critical_line_info();
+    return server_context()->critical_line_info_finder()
+        ->GetCriticalLine(rewrite_driver());
   }
 
   const Panel& panels(int index) {

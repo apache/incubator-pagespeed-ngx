@@ -28,11 +28,11 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -40,7 +40,6 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/google_url.h"
-#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
@@ -104,8 +103,8 @@ void PopulateXpathMap(
 }  // namespace
 
 SplitHtmlConfig::SplitHtmlConfig(RewriteDriver* driver) : driver_(driver) {
-  UpdateCriticalLineInfoInDriver(driver);
-  critical_line_info_ = driver->critical_line_info();
+  critical_line_info_ = driver->server_context()->
+      critical_line_info_finder()->GetCriticalLine(driver);
   if (critical_line_info_ != NULL) {
     ComputePanels(*critical_line_info_, &panel_id_to_spec_);
     PopulateXpathMap(*critical_line_info_, &xpath_map_);
@@ -128,40 +127,6 @@ void SplitHtmlConfig::Terminate() {
   xpath_with_id_pattern_ = NULL;
   delete xpath_with_child_pattern_;
   xpath_with_child_pattern_ = NULL;
-}
-
-void SplitHtmlConfig::UpdateCriticalLineInfoInDriver(RewriteDriver* driver) {
-  if (driver->critical_line_info() != NULL) {
-    return;
-  }
-  GoogleString critical_line_config;
-  const RequestHeaders* request_headers = driver->request_headers();
-  if (request_headers != NULL) {
-    const char* header = request_headers->Lookup1(
-        HttpAttributes::kXPsaSplitConfig);
-    if (header != NULL) {
-      critical_line_config = header;
-    }
-  }
-  if (critical_line_config.empty()) {
-    critical_line_config = driver->options()->critical_line_config();
-  }
-  if (!critical_line_config.empty()) {
-    CriticalLineInfo* critical_line_info = new CriticalLineInfo;
-    StringPieceVector xpaths;
-    SplitStringPieceToVector(critical_line_config, ",", &xpaths, true);
-    for (int i = 0, n = xpaths.size(); i < n; i++) {
-      StringPieceVector xpath_pair;
-      SplitStringPieceToVector(xpaths[i], ":", &xpath_pair, true);
-      Panel* panel = critical_line_info->add_panels();
-      panel->set_start_xpath(xpath_pair[0].data(), xpath_pair[0].length());
-      if (xpath_pair.size() == 2) {
-        panel->set_end_marker_xpath(
-            xpath_pair[1].data(), xpath_pair[1].length());
-      }
-    }
-    driver->set_critical_line_info(critical_line_info);
-  }
 }
 
 SplitHtmlState::SplitHtmlState(const SplitHtmlConfig* config) :

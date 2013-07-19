@@ -59,10 +59,6 @@ class SplitHtmlConfig {
   static void Initialize();
   static void Terminate();
 
-  // Updates the critical line info in the driver based on the RequestHeaders /
-  // RewriteOptions in the driver.
-  static void UpdateCriticalLineInfoInDriver(RewriteDriver* driver);
-
   const CriticalLineInfo* critical_line_info() const {
     return critical_line_info_;
   }

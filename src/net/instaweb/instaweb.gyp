@@ -959,6 +959,7 @@
         'rewriter/beacon_critical_images_finder.cc',
         'rewriter/cache_html_info_finder.cc',
         'rewriter/critical_images_finder.cc',
+        'rewriter/critical_line_info_finder.cc',
         'rewriter/domain_lawyer.cc',
         'rewriter/downstream_caching_directives.cc',
         'rewriter/device_properties.cc',

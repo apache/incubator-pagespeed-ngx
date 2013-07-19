@@ -35,6 +35,7 @@ class AbstractMutex;
 class CacheHtmlInfoFinder;
 class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
@@ -347,6 +348,9 @@ class RewriteDriverFactory {
 
   // Default implementation returns NULL.
   virtual FlushEarlyInfoFinder* DefaultFlushEarlyInfoFinder();
+
+  // Default implementation returns a valid CriticalSelectorFinder.
+  virtual CriticalLineInfoFinder* DefaultCriticalLineInfoFinder();
 
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.

@@ -48,6 +48,7 @@ class CacheInterface;
 class CachePropertyStore;
 class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
 class RequestProperties;
 class ExperimentMatcher;
@@ -217,6 +218,13 @@ class ServerContext {
   const PropertyCache::Cohort* beacon_cohort() const { return beacon_cohort_; }
   void set_beacon_cohort(const PropertyCache::Cohort* c) { beacon_cohort_ = c; }
 
+  const PropertyCache::Cohort* critical_line_cohort() const {
+    return critical_line_cohort_;
+  }
+  void set_critical_line_cohort(const PropertyCache::Cohort* c) {
+    critical_line_cohort_ = c;
+  }
+
   // Cache for storing file system metadata. It must be private to a server,
   // preferably but not necessarily shared between its processes, and is
   // required if using load-from-file and memcached (or any cache shared
@@ -269,6 +277,12 @@ class ServerContext {
   }
 
   void set_cache_html_info_finder(CacheHtmlInfoFinder* finder);
+
+  CriticalLineInfoFinder* critical_line_info_finder() const {
+    return critical_line_info_finder_.get();
+  }
+
+  void set_critical_line_info_finder(CriticalLineInfoFinder* finder);
 
   // Whether or not dumps of rewritten resources should be stored to
   // the filesystem. This is meant for testing purposes only.
@@ -630,6 +644,7 @@ class ServerContext {
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
+  scoped_ptr<CriticalLineInfoFinder> critical_line_info_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns
@@ -657,6 +672,7 @@ class ServerContext {
   const PropertyCache::Cohort* dom_cohort_;
   const PropertyCache::Cohort* blink_cohort_;
   const PropertyCache::Cohort* beacon_cohort_;
+  const PropertyCache::Cohort* critical_line_cohort_;
 
   // RewriteDrivers that were previously allocated, but have
   // been released with ReleaseRewriteDriver, and are ready
