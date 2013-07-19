@@ -210,10 +210,10 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   server_context->set_enable_property_cache(true);
   PropertyCache* pcache = server_context->page_property_cache();
   const PropertyCache::Cohort* cohort =
-    pcache->AddCohort(RewriteDriver::kBeaconCohort);
+    server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache);
   server_context->set_beacon_cohort(cohort);
 
-  cohort = pcache->AddCohort(RewriteDriver::kDomCohort);
+  cohort = server_context->AddCohort(RewriteDriver::kDomCohort, pcache);
   server_context->set_dom_cohort(cohort);
 }
 
