@@ -117,8 +117,10 @@ SplitHtmlConfig::~SplitHtmlConfig() {
 }
 
 void SplitHtmlConfig::Initialize() {
-  xpath_with_id_pattern_ = new RE2("(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])");
-  xpath_with_child_pattern_ = new RE2("(\\w+)(\\[(\\d+)\\])");
+  RE2::Options re2_options;
+  xpath_with_id_pattern_ =
+      new RE2("(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])", re2_options);
+  xpath_with_child_pattern_ = new RE2("(\\w+)(\\[(\\d+)\\])", re2_options);
 }
 
 void SplitHtmlConfig::Terminate() {
