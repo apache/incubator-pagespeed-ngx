@@ -67,14 +67,14 @@ function keepalive_test() {
   POST_DATA=$3
 
   for ((i=0; i < 100; i++)); do
-    for accept_encoding in "" "-H \"Accept-Encoding:gzip\""; do
+    for accept_encoding in "" "gzip"; do
       if [ -z "$POST_DATA" ]; then
-        curl -m 1 -S -s -v $accept_encoding -H "Host: $HOST_NAME" \
-          $URL $URL $URL $URL $URL > /dev/null \
+      curl -m 1 -S -s -v -H "Accept-Encoding: $accept_encoding" \
+          -H "Host: $HOST_NAME" $URL $URL $URL $URL $URL > /dev/null \
           2>>"$TEST_TMP/$CURL_LOG_FILE"
       else
         curl -X POST --data "$POST_DATA" -m 1 -S -s -v \
-          $accept_encoding -H "Host: $HOST_NAME"\
+          -H "Accept-Encoding: $accept_encoding" -H "Host: $HOST_NAME"\
           $URL $URL $URL $URL $URL > /dev/null \
           2>>"$TEST_TMP/$CURL_LOG_FILE"
       fi
