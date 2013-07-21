@@ -45,6 +45,7 @@ class ProxyFetch;
 class RewriteDriver;
 class RequestHeaders;
 class ResponseHeaders;
+class InPlaceResourceRecorder;
 }  // namespace net_instaweb
 
 namespace ngx_psol {
@@ -76,22 +77,27 @@ StringPiece str_to_string_piece(ngx_str_t s);
 // Allocate memory out of the pool for the string piece, and copy the contents
 // over.  Returns NULL if we can't get memory.
 char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
-ngx_int_t copy_response_headers_to_ngx(
-    ngx_http_request_t* r,
-    const net_instaweb::ResponseHeaders& pagespeed_headers);
 
 typedef struct {
-  net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
-  net_instaweb::RewriteDriver* driver;
+
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
+
   bool html_rewrite;
-  bool sent_headers;
+  bool in_place;
+
   bool write_pending;
   bool fetch_done;
   bool modify_headers;
+
+  // for html rewrite
+  net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::GzipInflater* inflater_;
+
+  // for in place resource
+  net_instaweb::RewriteDriver* driver;
+  net_instaweb::InPlaceResourceRecorder *recorder;
 } ps_request_ctx_t;
 
 

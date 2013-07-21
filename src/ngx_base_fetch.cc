@@ -111,7 +111,6 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 }
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
-
   const ResponseHeaders* pagespeed_headers = response_headers();
 
   // TODO(chaizhenhua): Add and check.
