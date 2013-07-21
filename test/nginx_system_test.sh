@@ -321,7 +321,7 @@ check [ $NUM_404_FINAL -eq $NUM_404_REALLY_FINAL ]
 start_test Non-local access to statistics fails.
 
 # This test only makes sense if you're running tests against localhost.
-if [ "$HOSTNAME" = "localhost:$PRIMARY_PORT" ] ; then
+if [ "$HOSTNAME" != "localhost:$PRIMARY_PORT" ] ; then
   NON_LOCAL_IP=$(ifconfig | egrep -o 'inet addr:[0-9]+.[0-9]+.[0-9]+.[0-9]+' \
     | awk -F: '{print $2}' | grep -v ^127 | head -n 1)
 
