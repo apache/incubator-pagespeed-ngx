@@ -78,9 +78,11 @@ extern ngx_module_t ngx_pagespeed;
 // http://lxr.evanmiller.org/http/source/http/ngx_http_request.h#L130
 #define  NGX_HTTP_PAGESPEED_BUFFERED 0x08
 
-const char* kInternalEtagName = "@psol-etag";
+
 
 namespace ngx_psol {
+
+const char* kInternalEtagName = "@psol-etag";
 
 StringPiece str_to_string_piece(ngx_str_t s) {
   return StringPiece(reinterpret_cast<char*>(s.data), s.len);
@@ -181,6 +183,62 @@ ngx_int_t string_piece_to_buffer_chain(
   }
 
   return NGX_OK;
+}
+
+
+// modify from NgxBaseFetch::CopyHeadersFromTable()
+namespace {
+template<class Headers>
+void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  const ngx_list_part_t* part = &from.part;
+  const ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
+    StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
+
+    to->Add(key, value);
+  }
+}
+}  // namespace
+
+// modify from NgxBaseFetch::PopulateResponseHeaders()
+void copy_response_headers_from_ngx(const ngx_http_request_t *r,
+        net_instaweb::ResponseHeaders *headers) {
+  headers->set_major_version(r->http_version / 1000);
+  headers->set_minor_version(r->http_version % 1000);
+  copy_headers_from_table(r->headers_out.headers, headers);
+
+  headers->set_status_code(r->headers_out.status);
+
+  // Manually copy over the content type because it's not included in
+  // request_->headers_out.headers.
+  headers->Add(net_instaweb::HttpAttributes::kContentType,
+              ngx_psol::str_to_string_piece(r->headers_out.content_type));
+
+  // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
+  headers->ComputeCaching();
+}
+
+// modify from NgxBaseFetch::PopulateRequestHeaders()
+void copy_request_headers_from_ngx(const ngx_http_request_t *r,
+                                   net_instaweb::RequestHeaders *headers) {
+  // TODO(chaizhenhua): only allow RewriteDriver::kPassThroughRequestAttributes?
+  headers->set_major_version(r->http_version / 1000);
+  headers->set_minor_version(r->http_version % 1000);
+  copy_headers_from_table(r->headers_in.headers, headers);
 }
 
 ngx_int_t copy_response_headers_to_ngx(

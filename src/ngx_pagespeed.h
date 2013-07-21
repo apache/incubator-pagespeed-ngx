@@ -43,7 +43,8 @@ class GzipInflater;
 class NgxBaseFetch;
 class ProxyFetch;
 class RewriteDriver;
-
+class RequestHeaders;
+class ResponseHeaders;
 }  // namespace net_instaweb
 
 namespace ngx_psol {
@@ -93,6 +94,16 @@ typedef struct {
   net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 
+
+void copy_request_headers_from_ngx(const ngx_http_request_t *r, 
+       net_instaweb::RequestHeaders *headers);
+
+void copy_response_headers_from_ngx(const ngx_http_request_t *r, 
+       net_instaweb::ResponseHeaders *headers);
+
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& pagespeed_headers);
 }  // namespace ngx_psol
 
 #endif  // NGX_PAGESPEED_H_

@@ -55,43 +55,13 @@ void NgxBaseFetch::Unlock() {
 }
 
 void NgxBaseFetch::PopulateRequestHeaders() {
-  CopyHeadersFromTable<RequestHeaders>(&request_->headers_in.headers,
-                                       request_headers());
+  ngx_psol::copy_request_headers_from_ngx(request_, request_headers());
 }
 
 void NgxBaseFetch::PopulateResponseHeaders() {
-  CopyHeadersFromTable<ResponseHeaders>(&request_->headers_out.headers,
-                                        response_headers());
-
-  response_headers()->set_status_code(request_->headers_out.status);
-
-  // Manually copy over the content type because it's not included in
-  // request_->headers_out.headers.
-  response_headers()->Add(
-      HttpAttributes::kContentType,
-      ngx_psol::str_to_string_piece(request_->headers_out.content_type));
-
-  // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
-  response_headers()->ComputeCaching();
+  ngx_psol::copy_response_headers_from_ngx(request_, response_headers());
 }
 
-template<class HeadersT>
-void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
-                                        HeadersT* headers_to) {
-  // http_version is the version number of protocol; 1.1 = 1001. See
-  // NGX_HTTP_VERSION_* in ngx_http_request.h
-  headers_to->set_major_version(request_->http_version / 1000);
-  headers_to->set_minor_version(request_->http_version % 1000);
-
-  ngx_table_elt_t* header;
-  NgxListIterator it(&headers_from->part);
-  while ((header = it.Next()) != NULL) {
-    StringPiece key = ngx_psol::str_to_string_piece(header->key);
-    StringPiece value = ngx_psol::str_to_string_piece(header->value);
-
-    headers_to->Add(key, value);
-  }
-}
 
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
                                MessageHandler* handler) {
@@ -141,9 +111,15 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 }
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
-  Lock();
+
   const ResponseHeaders* pagespeed_headers = response_headers();
-  Unlock();
+
+  // TODO(chaizhenhua): Add and check.
+  // if (content_length_known()) {
+  //   headers_out->content_length = NULL;
+  //   headers_out->content_length_n = content_length();
+  // }
+
   return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
 }
 

@@ -91,10 +91,6 @@ class NgxBaseFetch : public AsyncFetch {
   virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
 
-  // Helper method for PopulateRequestHeaders and PopulateResponseHeaders.
-  template<class HeadersT>
-  void CopyHeadersFromTable(ngx_list_t* headers_from, HeadersT* headers_to);
-
   // Indicate to nginx that we would like it to call
   // CollectAccumulatedWrites().
   void RequestCollection();
