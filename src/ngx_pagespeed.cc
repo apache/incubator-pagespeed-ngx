@@ -923,6 +923,34 @@ ngx_int_t ps_async_wait_response(ngx_http_request_t *r) {
   return NGX_DONE;
 }
 
+namespace base_fetch {
+
+ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+ngx_http_output_body_filter_pt ngx_http_next_body_filter;
+
+ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+
+  if (ctx == NULL || ctx->base_fetch == NULL) {
+    return ngx_http_next_body_filter(r, in);
+  }
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed write filter \"%V\"", &r->uri);
+
+  // send response body
+  if (in || ctx->write_pending) {
+    ngx_int_t rc = ngx_http_next_body_filter(r, in);
+    ctx->write_pending = (rc == NGX_AGAIN);
+    if (rc == NGX_OK && !ctx->fetch_done) {
+      return NGX_AGAIN;
+    }
+    return rc;
+  }
+
+  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
+}
+
 ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   ngx_int_t rc;
@@ -984,6 +1012,17 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
 
   return ps_base_fetch_filter(r, cl);
 }
+
+void ps_base_fetch_filter_init() {
+  ngx_http_next_header_filter = ngx_http_top_header_filter;
+  ngx_http_next_body_filter = ngx_http_top_body_filter;
+  ngx_http_top_body_filter = ps_base_fetch_filter;
+}
+
+}  // namespace base_fetch
+
+using base_fetch::ps_base_fetch_filter_init;
+using base_fetch::ps_base_fetch_handler;
 
 void ps_connection_read_handler(ngx_event_t* ev) {
   CHECK(ev != NULL);
@@ -1681,28 +1720,7 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   }
 }
 
-ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
-  ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  if (ctx == NULL || ctx->base_fetch == NULL) {
-    return ngx_http_next_body_filter(r, in);
-  }
-
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http pagespeed write filter \"%V\"", &r->uri);
-
-  // send response body
-  if (in || ctx->write_pending) {
-    ngx_int_t rc = ngx_http_next_body_filter(r, in);
-    ctx->write_pending = (rc == NGX_AGAIN);
-    if (rc == NGX_OK && !ctx->fetch_done) {
-      return NGX_AGAIN;
-    }
-    return rc;
-  }
-
-  return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
-}
 
 
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
@@ -1747,7 +1765,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     ps_send_to_pagespeed(r, ctx, cfg_s, in);
   }
 
-  return ps_base_fetch_filter(r, NULL);
+  return ngx_http_next_body_filter(r, NULL);
 }
 
 #ifndef ngx_http_clear_etag
@@ -2610,7 +2628,13 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
   // filter, and content handler will run in every server block.  This is ok,
   // because they will notice that the server context is NULL and do nothing.
   if (cfg_m->driver_factory != NULL) {
+    // The filter init order is important.
+    // TODO(chaizhenhua): ps_in_place_filter_init();
+
     ps_html_rewrite_fix_headers_filter_init();
+    ps_base_fetch_filter_init();
+
+    // TODO(chaizhenhua): ps_html_rewrite_filter_init();
 
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_header_filter;
