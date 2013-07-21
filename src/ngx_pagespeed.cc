@@ -917,6 +917,7 @@ ngx_int_t ps_async_wait_response(ngx_http_request_t *r) {
   return NGX_DONE;
 }
 
+// TODO(chaizhenhua): use anonymous namespace or move to another file
 namespace base_fetch {
 
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
@@ -1958,6 +1959,9 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   ps_strip_html_headers(r);
   ctx->modify_headers = options->modify_caching_headers();
 
+  // TODO(jefftk): is this thread safe?
+  ctx->base_fetch->PopulateResponseHeaders();
+
   ps_set_buffered(r, true);
   r->filter_need_in_memory = 1;
   return NGX_AGAIN;
@@ -1991,15 +1995,6 @@ ngx_int_t ps_html_rewrite_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed body filter \"%V\"", &r->uri);
 
-  if (!ctx->data_received) {
-    // This is the first set of buffers we've got for this request.
-    ctx->data_received = true;
-    // Call this here and not in the header filter because we want to see the
-    // headers after any other filters are finished modifying them.  At this
-    // point they are final.
-    // TODO(jefftk): is this thread safe?
-    ctx->base_fetch->PopulateResponseHeaders();
-  }
 
   if (in != NULL) {
     // Send all input data to the proxy fetch.

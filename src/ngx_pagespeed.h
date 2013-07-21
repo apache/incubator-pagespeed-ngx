@@ -83,7 +83,6 @@ typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   net_instaweb::RewriteDriver* driver;
-  bool data_received;
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
   bool is_resource_fetch;
