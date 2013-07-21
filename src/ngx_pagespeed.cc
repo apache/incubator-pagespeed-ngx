@@ -368,11 +368,7 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
                           ps_srv_conf_t* cfg_s,
                           ngx_chain_t* in);
 
-ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
-ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
-
-ngx_int_t ps_header_filter(ngx_http_request_t* r);
 
 ngx_int_t ps_init(ngx_conf_t* cf);
 
@@ -757,8 +753,6 @@ char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
 
 // _ef_ is a shorthand for ETag Filter
 ngx_http_output_header_filter_pt ngx_http_ef_next_header_filter;
-ngx_http_output_header_filter_pt ngx_http_next_header_filter;
-ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 void ps_release_request_context(void* data) {
   ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(data);
@@ -1721,53 +1715,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
 }
 
 
-
-
-ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
-  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  if (cfg_s->server_context == NULL) {
-    // Pagespeed is on for some server block but not this one.
-    return ngx_http_next_body_filter(r, in);
-  }
-
-  if (r != r->main) {
-    // Don't handle subrequests.
-    return ngx_http_next_body_filter(r, in);
-  }
-  // Don't need to check for a cache flush; already did in ps_header_filter.
-
-  ps_request_ctx_t* ctx = ps_get_request_context(r);
-
-  if (ctx == NULL) {
-    // ctx is null iff we've decided to pass through this request unchanged.
-    return ngx_http_next_body_filter(r, in);
-  }
-
-  // We don't want to handle requests with errors, but we should be dealing with
-  // that in the header filter and not initializing ctx.
-  CHECK(r->err_status == 0);                                         // NOLINT
-
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "http pagespeed body filter \"%V\"", &r->uri);
-
-  if (!ctx->data_received) {
-    // This is the first set of buffers we've got for this request.
-    ctx->data_received = true;
-    // Call this here and not in the header filter because we want to see the
-    // headers after any other filters are finished modifying them.  At this
-    // point they are final.
-    // TODO(jefftk): is this thread safe?
-    ctx->base_fetch->PopulateResponseHeaders();
-  }
-
-  if (in != NULL) {
-    // Send all input data to the proxy fetch.
-    ps_send_to_pagespeed(r, ctx, cfg_s, in);
-  }
-
-  return ngx_http_next_body_filter(r, NULL);
-}
-
 #ifndef ngx_http_clear_etag
 // The ngx_http_clear_etag(r) macro was added in 1.3.3.  Backport it if it's not
 // present.
@@ -1897,7 +1844,11 @@ ngx_int_t ps_etag_header_filter(ngx_http_request_t* r) {
   return ngx_http_ef_next_header_filter(r);
 }
 
-ngx_int_t ps_header_filter(ngx_http_request_t* r) {
+namespace html_rewrite {
+ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+ngx_http_output_body_filter_pt ngx_http_next_body_filter;
+
+ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
     // Pagespeed is on for some server block but not this one.
@@ -2011,6 +1962,64 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   r->filter_need_in_memory = 1;
   return NGX_AGAIN;
 }
+
+ngx_int_t ps_html_rewrite_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  if (cfg_s->server_context == NULL) {
+    // Pagespeed is on for some server block but not this one.
+    return ngx_http_next_body_filter(r, in);
+  }
+
+  if (r != r->main) {
+    // Don't handle subrequests.
+    return ngx_http_next_body_filter(r, in);
+  }
+  // Don't need to check for a cache flush;
+  // already did in ps_html_rewrite_header_filter.
+
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+
+  if (ctx == NULL) {
+    // ctx is null iff we've decided to pass through this request unchanged.
+    return ngx_http_next_body_filter(r, in);
+  }
+
+  // We don't want to handle requests with errors, but we should be dealing with
+  // that in the header filter and not initializing ctx.
+  CHECK(r->err_status == 0);                                         // NOLINT
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed body filter \"%V\"", &r->uri);
+
+  if (!ctx->data_received) {
+    // This is the first set of buffers we've got for this request.
+    ctx->data_received = true;
+    // Call this here and not in the header filter because we want to see the
+    // headers after any other filters are finished modifying them.  At this
+    // point they are final.
+    // TODO(jefftk): is this thread safe?
+    ctx->base_fetch->PopulateResponseHeaders();
+  }
+
+  if (in != NULL) {
+    // Send all input data to the proxy fetch.
+    ps_send_to_pagespeed(r, ctx, cfg_s, in);
+  }
+
+  return ngx_http_next_body_filter(r, NULL);
+}
+
+void ps_html_rewrite_filter_init() {
+  ngx_http_next_header_filter = ngx_http_top_header_filter;
+  ngx_http_top_header_filter = ps_html_rewrite_header_filter;
+
+  ngx_http_next_body_filter = ngx_http_top_body_filter;
+  ngx_http_top_body_filter = ps_html_rewrite_body_filter;
+}
+
+}  // namespace html_rewrite
+
+using html_rewrite::ps_html_rewrite_filter_init;
 
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -2633,14 +2642,7 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
 
     ps_html_rewrite_fix_headers_filter_init();
     ps_base_fetch_filter_init();
-
-    // TODO(chaizhenhua): ps_html_rewrite_filter_init();
-
-    ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ps_header_filter;
-
-    ngx_http_next_body_filter = ngx_http_top_body_filter;
-    ngx_http_top_body_filter = ps_body_filter;
+    ps_html_rewrite_filter_init();
 
     ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
         ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module));
