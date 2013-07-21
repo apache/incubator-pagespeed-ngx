@@ -827,8 +827,9 @@ test_filter add_instrumentation beacons load.
 # per rfc 2616 wget hangs. Adding --no-http-keep-alive fixes that, as wget will.
 # send 'Connection: close' in its request headers, which will make nginx
 # respond with that as well. Check that we got a 204.
+BEACON_URL="http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
-      http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13)
+      "http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13&url=$BEACON_URL")
 check_from "$OUT" grep '^HTTP/1.1 204'
 # The $'...' tells bash to interpret c-style escapes, \r in this case.
 check_from "$OUT" grep $'^Cache-Control: max-age=0, no-cache\r$'
@@ -1628,9 +1629,10 @@ keepalive_test "keepalive-resource.example.com"\
   "/mod_pagespeed_example/combine_javascript2.js+combine_javascript1.js+combine_javascript2.js.pagespeed.jc.0.js"\
   ""
 
+BEACON_URL="http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 start_test keepalive with beacon get requests
 keepalive_test "keepalive-beacon-get.example.com"\
-  "/ngx_pagespeed_beacon?ets=load:13" ""
+  "/ngx_pagespeed_beacon?ets=load:13&url=$BEACON_URL" ""
 
 BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_DATA+="image_rewriting%2Frewrite_images.html"
