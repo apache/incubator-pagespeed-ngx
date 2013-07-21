@@ -2759,6 +2759,11 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     if (cfg_s->server_context != NULL) {
       cfg_s->proxy_fetch_factory =
           new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
+
+      ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
+          cscfp[s]->ctx->loc_conf[ngx_http_core_module.ctx_index]);
+      cfg_m->driver_factory->SetServerContextMessageHandler(
+          cfg_s->server_context, clcf->error_log);
     }
   }
 

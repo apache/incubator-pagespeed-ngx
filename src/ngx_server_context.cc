@@ -18,6 +18,7 @@
 
 #include "ngx_server_context.h"
 
+#include "ngx_message_handler.h"
 #include "ngx_request_context.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
