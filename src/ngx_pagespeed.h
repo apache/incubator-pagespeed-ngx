@@ -86,7 +86,7 @@ typedef struct {
   net_instaweb::RewriteDriver* driver;
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
-  bool is_resource_fetch;
+  bool html_rewrite;
   bool sent_headers;
   bool write_pending;
   bool fetch_done;
@@ -95,10 +95,10 @@ typedef struct {
 } ps_request_ctx_t;
 
 
-void copy_request_headers_from_ngx(const ngx_http_request_t *r, 
+void copy_request_headers_from_ngx(const ngx_http_request_t *r,
        net_instaweb::RequestHeaders *headers);
 
-void copy_response_headers_from_ngx(const ngx_http_request_t *r, 
+void copy_response_headers_from_ngx(const ngx_http_request_t *r,
        net_instaweb::ResponseHeaders *headers);
 
 ngx_int_t copy_response_headers_to_ngx(
