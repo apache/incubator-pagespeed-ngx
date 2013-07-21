@@ -215,6 +215,8 @@ PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
 PAGESPEED_EXPECTED_FAILURES="
   ~In-place resource optimization~
+  ~dedup_inlined_images,inline_images~
+  ~Blocking rewrite enabled.~
 "
 
 # The existing system test takes its arguments as positional parameters, and

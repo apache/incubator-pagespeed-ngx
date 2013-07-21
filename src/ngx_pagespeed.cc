@@ -346,6 +346,11 @@ ngx_int_t copy_response_headers_to_ngx(
       headers_out->location = header;
     } else if (STR_EQ_LITERAL(name, "Server")) {
       headers_out->server = header;
+    } else if (STR_EQ_LITERAL(name, "Content-Length")) {
+      int64 len;
+      CHECK(pagespeed_headers.FindContentLength(&len));
+      headers_out->content_length_n = len;
+      headers_out->content_length = header;
     }
   }
 
@@ -1023,6 +1028,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
 
     // for in_place_check_header_filter
     if (rc < NGX_OK && rc != NGX_AGAIN) {
+      CHECK(rc == NGX_DONE);
       return rc;
     }
 
