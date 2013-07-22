@@ -501,10 +501,12 @@ ProxyFetch::ProxyFetch(
 
   driver_->EnableBlockingRewrite(request_headers());
 
-  // Set the implicit cache ttl for the response headers based on the value
-  // specified in the options.
+  // Set the implicit cache ttl and the min cache ttl for the response headers
+  // based on the value specified in the options.
   response_headers()->set_implicit_cache_ttl_ms(
       Options()->implicit_cache_ttl_ms());
+  response_headers()->set_min_cache_ttl_ms(
+      Options()->min_cache_ttl_ms());
 
   VLOG(1) << "Attaching RewriteDriver " << driver_
           << " to HtmlRewriter " << this;

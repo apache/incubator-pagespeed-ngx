@@ -23,54 +23,70 @@
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-typedef std::vector<semantic_type::Category> CategoryVector;
-class ResourceTagScannerTest : public HtmlParseTestBase {
- protected:
-  ResourceTagScannerTest() : collector_(this) { }
 
+namespace {
+
+typedef std::vector<semantic_type::Category> CategoryVector;
+
+// Helper class to collect all external resources.
+class ResourceCollector : public EmptyHtmlFilter {
+ public:
+  explicit ResourceCollector(StringVector* resources,
+                             CategoryVector* resource_category,
+                             RewriteDriver* driver)
+      : resources_(resources),
+        resource_category_(resource_category),
+        driver_(driver) {}
+
+  virtual void StartDocument() {
+    resources_->clear();
+    resource_category_->clear();
+  }
+
+  virtual void StartElement(HtmlElement* element) {
+    semantic_type::Category resource_category;
+    HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
+        element, driver_, &resource_category);
+    if (src != NULL) {
+      resources_->push_back(src->DecodedValueOrNull());
+      resource_category_->push_back(resource_category);
+    }
+  }
+
+  virtual const char* Name() const { return "ResourceCollector"; }
+
+ private:
+  StringVector* resources_;
+  CategoryVector* resource_category_;
+  RewriteDriver* driver_;
+
+  DISALLOW_COPY_AND_ASSIGN(ResourceCollector);
+};
+
+class ResourceTagScannerTest : public RewriteTestBase {
+ protected:
   virtual void SetUp() {
-    html_parse_.AddFilter(&collector_);
+    RewriteTestBase::SetUp();
+    collector_.reset(
+        new ResourceCollector(
+            &resources_, &resource_category_, rewrite_driver()));
+    rewrite_driver()->AddFilter(collector_.get());
   }
 
   virtual bool AddBody() const { return true; }
 
-  // Helper class to collect all external resources.
-  class ResourceCollector : public EmptyHtmlFilter {
-   public:
-    explicit ResourceCollector(ResourceTagScannerTest* test) : test_(test) { }
-
-    virtual void StartElement(HtmlElement* element) {
-      semantic_type::Category resource_category;
-      HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
-          element, NULL /* driver */, &resource_category);
-      if (src != NULL) {
-        test_->resources_.push_back(src->DecodedValueOrNull());
-        test_->resource_category_.push_back(resource_category);
-      }
-    }
-
-    virtual const char* Name() const { return "ResourceCollector"; }
-
-   private:
-    ResourceTagScannerTest* test_;
-
-    DISALLOW_COPY_AND_ASSIGN(ResourceCollector);
-  };
-
   StringVector resources_;
   CategoryVector resource_category_;
-  ResourceCollector collector_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ResourceTagScannerTest);
+  scoped_ptr<ResourceCollector> collector_;
 };
 
 TEST_F(ResourceTagScannerTest, SimpleScript) {
@@ -401,6 +417,31 @@ TEST_F(ResourceTagScannerTest, ImageNotLongdesc) {
   EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
 }
 
+TEST_F(ResourceTagScannerTest, ImageUrlValuedAttribute) {
+  options()->ClearSignatureForTesting();
+  options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
+  options()->ComputeSignature();
+
+  // Image tag with both src and data-src. src attribute gets returned.
+  ValidateNoChanges(
+      "ImageNotLongdesc",
+      "<img src=find-image data-src=img2 longdesc=dont-find-longdesc>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-image", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+
+  // Image tag without src, but with a data-src. data-src attribute gets
+  // returned.
+  ValidateNoChanges(
+      "ImageNotLongdesc",
+      "<img data-src=img2 longdesc=dont-find-longdesc>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("img2", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
 TEST_F(ResourceTagScannerTest, DontFindLongdesc) {
   ValidateNoChanges(
       "DontFindLongdesc",
@@ -610,5 +651,7 @@ TEST_F(ResourceTagScannerTest, THeadBackgroundImage) {
   EXPECT_STREQ("thead_background_image.jpg", resources_[0]);
   EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
 }
+
+}  // namespace
 
 }  // namespace net_instaweb

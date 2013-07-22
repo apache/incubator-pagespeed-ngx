@@ -309,6 +309,12 @@ DEFINE_int64(implicit_cache_ttl_ms,
              "that are likely cacheable (e.g. images, js, css, not html) and "
              "have no explicit cache ttl or expiration date.");
 
+DEFINE_int64(min_cache_ttl_ms,
+             RewriteOptions::kDefaultMinCacheTtlMs,
+             "The minimum milliseconds of cache TTL for all resources that "
+             "are explicitly cacheable. This overrides the max-age even when "
+             "it is set on the Cache-Control headers.");
+
 DEFINE_int32(property_cache_http_status_stability_threshold,
              RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold,
              "The number of requests for which the status code should remain "
@@ -711,6 +717,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("implicit_cache_ttl_ms")) {
     options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);
+  }
+  if (WasExplicitlySet("min_cache_ttl_ms")) {
+    options->set_min_cache_ttl_ms(FLAGS_min_cache_ttl_ms);
   }
   if (WasExplicitlySet("max_prefetch_js_elements")) {
     options->set_max_prefetch_js_elements(FLAGS_max_prefetch_js_elements);

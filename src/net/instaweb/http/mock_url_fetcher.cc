@@ -177,7 +177,15 @@ void MockUrlFetcher::Fetch(
         response_headers->SetStatusAndReason(HttpStatus::kNotModified);
       } else {
         // Otherwise serve a normal 200 OK response.
+        int64 min_cache_ttl_ms_ = response_headers->min_cache_ttl_ms();
+        int64 implicit_cache_ttl_ms_ =
+             response_headers->implicit_cache_ttl_ms();
         response_headers->CopyFrom(response->header());
+        // implicit_cache_ttl_ms and min_cache_ttl_ms are set to default
+        // values from the origin fetch. The explicit values set in the test
+        // case take precedence over the default values set in origin fetch.
+        response_headers->set_implicit_cache_ttl_ms(implicit_cache_ttl_ms_);
+        response_headers->set_min_cache_ttl_ms(min_cache_ttl_ms_);
         if (fail_after_headers) {
           fetch->Done(false);
           return;
