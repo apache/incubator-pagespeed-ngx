@@ -52,6 +52,7 @@
 #include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
@@ -1381,19 +1382,18 @@ ps_initiate_property_cache_lookup(
       UrlMightHavePropertyCacheEntry(request_url) &&
       async_fetch->request_headers()->method() ==
       net_instaweb::RequestHeaders::kGet) {
+    GoogleString options_signature_hash;
     if (options != NULL) {
       server_context->ComputeSignature(options);
+      options_signature_hash =
+          server_context->GetRewriteOptionsSignatureHash(options);
     }
     net_instaweb::AbstractMutex* mutex =
         server_context->thread_system()->NewMutex();
-    const StringPiece& device_type_suffix =
-        net_instaweb::UserAgentMatcher::DeviceTypeSuffix(device_type);
-    GoogleString page_key = server_context->GetPagePropertyCacheKey(
-        request_url.Spec(), options, device_type_suffix);
     property_callback = new net_instaweb::ProxyFetchPropertyCallback(
         net_instaweb::ProxyFetchPropertyCallback::kPropertyCachePage,
-        page_property_cache, page_key, device_type,
-        callback_collector.get(), mutex);
+        page_property_cache, request_url.Spec(), options_signature_hash,
+        device_type, callback_collector.get(), mutex);
     callback_collector->AddCallback(property_callback);
     added_callback = true;
     if (added_page_property_callback != NULL) {
@@ -1402,7 +1402,7 @@ ps_initiate_property_cache_lookup(
     // Trigger property cache lookup for the requests which contains query param
     // as cache key without query params. The result of this lookup will be used
     // if actual property page does not contains property value.
-    GoogleString fallback_page_key;
+    GoogleString fallback_page_url;
     if (options != NULL &&
         options->use_fallback_property_cache_values() &&
         request_url.has_query() &&
@@ -1410,14 +1410,14 @@ ps_initiate_property_cache_lookup(
         !request_url.PathAndLeaf().empty()) {
       // Don't bother looking up fallback properties for the root, "/", since
       // there is nothing to fall back to.
-      fallback_page_key = server_context->GetFallbackPagePropertyCacheKey(
-          request_url, options, device_type_suffix);
+      fallback_page_url =
+          net_instaweb::FallbackPropertyPage::GetFallbackPageUrl(request_url);
     }
-    if (!fallback_page_key.empty()) {
+    if (!fallback_page_url.empty()) {
       fallback_property_callback = new net_instaweb::ProxyFetchPropertyCallback(
           net_instaweb::ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
-          page_property_cache, fallback_page_key, device_type,
-          callback_collector.get(),
+          page_property_cache, fallback_page_url, options_signature_hash,
+          device_type, callback_collector.get(),
           server_context->thread_system()->NewMutex());
       callback_collector->AddCallback(fallback_property_callback);
     }
