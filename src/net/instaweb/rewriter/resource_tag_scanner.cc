@@ -47,14 +47,6 @@ const char kRelDnsPrefetch[] = "dns-prefetch";
 
 const char kAttrValImage[] = "image";  // <input type="image" src=...>
 
-namespace {
-
-bool IsAttributeInvalid(HtmlElement::Attribute* attr) {
-  return (attr == NULL || attr->decoding_error());
-}
-
-}  // namespace
-
 HtmlElement::Attribute* ScanElement(
     HtmlElement* element,
     RewriteDriver* driver,  // Can be NULL.
@@ -164,7 +156,7 @@ HtmlElement::Attribute* ScanElement(
     default:
       break;
   }
-  if (IsAttributeInvalid(attr) && driver != NULL) {
+  if (*category == semantic_type::kUndefined && driver != NULL) {
     // Find matching elements.
     for (int i = 0, n = driver->options()->num_url_valued_attributes();
          i < n; ++i) {
@@ -188,7 +180,7 @@ HtmlElement::Attribute* ScanElement(
       }
     }
   }
-  if (IsAttributeInvalid(attr) ||
+  if (attr == NULL || attr->decoding_error() ||
       *category == semantic_type::kUndefined) {
     attr = NULL;
     *category = semantic_type::kUndefined;

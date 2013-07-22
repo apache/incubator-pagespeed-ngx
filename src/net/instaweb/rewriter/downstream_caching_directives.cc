@@ -18,7 +18,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -54,30 +53,17 @@ void DownstreamCachingDirectives::ParseCapabilityListFromRequestHeaders(
 bool DownstreamCachingDirectives::IsPropertySupported(
     LazyBool* stored_property_support,
     const GoogleString& capability,
-    const GoogleString& supported_capabilities) {
+    const GoogleString& capabilities_to_be_supported) {
   if (*stored_property_support == kNotSet) {
-    if (supported_capabilities ==
+    if (capabilities_to_be_supported ==
         DownstreamCachingDirectives::kNoCapabilitiesSpecified) {
       *stored_property_support = kTrue;
-    } else if (supported_capabilities == capability) {
-      // Matches "ii" exactly.
-      *stored_property_support = kTrue;
-    } else if (supported_capabilities.find(StrCat(capability, ":")) == 0) {
-      // Matches "ii:" or "ii:abc".
-      *stored_property_support = kTrue;
-    } else if (supported_capabilities.find(StrCat(",", capability, ":")) !=
-               GoogleString::npos) {
-      // Matches "abc,ii:" or "abc,ii:xyz".
-      *stored_property_support = kTrue;
-    } else if (supported_capabilities.find(StrCat(capability, ",")) == 0) {
-      // Matches "ii," or "ii,abc".
-      *stored_property_support = kTrue;
-    } else if (supported_capabilities.find(StrCat(",", capability, ",")) !=
-               GoogleString::npos) {
-      // Matches "abc,ii," or "abc,ii,xyz".
-      *stored_property_support = kTrue;
     } else {
-      *stored_property_support = kFalse;
+      *stored_property_support =
+          (capabilities_to_be_supported.find(capability) !=
+           GoogleString::npos) ?
+          kTrue :
+          kFalse;
     }
   }
   return (*stored_property_support == kTrue);

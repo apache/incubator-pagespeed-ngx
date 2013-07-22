@@ -2955,7 +2955,7 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   // inputs.  So fix headers based on metadata.  We do not consider
   // FILE_BASED inputs here.  Hence if all inputs are FILED_BASED then the TTL
   // wil be min of headers->cache_ttl_ms() and
-  // ResponseHeaders::kDefaultImplicitCacheTtlMs.
+  // ResponseHeaders::kImplicitCacheTtlMs.
   int64 min_cache_expiry_time_ms = headers->cache_ttl_ms() + headers->date_ms();
   for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
     const CachedResult& partition = partitions_->partition(i);
@@ -2977,7 +2977,7 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   headers->SetDateAndCaching(
       headers->date_ms(),
       std::min(min_cache_expiry_time_ms - headers->date_ms(),
-               ResponseHeaders::kDefaultImplicitCacheTtlMs),
+               ResponseHeaders::kImplicitCacheTtlMs),
       ",private");
   headers->ComputeCaching();
 }

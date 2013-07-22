@@ -49,7 +49,7 @@ enum MustBeConstants {
   kWeekMs   = Timer::kWeekMs,
   kMonthMs  = Timer::kMonthMs,
   kYearMs   = Timer::kYearMs,
-  kImplicitCacheTtlMs = ResponseHeaders::kDefaultImplicitCacheTtlMs
+  kImplicitCacheTtlMs = ResponseHeaders::kImplicitCacheTtlMs
 };
 
 }  // namespace

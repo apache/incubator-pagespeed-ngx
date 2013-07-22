@@ -38,13 +38,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // The number of milliseconds of cache TTL we assign to resources that
   // are "likely cacheable" (e.g. images, js, css, not html) and have no
   // explicit cache ttl or expiration date.
-  static const int64 kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
-
-  // The minimum number of milliseconds of cache TTL that we assign to resources
-  // irrespective of the max-age specified in the headers. Controlled by an
-  // option. This will be set to the correct default value after conclusive
-  // experiments.
-  static const int64 kDefaultMinCacheTtlMs = -1;
+  static const int64 kImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
 
   ResponseHeaders();
   virtual ~ResponseHeaders();
@@ -191,10 +185,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void set_implicit_cache_ttl_ms(const int64 ttl) {
     implicit_cache_ttl_ms_ = ttl;
   }
-  int64 min_cache_ttl_ms() const { return min_cache_ttl_ms_; }
-  void set_min_cache_ttl_ms(const int64 ttl) {
-    min_cache_ttl_ms_ = ttl;
-  }
 
   int64 last_modified_time_ms() const;
   int64 date_ms() const;  // Timestamp from Date header.
@@ -328,17 +318,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // likely cacheable and have no explicit cache ttl or expiration date.
   int64 implicit_cache_ttl_ms_;
 
-  // The min number of milliseconds of cache TTL that we assign to all
-  // cacheable resources irrespective of whether it has an explicit age
-  // specified in the headers.
-  int64 min_cache_ttl_ms_;
-
   // The number of milliseconds of cache TTL for which we should cache the
   // response even if it was originally uncacheable.
   int64 force_cache_ttl_ms_;
   // Indicates if the response was force cached.
   bool force_cached_;
-  bool min_cache_ttl_applied_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponseHeaders);
 };

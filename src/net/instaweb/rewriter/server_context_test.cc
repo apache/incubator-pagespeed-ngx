@@ -1342,8 +1342,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 
   // Make sure we don't try to insert non-cacheable resources
   // into the cache wastefully, but still fetch them well.
-  int max_age_sec =
-      ResponseHeaders::kDefaultImplicitCacheTtlMs / Timer::kSecondMs;
+  int max_age_sec = ResponseHeaders::kImplicitCacheTtlMs / Timer::kSecondMs;
   response_headers_.Add(HttpAttributes::kCacheControl,
                        StringPrintf("max-age=%d", max_age_sec));
   SetFetchResponse(kResourceUrl, response_headers_, "");
@@ -1411,8 +1410,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   const GoogleString kContents = "ok";
   FetcherUpdateDateHeaders();
 
-  int max_age_sec =
-      ResponseHeaders::kDefaultImplicitCacheTtlMs / Timer::kSecondMs - 1;
+  int max_age_sec = ResponseHeaders::kImplicitCacheTtlMs / Timer::kSecondMs - 1;
   response_headers_.Add(HttpAttributes::kCacheControl,
                        StringPrintf("max-age=%d", max_age_sec));
   SetFetchResponse(kResourceUrl, response_headers_, "");

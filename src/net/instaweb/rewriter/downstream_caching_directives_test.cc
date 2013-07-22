@@ -18,7 +18,6 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -27,79 +26,23 @@ TEST(DownstreamCachingDirectivesTest, SupportsImageInlining) {
   EXPECT_TRUE(directives.SupportsImageInlining());
 }
 
-void VerifySupportForCapability(const StringPiece& header_value,
-                                bool expected_support) {
-  DownstreamCachingDirectives directives;
-  RequestHeaders request_headers;
-  request_headers.Add(kPsaCapabilityList, header_value);
-  directives.ParseCapabilityListFromRequestHeaders(request_headers);
-  EXPECT_TRUE(directives.SupportsImageInlining() == expected_support) <<
-      "SupportsImageInlining should have been " << expected_support <<
-      " for header value " << header_value;
-}
-
-TEST(DownstreamCachingDirectivesTest,
-       SupportsImageInliningWithNoConstraints) {
-  VerifySupportForCapability("NoCapabilitiesSpecified", true);
-}
-
 TEST(DownstreamCachingDirectivesTest,
        SupportsImageInliningEmptyRequestHeaders) {
-  VerifySupportForCapability("", false);
+  DownstreamCachingDirectives directives;
+  RequestHeaders request_headers;
+  request_headers.Add(kPsaCapabilityList, "");
+  directives.ParseCapabilityListFromRequestHeaders(request_headers);
+  EXPECT_FALSE(directives.SupportsImageInlining());
 }
 
 TEST(DownstreamCachingDirectivesTest,
        SupportsImageInliningViaRequestHeaders) {
-  StringPiece capability =
-      RewriteOptions::FilterId(RewriteOptions::kInlineImages);
-  // "ii" should mean supported.
-  VerifySupportForCapability(capability, true);
-  // "iix" should mean unsupported.
-  VerifySupportForCapability(StrCat(capability, "x"), false);
-}
-
-TEST(DownstreamCachingDirectivesTest,
-       SupportsImageInliningViaRequestHeadersWithColonEnding) {
-  StringPiece capability =
-      RewriteOptions::FilterId(RewriteOptions::kInlineImages);
-  // "ii:" should mean supported.
-  VerifySupportForCapability(StrCat(capability, ":"), true);
-  // "ii:abc" should mean supported.
-  VerifySupportForCapability(StrCat(capability, ":abc"), true);
-  // "xii:" should mean unsupported.
-  VerifySupportForCapability(StrCat("x", capability, ":"), false);
-  // "iix:" should mean unsupported.
-  VerifySupportForCapability(StrCat(capability, "x:"), false);
-  // ",ii:" should mean supported.
-  VerifySupportForCapability(StrCat(",", capability, ":"), true);
-  // ",iix:" should mean unsupported.
-  VerifySupportForCapability(StrCat(",", capability, "x:"), false);
-  // "abc,ii:" should mean supported.
-  VerifySupportForCapability(StrCat("abc,", capability, ":"), true);
-  // "abc,ii:def" should mean supported.
-  VerifySupportForCapability(StrCat("abc,", capability, ":def"), true);
-}
-
-TEST(DownstreamCachingDirectivesTest,
-       SupportsImageInliningViaRequestHeadersWithComma) {
-  StringPiece capability =
-      RewriteOptions::FilterId(RewriteOptions::kInlineImages);
-  // "ii," should mean supported.
-  VerifySupportForCapability(StrCat(capability, ","), true);
-  // "ii,abc" should mean supported.
-  VerifySupportForCapability(StrCat(capability, ",abc"), true);
-  // "xii," should mean unsupported.
-  VerifySupportForCapability(StrCat("x", capability, ","), false);
-  // "iix," should mean unsupported.
-  VerifySupportForCapability(StrCat(capability, "x,"), false);
-  // ",iix" should mean unsupported.
-  VerifySupportForCapability(StrCat(",", capability, "x"), false);
-  // ",ii," should mean supported.
-  VerifySupportForCapability(StrCat(",", capability, ","), true);
-  // "abc,ii," should mean supported.
-  VerifySupportForCapability(StrCat("abc,", capability, ","), true);
-  // "abc,ii,def" should mean supported.
-  VerifySupportForCapability(StrCat("abc,", capability, ",def"), true);
+  DownstreamCachingDirectives directives;
+  RequestHeaders request_headers;
+  request_headers.Add(kPsaCapabilityList,
+                      RewriteOptions::FilterId(RewriteOptions::kInlineImages));
+  directives.ParseCapabilityListFromRequestHeaders(request_headers);
+  EXPECT_TRUE(directives.SupportsImageInlining());
 }
 
 }  // namespace net_instaweb

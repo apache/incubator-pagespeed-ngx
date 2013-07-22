@@ -32,8 +32,6 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
                             type, rewrite_driver) {
   response_headers()->set_implicit_cache_ttl_ms(
       rewrite_options()->implicit_cache_ttl_ms());
-  response_headers()->set_min_cache_ttl_ms(
-      rewrite_options()->min_cache_ttl_ms());
   set_disable_rewrite_on_no_transform(
       rewrite_options()->disable_rewrite_on_no_transform());
 }

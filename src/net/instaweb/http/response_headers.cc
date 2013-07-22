@@ -16,9 +16,7 @@
 
 #include "net/instaweb/http/public/response_headers.h"
 
-#include <algorithm>                    // for min
 #include <cstdio>     // for fprintf, stderr, snprintf
-#include <memory>
 
 #include "base/logging.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders, etc
@@ -48,12 +46,10 @@ const int64 kMaxAllowedDateDriftMs = 3L * net_instaweb::Timer::kMinuteMs;
 
 class MessageHandler;
 
-const int64 ResponseHeaders::kDefaultImplicitCacheTtlMs;
-const int64 ResponseHeaders::kDefaultMinCacheTtlMs;
+const int64 ResponseHeaders::kImplicitCacheTtlMs;
 
 ResponseHeaders::ResponseHeaders()
-    : implicit_cache_ttl_ms_(kDefaultImplicitCacheTtlMs),
-      min_cache_ttl_ms_(kDefaultMinCacheTtlMs) {
+    : implicit_cache_ttl_ms_(kImplicitCacheTtlMs) {
   proto_.reset(new HttpResponseHeaders);
   Clear();
 }
@@ -101,11 +97,11 @@ bool ResponseHeaders::IsImminentlyExpiring(
   // implicit ttl. If the implicit ttl has been overridden by a site, we will
   // not honor it here. Fix that.
 
-  if (ttl_ms < ResponseHeaders::kDefaultImplicitCacheTtlMs) {
+  if (ttl_ms < ResponseHeaders::kImplicitCacheTtlMs) {
     return false;
   }
   int64 freshen_threshold = std::min(
-      ResponseHeaders::kDefaultImplicitCacheTtlMs,
+      ResponseHeaders::kImplicitCacheTtlMs,
       ((100 - kRefreshExpirePercent) * ttl_ms) / 100);
   return (expire_ms - now_ms < freshen_threshold);
 }
@@ -183,8 +179,6 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
   cache_fields_dirty_ = other.cache_fields_dirty_;
   force_cache_ttl_ms_ = other.force_cache_ttl_ms_;
   force_cached_ = other.force_cached_;
-  implicit_cache_ttl_ms_ = other.implicit_cache_ttl_ms_;
-  min_cache_ttl_ms_ = other.min_cache_ttl_ms_;
 }
 
 void ResponseHeaders::Clear() {
@@ -202,7 +196,6 @@ void ResponseHeaders::Clear() {
   cache_fields_dirty_ = false;
   force_cache_ttl_ms_ = -1;
   force_cached_ = false;
-  min_cache_ttl_applied_ = false;
 }
 
 int ResponseHeaders::status_code() const {
@@ -443,6 +436,7 @@ void ResponseHeaders::SetDateAndCaching(
   // Note: We set both Expires and Cache-Control headers so that legacy
   // HTTP/1.0 browsers and proxies correctly cache these resources.
   SetTimeHeader(HttpAttributes::kExpires, date_ms + ttl_ms);
+
   Replace(HttpAttributes::kCacheControl,
           StrCat("max-age=", Integer64ToString(ttl_ms / Timer::kSecondMs),
                  cache_control_suffix));
@@ -641,14 +635,6 @@ void ResponseHeaders::ComputeCaching() {
     if (computer.IsExplicitlyCacheable()) {
       // TODO(sligocki): Do we care about the return value.
       computer.GetFreshnessLifetimeMillis(&cache_ttl_ms);
-      // If min_cache_ttl_ms is set, this overrides cache TTL hints even if
-      // explicitly set in the header. Use the max of min_cache_ttl_ms and
-      // the cache_ttl computed so far. Do this only for non HTML.
-      if (type != NULL && !type->IsHtmlLike() &&
-          min_cache_ttl_ms_ > cache_ttl_ms) {
-        cache_ttl_ms = min_cache_ttl_ms_;
-        min_cache_ttl_applied_ = true;
-      }
     }
     if (force_caching_enabled &&
         (force_cache_ttl_ms_ > cache_ttl_ms || !is_proxy_cacheable)) {
@@ -661,6 +647,7 @@ void ResponseHeaders::ComputeCaching() {
 
     proto_->set_cache_ttl_ms(cache_ttl_ms);
     proto_->set_expiration_time_ms(proto_->date_ms() + cache_ttl_ms);
+
     proto_->set_proxy_cacheable(force_cached_ || is_proxy_cacheable);
 
     // Do not cache HTML with Set-Cookie / Set-Cookie2 headers even though it
@@ -673,20 +660,15 @@ void ResponseHeaders::ComputeCaching() {
       proto_->set_proxy_cacheable(false);
     }
 
-    if (proto_->proxy_cacheable() && !force_cached_) {
-      if (!computer.IsExplicitlyCacheable()) {
-        // If the resource is proxy cacheable but it does not have explicit
-        // caching headers and is not force cached, explicitly set the caching
-        // headers.
-        DCHECK(has_date);
-        DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
-        proto_->set_is_implicitly_cacheable(true);
-        SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
-      } else if (min_cache_ttl_applied_) {
-        DCHECK(has_date);
-        DCHECK(cache_ttl_ms == min_cache_ttl_ms());
-        SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
-      }
+    if (proto_->proxy_cacheable() &&
+        !computer.IsExplicitlyCacheable() && !force_cached_) {
+      // If the resource is proxy cacheable but it does not have explicit
+      // caching headers and is not force cached, explicitly set the caching
+      // headers.
+      DCHECK(has_date);
+      DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
+      proto_->set_is_implicitly_cacheable(true);
+      SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
     }
   } else {
     proto_->set_expiration_time_ms(0);
@@ -878,10 +860,6 @@ void ResponseHeaders::DebugPrint() const {
           BoolToString(proto_->is_implicitly_cacheable()));
   fprintf(stderr, "implicit_cache_ttl_ms_ = %s\n",
           Integer64ToString(implicit_cache_ttl_ms()).c_str());
-  fprintf(stderr, "min_cache_ttl_ms_ = %s\n",
-          Integer64ToString(min_cache_ttl_ms()).c_str());
-  fprintf(stderr, "min_cache_ttl_applied_ = %s\n",
-          BoolToString(min_cache_ttl_applied_));
   if (!cache_fields_dirty_) {
     fprintf(stderr, "expiration_time_ms_ = %s\n",
             Integer64ToString(proto_->expiration_time_ms()).c_str());

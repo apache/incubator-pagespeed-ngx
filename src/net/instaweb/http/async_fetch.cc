@@ -359,14 +359,10 @@ void ConditionalSharedAsyncFetch::HandleHeadersComplete() {
     // and stop passing any events through to the base fetch.
     serving_cached_value_ = true;
     int64 implicit_cache_ttl_ms = response_headers()->implicit_cache_ttl_ms();
-    int64 min_cache_ttl_ms = response_headers()->min_cache_ttl_ms();
     response_headers()->Clear();
     cached_value_.ExtractHeaders(response_headers(), handler_);
     if (response_headers()->is_implicitly_cacheable()) {
       response_headers()->SetCacheControlMaxAge(implicit_cache_ttl_ms);
-      response_headers()->ComputeCaching();
-    } else if (response_headers()->cache_ttl_ms() < min_cache_ttl_ms) {
-      response_headers()->SetCacheControlMaxAge(min_cache_ttl_ms);
       response_headers()->ComputeCaching();
     }
     SharedAsyncFetch::HandleHeadersComplete();

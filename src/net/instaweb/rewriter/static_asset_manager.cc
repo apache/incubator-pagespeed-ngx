@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 
 #include <cstddef>
-#include <memory>
 #include <utility>
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
@@ -115,7 +114,7 @@ StaticAssetManager::StaticAssetManager(
   ResponseHeaders header;
   // TODO(ksimbili): Define a new constant kShortCacheTtlForMismatchedContentMs
   // in ServerContext for 5min.
-  header.SetDateAndCaching(0, ResponseHeaders::kDefaultImplicitCacheTtlMs);
+  header.SetDateAndCaching(0, ResponseHeaders::kImplicitCacheTtlMs);
   cache_header_with_private_ttl_ = StrCat(
       header.Lookup1(HttpAttributes::kCacheControl),
       ",private");

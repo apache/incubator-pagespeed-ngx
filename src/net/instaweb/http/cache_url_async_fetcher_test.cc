@@ -48,9 +48,8 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/worker_test_base.h"
 #include "net/instaweb/util/public/timer.h"
-#include "pagespeed/kernel/base/function.h"
-#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 
@@ -231,7 +230,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         etag_("123456790ABCDEF"),
         ttl_ms_(Timer::kHourMs),
         implicit_cache_ttl_ms_(500 * Timer::kSecondMs),
-        min_cache_ttl_ms_(-1),
         cache_result_valid_(true),
         thread_system_(Platform::CreateThreadSystem()),
         thread_synchronizer_(new ThreadSynchronizer(thread_system_.get())),
@@ -390,7 +388,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     bool is_cacheable = false;
     ResponseHeaders fetch_response_headers;
     fetch_response_headers.set_implicit_cache_ttl_ms(implicit_cache_ttl_ms_);
-    fetch_response_headers.set_min_cache_ttl_ms(min_cache_ttl_ms_);
     MockFetch* fetch = new MockFetch(
         RequestContext::NewTestRequestContext(thread_system_.get()),
         &fetch_content, &fetch_done, &fetch_success, &is_cacheable);
@@ -406,8 +403,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     if (success) {
       EXPECT_TRUE(fetch_response_headers.has_status_code());
       EXPECT_EQ(code, fetch_response_headers.status_code());
-      EXPECT_EQ(min_cache_ttl_ms_,
-                fetch_response_headers.min_cache_ttl_ms());
       EXPECT_EQ(implicit_cache_ttl_ms_,
                 fetch_response_headers.implicit_cache_ttl_ms());
     }
@@ -611,7 +606,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
 
   const int ttl_ms_;
   int64 implicit_cache_ttl_ms_;
-  int64 min_cache_ttl_ms_;
 
   bool cache_result_valid_;
 
@@ -1280,91 +1274,6 @@ TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningModifiedImplicitCacheTtl) {
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
   EXPECT_EQ(static_cast<size_t>(1), values.size());
   EXPECT_EQ(GoogleString("max-age=700"), *(values[0]));
-  EXPECT_EQ(cache_body_, contents);
-}
-
-TEST_F(CacheUrlAsyncFetcherTest, Check304FresheningMinCacheTtl) {
-  // First fetch misses initial cache lookup. The fetch succeeds and the result
-  // is inserted in cache.
-  RequestHeaders request_headers;
-  ClearStats();
-  min_cache_ttl_ms_ = 2 * ttl_ms_;
-  FetchAndValidate(conditional_last_modified_url_, request_headers, true,
-                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
-  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
-  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
-  EXPECT_EQ(1, counting_fetcher_.fetch_count());
-  EXPECT_EQ(4, counting_fetcher_.byte_count());
-  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
-  EXPECT_EQ(0, cache_fetcher_->num_conditional_refreshes()->Get());
-
-  ResponseHeaders response_headers;
-  NullMessageHandler message_handler;
-  HTTPValue value;
-  StringPiece contents;
-  ConstStringStarVector values;
-
-  // Lookup the url in the cache and confirm the min cache ttl and the
-  // max-age values are as expected.
-  HTTPCache::FindResult found = Find(conditional_last_modified_url_, &value,
-                                     &response_headers, &message_handler);
-  EXPECT_EQ(HTTPCache::kFound, found);
-  EXPECT_TRUE(response_headers.headers_complete());
-  EXPECT_TRUE(value.ExtractContents(&contents));
-  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
-  EXPECT_EQ(static_cast<size_t>(1), values.size());
-  EXPECT_EQ(GoogleString("max-age=7200"), *(values[0]));
-  EXPECT_EQ(cache_body_, contents);
-
-  ClearStats();
-  // Advancing by min_cache_ttl_ms_.
-  timer_.AdvanceMs(min_cache_ttl_ms_);
-  // Second fetch misses the cache. A conditional fetch is done and the result
-  // is inserted in the cache again. Min cache ttl is still the same, and
-  // hence the max-age is updated this time on conditional fetch.
-  FetchAndValidate(conditional_last_modified_url_, request_headers, true,
-                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
-  EXPECT_EQ(1, http_cache_->cache_expirations()->Get());
-  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
-  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
-  EXPECT_EQ(1, counting_fetcher_.fetch_count());
-  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
-
-  // Lookup the url in the cache and confirm the min cache ttl and max-age
-  // values have not changed.
-  found = Find(conditional_last_modified_url_, &value, &response_headers,
-               &message_handler);
-  EXPECT_EQ(HTTPCache::kFound, found);
-  EXPECT_TRUE(response_headers.headers_complete());
-  EXPECT_TRUE(value.ExtractContents(&contents));
-  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
-  EXPECT_EQ(static_cast<size_t>(1), values.size());
-  EXPECT_EQ(GoogleString("max-age=7200"), *(values[0]));
-  EXPECT_EQ(cache_body_, contents);
-
-  // Change the value of the min cache ttl to some other value.
-  // Confirm that the new response after the conditional fetch is now
-  // inserted in the cache with the new min cache ttl and max-age.
-  min_cache_ttl_ms_ = 3 * ttl_ms_;
-  ClearStats();
-  // Advancing by min_cache_ttl_ms_.
-  timer_.AdvanceMs(min_cache_ttl_ms_);
-  FetchAndValidate(conditional_last_modified_url_, request_headers, true,
-                   HttpStatus::kOK, cache_body_, kBackendFetch, true);
-  EXPECT_EQ(1, http_cache_->cache_expirations()->Get());
-  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
-  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
-  EXPECT_EQ(1, counting_fetcher_.fetch_count());
-  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
-
-  found = Find(conditional_last_modified_url_, &value, &response_headers,
-               &message_handler);
-  EXPECT_EQ(HTTPCache::kFound, found);
-  EXPECT_TRUE(response_headers.headers_complete());
-  EXPECT_TRUE(value.ExtractContents(&contents));
-  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
-  EXPECT_EQ(static_cast<size_t>(1), values.size());
-  EXPECT_EQ(GoogleString("max-age=10800"), *(values[0]));
   EXPECT_EQ(cache_body_, contents);
 }
 
