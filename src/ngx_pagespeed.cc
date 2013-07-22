@@ -2199,23 +2199,27 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t *r) {
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "ps in place header filter: %V", &r->uri);
+                 "ps in place check header filter: %V", &r->uri);
 
   int status_code = r->headers_out.status;
 
   bool status_ok = (status_code != 0) && (status_code < 400);
 
-  // continue process
-  if (status_ok) {
-    ctx->in_place = false;
-    return ngx_http_next_header_filter(r);
-  }
-
-
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   net_instaweb::NgxServerContext* server_context = cfg_s->server_context;
   net_instaweb::MessageHandler* message_handler = cfg_s->handler;
   GoogleString url = ps_determine_url(r);
+
+  // continue process
+  if (status_ok) {
+    ctx->in_place = false;
+
+    server_context->rewrite_stats()->ipro_served()->Add(1);
+    message_handler->Message(net_instaweb::kInfo, "Serving rewritten resource in-place: %s",
+                             url.c_str());
+
+    return ngx_http_next_header_filter(r);
+  }
 
   if (status_code == net_instaweb::CacheUrlAsyncFetcher::kNotInCacheStatus) {
     server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
@@ -2247,6 +2251,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t *r) {
 
   ctx->driver->Cleanup();
   ctx->driver = NULL;
+  // enable html_rewrite
   ctx->html_rewrite = true;
   ctx->in_place = false;
 
