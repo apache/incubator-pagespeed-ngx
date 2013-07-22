@@ -213,11 +213,8 @@ fi
 
 PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
-PAGESPEED_EXPECTED_FAILURES="
-  ~In-place resource optimization~
-  ~dedup_inlined_images,inline_images~
-  ~Blocking rewrite enabled.~
-"
+# An expected failure can be indicated like: "~In-place resource optimization~"
+PAGESPEED_EXPECTED_FAILURES=""
 
 # The existing system test takes its arguments as positional parameters, and
 # wants different ones than we want, so we need to reset our positional args.
@@ -361,6 +358,7 @@ check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
 
 # And also with bad request headers.
 OUT=$(wget -O - --header=PageSpeedFilters:bogus $EXAMPLE_ROOT)
+echo $OUT
 check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
 
 # Test that loopback route fetcher works with vhosts not listening on
@@ -1250,13 +1248,8 @@ check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
 $WGET_DUMP $STATISTICS_URL > $NEWSTATS
 check_stat $OLDSTATS $NEWSTATS image_rewrites 1
 check_stat $OLDSTATS $NEWSTATS cache_hits 0
-# Something about IPRO means that in mod_pagespeed this comes in as 2.  Before
-# IPRO this said 1, and we're getting 1 in ngx_pagespeed, so I think this is
-# probably correct.
-check_stat $OLDSTATS $NEWSTATS cache_misses 1
-# In mod_pagespeed this is 2 cache inserts for image + 1 for HTML in IPRO flow.
-# We don't have IPRO, so this is just 2 cache inserts for the image.
-check_stat $OLDSTATS $NEWSTATS cache_inserts 2
+check_stat $OLDSTATS $NEWSTATS cache_misses 2
+check_stat $OLDSTATS $NEWSTATS cache_inserts 3
 # TODO(sligocki): There is no stat num_rewrites_executed. Fix.
 #check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
 

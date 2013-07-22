@@ -1836,6 +1836,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t *r, bool html_rewrite) {
              url_string.c_str());
 
     ctx->in_place = true;
+    ctx->base_fetch->set_handle_error(false);
     ctx->driver->FetchInPlaceResource(
                  url, false /* proxy_mode */, ctx->base_fetch);
 
@@ -2202,7 +2203,6 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t *r) {
                  "ps in place check header filter: %V", &r->uri);
 
   int status_code = r->headers_out.status;
-
   bool status_ok = (status_code != 0) && (status_code < 400);
 
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -2215,8 +2215,9 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t *r) {
     ctx->in_place = false;
 
     server_context->rewrite_stats()->ipro_served()->Add(1);
-    message_handler->Message(net_instaweb::kInfo, "Serving rewritten resource in-place: %s",
-                             url.c_str());
+    message_handler->Message(
+        net_instaweb::kInfo, "Serving rewritten resource in-place: %s",
+        url.c_str());
 
     return ngx_http_next_header_filter(r);
   }
@@ -2283,11 +2284,28 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
     }
 
     if (cl->buf->last_buf) {
-      net_instaweb::ResponseHeaders response_headers;
+      net_instaweb::ResponseHeaders headers;
+      // TODO(oschaaf): We don't get a Date response header here.
+      // Currently, we invent one and set it to the current date/time.
+      // We need to investigate why we don't receive it.
+      headers.set_major_version(r->http_version / 1000);
+      headers.set_minor_version(r->http_version % 1000);
+      copy_headers_from_table(r->headers_out.headers, &headers);
+      headers.set_status_code(r->headers_out.status);
+      headers.Add(net_instaweb::HttpAttributes::kContentType,
+                  ngx_psol::str_to_string_piece(r->headers_out.content_type));
+      if (r->headers_out.location != NULL) {
+        headers.Add(net_instaweb::HttpAttributes::kLocation,
+                    ngx_psol::str_to_string_piece(r->headers_out.location->value));
+      }
 
-      copy_response_headers_from_ngx(r, &response_headers);
+      StringPiece date = headers.Lookup1(net_instaweb::HttpAttributes::kDate);
+      if (date.empty()) {
+        headers.SetDate(ngx_current_msec);
+      }
 
-      ctx->recorder->DoneAndSetHeaders(&response_headers);
+      headers.ComputeCaching();
+      ctx->recorder->DoneAndSetHeaders(&headers);
       ctx->recorder = NULL;
       break;
     }
