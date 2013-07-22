@@ -23,11 +23,13 @@ about.ask.com
 A6-Indexer
 Apache-HttpClient
 Arachni
+AsyncHttpClient
 BackRub
 BingPreview
 expo9
 facebookexternalhit
 facebookplatform
+Feedfetcher-Google
 Genieo
 Google-StructuredDataTestingTool
 HttpClient
@@ -36,6 +38,7 @@ Mediapartners-Google
 PHP
 proximic
 Python
+Python-urllib
 RPT-HTTPClient
 Ruby
 WordPress

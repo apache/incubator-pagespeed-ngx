@@ -1000,6 +1000,23 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {
   EXPECT_EQ(0, stats.status_counts_size());
 }
 
+TEST_F(FlushEarlyFlowTest, ConditionalRequestHeaders) {
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Add(HttpAttributes::kUserAgent, "prefetch_link_script_tag");
+  request_headers.Add(HttpAttributes::kIfNoneMatch, "etag");
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_STREQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::DISABLED, stats.html_status());
+  EXPECT_EQ(0, stats.status_counts_size());
+}
+
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // Test that the flush early flow is not triggered when the status code is
   // unstable.
