@@ -26,12 +26,14 @@
 #include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
@@ -40,7 +42,9 @@ namespace {
 
 const int64 kLoggingIntervalMs = 3 * Timer::kSecondMs;
 const int64 kMaxLogfileSizeKb = 10;
-const char kLogFile[] = "mod_pagespeed_stats.log";
+const char kStatsLogFile[] = "mod_pagespeed_stats.log";
+const char kTimestampVarName[] = "timestamp_";
+const char kUnloggedVariable[] = "unlogged_variable_";
 
 }  // namespace
 
@@ -56,9 +60,19 @@ class StatisticsLoggerTest : public ::testing::Test {
         // Note: These unit tests don't need access to timestamp variable or
         // statistics. There are integration tests in
         // SharedMemStatisticsTestBase which test those interactions.
-        logger_(kLoggingIntervalMs, kMaxLogfileSizeKb, kLogFile,
-                NULL /* timestamp_var */, &handler_,
-                NULL /* statistics */, &file_system_, &timer_) {}
+        logger_(kLoggingIntervalMs, kMaxLogfileSizeKb, kStatsLogFile,
+                stats_.AddVariable(kTimestampVarName), &handler_,
+                &stats_, &file_system_, &timer_) {
+    logger_.InitStatsForTest();
+    // Another non-logged statistics.
+    stats_.AddVariable(kUnloggedVariable);
+  }
+
+  virtual ~StatisticsLoggerTest() {}
+
+  void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer) {
+    logger_.DumpConsoleVarsToWriter(current_time_ms, writer);
+  }
 
   GoogleString CreateVariableDataResponse(bool has_unused_variable,
                                           bool first) {
@@ -98,7 +112,7 @@ class StatisticsLoggerTest : public ::testing::Test {
     for (int64 time = *start_time; time < *end_time; time += *granularity_ms) {
       StrAppend(&log, "timestamp: ", Integer64ToString(time), "\n", var_data);
     }
-    file_system_.WriteFile(kLogFile, log, &handler_);
+    file_system_.WriteFile(kStatsLogFile, log, &handler_);
   }
 
   // Methods defined here to get around private access restrictions.
@@ -125,6 +139,7 @@ class StatisticsLoggerTest : public ::testing::Test {
   scoped_ptr<ThreadSystem> thread_system_;
   MockMessageHandler handler_;
   MemFileSystem file_system_;
+  SimpleStats stats_;
   StatisticsLogger logger_;
 };
 
@@ -134,7 +149,7 @@ TEST_F(StatisticsLoggerTest, TestParseDataFromReader) {
   CreateFakeLogfile(&var_titles, &start_time, &end_time, &granularity_ms);
 
   FileSystem::InputFile* log_file =
-      file_system_.OpenInputFile(kLogFile, &handler_);
+      file_system_.OpenInputFile(kStatsLogFile, &handler_);
   GoogleString output;
   StatisticsLogfileReader reader(log_file, start_time, end_time,
                                  granularity_ms, &handler_);
@@ -287,7 +302,7 @@ TEST_F(StatisticsLoggerTest, NoMalformedJson) {
 // logged variables changes.
 TEST_F(StatisticsLoggerTest, ConsistentNumberArgs) {
   // foo and bar only recorded at certain timestamps.
-  file_system_.WriteFile(kLogFile,
+  file_system_.WriteFile(kStatsLogFile,
                          "timestamp: 1000\n"
                          "timestamp: 2000\n"
                          "foo: 2\n"
@@ -310,6 +325,66 @@ TEST_F(StatisticsLoggerTest, ConsistentNumberArgs) {
   EXPECT_EQ("{\"timestamps\": [1000, 2000, 3000, 4000],\"variables\": {"
             "\"bar\": [0, 20, 30, 0],"
             "\"foo\": [0, 2, 0, 4]}}", json_dump);
+}
+
+TEST_F(StatisticsLoggerTest, FromStats) {
+  stats_.GetVariable(kUnloggedVariable)->Set(2300);
+  stats_.GetVariable("num_flushes")->Set(300);
+
+  GoogleString logger_output;
+  StringWriter logger_writer(&logger_output);
+  DumpConsoleVarsToWriter(MockTimer::kApr_5_2010_ms, &logger_writer);
+
+  std::vector<StringPiece> lines;
+  SplitStringPieceToVector(logger_output, "\n", &lines, true);
+  ASSERT_LE(2, lines.size());
+  EXPECT_EQ("timestamp: 1270493486000", lines[0]);
+  for (int i = 1; i < lines.size(); ++i) {
+    std::vector<StringPiece> parts;
+    SplitStringPieceToVector(lines[i], ":", &parts, false);
+    ASSERT_EQ(2, parts.size()) << lines[i];
+
+    StringPiece name = parts[0];
+    int64 value;
+    TrimWhitespace(&parts[1]);
+    ASSERT_TRUE(StringToInt64(parts[1], &value)) << parts[1];
+
+    EXPECT_EQ(value, stats_.GetVariable(name)->Get());
+  }
+}
+
+TEST_F(StatisticsLoggerTest, LogfileTrimming) {
+  const int64 kMaxLogfileSizeBytes = kMaxLogfileSizeKb * 1024;
+
+  // Logfile does not exist.
+  EXPECT_EQ(0, file_system_.num_output_file_opens());
+  EXPECT_TRUE(file_system_.Exists(kStatsLogFile, &handler_).is_false());
+
+  // Data is written to logfile.
+  timer_.AdvanceMs(2 * kLoggingIntervalMs);
+  logger_.UpdateAndDumpIfRequired();
+  // Test that we actually wrote out to logfile.
+  EXPECT_EQ(1, file_system_.num_output_file_opens());
+  int64 log_size_bytes;
+  EXPECT_TRUE(file_system_.Size(kStatsLogFile, &log_size_bytes, &handler_));
+  // Note: This could fail if one dump becomes larger than
+  // kMaxLogfileSizeBytes or when we move to rotated logs.
+  EXPECT_LT(0, log_size_bytes);
+  EXPECT_GE(kMaxLogfileSizeBytes, log_size_bytes);
+
+  int64 logs_to_overflow = kMaxLogfileSizeBytes / log_size_bytes + 1;
+  for (int i = 0; i < logs_to_overflow * 10; ++i) {
+    timer_.AdvanceMs(2 * kLoggingIntervalMs);
+    logger_.UpdateAndDumpIfRequired();
+    // Test that we actually wrote out to logfile.
+    EXPECT_EQ(i + 2, file_system_.num_output_file_opens());
+    // Test that the logfile never gets too big.
+    if (file_system_.Exists(kStatsLogFile, &handler_).is_true()) {
+      int64 size_bytes;
+      EXPECT_TRUE(file_system_.Size(kStatsLogFile, &size_bytes, &handler_));
+      EXPECT_GE(kMaxLogfileSizeBytes, size_bytes);
+    }
+  }
 }
 
 }  // namespace net_instaweb

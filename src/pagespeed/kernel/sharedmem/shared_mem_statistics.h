@@ -18,7 +18,6 @@
 #define PAGESPEED_KERNEL_SHAREDMEM_SHARED_MEM_STATISTICS_H_
 
 #include <cstddef>
-#include <set>
 
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
@@ -35,7 +34,6 @@ class FileSystem;
 class MessageHandler;
 class StatisticsLogger;
 class Timer;
-class Writer;
 
 // An implementation of Statistics using our shared memory infrastructure.
 // These statistics will be shared amongst all processes and threads
@@ -210,12 +208,6 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
     return console_logger_.get();
   }
 
-  virtual void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer,
-                                       MessageHandler* message_handler);
-  // Return whether to ignore the variable with a given name as unneeded by the
-  // console.
-  bool IsIgnoredVariable(const GoogleString& var_name);
-
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
   virtual SharedMemHistogram* NewHistogram(const StringPiece& name);
@@ -237,8 +229,6 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   bool frozen_;
   // TODO(sligocki): Rename.
   scoped_ptr<StatisticsLogger> console_logger_;
-  // The variables that we're interested in displaying on the console.
-  std::set<GoogleString> important_variables_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemStatistics);
 };

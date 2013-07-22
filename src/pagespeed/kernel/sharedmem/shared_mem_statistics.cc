@@ -31,7 +31,6 @@
 #include "pagespeed/kernel/base/statistics_logger.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 
@@ -51,49 +50,6 @@ const char kStatisticsObjName[] = "statistics";
 // Variable name for the timestamp used to decide whether we should dump
 // statistics.
 const char kTimestampVariable[] = "timestamp_";
-
-// Variables to keep for the console. These are the same names used in
-// /mod_pagespeed_statistics.
-// TODO(sligocki): Move into statistics_logger.cc and rename to be more
-// descriptive.
-const char* const kImportant[] = {
-  // Variables used in /pagespeed_console
-  "serf_fetch_failure_count", "serf_fetch_request_count",
-  "resource_url_domain_rejections", "resource_url_domain_acceptances",
-  "num_cache_control_not_rewritable_resources",
-  "num_cache_control_rewritable_resources",
-  "cache_backend_misses", "cache_backend_hits", "cache_expirations",
-  "css_filter_parse_failures", "css_filter_blocks_rewritten",
-  "javascript_minification_failures", "javascript_blocks_minified",
-  "image_rewrites", "image_rewrites_dropped_nosaving_resize",
-  "image_rewrites_dropped_nosaving_noresize",
-  "image_norewrites_high_resolution",
-  "image_rewrites_dropped_decode_failure"
-  "image_rewrites_dropped_server_write_fail"
-  "image_rewrites_dropped_mime_type_unknown"
-  "image_norewrites_high_resolution",
-  "css_combine_opportunities", "css_file_count_reduction",
-
-  // Variables used by /mod_pagespeed_temp_statistics_graphs
-  // Note: It's fine that there are duplicates here.
-  // TODO(sligocki): Remove this in favor of the /pagespeed_console vars.
-  // Should we also add other stats for future/other use?
-  "num_flushes", "cache_hits", "cache_misses",
-  "num_fallback_responses_served", "slurp_404_count", "page_load_count",
-  "total_page_load_ms", "num_rewrites_executed", "num_rewrites_dropped",
-  "resource_404_count", "serf_fetch_request_count",
-  "serf_fetch_bytes_count", "image_ongoing_rewrites",
-  "javascript_total_bytes_saved", "css_filter_total_bytes_saved",
-  "image_rewrite_total_bytes_saved", "image_norewrites_high_resolution",
-  "image_rewrites_dropped_due_to_load", "image_rewrites_dropped_intentionally",
-  "memcached_get_count", "memcached_hit_latency_us",
-  "memcached_insert_latency_us", "memcached_insert_size_bytes",
-  "memcached_lookup_size_bytes", "memcached_hits", "memcached_misses",
-  "flatten_imports_charset_mismatch", "flatten_imports_invalid_url",
-  "flatten_imports_limit_exceeded", "flatten_imports_minify_failed",
-  "flatten_imports_recursion", "css_filter_parse_failures",
-  "converted_meta_tags", "javascript_minification_failures"
-};
 
 }  // namespace
 
@@ -471,11 +427,6 @@ SharedMemStatistics::SharedMemStatistics(
       frozen_(false) {
   if (logging) {
     if (logging_file.size() > 0) {
-      // Variables account for the possibility that the Logger is NULL.
-      // Only 1 Statistics object per process, so this shouldn't be too slow.
-      for (int i = 0, n = arraysize(kImportant); i < n; ++i) {
-        important_variables_.insert(kImportant[i]);
-      }
       SharedMemVariable* timestamp_var = AddVariable(kTimestampVariable);
       console_logger_.reset(new StatisticsLogger(
           logging_interval_ms, max_logfile_size_kb, logging_file,
@@ -622,32 +573,6 @@ void SharedMemStatistics::GlobalCleanup(MessageHandler* message_handler) {
 
 GoogleString SharedMemStatistics::SegmentName() const {
   return StrCat(filename_prefix_, kStatisticsObjName);
-}
-
-bool SharedMemStatistics::IsIgnoredVariable(const GoogleString& var_name) {
-  return (important_variables_.find(var_name) == important_variables_.end());
-}
-
-void SharedMemStatistics::DumpConsoleVarsToWriter(
-    int64 current_time_ms, Writer* writer, MessageHandler* message_handler) {
-  writer->Write(StringPrintf("timestamp: %s\n",
-      Integer64ToString(current_time_ms).c_str()), message_handler);
-
-  for (int i = 0, n = variables_size(); i < n; ++i) {
-    Variable* var = variables(i);
-    GoogleString var_name = var->GetName().as_string();
-    if (IsIgnoredVariable(var_name)) {
-      continue;
-    }
-    GoogleString var_as_str = Integer64ToString(var->Get());
-    writer->Write(StringPrintf("%s: %s\n", var_name.c_str(),
-        var_as_str.c_str()), message_handler);
-  }
-
-  // Note: We used to dump histogram data as well, but that data is quite large
-  // and we don't have a plan to use it in the console, so it was removed.
-
-  writer->Flush(message_handler);
 }
 
 }  // namespace net_instaweb

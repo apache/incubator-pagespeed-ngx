@@ -36,6 +36,50 @@
 
 namespace net_instaweb {
 
+namespace {
+
+// Variables used in /pagespeed_console. These will all be logged and
+// are the default set of variables sent back in JSON requests.
+const char* const kConsoleVars[] = {
+  "serf_fetch_failure_count", "serf_fetch_request_count",
+  "resource_url_domain_rejections", "resource_url_domain_acceptances",
+  "num_cache_control_not_rewritable_resources",
+  "num_cache_control_rewritable_resources",
+  "cache_backend_misses", "cache_backend_hits", "cache_expirations",
+  "css_filter_parse_failures", "css_filter_blocks_rewritten",
+  "javascript_minification_failures", "javascript_blocks_minified",
+  "image_rewrites", "image_rewrites_dropped_nosaving_resize",
+  "image_rewrites_dropped_nosaving_noresize",
+  "image_norewrites_high_resolution",
+  "image_rewrites_dropped_decode_failure",
+  "image_rewrites_dropped_server_write_fail",
+  "image_rewrites_dropped_mime_type_unknown",
+  "image_norewrites_high_resolution",
+  "css_combine_opportunities", "css_file_count_reduction",
+};
+
+// Other variables we want to log.
+const char* const kOtherLoggedVars[] = {
+  // Variables used by /mod_pagespeed_temp_statistics_graphs
+  // Note: It's fine that there are duplicates here.
+  // TODO(sligocki): Remove this in favor of the /pagespeed_console vars.
+  // Should we also add other stats for future/other use?
+  "num_flushes", "cache_hits", "cache_misses",
+  "num_fallback_responses_served", "slurp_404_count", "page_load_count",
+  "total_page_load_ms", "num_rewrites_executed", "num_rewrites_dropped",
+  "resource_404_count", "serf_fetch_request_count",
+  "serf_fetch_bytes_count", "image_ongoing_rewrites",
+  "javascript_total_bytes_saved", "css_filter_total_bytes_saved",
+  "image_rewrite_total_bytes_saved", "image_norewrites_high_resolution",
+  "image_rewrites_dropped_due_to_load", "image_rewrites_dropped_intentionally",
+  "flatten_imports_charset_mismatch", "flatten_imports_invalid_url",
+  "flatten_imports_limit_exceeded", "flatten_imports_minify_failed",
+  "flatten_imports_recursion", "css_filter_parse_failures",
+  "converted_meta_tags", "javascript_minification_failures",
+};
+
+}  // namespace
+
 StatisticsLogger::StatisticsLogger(
     int64 update_interval_ms, int64 max_logfile_size_kb,
     const StringPiece& logfile_name, MutexedVariable* last_dump_timestamp,
@@ -49,9 +93,27 @@ StatisticsLogger::StatisticsLogger(
       update_interval_ms_(update_interval_ms),
       max_logfile_size_kb_(max_logfile_size_kb) {
   logfile_name.CopyToString(&logfile_name_);
+
+  // List of statistics to log.
+  for (int i = 0, n = arraysize(kConsoleVars); i < n; ++i) {
+    variables_to_log_.insert(kConsoleVars[i]);
+  }
+  for (int i = 0, n = arraysize(kOtherLoggedVars); i < n; ++i) {
+    variables_to_log_.insert(kOtherLoggedVars[i]);
+  }
 }
 
 StatisticsLogger::~StatisticsLogger() {
+}
+
+void StatisticsLogger::InitStatsForTest() {
+  // List of statistics to log.
+  for (int i = 0, n = arraysize(kConsoleVars); i < n; ++i) {
+    statistics_->AddVariable(kConsoleVars[i]);
+  }
+  for (int i = 0, n = arraysize(kOtherLoggedVars); i < n; ++i) {
+    statistics_->AddVariable(kOtherLoggedVars[i]);
+  }
 }
 
 void StatisticsLogger::UpdateAndDumpIfRequired() {
@@ -72,8 +134,7 @@ void StatisticsLogger::UpdateAndDumpIfRequired() {
               logfile_name_.c_str(), message_handler_);
       if (statistics_log_file != NULL) {
         FileWriter statistics_writer(statistics_log_file);
-        statistics_->DumpConsoleVarsToWriter(
-            current_time_ms, &statistics_writer, message_handler_);
+        DumpConsoleVarsToWriter(current_time_ms, &statistics_writer);
         statistics_writer.Flush(message_handler_);
         file_system_->Close(statistics_log_file, message_handler_);
 
@@ -90,6 +151,23 @@ void StatisticsLogger::UpdateAndDumpIfRequired() {
     }
     mutex->Unlock();
   }
+}
+
+void StatisticsLogger::DumpConsoleVarsToWriter(
+    int64 current_time_ms, Writer* writer) {
+  writer->Write(StringPrintf("timestamp: %s\n",
+      Integer64ToString(current_time_ms).c_str()), message_handler_);
+
+  for (std::set<GoogleString>::const_iterator iter = variables_to_log_.begin();
+       iter != variables_to_log_.end(); ++iter) {
+    GoogleString var_name = *iter;
+    GoogleString var_as_str = Integer64ToString(
+        statistics_->GetVariable(var_name)->Get());
+    writer->Write(StringPrintf("%s: %s\n", var_name.c_str(),
+        var_as_str.c_str()), message_handler_);
+  }
+
+  writer->Flush(message_handler_);
 }
 
 void StatisticsLogger::TrimLogfileIfNeeded() {

@@ -67,6 +67,10 @@ class StatisticsLogger {
 
   typedef std::vector<GoogleString> VariableInfo;
   typedef std::map<GoogleString, VariableInfo> VarMap;
+
+  // Export statistics to a writer. Only export stats needed for console.
+  // current_time_ms: The time at which the dump was triggered.
+  void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer);
   void ParseDataFromReader(const std::set<GoogleString>& var_titles,
                            StatisticsLogfileReader* reader,
                            std::vector<int64>* list_of_timestamps,
@@ -85,6 +89,9 @@ class StatisticsLogger {
   void PrintJSON(const std::vector<int64>& list_of_timestamps,
                  const VarMap& parsed_var_data,
                  Writer* writer, MessageHandler* message_handler) const;
+  // Initializes all stats that will be needed for logging. Only call this in
+  // tests to make sure getting those stats will work.
+  void InitStatsForTest();
 
   // The last_dump_timestamp not only contains the time of the last dump,
   // it also controls locking so that multiple threads can't dump at once.
@@ -98,6 +105,7 @@ class StatisticsLogger {
   const int64 update_interval_ms_;
   const int64 max_logfile_size_kb_;
   GoogleString logfile_name_;
+  std::set<GoogleString> variables_to_log_;
 
   DISALLOW_COPY_AND_ASSIGN(StatisticsLogger);
 };

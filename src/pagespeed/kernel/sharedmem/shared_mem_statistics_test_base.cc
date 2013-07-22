@@ -16,13 +16,11 @@
 
 #include "pagespeed/kernel/sharedmem/shared_mem_statistics_test_base.h"
 
-#include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
-#include "pagespeed/kernel/base/statistics_logger.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -60,8 +58,7 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase()
 }
 
 void SharedMemStatisticsTestBase::SetUp() {
-  // This time is in the afternoon of 17 July 2012.
-  timer_.reset(new MockTimer(1342567288560ULL));
+  timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
   stats_.reset(new SharedMemStatistics(
       kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, true, kPrefix,
@@ -255,16 +252,6 @@ void SharedMemStatisticsTestBase::TestAdd() {
   EXPECT_EQ(20, hist2->Count());
   EXPECT_EQ(3, hist2->Minimum());
   EXPECT_EQ(4, hist2->Maximum());
-
-  stats_->console_logger()->UpdateAndDumpIfRequired();
-
-  GoogleString dump;
-  StringWriter writer(&dump);
-  stats_->Dump(&writer, &handler_);
-  GoogleString result = "timestamp_: 1342567288560\n"
-                        "v1:                    13\n"
-                        "num_flushes:           37\n";
-  EXPECT_EQ(result, dump);
 }
 
 void SharedMemStatisticsTestBase::TestSetReturningPrevious() {
@@ -468,79 +455,6 @@ void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
   b->IncBy(42);
   EXPECT_EQ(0, a->Get());
   EXPECT_EQ(42, b->Get(TimedVariable::START));
-}
-
-void SharedMemStatisticsTestBase::TestConsoleStatisticsLogger() {
-  ParentInit();
-  // See IMPORTANT note in shared_mem_statistics.cc
-  EXPECT_TRUE(stats_->IsIgnoredVariable("timestamp_"));
-  Variable* v1 = stats_->GetVariable(kVar1);
-  Variable* v2 = stats_->GetVariable(kVar2);
-  v1->Set(2300);
-  v2->Set(300);
-  Histogram* h1 = stats_->GetHistogram(kHist1);
-  h1->SetMaxValue(2500);
-  h1->Add(1);
-  h1->Add(2);
-  h1->Add(10);
-  h1->Add(20);
-  h1->Add(100);
-  h1->Add(200);
-  h1->Add(1000);
-  h1->Add(2000);
-  Histogram* h2 = stats_->GetHistogram(kHist2);
-  h2->SetMaxValue(2500);
-  h2->Add(1);
-  h2->Add(2);
-  h2->Add(10);
-  h2->Add(20);
-  h2->Add(100);
-  h2->Add(200);
-  h2->Add(1000);
-  h2->Add(2000);
-  h2->Add(5000);  // bigger than max
-  GoogleString logger_output;
-  StringWriter logger_writer(&logger_output);
-  stats_->DumpConsoleVarsToWriter(timer_->NowMs(), &logger_writer, &handler_);
-  GoogleString result = "timestamp: 1342567288560\n"
-                        "num_flushes: 300\n";
-  EXPECT_EQ(result, logger_output);
-}
-
-void SharedMemStatisticsTestBase::TestLogfileTrimming() {
-  ParentInit();
-
-  const int64 kMaxLogfileSizeBytes = kMaxLogfileSizeKb * 1024;
-
-  // Logfile does not exist.
-  EXPECT_EQ(0, file_system_->num_output_file_opens());
-  EXPECT_TRUE(file_system_->Exists(kStatsLogFile, &handler_).is_false());
-
-  // Data is written to logfile.
-  timer_->AdvanceMs(2 * kLogIntervalMs);
-  console_logger()->UpdateAndDumpIfRequired();
-  // Test that we actually wrote out to logfile.
-  EXPECT_EQ(1, file_system_->num_output_file_opens());
-  int64 log_size_bytes;
-  EXPECT_TRUE(file_system_->Size(kStatsLogFile, &log_size_bytes, &handler_));
-  // Note: This could fail if one dump becomes larger than
-  // kMaxLogfileSizeBytes or when we move to rotated logs.
-  EXPECT_LT(0, log_size_bytes);
-  EXPECT_GE(kMaxLogfileSizeBytes, log_size_bytes);
-
-  int64 logs_to_overflow = kMaxLogfileSizeBytes / log_size_bytes + 1;
-  for (int i = 0; i < logs_to_overflow * 10; ++i) {
-    timer_->AdvanceMs(2 * kLogIntervalMs);
-    console_logger()->UpdateAndDumpIfRequired();
-    // Test that we actually wrote out to logfile.
-    EXPECT_EQ(i + 2, file_system_->num_output_file_opens());
-    // Test that the logfile never gets too big.
-    if (file_system_->Exists(kStatsLogFile, &handler_).is_true()) {
-      int64 size_bytes;
-      EXPECT_TRUE(file_system_->Size(kStatsLogFile, &size_bytes, &handler_));
-      EXPECT_GE(kMaxLogfileSizeBytes, size_bytes);
-    }
-  }
 }
 
 }  // namespace net_instaweb

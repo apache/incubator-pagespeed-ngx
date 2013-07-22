@@ -58,7 +58,6 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestHistogramExtremeBuckets();
   void TestTimedVariableEmulation();
   void TestConsoleStatisticsLogger();
-  void TestLogfileTrimming();
 
   StatisticsLogger* console_logger() const {
     return stats_->console_logger_.get();
@@ -120,7 +119,7 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestAdd) {
 }
 
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestSetReturningPrevious) {
-  SharedMemStatisticsTestBase::TestAdd();
+  SharedMemStatisticsTestBase::TestSetReturningPrevious();
 }
 
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogram) {
@@ -143,23 +142,13 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestTimedVariableEmulation) {
   SharedMemStatisticsTestBase::TestTimedVariableEmulation();
 }
 
-TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestConsoleStatisticsLogger) {
-  SharedMemStatisticsTestBase::TestConsoleStatisticsLogger();
-}
-
-TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestLogfileTrimming) {
-  SharedMemStatisticsTestBase::TestLogfileTrimming();
-}
-
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd,
                            TestSetReturningPrevious,
                            TestHistogram, TestHistogramRender,
                            TestHistogramNoExtraClear,
                            TestHistogramExtremeBuckets,
-                           TestTimedVariableEmulation,
-                           TestConsoleStatisticsLogger,
-                           TestLogfileTrimming);
+                           TestTimedVariableEmulation);
 
 }  // namespace net_instaweb
 

@@ -1260,7 +1260,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
     http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
 
     check_stat $STATS.2 $STATS.3 cache_hits 1
-    check_stat $STATS.1 $STATS.2 ipro_served 1
+    check_stat $STATS.2 $STATS.3 ipro_served 1
     check_stat $STATS.2 $STATS.3 ipro_recorder_resources 0
     check_stat $STATS.2 $STATS.3 image_rewrites 0
 

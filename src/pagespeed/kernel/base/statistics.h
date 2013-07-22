@@ -360,15 +360,6 @@ class Statistics {
   virtual const std::map<GoogleString, StringVector>& TimedVariableMap() = 0;
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
-  // Export statistics to a writer. Statistics in a group are exported in one
-  // table. This only exports console-related variables, as opposed to all
-  // variables, as the above does.
-  // Empty implementation because most Statistics don't need this. It's
-  // here because in the context in which it is needed we only have access to a
-  // Statistics*, rather than the specific subclass.
-  // current_time_ms: the time at which the dump was triggered
-  virtual void DumpConsoleVarsToWriter(
-      int64 current_time_ms, Writer* writer, MessageHandler* message_handler) {}
   virtual void RenderTimedVariables(Writer* writer,
                                     MessageHandler* handler);
   // Write all the histograms in this Statistic object to a writer.
