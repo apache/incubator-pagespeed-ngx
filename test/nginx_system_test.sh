@@ -100,7 +100,8 @@ function keepalive_test() {
 
   # Filter the nginx log from our vhost from unimportant messages.
   OUT=$(cat "$TEST_TMP/$NGX_LOG_FILE"\
-    | grep -v "closed keepalive connection$")
+    | grep -v "closed keepalive connection$" \
+    | grep -v ".*Cache Flush.*")
 
   # Nothing should remain after that.
   check [ -z "$OUT" ]
