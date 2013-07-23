@@ -128,7 +128,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 
   UrlAsyncFetcher* fetcher = NULL;
   SerfUrlAsyncFetcher* serf_fetcher = NULL;
-  
+
   if (use_native_fetcher_) {
     ngx_url_async_fetcher_ = new NgxUrlAsyncFetcher(
             fetcher_proxy,
@@ -270,11 +270,17 @@ void NgxRewriteDriverFactory::ShutDown() {
     child_shutdown_count->Add(1);
   }
 
-  RewriteDriverFactory::ShutDown();
-  caches_->ShutDown(message_handler());
-
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
+  for (NgxMessageHandlerSet::iterator p =
+           server_context_message_handlers_.begin();
+       p != server_context_message_handlers_.end(); ++p) {
+    (*p)->set_buffer(NULL);
+  }
+  server_context_message_handlers_.clear();
+
+  RewriteDriverFactory::ShutDown();
+  caches_->ShutDown(message_handler());
 
   if (is_root_process_) {
     // Cleanup statistics.
@@ -403,6 +409,17 @@ AllocateAndInitSharedMemStatistics(
   InitStats(stats);
   stats->Init(true, message_handler());
   return stats;
+}
+
+void NgxRewriteDriverFactory::SetServerContextMessageHandler(
+    ServerContext* server_context, ngx_log_t* log) {
+  NgxMessageHandler* handler = new NgxMessageHandler(
+      thread_system()->NewMutex());
+  handler->set_log(log);
+  handler->set_buffer(shared_circular_buffer_.get());
+  server_context_message_handlers_.insert(handler);
+  defer_cleanup(new Deleter<NgxMessageHandler>(handler));
+  server_context->set_message_handler(handler);
 }
 
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
