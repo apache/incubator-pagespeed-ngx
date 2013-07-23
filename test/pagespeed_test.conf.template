@@ -650,6 +650,11 @@ http {
       pagespeed DisableFilters convert_jpeg_to_progressive;
     }
 
+    location /mod_pagespeed_test/ipro/test_image_dont_reuse.png {
+      expires 5m;
+    }
+
+
     pagespeed EnableFilters remove_comments;
 
     # Test LoadFromFile mapping by mapping one dir to another.

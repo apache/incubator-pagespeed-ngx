@@ -84,6 +84,7 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Called by nginx when it's done with us.
   void Release();
+  void set_handle_error(bool x) { handle_error_ = x; }
 
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
@@ -121,6 +122,7 @@ class NgxBaseFetch : public AsyncFetch {
   // decremented once when Done() is called and once when Release() is called.
   int references_;
   pthread_mutex_t mutex_;
+  bool handle_error_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
