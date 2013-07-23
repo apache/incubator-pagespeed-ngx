@@ -37,7 +37,8 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
       done_called_(false),
       last_buf_sent_(false),
       pipe_fd_(pipe_fd),
-      references_(2) {
+      references_(2),
+      handle_error_(true) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
   PopulateRequestHeaders();
 }
@@ -141,9 +142,14 @@ void NgxBaseFetch::RequestCollection() {
 }
 
 void NgxBaseFetch::HandleHeadersComplete() {
-  // If this is a 404 response we need to count it in the stats.
-  if (response_headers()->status_code() == HttpStatus::kNotFound) {
-    server_context_->rewrite_stats()->resource_404_count()->Add(1);
+  int status_code = response_headers()->status_code();
+  bool status_ok = (status_code != 0) && (status_code < 400);
+
+  if (status_ok || handle_error_) {
+    // If this is a 404 response we need to count it in the stats.
+    if (response_headers()->status_code() == HttpStatus::kNotFound) {
+      server_context_->rewrite_stats()->resource_404_count()->Add(1);
+    }
   }
 
   RequestCollection();  // Headers available.
