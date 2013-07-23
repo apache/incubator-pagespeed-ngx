@@ -21,6 +21,7 @@
 #include "net/instaweb/http/public/log_record_test_helper.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/image_types.pb.h"
@@ -343,6 +344,24 @@ TEST_F(DelayImagesFilterTest, DelayImageWithUnescapedQueryParam) {
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
+TEST_F(DelayImagesFilterTest, DelayImageWithUrlValuedAttribute) {
+  options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head><body>"
+      "<img data-src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  // Inlined image will be a blank png instead of a low res webp.
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      "<img data-src=\"http://test.com/1.webp\" "
+      "src=\"", kSampleWebpData, "\"/>",
+      "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
 TEST_F(DelayImagesFilterTest, DelayImageWithBlankImage) {
   options()->set_use_blank_image_for_inline_preview(true);
   AddFilter(RewriteOptions::kDelayImages);
@@ -397,6 +416,26 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileAggressiveEnabled) {
       StrCat(GetInlineScript(),
              GenerateAddLowResScript("http://test.com/1.jpeg", kSampleJpegData),
              GetHighResScript(), "</body>"));
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageMobileWithUrlValuedAttribute) {
+  options()->set_enable_aggressive_rewriters_for_mobile(true);
+  options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
+  SetupUserAgentTest(UserAgentMatcherTestBase::kAndroidICSUserAgent);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head><body>"
+      "<img data-src=\"http://test.com/1.webp\"/>"
+      "</body>";
+  // Inlined image will be a blank png instead of a low res webp.
+  GoogleString output_html = StrCat(
+      "<head></head><body>",
+      GetNoscript(),
+      "<img data-src=\"http://test.com/1.webp\" "
+      "src=\"", kSampleWebpData, "\"/>",
+      "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
