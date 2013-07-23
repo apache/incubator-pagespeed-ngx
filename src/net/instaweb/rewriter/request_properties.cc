@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/downstream_caching_directives.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -157,6 +158,22 @@ bool RequestProperties::GetPreferredImageQualities(
 
 int RequestProperties::GetPreferredImageQualityCount() {
   return DeviceProperties::GetPreferredImageQualityCount();
+}
+
+void RequestProperties::LogDeviceInfo(
+    AbstractLogRecord* log_record,
+    bool enable_aggressive_rewriters_for_mobile) {
+  log_record->LogDeviceInfo(
+      GetDeviceType(),
+      SupportsImageInlining(),
+      SupportsLazyloadImages(),
+      SupportsCriticalImagesBeacon(),
+      SupportsJsDefer(enable_aggressive_rewriters_for_mobile),
+      SupportsWebp(),
+      SupportsWebpLosslessAlpha(),
+      IsBot(),
+      SupportsSplitHtml(enable_aggressive_rewriters_for_mobile),
+      CanPreloadResources());
 }
 
 }  // namespace net_instaweb

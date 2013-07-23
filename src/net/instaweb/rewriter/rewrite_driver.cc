@@ -2510,19 +2510,8 @@ void RewriteDriver::LogStats() {
     log_record()->SetResourceCounts(dom_stats_filter_->num_external_css(),
                                     dom_stats_filter_->num_scripts());
   }
-  log_record()->LogDeviceInfo(
-      request_properties_->GetDeviceType(),
-      request_properties_->SupportsImageInlining(),
-      request_properties_->SupportsLazyloadImages(),
-      request_properties_->SupportsCriticalImagesBeacon(),
-      request_properties_->SupportsJsDefer(
-          options()->enable_aggressive_rewriters_for_mobile()),
-      request_properties_->SupportsWebp(),
-      request_properties_->SupportsWebpLosslessAlpha(),
-      request_properties_->IsBot(),
-      request_properties_->SupportsSplitHtml(
-          options()->enable_aggressive_rewriters_for_mobile()),
-      request_properties_->CanPreloadResources());
+  request_properties_->LogDeviceInfo(
+      log_record(), options()->enable_aggressive_rewriters_for_mobile());
   bool is_xhr = request_headers() != NULL &&
       request_headers()->IsXmlHttpRequest();
   log_record()->LogIsXhr(is_xhr);

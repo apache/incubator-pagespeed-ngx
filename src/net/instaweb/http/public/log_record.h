@@ -231,7 +231,7 @@ class AbstractLogRecord  {
                           int overhead_bytes);
 
   // Log information related to the user agent and device making the request.
-  void LogDeviceInfo(
+  virtual void LogDeviceInfo(
       int device_type,
       bool supports_image_inlining,
       bool supports_lazyload_images,
@@ -241,7 +241,7 @@ class AbstractLogRecord  {
       bool supports_webplossless_alpha,
       bool is_bot,
       bool supports_split_html,
-      bool can_preload_resources);
+      bool can_preload_resources) = 0;
 
   // Log whether the request is an XmlHttpRequest.
   void LogIsXhr(bool is_xhr);
@@ -353,6 +353,18 @@ class LogRecord : public AbstractLogRecord {
       bool low_res_src_inserted,
       ImageType low_res_image_type,
       int low_res_data_size) {}
+
+  virtual void LogDeviceInfo(
+      int device_type,
+      bool supports_image_inlining,
+      bool supports_lazyload_images,
+      bool supports_critical_images_beacon,
+      bool supports_deferjs,
+      bool supports_webp,
+      bool supports_webplossless_alpha,
+      bool is_bot,
+      bool supports_split_html,
+      bool can_preload_resources) {}
 
   bool WriteLogImpl() { return true; }
 

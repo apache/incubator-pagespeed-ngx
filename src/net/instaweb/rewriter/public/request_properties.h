@@ -27,6 +27,7 @@
 namespace net_instaweb {
 
 class DownstreamCachingDirectives;
+class AbstractLogRecord;
 class RequestHeaders;
 
 // This class keeps track of the request properties of the client, which are
@@ -67,6 +68,9 @@ class RequestProperties {
       DeviceProperties::ImageQualityPreference preference, int* webp, int* jpeg)
       const;
   static int GetPreferredImageQualityCount();
+
+  void LogDeviceInfo(AbstractLogRecord* log_record,
+                     bool enable_aggressive_rewriters_for_mobile);
 
  private:
   friend class ImageRewriteTest;

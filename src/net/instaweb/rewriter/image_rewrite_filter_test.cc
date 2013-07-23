@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
+#include <memory>
+
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -37,7 +39,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
@@ -177,10 +178,6 @@ class ImageRewriteTest : public RewriteTestBase {
     pcache->set_enabled(true);
     rewrite_driver()->set_property_page(page);
     pcache->Read(page);
-  }
-
-  const DeviceInfo& device_info() {
-    return logging_info()->device_info();
   }
 
   void RewriteImageFromHtml(const GoogleString& tag_string,
@@ -852,24 +849,6 @@ class ImageRewriteTest : public RewriteTestBase {
 
 TEST_F(ImageRewriteTest, ImgTag) {
   RewriteImage("img", kContentTypeJpeg);
-  EXPECT_EQ(UserAgentMatcher::kDesktop,
-            logging_info()->device_info().device_type());
-}
-
-TEST_F(ImageRewriteTest, ImgTagWithDeviceTypeLogging) {
-  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kIPhoneUserAgent);
-  RewriteImage("img", kContentTypeJpeg);
-  EXPECT_EQ(UserAgentMatcher::kMobile,
-            logging_info()->device_info().device_type());
-  EXPECT_TRUE(device_info().supports_image_inlining());
-  EXPECT_TRUE(device_info().supports_lazyload_images());
-  EXPECT_TRUE(device_info().supports_critical_images_beacon());
-  EXPECT_FALSE(device_info().supports_deferjs());
-  EXPECT_FALSE(device_info().supports_webp());
-  EXPECT_FALSE(device_info().supports_webplossless_alpha());
-  EXPECT_FALSE(device_info().is_bot());
-  EXPECT_FALSE(device_info().supports_split_html());
-  EXPECT_FALSE(device_info().can_preload_resources());
 }
 
 TEST_F(ImageRewriteTest, ImgTagWithComputeStatistics) {

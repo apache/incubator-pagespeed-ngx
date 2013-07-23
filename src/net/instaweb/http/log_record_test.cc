@@ -19,7 +19,6 @@
 #include "net/instaweb/http/public/log_record.h"
 
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -30,10 +29,6 @@ class LogRecordTest : public testing::Test {
  protected:
   virtual void SetUp() {
     log_record_.reset(new LogRecord(new NullMutex));
-  }
-
-  const DeviceInfo& device_info() {
-    return log_record_->logging_info()->device_info();
   }
 
   // Test that the rewriter_info array is |size| elements long, and that the
@@ -299,33 +294,6 @@ TEST_F(LogRecordTest, LogRewriterApplicationStatus) {
 
   // We do not yet populate the applied rewriters string.
   EXPECT_EQ("", log_record_->AppliedRewritersString());
-}
-
-TEST_F(LogRecordTest, LogDeviceInfo) {
-  EXPECT_FALSE(log_record_->logging_info()->has_device_info());
-  log_record_->LogDeviceInfo(
-      UserAgentMatcher::kMobile,
-      true /* supports_image_inlining */,
-      true /* supports_lazyload_images */,
-      true /* supports_critical_images_beacon */,
-      true /* supports_deferjs */,
-      true /* supports_webp */,
-      true /* supports_webplossless_alpha */,
-      true /* is_bot */,
-      true /* supports_split_html */,
-      true /* can_preload_resources */);
-  EXPECT_TRUE(log_record_->logging_info()->has_device_info());
-  EXPECT_EQ(UserAgentMatcher::kMobile,
-            log_record_->logging_info()->device_info().device_type());
-  EXPECT_TRUE(device_info().supports_image_inlining());
-  EXPECT_TRUE(device_info().supports_lazyload_images());
-  EXPECT_TRUE(device_info().supports_critical_images_beacon());
-  EXPECT_TRUE(device_info().supports_deferjs());
-  EXPECT_TRUE(device_info().supports_webp());
-  EXPECT_TRUE(device_info().supports_webplossless_alpha());
-  EXPECT_TRUE(device_info().is_bot());
-  EXPECT_TRUE(device_info().supports_split_html());
-  EXPECT_TRUE(device_info().can_preload_resources());
 }
 
 TEST_F(LogRecordTest, LogIsXhr) {
