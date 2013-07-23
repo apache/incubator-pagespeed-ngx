@@ -114,11 +114,13 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
     EndPanelInstance();
   }
 
-  GoogleString panel_id = state_->MatchPanelIdForElement(element);
-  // if panel_id is empty, then element didn't match with any start xpath of
-  // panel specs
-  if (!panel_id.empty()) {
-    StartPanelInstance(element, panel_id);
+  if (state_->current_panel_id().empty()) {
+    GoogleString panel_id = state_->MatchPanelIdForElement(element);
+    // if panel_id is empty, then element didn't match with any start xpath of
+    // panel specs
+    if (!panel_id.empty()) {
+      StartPanelInstance(element, panel_id);
+    }
   }
   semantic_type::Category category;
   HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
@@ -127,7 +129,7 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
       src != NULL && src->DecodedValueOrNull() != NULL &&
       driver()->request_context()->split_request_type() !=
       RequestContext::SPLIT_BELOW_THE_FOLD) {
-    if (current_panel_element() != NULL) {
+    if (!state_->current_panel_id().empty()) {
       // For a below-the-fold image, insert a pagespeed_no_transform attribute
       // to prevent inline-preview-images filter from doing any rewriting.
       element->AddAttribute(

@@ -60,7 +60,8 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
 
   void Init() {
     options()->EnableFilter(RewriteOptions::kSplitHtmlHelper);
-    options()->set_critical_line_config("div[@id=\"b\"]");
+    options()->set_critical_line_config("div[@id=\"b\"],"
+                                        "div[@id=\"c\"]");
     rewrite_driver()->AddFilters();
     rewrite_driver()->set_critical_images_info(new CriticalImagesInfo);
   }
@@ -500,6 +501,41 @@ TEST_F(SplitHtmlHelperFilterTest, BtfRequestWithInlinePreview) {
       "<div id='c'><img src='3.jpeg'></div>"
       "</body>");
   CheckNumCriticalImages(0);
+  CheckLoggingStatus(RewriterHtmlApplication::ACTIVE);
+}
+
+TEST_F(SplitHtmlHelperFilterTest, AtfNestedPanelsRequestWithInlinePreview) {
+  ForwardingMockCriticalImagesFinder* finder =
+      new ForwardingMockCriticalImagesFinder(statistics());
+  server_context()->set_critical_images_finder(finder);
+  options()->EnableFilter(RewriteOptions::kDelayImages);
+  options()->set_support_noscript_enabled(false);
+  Init();
+  AddFileToMockFetcher("http://test.com/1.jpeg", "Sample.jpg",
+                       kContentTypeJpeg, 100);
+
+  GoogleString input_html = "<body>"
+      "<div id='a'><img src=\"1.jpeg\"></div>"
+      "<div id='b'>"
+        "<div id='c'></div>"
+        "<img src=\"2.jpeg\"></div>"
+      "<div id='d'><img src=\"3.jpeg\"></div>"
+      "</body>";
+  GoogleString output_html = StrCat(
+      "<html>\n<body>"
+      "<div id='a'>",
+        GetInlinePreviewImageTag("1.jpeg", kSampleJpegData),
+      "</div>"
+      "<div id='b'>"
+        "<div id='c'></div>"
+        "<img src=\"2.jpeg\"></div>"
+      "<div id='d'><img src=\"3.jpeg\"></div>"
+      "</body>\n</html>");
+  Parse("split_helper_atf_with_inline_preview", input_html);
+  EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_))
+      << "Expected:\n" << output_html << "\n\nGot:\n" << output_buffer_;
+  CheckNumCriticalImages(1);
+  CheckCriticalImage("http://test.com/1.jpeg");
   CheckLoggingStatus(RewriterHtmlApplication::ACTIVE);
 }
 

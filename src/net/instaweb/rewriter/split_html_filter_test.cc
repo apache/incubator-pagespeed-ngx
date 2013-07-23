@@ -872,6 +872,36 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithGhostClickBuster) {
   VerifyAppliedRewriters("sh");
 }
 
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithNestedPanels) {
+  rewrite_driver()->SetRequestHeaders(request_headers_);
+  GoogleString input_html =
+      "<html><head></head><body>"
+        "<div id=\"outer\">"
+          "<div id=\"inner\"></div>"
+        "</div>"
+      "</body></html>";
+  options_->set_critical_line_config(
+      "div[@id = \"outer\"],"
+      "div[@id = \"inner\"]");
+    GoogleString expected_output_suffix(
+      StringPrintf(
+          SplitHtmlFilter::kSplitSuffixJsFormatString,
+          blink_js_url_,
+          SplitHtmlFilter::kLoadHiResImages, -1,
+          "{\"panel-id.0\":[{\"instance_html\":"
+            "\"<div id=\\\"outer\\\" panel-id=\\\"panel-id.0\\\">"
+            "<div id=\\\"inner\\\"></div></div>\"}]}",
+          "false"));
+  Parse("split_with_options", input_html);
+  EXPECT_EQ(StrCat("<html><head></head><body>"
+                    "<!--GooglePanel begin panel-id.0-->"
+                    "<!--GooglePanel end panel-id.0-->"
+                    "</body></html>",
+                    expected_output_suffix),
+            output_);
+  VerifyAppliedRewriters("sh");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

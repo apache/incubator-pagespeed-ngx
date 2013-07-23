@@ -452,13 +452,15 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     EndPanelInstance();
   }
 
-  GoogleString panel_id = state_->MatchPanelIdForElement(element);
-  // if panel_id is empty, then element didn't match with any start xpath of
-  // panel specs
-  if (!panel_id.empty()) {
-    InsertPanelStub(element, panel_id);
-    MarkElementWithPanelId(element, panel_id);
-    StartPanelInstance(element);
+  if (state_->current_panel_id().empty()) {
+    GoogleString panel_id = state_->MatchPanelIdForElement(element);
+    // if panel_id is empty, then element didn't match with any start xpath of
+    // panel specs
+    if (!panel_id.empty()) {
+      InsertPanelStub(element, panel_id);
+      MarkElementWithPanelId(element, panel_id);
+      StartPanelInstance(element);
+    }
   } else if (state_->IsElementSiblingOfCurrentPanel(element)) {
     MarkElementWithPanelId(element, state_->current_panel_id());
   }
