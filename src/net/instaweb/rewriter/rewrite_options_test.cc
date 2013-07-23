@@ -868,6 +868,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kMaxUrlSegmentSize);
   PassLookupOptionByName(RewriteOptions::kMaxUrlSize);
   PassLookupOptionByName(RewriteOptions::kMetadataCacheStalenessThresholdMs);
+  PassLookupOptionByName(RewriteOptions::kMinCacheTtlMs);
   PassLookupOptionByName(RewriteOptions::kMinImageSizeLowResolutionBytes);
   PassLookupOptionByName(RewriteOptions::kMinResourceCacheTimeToRewriteMs);
   PassLookupOptionByName(RewriteOptions::kModifyCachingHeaders);

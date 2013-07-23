@@ -366,9 +366,9 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
       expire_at_ms = now_ms + headers->implicit_cache_ttl_ms();
     } else if (stale_rewrite()) {
       // If we are serving a stale rewrite, set the cache ttl to the minimum of
-      // kImplicitCacheTtlMs and the original ttl.
-      expire_at_ms = now_ms + std::min(ResponseHeaders::kImplicitCacheTtlMs,
-                                       expire_at_ms - date_ms);
+      // kDefaultImplicitCacheTtlMs and the original ttl.
+      expire_at_ms = now_ms + std::min(
+          ResponseHeaders::kDefaultImplicitCacheTtlMs, expire_at_ms - date_ms);
     }
     headers->SetDateAndCaching(now_ms, expire_at_ms - now_ms);
   }

@@ -1373,6 +1373,84 @@ TEST_F(ResponseHeadersTest, ForceCachingForAlreadyPublic) {
   EXPECT_STREQ("max-age=3456", *(values[1]));
 }
 
+TEST_F(ResponseHeadersTest, MinCacheTtlWithMaxAge) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.MergeContentType("text/css");
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=250");
+  response_headers_.set_min_cache_ttl_ms(500 * 1000);
+  response_headers_.ComputeCaching();
+
+  // min-caching ttl overrides the explicit max age and changes the cache
+  // headers accordingly for down stream caching.
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(500 * 1000, response_headers_.cache_ttl_ms());
+  EXPECT_EQ(300 * 1000, response_headers_.implicit_cache_ttl_ms());
+  EXPECT_TRUE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(1, values.size());
+  EXPECT_STREQ("max-age=500", *(values[0]));
+}
+
+TEST_F(ResponseHeadersTest, MinCacheTtlWithMaxAgeZero) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.MergeContentType("text/css");
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0");
+  response_headers_.set_min_cache_ttl_ms(500 * 1000);
+  response_headers_.ComputeCaching();
+
+  // min_cache_ttl_ms does not apply here as the max-age is 0 and hence
+  // considered not cacheable.
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(0, response_headers_.cache_ttl_ms());
+  EXPECT_EQ(500 * 1000, response_headers_.min_cache_ttl_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(1, values.size());
+  EXPECT_STREQ("max-age=0", *(values[0]));
+}
+
+TEST_F(ResponseHeadersTest, MinCacheTtlWithHtml) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.MergeContentType("text/html");
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=250");
+  response_headers_.set_min_cache_ttl_ms(500 * 1000);
+  response_headers_.ComputeCaching();
+
+  // Since the content type is html, min caching will not override the original
+  // header values.
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(250 * 1000, response_headers_.cache_ttl_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(1, values.size());
+  EXPECT_STREQ("max-age=250", *(values[0]));
+}
+
+TEST_F(ResponseHeadersTest, MinCacheTtlWithForceCaching) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=250");
+  response_headers_.set_min_cache_ttl_ms(400 * 1000);
+  response_headers_.ForceCaching(500 * 1000);
+  response_headers_.ComputeCaching();
+
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(500 * 1000, response_headers_.cache_ttl_ms());
+  EXPECT_EQ(400 * 1000, response_headers_.min_cache_ttl_ms());
+  EXPECT_EQ(300 * 1000, response_headers_.implicit_cache_ttl_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(1, values.size());
+  EXPECT_STREQ("max-age=250", *(values[0]));
+}
+
 TEST_F(ResponseHeadersTest, GetCookieString) {
   response_headers_.SetStatusAndReason(HttpStatus::kOK);
   response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
