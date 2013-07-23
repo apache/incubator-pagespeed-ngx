@@ -215,9 +215,7 @@ fi
 PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
 PAGESPEED_EXPECTED_FAILURES="
-  ~convert_meta_tags~
   ~In-place resource optimization~
-  ~keepalive with html rewriting~
 "
 
 # The existing system test takes its arguments as positional parameters, and
