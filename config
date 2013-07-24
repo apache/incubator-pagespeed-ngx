@@ -175,8 +175,15 @@ if [ $ngx_found = yes ]; then
     $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/system/console_out.cc \
     $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/system/console_css_out.cc \
     $mod_pagespeed_dir/net/instaweb/system/add_headers_fetcher.cc \
+    $ps_src/in_place_resource_recorder.cc \
     $mod_pagespeed_dir/net/instaweb/system/loopback_route_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/system/serf_url_async_fetcher.cc"
+
+  # TODO(jefftk): when the next release of PSOL after 1.6.29.3 comes out, change
+  #   $ps_src/in_place_resource_recorder.cc
+  #  above to
+  #   $mod_pagespeed_dir/net/instaweb/apache/in_place_resource_recorder.cc
+
   # Make pagespeed run immediately before gzip.
   HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES |\
     sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/")

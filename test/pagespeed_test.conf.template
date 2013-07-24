@@ -29,7 +29,7 @@ http {
 
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
-
+  pagespeed InPlaceResourceOptimization on;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
@@ -649,6 +649,11 @@ http {
     location /mod_pagespeed_test/custom_options/ {
       pagespeed DisableFilters convert_jpeg_to_progressive;
     }
+
+    location /mod_pagespeed_test/ipro/test_image_dont_reuse.png {
+      expires 5m;
+    }
+
 
     pagespeed EnableFilters remove_comments;
 

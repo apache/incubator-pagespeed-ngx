@@ -70,6 +70,7 @@ rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --include="sparse_hash_map" \
   --include="sparse_hash_set" \
   --include="sparsetable" \
+  --include="in_place_resource_recorder.cc" \
   --exclude='*'
 mkdir -p psol/lib/Debug/linux/ia32
 mkdir -p psol/lib/Debug/linux/x64
