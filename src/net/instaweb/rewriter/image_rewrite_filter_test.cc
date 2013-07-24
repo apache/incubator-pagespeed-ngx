@@ -1276,6 +1276,15 @@ TEST_F(ImageRewriteTest, ImageRewriteDropAll) {
     lru_cache()->Clear();
     ClearStats();
   }
+  // Try some rewrites without clearing the cache to make sure that that
+  // works too.
+  for (int i = 0; i < 100; ++i) {
+    TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                      "",      // initial attributes
+                      "",      // final attributes
+                      false,   // expect_rewritten
+                      false);  // expect_inline
+  }
 }
 
 TEST_F(ImageRewriteTest, ImageRewriteDropNone) {
@@ -1292,6 +1301,15 @@ TEST_F(ImageRewriteTest, ImageRewriteDropNone) {
                       false);  // expect_inline
     lru_cache()->Clear();
     ClearStats();
+  }
+  // Try some rewrites without clearing the cache to make sure that that
+  // works too.
+  for (int i = 0; i < 5; ++i) {
+    TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                      "",      // initial attributes
+                      "",      // final attributes
+                      true,   // expect_rewritten
+                      false);  // expect_inline
   }
 }
 
@@ -1336,6 +1354,31 @@ TEST_F(ImageRewriteTest, ImageRewriteDropSometimes) {
       break;
     }
   }
+}
+
+// For Issue 748 where duplicate images in the same document with RandomDrop on
+// caused the duplicate urls to be removed if the first image is not optimized.
+// NOTE: This test only works if the first image is deterministically dropped.
+// We set the drop_percentage to 100 to guarantee that.
+TEST_F(ImageRewriteTest, ImageRewriteRandomDropRepeatedImages) {
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_rewrite_random_drop_percentage(100);
+  rewrite_driver()->AddFilters();
+  GoogleString initial_url = StrCat(kTestDomain, kBikePngFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kBikePngFile, kContentTypePng, 100);
+  const char html_boilerplate[] =
+      "<img src='%s'> <img src='%s'> <img src='%s'>";
+  GoogleString html_input =
+      StringPrintf(html_boilerplate, initial_url.c_str(), initial_url.c_str(),
+                   initial_url.c_str());
+  ParseUrl(page_url, html_input);
+  StringVector image_urls;
+  CollectImgSrcs(initial_url, output_buffer_, &image_urls);
+  EXPECT_EQ(3, image_urls.size());
+  EXPECT_EQ(initial_url, image_urls[0]);
+  EXPECT_EQ(initial_url, image_urls[1]);
+  EXPECT_EQ(initial_url, image_urls[2]);
 }
 
 TEST_F(ImageRewriteTest, ResizeTest) {

@@ -1897,9 +1897,12 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
   CHECK_EQ(num_slots(), primary->num_slots());
   CHECK_EQ(primary->outputs_.size(),
            static_cast<size_t>(primary->num_output_partitions()));
-  // Copy over partition tables, outputs, and render_slot_ (as well as
+  // Copy over busy bit, partition tables, outputs, and render_slot_ (as well as
   // was_optimized) information --- everything we can set in normal
   // OutputCacheDone.
+  if (primary->was_too_busy_) {
+    MarkTooBusy();
+  }
   partitions_->CopyFrom(*primary->partitions_.get());
   for (int i = 0, n = primary->outputs_.size(); i < n; ++i) {
     outputs_.push_back(primary->outputs_[i]);
