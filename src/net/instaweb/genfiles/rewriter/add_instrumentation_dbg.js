@@ -17,7 +17,8 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
       window.performance.navigation && (url += "&nt=" + window.performance.navigation.type);
       var firstPaintTime = -1;
       timingApi.msFirstPaint ? firstPaintTime = timingApi.msFirstPaint : window.chrome && window.chrome.loadTimes && (firstPaintTime = Math.floor(1E3 * window.chrome.loadTimes().firstPaintTime));
-      -1 != firstPaintTime && (url += "&fp=" + (firstPaintTime - requestStartTime))
+      firstPaintTime -= requestStartTime;
+      0 <= firstPaintTime && (url += "&fp=" + firstPaintTime)
     }else {
       url += traditionalPLT
     }

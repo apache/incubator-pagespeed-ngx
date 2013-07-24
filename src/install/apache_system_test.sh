@@ -66,7 +66,7 @@ function run_post_cache_flush() {
 # when doing the cache flush test, but it can be used in other
 # tests we run in that run.
 if [ "$CACHE_FLUSH_TEST" = "on" ]; then
-  SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g)
+  SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e "s/:.*$/:$APACHE_SECONDARY_PORT/g")
   if [ "$SECONDARY_HOSTNAME" = "$HOSTNAME" ]; then
     SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
   fi
@@ -137,16 +137,18 @@ if ${FIRST_RUN:-false}; then
   # Number of downstream cache purges should be 0 here.
   start_test Check that downstream cache purges are 0 initially.
   CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-  check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*0"
-  check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:\s*0"
+  check_from "$CURRENT_STATS" egrep -q \
+    "downstream_cache_purge_attempts:[[:space:]]*0"
+  check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:[[:space:]]*0"
 
   start_test Check for case where rewritten cache should get purged.
   OUT=$($WGET_DUMP $CACHABLE_HTML_HOST_PORT$CACHABLE_HTML_PATH)
   check_not_from "$OUT" egrep -q "pagespeed.ic"
-  fetch_until $STATS_URL 'grep -c downstream_cache_purge_attempts:\s*1' 1
+  fetch_until $STATS_URL \
+    'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
   if [ $have_varnish_downstream_cache = "1" ]; then
     CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-    check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:\s*1"
+    check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:[[:space:]]*1"
   fi
 
   start_test Check for case where rewritten cache should not get purged.
@@ -156,9 +158,10 @@ if ${FIRST_RUN:-false}; then
 
   # Number of downstream cache purges should still be 1.
   CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-  check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*1"
+  check_from "$CURRENT_STATS" egrep -q \
+    "downstream_cache_purge_attempts:[[:space:]]*1"
   if [ $have_varnish_downstream_cache = "1" ]; then
-    check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:\s*1"
+    check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:[[:space:]]*1"
   fi
 fi
 
@@ -1133,7 +1136,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   start_test Relative images embedded in a CSS file served from a mapped domain
   DIR="mod_pagespeed_test/map_css_embedded"
   URL="http://www.example.com/$DIR/issue494.html"
-  MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.RTch9OLvuX.css"
+  MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.SilaP5mfIb.css"
   http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
       "grep -c cdn.example.com/$MAPPED_CSS" 1
 
