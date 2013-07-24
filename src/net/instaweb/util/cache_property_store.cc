@@ -194,7 +194,8 @@ void CachePropertyStore::Put(const GoogleString& url,
                              const GoogleString& options_signature_hash,
                              UserAgentMatcher::DeviceType device_type,
                              const PropertyCache::Cohort* cohort,
-                             const PropertyCacheValues* values) {
+                             const PropertyCacheValues* values,
+                             BoolCallback* done) {
   GoogleString value;
   StringOutputStream sstream(&value);
   values->SerializeToZeroCopyStream(&sstream);
@@ -203,6 +204,9 @@ void CachePropertyStore::Put(const GoogleString& url,
   const GoogleString cache_key = CacheKey(
       url, options_signature_hash, device_type, cohort);
   cohort_itr->second->PutSwappingString(cache_key, &value);
+  if (done != NULL) {
+    done->Run(true);
+  }
 }
 
 void CachePropertyStore::AddCohort(const GoogleString& cohort) {

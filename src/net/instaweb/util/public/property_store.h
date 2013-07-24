@@ -54,12 +54,15 @@ class PropertyStore {
       BoolCallback* done) = 0;
 
   // Write to storage system for the given key.
+  // Callback done can be NULL. BoolCallback done will be called with true if
+  // Insert operation is successful.
   virtual void Put(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
       UserAgentMatcher::DeviceType device_type,
       const PropertyCache::Cohort* cohort,
-      const PropertyCacheValues* values) = 0;
+      const PropertyCacheValues* values,
+      BoolCallback* done) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PropertyStore);

@@ -1,8 +1,8 @@
 (function(){window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
 pagespeed.getResourceTimingData = function() {
-  if(window.performance && window.performance.webkitGetEntries) {
-    for(var totalFetchDuration = 0, maxFetchDuration = 0, numFetches = 0, totalDnsDuration = 0, numDnsLookups = 0, totalConnectionTime = 0, numConnections = 0, totalTTFB = 0, numTTFBRequests = 0, totalBlockingTime = 0, numRequestsBlocked = 0, entryCountMap = {}, entries = window.performance.webkitGetEntries(), i = 0;i < entries.length;i++) {
+  if(window.performance && (window.performance.getEntries || window.performance.webkitGetEntries)) {
+    for(var totalFetchDuration = 0, maxFetchDuration = 0, numFetches = 0, totalDnsDuration = 0, numDnsLookups = 0, totalConnectionTime = 0, numConnections = 0, totalTTFB = 0, numTTFBRequests = 0, totalBlockingTime = 0, numRequestsBlocked = 0, entryCountMap = {}, entries = window.performance.getEntries ? window.performance.getEntries() : window.performance.webkitGetEntries(), i = 0;i < entries.length;i++) {
       var duration = entries[i].duration;
       0 < duration && (totalFetchDuration += duration, ++numFetches, maxFetchDuration = Math.max(maxFetchDuration, duration));
       var connectTime = entries[i].connectEnd - entries[i].connectStart;

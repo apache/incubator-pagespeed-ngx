@@ -71,7 +71,8 @@ class CachePropertyStore : public PropertyStore {
                    const GoogleString& options_signature_hash,
                    UserAgentMatcher::DeviceType device_type,
                    const PropertyCache::Cohort* cohort,
-                   const PropertyCacheValues* values);
+                   const PropertyCacheValues* values,
+                   BoolCallback* done);
 
   // Establishes a Cohort backed by the CacheInteface passed to the constructor.
   void AddCohort(const GoogleString& cohort);

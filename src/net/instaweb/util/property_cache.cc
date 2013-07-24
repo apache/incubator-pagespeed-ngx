@@ -381,7 +381,7 @@ void PropertyPage::WriteCohort(const PropertyCache::Cohort* cohort) {
     if (EncodePropertyCacheValues(cohort, &values) ||
         HasPropertyValueDeleted(cohort)) {
       property_cache_->property_store()->Put(
-          url_, options_signature_hash_, device_type_, cohort, &values);
+          url_, options_signature_hash_, device_type_, cohort, &values, NULL);
     }
   }
 }

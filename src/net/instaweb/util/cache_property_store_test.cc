@@ -61,7 +61,9 @@ class CachePropertyStoreTest : public testing::Test {
        property_cache_(&cache_property_store_,
                        &timer_,
                        &stats_,
-                       thread_system_.get()) {
+                       thread_system_.get()),
+       num_callback_with_false_called_(0),
+       num_callback_with_true_called_(0) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_.AddCohort(kCohortName1);
@@ -81,10 +83,20 @@ class CachePropertyStoreTest : public testing::Test {
 
   void ExpectFalse(bool result) {
     EXPECT_FALSE(result);
+    ++num_callback_with_false_called_;
   }
 
   void ExpectTrue(bool result) {
     EXPECT_TRUE(result);
+    ++num_callback_with_true_called_;
+  }
+
+  void ExpectNumCallbacksCalled(int expected_num_callback_with_false_called,
+                                int expected_num_callback_with_true_called) {
+    EXPECT_EQ(expected_num_callback_with_false_called,
+              num_callback_with_false_called_);
+    EXPECT_EQ(expected_num_callback_with_true_called,
+              num_callback_with_true_called_);
   }
 
   void ExpectCacheStats(LRUCache* lru_cache,
@@ -106,6 +118,8 @@ class CachePropertyStoreTest : public testing::Test {
   const PropertyCache::Cohort* cohort_;
   PropertyCache::CohortVector cohort_list_;
   scoped_ptr<MockPropertyPage> page_;
+  int num_callback_with_false_called_;
+  int num_callback_with_true_called_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CachePropertyStoreTest);
@@ -120,6 +134,8 @@ TEST_F(CachePropertyStoreTest, TestNoResultAvailable) {
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
   EXPECT_EQ(CacheInterface::kNotFound, page_->GetCacheState(cohort_));
+  ExpectNumCallbacksCalled(1,  /* Num Callback with false */
+                           0  /* Num Callback with true */);
 }
 
 TEST_F(CachePropertyStoreTest, TestResultAvailable) {
@@ -130,7 +146,8 @@ TEST_F(CachePropertyStoreTest, TestResultAvailable) {
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
       cohort_,
-      &values);
+      &values,
+      NULL);
   cache_property_store_.Get(
       kUrl,
       kOptionsSignatureHash,
@@ -139,6 +156,8 @@ TEST_F(CachePropertyStoreTest, TestResultAvailable) {
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
+  ExpectNumCallbacksCalled(0,  /* Num Callback with false */
+                           1  /* Num Callback with true */);
 }
 
 TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
@@ -156,6 +175,8 @@ TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
       page_.get(),
       NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
+  ExpectNumCallbacksCalled(1,  /* Num Callback with false */
+                           0  /* Num Callback with true */);
 }
 
 TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
@@ -192,7 +213,8 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
       cohort_,
-      &values);
+      &values,
+      NULL);
   cache_property_store_.Get(
       kUrl,
       kOptionsSignatureHash,
@@ -212,7 +234,8 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
       cohort2,
-      &values);
+      &values,
+      NULL);
   cache_property_store_.Get(
       kUrl,
       kOptionsSignatureHash,
@@ -224,6 +247,8 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
                    2,  /* Cache hit */
                    0,  /* Cache miss */
                    1  /* Cache inserts */);
+  ExpectNumCallbacksCalled(1,  /* Num Callback with false */
+                           2  /* Num Callback with true */);
 }
 
 TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
@@ -250,14 +275,16 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
       cohort_,
-      &values);
+      &values,
+      NULL);
   // Insert the value for cohort2.
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
       UserAgentMatcher::kDesktop,
       cohort2,
-      &values);
+      &values,
+      NULL);
   // Get the value for cohort1 and cohort2.
   cohort_list_.push_back(cohort2);
   cache_property_store_.Get(
@@ -277,6 +304,8 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
                    1,  /* Cache hit */
                    0,  /* Cache miss */
                    1  /* Cache inserts */);
+  ExpectNumCallbacksCalled(0,  /* Num Callback with false */
+                           1  /* Num Callback with true */);
 }
 
 TEST_F(CachePropertyStoreTest, TestPropertyCacheKeyMethod) {
@@ -292,6 +321,20 @@ TEST_F(CachePropertyStoreTest, TestPropertyCacheKeyMethod) {
       UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop), "@",
       cohort_->name());
   EXPECT_EQ(expected, cache_key);
+}
+
+TEST_F(CachePropertyStoreTest, TestPutHandlesNonNullCallback) {
+  PropertyCacheValues values;
+  values.ParseFromString(kParsableContent);
+  cache_property_store_.Put(
+      kUrl,
+      kOptionsSignatureHash,
+      UserAgentMatcher::kDesktop,
+      cohort_,
+      &values,
+      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
+  ExpectNumCallbacksCalled(0,  /* Num Callback with false */
+                           1  /* Num Callback with true */);
 }
 
 }  // namespace net_instaweb
