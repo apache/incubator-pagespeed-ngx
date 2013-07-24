@@ -535,37 +535,31 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
   // The in-place metadata or the rewritten resource was not found in cache.
   // Fetch the original resource and trigger an asynchronous rewrite.
   if (num_slots() == 1) {
-    if (ShouldDistributeRewrite()) {
-      // We want to distribute a rewrite before fetching, so we can't wait for
-      // StartFetchReconstructionParent to be called.
-      DistributeRewrite();
-    } else {
-      ResourcePtr resource(slot(0)->resource());
-      // If we get here, the resource must not have been rewritten.
-      is_rewritten_ = false;
-      RecordingFetch* fetch = new RecordingFetch(async_fetch(), resource, this,
-                                                 fetch_message_handler());
-      if (resource->UseHttpCache()) {
-        if (proxy_mode_) {
-          cache_fetcher_.reset(driver_->CreateCacheFetcher());
-          // Since we are proxying resources to user, we want to fetch it even
-          // if there is a kRecentFetchNotCacheable message in the cache.
-          cache_fetcher_->set_ignore_recent_fetch_failed(true);
-        } else {
-          cache_fetcher_.reset(driver_->CreateCacheOnlyFetcher());
-          // Since we are not proxying resources to user, we can respect
-          // kRecentFetchNotCacheable messages.
-          cache_fetcher_->set_ignore_recent_fetch_failed(false);
-        }
-        cache_fetcher_->Fetch(url_, fetch_message_handler(), fetch);
+    ResourcePtr resource(slot(0)->resource());
+    // If we get here, the resource must not have been rewritten.
+    is_rewritten_ = false;
+    RecordingFetch* fetch = new RecordingFetch(async_fetch(), resource, this,
+                                               fetch_message_handler());
+    if (resource->UseHttpCache()) {
+      if (proxy_mode_) {
+        cache_fetcher_.reset(driver_->CreateCacheFetcher());
+        // Since we are proxying resources to user, we want to fetch it even
+        // if there is a kRecentFetchNotCacheable message in the cache.
+        cache_fetcher_->set_ignore_recent_fetch_failed(true);
       } else {
-        ServerContext* server_context = resource->server_context();
-        MessageHandler* handler = server_context->message_handler();
-        NonHttpResourceCallback* callback = new NonHttpResourceCallback(
-            resource, proxy_mode_, this, fetch, handler);
-        resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
-                            Driver()->request_context(), callback);
+        cache_fetcher_.reset(driver_->CreateCacheOnlyFetcher());
+        // Since we are not proxying resources to user, we can respect
+        // kRecentFetchNotCacheable messages.
+        cache_fetcher_->set_ignore_recent_fetch_failed(false);
       }
+      cache_fetcher_->Fetch(url_, fetch_message_handler(), fetch);
+    } else {
+      ServerContext* server_context = resource->server_context();
+      MessageHandler* handler = server_context->message_handler();
+      NonHttpResourceCallback* callback = new NonHttpResourceCallback(
+          resource, proxy_mode_, this, fetch, handler);
+      resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                          Driver()->request_context(), callback);
     }
   } else {
     LOG(ERROR) << "Expected one resource slot, but found " << num_slots()

@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
@@ -43,10 +44,13 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/timer.h"  // for Timer, etc
 #include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
+
+class HtmlFilter;
 
 namespace {
 
@@ -73,6 +77,8 @@ class CreateFilterCallback
   bool blocking_;
   DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
 };
+
+}  // namespace
 
 // A class for testing the distributed paths through the rewrite context. It
 // uses the RewriteContextTestBase's "other" RewriteDriver, factory, and options
@@ -121,6 +127,12 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
     InitUpperFilter(kind, other_rewrite_driver());
     options_->DistributeFilter(UpperCaseRewriter::kFilterId);
     SetupDistributedTest();
+  }
+
+  // A wrapper function with friend access to RewriteDriver.
+  bool DistributeFetch(const StringPiece& url, const StringPiece& filter_id,
+                       AsyncFetch* async_fetch) {
+    return rewrite_driver_->DistributeFetch(url, filter_id, async_fetch);
   }
 
   // TODO(jkarlin): Instead of CheckDistributedFetch where we pass in the
@@ -187,8 +199,6 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
   Variable* distributed_rewrite_successes_;
   Variable* distributed_metadata_failures_;
 };
-
-}  // namespace
 
 // Copy of the RewriteContextTest.TrimRewrittenOptimizable test modified for
 // distributed rewrites.
@@ -392,17 +402,16 @@ TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilter) {
   EXPECT_EQ(0, distributed_rewrite_failures_->Get());
 
   // Ingress task starts on cc filter, misses HTTP twice, metadata once,
-  // and then fetches its CssFilter input.
-  // CssFilter misses HTTP twice, metadata once, and then distributes.
+  // and then fetches its CssFilter input, which distributes.
   // Distributed task CssFilter misses HTTP twice, metadata once, input resource
   // once, and then fetches the input resource and inserts the metadata,
   // original resource, and optimized resource into cache.
   // Ingress task writes its metadata and optimized to cache.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(10, lru_cache()->num_misses());
+  EXPECT_EQ(7, lru_cache()->num_misses());
   EXPECT_EQ(5, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(7, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(5, http_cache()->cache_misses()->Get());
   EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
 }
 
@@ -456,22 +465,20 @@ TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilterBlocks) {
   EXPECT_EQ(0, distributed_rewrite_failures_->Get());
 
   // Ingress task starts on cc filter, misses HTTP twice, metadata once,
-  // and then fetches its CssFilter input.
-  // CssFilter misses HTTP twice, metadata once, and then distributes.
+  // and then fetches its CssFilter input, which distributes.
   // Distributed task CssFilter misses HTTP twice, metadata once, input resource
   // once, and then fetches the input resource and inserts the metadata,
   // original resource, and optimized resource into cache.
   // Ingress task writes its metadata and optimized resource to cache.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(10, lru_cache()->num_misses());
+  EXPECT_EQ(7, lru_cache()->num_misses());
   EXPECT_EQ(5, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(7, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(5, http_cache()->cache_misses()->Get());
   EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
 }
 
-// Simulate distributed fetch failure and ensure that we fall back to the
-// original.
+// Simulate distributed fetch failure and ensure that we don't modify the URL.
 TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFailFallback) {
   SetupDistributedTest();
   // Break the response after the headers have written but before data is
@@ -643,16 +650,15 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFetch) {
                         0,   // number of ingress fetches
                         1);  // number of rewrites
 
-  // Ingress task misses on two HTTP lookups (check twice for rewritten
-  // resource) and one metadata lookup.
+  // Ingress task distributes.
   // Rewrite task misses on three HTTP lookups (twice for rewritten resource
   // plus once for original resource) and one metdata lookup. Then inserts
   // original resource, optimized resource, and metadata.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(5, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 
   // On the second .pagespeed. request the optimized resource should be in the
@@ -664,8 +670,9 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFetch) {
   // Content should be optimized.
   EXPECT_EQ("a", content);
 
-  // The distributed fetcher should not have run.
-  EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
+  // The ingress url fetcher should not have run.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
 
   // Ingress task hits on one HTTP lookup and returns it.
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -705,24 +712,21 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
                         0,   // number of ingress fetches
                         0);  // number of rewrites
 
-  // Ingress task misses on two HTTP lookups (check twice for rewritten
-  // resource) and one metadata lookup.  Then hits on the 404'd resource.
+  // Ingress task distributes and streams back the 404.
   // Rewrite task misses on three HTTP lookups (twice for rewritten resource
-  // plus once for original resource) and one metdata lookup. Then inserts
+  // plus once for original resource) and one metadata lookup. Then inserts
   // 404'd original resource and metadata.
-  EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(6, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
 
   // Fetching again causes another reconstruction and therefore another
   // distributed rewrite, even though we hit the 404 in cache.
   //
-  // ingress task: 2 .pagespeed, misses, 1 metadata hit, 1 http hit, then
-  // distribute because 404, it fails (because 404) so fetch locally and hit.
-  // Return.
+  // ingress task: distribute because 404, it fails (because 404).
   //
   // rewrite task: 2 .pagespeed. misses, 1 metadata hit, 1 http hit, then fetch
   // again because 404, fetch locally and hit. Return.
@@ -734,13 +738,13 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
                         0,   // number of ingress fetches
                         0);  // number of rewrites
 
-  EXPECT_EQ(6, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
 }
 
-// Simulate distributed fetch failure and ensure that we fall back to the
-// original.
+// Simulate distributed fetch failure, which means that we stream back a failed
+// response.
 TEST_F(DistributedRewriteContextTest,
        IngressDistributedRewriteFailFallbackFetch) {
   SetupDistributedTest();
@@ -753,10 +757,10 @@ TEST_F(DistributedRewriteContextTest,
   GoogleString content;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
-  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+  EXPECT_FALSE(FetchResourceUrl(encoded_url, &request_headers, &content,
                                &response_headers));
 
-  EXPECT_STREQ(" a ", content);
+  EXPECT_STREQ("", content);
 
   // Ingress task distributes, which fails, but pick up original resource from
   // shared cache.
@@ -765,16 +769,80 @@ TEST_F(DistributedRewriteContextTest,
                         0,   // number of ingress fetches
                         1);  // number of rewrites
 
-  // Ingress task: Misses http cache twice, then metadata. Distributed rewrite
-  // fails, so fetches original (a hit because of shared cache), and returns.
+  // Ingress task: Distributed rewrite streams but then fails.
   // Distributed task: Misses http cache twice, then metadata. Fetches original
   // (misses in process), writes it, optimizes, writes optimized, and writes
   // metadata.
-  EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(5, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+}
+
+// Simulate distributed fetch failure due to a bad URL to test PrepareRequest
+// failure handling.
+TEST_F(DistributedRewriteContextTest,
+       IngressDistributedRewriteFailPrepareRequest) {
+  SetupDistributedTest();
+  GoogleString content;
+  StringAsyncFetch async_fetch(rewrite_driver_->request_context(), &content);
+
+  // Attempt a distributed fetch with a bad URL. PrepareRequest should fail and
+  // the result should be a FetchResource() call.
+  EXPECT_TRUE(
+      DistributeFetch("", TrimWhitespaceRewriter::kFilterId, &async_fetch));
+
+  // Tried to distribute but didn't get through PrepareRequest and fell
+  // back to a FetchResource.
+  EXPECT_TRUE(rewrite_driver_->tried_to_distribute_fetch());
+  CheckDistributedFetch(0,   // successful distributed fetches
+                        0,   // unsuccessful distributed fetches
+                        0,   // number of ingress fetches
+                        0);  // number of rewrites
+}
+
+// Simulate distributed fetch failure where the error occurs before headers
+// complete (such as a connection error to the distributed task). This should
+// fall back to local processing.
+TEST_F(DistributedRewriteContextTest,
+       IngressDistributedRewriteEarlyFailFallbackFetch) {
+  SetupDistributedTest();
+  test_distributed_fetcher()->set_error_before_headers_complete(true);
+
+  // Mock the optimized .pagespeed. response from the rewrite task.
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+
+  GoogleString content;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+                               &response_headers));
+
+  // Should be optimized.
+  EXPECT_STREQ("a", content);
+
+  // .pagespeed. request fails, causing local rewrite.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(
+      0, other_factory_->counting_distributed_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, distributed_rewrite_successes_->Get());
+  EXPECT_EQ(1, distributed_rewrite_failures_->Get());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, other_trim_filter_->num_rewrites());
+  EXPECT_EQ(0, distributed_metadata_failures_->Get());
+
+  // Ingress task: Distributed rewrite streams but fails early, resorts
+  // to local rewrite. Misses http cache twice, then metadata. Fetches original
+  // (misses in process), writes it, optimizes, writes optimized, and writes
+  // metadata.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 }
 

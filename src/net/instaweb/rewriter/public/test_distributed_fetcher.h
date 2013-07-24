@@ -45,6 +45,11 @@ class TestDistributedFetcher : public UrlAsyncFetcher {
   // success parameter will be false.
   void set_fail_after_headers(bool x) { fail_after_headers_ = x; }
 
+  // If true, simulates an error before headers complete.
+  void set_error_before_headers_complete(bool x) {
+    error_before_headers_complete_ = x;
+  }
+
   // Should the fetch block on the distributed rewrite? We usually want this to
   // be true because that way we can predict the behavior of the shared cache in
   // our tests but some tests require it to be false.
@@ -55,6 +60,7 @@ class TestDistributedFetcher : public UrlAsyncFetcher {
   RewriteTestBase* rewrite_test_base_;
   bool fail_after_headers_;
   bool blocking_fetch_;
+  bool error_before_headers_complete_;
   DISALLOW_COPY_AND_ASSIGN(TestDistributedFetcher);
 };
 

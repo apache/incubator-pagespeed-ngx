@@ -195,6 +195,10 @@ enum Code {
   kProxyDeclinedRequest = 523,
   kProxyDnsLookupFailure = 524,
 
+  // PSOL-specific response code to indiciate that a distributed connection
+  // failed.
+  kDistributedConnectionFailure = 550,
+
   // Instaweb-specific response codes: these are intentionally chosen to be
   // outside the normal HTTP range, but we consider these response codes
   // to be 'cacheable' in our own cache.

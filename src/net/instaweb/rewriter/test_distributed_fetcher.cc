@@ -20,11 +20,13 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
@@ -78,7 +80,8 @@ TestDistributedFetcher::TestDistributedFetcher(
     RewriteTestBase* rewrite_test_base)
     : rewrite_test_base_(rewrite_test_base),
       fail_after_headers_(false),
-      blocking_fetch_(true) {
+      blocking_fetch_(true),
+      error_before_headers_complete_(false) {
 }
 
 TestDistributedFetcher::~TestDistributedFetcher() {}
@@ -88,6 +91,16 @@ void TestDistributedFetcher::Fetch(const GoogleString& url,
                                    AsyncFetch* fetch) {
   // Call FetchResource on the test's other rewrite driver.
   DCHECK(rewrite_test_base_ != NULL);
+
+  if (error_before_headers_complete_) {
+    // Simulate an early distributed fetch error (such as no such task to
+    // connect to).
+    fetch->response_headers()
+        ->SetStatusAndReason(HttpStatus::kDistributedConnectionFailure);
+    fetch->Done(false);
+    return;
+  }
+
   RewriteDriver* other_driver = rewrite_test_base_->other_rewrite_driver();
   TestRewriteDriverFactory* other_factory = rewrite_test_base_->other_factory();
   TestDistributedFetch* test_fetch = new TestDistributedFetch(fetch);

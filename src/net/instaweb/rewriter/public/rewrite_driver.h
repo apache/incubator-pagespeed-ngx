@@ -1009,6 +1009,9 @@ class RewriteDriver : public HtmlParse {
   // empty expected key returns false.
   bool MetadataRequested(const RequestHeaders& request_headers) const;
 
+  // Did the driver attempt to distribute the fetch?
+  bool tried_to_distribute_fetch() const { return tried_to_distribute_fetch_; }
+
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
   // to construct the output, and is used to determine whether the
@@ -1031,12 +1034,30 @@ class RewriteDriver : public HtmlParse {
   virtual void DetermineEnabledFilters();
 
  private:
+  friend class DistributedRewriteContextTest;
   friend class RewriteContext;
   friend class RewriteDriverTest;
   friend class RewriteTestBase;
   friend class ServerContextTest;
 
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
+
+  // Returns true if the given fetch request should be distributed.
+  bool ShouldDistributeFetch(const StringPiece& filter_id);
+
+  // Distributes the fetch to another task if ShouldDistributeFetch allows it
+  // for the provided filter_id and streams the result to the provided fetch
+  // object.
+  //
+  // Returns true if an attempt to distribute was made. If the attempt fails
+  // before async_fetch was written to (before ResponseHeaders) it will call
+  // RewriteDriver::FetchResource() and skip distribution. If the attempt fails
+  // after writing to the ResponseHeaders then the fetch will ultimately fail
+  // and the client will get a broken resource.
+  //
+  // Returns false if ShouldDistributeFetch disallows the distribution.
+  bool DistributeFetch(const StringPiece& url, const StringPiece& filter_id,
+                       AsyncFetch* async_fetch);
 
   // Backend for both FetchComplete() and DetachedFetchComplete().
   // If 'signal' is true will wake up those waiting for completion on the
@@ -1507,6 +1528,10 @@ class RewriteDriver : public HtmlParse {
   // once, allowing for multiple calls to RewriteDriver::Initialize as long
   // as they are matched to RewriteDriver::Terminate.
   static int initialized_count_;
+
+  // True if this RewriteDriver attempted to distribute the rewrite. This is
+  // used to prevent a second attempt in case the first errored out.
+  bool tried_to_distribute_fetch_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
