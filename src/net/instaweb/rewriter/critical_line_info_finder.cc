@@ -53,9 +53,8 @@ const CriticalLineInfo* CriticalLineInfoFinder::GetCriticalLine(
 // Critical line configuration can come from the following sources and will be
 // given preference in order:
 // - Http header kXPsaSplitConfig
-// - domain configuration options
 // - property cache value
-// TODO(bharathbhushan): Give preference to pcache over domain config.
+// - domain configuration options
 void CriticalLineInfoFinder::UpdateInDriver(RewriteDriver* driver) {
   if (driver->critical_line_info() != NULL) {
     return;
@@ -69,9 +68,38 @@ void CriticalLineInfoFinder::UpdateInDriver(RewriteDriver* driver) {
       critical_line_config = header;
     }
   }
+
   if (critical_line_config.empty()) {
+    PropertyCacheDecodeResult pcache_status;
+    scoped_ptr<CriticalLineInfo> critical_line_info(
+        DecodeFromPropertyCache<CriticalLineInfo>(
+            driver,
+            Cohort(driver),
+            Property(),
+            driver->options()->finder_properties_cache_expiration_time_ms(),
+            &pcache_status));
+    switch (pcache_status) {
+      case kPropertyCacheDecodeNotFound:
+        driver->InfoHere("Critical line info not found in cache");
+        break;
+      case kPropertyCacheDecodeExpired:
+        driver->InfoHere("Critical line info cache entry expired");
+        break;
+      case kPropertyCacheDecodeParseError:
+        driver->WarningHere("Unable to parse Critical line info PropertyValue");
+        break;
+      case kPropertyCacheDecodeOk:
+        break;
+    }
+    driver->set_critical_line_info(critical_line_info.release());
+    if (driver->critical_line_info() != NULL) {
+      return;
+    }
+
+    // Pcache does not have the config. Pick it up from the domain config.
     critical_line_config = driver->options()->critical_line_config();
   }
+
   if (!critical_line_config.empty()) {
     // The critical_line_config string has the following format:
     // xpath1_start:xpath1_end,xpath2_start:xpath2_end,...
@@ -98,29 +126,6 @@ void CriticalLineInfoFinder::UpdateInDriver(RewriteDriver* driver) {
     driver->set_critical_line_info(critical_line_info.release());
     return;
   }
-
-  PropertyCacheDecodeResult pcache_status;
-  scoped_ptr<CriticalLineInfo> critical_line_info(
-      DecodeFromPropertyCache<CriticalLineInfo>(
-          driver,
-          Cohort(driver),
-          Property(),
-          driver->options()->finder_properties_cache_expiration_time_ms(),
-          &pcache_status));
-  switch (pcache_status) {
-    case kPropertyCacheDecodeNotFound:
-      driver->InfoHere("Critical line info not found in cache");
-      break;
-    case kPropertyCacheDecodeExpired:
-      driver->InfoHere("Critical line info cache entry expired");
-      break;
-    case kPropertyCacheDecodeParseError:
-      driver->WarningHere("Unable to parse Critical line info PropertyValue");
-      break;
-    case kPropertyCacheDecodeOk:
-      break;
-  }
-  driver->set_critical_line_info(critical_line_info.release());
 }
 
 }  // namespace net_instaweb

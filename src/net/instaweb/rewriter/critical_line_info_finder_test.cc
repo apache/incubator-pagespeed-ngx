@@ -45,6 +45,47 @@ class CriticalLineInfoFinderTest : public RewriteTestBase {
         ->panels(index).end_marker_xpath();
   }
 
+  CriticalLineInfo CreateCriticalLineInfo(
+      const GoogleString& start_xpath1,
+      const GoogleString& end_xpath1,
+      const GoogleString& start_xpath2,
+      const GoogleString& end_xpath2) {
+    CriticalLineInfo config;
+    Panel* panel = config.add_panels();
+    panel->set_start_xpath(start_xpath1);
+    panel->set_end_marker_xpath(end_xpath1);
+    panel = config.add_panels();
+    panel->set_start_xpath(start_xpath2);
+    panel->set_end_marker_xpath(end_xpath2);
+    return config;
+  }
+
+  void WriteToPcache(CriticalLineInfo config) {
+    server_context()->page_property_cache()->set_enabled(true);
+
+    const PropertyCache::Cohort* cohort = SetupCohort(
+        server_context()->page_property_cache(), "mycohort");
+    server_context()->set_critical_line_cohort(cohort);
+    rewrite_driver()->set_property_page(NewMockPage("http://www.test.com"));
+    server_context()->page_property_cache()->Read(
+        rewrite_driver()->property_page());
+
+    GoogleString buf;
+    StringOutputStream sstream(&buf);
+    ASSERT_TRUE(config.SerializeToZeroCopyStream(&sstream));
+    PropertyPage* page = rewrite_driver()->property_page();
+    ASSERT_TRUE(page != NULL);
+    ASSERT_EQ("mycohort", server_context()->critical_line_cohort()->name());
+    page->GetProperty(
+        cohort, server_context()->critical_line_info_finder()->Property());
+    page->UpdateValue(
+        server_context()->critical_line_cohort(),
+        server_context()->critical_line_info_finder()->Property(),
+        buf);
+    rewrite_driver()->property_page()->WriteCohort(
+        server_context()->critical_line_cohort());
+  }
+
  protected:
   RequestHeaders request_headers_;
 };
@@ -104,39 +145,10 @@ TEST_F(CriticalLineInfoFinderTest, MultipleXpathPairs) {
   EXPECT_EQ("", panel_end(2));
 }
 
-// TODO(bharathbhushan): Add tests for showing order of handling of critical
-// line information sources.
 TEST_F(CriticalLineInfoFinderTest, ConfigInPcache) {
-  CriticalLineInfo config;
-  Panel* panel = config.add_panels();
-  panel->set_start_xpath("div[1]");
-  panel->set_end_marker_xpath("div[2]");
-  panel = config.add_panels();
-  panel->set_start_xpath("div[3]");
-
-  server_context()->page_property_cache()->set_enabled(true);
-
-  const PropertyCache::Cohort* cohort = SetupCohort(
-      server_context()->page_property_cache(), "mycohort");
-  server_context()->set_critical_line_cohort(cohort);
-  rewrite_driver()->set_property_page(NewMockPage("http://www.test.com"));
-  server_context()->page_property_cache()->Read(
-      rewrite_driver()->property_page());
-
-  GoogleString buf;
-  StringOutputStream sstream(&buf);
-  ASSERT_TRUE(config.SerializeToZeroCopyStream(&sstream));
-  PropertyPage* page = rewrite_driver()->property_page();
-  ASSERT_TRUE(page != NULL);
-  ASSERT_EQ("mycohort", server_context()->critical_line_cohort()->name());
-  page->GetProperty(cohort,
-                    server_context()->critical_line_info_finder()->Property());
-  page->UpdateValue(
-      server_context()->critical_line_cohort(),
-      server_context()->critical_line_info_finder()->Property(),
-      buf);
-  rewrite_driver()->property_page()->WriteCohort(
-      server_context()->critical_line_cohort());
+  CriticalLineInfo config = CreateCriticalLineInfo(
+      "div[1]", "div[2]", "div[3]", "");
+  WriteToPcache(config);
 
   EXPECT_TRUE(rewrite_driver()->critical_line_info() == NULL);
   server_context()->critical_line_info_finder()
@@ -145,6 +157,56 @@ TEST_F(CriticalLineInfoFinderTest, ConfigInPcache) {
   EXPECT_EQ("div[1]", panel_start(0));
   EXPECT_EQ("div[2]", panel_end(0));
   EXPECT_EQ("div[3]", panel_start(1));
+  EXPECT_EQ("", panel_end(1));
+}
+
+// Pcache config is preferred over domain config.
+TEST_F(CriticalLineInfoFinderTest, ConfigInMultipleSources1) {
+  CriticalLineInfo config = CreateCriticalLineInfo(
+      "div[1]", "div[2]", "div[3]", "");
+  WriteToPcache(config);
+  options()->set_critical_line_config("div[10]:div[11]");
+
+  EXPECT_TRUE(rewrite_driver()->critical_line_info() == NULL);
+  server_context()->critical_line_info_finder()
+      ->GetCriticalLine(rewrite_driver());
+  EXPECT_EQ(2, rewrite_driver()->critical_line_info()->panels_size());
+  EXPECT_EQ("div[1]", panel_start(0));
+  EXPECT_EQ("div[2]", panel_end(0));
+  EXPECT_EQ("div[3]", panel_start(1));
+  EXPECT_EQ("", panel_end(1));
+}
+
+// HTTP header is preferred over domain config.
+TEST_F(CriticalLineInfoFinderTest, ConfigInMultipleSources2) {
+  request_headers_.Add(HttpAttributes::kXPsaSplitConfig,
+                       "div[1]:div[2]");
+  rewrite_driver()->SetRequestHeaders(request_headers_);
+  options()->set_critical_line_config("div[10]:div[11]");
+
+  EXPECT_TRUE(rewrite_driver()->critical_line_info() == NULL);
+  server_context()->critical_line_info_finder()
+      ->GetCriticalLine(rewrite_driver());
+  EXPECT_EQ(1, rewrite_driver()->critical_line_info()->panels_size());
+  EXPECT_EQ("div[1]", panel_start(0));
+  EXPECT_EQ("div[2]", panel_end(0));
+}
+
+// HTTP header is preferred over Pcache.
+TEST_F(CriticalLineInfoFinderTest, ConfigInMultipleSources3) {
+  request_headers_.Add(HttpAttributes::kXPsaSplitConfig,
+                       "div[1]:div[2]");
+  rewrite_driver()->SetRequestHeaders(request_headers_);
+  CriticalLineInfo config = CreateCriticalLineInfo(
+      "div[10]", "div[11]", "div[12]", "");
+  WriteToPcache(config);
+
+  EXPECT_TRUE(rewrite_driver()->critical_line_info() == NULL);
+  server_context()->critical_line_info_finder()
+      ->GetCriticalLine(rewrite_driver());
+  EXPECT_EQ(1, rewrite_driver()->critical_line_info()->panels_size());
+  EXPECT_EQ("div[1]", panel_start(0));
+  EXPECT_EQ("div[2]", panel_end(0));
 }
 
 }  // namespace net_instaweb
