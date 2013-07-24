@@ -29,11 +29,11 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
 class ResourceNamer;
-struct ContentType;
 
 class CssRewriteTestBase : public RewriteTestBase {
  protected:
@@ -152,11 +152,12 @@ class CssRewriteTestBase : public RewriteTestBase {
                                   const GoogleString& css_input,
                                   const GoogleString& expected_css_output,
                                   int flags) {
-    ValidateRewriteExternalCssUrl(StrCat(kTestDomain, id, ".css"),
+    ValidateRewriteExternalCssUrl(id, StrCat(kTestDomain, id, ".css"),
                                   css_input, expected_css_output, flags);
   }
 
-  void ValidateRewriteExternalCssUrl(const StringPiece& css_url,
+  void ValidateRewriteExternalCssUrl(const StringPiece& id,
+                                     const StringPiece& css_url,
                                      const GoogleString& css_input,
                                      const GoogleString& expected_css_output,
                                      int flags);

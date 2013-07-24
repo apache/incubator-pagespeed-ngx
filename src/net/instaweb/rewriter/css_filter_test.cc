@@ -1935,7 +1935,7 @@ TEST_F(CssFilterTest, EmptyLeafFetch) {
 // http://code.google.com/p/modpagespeed/issues/detail?id=427
 TEST_F(CssFilterTest, EmptyLeafFull) {
   // CSS URL ends in /
-  ValidateRewriteExternalCssUrl(StrCat(kTestDomain, "style/"),
+  ValidateRewriteExternalCssUrl("empty_leaf", StrCat(kTestDomain, "style/"),
                                 kInputStyle, kOutputStyle, kExpectSuccess);
 }
 

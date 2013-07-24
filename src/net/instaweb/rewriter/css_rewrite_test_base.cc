@@ -20,7 +20,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/css_url_extractor.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -266,6 +265,7 @@ GoogleString CssRewriteTestBase::ExtractCssBackgroundImage(
 
 // Check that external CSS gets rewritten correctly.
 void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
+    const StringPiece& id,
     const StringPiece& css_url,
     const GoogleString& css_input,
     const GoogleString& expected_css_output,
@@ -293,7 +293,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
     html_output = html_input;
   }
 
-  ValidateWithStats(css_url, html_input, html_output,
+  ValidateWithStats(id, html_input, html_output,
                     css_input, expected_css_output, flags);
 
   // If we produced a new output resource, check it.
