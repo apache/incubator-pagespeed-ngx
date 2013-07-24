@@ -194,6 +194,10 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_rate_limit_background_fetches);
+    } else if (IsDirective(directive, "ForceCaching")) {
+      result = ParseAndSetOptionHelper(
+          arg, driver_factory,
+          &NgxRewriteDriverFactory::set_force_caching);
     } else {
       result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
     }
