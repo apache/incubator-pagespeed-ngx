@@ -47,4 +47,7 @@
     'apache/mod_instaweb.cc',
     'util/mem_debug.cc',
   ],
+  'ldflags+': [
+    '-Wl,--version-script=build/mod_pagespeed.map',
+  ],
 }

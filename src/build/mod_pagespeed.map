@@ -1,0 +1,5 @@
+{
+  /* Make sure we don't export anything unneeded */
+  global: pagespeed_module;
+  local: *;
+};
