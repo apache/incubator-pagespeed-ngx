@@ -121,7 +121,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
   }
 
   GoogleString JsLoader() {
-    return StrCat("<script type=\"text/javascript\">",
+    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
                   CriticalSelectorFilter::kAddStylesFunction,
                   CriticalSelectorFilter::kAddStylesInvocation,
                   "</script>");

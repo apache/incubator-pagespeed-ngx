@@ -27,25 +27,16 @@ namespace pagespeed {
 
 namespace image_compression {
 
-enum ImageFormat {
-  IMAGE_UNKNOWN = 0,
-  IMAGE_JPEG,
-  IMAGE_PNG,
-  IMAGE_GIF,
-  IMAGE_WEBP
-};
-
 // TODO(huibao): Add an overload function
 // CreateScanlineReader(const void* image_buffer, size_t buffer_length).
 
 // Return a scanline image reader. The following formats are supported:
 // IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, and IMAGE_WEBP.
-//
 ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
                                               const void* image_buffer,
                                               size_t buffer_length);
 
-// Return a scanline image reader. The following formats are supported:
+// Return a scanline image writer. The following formats are supported:
 // IMAGE_PNG, IMAGE_JPEG, and IMAGE_WEBP.
 ScanlineWriterInterface* CreateScanlineWriter(
     ImageFormat image_type,     // Type of the image to write

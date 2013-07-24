@@ -438,6 +438,7 @@ void CriticalSelectorFilter::RenderDone() {
     }
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
+    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     InsertNodeAtBodyEnd(script);
     if (driver_->options()
         ->test_only_prioritize_critical_css_dont_apply_original_css()) {

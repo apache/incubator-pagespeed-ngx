@@ -19,15 +19,59 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_SCANLINE_INTERFACE_H_
 #define PAGESPEED_KERNEL_IMAGE_SCANLINE_INTERFACE_H_
 
-#include "base/basictypes.h"
+#include <cstddef>
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace pagespeed {
 
 namespace image_compression {
 
+#if defined(PAGESPEED_SCANLINE_IMAGE_FORMAT) || \
+  defined(PAGESPEED_SCANLINE_FORMAT_ENUM_NAME) || \
+  defined(PAGESPEED_SCANLINE_FORMAT_ENUM_STRING) || \
+  defined(PAGESPEED_SCANLINE_FORMAT_MIME_STRING)
+#error "Preprocessor macro collision"
+#endif
+
+#define PAGESPEED_SCANLINE_IMAGE_FORMAT(_X)                   \
+    _X(IMAGE_UNKNOWN, ""),                                    \
+    _X(IMAGE_JPEG, "image/jpeg"),                             \
+    _X(IMAGE_PNG, "image/png"),                               \
+    _X(IMAGE_GIF, "image/gif"),                               \
+    _X(IMAGE_WEBP, "image/webp")
+
+#define PAGESPEED_SCANLINE_FORMAT_ENUM_NAME(_S, _M) _S
+#define PAGESPEED_SCANLINE_FORMAT_ENUM_STRING(_S, _M) #_S
+#define PAGESPEED_SCANLINE_FORMAT_MIME_STRING(_S, _M) _M
+
+enum ImageFormat {
+  PAGESPEED_SCANLINE_IMAGE_FORMAT(PAGESPEED_SCANLINE_FORMAT_ENUM_NAME)
+};
+
+// Returns a string representation of the given ImageFormat.
+inline const char* ImageFormatToMimeTypeString(ImageFormat img_type) {
+  static const char* kImageMimeType[] = {
+    PAGESPEED_SCANLINE_IMAGE_FORMAT(PAGESPEED_SCANLINE_FORMAT_MIME_STRING)
+  };
+  return kImageMimeType[img_type];
+}
+
+// Returns the MIME-type string corresponding to the given ImageFormat.
+inline const char* ImageFormatToString(ImageFormat img_type) {
+  static const char* kImageFormatName[] = {
+    PAGESPEED_SCANLINE_IMAGE_FORMAT(PAGESPEED_SCANLINE_FORMAT_ENUM_STRING)
+  };
+  return kImageFormatName[img_type];
+}
+
+#undef PAGESPEED_SCANLINE_FORMAT_MIME_STRING
+#undef PAGESPEED_SCANLINE_FORMAT_ENUM_STRING
+#undef PAGESPEED_SCANLINE_FORMAT_ENUM_NAME
+#undef PAGESPEED_SCANLINE_IMAGE_FORMAT
+
 #if defined(PAGESPEED_SCANLINE_PIXEL_FORMAT) || \
-  defined(PAGESPEED_SCANLINE_PIXEL_FORMAT) || \
-  defined(PAGESPEED_SCANLINE_PIXEL_FORMAT)
+  defined(PAGESPEED_SCANLINE_PIXEL_ENUM_NAME) || \
+  defined(PAGESPEED_SCANLINE_PIXEL_ENUM_STRING)
 #error "Preprocessor macro collision."
 #endif
 
@@ -37,21 +81,21 @@ namespace image_compression {
   _X(RGBA_8888),     /* RGB triplet plus alpha channel, 32 bits per pixel */ \
   _X(GRAY_8)         /* Grayscale, 8 bits per pixel */
 
-#define PAGESPEED_SCANLINE_ENUM_NAME(Y) Y
-#define PAGESPEED_SCANLINE_ENUM_STRING(Y) #Y
+#define PAGESPEED_SCANLINE_PIXEL_ENUM_NAME(_Y) _Y
+#define PAGESPEED_SCANLINE_PIXEL_ENUM_STRING(_Y) #_Y
 
 enum PixelFormat {
-    PAGESPEED_SCANLINE_PIXEL_FORMAT(PAGESPEED_SCANLINE_ENUM_NAME)
+    PAGESPEED_SCANLINE_PIXEL_FORMAT(PAGESPEED_SCANLINE_PIXEL_ENUM_NAME)
 };
 
 inline const char* GetPixelFormatString(PixelFormat pf) {
   static const char* format_names[] = {
-    PAGESPEED_SCANLINE_PIXEL_FORMAT(PAGESPEED_SCANLINE_ENUM_STRING)
+    PAGESPEED_SCANLINE_PIXEL_FORMAT(PAGESPEED_SCANLINE_PIXEL_ENUM_STRING)
   };
   return format_names[pf];
 }
-#undef PAGESPEED_SCANLINE_ENUM_STRING
-#undef PAGESPEED_SCANLINE_ENUM_NAME
+#undef PAGESPEED_SCANLINE_PIXEL_ENUM_STRING
+#undef PAGESPEED_SCANLINE_PIXEL_ENUM_NAME
 #undef PAGESPEED_SCANLINE_PIXEL_FORMAT
 
 class ScanlineReaderInterface {
