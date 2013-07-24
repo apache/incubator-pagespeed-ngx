@@ -494,7 +494,7 @@ bool SharedMemStatistics::InitMutexes(size_t per_var,
   return true;
 }
 
-void SharedMemStatistics::Init(bool parent,
+bool SharedMemStatistics::Init(bool parent,
                                MessageHandler* message_handler) {
   frozen_ = true;
 
@@ -563,12 +563,20 @@ void SharedMemStatistics::Init(bool parent,
     pos += hist->AllocationSize(shm_runtime_);
     i++;
   }
+
+  return ok;
 }
 
 void SharedMemStatistics::GlobalCleanup(MessageHandler* message_handler) {
   if (segment_.get() != NULL) {
     shm_runtime_->DestroySegment(SegmentName(), message_handler);
   }
+}
+
+void SharedMemStatistics::GlobalCleanup(AbstractSharedMem* shm_runtime,
+                                        const GoogleString& segment_name,
+                                        MessageHandler* message_handler) {
+  shm_runtime->DestroySegment(segment_name, message_handler);
 }
 
 GoogleString SharedMemStatistics::SegmentName() const {

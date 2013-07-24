@@ -197,11 +197,21 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   // The root process (the one that starts all the other child
   // threads and processes) must be the first one to make the call, with
   // parent = true, with all other calling it with = false.
-  void Init(bool parent, MessageHandler* message_handler);
+  //
+  // Returns true if successful.
+  bool Init(bool parent, MessageHandler* message_handler);
 
   // This should be called from the root process as it is about to exit, when
   // no further children are expected to start.
   void GlobalCleanup(MessageHandler* message_handler);
+
+  // Like above, but can be done after object got cleaned up, by passing
+  // a saved SegmentName(). Precondition: init must have returned 'true'.
+  static void GlobalCleanup(AbstractSharedMem* shm_runtime,
+                            const GoogleString& segment_name,
+                            MessageHandler* message_handler);
+
+  GoogleString SegmentName() const;
 
   // TODO(sligocki): Rename to statistics_logger().
   virtual StatisticsLogger* console_logger() {
@@ -215,8 +225,6 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
                                               int index);
 
  private:
-  GoogleString SegmentName() const;
-
   // Create mutexes in the segment, with per_var bytes being used,
   // counting the mutex, for each variable.
   bool InitMutexes(size_t per_var, MessageHandler* message_handler);

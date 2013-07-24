@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <map>
+#include <utility>
 
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -54,7 +55,7 @@ class PthreadSharedMem : public AbstractSharedMem {
   static void Terminate();
 
  private:
-  typedef std::map<GoogleString, char*> SegmentBaseMap;
+  typedef std::map<GoogleString, std::pair<char*, size_t> > SegmentBaseMap;
 
   // Accessor for below. Note that the segment_bases_lock will be held at exit.
   static SegmentBaseMap* AcquireSegmentBases();

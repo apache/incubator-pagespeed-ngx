@@ -20,6 +20,7 @@
 
 #include <map>
 #include <set>
+#include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
@@ -112,7 +113,7 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   // Creates and ::Initializes a shared memory statistics object.
   SharedMemStatistics* AllocateAndInitSharedMemStatistics(
-      const StringPiece& name, const ApacheConfig* options);
+      bool local, const StringPiece& name, const ApacheConfig* options);
 
   virtual ApacheServerContext* MakeApacheServerContext(server_rec* server);
   ServerContext* NewServerContext();
@@ -279,15 +280,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
  private:
-  typedef SharedMemCache<64> MetadataShmCache;
-  struct MetadataShmCacheInfo {
-    MetadataShmCacheInfo() : cache_backend(NULL) {}
-
-    // Note that the fields may be NULL if e.g. initialization failed.
-    scoped_ptr<CacheInterface> cache_to_use;  // may be CacheStats or such.
-    MetadataShmCache* cache_backend;
-  };
-
   // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
   // with sensible values if they are not explicitly set.
   void AutoDetectThreadCounts();
@@ -295,6 +287,10 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   apr_pool_t* pool_;
   server_rec* server_rec_;
   scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
+
+  // While split statistics in the ServerContext cleans up the actual objects,
+  // we do the segment cleanup for local stats here.
+  StringVector local_shm_stats_segment_names_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
   scoped_ptr<SlowWorker> slow_worker_;

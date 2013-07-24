@@ -117,11 +117,16 @@ class SystemCaches {
  private:
   typedef SharedMemCache<64> MetadataShmCache;
   struct MetadataShmCacheInfo {
-    MetadataShmCacheInfo() : cache_backend(NULL) {}
+    MetadataShmCacheInfo()
+        : cache_to_use(NULL), cache_backend(NULL), initialized(false) {}
 
     // Note that the fields may be NULL if e.g. initialization failed.
     CacheInterface* cache_to_use;  // may be CacheStats or such.
+    GoogleString segment;
     MetadataShmCache* cache_backend;
+    bool initialized;  // This is needed since in some scenarios we may
+                       // not end up as far as calling ->Initialize() before
+                       // we get shutdown.
   };
 
   // Create a new AprMemCache from the given hostname[:port] specification.

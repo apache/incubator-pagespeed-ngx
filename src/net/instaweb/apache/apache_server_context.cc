@@ -180,7 +180,7 @@ void ApacheServerContext::CreateLocalStatistics(
     Statistics* global_statistics) {
   local_statistics_ =
       apache_factory_->AllocateAndInitSharedMemStatistics(
-          hostname_identifier(), config());
+          true /* local */, hostname_identifier(), config());
   split_statistics_.reset(new SplitStatistics(
       apache_factory_->thread_system(), local_statistics_, global_statistics));
   // local_statistics_ was ::InitStat'd by AllocateAndInitSharedMemStatistics,

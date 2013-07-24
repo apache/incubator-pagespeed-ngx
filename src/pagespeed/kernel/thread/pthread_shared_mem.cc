@@ -24,6 +24,8 @@
 #include <cstddef>
 #include <map>
 #include <utility>
+
+#include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -169,7 +171,7 @@ AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
   }
 
   SegmentBaseMap* bases = AcquireSegmentBases();
-  (*bases)[name] = base;
+  (*bases)[name] = std::make_pair(base, size);
   UnlockSegmentBases();
   return new PthreadSharedMemSegment(base, size, handler);
 }
@@ -184,7 +186,8 @@ AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
     UnlockSegmentBases();
     return NULL;
   }
-  char* base = i->second;
+  char* base = i->second.first;
+  DCHECK_EQ(size, i->second.second);
   UnlockSegmentBases();
   return new PthreadSharedMemSegment(base, size, handler);
 }
@@ -196,6 +199,9 @@ void PthreadSharedMem::DestroySegment(const GoogleString& name,
   SegmentBaseMap* bases = AcquireSegmentBases();
   SegmentBaseMap::iterator i = bases->find(name);
   if (i != bases->end()) {
+    // Note that we must munmap the segment here in order to not leak like crazy
+    // for things like apache2ctrl graceful (and similar nginx configuration).
+    munmap(i->second.first, i->second.second);
     bases->erase(i);
     if (bases->empty()) {
       delete segment_bases_;

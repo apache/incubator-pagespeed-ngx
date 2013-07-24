@@ -98,6 +98,15 @@ void SystemCaches::ShutDown(MessageHandler* message_handler) {
          e = path_cache_map_.end(); p != e; ++p) {
       p->second->GlobalCleanup(message_handler);
     }
+
+    // And all the SHM caches.
+    for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
+         e = metadata_shm_caches_.end(); p != e; ++p) {
+      if (p->second->cache_backend != NULL && p->second->initialized) {
+        MetadataShmCache::GlobalCleanup(shared_mem_runtime_, p->second->segment,
+                                        message_handler);
+      }
+    }
   }
 }
 
@@ -211,10 +220,11 @@ bool SystemCaches::CreateShmMetadataCache(
     } else {
       cache_info = new MetadataShmCacheInfo;
       factory_->TakeOwnership(cache_info);
+      cache_info->segment = StrCat(name, "/metadata_cache");
       cache_info->cache_backend =
           new SharedMemCache<64>(
               shared_mem_runtime_,
-              StrCat(name, "/metadata_cache"),
+              cache_info->segment,
               factory_->timer(),
               factory_->hasher(),
               kSectors,
@@ -385,6 +395,7 @@ void SystemCaches::RootInit() {
            e = metadata_shm_caches_.end(); p != e; ++p) {
     MetadataShmCacheInfo* cache_info = p->second;
     if (cache_info->cache_backend->Initialize()) {
+      cache_info->initialized = true;
       cache_info->cache_to_use =
           new CacheStats(kShmCache, cache_info->cache_backend,
                          factory_->timer(), factory_->statistics());
