@@ -18,13 +18,13 @@
 
 // Unit-test the statistics work bound.
 
-#include "net/instaweb/util/public/statistics_work_bound.h"
+#include "pagespeed/kernel/util/statistics_work_bound.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/simple_stats.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/simple_stats.h"
 
 namespace net_instaweb {
 class Variable;

@@ -16,14 +16,14 @@
 // Author: sligocki@google.com (Shawn Ligocki),
 //         jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/url_to_filename_encoder.h"
+#include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 #include <cstdio>
 #include <vector>
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

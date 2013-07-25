@@ -16,11 +16,10 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/url_escaper.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_multipart_encoder.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/url_multipart_encoder.h"
 
 namespace net_instaweb {
 

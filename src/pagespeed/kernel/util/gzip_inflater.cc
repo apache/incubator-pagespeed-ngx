@@ -16,19 +16,19 @@
 
 // Author: bmcquade@google.com (Bryan McQuade)
 
-#include "net/instaweb/util/public/gzip_inflater.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 
 #include <cstddef>
 #include <cstdlib>
 #include "base/logging.h"
 #ifdef USE_SYSTEM_ZLIB
-#include "zlib.h"
+#include "zlib.h"  // NOLINT
 #else
 #include "third_party/zlib/zlib.h"
 #endif
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace {
 

@@ -16,11 +16,11 @@
 // Author: mbelshe@google.com (Mike Belshe)
 //         jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/url_to_filename_encoder.h"
+#include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

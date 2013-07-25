@@ -16,12 +16,12 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_escaper.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/url_escaper.h"
 
 namespace net_instaweb {
 class MessageHandler;

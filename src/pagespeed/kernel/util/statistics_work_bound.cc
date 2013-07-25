@@ -16,10 +16,10 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/statistics_work_bound.h"
+#include "pagespeed/kernel/util/statistics_work_bound.h"
 
 #include <cstddef>
-#include "net/instaweb/util/public/statistics.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 

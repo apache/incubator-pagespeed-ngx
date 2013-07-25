@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-// Author: sligocki@google.com (Shawn Ligocki)
+// Author: jmarantz@google.com (Joshua Marantz)
+//
 
-#include "net/instaweb/util/public/gflags.h"
+#ifndef PAGESPEED_KERNEL_UTIL_GFLAGS_H_
+#define PAGESPEED_KERNEL_UTIL_GFLAGS_H_
 
 #include "gflags/gflags.h"
 
 namespace net_instaweb {
 
-void ParseGflags(const char* progname, int* argc, char*** argv) {
-  google::ParseCommandLineFlags(argc, argv, true);
-}
+void ParseGflags(const char* progname, int* argc, char*** argv);
 
 }  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_UTIL_GFLAGS_H_

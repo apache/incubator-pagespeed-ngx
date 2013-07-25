@@ -16,10 +16,21 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/work_bound.h"
+#ifndef PAGESPEED_KERNEL_UTIL_WORK_BOUND_H_
+#define PAGESPEED_KERNEL_UTIL_WORK_BOUND_H_
 
 namespace net_instaweb {
 
-WorkBound::~WorkBound() { }
+// A WorkBound represents permission to do work bounded by some upper bound.
+// Roughly speaking we can represent this as a bounded shared counter, but
+// how we realize the counter implementation must vary from system to system.
+class WorkBound {
+ public:
+  virtual ~WorkBound();
+  virtual bool TryToWork() = 0;
+  virtual void WorkComplete() = 0;
+};
 
 }  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_UTIL_WORK_BOUND_H_
