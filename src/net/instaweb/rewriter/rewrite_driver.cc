@@ -974,8 +974,7 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                                statistics()));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
-      !server_context()->factory()->UseSelectorFilterForCriticalCss()) {
+  if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss)) {
     // If we're inlining styles that resolved initially, skip outlining
     // css since that works against this.
     // TODO(slamm): Figure out if move_css_to_head needs to be disabled.
@@ -1015,7 +1014,7 @@ void RewriteDriver::AddPreRenderFilters() {
   if ((rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
        server_context()->factory()->UseBeaconResultsInFilters()) ||
       (rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss) &&
-       server_context()->factory()->UseSelectorFilterForCriticalCss())) {
+       server_context()->critical_selector_finder() != NULL)) {
     // Add the critical selector instrumentation before the rewriting filter.
     AppendOwnedPreRenderFilter(new CriticalCssBeaconFilter(this));
   }
