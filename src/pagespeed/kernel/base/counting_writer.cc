@@ -16,11 +16,23 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/mock_hasher.h"
+#include "pagespeed/kernel/base/counting_writer.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
+class MessageHandler;
 
-MockHasher::~MockHasher() {
+CountingWriter::~CountingWriter() {
+}
+
+bool CountingWriter::Write(const StringPiece& str, MessageHandler* handler) {
+  byte_count_ += str.size();
+  return writer_->Write(str, handler);
+}
+
+bool CountingWriter::Flush(MessageHandler* handler) {
+  return writer_->Flush(handler);
 }
 
 }  // namespace net_instaweb

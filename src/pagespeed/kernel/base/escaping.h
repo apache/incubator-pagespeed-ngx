@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,20 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: vitaliyl@google.com (Vitaliy Lvin)
 
-#include "net/instaweb/util/public/null_statistics.h"
-#include "net/instaweb/util/public/string_util.h"
+#ifndef PAGESPEED_KERNEL_BASE_ESCAPING_H_
+#define PAGESPEED_KERNEL_BASE_ESCAPING_H_
+
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
-NullStatisticsVariable::~NullStatisticsVariable() {
-}
-
-NullStatistics::~NullStatistics() {
-}
-
-NullStatisticsVariable* NullStatistics::NewVariable(
-    const StringPiece& name, int index) {
-  return new NullStatisticsVariable;
-}
+void EscapeToJsStringLiteral(const StringPiece& original,
+                             bool add_quotes,
+                             GoogleString* escaped);
 
 }  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_BASE_ESCAPING_H_

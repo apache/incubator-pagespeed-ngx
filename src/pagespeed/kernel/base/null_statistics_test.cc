@@ -16,9 +16,9 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/null_statistics.h"
+#include "pagespeed/kernel/base/null_statistics.h"
 
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

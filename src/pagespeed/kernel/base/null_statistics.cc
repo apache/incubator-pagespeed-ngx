@@ -14,13 +14,22 @@
  * limitations under the License.
  */
 
-// Author: sligocki@google.com (Shawn Ligocki)
+// Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/split_writer.h"
+#include "pagespeed/kernel/base/null_statistics.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
-SplitWriter::~SplitWriter() {
+NullStatisticsVariable::~NullStatisticsVariable() {
+}
+
+NullStatistics::~NullStatistics() {
+}
+
+NullStatisticsVariable* NullStatistics::NewVariable(
+    const StringPiece& name, int index) {
+  return new NullStatisticsVariable;
 }
 
 }  // namespace net_instaweb

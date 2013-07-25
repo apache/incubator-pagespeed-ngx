@@ -16,14 +16,14 @@
 
 // Author: matterbury@google.com (Matt Atterbury)
 
-#include "net/instaweb/util/public/hostname_util.h"
+#include "pagespeed/kernel/base/hostname_util.h"
 
 #include <unistd.h>
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 namespace {

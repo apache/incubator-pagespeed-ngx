@@ -16,19 +16,19 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/split_statistics.h"
+#include "pagespeed/kernel/base/split_statistics.h"
 
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/inprocess_shared_mem.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/sharedmem/inprocess_shared_mem.h"
+#include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

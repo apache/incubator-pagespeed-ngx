@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,28 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: piatek@google.com (Michael Piatek)
 
-#include "net/instaweb/util/public/counting_writer.h"
-#include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/request_trace.h"
+
+#include <cstdarg>
 
 namespace net_instaweb {
-class MessageHandler;
 
-CountingWriter::~CountingWriter() {
+RequestTrace::RequestTrace() : tracing_enabled_(false) {
 }
 
-bool CountingWriter::Write(const StringPiece& str, MessageHandler* handler) {
-  byte_count_ += str.size();
-  return writer_->Write(str, handler);
+RequestTrace::~RequestTrace() {
 }
 
-bool CountingWriter::Flush(MessageHandler* handler) {
-  return writer_->Flush(handler);
+void RequestTrace::TracePrintf(const char* fmt, ...) {
+  if (!tracing_enabled_) {
+    return;
+  }
+  va_list argp;
+  va_start(argp, fmt);
+  TraceVPrintf(fmt, argp);
+  va_end(argp);
 }
 
 }  // namespace net_instaweb

@@ -17,12 +17,12 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 // See the header for a description.
 
-#include "net/instaweb/util/public/split_statistics.h"
+#include "pagespeed/kernel/base/split_statistics.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

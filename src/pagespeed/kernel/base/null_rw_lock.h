@@ -16,34 +16,28 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/null_rw_lock.h"
+#ifndef PAGESPEED_KERNEL_BASE_NULL_RW_LOCK_H_
+#define PAGESPEED_KERNEL_BASE_NULL_RW_LOCK_H_
+
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
-NullRWLock::~NullRWLock() {
-}
-
-bool NullRWLock::TryLock() {
-  return true;
-}
-
-void NullRWLock::Lock() {
-}
-
-void NullRWLock::Unlock() {
-}
-
-bool NullRWLock::ReaderTryLock() {
-  return true;
-}
-
-void NullRWLock::ReaderLock() {
-}
-
-void NullRWLock::ReaderUnlock() {
-}
-
-void NullRWLock::DCheckReaderLocked() {
-}
+// Implements an empty mutex for single-threaded programs that need to work
+// with interfaces that require mutexes.
+class NullRWLock : public ThreadSystem::RWLock {
+ public:
+  NullRWLock() {}
+  virtual ~NullRWLock();
+  virtual bool TryLock();
+  virtual void Lock();
+  virtual void Unlock();
+  virtual bool ReaderTryLock();
+  virtual void ReaderLock();
+  virtual void ReaderUnlock();
+  virtual void DCheckReaderLocked();
+};
 
 }  // namespace net_instaweb
+
+#endif  // PAGESPEED_KERNEL_BASE_NULL_RW_LOCK_H_

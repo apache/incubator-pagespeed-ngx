@@ -18,8 +18,8 @@
 
 // Unit-test a custom implementation of deque.
 
-#include "net/instaweb/util/public/vector_deque.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/vector_deque.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

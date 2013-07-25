@@ -16,12 +16,12 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/chunking_writer.h"
+#include "pagespeed/kernel/base/chunking_writer.h"
 
 #include <algorithm>
 #include <cstddef>
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 

@@ -16,9 +16,9 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/escaping.h"
+#include "pagespeed/kernel/base/escaping.h"
 
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

@@ -16,13 +16,13 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/split_writer.h"
+#include "pagespeed/kernel/base/split_writer.h"
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
 class MessageHandler;

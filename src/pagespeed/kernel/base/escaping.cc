@@ -16,13 +16,13 @@
 
 // Author: vitaliyl@google.com (Vitaliy Lvin)
 
-#include "net/instaweb/util/public/escaping.h"
+#include "pagespeed/kernel/base/escaping.h"
 
 #include <cstddef>
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

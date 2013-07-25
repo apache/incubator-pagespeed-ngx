@@ -14,13 +14,13 @@
 //
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/pool.h"
+#include "pagespeed/kernel/base/pool.h"
 
 #include <list>
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/pool_element.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/pool_element.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

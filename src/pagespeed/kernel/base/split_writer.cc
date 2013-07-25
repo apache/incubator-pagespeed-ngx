@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,13 @@
  * limitations under the License.
  */
 
-// Author: piatek@google.com (Michael Piatek)
+// Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/util/public/request_trace.h"
-
-#include <cstdarg>
+#include "pagespeed/kernel/base/split_writer.h"
 
 namespace net_instaweb {
 
-RequestTrace::RequestTrace() : tracing_enabled_(false) {
-}
-
-RequestTrace::~RequestTrace() {
-}
-
-void RequestTrace::TracePrintf(const char* fmt, ...) {
-  if (!tracing_enabled_) {
-    return;
-  }
-  va_list argp;
-  va_start(argp, fmt);
-  TraceVPrintf(fmt, argp);
-  va_end(argp);
+SplitWriter::~SplitWriter() {
 }
 
 }  // namespace net_instaweb

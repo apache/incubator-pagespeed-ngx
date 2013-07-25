@@ -14,10 +14,10 @@
 //
 // Author: vchudnov@google.com (Victor Chudnovsky)
 
-#include "net/instaweb/util/public/countdown_timer.h"
+#include "pagespeed/kernel/base/countdown_timer.h"
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 
 namespace net_instaweb {
 
