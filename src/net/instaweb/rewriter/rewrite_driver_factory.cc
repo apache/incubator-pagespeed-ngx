@@ -336,7 +336,9 @@ UserAgentMatcher* RewriteDriverFactory::DefaultUserAgentMatcher() {
 }
 
 StaticAssetManager* RewriteDriverFactory::DefaultStaticAssetManager() {
-  return new StaticAssetManager(url_namer(), hasher(), message_handler());
+  return new StaticAssetManager(url_namer()->get_proxy_domain(),
+                                hasher(),
+                                message_handler());
 }
 
 CriticalCssFinder* RewriteDriverFactory::DefaultCriticalCssFinder() {

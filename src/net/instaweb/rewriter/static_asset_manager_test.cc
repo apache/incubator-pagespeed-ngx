@@ -26,7 +26,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -41,8 +40,7 @@ const char kScript[] = "alert('foo');";
 class StaticAssetManagerTest : public RewriteTestBase {
  protected:
   StaticAssetManagerTest() {
-    url_namer_.set_proxy_domain("http://proxy-domain");
-    manager_.reset(new StaticAssetManager(&url_namer_,
+    manager_.reset(new StaticAssetManager("http://proxy-domain",
                                           server_context()->hasher(),
                                           server_context()->message_handler()));
   }
@@ -73,7 +71,6 @@ class StaticAssetManagerTest : public RewriteTestBase {
   };
 
   scoped_ptr<StaticAssetManager> manager_;
-  UrlNamer url_namer_;
 };
 
 TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
@@ -83,6 +80,7 @@ TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
 }
 
 TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
+  manager_->set_static_asset_base("http://proxy-domain");
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(
       StaticAssetManager::kBlinkJs, StaticAssetManager::kGStaticBase, "1");

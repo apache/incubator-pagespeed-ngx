@@ -24,7 +24,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -180,8 +179,7 @@ TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
 }
 
 TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
-  UrlNamer url_namer;
-  StaticAssetManager static_asset_manager(&url_namer,
+  StaticAssetManager static_asset_manager("",
                                           server_context()->hasher(),
                                           server_context()->message_handler());
   static_asset_manager.set_serve_asset_from_gstatic(true);

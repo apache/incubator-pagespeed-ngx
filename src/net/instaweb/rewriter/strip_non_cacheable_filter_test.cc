@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -125,9 +124,8 @@ TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
 }
 
 TEST_F(StripNonCacheableFilterTest, TestGstatic) {
-  UrlNamer url_namer;
   StaticAssetManager static_asset_manager(
-      &url_namer, server_context()->hasher(),
+      "", server_context()->hasher(),
       server_context()->message_handler());
   static_asset_manager.set_serve_asset_from_gstatic(true);
   static_asset_manager.set_gstatic_hash(

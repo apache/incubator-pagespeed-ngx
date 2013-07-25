@@ -32,7 +32,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -102,10 +101,10 @@ struct StaticAssetManager::Asset {
 };
 
 StaticAssetManager::StaticAssetManager(
-    UrlNamer* url_namer,
+    const GoogleString& static_asset_base,
     Hasher* hasher,
     MessageHandler* message_handler)
-    : url_namer_(url_namer),
+    : static_asset_base_(static_asset_base),
       hasher_(hasher),
       message_handler_(message_handler),
       serve_asset_from_gstatic_(false),
@@ -240,7 +239,7 @@ void StaticAssetManager::InitializeAssetUrls() {
        it != assets_.end(); ++it) {
     Asset* asset = *it;
     // Generated urls are in the format "<filename>.<md5>.<extension>".
-    asset->opt_url = StrCat(url_namer_->get_proxy_domain(),
+    asset->opt_url = StrCat(static_asset_base_,
                             library_url_prefix_,
                             asset->file_name,
                             ".", asset->js_opt_hash,
@@ -248,7 +247,7 @@ void StaticAssetManager::InitializeAssetUrls() {
 
     // Generated debug urls are in the format
     // "<filename>_debug.<md5>.<extension>".
-    asset->debug_url = StrCat(url_namer_->get_proxy_domain(),
+    asset->debug_url = StrCat(static_asset_base_,
                               library_url_prefix_,
                               asset->file_name,
                               "_debug.", asset->js_debug_hash,

@@ -32,7 +32,6 @@ class HtmlElement;
 class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
-class UrlNamer;
 struct ContentType;
 
 
@@ -65,7 +64,8 @@ class StaticAssetManager {
     kEndOfModules,  // Keep this as the last enum value.
   };
 
-  StaticAssetManager(UrlNamer* url_namer, Hasher* hasher,
+  StaticAssetManager(const GoogleString& static_asset_base,
+                     Hasher* hasher,
                      MessageHandler* message_handler);
 
   ~StaticAssetManager();
@@ -115,6 +115,11 @@ class StaticAssetManager {
     InitializeAssetUrls();
   }
 
+  void set_static_asset_base(const StringPiece& x) {
+    x.CopyToString(&static_asset_base_);
+    InitializeAssetUrls();
+  }
+
  private:
   class Asset;
 
@@ -123,8 +128,8 @@ class StaticAssetManager {
   void InitializeAssetStrings();
   void InitializeAssetUrls();
 
+  GoogleString static_asset_base_;
   // Set in the constructor, this class does not own the following objects.
-  UrlNamer* url_namer_;
   Hasher* hasher_;
   MessageHandler* message_handler_;
 
