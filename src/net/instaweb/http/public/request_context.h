@@ -123,6 +123,13 @@ class RequestContext : public RefCounted<RequestContext> {
     split_request_type_ = type;
   }
 
+  int64 request_id() const {
+    return request_id_;
+  }
+  void set_request_id(int64 x) {
+    request_id_ = x;
+  }
+
   // Prepare the AbstractLogRecord for a subsequent call to WriteLog.  This
   // might include propagating information collected in the RequestContext,
   // TimingInfo for example, to the underlying logging infrastructure.
@@ -318,6 +325,7 @@ class RequestContext : public RefCounted<RequestContext> {
 
   bool using_spdy_;
   SplitRequestType split_request_type_;;
+  int64 request_id_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

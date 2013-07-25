@@ -23,7 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -179,6 +179,19 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   int64 ttfb_ms;
   if (timing_info.GetTimeToFirstByte(&ttfb_ms)) {
     StrAppend(&extra_params, "&s_ttfb=", Integer64ToString(ttfb_ms));
+  }
+
+  // Append the http response code.
+  if (driver_->response_headers() != NULL &&
+      driver_->response_headers()->status_code() > 0 &&
+      driver_->response_headers()->status_code() != HttpStatus::kOK) {
+    StrAppend(&extra_params, "&rc=", IntegerToString(
+        driver_->response_headers()->status_code()));
+  }
+  // Append the request id.
+  if (driver_->request_context()->request_id() > 0) {
+    StrAppend(&extra_params, "&id=", Integer64ToString(
+        driver_->request_context()->request_id()));
   }
 
   GoogleString html_url;
