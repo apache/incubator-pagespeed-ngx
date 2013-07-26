@@ -18,20 +18,20 @@
 // Unit-test the threadsafe cache.  Creates an LRU-cache first, and then
 // wraps a thread-safe cache around that and a mutex
 
-#include "net/instaweb/util/public/threadsafe_cache.h"
+#include "pagespeed/kernel/cache/threadsafe_cache.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/dynamic_annotations.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/thread.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/dynamic_annotations.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace {
 const int kMaxSize = 100;

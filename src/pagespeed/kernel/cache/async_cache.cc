@@ -16,18 +16,18 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/async_cache.h"
+#include "pagespeed/kernel/cache/async_cache.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/atomic_int32.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/key_value_codec.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/shared_string.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/atomic_int32.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/key_value_codec.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 

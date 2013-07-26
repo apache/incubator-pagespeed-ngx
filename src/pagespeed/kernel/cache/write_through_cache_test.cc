@@ -18,12 +18,12 @@
 
 // Unit-test the write-through cache
 
-#include "net/instaweb/util/public/write_through_cache.h"
+#include "pagespeed/kernel/cache/write_through_cache.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
 
 namespace net_instaweb {
 

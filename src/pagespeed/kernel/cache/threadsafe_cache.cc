@@ -16,13 +16,13 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/threadsafe_cache.h"
+#include "pagespeed/kernel/cache/threadsafe_cache.h"
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/delegating_cache_callback.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/delegating_cache_callback.h"
 
 namespace net_instaweb {
 

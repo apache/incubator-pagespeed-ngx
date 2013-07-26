@@ -21,8 +21,8 @@
 #include "pagespeed/kernel/cache/lru_cache.h"
 
 #include <cstddef>
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
 
 namespace {
 const size_t kMaxSize = 100;

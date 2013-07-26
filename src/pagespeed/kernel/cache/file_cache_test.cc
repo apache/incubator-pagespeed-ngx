@@ -17,28 +17,28 @@
 // Author: lsong@google.com (Libo Song)
 
 // Unit-test the file cache
-#include "net/instaweb/util/public/file_cache.h"
+#include "pagespeed/kernel/cache/file_cache.h"
 
 #include <unistd.h>
 
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/slow_worker.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/md5_hasher.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/thread/slow_worker.h"
+#include "pagespeed/kernel/util/filename_encoder.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

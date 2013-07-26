@@ -18,28 +18,28 @@
 
 // Unit-test AsyncCache, using LRUCache.
 
-#include "net/instaweb/util/public/async_cache.h"
+#include "pagespeed/kernel/cache/async_cache.h"
 
 #include <cstddef>
 #include <map>
 #include <utility>                      // for pair
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/atomic_bool.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/threadsafe_cache.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/cache/threadsafe_cache.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace {
 const size_t kMaxSize = 100;

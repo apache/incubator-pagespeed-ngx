@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_

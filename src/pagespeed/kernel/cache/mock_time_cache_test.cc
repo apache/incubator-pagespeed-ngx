@@ -18,20 +18,20 @@
 
 // Unit-test for MockTimeCache
 
-#include "net/instaweb/util/public/mock_time_cache.h"
+#include "pagespeed/kernel/cache/mock_time_cache.h"
 
 #include <cstddef>
 
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/thread/mock_scheduler.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 namespace {

@@ -17,12 +17,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/delegating_cache_callback.h"
+#include "pagespeed/kernel/cache/delegating_cache_callback.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
 
 namespace net_instaweb {
 

@@ -16,22 +16,22 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/compressed_cache.h"
+#include "pagespeed/kernel/cache/compressed_cache.h"
 
 #include <cstddef>
 
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/simple_random.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace net_instaweb {
 

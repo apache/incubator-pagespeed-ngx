@@ -19,13 +19,13 @@
 #include <unistd.h>
 #include <cstddef>                     // for size_t
 
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/shared_mem_cache.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/sharedmem/shared_mem_cache.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

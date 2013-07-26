@@ -16,27 +16,27 @@
 
 // Author: lsong@google.com (Libo Song)
 
-#include "net/instaweb/util/public/file_cache.h"
+#include "pagespeed/kernel/cache/file_cache.h"
 
 #include <algorithm>
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/slow_worker.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/thread/slow_worker.h"
+#include "pagespeed/kernel/util/filename_encoder.h"
 
 namespace net_instaweb {
 

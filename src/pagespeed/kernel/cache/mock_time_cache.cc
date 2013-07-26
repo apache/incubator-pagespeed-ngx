@@ -21,12 +21,12 @@
 // MockTimeCache::Callback, which chains to a passed-in callback to actually
 // implement the delay.
 
-#include "net/instaweb/util/public/mock_time_cache.h"
+#include "pagespeed/kernel/cache/mock_time_cache.h"
 
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/scheduler.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/thread/scheduler.h"
 
 namespace net_instaweb {
 
@@ -52,7 +52,7 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
         new MemberFunction1<CacheInterface::Callback, CacheInterface::KeyState>(
             &CacheInterface::Callback::DelegatedDone, orig_callback_, state));
     delete this;
-  };
+  }
 
  private:
   MockTimeCache* parent_;

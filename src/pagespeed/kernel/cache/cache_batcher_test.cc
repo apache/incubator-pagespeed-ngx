@@ -18,23 +18,23 @@
 
 // Unit-test CacheBatcher, using LRUCache, AsyncCache, and DelayCache.
 
-#include "net/instaweb/util/public/cache_batcher.h"
+#include "pagespeed/kernel/cache/cache_batcher.h"
 
 #include <cstddef>
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/worker_test_base.h"
-#include "net/instaweb/util/public/async_cache.h"
-#include "net/instaweb/util/public/delay_cache.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/threadsafe_cache.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/async_cache.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/delay_cache.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/cache/threadsafe_cache.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace {
 const size_t kMaxSize = 100;

@@ -17,17 +17,17 @@
 #ifndef PAGESPEED_KERNEL_SHAREDMEM_SHARED_MEM_CACHE_TEST_BASE_H_
 #define PAGESPEED_KERNEL_SHAREDMEM_SHARED_MEM_CACHE_TEST_BASE_H_
 
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/abstract_shared_mem.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_mem_cache.h"
-#include "net/instaweb/util/public/shared_mem_test_base.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/abstract_shared_mem.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/md5_hasher.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/sharedmem/shared_mem_cache.h"
+#include "pagespeed/kernel/sharedmem/shared_mem_test_base.h"
 
 namespace net_instaweb {
 

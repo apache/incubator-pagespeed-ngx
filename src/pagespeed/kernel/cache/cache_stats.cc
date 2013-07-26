@@ -16,15 +16,15 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/cache_stats.h"
+#include "pagespeed/kernel/cache/cache_stats.h"
 
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/delegating_cache_callback.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/delegating_cache_callback.h"
 
 namespace {
 

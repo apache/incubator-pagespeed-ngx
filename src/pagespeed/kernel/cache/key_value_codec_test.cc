@@ -16,11 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/key_value_codec.h"
+#include "pagespeed/kernel/cache/key_value_codec.h"
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

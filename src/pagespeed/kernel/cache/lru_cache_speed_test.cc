@@ -37,6 +37,7 @@
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/util/simple_random.h"

@@ -18,19 +18,19 @@
 
 // Unit-test for DelayCache
 
-#include "net/instaweb/util/public/delay_cache.h"
+#include "pagespeed/kernel/cache/delay_cache.h"
 
 #include <cstddef>
 
-#include "net/instaweb/util/cache_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 namespace {

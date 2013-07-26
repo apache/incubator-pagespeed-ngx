@@ -16,10 +16,10 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/fallback_cache.h"
+#include "pagespeed/kernel/cache/fallback_cache.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/shared_string.h"
+#include "pagespeed/kernel/base/shared_string.h"
 
 namespace {
 

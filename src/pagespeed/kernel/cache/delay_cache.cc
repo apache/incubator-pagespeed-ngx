@@ -21,14 +21,14 @@
 //
 // See also: MockTimeCache.
 
-#include "net/instaweb/util/public/delay_cache.h"
+#include "pagespeed/kernel/cache/delay_cache.h"
 
 #include <utility>  // for pair.
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 

@@ -19,9 +19,9 @@
 #include <cstddef>                     // for size_t
 #include <set>
 
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 

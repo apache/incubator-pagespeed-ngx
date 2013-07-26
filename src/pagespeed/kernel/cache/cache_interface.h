@@ -13,10 +13,10 @@
 // limitations under the License.
 //
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_DELAY_CACHE_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_DELAY_CACHE_H_
+#ifndef PAGESPEED_KERNEL_CACHE_CACHE_INTERFACE_H_
+#define PAGESPEED_KERNEL_CACHE_CACHE_INTERFACE_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/cache/delay_cache.h"
+#include "pagespeed/kernel/base/cache_interface.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_DELAY_CACHE_H_
+#endif  // PAGESPEED_KERNEL_CACHE_CACHE_INTERFACE_H_
