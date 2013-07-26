@@ -30,7 +30,7 @@
         # TODO(jmarantz): create an easy way to choose this option from the
         # 'gclient' command, without having to edit the gyp & DEPS files.
         #
-        '<(DEPTH)/third_party/openssl/openssl.gyp:openssl',
+        '<(DEPTH)/third_party/serf/select_openssl.gyp:select_openssl',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
