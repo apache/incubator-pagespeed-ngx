@@ -23,7 +23,7 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/critical_css_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -128,7 +128,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
     if (driver()->options()->enable_flush_early_critical_css()) {
       const char* cls = noscript_element()->AttributeValue(HtmlName::kClass);
       if (cls != NULL &&
-          StringCaseEqual(cls, CriticalCssFilter::kNoscriptStylesClass)) {
+          StringCaseEqual(cls, CriticalSelectorFilter::kNoscriptStylesClass)) {
         should_collect_critical_css_ = true;
       }
     }

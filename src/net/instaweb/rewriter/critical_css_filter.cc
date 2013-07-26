@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
+#include "net/instaweb/rewriter/public/critical_selector_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -91,37 +92,6 @@ const char CriticalCssFilter::kStatsScriptTemplate[] =
     "  'num_replaced_links': %d,"
     "  'num_unreplaced_links': %d"
     "};";
-
-// When flush early filter is enabled, critical css rules are flushed early
-// as innerHTML of a script element. When the CSS element appears in the
-// document, find the previously flushed style data and copy it to the style
-// element so it can be applied. This script is used for that.
-const char CriticalCssFilter::kApplyFlushEarlyCssTemplate[] =
-    "  var applyFlushedCriticalCss = function(script_id, mediaString) {"
-    "    var scripts = document.getElementsByTagName('script');"
-    "    var styleScript = document.getElementById(script_id);"
-    "    var cssText = styleScript.innerHTML || styleScript.textContent || "
-    "                  styleScript.data || \"\";"
-    "    var styleElem = document.createElement('style');"
-    "    styleElem.type = 'text/css';"
-    "    if (styleElem.styleSheet) {"
-    "      styleElem.styleSheet.cssText = cssText;"
-    "    } else {"
-    "      styleElem.appendChild(document.createTextNode(cssText));"
-    "    }"
-    "    if (mediaString) {"
-    "      styleElem.setAttribute(\"media\", mediaString);"
-    "    }"
-    "    var currentScript = scripts[scripts.length-1];"
-    "    currentScript.parentNode.insertBefore(styleElem, currentScript);"
-    "    currentScript.parentNode.removeChild(currentScript);"
-    "  };";
-
-const char CriticalCssFilter::kInvokeFlushEarlyCssTemplate[] =
-    "applyFlushedCriticalCss(\"%s\", \"%s\");";
-
-const char CriticalCssFilter::kNoscriptStylesClass[] = "psa_add_styles";
-const char CriticalCssFilter::kMoveScriptId[] = "psa_flush_style_early";
 
 // TODO(slamm): Check charset like CssInlineFilter::ShouldInline().
 
@@ -181,11 +151,10 @@ class CriticalCssFilter::CssStyleElement
 // Wrap CSS related elements so they can be moved later in the document.
 CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
                                      CriticalCssFinder* finder)
-    : driver_(driver),
+    : CommonFilter(driver),
       css_tag_scanner_(driver),
       finder_(finder),
       critical_css_result_(NULL),
-      noscript_element_(NULL),
       current_style_element_(NULL) {
   CHECK(finder_);  // a valid finder is expected
 }
@@ -213,12 +182,11 @@ void CriticalCssFilter::DetermineEnabled() {
   set_is_enabled(!is_ie);
 }
 
-void CriticalCssFilter::StartDocument() {
+void CriticalCssFilter::StartDocumentImpl() {
   // If there is no critical CSS data, the filter is a no-op.
   // However, the property cache is unavailable in DetermineEnabled
   // where disabling is possible.
   CHECK(finder_);
-  noscript_element_ = NULL;
   critical_css_result_ = finder_->GetCriticalCss(driver_);
 
   const bool is_property_cache_miss = critical_css_result_ == NULL;
@@ -259,8 +227,8 @@ void CriticalCssFilter::EndDocument() {
     HtmlElement* noscript_element =
         driver_->NewElement(NULL, HtmlName::kNoscript);
     driver_->AddAttribute(noscript_element, HtmlName::kClass,
-                          kNoscriptStylesClass);
-    driver_->InsertNodeBeforeCurrent(noscript_element);
+                          CriticalSelectorFilter::kNoscriptStylesClass);
+    InsertNodeAtBodyEnd(noscript_element);
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),
          end = css_elements_.end(); it != end; ++it) {
@@ -269,7 +237,8 @@ void CriticalCssFilter::EndDocument() {
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-    driver_->InsertNodeBeforeCurrent(script);
+    InsertNodeAtBodyEnd(script);
+
     int num_unreplaced_links_ = num_links_ - num_replaced_links_;
     int total_overhead_size =
         total_critical_size_ + repeated_style_blocks_size_;
@@ -308,42 +277,33 @@ void CriticalCssFilter::EndDocument() {
   }
 }
 
-void CriticalCssFilter::StartElement(HtmlElement* element) {
+void CriticalCssFilter::StartElementImpl(HtmlElement* element) {
   if (has_critical_css_ && element->keyword() == HtmlName::kStyle) {
     // Capture the style block because full CSS will be copied to end
     // of document if critical CSS rules are used.
     current_style_element_ = new CssStyleElement(driver_, element);
     num_repeated_style_blocks_ += 1;
   }
-  if (element->keyword() == HtmlName::kNoscript && noscript_element_ == NULL) {
-    noscript_element_ = element;
-  }
 }
 
 void CriticalCssFilter::Characters(HtmlCharactersNode* characters_node) {
+  CommonFilter::Characters(characters_node);
   if (current_style_element_ != NULL) {
     current_style_element_->AppendCharactersNode(characters_node);
     repeated_style_blocks_size_ += characters_node->contents().size();
   }
 }
 
-void CriticalCssFilter::EndElement(HtmlElement* element) {
+void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
   if (current_style_element_ != NULL) {
     // Capture the current style element.
-    // TODO(slamm): Prioritize critical rules for style blocks too?
     CHECK(element->keyword() == HtmlName::kStyle);
     css_elements_.push_back(current_style_element_);
     current_style_element_ = NULL;
     return;
   }
 
-  if (element->keyword() == HtmlName::kNoscript &&
-      element == noscript_element_) {
-    noscript_element_ = NULL;
-    return;
-  }
-
-  if (noscript_element_ != NULL) {
+  if (noscript_element() != NULL) {
     // We are inside a no script element. No point moving further.
     return;
   }
@@ -400,11 +360,13 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
       is_move_link_script_added_ = true;
       HtmlElement* script =
           driver_->NewElement(element->parent(), HtmlName::kScript);
-      driver_->AddAttribute(script, HtmlName::kId, kMoveScriptId);
+      // TODO(slamm): Remove this attribute and update webdriver test as needed.
+      driver_->AddAttribute(script, HtmlName::kId,
+                            CriticalSelectorFilter::kMoveScriptId);
       driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
       driver_->InsertNodeBeforeNode(element, script);
       driver_->server_context()->static_asset_manager()->AddJsToElement(
-          kApplyFlushEarlyCssTemplate, script, driver_);
+          CriticalSelectorFilter::kApplyFlushEarlyCss, script, driver_);
     }
 
     HtmlElement* script_element =
@@ -414,8 +376,9 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
       LogRewrite(RewriterApplication::REPLACE_FAILED);
       return;
     }
-    GoogleString js_data = StringPrintf(kInvokeFlushEarlyCssTemplate,
-                                        style_id.c_str(), media);
+    GoogleString js_data = StringPrintf(
+        CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
+        style_id.c_str(), media);
 
     driver_->server_context()->static_asset_manager()->AddJsToElement(js_data,
         script_element, driver_);

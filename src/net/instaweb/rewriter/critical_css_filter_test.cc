@@ -16,6 +16,7 @@
 
 // Author: slamm@google.com (Stephen Lamm)
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/critical_selector_filter.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -213,7 +215,6 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "  <style type='text/css'>t {color: turquoise }</style>\n"
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
-      "</body>\n"
       "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
@@ -230,7 +231,8 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "  'num_replaced_links': 3,"
       "  'num_unreplaced_links': 0"
       "};"
-      "</script>");
+      "</script>"
+      "</body>\n");
 
   finder_->AddCriticalCss("http://test.com/a.css", "a_used {color: azure }", 1);
   finder_->AddCriticalCss("http://test.com/b.css", "b_used {color: blue }", 2);
@@ -277,7 +279,6 @@ TEST_F(CriticalCssFilterTest, InlineAndDontFlushEarlyIfFlagDisabled) {
       "  <style type='text/css'>t {color: turquoise }</style>\n"
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
-      "</body>\n"
       "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
@@ -294,7 +295,8 @@ TEST_F(CriticalCssFilterTest, InlineAndDontFlushEarlyIfFlagDisabled) {
       "  'num_replaced_links': 3,"
       "  'num_unreplaced_links': 0"
       "};"
-      "</script>");
+      "</script>"
+      "</body>\n");
 
   GoogleString a_url = "http://test.com/a.css";
   GoogleString b_url = "http://test.com/b.css";
@@ -434,14 +436,14 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "  Hello,\n"
       "  <script id=\"psa_flush_style_early\" pagespeed_no_defer=\"\""
       " type=\"text/javascript\">",
-      CriticalCssFilter::kApplyFlushEarlyCssTemplate,
+      CriticalSelectorFilter::kApplyFlushEarlyCss,
       "</script>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate,
+      StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    a_styleId.c_str(), "print"),
       "</script>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate,
+      StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    b_styleId.c_str(), ""));
 
   StrAppend(&expected_html,
@@ -449,10 +451,9 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "\n  <style type='text/css'>t {color: turquoise }</style>\n"
       "  World!\n"
       "  <script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate,
+      StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
                    c_styleId.c_str(), ""),
-      "</script>"
-      "\n</body>\n"
+      "</script>\n"
       "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
@@ -469,7 +470,8 @@ TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
       "  'num_replaced_links': 3,"
       "  'num_unreplaced_links': 0"
       "};"
-      "</script>");
+      "</script>"
+      "</body>\n");
 
   rewrite_driver()->set_flushed_early(true);
   GoogleString resource_html = StrCat(a_url, b_url, c_url);
@@ -519,7 +521,6 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  Hey!\n"
       "  <link rel='stylesheet' href='"
       "http://test.com/I.a.css+b.css.pagespeed.cc.0.css' type='text/css'>\n"
-      "</body>\n"
       "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='Hi there!' type='text/css'>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
@@ -536,7 +537,8 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  'num_replaced_links': 1,"
       "  'num_unreplaced_links': 2"
       "};"
-      "</script>");
+      "</script>"
+      "</body>\n");
 
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 33);
 
@@ -585,7 +587,6 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "  <style type='text/css'>t {color: turquoise }</style>\n"
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
-      "</body>\n"
       "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
@@ -602,7 +603,8 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "  'num_replaced_links': 2,"
       "  'num_unreplaced_links': 1"
       "};"
-      "</script>");
+      "</script>"
+      "</body>\n");
 
   // Skip adding a critical CSS for a.css.
   //     In the filtered html, the original link is left in place and
@@ -666,7 +668,6 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "original_size=333\n"
       "original_src=http://test.com/c.css\n"
       "-->\n"
-      "</body>\n"
       "<noscript class=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
@@ -684,6 +685,7 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "  'num_unreplaced_links': 1"
       "};"
       "</script>"
+      "</body>\n"
       "<!--Additional Critical CSS stats:\n"
       "  num_repeated_style_blocks=1\n"
       "  repeated_style_blocks_size=21\n"

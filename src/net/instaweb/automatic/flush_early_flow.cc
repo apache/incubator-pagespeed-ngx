@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
@@ -102,8 +103,8 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
   // Populates all fields which are needed from property_page as property_page
   // will be set to NULL afterwards.
   flush_early_driver->flush_early_info();
-  FlushEarlyInfoFinder* finder =
-      flush_early_driver->server_context()->flush_early_info_finder();
+  ServerContext* server_context = flush_early_driver->server_context();
+  FlushEarlyInfoFinder* finder = server_context->flush_early_info_finder();
   if (finder != NULL && finder->IsMeaningful(flush_early_driver)) {
     finder->UpdateFlushEarlyInfoInDriver(flush_early_driver);
   }
@@ -115,13 +116,18 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
   // that CriticalImageFinder keeps in RewriteDriver to be updated.
   // TODO(jud): Remove this when the CriticalImageFinder is held in the
   // RewriteDriver, instead of ServerContext.
-  flush_early_driver->server_context()->critical_images_finder()->
+  server_context->critical_images_finder()->
       GetHtmlCriticalImages(flush_early_driver);
 
-  CriticalCssFinder* css_finder =
-      flush_early_driver->server_context()->critical_css_finder();
-  if (css_finder != NULL) {
-    css_finder->UpdateCriticalCssInfoInDriver(flush_early_driver);
+  CriticalSelectorFinder* selector_finder =
+      server_context->critical_selector_finder();
+  if (selector_finder != NULL) {
+    selector_finder->GetCriticalSelectors(flush_early_driver);
+  } else {
+    CriticalCssFinder* css_finder = server_context->critical_css_finder();
+    if (css_finder != NULL) {
+      css_finder->UpdateCriticalCssInfoInDriver(flush_early_driver);
+    }
   }
 
   CacheHtmlInfoFinder* cache_html_finder =

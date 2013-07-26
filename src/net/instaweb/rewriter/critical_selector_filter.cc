@@ -528,6 +528,7 @@ void CriticalSelectorFilter::ApplyCssFlushedEarly(
     is_flush_script_added_ = true;
     HtmlElement* script =
         driver_->NewElement(element->parent(), HtmlName::kScript);
+    // TODO(slamm): Remove this attribute and update webdriver test as needed.
     driver_->AddAttribute(script, HtmlName::kId, kMoveScriptId);
     driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     driver_->InsertNodeBeforeNode(element, script);

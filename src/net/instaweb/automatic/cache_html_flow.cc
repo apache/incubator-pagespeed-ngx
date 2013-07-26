@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -136,6 +137,8 @@ void InitDriverWithPropertyCacheValues(
   cache_html_driver->set_unowned_fallback_property_page(page);
   // TODO(mmohabey): Critical line info should be populated here.
 
+  ServerContext* server_context = cache_html_driver->server_context();
+
   // Because we are resetting the property page at the end of this function, we
   // need to make sure the CriticalImageFinder state is updated here. We don't
   // have a public interface for updating the state in the driver, so perform a
@@ -143,15 +146,18 @@ void InitDriverWithPropertyCacheValues(
   // that CriticalImageFinder keeps in RewriteDriver to be updated.
   // TODO(jud): Remove this when the CriticalImageFinder is held in the
   // RewriteDriver, instead of ServerContext.
-  cache_html_driver->server_context()->critical_images_finder()->
+  server_context->critical_images_finder()->
       GetHtmlCriticalImages(cache_html_driver);
 
-  // Update Critical CSS rules info in the driver while we have the property
-  // page.
-  CriticalCssFinder* css_finder =
-      cache_html_driver->server_context()->critical_css_finder();
-  if (css_finder != NULL) {
-    css_finder->UpdateCriticalCssInfoInDriver(cache_html_driver);
+  CriticalSelectorFinder* selector_finder =
+      server_context->critical_selector_finder();
+  if (selector_finder != NULL) {
+    selector_finder->GetCriticalSelectors(cache_html_driver);
+  } else {
+    CriticalCssFinder* css_finder = server_context->critical_css_finder();
+    if (css_finder != NULL) {
+      css_finder->UpdateCriticalCssInfoInDriver(cache_html_driver);
+    }
   }
 
   CacheHtmlInfoFinder* cache_html_finder =

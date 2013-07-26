@@ -35,6 +35,8 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
@@ -50,6 +52,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -58,7 +61,6 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/statistics.h"
-#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
@@ -1547,102 +1549,218 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
                                     true, false, true), text);
 }
 
-TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithCriticalCSSEnabled) {
-  GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
-  GoogleString invoke_flush_style_template =
-      StringPrintf(CriticalCssFilter::kInvokeFlushEarlyCssTemplate, "*", "");
+class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {
+ public:
+  virtual void SetUp() {
+    FlushEarlyFlowTest::SetUp();
+    SetOptions();
+    InitializeResponses();
+  }
 
-  const char kInputHtml[] =
-      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
-      "<html>"
-      "<head>"
-      "<title>Flush Subresources Early example</title>"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"2.css?a=1&b=2\">"
-      "</head>"
-      "<body>"
-      "Hello, mod_pagespeed!"
-      "</body>"
-      "</html>";
-  GoogleString output_html = StringPrintf(
-      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
-      "<html>"
-      "<head>"
-      "<script type=\"text/psa_flush_style\" id=\"*\">b{color:#000}</script>"
-      "<script type=\"text/psa_flush_style\" id=\"*\">a{float:left}</script>"
-      "<script type='text/javascript'>"
-      "window.mod_pagespeed_prefetch_start = Number(new Date());"
-      "window.mod_pagespeed_num_resources_prefetched = 2"
-      "</script>"
-      "<title>Flush Subresources Early example</title>"
-      "<script id=\"psa_flush_style_early\""
-      " pagespeed_no_defer=\"\" type=\"text/javascript\">"
-      "%s</script>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">%s</script>"
-      "</head>"
-      "<body>%sHello, mod_pagespeed!</body></html>"
-      "<noscript class=\"psa_add_styles\">"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"*1.css*\">"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"*2.css*\"></noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">"
-      "%s*"
-      "</script>",
-      CriticalCssFilter::kApplyFlushEarlyCssTemplate,
-      invoke_flush_style_template.c_str(),
-      invoke_flush_style_template.c_str(),
-      StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                   redirect_url.c_str()).c_str(),
-      CriticalCssFilter::kAddStylesScript);
+  void SetOptions() {
+    // Enable FlushSubresourcesFilter filter.
+    RewriteOptions* rewrite_options = server_context()->global_options();
+    rewrite_options->ClearSignatureForTesting();
+    rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
+    rewrite_options->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
 
-  // Setup response to resources.
-  ResponseHeaders headers;
-  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
-  headers.SetStatusAndReason(HttpStatus::kOK);
-  mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
-                                kCssContent, kHtmlCacheTimeSec * 2);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.css?a=1&b=2"),
-                                kContentTypeCss, kCssContent,
-                                kHtmlCacheTimeSec * 2);
+    // Disabling the inline filters so that the resources get flushed early
+    // else our dummy resources are too small and always get inlined.
+    rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
+    rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascript);
 
-  // Enable FlushSubresourcesFilter filter.
-  RewriteOptions* rewrite_options = server_context()->global_options();
-  rewrite_options->ClearSignatureForTesting();
-  rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
-  // Disabling the inline filters so that the resources get flushed early
-  // else our dummy resources are too small and always get inlined.
-  rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
-  rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascript);
-  // Enable Critical CSS filter.
-  rewrite_options->set_enable_flush_early_critical_css(true);
-  rewrite_options->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
-  rewrite_options->ComputeSignature();
+    rewrite_options->set_enable_flush_early_critical_css(true);
+    rewrite_options->ComputeSignature();
+  }
 
-  scoped_ptr<RewriteOptions> custom_options(
-      server_context()->global_options()->Clone());
-  SetRewriteOptions(custom_options.get());
+  void InitializeResponses() {
+    // Some weird but valid CSS.
+    SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                  "div,span,*::first-letter { display: block; }"
+                                  "p { display: inline; }",
+                                  kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders("b.css?x=1&y=2", kContentTypeCss,
+                                  "@media screen,print { * { margin: 0px; } }",
+                                  kHtmlCacheTimeSec * 2);
+  }
 
+  GoogleString InputHtml() {
+    return GoogleString(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html><head>"
+        "<title>Flush Subresources Early example</title>"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"a.css\">"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"b.css?x=1&y=2\">"
+        "</head>"
+        "<body>"
+        "Hello, mod_pagespeed!"
+        "</body></html>");
+  }
+
+  GoogleString ExpectedHtml(GoogleString full_styles_html) {
+    GoogleString expected_html = StrCat(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html><head>",
+        FlushedCss("div,*::first-letter{display:block}"),  // a.css
+        FlushedCss("@media screen{*{margin:0px}}"),  // b.css
+        StringPrintf(FlushEarlyContentWriterFilter::kPrefetchStartTimeScript,
+                     2 /* num_resources_flushed */),
+        "<title>Flush Subresources Early example</title>");
+    StrAppend(&expected_html,
+        ApplyFlushEarlyScript(),
+        InvokeFlushEarlyScript(),  // invoke a.css
+        InvokeFlushEarlyScript(),  // invoke b.css
+        "</head><body>",
+        NoScriptRedirectHtml(),
+        "Hello, mod_pagespeed!",
+        full_styles_html,
+        "</body></html>");
+    return expected_html;
+  }
+
+  GoogleString FlushedCss(GoogleString critical_css) {
+    return StrCat(
+        "<script type=\"text/psa_flush_style\" id=\"", kMockHashValue, "\">",
+        critical_css, "</script>");
+  }
+
+  GoogleString ApplyFlushEarlyScript() {
+    return StrCat(
+        "<script id=\"psa_flush_style_early\""
+        " pagespeed_no_defer=\"\" type=\"text/javascript\">",
+        CriticalSelectorFilter::kApplyFlushEarlyCss, "</script>");
+  }
+
+  GoogleString InvokeFlushEarlyScript() {
+    // The test uses a fixed hash for all URLs.
+    return StrCat(
+        "<script pagespeed_no_defer=\"\" type=\"text/javascript\">"
+        "applyFlushedCriticalCss(\"", kMockHashValue, "\", \"\");"
+        "</script>");
+  }
+
+  GoogleString CssLinkEncodedHref(GoogleString url) {
+    return StrCat(
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
+        Encode(kTestDomain, "cf", kMockHashValue, url, "css"),
+        "\">");
+  }
+
+  GoogleString url() { return kTestDomain; }
+
+  void ValidateFlushEarly(const StringPiece& case_id,
+                          const GoogleString& input_html,
+                          const GoogleString& expected_html) {
+    RequestHeaders request_headers;
+    request_headers.Replace(HttpAttributes::kUserAgent,
+                            UserAgentMatcherTestBase::kChrome18UserAgent);
+
+    ResponseHeaders headers;
+    headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+    headers.SetStatusAndReason(HttpStatus::kOK);
+    mock_url_fetcher_.SetResponse(url(), headers, input_html);
+
+    GoogleString actual_html;
+    FetchFromProxy(url(), request_headers, true, &actual_html, &headers);
+
+    // Fetch the url again. This time FlushEarlyFlow should be triggered.
+    FetchFromProxy(url(), request_headers, true, &actual_html, &headers);
+    EXPECT_EQ(expected_html, actual_html) << "Test id:" << case_id;
+  }
+};
+
+TEST_F(FlushEarlyPrioritizeCriticalCssTest,
+       FlushEarlyFlowWithCriticalCssEnabled) {
   // Add critical css rules.
   MockCriticalCssFinder* critical_css_finder =
       new MockCriticalCssFinder(rewrite_driver(), statistics());
   server_context()->set_critical_css_finder(critical_css_finder);
-  critical_css_finder->AddCriticalCss("http://test.com/1.css",
-                                      "b {color: black }", 100);
-  critical_css_finder->AddCriticalCss("http://test.com/2.css?a=1&b=2",
-                                      "a {float: left }", 100);
+  critical_css_finder->AddCriticalCss(
+      "http://test.com/a.css", "div,*::first-letter{display:block}", 100);
+  critical_css_finder->AddCriticalCss(
+      "http://test.com/b.css?x=1&y=2", "@media screen{*{margin:0px}}", 100);
 
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          UserAgentMatcherTestBase::kChrome18UserAgent);
+  GoogleString full_styles_html = StrCat(
+      "<noscript class=\"psa_add_styles\">",
+      CssLinkEncodedHref("a.css"),
+      CssLinkEncodedHref("b.css?x=1&y=2"),
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 62,"
+      "  'total_original_external_size': 200,"
+      "  'total_overhead_size': 62,"
+      "  'num_replaced_links': 2,"
+      "  'num_unreplaced_links': 0};"
+      "</script>");
+  ValidateFlushEarly(
+      "critical_css", InputHtml(), ExpectedHtml(full_styles_html));
+}
 
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+class TestCriticalSelectorFinder : public CriticalSelectorFinder {
+ public:
+  TestCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
+                             Statistics* stats)
+      : CriticalSelectorFinder(
+            cohort, NULL /* timer */, NULL /* nonce_generator */, stats) {
+  }
 
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_TRUE(Wildcard(output_html).Match(text)) <<
-      "Expected:\n" << output_html << "\nGot:\n" << text;
+  virtual ~TestCriticalSelectorFinder() {}
+
+  virtual int SupportInterval() const { return 1; }
+
+ protected:
+  virtual bool ShouldReplacePriorResult() const { return true; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TestCriticalSelectorFinder);
+};
+
+TEST_F(FlushEarlyPrioritizeCriticalCssTest,
+       FlushEarlyFlowWithCriticalSelectorFilterEnabled) {
+  PropertyCache* pcache = server_context_->page_property_cache();
+  const PropertyCache::Cohort* beacon_cohort =
+      SetupCohort(pcache, RewriteDriver::kBeaconCohort);
+  server_context()->set_beacon_cohort(beacon_cohort);
+
+  rewrite_driver()->Clear();
+  rewrite_driver()->set_request_context(
+      RequestContext::NewTestRequestContext(factory()->thread_system()));
+
+  MockPropertyPage* page = NewMockPage(
+      url(), "" /* hash */, UserAgentMatcher::kDesktop);
+  rewrite_driver()->set_property_page(page);
+  pcache->Read(page);
+
+  server_context()->set_critical_selector_finder(new TestCriticalSelectorFinder(
+      server_context()->beacon_cohort(), statistics()));
+
+  // Write critical selectors to property cache
+  StringSet selectors;
+  selectors.insert("div");
+  selectors.insert("*");
+  CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
+  finder->WriteCriticalSelectorsToPropertyCache(
+      selectors, "" /* last_nonce */, rewrite_driver());
+  rewrite_driver()->property_page()->
+      WriteCohort(server_context()->beacon_cohort());
+
+  EXPECT_TRUE(finder->IsCriticalSelector(rewrite_driver(), "div"));
+  EXPECT_TRUE(finder->IsCriticalSelector(rewrite_driver(), "*"));
+
+  GoogleString full_styles_html = StrCat(
+      "<noscript class=\"psa_add_styles\">",
+      CssLinkEncodedHref("a.css"),
+      CssLinkEncodedHref("b.css?x=1&y=2"),
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalSelectorFilter::kAddStylesFunction,
+      CriticalSelectorFilter::kAddStylesInvocation,
+      "</script>");
+  ValidateFlushEarly(
+      "critical_selector", InputHtml(), ExpectedHtml(full_styles_html));
 }
 
 }  // namespace net_instaweb

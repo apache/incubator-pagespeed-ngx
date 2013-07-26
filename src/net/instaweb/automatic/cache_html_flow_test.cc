@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -40,6 +41,8 @@
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
@@ -81,6 +84,8 @@ class AsyncFetch;
 namespace {
 
 const char kTestUrl[] = "http://test.com/text.html";
+
+const char kMockHashValue[] = "MDAwMD";
 
 const char kCssContent[] = "* { display: none; }";
 
@@ -473,7 +478,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
                     BlinkUtil::kBlinkCohort);
     server_context_->set_blink_cohort(blink_cohort);
     server_context_->set_enable_property_cache(true);
-    UseMd5Hasher();
+    InitHasher();
     ThreadSynchronizer* sync = server_context()->thread_synchronizer();
     sync->EnableForPrefix(CacheHtmlFlow::kBackgroundComputationDone);
     sync->AllowSloppyTermination(
@@ -554,6 +559,10 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
                                   kCssContent, kHtmlCacheTimeSec * 2);
     AddFileToMockFetcher(StrCat(kTestDomain, "image1"), kSampleJpgFile,
                          kContentTypeJpeg, 100);
+  }
+
+  virtual void InitHasher() {
+    UseMd5Hasher();
   }
 
   virtual RequestContextPtr CreateRequestContext() {
@@ -1008,111 +1017,6 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlExperimentCookieHandling) {
 
   EXPECT_FALSE(response_headers.Has(HttpAttributes::kSetCookie));
   VerifyCacheHtmlResponse(response_headers);
-}
-
-TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithCriticalCss) {
-  critical_css_finder_ = new MockCriticalCssFinder(rewrite_driver(),
-      statistics());
-  server_context_->set_critical_css_finder(critical_css_finder_);
-
-  critical_css_finder_->AddCriticalCss("http://test.com/a.css",
-                                       "a_used {color: azure }", 1);
-  critical_css_finder_->AddCriticalCss("http://test.com/b.css",
-                                       "b_used {color: blue }", 2);
-  critical_css_finder_->AddCriticalCss("http://test.com/c.css",
-                                       "c_used {color: cyan }", 3);
-
-  const char kInputHtml[] =
-      "<html>\n"
-      "<head>\n"
-      "  <title>Example</title>\n"
-      "</head>\n"
-      "<body>\n"
-      "  Hello,\n"
-      "  <link rel='stylesheet' href='a.css' type='text/css' media='print'>"
-      "<link rel='stylesheet' href='b.css' type='text/css'>\n"
-      "  <style type='text/css'>t {color: turquoise }</style>\n"
-      "  World!\n"
-      "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
-      "</body>\n</html>";
-
-  SetFetchResponse("http://test.com/text.html", response_headers_, kInputHtml);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "a.css"), kContentTypeCss,
-                                kCssContent, kHtmlCacheTimeSec * 2);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "b.css"), kContentTypeCss,
-                                kCssContent, kHtmlCacheTimeSec * 2);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "c.css"), kContentTypeCss,
-                                kCssContent, kHtmlCacheTimeSec * 2);
-  options_.reset(server_context()->NewOptions());
-  options_->EnableFilter(RewriteOptions::kCachePartialHtml);
-  options_->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
-  options_->set_non_cacheables_for_cache_partial_html(
-      "class=item,id=beforeItems");
-  server_context()->ComputeSignature(options_.get());
-  SetRewriteOptions(options_.get());
-
-  GoogleString text;
-  ResponseHeaders response_headers;
-  // First request updates the property cache with cached html.
-  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
-  VerifyNonCacheHtmlResponse(response_headers);
-  // Cache Html hit case.
-  response_headers.Clear();
-  FetchFromProxyNoWaitForBackground("text.html", true, &text,
-                                    &response_headers);
-
-  VerifyCacheHtmlResponse(response_headers);
-  UnEscapeString(&text);
-
-  GoogleString expected_html = StrCat(
-      "<html>\n<head>\n"
-      "  <title>Example</title>\n",
-      "</head>\n"
-      "<body>"
-      "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url='", kTestUrl, "?ModPagespeed=noscript'\" />"
-      "<style><!--table,div,span,font,p{display:none} --></style>");
-
-  StrAppend(&expected_html,
-      "<div style=\"display:block\">Please click "
-      "<a href=\"", kTestUrl, "?ModPagespeed=noscript\">here</a> "
-      "if you are not redirected within a few seconds.</div></noscript>\n"
-      "  Hello,\n"
-      "  <style media=\"print\">a_used {color: azure }</style>"
-      "<style>b_used {color: blue }</style>\n"
-      "  <style type='text/css'>t {color: turquoise }</style>\n"
-      "  World!\n"
-      "  <style>c_used {color: cyan }</style>\n"
-      "</body>\n</html>"
-      "<noscript class=\"psa_add_styles\">"
-      "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
-      "<link rel='stylesheet' href='b.css' type='text/css'>"
-      "<style type='text/css'>t {color: turquoise }</style>"
-      "<link rel='stylesheet' href='c.css' type='text/css'>"
-      "</noscript>"
-      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      CriticalCssFilter::kAddStylesScript,
-      "window['pagespeed'] = window['pagespeed'] || {};"
-      "window['pagespeed']['criticalCss'] = {"
-      "  'total_critical_inlined_size': 64,"
-      "  'total_original_external_size': 6,"
-      "  'total_overhead_size': 85,"
-      "  'num_replaced_links': 3,"
-      "  'num_unreplaced_links': 0"
-      "};"
-      "</script>");
-
-  StrAppend(&expected_html,
-      GetJsDisableScriptSnippet(options_.get()),
-      "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
-      "<script type=\"text/javascript\">"
-      "pagespeed.panelLoaderInit();</script>\n"
-      "<script type=\"text/javascript\">"
-      "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n",
-      kCookieScript,
-      "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>");
-
-  EXPECT_EQ(expected_html, text);
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
@@ -1647,6 +1551,207 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   VerifyCacheHtmlResponse(response_headers);
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_, text);
+}
+
+class CacheHtmlPrioritizeCriticalCssTest : public CacheHtmlFlowTest {
+ public:
+  virtual void SetUp() {
+    CacheHtmlFlowTest::SetUp();
+    SetOptions();
+    InitializeResponses();
+  }
+
+  virtual void InitHasher() {}  // avoid UseMd5Hasher() in base class
+
+  void SetOptions() {
+    // Enable FlushSubresourcesFilter filter.
+    options_->ClearSignatureForTesting();
+    options_->EnableFilter(RewriteOptions::kCachePartialHtml);
+    options_->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
+    options_->DisableFilter(RewriteOptions::kRewriteJavascript);
+    options_->set_non_cacheables_for_cache_partial_html(
+        "class=item,id=beforeItems");
+    options_->set_in_place_rewriting_enabled(true);
+    options_->ComputeSignature();
+  }
+
+  void InitializeResponses() {
+    // Some weird but valid CSS.
+    SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                  "div,span,*::first-letter { display: block; }"
+                                  "p { display: inline; }",
+                                  kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders("b.css?x=1&y=2", kContentTypeCss,
+                                  "@media screen,print { * { margin: 0px; } }",
+                                  kHtmlCacheTimeSec * 2);
+  }
+
+  GoogleString InputHtml() {
+    return GoogleString(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html><head>"
+        "<title>Flush Subresources Early example</title>"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"a.css\">"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"b.css?x=1&y=2\">"
+        "</head>"
+        "<body>"
+        "Hello, mod_pagespeed!"
+        "</body></html>");
+  }
+
+  GoogleString ExpectedHtml(GoogleString full_styles_html) {
+    GoogleString expected_html = StrCat(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html><head>"
+        "<title>Flush Subresources Early example</title>",
+        "<style>div,*::first-letter{display:block}</style>"  // from a.css
+        "<style>@media screen{*{margin:0px}}</style>"  // from b.css
+        "</head>");
+    StrAppend(&expected_html,
+        "<body>",
+        StringPrintf(kNoScriptRedirectFormatter,
+                     kNoScriptTextUrl, kNoScriptTextUrl),
+        "Hello, mod_pagespeed!",
+        full_styles_html,
+        "</body></html>");
+    StrAppend(&expected_html,
+        GetJsDisableScriptSnippet(options_.get()),
+        "<script type=\"text/javascript\" src=\"/psajs/blink.0.js\"></script>"
+        "<script type=\"text/javascript\">"
+        "pagespeed.panelLoaderInit();</script>\n"
+        "<script type=\"text/javascript\">"
+        "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n",
+        kCookieScript,
+        "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>");
+    return expected_html;
+  }
+
+  GoogleString CssLinkEncodedHref(GoogleString url) {
+    return StrCat(
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
+        Encode(kTestDomain, "cf", kMockHashValue, url, "css"),
+        "\">");
+  }
+
+  GoogleString url() { return kTestUrl; }
+
+  void ValidateCacheHtml(const StringPiece& case_id,
+                          const GoogleString& input_html,
+                          const GoogleString& expected_html) {
+    SetFetchResponse(url(), response_headers_, input_html);
+    ResponseHeaders headers;
+    GoogleString actual_html;
+    // First request updates the property cache with cached html.
+    FetchFromProxyWaitForBackground(
+        url(), true /* expect_success */, &actual_html, &headers);
+    VerifyNonCacheHtmlResponse(headers);
+    headers.Clear();
+
+    // Fetch the url again (with no wait) and expect a cache html hit.
+    FetchFromProxyNoWaitForBackground(
+        url(), true /* expect_success */, &actual_html, &headers);
+    VerifyCacheHtmlResponse(headers);
+    UnEscapeString(&actual_html);
+
+    EXPECT_EQ(expected_html, actual_html) << "Test id:" << case_id;
+  }
+};
+
+TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalCss) {
+  // Add critical css rules.
+  MockCriticalCssFinder* critical_css_finder =
+      new MockCriticalCssFinder(rewrite_driver(), statistics());
+  server_context()->set_critical_css_finder(critical_css_finder);
+  critical_css_finder->AddCriticalCss(
+      "http://test.com/a.css", "div,*::first-letter{display:block}", 100);
+  critical_css_finder->AddCriticalCss(
+      "http://test.com/b.css?x=1&y=2", "@media screen{*{margin:0px}}", 100);
+
+  GoogleString full_styles_html = StrCat(
+      "<noscript class=\"psa_add_styles\">"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"a.css\">"
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"b.css?x=1&y=2\">"
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 62,"
+      "  'total_original_external_size': 200,"
+      "  'total_overhead_size': 62,"
+      "  'num_replaced_links': 2,"
+      "  'num_unreplaced_links': 0};"
+      "</script>");
+  ValidateCacheHtml(
+      "critical_css", InputHtml(), ExpectedHtml(full_styles_html));
+}
+
+class TestCriticalSelectorFinder : public CriticalSelectorFinder {
+ public:
+  TestCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
+                             Statistics* stats)
+      : CriticalSelectorFinder(
+            cohort, NULL /* timer */, NULL /* nonce_generator */, stats) {
+  }
+
+  virtual ~TestCriticalSelectorFinder() {}
+
+  virtual int SupportInterval() const { return 1; }
+
+ protected:
+  virtual bool ShouldReplacePriorResult() const { return true; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TestCriticalSelectorFinder);
+};
+
+TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalSelectors) {
+    SetMockHashValue("00000");  // Base64 encodes to kMockHashValue.
+  server_context()->set_enable_property_cache(true);
+  PropertyCache* pcache = server_context()->page_property_cache();
+  const PropertyCache::Cohort* dom_cohort =
+      SetupCohort(pcache, RewriteDriver::kDomCohort);
+  const PropertyCache::Cohort* beacon_cohort =
+      SetupCohort(pcache, RewriteDriver::kBeaconCohort);
+  server_context()->set_dom_cohort(dom_cohort);
+  server_context()->set_beacon_cohort(beacon_cohort);
+
+  rewrite_driver()->Clear();
+  rewrite_driver()->set_request_context(
+      RequestContext::NewTestRequestContext(factory()->thread_system()));
+
+  MockPropertyPage* page = NewMockPage(
+      url(), kMockHashValue /* hash */, UserAgentMatcher::kDesktop);
+  rewrite_driver()->set_property_page(page);
+  pcache->Read(page);
+  server_context()->set_critical_selector_finder(new TestCriticalSelectorFinder(
+      server_context()->beacon_cohort(), statistics()));
+
+  // Write critical selectors to property cache
+  StringSet selectors;
+  selectors.insert("div");
+  selectors.insert("*");
+  CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
+  finder->WriteCriticalSelectorsToPropertyCache(
+      selectors, "" /* last_nonce */, rewrite_driver());
+  rewrite_driver()->property_page()->
+      WriteCohort(server_context()->beacon_cohort());
+
+  EXPECT_TRUE(finder->IsCriticalSelector(rewrite_driver(), "div"));
+  EXPECT_TRUE(finder->IsCriticalSelector(rewrite_driver(), "*"));
+
+  GoogleString full_styles_html = StrCat(
+      "<noscript class=\"psa_add_styles\">",
+      // URLs are encoded because CSS rewrite is enabled with selectors filter.
+      CssLinkEncodedHref("a.css"),
+      CssLinkEncodedHref("b.css?x=1&y=2"),
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalSelectorFilter::kAddStylesFunction,
+      CriticalSelectorFilter::kAddStylesInvocation,
+      "</script>");
+  ValidateCacheHtml(
+      "critical_selector", InputHtml(), ExpectedHtml(full_styles_html));
 }
 
 }  // namespace net_instaweb
