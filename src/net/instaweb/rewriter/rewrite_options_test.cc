@@ -783,6 +783,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kDefaultCacheHtml);
   PassLookupOptionByName(RewriteOptions::kDisableBackgroundFetchesForBots);
   PassLookupOptionByName(RewriteOptions::kDisableRewriteOnNoTransform);
+  PassLookupOptionByName(RewriteOptions::kDistributeFetches);
   PassLookupOptionByName(RewriteOptions::kDistributedRewriteKey);
   PassLookupOptionByName(RewriteOptions::kDistributedRewriteServers);
   PassLookupOptionByName(RewriteOptions::kDistributedRewriteTimeoutMs);

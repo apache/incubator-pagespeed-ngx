@@ -398,6 +398,11 @@ DEFINE_int64(distributed_rewrite_timeout_ms,
              "Time to wait for a distributed rewrite to complete before "
              "abandoning it.");
 
+DEFINE_bool(
+    distribute_fetches, true,
+    "Whether or not to distribute IPRO and .pagespeed. resource fetch requests "
+    "from the RewriteDriver before checking the cache.");
+
 DEFINE_bool(support_noscript_enabled, true,
             "Support for clients with no script support, in filters that "
             "insert new javascript.");
@@ -787,6 +792,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("distributed_rewrite_timeout_ms")) {
     options->set_distributed_rewrite_timeout_ms(
         FLAGS_distributed_rewrite_timeout_ms);
+  }
+  if (WasExplicitlySet("distribute_fetches")) {
+    options->set_distribute_fetches(FLAGS_distribute_fetches);
   }
   if (WasExplicitlySet("pagespeed_version")) {
     options->set_x_header_value(FLAGS_pagespeed_version);

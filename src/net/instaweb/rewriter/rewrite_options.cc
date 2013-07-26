@@ -79,6 +79,7 @@ const char RewriteOptions::kDisableRewriteOnNoTransform[] =
     "DisableRewriteOnNoTransform";
 const char RewriteOptions::kDisableBackgroundFetchesForBots[] =
     "DisableBackgroundFetchesForBots";
+const char RewriteOptions::kDistributeFetches[] = "DistributeFetches";
 const char RewriteOptions::kDistributedRewriteKey[] = "DistributedRewriteKey";
 const char RewriteOptions::kDistributedRewriteServers[] =
     "DistributedRewriteServers";
@@ -1631,6 +1632,11 @@ void RewriteOptions::AddProperties() {
       kXModPagespeedHeaderValue,
       kDirectoryScope,
       "Set the value for the X-Mod-Pagespeed HTTP header");
+  AddBaseProperty(true, &RewriteOptions::distribute_fetches_, "dfe",
+                  kDistributeFetches, kProcessScope,
+                  "Whether or not to distribute IPRO and .pagespeed. resource "
+                  "fetch requests from the RewriteDriver before checking the "
+                  "cache.");
   AddBaseProperty(
       "", &RewriteOptions::distributed_rewrite_key_, "drwk",
       kDistributedRewriteKey, kProcessScope,

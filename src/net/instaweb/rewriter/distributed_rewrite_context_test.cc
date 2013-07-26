@@ -34,6 +34,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/base64_util.h"
@@ -673,6 +674,61 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFetch) {
   // The ingress url fetcher should not have run.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+
+  // Ingress task hits on one HTTP lookup and returns it.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+}
+
+// Test that distribute_fetches=false is honored.
+TEST_F(DistributedRewriteContextTest, DistributeFetchesDisabled) {
+  SetupDistributedTest();
+  options()->ClearSignatureForTesting();
+  options()->set_distribute_fetches(false);
+  server_context()->ComputeSignature(options());
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+
+  // Fetch the .pagespeed. resource and ensure that the rewrite was not
+  // distributed.
+  GoogleString content;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+                               &response_headers));
+  // Content should be optimized.
+  EXPECT_EQ("a", content);
+
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
+
+  // Ingress task misses on three HTTP lookups (twice for rewritten resource
+  // plus once for original resource) and one metdata lookup. Then inserts
+  // original resource, optimized resource, and metadata.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+
+  // On the second .pagespeed. request the optimized resource should be in the
+  // shared cache.
+  ClearStats();
+  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+                               &response_headers));
+
+  // Content should be optimized.
+  EXPECT_EQ("a", content);
+
+  // No fetching.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
 
   // Ingress task hits on one HTTP lookup and returns it.
   EXPECT_EQ(1, lru_cache()->num_hits());

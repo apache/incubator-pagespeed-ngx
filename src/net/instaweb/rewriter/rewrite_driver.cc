@@ -1852,6 +1852,7 @@ bool RewriteDriver::ShouldDistributeFetch(const StringPiece& filter_id) {
   // reasonable.
   if (distributed_fetcher() == NULL ||
       !options()->Distributable(filter_id) ||
+      !options()->distribute_fetches() ||
       tried_to_distribute_fetch_ ||
       options()->distributed_rewrite_key().empty() ||
       options()->distributed_rewrite_servers().empty()) {

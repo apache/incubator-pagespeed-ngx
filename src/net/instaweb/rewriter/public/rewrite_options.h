@@ -202,6 +202,7 @@ class RewriteOptions {
   static const char kDefaultCacheHtml[];
   static const char kDisableBackgroundFetchesForBots[];
   static const char kDisableRewriteOnNoTransform[];
+  static const char kDistributeFetches[];
   static const char kDistributedRewriteKey[];
   static const char kDistributedRewriteServers[];
   static const char kDistributedRewriteTimeoutMs[];
@@ -2043,6 +2044,13 @@ class RewriteOptions {
     return distributed_rewrite_key_.value();
   }
 
+  void set_distribute_fetches(bool x) {
+    set_option(x, &distribute_fetches_);
+  }
+  bool distribute_fetches() const {
+    return distribute_fetches_.value();
+  }
+
   void set_distributed_rewrite_servers(const StringPiece& p) {
       set_option(p.as_string(), &distributed_rewrite_servers_);
   }
@@ -3378,6 +3386,11 @@ class RewriteOptions {
   Option<GoogleString> distributed_rewrite_key_;
   // A comma delimited list of hosts that can be used to rewrite resources.
   Option<GoogleString> distributed_rewrite_servers_;
+  // Whether or not to distribute IPRO and .pagespeed. resource fetch requests
+  // from the RewriteDriver before checking the cache.  If this is false,
+  // then a distribution will only occur for a fetch if a nested
+  // RewriteContext is created and its id is distributable.
+  Option<bool> distribute_fetches_;
   // Time to wait for a distributed rewrite to complete before giving up on the
   // request.
   Option<int64> distributed_rewrite_timeout_ms_;
