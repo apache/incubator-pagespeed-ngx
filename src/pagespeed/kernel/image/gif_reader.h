@@ -91,7 +91,9 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
 
   virtual size_t GetImageHeight();
   virtual size_t GetImageWidth();
-  virtual bool HasMoreScanLines() { return (row_ < GetImageHeight()); }
+  virtual bool HasMoreScanLines() {
+    return (row_ < static_cast<int>(GetImageHeight()));
+  }
   virtual PixelFormat GetPixelFormat() { return pixel_format_; }
 
  private:
@@ -103,7 +105,7 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   PixelFormat pixel_format_;
   bool is_progressive_;
   // The current output row.
-  size_t row_;
+  int row_;
   size_t pixel_size_;
   size_t bytes_per_row_;
   // If the encoded image covers the entire logical screen, we don't need to

@@ -598,12 +598,12 @@ class ScopedGifStruct {
   // Position of the encoded image with respect to the logical screen. The
   // uncovered portion of the logical screen will be filled with the background
   // color.
-  size_t first_row() { return gif_file_->Image.Top; }
-  size_t first_col() { return gif_file_->Image.Left; }
-  size_t last_row() {
+  int first_row() { return gif_file_->Image.Top; }
+  int first_col() { return gif_file_->Image.Left; }
+  int last_row() {
     return gif_file_->Image.Top + gif_file_->Image.Height - 1;
   }
-  size_t last_col() {
+  int last_col() {
     return gif_file_->Image.Left + gif_file_->Image.Width - 1;
   }
 
@@ -899,7 +899,7 @@ bool GifScanlineReaderRaw::DecodeProgressiveGif() {
   int actual_width = gif_struct_->last_col() - gif_struct_->first_col() + 1;
   for (int pass = 0; pass < kInterlaceNumPass; ++pass) {
     for (int y = gif_struct_->first_row() + kInterlaceOffsets[pass];
-         y <= static_cast<int>(gif_struct_->last_row());
+         y <= gif_struct_->last_row();
          y += kInterlaceJumps[pass]) {
       GifPixelType* row_pointer = image_index_.get() + y * GetImageWidth();
       if (DGifGetLine(gif_file, row_pointer, actual_width) == GIF_ERROR) {
