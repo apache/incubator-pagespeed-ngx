@@ -258,7 +258,8 @@ PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
 
 # Number of downstream cache purges should be 0 here.
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
-check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*0"
+check_from "$CURRENT_STATS" egrep -q \
+  "downstream_cache_purge_attempts:[[:space:]]*0"
 
 # The 1st request results in a cache miss, non-rewritten response
 # produced by pagespeed code and a subsequent purge request.
@@ -267,7 +268,8 @@ WGET_ARGS="--header=Host:proxy_cache.example.com"
 OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_not_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
-fetch_until $STATISTICS_URL 'grep -c downstream_cache_purge_attempts:\s*1' 1
+fetch_until $STATISTICS_URL \
+  'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 2nd request results in a cache miss (because of the previous purge),
@@ -278,7 +280,8 @@ OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
-check_from "$CURRENT_STATS" egrep -q "downstream_cache_purge_attempts:\s*1"
+check_from "$CURRENT_STATS" egrep -q \
+  "downstream_cache_purge_attempts:[[:space:]]*1"
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 3rd request results in a cache hit (because the previous response is
@@ -288,7 +291,8 @@ start_test Check for case where there is a rewritten cache hit.
 OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
 check_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: HIT"
-fetch_until $STATISTICS_URL 'grep -c downstream_cache_purge_attempts:\s*1' 1
+fetch_until $STATISTICS_URL \
+  'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 start_test Check for correct default X-Page-Speed header format.
@@ -1166,7 +1170,7 @@ WGET_ARGS=""
 start_test Relative images embedded in a CSS file served from a mapped domain
 DIR="mod_pagespeed_test/map_css_embedded"
 URL="http://www.example.com/$DIR/issue494.html"
-MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.RTch9OLvuX.css"
+MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.SilaP5mfIb.css"
 http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
     "grep -c cdn.example.com/$MAPPED_CSS" 1
 
@@ -1533,8 +1537,7 @@ check_from "$RESOURCE_HEADERS"  egrep -q 'Cache-Control: max-age=31536000'
 # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
 # NOTE: must occur after cache flush on a repeat run.  All repeat runs now
 # run the cache flush test.
-test_filter \
-  prioritize_critical_css,rewrite_css,inline_import_to_link,flatten_css_imports
+test_filter prioritize_critical_css
 fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
 check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
 CALL_PAT=".*criticalCssBeaconInit("
@@ -1642,5 +1645,24 @@ keepalive_test "keepalive-beacon-post.example.com" "/ngx_pagespeed_beacon"\
 start_test keepalive with static resources
 keepalive_test "keepalive-static.example.com"\
   "/ngx_pagespeed_static/js_defer.0.js" ""
+
+# Test for MaxCombinedCssBytes. The html used in the test, 'combine_css.html',
+# has 4 CSS files in the following order.
+#   yellow.css :   36 bytes
+#   blue.css   :   21 bytes
+#   big.css    : 4307 bytes
+#   bold.css   :   31 bytes
+# Because the threshold was chosen as '57', only the first two CSS files
+# are combined.
+test_filter combine_css Maximum size of combined CSS.
+QUERY_PARAM="PageSpeedMaxCombinedCssBytes=57"
+URL="$URL?$QUERY_PARAM"
+# Make sure that we have got the last CSS file and it is not combined.
+fetch_until -save $URL 'grep -c styles/bold.css\"' 1
+# Now check that the 1st and 2nd CSS files are combined, but the 3rd
+# one is not.
+check [ $(grep -c 'styles/yellow.css+blue.css.pagespeed.' \
+    $FETCH_UNTIL_OUTFILE) = 1 ]
+check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 
 check_failures_and_exit
