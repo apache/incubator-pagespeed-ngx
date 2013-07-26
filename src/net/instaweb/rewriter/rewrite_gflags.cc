@@ -408,6 +408,10 @@ DEFINE_bool(enable_blink_debug_dashboard, true,
 DEFINE_bool(report_unload_time, false, "If enabled, sends beacons when page "
             "unload happens before onload.");
 
+DEFINE_int64(max_combined_css_bytes, -1,
+            "Maximum size allowed for the combined CSS resource. "
+            "Negative values will bypass size check.");
+
 DEFINE_int64(max_combined_js_bytes, -1,
             "Maximum size allowed for the combined js resource. "
             "Negative values will bypass size check.");
@@ -665,6 +669,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("max_image_size_low_resolution_bytes")) {
     options->set_max_image_size_low_resolution_bytes(
         FLAGS_max_image_size_low_resolution_bytes);
+  }
+  if (WasExplicitlySet("max_combined_css_bytes")) {
+    options->set_max_combined_css_bytes(FLAGS_max_combined_css_bytes);
   }
   if (WasExplicitlySet("max_combined_js_bytes")) {
     options->set_max_combined_js_bytes(FLAGS_max_combined_js_bytes);

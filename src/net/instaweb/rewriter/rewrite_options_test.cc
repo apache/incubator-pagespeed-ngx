@@ -854,6 +854,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kLogUrlIndices);
   PassLookupOptionByName(RewriteOptions::kLowercaseHtmlNames);
   PassLookupOptionByName(RewriteOptions::kMaxCacheableResponseContentLength);
+  PassLookupOptionByName(RewriteOptions::kMaxCombinedCssBytes);
   PassLookupOptionByName(RewriteOptions::kMaxCombinedJsBytes);
   PassLookupOptionByName(RewriteOptions::kMaxLowResImageSizeBytes);
   PassLookupOptionByName(

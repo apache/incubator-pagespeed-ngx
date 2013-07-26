@@ -1681,6 +1681,113 @@ TEST_F(CssFilterWithCombineTestUrlNamer, TestFollowCombine) {
   EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
 }
 
+class CssCombineMaxSizeTest : public CssCombineFilterTest {
+ public:
+  void CombineAndCheck(const char* css_file, int64 max_bytes,
+                       int num_output_files, const int* num_files_in_output) {
+    // Set up the filter.
+    options()->ClearSignatureForTesting();
+    options()->set_max_combined_css_bytes(max_bytes);
+    server_context()->ComputeSignature(options());
+
+    // Add CSS files to the html. The CSS files are named as '1.css',
+    // '2.css', '3.css', etc.
+    CssLink::Vector css_in;
+    int id = 1;
+    for (int i = 0; i < num_output_files; ++i) {
+      for (int j = 0; j < num_files_in_output[i]; ++j) {
+        css_in.Add(InputFileName(id), css_file, "", true);
+        ++id;
+      }
+    }
+
+    // Combine the CSS files in the html.
+    CssLink::Vector css_out;
+    BarrierTestHelper("max_combined_size", css_in, &css_out);
+    ASSERT_EQ(num_output_files, css_out.size());
+
+    // Verify that the CSS files have been combined as expected.
+    id = 1;
+    for (int i = 0; i < num_output_files; ++i) {
+      if (num_files_in_output[i] == 1) {
+        EXPECT_EQ(InputFileName(id), css_out[i]->url_);
+        ++id;
+      } else {
+        GoogleString base;
+        StringVector segments;
+        ASSERT_TRUE(css_out[i]->DecomposeCombinedUrl(&base, &segments,
+                                                     &message_handler_));
+        ASSERT_EQ(num_files_in_output[i], segments.size());
+        for (int j = 0; j < num_files_in_output[i]; ++j) {
+          EXPECT_EQ(InputFileName(id), segments[j]);
+          ++id;
+        }
+      }
+    }
+  }
+
+ private:
+  GoogleString InputFileName(int id) {
+    return StringPrintf("%d.css", id);
+  }
+};
+
+TEST_F(CssCombineMaxSizeTest, NegativeOneByte) {
+  const int max_bytes = -1;
+  const int num_output_files = 1;
+  const int num_files_in_output[num_output_files] = {3};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, ZeroByte) {
+  const int max_bytes = 0;
+  const int num_output_files = 3;
+  const int num_files_in_output[num_output_files] = {1, 1, 1};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, OneFileMinusOneByte) {
+  const int max_bytes = STATIC_STRLEN(kYellow) - 1;
+  const int num_output_files = 3;
+  const int num_files_in_output[num_output_files] = {1, 1, 1};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, OneFile) {
+  const int max_bytes = STATIC_STRLEN(kYellow);
+  const int num_output_files = 3;
+  const int num_files_in_output[num_output_files] = {1, 1, 1};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, OneFilePlusOneByte) {
+  const int max_bytes = STATIC_STRLEN(kYellow) + 1;
+  const int num_output_files = 3;
+  const int num_files_in_output[num_output_files] = {1, 1, 1};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, TwoFilesMinusOneByte) {
+  const int max_bytes = 2 * STATIC_STRLEN(kYellow) - 1;
+  const int num_output_files = 3;
+  const int num_files_in_output[num_output_files] = {1, 1, 1};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, TwoFiles) {
+  const int max_bytes = 2 * STATIC_STRLEN(kYellow);
+  const int num_output_files = 2;
+  const int num_files_in_output[num_output_files] = {2, 2};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, TwoFilesPlusOneByte) {
+  const int max_bytes = 2 * STATIC_STRLEN(kYellow) + 1;
+  const int num_output_files = 3;
+  const int num_files_in_output[num_output_files] = {2, 2, 1};
+  CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
 /*
   TODO(jmarantz): cover intervening FLUSH
   TODO(jmarantz): consider converting some of the existing tests to this

@@ -182,6 +182,7 @@ const char RewriteOptions::kLogUrlIndices[] = "LogUrlIndices";
 const char RewriteOptions::kLowercaseHtmlNames[] = "LowercaseHtmlNames";
 const char RewriteOptions::kMaxCacheableResponseContentLength[] =
     "MaxCacheableContentLength";
+const char RewriteOptions::kMaxCombinedCssBytes[] = "MaxCombinedCssBytes";
 const char RewriteOptions::kMaxCombinedJsBytes[] = "MaxCombinedJsBytes";
 const char RewriteOptions::kMaxHtmlCacheTimeMs[] = "MaxHtmlCacheTimeMs";
 const char RewriteOptions::kMaxHtmlParseBytes[] = "MaxHtmlParseBytes";
@@ -470,6 +471,7 @@ const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 3 * 1024;
 const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
     1 * 1024 * 1024;  // 1 MB.
 
+const int64 RewriteOptions::kDefaultMaxCombinedCssBytes = -1;  // No size limit
 // Setting the limit on combined js resource to -1 will bypass the size check.
 const int64 RewriteOptions::kDefaultMaxCombinedJsBytes = -1;
 const int64 RewriteOptions::kDefaultExperimentCookieDurationMs =
@@ -1695,6 +1697,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "If set to true, addition instrumentation js is added to that page that "
       "the beacon can collect more information.");
+  AddBaseProperty(
+      kDefaultMaxCombinedCssBytes,
+      &RewriteOptions::max_combined_css_bytes_, "xcc",
+      kMaxCombinedCssBytes,
+      kDirectoryScope,
+      "Maximum size allowed for the combined CSS resource.");
   AddBaseProperty(
       kDefaultMaxCombinedJsBytes,
       &RewriteOptions::max_combined_js_bytes_, "xcj",

@@ -70,7 +70,8 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
  public:
   CssCombiner(RewriteDriver* driver,
               CssCombineFilter* filter)
-      : ResourceCombiner(driver, kContentTypeCss.file_extension() + 1, filter) {
+      : ResourceCombiner(driver, kContentTypeCss.file_extension() + 1, filter),
+        combined_css_size_(0) {
     Statistics* stats = server_context_->statistics();
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
@@ -133,6 +134,22 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
     }
   }
 
+  virtual bool ContentSizeTooBig() const {
+    int64 combined_css_max_size =
+      rewrite_driver_->options()->max_combined_css_bytes();
+    return (combined_css_max_size >= 0 &&
+            combined_css_max_size < combined_css_size_);
+  }
+
+  virtual void AccumulateCombinedSize(const ResourcePtr& resource) {
+    combined_css_size_ += resource->contents().size();
+  }
+
+  virtual void Clear() {
+    ResourceCombiner::Clear();
+    combined_css_size_ = 0;
+  }
+
  private:
   virtual const ContentType* CombinationContentType() {
     return &kContentTypeCss;
@@ -144,6 +161,7 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
 
   GoogleString media_;
   Variable* css_file_count_reduction_;
+  int64 combined_css_size_;
 };
 
 class CssCombineFilter::Context : public RewriteContext {

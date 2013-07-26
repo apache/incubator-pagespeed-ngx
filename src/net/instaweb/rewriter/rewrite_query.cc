@@ -99,6 +99,8 @@ static struct Int64QueryParam int64_query_params_[] = {
       &RewriteOptions::set_image_jpeg_num_progressive_scans_for_small_screens },
   { "ImageRecompressionQuality",
     &RewriteOptions::set_image_recompress_quality },
+  { "MaxCombinedCssBytes",
+    &RewriteOptions::set_max_combined_css_bytes },
   { "WebpRecompressionQuality",
     &RewriteOptions::set_image_webp_recompress_quality },
   { "WebpRecompressionQualityForSmallScreens",
