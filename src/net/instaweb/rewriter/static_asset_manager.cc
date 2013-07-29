@@ -53,23 +53,25 @@ extern const char* JS_dedup_inlined_images_opt;
 extern const char* JS_defer_iframe;
 extern const char* JS_defer_iframe_opt;
 extern const char* JS_delay_images;
-extern const char* JS_delay_images_opt;
 extern const char* JS_delay_images_inline;
 extern const char* JS_delay_images_inline_opt;
+extern const char* JS_delay_images_opt;
+extern const char* JS_detect_reflow;
+extern const char* JS_detect_reflow_opt;
+extern const char* JS_deterministic;
+extern const char* JS_deterministic_opt;
 extern const char* JS_extended_instrumentation;
 extern const char* JS_extended_instrumentation_opt;
 extern const char* JS_ghost_click_buster_opt;
-extern const char* JS_panel_loader_opt;
 extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
-extern const char* JS_deterministic;
-extern const char* JS_deterministic_opt;
-extern const char* JS_detect_reflow;
-extern const char* JS_detect_reflow_opt;
 extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
+extern const char* JS_panel_loader_opt;
+extern const char* JS_split_html_beacon;
+extern const char* JS_split_html_beacon_opt;
 
 // TODO(jud): use the data2c build flow to create this data.
 const char GIF_blank[] = { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x1, 0x0, 0x1,
@@ -172,6 +174,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDeterministicJs]->file_name = "deterministic";
   assets_[kGhostClickBusterJs]->file_name = "ghost_click_buster";
   assets_[kLocalStorageCacheJs]->file_name = "local_storage_cache";
+  assets_[kSplitHtmlBeaconJs]->file_name = "split_html_beacon";
 
   // Initialize compiled javascript strings->
   assets_[kAddInstrumentationJs]->js_optimized = JS_add_instrumentation_opt;
@@ -193,6 +196,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDeterministicJs]->js_optimized = JS_deterministic_opt;
   assets_[kGhostClickBusterJs]->js_optimized = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_optimized = JS_local_storage_cache_opt;
+  assets_[kSplitHtmlBeaconJs]->js_optimized = JS_split_html_beacon_opt;
 
   // Initialize cleartext javascript strings->
   assets_[kAddInstrumentationJs]->js_debug = JS_add_instrumentation;
@@ -214,6 +218,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   // GhostClickBuster uses goog.require, which needs to be minifed always.
   assets_[kGhostClickBusterJs]->js_debug = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
+  assets_[kSplitHtmlBeaconJs]->js_debug = JS_split_html_beacon;
 
   assets_[kBlankGif]->file_name = "1";
   assets_[kBlankGif]->js_optimized.append(GIF_blank, GIF_blank_len);

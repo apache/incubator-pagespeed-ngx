@@ -83,6 +83,7 @@ const char kBeaconEtsQueryParam[] = "ets";
 const char kBeaconOptionsHashQueryParam[] = "oh";
 const char kBeaconCriticalImagesQueryParam[] = "ci";
 const char kBeaconCriticalCssQueryParam[] = "cs";
+const char kBeaconXPathsQueryParam[] = "xp";
 const char kBeaconNonceQueryParam[] = "n";
 
 // Attributes that should not be automatically copied from inputs to outputs
@@ -128,6 +129,7 @@ class BeaconPropertyCallback : public PropertyPage {
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set,
       StringSet* critical_css_selector_set,
+      StringSet* xpaths_set,
       StringPiece nonce)
       : PropertyPage(kPropertyCachePage, url, options_signature_hash,
                      device_type, request_context,
@@ -136,7 +138,8 @@ class BeaconPropertyCallback : public PropertyPage {
         server_context_(server_context),
         html_critical_images_set_(html_critical_images_set),
         css_critical_images_set_(css_critical_images_set),
-        critical_css_selector_set_(critical_css_selector_set) {
+        critical_css_selector_set_(critical_css_selector_set),
+        xpaths_set_(xpaths_set) {
     nonce.CopyToString(&nonce_);
   }
 
@@ -165,6 +168,10 @@ class BeaconPropertyCallback : public PropertyPage {
               server_context_->message_handler(), server_context_->timer());
     }
 
+    // TODO(jud): Add a call to
+    // BeaconCriticalLineInfoFinder::WriteXPathsToPropertyCacheFromBeacon when
+    // that class exists.
+
     WriteCohort(server_context_->beacon_cohort());
     delete this;
   }
@@ -174,6 +181,7 @@ class BeaconPropertyCallback : public PropertyPage {
   scoped_ptr<StringSet> html_critical_images_set_;
   scoped_ptr<StringSet> css_critical_images_set_;
   scoped_ptr<StringSet> critical_css_selector_set_;
+  scoped_ptr<StringSet> xpaths_set_;
   GoogleString nonce_;
   DISALLOW_COPY_AND_ASSIGN(BeaconPropertyCallback);
 };
@@ -604,6 +612,12 @@ bool ServerContext::HandleBeacon(StringPiece params,
         CommaSeparatedStringToSet(*query_param_str));
   }
 
+  scoped_ptr<StringSet> xpaths_set;
+  query_param_str = query_params.Lookup1(kBeaconXPathsQueryParam);
+  if (query_param_str != NULL) {
+    xpaths_set.reset(CommaSeparatedStringToSet(*query_param_str));
+  }
+
   StringPiece nonce;
   query_param_str = query_params.Lookup1(kBeaconNonceQueryParam);
   if (query_param_str != NULL) {
@@ -616,7 +630,8 @@ bool ServerContext::HandleBeacon(StringPiece params,
   // BeaconPropertyCallback::Done(). Done() is called when the read completes.
   if (html_critical_images_set != NULL ||
       css_critical_images_set != NULL ||
-      critical_css_selector_set != NULL) {
+      critical_css_selector_set != NULL ||
+      xpaths_set != NULL) {
     UserAgentMatcher::DeviceType device_type =
         user_agent_matcher()->GetDeviceTypeForUA(user_agent);
 
@@ -629,6 +644,7 @@ bool ServerContext::HandleBeacon(StringPiece params,
         html_critical_images_set.release(),
         css_critical_images_set.release(),
         critical_css_selector_set.release(),
+        xpaths_set.release(),
         nonce);
     page_property_cache()->ReadWithCohorts(beacon_property_cb->CohortList(),
                                            beacon_property_cb);

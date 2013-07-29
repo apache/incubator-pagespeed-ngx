@@ -368,6 +368,34 @@
       ]
     },
     {
+      'target_name': 'instaweb_split_html_beacon_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'split_html_beacon',
+      },
+      'sources': [
+        'genfiles/rewriter/split_html_beacon_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_split_html_beacon_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'split_html_beacon_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/split_html_beacon_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_panel_loader_opt_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1121,17 +1149,19 @@
         'instaweb_flush_early_pb',
         'instaweb_ghost_click_buster_opt_data2c',
         'instaweb_http',
-        'instaweb_panel_loader_opt_data2c',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',
         'instaweb_lazyload_images_opt_data2c',
         'instaweb_local_storage_cache_data2c',
         'instaweb_local_storage_cache_opt_data2c',
+        'instaweb_panel_loader_opt_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
+        'instaweb_split_html_beacon_data2c',
+        'instaweb_split_html_beacon_opt_data2c',
         'instaweb_spriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
@@ -1145,17 +1175,17 @@
         'rewriter/cache_extender.cc',
         'rewriter/cache_html_filter.cc',
         'rewriter/cacheable_resource_base.cc',
+        'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/common_filter.cc',
         'rewriter/compute_visible_text_filter.cc',
-        'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/critical_css_beacon_filter.cc',
         'rewriter/critical_css_filter.cc',
         'rewriter/critical_css_finder.cc',
         'rewriter/critical_finder_support_util.cc',
         'rewriter/critical_images_beacon_filter.cc',
         'rewriter/critical_images_callback.cc',
-        'rewriter/critical_selector_finder.cc',
         'rewriter/critical_selector_filter.cc',
+        'rewriter/critical_selector_finder.cc',
         'rewriter/css_inline_filter.cc',
         'rewriter/css_move_to_head_filter.cc',
         'rewriter/css_outline_filter.cc',
@@ -1213,6 +1243,7 @@
         'rewriter/script_tag_scanner.cc',
         'rewriter/simple_text_filter.cc',
         'rewriter/single_rewrite_context.cc',
+        'rewriter/split_html_beacon_filter.cc',
         'rewriter/split_html_config.cc',
         'rewriter/split_html_filter.cc',
         'rewriter/split_html_helper_filter.cc',

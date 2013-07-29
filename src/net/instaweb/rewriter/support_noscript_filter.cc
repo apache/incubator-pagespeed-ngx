@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -85,8 +86,12 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
       case RewriteOptions::kDeferJavascript:
       case RewriteOptions::kDetectReflowWithDeferJavascript:
       case RewriteOptions::kSplitHtml:
-        filter_enabled = request_properties->SupportsJsDefer(
-            options->enable_aggressive_rewriters_for_mobile());
+        // We don't need to insert a noscript redirect if we are just
+        // instrumenting the page, instead of actually running split HTML.
+        filter_enabled =
+            (request_properties->SupportsJsDefer(
+                 options->enable_aggressive_rewriters_for_mobile()) &&
+             !SplitHtmlBeaconFilter::ShouldApply(rewrite_driver_));
         break;
       case RewriteOptions::kDedupInlinedImages:
       case RewriteOptions::kDelayImages:

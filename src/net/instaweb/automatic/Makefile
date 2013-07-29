@@ -98,6 +98,8 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_rewriter_image.a \
   net/instaweb/libinstaweb_rewriter_javascript.a \
   net/instaweb/libinstaweb_rewriter_pb.a \
+  net/instaweb/libinstaweb_split_html_beacon_data2c.a \
+  net/instaweb/libinstaweb_split_html_beacon_opt_data2c.a \
   net/instaweb/libinstaweb_spriter.a \
   net/instaweb/libinstaweb_spriter_pb.a \
   net/instaweb/libinstaweb_system.a \

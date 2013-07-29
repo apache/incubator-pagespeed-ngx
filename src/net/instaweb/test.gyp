@@ -196,6 +196,7 @@
         'rewriter/script_tag_scanner_test.cc',
         'rewriter/server_context_test.cc',
         'rewriter/shared_cache_test.cc',
+        'rewriter/split_html_beacon_filter_test.cc',
         'rewriter/split_html_config_test.cc',
         'rewriter/split_html_filter_test.cc',
         'rewriter/split_html_helper_filter_test.cc',

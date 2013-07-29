@@ -15,9 +15,12 @@
  */
 
 // Author: jud@google.com (Jud Porter)
+//
+// This filter injects instrumentation JS into the page to determine the
+// below-the-fold xpaths used for the split_html filter.
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_BEACON_FILTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_BEACON_FILTER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_BEACON_FILTER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_BEACON_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -29,17 +32,14 @@ class RewriteDriver;
 class Statistics;
 class Variable;
 
-// Inject javascript for detecting above the fold images after the page has
-// loaded. Also adds pagespeed_url_hash attributes that the beacon sends
-// back to the server. This allows the beacon to work despite image URL
-// rewriting or inlining.
-class CriticalImagesBeaconFilter : public EmptyHtmlFilter {
+// Inject JavaScript for detecting the below-the-fold HTML panels.
+class SplitHtmlBeaconFilter : public EmptyHtmlFilter {
  public:
   // Counters.
-  static const char kCriticalImagesBeaconAddedCount[];
+  static const char kSplitHtmlBeaconAddedCount[];
 
-  explicit CriticalImagesBeaconFilter(RewriteDriver* driver);
-  virtual ~CriticalImagesBeaconFilter();
+  explicit SplitHtmlBeaconFilter(RewriteDriver* driver);
+  virtual ~SplitHtmlBeaconFilter() {}
 
   virtual void DetermineEnabled();
 
@@ -47,20 +47,25 @@ class CriticalImagesBeaconFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument();
   virtual void EndElement(HtmlElement* element);
-  virtual const char* Name() const { return "CriticalImagesBeacon"; }
+  virtual const char* Name() const { return "SplitHtmlBeacon"; }
+
+  // Returns true if this filter is going to inject a beacon for this request.
+  // Filters that need to be disabled when beaconing runs (such as SplitHtml)
+  // should set_is_enabled(false) in their DetermineEnabled calls if this
+  // returns true.
+  static bool ShouldApply(RewriteDriver* driver);
 
  private:
-  // Clear all state associated with filter.
   void Clear();
 
   RewriteDriver* driver_;
   bool added_script_;
-  // The total number of times the beacon is added.
-  Variable* critical_images_beacon_added_count_;
 
-  DISALLOW_COPY_AND_ASSIGN(CriticalImagesBeaconFilter);
+  Variable* split_html_beacon_added_count_;
+
+  DISALLOW_COPY_AND_ASSIGN(SplitHtmlBeaconFilter);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_BEACON_FILTER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_BEACON_FILTER_H_

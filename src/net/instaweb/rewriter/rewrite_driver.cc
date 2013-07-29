@@ -122,6 +122,7 @@
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
 #include "net/instaweb/rewriter/public/split_html_config.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/split_html_helper_filter.h"
@@ -805,6 +806,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   JsCombineFilter::InitStats(statistics);
   LocalStorageCacheFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
+  SplitHtmlBeaconFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlInputResource::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
@@ -964,6 +966,10 @@ void RewriteDriver::AddPreRenderFilters() {
     // disabled. It should also come early, at least before image rewriting,
     // because it depends on seeing the original image URLs.
     AppendOwnedPreRenderFilter(new CriticalImagesBeaconFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kSplitHtml) &&
+      server_context()->factory()->UseBeaconResultsInFilters()) {
+    AppendOwnedPreRenderFilter(new SplitHtmlBeaconFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink) ||
       (!rewrite_options->Forbidden(RewriteOptions::kInlineImportToLink) &&

@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
 #include "net/instaweb/rewriter/public/split_html_config.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
@@ -181,6 +182,7 @@ void SplitHtmlFilter::StartDocument() {
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
       rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile()) ||
+      SplitHtmlBeaconFilter::ShouldApply(rewrite_driver_) ||
       // Disable this filter if a two chunked response is requested and we have
       // no critical line info.
       (config_->critical_line_info() == NULL &&

@@ -36,6 +36,19 @@
       }
     }
   }
+}, getPosition:function(element) {
+  for(var top = element.offsetTop, left = element.offsetLeft;element.offsetParent;) {
+    element = element.offsetParent, top += element.offsetTop, left += element.offsetLeft
+  }
+  return{top:top, left:left}
+}, getWindowSize:function() {
+  var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+  return{height:height, width:width}
+}, inViewport:function(element, windowSize) {
+  var position = pagespeedutils.getPosition(element);
+  return pagespeedutils.positionInViewport(position, windowSize)
+}, positionInViewport:function(pos, windowSize) {
+  return pos.top < windowSize.height && pos.left < windowSize.width
 }};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;

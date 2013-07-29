@@ -53,14 +53,15 @@ class StaticAssetManager {
     kDedupInlinedImagesJs,
     kDeferIframe,
     kDeferJs,
-    kDelayImagesJs,
     kDelayImagesInlineJs,
+    kDelayImagesJs,
     kDetectReflowJs,
     kDeterministicJs,
+    kExtendedInstrumentationJs,
     kGhostClickBusterJs,
     kLazyloadImagesJs,
     kLocalStorageCacheJs,
-    kExtendedInstrumentationJs,
+    kSplitHtmlBeaconJs,
     kEndOfModules,  // Keep this as the last enum value.
   };
 

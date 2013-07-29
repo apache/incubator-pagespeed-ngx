@@ -41,27 +41,8 @@ pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash) {
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
-  this.windowSize_ = this.getWindowSize_();
+  this.windowSize_ = pagespeedutils.getWindowSize();
   this.imgLocations_ = {};
-};
-
-/**
- * Returns the size of the window.
- * @return {{
- *     height: (number),
- *     width: (number)
- * }}
- * @private
- */
-pagespeed.CriticalImagesBeacon.prototype.getWindowSize_ = function() {
-  var height = window.innerHeight || document.documentElement.clientHeight ||
-      document.body.clientHeight;
-  var width = window.innerWidth || document.documentElement.clientWidth ||
-      document.body.clientWidth;
-  return {
-    height: height,
-    width: width
-  };
 };
 
 /**
