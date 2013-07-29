@@ -181,6 +181,10 @@ void ComputeResizedSizeRatio(int input_width,
     *ratio_y = original_height / resized_height;
     *ratio_x = *ratio_y;
     resized_width = Round(original_width / *ratio_x);
+  } else {
+    LOG(DFATAL) << "Should not be reached.";
+    *ratio_x = 0;
+    *ratio_y = 0;
   }
 
   *width = static_cast<int>(resized_width);

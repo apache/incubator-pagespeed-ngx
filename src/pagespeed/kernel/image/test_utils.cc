@@ -133,8 +133,8 @@ void DecodeAndCompareImagesByPSNR(
 
   if (min_psnr >= kMaxPSNR) {
     // Verify that all of the pixels are exactly the same.
-    for (int y = 0; y < height1; ++y) {
-      for (int x = 0; x < width1; ++x) {
+    for (size_t y = 0; y < height1; ++y) {
+      for (size_t x = 0; x < width1; ++x) {
         for (int ch = 0; ch < num_channels; ++ch) {
           int index = y * stride1 + (x * num_channels + ch);
           EXPECT_EQ(pixels1[index], pixels2[index]);

@@ -32,7 +32,7 @@ HashedNonceGenerator::HashedNonceGenerator(
     : NonceGenerator(mutex),
       hasher_(hasher),
       key_size_(key.size() - sizeof(counter_)) {
-  DCHECK_LE(2 * hasher->RawHashSizeInBytes(), key.size());
+  DCHECK_LE(2 * hasher->RawHashSizeInBytes(), static_cast<int>(key.size()));
   // Allocate enough space in key_ to hold future data for hashing.  Note in
   // particular that we use the last sizeof(counter_) bits of the passed in key
   // to initialize counter_, and thus exclude it from key_size_.  But we will

@@ -1051,7 +1051,7 @@ bool PngScanlineWriter::Validate(const PngCompressParams* params,
                                  GoogleString* png_image) {
   if (params != NULL) {
     // PNG_NO_FILTERS == 0
-    // PNG_ALL_FILTERS == (PNG_FILTER_NONE | PNG_FILTER_SUB | PNG_FILTER_UP | \
+    // PNG_ALL_FILTERS == (PNG_FILTER_NONE | PNG_FILTER_SUB | PNG_FILTER_UP |
     //                     PNG_FILTER_AVG | PNG_FILTER_PAETH)
     if (params->filter_level & (~PNG_ALL_FILTERS)) {
       LOG(DFATAL) << "Filter level must be one of the following values, "

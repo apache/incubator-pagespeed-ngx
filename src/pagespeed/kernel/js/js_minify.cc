@@ -180,6 +180,10 @@ class Minifier {
   void ConsumeString();
   void Minify();
 
+  // Returns the input size as an int to avoid signed/unsigned comparison
+  // warnings.
+  int input_size() const { return input_.size(); }
+
   // Represents what kind of whitespace we've seen since the last token:
   //   NO_WHITESPACE means that there is no whitespace between the tokens.
   //   SPACE means there's been at least one space/tab, but no linebreaks.
@@ -209,7 +213,7 @@ Minifier<OutputConsumer>::Minifier(const StringPiece& input,
 // Return the next character after index_, or kEOF if there aren't any more.
 template<typename OutputConsumer>
 int Minifier<OutputConsumer>::Peek() {
-  return (index_ + 1 < input_.size() ?
+  return (index_ + 1 < input_size() ?
           static_cast<int>(input_[index_ + 1]) : kEOF);
 }
 
@@ -248,7 +252,7 @@ void Minifier<OutputConsumer>::InsertSpaceIfNeeded() {
 
 template<typename OutputConsumer>
 void Minifier<OutputConsumer>::ConsumeBlockComment() {
-  DCHECK(index_ + 1 < input_.size());
+  DCHECK(index_ + 1 < input_size());
   DCHECK_EQ(input_[index_], '/');
   DCHECK_EQ(input_[index_ + 1], '*');
   const int begin = index_;
@@ -256,8 +260,8 @@ void Minifier<OutputConsumer>::ConsumeBlockComment() {
   // We want to remove comments, but we need to preserve IE conditional
   // compilation comments to avoid breaking scripts that rely on them.
   // See http://code.google.com/p/page-speed/issues/detail?id=198
-  const bool may_be_ccc = (index_ < input_.size() && input_[index_] == '@');
-  while (index_ < input_.size()) {
+  const bool may_be_ccc = (index_ < input_size() && input_[index_] == '@');
+  while (index_ < input_size()) {
     if (input_[index_] == '*' && Peek() == '/') {
       index_ += 2;
       if (may_be_ccc && input_[index_ - 3] == '@') {
@@ -276,7 +280,7 @@ void Minifier<OutputConsumer>::ConsumeBlockComment() {
 
 template<typename OutputConsumer>
 void Minifier<OutputConsumer>::ConsumeLineComment() {
-  while (index_ < input_.size() && input_[index_] != '\n' &&
+  while (index_ < input_size() && input_[index_] != '\n' &&
          input_[index_] != '\r') {
     ++index_;
   }
@@ -292,7 +296,7 @@ void Minifier<OutputConsumer>::ConsumeNameOrNumber() {
     InsertSpaceIfNeeded();
   }
   GoogleString token;
-  while (index_ < input_.size() && IsIdentifierChar(input_[index_])) {
+  while (index_ < input_size() && IsIdentifierChar(input_[index_])) {
     token.push_back(input_[index_]);
     ++index_;
   }
@@ -310,12 +314,12 @@ void Minifier<OutputConsumer>::ConsumeNameOrNumber() {
 
 template<typename OutputConsumer>
 void Minifier<OutputConsumer>::ConsumeRegex() {
-  DCHECK(index_ < input_.size());
+  DCHECK(index_ < input_size());
   DCHECK_EQ(input_[index_], '/');
   const int begin = index_;
   ++index_;
   bool within_brackets = false;
-  while (index_ < input_.size()) {
+  while (index_ < input_size()) {
     const char ch = input_[index_];
     ++index_;
     if (ch == '\\') {
@@ -350,12 +354,12 @@ void Minifier<OutputConsumer>::ConsumeRegex() {
 
 template<typename OutputConsumer>
 void Minifier<OutputConsumer>::ConsumeString() {
-  DCHECK(index_ < input_.size());
+  DCHECK(index_ < input_size());
   const int begin = index_;
   const char quote = input_[begin];
   DCHECK(quote == '"' || quote == '\'');
   ++index_;
-  while (index_ < input_.size()) {
+  while (index_ < input_size()) {
     const char ch = input_[index_];
     ++index_;
     if (ch == '\\') {
@@ -379,7 +383,7 @@ void Minifier<OutputConsumer>::ConsumeString() {
 
 template<typename OutputConsumer>
 void Minifier<OutputConsumer>::Minify() {
-  while (index_ < input_.size() && !error_) {
+  while (index_ < input_size() && !error_) {
     const char ch = input_[index_];
     // Track whitespace since the previous token.  NO_WHITESPACE means no
     // whitespace; LINEBREAK means there's been at least one linebreak; SPACE

@@ -868,8 +868,8 @@ bool GifScanlineReaderRaw::Initialize(const void* image_buffer,
 
   // Check whether the image is inside the logical screen.
   if (gif_struct_->first_row() < 0 || gif_struct_->first_col() < 0 ||
-      gif_struct_->last_row() >= GetImageHeight() ||
-      gif_struct_->last_col() >= GetImageWidth()) {
+      gif_struct_->last_row() >= static_cast<int>(GetImageHeight()) ||
+      gif_struct_->last_col() >= static_cast<int>(GetImageWidth())) {
     LOG(ERROR) << "The first image is outside the logical screen.";
     Reset();
     return false;
@@ -964,7 +964,7 @@ bool GifScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
   GifPixelType* color_buffer = image_buffer_.get();
   const PaletteRGBA* background_color = gif_palette_.get() +
                                         kPaletteBackgroundIndex;
-  size_t i = 0;
+  int i = 0;
   if (row_ >= gif_struct_->first_row() && row_ <= gif_struct_->last_row()) {
     for (; i < gif_struct_->first_col(); ++i) {
       // Pad background color to the beginning of the row.
@@ -981,7 +981,7 @@ bool GifScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
 
   // Pad background color to the end of the row if the current row contains
   // valid output pixels, or to the entire row if not.
-  for (; i < GetImageWidth(); ++i) {
+  for (; i < static_cast<int>(GetImageWidth()); ++i) {
     memcpy(color_buffer, background_color, pixel_size_);
     color_buffer += pixel_size_;
   }

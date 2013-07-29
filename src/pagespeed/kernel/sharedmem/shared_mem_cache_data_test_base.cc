@@ -107,7 +107,8 @@ void SharedMemCacheDataTestBase::ExtractAndSanityCheckLRU(
     }
   }
 
-  EXPECT_EQ(out_lru->size(), sector->sector_stats()->used_entries);
+  EXPECT_EQ(out_lru->size(),
+            static_cast<size_t>(sector->sector_stats()->used_entries));
 }
 
 void SharedMemCacheDataTestBase::TestFreeList() {
@@ -121,14 +122,14 @@ void SharedMemCacheDataTestBase::TestFreeList() {
   EXPECT_EQ(0, sector->sector_stats()->used_blocks);
   BlockVector blocks;
   EXPECT_EQ(kBlocks, sector->AllocBlocksFromFreeList(kBlocks * 2, &blocks));
-  EXPECT_EQ(kBlocks, blocks.size());
+  EXPECT_EQ(static_cast<size_t>(kBlocks), blocks.size());
   SanityCheckBlockVector(blocks, 0, kBlocks - 1);
   EXPECT_EQ(kBlocks, sector->sector_stats()->used_blocks);
 
   // Now asking to allocate more should not return anything.
   EXPECT_EQ(0, sector->AllocBlocksFromFreeList(5, &blocks));
   // Should not damage previous blocks set, however.
-  EXPECT_EQ(kBlocks, blocks.size());
+  EXPECT_EQ(static_cast<size_t>(kBlocks), blocks.size());
   EXPECT_EQ(kBlocks, sector->sector_stats()->used_blocks);
 
   // Now free blocks 0, 1, 2
@@ -143,11 +144,11 @@ void SharedMemCacheDataTestBase::TestFreeList() {
   // blocks of valid range.
   blocks.clear();
   EXPECT_EQ(2, sector->AllocBlocksFromFreeList(2, &blocks));
-  EXPECT_EQ(2, blocks.size());
+  EXPECT_EQ(static_cast<size_t>(2), blocks.size());
   EXPECT_EQ(kBlocks - 1, sector->sector_stats()->used_blocks);
   SanityCheckBlockVector(blocks, 0, 2);
   EXPECT_EQ(1, sector->AllocBlocksFromFreeList(1, &blocks));
-  EXPECT_EQ(3, blocks.size());
+  EXPECT_EQ(static_cast<size_t>(3), blocks.size());
   SanityCheckBlockVector(blocks, 0, 2);
   EXPECT_EQ(kBlocks, sector->sector_stats()->used_blocks);
 
@@ -158,7 +159,7 @@ void SharedMemCacheDataTestBase::TestFreeList() {
 
   // Now try allocating this rest, appending it into blocks.
   EXPECT_EQ(kBlocks - 3, sector->AllocBlocksFromFreeList(kBlocks - 3, &blocks));
-  EXPECT_EQ(kBlocks, blocks.size());
+  EXPECT_EQ(static_cast<size_t>(kBlocks), blocks.size());
   SanityCheckBlockVector(blocks, 0, kBlocks - 1);
   EXPECT_EQ(kBlocks, sector->sector_stats()->used_blocks);
 
@@ -240,27 +241,34 @@ void SharedMemCacheDataTestBase::TestBlockLists() {
   scoped_ptr<Sector<kBlockSize> > sector(sector_raw_ptr);
 
   // First, let's sanity-check the computation routines
-  EXPECT_EQ(0, Sector<kBlockSize>::DataBlocksForSize(0));
-  EXPECT_EQ(1, Sector<kBlockSize>::DataBlocksForSize(1));
-  EXPECT_EQ(1, Sector<kBlockSize>::DataBlocksForSize(kBlockSize));
-  EXPECT_EQ(2, Sector<kBlockSize>::DataBlocksForSize(kBlockSize + 1));
-  EXPECT_EQ(2, Sector<kBlockSize>::DataBlocksForSize(kBlockSize * 2));
-  EXPECT_EQ(3, Sector<kBlockSize>::DataBlocksForSize(kBlockSize * 2 + 1));
+  EXPECT_EQ(static_cast<size_t>(0),
+            Sector<kBlockSize>::DataBlocksForSize(0));
+  EXPECT_EQ(static_cast<size_t>(1),
+            Sector<kBlockSize>::DataBlocksForSize(1));
+  EXPECT_EQ(static_cast<size_t>(1),
+            Sector<kBlockSize>::DataBlocksForSize(kBlockSize));
+  EXPECT_EQ(static_cast<size_t>(2),
+            Sector<kBlockSize>::DataBlocksForSize(kBlockSize + 1));
+  EXPECT_EQ(static_cast<size_t>(2),
+            Sector<kBlockSize>::DataBlocksForSize(kBlockSize * 2));
+  EXPECT_EQ(static_cast<size_t>(3),
+            Sector<kBlockSize>::DataBlocksForSize(kBlockSize * 2 + 1));
 
-  EXPECT_EQ(1, Sector<kBlockSize>::BytesInPortion(1, 0, 1));
-  EXPECT_EQ(kBlockSize - 1,
+  EXPECT_EQ(static_cast<size_t>(1),
+            Sector<kBlockSize>::BytesInPortion(1, 0, 1));
+  EXPECT_EQ(static_cast<size_t>(kBlockSize - 1),
             Sector<kBlockSize>::BytesInPortion(kBlockSize - 1, 0, 1));
-  EXPECT_EQ(kBlockSize,
+  EXPECT_EQ(static_cast<size_t>(kBlockSize),
             Sector<kBlockSize>::BytesInPortion(kBlockSize, 0, 1));
 
-  EXPECT_EQ(kBlockSize,
+  EXPECT_EQ(static_cast<size_t>(kBlockSize),
             Sector<kBlockSize>::BytesInPortion(kBlockSize + 1, 0, 2));
-  EXPECT_EQ(1,
+  EXPECT_EQ(static_cast<size_t>(1),
             Sector<kBlockSize>::BytesInPortion(kBlockSize + 1, 1, 2));
 
-  EXPECT_EQ(kBlockSize,
+  EXPECT_EQ(static_cast<size_t>(kBlockSize),
             Sector<kBlockSize>::BytesInPortion(2 * kBlockSize, 0, 2));
-  EXPECT_EQ(kBlockSize,
+  EXPECT_EQ(static_cast<size_t>(kBlockSize),
             Sector<kBlockSize>::BytesInPortion(2 * kBlockSize, 1, 2));
 
   // Now, let's allocate some blocks.

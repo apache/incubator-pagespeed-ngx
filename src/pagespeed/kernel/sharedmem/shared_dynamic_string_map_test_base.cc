@@ -17,7 +17,9 @@
 #include "pagespeed/kernel/sharedmem/shared_dynamic_string_map_test_base.h"
 
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -175,7 +177,8 @@ void SharedDynamicStringMapTestBase::TestQuarterFull() {
   // In this case all values should be 1 so for each of the (kTableSize / 4)
   // strings there should be kStringSize characters plus a ":", " ", "1", and
   // "\n" and minus a null character; hence (kTablsize / 4) * (kStringSize + 3)
-  EXPECT_EQ((kTableSize / 4) * (kStringSize + 3), output.length());
+  EXPECT_EQ(static_cast<size_t>((kTableSize / 4) * (kStringSize + 3)),
+            output.length());
   map->GlobalCleanup(&handler_);
   EXPECT_EQ(0, handler_.SeriousMessages());
 }
