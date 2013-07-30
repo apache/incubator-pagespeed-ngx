@@ -1439,10 +1439,10 @@ check_not_from "$OUT" grep 'mod_pagespeed_beacon.*exptid'
 # order they're defined in the config file.
 start_test Resource urls are rewritten to include experiment indexes.
 http_proxy=$SECONDARY_HOSTNAME \
-  WGET_ARGS="--header 'Cookie:PageSpeedExperiment=7'" fetch_until $EXP_EXTEND_CACHE \
+  WGET_ARGS="--header Cookie:PageSpeedExperiment=7" fetch_until $EXP_EXTEND_CACHE \
     "fgrep -c .pagespeed.a.ic." 1
 http_proxy=$SECONDARY_HOSTNAME \
-  WGET_ARGS="--header 'Cookie:PageSpeedExperiment=2'" fetch_until $EXP_EXTEND_CACHE \
+  WGET_ARGS="--header Cookie:PageSpeedExperiment=2" fetch_until $EXP_EXTEND_CACHE \
     "fgrep -c .pagespeed.b.ic." 1
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=7' \
       $EXP_EXTEND_CACHE)
