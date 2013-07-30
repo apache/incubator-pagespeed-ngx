@@ -39,10 +39,10 @@
 #include "ngx_thread_system.h"
 
 #include "apr_time.h"
-#include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/apache/in_place_resource_recorder.h"
+#include "pthread_shared_mem.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
@@ -50,15 +50,16 @@
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/handlers.h"
+#include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
-#include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -66,7 +67,6 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
-#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 
 extern ngx_module_t ngx_pagespeed;
 
