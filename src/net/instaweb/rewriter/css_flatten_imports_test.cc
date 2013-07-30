@@ -39,10 +39,6 @@ namespace net_instaweb {
 namespace {
 
 // Filenames of resource files.
-const char kBikePngFile[] = "BikeCrashIcn.png";
-const char kCuppaPngFile[] = "Cuppa.png";
-const char kPuzzleJpgFile[] = "Puzzle.jpg";
-
 const char kTopCssFile[] = "assets/styles.css";
 const char kOneLevelDownFile1[] = "assets/nested1.css";
 const char kOneLevelDownFile2[] = "assets/nested2.css";
@@ -93,15 +89,14 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
         kOneLevelDownCss1);
   }
 
-  virtual void SetUp() {
-    // We don't use the parent class setup, because we want to make sure that
-    // RewriteCss is enabled implicitly by enabling FlattenCssImports.  We
-    // skip to the setup for the parent of our parent class.
-    RewriteTestBase::SetUp();
+  virtual void SetUpFilters() {
     options()->EnableFilter(RewriteOptions::kFlattenCssImports);
     options()->EnableFilter(RewriteOptions::kExtendCacheImages);
     options()->set_always_rewrite_css(true);
     rewrite_driver()->AddFilters();
+  }
+
+  virtual void SetUpResponses() {
     SetResponseWithDefaultHeaders(kTopCssFile, kContentTypeCss,
                                   kTopCssContents, 100);
     SetResponseWithDefaultHeaders(kOneLevelDownFile1, kContentTypeCss,
@@ -115,50 +110,68 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     SetFetchResponse404(k404CssFile);
   }
 
-  // General routine to test that we flatten -then- cache extend the PNG in
-  // the resulting CSS while absolutifying the PNGs' URLs while flattening
-  // then [not] relativizing them while rewriting them.
-  void TestCacheExtendsAfterFlatteningNested(bool trim_urls) {
-    // foo.png
+  virtual void SetUp() {
+    // We don't use the parent class setup, because we want to make sure that
+    // RewriteCss is enabled implicitly by enabling FlattenCssImports.  We
+    // skip to the setup for the parent of our parent class.
+    RewriteTestBase::SetUp();
+    SetUpFilters();
+    SetUpResponses();
+  }
+
+  // General routine to test flattening of nested resources referenced with
+  // relative (trim_urls == true) or absolute (trim_urls == false) paths and
+  // optional post-flattening cache extension (cache_extend == true).
+  void TestFlattenNested(bool trim_urls, bool cache_extend) {
+    // /foo.png
     const char kFooPngFilename[] = "foo.png";
     const char kImageData[] = "Invalid PNG but does not matter for this test";
     SetResponseWithDefaultHeaders(kFooPngFilename, kContentTypePng,
                                   kImageData, 100);
+    GoogleString foo_domain(trim_urls ? "" : kTestDomain);
+    GoogleString foo_path =
+        (cache_extend
+         ? Encode(foo_domain, "ce", "0", kFooPngFilename, "png")
+         : StrCat(foo_domain, kFooPngFilename));
 
-    // image1.css loads foo.png as a background image.
+    // /image1.css loads /foo.png as a background image.
     const char kCss1Filename[] = "image1.css";
     const GoogleString css1_before =
         StrCat("body {\n"
                "  background-image: url(", kFooPngFilename, ");\n"
                "}\n");
     const GoogleString css1_after =
-        StrCat("body{background-image:url(",
-               Encode(trim_urls ? "" : kTestDomain,
-                      "ce", "0", kFooPngFilename, "png"),
-               ")}");
+        StrCat("body{background-image:url(", foo_path, ")}");
     SetResponseWithDefaultHeaders(kCss1Filename, kContentTypeCss,
                                   css1_before, 100);
 
-    // bar.png
+    // /nested/bar.png
     const char kBarPngFilename[] = "bar.png";
     SetResponseWithDefaultHeaders(StrCat("nested/", kBarPngFilename),
                                   kContentTypePng, kImageData, 100);
+    GoogleString bar_domain(trim_urls ? "nested/" :
+                            StrCat(kTestDomain, "nested/"));
+    GoogleString bar_path =
+        (cache_extend
+         ? Encode(bar_domain, "ce", "0", kBarPngFilename, "png")
+         : StrCat(bar_domain, kBarPngFilename));
 
-    // image2.css loads bar.png as a background image.
+    // /nested/image2.css loads /nested/bar.png & /foo.png as background images.
     const char kCss2Filename[] = "nested/image2.css";  // because its CSS is!
     const GoogleString css2_before =
         StrCat("body {\n"
                "  background-image: url(", kBarPngFilename, ");\n"
+               "}\n"
+               "div {\n"
+               "  background-image: url(../", kFooPngFilename, ");\n"
                "}\n");
     const GoogleString css2_after =
-        StrCat("body{background-image:url(",
-               Encode(trim_urls ? "nested/" : StrCat(kTestDomain, "nested/"),
-                      "ce", "0", kBarPngFilename, "png"),
-               ")}");
+        StrCat("body{background-image:url(", bar_path, ")}"
+               "div{background-image:url(", foo_path, ")}");
     SetResponseWithDefaultHeaders(kCss2Filename, kContentTypeCss,
                                   css2_before, 100);
 
-    // foo-then-bar.css @imports image1.css then image2.css
+    // /foo-then-bar.css @imports /nested/image1.css then /nested/image2.css
     const char kTop1CssFilename[] = "foo-then-bar.css";
     const GoogleString top1_before =
         StrCat("@import url(", kCss1Filename, ");",
@@ -167,7 +180,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     SetResponseWithDefaultHeaders(kTop1CssFilename, kContentTypeCss,
                                   top1_before, 100);
 
-    // bar-then-foo.css @imports image2.css then image1.css
+    // /bar-then-foo.css @imports /nested/image2.css then /nested/image1.css
     const char kTop2CssFilename[] = "bar-then-foo.css";
     const GoogleString top2_before =
         StrCat("@import url(", kCss2Filename, ");",
@@ -183,6 +196,13 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     ValidateRewriteExternalCss("flatten_then_cache_extend_nested2",
                                top2_before, top2_after,
                                kExpectSuccess | kNoClearFetcher);
+  }
+
+  // General routine to test that we flatten -then- cache extend the PNG in
+  // the resulting CSS while absolutifying the PNGs' URLs while flattening
+  // then [not] relativizing them while rewriting them.
+  void TestCacheExtendsAfterFlatteningNested(bool trim_urls) {
+    TestFlattenNested(trim_urls, true);
   }
 
   // General routine to test charset handling. The header_charset argument
@@ -318,6 +338,42 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     // other contexts won't have this value cached.
     ValidateRewriteExternalCss(StrCat(test_id, "_cached"), css_in, css_out,
                                kExpectSuccess | kNoOtherContexts | extra_flag);
+  }
+
+  // Test relative URLs in CSS that itself is referenced via a relative URL.
+  void TestRelativeImageUrlInRelativeCssUrl(bool trim_urls, bool cache_extend) {
+    // Setup the image we refer to.
+    const char kFooPng[] = "images/foo.png";
+    const GoogleString foo_png_path = StrCat(kTestDomain, "a/", kFooPng);
+    const char kImageData[] = "Invalid PNG but does not matter for this test";
+    SetResponseWithDefaultHeaders(foo_png_path, kContentTypePng,
+                                  kImageData, 100);
+    // Setup the CSS that refers to it.
+    const char kSimpleCssTemplate[] =
+        ".background_red{background-color:red}"
+        ".foreground_yellow{color:#ff0}"
+        ".body{background-image:url(%s)}";
+    // The input CSS refers to ../images/test.jpg from the file /a/b/simple.css,
+    // so the image's path is /a/images/test.jpg, which is what should be used
+    // when the CSS is flattened into the base document (with base of '/').
+    const GoogleString simple_css_path =
+        StrCat(kTestDomain, "a/b/", kSimpleCssFile);
+    const GoogleString relative_simple_css_in =
+        StringPrintf(kSimpleCssTemplate, StrCat("../", kFooPng).c_str());
+    SetResponseWithDefaultHeaders(simple_css_path, kContentTypeCss,
+                                  relative_simple_css_in, 100);
+    const GoogleString import_simple_css =
+        StrCat("@import url(", simple_css_path, ") ;");
+    const GoogleString foo_png_output =
+        (cache_extend
+         ? Encode(StrCat(trim_urls ? "" : kTestDomain, "a/images/"),
+                  "ce", "0", "foo.png", "png")
+         : StrCat(trim_urls ? "" : kTestDomain, "a/", kFooPng));
+    const GoogleString simple_css_out =
+        StringPrintf(kSimpleCssTemplate, foo_png_output.c_str());
+    ValidateRewriteInlineCss("flatten_relative",
+                             import_simple_css, simple_css_out,
+                             kExpectSuccess);
   }
 
   GoogleString kOneLevelDownContents1;
@@ -1052,6 +1108,37 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesAtMedia) {
                              "@import url(child.css) screen;",
                              kExpectSuccess | kNoClearFetcher |
                              kFlattenImportsComplexQueries);
+}
+
+TEST_F(CssFlattenImportsTest, FlattenInlineCssWithRelativeImage) {
+  // Proves that URLs are fixed when CSS is rewritten.
+  TestRelativeImageUrlInRelativeCssUrl(false, true);
+}
+
+class CssFlattenImportsOnlyTest : public CssFlattenImportsTest {
+ protected:
+  virtual void SetUpFilters() {
+    options()->SetRewriteLevel(RewriteOptions::kPassThrough);
+    options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+    options()->set_always_rewrite_css(true);
+    rewrite_driver()->AddFilters();
+  }
+};
+
+TEST_F(CssFlattenImportsOnlyTest, FlattenInlineCssWithRelativeImage) {
+  // Proves that URLs are absolutified when CSS is flattened but not rewritten.
+  TestRelativeImageUrlInRelativeCssUrl(false, false);
+  TestFlattenNested(false, false);
+}
+
+TEST_F(CssFlattenImportsOnlyTest, FlattenAndTrimInlineCssWithRelativeImage) {
+  // Proves that URLs are fixed when CSS is flattened -and- -trimmed- but not
+  // rewritten.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  server_context()->ComputeSignature(options());
+  TestRelativeImageUrlInRelativeCssUrl(true, false);
+  TestFlattenNested(true, false);
 }
 
 }  // namespace

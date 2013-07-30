@@ -88,6 +88,13 @@ class CssHierarchy {
   const GoogleUrl& css_base_url() const { return css_base_url_; }
   const GoogleUrl& css_trim_url() const { return css_trim_url_; }
 
+  // If the input contents have been resolved return css_trim_url_ because
+  // that's what the contents have been resolved against, otherwise return
+  // css_base_url_ because that's what the paths in the CSS are relative to.
+  const GoogleUrl& css_resolution_base() {
+    return (input_contents_resolved_ ? css_trim_url_ : css_base_url_);
+  }
+
   const Css::Stylesheet* stylesheet() const { return stylesheet_.get(); }
   Css::Stylesheet* mutable_stylesheet() { return stylesheet_.get(); }
   void set_stylesheet(Css::Stylesheet* stylesheet);
@@ -97,6 +104,13 @@ class CssHierarchy {
   // valid for the life of this object.
   void set_input_contents(const StringPiece input_contents) {
     input_contents_ = input_contents;
+  }
+
+  GoogleString* input_contents_backing_store() {
+    return &input_contents_backing_store_;
+  }
+  void set_input_contents_to_backing_store() {
+    input_contents_ = input_contents_backing_store_;
   }
 
   const GoogleString& minified_contents() const { return minified_contents_; }
@@ -111,6 +125,9 @@ class CssHierarchy {
   // Intended for access to children; add new children using ExpandChildren.
   const std::vector<CssHierarchy*>& children() const { return children_; }
   std::vector<CssHierarchy*>& children() { return children_; }
+
+  bool input_contents_resolved() const { return input_contents_resolved_; }
+  void set_input_contents_resolved(bool x) { input_contents_resolved_ = x; }
 
   bool flattening_succeeded() const { return flattening_succeeded_; }
   void set_flattening_succeeded(bool ok) { flattening_succeeded_ = ok; }
@@ -245,6 +262,13 @@ class CssHierarchy {
   // The text form of the input CSS.
   StringPiece input_contents_;
 
+  // Backing store for the input contents. As input_contents_ is a StringPiece,
+  // the referenced string has to survive as long as we do; normally that is the
+  // inlined_contents() of the input resource, which is guaranteed to survive
+  // us, however if CssFlattenImportsContext::RewriteSingle() has to resolve
+  // URLs in that text it needs somewhere to save the result, and this is it.
+  GoogleString input_contents_backing_store_;
+
   // The text form of the output (flattened) CSS.
   GoogleString minified_contents_;
 
@@ -263,6 +287,12 @@ class CssHierarchy {
   // this is NOT media from @media rules, it is only media that applies to the
   // *whole* CSS document. Note that media expressions (CSS3) are NOT handled.
   StringVector media_;
+
+  // An indication of whether the input contents have been resolved. If not,
+  // we use css_base_url_ to resolve @import's, but if so we use css_trim_url_
+  // because that's what the contents have been resolved against. Resolution
+  // is performed by CssFlattenImportsContext::RewriteSingle().
+  bool input_contents_resolved_;
 
   // An indication of the success or failure of the flattening process, which
   // can fail for various reasons, and any failure propagates up the hierarchy

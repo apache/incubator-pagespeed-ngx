@@ -216,7 +216,7 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
                 GoogleString rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
                 // TODO(abliss): only do this resolution once.
-                const GoogleUrl original_url(hierarchy->css_base_url(),
+                const GoogleUrl original_url(hierarchy->css_resolution_base(),
                                              rel_url);
                 if (!original_url.is_valid()) {
                   handler->Message(kInfo, "Invalid URL %s", rel_url.c_str());

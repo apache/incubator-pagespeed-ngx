@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -31,11 +32,13 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
 
 namespace net_instaweb {
 
@@ -76,7 +79,37 @@ class CssFlattenImportsContext : public SingleRewriteContext {
                              const OutputResourcePtr& output_resource) {
     input_resource_ = input_resource;
     output_resource_ = output_resource;
-    hierarchy_->set_input_contents(input_resource_->contents());
+
+    // We have to fix relative URLs in the CSS as they break if used in a
+    // CSS file that itself was loaded via a relative path from the base
+    // (for example, if styles/screen.css references ../images/icon.png, then
+    // the correct path for the image is /images/icon.png). We also need to
+    // absolutify or left-trim URLs in flattened CSS if no other rewriter is
+    // going to do it (cache extend, css image rewriter, etc), but it's
+    // hard to tell if that will happen so we transform URLs here regardless
+    // and note that for CssHierarchy::css_resolution_base().
+    RewriteDomainTransformer transformer(&hierarchy_->css_base_url(),
+                                         &hierarchy_->css_trim_url(),
+                                         Driver());
+    // If we rewrite the input resource's contents we need somewhere to store
+    // it; that's what the hierarchy's backing store is for.
+    StringWriter writer(hierarchy_->input_contents_backing_store());
+    // See RewriteDriver::ResolveCssUrls about why we disable trimming in
+    // proxy mode. We also disable it if trimming is not enabled.
+    if ( Driver()->server_context()->url_namer()->ProxyMode() ||
+        !Driver()->options()->trim_urls_in_css() ||
+        !Driver()->options()->Enabled(RewriteOptions::kLeftTrimUrls)) {
+      transformer.set_trim_urls(false);
+    }
+    if (CssTagScanner::TransformUrls(input_resource_->contents(),
+                                     &writer,
+                                     &transformer,
+                                     Driver()->message_handler())) {
+      hierarchy_->set_input_contents_to_backing_store();
+      hierarchy_->set_input_contents_resolved(true);
+    } else {
+      hierarchy_->set_input_contents(input_resource_->contents());
+    }
 
     bool ok = true;
     if (!hierarchy_->Parse()) {

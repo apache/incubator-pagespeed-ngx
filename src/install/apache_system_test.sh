@@ -1747,13 +1747,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   test_filter combine_css Maximum size of combined CSS.
   QUERY_PARAM="PageSpeedMaxCombinedCssBytes=57"
   URL="$URL&$QUERY_PARAM"
-  # Make sure that we have got the last CSS file and it is not combined.
-  fetch_until -save $URL 'grep -c styles/bold.css\"' 1
+  # Make sure that we have exactly 3 CSS files (after combination).
+  fetch_until -save $URL 'grep -c text/css' 3
   # Now check that the 1st and 2nd CSS files are combined, but the 3rd
   # one is not.
   check [ $(grep -c 'styles/yellow.css+blue.css.pagespeed.' \
       $FETCH_UNTIL_OUTFILE) = 1 ]
   check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
+  check [ $(grep -c 'styles/bold.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 fi
 
 WGET_ARGS=""
