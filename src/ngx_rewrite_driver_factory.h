@@ -130,6 +130,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Creates and ::Initializes a shared memory statistics object.
   SharedMemStatistics* AllocateAndInitSharedMemStatistics(
       const StringPiece& name, const NgxRewriteOptions& options);
+  void SetServerContextMessageHandler(ServerContext* server_context,
+                                      ngx_log_t* log);
 
   NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; }
   void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
@@ -211,6 +213,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   ngx_resolver_t* resolver_;
   bool use_native_fetcher_;
   bool rate_limit_background_fetches_;
+  typedef std::set<NgxMessageHandler*> NgxMessageHandlerSet;
+  NgxMessageHandlerSet server_context_message_handlers_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

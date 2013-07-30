@@ -84,6 +84,7 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Called by nginx when it's done with us.
   void Release();
+  void set_handle_error(bool x) { handle_error_ = x; }
 
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
@@ -91,18 +92,15 @@ class NgxBaseFetch : public AsyncFetch {
   virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
 
-  // Helper method for PopulateRequestHeaders and PopulateResponseHeaders.
-  template<class HeadersT>
-  void CopyHeadersFromTable(ngx_list_t* headers_from, HeadersT* headers_to);
-
   // Indicate to nginx that we would like it to call
   // CollectAccumulatedWrites().
   void RequestCollection();
 
   // Lock must be acquired first.
   // Returns:
-  //   NGX_DECLINED: nothing to send, short circuit.  Buffer not allocated.
-  //   NGX_OK, NGX_ERROR: success, failure
+  //   NGX_ERROR: failure
+  //   NGX_AGAIN: still has buffer to send, need to checkout link_ptr
+  //   NGX_OK: done, HandleDone has been called
   // Allocates an nginx buffer, copies our buffer_ contents into it, clears
   // buffer_.
   ngx_int_t CopyBufferToNginx(ngx_chain_t** link_ptr);
@@ -124,6 +122,7 @@ class NgxBaseFetch : public AsyncFetch {
   // decremented once when Done() is called and once when Release() is called.
   int references_;
   pthread_mutex_t mutex_;
+  bool handle_error_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };

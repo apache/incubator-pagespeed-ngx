@@ -67,14 +67,14 @@ function keepalive_test() {
   POST_DATA=$3
 
   for ((i=0; i < 100; i++)); do
-    for accept_encoding in "" "-H \"Accept-Encoding:gzip\""; do
+    for accept_encoding in "" "gzip"; do
       if [ -z "$POST_DATA" ]; then
-        curl -m 1 -S -s -v $accept_encoding -H "Host: $HOST_NAME" \
-          $URL $URL $URL $URL $URL > /dev/null \
+      curl -m 1 -S -s -v -H "Accept-Encoding: $accept_encoding" \
+          -H "Host: $HOST_NAME" $URL $URL $URL $URL $URL > /dev/null \
           2>>"$TEST_TMP/$CURL_LOG_FILE"
       else
         curl -X POST --data "$POST_DATA" -m 1 -S -s -v \
-          $accept_encoding -H "Host: $HOST_NAME"\
+          -H "Accept-Encoding: $accept_encoding" -H "Host: $HOST_NAME"\
           $URL $URL $URL $URL $URL > /dev/null \
           2>>"$TEST_TMP/$CURL_LOG_FILE"
       fi
@@ -100,7 +100,8 @@ function keepalive_test() {
 
   # Filter the nginx log from our vhost from unimportant messages.
   OUT=$(cat "$TEST_TMP/$NGX_LOG_FILE"\
-    | grep -v "closed keepalive connection$")
+    | grep -v "closed keepalive connection$" \
+    | grep -v ".*Cache Flush.*")
 
   # Nothing should remain after that.
   check [ -z "$OUT" ]
@@ -213,11 +214,8 @@ fi
 
 PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
-PAGESPEED_EXPECTED_FAILURES="
-  ~convert_meta_tags~
-  ~In-place resource optimization~
-  ~keepalive with html rewriting~
-"
+# An expected failure can be indicated like: "~In-place resource optimization~"
+PAGESPEED_EXPECTED_FAILURES=""
 
 # The existing system test takes its arguments as positional parameters, and
 # wants different ones than we want, so we need to reset our positional args.
@@ -365,6 +363,7 @@ check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
 
 # And also with bad request headers.
 OUT=$(wget -O - --header=PageSpeedFilters:bogus $EXAMPLE_ROOT)
+echo $OUT
 check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
 
 # Test that loopback route fetcher works with vhosts not listening on
@@ -830,8 +829,9 @@ test_filter add_instrumentation beacons load.
 # per rfc 2616 wget hangs. Adding --no-http-keep-alive fixes that, as wget will.
 # send 'Connection: close' in its request headers, which will make nginx
 # respond with that as well. Check that we got a 204.
+BEACON_URL="http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
-      http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13)
+      "http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13&url=$BEACON_URL")
 check_from "$OUT" grep '^HTTP/1.1 204'
 # The $'...' tells bash to interpret c-style escapes, \r in this case.
 check_from "$OUT" grep $'^Cache-Control: max-age=0, no-cache\r$'
@@ -1253,13 +1253,8 @@ check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
 $WGET_DUMP $STATISTICS_URL > $NEWSTATS
 check_stat $OLDSTATS $NEWSTATS image_rewrites 1
 check_stat $OLDSTATS $NEWSTATS cache_hits 0
-# Something about IPRO means that in mod_pagespeed this comes in as 2.  Before
-# IPRO this said 1, and we're getting 1 in ngx_pagespeed, so I think this is
-# probably correct.
-check_stat $OLDSTATS $NEWSTATS cache_misses 1
-# In mod_pagespeed this is 2 cache inserts for image + 1 for HTML in IPRO flow.
-# We don't have IPRO, so this is just 2 cache inserts for the image.
-check_stat $OLDSTATS $NEWSTATS cache_inserts 2
+check_stat $OLDSTATS $NEWSTATS cache_misses 2
+check_stat $OLDSTATS $NEWSTATS cache_inserts 3
 # TODO(sligocki): There is no stat num_rewrites_executed. Fix.
 #check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
 
@@ -1630,9 +1625,10 @@ keepalive_test "keepalive-resource.example.com"\
   "/mod_pagespeed_example/combine_javascript2.js+combine_javascript1.js+combine_javascript2.js.pagespeed.jc.0.js"\
   ""
 
+BEACON_URL="http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 start_test keepalive with beacon get requests
 keepalive_test "keepalive-beacon-get.example.com"\
-  "/ngx_pagespeed_beacon?ets=load:13" ""
+  "/ngx_pagespeed_beacon?ets=load:13&url=$BEACON_URL" ""
 
 BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_DATA+="image_rewriting%2Frewrite_images.html"
@@ -1664,5 +1660,23 @@ fetch_until -save $URL 'grep -c styles/bold.css\"' 1
 check [ $(grep -c 'styles/yellow.css+blue.css.pagespeed.' \
     $FETCH_UNTIL_OUTFILE) = 1 ]
 check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
+
+test_filter ngx_pagespeed_static defer js served with correct headers.
+# First, determine which hash js_defer is served with. We need a correct hash
+# to get it served up with an Etag, which is one of the things we want to test.
+URL="$HOSTNAME/mod_pagespeed_example/defer_javascript.html?PageSpeed=on&PageSpeedFilters=defer_javascript"
+OUT=$($WGET_DUMP $URL)
+HASH=$(echo $OUT \
+  | grep --only-matching "/js_defer\\.*\([^.]\)*.js" | cut -d '.' -f 2)
+
+JS_URL="$HOSTNAME/ngx_pagespeed_static/js_defer.$HASH.js"
+JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $JS_URL 2>&1)
+check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
+check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
+# Nginx's gzip module clears etags, which we don't want. Make sure we have it.
+check_from "$JS_HEADERS" egrep -qi 'Etag: W/"0"'
+check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
 check_failures_and_exit

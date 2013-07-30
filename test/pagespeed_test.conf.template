@@ -29,7 +29,7 @@ http {
 
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
-
+  pagespeed InPlaceResourceOptimization on;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
@@ -472,35 +472,35 @@ http {
     server_name keepalive-html.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed RewriteLevel CoreFilters;
-    error_log "@@TEST_TMP@@/keepalive-html.example.com.error.log" info;
+    error_log "@@TEST_TMP@@/keepalive-html.example.com.error.log" warn;
   }
 
   server {
     listen @@SECONDARY_PORT@@;
     server_name keepalive-resource.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-    error_log "@@TEST_TMP@@/keepalive-resource.example.com.error.log" info;
+    error_log "@@TEST_TMP@@/keepalive-resource.example.com.error.log" warn;
   }
 
   server {
     listen @@SECONDARY_PORT@@;
     server_name keepalive-beacon-get.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-    error_log "@@TEST_TMP@@/keepalive-beacon-get.example.com.error.log" info;
+    error_log "@@TEST_TMP@@/keepalive-beacon-get.example.com.error.log" warn;
   }
 
   server {
     listen @@SECONDARY_PORT@@;
     server_name keepalive-beacon-post.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-    error_log "@@TEST_TMP@@/keepalive-beacon-post.example.com.error.log" info;
+    error_log "@@TEST_TMP@@/keepalive-beacon-post.example.com.error.log" warn;
   }
 
   server {
     listen @@SECONDARY_PORT@@;
     server_name keepalive-static.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-    error_log "@@TEST_TMP@@/keepalive-static.example.com.error.log" info;
+    error_log "@@TEST_TMP@@/keepalive-static.example.com.error.log" warn;
   }
 
   server {
@@ -516,7 +516,7 @@ http {
       # This location has the html files that will be configured to be stored
       # in the proxy_cache layer.
       pagespeed DownstreamCachePurgeMethod "GET";
-      pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:8051/purge";
+      pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
       # We use a very small deadline here to force the rewriting to not complete
       # in the very first attempt.
       pagespeed RewriteDeadlinePerFlushMs 1;
@@ -649,6 +649,11 @@ http {
     location /mod_pagespeed_test/custom_options/ {
       pagespeed DisableFilters convert_jpeg_to_progressive;
     }
+
+    location /mod_pagespeed_test/ipro/test_image_dont_reuse.png {
+      expires 5m;
+    }
+
 
     pagespeed EnableFilters remove_comments;
 

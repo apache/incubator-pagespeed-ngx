@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/apache/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
@@ -127,10 +128,10 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   }
 
   UrlAsyncFetcher* fetcher = NULL;
+  SerfUrlAsyncFetcher* serf_fetcher = NULL;
 
   if (use_native_fetcher_) {
-    ngx_url_async_fetcher_ =
-        new net_instaweb::NgxUrlAsyncFetcher(
+    ngx_url_async_fetcher_ = new NgxUrlAsyncFetcher(
             fetcher_proxy,
             log_,
             resolver_timeout_,
@@ -140,8 +141,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             message_handler());
     fetcher = ngx_url_async_fetcher_;
   } else {
-    net_instaweb::SerfUrlAsyncFetcher* serf_fetcher =
-        new net_instaweb::SerfUrlAsyncFetcher(
+    serf_fetcher = new SerfUrlAsyncFetcher(
             fetcher_proxy,
             NULL,
             thread_system(),
@@ -167,12 +167,10 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
           500 * multiplier /* queued per host */,
           thread_system(),
           statistics());
-      if (ngx_url_async_fetcher_ == NULL) {
-        defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(
-            static_cast<net_instaweb::SerfUrlAsyncFetcher*>(fetcher)));
-      } else  {
-        defer_cleanup(new Deleter<net_instaweb::NgxUrlAsyncFetcher>(
-            ngx_url_async_fetcher_));
+      if (serf_fetcher != NULL) {
+        defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(serf_fetcher));
+      } else if (ngx_url_async_fetcher_ != NULL) {
+        defer_cleanup(new Deleter<NgxUrlAsyncFetcher>(ngx_url_async_fetcher_));
       }
     } else {
       message_handler()->Message(
@@ -273,11 +271,17 @@ void NgxRewriteDriverFactory::ShutDown() {
     child_shutdown_count->Add(1);
   }
 
-  RewriteDriverFactory::ShutDown();
-  caches_->ShutDown(message_handler());
-
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
+  for (NgxMessageHandlerSet::iterator p =
+           server_context_message_handlers_.begin();
+       p != server_context_message_handlers_.end(); ++p) {
+    (*p)->set_buffer(NULL);
+  }
+  server_context_message_handlers_.clear();
+
+  RewriteDriverFactory::ShutDown();
+  caches_->ShutDown(message_handler());
 
   if (is_root_process_) {
     // Cleanup statistics.
@@ -408,6 +412,17 @@ AllocateAndInitSharedMemStatistics(
   return stats;
 }
 
+void NgxRewriteDriverFactory::SetServerContextMessageHandler(
+    ServerContext* server_context, ngx_log_t* log) {
+  NgxMessageHandler* handler = new NgxMessageHandler(
+      thread_system()->NewMutex());
+  handler->set_log(log);
+  handler->set_buffer(shared_circular_buffer_.get());
+  server_context_message_handlers_.insert(handler);
+  defer_cleanup(new Deleter<NgxMessageHandler>(handler));
+  server_context->set_message_handler(handler);
+}
+
 void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
   SystemRewriteDriverFactory::InitStats(statistics);
@@ -416,6 +431,7 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
+  InPlaceResourceRecorder::InitStats(statistics);
 
   statistics->AddVariable(kShutdownCount);
 }
