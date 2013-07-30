@@ -14,7 +14,7 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/apache/in_place_resource_recorder.h"
+#include "net/instaweb/system/public/in_place_resource_recorder.h"
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"

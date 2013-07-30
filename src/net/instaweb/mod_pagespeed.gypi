@@ -37,7 +37,6 @@
     'apache/apache_slurp.cc',
     'apache/apache_writer.cc',
     'apache/header_util.cc',
-    'apache/in_place_resource_recorder.cc',
     'apache/instaweb_context.cc',
     'apache/instaweb_handler.cc',
     'apache/interface_mod_spdy.cc',

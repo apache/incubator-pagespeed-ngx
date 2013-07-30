@@ -14,8 +14,8 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_APACHE_IN_PLACE_RESOURCE_RECORDER_H_
-#define NET_INSTAWEB_APACHE_IN_PLACE_RESOURCE_RECORDER_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
 
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -86,4 +86,4 @@ class InPlaceResourceRecorder : public Writer {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_IN_PLACE_RESOURCE_RECORDER_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
