@@ -30,7 +30,8 @@ namespace net_instaweb {
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
                            NgxServerContext* server_context,
-                           const RequestContextPtr& request_ctx)
+                           const RequestContextPtr& request_ctx,
+                           bool modify_caching_headers)
     : AsyncFetch(request_ctx),
       request_(r),
       server_context_(server_context),
@@ -38,7 +39,8 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
       last_buf_sent_(false),
       pipe_fd_(pipe_fd),
       references_(2),
-      handle_error_(true) {
+      handle_error_(true),
+      modify_caching_headers_(modify_caching_headers) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
   PopulateRequestHeaders();
 }
@@ -120,7 +122,8 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   //   headers_out->content_length_n = content_length();
   // }
 
-  return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
+  return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers,
+                                                modify_caching_headers_);
 }
 
 void NgxBaseFetch::RequestCollection() {
