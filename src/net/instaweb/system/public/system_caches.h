@@ -114,6 +114,10 @@ class SystemCaches {
   // Print out stats appropriate for the given flags combination.
   void PrintCacheStats(StatFlags flags, GoogleString* out);
 
+  // For cases where the thread limit isn't known at construction time, call
+  // set_thread_limit() before calling any other methods.
+  void set_thread_limit(int thread_limit) { thread_limit_ = thread_limit; }
+
  private:
   typedef SharedMemCache<64> MetadataShmCache;
   struct MetadataShmCacheInfo {

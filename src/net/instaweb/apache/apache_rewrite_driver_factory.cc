@@ -40,21 +40,14 @@
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
-#include "net/instaweb/util/public/abstract_shared_mem.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/shared_circular_buffer.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -64,33 +57,22 @@
 
 namespace net_instaweb {
 
-namespace {
-
-const char kShutdownCount[] = "child_shutdown_count";
-
-}  // namespace
+class SharedCircularBuffer;
 
 const char ApacheRewriteDriverFactory::kStaticAssetPrefix[] =
     "/mod_pagespeed_static/";
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
-    : SystemRewriteDriverFactory(new ApacheThreadSystem),
+    : SystemRewriteDriverFactory(
+          new ApacheThreadSystem,
+          server->server_hostname,
+          server->port),
       server_rec_(server),
-#ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
-      shared_mem_runtime_(new PthreadSharedMem()),
-#else
-      shared_mem_runtime_(new NullSharedMem()),
-#endif
       version_(version.data(), version.size()),
-      statistics_frozen_(false),
-      is_root_process_(true),
       fetch_with_gzip_(false),
       track_original_content_length_(false),
       list_outstanding_urls_on_error_(false),
-      hostname_identifier_(StrCat(server->server_hostname,
-                                  ":",
-                                  IntegerToString(server->port))),
       apache_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer(), thread_system()->NewMutex())),
       apache_html_parse_message_handler_(new ApacheMessageHandler(
@@ -102,8 +84,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       install_crash_handler_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
-      num_expensive_rewrite_threads_(-1),
-      message_buffer_size_(0) {
+      num_expensive_rewrite_threads_(-1) {
   apr_pool_create(&pool_, NULL);
 
   // Make sure the ownership of apache_message_handler_ and
@@ -121,9 +102,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
   int thread_limit = 0;
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-
-  caches_.reset(
-      new SystemCaches(this, shared_mem_runtime_.get(), thread_limit));
+  caches()->set_thread_limit(thread_limit);
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
@@ -136,8 +115,6 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 
   // We still have registered a pool deleter here, right?  This seems risky...
   STLDeleteElements(&uninitialized_server_contexts_);
-
-  shared_mem_statistics_.reset(NULL);
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
@@ -161,16 +138,7 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  caches_->SetupCaches(server_context);
-  server_context->set_enable_property_cache(enable_property_cache());
-  PropertyCache* pcache = server_context->page_property_cache();
-
-  const PropertyCache::Cohort* cohort =
-      server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache);
-  server_context->set_beacon_cohort(cohort);
-
-  cohort = server_context->AddCohort(RewriteDriver::kDomCohort, pcache);
-  server_context->set_dom_cohort(cohort);
+  SystemRewriteDriverFactory::SetupCaches(server_context);
 
   // TODO(jmarantz): It would make more sense to have the base ServerContext
   // own the ProxyFetchFactory, but that would create a cyclic directory
@@ -371,91 +339,21 @@ bool ApacheRewriteDriverFactory::SetHttpsOptions(StringPiece directive,
   return SerfUrlAsyncFetcher::ValidateHttpsOptions(directive, error_message);
 }
 
-// TODO(jmarantz): make this per-vhost.
-void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
-  // Set buffer size to 0 means turning it off
-  if (shared_mem_runtime() != NULL && (message_buffer_size_ != 0)) {
-    // TODO(jmarantz): it appears that filename_prefix() is not actually
-    // established at the time of this construction, calling into question
-    // whether we are naming our shared-memory segments correctly.
-    shared_circular_buffer_.reset(new SharedCircularBuffer(
-        shared_mem_runtime(),
-        message_buffer_size_,
-        filename_prefix().as_string(),
-        hostname_identifier()));
-    if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
-      apache_message_handler_->set_buffer(shared_circular_buffer_.get());
-      apache_html_parse_message_handler_->set_buffer(
-          shared_circular_buffer_.get());
-     }
-  }
-}
-
 void ApacheRewriteDriverFactory::ParentOrChildInit() {
   if (install_crash_handler_) {
     ApacheMessageHandler::InstallCrashHandler(server_rec_);
   }
-  SharedCircularBufferInit(is_root_process_);
-}
-
-void ApacheRewriteDriverFactory::RootInit() {
-  ParentOrChildInit();
-
-  // Let SystemCaches know about the various paths we have in configuration
-  // first, as well as the memcached instances.
-  for (ApacheServerContextSet::iterator
-           p = uninitialized_server_contexts_.begin(),
-           e = uninitialized_server_contexts_.end(); p != e; ++p) {
-    ApacheServerContext* server_context = *p;
-    caches_->RegisterConfig(server_context->config());
-  }
-
-  caches_->RootInit();
+  SystemRewriteDriverFactory::ParentOrChildInit();
 }
 
 void ApacheRewriteDriverFactory::ChildInit() {
-  is_root_process_ = false;
-  ParentOrChildInit();
-  // Reinitialize pid for child process.
-  apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
-  apache_html_parse_message_handler_->SetPidString(
-      static_cast<int64>(getpid()));
-
-  if (shared_mem_statistics_.get() != NULL) {
-    shared_mem_statistics_->Init(false, message_handler());
-  }
-
-  caches_->ChildInit();
-
-  for (ApacheServerContextSet::iterator
-           p = uninitialized_server_contexts_.begin(),
-           e = uninitialized_server_contexts_.end(); p != e; ++p) {
-    ApacheServerContext* server_context = *p;
-    server_context->ChildInit();
-  }
-  uninitialized_server_contexts_.clear();
-
+  SystemRewriteDriverFactory::ChildInit();
   mod_spdy_fetch_controller_.reset(
       new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
                                  statistics()));
 }
 
-void ApacheRewriteDriverFactory::StopCacheActivity() {
-  RewriteDriverFactory::StopCacheActivity();
-  caches_->StopCacheActivity();
-}
-
-void ApacheRewriteDriverFactory::ShutDown() {
-  if (!is_root_process_) {
-    Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
-    child_shutdown_count->Add(1);
-    message_handler()->Message(kInfo, "Shutting down mod_pagespeed child");
-  }
-  StopCacheActivity();
-
-  // Next, we shutdown the fetchers before killing the workers in
-  // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress
-  // can quickly wrap up.
+void ApacheRewriteDriverFactory::ShutDownFetchers() {
   for (FetcherMap::iterator p = fetcher_map_.begin(), e = fetcher_map_.end();
        p != e; ++p) {
     UrlAsyncFetcher* fetcher = p->second;
@@ -463,86 +361,33 @@ void ApacheRewriteDriverFactory::ShutDown() {
     defer_cleanup(new Deleter<UrlAsyncFetcher>(fetcher));
   }
   fetcher_map_.clear();
+}
 
-  RewriteDriverFactory::ShutDown();
-
-  caches_->ShutDown(apache_message_handler_);
-
+void ApacheRewriteDriverFactory::ShutDownMessageHandlers() {
   // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
   // (e.g. in ServerContext::ShutDownDrivers) don't reference
   // deleted objects as the base-class is deleted.
+  //
+  // TODO(jefftk): merge ApacheMessageHandler and NgxMessageHandler into
+  // SystemMessageHandler and then move this into System.
   apache_message_handler_->set_buffer(NULL);
   apache_html_parse_message_handler_->set_buffer(NULL);
-
-  if (is_root_process_) {
-    // Cleanup statistics.
-    // TODO(morlovich): This looks dangerous with async.
-    if (shared_mem_statistics_.get() != NULL) {
-      shared_mem_statistics_->GlobalCleanup(message_handler());
-    }
-
-    // Likewise for local ones. We no longer have the objects here
-    // (since SplitStats destroyed them), but we saved the segment names.
-    for (int i = 0, n = local_shm_stats_segment_names_.size(); i < n; ++i) {
-      SharedMemStatistics::GlobalCleanup(shared_mem_runtime_.get(),
-                                         local_shm_stats_segment_names_[i],
-                                         message_handler());
-    }
-
-    // Cleanup SharedCircularBuffer.
-    // Use GoogleMessageHandler instead of ApacheMessageHandler.
-    // As we are cleaning SharedCircularBuffer, we do not want to write to its
-    // buffer and passing ApacheMessageHandler here may cause infinite loop.
-    GoogleMessageHandler handler;
-    if (shared_circular_buffer_ != NULL) {
-      shared_circular_buffer_->GlobalCleanup(&handler);
-    }
-  }
 }
 
-// Initializes global statistics object if needed, using factory to
-// help with the settings if needed.
-// Note: does not call set_statistics() on the factory.
-Statistics* ApacheRewriteDriverFactory::MakeGlobalSharedMemStatistics(
-    const ApacheConfig* options) {
-  if (shared_mem_statistics_.get() == NULL) {
-    shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
-        false /* not local */, "global", options));
-  }
-  DCHECK(!statistics_frozen_);
-  statistics_frozen_ = true;
-  SetStatistics(shared_mem_statistics_.get());
-  return shared_mem_statistics_.get();
+void ApacheRewriteDriverFactory::SetupMessageHandlers() {
+  // TODO(jefftk): merge ApacheMessageHandler and NgxMessageHandler into
+  // SystemMessageHandler and then move this into System.
+  apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
+  apache_html_parse_message_handler_->SetPidString(
+            static_cast<int64>(getpid()));
 }
 
-SharedMemStatistics* ApacheRewriteDriverFactory::
-    AllocateAndInitSharedMemStatistics(
-        bool local, const StringPiece& name, const ApacheConfig* options) {
-  // Note that we create the statistics object in the parent process, and
-  // it stays around in the kids but gets reinitialized for them
-  // inside ChildInit(), called from pagespeed_child_init.
-  GoogleString log_filename;
-  bool logging_enabled = false;
-  if (!options->log_dir().empty()) {
-    // Only enable statistics logging if a log_dir() is actually specified.
-    log_filename = StrCat(options->log_dir(), "/stats_log_", name);
-    logging_enabled = options->statistics_logging_enabled();
-  }
-  SharedMemStatistics* stats = new SharedMemStatistics(
-      options->statistics_logging_interval_ms(),
-      options->statistics_logging_max_file_size_kb(),
-      log_filename, logging_enabled,
-      // TODO(jmarantz): it appears that filename_prefix() is not actually
-      // established at the time of this construction, calling into question
-      // whether we are naming our shared-memory segments correctly.
-      StrCat(filename_prefix(), name), shared_mem_runtime(),
-      message_handler(), file_system(), timer());
-  InitStats(stats);
-  bool init_ok = stats->Init(true, message_handler());
-  if (local && init_ok) {
-    local_shm_stats_segment_names_.push_back(stats->SegmentName());
-  }
-  return stats;
+void ApacheRewriteDriverFactory::SetCircularBuffer(
+    SharedCircularBuffer* buffer) {
+  // TODO(jefftk): merge ApacheMessageHandler and NgxMessageHandler into
+  // SystemMessageHandler and then move this into System.
+  apache_message_handler_->set_buffer(buffer);
+  apache_html_parse_message_handler_->set_buffer(buffer);
 }
 
 void ApacheRewriteDriverFactory::Initialize() {
@@ -557,9 +402,8 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init Apache-specific stats.
   ApacheServerContext::InitStats(statistics);
   InPlaceResourceRecorder::InitStats(statistics);
+  // TODO(jefftk): move rate controlling to system
   RateController::InitStats(statistics);
-
-  statistics->AddVariable(kShutdownCount);
 }
 
 void ApacheRewriteDriverFactory::Terminate() {
@@ -598,7 +442,7 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(
 }
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
-  return new ApacheConfig(hostname_identifier_, thread_system());
+  return new ApacheConfig(hostname_identifier(), thread_system());
 }
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
