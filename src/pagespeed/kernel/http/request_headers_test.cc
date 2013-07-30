@@ -16,10 +16,10 @@
 
 // Unit-test SimpleUrlData, in particular it's HTTP header parser.
 
-#include "net/instaweb/http/public/request_headers.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

@@ -17,7 +17,7 @@
 
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 
-#include "net/instaweb/http/http.pb.h"
+#include "pagespeed/kernel/http/http.pb.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"

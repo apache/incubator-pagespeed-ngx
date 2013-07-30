@@ -44,7 +44,6 @@ BASE_LIBS = \
   base/libbase_static.a \
   build/temp_gyp/libgoogleurl.a \
   net/instaweb/libautomatic_util.a \
-  net/instaweb/libhttp_core.a \
   net/instaweb/libinstaweb_add_instrumentation_data2c.a \
   net/instaweb/libinstaweb_add_instrumentation_opt_data2c.a \
   net/instaweb/libinstaweb_automatic.a \
@@ -77,8 +76,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_ghost_click_buster_opt_data2c.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
   net/instaweb/libinstaweb_http.a \
-  net/instaweb/libinstaweb_http_gperf.a \
-  net/instaweb/libinstaweb_http_pb.a \
   net/instaweb/libinstaweb_image_types_pb.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
@@ -116,6 +113,8 @@ BASE_LIBS = \
   pagespeed/libpagespeed_html_gperf.a \
   pagespeed/libpagespeed_http.a \
   pagespeed/libpagespeed_http_core.a \
+  pagespeed/libpagespeed_http_gperf.a \
+  pagespeed/libpagespeed_http_pb.a \
   pagespeed/libpagespeed_image_processing.a \
   pagespeed/libpagespeed_javascript_gperf.a \
   pagespeed/libpagespeed_sharedmem.a \

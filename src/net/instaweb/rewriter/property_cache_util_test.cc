@@ -18,16 +18,16 @@
 
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 
-#include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/http.pb.h"
 
 namespace net_instaweb {
 

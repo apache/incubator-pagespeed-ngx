@@ -36,8 +36,8 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/vector_deque.h"
+#include "pagespeed/kernel/base/benchmark.h"
+#include "pagespeed/kernel/base/vector_deque.h"
 
 
 // Implementation of deque subset interface using vector, with O(N)

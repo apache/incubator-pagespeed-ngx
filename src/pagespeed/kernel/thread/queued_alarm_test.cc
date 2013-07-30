@@ -17,24 +17,24 @@
 
 // Unit-test for QueuedAlarm
 
-#include "net/instaweb/util/public/queued_alarm.h"
+#include "pagespeed/kernel/thread/queued_alarm.h"
 
 #include <unistd.h>
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/platform.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/scheduler_thread.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/thread/mock_scheduler.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
+#include "pagespeed/kernel/thread/scheduler_thread.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 namespace {

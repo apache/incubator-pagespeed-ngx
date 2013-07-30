@@ -30,16 +30,16 @@
 // BM_Compress1MLowEntropy     7175143    7100000        100
 // BM_Compress1KLowEntropy       16620      16514      41176
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/compressed_cache.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/simple_random.h"
-#include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/benchmark.h"
+#include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/cache/compressed_cache.h"
+#include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/util/simple_random.h"
 
 namespace {
 

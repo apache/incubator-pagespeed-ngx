@@ -44,7 +44,7 @@
     'apache/mod_spdy_fetch_controller.cc',
     'apache/mod_spdy_fetcher.cc',
     'apache/mod_instaweb.cc',
-    'util/mem_debug.cc',
+    '<(DEPTH)/pagespeed/kernel/base/mem_debug.cc',
   ],
   'ldflags+': [
     '-Wl,--version-script=build/mod_pagespeed.map',

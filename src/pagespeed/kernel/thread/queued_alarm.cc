@@ -14,14 +14,14 @@
 //
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/util/public/queued_alarm.h"
+#include "pagespeed/kernel/thread/queued_alarm.h"
 
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 #include "base/logging.h"
 

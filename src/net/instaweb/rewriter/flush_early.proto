@@ -16,7 +16,7 @@
 
 syntax = "proto2";
 
-import "net/instaweb/http/http.proto";
+import "pagespeed/kernel/http/http.proto";
 
 option optimize_for = LITE_RUNTIME;
 

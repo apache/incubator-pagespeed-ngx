@@ -30,7 +30,7 @@
       'action': [
         'bash',
         '-c',
-        'cat <(instaweb_root)/<(instaweb_protoc_subdir)/<(RULE_INPUT_NAME) | sed \'s!// \[opensource\] !!\' > <(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto && <(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX) --proto_path=<(protoc_out_dir)/ <(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto --cpp_out=<(protoc_out_dir)',
+        'cat <(instaweb_root)/<(instaweb_protoc_subdir)/<(RULE_INPUT_NAME) | sed \'s!"third_party/pagespeed!"pagespeed!\' | sed \'s!// \[opensource\] !!\' > <(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto && <(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX) --proto_path=<(protoc_out_dir)/ <(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto --cpp_out=<(protoc_out_dir)',
       ],
     },
   ],

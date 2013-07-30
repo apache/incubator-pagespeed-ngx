@@ -18,11 +18,11 @@
 
 // Unit-test the base64 encoder.
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/base64_util.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/base64_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace {
 

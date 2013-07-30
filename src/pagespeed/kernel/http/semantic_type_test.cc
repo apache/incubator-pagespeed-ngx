@@ -16,9 +16,9 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
-#include "net/instaweb/http/public/semantic_type.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

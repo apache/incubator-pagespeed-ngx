@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstddef>
-
-#include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
 

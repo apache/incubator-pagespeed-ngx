@@ -54,8 +54,8 @@
 #ifndef NDEBUG
 
 #include <cstdlib>
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace {
 

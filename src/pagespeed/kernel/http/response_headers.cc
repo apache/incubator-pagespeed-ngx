@@ -14,29 +14,29 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/http/public/response_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 #include <algorithm>                    // for min
 #include <cstdio>     // for fprintf, stderr, snprintf
 #include <memory>
 
 #include "base/logging.h"
-#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders, etc
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/headers.h"
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/escaping.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_multi_map.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/time_util.h"
-#include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/escaping.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_multi_map.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/http/caching_headers.h"
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/headers.h"
+#include "pagespeed/kernel/http/http.pb.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 

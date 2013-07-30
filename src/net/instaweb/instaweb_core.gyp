@@ -38,28 +38,6 @@
       ],
     },
     {
-      'target_name': 'http_core',
-      'type': '<(library)',
-      'dependencies': [
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
-      ],
-      'sources': [
-        'http/semantic_type.cc',
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-        '<(DEPTH)',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(instaweb_root)',
-          '<(DEPTH)',
-        ],
-      },
-    },
-    {
       'target_name': 'instaweb_rewriter_html',
       'type': '<(library)',
       'dependencies': [

@@ -14,18 +14,18 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/http/public/request_headers.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/http.pb.h"  // for HttpRequestHeaders
-#include "net/instaweb/http/public/headers.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_multi_map.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_multi_map.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/http/headers.h"
+#include "pagespeed/kernel/http/http.pb.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 

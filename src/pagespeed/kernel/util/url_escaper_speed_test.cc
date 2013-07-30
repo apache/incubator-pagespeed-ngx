@@ -22,10 +22,10 @@
 // ------------------------------------------------------
 // BM_EncodeToUrlSegment      11698      11657      58333
 
-#include "net/instaweb/util/public/url_escaper.h"
+#include "pagespeed/kernel/util/url_escaper.h"
 
-#include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/benchmark.h"
+#include "pagespeed/kernel/base/string.h"
 
 using net_instaweb::UrlEscaper::EncodeToUrlSegment;
 

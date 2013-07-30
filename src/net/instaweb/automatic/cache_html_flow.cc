@@ -22,7 +22,6 @@
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
-#include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -39,13 +38,13 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -64,6 +63,7 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/http.pb.h"
 
 namespace net_instaweb {
 

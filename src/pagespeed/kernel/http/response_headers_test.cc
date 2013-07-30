@@ -16,24 +16,25 @@
 
 // Unit-test SimpleUrlData, in particular it's HTTP header parser.
 
-#include "net/instaweb/http/public/response_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 #include <cstddef>                     // for size_t
 #include <algorithm>
-#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers_parser.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/time_util.h"
-#include "net/instaweb/util/public/timer.h"  // for Timer
+
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/base/timer.h"  // for Timer
+#include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http.pb.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers_parser.h"
 
 namespace net_instaweb {
 

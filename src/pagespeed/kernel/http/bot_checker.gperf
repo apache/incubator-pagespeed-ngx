@@ -2,8 +2,9 @@
 // bot_checker.cc is automatically generated from bot_checker.gperf.
 // Author: fangfei@google.com
 
-#include "net/instaweb/http/public/bot_checker.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/bot_checker.h"
+
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 %}

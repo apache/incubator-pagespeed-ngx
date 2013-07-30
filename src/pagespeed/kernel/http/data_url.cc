@@ -16,13 +16,13 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/data_url.h"
+#include "pagespeed/kernel/http/data_url.h"
 
 #include <cstddef>
-#include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/util/public/base64_util.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/base64_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 

@@ -24,7 +24,6 @@
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
@@ -61,6 +60,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/http/http.pb.h"
 
 namespace {
 

@@ -16,13 +16,13 @@
 #include <utility>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/re2.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 #include "pagespeed/kernel/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/util/re2.h"
 
 namespace net_instaweb {
 

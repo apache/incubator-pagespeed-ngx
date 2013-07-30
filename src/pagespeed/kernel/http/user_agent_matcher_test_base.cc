@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pagespeed/kernel/base/basictypes.h"                // for arraysize
-#include "pagespeed/kernel/base/gtest.h"  // for Message, EXPECT_TRUE, etc
-#include "pagespeed/kernel/base/scoped_ptr.h"            // for scoped_ptr
-#include "pagespeed/kernel/base/string_util.h"        // for StringPiece
-#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
 

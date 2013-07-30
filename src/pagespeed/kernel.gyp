@@ -13,6 +13,21 @@
 # limitations under the License.
 
 {
+  'variables': {
+    'instaweb_root': '..',
+    'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
+    'protoc_executable':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+    'data2c_out_dir': '<(SHARED_INTERMEDIATE_DIR)/data2c_out/instaweb',
+    'data2c_exe':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
+    'js_minify':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)js_minify<(EXECUTABLE_SUFFIX)',
+    # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
+    # is whitelisted in our common.gypi, those warnings will get treated as
+    # errors.
+    'chromium_code': 1,
+  },
   'targets': [
     {
       'target_name': 'pagespeed_base_core',
@@ -79,6 +94,7 @@
         'kernel/base/hostname_util.cc',
         'kernel/base/json_writer.cc',
         'kernel/base/md5_hasher.cc',
+        'kernel/base/mem_debug.cc',
         'kernel/base/named_lock_manager.cc',
         'kernel/base/null_rw_lock.cc',
         'kernel/base/null_statistics.cc',
@@ -128,11 +144,12 @@
       ],
     },
     {
-      'target_name': 'base_test_util',
+      'target_name': 'kernel_test_util',
       'type': '<(library)',
       'sources': [
         'kernel/base/file_system_test_base.cc',
         'kernel/base/gtest.cc',
+        'kernel/http/user_agent_matcher_test_base.cc',
         'kernel/sharedmem/shared_circular_buffer_test_base.cc',
         'kernel/sharedmem/shared_dynamic_string_map_test_base.cc',
         'kernel/sharedmem/shared_mem_cache_data_test_base.cc',
@@ -142,6 +159,7 @@
         'kernel/sharedmem/shared_mem_test_base.cc',
         'kernel/thread/thread_system_test_base.cc',
         'kernel/thread/worker_test_base.cc',
+        'kernel/util/mock_nonce_generator.cc',
       ],
       'all_dependent_settings': {
         'include_dirs': [
@@ -154,6 +172,7 @@
       ],
       'dependencies': [
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
+        'util',
       ],
     },
     {
@@ -227,6 +246,7 @@
         'kernel/http/google_url.cc',
         'kernel/http/http_names.cc',
         'kernel/http/query_params.cc',
+        'kernel/http/semantic_type.cc',
       ],
       'dependencies': [
         'pagespeed_base_core',
@@ -237,14 +257,55 @@
       'target_name': 'pagespeed_http',
       'type': '<(library)',
       'sources': [
+        'kernel/http/data_url.cc',
+        'kernel/http/headers.cc',
+        'kernel/http/response_headers_parser.cc',
+        'kernel/http/response_headers.cc',
+        'kernel/http/request_headers.cc',
+        'kernel/http/user_agent_matcher.cc',
         'kernel/http/user_agent_normalizer.cc',
       ],
       'dependencies': [
         'pagespeed_http_core',
+        'pagespeed_http_gperf',
+        'pagespeed_http_pb',
         'util',
+#        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'include_dirs': [
+        '<(instaweb_root)',
         '<(DEPTH)',
+      ],
+      'all_dependent_settings': {
+        'include_dirs': [
+          '<(DEPTH)/third_party/protobuf/src',
+        ],
+      },
+    },
+    {
+      'target_name': 'pagespeed_http_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'kernel/http',
+        'instaweb_root':  '<(DEPTH)/pagespeed',
+      },
+      'sources': [
+        'kernel/http/bot_checker.gperf',
+      ],
+      'includes': [
+        '../net/instaweb/gperf.gypi',
+      ]
+    },
+    {
+      'target_name': 'pagespeed_http_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/kernel/http',
+      },
+      'sources': [
+        'kernel/http/http.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/http.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
       ],
     },
     {
@@ -308,19 +369,6 @@
       ],
     },
     {
-      'target_name': 'util_test_util',
-      'type': '<(library)',
-      'sources': [
-        'kernel/util/mock_nonce_generator.cc',
-      ],
-      'include_dirs': [
-        '<(DEPTH)',
-      ],
-      'dependencies': [
-        'util',
-      ],
-    },
-    {
       'target_name': 'pagespeed_image_processing',
       'type': '<(library)',
       'dependencies': [
@@ -375,7 +423,7 @@
         '<(DEPTH)/testing/gtest/include',
       ],
       'dependencies': [
-        ':base_test_util',
+        ':kernel_test_util',
         ':pagespeed_image_processing',
       ],
     },
@@ -402,6 +450,7 @@
       'target_name': 'pagespeed_thread',
       'type': '<(library)',
       'sources': [
+        'kernel/thread/queued_alarm.cc',
         'kernel/thread/queued_worker.cc',
         'kernel/thread/queued_worker_pool.cc',
         'kernel/thread/scheduler.cc',

@@ -640,7 +640,7 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/flush_early.pb.cc',
       ],
       'dependencies': [
-        'instaweb_http_pb',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http_pb',
       ],
       'includes': [
         'protoc.gypi',
@@ -731,10 +731,17 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/cache_html_info.pb.cc',
       ],
       'dependencies': [
-        'instaweb_http_pb',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http_pb',
       ],
       'includes': [
         'protoc.gypi',
+      ],
+    },
+    {
+      'target_name': 'instaweb_http',
+      'type': '<(library)',
+      'dependencies': [
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
     },
     {
@@ -767,18 +774,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_http_gperf',
-      'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/http',
-      },
-      'sources': [
-        'http/bot_checker.gperf',
-      ],
-      'includes': [
-        'gperf.gypi',
-      ]
-    },
-    {
       'target_name': 'instaweb_rewriter_html_gperf',
       'variables': {
         'instaweb_gperf_subdir': 'net/instaweb/rewriter',
@@ -798,8 +793,6 @@
       'target_name': 'instaweb_util',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_http',
-        'instaweb_http_gperf',
         'instaweb_logging_pb',
         'instaweb_propcache_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
@@ -814,7 +807,7 @@
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
-        # TODO(sligocki): Move http/ files to instaweb_http.
+        # TODO(sligocki): Move http/ files to pagespeed_fetch.
         'http/async_fetch.cc',
         'http/async_fetch_with_lock.cc',
         'http/cache_url_async_fetcher.cc',
@@ -833,18 +826,15 @@
         'http/sync_fetcher_adapter_callback.cc',
         'http/url_async_fetcher.cc',
         'http/url_async_fetcher_stats.cc',
-        'http/user_agent_matcher.cc',
         'http/wait_url_async_fetcher.cc',
         'http/wget_url_fetcher.cc',
         'http/write_through_http_cache.cc',
 
         'util/cache_property_store.cc',
-        'util/data_url.cc',
         'util/fallback_property_page.cc',
         'util/mock_property_page.cc',
         'util/property_cache.cc',
         'util/property_store.cc',
-        'util/queued_alarm.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -857,7 +847,7 @@
         ],
       },
       'export_dependent_settings': [
-        'instaweb_http',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
     },
     {
@@ -889,44 +879,16 @@
       ],
     },
     {
-      'target_name': 'instaweb_http',
-      'type': '<(library)',
-      'dependencies': [
-        '<(DEPTH)/base/base.gyp:base',
-        'instaweb_core.gyp:http_core',
-        'instaweb_http_pb',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
-      ],
-      'sources': [
-        'http/headers.cc',
-        'http/request_headers.cc',
-        'http/response_headers.cc',
-        'http/response_headers_parser.cc',
-      ],
-      'include_dirs': [
-        '<(instaweb_root)',
-        '<(DEPTH)',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(instaweb_root)',
-          '<(DEPTH)',
-        ],
-      },
-      'export_dependent_settings': [
-        'instaweb_http_pb',
-      ]
-    },
-    {
       'target_name': 'instaweb_http_test',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_http',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'sources': [
         'http/counting_url_async_fetcher.cc',
+        '<(DEPTH)/pagespeed/kernel.gyp:kernel_test_util'
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -1062,6 +1024,7 @@
         'instaweb_util',
         'instaweb_spriter',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
       'sources': [
@@ -1148,7 +1111,6 @@
         'instaweb_extended_instrumentation_opt_data2c',
         'instaweb_flush_early_pb',
         'instaweb_ghost_click_buster_opt_data2c',
-        'instaweb_http',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',
@@ -1165,6 +1127,7 @@
         'instaweb_spriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
       'sources': [
@@ -1269,19 +1232,6 @@
       },
     },
     {
-      'target_name': 'instaweb_http_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/http',
-      },
-      'sources': [
-        'http/http.proto',
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/http.pb.cc',
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_image_types_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1333,7 +1283,6 @@
         'instaweb_critical_keys_pb',
         'instaweb_critical_line_info_pb',
         'instaweb_flush_early_pb',
-        'instaweb_http',
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
@@ -1352,6 +1301,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_util',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/apr/apr.gyp:include',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
       ],

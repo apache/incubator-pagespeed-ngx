@@ -19,8 +19,9 @@
 // Unit-test the caching fetcher, using a mock fetcher, and an async
 // wrapper around that.
 
-#include "net/instaweb/http/public/bot_checker.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/http/bot_checker.h"
+
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 
