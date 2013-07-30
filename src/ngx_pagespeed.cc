@@ -206,7 +206,10 @@ void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
       header = static_cast<ngx_table_elt_t*>(part->elts);
       i = 0;
     }
-
+    // Make sure we don't copy over headers that are unset.
+    if (header[i].hash == 0) {
+      continue;
+    }
     StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
     StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
 
@@ -244,7 +247,8 @@ void copy_request_headers_from_ngx(const ngx_http_request_t *r,
 
 ngx_int_t copy_response_headers_to_ngx(
     ngx_http_request_t* r,
-    const net_instaweb::ResponseHeaders& pagespeed_headers) {
+    const net_instaweb::ResponseHeaders& pagespeed_headers,
+    bool modify_caching_headers) {
   ngx_http_headers_out_t* headers_out = &r->headers_out;
   headers_out->status = pagespeed_headers.status_code();
 
@@ -252,6 +256,16 @@ ngx_int_t copy_response_headers_to_ngx(
   for (i = 0 ; i < pagespeed_headers.NumAttributes() ; i++) {
     const GoogleString& name_gs = pagespeed_headers.Name(i);
     const GoogleString& value_gs = pagespeed_headers.Value(i);
+
+    if (!modify_caching_headers) {
+      if ( net_instaweb::StringCaseEqual(name_gs, "Cache-Control") ||
+           net_instaweb::StringCaseEqual(name_gs, "ETag") ||
+           net_instaweb::StringCaseEqual(name_gs, "Expires") ||
+           net_instaweb::StringCaseEqual(name_gs, "Date") ||
+           net_instaweb::StringCaseEqual(name_gs, "Last-Modified")) {
+        continue;
+      }
+    }
 
     ngx_str_t name, value;
 
@@ -1009,13 +1023,29 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
                  "ps fetch handler: %V", &r->uri);
 
   if (!r->header_sent) {
-    // collect response headers from pagespeed
-    if (ctx->modify_headers) {
-      ngx_http_clean_header(r);
-      rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
-      if (rc == NGX_ERROR) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    if (!ctx->modify_caching_headers) {
+      ngx_table_elt_t* header;
+      net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
+      while ((header = it.Next()) != NULL) {
+        // We need to remember a few headers when ModifyCachingHeaders is off,
+        // so we can send them unmodified in copy_response_headers_to_ngx().
+        // This just sets the hash to 0 for all other headers. That way, we
+        // avoid  some relatively complicated code to reconstruct these headers.
+        if (!(STR_CASE_EQ_LITERAL(header->key, "Cache-Control")
+              || STR_CASE_EQ_LITERAL(header->key, "Etag")
+              || STR_CASE_EQ_LITERAL(header->key, "Date")
+              || STR_CASE_EQ_LITERAL(header->key, "Last-Modified")
+              || STR_CASE_EQ_LITERAL(header->key, "Expires"))) {
+          header->hash = 0;
+        }
       }
+    } else {
+      ngx_http_clean_header(r);
+    }
+    // collect response headers from pagespeed
+    rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
+    if (rc == NGX_ERROR) {
+      return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     // send response headers
@@ -1568,7 +1598,7 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t *ctx) {
       cfg_s->server_context,
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
       cfg_s->server_context->thread_system()->NewMutex(),
-      cfg_s->server_context->timer(), r)));
+      cfg_s->server_context->timer(), r)), ctx->modify_caching_headers);
 
   return NGX_OK;
 }
@@ -1732,8 +1762,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t *r, bool html_rewrite) {
     ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
-    ctx->modify_headers = true;
     ctx->pagespeed_connection = NULL;
+    // See build_context_for_request() in mod_instaweb.cc
+    ctx->modify_caching_headers = options->modify_caching_headers();
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -1796,7 +1827,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t *r, bool html_rewrite) {
     }
     driver->SetRequestHeaders(*ctx->base_fetch->request_headers());
 
-    ctx->modify_headers = driver->options()->modify_caching_headers();
     // TODO(jefftk): FlushEarlyFlow would go here.
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
@@ -2296,7 +2326,8 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
                   ngx_psol::str_to_string_piece(r->headers_out.content_type));
       if (r->headers_out.location != NULL) {
         headers.Add(net_instaweb::HttpAttributes::kLocation,
-                    ngx_psol::str_to_string_piece(r->headers_out.location->value));
+                    ngx_psol::str_to_string_piece(
+                        r->headers_out.location->value));
       }
 
       StringPiece date = headers.Lookup1(net_instaweb::HttpAttributes::kDate);
@@ -2353,7 +2384,8 @@ ngx_int_t send_out_headers_and_body(
     ngx_http_request_t* r,
     const net_instaweb::ResponseHeaders& response_headers,
     const GoogleString& output) {
-  ngx_int_t rc = copy_response_headers_to_ngx(r, response_headers);
+  ngx_int_t rc = copy_response_headers_to_ngx(
+      r, response_headers, true /* modify caching headers */);
 
   if (rc != NGX_OK) {
     return NGX_ERROR;
@@ -2841,8 +2873,8 @@ ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 
 ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t *r) {
   ps_request_ctx_t *ctx = ps_get_request_context(r);
-  if (r != r->main || ctx == NULL
-      || !ctx->modify_headers || !ctx->html_rewrite) {
+  if (r != r->main || ctx == NULL || !ctx->html_rewrite
+      || !ctx->modify_caching_headers) {
     return ngx_http_next_header_filter(r);
   }
 
@@ -2863,12 +2895,6 @@ ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t *r) {
   if (r->headers_out.expires) {
     r->headers_out.expires->hash = 0;
     r->headers_out.expires = NULL;
-  }
-
-  // ngx_http_header_filter will set up correct date header
-  if (r->headers_out.date) {
-    r->headers_out.date->hash = 0;
-    r->headers_out.date = NULL;
   }
 
   return ngx_http_next_header_filter(r);
