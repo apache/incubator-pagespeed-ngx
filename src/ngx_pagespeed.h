@@ -89,7 +89,7 @@ typedef struct {
 
   bool write_pending;
   bool fetch_done;
-  bool modify_headers;
+  bool modify_caching_headers;
 
   // for html rewrite
   net_instaweb::ProxyFetch* proxy_fetch;
@@ -108,8 +108,9 @@ void copy_response_headers_from_ngx(const ngx_http_request_t *r,
        net_instaweb::ResponseHeaders *headers);
 
 ngx_int_t copy_response_headers_to_ngx(
-    ngx_http_request_t* r,
-    const net_instaweb::ResponseHeaders& pagespeed_headers);
+            ngx_http_request_t* r,
+            const net_instaweb::ResponseHeaders& pagespeed_headers,
+            bool modify_caching_headers);
 }  // namespace ngx_psol
 
 #endif  // NGX_PAGESPEED_H_

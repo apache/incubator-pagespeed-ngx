@@ -57,7 +57,8 @@ class NgxBaseFetch : public AsyncFetch {
  public:
   NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
                NgxServerContext* server_context,
-               const RequestContextPtr& request_ctx);
+               const RequestContextPtr& request_ctx,
+               bool modify_caching_headers);
   virtual ~NgxBaseFetch();
 
   // Copies the request headers out of request_->headers_in->headers.
@@ -123,6 +124,7 @@ class NgxBaseFetch : public AsyncFetch {
   int references_;
   pthread_mutex_t mutex_;
   bool handle_error_;
+  bool modify_caching_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
