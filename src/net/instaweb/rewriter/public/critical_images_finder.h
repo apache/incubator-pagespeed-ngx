@@ -137,7 +137,6 @@ class CriticalImagesFinder {
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
       int num_sets_to_keep,
-      int percent_seen_for_critical,
       const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page);
 
@@ -181,7 +180,6 @@ class CriticalImagesFinder {
   static bool UpdateCriticalImages(const StringSet* html_critical_images,
                                    const StringSet* css_critical_images,
                                    int num_sets_to_keep,
-                                   int percent_seen_for_critical,
                                    CriticalImages* critical_images);
 
   // By default, store 1 critical image set and require an image to be in that

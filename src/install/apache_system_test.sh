@@ -1655,13 +1655,16 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Now test sending a beacon with a GET request, instead of POST. Indicate that
   # Puzzle.jpg and Cuppa.png are the critical images. In practice we expect only
   # POSTs to be used by the critical image beacon, but both code paths are
-  # supported.
+  # supported.  We need to do this several times since 80% support is required
+  # for an image to be considered critical.
   # Add the hash for Cuppa.png to BEACON_DATA, which will be used as the query
   # params for the GET.
   BEACON_DATA+=",2644480723"
-  OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-    $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
-  check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+  for i in {1..4}; do
+    OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+      $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
+    check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+  done
   # Now only BikeCrashIcn.png should be lazyloaded.
   http_proxy=$SECONDARY_HOSTNAME \
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1

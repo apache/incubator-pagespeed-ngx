@@ -48,11 +48,9 @@ const char CriticalSelectorFinder::kCriticalSelectorsNotFoundCount[] =
     "critical_selectors_not_found_count";
 
 CriticalSelectorFinder::CriticalSelectorFinder(
-    const PropertyCache::Cohort* cohort, Timer* timer,
-    NonceGenerator* nonce_generator, Statistics* statistics)
-    : cohort_(cohort),
-      timer_(timer),
-      nonce_generator_(nonce_generator) {
+    const PropertyCache::Cohort* cohort, NonceGenerator* nonce_generator,
+    Statistics* statistics)
+    : cohort_(cohort), nonce_generator_(nonce_generator) {
   critical_selectors_valid_count_ = statistics->GetTimedVariable(
       kCriticalSelectorsValidCount);
   critical_selectors_expired_count_ = statistics->GetTimedVariable(
@@ -145,8 +143,8 @@ void CriticalSelectorFinder::UpdateCriticalSelectorInfoInDriver(
 
   CriticalSelectorInfo* critical_selector_info = new CriticalSelectorInfo;
   critical_selector_info->proto = *keys_to_use;
-  critical_selector_info->critical_selectors =
-      GetCriticalKeysFromProto(*keys_to_use);
+  GetCriticalKeysFromProto(0 /* support_percentage */, *keys_to_use,
+                           &critical_selector_info->critical_selectors);
   driver->set_critical_selector_info(critical_selector_info);
 }
 

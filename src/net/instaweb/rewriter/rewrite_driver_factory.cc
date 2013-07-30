@@ -359,8 +359,7 @@ CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
     // TODO(pulkitg): Don't create CriticalSelectorFinder if beacon cohort is
     // not added.
     return new BeaconCriticalSelectorFinder(server_context->beacon_cohort(),
-                                            timer(), nonce_generator(),
-                                            statistics());
+                                            nonce_generator(), statistics());
   }
   return NULL;
 }

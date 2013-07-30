@@ -56,11 +56,10 @@ class CriticalSelectorFinder {
 
   // All of the passed-in constructor arguments are owned by the caller.  If
   // critical selector data is being received from a trusted source
-  // (ShouldReplacePriorResult() must return true in this case), timer and
-  // nonce_generator may be NULL.
-  CriticalSelectorFinder(
-      const PropertyCache::Cohort* cohort, Timer* timer,
-      NonceGenerator* nonce_generator, Statistics* stats);
+  // (ShouldReplacePriorResult() must return true in this case), nonce_generator
+  // may be NULL.
+  CriticalSelectorFinder(const PropertyCache::Cohort* cohort,
+                         NonceGenerator* nonce_generator, Statistics* stats);
   virtual ~CriticalSelectorFinder();
 
   static void InitStats(Statistics* statistics);
@@ -112,7 +111,6 @@ class CriticalSelectorFinder {
   void UpdateCriticalSelectorInfoInDriver(RewriteDriver* driver);
 
   const PropertyCache::Cohort* cohort_;
-  Timer* timer_;
   NonceGenerator* nonce_generator_;
 
   TimedVariable* critical_selectors_valid_count_;
@@ -125,9 +123,9 @@ class CriticalSelectorFinder {
 class BeaconCriticalSelectorFinder : public CriticalSelectorFinder {
  public:
   BeaconCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
-                               Timer* timer, NonceGenerator* nonce_generator,
+                               NonceGenerator* nonce_generator,
                                Statistics* stats)
-      : CriticalSelectorFinder(cohort, timer, nonce_generator, stats) {}
+      : CriticalSelectorFinder(cohort, nonce_generator, stats) {}
 
   static void WriteCriticalSelectorsToPropertyCacheFromBeacon(
       const StringSet& selector_set, StringPiece none,

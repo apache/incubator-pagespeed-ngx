@@ -58,26 +58,40 @@ class NonceGenerator;
 
 typedef std::map<GoogleString, int> SupportMap;
 
-// Generate and return a list of the critical keys from a proto, taking into
-// account legacy keys that may have been added before.
-StringSet GetCriticalKeysFromProto(const CriticalKeys& critical_keys);
+// Generate a list of the critical keys from a proto, storing it into keys.
+// Takes into account legacy keys that may have been added before.  A key is
+// considered critical if its support is at least support_percentage of the
+// maximum possible support value (which ramps up as beacon results arrive).
+// When support_percentage = 0, any support is sufficient; when
+// support_percentage = 100 all beacon results must support criticality.
+void GetCriticalKeysFromProto(int64 support_percentage,
+                              const CriticalKeys& critical_keys,
+                              StringSet* keys);
+
+// Add support for new_set to existing support.  The new_set should be obtained
+// from a fully-validated beacon result -- this means PrepareForBeaconInsertion
+// should have been called if required, and the resulting nonce should have been
+// checked.  If require_prior_support then there must be an existing support
+// entry (possibly 0) for new support to be registered.
+void UpdateCriticalKeys(bool require_prior_support,
+                        const StringSet& new_set, int support_value,
+                        CriticalKeys* critical_keys);
 
 // Update the property cache with a new set of keys. This will update the
 // support value for the new keys, ignoring any keys that are not already
 // present in the property cache (preventing spurious keys from being injected).
 // Note, that it only increases the support value for the new keys, it does not
-// decay values that are not present. PrepareForBeaconInsertion - which decays
-// support - should have been called previously.
+// decay values that are not present. PrepareForBeaconInsertion should have been
+// called previously if !should_replace_prior_result and nonces must be checked.
 void WriteCriticalKeysToPropertyCache(
     const StringSet& new_keys, StringPiece nonce, int support_interval,
     bool should_replace_prior_result, StringPiece property_name,
     const PropertyCache* cache, const PropertyCache::Cohort* cohort,
     AbstractPropertyPage* page, MessageHandler* message_handler, Timer* timer);
 
-// Given a set of candidate critical keys, decide whether beaconing
-// should take place (and if so, decay existing key evidence).  We should
-// *always* beacon if there's new critical key data.  Otherwise
-// re-beaconing is based on a time and request interval.
+// Given a set of candidate critical keys, decide whether beaconing should take
+// place.  We should *always* beacon if there's new critical key data.
+// Otherwise re-beaconing is based on a time and request interval.
 GoogleString PrepareForBeaconInsertion(
     const StringSet& keys, CriticalKeys* proto, int support_interval,
     bool should_replace_prior_result, StringPiece property_name,

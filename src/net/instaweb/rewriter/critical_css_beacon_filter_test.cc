@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
@@ -95,8 +94,8 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     page_property_cache()->Read(rewrite_driver()->property_page());
     // Set up and register a beacon finder.
     CriticalSelectorFinder* finder = new BeaconCriticalSelectorFinder(
-        server_context()->beacon_cohort(), server_context()->timer(),
-        factory()->nonce_generator(), statistics());
+        server_context()->beacon_cohort(), factory()->nonce_generator(),
+        statistics());
     server_context()->set_critical_selector_finder(finder);
     // Set up contents of CSS files.
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,

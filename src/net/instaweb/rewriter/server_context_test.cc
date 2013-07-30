@@ -36,7 +36,6 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -378,18 +377,6 @@ class ServerContextTest : public RewriteTestBase {
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheCss));
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheImages));
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
-  }
-
-  GoogleString CreateCriticalImagePropertyCacheValue(
-      const StringSet* html_critical_images) {
-    CriticalImages critical_images;
-    DCHECK(html_critical_images != NULL);
-    // Update critical images from html.
-    for (StringSet::iterator i = html_critical_images->begin();
-         i != html_critical_images->end(); ++i) {
-      critical_images.add_html_critical_images(*i);
-    }
-    return critical_images.SerializeAsString();
   }
 };
 
@@ -1131,7 +1118,7 @@ class BeaconTest : public ServerContextTest {
         new BeaconCriticalImagesFinder(
             beacon_cohort, factory()->nonce_generator(), statistics()));
     server_context()->set_critical_selector_finder(
-        new BeaconCriticalSelectorFinder(beacon_cohort, timer(),
+        new BeaconCriticalSelectorFinder(beacon_cohort,
                                          factory()->nonce_generator(),
                                          statistics()));
     ResetDriver();
@@ -1164,8 +1151,6 @@ class BeaconTest : public ServerContextTest {
     EXPECT_FALSE(last_nonce_.empty());
     rewrite_driver()->property_page()->WriteCohort(
         server_context()->beacon_cohort());
-    rewrite_driver()->Clear();
-    ResetDriver();
   }
 
   // Send a beacon through ServerContext::HandleBeacon and verify that the
@@ -1195,27 +1180,22 @@ class BeaconTest : public ServerContextTest {
 
     // Read the property cache value for critical images, and verify that it has
     // the expected value.
+    ResetDriver();
     scoped_ptr<MockPropertyPage> page(MockPageForUA(user_agent));
-    const PropertyCache::Cohort* cohort =
-        property_cache_->GetCohort(RewriteDriver::kBeaconCohort);
+    rewrite_driver()->set_property_page(page.release());
     if (critical_image_hashes != NULL) {
-      PropertyValue* property = page->GetProperty(
-          cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
-      EXPECT_TRUE(property->has_value());
-      property->value().CopyToString(&critical_images_property_value_);
+      critical_html_images_ = server_context()->critical_images_finder()->
+          GetHtmlCriticalImages(rewrite_driver());
     }
-
     if (critical_css_selectors != NULL) {
-      rewrite_driver()->set_property_page(page.release());
-      critical_css_selectors_ = server_context()->critical_selector_finder()
-          ->GetCriticalSelectors(rewrite_driver());
+      critical_css_selectors_ = server_context()->critical_selector_finder()->
+          GetCriticalSelectors(rewrite_driver());
     }
   }
 
   PropertyCache* property_cache_;
-  // This field holds a serialized protobuf from pcache after a BeaconTest call.
-  GoogleString critical_images_property_value_;
-  // This field holds data deserialized from the pcache after a BeaconTest call.
+  // These fields hold data deserialized from the pcache after TestBeacon.
+  StringSet critical_html_images_;
   StringSet critical_css_selectors_;
   // This field holds candidate critical css selectors.
   StringSet candidates_;
@@ -1243,40 +1223,39 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
   GoogleString hash2 = IntegerToString(
       HashString<CasePreserve, int>(img2.c_str(), img2.size()));
 
-  CriticalImages proto;
   StringSet critical_image_hashes;
   critical_image_hashes.insert(hash1);
-  proto.add_html_critical_images(hash1);
-  proto.add_html_critical_images_sets()->add_critical_images(hash1);
   TestBeacon(&critical_image_hashes, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
+  EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
 
+  // Beacon both images as critical.  Since we require 80% support, img2 won't
+  // show as critical until we've beaconed four times.  It doesn't require five
+  // beacon results because we weight recent beacon values more heavily and
+  // beacon support decays over time.
   critical_image_hashes.insert(hash2);
-  proto.add_html_critical_images(hash2);
-  // proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  CriticalImages::CriticalImageSet* field =
-      proto.add_html_critical_images_sets();
-  field->add_critical_images(hash1);
-  field->add_critical_images(hash2);
+  for (int i = 0; i < 3; ++i) {
+    TestBeacon(&critical_image_hashes, NULL,
+               UserAgentMatcherTestBase::kChromeUserAgent);
+    EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
+  }
+  GoogleString expected = StrCat(hash1, ",", hash2);
   TestBeacon(&critical_image_hashes, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
+  EXPECT_STREQ(expected, JoinCollection(critical_html_images_, ","));
 
+  // Test with a different user agent, providing support only for img1.
   critical_image_hashes.clear();
   critical_image_hashes.insert(hash1);
-  proto.clear_html_critical_images();
-  proto.add_html_critical_images(hash1);
-  proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL,
-             UserAgentMatcherTestBase::kChromeUserAgent);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
-
-  proto.clear_html_critical_images_sets();
-  proto.add_html_critical_images_sets()->add_critical_images(hash1);
   TestBeacon(&critical_image_hashes, NULL,
              UserAgentMatcherTestBase::kIPhoneUserAgent);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
+  EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
+
+  // Beacon once more with the original user agent and with only img1; img2
+  // loses 80% support again.
+  TestBeacon(&critical_image_hashes, NULL,
+             UserAgentMatcherTestBase::kChromeUserAgent);
+  EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
 }
 
 TEST_F(BeaconTest, HandleBeaconCriticalCss) {

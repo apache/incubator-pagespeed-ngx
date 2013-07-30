@@ -1690,9 +1690,7 @@ class TestCriticalSelectorFinder : public CriticalSelectorFinder {
  public:
   TestCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
                              Statistics* stats)
-      : CriticalSelectorFinder(
-            cohort, NULL /* timer */, NULL /* nonce_generator */, stats) {
-  }
+      : CriticalSelectorFinder(cohort, NULL /* nonce_generator */, stats) {}
 
   virtual ~TestCriticalSelectorFinder() {}
 

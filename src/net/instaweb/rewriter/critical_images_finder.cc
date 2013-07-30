@@ -19,12 +19,13 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
 #include <map>
-#include <set>
-#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -68,10 +69,47 @@ bool PopulateCriticalImagesFromPropertyValue(
   return critical_images->ParseFromZeroCopyStream(&input);
 }
 
+void MigrateLegacyCriticalBeacons(
+    protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* beacons,
+    protobuf::RepeatedPtrField<GoogleString>* critical_images_field,
+    CriticalKeys* image_support) {
+  // Swap html_critical_images into html_support.
+  image_support->mutable_critical_keys()->Swap(critical_images_field);
+  // Now iterate through individual beacon results in the history and swap
+  // each into html_support->beacon_history().
+  for (int i = 0; i < beacons->size(); ++i) {
+    CriticalKeys::BeaconResponse* beacon_history =
+        image_support->add_beacon_history();
+    beacon_history->mutable_keys()->Swap(
+        beacons->Mutable(i)->mutable_critical_images());
+  }
+}
+
+// Move all information down into the support fields of the given
+// CriticalImages.
+void MigrateLegacyCriticalImages(CriticalImages* crit_images) {
+  // Migrate legacy data by first moving it into the corresponding CriticalKeys
+  // record; the legacy migration support for CriticalKeys migration will then
+  // set up support appropriately.
+  MigrateLegacyCriticalBeacons(
+      crit_images->mutable_html_critical_images_sets(),
+      crit_images->mutable_html_critical_images(),
+      crit_images->mutable_html_critical_image_support());
+  crit_images->clear_html_critical_images();
+  crit_images->clear_html_critical_images_sets();
+  MigrateLegacyCriticalBeacons(
+      crit_images->mutable_css_critical_images_sets(),
+      crit_images->mutable_css_critical_images(),
+      crit_images->mutable_css_critical_image_support());
+  crit_images->clear_css_critical_images();
+  crit_images->clear_css_critical_images_sets();
+}
+
 // Create CriticalImagesInfo object from the value of property_value.  NULL if
 // no value is found, or if the property value reflects that no results are
 // available.  Result is owned by caller.
 CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
+    int percent_seen_for_critical,
     const PropertyValue* property_value) {
   DCHECK(property_value != NULL);
   CriticalImages crit_images;
@@ -80,75 +118,33 @@ CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
   }
   // The existence of kEmptyValuePlaceholder should mean that "no data" will be
   // distinguished from "no critical images" by the above call.
+  MigrateLegacyCriticalImages(&crit_images);
+
   CriticalImagesInfo* critical_images_info = new CriticalImagesInfo();
-  critical_images_info->html_critical_images.insert(
-      crit_images.html_critical_images().begin(),
-      crit_images.html_critical_images().end());
-  critical_images_info->css_critical_images.insert(
-      crit_images.css_critical_images().begin(),
-      crit_images.css_critical_images().end());
+  GetCriticalKeysFromProto(percent_seen_for_critical,
+                           crit_images.html_critical_image_support(),
+                           &critical_images_info->html_critical_images);
+  GetCriticalKeysFromProto(percent_seen_for_critical,
+                           crit_images.css_critical_image_support(),
+                           &critical_images_info->css_critical_images);
   return critical_images_info;
 }
 
 void UpdateCriticalImagesSetInProto(
-    const StringSet& html_critical_images_set,
-    int max_set_size,
-    int percent_needed_for_critical,
+    const StringSet& critical_images_set,
     protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* set_field,
-    protobuf::RepeatedPtrField<GoogleString>* critical_images_field) {
+    protobuf::RepeatedPtrField<GoogleString>* critical_images_field,
+    int max_set_size,
+    CriticalKeys* image_support) {
   DCHECK_GT(max_set_size, 0);
 
-  // If we have a max_set_size of 1 we can just directly set the
-  // critical_images_field to the new set, we don't need to store any history of
-  // responses.
-  if (max_set_size == 1) {
-    critical_images_field->Clear();
-    for (StringSet::const_iterator it = html_critical_images_set.begin();
-         it != html_critical_images_set.end(); ++it) {
-      *critical_images_field->Add() = *it;
-    }
-    return;
-  }
-
-  // Update the set field first, which contains the history of up to
-  // max_set_size critical image responses. If we already have max_set_size,
-  // drop the first response, and append the new response to the end.
-  CriticalImages::CriticalImageSet* new_set;
-  if (set_field->size() >= max_set_size) {
-    DCHECK_EQ(set_field->size(), max_set_size);
-    for (int i = 1; i < set_field->size(); ++i) {
-      set_field->SwapElements(i - 1, i);
-    }
-    new_set = set_field->Mutable(set_field->size() - 1);
-    new_set->Clear();
-  } else {
-    new_set = set_field->Add();
-  }
-
-  for (StringSet::iterator i = html_critical_images_set.begin();
-       i != html_critical_images_set.end(); ++i) {
-    new_set->add_critical_images(*i);
-  }
-
-  // Now recalculate the critical image set.
-  std::map<GoogleString, int> image_count;
-  for (int i = 0; i < set_field->size(); ++i) {
-    const CriticalImages::CriticalImageSet& set = set_field->Get(i);
-    for (int j = 0; j < set.critical_images_size(); ++j) {
-      const GoogleString& img = set.critical_images(j);
-      image_count[img]++;
-    }
-  }
-
-  int num_needed_for_critical =
-      set_field->size() * percent_needed_for_critical / 100;
-  critical_images_field->Clear();
-  for (std::map<GoogleString, int>::const_iterator it = image_count.begin();
-      it != image_count.end(); ++it) {
-    if (it->second >= num_needed_for_critical) {
-      *critical_images_field->Add() = it->first;
-    }
-  }
+  DCHECK(set_field != NULL);
+  DCHECK(critical_images_field != NULL);
+  DCHECK(image_support != NULL);
+  MigrateLegacyCriticalBeacons(
+      set_field, critical_images_field, image_support);
+  UpdateCriticalKeys(false /* require_prior_support */,
+                     critical_images_set, max_set_size, image_support);
 }
 
 }  // namespace
@@ -270,10 +266,12 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     info = ExtractCriticalImagesFromCache(driver, property_value);
     if (info != NULL) {
       info->is_critical_image_info_present = true;
-      driver->log_record()->SetNumHtmlCriticalImages(
-          info->html_critical_images.size());
-      driver->log_record()->SetNumCssCriticalImages(
-          info->css_critical_images.size());
+      if (driver->request_context().get() != NULL) {
+        driver->log_record()->SetNumHtmlCriticalImages(
+            info->html_critical_images.size());
+        driver->log_record()->SetNumCssCriticalImages(
+            info->css_critical_images.size());
+      }
     }
   }
   // Store an empty CriticalImagesInfo back into the driver if we don't have any
@@ -294,15 +292,13 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
   AbstractPropertyPage* page = driver->fallback_property_page();
   return UpdateCriticalImagesCacheEntry(
       html_critical_images_set, css_critical_images_set,
-      NumSetsToKeep(), PercentSeenForCritical(),
-      GetCriticalImagesCohort(), page);
+      NumSetsToKeep(), GetCriticalImagesCohort(), page);
 }
 
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     const StringSet* html_critical_images_set,
     const StringSet* css_critical_images_set,
     int num_sets_to_keep,
-    int percent_seen_for_critical,
     const PropertyCache::Cohort* cohort,
     AbstractPropertyPage* page) {
   // Update property cache if above the fold critical images are successfully
@@ -323,8 +319,7 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
   PopulateCriticalImagesFromPropertyValue(property_value, &critical_images);
   if (!UpdateCriticalImages(
       html_critical_images_set, css_critical_images_set,
-      num_sets_to_keep, percent_seen_for_critical,
-      &critical_images)) {
+      num_sets_to_keep, &critical_images)) {
     return false;
   }
 
@@ -349,24 +344,27 @@ bool CriticalImagesFinder::UpdateCriticalImages(
     const StringSet* html_critical_images,
     const StringSet* css_critical_images,
     int num_sets_to_keep,
-    int percent_seen_for_critical,
     CriticalImages* critical_images) {
   DCHECK(critical_images != NULL);
   if (html_critical_images != NULL) {
     UpdateCriticalImagesSetInProto(
         *html_critical_images,
-        num_sets_to_keep,
-        percent_seen_for_critical,
         critical_images->mutable_html_critical_images_sets(),
-        critical_images->mutable_html_critical_images());
+        critical_images->mutable_html_critical_images(),
+        num_sets_to_keep,
+        critical_images->mutable_html_critical_image_support());
+    critical_images->clear_html_critical_images_sets();
+    critical_images->clear_html_critical_images();
   }
   if (css_critical_images != NULL) {
     UpdateCriticalImagesSetInProto(
         *css_critical_images,
-        num_sets_to_keep,
-        percent_seen_for_critical,
         critical_images->mutable_css_critical_images_sets(),
-        critical_images->mutable_css_critical_images());
+        critical_images->mutable_css_critical_images(),
+        num_sets_to_keep,
+        critical_images->mutable_css_critical_image_support());
+    critical_images->clear_css_critical_images_sets();
+    critical_images->clear_css_critical_images();
   }
   // We updated if either StringSet* was set.
   return (html_critical_images != NULL || css_critical_images != NULL);
@@ -418,7 +416,8 @@ CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
         !page_property_cache->IsExpired(property_value, cache_ttl_ms);
     if (is_valid) {
       critical_images_info =
-          CriticalImagesInfoFromPropertyValue(property_value);
+          CriticalImagesInfoFromPropertyValue(PercentSeenForCritical(),
+                                              property_value);
       if (track_stats) {
         if (critical_images_info == NULL) {
           critical_images_not_found_count_->Add(1);

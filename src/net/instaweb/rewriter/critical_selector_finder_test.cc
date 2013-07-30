@@ -60,7 +60,7 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
   virtual CriticalSelectorFinder* CreateFinder(
       const PropertyCache::Cohort* cohort) {
     return new BeaconCriticalSelectorFinder(
-        cohort, timer(), factory()->nonce_generator(), statistics());
+        cohort, factory()->nonce_generator(), statistics());
   }
 
   void ResetDriver() {
@@ -418,7 +418,7 @@ class UnverifiedCriticalSelectorFinder : public CriticalSelectorFinder {
  public:
   UnverifiedCriticalSelectorFinder(const PropertyCache::Cohort* cohort,
                                    Statistics* stats)
-      : CriticalSelectorFinder(cohort, NULL, NULL, stats) {}
+      : CriticalSelectorFinder(cohort, NULL, stats) {}
   virtual ~UnverifiedCriticalSelectorFinder() {}
 
   virtual int SupportInterval() const { return 10; }

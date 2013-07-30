@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 
+#include <algorithm>
 #include <set>
 #include <utility>
 
@@ -41,6 +42,11 @@ inline void SaturatingAddTo(int32 addend, int32* dest) {
   int64 result = *dest;
   result += addend;
   *dest = (result > kint32max) ? kint32max : static_cast<int32>(result);
+}
+
+bool LessBySupportMapValue(const SupportMap::value_type& pair1,
+                           const SupportMap::value_type& pair2) {
+    return (pair1.second < pair2.second);
 }
 
 SupportMap ConvertCriticalKeysProtoToSupportMap(
@@ -97,6 +103,14 @@ void WriteSupportMapToCriticalKeysProto(const SupportMap& support_map,
   }
 }
 
+// Decay a single support value by multiplying it by k / (k+1), rounding down.
+// Fractional arithmetic done in int64 to avoid int overflow.
+inline int Decay(int support_interval, int64 support_value) {
+  support_value *= support_interval;
+  support_value /= support_interval + 1;
+  return support_value;
+}
+
 // Decay support, deleting elements whose support drops to 0.
 void DecaySupportMap(int support_interval, SupportMap* support_map) {
   SupportMap::iterator next = support_map->begin(), end = support_map->end();
@@ -108,9 +122,7 @@ void DecaySupportMap(int support_interval, SupportMap* support_map) {
     // Multiply support_value by the fraction
     // support_interval / (support_interval + 1)
     // using int64 to avoid overflow.
-    int64 support_value = curr->second;
-    support_value *= support_interval;
-    support_value /= support_interval + 1;
+    int support_value = Decay(support_interval, curr->second);
     if (support_value == 0 && curr->second > 0) {
       // Remove entry when its support falls to 0 (this will expire entries that
       // should not be candidates; if curr should still be a candidate, we will
@@ -120,44 +132,6 @@ void DecaySupportMap(int support_interval, SupportMap* support_map) {
       curr->second = static_cast<int32>(support_value);
     }
   }
-}
-
-// Merge the given set into the existing critical key proto by adding
-// support for new_set to existing support.
-void UpdateCriticalKeys(const StringSet& new_set, int support_value,
-                        CriticalKeys* critical_keys) {
-  DCHECK(critical_keys != NULL);
-  SupportMap support_map =
-      ConvertCriticalKeysProtoToSupportMap(*critical_keys, support_value);
-  DecaySupportMap(support_value, &support_map);
-  // Actually add the new_set to the support_map.
-  for (StringSet::const_iterator s = new_set.begin(); s != new_set.end(); ++s) {
-    // Only add entries that are already in the support_map
-    // (critical_css_beacon_filter initializes candidate entries to have support
-    // 0).  This avoids a cache-fill DoS with spurious beacon data.
-    SupportMap::iterator entry = support_map.find(*s);
-    if (entry != support_map.end()) {
-      SaturatingAddTo(support_value, &entry->second);
-    }
-  }
-  WriteSupportMapToCriticalKeysProto(support_map, critical_keys);
-}
-
-// Fresh critical key set with support for new_set.  For use when
-// ShouldReplacePriorResult() is true.
-CriticalKeys* FreshCriticalKeys(const StringSet& new_set, int support_value) {
-  CriticalKeys* critical_keys = new CriticalKeys;
-  // Eliminate existing critical key evidence of all kinds.
-  critical_keys->clear_critical_keys();
-  critical_keys->clear_beacon_history();
-  critical_keys->clear_key_evidence();
-  // Actually add the new_set to the evidence.
-  for (StringSet::const_iterator s = new_set.begin(); s != new_set.end(); ++s) {
-    CriticalKeys::KeyEvidence* evidence = critical_keys->add_key_evidence();
-    evidence->set_key(*s);
-    evidence->set_support(support_value);
-  }
-  return critical_keys;
 }
 
 void ClearInvalidNonces(const int64 now_ms, CriticalKeys* critical_keys) {
@@ -240,21 +214,71 @@ bool ValidateAndExpireNonce(int64 now_ms, StringPiece nonce,
 
 }  // namespace
 
-StringSet GetCriticalKeysFromProto(const CriticalKeys& critical_keys) {
-  StringSet keys;
+void GetCriticalKeysFromProto(int64 support_percentage,
+                              const CriticalKeys& critical_keys,
+                              StringSet* keys) {
+  int64 support_threshold =
+      (support_percentage == 0) ?
+      1 : (support_percentage * critical_keys.maximum_possible_support());
   // Collect legacy beacon results
   for (int i = 0; i < critical_keys.critical_keys_size(); ++i) {
-    keys.insert(critical_keys.critical_keys(i));
+    keys->insert(critical_keys.critical_keys(i));
   }
   // Collect supported beacon results
   for (int i = 0; i < critical_keys.key_evidence_size(); ++i) {
     const CriticalKeys::KeyEvidence& evidence = critical_keys.key_evidence(i);
-    if (evidence.support() > 0 && !evidence.key().empty()) {
-      keys.insert(evidence.key());
+    // Do percentage conversion on support value using int64 to avoid overflow.
+    int64 support = evidence.support();
+    if (support * 100 >= support_threshold && !evidence.key().empty()) {
+      keys->insert(evidence.key());
     }
   }
+}
 
-  return keys;
+// Merge the given set into the existing critical key proto by adding
+// support for new_set to existing support.
+void UpdateCriticalKeys(bool require_prior_support,
+                        const StringSet& new_set, int support_value,
+                        CriticalKeys* critical_keys) {
+  DCHECK(critical_keys != NULL);
+  SupportMap support_map =
+      ConvertCriticalKeysProtoToSupportMap(*critical_keys, support_value);
+  DecaySupportMap(support_value, &support_map);
+  // Update maximum_possible_support.  Initial value must account for legacy
+  // data.
+  int maximum_support;
+  if (critical_keys->has_maximum_possible_support()) {
+    maximum_support =
+        Decay(support_value, critical_keys->maximum_possible_support());
+  } else if (support_map.empty()) {
+    maximum_support = 0;
+  } else {
+    maximum_support =
+        std::max_element(support_map.begin(), support_map.end(),
+                         LessBySupportMapValue)->second;
+  }
+  SaturatingAddTo(support_value, &maximum_support);
+  critical_keys->set_maximum_possible_support(maximum_support);
+  // Actually add the new_set to the support_map.
+  if (require_prior_support) {
+    for (StringSet::const_iterator s = new_set.begin();
+         s != new_set.end(); ++s) {
+      // Only add entries that are already in the support_map
+      // (critical_css_beacon_filter initializes candidate entries to have
+      // support 0).  This avoids a cache-fill DoS with spurious beacon data.
+      SupportMap::iterator entry = support_map.find(*s);
+      if (entry != support_map.end()) {
+        SaturatingAddTo(support_value, &entry->second);
+      }
+    }
+  } else {
+    // Unconditionally add entries to support_map.
+    for (StringSet::const_iterator s = new_set.begin();
+         s != new_set.end(); ++s) {
+      SaturatingAddTo(support_value, &support_map[*s]);
+    }
+  }
+  WriteSupportMapToCriticalKeysProto(support_map, critical_keys);
 }
 
 void WriteCriticalKeysToPropertyCache(
@@ -272,7 +296,7 @@ void WriteCriticalKeysToPropertyCache(
   // break slamm's tests at the bottom of critical_selector_finder_test.cc
   // depending on how subclassing is done, so some care will be required.
   if (should_replace_prior_result) {
-    critical_keys.reset(FreshCriticalKeys(new_keys, support_interval));
+    critical_keys.reset(new CriticalKeys);
   } else {
     // We first need to read the current critical keys in the property cache,
     // then update it with the new set if it exists, or create it if it doesn't.
@@ -304,8 +328,9 @@ void WriteCriticalKeysToPropertyCache(
     if (!ValidateAndExpireNonce(timer->NowMs(), nonce, critical_keys.get())) {
       return;
     }
-    UpdateCriticalKeys(new_keys, support_interval, critical_keys.get());
   }
+  UpdateCriticalKeys(!should_replace_prior_result,
+                     new_keys, support_interval, critical_keys.get());
 
   PropertyCacheUpdateResult result = UpdateInPropertyCache(
       *critical_keys, cohort, property_name, false /* write_cohort */, page);

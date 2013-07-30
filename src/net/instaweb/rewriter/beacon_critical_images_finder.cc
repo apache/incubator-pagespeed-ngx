@@ -46,7 +46,6 @@ bool BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
       html_critical_images_set,
       css_critical_images_set,
       kBeaconNumSetsToKeep,
-      kBeaconPercentSeenForCritical,
       cohort, page);
 }
 

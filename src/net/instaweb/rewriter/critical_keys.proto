@@ -30,11 +30,9 @@ package net_instaweb;
 // implementation that stored a history of beacon responses.
 //
 // Next free id: 7
-// TODO(jmaessen): Keep track of information on inputs to detect
-// changes to HTML.  (CL in progress)
 message CriticalKeys {
   // This is a legacy type used for aggregating multiple beacon responses.
-  message BeaconResponse {
+  message BeaconResponse {                     // legacy
     repeated string keys = 1;
   }
 
@@ -55,13 +53,13 @@ message CriticalKeys {
   }
 
   // Legacy field that held an aggregate of multiple beacon responses.
-  repeated string critical_keys = 1;
+  repeated string critical_keys = 1;           // legacy
 
   // Id 2 deleted, should not be reused.
 
   // Legacy field for storing a history of the last N reported critical
   // key sets from beacons.
-  repeated BeaconResponse beacon_history = 3;
+  repeated BeaconResponse beacon_history = 3;  // legacy
 
   optional int64 next_beacon_timestamp_ms = 4 [default = 0];
 
@@ -72,4 +70,13 @@ message CriticalKeys {
 
   // This represents the valid beacon nonce values that will be accepted.
   repeated PendingNonce pending_nonce = 6;
+
+  // This represents the maximum support value possible based on the number of
+  // beacons that have been encountered so far.  This is used to determine
+  // proportional support (for example, if we expect 80% of beacons to attest
+  // that an image is critical, then support must be >=80% of this value).  If
+  // we preserve k beacon results, this value will be k after the first beacon
+  // result arrives, and will converge to k^2 over time.  The default value
+  // ensures that support = 0 will be considered unsupported.
+  optional int32 maximum_possible_support = 7 [default = 1];
 }
