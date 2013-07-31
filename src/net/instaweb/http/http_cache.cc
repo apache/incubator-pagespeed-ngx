@@ -118,7 +118,6 @@ bool HTTPCache::IsCurrentlyValid(const RequestHeaders* request_headers,
   if (headers.CacheExpirationTimeMs() > now_ms) {
     return true;
   }
-  cache_expirations_->Add(1);
   return false;
 }
 
@@ -145,6 +144,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     int64 now_us = http_cache_->timer()->NowUs();
     int64 now_ms = now_us / 1000;
     ResponseHeaders* headers = callback_->response_headers();
+    bool is_expired = false;
     if ((backend_state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
         callback_->IsCacheValid(key_, *headers)) {
@@ -167,8 +167,8 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         headers->ForceCaching(override_cache_ttl_ms);
       }
       // Is the response still valid?
-      bool is_valid = http_cache_->IsCurrentlyValid(NULL, *headers, now_ms) &&
-          callback_->IsFresh(*headers);
+      is_expired = !http_cache_->IsCurrentlyValid(NULL, *headers, now_ms);
+      bool is_valid_and_fresh = (!is_expired) && callback_->IsFresh(*headers);
       int http_status = headers->status_code();
 
       if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
@@ -179,9 +179,9 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         // consider it invalid if override_cache_ttl_ms > 0.
         if (override_cache_ttl_ms > 0 &&
             http_status == HttpStatus::kRememberNotCacheableAnd200StatusCode) {
-          is_valid = false;
+          is_valid_and_fresh = false;
         }
-        if (is_valid) {
+        if (is_valid_and_fresh) {
           int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
               - start_ms_;
           const char* status = NULL;
@@ -204,7 +204,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
           }
         }
       } else {
-        if (is_valid) {
+        if (is_valid_and_fresh) {
           result = HTTPCache::kFound;
           if (headers->UpdateCacheHeadersIfForceCached()) {
             // If the cache headers were updated as a result of it being force
@@ -226,9 +226,9 @@ class HTTPCacheCallback : public CacheInterface::Callback {
 
     // TODO(gee): Perhaps all of this belongs in TimingInfo.
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
-    http_cache_->UpdateStats(backend_state, result,
+    http_cache_->UpdateStats(key_, backend_state, result,
                              !callback_->fallback_http_value()->Empty(),
-                             elapsed_us);
+                             is_expired, elapsed_us, handler_);
     callback_->ReportLatencyMs(elapsed_us/1000);
     if (result != HTTPCache::kFound) {
       headers->Clear();
@@ -256,8 +256,10 @@ void HTTPCache::Find(const GoogleString& key, MessageHandler* handler,
 }
 
 void HTTPCache::UpdateStats(
+    const GoogleString& key,
     CacheInterface::KeyState backend_state, FindResult result,
-    bool has_fallback, int64 delta_us) {
+    bool has_fallback, bool is_expired, int64 delta_us,
+    MessageHandler* handler) {
   cache_time_us_->Add(delta_us);
   if (backend_state == CacheInterface::kAvailable) {
     cache_backend_hits_->Add(1);
@@ -271,6 +273,10 @@ void HTTPCache::UpdateStats(
     cache_misses_->Add(1);
     if (has_fallback) {
       cache_fallbacks_->Add(1);
+    }
+    if (is_expired) {
+      handler->Message(kInfo, "Cache entry is expired: %s", key.c_str());
+      cache_expirations_->Add(1);
     }
   }
 }
