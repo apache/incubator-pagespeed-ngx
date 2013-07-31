@@ -1362,7 +1362,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::disable_rewrite_on_no_transform_, "drnt",
       kDisableRewriteOnNoTransform,
       kDirectoryScope,
-      NULL);
+      "If false, resource is rewritten even if no-transform header is set");
   AddBaseProperty(
       false, &RewriteOptions::enable_cache_purge_, "euci",
       kEnableCachePurge,

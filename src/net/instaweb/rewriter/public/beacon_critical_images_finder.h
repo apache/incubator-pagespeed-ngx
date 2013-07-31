@@ -46,8 +46,8 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
     return kBeaconPercentSeenForCritical;
   }
 
-  virtual int NumSetsToKeep() const {
-    return kBeaconNumSetsToKeep;
+  virtual int SupportInterval() const {
+    return kBeaconImageSupportInterval;
   }
 
   virtual void ComputeCriticalImages(RewriteDriver* driver) {}
@@ -70,7 +70,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   // 80% is a guess at a reasonable value for this param.
   static const int kBeaconPercentSeenForCritical = 80;
   // This is a guess for how many samples we need to get stable data.
-  static const int kBeaconNumSetsToKeep = 10;
+  static const int kBeaconImageSupportInterval = 10;
 
   const PropertyCache::Cohort* cohort_;
   NonceGenerator* nonce_generator_;

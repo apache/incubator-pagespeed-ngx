@@ -67,7 +67,7 @@ class CriticalImagesHistoryFinderMock : public CriticalImagesFinderMock {
     return 80;
   }
 
-  virtual int NumSetsToKeep() const {
+  virtual int SupportInterval() const {
     return 10;
   }
 };
@@ -276,7 +276,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
   html_critical_images_set.insert("imgB.jpeg");
   StringSet css_critical_images_set;
   css_critical_images_set.insert("imgD.jpeg");
-  for (int i = 0; i < finder()->NumSetsToKeep() * 3; ++i) {
+  for (int i = 0; i < finder()->SupportInterval() * 3; ++i) {
     ResetDriver();
     EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
         &html_critical_images_set, &css_critical_images_set));
@@ -306,7 +306,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
   }
 
   // Continue writing imgA, but now imgB should be below our threshold.
-  for (int i = 0; i < finder()->NumSetsToKeep(); ++i) {
+  for (int i = 0; i < finder()->SupportInterval(); ++i) {
     ResetDriver();
     EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
@@ -358,7 +358,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
   }
 
   // And finally, write imgC, making sure it is critical.
-  for (int i = 0; i < finder()->NumSetsToKeep(); ++i) {
+  for (int i = 0; i < finder()->SupportInterval(); ++i) {
     ResetDriver();
     EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
@@ -387,7 +387,7 @@ TEST_F(CriticalImagesFinderTest, NoCriticalImages) {
   EXPECT_TRUE(finder()->GetCssCriticalImages(rewrite_driver()).empty());
   // Now register critical images and make sure we can leave the empty state.
   critical.insert("imgA.jpeg");
-  for (int i = 0; i < finder()->NumSetsToKeep(); ++i) {
+  for (int i = 0; i < finder()->SupportInterval(); ++i) {
     EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(&critical, &critical));
   }
   rewrite_driver()->property_page()->WriteCohort(

@@ -292,13 +292,13 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
   AbstractPropertyPage* page = driver->fallback_property_page();
   return UpdateCriticalImagesCacheEntry(
       html_critical_images_set, css_critical_images_set,
-      NumSetsToKeep(), GetCriticalImagesCohort(), page);
+      SupportInterval(), GetCriticalImagesCohort(), page);
 }
 
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     const StringSet* html_critical_images_set,
     const StringSet* css_critical_images_set,
-    int num_sets_to_keep,
+    int support_interval,
     const PropertyCache::Cohort* cohort,
     AbstractPropertyPage* page) {
   // Update property cache if above the fold critical images are successfully
@@ -319,7 +319,7 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
   PopulateCriticalImagesFromPropertyValue(property_value, &critical_images);
   if (!UpdateCriticalImages(
       html_critical_images_set, css_critical_images_set,
-      num_sets_to_keep, &critical_images)) {
+      support_interval, &critical_images)) {
     return false;
   }
 
@@ -343,7 +343,7 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
 bool CriticalImagesFinder::UpdateCriticalImages(
     const StringSet* html_critical_images,
     const StringSet* css_critical_images,
-    int num_sets_to_keep,
+    int support_interval,
     CriticalImages* critical_images) {
   DCHECK(critical_images != NULL);
   if (html_critical_images != NULL) {
@@ -351,7 +351,7 @@ bool CriticalImagesFinder::UpdateCriticalImages(
         *html_critical_images,
         critical_images->mutable_html_critical_images_sets(),
         critical_images->mutable_html_critical_images(),
-        num_sets_to_keep,
+        support_interval,
         critical_images->mutable_html_critical_image_support());
     critical_images->clear_html_critical_images_sets();
     critical_images->clear_html_critical_images();
@@ -361,7 +361,7 @@ bool CriticalImagesFinder::UpdateCriticalImages(
         *css_critical_images,
         critical_images->mutable_css_critical_images_sets(),
         critical_images->mutable_css_critical_images(),
-        num_sets_to_keep,
+        support_interval,
         critical_images->mutable_css_critical_image_support());
     critical_images->clear_css_critical_images_sets();
     critical_images->clear_css_critical_images();

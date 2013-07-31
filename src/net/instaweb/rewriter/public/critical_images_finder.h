@@ -81,11 +81,15 @@ class CriticalImagesFinder {
     return kDefaultPercentSeenForCritial;
   }
 
-  // The number of past critical image sets to keep. By default, we only keep
-  // the most recent one. The beacon critical image finder should override this
-  // to store a larger number of sets.
-  virtual int NumSetsToKeep() const {
-    return kDefaultNumSetsToKeep;
+  // Minimum interval to store support for critical image results. This affects
+  // how long we keep around evidence that an image might be critical; we'll
+  // remember the fact for at least SupportInterval beacon insertions if it only
+  // occurs once, and we'll remember it longer if multiple beacons support image
+  // criticality.  By default, SupportInteval() = 1 and we only store one beacon
+  // result. The beacon critical image finder should override this to store a
+  // larger number of sets.
+  virtual int SupportInterval() const {
+    return kDefaultImageSupportInterval;
   }
 
   // Checks whether the requested image is present in the critical set or not.
@@ -136,7 +140,7 @@ class CriticalImagesFinder {
   static bool UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
-      int num_sets_to_keep,
+      int support_interval,
       const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page);
 
@@ -179,13 +183,13 @@ class CriticalImagesFinder {
   // critical_images was updated.
   static bool UpdateCriticalImages(const StringSet* html_critical_images,
                                    const StringSet* css_critical_images,
-                                   int num_sets_to_keep,
+                                   int support_interval,
                                    CriticalImages* critical_images);
 
   // By default, store 1 critical image set and require an image to be in that
   // set for it to be critical.
   static const int kDefaultPercentSeenForCritial = 100;
-  static const int kDefaultNumSetsToKeep = 1;
+  static const int kDefaultImageSupportInterval = 1;
 
   Variable* critical_images_valid_count_;
   Variable* critical_images_expired_count_;
