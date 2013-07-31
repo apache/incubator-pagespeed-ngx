@@ -39,7 +39,6 @@
 #include "ngx_thread_system.h"
 
 #include "apr_time.h"
-#include "pthread_shared_mem.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
@@ -54,6 +53,7 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
@@ -67,6 +67,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -81,6 +82,9 @@ extern ngx_module_t ngx_pagespeed;
 // Unused flag, see
 // http://lxr.evanmiller.org/http/source/http/ngx_http_request.h#L130
 #define  NGX_HTTP_PAGESPEED_BUFFERED 0x08
+
+// Needed for SystemRewriteDriverFactory to use shared memory.
+#define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
 
 namespace ngx_psol {
 
@@ -702,7 +706,9 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   net_instaweb::NgxRewriteDriverFactory::Initialize();
 
   cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-      new net_instaweb::NgxThreadSystem());
+      new net_instaweb::NgxThreadSystem(),
+      "" /* hostname, not used */,
+      -1 /* port, not used */);
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
@@ -2597,12 +2603,23 @@ ngx_int_t ps_statistics_handler(
       writer.Write("</pre>", message_handler);
       statistics->RenderHistograms(&writer, message_handler);
 
+      int flags = net_instaweb::SystemCaches::kDefaultStatFlags;
+      if (global_stats_request) {
+        flags |= net_instaweb::SystemCaches::kGlobalView;
+      }
+
       if (params.Has("memcached")) {
-        GoogleString memcached_stats;
-        factory->PrintMemCacheStats(&memcached_stats);
-        if (!memcached_stats.empty()) {
-          ps_write_pre(memcached_stats, &writer, message_handler);
-        }
+        flags |= net_instaweb::SystemCaches::kIncludeMemcached;
+      }
+
+      GoogleString backend_stats;
+      factory->caches()->PrintCacheStats(
+          static_cast<net_instaweb::SystemCaches::StatFlags>(flags),
+          &backend_stats);
+      if (!backend_stats.empty()) {
+        writer.Write("<pre>\n", message_handler);
+        writer.Write(backend_stats, message_handler);
+        writer.Write("</pre>\n", message_handler);
       }
     }
 
@@ -3039,7 +3056,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       // allows statistics to work if ngx_pagespeed gets turned on via
       // .htaccess or query param.
       if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics = \
+        statistics =
             cfg_m->driver_factory->MakeGlobalSharedMemStatistics(*config);
       }
 
@@ -3085,7 +3102,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       return NGX_ERROR;
     }
 
-    cfg_m->driver_factory->RootInit(cycle->log);
+    cfg_m->driver_factory->LoggingInit(cycle->log);
+    cfg_m->driver_factory->RootInit();
   } else {
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
@@ -3104,7 +3122,8 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->ChildInit(cycle->log);
+  cfg_m->driver_factory->LoggingInit(cycle->log);
+  cfg_m->driver_factory->ChildInit();
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
