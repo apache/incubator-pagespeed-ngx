@@ -506,6 +506,12 @@ echo $WGET_DUMP $URL
 OUT=$($WGET_DUMP $URL)
 check_not_from "$OUT" fgrep "<style>"
 
+# If ModPagespeedDisableRewriteOnNoTransform is turned off, verify that
+# the rewriting applies even if Cache-control: no-transform is set.
+start_test rewrite on Cache-control: no-transform
+URL=$TEST_ROOT/disable_no_transform/index.html?PageSpeedFilters=inline_css
+fetch_until -save -recursive $URL 'grep -c style' 2
+
 start_test ModPagespeedShardDomain directive in .htaccess file
 test_filter extend_cache
 fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4

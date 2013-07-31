@@ -161,6 +161,15 @@ ModPagespeedEnableFilters add_instrumentation
     ModPagespeedEnableFilters collapse_whitespace,extend_cache,recompress_images
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/disable_no_transform" >
+  ModPagespeedDisableRewriteOnNoTransform off
+  <IfModule headers_module>
+     <FilesMatch "\.(js|css)$">
+        Header append 'Cache-Control' 'no-transform'
+     </FilesMatch>
+  </IfModule>
+</Directory>
+
 # This Directory does not even exist, but by setting some options in that
 # scope we test to make sure the options we claim are really settable in
 # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
