@@ -144,6 +144,119 @@ NewPermanentCallback(T1* obj,
   return new _MemberCallback_1_1<T1, P1, A1, false>(obj, member, p1);
 }
 
+// Base class for a two-argument callback.  Currently we have a single
+// implementation that handles single argument member functions, which are
+// to be invoked at some point in the future with the parameter.
+// Example Usage:
+//
+// class MyClass {
+//  public:
+//    void MyMethod(int x, double y);
+// };
+//
+// void Foo(MyClass* my_class) {
+//   Callback<int, double>* cb = NewCallback(my_class, &MyClass::MyMethod);
+//   Bar(cb);
+// }
+//
+// void Bar(Callback1<int, double>* cb) {
+//   cb->Run(1234, 2.7182818);
+// }
+//
+template<class A1, class A2>
+class Callback2 {
+ public:
+  Callback2() {}
+  virtual ~Callback2() {}
+  virtual void Run(A1, A2) = 0;
+};
+
+// Naming convention is:
+//  (Member)?Callback_<num-pre-bound-args>_<num-runtime-args>
+
+// TODO(gee): Fill out other useful specializations.
+template<class C, class A1, class A2, bool DeleteAfterRun>
+class _MemberCallback_0_2 : public Callback2<A1, A2> {
+ public:
+  typedef void (C::*MemberSignature)(A1, A2);
+  typedef Callback2<A1, A2> base;
+
+  _MemberCallback_0_2(C* object, MemberSignature member)
+      : object_(object),
+        member_(member) {
+  }
+
+  void Run(A1 t1, A2 t2) {
+    (object_->*member_)(t1, t2);
+    if (DeleteAfterRun) {
+      delete this;
+    }
+  }
+
+ private:
+  C* object_;
+  MemberSignature member_;
+};
+
+// Creates a callback that automatically gets deleted after being run.
+template <class T1, class T2, class A1, class A2>
+typename _MemberCallback_0_2<T1, A1, A2, true>::base*
+NewCallback(T1* obj, void (T2::*member)(A1, A2)) {
+  return new _MemberCallback_0_2<T1, A1, A2, true>(obj, member);
+}
+
+// Creates a callback that does not get deleted after being run.
+template <class T1, class T2, class A1, class A2>
+typename _MemberCallback_0_2<T1, A1, A2, false>::base*
+NewPermanentCallback(T1* obj, void (T2::*member)(A1, A2)) {
+  return new _MemberCallback_0_2<T1, A1, A2, false>(obj, member);
+}
+
+template <class T, class P1, class A1, class A2, bool DeleteAfterRun>
+class _MemberCallback_2_1 : public Callback2<A1, A2> {
+ public:
+  typedef Callback2<A1, A2> base;
+  typedef void (T::*MemberSignature)(P1, A1, A2);
+
+ private:
+  T* object_;
+  MemberSignature member_;
+  typename remove_reference<P1>::type p1_;
+
+ public:
+  _MemberCallback_2_1(T* object,
+                      MemberSignature member,
+                      typename ConstRef<P1>::type p1)
+      : object_(object),
+        member_(member),
+        p1_(p1) { }
+
+  virtual void Run(A1 a1, A2 a2) {
+    (object_->*member_)(p1_, a1, a2);
+    if (DeleteAfterRun) {
+      delete this;
+    }
+  }
+};
+
+// Creates a callback that automatically gets deleted after being run.
+template <class T1, class T2, class P1, class A1, class A2>
+inline typename _MemberCallback_2_1<T1, P1, A1, A2, true>::base*
+NewCallback(T1* obj,
+            void (T2::*member)(P1, A1, A2),
+            typename ConstRef<P1>::type p1) {
+  return new _MemberCallback_2_1<T1, P1, A1, A2, true>(obj, member, p1);
+}
+
+// Creates a callback that does not get deleted after being run.
+template <class T1, class T2, class P1, class A1, class A2>
+inline typename _MemberCallback_2_1<T1, P1, A1, A2, false>::base*
+NewPermanentCallback(T1* obj,
+                     void (T2::*member)(P1, A1, A2),
+                     typename ConstRef<P1>::type p1) {
+  return new _MemberCallback_2_1<T1, P1, A1, A2, false>(obj, member, p1);
+}
+
 }  // namespace net_instaweb
 
 
