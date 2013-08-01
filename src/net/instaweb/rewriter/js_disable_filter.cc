@@ -19,10 +19,8 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
@@ -30,7 +28,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/enums.pb.h"
-#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -159,16 +156,6 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
         HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
             script, script_data);
         rewrite_driver_->AppendChild(script, script_code);
-      } else {
-        HtmlElement* iframe =
-            rewrite_driver_->NewElement(element, HtmlName::kIframe);
-        GoogleString encoded_uri;
-        DataUrl(kContentTypeHtml, BASE64, prefetch_js_elements_, &encoded_uri);
-        rewrite_driver_->AddAttribute(iframe, HtmlName::kSrc, encoded_uri);
-        rewrite_driver_->AddAttribute(iframe, HtmlName::kClass,
-                                      "psa_prefetch_container");
-        rewrite_driver_->AddAttribute(iframe, HtmlName::kStyle, "display:none");
-        rewrite_driver_->PrependChild(element, iframe);
       }
     }
   } else {
@@ -197,15 +184,9 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
             StrAppend(&prefetch_js_elements_, StringPrintf(
                       FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
                       escaped_source.c_str()));
-          } else {
-            HtmlKeywords::Escape(src->DecodedValueOrNull(), &escaped_source);
-            StrAppend(&prefetch_js_elements_, StringPrintf(
-                      FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml,
-                      escaped_source.c_str()));
           }
           prefetch_js_elements_count_++;
         }
-        src->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigSrc));
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
       if (type != NULL) {

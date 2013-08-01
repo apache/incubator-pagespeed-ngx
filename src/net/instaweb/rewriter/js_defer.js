@@ -19,29 +19,32 @@
  * This javascript is part of JsDefer filter.
  *
  * @author atulvasu@google.com (Atul Vasu)
+ * @author ksimbili@google.com (Kishore Simbili)
  */
 
 goog.require('pagespeedutils');
 
-// Defer javascript will be executed in two phases. First phase will be for
-// high priority scripts and second phase is for low priority scripts. Order
-// of execution will be:
-// 1) High priority scripts.
-// 2) Low priority scripts.
-// 3) Onload of high priority scripts.
-// 4) Onload of low priority scripts.
-//
-// In case of blink, order will be:
-// 1) High priority scripts present in above the fold.
-// 2) Low priority scripts present in above the fold.
-// 3) High priority scripts which are below the fold.
-// 4) Low priority scripts which are below the fold.
-// 5) Onload of high priority scripts.
-// 6) Onload of low priority scripts.
-//
-// Exporting functions using quoted attributes to prevent js compiler from
-// renaming them.
-// See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
+/**
+ * Defer javascript will be executed in two phases. First phase will be for
+ * high priority scripts and second phase is for low priority scripts. Order
+ * of execution will be:
+ * 1) High priority scripts.
+ * 2) Low priority scripts.
+ * 3) Onload of high priority scripts.
+ * 4) Onload of low priority scripts.
+ *
+ * In case of blink, order will be:
+ * 1) High priority scripts present in above the fold.
+ * 2) Low priority scripts present in above the fold.
+ * 3) High priority scripts which are below the fold.
+ * 4) Low priority scripts which are below the fold.
+ * 5) Onload of high priority scripts.
+ * 6) Onload of low priority scripts.
+ *
+ * Exporting functions using quoted attributes to prevent js compiler from
+ * renaming them.
+ * See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
+ */
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
@@ -240,13 +243,6 @@ deferJsNs.DeferJs = function() {
   this.noDeferAsyncScripts_ = [];
 
   /**
-   * Generated Html to prefetch the js files.
-   * @type {string}
-   * @private
-   */
-  this.prefetchScriptsHtml_ = '';
-
-  /**
    * Type of the javascript node that will get executed.
    * @type {string}
    * @private
@@ -369,6 +365,13 @@ deferJsNs.DeferJs.PSA_NOT_PROCESSED = 'psa_not_processed';
 deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
 
 /**
+ * Name of the attribute to mark the script node for deletion after the
+ * execution.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PSA_TO_BE_DELETED = 'psa_to_be_deleted';
+
+/**
  * Value for psa dummy script nodes.
  * @const {string}
  */
@@ -483,38 +486,13 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
 };
 
 /**
- * Downloads all the queued Js files to prefetch without executing them.
- */
-deferJsNs.DeferJs.prototype.prefetchQueuedScripts = function() {
-  if (this.prefetchScriptsHtml_) {
-    var iframe = document.createElement('iframe');
-    iframe.setAttribute('class', 'psa_prefetch_container');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-    if (this.isFireFox()) {
-      iframe.src = 'data:text/html,' +
-          encodeURIComponent(this.prefetchScriptsHtml_);
-    } else if (this.getIEVersion()) {
-      iframe.contentWindow.document.write(this.prefetchScriptsHtml_);
-      // Close the document, else IE doesn't close the iframe connection.
-      iframe.contentWindow.document.close();
-    }
-    this.prefetchScriptsHtml_ = '';
-  }
-};
-
-/**
- * Tries to prefetch the file using image technique based on browser. If it
- * can't queue the url to the list and will be prefetched when
- * prefetchQueuedScripts is called.
+ * Tries to prefetch the file using image technique based on browser.
+ * We are using image technique to prefetch only for webkit based browsers.
  * @param {!string} url Url to be downloaded.
  */
 deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
   if (this.isWebKit()) {
     new Image().src = url;
-  } else {
-    this.prefetchScriptsHtml_ += '<' + "script type='psa_prefetch' src='" +
-        url + "'><\/script>";
   }
 };
 
@@ -607,6 +585,42 @@ deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
 };
 
 /**
+ * Creates a dummy script node on load of which the next deferred script is
+ * executed.
+ * Note, this function needs to be called after a synchronous script node.
+ * @param {!string} url returns javascript when fetched.
+ */
+deferJsNs.DeferJs.prototype.scriptOnLoad = function(url) {
+  var script = this.origCreateElement_.call(document, 'script');
+  script.setAttribute('type', 'text/javascript');
+  script.async = false;
+  script.setAttribute(deferJsNs.DeferJs.PSA_TO_BE_DELETED, '');
+  script.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
+  script.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, '');
+  var me = this; // capture closure.
+  var runNextHandler = function() {
+    if (document.querySelector) {
+      // Find the script node we inserted and remove it.
+      var node = document.querySelector(
+          '[' + deferJsNs.DeferJs.PSA_TO_BE_DELETED + ']');
+      if (node) {
+        node.parentNode.removeChild(node);
+      }
+    }
+    me.log('Executed: ' + url);
+    me.runNext();
+  };
+  // The onload of the new script node is guaranteed which marks as the load
+  // completion of 'url'.
+  deferJsNs.addOnload(script, runNextHandler);
+  pagespeedutils.addHandler(script, 'error', runNextHandler);
+  script.src = 'data:text/javascript,' +
+      encodeURIComponent('window.pagespeed.psatemp=0;');
+  var currentElem = this.getCurrentDomLocation();
+  currentElem.parentNode.insertBefore(script, currentElem);
+};
+
+/**
  * Defers execution of contents of 'url'.
  * @param {!string} url returns javascript when fetched.
  * @param {Element} script_elem Psa inserted script used as context element.
@@ -620,22 +634,19 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
 
     var script = me.cloneScriptNode(script_elem);
     script.setAttribute('type', 'text/javascript');
-
-    var runNextHandler = function() {
-      me.log('Executed: ' + url);
-      me.runNext();
-    };
-    deferJsNs.addOnload(script, runNextHandler);
-    pagespeedutils.addHandler(script, 'error', runNextHandler);
-    if (me.getIEVersion() < 9) {
+    var useSyncScript = false;
+    if ('async' in script) {
+      useSyncScript = true;
+      script.async = false;
+    } else if (script.readyState) {
       var stateChangeHandler = function() {
         if (script.readyState == 'complete' ||
             script.readyState == 'loaded') {
           script.onreadystatechange = null;
-          runNextHandler();
+          me.log('Executed: ' + url);
+          me.runNext();
         }
       };
-
       pagespeedutils.addHandler(script, 'readystatechange', stateChangeHandler);
     }
     script.setAttribute('src', url);
@@ -652,6 +663,13 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
     var currentElem = me.nextPsaJsNode();
     currentElem.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, '');
     currentElem.parentNode.insertBefore(script, currentElem);
+    if (useSyncScript) {
+      // We cannot depend on the onload of the script node we just inserted,
+      // because of the way we preload the js resources. Hence we are using
+      // 'scriptOnLoad' to insert a dummy script tag whose onload is fired
+      // reliably.
+      me.scriptOnLoad(url);
+    }
   }, opt_pos);
 };
 deferJsNs.DeferJs.prototype['addUrl'] = deferJsNs.DeferJs.prototype.addUrl;
@@ -1526,7 +1544,6 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(
       }
     }
   }
-  this.prefetchQueuedScripts();
 };
 deferJsNs.DeferJs.prototype['registerScriptTags'] =
     deferJsNs.DeferJs.prototype.registerScriptTags;

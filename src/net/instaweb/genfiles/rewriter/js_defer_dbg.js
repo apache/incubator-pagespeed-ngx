@@ -79,7 +79,7 @@ deferJsNs.DeferJs = function() {
   this.incrementalScriptsDoneCallback_ = null;
   this.noDeferAsyncScriptsCount_ = 0;
   this.noDeferAsyncScripts_ = [];
-  this.psaNotProcessed_ = this.psaScriptType_ = this.prefetchScriptsHtml_ = "";
+  this.psaNotProcessed_ = this.psaScriptType_ = "";
   this.optLastIndex_ = -1
 };
 deferJsNs.DeferJs.isExperimentalMode = !1;
@@ -88,6 +88,7 @@ deferJsNs.DeferJs.EVENT = {NOT_STARTED:0, BEFORE_SCRIPTS:1, DOM_READY:2, LOAD:3,
 deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED = "priority_psa_not_processed";
 deferJsNs.DeferJs.PSA_NOT_PROCESSED = "psa_not_processed";
 deferJsNs.DeferJs.PSA_CURRENT_NODE = "psa_current_node";
+deferJsNs.DeferJs.PSA_TO_BE_DELETED = "psa_to_be_deleted";
 deferJsNs.DeferJs.PSA_SCRIPT_TYPE = "text/psajs";
 deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE = "text/prioritypsajs";
 deferJsNs.DeferJs.PSA_ORIG_TYPE = "pagespeed_orig_type";
@@ -128,18 +129,8 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
     script.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, "")
   }
 };
-deferJsNs.DeferJs.prototype.prefetchQueuedScripts = function() {
-  if(this.prefetchScriptsHtml_) {
-    var iframe = document.createElement("iframe");
-    iframe.setAttribute("class", "psa_prefetch_container");
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-    this.isFireFox() ? iframe.src = "data:text/html," + encodeURIComponent(this.prefetchScriptsHtml_) : this.getIEVersion() && (iframe.contentWindow.document.write(this.prefetchScriptsHtml_), iframe.contentWindow.document.close());
-    this.prefetchScriptsHtml_ = ""
-  }
-};
 deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
-  this.isWebKit() ? (new Image).src = url : this.prefetchScriptsHtml_ += "<script type='psa_prefetch' src='" + url + "'>\x3c/script>"
+  this.isWebKit() && ((new Image).src = url)
 };
 deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
   var src = script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC) || script.getAttribute("src");
@@ -180,6 +171,27 @@ deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
   }
   return newScript
 };
+deferJsNs.DeferJs.prototype.scriptOnLoad = function(url) {
+  var script = this.origCreateElement_.call(document, "script");
+  script.setAttribute("type", "text/javascript");
+  script.async = !1;
+  script.setAttribute(deferJsNs.DeferJs.PSA_TO_BE_DELETED, "");
+  script.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, "");
+  script.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, "");
+  var me = this, runNextHandler = function() {
+    if(document.querySelector) {
+      var node = document.querySelector("[" + deferJsNs.DeferJs.PSA_TO_BE_DELETED + "]");
+      node && node.parentNode.removeChild(node)
+    }
+    me.log("Executed: " + url);
+    me.runNext()
+  };
+  deferJsNs.addOnload(script, runNextHandler);
+  pagespeedutils.addHandler(script, "error", runNextHandler);
+  script.src = "data:text/javascript," + encodeURIComponent("window.pagespeed.psatemp=0;");
+  var currentElem = this.getCurrentDomLocation();
+  currentElem.parentNode.insertBefore(script, currentElem)
+};
 deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
   this.logs.push("Add to queue url: " + url);
   var me = this;
@@ -187,26 +199,26 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
     me.removeNotProcessedAttributeTillNode(script_elem);
     var script = me.cloneScriptNode(script_elem);
     script.setAttribute("type", "text/javascript");
-    var runNextHandler = function() {
-      me.log("Executed: " + url);
-      me.runNext()
-    };
-    deferJsNs.addOnload(script, runNextHandler);
-    pagespeedutils.addHandler(script, "error", runNextHandler);
-    if(9 > me.getIEVersion()) {
-      var stateChangeHandler = function() {
-        if("complete" == script.readyState || "loaded" == script.readyState) {
-          script.onreadystatechange = null, runNextHandler()
-        }
-      };
-      pagespeedutils.addHandler(script, "readystatechange", stateChangeHandler)
+    var useSyncScript = !1;
+    if("async" in script) {
+      useSyncScript = !0, script.async = !1
+    }else {
+      if(script.readyState) {
+        var stateChangeHandler = function() {
+          if("complete" == script.readyState || "loaded" == script.readyState) {
+            script.onreadystatechange = null, me.log("Executed: " + url), me.runNext()
+          }
+        };
+        pagespeedutils.addHandler(script, "readystatechange", stateChangeHandler)
+      }
     }
     script.setAttribute("src", url);
     var str = script_elem.innerHTML || script_elem.textContent || script_elem.data;
     str && script.appendChild(document.createTextNode(str));
     var currentElem = me.nextPsaJsNode();
     currentElem.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, "");
-    currentElem.parentNode.insertBefore(script, currentElem)
+    currentElem.parentNode.insertBefore(script, currentElem);
+    useSyncScript && me.scriptOnLoad(url)
   }, opt_pos)
 };
 deferJsNs.DeferJs.prototype.addUrl = deferJsNs.DeferJs.prototype.addUrl;
@@ -579,7 +591,6 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback, opt_last
         }
       }
     }
-    this.prefetchQueuedScripts()
   }
 };
 deferJsNs.DeferJs.prototype.registerScriptTags = deferJsNs.DeferJs.prototype.registerScriptTags;
