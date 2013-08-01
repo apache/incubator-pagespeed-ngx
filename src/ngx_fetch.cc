@@ -413,12 +413,18 @@ namespace net_instaweb {
     pc.rcvbuf = -1;
 
     int rc = ngx_event_connect_peer(&pc);
+    if (rc == NGX_ERROR || rc == NGX_DECLINED || rc == NGX_BUSY) {
+      return rc;
+    }
+
     connection_ = pc.connection;
     connection_->write->handler = NgxFetchWrite;
     connection_->read->handler = NgxFetchRead;
     connection_->data = this;
 
-    // TODO(junmin): set connect timeout when rc == NGX_AGAIN
+    if (rc == NGX_AGAIN) {
+      ngx_add_timer(connection_->write, fetcher_->fetch_timeout_);
+    }
     return rc;
   }
 
