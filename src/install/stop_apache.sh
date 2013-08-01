@@ -49,6 +49,17 @@ done
 
 # Even worse with 2.2 worker we have to wait for processes to exit too.
 first=1
+while [ $(pgrep $httpd|wc -l) -ne 0 ]; do
+  if [ $first -eq 1 ]; then
+    /bin/echo -n "Waiting for $httpd to exit"
+    first=0
+  else
+    /bin/echo -n "."
+  fi
+  sleep 1
+done
+
+first=1
 while [ $(netstat -anp 2>&1 | grep -c "::$port .* LISTEN ") -ne 0 ]; do
   if [ $first -eq 1 ]; then
     /bin/echo -n "Waiting for netstat to stop including refs to port $port"
