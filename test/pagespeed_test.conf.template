@@ -30,6 +30,8 @@ http {
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
   pagespeed InPlaceResourceOptimization on;
+  pagespeed IproMaxResponseBytes 16384;
+  pagespeed IproMaxConcurrentRecordings 1;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
@@ -465,6 +467,15 @@ http {
     pagespeed BlockingRewriteKey psatest;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name ipro-limitations.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed ModifyCachingHeaders off;
+    expires 1d;
   }
 
   server {

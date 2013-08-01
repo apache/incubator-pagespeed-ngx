@@ -1640,6 +1640,63 @@ start_test keepalive with static resources
 keepalive_test "keepalive-static.example.com"\
   "/ngx_pagespeed_static/js_defer.0.js" ""
 
+start_test IPRO Recorder limitations
+
+WGET_ARGS="--header=Host:ipro-limitations.example.com"
+VHOST_STATS_URL="$SECONDARY_HOSTNAME/ngx_pagespeed_statistics"
+
+# Test that resources below the ipro size threshold are recorded.
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/images/pagespeed_logo.png"
+
+OUT=$($WGET_DUMP $WGET_ARGS $URL)
+# Check it didn't get marked as too large.
+OUT=$($WGET_DUMP $WGET_ARGS $VHOST_STATS_URL | \
+  grep -c 'ipro_recorder_too_large:\s*0')
+check [ $OUT -eq 1 ];
+# Check that it got stored in cache.
+OUT=$($WGET_DUMP $WGET_ARGS $VHOST_STATS_URL | \
+  grep -c 'ipro_recorder_inserted_into_cache:\s*1')
+check [ $OUT -eq 1 ];
+
+# Test that html is not recorded.
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/index.html"
+
+OUT=$($WGET_DUMP $WGET_ARGS $VHOST_STATS_URL | \
+  grep -c 'ipro_recorder_inserted_into_cache:\s*1')
+check [ $OUT -eq 1 ];
+
+# Test that a resource that is too large is not recorded.
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/images/Puzzle.jpg"
+OUT=$($WGET_DUMP $WGET_ARGS $URL)
+OUT=$($WGET_DUMP $WGET_ARGS $VHOST_STATS_URL | \
+  grep -c 'ipro_recorder_too_large:\s*1')
+check [ $OUT -eq 1 ];
+
+# Ensure that this second fetch is not counted, which means it got
+# declined from cache as it was marked as not cacheable.
+OUT=$($WGET_DUMP $WGET_ARGS $URL)
+OUT=$($WGET_DUMP $WGET_ARGS $VHOST_STATS_URL | \
+  grep -c 'ipro_recorder_too_large:\s*1')
+check [ $OUT -eq 1 ];
+
+# Test that the conccurent recordings limit is enforced.
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/images/Puzzle.jpg"
+
+# Start 100 fetches, in an attempt to get a parallel recording of resources.
+# We impose a limit of 1 recording at a time in the test, which we should
+# exceed during this test.
+for ((i=0; i < 100; i++)); do
+    $($WGET_DUMP $WGET_ARGS $URL?cachebust=$i > /dev/null)&
+done
+
+wait $(jobs -p)
+
+# Check if the recorder declined any requests - meaning it is enforcing its
+# limit.
+OUT=$($WGET_DUMP $WGET_ARGS $VHOST_STATS_URL | \
+  grep -c 'ipro_recorder_too_many:\s*0')
+check [ $OUT -eq 0 ];
+
 
 test_filter ngx_pagespeed_static defer js served with correct headers.
 # First, determine which hash js_defer is served with. We need a correct hash

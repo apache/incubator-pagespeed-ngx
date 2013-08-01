@@ -28,6 +28,7 @@
 #include <vector>
 #include <set>
 
+#include "in_place_resource_recorder.h"
 #include "ngx_base_fetch.h"
 #include "ngx_caching_headers.h"
 #include "ngx_list_iterator.h"
@@ -40,7 +41,6 @@
 
 #include "apr_time.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/apache/in_place_resource_recorder.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -551,7 +551,9 @@ const char* const global_only_options[] = {
   "LoadFromFileMatch",
   "LoadFromFileRule",
   "LoadFromFileRuleMatch",
-  "UseNativeFetcher"
+  "UseNativeFetcher",
+  "IproMaxConcurrentRecordings",
+  "IproMaxResponseBytes"
 };
 
 bool ps_is_global_only_option(const StringPiece& option_name) {
@@ -1625,6 +1627,11 @@ void ps_release_request_context(void* data) {
     ctx->driver = NULL;
   }
 
+  if (ctx->recorder != NULL) {
+    delete ctx->recorder;
+    ctx->recorder = NULL;
+  }
+
   ps_release_base_fetch(ctx);
 
   delete ctx;
@@ -2264,8 +2271,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // This URL was not found in cache (neither the input resource nor
     // a ResourceNotCacheable entry) so we need to get it into cache
     // (or at least a note that it cannot be cached stored there).
-    // We do that using an Apache output filter.
-    ctx->recorder = new net_instaweb::InPlaceResourceRecorder(
+    // We do that using an output filter.
+    ctx->recorder = new net_instaweb::NgxInPlaceResourceRecorder(
            url,
            request_headers.release(),
            ctx->driver->options()->respect_vary(),
@@ -2298,7 +2305,37 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps in place body filter: %V", &r->uri);
 
-  net_instaweb::InPlaceResourceRecorder* recorder = ctx->recorder;
+  net_instaweb::NgxInPlaceResourceRecorder* recorder = ctx->recorder;
+
+  if (!recorder->headers_considered()) {
+    net_instaweb::ResponseHeaders headers;
+    // TODO(oschaaf): We don't get a Date response header here.
+    // Currently, we invent one and set it to the current date/time.
+    // We need to investigate why we don't receive it.
+    headers.set_major_version(r->http_version / 1000);
+    headers.set_minor_version(r->http_version % 1000);
+    copy_headers_from_table(r->headers_out.headers, &headers);
+    headers.set_status_code(r->headers_out.status);
+    headers.Add(net_instaweb::HttpAttributes::kContentType,
+                ngx_psol::str_to_string_piece(r->headers_out.content_type));
+    if (r->headers_out.location != NULL) {
+      headers.Add(net_instaweb::HttpAttributes::kLocation,
+                  ngx_psol::str_to_string_piece(
+                      r->headers_out.location->value));
+    }
+
+    StringPiece date = headers.Lookup1(net_instaweb::HttpAttributes::kDate);
+    if (date.empty()) {
+      headers.SetDate(ngx_current_msec);
+    }
+
+    headers.ComputeCaching();
+    if (!recorder->ConsiderResponseHeaders(&headers)) {
+      delete recorder;
+      ctx->recorder = NULL;
+      return ngx_http_next_body_filter(r, in);
+    }
+  }
 
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
@@ -2314,29 +2351,7 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     }
 
     if (cl->buf->last_buf) {
-      net_instaweb::ResponseHeaders headers;
-      // TODO(oschaaf): We don't get a Date response header here.
-      // Currently, we invent one and set it to the current date/time.
-      // We need to investigate why we don't receive it.
-      headers.set_major_version(r->http_version / 1000);
-      headers.set_minor_version(r->http_version % 1000);
-      copy_headers_from_table(r->headers_out.headers, &headers);
-      headers.set_status_code(r->headers_out.status);
-      headers.Add(net_instaweb::HttpAttributes::kContentType,
-                  ngx_psol::str_to_string_piece(r->headers_out.content_type));
-      if (r->headers_out.location != NULL) {
-        headers.Add(net_instaweb::HttpAttributes::kLocation,
-                    ngx_psol::str_to_string_piece(
-                        r->headers_out.location->value));
-      }
-
-      StringPiece date = headers.Lookup1(net_instaweb::HttpAttributes::kDate);
-      if (date.empty()) {
-        headers.SetDate(ngx_current_msec);
-      }
-
-      headers.ComputeCaching();
-      ctx->recorder->DoneAndSetHeaders(&headers);
+      ctx->recorder->Done();
       ctx->recorder = NULL;
       break;
     }
@@ -3071,6 +3086,9 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       statistics = cfg_m->driver_factory->statistics();
       net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
     }
+    net_instaweb::NgxInPlaceResourceRecorder::InitLimits(
+      cfg_m->driver_factory->ipro_max_response_bytes(),
+      cfg_m->driver_factory->ipro_max_concurrent_recordings());
 
     ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_conf_get_module_loc_conf((*cscfp), ngx_http_core_module));
