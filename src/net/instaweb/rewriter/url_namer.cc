@@ -87,13 +87,12 @@ bool UrlNamer::ResolveToOriginUrl(const RewriteOptions& options,
   }
 
   const DomainLawyer* domain_lawyer = options.domain_lawyer();
-  GoogleString url_str(url->Spec().as_string());
   GoogleString referer_origin_url;
   GoogleString origin_url_str;
   bool is_proxy = false;
   // Resolve request url to origin url.
   if (domain_lawyer->MapOriginUrl(*url, &origin_url_str, &is_proxy) &&
-      origin_url_str != url_str) {
+      url->Spec() != origin_url_str) {
     GoogleUrl temp_url(origin_url_str);
     url->Swap(&temp_url);
     return true;
@@ -102,7 +101,7 @@ bool UrlNamer::ResolveToOriginUrl(const RewriteOptions& options,
     GoogleUrl referer_url(referer_url_str);
     if (domain_lawyer->MapOriginUrl(
             referer_url, &referer_origin_url, &is_proxy) &&
-        referer_origin_url != referer_url_str) {
+        referer_url_str != referer_origin_url) {
       // Referer has a origin url, resolve the request path w.r.t
       // to origin domain of the referer. This is needed as we are
       // rewriting request urls early, js generated urls might break otherwise.
