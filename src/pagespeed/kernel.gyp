@@ -88,6 +88,7 @@
         'kernel/base/condvar.cc',
         'kernel/base/countdown_timer.cc',
         'kernel/base/escaping.cc',
+        'kernel/base/fast_wildcard_group.cc',
         'kernel/base/file_writer.cc',
         'kernel/base/function.cc',
         'kernel/base/hasher.cc',
@@ -347,7 +348,6 @@
       'target_name': 'util',
       'type': '<(library)',
       'sources': [
-        'kernel/util/fast_wildcard_group.cc',
         'kernel/util/file_system_lock_manager.cc',
         'kernel/util/filename_encoder.cc',
         'kernel/util/gzip_inflater.cc',
