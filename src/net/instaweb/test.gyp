@@ -243,6 +243,9 @@
         '<(DEPTH)/pagespeed/kernel/base/time_util_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/vector_deque_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/waveform_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/wildcard_group.cc',
+        '<(DEPTH)/pagespeed/kernel/base/wildcard_group_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/wildcard_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/async_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/cache_batcher_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/cache_stats_test.cc',
@@ -311,9 +314,6 @@
         '<(DEPTH)/pagespeed/kernel/util/url_escaper_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_multipart_encoder_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_to_filename_encoder_test.cc',
-        '<(DEPTH)/pagespeed/kernel/util/wildcard_group.cc',
-        '<(DEPTH)/pagespeed/kernel/util/wildcard_group_test.cc',
-        '<(DEPTH)/pagespeed/kernel/util/wildcard_test.cc',
 # Rolling hash test fails to build in 32-bit g++ 4.1
 # [google] See b/9203004
 #        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',
@@ -438,11 +438,11 @@
         'rewriter/image_speed_test.cc',
         'rewriter/rewrite_driver_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/fast_wildcard_group_speed_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/wildcard_group.cc',
         '<(DEPTH)/pagespeed/kernel/cache/compressed_cache_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/lru_cache_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/deque_speed_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_escaper_speed_test.cc',
-        '<(DEPTH)/pagespeed/kernel/util/wildcard_group.cc',
       ],
     },
     {

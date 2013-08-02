@@ -108,6 +108,7 @@
         'kernel/base/statistics_logger.cc',
         'kernel/base/thread.cc',
         'kernel/base/waveform.cc',
+        'kernel/base/wildcard.cc',
       ],
       'dependencies': [
         'pagespeed_base_core',
@@ -360,7 +361,6 @@
         'kernel/util/url_multipart_encoder.cc',
         'kernel/util/url_segment_encoder.cc',
         'kernel/util/url_to_filename_encoder.cc',
-        'kernel/util/wildcard.cc',
         'kernel/util/work_bound.cc',
       ],
       'include_dirs': [
