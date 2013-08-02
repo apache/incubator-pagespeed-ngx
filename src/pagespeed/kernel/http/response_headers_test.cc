@@ -1501,4 +1501,21 @@ TEST_F(ResponseHeadersTest, HasCookie) {
   EXPECT_EQ("", values[2]);
 }
 
+TEST_F(ResponseHeadersTest, CopyToProto) {
+  ResponseHeaders headers;
+  headers.set_status_code(200);
+  headers.Add("foo", "bar");
+  headers.Add("baz", "boo");
+
+  HttpResponseHeaders headers_proto;
+  headers.CopyToProto(&headers_proto);
+
+  EXPECT_EQ(200, headers_proto.status_code());
+  EXPECT_EQ(2, headers_proto.header_size());
+  EXPECT_EQ("foo", headers_proto.header(0).name());
+  EXPECT_EQ("bar", headers_proto.header(0).value());
+  EXPECT_EQ("baz", headers_proto.header(1).name());
+  EXPECT_EQ("boo", headers_proto.header(1).value());
+}
+
 }  // namespace net_instaweb

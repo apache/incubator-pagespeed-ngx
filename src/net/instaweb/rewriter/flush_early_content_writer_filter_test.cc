@@ -33,7 +33,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "testing/base/public/gunit.h"
-#include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/wildcard.h"
 
 namespace net_instaweb {
 

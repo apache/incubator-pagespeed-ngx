@@ -19,10 +19,10 @@
 #include <utility>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
 #include "pagespeed/kernel/util/re2.h"
 
 using std::pair;

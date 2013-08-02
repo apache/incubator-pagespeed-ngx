@@ -16,12 +16,12 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/rewriter/public/remove_comments_filter.h"
+#include "pagespeed/kernel/html/remove_comments_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/html/html_parse_test_base.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 

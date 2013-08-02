@@ -30,7 +30,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
-#include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/wildcard.h"
 
 namespace net_instaweb {
 

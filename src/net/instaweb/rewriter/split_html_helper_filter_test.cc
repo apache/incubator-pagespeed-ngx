@@ -38,7 +38,7 @@
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/util/wildcard.h"  // for Wildcard
+#include "pagespeed/kernel/base/wildcard.h"  // for Wildcard
 
 namespace net_instaweb {
 

@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz),
 //         jmaessen@google.com (Jan-Willem Maessen)
 
-#include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/wildcard.h"
 
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"

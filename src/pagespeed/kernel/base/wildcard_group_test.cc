@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/kernel/util/wildcard_group.h"
+#include "pagespeed/kernel/base/wildcard_group.h"
 
 #include "pagespeed/kernel/base/gtest.h"
 

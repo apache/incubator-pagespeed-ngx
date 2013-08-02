@@ -131,6 +131,9 @@ template<class Proto> class Headers {
   // Serialize HTTP headers in HTTP format so it can be re-parsed
   virtual bool WriteAsHttp(Writer* writer, MessageHandler* handler) const;
 
+  // Copy protobuf representation to "proto".
+  void CopyToProto(Proto* proto);
+
  protected:
   void PopulateMap() const;  // const is a lie, mutates map_.
 

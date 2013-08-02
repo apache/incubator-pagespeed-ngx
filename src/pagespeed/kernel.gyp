@@ -220,8 +220,11 @@
       'target_name': 'pagespeed_html',
       'type': '<(library)',
       'sources': [
+        'kernel/html/elide_attributes_filter.cc',
+        'kernel/html/collapse_whitespace_filter.cc',
         'kernel/html/doctype.cc',
         'kernel/html/empty_html_filter.cc',
+        'kernel/html/html_attribute_quote_removal.cc',
         'kernel/html/html_element.cc',
         'kernel/html/html_event.cc',
         'kernel/html/html_filter.cc',
@@ -230,6 +233,7 @@
         'kernel/html/html_node.cc',
         'kernel/html/html_parse.cc',
         'kernel/html/html_writer_filter.cc',
+        'kernel/html/remove_comments_filter.cc',
       ],
       'dependencies': [
         ':pagespeed_base_core',

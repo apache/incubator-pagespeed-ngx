@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         jmaessen@google.com (Jan-Willem Maessen)
 
-#ifndef PAGESPEED_KERNEL_UTIL_WILDCARD_H_
-#define PAGESPEED_KERNEL_UTIL_WILDCARD_H_
+#ifndef PAGESPEED_KERNEL_BASE_WILDCARD_H_
+#define PAGESPEED_KERNEL_BASE_WILDCARD_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
@@ -63,4 +63,4 @@ class Wildcard {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_WILDCARD_H_
+#endif  // PAGESPEED_KERNEL_BASE_WILDCARD_H_

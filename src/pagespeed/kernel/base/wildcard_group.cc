@@ -19,7 +19,7 @@
 // NOTE: THIS CODE IS DEAD.  IT IS ONLY LINKED BY THE SPEED_TEST PROVING IT'S
 // SLOWER THAN FastWildcardGroup, PLUS ITS OWN UNIT TEST.
 
-#include "pagespeed/kernel/util/wildcard_group.h"
+#include "pagespeed/kernel/base/wildcard_group.h"
 
 #include <vector>
 
@@ -27,7 +27,7 @@
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/wildcard.h"
 
 namespace net_instaweb {
 

@@ -37,7 +37,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/wildcard.h"
 
 namespace {
 const char kSampleJpgFile[] = "Sample.jpg";

@@ -19,8 +19,8 @@
 // NOTE: THIS CODE IS DEAD.  IT IS ONLY LINKED BY THE SPEED_TEST PROVING IT'S
 // SLOWER THAN FastWildcardGroup, PLUS ITS OWN UNIT TEST.
 
-#ifndef PAGESPEED_KERNEL_UTIL_WILDCARD_GROUP_H_
-#define PAGESPEED_KERNEL_UTIL_WILDCARD_GROUP_H_
+#ifndef PAGESPEED_KERNEL_BASE_WILDCARD_GROUP_H_
+#define PAGESPEED_KERNEL_BASE_WILDCARD_GROUP_H_
 
 #include <vector>
 #include "pagespeed/kernel/base/basictypes.h"
@@ -82,4 +82,4 @@ class WildcardGroup {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_UTIL_WILDCARD_GROUP_H_
+#endif  // PAGESPEED_KERNEL_BASE_WILDCARD_GROUP_H_

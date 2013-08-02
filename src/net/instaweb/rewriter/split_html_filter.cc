@@ -50,8 +50,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
 
 namespace net_instaweb {
 

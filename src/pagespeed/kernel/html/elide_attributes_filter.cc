@@ -16,18 +16,18 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/rewriter/public/elide_attributes_filter.h"
+#include "pagespeed/kernel/html/elide_attributes_filter.h"
 
 #include <cstddef>
 #include <map>
 #include <utility>
 
-#include "net/instaweb/htmlparse/public/doctype.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/html/doctype.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_parse.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -155,7 +155,7 @@ const TagAttrValue kDefaultList[] = {
   // 5: http://www.w3.org/TR/html5/association-of-controls-and-forms.html#
   //    attributes-for-form-submission
   {HtmlName::kForm, HtmlName::kEnctype, "application/x-www-form-urlencoded",
-   false},
+   false},  // NOLINT
   {HtmlName::kForm, HtmlName::kMethod, "get", false},
   // 4: http://www.w3.org/TR/html4/present/frames.html#h-16.2.2
   // 5: Note that the <frame> tag is deprecated in HTML5.

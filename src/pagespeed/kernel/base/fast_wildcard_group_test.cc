@@ -16,7 +16,7 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
 
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/gtest.h"

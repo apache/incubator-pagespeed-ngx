@@ -22,11 +22,11 @@
 #include <cstdarg>
 #include <map>
 
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
 
 namespace net_instaweb {
 

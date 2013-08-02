@@ -46,12 +46,6 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
       ],
-      'sources': [
-        'rewriter/collapse_whitespace_filter.cc',
-        'rewriter/elide_attributes_filter.cc',
-        'rewriter/html_attribute_quote_removal.cc',
-        'rewriter/remove_comments_filter.cc',
-      ],
       'include_dirs': [
         '<(instaweb_root)',
         '<(DEPTH)',

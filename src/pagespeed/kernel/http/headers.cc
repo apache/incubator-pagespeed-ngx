@@ -439,6 +439,11 @@ template<class Proto> bool Headers<Proto>::WriteAsHttp(
   return ret;
 }
 
+template<class Proto>
+void Headers<Proto>::CopyToProto(Proto* proto) {
+  proto->CopyFrom(*proto_);
+}
+
 // Explicit template class instantiation.
 // See http://www.cplusplus.com/forum/articles/14272/
 template class Headers<HttpResponseHeaders>;

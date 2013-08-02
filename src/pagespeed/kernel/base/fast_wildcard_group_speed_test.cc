@@ -21,8 +21,8 @@
 #include "pagespeed/kernel/base/benchmark.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
-#include "pagespeed/kernel/util/wildcard_group.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
+#include "pagespeed/kernel/base/wildcard_group.h"
 
 
 namespace net_instaweb {

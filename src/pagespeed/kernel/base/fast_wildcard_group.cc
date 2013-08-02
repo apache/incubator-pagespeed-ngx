@@ -16,7 +16,7 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
 
 #include <algorithm>
 #include <vector>
@@ -28,7 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/rolling_hash.h"
-#include "pagespeed/kernel/util/wildcard.h"
+#include "pagespeed/kernel/base/wildcard.h"
 
 namespace net_instaweb {
 

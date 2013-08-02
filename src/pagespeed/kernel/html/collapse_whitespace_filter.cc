@@ -16,18 +16,18 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
+#include "pagespeed/kernel/html/collapse_whitespace_filter.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 class HtmlParse;

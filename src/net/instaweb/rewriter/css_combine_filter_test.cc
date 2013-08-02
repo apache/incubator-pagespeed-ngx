@@ -1788,6 +1788,52 @@ TEST_F(CssCombineMaxSizeTest, TwoFilesPlusOneByte) {
   CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
 }
 
+class CollapseWhitespaceGeneralTest : public RewriteTestBase {
+  // Don't add any text to our tests.
+  virtual bool AddHtmlTags() const { return false; }
+};
+
+// Issue 463: Collapse whitespace after other filters have been applied
+// for maximum effectiveness.
+TEST_F(CollapseWhitespaceGeneralTest, CollapseAfterCombine) {
+  // Note: Even though we enable collapse_whitespace first, it should run
+  // after combine_css.
+  options()->EnableFilter(RewriteOptions::kCollapseWhitespace);
+  options()->EnableFilter(RewriteOptions::kCombineCss);
+  rewrite_driver()->AddFilters();
+
+  // Setup resources for combine_css.
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(AbsolutifyUrl("a.css"),
+                   default_css_header, ".a { color: red; }");
+  SetFetchResponse(AbsolutifyUrl("b.css"),
+                   default_css_header, ".b { color: green; }");
+  SetFetchResponse(AbsolutifyUrl("c.css"),
+                   default_css_header, ".c { color: blue; }");
+
+  // Before and expected after text.
+  const char before[] =
+      "<html>\n"
+      "  <head>\n"
+      "    <link rel=stylesheet type=text/css href=a.css>\n"
+      "    <link rel=stylesheet type=text/css href=b.css>\n"
+      "    <link rel=stylesheet type=text/css href=c.css>\n"
+      "  </head>\n"
+      "</html>\n";
+  const char after_template[] =
+      "<html>\n"
+      "<head>\n"
+      "<link rel=stylesheet type=text/css href=%s />\n"
+      "</head>\n"
+      "</html>\n";
+  GoogleString after = StringPrintf(after_template, Encode(
+      kTestDomain, "cc", "0", MultiUrl("a.css", "b.css", "c.css"),
+      "css").c_str());
+
+  ValidateExpected("collapse_after_combine", before, after);
+}
+
 /*
   TODO(jmarantz): cover intervening FLUSH
   TODO(jmarantz): consider converting some of the existing tests to this

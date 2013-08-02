@@ -16,10 +16,10 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/rewriter/public/remove_comments_filter.h"
+#include "pagespeed/kernel/html/remove_comments_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/html/html_parse.h"
 
 namespace net_instaweb {
 

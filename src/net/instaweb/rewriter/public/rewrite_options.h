@@ -40,11 +40,11 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/dense_hash_map.h"
+#include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
 #include "pagespeed/kernel/base/string_hash.h"
+#include "pagespeed/kernel/base/wildcard.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
-#include "pagespeed/kernel/util/fast_wildcard_group.h"
-#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
