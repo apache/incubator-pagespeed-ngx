@@ -55,7 +55,7 @@ namespace net_instaweb {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+  NgxBaseFetch(ngx_http_request_t* r,
                NgxServerContext* server_context,
                const RequestContextPtr& request_ctx,
                bool modify_caching_headers);
@@ -87,7 +87,13 @@ class NgxBaseFetch : public AsyncFetch {
   void Release();
   void set_handle_error(bool x) { handle_error_ = x; }
 
+  static ngx_int_t Initialize(ngx_log_t *log, MessageHandler *handler);
+  static void Terminate(ngx_log_t * log);
+
  private:
+  static void ngx_event_handler(ngx_event_t *ev);
+  static void ProcessSignalExcept(NgxBaseFetch *except);
+  void SignalNoLock();
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleHeadersComplete();
@@ -118,14 +124,17 @@ class NgxBaseFetch : public AsyncFetch {
   NgxServerContext* server_context_;
   bool done_called_;
   bool last_buf_sent_;
-  int pipe_fd_;
   // How many active references there are to this fetch. Starts at two,
   // decremented once when Done() is called and once when Release() is called.
-  int references_;
-  pthread_mutex_t mutex_;
+  AtomicInt32 references_;
+  scoped_ptr<AbstractMutex> mutex_;
+  bool pending_;
   bool handle_error_;
   bool modify_caching_headers_;
 
+  // set by RequestCollection, cleared by CollectAccumulatedWrites
+  static ngx_connection_t *pipe_conn_;
+  static int pipefds_[2];
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
 

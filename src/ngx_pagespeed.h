@@ -111,6 +111,8 @@ ngx_int_t copy_response_headers_to_ngx(
             ngx_http_request_t* r,
             const net_instaweb::ResponseHeaders& pagespeed_headers,
             bool modify_caching_headers);
+
+ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r);
 }  // namespace ngx_psol
 
 #endif  // NGX_PAGESPEED_H_
