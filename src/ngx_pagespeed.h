@@ -97,15 +97,15 @@ typedef struct {
 
   // for in place resource
   net_instaweb::RewriteDriver* driver;
-  net_instaweb::InPlaceResourceRecorder *recorder;
+  net_instaweb::InPlaceResourceRecorder* recorder;
 } ps_request_ctx_t;
 
 
-void copy_request_headers_from_ngx(const ngx_http_request_t *r,
-       net_instaweb::RequestHeaders *headers);
+void copy_request_headers_from_ngx(const ngx_http_request_t* r,
+       net_instaweb::RequestHeaders* headers);
 
-void copy_response_headers_from_ngx(const ngx_http_request_t *r,
-       net_instaweb::ResponseHeaders *headers);
+void copy_response_headers_from_ngx(const ngx_http_request_t* r,
+       net_instaweb::ResponseHeaders* headers);
 
 ngx_int_t copy_response_headers_to_ngx(
             ngx_http_request_t* r,
