@@ -504,6 +504,24 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name response-header-filters.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed on;
+    add_header PageSpeedFilters add_instrumentation;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name response-header-disable.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed EnableFilters add_instrumentation;
+    pagespeed on;
+    add_header PageSpeed off;
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";

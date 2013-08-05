@@ -1448,10 +1448,10 @@ check_not_from "$OUT" grep 'mod_pagespeed_beacon.*exptid'
 # order they're defined in the config file.
 start_test Resource urls are rewritten to include experiment indexes.
 http_proxy=$SECONDARY_HOSTNAME \
-  WGET_ARGS="--header 'Cookie:PageSpeedExperiment=7'" fetch_until $EXP_EXTEND_CACHE \
+  WGET_ARGS="--header Cookie:PageSpeedExperiment=7" fetch_until $EXP_EXTEND_CACHE \
     "fgrep -c .pagespeed.a.ic." 1
 http_proxy=$SECONDARY_HOSTNAME \
-  WGET_ARGS="--header 'Cookie:PageSpeedExperiment=2'" fetch_until $EXP_EXTEND_CACHE \
+  WGET_ARGS="--header Cookie:PageSpeedExperiment=2" fetch_until $EXP_EXTEND_CACHE \
     "fgrep -c .pagespeed.b.ic." 1
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=7' \
       $EXP_EXTEND_CACHE)
@@ -1688,5 +1688,13 @@ check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 # Nginx's gzip module clears etags, which we don't want. Make sure we have it.
 check_from "$JS_HEADERS" egrep -qi 'Etag: W/"0"'
 check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
+
+
+start_test PageSpeedFilters response headers is interpreted
+URL=$SECONDARY_HOSTNAME/mod_pagespeed_example/
+OUT=$($WGET_DUMP --header=Host:response-header-filters.example.com $URL)
+check_from "$OUT" egrep -qi 'addInstrumentationInit'
+OUT=$($WGET_DUMP --header=Host:response-header-disable.example.com $URL)
+check_not_from "$OUT" egrep -qi 'addInstrumentationInit'
 
 check_failures_and_exit

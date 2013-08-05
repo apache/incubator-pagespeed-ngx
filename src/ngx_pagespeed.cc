@@ -121,8 +121,8 @@ ngx_int_t string_piece_to_buffer_chain(
   // How far into sp we're currently working on.
   ngx_uint_t offset;
 
-  // TODO(jefftk): look up the nginx buffer size properly.
-  ngx_uint_t max_buffer_size = 8192;  // 8k
+  // Other modules seem to default to ngx_pagesize.
+  ngx_uint_t max_buffer_size = ngx_pagesize;
   for (offset = 0 ;
        offset < sp.size() ||
            // If we need to send the last buffer bit and there's no data, we
@@ -224,8 +224,8 @@ void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
 }  // namespace
 
 // modify from NgxBaseFetch::PopulateResponseHeaders()
-void copy_response_headers_from_ngx(const ngx_http_request_t *r,
-        net_instaweb::ResponseHeaders *headers) {
+void copy_response_headers_from_ngx(const ngx_http_request_t* r,
+        net_instaweb::ResponseHeaders* headers) {
   headers->set_major_version(r->http_version / 1000);
   headers->set_minor_version(r->http_version % 1000);
   copy_headers_from_table(r->headers_out.headers, headers);
@@ -242,8 +242,8 @@ void copy_response_headers_from_ngx(const ngx_http_request_t *r,
 }
 
 // modify from NgxBaseFetch::PopulateRequestHeaders()
-void copy_request_headers_from_ngx(const ngx_http_request_t *r,
-                                   net_instaweb::RequestHeaders *headers) {
+void copy_request_headers_from_ngx(const ngx_http_request_t* r,
+                                   net_instaweb::RequestHeaders* headers) {
   // TODO(chaizhenhua): only allow RewriteDriver::kPassThroughRequestAttributes?
   headers->set_major_version(r->http_version / 1000);
   headers->set_minor_version(r->http_version % 1000);
@@ -961,8 +961,8 @@ ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r) {
 void ps_release_base_fetch(ps_request_ctx_t* ctx);
 
 // we are still at pagespeed phase
-ngx_int_t ps_decline_request(ngx_http_request_t *r) {
-  ps_request_ctx_t *ctx = ps_get_request_context(r);
+ngx_int_t ps_decline_request(ngx_http_request_t* r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
   // re init ctx
@@ -981,8 +981,8 @@ ngx_int_t ps_decline_request(ngx_http_request_t *r) {
 }
 
 
-ngx_int_t ps_async_wait_response(ngx_http_request_t *r) {
-  ps_request_ctx_t *ctx = ps_get_request_context(r);
+ngx_int_t ps_async_wait_response(ngx_http_request_t* r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
   r->count++;
@@ -1021,10 +1021,10 @@ ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   return ctx->fetch_done ? NGX_OK : NGX_AGAIN;
 }
 
-ngx_int_t ps_base_fetch_handler(ngx_http_request_t *r) {
+ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   ngx_int_t rc;
-  ngx_chain_t *cl = NULL;
+  ngx_chain_t* cl = NULL;
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps fetch handler: %V", &r->uri);
@@ -1141,7 +1141,7 @@ void ps_connection_read_handler(ngx_event_t* ev) {
 
   ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(c->data);
   CHECK(ctx != NULL);
-  ngx_http_request_t *r = ctx->r;
+  ngx_http_request_t* r = ctx->r;
   CHECK(r != NULL);
 
   // clear the pipe
@@ -1217,6 +1217,7 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 net_instaweb::RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
     net_instaweb::RequestHeaders* request_headers,
+    net_instaweb::ResponseHeaders* response_headers,
     ps_srv_conf_t* cfg_s,
     net_instaweb::GoogleUrl* url) {
   // Stripping ModPagespeed query params before the property cache lookup to
@@ -1224,7 +1225,8 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
   //
   // Sets option from request headers and url.
   net_instaweb::ServerContext::OptionsBoolPair query_options_success =
-      cfg_s->server_context->GetQueryOptions(url, request_headers, NULL);
+      cfg_s->server_context->GetQueryOptions(url, request_headers,
+                                             response_headers);
   bool get_query_options_success = query_options_success.second;
   if (!get_query_options_success) {
     // Failed to parse query params or request headers.  Treat this as if there
@@ -1297,6 +1299,7 @@ bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
 // set options to NULL so we can use server_context->global_options().
 bool ps_determine_options(ngx_http_request_t* r,
                           net_instaweb::RequestHeaders* request_headers,
+                          net_instaweb::ResponseHeaders* response_headers,
                           net_instaweb::RewriteOptions** options,
                           net_instaweb::GoogleUrl* url) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -1313,7 +1316,8 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   net_instaweb::RewriteOptions* request_options =
-      ps_determine_request_options(r, request_headers, cfg_s, url);
+      ps_determine_request_options(r, request_headers, response_headers,
+                                   cfg_s, url);
 
   // Because the caller takes memory ownership of any options we return, the
   // only situation in which we can avoid allocating a new RewriteOptions is if
@@ -1558,8 +1562,8 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
 }
 
 // TODO(chaizhenhua): merge into NgxBaseFetch ctor
-ngx_int_t ps_create_base_fetch(ps_request_ctx_t *ctx) {
-  ngx_http_request_t *r = ctx->r;
+ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx) {
+  ngx_http_request_t* r = ctx->r;
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   int file_descriptors[2];
 
@@ -1700,13 +1704,13 @@ CreateRequestContext::Response ps_create_request_context(
   return CreateRequestContext::kResource;
 }
 
-ngx_int_t ps_resource_handler(ngx_http_request_t *r, bool html_rewrite) {
+ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   if (r != r->main) {
     return NGX_DECLINED;
   }
 
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  ps_request_ctx_t *ctx = ps_get_request_context(r);
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
@@ -1723,12 +1727,16 @@ ngx_int_t ps_resource_handler(ngx_http_request_t *r, bool html_rewrite) {
 
   scoped_ptr<net_instaweb::RequestHeaders> request_headers(
                                 new net_instaweb::RequestHeaders);
+  scoped_ptr<net_instaweb::ResponseHeaders> response_headers(
+                                new net_instaweb::ResponseHeaders);
 
   copy_request_headers_from_ngx(r, request_headers.get());
+  copy_response_headers_from_ngx(r, response_headers.get());
 
-  net_instaweb::RewriteOptions *options = NULL;
+  net_instaweb::RewriteOptions* options = NULL;
 
-  if (!ps_determine_options(r, request_headers.get(), &options, &url)) {
+  if (!ps_determine_options(r, request_headers.get(), response_headers.get(),
+                            &options, &url)) {
     return NGX_ERROR;
   }
 
@@ -2228,8 +2236,8 @@ namespace in_place {
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
-ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t *r) {
-  ps_request_ctx_t *ctx = ps_get_request_context(r);
+ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   if (ctx == NULL || !ctx->in_place) {
     return ngx_http_next_header_filter(r);
@@ -2295,8 +2303,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t *r) {
   return ps_decline_request(r);
 }
 
-ngx_int_t ps_in_place_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
-  ps_request_ctx_t *ctx = ps_get_request_context(r);
+ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   if (ctx == NULL || ctx->recorder == NULL) {
     return ngx_http_next_body_filter(r, in);
   }
@@ -2306,7 +2314,7 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t *r, ngx_chain_t *in) {
 
   net_instaweb::InPlaceResourceRecorder* recorder = ctx->recorder;
 
-  for (ngx_chain_t *cl = in; cl; cl = cl->next) {
+  for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
        CHECK(ngx_buf_in_memory(cl->buf));
        StringPiece contents(reinterpret_cast<char *>(cl->buf->pos),
@@ -2863,8 +2871,8 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   return NGX_ERROR;
 }
 
-ngx_int_t ps_phase_handler(ngx_http_request_t *r,
-      ngx_http_phase_handler_t *ph) {
+ngx_int_t ps_phase_handler(ngx_http_request_t* r,
+      ngx_http_phase_handler_t* ph) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "pagespeed phase: %ui", r->phase_handler);
 
@@ -2888,8 +2896,8 @@ ngx_int_t ps_phase_handler(ngx_http_request_t *r,
 namespace fix_headers {
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 
-ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t *r) {
-  ps_request_ctx_t *ctx = ps_get_request_context(r);
+ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t* r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   if (r != r->main || ctx == NULL || !ctx->html_rewrite
       || !ctx->modify_caching_headers) {
     return ngx_http_next_header_filter(r);
@@ -2928,12 +2936,12 @@ using fix_headers::ps_html_rewrite_fix_headers_filter_init;
 
 
 // preaccess_handler should be at generic phase before try_files
-ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
-  ngx_http_core_main_conf_t *cmcf;
-  ngx_http_phase_handler_t *ph;
+ngx_int_t ps_preaccess_handler(ngx_http_request_t* r) {
+  ngx_http_core_main_conf_t* cmcf;
+  ngx_http_phase_handler_t* ph;
   ngx_uint_t i;
 
-  cmcf = static_cast<ngx_http_core_main_conf_t *>(
+  cmcf = static_cast<ngx_http_core_main_conf_t*>(
                     ngx_http_get_module_main_conf(r, ngx_http_core_module));
 
   ph = cmcf->phase_engine.handlers;
