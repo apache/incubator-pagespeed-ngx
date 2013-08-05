@@ -1210,6 +1210,7 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 net_instaweb::RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
     net_instaweb::RequestHeaders* request_headers,
+    net_instaweb::ResponseHeaders* response_headers,
     ps_srv_conf_t* cfg_s,
     net_instaweb::GoogleUrl* url) {
   // Stripping ModPagespeed query params before the property cache lookup to
@@ -1217,7 +1218,8 @@ net_instaweb::RewriteOptions* ps_determine_request_options(
   //
   // Sets option from request headers and url.
   net_instaweb::ServerContext::OptionsBoolPair query_options_success =
-      cfg_s->server_context->GetQueryOptions(url, request_headers, NULL);
+      cfg_s->server_context->GetQueryOptions(url, request_headers,
+                                             response_headers);
   bool get_query_options_success = query_options_success.second;
   if (!get_query_options_success) {
     // Failed to parse query params or request headers.  Treat this as if there
@@ -1290,6 +1292,7 @@ bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
 // set options to NULL so we can use server_context->global_options().
 bool ps_determine_options(ngx_http_request_t* r,
                           net_instaweb::RequestHeaders* request_headers,
+                          net_instaweb::ResponseHeaders* response_headers,
                           net_instaweb::RewriteOptions** options,
                           net_instaweb::GoogleUrl* url) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -1306,7 +1309,8 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   net_instaweb::RewriteOptions* request_options =
-      ps_determine_request_options(r, request_headers, cfg_s, url);
+      ps_determine_request_options(r, request_headers, response_headers,
+                                   cfg_s, url);
 
   // Because the caller takes memory ownership of any options we return, the
   // only situation in which we can avoid allocating a new RewriteOptions is if
@@ -1717,12 +1721,16 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   scoped_ptr<net_instaweb::RequestHeaders> request_headers(
                                 new net_instaweb::RequestHeaders);
+  scoped_ptr<net_instaweb::ResponseHeaders> response_headers(
+                                new net_instaweb::ResponseHeaders);
 
   copy_request_headers_from_ngx(r, request_headers.get());
+  copy_response_headers_from_ngx(r, response_headers.get());
 
   net_instaweb::RewriteOptions* options = NULL;
 
-  if (!ps_determine_options(r, request_headers.get(), &options, &url)) {
+  if (!ps_determine_options(r, request_headers.get(), response_headers.get(),
+                            &options, &url)) {
     return NGX_ERROR;
   }
 
