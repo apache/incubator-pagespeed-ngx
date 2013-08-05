@@ -583,6 +583,12 @@ sleep .1
 OUT=$($FETCH_CMD)
 check_not_from "$OUT" fgrep "<style>"
 
+# If DisableRewriteOnNoTransform is turned off, verify that the rewriting
+# applies even if Cache-control: no-transform is set.
+start_test rewrite on Cache-control: no-transform
+URL=$TEST_ROOT/disable_no_transform/index.html?PageSpeedFilters=inline_css
+fetch_until -save -recursive $URL 'grep -c style' 2
+
 WGET_ARGS=""
 start_test PageSpeedShardDomain directive in location block
 fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
@@ -1589,9 +1595,9 @@ OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
 # Send a beacon response using POST indicating that Puzzle.jpg is a critical
 # image.
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
-BEACON_DATA="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
-BEACON_DATA+="image_rewriting%2Frewrite_images.html"
-BEACON_DATA+="&oh=$OPTIONS_HASH&ci=2932493096"
+BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+BEACON_URL+="image_rewriting%2Frewrite_images.html"
+BEACON_DATA="oh=$OPTIONS_HASH&ci=2932493096"
 # See the comments about 204 responses and --no-http-keep-alive above.
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
   wget -q --save-headers -O - --no-http-keep-alive \
@@ -1605,13 +1611,17 @@ http_proxy=$SECONDARY_HOSTNAME \
 # Now test sending a beacon with a GET request, instead of POST. Indicate that
 # Puzzle.jpg and Cuppa.png are the critical images. In practice we expect only
 # POSTs to be used by the critical image beacon, but both code paths are
-# supported.
+# supported. We need to do this several times since 80% support is required
+# for an image to be considered critical.
 # Add the hash for Cuppa.png to BEACON_DATA, which will be used as the query
 # params for the GET.
 BEACON_DATA+=",2644480723"
-OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-  $WGET_DUMP "$BEACON_URL?$BEACON_DATA")
-check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+for i in {1..4}; do
+  OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
+  check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+done
+
 # Now only BikeCrashIcn.png should be lazyloaded.
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
