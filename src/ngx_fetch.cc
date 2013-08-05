@@ -273,9 +273,7 @@ namespace net_instaweb {
     url_.url.data += scheme_offset;
     url_.url.len -= scheme_offset;
     url_.default_port = port;
-    // TODO(oschaaf): no_resolve was set to 0, which is why url_.port
-    // would always be '0' after parsing it. See:
-    // http://lxr.evanmiller.org/http/source/core/ngx_inet.c#L875
+    // See: http://lxr.evanmiller.org/http/source/core/ngx_inet.c#L875
     url_.no_resolve = 0;
     url_.uri_part = 1;
 
@@ -422,9 +420,7 @@ namespace net_instaweb {
     connection_->read->handler = NgxFetchRead;
     connection_->data = this;
 
-    if (rc == NGX_AGAIN) {
-      ngx_add_timer(connection_->write, fetcher_->fetch_timeout_);
-    }
+    // Timer set in Init() is still in effect.
     return rc;
   }
 
@@ -440,10 +436,10 @@ namespace net_instaweb {
       if (n >= 0) {
         out->pos += n;
       } else if (n == NGX_AGAIN) {
-        // TODO(junmin): set write event timeout
         if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
           fetch->CallbackDone(false);
         }
+        // Timer set in Init() is still in effect.
         return;
       } else {
         c->error = 1;
@@ -505,7 +501,7 @@ namespace net_instaweb {
       fetch->CallbackDone(false);
     }
 
-    // TODO(junmin): set read event timeout
+    // Timer set in Init() is still in effect.
   }
 
   // Parse the status line: "HTTP/1.1 200 OK\r\n"
