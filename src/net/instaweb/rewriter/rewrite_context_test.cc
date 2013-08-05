@@ -4322,4 +4322,67 @@ TEST_F(RewriteContextTest, InlineContextWithImplicitTtl) {
   ClearStats();
 }
 
+TEST_F(RewriteContextTest, CacheTtlWithDuplicateOtherDeps) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->set_rewrite_deadline_ms(1);
+  options()->set_enable_cache_purge(true);  // Enable dedup code.
+  options()->ComputeSignature();
+  rewrite_driver()->AddFilters();
+
+  SetCacheDelayUs(2000);  // so that rewrite deadline is hit.
+  ResponseHeaders headers;
+  int64 now_ms = http_cache()->timer()->NowMs();
+  const char kImageContent[] = "image1";
+  headers.Add(HttpAttributes::kContentType, kContentTypeJpeg.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetDateAndCaching(now_ms, 200 * Timer::kSecondMs);
+  GoogleString image_url = AbsolutifyUrl("1.jpg");
+  SetFetchResponse(image_url, headers, kImageContent);
+
+  GoogleString css_content = StrCat("{background:url(\"",
+                                    AbsolutifyUrl("1.jpg"), "\")}");
+  // Have duplicate entries to trigger the de-dup code for other dependencies.
+  GoogleString duplicate_css_content = StrCat(css_content, css_content);
+  headers.Clear();
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetDateAndCaching(now_ms, 600 * Timer::kSecondMs);
+  GoogleString css_url = AbsolutifyUrl("text.css");
+  SetFetchResponse(css_url, headers, duplicate_css_content);
+
+  GoogleString rewritten_url =
+      Encode(kTestDomain, "cf", "0", "text.css", "css");
+
+  // The first request is not rewritten as there is cache miss and rewrite
+  // deadline is small.
+  ValidateNoChanges("cf_no_changes_1", CssLinkHref(css_url));
+  rewrite_driver()->WaitForCompletion();
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());  // cf, ic, 1.jpg, original text.css
+  EXPECT_EQ(5, lru_cache()->num_inserts());  // above + rewritten text.css
+  ClearStats();
+
+  // The subsequent request should see a cache hit and no misses or inserts.
+  ValidateExpected("cf_rewritten_2", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  rewrite_driver()->WaitForCompletion();  // cf metadata cache hit
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  ClearStats();
+
+  // Advance time by the shorter of the ttls of the resources. We should see
+  // cache inserts as the metadata expired. And the css file is not rewritten
+  // as the rewrite deadline is too short.
+  AdvanceTimeMs(220 * Timer::kSecondMs);
+  ValidateNoChanges("cf_md_cache_miss", CssLinkHref(css_url));
+  rewrite_driver()->WaitForCompletion();
+  EXPECT_EQ(4, lru_cache()->num_hits());  // cf, ic, 1.jpg, original text.css
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_inserts());
+  ClearStats();
+}
+
 }  // namespace net_instaweb

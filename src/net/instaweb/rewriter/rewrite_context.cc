@@ -30,6 +30,7 @@
 #include <utility>                      // for pair
 #include <vector>
 #include <memory>
+#include <map>                          // for map<>::const_iterator
 
 #include "base/logging.h"
 #include "net/instaweb/config/rewrite_options_manager.h"
@@ -2142,25 +2143,57 @@ void RewriteContext::StartNestedTasksImpl() {
   }
 }
 
+// Returns true if there is already an other_dependency input info with the
+// same url.
+bool RewriteContext::HasDuplicateOtherDependency(const InputInfo& input) {
+  if (input.has_url()) {
+    StringIntMap::const_iterator it = other_dependency_map_.find(input.url());
+    if (it != other_dependency_map_.end()) {
+      int index = it->second;
+      const InputInfo& input_info = partitions_->other_dependency(index);
+      if (input_info.expiration_time_ms() == input.expiration_time_ms()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void RewriteContext::CheckAndAddOtherDependency(const InputInfo& input_info) {
+  if (input_info.has_url() && HasDuplicateOtherDependency(input_info)) {
+    return;
+  }
+
+  InputInfo* dep = partitions_->add_other_dependency();
+  dep->CopyFrom(input_info);
+  // The input index here is with respect to the nested context's inputs,
+  // so would not be interpretable at top-level, and we don't use it for
+  // other_dependency entries anyway, so be both defensive and frugal
+  // and don't write it out.
+  if (dep->has_index()) {
+    dep->clear_index();
+  }
+  // Add this to the other_dependency_map.
+  if (dep->has_url()) {
+    int index = partitions_->other_dependency_size() - 1;
+    other_dependency_map_[dep->url()] = index;
+  }
+}
+
 void RewriteContext::NestedRewriteDone(const RewriteContext* context) {
   // Record any external dependencies we have.
-  // TODO(morlovich): Eliminate duplicates?
   for (int p = 0; p < context->num_output_partitions(); ++p) {
     const CachedResult* nested_result = context->output_partition(p);
     for (int i = 0; i < nested_result->input_size(); ++i) {
-      InputInfo* dep = partitions_->add_other_dependency();
-      dep->CopyFrom(nested_result->input(i));
-      // The input index here is with respect to the nested context's inputs,
-      // so would not be interpretable at top-level, and we don't use it for
-      // other_dependency entries anyway, so be both defensive and frugal
-      // and don't write it out.
-      dep->clear_index();
+      const InputInfo& input_info = nested_result->input(i);
+      // De-dup while adding.
+      CheckAndAddOtherDependency(input_info);
     }
   }
 
   for (int p = 0; p < context->partitions_->other_dependency_size(); ++p) {
-    InputInfo* dep = partitions_->add_other_dependency();
-    dep->CopyFrom(context->partitions_->other_dependency(p));
+    const InputInfo& other_dep = context->partitions_->other_dependency(p);
+    CheckAndAddOtherDependency(other_dep);
   }
 
   if (context->was_too_busy_) {

@@ -850,6 +850,15 @@ class RewriteContext {
   // spike or overload (kFallbackDiscretional).
   bool CanFetchFallbackToOriginal(FallbackCondition circumstance) const;
 
+  // Checks whether an other dependency input info already exists in the
+  // partition with the same data. Used to de-dup the field.
+  bool HasDuplicateOtherDependency(const InputInfo& input);
+
+  // Check if there is a duplicate and if there is none, add to the other
+  // dependencies. Updates the internal other_dependency map that is used to
+  // de-dup the contents.
+  void CheckAndAddOtherDependency(const InputInfo& input);
+
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
 
@@ -994,6 +1003,9 @@ class RewriteContext {
 
   // Stores the resulting headers and content of a distributed rewrite.
   scoped_ptr<DistributedRewriteFetch> distributed_fetch_;
+
+  // Map to dedup partitions other dependency field.
+  StringIntMap other_dependency_map_;
 
   Variable* const num_distributed_rewrite_failures_;
   Variable* const num_distributed_rewrite_successes_;
