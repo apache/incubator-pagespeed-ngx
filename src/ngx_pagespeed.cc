@@ -1993,18 +1993,49 @@ void ps_strip_html_headers(ngx_http_request_t* r) {
 
   ngx_table_elt_t* header;
   net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
+  bool accept_ranges_found = false;
   while ((header = it.Next()) != NULL) {
-    // We also need to strip:
+    // We also need to check:
     //   Accept-Ranges
     //    - won't work because our html changes
     //   Vary: Accept-Encoding
     //    - our gzip filter will add this later
-    if (STR_CASE_EQ_LITERAL(header->key, "Accept-Ranges") ||
-        (STR_CASE_EQ_LITERAL(header->key, "Vary") &&
-         STR_CASE_EQ_LITERAL(header->value, "Accept-Encoding"))) {
+    if (STR_CASE_EQ_LITERAL(header->key, "Vary") &&
+         STR_CASE_EQ_LITERAL(header->value, "Accept-Encoding")) {
       // Response headers with hash of 0 are excluded from the response.
       header->hash = 0;
     }
+    if (STR_CASE_EQ_LITERAL(header->key, "Accept-Ranges")) {
+        if (!accept_ranges_found) {
+          accept_ranges_found = true;
+          header->value.data =
+              reinterpret_cast<u_char*>(const_cast<char*>("none"));
+          header->value.len = 4;
+          header->hash = 1;
+          r->headers_out.accept_ranges = header;
+        } else {
+          // There can be only one.
+          header->hash = 0;
+        }
+    }
+  }
+
+  if (!accept_ranges_found) {
+    ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&(r->headers_out.headers)));
+    if (header == NULL) {
+      ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                    "Failure while adding header for Accept-Range");
+      return;
+    }
+
+    header->hash = 1;  // Include this header in the output.
+    header->key.len = strlen("Accept-Ranges");
+    header->key.data = reinterpret_cast<u_char*>(
+        const_cast<char*>("Accept-Ranges"));
+    header->value.len = strlen("None");
+    header->value.data = reinterpret_cast<u_char*>(const_cast<char*>("None"));
+    r->headers_out.accept_ranges = header;
   }
 }
 
