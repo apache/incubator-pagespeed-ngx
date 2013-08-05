@@ -116,8 +116,8 @@ ngx_int_t string_piece_to_buffer_chain(
   // How far into sp we're currently working on.
   ngx_uint_t offset;
 
-  // TODO(jefftk): look up the nginx buffer size properly.
-  ngx_uint_t max_buffer_size = 8192;  // 8k
+  // Other modules seem to default to ngx_pagesize.
+  ngx_uint_t max_buffer_size = ngx_pagesize;
   for (offset = 0 ;
        offset < sp.size() ||
            // If we need to send the last buffer bit and there's no data, we
