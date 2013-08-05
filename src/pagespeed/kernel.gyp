@@ -370,6 +370,7 @@
         'pagespeed_base',
         'pagespeed_thread',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
     },
     {
@@ -406,6 +407,7 @@
       ],
       'export_dependent_settings': [
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],

@@ -50,9 +50,11 @@
       }],
       ['use_system_libs==1', {
         'use_system_apache_dev': 1,
+        'use_system_icu': 1,
         'use_system_libjpeg': 1,
         'use_system_libpng': 1,
         'use_system_opencv': 1,
+        'use_system_openssl': 1,
         'use_system_zlib': 1,
       },{
         'use_system_apache_dev%': 0,

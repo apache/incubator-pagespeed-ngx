@@ -27,8 +27,15 @@
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
+extern "C" {
 #include "third_party/giflib/lib/gif_lib.h"
+
+#ifdef USE_SYSTEM_LIBPNG
+#include "png.h"                                               // NOLINT
+#else
 #include "third_party/libpng/png.h"
+#endif
+}
 
 namespace pagespeed {
 

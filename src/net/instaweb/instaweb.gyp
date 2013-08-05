@@ -686,6 +686,7 @@
         'rewriter/critical_images.proto',
       ],
       'dependencies': [
+        'instaweb_critical_keys_pb',
       ],
       'includes': [
         'protoc.gypi',

@@ -28,7 +28,13 @@
 #include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
+extern "C" {
+#ifdef USE_SYSTEM_LIBPNG
+#include "png.h"                                               // NOLINT
+#else
 #include "third_party/libpng/png.h"
+#endif
+}
 
 namespace {
 
