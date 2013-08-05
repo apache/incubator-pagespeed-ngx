@@ -40,11 +40,16 @@
     {
       'target_name': 'instaweb_rewriter_html',
       'type': '<(library)',
+      # Like above, we need a dummy .cc file for OS X to build this.
+      # It should go away once PSI has been ported to new target names.
+      'sources': [
+        'htmlparse/dummy.cc',
+      ],
       'dependencies': [
         'instaweb_htmlparse_core',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http_core',
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -58,7 +63,7 @@
       },
       'export_dependent_settings': [
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http_core',
         'instaweb_htmlparse_core',
       ]
     },
@@ -70,7 +75,7 @@
         'instaweb_htmlparse_core',
         'instaweb_rewriter_html',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
-        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+        '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http_core',
       ],
       'sources': [
         'rewriter/html_minifier_main.cc',
