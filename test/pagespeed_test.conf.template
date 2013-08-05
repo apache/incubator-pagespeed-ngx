@@ -523,6 +523,15 @@ http {
       pagespeed RewriteLevel PassThrough;
       pagespeed EnableFilters collapse_whitespace,extend_cache,recompress_images,convert_jpeg_to_webp,defer_javascript;
     }
+
+    location /mod_pagespeed_test/disable_no_transform/index.html {
+      pagespeed DisableRewriteOnNoTransform off;
+    }
+
+    location /mod_pagespeed_test/disable_no_transform/disable_no_transform.css {
+      add_header 'Cache-Control' 'no-transform';
+    }
+
     # uncomment the following two lines if you're testing memcached
     #pagespeed MemcachedServers "localhost:11211";
     #pagespeed MemcachedThreads 1;
