@@ -1659,4 +1659,12 @@ check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi 'Etag: W/"0"'
 check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
+
+start_test PageSpeedFilters response headers is interpreted
+URL=$SECONDARY_HOSTNAME/mod_pagespeed_example/
+OUT=$($WGET_DUMP --header=Host:response-header-filters.example.com $URL)
+check_from "$OUT" egrep -qi 'addInstrumentationInit'
+OUT=$($WGET_DUMP --header=Host:response-header-disable.example.com $URL)
+check_not_from "$OUT" egrep -qi 'addInstrumentationInit'
+
 check_failures_and_exit
