@@ -33,7 +33,7 @@ namespace net_instaweb {
 
 class NgxListIterator {
  public:
-  NgxListIterator(ngx_list_part_t* part);
+  explicit NgxListIterator(ngx_list_part_t* part);
 
   // Return the next element of the list if there is one, NULL otherwise.
   ngx_table_elt_t* Next();
