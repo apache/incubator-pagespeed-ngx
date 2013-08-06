@@ -152,8 +152,42 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty("", &SystemRewriteOptions::ssl_cert_file_, "asslf",
                     RewriteOptions::kSslCertFile,
                     "File with SSL certificates.");
-
+  AddSystemProperty("", &SystemRewriteOptions::slurp_directory_, "asd",
+                    RewriteOptions::kSlurpDirectory,
+                    "Directory from which to read slurped resources");
+  AddSystemProperty(false, &SystemRewriteOptions::test_proxy_, "atp",
+                    RewriteOptions::kTestProxy,
+                    "Direct non-PageSpeed URLs to a fetcher, acting as a "
+                    "simple proxy. Meant for test use only");
+  AddSystemProperty("", &SystemRewriteOptions::test_proxy_slurp_, "atps",
+                    RewriteOptions::kTestProxySlurp,
+                    "If set, the fetcher used by the TestProxy mode will be a "
+                    "readonly slurp fetcher from the given directory");
+  AddSystemProperty(false, &SystemRewriteOptions::slurp_read_only_, "asro",
+                    RewriteOptions::kSlurpReadOnly,
+                    "Only read from the slurped directory, fail to fetch "
+                    "URLs not already in the slurped directory");
+  AddSystemProperty(false,
+                    &SystemRewriteOptions::rate_limit_background_fetches_,
+                    "rlbf",
+                    RewriteOptions::kRateLimitBackgroundFetches,
+                    "Rate-limit the number of background HTTP fetches done at "
+                    "once");
+  AddSystemProperty(0, &SystemRewriteOptions::slurp_flush_limit_, "asfl",
+                    RewriteOptions::kSlurpFlushLimit,
+                    "Set the maximum byte size for the slurped content to hold "
+                    "before a flush");
   MergeSubclassProperties(system_properties_);
+
+  // We allow a special instantiation of the options with a null thread system
+  // because we are only updating the static properties on process startup; we
+  // won't have a thread-system yet or multiple threads.
+  //
+  // Leave slurp_read_only out of the signature as (a) we don't actually change
+  // this spontaneously, and (b) it's useful to keep the metadata cache between
+  // slurping read-only and slurp read/write.
+  SystemRewriteOptions config(NULL);
+  config.slurp_read_only_.DoNotUseForSignatureComputation();
 }
 
 SystemRewriteOptions* SystemRewriteOptions::Clone() const {
@@ -164,6 +198,21 @@ SystemRewriteOptions* SystemRewriteOptions::Clone() const {
 
 SystemRewriteOptions* SystemRewriteOptions::NewOptions() const {
   return new SystemRewriteOptions(thread_system());
+}
+
+const SystemRewriteOptions* SystemRewriteOptions::DynamicCast(
+    const RewriteOptions* instance) {
+  const SystemRewriteOptions* config =
+      dynamic_cast<const SystemRewriteOptions*>(instance);
+  DCHECK(config != NULL);
+  return config;
+}
+
+SystemRewriteOptions* SystemRewriteOptions::DynamicCast(
+    RewriteOptions* instance) {
+  SystemRewriteOptions* config = dynamic_cast<SystemRewriteOptions*>(instance);
+  DCHECK(config != NULL);
+  return config;
 }
 
 }  // namespace net_instaweb

@@ -19,12 +19,14 @@
 
 #include "net/instaweb/rewriter/public/server_context.h"
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 
+class RewriteDriver;
 class Statistics;
 class SystemRewriteDriverFactory;
 class SystemRewriteOptions;
@@ -51,6 +53,20 @@ class SystemServerContext : public ServerContext {
 
   virtual void ChildInit() {}
 
+  // Normally we just fetch with the default UrlAsyncFetcher, generally serf,
+  // but there are some cases where we need to do something more complex:
+  //  - Local requests: requests for resources on this host should go directly
+  //    to the local IP.
+  //  - Fetches directly from other modules: in Apache we have an experimental
+  //    pathway where we can make fetches directly from mod_spdy without going
+  //    out to the network.
+  //  - Custom fetch headers: before continuing with the fetch we want to add
+  //    request headers.
+  // Session fetchers allow us to make these decisions.  Here we may update
+  // driver->async_fetcher() to be a special fetcher just for this request.
+  virtual void ApplySessionFetchers(const RequestContextPtr& req,
+                                    RewriteDriver* driver);
+
  protected:
   // Flush the cache by updating the cache flush timestamp in the global
   // options.  This will change its signature, which is part of the cache key,
@@ -66,7 +82,13 @@ class SystemServerContext : public ServerContext {
   // to have it's timestamp bumped.
   virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
 
+  // Hook for implementations to support fetching directly from the spdy module.
+  virtual void MaybeApplySpdySessionFetcher(const RequestContextPtr& request,
+                                            RewriteDriver* driver) {}
+
  private:
+  SystemRewriteDriverFactory* system_factory_;
+
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first
   // time we Poll we will read the file.

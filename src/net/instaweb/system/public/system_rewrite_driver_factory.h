@@ -17,6 +17,7 @@
 #ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_REWRITE_DRIVER_FACTORY_H_
 
+#include <map>
 #include <set>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -30,6 +31,7 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class NonceGenerator;
+class SerfUrlAsyncFetcher;
 class ServerContext;
 class SharedCircularBuffer;
 class SharedMemStatistics;
@@ -38,6 +40,7 @@ class SystemCaches;
 class SystemRewriteOptions;
 class SystemServerContext;
 class ThreadSystem;
+class UrlAsyncFetcher;
 
 // A server context with features specific to a psol port on a unix system.
 class SystemRewriteDriverFactory : public RewriteDriverFactory {
@@ -104,9 +107,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // root (ie. parent) process.
   void SharedCircularBufferInit(bool is_root);
 
-  // Hook for implementations to shut down their fetchers.
-  virtual void ShutDownFetchers() {}
-
   // Hook so implementations may disable the property cache.
   virtual bool enable_property_cache() const {
     return true;
@@ -124,6 +124,62 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
 
   virtual void set_message_buffer_size(int x) {
     message_buffer_size_ = x;
+  }
+
+  // Finds a fetcher for the settings in this config, sharing with
+  // existing fetchers if possible, otherwise making a new one (and
+  // its required thread).
+  UrlAsyncFetcher* GetFetcher(SystemRewriteOptions* config);
+
+  // As above, but just gets a Serf fetcher --- not a slurp fetcher or a rate
+  // limiting one, etc.
+  SerfUrlAsyncFetcher* GetSerfFetcher(SystemRewriteOptions* config);
+
+  // Parses a comma-separated list of HTTPS options.  If successful, applies
+  // the options to the fetcher and returns true.  If the options were invalid,
+  // *error_message is populated and false is returned.
+  //
+  // It is *not* considered an error in this context to attempt to enable HTTPS
+  // when support is not compiled in.  However, an error message will be logged
+  // in the server log, and the option-setting will have no effect.
+  bool SetHttpsOptions(StringPiece directive, GoogleString* error_message);
+
+  // Makes fetches from PSA to origin-server request
+  // accept-encoding:gzip, even when used in a context when we want
+  // cleartext.  We'll decompress as we read the content if needed.
+  void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
+  bool fetch_with_gzip() const { return fetch_with_gzip_; }
+
+  // Tracks the size of resources fetched from origin and populates the
+  // X-Original-Content-Length header for resources derived from them.
+  void set_track_original_content_length(bool x) {
+    track_original_content_length_ = x;
+  }
+  bool track_original_content_length() const {
+    return track_original_content_length_;
+  }
+
+  // When Serf gets a system error during polling, to avoid spamming
+  // the log we just print the number of outstanding fetch URLs.  To
+  // debug this it's useful to print the complete set of URLs, in
+  // which case this should be turned on.
+  void list_outstanding_urls_on_error(bool x) {
+    list_outstanding_urls_on_error_ = x;
+  }
+
+  // When RateLimitBackgroundFetches is enabled the fetcher needs to apply some
+  // limits.  An implementation may need to tune these based on conditions only
+  // observable at startup, in which case they can override these.
+  virtual int requests_per_host() { return 4; }
+  virtual int max_queue_size() { return 500 * requests_per_host(); }
+  virtual int queued_per_host() { return 500 * requests_per_host(); }
+
+  bool disable_loopback_routing() const {
+    return disable_loopback_routing_;
+  }
+
+  void set_disable_loopback_routing(bool x) {
+    disable_loopback_routing_ = x;
   }
 
  protected:
@@ -149,6 +205,8 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   SystemServerContextSet uninitialized_server_contexts_;
 
  private:
+  virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
+
   scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
   // While split statistics in the ServerContext cleans up the actual objects,
   // we do the segment cleanup for local stats here.
@@ -170,6 +228,24 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
 
   // Manages all our caches & lock managers.
   scoped_ptr<SystemCaches> caches_;
+
+  bool fetch_with_gzip_;
+  bool track_original_content_length_;
+  bool list_outstanding_urls_on_error_;
+
+  // If false (default) we will redirect all fetches to unknown hosts to
+  // localhost.
+  bool disable_loopback_routing_;
+
+  // Serf fetchers are expensive -- they each cost a thread. Allocate
+  // one for each proxy/slurp-setting.  Currently there is no
+  // consistency checking for fetcher timeout.
+  typedef std::map<GoogleString, UrlAsyncFetcher*> FetcherMap;
+  FetcherMap fetcher_map_;
+  typedef std::map<GoogleString, SerfUrlAsyncFetcher*> SerfFetcherMap;
+  SerfFetcherMap serf_fetcher_map_;
+
+  GoogleString https_options_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteDriverFactory);
 };

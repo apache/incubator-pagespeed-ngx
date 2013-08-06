@@ -1315,6 +1315,7 @@
         'system/system_caches.cc',
         'system/system_rewrite_driver_factory.cc',
         'system/system_rewrite_options.cc',
+        'system/system_request_context.cc',
         'system/system_server_context.cc',
         '<(DEPTH)/third_party/aprutil/apr_memcache2.c',
       ],

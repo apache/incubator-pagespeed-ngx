@@ -23,9 +23,8 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
 #define NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
 
-#include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 struct request_rec;
@@ -34,26 +33,22 @@ struct spdy_slave_connection_factory;
 namespace net_instaweb {
 
 class AbstractMutex;
+class RequestContext;
 class Timer;
 
-class ApacheRequestContext : public RequestContext {
+class ApacheRequestContext : public SystemRequestContext {
  public:
   ApacheRequestContext(AbstractMutex* logging_mutex,
                        Timer* timer,
+                       int local_port,
+                       StringPiece local_ip,
                        request_rec* req);
-
-  // Captures the original URL of the request, which is used to help
-  // authorize domains for fetches we do on behalf of that request.
-  void set_url(StringPiece url) { url.CopyToString(&url_); }
 
   // Returns rc as an ApacheRequestContext* if it is one and CHECK
   // fails if it is not. Returns NULL if rc is NULL.
   static ApacheRequestContext* DynamicCast(RequestContext* rc);
 
   bool use_spdy_fetcher() const { return use_spdy_fetcher_; }
-  int local_port() const { return local_port_; }
-  const GoogleString& local_ip() const { return local_ip_; }
-  StringPiece url() const { return url_; }
   spdy_slave_connection_factory* spdy_connection_factory() {
     return spdy_connection_factory_;
   }
@@ -63,9 +58,6 @@ class ApacheRequestContext : public RequestContext {
 
  private:
   bool use_spdy_fetcher_;
-  int local_port_;
-  GoogleString local_ip_;
-  GoogleString url_;
   spdy_slave_connection_factory* spdy_connection_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRequestContext);

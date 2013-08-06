@@ -29,8 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/system/public/add_headers_fetcher.h"
-#include "net/instaweb/system/public/loopback_route_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -267,38 +265,15 @@ RewriteDriverPool* ApacheServerContext::SelectDriverPool(bool using_spdy) {
   return standard_rewrite_driver_pool();
 }
 
-void ApacheServerContext::ApplySessionFetchers(
+void ApacheServerContext::MaybeApplySpdySessionFetcher(
     const RequestContextPtr& request, RewriteDriver* driver) {
   const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
   CHECK(conf != NULL);
   ApacheRequestContext* apache_request = ApacheRequestContext::DynamicCast(
       request.get());
-  if (apache_request == NULL) {
-    return;  // decoding_driver has a null RequestContext.
-  }
 
-  // Note that these fetchers are applied in the opposite order of how they are
-  // added: the last one added here is the first one applied and vice versa.
-  //
-  // Currently, we want AddHeadersFetcher running first, then perhaps
-  // ModSpdyFetcher and then LoopbackRouteFetcher (and then Serf).
-  //
-  // We want AddHeadersFetcher to run before the ModSpdyFetcher since we
-  // want any headers it adds to be visible.
-  //
-  // We want ModSpdyFetcher to run before LoopbackRouteFetcher as it needs
-  // to know the request hostname, which LoopbackRouteFetcher could potentially
-  // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
-  // always talk to the local machine anyway.
-  if (!apache_factory_->disable_loopback_routing() &&
-      !config()->slurping_enabled() &&
-      !config()->test_proxy()) {
-    // Note the port here is our port, not from the request, since
-    // LoopbackRouteFetcher may decide we should be talking to ourselves.
-    driver->SetSessionFetcher(new LoopbackRouteFetcher(
-        driver->options(), apache_request->local_ip(),
-        apache_request->local_port(), driver->async_fetcher()));
-  }
+  // This should have already been caught by the caller.
+  CHECK(apache_request != NULL);
 
   if (conf->experimental_fetch_from_mod_spdy() &&
       apache_request->use_spdy_fetcher()) {
@@ -306,15 +281,20 @@ void ApacheServerContext::ApplySessionFetchers(
         apache_factory_->mod_spdy_fetch_controller(), apache_request->url(),
         driver, apache_request->spdy_connection_factory()));
   }
-
-  if (driver->options()->num_custom_fetch_headers() > 0) {
-    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
-                                                    driver->async_fetcher()));
-  }
 }
 
 void ApacheServerContext::InitProxyFetchFactory() {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(this));
+}
+
+ApacheRequestContext* ApacheServerContext::NewApacheRequestContext(
+    request_rec* request) {
+  return new ApacheRequestContext(
+      thread_system()->NewMutex(),
+      timer(),
+      request->connection->local_addr->port,
+      request->connection->local_ip,
+      request);
 }
 
 }  // namespace net_instaweb

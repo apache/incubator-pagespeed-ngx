@@ -17,9 +17,13 @@
 #include "net/instaweb/system/public/system_server_context.h"
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/system/public/add_headers_fetcher.h"
+#include "net/instaweb/system/public/loopback_route_fetcher.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -41,6 +45,7 @@ const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
 SystemServerContext::SystemServerContext(
     SystemRewriteDriverFactory* driver_factory)
     : ServerContext(driver_factory),
+      system_factory_(driver_factory),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
       cache_flush_count_(NULL),           // Lazy-initialized under mutex.
@@ -139,6 +144,50 @@ SystemRewriteOptions* SystemServerContext::system_rewrite_options() {
 void SystemServerContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
   statistics->AddVariable(kCacheFlushTimestampMs);
+}
+
+void SystemServerContext::ApplySessionFetchers(
+    const RequestContextPtr& request, RewriteDriver* driver) {
+  const SystemRewriteOptions* conf =
+      SystemRewriteOptions::DynamicCast(driver->options());
+  CHECK(conf != NULL);
+  SystemRequestContext* system_request = SystemRequestContext::DynamicCast(
+      request.get());
+  if (system_request == NULL) {
+    return;  // decoding_driver has a null RequestContext.
+  }
+
+  // Note that these fetchers are applied in the opposite order of how they are
+  // added: the last one added here is the first one applied and vice versa.
+  //
+  // Currently, we want AddHeadersFetcher running first, then perhaps
+  // SpdyFetcher and then LoopbackRouteFetcher (and then Serf).
+  //
+  // We want AddHeadersFetcher to run before the SpdyFetcher since we
+  // want any headers it adds to be visible.
+  //
+  // We want SpdyFetcher to run before LoopbackRouteFetcher as it needs
+  // to know the request hostname, which LoopbackRouteFetcher could potentially
+  // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
+  // always talk to the local machine anyway.
+  if (!system_factory_->disable_loopback_routing() &&
+      !system_rewrite_options()->slurping_enabled() &&
+      !system_rewrite_options()->test_proxy()) {
+    // Note the port here is our port, not from the request, since
+    // LoopbackRouteFetcher may decide we should be talking to ourselves.
+    driver->SetSessionFetcher(new LoopbackRouteFetcher(
+        driver->options(), system_request->local_ip(),
+        system_request->local_port(), driver->async_fetcher()));
+  }
+
+  // Apache has experimental support for direct fetching from mod_spdy.  Other
+  // implementations that support something similar would use this hook.
+  MaybeApplySpdySessionFetcher(request, driver);
+
+  if (driver->options()->num_custom_fetch_headers() > 0) {
+    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
+                                                    driver->async_fetcher()));
+  }
 }
 
 }  // namespace net_instaweb

@@ -20,7 +20,6 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <utility>
 
 #include "apr_pools.h"
 #include "httpd.h"
@@ -33,15 +32,10 @@
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
-#include "net/instaweb/http/public/http_dump_url_fetcher.h"
-#include "net/instaweb/http/public/http_dump_url_async_writer.h"
 #include "net/instaweb/http/public/rate_controller.h"
-#include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
-#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -70,9 +64,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
           server->port),
       server_rec_(server),
       version_(version.data(), version.size()),
-      fetch_with_gzip_(false),
-      track_original_content_length_(false),
-      list_outstanding_urls_on_error_(false),
       apache_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer(), thread_system()->NewMutex())),
       apache_html_parse_message_handler_(new ApacheMessageHandler(
@@ -80,7 +71,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       use_per_vhost_statistics_(false),
       enable_property_cache_(true),
       inherit_vhost_config_(false),
-      disable_loopback_routing_(false),
       install_crash_handler_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
@@ -162,11 +152,6 @@ NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
   return NULL;
 }
 
-UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  LOG(DFATAL) << "In Apache the fetchers are not global, but kept in a map.";
-  return NULL;
-}
-
 QueuedWorkerPool* ApacheRewriteDriverFactory::CreateWorkerPool(
     WorkerPoolCategory pool, StringPiece name) {
   switch (pool) {
@@ -238,107 +223,6 @@ void ApacheRewriteDriverFactory::AutoDetectThreadCounts() {
   thread_counts_finalized_ = true;
 }
 
-UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
-  const GoogleString& proxy = config->fetcher_proxy();
-
-  // Fetcher-key format: "[(R|W)slurp_directory][\nproxy]"
-  GoogleString key;
-  if (config->slurping_enabled()) {
-    if (config->slurp_read_only()) {
-      key = StrCat("R", config->slurp_directory());
-    } else {
-      key = StrCat("W", config->slurp_directory());
-    }
-  }
-  if (!proxy.empty()) {
-    StrAppend(&key, "\n", proxy);
-  }
-
-  std::pair<FetcherMap::iterator, bool> result = fetcher_map_.insert(
-      std::make_pair(key, static_cast<UrlAsyncFetcher*>(NULL)));
-  FetcherMap::iterator iter = result.first;
-  if (result.second) {
-    UrlAsyncFetcher* fetcher = NULL;
-    if (config->slurping_enabled()) {
-      if (config->slurp_read_only()) {
-        HttpDumpUrlFetcher* dump_fetcher = new HttpDumpUrlFetcher(
-            config->slurp_directory(), file_system(), timer());
-        fetcher = dump_fetcher;
-      } else {
-        SerfUrlAsyncFetcher* base_fetcher = GetSerfFetcher(config);
-        HttpDumpUrlAsyncWriter* dump_writer = new HttpDumpUrlAsyncWriter(
-            config->slurp_directory(), base_fetcher, file_system(), timer());
-        fetcher = dump_writer;
-      }
-    } else {
-      SerfUrlAsyncFetcher* serf = GetSerfFetcher(config);
-      fetcher = serf;
-      if (config->rate_limit_background_fetches()) {
-        // Unfortunately, we need stats for load-shedding.
-        if (config->statistics_enabled()) {
-          CHECK(thread_counts_finalized_);
-          int multiplier = std::min(4, num_rewrite_threads_);
-          defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(serf));
-          fetcher = new RateControllingUrlAsyncFetcher(
-              serf,
-              500 * multiplier /* max queue size */,
-              multiplier /* requests/host */,
-              500 * multiplier /* queued per host */,
-              thread_system(),
-              statistics());
-        } else {
-          message_handler()->Message(
-              kError, "Can't enable fetch rate-limiting without statistics");
-        }
-      }
-    }
-    iter->second = fetcher;
-  }
-  return iter->second;
-}
-
-// TODO(jmarantz): move this to a new class in system/system_fetches.cc that can
-// be shared with ngx_pagespeed.
-SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
-    ApacheConfig* config) {
-  // Since we don't do slurping a this level, our key is just the proxy setting.
-  GoogleString cache_key = StrCat(
-      list_outstanding_urls_on_error_ ? "list_errors\n" : "no_errors\n",
-      config->fetcher_proxy(), "\n",
-      fetch_with_gzip_ ? "fetch_with_gzip\n": "no_gzip\n",
-      track_original_content_length_ ? "track_content_length\n" : "no_track\n"
-      "timeout: ", Integer64ToString(config->blocking_fetch_timeout_ms()));
-  StrAppend(&cache_key,
-            "\nhttps: ", https_options_,
-            "\ncert_dir: ", config->ssl_cert_directory(),
-            "\ncert_file: ", config->ssl_cert_file());
-  std::pair<SerfFetcherMap::iterator, bool> result = serf_fetcher_map_.insert(
-      std::make_pair(cache_key, static_cast<SerfUrlAsyncFetcher*>(NULL)));
-  SerfFetcherMap::iterator iter = result.first;
-  if (result.second) {
-    SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
-        config->fetcher_proxy().c_str(),
-        NULL,  // Do not use the Factory pool so we can control deletion.
-        thread_system(), statistics(), timer(),
-        config->blocking_fetch_timeout_ms(),
-        message_handler());
-    serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
-    serf->set_fetch_with_gzip(fetch_with_gzip_);
-    serf->set_track_original_content_length(track_original_content_length_);
-    serf->SetHttpsOptions(https_options_);
-    serf->SetSslCertificatesDir(config->ssl_cert_directory());
-    serf->SetSslCertificatesFile(config->ssl_cert_file());
-    iter->second = serf;
-  }
-  return iter->second;
-}
-
-bool ApacheRewriteDriverFactory::SetHttpsOptions(StringPiece directive,
-                                                 GoogleString* error_message) {
-  directive.CopyToString(&https_options_);
-  return SerfUrlAsyncFetcher::ValidateHttpsOptions(directive, error_message);
-}
-
 void ApacheRewriteDriverFactory::ParentOrChildInit() {
   if (install_crash_handler_) {
     ApacheMessageHandler::InstallCrashHandler(server_rec_);
@@ -353,15 +237,6 @@ void ApacheRewriteDriverFactory::ChildInit() {
                                  statistics()));
 }
 
-void ApacheRewriteDriverFactory::ShutDownFetchers() {
-  for (FetcherMap::iterator p = fetcher_map_.begin(), e = fetcher_map_.end();
-       p != e; ++p) {
-    UrlAsyncFetcher* fetcher = p->second;
-    fetcher->ShutDown();
-    defer_cleanup(new Deleter<UrlAsyncFetcher>(fetcher));
-  }
-  fetcher_map_.clear();
-}
 
 void ApacheRewriteDriverFactory::ShutDownMessageHandlers() {
   // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
@@ -447,6 +322,11 @@ RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
   return new ApacheConfig("query", thread_system());
+}
+
+int ApacheRewriteDriverFactory::requests_per_host() {
+  CHECK(thread_counts_finalized_);
+  return std::min(4, num_rewrite_threads_);
 }
 
 }  // namespace net_instaweb

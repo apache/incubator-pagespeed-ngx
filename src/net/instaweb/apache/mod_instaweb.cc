@@ -24,7 +24,7 @@
 #include <cstddef>
 #include <memory>
 #include <set>
-#include <utility>
+#include <utility>  // for pair
 
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
@@ -54,6 +54,7 @@
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -61,7 +62,6 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 
 #include "util_filter.h"
 // Note: a very useful reference is this file, which demos many Apache module
@@ -100,6 +100,7 @@ struct apr_pool_t;
 namespace net_instaweb {
 
 class Statistics;
+class ThreadSystem;
 
 namespace {
 
@@ -371,10 +372,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
   ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
-  ApacheRequestContext* apache_request = new ApacheRequestContext(
-      server_context->thread_system()->NewMutex(),
-      server_context->timer(),
-      request);
+  ApacheRequestContext* apache_request =
+      server_context->NewApacheRequestContext(request);
   RequestContextPtr request_context(apache_request);
   bool using_spdy = request_context->using_spdy();
   const RewriteOptions* host_options = server_context->global_options();
@@ -1450,8 +1449,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
       ret = ParseOption<bool>(
-          factory, cmd,
-          &ApacheRewriteDriverFactory::set_disable_loopback_routing, arg);
+          static_cast<SystemRewriteDriverFactory*>(factory), cmd,
+          &SystemRewriteDriverFactory::set_disable_loopback_routing, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedFetchHttps)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
@@ -1467,14 +1466,15 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
       ret = ParseOption<bool>(
-          factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
+          static_cast<SystemRewriteDriverFactory*>(factory), cmd,
+          &SystemRewriteDriverFactory::set_fetch_with_gzip, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-        ret = ParseOption<bool>(static_cast<RewriteDriverFactory*>(factory),
-                              cmd, &RewriteDriverFactory::set_force_caching,
-                              arg);
+      ret = ParseOption<bool>(
+          static_cast<RewriteDriverFactory*>(factory), cmd,
+          &RewriteDriverFactory::set_force_caching, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedInheritVHostConfig)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
@@ -1495,15 +1495,15 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
       ret = ParseOption<bool>(
-          factory, cmd,
-          &ApacheRewriteDriverFactory::list_outstanding_urls_on_error, arg);
+          static_cast<SystemRewriteDriverFactory*>(factory), cmd,
+          &SystemRewriteDriverFactory::list_outstanding_urls_on_error, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-      ret = ParseOption<int>(factory, cmd,
-                           &ApacheRewriteDriverFactory::set_message_buffer_size,
-                           arg);
+      ret = ParseOption<int>(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_message_buffer_size, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedNumRewriteThreads)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
@@ -1523,8 +1523,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive,
                              kModPagespeedTrackOriginalContentLength)) {
     ret = ParseOption<bool>(
-        factory, cmd,
-        &ApacheRewriteDriverFactory::set_track_original_content_length, arg);
+        static_cast<SystemRewriteDriverFactory*>(factory), cmd,
+        &SystemRewriteDriverFactory::set_track_original_content_length, arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedCollectRefererStatistics) ||
              StringCaseEqual(directive, kModPagespeedDisableForBots) ||

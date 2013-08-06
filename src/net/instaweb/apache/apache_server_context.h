@@ -25,11 +25,13 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+struct request_rec;
 struct server_rec;
 
 namespace net_instaweb {
 
 class ApacheRewriteDriverFactory;
+class ApacheRequestContext;
 class Histogram;
 class ProxyFetchFactory;
 class RewriteDriverPool;
@@ -124,8 +126,9 @@ class ApacheServerContext : public SystemServerContext {
 
   virtual RewriteDriverPool* SelectDriverPool(bool using_spdy);
 
-  virtual void ApplySessionFetchers(const RequestContextPtr& req,
-                                    RewriteDriver* driver);
+  // Hook for implementations to support fetching directly from the spdy module.
+  virtual void MaybeApplySpdySessionFetcher(const RequestContextPtr& request,
+                                            RewriteDriver* driver);
 
   ProxyFetchFactory* proxy_fetch_factory() {
     return proxy_fetch_factory_.get();
@@ -137,6 +140,8 @@ class ApacheServerContext : public SystemServerContext {
   // ProxyFetch flow.  Currently we must rely on a separate module to
   // let mod_pagespeed behave as an origin fetcher.
   virtual bool ProxiesHtml() const { return false; }
+
+  ApacheRequestContext* NewApacheRequestContext(request_rec* request);
 
  private:
   virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);

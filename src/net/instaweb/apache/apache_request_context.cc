@@ -20,16 +20,20 @@
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 
 #include "httpd.h"  // NOLINT
 
 namespace net_instaweb {
 
 ApacheRequestContext::ApacheRequestContext(
-    AbstractMutex* logging_mutex, Timer* timer, request_rec* req)
-    : RequestContext(logging_mutex, timer),
+    AbstractMutex* logging_mutex,
+    Timer* timer,
+    int local_port,
+    StringPiece local_ip,
+    request_rec* req)
+    : SystemRequestContext(logging_mutex, timer, local_port, local_ip),
       use_spdy_fetcher_(ModSpdyFetcher::ShouldUseOn(req)),
-      local_port_(req->connection->local_addr->port),
       spdy_connection_factory_(NULL) {
   // Note that at the time we create a RequestContext we have full
   // access to the Apache request_rec.  However, due to Cloning and (I
@@ -50,11 +54,6 @@ ApacheRequestContext::ApacheRequestContext(
     const char* value = apr_table_get(req->headers_in,
                                       HttpAttributes::kXPsaOptimizeForSpdy);
     set_using_spdy(value != NULL);
-  }
-
-  // Save our own IP as well, LoopbackRouteFetcher will need it.
-  if (req->connection->local_ip != NULL) {
-    local_ip_ = req->connection->local_ip;
   }
 
   // Independent of whether we are serving a SPDY request, we will want
