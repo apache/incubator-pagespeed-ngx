@@ -67,7 +67,7 @@ Function* SchedulerThread::MakeDeleter() {
 void SchedulerThread::Run() {
   ScopedMutex lock(scheduler_->mutex());
   while (!quit_) {
-    scheduler_->ProcessAlarms(255 * Timer::kSecondUs);
+    scheduler_->ProcessAlarmsOrWaitUs(255 * Timer::kSecondUs);
   }
 }
 

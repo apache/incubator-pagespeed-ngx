@@ -327,7 +327,7 @@ class ThreadedSchedulerBasedLockTest : public SchedulerBasedAbstractLockTest {
   void SleepUntilMs(int64 end_ms) {
     int64 now_ms = timer_.NowMs();
     while (now_ms < end_ms) {
-      scheduler_.ProcessAlarms((end_ms - now_ms) * 1000);
+      scheduler_.ProcessAlarmsOrWaitUs((end_ms - now_ms) * Timer::kMsUs);
       now_ms = timer_.NowMs();
     }
   }

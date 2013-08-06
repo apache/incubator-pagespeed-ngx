@@ -182,7 +182,7 @@ TEST_F(QueuedAlarmTest, BasicOperation) {
                                &QueuedAlarmTest::MarkCancel));
   {
     ScopedMutex lock(scheduler->mutex());
-    scheduler->ProcessAlarms(kDelayUs);
+    scheduler->ProcessAlarmsOrWaitUs(kDelayUs);
   }
 
   // Make sure to let the work threads complete.
@@ -205,7 +205,7 @@ TEST_F(QueuedAlarmTest, BasicCancel) {
   alarm->CancelAlarm();
   {
     ScopedMutex lock(scheduler->mutex());
-    scheduler->ProcessAlarms(kDelayUs);
+    scheduler->ProcessAlarmsOrWaitUs(kDelayUs);
   }
 
   // Make sure to let the work threads complete.

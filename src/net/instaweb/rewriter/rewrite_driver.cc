@@ -534,7 +534,7 @@ void RewriteDriver::TryCheckForCompletion(
   // Note that we may end up going past the deadline in order to make sure
   // that at least the metadata cache lookups have a chance to come in.
   if (!IsDone(wait_mode, deadline_reached)) {
-    scheduler_->TimedWait(
+    scheduler_->TimedWaitMs(
         sleep_ms,
         MakeFunction(this, &RewriteDriver::TryCheckForCompletion,
                      wait_mode, end_time_ms, done));

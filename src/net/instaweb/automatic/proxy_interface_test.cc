@@ -3037,7 +3037,8 @@ TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
   {
     // Trigger the idle-callback, if it has been queued.
     ScopedMutex lock(mock_scheduler()->mutex());
-    mock_scheduler()->ProcessAlarms(kIdleCallbackTimeoutMs * Timer::kMsUs);
+    mock_scheduler()->ProcessAlarmsOrWaitUs(
+        kIdleCallbackTimeoutMs * Timer::kMsUs);
   }
   sync->Wait(ProxyFetch::kHeadersSetupRaceDone);
   sync_point.Wait();
