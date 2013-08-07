@@ -3618,6 +3618,107 @@ TEST_F(RewriteContextTest, TestFreshenForExtendCache) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
 }
 
+TEST_F(RewriteContextTest, TestFreshenForEmbeddedDependency) {
+  FetcherUpdateDateHeaders();
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  // Enable this option so urls are stored and freshen can be triggered on
+  // the nested input info.
+  options()->set_enable_cache_purge(true);
+  options()->ComputeSignature();
+  rewrite_driver()->AddFilters();
+
+  // Set up the resources and ttl. Ttl should be bigger than default implicit
+  // cache ttl.
+  const int kImageTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs * 5;
+  const int kCssTtl = ResponseHeaders::kDefaultImplicitCacheTtlMs * 10;
+  const char kImageContent[] = "image1";
+  const char kImagePath[] = "1.jpg";
+  const char kCssPath[] = "text.css";
+  GoogleString css_content = StrCat("{background:url(\"",
+                                    AbsolutifyUrl("1.jpg"), "\")}");
+
+  // Start with non-zero time and init the resources.
+  AdvanceTimeMs(kImageTtl / 2);
+  SetResponseWithDefaultHeaders(kImagePath, kContentTypeJpeg, kImageContent,
+                                kImageTtl / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kCssPath, kContentTypeCss, css_content,
+                                kCssTtl / Timer::kSecondMs);
+  GoogleString css_url = AbsolutifyUrl("text.css");
+  GoogleString rewritten_url =
+      Encode(kTestDomain, "cf", "0", "text.css", "css");
+
+  // First fetch misses cache and resources are inserted into the cache.
+  ClearStats();
+  ValidateExpected("first_fetch", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());  // cf, ic, 1.jpg, original text.css
+  EXPECT_EQ(5, lru_cache()->num_inserts());  // above + rewritten text.css
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
+  // text.css, 1.jpg, rewritten text.css get inserted in http cache.
+  EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
+
+  // The ttl of the resource is the min of all its dependencies and hence
+  // kImageTtl in this case. Advance halfway and it should be a hit.
+  ClearStats();
+  AdvanceTimeMs(kImageTtl / 2);
+  ValidateExpected("fully hit", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  // Advance time close to the ttl of the image. This should cause a freshen
+  // and a fetch of the expiring image url.
+  ClearStats();
+  AdvanceTimeMs((kImageTtl / 2) - 2 * Timer::kMinuteMs);
+  ValidateExpected("freshen", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  EXPECT_EQ(2, lru_cache()->num_hits());  // cf metadata, 1.jpg
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // cf metadata, 1.jpg
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // 1.jpg expiring soon
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // 1.jpg
+
+  // Advance past the original TTL. There should be no cache miss and no
+  // additional fetches as the resource is already freshened.
+  ClearStats();
+  AdvanceTimeMs(3 * Timer::kMinuteMs);
+  ValidateExpected("past original ttl", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  // Advance time to Css ttl - 2 minutes. This should cause freshen of
+  // both the resources.
+  ClearStats();
+  AdvanceTimeMs(kCssTtl - kImageTtl - 3 * Timer::kMinuteMs);
+  ValidateExpected("past highest ttl", CssLinkHref(css_url),
+                   CssLinkHref(rewritten_url));
+  EXPECT_EQ(5, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_inserts());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());  // old rewritten css
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
+}
+
 TEST_F(RewriteContextTest, TestReuse) {
   FetcherUpdateDateHeaders();
 

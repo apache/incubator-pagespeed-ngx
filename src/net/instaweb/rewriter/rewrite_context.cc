@@ -87,6 +87,11 @@ namespace net_instaweb {
 namespace {
 
 const char kRewriteContextLockPrefix[] = "rc:";
+// There is no partition index for other dependency fields. Use a constant
+// to denote that.
+const int kOtherDependencyPartitionIndex = -1;
+
+}  // namespace
 
 // Manages freshening of all the inputs of the given context. If any of the
 // input resources change, this deletes the corresponding metadata. Otherwise,
@@ -145,6 +150,10 @@ class FreshenMetadataUpdateManager {
   }
 
   InputInfo* GetInputInfo(int partition_index, int input_index) {
+    if (partition_index == kOtherDependencyPartitionIndex) {
+      // This is referring to the other dependency input info.
+      return partitions_->mutable_other_dependency(input_index);
+    }
     return partitions_->mutable_partition(partition_index)->
         mutable_input(input_index);
   }
@@ -182,8 +191,6 @@ class FreshenMetadataUpdateManager {
 
   DISALLOW_COPY_AND_ASSIGN(FreshenMetadataUpdateManager);
 };
-
-}  // namespace
 
 // Two callback classes for completed caches & fetches.  These gaskets
 // help RewriteContext, which knows about all the pending inputs,
@@ -2526,6 +2533,44 @@ void RewriteContext::CrossThreadPartitionDone(bool result) {
       MakeFunction(this, &RewriteContext::PartitionDone, result));
 }
 
+// Helper function to create a resource pointer to freshen the resource.
+ResourcePtr RewriteContext::CreateUrlResource(const StringPiece& input_url) {
+  const GoogleUrl resource_url(input_url);
+  ResourcePtr resource;
+  if (resource_url.is_valid() && resource_url.is_standard()) {
+    resource = Driver()->CreateInputResource(resource_url);
+  }
+  return resource;
+}
+
+// Determine whether the input info is imminently expiring and needs to
+// be freshened. Freshens the resource and update metadata if required.
+void RewriteContext::CheckAndFreshenResource(
+    const InputInfo& input_info, ResourcePtr resource, int partition_index,
+    int input_index, FreshenMetadataUpdateManager* freshen_manager) {
+  if (stale_rewrite_ ||
+      ((input_info.type() == InputInfo::CACHED) &&
+       input_info.has_expiration_time_ms() &&
+       input_info.has_date_ms() &&
+       ResponseHeaders::IsImminentlyExpiring(
+           input_info.date_ms(),
+           input_info.expiration_time_ms(),
+           FindServerContext()->timer()->NowMs()))) {
+    if (input_info.has_input_content_hash()) {
+      RewriteFreshenCallback* callback =
+          new RewriteFreshenCallback(resource, partition_index, input_index,
+                                     freshen_manager);
+      freshen_manager->IncrementFreshens(*partitions_.get());
+      resource->Freshen(callback, FindServerContext()->message_handler());
+    } else {
+      // TODO(nikhilmadan): We don't actually update the metadata when the
+      // InputInfo does not contain an input_content_hash. However, we still
+      // re-fetch the original resource and update the HTTPCache.
+      resource->Freshen(NULL, FindServerContext()->message_handler());
+    }
+  }
+}
+
 void RewriteContext::Freshen() {
   // Note: only CACHED inputs are freshened (not FILE_BASED or ALWAYS_VALID).
   FreshenMetadataUpdateManager* freshen_manager =
@@ -2536,31 +2581,33 @@ void RewriteContext::Freshen() {
     const CachedResult& partition = partitions_->partition(j);
     for (int i = 0, m = partition.input_size(); i < m; ++i) {
       const InputInfo& input_info = partition.input(i);
-      if (stale_rewrite_ ||
-          ((input_info.type() == InputInfo::CACHED) &&
-           input_info.has_expiration_time_ms() &&
-           input_info.has_date_ms() &&
-           input_info.has_index())) {
+      if (input_info.has_index()) {
         ResourcePtr resource(slots_[input_info.index()]->resource());
-        if (stale_rewrite_||
-            ResponseHeaders::IsImminentlyExpiring(
-                input_info.date_ms(),
-                input_info.expiration_time_ms(),
-                FindServerContext()->timer()->NowMs())) {
-          RewriteFreshenCallback* callback = NULL;
-          if (input_info.has_input_content_hash()) {
-            callback = new RewriteFreshenCallback(
-                resource, j, i, freshen_manager);
-            freshen_manager->IncrementFreshens(*partitions_.get());
-          }
-          // TODO(nikhilmadan): We don't actually update the metadata when the
-          // InputInfo does not contain an input_content_hash. However, we still
-          // re-fetch the original resource and update the HTTPCache.
-          resource->Freshen(callback, FindServerContext()->message_handler());
+        CheckAndFreshenResource(input_info, resource, j, i, freshen_manager);
+      }
+    }
+  }
+
+  // Also trigger freshen for other dependency urls if they exist.
+  // TODO(mpalem): Currently, the urls are stored in the input cache field
+  // only if the enable_cache_purge() option is set. If this changes in the
+  // future, remove this check so the freshen improvements apply.
+  if (Options()->enable_cache_purge()) {
+    for (int k = 0; k < partitions_->other_dependency_size(); ++k) {
+      const InputInfo& input_info = partitions_->other_dependency(k);
+      if (input_info.has_url()) {
+        ResourcePtr resource = CreateUrlResource(input_info.url());
+        if (resource.get() != NULL) {
+          // Using a partition index of -1 to indicate that this is not
+          // a partition input info but other dependency input info.
+          CheckAndFreshenResource(input_info, resource,
+                                  kOtherDependencyPartitionIndex, k,
+                                  freshen_manager);
         }
       }
     }
   }
+
   freshen_manager->MarkAllFreshensTriggered();
 }
 

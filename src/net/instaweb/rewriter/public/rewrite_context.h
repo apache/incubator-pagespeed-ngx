@@ -49,6 +49,7 @@ class RewriteOptions;
 class Statistics;
 class Variable;
 class Writer;
+class FreshenMetadataUpdateManager;
 
 // RewriteContext manages asynchronous rewriting of some n >= 1 resources (think
 // CSS, JS, or images) into m >= 0 improved versions (typically, n = m = 1).
@@ -153,7 +154,6 @@ class RewriteContext {
   static const char kDistributedExt[];
   // The hash value used for all distributed fetch URLs.
   static const char kDistributedHash[];
-
   // Used to pass the result of the metadata cache lookups. Recipient must
   // take ownership.
   struct CacheLookupResult {
@@ -858,6 +858,14 @@ class RewriteContext {
   // dependencies. Updates the internal other_dependency map that is used to
   // de-dup the contents.
   void CheckAndAddOtherDependency(const InputInfo& input);
+
+  // Perform checks and freshen the input resource. Also updates metadata if
+  // required.
+  void CheckAndFreshenResource(const InputInfo& input_info,
+                               ResourcePtr resource, int partition_index,
+                               int input_index,
+                               FreshenMetadataUpdateManager* freshen_manager);
+  ResourcePtr CreateUrlResource(const StringPiece& input_url);
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
