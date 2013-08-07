@@ -18,20 +18,32 @@
 
 #include "ngx_server_context.h"
 
+extern "C" {
+  #include <ngx_http.h>
+}
+
+#include "ngx_pagespeed.h"
 #include "ngx_message_handler.h"
-#include "ngx_request_context.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
+#include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/add_headers_fetcher.h"
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
+
+namespace {
+
+const char kLocalFetcherStatsPrefix[] = "http";
+
+}  // namespace
 
 const char kCacheFlushCount[] = "cache_flush_count";
 const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
@@ -54,10 +66,14 @@ NgxRewriteOptions* NgxServerContext::config() {
 }
 
 void NgxServerContext::ChildInit() {
+  // TODO(jefftk): move this function into SystemServerContext
+
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
     set_lock_manager(ngx_factory_->caches()->GetLockManager(config()));
+    UrlAsyncFetcher* fetcher = ngx_factory_->GetFetcher(config());
+    set_default_system_fetcher(fetcher);
 
     if (split_statistics_.get() != NULL) {
       // Readjust the SHM stuff for the new process
@@ -72,11 +88,29 @@ void NgxServerContext::ChildInit() {
           split_statistics_.get(), ngx_factory_->thread_system(),
           ngx_factory_->timer()));
       set_rewrite_stats(local_rewrite_stats_.get());
+
+      // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
+      // care of it rather than the original fetcher, so we get correct
+      // numbers for bytes fetched.
+      if (ngx_factory_->fetch_with_gzip()) {
+        fetcher->set_fetch_with_gzip(false);
+      }
+      stats_fetcher_.reset(new UrlAsyncFetcherStats(
+          kLocalFetcherStatsPrefix, fetcher,
+          ngx_factory_->timer(), split_statistics_.get()));
+      if (ngx_factory_->fetch_with_gzip()) {
+        stats_fetcher_->set_fetch_with_gzip(true);
+      }
+      set_default_system_fetcher(stats_fetcher_.get());
     }
 
+    // To allow Flush to come in while multiple threads might be
+    // referencing the signature, we must be able to mutate the
+    // timestamp and signature atomically.  RewriteOptions supports
+    // an optional read/writer lock for this purpose.
+    global_options()->set_cache_invalidation_timestamp_mutex(
+        thread_system()->NewRWLock());
     ngx_factory_->InitServerContext(this);
-    // TODO(oschaaf): in mod_pagespeed, the ServerContext owns
-    // the fetchers, and sets up the UrlAsyncFetcherStats here
   }
 }
 
@@ -102,37 +136,39 @@ void NgxServerContext::InitStats(Statistics* statistics) {
   // worse than anything we have reasonably seen, to make sure we don't
   // cut off actual samples.
   html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
-  // TODO(oschaaf): Once the ServerContext owns the fetchers,
-  // initialise UrlAsyncFetcherStats here
+  UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
 
-void NgxServerContext::ApplySessionFetchers(
-    const RequestContextPtr& request, RewriteDriver* driver) {
-  const NgxRewriteOptions* conf = NgxRewriteOptions::DynamicCast(
-      driver->options());
-  CHECK(conf != NULL);
-  NgxRequestContext* ngx_request = NgxRequestContext::DynamicCast(
-      request.get());
-  if (ngx_request == NULL) {
-    return;  // decoding_driver has a null RequestContext.
+SystemRequestContext* NgxServerContext::NewRequestContext(
+    ngx_http_request_t* r) {
+  // Based on ngx_http_variable_server_port.
+  bool port_set = false;
+  int local_port;
+#if (NGX_HAVE_INET6)
+  if (r->connection->local_sockaddr->sa_family == AF_INET6) {
+    local_port = ntohs(reinterpret_cast<struct sockaddr_in6*>(
+        r->connection->local_sockaddr)->sin6_port);
+    port_set = true;
+  }
+#endif
+  if (!port_set) {
+    local_port = ntohs(reinterpret_cast<struct sockaddr_in*>(
+        r->connection->local_sockaddr)->sin_port);
   }
 
-  // Note that these fetchers are applied in the opposite order of how they are
-  // added
-  // TODO(oschaaf): in mod_pagespeed, LoopbackRouteFetcher is not added when
-  // one of these is set:  disable_loopback_routing, slurping_enabled, or
-  // test_proxy.
-
-  // Note the port here is our port, not from the request, since
-  // LoopbackRouteFetcher may decide we should be talking to ourselves.
-  driver->SetSessionFetcher(new LoopbackRouteFetcher(
-      driver->options(), ngx_request->local_ip(),
-      ngx_request->local_port(), driver->async_fetcher()));
-
-  if (driver->options()->num_custom_fetch_headers() > 0) {
-    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
-                                                    driver->async_fetcher()));
+  ngx_str_t local_ip;
+  u_char addr[NGX_SOCKADDR_STRLEN];
+  local_ip.len = NGX_SOCKADDR_STRLEN;
+  local_ip.data = addr;
+  ngx_int_t rc = ngx_connection_local_sockaddr(r->connection, &local_ip, 0);
+  if (rc != NGX_OK) {
+    local_ip.len = 0;
   }
+
+  return new SystemRequestContext(thread_system()->NewMutex(),
+                                  timer(),
+                                  local_port,
+                                  ngx_psol::str_to_string_piece(local_ip));
 }
 
 }  // namespace net_instaweb

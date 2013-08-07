@@ -80,7 +80,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       ngx_html_parse_message_handler_(
           new NgxMessageHandler(thread_system()->NewMutex())),
       install_crash_handler_(false),
-      ngx_url_async_fetcher_(NULL),
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false),
@@ -105,63 +104,22 @@ Hasher* NgxRewriteDriverFactory::NewHasher() {
   return new MD5Hasher;
 }
 
-UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  const char* fetcher_proxy = "";
-  if (main_conf_ != NULL) {
-    fetcher_proxy = main_conf_->fetcher_proxy().c_str();
-  }
-
-  UrlAsyncFetcher* fetcher = NULL;
-  SerfUrlAsyncFetcher* serf_fetcher = NULL;
-
+UrlAsyncFetcher* NgxRewriteDriverFactory::AllocateFetcher(
+    SystemRewriteOptions* config) {
   if (use_native_fetcher_) {
-    ngx_url_async_fetcher_ = new NgxUrlAsyncFetcher(
-            fetcher_proxy,
-            log_,
-            resolver_timeout_,
-            25000,
-            resolver_,
-            thread_system(),
-            message_handler());
-    fetcher = ngx_url_async_fetcher_;
+    NgxUrlAsyncFetcher* fetcher = new NgxUrlAsyncFetcher(
+        config->fetcher_proxy().c_str(),
+        log_,
+        resolver_timeout_,
+        config->blocking_fetch_timeout_ms(),
+        resolver_,
+        thread_system(),
+        message_handler());
+    ngx_url_async_fetchers_.push_back(fetcher);
+    return fetcher;
   } else {
-    serf_fetcher = new SerfUrlAsyncFetcher(
-            fetcher_proxy,
-            NULL,
-            thread_system(),
-            statistics(),
-            timer(),
-            2500,
-            message_handler());
-    fetcher = serf_fetcher;
+    return SystemRewriteDriverFactory::AllocateFetcher(config);
   }
-
-  SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
-      default_options());
-  if (rate_limit_background_fetches_) {
-    // Unfortunately, we need stats for load-shedding.
-    if (system_options->statistics_enabled()) {
-      // TODO(oschaaf): mps bases this multiplier on the configured
-      // num_rewrite_threads_ which we don't have (yet).
-      int multiplier = 4;
-      fetcher = new RateControllingUrlAsyncFetcher(
-          fetcher,
-          500 * multiplier /* max queue size */,
-          multiplier /* requests/host */,
-          500 * multiplier /* queued per host */,
-          thread_system(),
-          statistics());
-      if (serf_fetcher != NULL) {
-        defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(serf_fetcher));
-      } else if (ngx_url_async_fetcher_ != NULL) {
-        defer_cleanup(new Deleter<NgxUrlAsyncFetcher>(ngx_url_async_fetcher_));
-      }
-    } else {
-      message_handler()->Message(
-          kError, "Can't enable fetch rate-limiting without statistics");
-    }
-  }
-  return fetcher;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
@@ -191,18 +149,19 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return options;
 }
 
-
 void NgxRewriteDriverFactory::InitStaticAssetManager(
     StaticAssetManager* static_asset_manager) {
   static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
 }
 
-bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetcher() {
-  if (ngx_url_async_fetcher_ == NULL) {
-    return true;
-  }
+bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetchers() {
   log_ = ngx_cycle->log;
-  return ngx_url_async_fetcher_->Init();
+  for (size_t i = 0; i < ngx_url_async_fetchers_.size(); ++i) {
+    if (!ngx_url_async_fetchers_[i]->Init()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool NgxRewriteDriverFactory::CheckResolver() {

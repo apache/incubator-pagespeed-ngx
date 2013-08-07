@@ -101,7 +101,6 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static Properties* ngx_properties_;
   static void AddProperties();
   void Init();
-  void InitializeSignaturesAndDefaults();
 
   // Add an option to ngx_properties_
   template<class RewriteOptionsSubclass, class OptionClass>
