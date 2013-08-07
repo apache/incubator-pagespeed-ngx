@@ -52,7 +52,7 @@ TEST_F(ResourceFetchTest, BlockingFetch) {
 
   // Make this actually happen asynchronously.
   SetupWaitFetcher();
-  mock_scheduler()->AddAlarm(
+  mock_scheduler()->AddAlarmAtUs(
       timer()->NowUs() + 100,
       MakeFunction(factory()->wait_url_async_fetcher(),
                    &WaitUrlAsyncFetcher::CallCallbacks));

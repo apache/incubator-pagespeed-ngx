@@ -47,7 +47,7 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
   virtual void Done(KeyState state) {
     Scheduler* scheduler = parent_->scheduler();
     int64 wakeup_time_us = scheduler->timer()->NowUs() + parent_->delay_us();
-    scheduler->AddAlarm(
+    scheduler->AddAlarmAtUs(
         wakeup_time_us,
         new MemberFunction1<CacheInterface::Callback, CacheInterface::KeyState>(
             &CacheInterface::Callback::DelegatedDone, orig_callback_, state));

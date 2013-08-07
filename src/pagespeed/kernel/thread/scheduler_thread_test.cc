@@ -55,14 +55,14 @@ TEST_F(SchedulerThreadTest, BasicOperation) {
   ASSERT_TRUE(scheduler_thread_->Start());
   SyncPoint sync(thread_system_.get());
   int64 start_us = timer_->NowUs();
-  scheduler_.AddAlarm(start_us + 25 * Timer::kMsUs,
-                      new NotifyRunFunction(&sync));
+  scheduler_.AddAlarmAtUs(start_us + 25 * Timer::kMsUs,
+                          new NotifyRunFunction(&sync));
   sync.Wait();
   int64 end_us = timer_->NowUs();
   EXPECT_LT(start_us + 24 * Timer::kMsUs, end_us);
   EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
   scheduler_thread_->MakeDeleter()->CallRun();
-};
+}
 
 }  // namespace
 

@@ -100,9 +100,7 @@ class Scheduler {
   // itself and the callback when it is run or cancelled.  NOTE in particular
   // that calls to CancelAlarm must ensure the callback has not been invoked
   // yet.  This is why the scheduler mutex must be held for CancelAlarm.
-  //
-  // TODO(jmarantz): rename method to have units.
-  Alarm* AddAlarm(int64 wakeup_time_us, Function* callback);
+  Alarm* AddAlarmAtUs(int64 wakeup_time_us, Function* callback);
 
   // Cancels an alarm, calling the Cancel() method and deleting the alarm
   // object.  Scheduler mutex must be held before call to ensure that alarm is

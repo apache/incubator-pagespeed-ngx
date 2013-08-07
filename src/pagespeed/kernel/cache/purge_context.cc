@@ -367,10 +367,10 @@ void PurgeContext::WaitForTimerAndGrabLock() {
   } else {
     int64 alarm_time_us =
         timer_->NowUs() + request_batching_delay_ms_ * Timer::kMsUs;
-    scheduler_->AddAlarm(alarm_time_us,
-                         MakeFunction(this,
-                                      &PurgeContext::GrabLockAndUpdate,
-                                      &PurgeContext::CancelCachePurgeFile));
+    scheduler_->AddAlarmAtUs(alarm_time_us,
+                             MakeFunction(this,
+                                          &PurgeContext::GrabLockAndUpdate,
+                                          &PurgeContext::CancelCachePurgeFile));
   }
 }
 

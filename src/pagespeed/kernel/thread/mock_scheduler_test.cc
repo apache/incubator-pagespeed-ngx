@@ -57,11 +57,11 @@ class ChainedAlarm : public Function {
 
   virtual void Run() {
     if (--*count_ > 0) {
-      int64 next_time_ms = scheduler_->timer()->NowMs() + 100;
-      scheduler_->AddAlarm(next_time_ms,
-                           new ChainedAlarm(scheduler_, count_, advance_));
+      int64 next_time_us = scheduler_->timer()->NowUs();
+      scheduler_->AddAlarmAtUs(next_time_us,
+                               new ChainedAlarm(scheduler_, count_, advance_));
       if (advance_) {
-        scheduler_->AdvanceTimeMs(100);
+        scheduler_->AdvanceTimeUs(100);
       }
     }
   }
@@ -88,7 +88,7 @@ class MockSchedulerTest : public testing::Test {
   Scheduler::Alarm* AddTask(int64 wakeup_time_us, char c) {
     Function* append_char = MakeFunction<GoogleString, char>(
         &string_, &GoogleString::push_back, c);
-    return scheduler_->AddAlarm(wakeup_time_us, append_char);
+    return scheduler_->AddAlarmAtUs(wakeup_time_us, append_char);
   }
 
   void Run() {
@@ -100,7 +100,7 @@ class MockSchedulerTest : public testing::Test {
   }
 
   Scheduler::Alarm* AddRunCancelAlarmUs(int64 wakeup_time_us) {
-    return scheduler_->AddAlarm(wakeup_time_us, MakeFunction(
+    return scheduler_->AddAlarmAtUs(wakeup_time_us, MakeFunction(
         this, &MockSchedulerTest::Run, &MockSchedulerTest::Cancel));
   }
 
@@ -170,7 +170,8 @@ TEST_F(MockSchedulerTest, Cancellation) {
 // Verifies that we can add a new alarm from an Alarm::Run() method.
 TEST_F(MockSchedulerTest, ChainedAlarms) {
   int count = 10;
-  scheduler_->AddAlarm(100, new ChainedAlarm(scheduler_.get(), &count, false));
+  scheduler_->AddAlarmAtUs(
+      100, new ChainedAlarm(scheduler_.get(), &count, false));
   AdvanceTimeUs(1000);
   EXPECT_EQ(0, count);
 }
@@ -178,7 +179,8 @@ TEST_F(MockSchedulerTest, ChainedAlarms) {
 // Verifies that we can advance time from an Alarm::Run() method.
 TEST_F(MockSchedulerTest, AdvanceFromRun) {
   int count = 10;
-  scheduler_->AddAlarm(100, new ChainedAlarm(scheduler_.get(), &count, true));
+  scheduler_->AddAlarmAtUs(
+      100, new ChainedAlarm(scheduler_.get(), &count, true));
   AdvanceTimeUs(100);
   EXPECT_EQ(0, count);
 }
@@ -215,7 +217,7 @@ TEST_F(MockSchedulerTest, CancelledDueToMockSchedulerDestruction) {
 #endif
 
 TEST_F(MockSchedulerTest, WakeupOnAdvancementOfSimulatedTime) {
-  scheduler_->AddAlarm(1000 * kDelayMs, new TestAlarm());
+  scheduler_->AddAlarmAtUs(Timer::kMsUs * kDelayMs, new TestAlarm());
   {
     AdvanceTimeMs(kWaitMs);
 

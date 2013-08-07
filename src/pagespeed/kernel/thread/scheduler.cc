@@ -36,12 +36,12 @@ const int kIndexNotSet = 0;
 
 }  // namespace
 
-// Basic Alarm type (forward declared in the .h file).  Note that
-// Alarms are self-cleaning; it is not valid to make use of an Alarm*
-// after RunAlarm() or CancelAlarm() has been called.  See note below
-// for AddAlarm.  Note also that Alarms hold the scheduler lock when
-// they are invoked; the alarm drops the lock before invoking its
-// embedded callback and re-takes it afterwards if that is necessary.
+// Basic Alarm type (forward declared in the .h file).  Note that Alarms are
+// self-cleaning; it is not valid to make use of an Alarm* after RunAlarm() or
+// CancelAlarm() has been called.  See note below for AddAlarmAtUs.  Note also
+// that Alarms hold the scheduler lock when they are invoked; the alarm drops
+// the lock before invoking its embedded callback and re-takes it afterwards if
+// that is necessary.
 class Scheduler::Alarm {
  public:
   virtual void RunAlarm() = 0;
@@ -316,8 +316,8 @@ void Scheduler::AddAlarmMutexHeldUs(int64 wakeup_time_us, Alarm* alarm) {
   outstanding_alarms_.insert(alarm);
 }
 
-Scheduler::Alarm* Scheduler::AddAlarm(int64 wakeup_time_us,
-                                      Function* callback) {
+Scheduler::Alarm* Scheduler::AddAlarmAtUs(int64 wakeup_time_us,
+                                          Function* callback) {
   Alarm* result = new FunctionAlarm(callback, this);
   ScopedMutex lock(mutex_.get());
   AddAlarmMutexHeldUs(wakeup_time_us, result);

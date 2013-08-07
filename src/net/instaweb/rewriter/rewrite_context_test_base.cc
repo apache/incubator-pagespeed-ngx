@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -254,7 +255,7 @@ void CombiningFilter::Context::Rewrite(int partition_index,
         1000 * filter_->rewrite_delay_ms();
     Function* closure = MakeFunction(
         this, &Context::DoRewrite, partition_index, partition, output);
-    scheduler_->AddAlarm(wakeup_us, closure);
+    scheduler_->AddAlarmAtUs(wakeup_us, closure);
   }
 }
 

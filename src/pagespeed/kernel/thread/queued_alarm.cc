@@ -38,7 +38,7 @@ QueuedAlarm::QueuedAlarm(Scheduler* scheduler,
       canceled_(false),
       queued_sequence_portion_(false) {
   set_delete_after_callback(false);
-  alarm_ = scheduler_->AddAlarm(wakeup_time_us, this);
+  alarm_ = scheduler_->AddAlarmAtUs(wakeup_time_us, this);
 }
 
 QueuedAlarm::~QueuedAlarm() {

@@ -26,7 +26,6 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -34,6 +33,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -46,7 +46,7 @@ void FakeFilter::Context::RewriteSingle(const ResourcePtr& input,
                       (1000 * GetRewriteDeadlineAlarmMs());
     Function* closure =
         MakeFunction(this, &Context::DoRewriteSingle, input, output);
-    Driver()->scheduler()->AddAlarm(wakeup_us, closure);
+    Driver()->scheduler()->AddAlarmAtUs(wakeup_us, closure);
   } else {
     DoRewriteSingle(input, output);
   }

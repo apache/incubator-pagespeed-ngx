@@ -77,14 +77,14 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
   // we don't attempt to compare already-run (and thus deleted) alarms
   // when running under valgrind.
   Scheduler::Alarm* alarm1 =
-      scheduler_.AddAlarm(start_us + 52 * Timer::kMsUs,
-                          new CountFunction(&counter));
+      scheduler_.AddAlarmAtUs(start_us + 52 * Timer::kMsUs,
+                              new CountFunction(&counter));
   Scheduler::Alarm* alarm2 =
-      scheduler_.AddAlarm(start_us + 54 * Timer::kMsUs,
-                          new CountFunction(&counter));
+      scheduler_.AddAlarmAtUs(start_us + 54 * Timer::kMsUs,
+                              new CountFunction(&counter));
   Scheduler::Alarm* alarm3 =
-      scheduler_.AddAlarm(start_us + 53 * Timer::kMsUs,
-                          new CountFunction(&counter));
+      scheduler_.AddAlarmAtUs(start_us + 53 * Timer::kMsUs,
+                              new CountFunction(&counter));
   if (counter == 0) {
     // In rare cases under Valgrind, we run over the 50ms limit and the
     // callbacks get run and freed.  We skip these checks in that case.
@@ -115,9 +115,12 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
 TEST_F(SchedulerTest, MidpointBlock) {
   int64 start_us = timer_->NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 6 * Timer::kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 3 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 2 * Timer::kMsUs,
+                          new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 6 * Timer::kMsUs,
+                          new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 3 * Timer::kMsUs,
+                          new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWaitMs(4);  // Never signaled, should time out.
@@ -137,10 +140,11 @@ TEST_F(SchedulerTest, MidpointBlock) {
 TEST_F(SchedulerTest, AlarmInPastRuns) {
   int64 start_us = timer_->NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us - 2 * Timer::kMsUs, new CountFunction(&counter));
-  Scheduler::Alarm* alarm2 =
-      scheduler_.AddAlarm(start_us + Timer::kMinuteUs,
+  scheduler_.AddAlarmAtUs(start_us - 2 * Timer::kMsUs,
                           new CountFunction(&counter));
+  Scheduler::Alarm* alarm2 =
+      scheduler_.AddAlarmAtUs(start_us + Timer::kMinuteUs,
+                              new CountFunction(&counter));
   LockAndProcessAlarms();  // Don't block!
   EXPECT_EQ(1, counter);
   {
@@ -155,11 +159,13 @@ TEST_F(SchedulerTest, AlarmInPastRuns) {
 TEST_F(SchedulerTest, MidpointCancellation) {
   int64 start_us = timer_->NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us + 3 * Timer::kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
-  Scheduler::Alarm* alarm3 =
-      scheduler_.AddAlarm(start_us + Timer::kMinuteUs,
+  scheduler_.AddAlarmAtUs(start_us + 3 * Timer::kMsUs,
                           new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 2 * Timer::kMsUs,
+                          new CountFunction(&counter));
+  Scheduler::Alarm* alarm3 =
+      scheduler_.AddAlarmAtUs(start_us + Timer::kMinuteUs,
+                              new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
     scheduler_.BlockingTimedWaitMs(4);  // Never signaled, should time out.
@@ -184,9 +190,12 @@ TEST_F(SchedulerTest, MidpointCancellation) {
 TEST_F(SchedulerTest, SimultaneousAlarms) {
   int64 start_us = timer_->NowUs();
   int counter = 0;
-  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
-  scheduler_.AddAlarm(start_us + 2 * Timer::kMsUs, new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 2 * Timer::kMsUs,
+                          new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 2 * Timer::kMsUs,
+                          new CountFunction(&counter));
+  scheduler_.AddAlarmAtUs(start_us + 2 * Timer::kMsUs,
+                          new CountFunction(&counter));
   QuiesceAlarms(Timer::kMinuteUs);
   int64 end_us = timer_->NowUs();
   EXPECT_EQ(3, counter);

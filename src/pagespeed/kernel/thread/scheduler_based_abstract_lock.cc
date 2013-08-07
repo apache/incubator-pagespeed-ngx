@@ -114,8 +114,8 @@ class TimedWaitPollState : public Function {
     TimedWaitPollState* next_try = Clone();
     next_try->interval_ms_ =
         IntervalWithEnd(timer, interval_ms_, max_interval_ms_, end_time_ms_);
-    scheduler_->AddAlarm((now_ms + next_try->interval_ms_) * Timer::kMsUs,
-                         next_try);
+    scheduler_->AddAlarmAtUs((now_ms + next_try->interval_ms_) * Timer::kMsUs,
+                             next_try);
   }
 
  private:
