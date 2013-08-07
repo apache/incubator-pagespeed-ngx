@@ -123,6 +123,8 @@ class CacheInterface {
   };
   typedef std::vector<KeyCallback> MultiGetRequest;
 
+  static const char* KeyStateName(KeyState state);
+
   CacheInterface();
   virtual ~CacheInterface();
 

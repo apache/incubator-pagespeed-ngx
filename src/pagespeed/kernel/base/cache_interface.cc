@@ -20,6 +20,22 @@
 
 namespace net_instaweb {
 
+namespace {
+
+static const char* kKeyStateNames[] = {
+  "available",
+  "not_found",
+  "overload",
+  "network_error",
+    "timeout",
+};
+
+}  // namespace
+
+const char* CacheInterface::KeyStateName(KeyState state) {
+  return kKeyStateNames[state];
+}
+
 CacheInterface::CacheInterface() {
 }
 
