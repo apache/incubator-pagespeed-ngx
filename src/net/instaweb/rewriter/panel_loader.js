@@ -35,6 +35,16 @@ pagespeed.PanelLoader = function() {
 
   this.contentSizeKb = 0;
   this.debugIp = false;
+  // Using navigation timing api for start time. This api is available in
+  // Internet Explorer 9, Google Chrome 6 and Firefox 7.
+  // If not present, we trigger the start time when the rendering started.
+  if (window.performance) {
+    // timeStart will be number of milliseconds
+    this.timeStart = window.performance.timing.navigationStart;
+  } else {
+    this.timeStart = window.mod_pagespeed_start;
+  }
+
   this.changePageLoadState(CRITICAL_DATA_LOADED, 0);
 };
 

@@ -56,6 +56,8 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlFilter();
 
+  virtual void DetermineEnabled();
+
   virtual void StartDocument();
   virtual void EndDocument();
 

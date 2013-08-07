@@ -481,8 +481,9 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     InitHasher();
     ThreadSynchronizer* sync = server_context()->thread_synchronizer();
     sync->EnableForPrefix(CacheHtmlFlow::kBackgroundComputationDone);
-    sync->AllowSloppyTermination(
-        CacheHtmlFlow::kBackgroundComputationDone);
+    sync->EnableForPrefix(ProxyFetch::kCollectorFinish);
+    sync->AllowSloppyTermination(CacheHtmlFlow::kBackgroundComputationDone);
+    sync->AllowSloppyTermination(ProxyFetch::kCollectorFinish);
     flush_early_info_finder_ = new MeaningfulFlushEarlyInfoFinder;
     server_context()->set_flush_early_info_finder(flush_early_info_finder_);
     options_.reset(server_context()->NewOptions());
@@ -654,14 +655,37 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   }
 
   void FetchFromProxy(const StringPiece& url,
+                        bool expect_success,
+                        const RequestHeaders& request_headers,
+                        GoogleString* string_out,
+                        ResponseHeaders* headers_out,
+                        GoogleString* user_agent_out,
+                        bool wait_for_background_computation) {
+    FetchFromProxy(url,
+                   expect_success,
+                   request_headers,
+                   string_out,
+                   headers_out,
+                   NULL,
+                   wait_for_background_computation,
+                   true);
+  }
+
+  void FetchFromProxy(const StringPiece& url,
                       bool expect_success,
                       const RequestHeaders& request_headers,
                       GoogleString* string_out,
                       ResponseHeaders* headers_out,
                       GoogleString* user_agent_out,
-                      bool wait_for_background_computation) {
+                      bool wait_for_background_computation,
+                      bool proxy_fetch_property_callback_collector_created) {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
                                string_out, headers_out, user_agent_out);
+    if (proxy_fetch_property_callback_collector_created) {
+      ThreadSynchronizer* thread_synchronizer =
+          server_context()->thread_synchronizer();
+      thread_synchronizer->Wait(ProxyFetch::kCollectorFinish);
+    }
     if (wait_for_background_computation) {
       ThreadSynchronizer* sync = server_context()->thread_synchronizer();
       sync->Wait(CacheHtmlFlow::kBackgroundComputationDone);
@@ -1495,7 +1519,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFlowWithDifferentUserAgents) {
   // Blacklisted User Agent.
   request_headers.Add(HttpAttributes::kUserAgent, kBlackListUserAgent);
   FetchFromProxy("blacklist.html", true, request_headers, &text,
-                 &response_headers, false);
+                 &response_headers, NULL, false, false);
   EXPECT_STREQ(kHtmlInput, text);
   VerifyBlacklistUserAgent(response_headers);
   EXPECT_EQ(0, statistics()->FindVariable(

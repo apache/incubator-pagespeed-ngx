@@ -32,6 +32,8 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
@@ -215,6 +217,29 @@ TEST_F(AddInstrumentationFilterTest, TestRequestId) {
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(options()->beacon_url().http, "load",
                        "&id=123456789012345")) != GoogleString::npos);
+}
+
+TEST_F(AddInstrumentationFilterTest, TestNoDeferInstrumentationScript) {
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load", "")) !=
+              GoogleString::npos);
+  const char* nodefer =
+      HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
+  EXPECT_TRUE(output_buffer_.find(nodefer) != GoogleString::npos);
+}
+
+TEST_F(AddInstrumentationFilterTest, TestDeferInstrumentationScript) {
+  rewrite_driver()->set_defer_instrumentation_script(true);
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load", "")) !=
+              GoogleString::npos);
+  const char* nodefer =
+      HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
+  EXPECT_TRUE(output_buffer_.find(nodefer) == GoogleString::npos);
 }
 
 }  // namespace net_instaweb

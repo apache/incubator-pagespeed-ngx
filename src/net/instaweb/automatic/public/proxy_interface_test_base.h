@@ -186,6 +186,14 @@ class ProxyInterfaceTestBase : public RewriteTestBase {
   virtual void SetUp();
   virtual void TearDown();
 
+  void FetchFromProxy(
+      const StringPiece& url,
+      const RequestHeaders& request_headers,
+      bool expect_success,
+      GoogleString* string_out,
+      ResponseHeaders* headers_out,
+      bool proxy_fetch_property_callback_collector_created);
+
   void FetchFromProxy(const StringPiece& url,
                       const RequestHeaders& request_headers,
                       bool expect_success,
@@ -207,7 +215,7 @@ class ProxyInterfaceTestBase : public RewriteTestBase {
                             bool log_flush,
                             ResponseHeaders* headers_out);
 
-  void WaitForFetch();
+  void WaitForFetch(bool proxy_fetch_property_callback_collector_created);
 
   void TestPropertyCache(const StringPiece& url,
                          bool delay_pcache, bool thread_pcache,

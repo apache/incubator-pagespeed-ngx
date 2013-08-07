@@ -56,12 +56,11 @@
 
 namespace net_instaweb {
 
-const char ProxyFetch::kCollectorDone[] = "Collector:Done";
-const char ProxyFetch::kCollectorPrefix[] = "Collector:";
-const char ProxyFetch::kCollectorReady[] = "Collector:Ready";
-const char ProxyFetch::kCollectorDelete[] = "Collector:Delete";
-const char ProxyFetch::kCollectorDetach[] = "CollectorDetach";
-const char ProxyFetch::kCollectorDoneDelete[] = "CollectorDoneDelete";
+const char ProxyFetch::kCollectorConnectProxyFetchFinish[] =
+    "CollectorConnectProxyFetchFinish";
+const char ProxyFetch::kCollectorDetachFinish[] = "CollectorDetachFinish";
+const char ProxyFetch::kCollectorDoneFinish[] = "CollectorDoneFinish";
+const char ProxyFetch::kCollectorFinish[] = "CollectorFinish";
 
 const char ProxyFetch::kHeadersSetupRaceAlarmQueued[] =
     "HeadersSetupRace:AlarmQueued";
@@ -217,25 +216,32 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
     UserAgentMatcher::DeviceType device_type)
     : mutex_(server_context->thread_system()->NewMutex()),
       server_context_(server_context),
+      sequence_(server_context_->html_workers()->NewSequence()),
       url_(url.data(), url.size()),
       request_context_(request_ctx),
       device_type_(device_type),
       detached_(false),
       done_(false),
       proxy_fetch_(NULL),
-      post_lookup_task_vector_(new std::vector<Function*>),
       options_(options),
       status_code_(HttpStatus::kUnknownStatusCode) {
 }
 
 ProxyFetchPropertyCallbackCollector::~ProxyFetchPropertyCallbackCollector() {
-  if (post_lookup_task_vector_ != NULL &&
-      !post_lookup_task_vector_->empty()) {
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  server_context_->html_workers()->FreeSequence(sequence_);
+  if (!post_lookup_task_vector_.empty()) {
     LOG(DFATAL) << "ProxyFetchPropertyCallbackCollector function vector is not "
                 << "empty.";
   }
   STLDeleteElements(&pending_callbacks_);
   STLDeleteValues(&property_pages_);
+
+  // Following sync point is added to make sure that thread in which unit-tests
+  // are running will not get finished before deleting
+  // ProxyFetchPropertyCallbackCollector.  In production binaries, these are
+  // no-op.
+  sync->Signal(ProxyFetch::kCollectorFinish);
 }
 
 void ProxyFetchPropertyCallbackCollector::AddCallback(
@@ -271,39 +277,27 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
 }
 
 // Calls to Done(), ConnectProxyFetch(), and Detach() may occur on
-// different threads.  Exactly one of ConnectProxyFetch and Detach will
-// never race with each other, as they correspond to the construction
-// or destruction of ProxyFetch, but either can race with Done().  Note
-// that ConnectProxyFetch can be followed by Detach if it turns out that
-// a URL without a known extension is *not* HTML.  See
-// ProxyInterfaceTest.PropCacheNoWritesIfNonHtmlDelayedCache.
-
+// different threads.  But they are scheduled on a sequence to avoid races
+// across these functions.
 void ProxyFetchPropertyCallbackCollector::Done(
     ProxyFetchPropertyCallback* callback) {
-  ServerContext* server_context = NULL;
-  ProxyFetch* fetch = NULL;
-  scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
-  bool do_delete = false;
-  bool call_post = false;
-  {
-    ScopedMutex lock(mutex_.get());
-    pending_callbacks_.erase(callback);
-    property_pages_[callback->page_type()] = callback;
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  sequence_->Add(MakeFunction(
+      this, &ProxyFetchPropertyCallbackCollector::ExecuteDone, callback));
 
-    if (pending_callbacks_.empty()) {
-      server_context = server_context_;
-      call_post = true;
-    }
-  }
+  // No class variable is safe to use beyond this point.
+  // Used in tests to block the test thread after Done() is called.
+  sync->Wait(ProxyFetch::kCollectorDoneFinish);
+}
 
-  if (call_post) {
+void ProxyFetchPropertyCallbackCollector::ExecuteDone(
+    ProxyFetchPropertyCallback* callback) {
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  pending_callbacks_.erase(callback);
+  property_pages_[callback->page_type()] = callback;
+  if (pending_callbacks_.empty()) {
     DCHECK(request_context_.get() != NULL);
     request_context_->mutable_timing_info()->PropertyCacheLookupFinished();
-    ThreadSynchronizer* sync = server_context->thread_synchronizer();
-    sync->Signal(ProxyFetch::kCollectorReady);
-    sync->Wait(ProxyFetch::kCollectorDetach);
-    sync->Wait(ProxyFetch::kCollectorDone);
-
     PropertyPage* actual_page = ReleasePropertyPage(
         ProxyFetchPropertyCallback::kPropertyCachePage);
     if (actual_page != NULL) {
@@ -317,58 +311,53 @@ void ProxyFetchPropertyCallbackCollector::Done(
       fallback_property_page_.reset(
           new FallbackPropertyPage(actual_page, fallback_page));
     }
-    {
-      ScopedMutex lock(mutex_.get());
-      // This should be called only after fallback property page is set because
-      // there can be post lookup task which requires fallback_property_page.
-      // This is to avoid a race between AddPostLookupTask() and Done(). If
-      // post_lookup_task_vector_ is released before fallback_page is set, then
-      // any call to AddPostLookupTask() will execute the the task immediately
-      // and fallback page will be NULL as it is not yet set.
-      // If fallback_property_page is not set because page property page is
-      // disaabled, then there should not be any post lookup task waiting which
-      // requires fallback_property_page.
-      post_lookup_task_vector.reset(post_lookup_task_vector_.release());
+
+    // This should be called only after fallback property page is set because
+    // there can be post lookup task which requires fallback_property_page.
+    for (int i = 0, n = post_lookup_task_vector_.size(); i < n; ++i) {
+      post_lookup_task_vector_[i]->CallRun();
     }
-    if (post_lookup_task_vector.get() != NULL) {
-      for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
-        (*post_lookup_task_vector.get())[i]->CallRun();
-      }
-    }
-    {
-      // There is a race where Detach() can be called immediately after we
-      // release the lock below, and it (Detach) deletes 'this' (because we
-      // just set done_ to true), which means we cannot rely on any data
-      // members being valid after releasing the lock, so we copy them all.
-      ScopedMutex lock(mutex_.get());
-      done_ = true;
-      fetch = proxy_fetch_;
-      do_delete = detached_;
-    }
-    if (fetch != NULL) {
-      fetch->PropertyCacheComplete(this);  // deletes this.
-    } else if (do_delete) {
+    post_lookup_task_vector_.clear();
+
+    done_ = true;
+    if (proxy_fetch_ != NULL) {
+      // ConnectProxyFetch() is already called.
+      proxy_fetch_->PropertyCacheComplete(this);  // deletes this.
+    } else if (detached_) {
+      // Detach() is already called.
       UpdateStatusCodeInPropertyCache();
       delete this;
-      sync->Signal(ProxyFetch::kCollectorDelete);
-      sync->Signal(ProxyFetch::kCollectorDoneDelete);
     }
   }
+
+  // No class variable is safe to use beyond this point.
+  sync->Signal(ProxyFetch::kCollectorDoneFinish);
 }
 
 void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
     ProxyFetch* proxy_fetch) {
-  bool ready = false;
-  {
-    ScopedMutex lock(mutex_.get());
-    DCHECK(proxy_fetch_ == NULL);
-    DCHECK(!detached_);
-    proxy_fetch_ = proxy_fetch;
-    ready = done_;
-  }
-  if (ready) {
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  sequence_->Add(MakeFunction(
+      this,
+      &ProxyFetchPropertyCallbackCollector::ExecuteConnectProxyFetch,
+      proxy_fetch));
+  // Used in tests to block the test thread after ConnectProxyFetch() is called.
+  sync->Wait(ProxyFetch::kCollectorConnectProxyFetchFinish);
+}
+
+void ProxyFetchPropertyCallbackCollector::ExecuteConnectProxyFetch(
+    ProxyFetch* proxy_fetch) {
+  DCHECK(proxy_fetch_ == NULL);
+  DCHECK(!detached_);
+  proxy_fetch_ = proxy_fetch;
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  if (done_) {
+    // Done() is already called.
     proxy_fetch->PropertyCacheComplete(this);  // deletes this.
   }
+
+  // No class variable is safe to use beyond this point.
+  sync->Signal(ProxyFetch::kCollectorConnectProxyFetchFinish);
 }
 
 void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
@@ -386,52 +375,58 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
 }
 
 void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
-  bool do_delete = false;
   ThreadSynchronizer* sync = server_context_->thread_synchronizer();
-  scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
+  sequence_->Add(MakeFunction(
+      this, &ProxyFetchPropertyCallbackCollector::ExecuteDetach, status_code));
+  // Used in tests to block the test thread after Detach() is called.
+  sync->Wait(ProxyFetch::kCollectorDetachFinish);
+}
+
+void ProxyFetchPropertyCallbackCollector::ExecuteDetach(
+    HttpStatus::Code status_code) {
   {
     ScopedMutex lock(mutex_.get());
-    proxy_fetch_ = NULL;
     DCHECK(!detached_);
+    // Lock as detached may be accessed from non sequenced threads.
     detached_ = true;
-    do_delete = done_;
-    post_lookup_task_vector.reset(post_lookup_task_vector_.release());
-    status_code_ = status_code;
   }
-  // Do not access class variables below this as the object might be deleted by
-  // Done() in a different thread.
-  if (post_lookup_task_vector.get() != NULL) {
-    for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
-      (*post_lookup_task_vector.get())[i]->CallCancel();
-    }
+
+  proxy_fetch_ = NULL;
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  status_code_ = status_code;
+
+  for (int i = 0, n = post_lookup_task_vector_.size(); i < n; ++i) {
+    post_lookup_task_vector_[i]->CallCancel();
   }
-  sync->Signal(ProxyFetch::kCollectorDetach);
-  sync->Wait(ProxyFetch::kCollectorDoneDelete);
-  if (do_delete) {
+  post_lookup_task_vector_.clear();
+
+  if (done_) {
+    // Done is already called.
     UpdateStatusCodeInPropertyCache();
     delete this;
-    sync->Signal(ProxyFetch::kCollectorDelete);
   }
+  // No class variable is safe to use beyond this point.
+  sync->Signal(ProxyFetch::kCollectorDetachFinish);
 }
 
 void ProxyFetchPropertyCallbackCollector::AddPostLookupTask(Function* func) {
-  // Following sync points are added to simulate the race in test. In
-  // production binaries, these are no-op.
-  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
-  sync->Wait(ProxyFetch::kCollectorReady);
-  bool do_run = false;
-  {
-    ScopedMutex lock(mutex_.get());
-    DCHECK(!detached_);
-    do_run = post_lookup_task_vector_.get() == NULL;
-    if (!do_run) {
-      post_lookup_task_vector_->push_back(func);
-    }
-  }
-  if (do_run) {
+  sequence_->Add(MakeFunction(
+      this,
+      &ProxyFetchPropertyCallbackCollector::ExecuteAddPostLookupTask,
+      func));
+}
+
+void ProxyFetchPropertyCallbackCollector::ExecuteAddPostLookupTask(
+    Function* func) {
+  DCHECK(!detached_);
+  if (done_) {
+    // Already done is called, run the task immediately.
     func->CallRun();
+    return;
   }
-  sync->Signal(ProxyFetch::kCollectorDone);
+
+  // Queue the task.
+  post_lookup_task_vector_.push_back(func);
 }
 
 ProxyFetch::ProxyFetch(
@@ -792,8 +787,6 @@ void ProxyFetch::PropertyCacheComplete(
     LOG(DFATAL) << "Expected non-null property_cache_callback_.";
   } else {
     delete property_cache_callback_;
-    ThreadSynchronizer* sync = server_context_->thread_synchronizer();
-    sync->Signal(ProxyFetch::kCollectorDelete);
     property_cache_callback_ = NULL;
   }
   if (sequence_ != NULL) {

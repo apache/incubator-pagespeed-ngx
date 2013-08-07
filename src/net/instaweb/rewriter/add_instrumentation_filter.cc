@@ -207,7 +207,9 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
 
   StrAppend(&js, init_js);
   HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  if (!driver_->defer_instrumentation_script()) {
+    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  }
   driver_->InsertNodeBeforeCurrent(script);
   static_asset_manager->AddJsToElement(js, script, driver_);
 }

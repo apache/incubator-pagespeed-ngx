@@ -171,15 +171,8 @@ bool SplitHtmlFilter::IsAllowedCrossDomainRequest(StringPiece cross_origin) {
   return wildcards.Match(cross_origin, false);
 }
 
-void SplitHtmlFilter::StartDocument() {
-  element_json_stack_.clear();
-  panel_seen_ = false;
-  last_script_index_before_panel_stub_ = -1;
-
+void SplitHtmlFilter::DetermineEnabled() {
   config_ = rewrite_driver_->split_html_config();
-  state_.reset(new SplitHtmlState(config_));
-
-  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
       rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile()) ||
       SplitHtmlBeaconFilter::ShouldApply(rewrite_driver_) ||
@@ -187,6 +180,23 @@ void SplitHtmlFilter::StartDocument() {
       // no critical line info.
       (config_->critical_line_info() == NULL &&
        options_->serve_split_html_in_two_chunks());
+  if (!disable_filter_ &&
+      rewrite_driver_->request_context()->split_request_type() ==
+      RequestContext::SPLIT_ABOVE_THE_FOLD) {
+    rewrite_driver_->set_defer_instrumentation_script(true);
+  }
+  // Always enable this filter since it is a writer filter.
+  set_is_enabled(true);
+}
+
+void SplitHtmlFilter::StartDocument() {
+  element_json_stack_.clear();
+  panel_seen_ = false;
+  last_script_index_before_panel_stub_ = -1;
+
+  state_.reset(new SplitHtmlState(config_));
+
+  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   static_asset_manager_ =
       rewrite_driver_->server_context()->static_asset_manager();
   if (disable_filter_) {

@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -38,6 +39,8 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/html/html_name.h"
 
 namespace net_instaweb {
 
@@ -168,6 +171,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
         rewrite_driver()->server_context()->static_asset_manager();
     blink_js_url_ = static_asset_manager->GetAssetUrl(
         StaticAssetManager::kBlinkJs, options_).c_str();
+    nodefer_str_ = HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
   }
 
   // TODO(marq): This looks reusable enough to go into RewriteTestBase. Perhaps
@@ -199,6 +203,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   RequestHeaders request_headers_;
   const char* blink_js_url_;
   ResponseHeaders response_headers_;
+  GoogleString nodefer_str_;
 
  private:
   StringWriter writer_;
@@ -900,6 +905,57 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithNestedPanels) {
                     expected_output_suffix),
             output_);
   VerifyAppliedRewriters("sh");
+}
+
+// When an ATF request is received, we defer the instrumentation script.
+TEST_F(SplitHtmlFilterTest, Instrumentation1) {
+  options()->set_critical_line_config("div[@id=\"god\"]");
+  options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
+  rewrite_driver()->AddOwnedEarlyPreRenderFilter(
+      new AddInstrumentationFilter(rewrite_driver()));
+  Parse("defer_instrumentation",
+        "<html><head>"
+        "</head><body>"
+        "<div id='1'/>"
+        "<div id='god'/><div id='2'/>"
+        "</body></html>");
+  GoogleString expected =
+      "<html><head>"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_start = Number(new Date());</script>"
+      "</head><body>"
+      "<div id='1'/>"
+      "<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->"
+      "</body></html>";
+  EXPECT_TRUE(output_.find(expected) != GoogleString::npos);
+  EXPECT_TRUE(output_.find(nodefer_str_) == GoogleString::npos);
+}
+
+// When an ATF request is received but the useragent is unsupported, we don't
+// defer the instrumentation script.
+TEST_F(SplitHtmlFilterTest, Instrumentation2) {
+  rewrite_driver()->SetUserAgent("BlackListUserAgent");
+  options()->set_critical_line_config("div[@id=\"god\"]");
+  options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
+  rewrite_driver()->AddOwnedEarlyPreRenderFilter(
+      new AddInstrumentationFilter(rewrite_driver()));
+  Parse("nodefer_instrumentation",
+        "<html><head>"
+        "</head><body>"
+        "<div id='1'/>"
+        "<div id='god'/><div id='2'/>"
+        "</body></html>");
+  GoogleString expected =
+      "<html><head>"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_start = Number(new Date());</script>"
+      "</head><body>"
+      "<div id='1'/>"
+      "<div id='god'/><div id='2'/>";
+  EXPECT_TRUE(output_.find(expected) != GoogleString::npos);
+  EXPECT_TRUE(output_.find(nodefer_str_) != GoogleString::npos);
 }
 
 }  // namespace

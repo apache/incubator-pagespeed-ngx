@@ -112,7 +112,12 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
   ProxyFetchPropertyCallbackCollectorTest() :
     thread_system_(Platform::CreateThreadSystem()),
     server_context_(server_context()),
-    post_lookup_called_(false) {}
+    post_lookup_called_(false) {
+    ThreadSynchronizer* sync = server_context()->thread_synchronizer();
+    sync->EnableForPrefix(ProxyFetch::kCollectorDoneFinish);
+    sync->EnableForPrefix(ProxyFetch::kCollectorDetachFinish);
+    sync->EnableForPrefix(ProxyFetch::kCollectorConnectProxyFetchFinish);
+  }
 
   scoped_ptr<ThreadSystem> thread_system_;
   ServerContext* server_context_;
@@ -422,9 +427,6 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);
 
-  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
-  sync->EnableForPrefix(ProxyFetch::kCollectorReady);
-  sync->EnableForPrefix(ProxyFetch::kCollectorDone);
   ThreadSystem* thread_system = server_context()->thread_system();
   QueuedWorkerPool pool(1, "test", thread_system);
   QueuedWorkerPool::Sequence* sequence = pool.NewSequence();

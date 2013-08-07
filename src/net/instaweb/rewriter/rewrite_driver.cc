@@ -291,7 +291,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       is_nested_(false),
       request_context_(NULL),
       start_time_ms_(0),
-      tried_to_distribute_fetch_(false)
+      tried_to_distribute_fetch_(false),
+      defer_instrumentation_script_(false)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
@@ -415,6 +416,7 @@ void RewriteDriver::Clear() {
   flushed_early_ = false;
   flushing_early_ = false;
   tried_to_distribute_fetch_ = false;
+  defer_instrumentation_script_ = false;
   is_lazyload_script_flushed_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;

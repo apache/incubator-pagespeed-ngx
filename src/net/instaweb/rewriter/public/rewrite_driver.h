@@ -35,7 +35,6 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -1030,6 +1029,13 @@ class RewriteDriver : public HtmlParse {
              StringPiece charset,
              OutputResource* output);
 
+  void set_defer_instrumentation_script(bool x) {
+    defer_instrumentation_script_ = x;
+  }
+  bool defer_instrumentation_script() const {
+    return defer_instrumentation_script_;
+  }
+
  protected:
   virtual void DetermineEnabledFilters();
 
@@ -1532,6 +1538,10 @@ class RewriteDriver : public HtmlParse {
   // True if this RewriteDriver attempted to distribute the rewrite. This is
   // used to prevent a second attempt in case the first errored out.
   bool tried_to_distribute_fetch_;
+
+  // If false, add pagespeed_no_defer attribute to the script inserted by
+  // add_instrumentation filter.
+  bool defer_instrumentation_script_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
