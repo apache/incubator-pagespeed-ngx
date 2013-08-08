@@ -151,6 +151,12 @@ ModPagespeedEnableFilters add_instrumentation
     ModPagespeedCriticalLineConfig div[@id="container"]/div[4]
 </Directory>
 
+# Test purging individual URLs without flushing the entire
+# metadata cache.  Note that we do not support any URL-based purging
+# in mod_pagespeed yet so there is no need to cover the 'off' case in
+# our tests.
+ModPagespeedEnableCachePurge on
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cachable_rewritten_html" >
     ModPagespeedRewriteDeadlinePerFlushMs 1
     # Assume that Varnish (or any other downstream cache) is running at
@@ -590,9 +596,9 @@ ModPagespeedUsePerVHostStatistics on
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName ipro.example.com
 
+  ModPagespeedInPlaceResourceOptimization on
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
-
 </VirtualHost>
 
 # Setup a vhost with the critical image beacon and lazyload filter enabled to

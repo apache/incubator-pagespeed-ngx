@@ -55,11 +55,15 @@ namespace {
 class FakeFetch : public AsyncFetch {
  public:
   FakeFetch(const RequestContextPtr& request_context,
+            RewriteOptions* options,
+            const GoogleString& url,
             WorkerTestBase::SyncPoint* sync,
             ResponseHeaders* response_headers)
       : AsyncFetch(request_context),
         done_(false),
         success_(false),
+        options_(options),
+        url_(url),
         sync_(sync) {
     set_response_headers(response_headers);
   }
@@ -85,10 +89,16 @@ class FakeFetch : public AsyncFetch {
   bool done() { return done_; }
   bool success() { return success_; }
 
+  bool IsCachedResultValid(const ResponseHeaders& headers) {
+    return options_->IsUrlCacheValid(url_, headers.date_ms());
+  }
+
  private:
   GoogleString content_;
   bool done_;
   bool success_;
+  const RewriteOptions* options_;
+  GoogleString url_;
   WorkerTestBase::SyncPoint* sync_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeFetch);
@@ -272,8 +282,10 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     css_filter_->set_exceed_deadline(exceed_deadline_);
 
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
-    FakeFetch mock_fetch(RequestContext::NewTestRequestContext(
-        server_context()->thread_system()), &sync, &response_headers_);
+    RequestContextPtr request_context(RequestContext::NewTestRequestContext(
+        server_context()->thread_system()));
+    FakeFetch mock_fetch(request_context, options(), url, &sync,
+                         &response_headers_);
     mock_fetch.set_request_headers(&request_headers_);
 
     ClearRewriteDriver();
@@ -1367,6 +1379,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
 
 TEST_F(InPlaceRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   Init();
+  EnableCachePurge();
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
 
@@ -1403,8 +1416,9 @@ TEST_F(InPlaceRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
 
   AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
+  int64 date_of_css_ms = timer()->NowMs();
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
-                        timer()->NowMs());
+                        date_of_css_ms);
   // The metadata and cache entry is stale now. Fetch the content and serve it
   // out without rewriting. The background rewrite attempt will end up reusing
   // the old result due to revalidation, however.
@@ -1418,6 +1432,22 @@ TEST_F(InPlaceRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   EXPECT_EQ(0, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  mock_url_fetcher()->set_timer(timer());
+  mock_url_fetcher()->set_update_date_headers(true);
+  SetCacheInvalidationTimestamp();
+  date_of_css_ms = timer()->NowMs();
+
+  // Having flushed cache, we are now back to serving the origin content.
+  FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_,
+                        NULL, date_of_css_ms);
+
+  // Next time we'll serve optimized content.
+  AdvanceTimeMs(ttl_ms_/2);
+  ResetHeadersAndStats();
+  int64 expected_ttl_ms = ttl_ms_ - (timer()->NowMs() - date_of_css_ms);
+  FetchAndCheckResponse(cache_css_url_, "good:cf", true, expected_ttl_ms,
+                        etag_, timer()->NowMs());
 }
 
 TEST_F(InPlaceRewriteContextTest, NonCacheableUrlNoRewriting) {

@@ -3700,6 +3700,9 @@ void RewriteOptions::UrlValuedAttribute(
 }
 
 bool RewriteOptions::IsUrlPurged(StringPiece url, int64 time_ms) const {
+  if (time_ms <= cache_invalidation_timestamp()) {
+    return true;
+  }
   if (!url_cache_invalidation_map_.empty()) {
     UrlCacheInvalidationMap::const_iterator p =
         url_cache_invalidation_map_.find(url.as_string());

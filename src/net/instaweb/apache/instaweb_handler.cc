@@ -203,6 +203,12 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
 
   bool status_ok() const { return status_ok_; }
 
+  virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
+    const RewriteOptions* options = driver_->options();
+    return (headers.has_date_ms() &&
+            options->IsUrlCacheValid(mapped_url_, headers.date_ms()));
+  }
+
  private:
   GoogleString mapped_url_;
   ApacheWriter apache_writer_;
@@ -377,8 +383,8 @@ void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
 
 // Handle url with In Place Resource Optimization (IPRO) flow.
 bool handle_as_in_place(const RequestContextPtr& request_context,
-                        GoogleUrl* gurl,
-                        const GoogleString& url,
+                        GoogleUrl* stripped_gurl,
+                        const GoogleString& original_url,
                         RewriteOptions* custom_options,
                         ApacheServerContext* server_context,
                         RequestHeaders* owned_headers,
@@ -387,37 +393,41 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   bool handled = false;
 
   RewriteDriver* driver = ResourceFetch::GetDriver(
-      *gurl, custom_options, server_context, request_context);
+      *stripped_gurl, custom_options, server_context, request_context);
 
   MessageHandler* message_handler = server_context->message_handler();
   message_handler->Message(kInfo, "Trying to serve rewritten resource "
-                           "in-place: %s", url.c_str());
+                           "in-place: %s", original_url.c_str());
 
   ApacheProxyFetch fetch(
-      url, server_context->thread_system(), driver, request);
+      original_url, server_context->thread_system(), driver, request);
   fetch.set_handle_error(false);
-  driver->FetchInPlaceResource(*gurl, false /* proxy_mode */, &fetch);
+  driver->FetchInPlaceResource(*stripped_gurl, false /* proxy_mode */, &fetch);
 
   fetch.Wait();
   if (fetch.status_ok()) {
     server_context->rewrite_stats()->ipro_served()->Add(1);
     message_handler->Message(kInfo, "Serving rewritten resource in-place: %s",
-                             url.c_str());
+                             original_url.c_str());
     handled = true;
   } else if (fetch.response_headers()->status_code() ==
              CacheUrlAsyncFetcher::kNotInCacheStatus) {
     server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
     message_handler->Message(kInfo, "Could not rewrite resource in-place "
                              "because URL is not in cache: %s",
-                             url.c_str());
+                             original_url.c_str());
     // This URL was not found in cache (neither the input resource nor
     // a ResourceNotCacheable entry) so we need to get it into cache
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
+    //
+    // We use stripped_gurl->Spec() rather than 'original_url' for
+    // InPlaceResourceRecorder as we want any ?ModPagespeed query-params to
+    // be stripped from the cache key before we store the result in HTTPCache.
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
-        url, request_headers.release(), driver->options()->respect_vary(),
-        server_context->http_cache(), server_context->statistics(),
-        message_handler);
+        stripped_gurl->Spec(), request_headers.release(),
+        driver->options()->respect_vary(), server_context->http_cache(),
+        server_context->statistics(), message_handler);
     ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
                          request, request->connection);
     ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
@@ -425,7 +435,7 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   } else {
     server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
     message_handler->Message(kInfo, "Could not rewrite resource in-place: %s",
-                             url.c_str());
+                             original_url.c_str());
   }
   driver->Cleanup();
 

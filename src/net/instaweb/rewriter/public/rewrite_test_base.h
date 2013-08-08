@@ -617,6 +617,23 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   GoogleString GetLazyloadScriptHtml();
   GoogleString GetLazyloadPostscriptHtml();
 
+  // Sets the server-scoped invalidation timestamp.  Time is advanced by
+  // 1 second both before and after invalidation.  E.g. if the current time
+  // is 100000 milliseconds at the time this is called, the invalidation
+  // timestamp will be at 101000 milliseconds, and time will be rolled
+  // forward to 102000 on exit from this function.
+  void SetCacheInvalidationTimestamp();
+
+  // Sets the invalidation timestamp for a URL pattern.  Time is advanced by
+  // in the same manner as for SetCacheInvalidationTimestamp above.
+  void SetCacheInvalidationTimestampForUrl(
+      StringPiece url, bool ignores_metadata_and_pcache);
+
+  // Changes the way cache-purges are implemented for non-wildcards to
+  // avoid flushing the entire metadata cache and instead match each
+  // metadata Input against the invalidation-set.
+  void EnableCachePurge();
+
  protected:
   void Init();
 

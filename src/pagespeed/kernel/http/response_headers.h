@@ -254,12 +254,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // number of milliseconds since 1970.
   bool ParseDateHeader(const StringPiece& attr, int64* date_ms) const;
 
-  // Returns true if the date header is later than time_ms. Used in invalidation
-  // of http cache.
-  bool IsDateLaterThan(int64 time_ms) const {
-    return date_ms() > time_ms;
-  }
-
   // Parses the first line of an HTTP response, including the "HTTP/".
   void ParseFirstLine(const StringPiece& first_line);
 

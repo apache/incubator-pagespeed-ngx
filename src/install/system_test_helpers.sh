@@ -489,5 +489,5 @@ function scrape_content_length {
 function extract_headers {
   carriage_return=$(printf "\r")
   last_line_number=$(grep --text -n \^${carriage_return}\$ $1 | cut -f1 -d:)
-  head --lines=$last_line_number "$1"
+  head --lines=$last_line_number "$1" | sed -e "s/$carriage_return//"
 }

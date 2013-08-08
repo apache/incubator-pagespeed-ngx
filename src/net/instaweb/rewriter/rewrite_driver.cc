@@ -3024,10 +3024,7 @@ OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
 
 bool OptionsAwareHTTPCacheCallback::IsCacheValid(
     const GoogleString& key, const ResponseHeaders& headers) {
-  return
-      headers.IsDateLaterThan(
-          rewrite_options_->cache_invalidation_timestamp()) &&
-      rewrite_options_->IsUrlCacheValid(key, headers.date_ms());
+  return rewrite_options_->IsUrlCacheValid(key, headers.date_ms());
 }
 
 int64 OptionsAwareHTTPCacheCallback::OverrideCacheTtlMs(

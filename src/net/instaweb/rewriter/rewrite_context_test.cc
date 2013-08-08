@@ -98,32 +98,6 @@ class RewriteContextTest : public RewriteContextTestBase {
     InitTrimFilters(kind);
   }
 
-  void SetCacheInvalidationTimestamp() {
-    options()->ClearSignatureForTesting();
-    // Make sure the time is different, since otherwise we may end up with
-    // re-fetches resulting in re-inserts rather than inserts.
-    AdvanceTimeMs(Timer::kSecondMs);
-    options()->set_cache_invalidation_timestamp(timer()->NowMs());
-    options()->ComputeSignature();
-  }
-
-  void SetCacheInvalidationUrlTimestamp(
-      StringPiece url, bool ignores_metadata_and_pcache) {
-    options()->ClearSignatureForTesting();
-    // Make sure the time is different, since otherwise we may end up with
-    // re-fetches resulting in re-inserts rather than inserts.
-    AdvanceTimeMs(Timer::kSecondMs);
-    options()->AddUrlCacheInvalidationEntry(url, timer()->NowMs(),
-                                            ignores_metadata_and_pcache);
-    options()->ComputeSignature();
-  }
-
-  void EnableFastUrlInvalidation() {
-    options()->ClearSignatureForTesting();
-    options()->set_enable_cache_purge(true);
-    options()->ComputeSignature();
-  }
-
   void TrimOnTheFlyStart(GoogleString* input_html, GoogleString* output_html) {
     InitTrimFilters(kOnTheFlyResource);
     InitResources();
@@ -299,7 +273,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
 }
 
 TEST_F(RewriteContextTest, CacheInvalidatingOneOfTwoCssFiles) {
-  EnableFastUrlInvalidation();
+  EnableCachePurge();
   GoogleString input_html, output_html;
   TrimOnTheFlyStart(&input_html, &output_html);
 
@@ -314,8 +288,8 @@ TEST_F(RewriteContextTest, CacheInvalidatingOneOfTwoCssFiles) {
   ClearStats();
 
   // Wipe out a.css, but b.css's metadata stays intact.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("a.css"),
-                                   false /* ignores_metadata_and_pcache */);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("a.css"),
+                                      false /* ignores_metadata_and_pcache */);
   ValidateExpected("trimmable", input_html, output_html);
 
   // The invalidation of a.css does not actually change the cache key or remove
@@ -345,15 +319,15 @@ TEST_F(RewriteContextTest, CacheInvalidatingOneOfTwoCssFiles) {
 
 TEST_F(RewriteContextTest,
        TrimOnTheFlyOptimizableThisUrlCacheInvalidationIgnoringMetadataCache) {
-  EnableFastUrlInvalidation();
+  EnableCachePurge();
   GoogleString input_html, output_html;
   TrimOnTheFlyStart(&input_html, &output_html);
 
   // The third time we do a 'strict' invalidation of cache for some other URL
   // and then request the URL.  This means we do not invalidate the metadata,
   // nor the HTTP cache entry for 'a.css'.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar"),
-                                   true /* ignores_metadata_and_pcache */);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("foo.bar"),
+                                      true /* ignores_metadata_and_pcache */);
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   // We get a cache hit on the metadata.
@@ -369,8 +343,8 @@ TEST_F(RewriteContextTest,
   // Note:  Strict invalidation does not make sense for resources, since one
   // almost always wants to invalidate metadata for resources.  This test is for
   // completeness.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("a.css"),
-                                   true /* ignores_metadata_and_pcache */);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("a.css"),
+                                      true /* ignores_metadata_and_pcache */);
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   // We get a cache hit on the metadata.
@@ -381,14 +355,14 @@ TEST_F(RewriteContextTest,
 }
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableThisUrlCacheInvalidation) {
-  EnableFastUrlInvalidation();
+  EnableCachePurge();
   GoogleString input_html, output_html;
   TrimOnTheFlyStart(&input_html, &output_html);
 
   // The third time we do a 'strict' invalidation of cache for some other URL
   // and then request the URL.  This means we do not invalidate the metadata,
   // nor the HTTP cache entry for 'a.css'.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar"), true);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("foo.bar"), true);
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   // We get a cache hit on the metadata.
@@ -409,7 +383,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableThisUrlCacheInvalidation) {
   default_css_header.ComputeCaching();
   SetFetchResponse(StrCat(kTestDomain, "a.css"), default_css_header, " new_a ");
   AdvanceTimeMs(1);
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("a.css"), false);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("a.css"), false);
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   // The above invalidation did not cause the partition key to change, and so
@@ -422,14 +396,14 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableThisUrlCacheInvalidation) {
 }
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableUrlCacheInvalidation) {
-  EnableFastUrlInvalidation();
+  EnableCachePurge();
   GoogleString input_html, output_html;
   TrimOnTheFlyStart(&input_html, &output_html);
 
   // The third time we do a 'complete' invalidation of cache for some other URL
   // and then request the URL.  This means all metadata is invalidated, but the
   // HTTP cache entry for 'a.css' is not.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar*"), false);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("foo.bar*"), false);
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   // The above invalidation causes the partition key to change and hence
@@ -522,7 +496,7 @@ TEST_F(RewriteContextTest,
   // in fact also HTTP cache for 'b.css') are not invalidated.
   // Note:  This is realistic since strict invalidation is what makes sense for
   // html.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar"), true);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("foo.bar"), true);
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -537,7 +511,7 @@ TEST_F(RewriteContextTest,
   // Note:  Strict invalidation does not make sense for resources, since one
   // almost always wants to invalidate metadata for resources.  This test is for
   // completeness.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("b.css"), true);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("b.css"), true);
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -547,7 +521,7 @@ TEST_F(RewriteContextTest,
 
 TEST_F(RewriteContextTest,
        TrimOnTheFlyNonOptimizableThisRefUrlCacheInvalidation) {
-  EnableFastUrlInvalidation();
+  EnableCachePurge();
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
 
@@ -573,7 +547,7 @@ TEST_F(RewriteContextTest,
   // in fact also HTTP cache for 'b.css') are not invalidated.
   // Note:  This is realistic since strict invalidation is what makes sense for
   // html.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar"), true);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("foo.bar"), true);
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -583,7 +557,7 @@ TEST_F(RewriteContextTest,
 
   // The fourth time we invalidate the caches for 'b.css' and all metadata and
   // then request the URL.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("b.css"), false);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("b.css"), false);
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   // The above invalidation does not cause the partition key to
   // change, so we get an LRU cache hit, but we detect that it's
@@ -622,7 +596,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizableUrlCacheInvalidation) {
   // The third time we do a 'non-strict' (includes metadata) invalidation of
   // the cache for some URL other than 'b.css', invalidating just the
   // metadata for foo.bar, which has no effect.
-  SetCacheInvalidationUrlTimestamp(AbsolutifyUrl("foo.bar"), false);
+  SetCacheInvalidationTimestampForUrl(AbsolutifyUrl("foo.bar"), false);
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   // Since enable_cache_purge is not true, the above invalidation results in a
   // signature change for metadata cache key.  Hence metadata is invalidated.

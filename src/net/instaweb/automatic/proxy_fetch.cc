@@ -937,8 +937,8 @@ void ProxyFetch::HandleDone(bool success) {
 }
 
 bool ProxyFetch::IsCachedResultValid(const ResponseHeaders& headers) {
-  return headers.IsDateLaterThan(Options()->cache_invalidation_timestamp()) &&
-      Options()->IsUrlCacheValid(url_, headers.date_ms());
+  return (headers.has_date_ms() &&
+          Options()->IsUrlCacheValid(url_, headers.date_ms()));
 }
 
 void ProxyFetch::FlushDone() {

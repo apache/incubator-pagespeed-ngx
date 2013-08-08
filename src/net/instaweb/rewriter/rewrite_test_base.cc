@@ -1161,6 +1161,35 @@ GoogleString RewriteTestBase::GetLazyloadPostscriptHtml() {
       "</script>");
 }
 
+void RewriteTestBase::SetCacheInvalidationTimestamp() {
+  options()->ClearSignatureForTesting();
+  // Make sure the time is different, since otherwise we may end up with
+  // re-fetches resulting in re-inserts rather than inserts.
+  AdvanceTimeMs(Timer::kSecondMs);
+  int64 now_ms = timer()->NowMs();
+  options()->set_cache_invalidation_timestamp(now_ms);
+  options()->ComputeSignature();
+  AdvanceTimeMs(Timer::kSecondMs);
+}
+
+void RewriteTestBase::SetCacheInvalidationTimestampForUrl(
+    StringPiece url, bool ignores_metadata_and_pcache) {
+  options()->ClearSignatureForTesting();
+  // Make sure the time is different, since otherwise we may end up with
+  // re-fetches resulting in re-inserts rather than inserts.
+  AdvanceTimeMs(Timer::kSecondMs);
+  options()->AddUrlCacheInvalidationEntry(url, timer()->NowMs(),
+                                          ignores_metadata_and_pcache);
+  options()->ComputeSignature();
+  AdvanceTimeMs(Timer::kSecondMs);
+}
+
+void RewriteTestBase::EnableCachePurge() {
+  options()->ClearSignatureForTesting();
+  options()->set_enable_cache_purge(true);
+  options()->ComputeSignature();
+}
+
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
 class RewriteTestBaseProcessContext {
