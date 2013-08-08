@@ -31,7 +31,6 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class NonceGenerator;
-class SerfUrlAsyncFetcher;
 class ServerContext;
 class SharedCircularBuffer;
 class SharedMemStatistics;
@@ -131,10 +130,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // its required thread).
   UrlAsyncFetcher* GetFetcher(SystemRewriteOptions* config);
 
-  // As above, but just gets a Serf fetcher --- not a slurp fetcher or a rate
-  // limiting one, etc.
-  SerfUrlAsyncFetcher* GetSerfFetcher(SystemRewriteOptions* config);
-
   // Parses a comma-separated list of HTTPS options.  If successful, applies
   // the options to the fetcher and returns true.  If the options were invalid,
   // *error_message is populated and false is returned.
@@ -204,7 +199,18 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   typedef std::set<SystemServerContext*> SystemServerContextSet;
   SystemServerContextSet uninitialized_server_contexts_;
 
+  // Allocates a serf fetcher.  Implementations may override this method to
+  // supply other kinds of fetchers.  For example, ngx_pagespeed may return
+  // either a serf fetcher or an nginx-native fetcher depending on options.
+  virtual UrlAsyncFetcher* AllocateFetcher(SystemRewriteOptions* config);
+
  private:
+  // GetFetcher returns fetchers wrapped in various kinds of filtering (rate
+  // limiting and slurping).  Because the underlying fetchers are expensive, and
+  // you can wrap the same base fetcher in multiple ways, we provide a helper
+  // method for GetFetcher that reuses fetchers as much as possible.
+  UrlAsyncFetcher* GetBaseFetcher(SystemRewriteOptions* config);
+
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
 
   scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
@@ -237,13 +243,21 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // localhost.
   bool disable_loopback_routing_;
 
-  // Serf fetchers are expensive -- they each cost a thread. Allocate
-  // one for each proxy/slurp-setting.  Currently there is no
-  // consistency checking for fetcher timeout.
+  // Fetchers are expensive--they each cost a thread.  Instead of allocating one
+  // for every server context we keep a cache of defined fetchers with various
+  // configurations.  There are two caches depending on whether the underlying
+  // fetcher (the thing that takes a thread) needs to know about various
+  // options.  The inner cache is base_fetcher_map_ which GetBaseFetcher() uses
+  // to keep track of what fetchers it has requested from AllocateFetcher().
+  // Base fetchers are all serf fetchers with various options unless an
+  // implementation overrides AllocateFetcher() to return other kinds of
+  // fetchers.  The outer cache is fetcher_map_, used by GetFetcher(), and is
+  // fragmented on every option that affects fetching.  All of these fetchers
+  // are either exactly as returned by GetBaseFetcher() or first wrapped in
+  // slurping or rate-limiting.
   typedef std::map<GoogleString, UrlAsyncFetcher*> FetcherMap;
+  FetcherMap base_fetcher_map_;
   FetcherMap fetcher_map_;
-  typedef std::map<GoogleString, SerfUrlAsyncFetcher*> SerfFetcherMap;
-  SerfFetcherMap serf_fetcher_map_;
 
   GoogleString https_options_;
 

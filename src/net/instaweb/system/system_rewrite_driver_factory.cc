@@ -313,20 +313,19 @@ UrlAsyncFetcher* SystemRewriteDriverFactory::GetFetcher(
             config->slurp_directory(), file_system(), timer());
         fetcher = dump_fetcher;
       } else {
-        SerfUrlAsyncFetcher* base_fetcher = GetSerfFetcher(config);
+        UrlAsyncFetcher* base_fetcher = GetBaseFetcher(config);
         HttpDumpUrlAsyncWriter* dump_writer = new HttpDumpUrlAsyncWriter(
             config->slurp_directory(), base_fetcher, file_system(), timer());
         fetcher = dump_writer;
       }
     } else {
-      SerfUrlAsyncFetcher* serf = GetSerfFetcher(config);
-      fetcher = serf;
+      fetcher = GetBaseFetcher(config);
       if (config->rate_limit_background_fetches()) {
         // Unfortunately, we need stats for load-shedding.
         if (config->statistics_enabled()) {
-          TakeOwnership(serf);
+          TakeOwnership(fetcher);
           fetcher = new RateControllingUrlAsyncFetcher(
-              serf, max_queue_size(), requests_per_host(), queued_per_host(),
+              fetcher, max_queue_size(), requests_per_host(), queued_per_host(),
               thread_system(), statistics());
         } else {
           message_handler()->Message(
@@ -339,10 +338,28 @@ UrlAsyncFetcher* SystemRewriteDriverFactory::GetFetcher(
   return iter->second;
 }
 
-SerfUrlAsyncFetcher* SystemRewriteDriverFactory::GetSerfFetcher(
+UrlAsyncFetcher* SystemRewriteDriverFactory::AllocateFetcher(
     SystemRewriteOptions* config) {
-  // Since we don't do slurping at this level, our key is just the proxy
-  // setting.
+  SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
+      config->fetcher_proxy().c_str(),
+      NULL,  // Do not use the Factory pool so we can control deletion.
+      thread_system(), statistics(), timer(),
+      config->blocking_fetch_timeout_ms(),
+      message_handler());
+  serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
+  serf->set_fetch_with_gzip(fetch_with_gzip_);
+  serf->set_track_original_content_length(track_original_content_length_);
+  serf->SetHttpsOptions(https_options_);
+  serf->SetSslCertificatesDir(config->ssl_cert_directory());
+  serf->SetSslCertificatesFile(config->ssl_cert_file());
+  return serf;
+}
+
+
+UrlAsyncFetcher* SystemRewriteDriverFactory::GetBaseFetcher(
+    SystemRewriteOptions* config) {
+  // Since we don't do slurping or rate-controlling at this level, our key
+  // doesn't include that.
   GoogleString cache_key = StrCat(
       list_outstanding_urls_on_error_ ? "list_errors\n" : "no_errors\n",
       config->fetcher_proxy(), "\n",
@@ -353,23 +370,11 @@ SerfUrlAsyncFetcher* SystemRewriteDriverFactory::GetSerfFetcher(
             "\nhttps: ", https_options_,
             "\ncert_dir: ", config->ssl_cert_directory(),
             "\ncert_file: ", config->ssl_cert_file());
-  std::pair<SerfFetcherMap::iterator, bool> result = serf_fetcher_map_.insert(
-      std::make_pair(cache_key, static_cast<SerfUrlAsyncFetcher*>(NULL)));
-  SerfFetcherMap::iterator iter = result.first;
+  std::pair<FetcherMap::iterator, bool> result = base_fetcher_map_.insert(
+      std::make_pair(cache_key, static_cast<UrlAsyncFetcher*>(NULL)));
+  FetcherMap::iterator iter = result.first;
   if (result.second) {
-    SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
-        config->fetcher_proxy().c_str(),
-        NULL,  // Do not use the Factory pool so we can control deletion.
-        thread_system(), statistics(), timer(),
-        config->blocking_fetch_timeout_ms(),
-        message_handler());
-    serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
-    serf->set_fetch_with_gzip(fetch_with_gzip_);
-    serf->set_track_original_content_length(track_original_content_length_);
-    serf->SetHttpsOptions(https_options_);
-    serf->SetSslCertificatesDir(config->ssl_cert_directory());
-    serf->SetSslCertificatesFile(config->ssl_cert_file());
-    iter->second = serf;
+    iter->second = AllocateFetcher(config);
   }
   return iter->second;
 }
