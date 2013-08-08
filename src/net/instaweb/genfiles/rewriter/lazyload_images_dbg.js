@@ -122,7 +122,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
       if((context.force_load_ || context.isVisible_(element)) && -1 != element.src.indexOf(context.blank_image_src_)) {
         var parent_node = element.parentNode, next_sibling = element.nextSibling;
         parent_node && parent_node.removeChild(element);
-        element.getAttribute = element._getAttribute;
+        element._getAttribute && (element.getAttribute = element._getAttribute);
         element.removeAttribute("onload");
         element.removeAttribute("pagespeed_lazy_src");
         element.removeAttribute("pagespeed_lazy_replaced_functions");

@@ -209,7 +209,7 @@ pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
   var element_position = this.getStyle_(element, 'position');
   if (element_position == 'relative') {
     // TODO(ksimbili): Check if this code is still needed. Find out if any other
-    // alterntive will solve this.
+    // alternative will solve this.
     // If the element contains a "position: relative" style attribute, assume
     // it is visible since getBoundingClientRect() doesn't seem to work
     // correctly here.
@@ -252,7 +252,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
         // do a 'contains' match to handle the case when the blank src is a url
         // starting with //. It is possible that a script has already changed
         // the url, in which case, we should not modify it.
-        // Remove the element from the DOM and and add it back in, since simply
+        // Remove the element from the DOM and add it back in, since simply
         // setting the src doesn't seem to always work in chrome.
         var parent_node = element.parentNode;
         var next_sibling = element.nextSibling;
@@ -260,8 +260,12 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
           parent_node.removeChild(element);
         }
 
-        // Restore the old functions.
-        element.getAttribute = element._getAttribute;
+        // Restore the old functions. Make sure that this element actually has
+        // the old function before restoring it. Otherwise, we'll end up setting
+        // getAttribute to undefined if we haven't seen this node before.
+        if (element._getAttribute) {
+          element.getAttribute = element._getAttribute;
+        }
         // Remove attributes that are no longer needed.
         element.removeAttribute('onload');
         element.removeAttribute('pagespeed_lazy_src');

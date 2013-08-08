@@ -43,7 +43,7 @@ pagespeed.computeCriticalSelectors = function(selectors) {
   for (var i = 0; i < selectors.length; ++i) {
     try {
       // If this selector matched any DOM elements, then consider it critical.
-      if (document.querySelectorAll(selectors[i]).length > 0) {
+      if (document.querySelector(selectors[i]) != null) {
         critical_selectors.push(selectors[i]);
       }
     } catch (e) {

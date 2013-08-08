@@ -55,7 +55,7 @@ var pagespeed = window.pagespeed;
 pagespeed.computeCriticalSelectors = function(selectors) {
   for(var critical_selectors = [], i = 0;i < selectors.length;++i) {
     try {
-      0 < document.querySelectorAll(selectors[i]).length && critical_selectors.push(selectors[i])
+      null != document.querySelector(selectors[i]) && critical_selectors.push(selectors[i])
     }catch(e) {
     }
   }
