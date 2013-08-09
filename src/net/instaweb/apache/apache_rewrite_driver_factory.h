@@ -32,11 +32,8 @@ namespace net_instaweb {
 
 class ApacheMessageHandler;
 class ApacheServerContext;
-class FileSystem;
-class Hasher;
 class MessageHandler;
 class ModSpdyFetchController;
-class NamedLockManager;
 class QueuedWorkerPool;
 class RewriteOptions;
 class ServerContext;
@@ -56,8 +53,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
 
-  virtual Hasher* NewHasher();
-
   // Give access to apache_message_handler_ for the cases we need
   // to use ApacheMessageHandler rather than MessageHandler.
   // e.g. Use ApacheMessageHandler::Dump()
@@ -72,8 +67,7 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
     InitStats(statistics);
   }
 
-  virtual ApacheServerContext* MakeApacheServerContext(server_rec* server);
-  ServerContext* NewServerContext();
+  ApacheServerContext* MakeApacheServerContext(server_rec* server);
 
   void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
   int num_rewrite_threads() const { return num_rewrite_threads_; }
@@ -159,10 +153,8 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Provide defaults.
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
-  virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* server_context);
-  virtual NamedLockManager* DefaultLockManager();
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
                                              StringPiece name);
 

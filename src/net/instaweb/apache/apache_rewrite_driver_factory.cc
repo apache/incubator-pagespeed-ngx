@@ -32,18 +32,14 @@
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
-#include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/slow_worker.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -107,14 +103,6 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
   STLDeleteElements(&uninitialized_server_contexts_);
 }
 
-FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
-  return new StdioFileSystem;
-}
-
-Hasher* ApacheRewriteDriverFactory::NewHasher() {
-  return new MD5Hasher();
-}
-
 Timer* ApacheRewriteDriverFactory::DefaultTimer() {
   return new AprTimer();
 }
@@ -144,12 +132,6 @@ void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
 void ApacheRewriteDriverFactory::InitStaticAssetManager(
     StaticAssetManager* static_asset_manager) {
   static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
-}
-
-NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
-  LOG(DFATAL)
-      << "In Apache locks are owned by SystemCachePath, not the factory";
-  return NULL;
 }
 
 QueuedWorkerPool* ApacheRewriteDriverFactory::CreateWorkerPool(
@@ -276,9 +258,6 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
 
   // Init Apache-specific stats.
   ApacheServerContext::InitStats(statistics);
-  InPlaceResourceRecorder::InitStats(statistics);
-  // TODO(jefftk): move rate controlling to system
-  RateController::InitStats(statistics);
 }
 
 void ApacheRewriteDriverFactory::Terminate() {
@@ -293,11 +272,6 @@ ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheServerContext(
       new ApacheServerContext(this, server, version_);
   uninitialized_server_contexts_.insert(server_context);
   return server_context;
-}
-
-ServerContext* ApacheRewriteDriverFactory::NewServerContext() {
-  DCHECK(false);
-  return NULL;
 }
 
 bool ApacheRewriteDriverFactory::PoolDestroyed(

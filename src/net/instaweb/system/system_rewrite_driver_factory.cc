@@ -23,11 +23,13 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
+#include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
@@ -35,11 +37,14 @@
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/posix_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -143,6 +148,8 @@ void SystemRewriteDriverFactory::InitStats(Statistics* statistics) {
   SystemCaches::InitStats(statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
+  InPlaceResourceRecorder::InitStats(statistics);
+  RateController::InitStats(statistics);
 
   statistics->AddVariable(kShutdownCount);
 }
@@ -387,6 +394,28 @@ bool SystemRewriteDriverFactory::SetHttpsOptions(StringPiece directive,
 
 UrlAsyncFetcher* SystemRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   LOG(DFATAL) << "The fetchers are not global, but kept in a map.";
+  return NULL;
+}
+
+FileSystem* SystemRewriteDriverFactory::DefaultFileSystem() {
+  return new StdioFileSystem();
+}
+
+Hasher* SystemRewriteDriverFactory::NewHasher() {
+  return new MD5Hasher();
+}
+
+Timer* SystemRewriteDriverFactory::DefaultTimer() {
+  return new PosixTimer();
+}
+
+NamedLockManager* SystemRewriteDriverFactory::DefaultLockManager() {
+  LOG(DFATAL) << "Locks are owned by SystemCachePath, not the factory";
+  return NULL;
+}
+
+ServerContext* SystemRewriteDriverFactory::NewServerContext() {
+  LOG(DFATAL) << "Use implementation-specific MakeXServerXContext() instead";
   return NULL;
 }
 

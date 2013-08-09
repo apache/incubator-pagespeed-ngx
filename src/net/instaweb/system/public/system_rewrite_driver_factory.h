@@ -30,6 +30,9 @@
 namespace net_instaweb {
 
 class AbstractSharedMem;
+class FileSystem;
+class Hasher;
+class NamedLockManager;
 class NonceGenerator;
 class ServerContext;
 class SharedCircularBuffer;
@@ -38,6 +41,7 @@ class Statistics;
 class SystemCaches;
 class SystemRewriteOptions;
 class SystemServerContext;
+class Timer;
 class ThreadSystem;
 class UrlAsyncFetcher;
 
@@ -105,6 +109,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // SystemHtmlParseMessageHandler. is_root is true if this is invoked from
   // root (ie. parent) process.
   void SharedCircularBufferInit(bool is_root);
+
+  virtual Hasher* NewHasher();
+  virtual Timer* DefaultTimer();
+  virtual ServerContext* NewServerContext();
 
   // Hook so implementations may disable the property cache.
   virtual bool enable_property_cache() const {
@@ -203,6 +211,9 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // supply other kinds of fetchers.  For example, ngx_pagespeed may return
   // either a serf fetcher or an nginx-native fetcher depending on options.
   virtual UrlAsyncFetcher* AllocateFetcher(SystemRewriteOptions* config);
+
+  virtual FileSystem* DefaultFileSystem();
+  virtual NamedLockManager* DefaultLockManager();
 
  private:
   // GetFetcher returns fetchers wrapped in various kinds of filtering (rate
