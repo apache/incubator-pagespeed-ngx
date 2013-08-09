@@ -409,6 +409,13 @@ class PropertyPage : public AbstractPropertyPage {
   // Returns the type of the page.
   PageType page_type() { return page_type_; }
 
+  // Returns true if cohort present in the PropertyPage.
+  bool IsCohortPresent(const PropertyCache::Cohort* cohort);
+
+  // Finishes lookup for all the cohorts and call PropertyPage::Done() as fast
+  // as possible.
+  void FastFinishLookup();
+
  protected:
   // The Page takes ownership of the mutex.
   // TODO(pulkitg): Instead of passing full PropertyCache object, just pass
@@ -447,11 +454,13 @@ class PropertyPage : public AbstractPropertyPage {
   struct PropertyMapStruct {
     explicit PropertyMapStruct(AbstractLogRecord* log)
         : has_deleted_property(false),
-          log_record(log) {}
+          log_record(log),
+          has_value(false) {}
     PropertyMap pmap;
     bool has_deleted_property;
     AbstractLogRecord* log_record;
     CacheInterface::KeyState cache_state;
+    bool has_value;
   };
   typedef std::map<const PropertyCache::Cohort*, PropertyMapStruct*>
       CohortDataMap;

@@ -837,6 +837,7 @@
         'util/mock_property_page.cc',
         'util/property_cache.cc',
         'util/property_store.cc',
+        'util/two_level_property_store.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

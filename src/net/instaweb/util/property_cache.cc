@@ -91,6 +91,7 @@ void PropertyPage::AddValueFromProtobuf(
     log_record()->AddFoundPropertyToCohortInfo(
         page_type_, cohort->name(), pcache_value.name());
   }
+  pmap_struct->has_value = true;
   property->InitFromProtobuf(pcache_value);
 }
 
@@ -434,6 +435,21 @@ void PropertyPage::DeleteProperty(
   pmap->erase(pmap_itr);
   pmap_struct->has_deleted_property = true;
   delete property;
+}
+
+bool PropertyPage::IsCohortPresent(const PropertyCache::Cohort* cohort) {
+  ScopedMutex lock(mutex_.get());
+  DCHECK(cohort != NULL);
+  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  CHECK(cohort_itr != cohort_data_map_.end());
+  PropertyMapStruct* pmap_struct = cohort_itr->second;
+  return pmap_struct->has_value;
+}
+
+void PropertyPage::FastFinishLookup() {
+  if (property_store_callback_ != NULL) {
+    property_store_callback_->FastFinishLookup();
+  }
 }
 
 }  // namespace net_instaweb
