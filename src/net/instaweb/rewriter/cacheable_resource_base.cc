@@ -618,6 +618,8 @@ CacheableResourceBase::CacheableResourceBase(
       cache_key_(cache_key.data(), cache_key.size()),
       rewrite_driver_(rewrite_driver) {
   set_enable_cache_purge(rewrite_options()->enable_cache_purge());
+  set_proactive_resource_freshening(
+      rewrite_options()->proactive_resource_freshening());
 
   Statistics* stats = server_context()->statistics();
   hits_ = stats->GetVariable(StrCat(stat_prefix, kHitSuffix));

@@ -216,6 +216,8 @@ const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
 const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
 const char RewriteOptions::kProactivelyFreshenUserFacingRequest[] =
     "ProactivelyFreshenUserFacingRequest";
+const char RewriteOptions::kProactiveResourceFreshening[] =
+    "ProactiveResourceFreshening";
 const char RewriteOptions::kProgressiveJpegMinBytes[] =
     "ProgressiveJpegMinBytes";
 const char RewriteOptions::kRejectBlacklisted[] = "RejectBlacklisted";
@@ -1369,6 +1371,13 @@ void RewriteOptions::AddProperties() {
       kServerScope,
       "Allows individual resources to be flushed; adding some overhead to "
       "the metadata cache");
+  AddBaseProperty(
+      false, &RewriteOptions::proactive_resource_freshening_, "prf",
+      kProactiveResourceFreshening,
+      kServerScope,
+      "If true, allows proactive freshening of inputs to the resource when "
+      "they are close to expiry.");  // TODO(mpalem): write end user doc in
+      // net/instaweb/doc/en/speed/pagespeed/module/system.html
   AddBaseProperty(
       false, &RewriteOptions::lazyload_highres_images_,
       "elhr", kEnableLazyLoadHighResImages,

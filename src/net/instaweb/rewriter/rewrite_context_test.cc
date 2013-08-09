@@ -3599,7 +3599,7 @@ TEST_F(RewriteContextTest, TestFreshenForEmbeddedDependency) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   // Enable this option so urls are stored and freshen can be triggered on
   // the nested input info.
-  options()->set_enable_cache_purge(true);
+  options()->set_proactive_resource_freshening(true);
   options()->ComputeSignature();
   rewrite_driver()->AddFilters();
 
@@ -4402,7 +4402,7 @@ TEST_F(RewriteContextTest, CacheTtlWithDuplicateOtherDeps) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->set_rewrite_deadline_ms(1);
-  options()->set_enable_cache_purge(true);  // Enable dedup code.
+  options()->set_proactive_resource_freshening(true);  // Enable dedup code.
   options()->ComputeSignature();
   rewrite_driver()->AddFilters();
 

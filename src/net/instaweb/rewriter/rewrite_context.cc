@@ -2590,9 +2590,9 @@ void RewriteContext::Freshen() {
 
   // Also trigger freshen for other dependency urls if they exist.
   // TODO(mpalem): Currently, the urls are stored in the input cache field
-  // only if the enable_cache_purge() option is set. If this changes in the
-  // future, remove this check so the freshen improvements apply.
-  if (Options()->enable_cache_purge()) {
+  // only if the proactive_resource_freshening() option is set. If this changes
+  // in the future, remove this check so the freshen improvements apply.
+  if (Options()->proactive_resource_freshening()) {
     for (int k = 0; k < partitions_->other_dependency_size(); ++k) {
       const InputInfo& input_info = partitions_->other_dependency(k);
       if (input_info.has_url()) {

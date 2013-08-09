@@ -270,6 +270,9 @@ class Resource : public RefCounted<Resource> {
                                AsyncCallback* callback) = 0;
 
   void set_enable_cache_purge(bool x) { enable_cache_purge_ = x; }
+  void set_proactive_resource_freshening(bool x) {
+    proactive_resource_freshening_ = x;
+  }
 
   void set_disable_rewrite_on_no_transform(bool x) {
     disable_rewrite_on_no_transform_ = x;
@@ -297,6 +300,7 @@ class Resource : public RefCounted<Resource> {
   // is_background_fetch_ to false.
   bool is_background_fetch_;
   bool enable_cache_purge_;
+  bool proactive_resource_freshening_;
   bool disable_rewrite_on_no_transform_;
 
   DISALLOW_COPY_AND_ASSIGN(Resource);

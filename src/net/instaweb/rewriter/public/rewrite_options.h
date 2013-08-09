@@ -290,6 +290,7 @@ class RewriteOptions {
   static const char kOverrideCachingTtlMs[];
   static const char kPersistBlinkBlacklist[];
   static const char kProactivelyFreshenUserFacingRequest[];
+  static const char kProactiveResourceFreshening[];
   static const char kProgressiveJpegMinBytes[];
   static const char kRejectBlacklisted[];
   static const char kRejectBlacklistedStatusCode[];
@@ -1918,6 +1919,13 @@ class RewriteOptions {
     return enable_cache_purge_.value();
   }
 
+  void set_proactive_resource_freshening(bool x) {
+    set_option(x, &proactive_resource_freshening_);
+  }
+  bool proactive_resource_freshening() const {
+    return proactive_resource_freshening_.value();
+  }
+
   void set_lazyload_highres_images(bool x) {
     set_option(x, &lazyload_highres_images_);
   }
@@ -3262,6 +3270,11 @@ class RewriteOptions {
   // AddUrlCacheInvalidationEntry) or will not invalidate the metadata
   // cache entries at all (ignores_metadata_and_pcache==false).
   Option<bool> enable_cache_purge_;
+
+  // If set, the urls of the inputs to the resource are saved in the metadata
+  // cache entry. This increases the size of the cache entry, but can be used in
+  // freshening of the embedded resources.
+  Option<bool> proactive_resource_freshening_;
 
   // Enables the code to lazy load high res images.
   Option<bool> lazyload_highres_images_;

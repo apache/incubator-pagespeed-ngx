@@ -50,6 +50,7 @@ Resource::Resource(ServerContext* server_context, const ContentType* type)
       fetch_response_status_(kFetchStatusNotSet),
       is_background_fetch_(true),
       enable_cache_purge_(false),
+      proactive_resource_freshening_(false),
       disable_rewrite_on_no_transform_(true) {
 }
 
@@ -127,7 +128,7 @@ void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
 
   // TODO(jmarantz):  Implement this correctly for OutputResource which we also
   // have to purge if one of its inputs has been purged.
-  if (enable_cache_purge_) {
+  if (enable_cache_purge_ || proactive_resource_freshening_) {
     input->set_url(url());
   }
 }

@@ -371,6 +371,10 @@ DEFINE_bool(enable_cache_purge, false, "Enables the Cache Purge API. This "
             "requires saving input URLs to each metadata cache entry to "
             "facilitate fast URL cache invalidation.");
 
+DEFINE_bool(proactive_resource_freshening, false, "If set, the URLs of the "
+            "inputs to the optimization are saved in the metadata cache entry. "
+            "This is used to freshen resources when they are close to expiry.");
+
 DEFINE_bool(enable_extended_instrumentation, false,
             "If set to true, additional instrumentation js added to that "
             "page that adds more information to the beacon.");
@@ -968,6 +972,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("enable_cache_purge")) {
     options->set_enable_cache_purge(FLAGS_enable_cache_purge);
+  }
+  if (WasExplicitlySet("proactive_resource_freshening")) {
+    options->set_proactive_resource_freshening(
+        FLAGS_proactive_resource_freshening);
   }
 
   if (WasExplicitlySet("support_noscript_enabled")) {
