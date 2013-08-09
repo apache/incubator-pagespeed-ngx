@@ -24,7 +24,8 @@
 
 namespace net_instaweb {
 
-PropertyStore::PropertyStore() {
+PropertyStore::PropertyStore()
+    : enable_get_cancellation_(false) {
 }
 
 PropertyStore::~PropertyStore() {
