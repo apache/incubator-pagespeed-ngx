@@ -225,7 +225,7 @@ bool PurgeSet::SanitizeTimestamp(int64* timestamp_ms) {
 }
 
 bool PurgeSet::IsValid(const GoogleString& key, int64 timestamp_ms) const {
-  if (timestamp_ms < global_invalidation_timestamp_ms_) {
+  if (timestamp_ms <= global_invalidation_timestamp_ms_) {
     return false;
   }
   int64* purge_timestamp_ms = lru_->GetNoFreshen(key);

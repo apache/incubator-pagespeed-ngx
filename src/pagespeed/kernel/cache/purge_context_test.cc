@@ -203,7 +203,8 @@ TEST_F(PurgeContextTest, InvalidationSharing) {
   EXPECT_FALSE(PollAndTest1("a", 500000));
   EXPECT_TRUE(PollAndTest1("a", 500001));
   EXPECT_FALSE(PollAndTest1("b", 399999));
-  EXPECT_TRUE(PollAndTest1("b", 400000));
+  EXPECT_FALSE(PollAndTest1("b", 400000));
+  EXPECT_TRUE(PollAndTest1("b", 400001));
 
   // These will get transmitted to purge_context2_, which has not
   // yet read the cache invalidation file, but will pick up the
@@ -211,7 +212,8 @@ TEST_F(PurgeContextTest, InvalidationSharing) {
   EXPECT_FALSE(PollAndTest2("a", 500000));
   EXPECT_TRUE(PollAndTest2("a", 500001));
   EXPECT_FALSE(PollAndTest2("b", 399999));
-  EXPECT_TRUE(PollAndTest2("b", 400000));
+  EXPECT_FALSE(PollAndTest2("b", 400000));
+  EXPECT_TRUE(PollAndTest2("b", 400001));
 
   // Now push a time-based flush the other direction.  Because
   // we only poll the file system periodically we do have to advance

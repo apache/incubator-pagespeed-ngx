@@ -126,7 +126,7 @@ TEST_F(PurgeSetTest, SlightSkew) {
   ASSERT_TRUE(purge_set_.Put("a", 10));
   ASSERT_TRUE(purge_set_.UpdateGlobalInvalidationTimestampMs(8));  // clamped
   EXPECT_FALSE(purge_set_.IsValid("b", 9));
-  EXPECT_TRUE(purge_set_.IsValid("b", 10));
+  EXPECT_FALSE(purge_set_.IsValid("b", 10));
   EXPECT_TRUE(purge_set_.IsValid("b", 11));
 }
 
