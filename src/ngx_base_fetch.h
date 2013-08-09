@@ -61,12 +61,6 @@ class NgxBaseFetch : public AsyncFetch {
                bool modify_caching_headers);
   virtual ~NgxBaseFetch();
 
-  // Copies the request headers out of request_->headers_in->headers.
-  void PopulateRequestHeaders();
-
-  // Copies the response headers out of request_->headers_out->headers.
-  void PopulateResponseHeaders();
-
   // Puts a chain in link_ptr if we have any output data buffered.  Returns
   // NGX_OK on success, NGX_ERROR on errors.  If there's no data to send, sends
   // data only if Done() has been called.  Indicates the end of output by
