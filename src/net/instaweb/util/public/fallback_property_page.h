@@ -85,6 +85,9 @@ class FallbackPropertyPage : public AbstractPropertyPage {
   // values (i.e. without query params or without leaf).
   static GoogleString GetFallbackPageUrl(const GoogleUrl& request_url);
 
+  // Returns true if given url is for fallback properties.
+  static bool IsFallbackUrl(const GoogleString& url);
+
  private:
   scoped_ptr<PropertyPage> actual_property_page_;
   scoped_ptr<PropertyPage> property_page_with_fallback_values_;

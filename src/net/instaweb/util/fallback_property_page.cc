@@ -125,4 +125,9 @@ GoogleString FallbackPropertyPage::GetFallbackPageUrl(
   return StrCat(key, suffix);
 }
 
+bool FallbackPropertyPage::IsFallbackUrl(const GoogleString& url) {
+  return (url.find(kFallbackPageCacheKeyQuerySuffix) != GoogleString::npos ||
+          url.find(kFallbackPageCacheKeyBasePathSuffix) != GoogleString::npos);
+}
+
 }  // namespace net_instaweb

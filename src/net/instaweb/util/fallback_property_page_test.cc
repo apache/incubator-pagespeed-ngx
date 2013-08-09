@@ -228,4 +228,12 @@ TEST_F(FallbackPropertyPageTest, TestGetFallbackPageUrl) {
             FallbackPropertyPage::GetFallbackPageUrl(url_base_path));
 }
 
+TEST_F(FallbackPropertyPageTest, TestIsFallbackUrl) {
+  EXPECT_FALSE(FallbackPropertyPage::IsFallbackUrl("http://www.abc.com/b/"));
+  EXPECT_TRUE(
+      FallbackPropertyPage::IsFallbackUrl("http://www.abc.com/b/@fallback"));
+  EXPECT_TRUE(
+      FallbackPropertyPage::IsFallbackUrl("http://www.abc.com/b/#fallback"));
+}
+
 }  // namespace net_instaweb
