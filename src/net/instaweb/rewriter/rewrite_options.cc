@@ -1085,7 +1085,7 @@ void RewriteOptions::AddProperties() {
       kDefaultMaxCacheableResponseContentLength,
       &RewriteOptions::max_cacheable_response_content_length_, "rcl",
       kMaxCacheableResponseContentLength,
-      kProcessScope,
+      kServerScope,
       "Maximum length of a cacheable response content.");
   AddBaseProperty(
       kDefaultMaxHtmlCacheTimeMs,

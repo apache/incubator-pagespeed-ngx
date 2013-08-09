@@ -177,6 +177,12 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kSlurpFlushLimit,
                     "Set the maximum byte size for the slurped content to hold "
                     "before a flush");
+  AddSystemProperty(false, &SystemRewriteOptions::disable_loopback_routing_,
+                    "adlr",
+                    "DangerPermitFetchFromUnknownHosts",
+                    kProcessScopeStrict,
+                    "Disable security checks that prohibit fetching from "
+                    "hostnames mod_pagespeed does not know about");
   MergeSubclassProperties(system_properties_);
 
   // We allow a special instantiation of the options with a null thread system

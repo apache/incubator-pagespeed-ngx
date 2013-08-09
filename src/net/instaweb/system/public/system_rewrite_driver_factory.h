@@ -177,14 +177,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   virtual int max_queue_size() { return 500 * requests_per_host(); }
   virtual int queued_per_host() { return 500 * requests_per_host(); }
 
-  bool disable_loopback_routing() const {
-    return disable_loopback_routing_;
-  }
-
-  void set_disable_loopback_routing(bool x) {
-    disable_loopback_routing_ = x;
-  }
-
  protected:
   // Initializes all the statistics objects created transitively by
   // SystemRewriteDriverFactory.  Only subclasses should call this.
@@ -216,6 +208,12 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   virtual NamedLockManager* DefaultLockManager();
 
  private:
+  // Generates a cache-key incorporating all the parameters from config that
+  // might be relevant to fetching.  When include_slurping_config, then
+  // slurping-related options are ignored for the fetch-key.
+  GoogleString GetFetcherKey(bool include_slurping_config,
+                             const SystemRewriteOptions* config);
+
   // GetFetcher returns fetchers wrapped in various kinds of filtering (rate
   // limiting and slurping).  Because the underlying fetchers are expensive, and
   // you can wrap the same base fetcher in multiple ways, we provide a helper
@@ -249,10 +247,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   bool fetch_with_gzip_;
   bool track_original_content_length_;
   bool list_outstanding_urls_on_error_;
-
-  // If false (default) we will redirect all fetches to unknown hosts to
-  // localhost.
-  bool disable_loopback_routing_;
 
   // Fetchers are expensive--they each cost a thread.  Instead of allocating one
   // for every server context we keep a cache of defined fetchers with various

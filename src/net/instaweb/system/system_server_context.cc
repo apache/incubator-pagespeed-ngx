@@ -21,9 +21,9 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/add_headers_fetcher.h"
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
-#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
-#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_request_context.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -42,14 +42,15 @@ const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
 
 }  // namespace
 
-SystemServerContext::SystemServerContext(
-    SystemRewriteDriverFactory* driver_factory)
-    : ServerContext(driver_factory),
-      system_factory_(driver_factory),
+SystemServerContext::SystemServerContext(RewriteDriverFactory* factory)
+    : ServerContext(factory),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
       cache_flush_count_(NULL),           // Lazy-initialized under mutex.
       cache_flush_timestamp_ms_(NULL) {   // Lazy-initialized under mutex.
+}
+
+SystemServerContext::~SystemServerContext() {
 }
 
 // If we haven't checked the timestamp of $FILE_PREFIX/cache.flush in the past
@@ -170,9 +171,10 @@ void SystemServerContext::ApplySessionFetchers(
   // to know the request hostname, which LoopbackRouteFetcher could potentially
   // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
   // always talk to the local machine anyway.
-  if (!system_factory_->disable_loopback_routing() &&
-      !system_rewrite_options()->slurping_enabled() &&
-      !system_rewrite_options()->test_proxy()) {
+  SystemRewriteOptions* options = system_rewrite_options();
+  if (!options->disable_loopback_routing() &&
+      !options->slurping_enabled() &&
+      !options->test_proxy()) {
     // Note the port here is our port, not from the request, since
     // LoopbackRouteFetcher may decide we should be talking to ourselves.
     driver->SetSessionFetcher(new LoopbackRouteFetcher(

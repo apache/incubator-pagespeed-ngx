@@ -79,8 +79,7 @@ SystemRewriteDriverFactory::SystemRewriteDriverFactory(
       message_buffer_size_(0),
       fetch_with_gzip_(false),
       track_original_content_length_(false),
-      list_outstanding_urls_on_error_(false),
-      disable_loopback_routing_(false) {
+      list_outstanding_urls_on_error_(false) {
   // Some implementations, such as Apache, call caches.set_thread_limit in
   // their constructors and override this limit.
   int thread_limit = 1;
@@ -292,23 +291,40 @@ void SystemRewriteDriverFactory::ShutDown() {
   }
 }
 
+GoogleString SystemRewriteDriverFactory::GetFetcherKey(
+    bool include_slurping_config, const SystemRewriteOptions* config) {
+  // Include all the fetcher parameters in the fetcher key, one per line.
+  GoogleString key;
+  if (config->unplugged()) {
+    key = "unplugged";
+  } else {
+    key = StrCat(
+        list_outstanding_urls_on_error_ ? "list_errors\n" : "no_errors\n",
+        config->fetcher_proxy(), "\n",
+        fetch_with_gzip_ ? "fetch_with_gzip\n": "no_gzip\n",
+        track_original_content_length_ ? "track_content_length\n" : "no_track\n"
+        "timeout: ", Integer64ToString(config->blocking_fetch_timeout_ms()),
+        "\n");
+    if (config->slurping_enabled() && include_slurping_config) {
+      if (config->slurp_read_only()) {
+        StrAppend(&key, "R", config->slurp_directory(), "\n");
+      } else {
+        StrAppend(&key, "W", config->slurp_directory(), "\n");
+      }
+    }
+    StrAppend(&key,
+              "\nhttps: ", https_options_,
+              "\ncert_dir: ", config->ssl_cert_directory(),
+              "\ncert_file: ", config->ssl_cert_file());
+  }
+
+  return key;
+}
+
 UrlAsyncFetcher* SystemRewriteDriverFactory::GetFetcher(
     SystemRewriteOptions* config) {
-  const GoogleString& proxy = config->fetcher_proxy();
-
-  // Fetcher-key format: "[(R|W)slurp_directory][\nproxy]"
-  GoogleString key;
-  if (config->slurping_enabled()) {
-    if (config->slurp_read_only()) {
-      key = StrCat("R", config->slurp_directory());
-    } else {
-      key = StrCat("W", config->slurp_directory());
-    }
-  }
-  if (!proxy.empty()) {
-    StrAppend(&key, "\n", proxy);
-  }
-
+  // Include all the fetcher parameters in the fetcher key, one per line.
+  GoogleString key = GetFetcherKey(true, config);
   std::pair<FetcherMap::iterator, bool> result = fetcher_map_.insert(
       std::make_pair(key, static_cast<UrlAsyncFetcher*>(NULL)));
   FetcherMap::iterator iter = result.first;
@@ -365,18 +381,7 @@ UrlAsyncFetcher* SystemRewriteDriverFactory::AllocateFetcher(
 
 UrlAsyncFetcher* SystemRewriteDriverFactory::GetBaseFetcher(
     SystemRewriteOptions* config) {
-  // Since we don't do slurping or rate-controlling at this level, our key
-  // doesn't include that.
-  GoogleString cache_key = StrCat(
-      list_outstanding_urls_on_error_ ? "list_errors\n" : "no_errors\n",
-      config->fetcher_proxy(), "\n",
-      fetch_with_gzip_ ? "fetch_with_gzip\n": "no_gzip\n",
-      track_original_content_length_ ? "track_content_length\n" : "no_track\n"
-      "timeout: ", Integer64ToString(config->blocking_fetch_timeout_ms()));
-  StrAppend(&cache_key,
-            "\nhttps: ", https_options_,
-            "\ncert_dir: ", config->ssl_cert_directory(),
-            "\ncert_file: ", config->ssl_cert_file());
+  GoogleString cache_key = GetFetcherKey(false, config);
   std::pair<FetcherMap::iterator, bool> result = base_fetcher_map_.insert(
       std::make_pair(cache_key, static_cast<UrlAsyncFetcher*>(NULL)));
   FetcherMap::iterator iter = result.first;

@@ -185,7 +185,9 @@ class ServerContext {
   }
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
-  bool has_default_system_fetcher() { return default_system_fetcher_ != NULL; }
+  bool has_default_system_fetcher() const {
+    return default_system_fetcher_ != NULL;
+  }
   bool has_default_distributed_fetcher() {
     return default_distributed_fetcher_ != NULL;
   }

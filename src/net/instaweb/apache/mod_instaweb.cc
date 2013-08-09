@@ -22,6 +22,7 @@
 
 #include <cerrno>
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <set>
 #include <utility>  // for pair
@@ -124,8 +125,6 @@ const char kModPagespeedBlockingRewriteRefererUrls[] =
 const char kModPagespeedCreateSharedMemoryMetadataCache[] =
     "ModPagespeedCreateSharedMemoryMetadataCache";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
-const char kModPagespeedDangerPermitFetchFromUnknownHosts[] =
-    "ModPagespeedDangerPermitFetchFromUnknownHosts";
 const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
 const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
 const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
@@ -327,10 +326,17 @@ class ApacheProcessContext {
     return factory_.get();
   }
 
+  // Checks cmd to see if it's used in a vhost or conditional context, and
+  // if so, if that's an error or warning condition.
+  const char* CheckCommandForVhost(const cmd_parms* cmd);
+
   scoped_ptr<ApacheRewriteDriverFactory> factory_;
   // Process-scoped static variable cleanups, mainly for valgrind.
   ProcessContext process_context_;
   command_rec* apache_cmds_;
+
+  typedef std::map<const command_rec*, VHostHandling> VhostCommandHandlingMap;
+  VhostCommandHandlingMap vhost_command_handling_map_;
   StringVector cmd_names_;
 };
 ApacheProcessContext apache_process_context;
@@ -1363,6 +1369,23 @@ static char* CheckGlobalOption(const cmd_parms* cmd,
   return NULL;
 }
 
+const char* ApacheProcessContext::CheckCommandForVhost(const cmd_parms* cmd) {
+  // Only do the vhost_command_handling_map_ lookup if it's going
+  // to be used by CheckGlobalOption.
+  //
+  // TODO(jmarantz): Add a scope argument ParseAndSetOptionFromName[123] and
+  // let it do the error-checking & reporting.
+  const char* ret = NULL;
+  if (cmd->server->is_virtual || (cmd->directive->data != NULL)) {
+    VhostCommandHandlingMap::const_iterator p =
+        vhost_command_handling_map_.find(cmd->cmd);
+    if (p != vhost_command_handling_map_.end()) {
+      ret = CheckGlobalOption(cmd, p->second, factory_->message_handler());
+    }
+  }
+  return ret;
+}
+
 // Returns true if standard parsing handled the option and sets *err_msg to NULL
 // if OK, and to the error string managed in cmd->pool otherwise.
 bool StandardParsingHandled(
@@ -1435,6 +1458,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         config->ParseAndSetOptionFromName1(
             directive.substr(prefix.size()), arg, &msg, handler);
     if (StandardParsingHandled(cmd, result, msg, &ret)) {
+      if (ret == NULL) {
+        ret = apache_process_context.CheckCommandForVhost(cmd);
+      }
       return ret;
     }
   }
@@ -1444,14 +1470,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseOption<RewriteOptions::EnabledEnum>(
         static_cast<RewriteOptions*>(config), cmd, &RewriteOptions::set_enabled,
         arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedDangerPermitFetchFromUnknownHosts)) {
-    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
-    if (ret == NULL) {
-      ret = ParseOption<bool>(
-          static_cast<SystemRewriteDriverFactory*>(factory), cmd,
-          &SystemRewriteDriverFactory::set_disable_loopback_routing, arg);
-    }
   } else if (StringCaseEqual(directive, kModPagespeedFetchHttps)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
@@ -1827,9 +1845,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
-  APACHE_CONFIG_OPTION(kModPagespeedDangerPermitFetchFromUnknownHosts,
-        "Disable security checks that prohibit fetching from hostnames "
-        "mod_pagespeed does not know about"),
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchHttps,
@@ -2072,8 +2087,15 @@ void ApacheProcessContext::InstallCommands() {
         case RewriteOptions::kDirectoryScope:
           cmd->req_override = OR_ALL;
           break;
-        case RewriteOptions::kProcessScope:
         case RewriteOptions::kServerScope:
+          cmd->req_override = RSRC_CONF;
+          break;
+        case RewriteOptions::kProcessScopeStrict:
+          vhost_command_handling_map_[cmd] = kErrorInVHost;
+          cmd->req_override = RSRC_CONF;
+          break;
+        case RewriteOptions::kProcessScope:
+          vhost_command_handling_map_[cmd] = kTolerateInVHost;
           cmd->req_override = RSRC_CONF;
           break;
       }

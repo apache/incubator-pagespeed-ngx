@@ -20,22 +20,23 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class RewriteDriver;
+class RewriteDriverFactory;
 class Statistics;
-class SystemRewriteDriverFactory;
 class SystemRewriteOptions;
 class Variable;
 
 // A server context with features specific to a PSOL port on a unix system.
 class SystemServerContext : public ServerContext {
  public:
-  explicit SystemServerContext(SystemRewriteDriverFactory* driver_factory);
+  explicit SystemServerContext(RewriteDriverFactory* driver_factory);
+  virtual ~SystemServerContext();
 
   // Implementations should call this method on every request, both for html and
   // resources, to avoid serving stale resources.
@@ -87,8 +88,6 @@ class SystemServerContext : public ServerContext {
                                             RewriteDriver* driver) {}
 
  private:
-  SystemRewriteDriverFactory* system_factory_;
-
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first
   // time we Poll we will read the file.

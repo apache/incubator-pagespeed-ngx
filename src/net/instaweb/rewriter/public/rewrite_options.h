@@ -428,6 +428,7 @@ class RewriteOptions {
     kDirectoryScope,  // customized at directory level (.htaccess, <Directory>)
     kServerScope,     // customized at server level (e.g. VirtualHost)
     kProcessScope,    // customized at process level only (command-line flags)
+    kProcessScopeStrict,  // as above, but fail startup if included in vhost
   };
 
   static const char kCacheExtenderId[];

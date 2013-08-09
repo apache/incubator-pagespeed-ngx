@@ -189,6 +189,9 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_slurp_directory(GoogleString x) {
     set_option(x, &slurp_directory_);
   }
+  bool disable_loopback_routing() const {
+    return disable_loopback_routing_.value();
+  }
 
   // If this is set to true, we'll turn on our fallback proxy-like behavior
   // on non-.pagespeed. URLs without changing the main fetcher from Serf
@@ -249,6 +252,17 @@ class SystemRewriteOptions : public RewriteOptions {
                 system_properties_);
   }
 
+  template<class RewriteOptionsSubclass, class OptionClass>
+  static void AddSystemProperty(typename OptionClass::ValueType default_value,
+                                OptionClass RewriteOptionsSubclass::*offset,
+                                const char* id,
+                                StringPiece option_name,
+                                OptionScope scope,
+                                const char* help) {
+    AddProperty(default_value, offset, id, option_name, scope, help,
+                system_properties_);
+  }
+
   static void AddProperties();
 
   Option<GoogleString> fetcher_proxy_;
@@ -275,6 +289,10 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<bool> slurp_read_only_;
   Option<bool> test_proxy_;
   Option<bool> rate_limit_background_fetches_;
+
+  // If false (default) we will redirect all fetches to unknown hosts to
+  // localhost.
+  Option<bool> disable_loopback_routing_;
 
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
