@@ -209,6 +209,7 @@
         'util/cache_property_store_test.cc',
         'util/fallback_property_page_test.cc',
         'util/property_cache_test.cc',
+        'util/property_store_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/arena_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/base64_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/callback_test.cc',

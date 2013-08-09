@@ -831,6 +831,7 @@
         'http/wget_url_fetcher.cc',
         'http/write_through_http_cache.cc',
 
+        'util/abstract_property_store_get_callback.cc',
         'util/cache_property_store.cc',
         'util/fallback_property_page.cc',
         'util/mock_property_page.cc',

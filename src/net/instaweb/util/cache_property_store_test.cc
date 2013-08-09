@@ -23,6 +23,7 @@
 #include <cstddef>
 
 #include "net/instaweb/util/property_cache.pb.h"
+#include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
@@ -63,7 +64,8 @@ class CachePropertyStoreTest : public testing::Test {
                        &stats_,
                        thread_system_.get()),
        num_callback_with_false_called_(0),
-       num_callback_with_true_called_(0) {
+       num_callback_with_true_called_(0),
+       cache_lookup_status_(false) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_.AddCohort(kCohortName1);
@@ -81,31 +83,27 @@ class CachePropertyStoreTest : public testing::Test {
     property_cache_.Read(page_.get());
   }
 
-  void ExpectFalse(bool result) {
-    EXPECT_FALSE(result);
-    ++num_callback_with_false_called_;
+  void ResultCallback(bool result) {
+    cache_lookup_status_ = result;
+    if (result) {
+      ++num_callback_with_true_called_;
+    } else {
+      ++num_callback_with_false_called_;
+    }
   }
 
-  void ExpectTrue(bool result) {
-    EXPECT_TRUE(result);
-    ++num_callback_with_true_called_;
-  }
-
-  void ExpectNumCallbacksCalled(int expected_num_callback_with_false_called,
-                                int expected_num_callback_with_true_called) {
-    EXPECT_EQ(expected_num_callback_with_false_called,
-              num_callback_with_false_called_);
-    EXPECT_EQ(expected_num_callback_with_true_called,
-              num_callback_with_true_called_);
-  }
-
-  void ExpectCacheStats(LRUCache* lru_cache,
-                        int expected_num_cache_hits,
-                        int expected_num_cache_misses,
-                        int expected_num_cache_inserts) {
-    EXPECT_EQ(expected_num_cache_hits, lru_cache->num_hits());
-    EXPECT_EQ(expected_num_cache_misses, lru_cache->num_misses());
-    EXPECT_EQ(expected_num_cache_inserts, lru_cache->num_inserts());
+  bool ExecuteGet(PropertyPage* page) {
+    AbstractPropertyStoreGetCallback* callback = NULL;
+    cache_property_store_.Get(
+        kUrl,
+        kOptionsSignatureHash,
+        UserAgentMatcher::kDesktop,
+        cohort_list_,
+        page,
+        NewCallback(this, &CachePropertyStoreTest::ResultCallback),
+        &callback);
+    callback->DeleteWhenDone();
+    return cache_lookup_status_;
   }
 
  protected:
@@ -120,22 +118,17 @@ class CachePropertyStoreTest : public testing::Test {
   scoped_ptr<MockPropertyPage> page_;
   int num_callback_with_false_called_;
   int num_callback_with_true_called_;
+  bool cache_lookup_status_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CachePropertyStoreTest);
 };
 
 TEST_F(CachePropertyStoreTest, TestNoResultAvailable) {
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      page_.get(),
-      NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
+  EXPECT_FALSE(ExecuteGet(page_.get()));
   EXPECT_EQ(CacheInterface::kNotFound, page_->GetCacheState(cohort_));
-  ExpectNumCallbacksCalled(1,  /* Num Callback with false */
-                           0  /* Num Callback with true */);
+  EXPECT_EQ(1, num_callback_with_false_called_);
+  EXPECT_EQ(0, num_callback_with_true_called_);
 }
 
 TEST_F(CachePropertyStoreTest, TestResultAvailable) {
@@ -148,16 +141,10 @@ TEST_F(CachePropertyStoreTest, TestResultAvailable) {
       cohort_,
       &values,
       NULL);
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      page_.get(),
-      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
+  EXPECT_TRUE(ExecuteGet(page_.get()));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
-  ExpectNumCallbacksCalled(0,  /* Num Callback with false */
-                           1  /* Num Callback with true */);
+  EXPECT_EQ(0, num_callback_with_false_called_);
+  EXPECT_EQ(1, num_callback_with_true_called_);
 }
 
 TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
@@ -167,16 +154,10 @@ TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
                                                 UserAgentMatcher::kDesktop,
                                                 cohort_),
                  &put_buffer);
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      page_.get(),
-      NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
+  EXPECT_FALSE(ExecuteGet(page_.get()));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
-  ExpectNumCallbacksCalled(1,  /* Num Callback with false */
-                           0  /* Num Callback with true */);
+  EXPECT_EQ(1, num_callback_with_false_called_);
+  EXPECT_EQ(0, num_callback_with_true_called_);
 }
 
 TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
@@ -194,17 +175,11 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
   values.ParseFromString(kParsableContent);
   cohort_list_.push_back(cohort2);
   lru_cache_.ClearStats();
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      &page,
-      NewCallback(this, &CachePropertyStoreTest::ExpectFalse));
-  ExpectCacheStats(&lru_cache_,
-                   0,  /* Cache hit */
-                   2,  /* Cache miss */
-                   0  /* Cache inserts */);
+  EXPECT_FALSE(ExecuteGet(&page));
+
+  EXPECT_EQ(0, lru_cache_.num_hits());
+  EXPECT_EQ(2, lru_cache_.num_misses());
+  EXPECT_EQ(0, lru_cache_.num_inserts());
 
   lru_cache_.ClearStats();
   // Insert the value for cohort1.
@@ -215,17 +190,11 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
       cohort_,
       &values,
       NULL);
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      &page,
-      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
-  ExpectCacheStats(&lru_cache_,
-                   1,  /* Cache hit */
-                   1,  /* Cache miss */
-                   1  /* Cache inserts */);
+  EXPECT_TRUE(ExecuteGet(&page));
+
+  EXPECT_EQ(1, lru_cache_.num_hits());
+  EXPECT_EQ(1, lru_cache_.num_misses());
+  EXPECT_EQ(1, lru_cache_.num_inserts());
 
   lru_cache_.ClearStats();
   // Insert the value for cohort2.
@@ -236,19 +205,14 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
       cohort2,
       &values,
       NULL);
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      &page,
-      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
-  ExpectCacheStats(&lru_cache_,
-                   2,  /* Cache hit */
-                   0,  /* Cache miss */
-                   1  /* Cache inserts */);
-  ExpectNumCallbacksCalled(1,  /* Num Callback with false */
-                           2  /* Num Callback with true */);
+  EXPECT_TRUE(ExecuteGet(&page));
+
+  EXPECT_EQ(2, lru_cache_.num_hits());
+  EXPECT_EQ(0, lru_cache_.num_misses());
+  EXPECT_EQ(1, lru_cache_.num_inserts());
+
+  EXPECT_EQ(1, num_callback_with_false_called_);
+  EXPECT_EQ(2, num_callback_with_true_called_);
 }
 
 TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
@@ -285,27 +249,22 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
       cohort2,
       &values,
       NULL);
-  // Get the value for cohort1 and cohort2.
   cohort_list_.push_back(cohort2);
-  cache_property_store_.Get(
-      kUrl,
-      kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
-      cohort_list_,
-      &page,
-      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
+  // Get the value for cohort1 and cohort2.
+  EXPECT_TRUE(ExecuteGet(&page));
   EXPECT_EQ(CacheInterface::kAvailable, page.GetCacheState(cohort_));
   EXPECT_EQ(CacheInterface::kAvailable, page.GetCacheState(cohort2));
-  ExpectCacheStats(&lru_cache_,
-                   1,  /* Cache hit */
-                   0,  /* Cache miss */
-                   1  /* Cache inserts */);
-  ExpectCacheStats(&second_cache,
-                   1,  /* Cache hit */
-                   0,  /* Cache miss */
-                   1  /* Cache inserts */);
-  ExpectNumCallbacksCalled(0,  /* Num Callback with false */
-                           1  /* Num Callback with true */);
+
+  EXPECT_EQ(1, lru_cache_.num_hits());
+  EXPECT_EQ(0, lru_cache_.num_misses());
+  EXPECT_EQ(1, lru_cache_.num_inserts());
+
+  EXPECT_EQ(1, second_cache.num_hits());
+  EXPECT_EQ(0, second_cache.num_misses());
+  EXPECT_EQ(1, second_cache.num_inserts());
+
+  EXPECT_EQ(0, num_callback_with_false_called_);
+  EXPECT_EQ(1, num_callback_with_true_called_);
 }
 
 TEST_F(CachePropertyStoreTest, TestPropertyCacheKeyMethod) {
@@ -332,9 +291,9 @@ TEST_F(CachePropertyStoreTest, TestPutHandlesNonNullCallback) {
       UserAgentMatcher::kDesktop,
       cohort_,
       &values,
-      NewCallback(this, &CachePropertyStoreTest::ExpectTrue));
-  ExpectNumCallbacksCalled(0,  /* Num Callback with false */
-                           1  /* Num Callback with true */);
+      NewCallback(this, &CachePropertyStoreTest::ResultCallback));
+  EXPECT_EQ(0, num_callback_with_false_called_);
+  EXPECT_EQ(1, num_callback_with_true_called_);
 }
 
 }  // namespace net_instaweb

@@ -22,40 +22,49 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_STORE_H_
 
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class PropertyCacheValues;
+class PropertyValueProtobuf;
 
 // Abstract interface for implementing PropertyStore which helps to
 // retrieve and put properties into the storage system.
 class PropertyStore {
  public:
+  typedef Callback1<bool> BoolCallback;
   PropertyStore();
   virtual ~PropertyStore();
-
-  typedef Callback1<bool> BoolCallback;
 
   // Populates the values field for all the cohorts present in the cohort_list
   // and call the BoolCallback after lookup of all the cohorts are done.
   // BoolCallback is called with true if at least one of the cohorts lookup is
   // succeeded.
   // PropertyPage object is used to validate the entries looked up from cache.
+  // AbstractPropertyStoreGetCallback is set in callback parameter and can be
+  // used to fast finish the lookup. Client must call DeleteWhenDone() on this
+  // callback after that it is no more usable. This parameter can be set to
+  // NULL.
   virtual void Get(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
       UserAgentMatcher::DeviceType device_type,
       const PropertyCache::CohortVector& cohort_list,
       PropertyPage* page,
-      BoolCallback* done) = 0;
+      BoolCallback* done,
+      AbstractPropertyStoreGetCallback** callback) = 0;
 
   // Write to storage system for the given key.
   // Callback done can be NULL. BoolCallback done will be called with true if
   // Insert operation is successful.
+  // TODO(pulkitg): Remove UserAgentMatcher dependency.
   virtual void Put(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
@@ -64,8 +73,70 @@ class PropertyStore {
       const PropertyCacheValues* values,
       BoolCallback* done) = 0;
 
+  // PropertyStore::Get can be cancelled if enable_get_cancellation is true
+  // i.e. input done callback will be called as soon as FastFinishLookup() is
+  // called on the AbstractPropertyStoreGetCallback callback.
+  bool enable_get_cancellation() { return enable_get_cancellation_; }
+  void set_enable_get_cancellation(bool x) { enable_get_cancellation_ = x; }
+
  private:
+  bool enable_get_cancellation_;
   DISALLOW_COPY_AND_ASSIGN(PropertyStore);
+};
+
+// This class manages the lookup for the properties in PropertyStore. It works
+// in two mode: Cancellable mode and Non-Cancellable mode.
+// Non-Cancellable Mode:
+//   - FastFinishLookup() has no-op in this mode.
+//   - Done() will be called whenever lookup finishes and calls the
+//     done callback based on sucess of the lookup.
+//   - DeleteWhenDone() will delete the callback if Done() is already called or
+//     set the bit so that callback delete itself after executing Done().
+// Cancellable Mode:
+//   - FastFinishLookup() will call the done callback if its not yet called.
+//   - Done() is same as that in non-cancellable mode but if FastFinishLookup()
+//     is called then it will not call the done callback.
+//   - DeleteWhenDone() works same as it works in non-cancellable mode.
+class PropertyStoreGetCallback : public AbstractPropertyStoreGetCallback {
+ public:
+  typedef Callback1<bool> BoolCallback;
+  PropertyStoreGetCallback(
+      AbstractMutex* mutex,
+      PropertyPage* page,
+      bool is_cancellable,
+      BoolCallback* done);
+  virtual ~PropertyStoreGetCallback();
+
+  // Try to finish all the pending lookups if possible and call Done as soon as
+  // possible.
+  virtual void FastFinishLookup();
+  // Deletes the callback after done finishes.
+  virtual void DeleteWhenDone();
+  // Add the given property cache value to the PropertyPage if PropertyPage is
+  // not NULL.
+  // Returns true if PropertyValueProtobuf is successfully added to
+  // PropertyPage.
+  bool AddPropertyValueProtobufToPropertyPage(
+      const PropertyCache::Cohort* cohort,
+      const PropertyValueProtobuf& pcache_value,
+      int64 min_write_timestamp_ms);
+
+  // Done is called when lookup is finished. This method is made public so that
+  // PropertyStore implementations may call it.
+  void Done(bool success);
+
+ protected:
+  AbstractMutex* mutex() { return mutex_.get(); }
+  PropertyPage* page() { return page_; }
+
+ private:
+  scoped_ptr<AbstractMutex> mutex_;
+  PropertyPage* page_;
+  const bool is_cancellable_;
+  BoolCallback* done_;
+  bool delete_when_done_;
+  bool done_called_;
+  DISALLOW_COPY_AND_ASSIGN(PropertyStoreGetCallback);
 };
 
 }  // namespace net_instaweb

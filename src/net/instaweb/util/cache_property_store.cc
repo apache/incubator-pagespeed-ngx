@@ -30,7 +30,6 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/cache_interface.h"
-#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 
@@ -57,6 +56,38 @@ CachePropertyStore::~CachePropertyStore() {
 
 namespace {
 
+class CachePropertyStoreGetCallback : public PropertyStoreGetCallback {
+ public:
+  CachePropertyStoreGetCallback(
+      AbstractMutex* mutex,
+      PropertyPage* page,
+      bool is_cancellable,
+      BoolCallback* done)
+      : PropertyStoreGetCallback(mutex, page, is_cancellable, done) {
+  }
+  virtual ~CachePropertyStoreGetCallback() {
+  }
+
+  void SetStateInPropertyPage(
+      const PropertyCache::Cohort* cohort,
+      CacheInterface::KeyState state,
+      bool valid) {
+    ScopedMutex lock(mutex());
+    if (page() == NULL) {
+      return;
+    }
+    page()->log_record()->SetCacheStatusForCohortInfo(
+        page()->page_type(),
+        cohort->name(),
+        valid,
+        state);
+    page()->SetCacheState(cohort, state);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CachePropertyStoreGetCallback);
+};
+
 // Tracks multiple cache lookups.  When they are all complete, page->Done() is
 // called.
 //
@@ -65,8 +96,10 @@ namespace {
 class CachePropertyStoreCallbackCollector {
  public:
   CachePropertyStoreCallbackCollector(
-      Callback1<bool>* done, int num_pending, AbstractMutex* mutex)
-      : done_(done),
+      CachePropertyStoreGetCallback* property_store_callback,
+      int num_pending,
+      AbstractMutex* mutex)
+      : property_store_callback_(property_store_callback),
         pending_(num_pending),
         success_(false),
         mutex_(mutex) {
@@ -81,12 +114,12 @@ class CachePropertyStoreCallbackCollector {
         return;
       }
     }
-    done_->Run(success_);
+    property_store_callback_->Done(success_);
     delete this;
   }
 
  private:
-  Callback1<bool>* done_;
+  CachePropertyStoreGetCallback* property_store_callback_;
   int pending_;
   bool success_;
   scoped_ptr<AbstractMutex> mutex_;
@@ -98,14 +131,16 @@ class CachePropertyStoreCallbackCollector {
 // as properties.
 class CachePropertyStoreCacheCallback : public CacheInterface::Callback {
  public:
-  CachePropertyStoreCacheCallback(const PropertyCache::Cohort* cohort,
-                                  PropertyPage* page,
-                                  Callback1<bool>* done)
+  CachePropertyStoreCacheCallback(
+      const PropertyCache::Cohort* cohort,
+      CachePropertyStoreGetCallback* property_store_callback,
+      CachePropertyStoreCallbackCollector* callback_collector)
       : cohort_(cohort),
-        page_(page),
-        done_(done) {
+        property_store_callback_(property_store_callback),
+        callback_collector_(callback_collector) {
   }
   virtual ~CachePropertyStoreCacheCallback() {}
+
   virtual void Done(CacheInterface::KeyState state) {
     bool valid = false;
     if (state == CacheInterface::kAvailable) {
@@ -113,7 +148,6 @@ class CachePropertyStoreCacheCallback : public CacheInterface::Callback {
       ArrayInputStream input(value_string.data(), value_string.size());
       PropertyCacheValues values;
       if (values.ParseFromZeroCopyStream(&input)) {
-        valid = true;
         int64 min_write_timestamp_ms = kint64max;
         // The values in a cohort could have different write_timestamp_ms
         // values, since it is populated in UpdateValue.  But since all values
@@ -126,30 +160,29 @@ class CachePropertyStoreCacheCallback : public CacheInterface::Callback {
         }
         // Return valid for empty cohort, and if IsCacheValid returns true for
         // Value with oldest timestamp.
-        if (values.value_size() == 0 ||
-            page_->IsCacheValid(min_write_timestamp_ms)) {
+        if (values.value_size() == 0) {
           valid = true;
+        } else {
           for (int i = 0; i < values.value_size(); ++i) {
             const PropertyValueProtobuf& pcache_value = values.value(i);
-            page_->AddValueFromProtobuf(cohort_, pcache_value);
+            valid = property_store_callback_->
+                AddPropertyValueProtobufToPropertyPage(
+                    cohort_, pcache_value, min_write_timestamp_ms);
           }
-        } else {
-          valid = false;
         }
       }
     }
-
-    page_->log_record()->SetCacheStatusForCohortInfo(
-        page_->page_type(), cohort_->name(), valid, state);
-    page_->SetCacheState(cohort_, state);
-    done_->Run(valid);
+    property_store_callback_->SetStateInPropertyPage(cohort_, state, valid);
+    callback_collector_->Done(valid);
     delete this;
   }
 
  private:
   const PropertyCache::Cohort* cohort_;
-  PropertyPage* page_;
-  Callback1<bool>* done_;
+  CachePropertyStoreGetCallback* property_store_callback_;
+  CachePropertyStoreCallbackCollector* callback_collector_;
+
+  DISALLOW_COPY_AND_ASSIGN(CachePropertyStoreCacheCallback);
 };
 
 }  // namespace
@@ -167,15 +200,28 @@ GoogleString CachePropertyStore::CacheKey(
       cohort->name());
 }
 
-void CachePropertyStore::Get(const GoogleString& url,
-                             const GoogleString& options_signature_hash,
-                             UserAgentMatcher::DeviceType device_type,
-                             const PropertyCache::CohortVector& cohort_list,
-                             PropertyPage* page,
-                             BoolCallback* done) {
+void CachePropertyStore::Get(
+    const GoogleString& url,
+    const GoogleString& options_signature_hash,
+    UserAgentMatcher::DeviceType device_type,
+    const PropertyCache::CohortVector& cohort_list,
+    PropertyPage* page,
+    BoolCallback* done,
+    AbstractPropertyStoreGetCallback** callback) {
+  if (cohort_list.empty()) {
+    *callback = NULL;
+    done->Run(true);
+    return;
+  }
+  CachePropertyStoreGetCallback* property_store_get_callback =
+      new CachePropertyStoreGetCallback(
+          thread_system_->NewMutex(), page, enable_get_cancellation(), done);
+  *callback = property_store_get_callback;
   CachePropertyStoreCallbackCollector* collector =
       new CachePropertyStoreCallbackCollector(
-          done, cohort_list.size(), thread_system_->NewMutex());
+          property_store_get_callback,
+          cohort_list.size(),
+          thread_system_->NewMutex());
   for (int j = 0, n = cohort_list.size(); j < n; ++j) {
     const PropertyCache::Cohort* cohort = cohort_list[j];
     CohortCacheMap::iterator cohort_itr =
@@ -183,10 +229,10 @@ void CachePropertyStore::Get(const GoogleString& url,
     CHECK(cohort_itr != cohort_cache_map_.end());
     const GoogleString cache_key = CacheKey(
         url, options_signature_hash, device_type, cohort);
-    cohort_itr->second->Get(cache_key, new CachePropertyStoreCacheCallback(
-        cohort,
-        page,
-        NewCallback(collector, &CachePropertyStoreCallbackCollector::Done)));
+    cohort_itr->second->Get(
+        cache_key,
+        new CachePropertyStoreCacheCallback(
+            cohort, property_store_get_callback, collector));
   }
 }
 

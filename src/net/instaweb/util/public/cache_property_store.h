@@ -36,6 +36,7 @@
 
 namespace net_instaweb {
 
+class AbstractPropertyStoreGetCallback;
 class CacheInterface;
 class PropertyCacheValues;
 class Statistics;
@@ -59,12 +60,14 @@ class CachePropertyStore : public PropertyStore {
 
   // Cache lookup is initiated for the given cohort and results are populated
   // in PropertyPage if it is valid.
+  // callback paramter can be set to NULL if cohort_list is empty.
   virtual void Get(const GoogleString& url,
                    const GoogleString& options_signature_hash,
                    UserAgentMatcher::DeviceType device_type,
                    const PropertyCache::CohortVector& cohort_list,
                    PropertyPage* page,
-                   BoolCallback* done);
+                   BoolCallback* done,
+                   AbstractPropertyStoreGetCallback** callback);
 
   // Write to cache.
   virtual void Put(const GoogleString& url,

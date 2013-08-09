@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/property_cache.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -201,6 +202,7 @@ void PropertyPage::Abort() {
 
 void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
   DCHECK(!cohort_list.empty());
+  DCHECK(property_store_callback_ == NULL);
   SetupCohorts(cohort_list);
   property_cache_->property_store()->Get(
       url_,
@@ -208,7 +210,8 @@ void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
       device_type_,
       cohort_list,
       this,
-      NewCallback(this, &PropertyPage::CallDone));
+      NewCallback(this, &PropertyPage::CallDone),
+      &property_store_callback_);
 }
 
 bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {
@@ -304,10 +307,14 @@ PropertyPage::PropertyPage(
       request_context_(request_context),
       was_read_(false),
       property_cache_(property_cache),
+      property_store_callback_(NULL),
       page_type_(page_type) {
 }
 
 PropertyPage::~PropertyPage() {
+  if (property_store_callback_ != NULL) {
+    property_store_callback_->DeleteWhenDone();
+  }
   while (!cohort_data_map_.empty()) {
     CohortDataMap::iterator p = cohort_data_map_.begin();
     PropertyMapStruct* pmap_struct = p->second;

@@ -108,10 +108,11 @@ namespace net_instaweb {
 
 class AbstractLogRecord;
 class AbstractMutex;
+class AbstractPropertyStoreGetCallback;
 class PropertyCacheValues;
-class PropertyStore;
 class PropertyValueProtobuf;
 class PropertyPage;
+class PropertyStore;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -462,6 +463,11 @@ class PropertyPage : public AbstractPropertyPage {
   RequestContextPtr request_context_;
   bool was_read_;
   PropertyCache* property_cache_;  // Owned by the caller.
+  // AbstractPropertyStoreCallback is safe to use until
+  // AbstractPropertyStoreCallback::DeleteWhenDone() which is called in
+  // PropertyPage destructor, so property_store_callback_ lives longer than
+  // PropertyPage.
+  AbstractPropertyStoreGetCallback* property_store_callback_;
   PageType page_type_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyPage);
