@@ -218,9 +218,8 @@ void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
 }
 }  // namespace
 
-// modify from NgxBaseFetch::PopulateResponseHeaders()
 void copy_response_headers_from_ngx(const ngx_http_request_t* r,
-        net_instaweb::ResponseHeaders* headers) {
+                                    net_instaweb::ResponseHeaders* headers) {
   headers->set_major_version(r->http_version / 1000);
   headers->set_minor_version(r->http_version % 1000);
   copy_headers_from_table(r->headers_out.headers, headers);
@@ -230,13 +229,12 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
   // Manually copy over the content type because it's not included in
   // request_->headers_out.headers.
   headers->Add(net_instaweb::HttpAttributes::kContentType,
-              ngx_psol::str_to_string_piece(r->headers_out.content_type));
+               ngx_psol::str_to_string_piece(r->headers_out.content_type));
 
   // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
   headers->ComputeCaching();
 }
 
-// modify from NgxBaseFetch::PopulateRequestHeaders()
 void copy_request_headers_from_ngx(const ngx_http_request_t* r,
                                    net_instaweb::RequestHeaders* headers) {
   // TODO(chaizhenhua): only allow RewriteDriver::kPassThroughRequestAttributes?
@@ -2167,9 +2165,8 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
 
   ps_strip_html_headers(r);
 
-
   // TODO(jefftk): is this thread safe?
-  ctx->base_fetch->PopulateResponseHeaders();
+  copy_response_headers_from_ngx(r, ctx->base_fetch->response_headers());
 
   ps_set_buffered(r, true);
   r->filter_need_in_memory = 1;
