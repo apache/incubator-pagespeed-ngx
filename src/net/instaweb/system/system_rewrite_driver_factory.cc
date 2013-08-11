@@ -77,7 +77,6 @@ SystemRewriteDriverFactory::SystemRewriteDriverFactory(
       is_root_process_(true),
       hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))),
       message_buffer_size_(0),
-      fetch_with_gzip_(false),
       track_original_content_length_(false),
       list_outstanding_urls_on_error_(false) {
   // Some implementations, such as Apache, call caches.set_thread_limit in
@@ -301,7 +300,7 @@ GoogleString SystemRewriteDriverFactory::GetFetcherKey(
     key = StrCat(
         list_outstanding_urls_on_error_ ? "list_errors\n" : "no_errors\n",
         config->fetcher_proxy(), "\n",
-        fetch_with_gzip_ ? "fetch_with_gzip\n": "no_gzip\n",
+        config->fetch_with_gzip() ? "fetch_with_gzip\n": "no_gzip\n",
         track_original_content_length_ ? "track_content_length\n" : "no_track\n"
         "timeout: ", Integer64ToString(config->blocking_fetch_timeout_ms()),
         "\n");
@@ -370,7 +369,7 @@ UrlAsyncFetcher* SystemRewriteDriverFactory::AllocateFetcher(
       config->blocking_fetch_timeout_ms(),
       message_handler());
   serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
-  serf->set_fetch_with_gzip(fetch_with_gzip_);
+  serf->set_fetch_with_gzip(config->fetch_with_gzip());
   serf->set_track_original_content_length(track_original_content_length_);
   serf->SetHttpsOptions(https_options_);
   serf->SetSslCertificatesDir(config->ssl_cert_directory());

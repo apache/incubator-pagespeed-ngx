@@ -147,12 +147,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // in the server log, and the option-setting will have no effect.
   bool SetHttpsOptions(StringPiece directive, GoogleString* error_message);
 
-  // Makes fetches from PSA to origin-server request
-  // accept-encoding:gzip, even when used in a context when we want
-  // cleartext.  We'll decompress as we read the content if needed.
-  void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
-  bool fetch_with_gzip() const { return fetch_with_gzip_; }
-
   // Tracks the size of resources fetched from origin and populates the
   // X-Original-Content-Length header for resources derived from them.
   void set_track_original_content_length(bool x) {
@@ -244,7 +238,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // Manages all our caches & lock managers.
   scoped_ptr<SystemCaches> caches_;
 
-  bool fetch_with_gzip_;
   bool track_original_content_length_;
   bool list_outstanding_urls_on_error_;
 

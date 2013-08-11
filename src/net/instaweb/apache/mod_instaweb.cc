@@ -135,7 +135,6 @@ const char kModPagespeedEnableFilters[] = "ModPagespeedEnableFilters";
 const char kModPagespeedFetchHttps[] = "ModPagespeedFetchHttps";
 const char kModPagespeedFetchProxy[] = "ModPagespeedFetchProxy";
 const char kModPagespeedFetcherTimeoutMs[] = "ModPagespeedFetcherTimeOutMs";
-const char kModPagespeedFetchWithGzip[] = "ModPagespeedFetchWithGzip";
 const char kModPagespeedFileCachePath[] = "ModPagespeedFileCachePath";
 const char kModPagespeedForbidFilters[] = "ModPagespeedForbidFilters";
 const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
@@ -1480,13 +1479,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                           error_message.c_str(), NULL);
       }
     }
-  } else if (StringCaseEqual(directive, kModPagespeedFetchWithGzip)) {
-    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
-    if (ret == NULL) {
-      ret = ParseOption<bool>(
-          static_cast<SystemRewriteDriverFactory*>(factory), cmd,
-          &SystemRewriteDriverFactory::set_fetch_with_gzip, arg);
-    }
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
@@ -1851,8 +1843,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Controls direct fetching of HTTPS resources.  Value is "
         "comma-separated list of keywords: " SERF_HTTPS_KEYWORDS),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
-  APACHE_CONFIG_OPTION(kModPagespeedFetchWithGzip,
-                       "Request http content from origin servers using gzip"),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
   APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix, "No longer used."),

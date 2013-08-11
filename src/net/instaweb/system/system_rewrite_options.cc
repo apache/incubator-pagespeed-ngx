@@ -183,6 +183,9 @@ void SystemRewriteOptions::AddProperties() {
                     kProcessScopeStrict,
                     "Disable security checks that prohibit fetching from "
                     "hostnames mod_pagespeed does not know about");
+  AddSystemProperty(false, &SystemRewriteOptions::fetch_with_gzip_,
+                    "afg", "FetchWithGzip", kProcessScope,
+                    "Request http content from origin servers using gzip");
   MergeSubclassProperties(system_properties_);
 
   // We allow a special instantiation of the options with a null thread system

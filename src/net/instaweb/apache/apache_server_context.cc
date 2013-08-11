@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -40,6 +39,8 @@
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+class RewriteOptions;
 
 namespace {
 
@@ -211,13 +212,14 @@ void ApacheServerContext::ChildInit() {
       // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
       // care of it rather than the original fetcher, so we get correct
       // numbers for bytes fetched.
-      if (apache_factory_->fetch_with_gzip()) {
+      bool fetch_with_gzip = config()->fetch_with_gzip();
+      if (fetch_with_gzip) {
         fetcher->set_fetch_with_gzip(false);
       }
       stats_fetcher_.reset(new UrlAsyncFetcherStats(
           kLocalFetcherStatsPrefix, fetcher,
           apache_factory_->timer(), split_statistics_.get()));
-      if (apache_factory_->fetch_with_gzip()) {
+      if (fetch_with_gzip) {
         stats_fetcher_->set_fetch_with_gzip(true);
       }
       set_default_system_fetcher(stats_fetcher_.get());
@@ -227,7 +229,7 @@ void ApacheServerContext::ChildInit() {
     // referencing the signature, we must be able to mutate the
     // timestamp and signature atomically.  RewriteOptions supports
     // an optional read/writer lock for this purpose.
-    global_options()->set_cache_invalidation_timestamp_mutex(
+    config()->set_cache_invalidation_timestamp_mutex(
         thread_system()->NewRWLock());
     apache_factory_->InitServerContext(this);
 

@@ -192,6 +192,9 @@ class SystemRewriteOptions : public RewriteOptions {
   bool disable_loopback_routing() const {
     return disable_loopback_routing_.value();
   }
+  bool fetch_with_gzip() const {
+    return fetch_with_gzip_.value();
+  }
 
   // If this is set to true, we'll turn on our fallback proxy-like behavior
   // on non-.pagespeed. URLs without changing the main fetcher from Serf
@@ -293,6 +296,11 @@ class SystemRewriteOptions : public RewriteOptions {
   // If false (default) we will redirect all fetches to unknown hosts to
   // localhost.
   Option<bool> disable_loopback_routing_;
+
+  // Makes fetches from PSA to origin-server request
+  // accept-encoding:gzip, even when used in a context when we want
+  // cleartext.  We'll decompress as we read the content if needed.
+  Option<bool> fetch_with_gzip_;
 
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
