@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/apr_mem_cache.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
@@ -67,6 +68,18 @@ namespace {
 
 const char kCachePath[] = "/mem/path/";
 const char kAltCachePath[] = "/mem/path_alt/";
+
+class SystemServerContextNoProxyHtml : public SystemServerContext {
+ public:
+  explicit SystemServerContextNoProxyHtml(RewriteDriverFactory* factory)
+      : SystemServerContext(factory) {
+  }
+
+  virtual bool ProxiesHtml() const { return false; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SystemServerContextNoProxyHtml);
+};
 
 class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
  protected:
@@ -165,7 +178,8 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
 
   // Takes ownership of config.
   ServerContext* SetupServerContext(SystemRewriteOptions* config) {
-    scoped_ptr<ServerContext> server_context(factory()->NewServerContext());
+    scoped_ptr<ServerContext> server_context(
+        new SystemServerContextNoProxyHtml(factory()));
     server_context->reset_global_options(config);
     server_context->set_statistics(factory()->statistics());
     system_caches_->SetupCaches(server_context.get());

@@ -3349,7 +3349,13 @@ GoogleString RewriteOptions::FilterSetToString(
 
 GoogleString RewriteOptions::OptionsToString() const {
   GoogleString output;
-  StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), "\n\n");
+  StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), ": ");
+
+  switch (enabled_.value()) {
+    case kEnabledOff:       StrAppend(&output, "off\n\n"); break;
+    case kEnabledOn:        StrAppend(&output, "on\n\n"); break;
+    case kEnabledUnplugged: StrAppend(&output, "unplugged\n\n"); break;
+  }
   output += "Filters\n";
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
     Filter filter = static_cast<Filter>(i);
