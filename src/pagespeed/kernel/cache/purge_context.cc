@@ -47,6 +47,7 @@ const int kMaxContentionRetries = 2;
 const char PurgeContext::kCancellations[]     = "purge_cancellations";
 const char PurgeContext::kContentions[]       = "purge_contentions";
 const char PurgeContext::kFileParseFailures[] = "purge_file_parse_failures";
+const char PurgeContext::kFileStats[]         = "purge_file_stats";
 const char PurgeContext::kFileWriteFailures[] = "purge_file_write_failures";
 const char PurgeContext::kFileWrites[]        = "purge_file_writes";
 
@@ -74,6 +75,7 @@ PurgeContext::PurgeContext(StringPiece filename,
       cancellations_(statistics->GetVariable(kCancellations)),
       contentions_(statistics->GetVariable(kContentions)),
       file_parse_failures_(statistics->GetVariable(kFileParseFailures)),
+      file_stats_(statistics->GetVariable(kFileStats)),
       file_write_failures_(statistics->GetVariable(kFileWriteFailures)),
       file_writes_(statistics->GetVariable(kFileWrites)),
       scheduler_(scheduler),
@@ -88,6 +90,7 @@ void PurgeContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCancellations);
   statistics->AddVariable(kContentions);
   statistics->AddVariable(kFileParseFailures);
+  statistics->AddVariable(kFileStats);
   statistics->AddVariable(kFileWrites);
   statistics->AddVariable(kFileWriteFailures);
 }
@@ -119,6 +122,7 @@ int64 PurgeContext::ParseAndValidateTimestamp(
 void PurgeContext::ReadPurgeFile(PurgeSet* purges_from_file) {
   GoogleString buffer;
 
+  file_stats_->Add(1);
   if (!file_system_->ReadFile(filename_.c_str(), &buffer, message_handler_)) {
     // If the file simply doesn't exist, that's a 'successful' read.  It's
     // fine for there to be no cache file and no invalidation data.
@@ -129,12 +133,13 @@ void PurgeContext::ReadPurgeFile(PurgeSet* purges_from_file) {
   int64 timestamp_ms = 0;
   int64 now_ms = timer_->NowMs();
 
-  // Prior to mod_pagespeed 1.6, the cache.flush file's contents were not
+  // Prior to mod_pagespeed 1.7, the cache.flush file's contents were not
   // significant, and generally empty, and only the timestamp of the file
   // itself was important, meaning "wipe everything out of the cache predating
   // that timestamp."
   if (lines.empty()) {
     int64 timestamp_sec;
+    file_stats_->Add(1);
     if (!file_system_->Mtime(filename_.c_str(), &timestamp_sec,
                              message_handler_)) {
       file_parse_failures_->Add(1);

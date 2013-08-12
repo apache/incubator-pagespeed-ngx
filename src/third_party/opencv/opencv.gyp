@@ -134,7 +134,7 @@
           'dependencies': [
             'opencv_imgproc',
             '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
-            '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
+            '<(DEPTH)/third_party/libjpeg_turbo/libjpeg_turbo.gyp:libjpeg_turbo',
             '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
           ],
           'sources': [

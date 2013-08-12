@@ -37,6 +37,9 @@ using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::ReadTestFileWithExt;
 
 const char* kValidJpegImages[] = {
+  "test411",        // RGB color space with 4:1:1 chroma sub-sampling.
+  "test420",        // RGB color space with 4:2:0 chroma sub-sampling.
+  "test422",        // RGB color space with 4:2:2 chroma sub-sampling.
   "test444",        // RGB color space with full chroma information.
   "testgray",       // Grayscale color space.
 };

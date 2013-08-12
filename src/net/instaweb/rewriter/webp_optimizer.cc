@@ -26,12 +26,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
+
 extern "C" {
-#ifdef USE_SYSTEM_LIBJPEG
-#include "jpeglib.h"
-#else
-#include "third_party/libjpeg/jpeglib.h"
-#endif
 #ifdef USE_SYSTEM_LIBWEBP
 #include "webp/encode.h"
 #include "webp/decode.h"
@@ -40,6 +36,14 @@ extern "C" {
 #include "third_party/libwebp/webp/decode.h"
 #endif
 // TODO(jmaessen): open source imports & build of libwebp.
+}
+
+extern "C" {
+#ifdef USE_SYSTEM_LIBJPEG
+#include "jpeglib.h"  // NOLINT
+#else
+#include "third_party/libjpeg_turbo/src/jpeglib.h"
+#endif
 }
 
 using pagespeed::image_compression::JpegUtils;

@@ -112,9 +112,21 @@ deps = {
   # TODO(huibao): Remove references to libpagespeed.
   "src/third_party/giflib": Var("libpagespeed_svn_root") + "/deps/giflib-4.1.6",
   "src/third_party/icu": Var("libpagespeed_svn_root") + "/deps/icu461",
-  "src/third_party/libjpeg": Var("libpagespeed_svn_root") + "/deps/jpeg-8c",
   "src/third_party/optipng": Var("libpagespeed_svn_root") + "/deps/optipng-0.7.4",
   "src/third_party/zlib": Var("libpagespeed_svn_root") + "/deps/zlib-1.2.5",
+
+  # Yasm assember is required for libjpeg_turbo.
+  "src/third_party/libjpeg_turbo/yasm":
+    Var("chromium_trunk") + "/src/third_party/yasm@" +
+        Var("chromium_revision_num"),
+
+  "src/third_party/libjpeg_turbo/yasm/source/patched-yasm":
+    Var("chromium_trunk") + "/deps/third_party/yasm/patched-yasm@" +
+        Var("chromium_revision_num"),
+
+  "src/third_party/libjpeg_turbo/src":
+    Var("chromium_trunk") + "/deps/third_party/libjpeg_turbo@" +
+        Var("chromium_revision_num"),
 
   "src/googleurl": From(Var("chromium_deps_root")),
 

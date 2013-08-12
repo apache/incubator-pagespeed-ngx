@@ -62,6 +62,7 @@ class PurgeContext {
   static const char kCancellations[];
   static const char kContentions[];
   static const char kFileParseFailures[];
+  static const char kFileStats[];
   static const char kFileWriteFailures[];
   static const char kFileWrites[];
   static const char kStatCalls[];
@@ -228,6 +229,7 @@ class PurgeContext {
   Variable* cancellations_;
   Variable* contentions_;
   Variable* file_parse_failures_;
+  Variable* file_stats_;
   Variable* file_write_failures_;
   Variable* file_writes_;
 

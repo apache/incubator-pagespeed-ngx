@@ -16,10 +16,10 @@
 
 // Author: Satyanarayana Manyam
 
-#include "base/logging.h"
-
-#include "base/basictypes.h"
+#include <stdbool.h>
+#include <cstddef>
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/image_converter.h"
@@ -192,18 +192,18 @@ ImageCompressionInfo kValidImages[] = {
   { "z03n2c08", 232, 224, 1},
   { "z06n2c08", 224, 224, 1},
   { "z09n2c08", 224, 224, 1},
-  { "basi3p08", 1527, 565, 0},
-  { "basn3p08", 1286, 565, 0},
-  { "ccwn2c08", 1514, 764, 0},
-  { "ccwn3p08", 1554, 779, 0},
-  { "ch2n3p08", 1810, 565, 0},
-  { "f00n2c08", 2475, 706, 0},
-  { "f01n2c08", 1180, 657, 0},
-  { "f02n2c08", 1729, 696, 0},
-  { "f03n2c08", 1291, 697, 0},
-  { "f04n2c08", 985, 672, 0},
-  { "tp0n2c08", 1311, 875, 0},
-  { "tp0n3p08", 1120, 875, 0},
+  { "basi3p08", 1527, 567, 0},
+  { "basn3p08", 1286, 567, 0},
+  { "ccwn2c08", 1514, 757, 0},
+  { "ccwn3p08", 1554, 775, 0},
+  { "ch2n3p08", 1810, 567, 0},
+  { "f00n2c08", 2475, 695, 0},
+  { "f01n2c08", 1180, 648, 0},
+  { "f02n2c08", 1729, 688, 0},
+  { "f03n2c08", 1291, 690, 0},
+  { "f04n2c08", 985, 653, 0},
+  { "tp0n2c08", 1311, 863, 0},
+  { "tp0n3p08", 1120, 863, 0},
 };
 
 const char* kInvalidFiles[] = {
@@ -231,14 +231,14 @@ GifImageCompressionInfo kValidGifImages[] = {
   { "basn0g02", 185,  112,  664,  74},
   { "basn0g04", 344,  144,  439,  104},
   { "basn0g08", 1736, 116,  468,  582},
-  { "basi3p01", 138,   96,  789,  56},
-  { "basi3p02", 186,  115,  1157, 74},
-  { "basi3p04", 344,  185,  992,  136},
-  { "basi3p08", 1737, 1270, 929,  810},
-  { "basn3p01", 138,  96,   789,  56},
-  { "basn3p02", 186,  115,  1157, 74},
-  { "basn3p04", 344,  185,  992,  136},
-  { "basn3p08", 1737, 1270, 929,  810}
+  { "basi3p01", 138,   96,  793,  56},
+  { "basi3p02", 186,  115,  1162, 74},
+  { "basi3p04", 344,  185,  1002,  136},
+  { "basi3p08", 1737, 1270, 936,  810},
+  { "basn3p01", 138,  96,   793,  56},
+  { "basn3p02", 186,  115,  1162, 74},
+  { "basn3p04", 344,  185,  1002,  136},
+  { "basn3p08", 1737, 1270, 936,  810}
 };
 
 const size_t kValidImageCount = arraysize(kValidImages);

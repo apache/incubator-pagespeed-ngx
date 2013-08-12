@@ -379,7 +379,7 @@
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/giflib/giflib.gyp:dgiflib',
-        '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
+        '<(DEPTH)/third_party/libjpeg_turbo/libjpeg_turbo.gyp:libjpeg_turbo',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp_enc',
         '<(DEPTH)/third_party/libwebp/libwebp.gyp:libwebp_dec',
@@ -407,7 +407,7 @@
       ],
       'export_dependent_settings': [
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/libjpeg/libjpeg.gyp:libjpeg',
+        '<(DEPTH)/third_party/libjpeg_turbo/libjpeg_turbo.gyp:libjpeg_turbo',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],

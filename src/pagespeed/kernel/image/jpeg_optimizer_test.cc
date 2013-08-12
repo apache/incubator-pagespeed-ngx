@@ -18,7 +18,6 @@
 
 #include <vector>
 
-#include "base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
@@ -61,11 +60,11 @@ ImageCompressionInfo kValidImages[] = {
   { "sjpeg3.jpg", 44084, 41664, 26924, 40997, 25814 },
   { "sjpeg6.jpg", 149600, 147163, 89671, 146038, 84641 },
   { "testgray.jpg", 5014, 3072, 3060, 3094, 3078 },
-  { "sjpeg2.jpg", 3612, 3283, 3630, 3475, 3798 },
-  { "sjpeg4.jpg", 168895, 168240, 51389, 162867, 49186 },
-  { "test411.jpg", 6883, 4367, 3709, 4540, 3854 },
-  { "test420.jpg", 6173, 3657, 3653, 3796, 3793 },
-  { "test422.jpg", 6501, 3985, 3712, 4152, 3849 },
+  { "sjpeg2.jpg", 3612, 3283, 3652, 3475, 3833 },
+  { "sjpeg4.jpg", 168895, 168240, 50936, 162867, 48731 },
+  { "test411.jpg", 6883, 4367, 3705, 4540, 3849 },
+  { "test420.jpg", 6173, 3657, 3651, 3796, 3787 },
+  { "test422.jpg", 6501, 3985, 3709, 4152, 3852 },
 };
 
 const char *kInvalidFiles[] = {

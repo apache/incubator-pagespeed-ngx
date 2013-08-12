@@ -150,6 +150,10 @@ class PurgeContextTest : public testing::Test {
     return simple_stats_.GetVariable(PurgeContext::kFileParseFailures)->Get();
   }
 
+  int num_file_stats() {
+    return simple_stats_.GetVariable(PurgeContext::kFileStats)->Get();
+  }
+
   int file_writes() {
     return simple_stats_.GetVariable(PurgeContext::kFileWrites)->Get();
   }
@@ -189,6 +193,7 @@ TEST_F(PurgeContextTest, InvalidationSharing) {
   purge_context1_->SetCachePurgeGlobalTimestampMs(400000, ExpectSuccess());
   purge_context1_->AddPurgeUrl("a", 500000, ExpectSuccess());
   EXPECT_EQ(0, file_writes());
+  EXPECT_EQ(0, num_file_stats());
 
   // Prior to waiting for the new purge requests to be written, the purges
   // will not take effect.
@@ -199,6 +204,7 @@ TEST_F(PurgeContextTest, InvalidationSharing) {
   // written together in one file-write.
   scheduler_.AdvanceTimeMs(1000);
   EXPECT_EQ(1, file_writes());
+  EXPECT_EQ(2, num_file_stats());
 
   EXPECT_FALSE(PollAndTest1("a", 500000));
   EXPECT_TRUE(PollAndTest1("a", 500001));
@@ -214,6 +220,8 @@ TEST_F(PurgeContextTest, InvalidationSharing) {
   EXPECT_FALSE(PollAndTest2("b", 399999));
   EXPECT_FALSE(PollAndTest2("b", 400000));
   EXPECT_TRUE(PollAndTest2("b", 400001));
+
+  EXPECT_EQ(4, num_file_stats());
 
   // Now push a time-based flush the other direction.  Because
   // we only poll the file system periodically we do have to advance

@@ -18,22 +18,21 @@
 
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 
-#include <setjmp.h>  // for setjmp/longjmp
-#include <stdio.h>  // provides FILE for jpeglib (needed for certain builds)
+#include <setjmp.h>
+// 'stdio.h' provides FILE for jpeglib (needed for certain builds)
+#include <stdio.h>
 #include <algorithm>
+#include <cstdlib>
 
-#include "base/basictypes.h"
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 
 extern "C" {
 #ifdef USE_SYSTEM_LIBJPEG
-#include "jerror.h"    // NOLINT
 #include "jpeglib.h"   // NOLINT
 #else
-#include "third_party/libjpeg/jerror.h"
-#include "third_party/libjpeg/jpeglib.h"
+#include "third_party/libjpeg_turbo/src/jpeglib.h"
 #endif
 }
 

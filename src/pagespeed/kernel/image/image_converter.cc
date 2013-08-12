@@ -18,9 +18,22 @@
 
 #include "pagespeed/kernel/image/image_converter.h"
 
+#include <setjmp.h>
+#include <cstddef>
+
+extern "C" {
+#ifdef USE_SYSTEM_LIBPNG
+#include "png.h"  // NOLINT
+#else
+#include "third_party/libpng/png.h"
+#endif
+}  // extern "C"
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
+#include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
 
 namespace {
 // In some cases, converting a PNG to JPEG results in a smaller

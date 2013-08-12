@@ -133,7 +133,8 @@ BASE_LIBS = \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
   third_party/jsoncpp/libjsoncpp.a \
-  third_party/libjpeg/libjpeg.a \
+  third_party/libjpeg_turbo/libjpeg.a \
+  third_party/libjpeg_turbo/src/libjpeg_turbo.a \
   third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_resource_pb.a \
