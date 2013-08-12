@@ -38,6 +38,7 @@ export MOD_PAGESPEED_CACHE
 
 apache_vm_system_tests :
 	$(MAKE) FAST_RESTART=1 apache_debug_smoke_test
+	$(MAKE) FAST_RESTART=1 apache_debug_downstream_caching_test
 	$(MAKE) FAST_RESTART=1 apache_debug_per_vhost_stats_test
 	$(MAKE) FAST_RESTART=1 apache_debug_memcached_test
 	$(MAKE) FAST_RESTART=1 apache_debug_leak_test
@@ -252,6 +253,11 @@ experiment_ga_test_prepare :
 experiment_no_ga_test_prepare :
 	$(eval OPT_EXPERIMENT_NO_GA_TEST="EXPERIMENT_NO_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
+
+apache_debug_downstream_caching_test :
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	$(MAKE) apache_install_conf apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_downstream_caching_test.sh $(APACHE_SERVER)
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.
 # We use the stress test config as a base for that, as it has the vhosts all

@@ -109,62 +109,6 @@ fi
 
 # General system tests
 
-if ${FIRST_RUN:-false}; then
-  # Skip portions of the below test if varnish is not running at the correct
-  # port (8020). To check whether varnish is running, fetch the file
-  # from the varnish location.
-  have_varnish_downstream_cache="1"
-  CACHABLE_HTML_HOST_PORT="http://localhost:8020"
-  CACHABLE_HTML_PATH="/mod_pagespeed_test/cachable_rewritten_html"
-  URL="$CACHABLE_HTML_HOST_PORT$CACHABLE_HTML_PATH"
-  FILE=downstream_caching_index.html
-  FETCHED=$OUTDIR/$FILE
-  $WGET_DUMP $URL > $FETCHED
-  OUT=$(grep -c 'downstream_caching' $FETCHED)
-  if [ $OUT = "0" ]; then
-    SAMPLE_CONF_LOC="https://code.google.com/p/modpagespeed/source/browse/trunk"
-    SAMPLE_CONF_LOC="$SAMPLE_CONF_LOC/src/install/sample_conf.vcl"
-    echo "*** Skipping parts of the test because Varnish is not running on "
-    echo "*** port 8020. If you'd like to enable this test, please follow the"
-    echo "*** instructions given in $SAMPLE_CONF_LOC"
-    have_varnish_downstream_cache="0"
-    CACHABLE_HTML_HOST_PORT="http://${HOSTNAME}"
-  fi
-  CACHABLE_HTML_PATH="$CACHABLE_HTML_PATH/downstream_caching.html"
-  STATS_URL="${HOSTNAME}/mod_pagespeed_statistics"
-  SUCCESS_VAR="successful_downstream_cache_purges"
-
-  # Number of downstream cache purges should be 0 here.
-  start_test Check that downstream cache purges are 0 initially.
-  CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-  check_from "$CURRENT_STATS" egrep -q \
-    "downstream_cache_purge_attempts:[[:space:]]*0"
-  check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:[[:space:]]*0"
-
-  start_test Check for case where rewritten cache should get purged.
-  OUT=$($WGET_DUMP $CACHABLE_HTML_HOST_PORT$CACHABLE_HTML_PATH)
-  check_not_from "$OUT" egrep -q "pagespeed.ic"
-  fetch_until $STATS_URL \
-    'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
-  if [ $have_varnish_downstream_cache = "1" ]; then
-    CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-    check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:[[:space:]]*1"
-  fi
-
-  start_test Check for case where rewritten cache should not get purged.
-  WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
-  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_HOST_PORT$CACHABLE_HTML_PATH)
-  check_from "$OUT" egrep -q "pagespeed.ic"
-
-  # Number of downstream cache purges should still be 1.
-  CURRENT_STATS=$($WGET_DUMP $STATS_URL)
-  check_from "$CURRENT_STATS" egrep -q \
-    "downstream_cache_purge_attempts:[[:space:]]*1"
-  if [ $have_varnish_downstream_cache = "1" ]; then
-    check_from "$CURRENT_STATS" egrep -q "$SUCCESS_VAR:[[:space:]]*1"
-  fi
-fi
-
 start_test Check for correct default X-Mod-Pagespeed header format.
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 check_from "$OUT" egrep -q \
