@@ -131,8 +131,11 @@ class BeaconPropertyCallback : public PropertyPage {
       StringSet* critical_css_selector_set,
       StringSet* xpaths_set,
       StringPiece nonce)
-      : PropertyPage(kPropertyCachePage, url, options_signature_hash,
-                     device_type, request_context,
+      : PropertyPage(kPropertyCachePage,
+                     url,
+                     options_signature_hash,
+                     UserAgentMatcher::DeviceTypeSuffix(device_type),
+                     request_context,
                      server_context->thread_system()->NewMutex(),
                      server_context->page_property_cache()),
         server_context_(server_context),

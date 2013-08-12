@@ -27,7 +27,6 @@
 
 #include <map>
 
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -63,7 +62,7 @@ class CachePropertyStore : public PropertyStore {
   // callback paramter can be set to NULL if cohort_list is empty.
   virtual void Get(const GoogleString& url,
                    const GoogleString& options_signature_hash,
-                   UserAgentMatcher::DeviceType device_type,
+                   const GoogleString& cache_key_suffix,
                    const PropertyCache::CohortVector& cohort_list,
                    PropertyPage* page,
                    BoolCallback* done,
@@ -72,7 +71,7 @@ class CachePropertyStore : public PropertyStore {
   // Write to cache.
   virtual void Put(const GoogleString& url,
                    const GoogleString& options_signature_hash,
-                   UserAgentMatcher::DeviceType device_type,
+                   const GoogleString& cache_key_suffix,
                    const PropertyCache::Cohort* cohort,
                    const PropertyCacheValues* values,
                    BoolCallback* done);
@@ -90,7 +89,7 @@ class CachePropertyStore : public PropertyStore {
   // possible to inject delays into the cache via DelayCache::DelayKey.
   GoogleString CacheKey(const StringPiece& url,
                         const StringPiece& options_signature_hash,
-                        UserAgentMatcher::DeviceType device_type,
+                        const StringPiece& cache_key_suffix,
                         const PropertyCache::Cohort* cohort) const;
 
   // Returns default cache backend associated with CachePropertyStore.

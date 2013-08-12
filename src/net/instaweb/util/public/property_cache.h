@@ -96,7 +96,6 @@
 #include <vector>
 
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -423,7 +422,7 @@ class PropertyPage : public AbstractPropertyPage {
   PropertyPage(PageType page_type,
                StringPiece url,
                StringPiece options_signature_hash,
-               UserAgentMatcher::DeviceType device_type,
+               StringPiece cache_key_suffix,
                const RequestContextPtr& request_context,
                AbstractMutex* mutex,
                PropertyCache* property_cache);
@@ -468,7 +467,7 @@ class PropertyPage : public AbstractPropertyPage {
   scoped_ptr<AbstractMutex> mutex_;
   GoogleString url_;
   GoogleString options_signature_hash_;
-  UserAgentMatcher::DeviceType device_type_;
+  GoogleString cache_key_suffix_;
   RequestContextPtr request_context_;
   bool was_read_;
   PropertyCache* property_cache_;  // Owned by the caller.

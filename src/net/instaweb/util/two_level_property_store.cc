@@ -56,7 +56,7 @@ class TwoLevelPropertyStoreGetCallback
   TwoLevelPropertyStoreGetCallback(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
-      UserAgentMatcher::DeviceType device_type,
+      const GoogleString& cache_key_suffix,
       const PropertyCache::CohortVector& cohort_list,
       PropertyPage* page,
       BoolCallback* done,
@@ -64,7 +64,7 @@ class TwoLevelPropertyStoreGetCallback
       PropertyStore* secondary_property_store)
       : url_(url),
         options_signature_hash_(options_signature_hash),
-        device_type_(device_type),
+        cache_key_suffix_(cache_key_suffix),
         page_(page),
         done_(done),
         mutex_(mutex),
@@ -211,7 +211,7 @@ class TwoLevelPropertyStoreGetCallback
     secondary_property_store_->Get(
         url_,
         options_signature_hash_,
-        device_type_,
+        cache_key_suffix_,
         cohort_list,
         page_,
         NewCallback(this,
@@ -279,7 +279,7 @@ class TwoLevelPropertyStoreGetCallback
 
   GoogleString url_;
   GoogleString options_signature_hash_;
-  UserAgentMatcher::DeviceType device_type_;
+  const GoogleString& cache_key_suffix_;
   PropertyCache::CohortVector cohort_list_;
   PropertyPage* page_;  // page_ becomes NULL as soon as Done() is called.
   BoolCallback* done_;
@@ -314,7 +314,7 @@ TwoLevelPropertyStore::~TwoLevelPropertyStore() {
 void TwoLevelPropertyStore::Get(
     const GoogleString& url,
     const GoogleString& options_signature_hash,
-    UserAgentMatcher::DeviceType device_type,
+    const GoogleString& cache_key_suffix,
     const PropertyCache::CohortVector& cohort_list,
     PropertyPage* page,
     BoolCallback* done,
@@ -323,7 +323,7 @@ void TwoLevelPropertyStore::Get(
       new TwoLevelPropertyStoreGetCallback(
           url,
           options_signature_hash,
-          device_type,
+          cache_key_suffix,
           cohort_list,
           page,
           done,
@@ -335,7 +335,7 @@ void TwoLevelPropertyStore::Get(
   primary_property_store_->Get(
       url,
       options_signature_hash,
-      device_type,
+      cache_key_suffix,
       cohort_list,
       page,
       NewCallback(two_level_property_store_get_callback,
@@ -352,15 +352,15 @@ void TwoLevelPropertyStore::Get(
 void TwoLevelPropertyStore::Put(
     const GoogleString& url,
     const GoogleString& options_signature_hash,
-    UserAgentMatcher::DeviceType device_type,
+    const GoogleString& cache_key_suffix,
     const PropertyCache::Cohort* cohort,
     const PropertyCacheValues* values,
     BoolCallback* done) {
   // TODO(pulkitg): Pass actual callback instead of NULL.
   primary_property_store_->Put(
-      url, options_signature_hash, device_type, cohort, values, NULL);
+      url, options_signature_hash, cache_key_suffix, cohort, values, NULL);
   secondary_property_store_->Put(
-      url, options_signature_hash, device_type, cohort, values, NULL);
+      url, options_signature_hash, cache_key_suffix, cohort, values, NULL);
   if (done != NULL) {
     done->Run(true);
   }

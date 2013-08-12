@@ -53,7 +53,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "pagespeed/kernel/http/content_type.h"
 
 
 namespace net_instaweb {
@@ -73,6 +72,8 @@ class ResourceNamer;
 class RewriteFilter;
 class Statistics;
 class WaitUrlAsyncFetcher;
+
+struct ContentType;
 
 class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
@@ -600,7 +601,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
         server_context_->page_property_cache(),
         url,
         options_signature_hash,
-        device_type);
+        UserAgentMatcher::DeviceTypeSuffix(device_type));
   }
 
   MockPropertyPage* NewMockPage(const StringPiece& url) {

@@ -40,7 +40,7 @@ namespace net_instaweb {
 
 namespace {
 
-const size_t kMaxCacheSize = 100;
+const size_t kMaxCacheSize = 200;
 const char kCohortName1[] = "cohort1";
 const char kCohortName2[] = "cohort2";
 const char kUrl[] = "www.test.com/sample.html";
@@ -48,6 +48,7 @@ const char kParsableContent[] =
     "value { name: 'prop1' value: 'value1' }";
 const char kNonParsableContent[] = "random";
 const char kOptionsSignatureHash[] = "hash";
+const char kCacheKeySuffix[] = "CacheKeySuffix";
 
 }  // namespace
 
@@ -79,7 +80,7 @@ class CachePropertyStoreTest : public testing::Test {
             &property_cache_,
             kUrl,
             kOptionsSignatureHash,
-            UserAgentMatcher::kDesktop));
+            kCacheKeySuffix));
     property_cache_.Read(page_.get());
   }
 
@@ -97,7 +98,7 @@ class CachePropertyStoreTest : public testing::Test {
     cache_property_store_.Get(
         kUrl,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop,
+        kCacheKeySuffix,
         cohort_list_,
         page,
         NewCallback(this, &CachePropertyStoreTest::ResultCallback),
@@ -137,7 +138,7 @@ TEST_F(CachePropertyStoreTest, TestResultAvailable) {
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_,
       &values,
       NULL);
@@ -151,7 +152,7 @@ TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
   SharedString put_buffer(kNonParsableContent);
   lru_cache_.Put(cache_property_store_.CacheKey(kUrl,
                                                 kOptionsSignatureHash,
-                                                UserAgentMatcher::kDesktop,
+                                                kCacheKeySuffix,
                                                 cohort_),
                  &put_buffer);
   EXPECT_FALSE(ExecuteGet(page_.get()));
@@ -169,7 +170,7 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
                         &property_cache_,
                         kUrl,
                         kOptionsSignatureHash,
-                        UserAgentMatcher::kDesktop);
+                        kCacheKeySuffix);
   property_cache_.Read(&page);
   PropertyCacheValues values;
   values.ParseFromString(kParsableContent);
@@ -186,7 +187,7 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_,
       &values,
       NULL);
@@ -201,7 +202,7 @@ TEST_F(CachePropertyStoreTest, TestMultipleCohorts) {
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort2,
       &values,
       NULL);
@@ -227,7 +228,7 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
       &property_cache_,
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop);
+      kCacheKeySuffix);
   property_cache_.Read(&page);
   PropertyCacheValues values;
   values.ParseFromString(kParsableContent);
@@ -237,7 +238,7 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_,
       &values,
       NULL);
@@ -245,7 +246,7 @@ TEST_F(CachePropertyStoreTest, TestMultipleCacheBackends) {
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort2,
       &values,
       NULL);
@@ -271,13 +272,13 @@ TEST_F(CachePropertyStoreTest, TestPropertyCacheKeyMethod) {
   GoogleString cache_key = cache_property_store_.CacheKey(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_);
   GoogleString expected = StrCat(
       "test/",
       kUrl, "_",
       kOptionsSignatureHash,
-      UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop), "@",
+      kCacheKeySuffix, "@",
       cohort_->name());
   EXPECT_EQ(expected, cache_key);
 }
@@ -288,7 +289,7 @@ TEST_F(CachePropertyStoreTest, TestPutHandlesNonNullCallback) {
   cache_property_store_.Put(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_,
       &values,
       NewCallback(this, &CachePropertyStoreTest::ResultCallback));

@@ -20,7 +20,6 @@
 
 #include <cstddef>
 
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -43,6 +42,7 @@ const char kPropertyName1[] = "prop1";
 const char kValue1[] = "value1";
 const char kValue2[] = "value2";
 const char kOptionsSignatureHash[] = "hash";
+const char kCacheKeySuffix[] = "CacheKeySuffix";
 
 class FallbackPropertyPageTest : public testing::Test {
  protected:
@@ -68,13 +68,13 @@ class FallbackPropertyPageTest : public testing::Test {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     PropertyPage* fallback_property_page = new MockPropertyPage(
         thread_system_.get(),
         &property_cache_,
         kCacheKey2,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     fallback_page_.reset(new FallbackPropertyPage(
         actual_property_page, fallback_property_page));
     property_cache_.Read(actual_property_page);
@@ -134,7 +134,7 @@ TEST_F(FallbackPropertyPageTest, TestIfNoFallbackPageSet) {
       &property_cache_,
       kCacheKey1,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop);
+      kCacheKeySuffix);
   fallback_page_.reset(new FallbackPropertyPage(actual_property_page, NULL));
   property_cache_.Read(actual_property_page);
   fallback_page_->UpdateValue(cohort_, kPropertyName1, kValue1);

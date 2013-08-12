@@ -368,7 +368,7 @@ void ProxyInterfaceTestBase::TestPropertyCacheWithHeadersAndOutput(
     delay_pcache_key = factory()->cache_property_store()->CacheKey(
         delay_http_cache_key,
         "",
-        UserAgentMatcher::kDesktop,
+        UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop),
         cohort);
     delay_cache()->DelayKey(delay_pcache_key);
     if (thread_pcache) {

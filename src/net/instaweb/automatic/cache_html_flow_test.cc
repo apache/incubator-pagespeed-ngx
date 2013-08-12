@@ -374,7 +374,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
     key_ = factory_->cache_property_store()->CacheKey(
         request_url.Spec(),
         options_signature_hash,
-        UserAgentMatcher::kDesktop,
+        UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop),
         cohort);
     delay_cache_->DelayKey(key_);
     if (added_page_property_callback != NULL) {

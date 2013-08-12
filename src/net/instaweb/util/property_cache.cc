@@ -208,7 +208,7 @@ void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
   property_cache_->property_store()->Get(
       url_,
       options_signature_hash_,
-      device_type_,
+      cache_key_suffix_,
       cohort_list,
       this,
       NewCallback(this, &PropertyPage::CallDone),
@@ -297,14 +297,14 @@ PropertyPage::PropertyPage(
     PageType page_type,
     StringPiece url,
     StringPiece options_signature_hash,
-    UserAgentMatcher::DeviceType device_type,
+    StringPiece cache_key_suffix,
     const RequestContextPtr& request_context,
     AbstractMutex* mutex,
     PropertyCache* property_cache)
     : mutex_(mutex),
       url_(url.as_string()),
       options_signature_hash_(options_signature_hash.as_string()),
-      device_type_(device_type),
+      cache_key_suffix_(cache_key_suffix.as_string()),
       request_context_(request_context),
       was_read_(false),
       property_cache_(property_cache),
@@ -389,7 +389,12 @@ void PropertyPage::WriteCohort(const PropertyCache::Cohort* cohort) {
     if (EncodePropertyCacheValues(cohort, &values) ||
         HasPropertyValueDeleted(cohort)) {
       property_cache_->property_store()->Put(
-          url_, options_signature_hash_, device_type_, cohort, &values, NULL);
+          url_,
+          options_signature_hash_,
+          cache_key_suffix_,
+          cohort,
+          &values,
+          NULL);
     }
   }
 }

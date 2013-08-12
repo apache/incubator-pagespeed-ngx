@@ -194,7 +194,7 @@ ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
           page_type,
           url,
           options_signature_hash,
-          device_type,
+          UserAgentMatcher::DeviceTypeSuffix(device_type),
           collector->request_context(),
           mutex,
           property_cache),

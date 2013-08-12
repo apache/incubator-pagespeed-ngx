@@ -46,6 +46,7 @@ const char kCacheKey2[] = "Key2";
 const char kPropertyName1[] = "prop1";
 const char kPropertyName2[] = "prop2";
 const char kOptionsSignatureHash[] = "hash";
+const char kCacheKeySuffix[] = "CacheKeySuffix";
 
 class PropertyCacheTest : public testing::Test {
  protected:
@@ -75,7 +76,7 @@ class PropertyCacheTest : public testing::Test {
                           &property_cache_,
                           key,
                           kOptionsSignatureHash,
-                          UserAgentMatcher::kDesktop);
+                          kCacheKeySuffix);
     property_cache_.Read(&page);
     EXPECT_FALSE(page.valid());
     EXPECT_TRUE(page.called());
@@ -98,7 +99,7 @@ class PropertyCacheTest : public testing::Test {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     EXPECT_TRUE(page.valid());
@@ -118,7 +119,7 @@ class PropertyCacheTest : public testing::Test {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     return property->IsRecentlyConstant(num_writes_unchanged);
@@ -134,7 +135,7 @@ class PropertyCacheTest : public testing::Test {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     page.UpdateValue(cohort_, kPropertyName1, value);
     page.WriteCohort(cohort_);
@@ -285,7 +286,7 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
         &property_cache2,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache2.Read(&page);
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());
@@ -299,7 +300,7 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
         &property_cache2,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache2.Read(&page);
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());
@@ -314,7 +315,7 @@ TEST_F(PropertyCacheTest, EmptyReadNewPropertyWasRead) {
       &property_cache_,
       kCacheKey1,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop);
+      kCacheKeySuffix);
   property_cache_.Read(&page);
   PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
   EXPECT_TRUE(property->was_read());
@@ -340,7 +341,7 @@ TEST_F(PropertyCacheTest, TwoCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     EXPECT_EQ(1, lru_cache_.num_hits()) << "cohort1";
     EXPECT_EQ(1, lru_cache_.num_misses()) << "cohort2";
@@ -361,7 +362,7 @@ TEST_F(PropertyCacheTest, TwoCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     EXPECT_EQ(2, lru_cache_.num_hits()) << "both cohorts hit";
     EXPECT_EQ(0, lru_cache_.num_misses());
@@ -383,7 +384,7 @@ TEST_F(PropertyCacheTest, Expiration) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
 
@@ -410,7 +411,7 @@ TEST_F(PropertyCacheTest, IsCacheValid) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     // The timestamp for invalidation is older than the write time of value.  So
     // it as valid.
     page.set_time_ms(timer_.NowMs() - 1);
@@ -429,7 +430,7 @@ TEST_F(PropertyCacheTest, IsCacheValid) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     page.set_time_ms(timer_.NowMs());
     property_cache_.Read(&page);
     EXPECT_FALSE(page.valid());
@@ -446,7 +447,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
       &property_cache_,
       kCacheKey1,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop);
+      kCacheKeySuffix);
   property_cache_.Read(&page);
   page.UpdateValue(cohort_, kPropertyName1, "Value1");
   timer_.AdvanceMs(2);
@@ -458,7 +459,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     // The timestamp for invalidation is older than the write times of both
     // value.  So they are treated as valid.
     page.set_time_ms(timer_.NowMs() - 3);
@@ -478,7 +479,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     page.set_time_ms(timer_.NowMs() - 1);
     property_cache_.Read(&page);
     EXPECT_FALSE(page.valid());
@@ -500,7 +501,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
       &property_cache_,
       kCacheKey1,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop);
+      kCacheKeySuffix);
   property_cache_.Read(&page);
   page.UpdateValue(cohort_, kPropertyName1, "Value1");
   timer_.AdvanceMs(2);
@@ -514,7 +515,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     // The timestamp for invalidation is older than the write times of values in
     // both cohorts.  So they are treated as valid.
     page.set_time_ms(timer_.NowMs() - 3);
@@ -536,7 +537,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     page.set_time_ms(timer_.NowMs() - 1);
     property_cache_.Read(&page);
     EXPECT_TRUE(page.valid());
@@ -557,7 +558,7 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
           &property_cache_,
           kCacheKey1,
           kOptionsSignatureHash,
-          UserAgentMatcher::kDesktop);
+          kCacheKeySuffix);
       property_cache_.Read(&page);
       EXPECT_TRUE(page.valid());
       EXPECT_TRUE(page.called());
@@ -575,7 +576,7 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
           &property_cache_,
           kCacheKey1,
           kOptionsSignatureHash,
-          UserAgentMatcher::kDesktop);
+          kCacheKeySuffix);
       property_cache_.Read(&page);
       PropertyValue* property = page.GetProperty(
           cohort_, kPropertyName1);
@@ -627,7 +628,7 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
 
     EXPECT_EQ(1, lru_cache_.num_hits());
@@ -658,7 +659,7 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
 
     EXPECT_EQ(1, lru_cache_.num_hits());
@@ -702,7 +703,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     PropertyCache::CohortVector cohort_list;
     cohort_list.push_back(cohort2);
     property_cache_.ReadWithCohorts(cohort_list, &page);
@@ -725,7 +726,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     PropertyCache::CohortVector cohort_list;
     cohort_list.push_back(cohort2);
     property_cache_.ReadWithCohorts(cohort_list, &page);
@@ -745,7 +746,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
     property_cache_.Read(&page);
     EXPECT_EQ(2, lru_cache_.num_hits()) << "both cohorts hit";
     EXPECT_EQ(0, lru_cache_.num_misses());
@@ -767,7 +768,7 @@ TEST_F(PropertyCacheTest, ReadWithEmptyCohort) {
         &property_cache_,
         kCacheKey1,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop);
+        kCacheKeySuffix);
 
     PropertyCache::CohortVector cohort_list;
     property_cache_.ReadWithCohorts(cohort_list, &page1);

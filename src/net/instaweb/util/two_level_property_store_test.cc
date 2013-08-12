@@ -52,6 +52,7 @@ const char kParsableContent[] =
     "value { name: 'prop1' value: 'value1' }";
 const char kNonParsableContent[] = "random";
 const char kOptionsSignatureHash[] = "hash";
+const char kCacheKeySuffix[] = "CacheKeySuffix";
 
 }  // namespace
 
@@ -91,7 +92,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
             &property_cache_,
             kUrl,
             kOptionsSignatureHash,
-            UserAgentMatcher::kDesktop));
+            kCacheKeySuffix));
     property_cache_.Read(page_.get());
     lru_cache_1_.ClearStats();
     lru_cache_2_.ClearStats();
@@ -106,7 +107,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
     property_store->Put(
         kUrl,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop,
+        kCacheKeySuffix,
         cohort,
         &values,
         NULL);
@@ -125,7 +126,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
     two_level_property_store_.Get(
         kUrl,
         kOptionsSignatureHash,
-        UserAgentMatcher::kDesktop,
+        kCacheKeySuffix,
         cohort_list_,
         page,
         NewCallback(this, &TwoLevelPropertyStoreTest::ResultCallback),
@@ -149,7 +150,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
   void DelayCacheLookup(DelayCache* cache,
                         CachePropertyStore* property_store) {
     GoogleString cache_key = property_store->CacheKey(
-        kUrl, kOptionsSignatureHash, UserAgentMatcher::kDesktop, cohort_);
+        kUrl, kOptionsSignatureHash, kCacheKeySuffix, cohort_);
     LOG(INFO) << "Delay Cache Key:: " << cache_key;
     cache->DelayKey(cache_key);
   }
@@ -157,7 +158,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
   void ReleaseCacheLookup(DelayCache* cache,
                           CachePropertyStore* property_store) {
     GoogleString cache_key = property_store->CacheKey(
-        kUrl, kOptionsSignatureHash, UserAgentMatcher::kDesktop, cohort_);
+        kUrl, kOptionsSignatureHash, kCacheKeySuffix, cohort_);
     cache->ReleaseKey(cache_key);
   }
 
@@ -305,7 +306,7 @@ TEST_F(TwoLevelPropertyStoreTest, TestCancelAfterSecondaryLookupDone) {
   two_level_property_store_.Get(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_list_,
       page_.get(),
       NewCallback(this, &TwoLevelPropertyStoreTest::ResultCallback),
@@ -334,7 +335,7 @@ TEST_F(TwoLevelPropertyStoreTest, TestDeleteWhenDoneBeforeSecondaryLookupDone) {
   two_level_property_store_.Get(
       kUrl,
       kOptionsSignatureHash,
-      UserAgentMatcher::kDesktop,
+      kCacheKeySuffix,
       cohort_list_,
       page_.get(),
       NewCallback(this, &TwoLevelPropertyStoreTest::ResultCallback),
@@ -367,7 +368,7 @@ TEST_F(TwoLevelPropertyStoreTest, TestPartialSecondaryLookup) {
                         &property_cache_,
                         kUrl,
                         kOptionsSignatureHash,
-                        UserAgentMatcher::kDesktop);
+                        kCacheKeySuffix);
   property_cache_.Read(&page);
   cohort_list_.push_back(cohort2);
   lru_cache_1_.ClearStats();

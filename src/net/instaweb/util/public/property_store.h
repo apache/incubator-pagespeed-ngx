@@ -21,7 +21,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_STORE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_STORE_H_
 
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
@@ -55,7 +54,7 @@ class PropertyStore {
   virtual void Get(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
-      UserAgentMatcher::DeviceType device_type,
+      const GoogleString& cache_key_suffix,
       const PropertyCache::CohortVector& cohort_list,
       PropertyPage* page,
       BoolCallback* done,
@@ -68,7 +67,7 @@ class PropertyStore {
   virtual void Put(
       const GoogleString& url,
       const GoogleString& options_signature_hash,
-      UserAgentMatcher::DeviceType device_type,
+      const GoogleString& cache_key_suffix,
       const PropertyCache::Cohort* cohort,
       const PropertyCacheValues* values,
       BoolCallback* done) = 0;
