@@ -265,6 +265,7 @@ class ProxyFetchPropertyCallbackCollector {
   GoogleString url_;
   RequestContextPtr request_context_;
   UserAgentMatcher::DeviceType device_type_;
+  bool is_options_valid_;     // protected by mutex_.
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   ProxyFetch* proxy_fetch_;   // protected by mutex_.
@@ -305,6 +306,7 @@ class ProxyFetch : public SharedAsyncFetch {
   static const char kCollectorDetachFinish[];
   static const char kCollectorDoneFinish[];
   static const char kCollectorFinish[];
+  static const char kCollectorDetachStart[];
 
   // These strings identify sync-points for introducing races between
   // PropertyCache lookup completion and HeadersComplete.

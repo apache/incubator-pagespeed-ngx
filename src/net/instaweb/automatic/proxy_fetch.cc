@@ -61,6 +61,7 @@ const char ProxyFetch::kCollectorConnectProxyFetchFinish[] =
 const char ProxyFetch::kCollectorDetachFinish[] = "CollectorDetachFinish";
 const char ProxyFetch::kCollectorDoneFinish[] = "CollectorDoneFinish";
 const char ProxyFetch::kCollectorFinish[] = "CollectorFinish";
+const char ProxyFetch::kCollectorDetachStart[] = "CollectorDetachStart";
 
 const char ProxyFetch::kHeadersSetupRaceAlarmQueued[] =
     "HeadersSetupRace:AlarmQueued";
@@ -220,6 +221,7 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
       url_(url.data(), url.size()),
       request_context_(request_ctx),
       device_type_(device_type),
+      is_options_valid_(true),
       detached_(false),
       done_(false),
       proxy_fetch_(NULL),
@@ -269,7 +271,7 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
   // false and hence this has not yet been deleted.
   DCHECK(!done_);
   // But Detach might have been called already and then options_ is not valid.
-  if (detached_) {
+  if (!is_options_valid_) {
     return false;
   }
   return (options_ == NULL ||
@@ -383,6 +385,10 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
 
 void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
   ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  {
+    ScopedMutex lock(mutex_.get());
+    is_options_valid_ = false;
+  }
   sequence_->Add(MakeFunction(
       this, &ProxyFetchPropertyCallbackCollector::ExecuteDetach, status_code));
   // Used in tests to block the test thread after Detach() is called.
@@ -391,15 +397,12 @@ void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
 
 void ProxyFetchPropertyCallbackCollector::ExecuteDetach(
     HttpStatus::Code status_code) {
-  {
-    ScopedMutex lock(mutex_.get());
-    DCHECK(!detached_);
-    // Lock as detached may be accessed from non sequenced threads.
-    detached_ = true;
-  }
-
-  proxy_fetch_ = NULL;
   ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  sync->Wait(ProxyFetch::kCollectorDetachStart);
+
+  DCHECK(!detached_);
+  detached_ = true;
+  proxy_fetch_ = NULL;
   status_code_ = status_code;
 
   for (int i = 0, n = post_lookup_task_vector_.size(); i < n; ++i) {

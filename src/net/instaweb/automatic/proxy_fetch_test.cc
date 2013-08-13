@@ -113,10 +113,6 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     thread_system_(Platform::CreateThreadSystem()),
     server_context_(server_context()),
     post_lookup_called_(false) {
-    ThreadSynchronizer* sync = server_context()->thread_synchronizer();
-    sync->EnableForPrefix(ProxyFetch::kCollectorDoneFinish);
-    sync->EnableForPrefix(ProxyFetch::kCollectorDetachFinish);
-    sync->EnableForPrefix(ProxyFetch::kCollectorConnectProxyFetchFinish);
   }
 
   scoped_ptr<ThreadSystem> thread_system_;
@@ -134,6 +130,13 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
         ProxyFetchPropertyCallback::kPropertyCachePage));
 
     return collector;
+  }
+
+  void EnableCollectorPrefix() {
+    ThreadSynchronizer* sync = server_context()->thread_synchronizer();
+    sync->EnableForPrefix(ProxyFetch::kCollectorDoneFinish);
+    sync->EnableForPrefix(ProxyFetch::kCollectorDetachFinish);
+    sync->EnableForPrefix(ProxyFetch::kCollectorConnectProxyFetchFinish);
   }
 
   // Add a callback to the collector.
@@ -183,6 +186,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
 
   void TestAddPostlookupTask(bool add_before_done,
                              bool add_before_proxy_fetch) {
+    EnableCollectorPrefix();
     GoogleString kUrl("http://www.test.com/");
     scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
     collector.reset(MakeCollector());
@@ -258,6 +262,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, EmptyCollectorTest) {
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeDetach) {
+  EnableCollectorPrefix();
   // Test that calling Done() before Detach() works.
   ProxyFetchPropertyCallbackCollector* collector = MakeCollector();
   ProxyFetchPropertyCallback* callback = AddCallback(
@@ -280,6 +285,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeDetach) {
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, UrlInvalidDoneBeforeDetach) {
+  EnableCollectorPrefix();
   // Invalidate all URLs cached before timestamp 2.
   options_->AddUrlCacheInvalidationEntry("*", 2L, true);
   // Test that calling Done() before Detach() works.
@@ -304,6 +310,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, UrlInvalidDoneBeforeDetach) {
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, DetachBeforeDone) {
+  EnableCollectorPrefix();
   // Test that calling Detach() before Done() works.
   ProxyFetchPropertyCallbackCollector* collector = MakeCollector();
   ProxyFetchPropertyCallback* callback = AddCallback(
@@ -326,6 +333,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DetachBeforeDone) {
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
+  EnableCollectorPrefix();
   // Test that calling Done() before SetProxyFetch() works.
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
@@ -363,6 +371,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
+  EnableCollectorPrefix();
   // Test that calling SetProxyFetch() before Done() works.
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
@@ -414,6 +423,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, ProxyFetchPostLookupDone) {
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
+  EnableCollectorPrefix();
   // This test will check PostLookup tasks should not have Null
   // fallback_property_page.
   GoogleString kUrl("http://www.test.com/");
@@ -440,6 +450,31 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
   page_callback->Done(true);
   collector->ConnectProxyFetch(mock_proxy_fetch);
   mock_proxy_fetch->Done(true);
+}
+
+
+TEST_F(ProxyFetchPropertyCallbackCollectorTest, TestOptionsValid) {
+  GoogleString kUrl("http://www.test.com/");
+  RewriteOptions* options = new RewriteOptions(thread_system_.get());
+  ProxyFetchPropertyCallbackCollector* collector =
+      new ProxyFetchPropertyCallbackCollector(
+          server_context_,
+          RewriteTestBase::kTestDomain,
+          RequestContext::NewTestRequestContext(thread_system_.get()),
+          options,
+          UserAgentMatcher::kDesktop);
+  ProxyFetchPropertyCallback* page_callback = AddCallback(
+      collector, ProxyFetchPropertyCallback::kPropertyCachePage);
+
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
+  sync->EnableForPrefix(ProxyFetch::kCollectorFinish);
+  sync->EnableForPrefix(ProxyFetch::kCollectorDetachStart);
+  collector->Detach(HttpStatus::kUnknownStatusCode);
+  delete options;
+  collector->IsCacheValid(1L);
+  sync->Signal(ProxyFetch::kCollectorDetachStart);
+  page_callback->Done(true);
+  sync->Wait(ProxyFetch::kCollectorFinish);
 }
 
 }  // namespace net_instaweb
