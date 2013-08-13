@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_TEST_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/base/file_system_test.h"
+#include "pagespeed/kernel/base/file_system_test_base.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_FILE_SYSTEM_TEST_H_

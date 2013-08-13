@@ -255,6 +255,7 @@ TEST_F(ProxyFetchTest, TestInhibitParsing) {
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, EmptyCollectorTest) {
   // Test that creating an empty collector works.
+  EnableCollectorPrefix();
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
   // This should not fail

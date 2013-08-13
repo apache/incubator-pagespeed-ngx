@@ -36,7 +36,8 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
 
   RequestHeaders();
 
-  void Clear();
+  virtual void Clear();
+  void CopyFromProto(const HttpRequestHeaders& p);
   void CopyFrom(const RequestHeaders& other);
 
   GoogleString ToString() const;

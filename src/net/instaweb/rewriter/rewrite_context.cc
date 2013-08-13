@@ -2907,14 +2907,10 @@ void RewriteContext::StartFetchReconstruction() {
   // Note that in case of fetches we continue even if we didn't manage to
   // take the lock.
   partitions_->Clear();
-  if (ShouldDistributeRewrite()) {
-    DistributeRewrite();
-  } else {
-    FindServerContext()->LockForCreation(
-        Lock(), Driver()->rewrite_worker(),
-        MakeFunction(this, &RewriteContext::FetchInputs,
-                     &RewriteContext::FetchInputs));
-  }
+  FindServerContext()->LockForCreation(
+      Lock(), Driver()->rewrite_worker(),
+      MakeFunction(this, &RewriteContext::FetchInputs,
+                   &RewriteContext::FetchInputs));
 }
 
 void RewriteContext::DetachFetch() {

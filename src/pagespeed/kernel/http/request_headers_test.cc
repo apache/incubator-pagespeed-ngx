@@ -20,6 +20,7 @@
 
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/http/http.pb.h"
 
 namespace net_instaweb {
 
@@ -72,6 +73,24 @@ TEST_F(RequestHeadersTest, RemoveAllWithPrefix) {
   ASSERT_EQ(1, request_headers_.NumAttributes());
   EXPECT_STREQ("something-4", request_headers_.Name(0));
   EXPECT_STREQ("val", request_headers_.Value(0));
+}
+
+TEST_F(RequestHeadersTest, CopyFromProto) {
+  request_headers_.Add("A", "1");
+  ASSERT_EQ(1, request_headers_.NumAttributes());
+  request_headers_.set_method(RequestHeaders::kPut);
+
+  HttpRequestHeaders proto;
+  NameValue* p = proto.add_header();
+  p->set_name("B");
+  p->set_value("2");
+  request_headers_.CopyFromProto(proto);
+
+  ASSERT_EQ(1, request_headers_.NumAttributes());
+  EXPECT_STREQ("B", request_headers_.Name(0));
+  EXPECT_STREQ("2", request_headers_.Value(0));
+  // Default in proto.
+  EXPECT_EQ(RequestHeaders::kGet, request_headers_.method());
 }
 
 }  // namespace net_instaweb

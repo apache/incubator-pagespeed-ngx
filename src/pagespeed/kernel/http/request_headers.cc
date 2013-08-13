@@ -41,6 +41,11 @@ void RequestHeaders::Clear() {
   proto_->Clear();
 }
 
+void RequestHeaders::CopyFromProto(const HttpRequestHeaders& p) {
+  map_.reset(NULL);
+  proto_->CopyFrom(p);
+}
+
 void RequestHeaders::CopyFrom(const RequestHeaders& other) {
   map_.reset(NULL);
   proto_->CopyFrom(*other.proto_);

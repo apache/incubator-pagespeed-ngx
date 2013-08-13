@@ -20,9 +20,11 @@
 #define PAGESPEED_KERNEL_IMAGE_TEST_UTILS_H_
 
 #include <cstddef>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/read_image.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
 
 namespace pagespeed {
 
