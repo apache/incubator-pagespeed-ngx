@@ -1627,6 +1627,7 @@ bool RewriteContext::ShouldDistributeRewrite() const {
 
   if (block_distribute_rewrite_
       || IsFetchRewrite()
+      || request_headers == NULL
       || slots_.size() != 1  // Note: we can't distribute combiners.
       || Driver()->distributed_fetcher() == NULL
       || !Options()->Distributable(id())
@@ -1639,7 +1640,6 @@ bool RewriteContext::ShouldDistributeRewrite() const {
   // to redistribute the CSS rewrite but its nested image filters should be
   // allowed to be distributed.  The rewrite task of the nested filter will
   // not redistribute it.
-  DCHECK(request_headers != NULL);
   if (request_headers != NULL && parent() == NULL) {
     if (request_headers->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
         request_headers->Has(HttpAttributes::kXPsaDistributedRewriteForHtml)) {
