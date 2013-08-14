@@ -25,12 +25,12 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/named_lock_manager.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/simple_stats.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/thread/mock_scheduler.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace {
 

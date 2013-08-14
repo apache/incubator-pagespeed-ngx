@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/string_util.h"

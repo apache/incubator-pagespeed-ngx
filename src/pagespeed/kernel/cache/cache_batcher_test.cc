@@ -21,9 +21,9 @@
 #include "pagespeed/kernel/cache/cache_batcher.h"
 
 #include <cstddef>
+
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/simple_stats.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -35,6 +35,7 @@
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace {
 const size_t kMaxSize = 100;

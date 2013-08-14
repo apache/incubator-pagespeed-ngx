@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_LOGGER_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/base/statistics_logger.h"
+#include "pagespeed/kernel/util/statistics_logger.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_LOGGER_H_

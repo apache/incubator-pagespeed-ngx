@@ -3,7 +3,7 @@
 
 // Unit-test the simple statistics implementation.
 
-#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"

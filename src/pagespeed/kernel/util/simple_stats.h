@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef PAGESPEED_KERNEL_BASE_SIMPLE_STATS_H_
-#define PAGESPEED_KERNEL_BASE_SIMPLE_STATS_H_
+#ifndef PAGESPEED_KERNEL_UTIL_SIMPLE_STATS_H_
+#define PAGESPEED_KERNEL_UTIL_SIMPLE_STATS_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -73,4 +73,4 @@ class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_KERNEL_BASE_SIMPLE_STATS_H_
+#endif  // PAGESPEED_KERNEL_UTIL_SIMPLE_STATS_H_

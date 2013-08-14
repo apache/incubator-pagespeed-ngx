@@ -29,7 +29,6 @@
 #include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/simple_stats.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -39,6 +38,7 @@
 #include "pagespeed/kernel/thread/slow_worker.h"
 #include "pagespeed/kernel/util/filename_encoder.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 

@@ -28,9 +28,9 @@
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/statistics_logger.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/statistics_logger.h"
 
 namespace net_instaweb {
 

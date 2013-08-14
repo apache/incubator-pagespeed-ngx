@@ -27,7 +27,6 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
-#include "pagespeed/kernel/base/simple_stats.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -36,6 +35,7 @@
 #include "pagespeed/kernel/cache/delay_cache.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace {
 const int kMaxSize = 100;

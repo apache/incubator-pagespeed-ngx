@@ -15,10 +15,11 @@
 // Author: bvb@google.com (Ben VanBerkum)
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "pagespeed/kernel/base/statistics_logger.h"
+#include "pagespeed/kernel/util/statistics_logger.h"
 
 #include <cstddef>
 #include <map>
+#include <memory>
 #include <set>
 #include <utility>                      // for pair
 #include <vector>

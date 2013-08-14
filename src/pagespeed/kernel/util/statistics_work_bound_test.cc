@@ -24,7 +24,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 class Variable;

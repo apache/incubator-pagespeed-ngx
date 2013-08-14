@@ -17,6 +17,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 
 // TODO(morlovich): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/base/simple_stats.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
