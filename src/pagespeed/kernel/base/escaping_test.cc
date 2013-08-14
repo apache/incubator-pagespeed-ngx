@@ -72,6 +72,31 @@ TEST_F(EscapingTest, JsSingleQuotes) {
   EXPECT_STREQ("\"foo'\"", out_quoted);
 }
 
+TEST_F(EscapingTest, JsAvoidWeirdParsingSequence) {
+  // Some sequences have an effect on HTML parsing, so we want to avoid them.
+  GoogleString out;
+  EscapeToJsStringLiteral("a <ScrIpt", false, &out);
+  EXPECT_EQ("a \\u003cScrIpt", out);
+
+  out.clear();
+  EscapeToJsStringLiteral("Foo <!-- ", false, &out);
+  EXPECT_EQ("Foo \\u003c!-- ", out);
+
+  out.clear();
+  EscapeToJsStringLiteral("Bar ---> ", false, &out);
+  EXPECT_EQ("Bar -\\u002d-> ", out);
+}
+
+TEST_F(EscapingTest, JsDontEscapeWayTooMuch) {
+  GoogleString out;
+  EscapeToJsStringLiteral("<div", false, &out);
+  EXPECT_EQ("<div", out);
+
+  out.clear();
+  EscapeToJsStringLiteral("-----!", false, &out);
+  EXPECT_EQ("-----!", out);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

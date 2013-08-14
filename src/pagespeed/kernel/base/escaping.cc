@@ -66,6 +66,29 @@ void EscapeToJsStringLiteral(const StringPiece& original,
           (*escaped) += '\'';
         }
         break;
+      case '<': {
+        // Surprisingly, seeing <!-- and <script can affect how parsing
+        // of scripts inside HTML works, so we need to escape the <
+        // in them.
+        // (See the "script data escaped" HTML lexer states in the HTML5 spec).
+        StringPiece rest_of_input = original.substr(c);
+        if (StringCaseStartsWith(rest_of_input, "<script") ||
+            HasPrefixString(rest_of_input, "<!--")) {
+          *(escaped) += "\\u003c";
+        } else {
+          *(escaped) += '<';
+        }
+        break;
+      }
+      case '-': {
+        // Similarly to <!-- (see above) --> can be special.
+        if (HasPrefixString(original.substr(c), "-->")) {
+          *(escaped) += "\\u002d";
+        } else {
+          *(escaped) += '-';
+        }
+        break;
+      }
       case '/':
         // Forward slashes are generally OK, but </script> is trouble
         // if it happens inside an inline <script>. We therefore escape the
