@@ -95,6 +95,9 @@
     # This will allow resources found on http://cdn.myhost.com to be
     # rewritten in addition to those in the same domain as the HTML.
     #
+    # Other domain-related directives (like ModPagespeedMapRewriteDomain
+    # and ModPagespeedMapOriginDomain) can also authorize domains.
+    #
     # Wildcards (* and ?) are allowed in the domain specification. Be
     # careful when using them as if you rewrite domains that do not
     # send you traffic, then the site receiving the traffic will not
