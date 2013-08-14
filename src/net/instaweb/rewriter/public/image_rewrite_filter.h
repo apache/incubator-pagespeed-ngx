@@ -19,9 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
-#include <map>
-#include <utility>
-
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -42,7 +39,6 @@ namespace net_instaweb {
 class CachedResult;
 class ImageDim;
 class Histogram;
-class RenderedImages;
 class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
@@ -52,9 +48,6 @@ class UrlSegmentEncoder;
 class Variable;
 class WorkBound;
 struct ContentType;
-
-typedef std::map<GoogleString, std::pair<int32, int32> >
-    RenderedImageDimensionsMap;
 
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to
@@ -118,10 +111,6 @@ class ImageRewriteFilter : public RewriteFilter {
   bool TryInline(
       int64 image_inline_max_bytes, const CachedResult* cached_result,
       ResourceSlot* slot, GoogleString* data_url);
-
-  // Setup a map for RenderedImages and their dimensions.
-  void SetupRenderedImageDimensionsMap(
-      const RenderedImages& rendered_images);
 
   // The valid contents of a dimension attribute on an image element have one of
   // the following forms: "45%" "45%px" "+45.0%" [45% of browser width; we can't
@@ -260,8 +249,6 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Statistics
 
-  // A map for rendered images extracted from CriticalImagesFinder
-  scoped_ptr<RenderedImageDimensionsMap> rendered_images_map_;
   // # of images rewritten successfully.
   Variable* image_rewrites_;
   // # of images resized using rendered dimensions;

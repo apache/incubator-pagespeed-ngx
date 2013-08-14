@@ -32,12 +32,14 @@ class ImageSpriter {
   // A return value of NULL indicates an error in some image
   // operation.  image_lib_ has a delegate, whose error handler
   // will be called before NULL is returned.
-  SpriterResult* Sprite(const SpriterInput& spriter_input);
+  SpriterResult* Sprite(const SpriterInput& spriter_input,
+                        bool use_image_scanline_api);
 
  private:
   bool DrawImagesInVerticalStrip(
       const SpriterInput& spriter_input,
-      SpriterResult* spriter_result);
+      SpriterResult* spriter_result,
+      bool use_image_scanline_api);
 
   ImageLibraryInterface* image_lib_;
 

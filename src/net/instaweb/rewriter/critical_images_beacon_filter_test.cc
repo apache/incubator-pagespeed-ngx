@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -106,7 +107,27 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
   void VerifyInjection() {
     EXPECT_EQ(1, statistics()->GetVariable(
         CriticalImagesBeaconFilter::kCriticalImagesBeaconAddedCount)->Get());
+    VerifyIfRenderedDimensionsInBeacons();
     EXPECT_TRUE(output_buffer_.find(CreateInitString()) != GoogleString::npos);
+  }
+
+  void VerifyIfRenderedDimensionsInBeacons() {
+    GoogleString init_string = CreateInitString();
+    GoogleString url;
+    EscapeToJsStringLiteral(rewrite_driver()->google_url().Spec(), false, &url);
+    StringPiece beacon_url = https_mode_ ? options()->beacon_url().https :
+        options()->beacon_url().http;
+    GoogleString str = "pagespeed.criticalImagesBeaconInit";
+    StrAppend(&str, "('", beacon_url, "', '", url);
+    if (options()->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
+        rewrite_driver()->request_properties()->
+            SupportsCriticalImagesBeacon()) {
+      StrAppend(&str, "', '0', 'true'");
+      EXPECT_STREQ(str, init_string);
+    } else {
+      StrAppend(&str, "', '0', 'false'");
+      EXPECT_STREQ(str, init_string);
+    }
   }
 
   void VerifyNoInjection() {
@@ -154,7 +175,10 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     GoogleString str = "pagespeed.criticalImagesBeaconInit(";
     StrAppend(&str, "'", beacon_url, "', ");
     StrAppend(&str, "'", url, "', ");
-    StrAppend(&str, "'", options_signature_hash, "');");
+    StrAppend(&str, "'", options_signature_hash, "', ");
+    StrAppend(&str, "'", BoolToString(
+        CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(
+            rewrite_driver())), "'");
     return str;
   }
 
@@ -185,6 +209,7 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
   crit_img_set->insert(hash_str);
   options()->set_image_inline_max_bytes(10000);
   options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);

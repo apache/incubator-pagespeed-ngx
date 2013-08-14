@@ -95,7 +95,8 @@ class LibpngImageLibrary : public ImageLibraryInterface {
     DISALLOW_COPY_AND_ASSIGN(Canvas);
   };
 
-  virtual ImageLibraryInterface::Canvas* CreateCanvas(int width, int height);
+  virtual ImageLibraryInterface::Canvas* CreateCanvas(
+      int width, int height, bool use_image_scanline_api);
 
  private:
   friend class LibpngImageLibraryTest;

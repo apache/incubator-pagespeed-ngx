@@ -505,6 +505,9 @@ DEFINE_string(access_control_allow_origins, "",
               "cross-origin requests. These domain requests are served with "
               "Access-Control-Allow-Origin header.");
 
+DEFINE_bool(use_image_scanline_api, false,
+            "If set to true, do not use OpenCV for image rewrites.");
+
 namespace net_instaweb {
 
 namespace {
@@ -1021,6 +1024,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("distributable_filters")) {
     options->DistributeFiltersByCommaSeparatedList(FLAGS_distributable_filters,
                                                    handler);
+  }
+  if (WasExplicitlySet("use_image_scanline_api")) {
+    options->set_use_image_scanline_api(FLAGS_use_image_scanline_api);
   }
 
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),

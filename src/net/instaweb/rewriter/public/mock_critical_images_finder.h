@@ -31,7 +31,7 @@ namespace net_instaweb {
 class RewriteDriver;
 class Statistics;
 
-// Mock implementation of CriticalCssFinder that can store and retrieve
+// Mock implementation of CriticalImagesFinder that can store and retrieve
 // critical images. Note that this doesn't use property cache.
 class MockCriticalImagesFinder : public CriticalImagesFinder {
  public:
@@ -54,10 +54,7 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
   }
 
   virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    // Returns NULL as there is no call to GetCriticalImagesCohort() in this
-    // class.
-    LOG(DFATAL) << "Unexpected function call!!!";
-    return NULL;
+    return cohort_;
   }
 
   int num_compute_calls() { return compute_calls_; }
@@ -74,12 +71,17 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
     rendered_images_.reset(rendered_images);
   }
 
+  void set_critical_images_cohort(const PropertyCache::Cohort* cohort) {
+    cohort_ = cohort;
+  }
+
   virtual bool IsCriticalImageInfoPresent(RewriteDriver* driver) {
     return true;
   }
 
  private:
   int compute_calls_;
+  const PropertyCache::Cohort* cohort_;
   scoped_ptr<StringSet> critical_images_;
   scoped_ptr<StringSet> css_critical_images_;
   scoped_ptr<RenderedImages> rendered_images_;

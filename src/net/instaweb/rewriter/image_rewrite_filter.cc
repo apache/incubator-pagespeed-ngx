@@ -34,8 +34,8 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -583,17 +583,6 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddHistogram(kImageWebpOpaqueFailureMs);
 }
 
-void ImageRewriteFilter::SetupRenderedImageDimensionsMap(
-    const RenderedImages& rendered_images) {
-  RenderedImageDimensionsMap* map = new RenderedImageDimensionsMap;
-  for (int i = 0; i < rendered_images.image_size(); ++i) {
-    const RenderedImages_Image& images = rendered_images.image(i);
-    (*map)[images.src()] = std::make_pair(
-        images.rendered_width(), images.rendered_height());
-  }
-  rendered_images_map_.reset(map);
-}
-
 void ImageRewriteFilter::Initialize() {
   CHECK(related_options_ == NULL);
   related_options_ = new StringPieceVector;
@@ -618,17 +607,6 @@ void ImageRewriteFilter::StartDocumentImpl() {
   inlinable_urls_.clear();
   driver_->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::kImageCompressionId, RewriterHtmlApplication::ACTIVE);
-  rendered_images_map_.reset(NULL);
-  if (driver_->options()->Enabled(
-      RewriteOptions::kResizeToRenderedImageDimensions)) {
-    CriticalImagesFinder* finder =
-        driver_->server_context()->critical_images_finder();
-    scoped_ptr<RenderedImages> rendered_images(
-        finder->ExtractRenderedImageDimensionsFromCache(driver_));
-    if (rendered_images != NULL) {
-      SetupRenderedImageDimensionsMap(*rendered_images);
-    }
-  }
 }
 
 // Allocate and initialize CompressionOptions object based on RewriteOptions and
@@ -820,6 +798,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   Image::CompressionOptions* image_options =
       ImageOptionsForLoadedResource(resource_context, input_resource,
                                     rewrite_context->is_css_);
+  image_options->use_image_scanline_api = options->use_image_scanline_api();
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
                server_context_->filename_prefix(), image_options,
@@ -996,6 +975,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->retain_color_sampling = false;
       image_options->jpeg_num_progressive_scans =
           options->image_jpeg_num_progressive_scans();
+      image_options->use_image_scanline_api = options->use_image_scanline_api();
 
       scoped_ptr<Image> low_image;
       if (driver_->options()->use_blank_image_for_inline_preview()) {
@@ -1095,6 +1075,8 @@ void ImageRewriteFilter::ResizeLowQualityImage(
         options->Enabled(RewriteOptions::kRecompressPng);
     image_options->recompress_webp =
         options->Enabled(RewriteOptions::kRecompressWebp);
+    image_options->use_image_scanline_api =
+        driver()->options()->use_image_scanline_api();
     scoped_ptr<Image> image(
         NewImage(low_image->Contents(), input_resource->url(),
                  server_context_->filename_prefix(), image_options,
@@ -1562,18 +1544,20 @@ void ImageRewriteFilter::GetDimensions(
   int32 rendered_width = 0;
   int32 rendered_height = 0;
   // If the image has rendered dimensions stored in the property cache, update
-  // the desired image dimensions.
+  // the desired image dimensions. Don't use rendered image dimensions
+  // when beaconing, since it would cause improper instrumentation.
   if (driver_->options()->Enabled(
       RewriteOptions::kResizeToRenderedImageDimensions) &&
-      rendered_images_map_ != NULL) {
+      !CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(driver_)) {
     StringPiece src_value(src->DecodedValueOrNull());
     if (!src_value.empty()) {
       GoogleUrl src_gurl(driver_->base_url(), src_value);
       if (src_gurl.is_valid()) {
-        RenderedImageDimensionsMap::iterator iterator =
-            rendered_images_map_->find(src_gurl.spec_c_str());
-        if (iterator != rendered_images_map_->end()) {
-          std::pair<int32, int32> &dimensions = iterator->second;
+        std::pair<int32, int32> dimensions;
+        CriticalImagesFinder* finder =
+            driver_->server_context()->critical_images_finder();
+        if (finder->GetRenderedImageDimensions(
+                driver_, src_gurl, &dimensions)) {
           if (dimensions.first != 0 && dimensions.second != 0) {
             rendered_width = dimensions.first;
             rendered_height = dimensions.second;

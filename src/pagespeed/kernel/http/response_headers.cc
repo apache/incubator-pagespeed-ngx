@@ -862,14 +862,6 @@ void ResponseHeaders::SetCacheControlMaxAge(int64 ttl_ms) {
   }
 }
 
-namespace {
-
-const char* BoolToString(bool b) {
-  return ((b) ? "true" : "false");
-}
-
-}  // namespace
-
 void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "%s\n", ToString().c_str());
   fprintf(stderr, "cache_fields_dirty_ = %s\n",

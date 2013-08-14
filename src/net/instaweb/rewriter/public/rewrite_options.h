@@ -208,6 +208,7 @@ class RewriteOptions {
   static const char kDistributedRewriteTimeoutMs[];
   static const char kDomainRewriteHyperlinks[];
   static const char kDomainShardCount[];
+  static const char kUseImageScanlineApi[];
   static const char kDownstreamCachePurgeMethod[];
   static const char kDownstreamCacheRewrittenPercentageThreshold[];
   static const char kEnableAggressiveRewritersForMobile[];
@@ -1292,6 +1293,13 @@ class RewriteOptions {
   }
   void set_persist_blink_blacklist(bool x) {
     set_option(x, &persist_blink_blacklist_);
+  }
+
+  bool use_image_scanline_api() const {
+    return use_image_scanline_api_.value();
+  }
+  void set_use_image_scanline_api(bool x) {
+    set_option(x, &use_image_scanline_api_);
   }
 
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
@@ -3485,6 +3493,8 @@ class RewriteOptions {
   // b. low-res image is not small enough compared to the full-res version.
   Option<int64> max_low_res_image_size_bytes_;
   Option<int> max_low_res_to_full_res_image_size_percentage_;
+
+  Option<bool> use_image_scanline_api_;
 
   // Be sure to update constructor when new fields are added so that they are
   // added to all_options_, which is used for Merge, and eventually, Compare.

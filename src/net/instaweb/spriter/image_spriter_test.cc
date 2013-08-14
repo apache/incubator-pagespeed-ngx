@@ -43,6 +43,8 @@ const ImageLibraryInterface::FilePath kCombinedImagePath("subdir/out.png");
 const ImageLibraryInterface::FilePath kPngA("path/to/a.png");
 const ImageLibraryInterface::FilePath kPngB("b.png");
 
+const bool kUseImageScanlineApi = true;
+
 // Set up a protobuf of spriting settings.  Tests use this to get
 // a reasonable default.
 void SetupCommonOptions(SpriterInput* spriter_input,
@@ -83,7 +85,7 @@ TEST(SpriterTest, ZeroImages) {
       mock_image_lib(kInBasePath, kOutBasePath, &no_failures_allowed);
 
   // No images: Combined image will be 0x0.
-  EXPECT_CALL(mock_image_lib, CreateCanvas(0, 0))
+  EXPECT_CALL(mock_image_lib, CreateCanvas(0, 0, kUseImageScanlineApi))
       .WillOnce(Return(mock_canvas.get()));
 
   EXPECT_CALL(*mock_canvas, WriteToFile(kCombinedImagePath, PNG))
@@ -94,7 +96,8 @@ TEST(SpriterTest, ZeroImages) {
   EXPECT_FALSE(NULL == mock_canvas.release());
 
   ImageSpriter spriter(&mock_image_lib);
-  scoped_ptr<SpriterResult> sprite_result(spriter.Sprite(spriter_input));
+  scoped_ptr<SpriterResult>
+      sprite_result(spriter.Sprite(spriter_input, kUseImageScanlineApi));
 
   ASSERT_TRUE(sprite_result.get());
   EXPECT_EQ(kSpriteId, sprite_result->id());
@@ -134,7 +137,7 @@ TEST(SpriterTest, OneImage) {
       .WillOnce(Return(true));
 
   // Canvas should be 10x11
-  EXPECT_CALL(mock_image_lib, CreateCanvas(10, 11))
+  EXPECT_CALL(mock_image_lib, CreateCanvas(10, 11, kUseImageScanlineApi))
       .WillOnce(Return(mock_canvas.get()));
 
   EXPECT_CALL(*mock_canvas, WriteToFile(kCombinedImagePath, JPEG))
@@ -145,7 +148,8 @@ TEST(SpriterTest, OneImage) {
   EXPECT_FALSE(NULL == mock_image_a.release());
 
   ImageSpriter spriter(&mock_image_lib);
-  scoped_ptr<SpriterResult> sprite_result(spriter.Sprite(spriter_input));
+  scoped_ptr<SpriterResult>
+    sprite_result(spriter.Sprite(spriter_input, kUseImageScanlineApi));
 
   ASSERT_TRUE(sprite_result.get());
   EXPECT_EQ(kSpriteId, sprite_result->id());
@@ -196,7 +200,8 @@ TEST(SpriterTest, TwoImages) {
 
   int expected_width = 20;  // max(10, 20)
   int expected_hieght = 32;  // 11 + 21
-  EXPECT_CALL(mock_image_lib, CreateCanvas(expected_width, expected_hieght))
+  EXPECT_CALL(mock_image_lib, CreateCanvas(expected_width, expected_hieght,
+                                           kUseImageScanlineApi))
       .WillOnce(Return(mock_canvas.get()));
 
   // Draw the first image at the origin.
@@ -216,7 +221,8 @@ TEST(SpriterTest, TwoImages) {
   EXPECT_FALSE(NULL == mock_image_b.release());
 
   ImageSpriter spriter(&mock_image_lib);
-  scoped_ptr<SpriterResult> sprite_result(spriter.Sprite(spriter_input));
+  scoped_ptr<SpriterResult>
+      sprite_result(spriter.Sprite(spriter_input, kUseImageScanlineApi));
 
   ASSERT_TRUE(sprite_result.get());
   EXPECT_EQ(kSpriteId, sprite_result->id());

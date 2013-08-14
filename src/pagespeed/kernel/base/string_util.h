@@ -415,6 +415,11 @@ GoogleString JoinCollection(const C& collection, StringPiece sep) {
   return result;
 }
 
+// Converts a boolean to string.
+inline const char* BoolToString(bool b) {
+  return (b ? "true" : "false");
+}
+
 
 }  // namespace net_instaweb
 

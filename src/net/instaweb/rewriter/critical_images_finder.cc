@@ -32,17 +32,23 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
+#include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_to_filename_encoder.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
 namespace {
 
+const char kRenderedImageJsonWidthKey[] = "renderedWidth";
+const char kRenderedImageJsonHeightKey[] = "renderedHeight";
+const char kOriginalImageJsonWidthKey[] = "originalWidth";
+const char kOriginalImageJsonHeightKey[] = "originalHeight";
 const char kEmptyValuePlaceholder[] = "\n";
 
 // Setup the HTML and CSS critical image sets in critical_images_info from the
@@ -147,6 +153,20 @@ void UpdateCriticalImagesSetInProto(
                      critical_images_set, max_set_size, image_support);
 }
 
+// Setup a map for RenderedImages and their dimensions.
+void SetupRenderedImageDimensionsMap(
+    const RenderedImages& rendered_images,
+    RenderedImageDimensionsMap* map) {
+  for (int i = 0; i < rendered_images.image_size(); ++i) {
+    const RenderedImages_Image& images = rendered_images.image(i);
+    // In case of beacons returning these rendered dimensions, images.src()
+    // will be a hash of the image url. Hence when we do a lookup in
+    // rendered_images_map we need to hash the url.
+    (*map)[images.src()] = std::make_pair(
+        images.rendered_width(), images.rendered_height());
+  }
+}
+
 }  // namespace
 
 const char CriticalImagesFinder::kCriticalImagesPropertyName[] =
@@ -201,6 +221,23 @@ bool CriticalImagesFinder::IsCssCriticalImage(
     const GoogleString& image_url, RewriteDriver* driver) {
   return IsCriticalImage(GetKeyForUrl(image_url),
                          GetCssCriticalImages(driver));
+}
+
+bool CriticalImagesFinder::GetRenderedImageDimensions(
+    RewriteDriver* driver,
+    const GoogleUrl& image_src_gurl,
+    std::pair<int32, int32>* dimensions) {
+  UpdateCriticalImagesSetInDriver(driver);
+  const CriticalImagesInfo* info = driver->critical_images_info();
+  CHECK(info != NULL);
+  RenderedImageDimensionsMap::const_iterator iterator =
+      info->rendered_images_map.find(
+          GetKeyForUrl(image_src_gurl.spec_c_str()));
+  if (iterator != info->rendered_images_map.end()) {
+    *dimensions = iterator->second;
+    return true;
+  }
+  return false;
 }
 
 const StringSet& CriticalImagesFinder::GetHtmlCriticalImages(
@@ -274,6 +311,17 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
       }
     }
   }
+
+  if (driver->options()->Enabled(
+      RewriteOptions::kResizeToRenderedImageDimensions)) {
+    scoped_ptr<RenderedImages> rendered_images(
+        ExtractRenderedImageDimensionsFromCache(driver));
+    if (rendered_images != NULL) {
+      SetupRenderedImageDimensionsMap(*rendered_images,
+                                      &info->rendered_images_map);
+    }
+  }
+
   // Store an empty CriticalImagesInfo back into the driver if we don't have any
   // beacon results yet.
   if (info == NULL) {
@@ -292,12 +340,14 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
   AbstractPropertyPage* page = driver->fallback_property_page();
   return UpdateCriticalImagesCacheEntry(
       html_critical_images_set, css_critical_images_set,
+      NULL /* RenderedImages Proto */,
       SupportInterval(), GetCriticalImagesCohort(), page);
 }
 
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     const StringSet* html_critical_images_set,
     const StringSet* css_critical_images_set,
+    const RenderedImages* rendered_images_set,
     int support_interval,
     const PropertyCache::Cohort* cohort,
     AbstractPropertyPage* page) {
@@ -309,6 +359,13 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
   if (cohort == NULL) {
     LOG(WARNING) << "Critical Images Cohort is NULL.";
     return false;
+  }
+
+  // Update RenderedImages proto in property Cache.
+  if (rendered_images_set != NULL) {
+    UpdateInPropertyCache(
+        *rendered_images_set, cohort, kRenderedImageDimensionsProperty,
+        false /* don't write cohort */, page);
   }
 
   PropertyValue* property_value = page->GetProperty(
@@ -397,6 +454,50 @@ RenderedImages* CriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
       break;
   }
   return result.release();
+}
+
+RenderedImages* CriticalImagesFinder::JsonMapToRenderedImagesMap(
+    const GoogleString& str,
+    const RewriteOptions* options) {
+  Json::Reader reader;
+  Json::Value json_rendered_image_map;
+  if (!reader.parse(UrlToFilenameEncoder::Unescape(str),
+                    json_rendered_image_map)) {
+    LOG(WARNING) << "Unable to parse Json data for rendered images";
+    return NULL;
+  }
+  // Parse json data into a map.
+  if (json_rendered_image_map.isNull() || !json_rendered_image_map.isObject()) {
+    LOG(WARNING) << "Bad Json rendered image dimensions map";
+    return NULL;
+  }
+  // Put the extracted map into RenderedImages proto data.
+  RenderedImages* rendered_images = new RenderedImages();
+  Json::Value::Members imgs = json_rendered_image_map.getMemberNames();
+  for (int i = 0, n = imgs.size(); i < n; ++i) {
+    const GoogleString& img_src = imgs[i];
+    int original_width = json_rendered_image_map[img_src].get(
+        kOriginalImageJsonWidthKey, 0).asInt();
+    int original_height = json_rendered_image_map[img_src].get(
+        kOriginalImageJsonHeightKey, 0).asInt();
+    int rendered_width = json_rendered_image_map[img_src].get(
+        kRenderedImageJsonWidthKey, 0).asInt();
+    int rendered_height = json_rendered_image_map[img_src].get(
+        kRenderedImageJsonHeightKey, 0).asInt();
+    int original_area = (original_width * original_height);
+    int rendered_area = (rendered_width * rendered_height);
+    // Store renderedWidth and renderedHeight for the image only if
+    // the rendered sizes are lower than the original sizes by at least the
+    // percentage threshold set.
+    if (100 * rendered_area < original_area *
+        options->image_limit_rendered_area_percent()) {
+      RenderedImages_Image* images = rendered_images->add_image();
+      images->set_src(img_src);
+      images->set_rendered_width(rendered_width);
+      images->set_rendered_height(rendered_height);
+    }
+  }
+  return rendered_images;
 }
 
 CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(

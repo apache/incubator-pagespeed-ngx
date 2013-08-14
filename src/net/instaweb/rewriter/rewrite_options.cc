@@ -92,6 +92,8 @@ const char RewriteOptions::kDownstreamCachePurgeMethod[] =
     "DownstreamCachePurgeMethod";
 const char RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold[] =
     "DownstreamCacheRewrittenPercentageThreshold";
+const char RewriteOptions::kUseImageScanlineApi[] =
+    "UseImageScanlineApi";
 const char RewriteOptions::kEnableAggressiveRewritersForMobile[] =
     "EnableAggressiveRewritersForMobile";
 const char RewriteOptions::kEnableBlinkHtmlChangeDetection[] =
@@ -1897,6 +1899,13 @@ void RewriteOptions::AddProperties() {
       kMaxLowResToHighResImageSizePercentage,
       kDirectoryScope,
       NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
+
+  AddBaseProperty(
+      false,
+      &RewriteOptions::use_image_scanline_api_, "uisa",
+      kUseImageScanlineApi,
+      kServerScope,
+      NULL);  // Temporary flag
 
   // Test-only, so no enum.
   AddRequestProperty(

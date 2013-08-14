@@ -957,7 +957,9 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if ((rewrite_options->Enabled(RewriteOptions::kLazyloadImages) ||
        rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
-       rewrite_options->Enabled(RewriteOptions::kDelayImages)) &&
+       rewrite_options->Enabled(RewriteOptions::kDelayImages) ||
+       rewrite_options->Enabled(
+           RewriteOptions::kResizeToRenderedImageDimensions)) &&
       rewrite_options->critical_images_beacon_enabled() &&
       server_context_->factory()->UseBeaconResultsInFilters() &&
       server_context_->page_property_cache()->enabled()) {

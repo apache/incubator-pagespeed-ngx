@@ -53,6 +53,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -1154,10 +1155,11 @@ class BeaconTest : public ServerContextTest {
   }
 
   // Send a beacon through ServerContext::HandleBeacon and verify that the
-  // property cache entries for critical images and critical selectors were
-  // updated correctly.
+  // property cache entries for critical images, critical selectors and rendered
+  // dimensions of images were updated correctly.
   void TestBeacon(const StringSet* critical_image_hashes,
                   const StringSet* critical_css_selectors,
+                  const GoogleString* rendered_images_json_map,
                   StringPiece user_agent) {
     // Setup the beacon_url and pass to HandleBeacon.
     GoogleString beacon_url = StrCat(
@@ -1171,6 +1173,10 @@ class BeaconTest : public ServerContextTest {
     if (critical_css_selectors != NULL) {
       StrAppend(&beacon_url, "&n=", last_nonce_, "&cs=");
       AppendJoinCollection(&beacon_url, *critical_css_selectors, ",");
+    }
+
+    if (rendered_images_json_map != NULL) {
+      StrAppend(&beacon_url, "&rd=", *rendered_images_json_map);
     }
 
     EXPECT_TRUE(server_context()->HandleBeacon(
@@ -1191,12 +1197,20 @@ class BeaconTest : public ServerContextTest {
       critical_css_selectors_ = server_context()->critical_selector_finder()->
           GetCriticalSelectors(rewrite_driver());
     }
+
+    if (rendered_images_json_map != NULL) {
+      rendered_images_.reset(server_context()->critical_images_finder()->
+                             ExtractRenderedImageDimensionsFromCache(
+                                 rewrite_driver()));
+    }
   }
 
   PropertyCache* property_cache_;
   // These fields hold data deserialized from the pcache after TestBeacon.
   StringSet critical_html_images_;
   StringSet critical_css_selectors_;
+  // This field holds the data deserialized from pcache after a BeaconTest call.
+  scoped_ptr<RenderedImages> rendered_images_;
   // This field holds candidate critical css selectors.
   StringSet candidates_;
   GoogleString last_nonce_;
@@ -1215,6 +1229,27 @@ TEST_F(BeaconTest, BasicPcacheSetup) {
   EXPECT_FALSE(property->has_value());
 }
 
+TEST_F(BeaconTest, HandleBeaconRenderedDimensionsofImages) {
+  GoogleString img1 = "http://www.example.com/img1.png";
+  GoogleString hash1 = IntegerToString(
+      HashString<CasePreserve, int>(img1.c_str(), img1.size()));
+  options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
+  RenderedImages rendered_images;
+  RenderedImages_Image* images = rendered_images.add_image();
+  images->set_src(hash1);
+  images->set_rendered_width(40);
+  images->set_rendered_height(50);
+  GoogleString json_map_rendered_dimensions = StrCat(
+      "{\"", hash1, "\":{\"renderedWidth\":40,",
+      "\"renderedHeight\":50,\"originalWidth\":160,\"originalHeight\":200}}");
+  TestBeacon(NULL, NULL, &json_map_rendered_dimensions,
+              UserAgentMatcherTestBase::kChromeUserAgent);
+  EXPECT_EQ(1, rendered_images_->image_size());
+  EXPECT_STREQ(hash1, rendered_images_->image(0).src());
+  EXPECT_EQ(40, rendered_images_->image(0).rendered_width());
+  EXPECT_EQ(50, rendered_images_->image(0).rendered_height());
+}
+
 TEST_F(BeaconTest, HandleBeaconCritImages) {
   GoogleString img1 = "http://www.example.com/img1.png";
   GoogleString img2 = "http://www.example.com/img2.png";
@@ -1225,7 +1260,7 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
 
   StringSet critical_image_hashes;
   critical_image_hashes.insert(hash1);
-  TestBeacon(&critical_image_hashes, NULL,
+  TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
 
@@ -1235,25 +1270,25 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
   // beacon support decays over time.
   critical_image_hashes.insert(hash2);
   for (int i = 0; i < 3; ++i) {
-    TestBeacon(&critical_image_hashes, NULL,
+    TestBeacon(&critical_image_hashes, NULL, NULL,
                UserAgentMatcherTestBase::kChromeUserAgent);
     EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
   }
   GoogleString expected = StrCat(hash1, ",", hash2);
-  TestBeacon(&critical_image_hashes, NULL,
+  TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(expected, JoinCollection(critical_html_images_, ","));
 
   // Test with a different user agent, providing support only for img1.
   critical_image_hashes.clear();
   critical_image_hashes.insert(hash1);
-  TestBeacon(&critical_image_hashes, NULL,
+  TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kIPhoneUserAgent);
   EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
 
   // Beacon once more with the original user agent and with only img1; img2
   // loses 80% support again.
-  TestBeacon(&critical_image_hashes, NULL,
+  TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
 }
@@ -1264,7 +1299,7 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   critical_css_selector.insert("#foo");
   critical_css_selector.insert(".bar");
   critical_css_selector.insert("#noncandidate");
-  TestBeacon(NULL, &critical_css_selector,
+  TestBeacon(NULL, &critical_css_selector, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ("#foo,.bar",
                JoinCollection(critical_css_selectors_, ","));
@@ -1276,7 +1311,7 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   critical_css_selector.insert(".bar");
   critical_css_selector.insert("img");
   critical_css_selector.insert("#noncandidate");
-  TestBeacon(NULL, &critical_css_selector,
+  TestBeacon(NULL, &critical_css_selector, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ("#foo,.bar,img",
                JoinCollection(critical_css_selectors_, ","));
@@ -1285,7 +1320,7 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
 TEST_F(BeaconTest, EmptyCriticalCss) {
   InsertCssBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   StringSet empty_critical_selectors;
-  TestBeacon(NULL, &empty_critical_selectors,
+  TestBeacon(NULL, &empty_critical_selectors, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_TRUE(critical_css_selectors_.empty());
 }

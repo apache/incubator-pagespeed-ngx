@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
 
@@ -40,11 +41,13 @@ BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 bool BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
+      const RenderedImages* rendered_images_set,
       const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page) {
   return CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
       html_critical_images_set,
       css_critical_images_set,
+      rendered_images_set,
       kBeaconImageSupportInterval,
       cohort, page);
 }

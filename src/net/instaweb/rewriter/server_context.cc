@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
@@ -82,6 +83,7 @@ const char kBeaconUrlQueryParam[] = "url";
 const char kBeaconEtsQueryParam[] = "ets";
 const char kBeaconOptionsHashQueryParam[] = "oh";
 const char kBeaconCriticalImagesQueryParam[] = "ci";
+const char kBeaconRenderedDimensionsQueryParam[] = "rd";
 const char kBeaconCriticalCssQueryParam[] = "cs";
 const char kBeaconXPathsQueryParam[] = "xp";
 const char kBeaconNonceQueryParam[] = "n";
@@ -129,6 +131,7 @@ class BeaconPropertyCallback : public PropertyPage {
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set,
       StringSet* critical_css_selector_set,
+      RenderedImages* rendered_images_set,
       StringSet* xpaths_set,
       StringPiece nonce)
       : PropertyPage(kPropertyCachePage,
@@ -142,6 +145,7 @@ class BeaconPropertyCallback : public PropertyPage {
         html_critical_images_set_(html_critical_images_set),
         css_critical_images_set_(css_critical_images_set),
         critical_css_selector_set_(critical_css_selector_set),
+        rendered_images_set_(rendered_images_set),
         xpaths_set_(xpaths_set) {
     nonce.CopyToString(&nonce_);
   }
@@ -161,7 +165,8 @@ class BeaconPropertyCallback : public PropertyPage {
     // struct to nicely package up all of the pcache arguments.
     BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
         html_critical_images_set_.get(), css_critical_images_set_.get(),
-        server_context_->beacon_cohort(), this);
+        rendered_images_set_.get(), server_context_->beacon_cohort(), this);
+
     if (critical_css_selector_set_ != NULL) {
       BeaconCriticalSelectorFinder::
           WriteCriticalSelectorsToPropertyCacheFromBeacon(
@@ -184,6 +189,7 @@ class BeaconPropertyCallback : public PropertyPage {
   scoped_ptr<StringSet> html_critical_images_set_;
   scoped_ptr<StringSet> css_critical_images_set_;
   scoped_ptr<StringSet> critical_css_selector_set_;
+  scoped_ptr<RenderedImages> rendered_images_set_;
   scoped_ptr<StringSet> xpaths_set_;
   GoogleString nonce_;
   DISALLOW_COPY_AND_ASSIGN(BeaconPropertyCallback);
@@ -615,6 +621,14 @@ bool ServerContext::HandleBeacon(StringPiece params,
         CommaSeparatedStringToSet(*query_param_str));
   }
 
+  scoped_ptr<RenderedImages> rendered_images;
+  query_param_str = query_params.Lookup1(kBeaconRenderedDimensionsQueryParam);
+  if (query_param_str != NULL) {
+    rendered_images.reset(
+        critical_images_finder_->JsonMapToRenderedImagesMap(
+            *query_param_str, global_options()));
+  }
+
   scoped_ptr<StringSet> xpaths_set;
   query_param_str = query_params.Lookup1(kBeaconXPathsQueryParam);
   if (query_param_str != NULL) {
@@ -634,6 +648,7 @@ bool ServerContext::HandleBeacon(StringPiece params,
   if (html_critical_images_set != NULL ||
       css_critical_images_set != NULL ||
       critical_css_selector_set != NULL ||
+      rendered_images != NULL ||
       xpaths_set != NULL) {
     UserAgentMatcher::DeviceType device_type =
         user_agent_matcher()->GetDeviceTypeForUA(user_agent);
@@ -647,6 +662,7 @@ bool ServerContext::HandleBeacon(StringPiece params,
         html_critical_images_set.release(),
         css_critical_images_set.release(),
         critical_css_selector_set.release(),
+        rendered_images.release(),
         xpaths_set.release(),
         nonce);
     page_property_cache()->ReadWithCohorts(beacon_property_cb->CohortList(),

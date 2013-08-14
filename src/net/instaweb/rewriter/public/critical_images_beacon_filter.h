@@ -49,6 +49,10 @@ class CriticalImagesBeaconFilter : public EmptyHtmlFilter {
   virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "CriticalImagesBeacon"; }
 
+  // Returns true if this filter is going to include rendered image dimensions
+  // in the beacon.
+  static bool IncludeRenderedImagesInBeacon(RewriteDriver* rewrite_driver);
+
  private:
   // Clear all state associated with filter.
   void Clear();

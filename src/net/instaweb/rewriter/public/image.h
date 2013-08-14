@@ -111,7 +111,8 @@ class Image {
           webp_conversion_timeout_ms(-1),
           conversions_attempted(0),
           preserve_lossless(false),
-          webp_conversion_variables(NULL) {}
+          webp_conversion_variables(NULL),
+          use_image_scanline_api(false) {}
 
     // These options are set by the client to specify what type of
     // conversion to perform:
@@ -140,6 +141,8 @@ class Image {
     bool preserve_lossless;
 
     ConversionVariables* webp_conversion_variables;
+
+    bool use_image_scanline_api;
   };
 
   virtual ~Image();

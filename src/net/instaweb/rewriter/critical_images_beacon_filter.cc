@@ -23,11 +23,13 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -54,6 +56,45 @@ CriticalImagesBeaconFilter::CriticalImagesBeaconFilter(RewriteDriver* driver)
 }
 
 CriticalImagesBeaconFilter::~CriticalImagesBeaconFilter() {}
+
+bool CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(
+    RewriteDriver* driver) {
+  if (!driver->request_properties()->SupportsCriticalImagesBeacon() ||
+      !driver->options()->Enabled(
+          RewriteOptions::kResizeToRenderedImageDimensions)) {
+    return false;
+  }
+
+  // Instrument if we don't have any rendered image dimensions information or if
+  // the pcache entry has expired.
+  // TODO(poojatandon): These checks should be moved to property_cache_util.
+  const PropertyCache* page_property_cache =
+      driver->server_context()->page_property_cache();
+  PropertyPage* page = driver->property_page();
+  const PropertyCache::Cohort* cohort =
+      driver->server_context()->critical_images_finder()->
+          GetCriticalImagesCohort();
+
+  if (!page_property_cache->enabled() || (page == NULL) || (cohort == NULL)) {
+    return false;
+  }
+
+  const PropertyValue* property_value = page->GetProperty(
+      cohort, CriticalImagesFinder::kRenderedImageDimensionsProperty);
+  if (!property_value->has_value()) {
+    return true;
+  }
+
+  int64 cache_ttl_ms =
+      driver->options()->finder_properties_cache_expiration_time_ms();
+  int64 reinstrument_time =
+      driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs;
+  int64 expiration_time = std::min(cache_ttl_ms, reinstrument_time);
+  if (page_property_cache->IsExpired(property_value, expiration_time)) {
+    return true;
+  }
+  return false;
+}
 
 void CriticalImagesBeaconFilter::DetermineEnabled() {
   // Default to not enabled.
@@ -128,8 +169,9 @@ void CriticalImagesBeaconFilter::EndElement(HtmlElement* element) {
     StrAppend(&js, "\npagespeed.criticalImagesBeaconInit(");
     StrAppend(&js, "'", *beacon_url, "', ");
     StrAppend(&js, "'", html_url, "', ");
-    StrAppend(&js, "'", options_signature_hash, "');");
-
+    StrAppend(&js, "'", options_signature_hash, "', ");
+    StrAppend(&js, "'", BoolToString(
+        IncludeRenderedImagesInBeacon(driver_)), "');");
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->InsertNodeBeforeCurrent(script);
     static_asset_manager->AddJsToElement(js, script, driver_);

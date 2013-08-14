@@ -619,6 +619,22 @@ ModPagespeedUsePerVHostStatistics on
   </Location>
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName renderedimagebeacon.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters resize_rendered_image_dimensions
+  ModPagespeedCriticalImagesBeaconEnabled true
+
+  # add_instrumentation tests beacon handling with no handler specified, while
+  # here we test it with a handler (that should do nothing).
+  <Location /mod_pagespeed_beacon>
+    SetHandler mod_pagespeed_beacon
+  </Location>
+</VirtualHost>
+
 # Test host for shared memory cache.
 ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8192
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>

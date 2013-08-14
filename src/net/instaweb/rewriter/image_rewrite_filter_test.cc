@@ -97,6 +97,8 @@ const char kPixelDims[] = " width='1' height='1'";
 // the test.
 const int kIgnoreSize = -1;
 
+const char kCriticalImagesCohort[] = "critical_images";
+
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
 class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
@@ -807,6 +809,10 @@ class ImageRewriteTest : public RewriteTestBase {
     if (height != 0) {
       images->set_rendered_height(height);
     }
+    const PropertyCache::Cohort* cohort =
+        server_context_->page_property_cache()->GetCohort(
+            kCriticalImagesCohort);
+    finder->set_critical_images_cohort(cohort);
 
     // Original size of kChefGifFile is 192x256
     finder->set_rendered_images(rendered_images);

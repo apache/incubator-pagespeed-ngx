@@ -1568,6 +1568,33 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   MATCHES=$(echo "$RESPONSE_OUT" | grep -c pagespeed\.clientDomainRewriterInit)
   check [ $MATCHES -eq 1 ]
 
+  # Verify rendered image dimensions test.
+  WGET_ARGS=""
+  start_test resize_rendered_image_dimensions with critical images beacon
+  HOST_NAME="http://renderedimagebeacon.example.com"
+  URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/image_resize_using_rendered_dimensions.html"
+  http_proxy=$SECONDARY_HOSTNAME\
+    fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
+  '--header=X-PSA-Blocking-Rewrite:psatest'
+  check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+    $OUTDIR/image_resize_using_rendered_dimensions.html) = 1 ];
+  OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
+    $OUTDIR/image_resize_using_rendered_dimensions.html | \
+    awk -F\' '{print $(NF-3)}')
+
+  # Send a beacon response using POST indicating that OptPuzzle.jpg is
+  # critical and has rendered dimensions.
+  BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
+  BEACON_URL+="?url=http%3A%2F%2Frenderedimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+  BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
+  BEACON_DATA="oh=$OPTIONS_HASH&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
+  OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
+  check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+  http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until -save -recursive $URL \
+    'fgrep -c 150x100xOptPuzzle.jpg.pagespeed.ic.' 1
+
   # Verify that we can send a critical image beacon and that lazyload_images
   # does not try to lazyload the critical images.
   WGET_ARGS=""
@@ -1584,7 +1611,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # We need the options hash to send a critical image beacon, so extract it from
   # injected beacon JS.
   OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
-    $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-1)}')
+    $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
   # Send a beacon response using POST indicating that Puzzle.jpg is a critical
   # image.
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"

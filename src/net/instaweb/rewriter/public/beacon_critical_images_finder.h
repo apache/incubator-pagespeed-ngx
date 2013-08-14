@@ -26,6 +26,7 @@
 namespace net_instaweb {
 
 class NonceGenerator;
+class RenderedImages;
 class RewriteDriver;
 class Statistics;
 
@@ -61,6 +62,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   static bool UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
+      const RenderedImages* rendered_images_set,
       const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page);
 

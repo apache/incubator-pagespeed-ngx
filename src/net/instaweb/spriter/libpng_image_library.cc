@@ -173,8 +173,10 @@ LibpngImageLibrary::Canvas::~Canvas() {
   }
   delete[] rows_;
 }
-ImageLibraryInterface::Canvas* LibpngImageLibrary::CreateCanvas(int width,
-                                                                int height) {
+ImageLibraryInterface::Canvas* LibpngImageLibrary::CreateCanvas(
+    int width,
+    int height,
+    bool use_image_scanline_api) {
   return new Canvas(this, delegate(), base_output_path(), width, height);
 }
 

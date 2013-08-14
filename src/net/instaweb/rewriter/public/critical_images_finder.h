@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -29,9 +30,12 @@ namespace net_instaweb {
 class CriticalImages;
 class RenderedImages;
 class RewriteDriver;
+class RewriteOptions;
 class Statistics;
 class Variable;
 
+typedef std::map<GoogleString, std::pair<int32, int32> >
+    RenderedImageDimensionsMap;
 
 // The instantiated CriticalImagesFinder is held by ServerContext, meaning
 // there is only 1 per server. CriticalImagesInfo stores all of the request
@@ -47,6 +51,7 @@ struct CriticalImagesInfo {
   StringSet html_critical_images;
   StringSet css_critical_images;
   bool is_critical_image_info_present;
+  RenderedImageDimensionsMap rendered_images_map;
 };
 
 
@@ -103,6 +108,13 @@ class CriticalImagesFinder {
   bool IsCssCriticalImage(const GoogleString& image_url,
                           RewriteDriver* driver);
 
+  // Returns true if rendered dimensions exist for the image_src_url and
+  // populates dimensions in the std::pair.
+  bool GetRenderedImageDimensions(
+      RewriteDriver* driver,
+      const GoogleUrl& image_src_gurl,
+      std::pair<int32, int32>* dimensions);
+
   // Get the critical image sets. Returns an empty set if there is no critical
   // image information.
   const StringSet& GetHtmlCriticalImages(RewriteDriver* driver);
@@ -140,6 +152,7 @@ class CriticalImagesFinder {
   static bool UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
+      const RenderedImages* rendered_images_set,
       int support_interval,
       const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page);
@@ -148,13 +161,18 @@ class CriticalImagesFinder {
   // virtual only to be overridden in tests.
   virtual bool IsCriticalImageInfoPresent(RewriteDriver* driver);
 
-  // Extracts rendered dimensions from property cache.
+  // Extracts rendered images' dimensions from property cache.
   virtual RenderedImages* ExtractRenderedImageDimensionsFromCache(
       RewriteDriver* driver);
 
   // Adds the given url to the html critical image set for the driver.
   void AddHtmlCriticalImage(const GoogleString& url,
                             RewriteDriver* driver);
+
+  // Parses Json map returned from beacon js and populates RenderedImages proto.
+  // Caller takes ownership of the returned pointer.
+  RenderedImages* JsonMapToRenderedImagesMap(const GoogleString& str,
+                                             const RewriteOptions* options);
 
  protected:
   // Gets critical images if present in the property cache and updates the
