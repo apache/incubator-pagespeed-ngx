@@ -34,6 +34,7 @@
 
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 
+#include <memory>
 #include <vector>
 
 #include "base/logging.h"
