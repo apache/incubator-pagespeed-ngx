@@ -230,14 +230,8 @@ class HtmlName {
     kNotAKeyword
   };
 
-  // Constructs an HTML name given a keyword, which can be
-  // HtmlName::kNotAKeyword, and 'StringPiece* str'.  'str'
-  // is used to retain the case-sensitive spelling of the
-  // keyword.  The storage for 'str' must be managed, and
-  // must be guaranteed valid throughout the life of the HtmlName.
-  HtmlName(Keyword keyword, const StringPiece* str)
-      : keyword_(keyword), str_(str) {
-  }
+
+  // HtmlName's should be normally constructed using HtmlParse::MakeName
 
   // Returns the keyword enumeration for this HTML Name.  Note that
   // keyword lookup is case-insensitive.
@@ -268,7 +262,17 @@ class HtmlName {
   static Keyword Lookup(const StringPiece& name);
 
  private:
+  // Constructs an HTML name given a keyword, which can be
+  // HtmlName::kNotAKeyword, and 'StringPiece* str'.  'str'
+  // is used to retain the case-sensitive spelling of the
+  // keyword.  The storage for 'str' must be managed, and
+  // must be guaranteed valid throughout the life of the HtmlName.
+  HtmlName(Keyword keyword, const StringPiece* str)
+      : keyword_(keyword), str_(str) {
+  }
+
   friend class HtmlNameTest;
+  friend class HtmlParse;
 
   Keyword keyword_;
   const StringPiece* str_;
