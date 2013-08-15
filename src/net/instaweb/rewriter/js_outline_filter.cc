@@ -58,7 +58,8 @@ void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
   // No tags allowed inside script element.
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
-    driver_->ErrorHere("Tag '%s' found inside script.", element->name_str());
+    driver_->ErrorHere("Tag '%s' found inside script.",
+                       CEscape(element->name_str()).c_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     inline_chars_ = NULL;
   }
@@ -80,7 +81,8 @@ void JsOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     if (element != inline_element_) {
       // No other tags allowed inside script element.
-      driver_->ErrorHere("Tag '%s' found inside script.", element->name_str());
+      driver_->ErrorHere("Tag '%s' found inside script.",
+                         CEscape(element->name_str()).c_str());
     } else if (inline_chars_ != NULL &&
                inline_chars_->contents().size() >= size_threshold_bytes_) {
       OutlineScript(inline_element_, inline_chars_->contents());

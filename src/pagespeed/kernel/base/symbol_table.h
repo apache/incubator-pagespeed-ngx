@@ -21,13 +21,14 @@
 #define PAGESPEED_KERNEL_BASE_SYMBOL_TABLE_H_
 
 #include <cstddef>
+#include <list>
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/atom.h"
 #include "pagespeed/kernel/base/string_hash.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/dense_hash_set.h"
+#include "pagespeed/kernel/base/dense_hash_map.h"
 
 namespace net_instaweb {
 
@@ -93,8 +94,14 @@ template<class CharTransform> class SymbolTable {
     }
   };
 
-  typedef dense_hash_set<StringPiece, Hash, Comparator> SymbolSet;
-  SymbolSet string_set_;
+  typedef dense_hash_map<StringPiece, StringPiece*,
+                         Hash, Comparator> SymbolMap;
+  SymbolMap string_map_;
+
+  // Since we don't want to have Atom include both base and size, it keeps
+  // a StringPiece*, meaning that SymbolTable must keep StringPiece's at
+  // stable location. This manages the location, and string_map_ points at it.
+  std::list<StringPiece> pieces_;
 
   // Allocates a new chunk of storage.
   inline void NewStorage();

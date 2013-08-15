@@ -42,15 +42,15 @@ TEST_F(SymbolTableTest, TestInternSensitive) {
   Atom a3 = symbol_table.Intern(s3);
   Atom a4 = symbol_table.Intern(s4);
   EXPECT_TRUE(a1 == a2);
-  EXPECT_EQ(a1.c_str(), a2.c_str());
+  EXPECT_EQ(a1.Rep()->data(), a2.Rep()->data());
   EXPECT_FALSE(a1 == a3);
-  EXPECT_NE(a1.c_str(), a3.c_str());
+  EXPECT_NE(a1.Rep()->data(), a3.Rep()->data());
   EXPECT_FALSE(a3 == a4);
 
-  EXPECT_EQ(s1, a1.c_str());
-  EXPECT_EQ(s2, a2.c_str());
-  EXPECT_EQ(s3, a3.c_str());
-  EXPECT_EQ(s4, a4.c_str());
+  EXPECT_EQ(s1, a1.Rep()->as_string());
+  EXPECT_EQ(s2, a2.Rep()->as_string());
+  EXPECT_EQ(s3, a3.Rep()->as_string());
+  EXPECT_EQ(s4, a4.Rep()->as_string());
 
   Atom empty = symbol_table.Intern("");
   EXPECT_TRUE(Atom() == empty);
@@ -65,13 +65,15 @@ TEST_F(SymbolTableTest, TestInternInsensitive) {
   Atom a2 = symbol_table.Intern(s2);
   Atom a3 = symbol_table.Intern(s3);
   EXPECT_TRUE(a1 == a2);
-  EXPECT_EQ(a1.c_str(), a2.c_str());
+  EXPECT_EQ(a1.Rep()->data(), a2.Rep()->data());
   EXPECT_FALSE(a1 == a3);
-  EXPECT_NE(a1.c_str(), a3.c_str());
+  EXPECT_NE(*a1.Rep(), *a3.Rep());
+  EXPECT_NE(a1.Rep(), a3.Rep());
+  EXPECT_NE(a1.Rep()->data(), a3.Rep()->data());
 
-  EXPECT_EQ(0, StringCaseCompare(s1, a1.c_str()));
-  EXPECT_EQ(0, StringCaseCompare(s2, a2.c_str()));
-  EXPECT_EQ(0, StringCaseCompare(s3, a3.c_str()));
+  EXPECT_EQ(0, StringCaseCompare(s1, a1.Rep()->as_string()));
+  EXPECT_EQ(0, StringCaseCompare(s2, a2.Rep()->as_string()));
+  EXPECT_EQ(0, StringCaseCompare(s3, a3.Rep()->as_string()));
 
   Atom empty = symbol_table.Intern("");
   EXPECT_TRUE(Atom() == empty);
@@ -80,13 +82,13 @@ TEST_F(SymbolTableTest, TestInternInsensitive) {
 TEST_F(SymbolTableTest, TestClear) {
   SymbolTableSensitive symbol_table;
   Atom a = symbol_table.Intern("a");
-  EXPECT_EQ(2, symbol_table.string_bytes_allocated());
+  EXPECT_EQ(1, symbol_table.string_bytes_allocated());
   a = symbol_table.Intern("a");
-  EXPECT_EQ(2, symbol_table.string_bytes_allocated());
+  EXPECT_EQ(1, symbol_table.string_bytes_allocated());
   symbol_table.Clear();
   EXPECT_EQ(0, symbol_table.string_bytes_allocated());
   a = symbol_table.Intern("a");
-  EXPECT_EQ(2, symbol_table.string_bytes_allocated());
+  EXPECT_EQ(1, symbol_table.string_bytes_allocated());
 }
 
 // Symbol table's string storage special cases large items (> 32k) so
@@ -109,6 +111,14 @@ TEST_F(SymbolTableTest, TestOverflowFirstChunk) {
     symbol_table.Intern(IntegerToString(i));
   }
   EXPECT_LT(32768, symbol_table.string_bytes_allocated());
+}
+
+TEST_F(SymbolTableTest, InternEmbeddedNull) {
+  const char kBytes[] = { 'A', '\0', 'B' };
+  SymbolTableSensitive symbol_table;
+  Atom a1 = symbol_table.Intern(StringPiece(kBytes, 1));
+  Atom a2 = symbol_table.Intern(StringPiece(kBytes, 3));
+  EXPECT_NE(a1, a2);
 }
 
 }  // namespace net_instaweb

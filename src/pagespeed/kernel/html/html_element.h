@@ -75,7 +75,7 @@ class HtmlElement : public HtmlNode {
     // Returns the attribute name, which is not guaranteed to be case-folded.
     // Compare keyword() to the Keyword constant found in html_name.h for
     // fast attribute comparisons.
-    const char* name_str() const { return name_.c_str(); }
+    StringPiece name_str() const { return name_.value(); }
 
     // Returns the HTML keyword enum.  If this attribute name is not
     // recognized, returns HtmlName::kNotAKeyword, and you can examine
@@ -300,7 +300,7 @@ class HtmlElement : public HtmlNode {
   // Returns the element tag name, which is not guaranteed to be
   // case-folded.  Compare keyword() to the Keyword constant found in
   // html_name.h for fast tag name comparisons.
-  const char* name_str() const { return data_->name_.c_str(); }
+  StringPiece name_str() const { return data_->name_.value(); }
 
   // Returns the HTML keyword enum.  If this tag name is not
   // recognized, returns HtmlName::kNotAKeyword, and you can

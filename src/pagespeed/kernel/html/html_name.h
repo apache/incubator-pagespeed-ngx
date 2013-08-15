@@ -231,12 +231,12 @@ class HtmlName {
   };
 
   // Constructs an HTML name given a keyword, which can be
-  // HtmlName::kNotAKeyword, and 'const char* str'.  'str'
+  // HtmlName::kNotAKeyword, and 'StringPiece* str'.  'str'
   // is used to retain the case-sensitive spelling of the
   // keyword.  The storage for 'str' must be managed, and
   // must be guaranteed valid throughout the life of the HtmlName.
-  HtmlName(Keyword keyword, const char* str)
-      : keyword_(keyword), c_str_(str) {
+  HtmlName(Keyword keyword, const StringPiece* str)
+      : keyword_(keyword), str_(str) {
   }
 
   // Returns the keyword enumeration for this HTML Name.  Note that
@@ -244,7 +244,7 @@ class HtmlName {
   Keyword keyword() const { return keyword_; }
 
   // Return the atom string, which may not be case folded.
-  const char* c_str() const { return c_str_; }
+  StringPiece value() const { return *str_; }
 
   // Limited iterator (not an STL iterator).  Example usage:
   //    for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
@@ -271,7 +271,7 @@ class HtmlName {
   friend class HtmlNameTest;
 
   Keyword keyword_;
-  const char* c_str_;
+  const StringPiece* str_;
 
   // Implicit copy and assign ok.  The members can be safely copied by bits.
 };

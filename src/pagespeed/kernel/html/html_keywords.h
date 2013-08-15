@@ -47,8 +47,12 @@ class HtmlKeywords {
   static void ShutDown();
 
   // Returns an HTML keyword as a string, or NULL if not a keyword.
-  static const char* KeywordToString(HtmlName::Keyword keyword) {
-    return singleton_->keyword_vector_[keyword];
+  static const StringPiece* KeywordToString(HtmlName::Keyword keyword) {
+    if (keyword < HtmlName::kNotAKeyword) {
+      return &singleton_->keyword_vector_[keyword];
+    } else {
+      return NULL;
+    }
   }
 
   // Take a raw text and escape it so it's safe for an HTML attribute,
@@ -191,7 +195,9 @@ class HtmlKeywords {
   StringStringSparseHashMapSensitive unescape_sensitive_map_;
   StringStringSparseHashMapSensitive escape_map_;
 
-  CharStarVector keyword_vector_;
+  // Note that this is left immutable after being filled in, so it's OK
+  // to take pointers into it.
+  StringPieceVector keyword_vector_;
 
   // These vectors of KeywordPair and Keyword are sorted numerically during
   // construction to enable binary-search during parsing.

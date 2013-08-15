@@ -269,7 +269,7 @@ int GetPanelNumberForNonCacheableElement(
     typedef AttributesToNonCacheableValuesMap::const_iterator Iterator;
     std::pair<Iterator, Iterator> ret =
         attribute_non_cacheable_values_map.equal_range(
-            attribute.name().c_str());
+            attribute.name_str().as_string());
 
     if (attribute.name().keyword() == HtmlName::kClass) {
       // Split class attribute value on whitespace.

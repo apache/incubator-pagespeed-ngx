@@ -61,7 +61,7 @@ void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
     driver_->ErrorHere("Tag '%s' found inside style.",
-                           element->name_str());
+                       CEscape(element->name_str()).c_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     inline_chars_ = NULL;
   }

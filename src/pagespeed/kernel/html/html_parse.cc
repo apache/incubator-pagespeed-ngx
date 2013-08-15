@@ -929,21 +929,21 @@ void HtmlParse::CloseElement(
 }
 
 HtmlName HtmlParse::MakeName(HtmlName::Keyword keyword) {
-  const char* str = HtmlKeywords::KeywordToString(keyword);
+  const StringPiece* str = HtmlKeywords::KeywordToString(keyword);
   return HtmlName(keyword, str);
 }
 
 HtmlName HtmlParse::MakeName(const StringPiece& str_piece) {
   HtmlName::Keyword keyword = HtmlName::Lookup(str_piece);
-  const char* str = HtmlKeywords::KeywordToString(keyword);
+  const StringPiece* str = HtmlKeywords::KeywordToString(keyword);
 
   // If the passed-in string is not in its canonical form, or is not a
   // recognized keyword, then we must make a permanent copy in our
   // string table.  Note that we are comparing the bytes of the
   // keyword from the table, not the pointer.
-  if ((str == NULL) || (str_piece != str)) {
+  if ((str == NULL) || (str_piece != *str)) {
     Atom atom = string_table_.Intern(str_piece);
-    str = atom.c_str();
+    str = atom.Rep();
   }
   return HtmlName(keyword, str);
 }

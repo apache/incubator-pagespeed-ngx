@@ -71,7 +71,7 @@ void DeferIframeFilter::StartElementImpl(HtmlElement* element) {
       static_asset_manager_->AddJsToElement(js, script, driver());
       script_inserted_ = true;
     }
-    element->set_name(HtmlName(HtmlName::kPagespeedIframe, "pagespeed_iframe"));
+    element->set_name(driver()->MakeName(HtmlName::kPagespeedIframe));
   }
 }
 

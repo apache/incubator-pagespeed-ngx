@@ -98,14 +98,12 @@ const HtmlElement::Attribute* HtmlElement::FindAttribute(
 }
 
 void HtmlElement::ToString(GoogleString* buf) const {
-  *buf += "<";
-  *buf += data_->name_.c_str();
+  StrAppend(buf, "<", data_->name_.value());
 
   for (AttributeConstIterator iter = attributes().begin();
        iter != attributes().end(); ++iter) {
     const Attribute& attribute = *iter;
-    *buf += ' ';
-    *buf += attribute.name_str();
+    StrAppend(buf, " ", attribute.name_str());
     const char* value = attribute.DecodedValueOrNull();
     if (attribute.decoding_error()) {
       // This is a debug method; not used in serialization.
@@ -121,9 +119,7 @@ void HtmlElement::ToString(GoogleString* buf) const {
   switch (data_->close_style_) {
     case AUTO_CLOSE:       *buf += "> (not yet closed)"; break;
     case IMPLICIT_CLOSE:   *buf += ">";  break;
-    case EXPLICIT_CLOSE:   *buf += "></";
-                           *buf += data_->name_.c_str();
-                           *buf += ">";
+    case EXPLICIT_CLOSE:   StrAppend(buf, "></", data_->name_.value(), ">");
                            break;
     case BRIEF_CLOSE:      *buf += "/>"; break;
     case UNCLOSED:         *buf += "> (unclosed)"; break;

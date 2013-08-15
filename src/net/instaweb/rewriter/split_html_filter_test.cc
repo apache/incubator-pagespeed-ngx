@@ -203,7 +203,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   RequestHeaders request_headers_;
   const char* blink_js_url_;
   ResponseHeaders response_headers_;
-  GoogleString nodefer_str_;
+  const StringPiece* nodefer_str_;
 
  private:
   StringWriter writer_;
@@ -929,7 +929,7 @@ TEST_F(SplitHtmlFilterTest, Instrumentation1) {
       "<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->"
       "</body></html>";
   EXPECT_TRUE(output_.find(expected) != GoogleString::npos);
-  EXPECT_TRUE(output_.find(nodefer_str_) == GoogleString::npos);
+  EXPECT_TRUE(output_.find(nodefer_str_->as_string()) == GoogleString::npos);
 }
 
 // When an ATF request is received but the useragent is unsupported, we don't
@@ -955,7 +955,7 @@ TEST_F(SplitHtmlFilterTest, Instrumentation2) {
       "<div id='1'/>"
       "<div id='god'/><div id='2'/>";
   EXPECT_TRUE(output_.find(expected) != GoogleString::npos);
-  EXPECT_TRUE(output_.find(nodefer_str_) != GoogleString::npos);
+  EXPECT_TRUE(output_.find(nodefer_str_->as_string()) != GoogleString::npos);
 }
 
 }  // namespace

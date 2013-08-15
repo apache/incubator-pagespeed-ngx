@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <vector>
+#include <utility>
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/atom.h"
@@ -46,16 +47,17 @@ SymbolTable<CharTransform>::SymbolTable()
       string_bytes_allocated_(0) {
   // We can use an empty string piece as the empty value, since
   // ::Intern has a quick exit on empty inputs.
-  string_set_.set_empty_key(StringPiece());
+  string_map_.set_empty_key(StringPiece());
 }
 
 template<class CharTransform>
 void SymbolTable<CharTransform>::Clear() {
-  string_set_.clear();
+  string_map_.clear();
   for (int i = 0, n = storage_.size(); i < n; ++i) {
     std::free(storage_[i]);
   }
   storage_.clear();
+  pieces_.clear();
   next_ptr_ = NULL;
   string_bytes_allocated_ = 0;
 }
@@ -72,14 +74,14 @@ Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
     return Atom();
   }
 
-  typename SymbolSet::const_iterator iter = string_set_.find(src);
-  if (iter == string_set_.end()) {
+  typename SymbolMap::const_iterator iter = string_map_.find(src);
+  if (iter == string_map_.end()) {
     // Lazy-initialize to ensure at least one available block.
     if (storage_.empty()) {
       NewStorage();
     }
 
-    size_t bytes_required = src.size() + 1;  // leave space for null byte
+    size_t bytes_required = src.size();
     char* new_symbol_storage = NULL;
     if (bytes_required > kChunkSize / 4) {
       // The string we are trying to put into the symbol table is sufficiently
@@ -103,12 +105,15 @@ Atom SymbolTable<CharTransform>::Intern(const StringPiece& src) {
       next_ptr_ += bytes_required;
     }
     memcpy(new_symbol_storage, src.data(), src.size());
-    new_symbol_storage[src.size()] = '\0';
-    string_set_.insert(StringPiece(new_symbol_storage, src.size()));
+
+    StringPiece new_sp(new_symbol_storage, src.size());
+    pieces_.push_back(new_sp);
+    StringPiece* canonical_sp = &pieces_.back();
+    string_map_.insert(make_pair(new_sp, canonical_sp));
     string_bytes_allocated_ += bytes_required;
-    return Atom(new_symbol_storage);
+    return Atom(canonical_sp);
   }
-  return Atom(iter->data());
+  return Atom(iter->second);
 }
 
 // We explicitly instantiate since we want ::Intern to be out-of-line

@@ -77,11 +77,11 @@ void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
 
 void HtmlWriterFilter::EmitName(const HtmlName& name) {
   if (case_fold_) {
-    case_fold_buffer_ = name.c_str();
+    name.value().CopyToString(&case_fold_buffer_);
     LowerString(&case_fold_buffer_);
     EmitBytes(case_fold_buffer_);
   } else {
-    EmitBytes(name.c_str());
+    EmitBytes(name.value());
   }
 }
 
@@ -95,7 +95,7 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
     const HtmlElement::Attribute& attribute = *i;
     // If the column has grown too large, insert a newline.  It's always safe
     // to insert whitespace in the middle of tag parameters.
-    int attr_length = 1 + strlen(attribute.name_str());
+    int attr_length = 1 + attribute.name_str().size();
     if (max_column_ > 0) {
       if (attribute.escaped_value() != NULL) {
         attr_length += 1 + strlen(attribute.escaped_value());

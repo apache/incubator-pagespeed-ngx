@@ -233,7 +233,7 @@ void GoogleAnalyticsFilter::StartElement(HtmlElement* element) {
   // No tags allowed inside script element.
   if (script_element_ != NULL) {
     html_parse_->ErrorHere("Google Analytics reset: Tag '%s' found inside "
-                           "script.", element->name_str());
+                           "script.", CEscape(element->name_str()).c_str());
     ResetFilter();
   }
   if (element->keyword() == HtmlName::kScript) {
@@ -245,7 +245,8 @@ void GoogleAnalyticsFilter::EndElement(HtmlElement* element) {
   if (script_element_ != NULL) {
     if (element != script_element_) {
       html_parse_->ErrorHere("Google Analytics reset: Unexpected tag '%s' "
-                             "inside a script.", element->name_str());
+                             "inside a script.",
+                             CEscape(element->name_str()).c_str());
       ResetFilter();
     } else {
       FindRewritableScripts();

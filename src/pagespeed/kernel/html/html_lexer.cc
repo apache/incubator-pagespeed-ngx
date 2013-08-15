@@ -657,15 +657,13 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
   element_stack_.push_back(element_);
   if (IsLiteralTag(element_->keyword())) {
     state_ = LITERAL_TAG;
-    literal_close_ = "</";
-    literal_close_ += element_->name_str();
-    literal_close_ += ">";
+    literal_close_ = StrCat("</", element_->name_str(), ">");
   } else {
     state_ = START;
   }
 
   if (allow_implicit_close && IsImplicitlyClosedTag(element_->keyword())) {
-    token_ = element_->name_str();
+    element_->name_str().CopyToString(&token_);
     EmitTagClose(HtmlElement::IMPLICIT_CLOSE);
   }
 
@@ -744,13 +742,14 @@ void HtmlLexer::FinishParse() {
 
   for (int i = element_stack_.size() - 1; i > 0; --i) {
     HtmlElement* element = element_stack_.back();
-    token_ = element->name_str();
+    element->name_str().CopyToString(&token_);
     HtmlElement::CloseStyle close_style = skip_parsing_ ?
         HtmlElement::EXPLICIT_CLOSE : HtmlElement::UNCLOSED;
     EmitTagClose(close_style);
     if (!HtmlKeywords::IsOptionallyClosedTag(element->keyword())) {
       html_parse_->Info(id_.c_str(), element->begin_line_number(),
-                        "End-of-file with open tag: %s", element->name_str());
+                        "End-of-file with open tag: %s",
+                        CEscape(element->name_str()).c_str());
     }
   }
   DCHECK_EQ(1U, element_stack_.size());
@@ -1091,7 +1090,8 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
       // in a filter to omit closing tags that can be inferred?
       if (!HtmlKeywords::IsOptionallyClosedTag(skipped->keyword())) {
         html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
-                          "Unclosed element `%s'", skipped->name_str());
+                          "Unclosed element `%s'",
+                          CEscape(skipped->name_str()).c_str());
       }
       // Before closing the skipped element, pop it off the stack.  Otherwise,
       // the parent redundancy check in HtmlParse::AddEvent will fail.

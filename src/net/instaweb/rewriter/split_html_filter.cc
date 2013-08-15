@@ -559,7 +559,7 @@ GoogleString SplitHtmlFilter::GetPanelIdForInstance(HtmlElement* element) {
   for (HtmlElement::AttributeConstIterator i(attrs.begin());
          i != attrs.end(); ++i) {
       const HtmlElement::Attribute& attribute = *i;
-    if ((panel_id_attr_name == attribute.name().c_str()) &&
+    if ((panel_id_attr_name == attribute.name_str()) &&
         (attribute.DecodedValueOrNull() != NULL)) {
       panel_id_value = attribute.DecodedValueOrNull();
       break;

@@ -135,6 +135,17 @@ TEST_F(HtmlParseTest, BooleanSpaceCloseInTag) {
                    "<a onclick='return m(this)' ;>foo</a>");
 }
 
+TEST_F(HtmlParseTest, EmbeddedNuls) {
+  const char kHtml[] = "<script att\0r></script>";
+  // Note: STATIC_STRLEN won't stop at embedded null.
+  ValidateNoChanges("inner_mess", GoogleString(kHtml, STATIC_STRLEN(kHtml)));
+
+  const char kHtml2[] = "<script\0y></script>";
+  // Note: STATIC_STRLEN won't stop at embedded null.
+  ValidateNoChanges("inner_mess2",
+                    GoogleString(kHtml2, STATIC_STRLEN(kHtml2)));
+}
+
 class AttrValuesSaverFilter : public EmptyHtmlFilter {
  public:
   AttrValuesSaverFilter() { }
@@ -858,7 +869,7 @@ TEST_F(HtmlParseTest, MakeName) {
     HtmlName empty = html_parse_.MakeName("");
     EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
     EXPECT_EQ(HtmlName::kNotAKeyword, empty.keyword());
-    EXPECT_EQ('\0', *empty.c_str());
+    EXPECT_EQ("", empty.value());
   }
 
   // When we make a name using its enum, there should be no symbol table growth.
@@ -877,13 +888,13 @@ TEST_F(HtmlParseTest, MakeName) {
   // store the new form in the symbol table so we'll be allocating
   // some bytes, including the nul terminator.
   HtmlName body_new_capitalization = html_parse_.MakeName("Body");
-  EXPECT_EQ(5, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(4, HtmlTestingPeer::symbol_table_size(&html_parse_));
   EXPECT_EQ(HtmlName::kBody, body_new_capitalization.keyword());
 
   // Make a name out of something that is not a keyword.
   // This should also increase the symbol-table size.
   HtmlName non_keyword = html_parse_.MakeName("hiybbprqag");
-  EXPECT_EQ(16, HtmlTestingPeer::symbol_table_size(&html_parse_));
+  EXPECT_EQ(14, HtmlTestingPeer::symbol_table_size(&html_parse_));
   EXPECT_EQ(HtmlName::kNotAKeyword, non_keyword.keyword());
 
   // Empty names are a corner case that we hope does not crash.  Note
@@ -891,9 +902,9 @@ TEST_F(HtmlParseTest, MakeName) {
   // and require no new allocated bytes.
   {
     HtmlName empty = html_parse_.MakeName("");
-    EXPECT_EQ(16, HtmlTestingPeer::symbol_table_size(&html_parse_));
+    EXPECT_EQ(14, HtmlTestingPeer::symbol_table_size(&html_parse_));
     EXPECT_EQ(HtmlName::kNotAKeyword, empty.keyword());
-    EXPECT_EQ('\0', *empty.c_str());
+    EXPECT_EQ("", empty.value());
   }
 }
 

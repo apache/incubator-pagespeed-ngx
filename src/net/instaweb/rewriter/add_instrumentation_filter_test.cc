@@ -225,9 +225,9 @@ TEST_F(AddInstrumentationFilterTest, TestNoDeferInstrumentationScript) {
       CreateInitString(
           options()->beacon_url().http, "load", "")) !=
               GoogleString::npos);
-  const char* nodefer =
+  const StringPiece* nodefer =
       HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
-  EXPECT_TRUE(output_buffer_.find(nodefer) != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find(nodefer->as_string()) != GoogleString::npos);
 }
 
 TEST_F(AddInstrumentationFilterTest, TestDeferInstrumentationScript) {
@@ -237,9 +237,9 @@ TEST_F(AddInstrumentationFilterTest, TestDeferInstrumentationScript) {
       CreateInitString(
           options()->beacon_url().http, "load", "")) !=
               GoogleString::npos);
-  const char* nodefer =
+  const StringPiece* nodefer =
       HtmlKeywords::KeywordToString(HtmlName::kPagespeedNoDefer);
-  EXPECT_TRUE(output_buffer_.find(nodefer) == GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find(nodefer->as_string()) == GoogleString::npos);
 }
 
 }  // namespace net_instaweb
