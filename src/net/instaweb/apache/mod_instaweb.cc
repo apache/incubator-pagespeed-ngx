@@ -802,9 +802,6 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
   InPlaceResourceRecorder* recorder =
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
   CHECK(recorder != NULL);
-  MessageHandler* handler = recorder->handler();
-  handler->Message(kInfo, "Attempting to save resource in-place: %s",
-                   recorder->url().c_str());
 
   // Iterate through all buckets, saving content in the recorder and passing
   // the buckets along when there is a flush.

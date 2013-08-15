@@ -87,19 +87,12 @@ bool AsyncFetchWithLock::Start(UrlAsyncFetcher* fetcher) {
     message_handler_->Message(
         kInfo, "%s is being re-fetched asynchronously "
         "(lock %s held elsewhere)", cache_key().c_str(), lock_name.c_str());
-  } else {
-    message_handler_->Message(kInfo, "%s: Locking (lock %s)",
-                              cache_key().c_str(), lock_name.c_str());
   }
   return StartFetch(fetcher, message_handler_);
 }
 
 void AsyncFetchWithLock::HandleDone(bool success) {
   if (lock_.get() != NULL) {
-    message_handler_->Message(
-        kInfo, "%s: Unlocking lock %s with, success=%s",
-        cache_key().c_str(), lock_->name().c_str(),
-        success ? "true" : "false");
     lock_->Unlock();
     lock_.reset(NULL);
   }

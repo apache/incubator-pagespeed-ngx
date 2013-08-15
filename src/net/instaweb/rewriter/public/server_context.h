@@ -592,7 +592,7 @@ class ServerContext {
   void set_cache_property_store(CachePropertyStore* p);
 
   // Creates CachePropertyStore object which will be used by PagePropertyCache.
-  virtual PropertyStore* CreatePropertyStore(CacheInterface* cache_backend);
+  PropertyStore* CreatePropertyStore(CacheInterface* cache_backend);
 
   // Establishes a new Cohort for this property.
   // This will also call CachePropertyStore::AddCohort() if CachePropertyStore

@@ -626,9 +626,6 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
 
   // Statistics
   if (ret) {
-    driver_->InfoAt(this, "Successfully rewrote CSS file %s saving %s bytes.",
-                    css_base_gurl.spec_c_str(),
-                    Integer64ToString(bytes_saved).c_str());
     filter_->num_blocks_rewritten_->Add(1);
     filter_->total_bytes_saved_->Add(bytes_saved);
     // TODO(sligocki): Will this be misleading if we flatten @imports?
@@ -898,8 +895,6 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       if (element_href != NULL) {
         // If it has a href= attribute
         StartExternalRewrite(element, element_href);
-      } else {
-        driver_->InfoHere("Link element with no href.");
       }
     }
   // Note any meta tag charset specifier.

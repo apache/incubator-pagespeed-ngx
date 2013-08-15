@@ -437,21 +437,10 @@ RenderedImages* CriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
           kRenderedImageDimensionsProperty,
           driver->options()->finder_properties_cache_expiration_time_ms(),
           &pcache_status));
-  switch (pcache_status) {
-    case kPropertyCacheDecodeNotFound:
-      driver->message_handler()->Message(
-          kInfo, "RenderedImage not found in cache");
-      break;
-    case kPropertyCacheDecodeExpired:
-      driver->message_handler()->Message(
-          kInfo, "RenderedImage cache entry expired");
-      break;
-    case kPropertyCacheDecodeParseError:
-      driver->message_handler()->Message(
-          kWarning, "Unable to parse Critical RenderedImage PropertyValue");
-      break;
-    case kPropertyCacheDecodeOk:
-      break;
+  if (pcache_status == kPropertyCacheDecodeParseError) {
+    driver->message_handler()->Message(
+        kWarning, "Unable to parse Critical RenderedImage PropertyValue for %s",
+        driver->url());
   }
   return result.release();
 }

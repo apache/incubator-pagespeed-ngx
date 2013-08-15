@@ -348,9 +348,6 @@ void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
   RewriteDriver* driver = ResourceFetch::GetDriver(
       *gurl, custom_options, server_context, request_context);
 
-  MessageHandler* message_handler = server_context->message_handler();
-  message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
-
   GoogleString output;  // TODO(jmarantz): Quit buffering resource output.
   StringWriter writer(&output);
 
@@ -369,8 +366,6 @@ void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
     // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
     // and use that for all HTML and resource requests.
     response_headers->RemoveAll(kPageSpeedHeader);
-    message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
-                             url.c_str(), response_headers->status_code());
     send_out_headers_and_body(request, *response_headers, output);
   } else {
     RewriteStats* stats = server_context->rewrite_stats();
@@ -395,10 +390,6 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   RewriteDriver* driver = ResourceFetch::GetDriver(
       *stripped_gurl, custom_options, server_context, request_context);
 
-  MessageHandler* message_handler = server_context->message_handler();
-  message_handler->Message(kInfo, "Trying to serve rewritten resource "
-                           "in-place: %s", original_url.c_str());
-
   ApacheProxyFetch fetch(
       original_url, server_context->thread_system(), driver, request);
   fetch.set_handle_error(false);
@@ -407,15 +398,10 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   fetch.Wait();
   if (fetch.status_ok()) {
     server_context->rewrite_stats()->ipro_served()->Add(1);
-    message_handler->Message(kInfo, "Serving rewritten resource in-place: %s",
-                             original_url.c_str());
     handled = true;
   } else if (fetch.response_headers()->status_code() ==
              CacheUrlAsyncFetcher::kNotInCacheStatus) {
     server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
-    message_handler->Message(kInfo, "Could not rewrite resource in-place "
-                             "because URL is not in cache: %s",
-                             original_url.c_str());
     // This URL was not found in cache (neither the input resource nor
     // a ResourceNotCacheable entry) so we need to get it into cache
     // (or at least a note that it cannot be cached stored there).
@@ -427,15 +413,13 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
         stripped_gurl->Spec(), request_headers.release(),
         driver->options()->respect_vary(), server_context->http_cache(),
-        server_context->statistics(), message_handler);
+        server_context->statistics(), server_context->message_handler());
     ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
                          request, request->connection);
     ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
                          request, request->connection);
   } else {
     server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
-    message_handler->Message(kInfo, "Could not rewrite resource in-place: %s",
-                             original_url.c_str());
   }
   driver->Cleanup();
 

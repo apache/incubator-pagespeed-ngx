@@ -171,8 +171,6 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
   bool is_enabled = RewritesEnabled(image_inline_max_bytes);
 
   if (is_enabled) {
-    handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
-                     hierarchy->css_base_url().spec_c_str());
     if (spriting_ok) {
       image_combiner_->Reset(parent, hierarchy->css_base_url(),
                              hierarchy->input_contents());
@@ -219,14 +217,13 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
                 const GoogleUrl original_url(hierarchy->css_resolution_base(),
                                              rel_url);
                 if (!original_url.is_valid()) {
-                  handler->Message(kInfo, "Invalid URL %s", rel_url.c_str());
+                  handler->Message(kInfo, "Invalid URL in CSS: %s",
+                                   rel_url.c_str());
                   continue;
                 }
                 if (!options->IsAllowed(original_url.Spec())) {
-                  handler->Message(kInfo, "Disallowed URL %s", rel_url.c_str());
                   continue;
                 }
-                handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
                 if (spriting_ok) {
                   image_combiner_->AddCssBackgroundContext(
                       original_url, values, value_index, root_context_,

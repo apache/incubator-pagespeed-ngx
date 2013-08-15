@@ -1185,8 +1185,6 @@ void SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
   SerfFetch* fetch = new SerfFetch(url, async_fetch, message_handler, timer_);
 
   request_count_->Add(1);
-  message_handler->Message(kInfo, "Initiating async fetch for %s",
-                           url.c_str());
   threaded_fetcher_->InitiateFetch(fetch);
 
   // TODO(morlovich): There is quite a bit of code related to doing work
@@ -1288,8 +1286,6 @@ void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
   // class.
   active_fetches_.Remove(fetch);
   completed_fetches_.Add(fetch);
-  fetch->message_handler()->Message(kInfo, "Fetch complete: %s",
-                                    fetch->str_url());
 }
 
 void SerfUrlAsyncFetcher::ReportCompletedFetchStats(SerfFetch* fetch) {

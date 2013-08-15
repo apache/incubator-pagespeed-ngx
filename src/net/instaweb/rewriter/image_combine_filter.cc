@@ -1159,10 +1159,8 @@ void ImageCombineFilter::AddCssBackgroundContext(
     CssFilter::Context* parent, Css::Declarations* decls,
     MessageHandler* handler) {
   CHECK(context_ != NULL);
-  handler->Message(kInfo, "Attempting to sprite css background.");
   int width, height;
   if (!GetDeclarationDimensions(decls, &width, &height)) {
-    handler->Message(kInfo, "Cannot sprite: no explicit dimensions");
     return;
   }
   StringPiece url_piece(original_url.Spec());
