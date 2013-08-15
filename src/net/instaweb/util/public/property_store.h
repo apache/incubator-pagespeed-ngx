@@ -33,6 +33,8 @@ namespace net_instaweb {
 class AbstractMutex;
 class PropertyCacheValues;
 class PropertyValueProtobuf;
+class Statistics;
+class Timer;
 
 // Abstract interface for implementing PropertyStore which helps to
 // retrieve and put properties into the storage system.
@@ -103,8 +105,11 @@ class PropertyStoreGetCallback : public AbstractPropertyStoreGetCallback {
       AbstractMutex* mutex,
       PropertyPage* page,
       bool is_cancellable,
-      BoolCallback* done);
+      BoolCallback* done,
+      Timer* timer);
   virtual ~PropertyStoreGetCallback();
+
+  static void InitStats(Statistics* statistics);
 
   // Try to finish all the pending lookups if possible and call Done as soon as
   // possible.
@@ -135,6 +140,9 @@ class PropertyStoreGetCallback : public AbstractPropertyStoreGetCallback {
   BoolCallback* done_;
   bool delete_when_done_;
   bool done_called_;
+  Timer* timer_;
+  int64 fast_finish_time_ms_;
+
   DISALLOW_COPY_AND_ASSIGN(PropertyStoreGetCallback);
 };
 

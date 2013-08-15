@@ -68,6 +68,7 @@ class CachePropertyStoreTest : public testing::Test {
        num_callback_with_true_called_(0),
        cache_lookup_status_(false) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
+    PropertyStoreGetCallback::InitStats(&stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_.AddCohort(kCohortName1);
     cohort_list_.push_back(cohort_);

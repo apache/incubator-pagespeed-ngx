@@ -79,6 +79,7 @@ class TwoLevelPropertyStoreTest : public testing::Test {
                        &stats_,
                        thread_system_.get()) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
+    PropertyStoreGetCallback::InitStats(&stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_1_.AddCohort(kCohortName1);
     cache_property_store_2_.AddCohort(kCohortName1);

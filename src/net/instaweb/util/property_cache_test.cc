@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/property_store.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -62,6 +63,7 @@ class PropertyCacheTest : public testing::Test {
                         thread_system_.get()) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
     PropertyCache::InitCohortStats(kCohortName2, &stats_);
+    PropertyStoreGetCallback::InitStats(&stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_.AddCohort(cohort_->name());
   }

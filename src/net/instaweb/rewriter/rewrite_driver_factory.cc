@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/property_store.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -653,6 +654,7 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   CriticalImagesFinder::InitStats(statistics);
   CriticalCssFinder::InitStats(statistics);
   CriticalSelectorFinder::InitStats(statistics);
+  PropertyStoreGetCallback::InitStats(statistics);
 }
 
 void RewriteDriverFactory::Initialize() {

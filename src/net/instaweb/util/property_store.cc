@@ -21,8 +21,16 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+namespace {
+
+Histogram* fast_finish_lookup_latency_ms_ = NULL;
+
+}  // namespace
 
 PropertyStore::PropertyStore()
     : enable_get_cancellation_(false) {
@@ -31,17 +39,25 @@ PropertyStore::PropertyStore()
 PropertyStore::~PropertyStore() {
 }
 
+void PropertyStoreGetCallback::InitStats(Statistics* statistics) {
+  fast_finish_lookup_latency_ms_ =
+      statistics->AddHistogram("PropertyStoreLatencyAfterFastFinishCalledMs");
+}
+
 PropertyStoreGetCallback::PropertyStoreGetCallback(
     AbstractMutex* mutex,
     PropertyPage* page,
     bool is_cancellable,
-    BoolCallback* done)
+    BoolCallback* done,
+    Timer* timer)
     : mutex_(mutex),
       page_(page),
       is_cancellable_(is_cancellable),
       done_(done),
       delete_when_done_(false),
-      done_called_(false) {
+      done_called_(false),
+      timer_(timer),
+      fast_finish_time_ms_(0) {
 }
 
 PropertyStoreGetCallback::~PropertyStoreGetCallback() {
@@ -64,6 +80,7 @@ void PropertyStoreGetCallback::FastFinishLookup() {
     page_ = NULL;
     done = done_;
     done_ = NULL;
+    fast_finish_time_ms_ = timer_->NowMs();
   }
 
   // Don't run callback while holding lock.
@@ -82,6 +99,10 @@ void PropertyStoreGetCallback::Done(bool success) {
       page_ = NULL;
       done = done_;
       done_ = NULL;
+    } else {
+      DCHECK_NE(fast_finish_time_ms_, 0);
+      int64 latency_ms = timer_->NowMs() - fast_finish_time_ms_;
+      fast_finish_lookup_latency_ms_->Add(latency_ms);
     }
     delete_this = delete_when_done_;
     done_called_ = true;

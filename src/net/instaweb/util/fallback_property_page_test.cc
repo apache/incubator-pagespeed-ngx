@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/property_store.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "testing/base/public/gunit.h"
@@ -57,6 +58,7 @@ class FallbackPropertyPageTest : public testing::Test {
                         &stats_,
                         thread_system_.get()) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);
+    PropertyStoreGetCallback::InitStats(&stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
     cache_property_store_.AddCohort(cohort_->name());
   }

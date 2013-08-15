@@ -62,8 +62,10 @@ class CachePropertyStoreGetCallback : public PropertyStoreGetCallback {
       AbstractMutex* mutex,
       PropertyPage* page,
       bool is_cancellable,
-      BoolCallback* done)
-      : PropertyStoreGetCallback(mutex, page, is_cancellable, done) {
+      BoolCallback* done,
+      Timer* timer)
+      : PropertyStoreGetCallback(
+          mutex, page, is_cancellable, done, timer) {
   }
   virtual ~CachePropertyStoreGetCallback() {
   }
@@ -215,7 +217,11 @@ void CachePropertyStore::Get(
   }
   CachePropertyStoreGetCallback* property_store_get_callback =
       new CachePropertyStoreGetCallback(
-          thread_system_->NewMutex(), page, enable_get_cancellation(), done);
+          thread_system_->NewMutex(),
+          page,
+          enable_get_cancellation(),
+          done,
+          timer_);
   *callback = property_store_get_callback;
   CachePropertyStoreCallbackCollector* collector =
       new CachePropertyStoreCallbackCollector(

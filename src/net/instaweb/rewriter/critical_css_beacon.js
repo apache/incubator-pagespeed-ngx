@@ -67,7 +67,7 @@ pagespeed['computeCriticalSelectors'] = pagespeed.computeCriticalSelectors;
  * @param {string} optionsHash The hash of the rewrite options. This is required
  *     to perform the property cache lookup when the beacon is handled by the
  *     sever.
- * @param {string} nonce The nonce send by the server.
+ * @param {string} nonce The nonce sent by the server.
  * @param {Array.<string>} selectors List of the selectors on the page.
  */
 pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash,
@@ -118,7 +118,7 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function() {
  * @param {string} beaconUrl The URL on the server to send the beacon to.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  * @param {string} optionsHash The hash of the rewrite options.
- * @param {string} nonce The nonce set by the server.
+ * @param {string} nonce The nonce sent by the server.
  * @param {Array.<string>} selectors List of the selectors on the page.
  */
 pagespeed.criticalCssBeaconInit = function(beaconUrl, htmlUrl, optionsHash,

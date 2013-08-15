@@ -21,7 +21,9 @@
 #include "net/instaweb/util/public/property_store.h"
 
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -33,7 +35,9 @@ class PropertyStoreTest : public testing::Test {
   PropertyStoreTest()
       : thread_system_(Platform::CreateThreadSystem()),
         num_callback_with_false_called_(0),
-        num_callback_with_true_called_(0) {
+        num_callback_with_true_called_(0),
+        timer_(MockTimer::kApr_5_2010_ms) {
+    PropertyStoreGetCallback::InitStats(&stats_);
   }
 
   void ExpectCallback(bool result) {
@@ -49,7 +53,8 @@ class PropertyStoreTest : public testing::Test {
         thread_system_->NewMutex(),
         NULL,
         is_cancellable,
-        NewCallback(this, &PropertyStoreTest::ExpectCallback));
+        NewCallback(this, &PropertyStoreTest::ExpectCallback),
+        &timer_);
   }
 
  protected:
@@ -58,6 +63,8 @@ class PropertyStoreTest : public testing::Test {
   int num_callback_with_true_called_;
 
  private:
+  SimpleStats stats_;
+  MockTimer timer_;
   DISALLOW_COPY_AND_ASSIGN(PropertyStoreTest);
 };
 
