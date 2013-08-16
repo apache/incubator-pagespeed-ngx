@@ -50,6 +50,8 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_cache_html_info_pb.a \
   net/instaweb/libinstaweb_client_domain_rewriter_data2c.a \
   net/instaweb/libinstaweb_client_domain_rewriter_opt_data2c.a \
+  net/instaweb/libinstaweb_console_css_data2c.a \
+  net/instaweb/libinstaweb_console_js_opt_data2c.a \
   net/instaweb/libinstaweb_critical_css_beacon_data2c.a \
   net/instaweb/libinstaweb_critical_css_beacon_opt_data2c.a \
   net/instaweb/libinstaweb_critical_css_pb.a \

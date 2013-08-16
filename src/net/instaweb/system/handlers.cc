@@ -16,22 +16,31 @@
 
 #include "net/instaweb/system/public/handlers.h"
 
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
-extern const char* CSS_console_css;
-extern const char* JS_console_js;
-
 // Handler which serves PSOL console.
-void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
+void ConsoleHandler(SystemServerContext* server_context, Writer* writer,
                     MessageHandler* handler) {
+  const SystemRewriteOptions* options =
+      server_context->system_rewrite_options();
   bool statistics_enabled = options->statistics_enabled();
   bool logging_enabled = options->statistics_logging_enabled();
   bool log_dir_set = !options->log_dir().empty();
   if (statistics_enabled && logging_enabled && log_dir_set) {
+    const StaticAssetManager* static_asset_manager =
+        server_context->static_asset_manager();
+    StringPiece console_js = static_asset_manager->GetAsset(
+        StaticAssetManager::kConsoleJs, options);
+    StringPiece console_css = static_asset_manager->GetAsset(
+        StaticAssetManager::kConsoleCss, options);
+
     // TODO(sligocki): Move static content to a data2cc library.
     writer->Write("<!DOCTYPE html>\n"
                   "<html>\n"
@@ -43,7 +52,7 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
                   "      }\n"
                   "    </style>\n"
                   "    <style>", handler);
-    writer->Write(CSS_console_css, handler);
+    writer->Write(console_css, handler);
     writer->Write("</style>\n"
                   "  </head>\n"
                   "  <body>\n"
@@ -57,12 +66,13 @@ void ConsoleHandler(SystemRewriteOptions* options, Writer* writer,
                   "      </p>\n"
                   "      <div id='pagespeed-graphs-container'></div>\n"
                   "    </div>\n"
+                  // TODO(sligocki): Compile this into console_js.
                   "    <script src='https://www.google.com/jsapi'></script>\n"
                   "    <script>var pagespeedStatisticsUrl = '", handler);
     writer->Write(options->statistics_handler_path(), handler);
     writer->Write("'</script>\n"
                   "    <script>", handler);
-    writer->Write(JS_console_js, handler);
+    writer->Write(console_js, handler);
     writer->Write("</script>\n"
                   "  </body>\n"
                   "</html>\n", handler);

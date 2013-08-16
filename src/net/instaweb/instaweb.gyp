@@ -494,19 +494,20 @@
       ]
     },
     {
-      'target_name': 'instaweb_console_js_data2c',
+      'target_name': 'instaweb_console_js_opt_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/mod_pagespeed_console',
-        'var_name': 'console_js',
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'console_js_opt',
       },
       'sources': [
-        'genfiles/mod_pagespeed_console/console.js',
+        'genfiles/rewriter/console_js_opt.js',
       ],
       'includes': [
         'data2c.gypi',
       ]
     },
+    # Deprecated. TODO(sligocki): Remove.
     {
       'target_name': 'instaweb_console_js_old_data2c',
       'variables': {
@@ -524,17 +525,18 @@
     {
       'target_name': 'instaweb_console_css_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/system',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/mod_pagespeed_console',
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'console_css',
       },
       'sources': [
-        'genfiles/mod_pagespeed_console/console.css',
+        'genfiles/rewriter/console_css.css',
       ],
       'includes': [
         'data2c.gypi',
       ]
     },
+    # Deprecated. TODO(sligocki): Remove.
     {
       'target_name': 'instaweb_console_css_old_data2c',
       'variables': {
@@ -549,6 +551,7 @@
         'data2c.gypi',
       ]
     },
+    # Deprecated. TODO(sligocki): Remove.
     {
       'target_name': 'instaweb_console_body_data2c',
       'variables': {
@@ -563,13 +566,12 @@
         'data2c.gypi',
       ]
     },
+    # Deprecated. TODO(sligocki): Remove.
     {
       'target_name': 'instaweb_console',
       'type': '<(library)',
       'dependencies': [
-        ':instaweb_console_css_data2c',
         ':instaweb_console_css_old_data2c',
-        ':instaweb_console_js_data2c',
         ':instaweb_console_js_old_data2c',
         ':instaweb_console_body_data2c',
       ],
@@ -1089,6 +1091,8 @@
         'instaweb_cache_html_info_pb',
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
+        'instaweb_console_css_data2c',
+        'instaweb_console_js_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_critical_css_beacon_data2c',
         'instaweb_critical_css_beacon_opt_data2c',

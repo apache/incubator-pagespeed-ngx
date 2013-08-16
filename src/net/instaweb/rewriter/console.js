@@ -32,7 +32,9 @@
 
 goog.require('goog.structs.Set');
 
+goog.provide('pagespeed');
 goog.provide('pagespeed.Console');
+goog.provide('pagespeed.statistics');
 
 // Google Charts API.
 // Requires <script src='https://www.google.com/jsapi'></script> loaded in HTML.
@@ -49,6 +51,8 @@ pagespeed.error = function(error_message) {
   }
   // TODO(sligocki): Show error message in DOM somewhere as well.
 };
+
+
 
 /**
  * @constructor
@@ -133,10 +137,12 @@ pagespeed.Console = function() {
   };
 };
 
+
 /**
  * Namespace for statistics calculators.
  */
 pagespeed.statistics = {};
+
 
 /**
  * Trivial statistic that just has the value of one variable.
@@ -161,6 +167,7 @@ pagespeed.statistics.variable = function(name) {
   };
   return stat;
 };
+
 
 /**
  * Statistic which has the value of a sum of sub-statistics.
@@ -188,6 +195,7 @@ pagespeed.statistics.sum = function(statArray) {
   };
   return stat;
 };
+
 
 /**
  * Statistic which has the value of a percent of sub-statistics.
@@ -217,6 +225,7 @@ pagespeed.statistics.percent = function(numStat, denomStat) {
   return stat;
 };
 
+
 /**
  * Statistic for common pattern: bad / (bad + good)
  * For example: Cache miss % = cache misses / (cache misses + cache hits)
@@ -231,6 +240,7 @@ pagespeed.statistics.percent_total = function(badStat, goodStat) {
       pagespeed.statistics.sum([badStat, goodStat]));
 };
 
+
 /**
  * Initialize and start the console for "notable issues" version, which
  * displays a fixed set of graphs ordered by level of importance.
@@ -243,6 +253,7 @@ pagespeed.startConsole = function() {
   mpsConsole.startConsole();
   return mpsConsole;
 };
+
 
 /**
  * Initialize pre-determined set of "notable issues" graphs.
@@ -262,7 +273,7 @@ pagespeed.Console.prototype.initGraphs = function() {
                 percent_total(v('resource_url_domain_rejections'),
                               v('resource_url_domain_acceptances')));
   this.addGraph('Resources not rewritten because of restrictive ' +
-                  'Cache-Control headers',
+                    'Cache-Control headers',
                 'cache-control',
                 percent_total(v('num_cache_control_not_rewritable_resources'),
                               v('num_cache_control_rewritable_resources')));
@@ -306,6 +317,7 @@ pagespeed.Console.prototype.initGraphs = function() {
   */
 };
 
+
 /**
  * Add a graph specification to our list. Also note which variables we will
  * need to fetch.
@@ -337,6 +349,7 @@ pagespeed.Console.prototype.addGraph = function(title, urlFragment, stat) {
   return graph;
 };
 
+
 /**
  * Load all graphs over default time period (last day).
  */
@@ -348,6 +361,7 @@ pagespeed.Console.prototype.startConsole = function() {
 
   this.loadJsonData(startTime, endTime, granularityMs);
 };
+
 
 /**
  * Generate a URL which will request specific variables values snapshotted
@@ -372,6 +386,7 @@ pagespeed.Console.prototype.createQueryUrl = function(
   }
   return queryString;
 };
+
 
 /**
  * Request variable data from server. Parse the returned result and call
@@ -407,6 +422,7 @@ pagespeed.Console.prototype.loadJsonData = function(
   xhr.open('GET', queryString);
   xhr.send();
 };
+
 
 /**
  * Use JSON data to create and draw all graphs.
@@ -462,6 +478,7 @@ pagespeed.Console.prototype.drawGraphsFromJsonData = function(data) {
   }
 };
 
+
 /**
  * Error if any variables has an inconsistent number of data points.
  * All variables should have the same number of values as there are timestamps.
@@ -478,6 +495,7 @@ pagespeed.Console.prototype.checkDataValidity = function(
     }
   }
 };
+
 
 /**
  * Build the google.visualization.DataTable for given data.
@@ -501,6 +519,7 @@ pagespeed.Console.prototype.buildDataTable = function(
   return dataTable;
 };
 
+
 /**
  * createDataTable creates a new google.visualization.DataTable
  * and returns it. Each DataTable has two columns: a timestamp
@@ -515,6 +534,7 @@ pagespeed.Console.prototype.createDataTable = function(title) {
   dataTable.addColumn('number', title);
   return dataTable;
 };
+
 
 /**
  * Add and draw a graph which has already had its dataTable set.
@@ -539,6 +559,7 @@ pagespeed.Console.prototype.drawGraph = function(graph) {
 };
 
 // Methods for creating HTML content
+
 
 /**
  * createGraphDiv creates the necessary DOM elements for a graph, and returns
@@ -566,6 +587,7 @@ pagespeed.createGraphDiv = function(title, percent, docUrl, graphNum) {
 
   return graph;
 };
+
 
 /**
  * Creates the title and dropdown menu of each graph.

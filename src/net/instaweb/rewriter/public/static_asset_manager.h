@@ -21,6 +21,7 @@
 
 #include <map>
 #include <vector>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -33,7 +34,6 @@ class MessageHandler;
 class RewriteDriver;
 class RewriteOptions;
 struct ContentType;
-
 
 // Composes URLs for the javascript files injected by the various PSA filters.
 // TODO(ksimbili): Refactor out the common base class to serve the static files
@@ -48,6 +48,8 @@ class StaticAssetManager {
     kBlankGif,
     kBlinkJs,
     kClientDomainRewriter,
+    kConsoleCss,
+    kConsoleJs,
     kCriticalCssBeaconJs,
     kCriticalImagesBeaconJs,
     kDedupInlinedImagesJs,
@@ -76,8 +78,9 @@ class StaticAssetManager {
   const GoogleString& GetAssetUrl(const StaticAsset& module,
                                   const RewriteOptions* options) const;
 
+  // Returns the contents of the asset.
   const char* GetAsset(const StaticAsset& module,
-                              const RewriteOptions* options) const;
+                       const RewriteOptions* options) const;
 
   // Get the asset to be served as external file for the file names file_name.
   // The snippet is returned as 'content' and cache-control headers is set into
@@ -85,8 +88,7 @@ class StaticAssetManager {
   // to 'private max-age=300'.
   // Returns true iff the content for filename is found.
   bool GetAsset(StringPiece file_name, StringPiece* content,
-                       ContentType* content_type,
-                       StringPiece* cache_header) const;
+                ContentType* content_type, StringPiece* cache_header) const;
 
   // Add a CharacterNode to an already created script element, properly escaping
   // the text with CDATA tags is necessary. The script element should be added

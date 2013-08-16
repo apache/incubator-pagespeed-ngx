@@ -40,10 +40,12 @@
 
 namespace net_instaweb {
 
+extern const char* CSS_console_css;
 extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
 extern const char* JS_client_domain_rewriter_opt;
+extern const char* JS_console_js_opt;
 extern const char* JS_critical_css_beacon;
 extern const char* JS_critical_css_beacon_opt;
 extern const char* JS_critical_images_beacon;
@@ -155,6 +157,7 @@ void StaticAssetManager::InitializeAssetStrings() {
     *it = new Asset;
     (*it)->content_type = kContentTypeJavascript;
   }
+  // Initialize JS
   // Initialize file names.
   assets_[kAddInstrumentationJs]->file_name = "add_instrumentation";
   assets_[kExtendedInstrumentationJs]->file_name = "extended_instrumentation";
@@ -162,6 +165,7 @@ void StaticAssetManager::InitializeAssetStrings() {
       StrCat(JS_js_defer_opt, "\n", JS_panel_loader_opt);
   assets_[kBlinkJs]->file_name = "blink";
   assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
+  assets_[kConsoleJs]->file_name = "console_js";
   assets_[kCriticalCssBeaconJs]->file_name = "critical_css_beacon";
   assets_[kCriticalImagesBeaconJs]->file_name = "critical_images_beacon";
   assets_[kDedupInlinedImagesJs]->file_name = "dedup_inlined_images";
@@ -183,6 +187,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kBlinkJs]->js_optimized = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_optimized =
       JS_client_domain_rewriter_opt;
+  assets_[kConsoleJs]->js_optimized = JS_console_js_opt;
   assets_[kCriticalCssBeaconJs]->js_optimized = JS_critical_css_beacon_opt;
   assets_[kCriticalImagesBeaconJs]->js_optimized =
       JS_critical_images_beacon_opt;
@@ -205,6 +210,8 @@ void StaticAssetManager::InitializeAssetStrings() {
   // unit test expects debug code to include comments->
   assets_[kBlinkJs]->js_debug = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
+  // TODO(sligocki): Allow debug version of console.
+  assets_[kConsoleJs]->js_debug = JS_console_js_opt;
   assets_[kCriticalCssBeaconJs]->js_debug = JS_critical_css_beacon;
   assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
   assets_[kDedupInlinedImagesJs]->js_debug = JS_dedup_inlined_images;
@@ -220,10 +227,18 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
   assets_[kSplitHtmlBeaconJs]->js_debug = JS_split_html_beacon;
 
+  // Initialize non-JS assets
+
   assets_[kBlankGif]->file_name = "1";
   assets_[kBlankGif]->js_optimized.append(GIF_blank, GIF_blank_len);
   assets_[kBlankGif]->js_debug.append(GIF_blank, GIF_blank_len);
   assets_[kBlankGif]->content_type = kContentTypeGif;
+
+  assets_[kConsoleCss]->file_name = "console_css";
+  // TODO(sligocki): Do we want to have a minified version of console CSS?
+  assets_[kConsoleCss]->js_optimized = CSS_console_css;
+  assets_[kConsoleCss]->js_debug = CSS_console_css;
+  assets_[kConsoleCss]->content_type = kContentTypeCss;
 
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
@@ -231,6 +246,9 @@ void StaticAssetManager::InitializeAssetStrings() {
     asset->js_opt_hash = hasher_->Hash(asset->js_optimized);
     asset->js_debug_hash = hasher_->Hash(asset->js_debug);
 
+    // Make sure names are unique.
+    DCHECK(file_name_to_module_map_.find(asset->file_name) ==
+           file_name_to_module_map_.end())  << asset->file_name;
     // Setup a map of file name to the corresponding index in assets_ to
     // allow easier lookup in GetAsset.
     file_name_to_module_map_[asset->file_name] =

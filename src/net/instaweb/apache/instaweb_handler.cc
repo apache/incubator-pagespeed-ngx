@@ -1002,7 +1002,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (request_handler_str == kConsoleHandler) {
     GoogleString output;
     StringWriter writer(&output);
-    ConsoleHandler(config, &writer, message_handler);
+    ConsoleHandler(server_context, &writer, message_handler);
     write_handler_response(output, request);
     ret = OK;
 
