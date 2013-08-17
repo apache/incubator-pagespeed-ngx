@@ -230,7 +230,7 @@ TEST_F(TwoLevelPropertyStoreTest, TestSecondaryLevelCacheHit) {
   ExpectCacheStats(&lru_cache_1_,
                    0,  /* Cache hit */
                    1,  /* Cache miss */
-                   0  /* Cache inserts */,
+                   1  /* Cache inserts */,
                    kCache1);
   ExpectCacheStats(&lru_cache_2_,
                    1,  /* Cache hit */
@@ -320,7 +320,7 @@ TEST_F(TwoLevelPropertyStoreTest, TestCancelAfterSecondaryLookupDone) {
   ExpectCacheStats(&lru_cache_1_,
                    0,  /* Cache hit */
                    1,  /* Cache miss */
-                   0  /* Cache inserts */,
+                   1  /* Cache inserts */,
                    kCache1);
   ExpectCacheStats(&lru_cache_2_,
                    1,  /* Cache hit */
@@ -384,13 +384,55 @@ TEST_F(TwoLevelPropertyStoreTest, TestPartialSecondaryLookup) {
   ExpectCacheStats(&lru_cache_1_,
                    1,  /* Cache hit */
                    1,  /* Cache miss */
-                   1  /* Cache inserts */,
+                   2  /* Cache inserts */,
                    kCache1);
   ExpectCacheStats(&lru_cache_2_,
                    1,  /* Cache hit */
                    0,  /* Cache miss */
                    2  /* Cache inserts */,
                    kCache2);
+}
+
+TEST_F(TwoLevelPropertyStoreTest, TestInsertValueIntoPrimaryFromSecondary) {
+  PutHelper(&cache_property_store_2_, cohort_);
+  ExecuteGet(page_.get());
+  EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
+  EXPECT_EQ(0, num_callback_with_false_called_);
+  EXPECT_EQ(1, num_callback_with_true_called_);
+  ExpectCacheStats(&lru_cache_1_,
+                   0,  /* Cache hit */
+                   1,  /* Cache miss */
+                   1  /* Cache inserts */,
+                   kCache1);
+  ExpectCacheStats(&lru_cache_2_,
+                   1,  /* Cache hit */
+                   0,  /* Cache miss */
+                   1  /* Cache inserts */,
+                   kCache2);
+
+  PropertyValue* pv = page_->GetProperty(cohort_, kPropName1);
+  EXPECT_TRUE(pv->has_value());
+  EXPECT_EQ(kValueName1, pv->value());
+
+  lru_cache_1_.ClearStats();
+  lru_cache_2_.ClearStats();
+  ExecuteGet(page_.get());
+  EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
+  EXPECT_EQ(0, num_callback_with_false_called_);
+  EXPECT_EQ(2, num_callback_with_true_called_);
+  ExpectCacheStats(&lru_cache_1_,
+                   1,  /* Cache hit */
+                   0,  /* Cache miss */
+                   0  /* Cache inserts */,
+                   kCache1);
+  ExpectCacheStats(&lru_cache_2_,
+                   0,  /* Cache hit */
+                   0,  /* Cache miss */
+                   0  /* Cache inserts */,
+                   kCache2);
+  pv = page_->GetProperty(cohort_, kPropName1);
+  EXPECT_TRUE(pv->has_value());
+  EXPECT_EQ(kValueName1, pv->value());
 }
 
 }  // namespace net_instaweb

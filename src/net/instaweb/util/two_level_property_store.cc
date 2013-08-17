@@ -19,6 +19,7 @@
 #include "net/instaweb/util/public/two_level_property_store.h"
 
 #include "base/logging.h"
+#include "net/instaweb/util/property_cache.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_property_store_get_callback.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -61,6 +62,7 @@ class TwoLevelPropertyStoreGetCallback
       PropertyPage* page,
       BoolCallback* done,
       AbstractMutex* mutex,
+      PropertyStore* primary_property_store,
       PropertyStore* secondary_property_store)
       : url_(url),
         options_signature_hash_(options_signature_hash),
@@ -68,6 +70,7 @@ class TwoLevelPropertyStoreGetCallback
         page_(page),
         done_(done),
         mutex_(mutex),
+        primary_property_store_(primary_property_store),
         secondary_property_store_(secondary_property_store),
         secondary_property_store_get_callback_(NULL),
         fast_finish_lookup_called_(false),
@@ -127,7 +130,6 @@ class TwoLevelPropertyStoreGetCallback
   // Called after the primary lookup is done.
   void PrimaryLookupDone(bool success) {
     bool should_delete = false;
-    PropertyCache::CohortVector missing_cohort_list;
     BoolCallback* done = NULL;
     {
       ScopedMutex lock(mutex_.get());
@@ -140,11 +142,11 @@ class TwoLevelPropertyStoreGetCallback
         // primary_property_store is done.
         const PropertyCache::Cohort* cohort = cohort_list_[j];
         if (!page_->IsCohortPresent(cohort)) {
-          missing_cohort_list.push_back(cohort);
+          secondary_lookup_cohort_list_.push_back(cohort);
         }
       }
 
-      if (fast_finish_lookup_called_ || missing_cohort_list.empty()) {
+      if (fast_finish_lookup_called_ || secondary_lookup_cohort_list_.empty()) {
         lookup_level_ = kDone;
         done = done_;
         done_ = NULL;
@@ -173,7 +175,7 @@ class TwoLevelPropertyStoreGetCallback
 
     // Second level lookup will be initiated only if FastFinishLookup() is not
     // called and some cohorts are not found in first level lookup.
-    IssueSecondaryGet(missing_cohort_list);
+    IssueSecondaryGet();
   }
 
   void SecondaryLookupDone(bool success) {
@@ -192,8 +194,21 @@ class TwoLevelPropertyStoreGetCallback
       // We should only ever delete ourselves if all internal states are
       // updated.
       should_delete = ShouldDeleteLocked();
-      // TODO(pulkitg): Write the second level lookup values to first level
-      // storage.
+    }
+    if (success) {
+      for (int j = 0, n = secondary_lookup_cohort_list_.size(); j < n; ++j) {
+        const PropertyCache::Cohort* cohort = secondary_lookup_cohort_list_[j];
+        PropertyCacheValues values;
+        if (page_->EncodePropertyCacheValues(cohort, &values)) {
+          primary_property_store_->Put(
+              url_,
+              options_signature_hash_,
+              cache_key_suffix_,
+              cohort,
+              &values,
+              NULL);
+        }
+      }
     }
 
     // No class level variable is safe to use beyond this point.
@@ -205,14 +220,14 @@ class TwoLevelPropertyStoreGetCallback
 
  private:
   // Issue lookup from secondary_primary_store.
-  void IssueSecondaryGet(const PropertyCache::CohortVector& cohort_list) {
+  void IssueSecondaryGet() {
     AbstractPropertyStoreGetCallback* secondary_property_store_get_callback =
         NULL;
     secondary_property_store_->Get(
         url_,
         options_signature_hash_,
         cache_key_suffix_,
-        cohort_list,
+        secondary_lookup_cohort_list_,
         page_,
         NewCallback(this,
                     &TwoLevelPropertyStoreGetCallback::SecondaryLookupDone),
@@ -284,6 +299,7 @@ class TwoLevelPropertyStoreGetCallback
   PropertyPage* page_;  // page_ becomes NULL as soon as Done() is called.
   BoolCallback* done_;
   scoped_ptr<AbstractMutex> mutex_;
+  PropertyStore* primary_property_store_;
   PropertyStore* secondary_property_store_;
   AbstractPropertyStoreGetCallback* secondary_property_store_get_callback_;
   bool fast_finish_lookup_called_;
@@ -291,6 +307,7 @@ class TwoLevelPropertyStoreGetCallback
   bool delete_when_done_;
   bool first_level_result_;
   bool secondary_lookup_;
+  PropertyCache::CohortVector secondary_lookup_cohort_list_;
   DISALLOW_COPY_AND_ASSIGN(TwoLevelPropertyStoreGetCallback);
 };
 
@@ -328,6 +345,7 @@ void TwoLevelPropertyStore::Get(
           page,
           done,
           thread_system_->NewMutex(),
+          primary_property_store_,
           secondary_property_store_);
   *callback = two_level_property_store_get_callback;
 

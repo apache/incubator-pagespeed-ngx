@@ -415,6 +415,13 @@ class PropertyPage : public AbstractPropertyPage {
   // as possible.
   void FastFinishLookup();
 
+  // Generates PropertyCacheValues object from all the properties in the given
+  // cohort.
+  // Returns false, if cohort does not exists in the PropertyPage or no
+  // property is present in the cohort.
+  bool EncodePropertyCacheValues(const PropertyCache::Cohort* cohort,
+                                 PropertyCacheValues* values);
+
  protected:
   // The Page takes ownership of the mutex.
   // TODO(pulkitg): Instead of passing full PropertyCache object, just pass
@@ -432,13 +439,6 @@ class PropertyPage : public AbstractPropertyPage {
 
  private:
   void SetupCohorts(const PropertyCache::CohortVector& cohort_list);
-
-  // Generates PropertyCacheValues object from all the properties in the given
-  // cohort.
-  // Returns false, if cohort does not exists in the PropertyPage or no
-  // property is present in the cohort.
-  bool EncodePropertyCacheValues(const PropertyCache::Cohort* cohort,
-                                 PropertyCacheValues* values);
 
   // Returns true if for the given cohort any property is deleted.
   bool HasPropertyValueDeleted(const PropertyCache::Cohort* cohort);

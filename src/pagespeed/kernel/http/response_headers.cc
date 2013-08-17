@@ -663,13 +663,12 @@ void ResponseHeaders::ComputeCaching() {
     proto_->set_expiration_time_ms(proto_->date_ms() + cache_ttl_ms);
     proto_->set_proxy_cacheable(force_cached_ || is_proxy_cacheable);
 
-    // Do not cache HTML with Set-Cookie / Set-Cookie2 headers even though it
-    // has explicit caching directives. This is to prevent the caching of user
-    // sensitive data due to misconfigured caching headers.
-    if ((type != NULL) &&
-        type->IsHtmlLike() &&
-        (Lookup1(HttpAttributes::kSetCookie) != NULL ||
-         Lookup1(HttpAttributes::kSetCookie2) != NULL)) {
+    // Do not cache HTML or redirects with Set-Cookie / Set-Cookie2 header even
+    // though they may have explicit caching directives. This is to prevent the
+    // caching of user sensitive data due to misconfigured caching headers.
+    if (((type != NULL && type->IsHtmlLike()) ||
+         computer.IsRedirectStatusCode()) &&
+        (Has(HttpAttributes::kSetCookie) || Has(HttpAttributes::kSetCookie2))) {
       proto_->set_proxy_cacheable(false);
     }
 
