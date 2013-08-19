@@ -292,6 +292,18 @@ TEST_F(ResponseHeadersTest, TestCachingPublic) {
             response_headers_.date_ms());
 }
 
+TEST_F(ResponseHeadersTest, TestCachingPartialReply) {
+  // Make sure we don't cache a partial reply.
+  ParseHeaders(StrCat("HTTP/1.0 206 Partial Reply\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n\r\n"));
+
+  EXPECT_FALSE(response_headers_.IsBrowserCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
+  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
+}
+
 // Private caching
 TEST_F(ResponseHeadersTest, TestCachingPrivate) {
   ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
