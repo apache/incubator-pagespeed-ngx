@@ -78,6 +78,12 @@ class CachingHeaders {
   // Pragma: no-cache.
   bool HasExplicitNoCacheDirective();
 
+  // Determines whether the caching headers have a must-revalidate directive.
+  bool MustRevalidate();
+
+  // Determines whether the caching headers have a proxy-revalidate directive.
+  bool ProxyRevalidate();
+
   // Tweakable methods
   //
   // These methods are virtual so that derived calsses can change the policy
@@ -151,6 +157,7 @@ class CachingHeaders {
   bool private_;
   bool no_transform_;
   bool must_revalidate_;
+  bool proxy_revalidate_;
   bool no_cache_;
   bool no_store_;
   bool cache_control_parse_error_;

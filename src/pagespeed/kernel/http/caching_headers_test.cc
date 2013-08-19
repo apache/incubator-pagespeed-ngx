@@ -145,6 +145,24 @@ TEST_F(CachingHeadersTest, IsCacheable) {
 
   SetCacheControl("must-revalidate");
   EXPECT_FALSE(headers_->IsCacheable());
+  EXPECT_FALSE(headers_->ProxyRevalidate());
+  EXPECT_TRUE(headers_->MustRevalidate());
+
+  SetCacheControl("proxy-revalidate");
+  EXPECT_TRUE(headers_->IsCacheable());
+  EXPECT_TRUE(headers_->ProxyRevalidate());
+  EXPECT_FALSE(headers_->MustRevalidate());
+
+  // must-revalidate does not imply uncacheability: it just means
+  // that stale content should not be trusted.
+  SetCacheControl("must-revalidate,max-age=600");
+  EXPECT_FALSE(headers_->ProxyRevalidate());
+  EXPECT_TRUE(headers_->MustRevalidate());
+
+  // proxy-revalidate is similar, but does not affect browser heuristics
+  SetCacheControl("proxy-revalidate,max-age=600");
+  EXPECT_TRUE(headers_->ProxyRevalidate());
+  EXPECT_FALSE(headers_->MustRevalidate());
 }
 
 }  // namespace net_instaweb

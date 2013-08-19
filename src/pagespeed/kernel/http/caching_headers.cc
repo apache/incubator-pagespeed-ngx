@@ -35,6 +35,7 @@ CachingHeaders::CachingHeaders(int status_code)
       private_(false),
       no_transform_(false),
       must_revalidate_(false),
+      proxy_revalidate_(false),
       no_cache_(false),
       no_store_(false),
       cache_control_parse_error_(false),
@@ -51,6 +52,20 @@ bool CachingHeaders::IsCacheable() {
     is_cacheable_.set_value(ComputeIsCacheable());
   }
   return is_cacheable_.value();
+}
+
+bool CachingHeaders::MustRevalidate() {
+  if (!is_cacheable_.has_value()) {
+    is_cacheable_.set_value(ComputeIsCacheable());
+  }
+  return must_revalidate_;
+}
+
+bool CachingHeaders::ProxyRevalidate() {
+  if (!is_cacheable_.has_value()) {
+    is_cacheable_.set_value(ComputeIsCacheable());
+  }
+  return proxy_revalidate_;
 }
 
 bool CachingHeaders::IsProxyCacheable() {
@@ -280,6 +295,8 @@ void CachingHeaders::ParseCacheControlIfNecessary() {
           }
         } else if (value == "must-revalidate") {
           must_revalidate_ = true;
+        } else if (value == "proxy-revalidate") {
+          proxy_revalidate_ = true;
         }
       }
     }

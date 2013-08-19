@@ -945,6 +945,8 @@ TEST_F(ResponseHeadersTest, CommaSeparatedEmptyValues) {
       "\r\n");
   response_headers_.Clear();
   ParseHeaders(comma_headers);
+  EXPECT_FALSE(response_headers_.RequiresBrowserRevalidation());
+  EXPECT_FALSE(response_headers_.RequiresProxyRevalidation());
   EXPECT_TRUE(response_headers_.Has(HttpAttributes::kCacheControl));
   EXPECT_STREQ("", response_headers_.Lookup1(HttpAttributes::kCacheControl));
 
@@ -966,10 +968,54 @@ TEST_F(ResponseHeadersTest, TestReserializingCommaValues) {
   ConstStringStarVector values;
   response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
   EXPECT_EQ(3, values.size());
+  EXPECT_TRUE(response_headers_.RequiresBrowserRevalidation());
+  EXPECT_TRUE(response_headers_.RequiresProxyRevalidation());
   values.clear();
   response_headers_.Lookup(HttpAttributes::kVary, &values);
   EXPECT_EQ(2, values.size());
   EXPECT_EQ(comma_headers, response_headers_.ToString());
+}
+
+TEST_F(ResponseHeadersTest, TestMustRevalidate) {
+  const GoogleString comma_headers = StrCat(
+      "HTTP/1.0 200 (OK)\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Cache-Control: max-age=360, must-revalidate\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(comma_headers);
+  EXPECT_TRUE(response_headers_.RequiresBrowserRevalidation());
+  EXPECT_TRUE(response_headers_.RequiresProxyRevalidation());
+  EXPECT_TRUE(response_headers_.IsBrowserCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestRequiresProxyRevalidation) {
+  const GoogleString comma_headers = StrCat(
+      "HTTP/1.0 200 (OK)\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Cache-Control: max-age=360, proxy-revalidate\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(comma_headers);
+  EXPECT_FALSE(response_headers_.RequiresBrowserRevalidation());
+  EXPECT_TRUE(response_headers_.RequiresProxyRevalidation());
+  EXPECT_TRUE(response_headers_.IsBrowserCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestProxyAndMustRevalidate) {
+  const GoogleString comma_headers = StrCat(
+      "HTTP/1.0 200 (OK)\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Cache-Control: max-age=360, must-revalidate, proxy-revalidate\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(comma_headers);
+  EXPECT_TRUE(response_headers_.RequiresBrowserRevalidation());
+  EXPECT_TRUE(response_headers_.RequiresProxyRevalidation());
+  EXPECT_TRUE(response_headers_.IsBrowserCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
 }
 
 // There was a bug that calling RemoveAll would re-populate the proto from

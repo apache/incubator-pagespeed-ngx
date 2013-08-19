@@ -190,8 +190,9 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
 void ResponseHeaders::Clear() {
   Headers<HttpResponseHeaders>::Clear();
 
-  proto_->set_browser_cacheable(false);
-  proto_->set_proxy_cacheable(false);   // accurate only if !cache_fields_dirty_
+  proto_->set_browser_cacheable(false);  // accurate iff !cache_fields_dirty_
+  proto_->set_requires_proxy_revalidation(false);
+  proto_->set_requires_browser_revalidation(false);
   proto_->clear_expiration_time_ms();
   proto_->clear_date_ms();
   proto_->clear_last_modified_time_ms();
@@ -404,6 +405,18 @@ bool ResponseHeaders::IsBrowserCacheable() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before IsBrowserCacheable()";
   return proto_->browser_cacheable();
+}
+
+bool ResponseHeaders::RequiresBrowserRevalidation() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before RequiresBrowserRevalidation()";
+  return proto_->requires_browser_revalidation();
+}
+
+bool ResponseHeaders::RequiresProxyRevalidation() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before RequiresProxyRevalidation()";
+  return proto_->requires_proxy_revalidation();
 }
 
 bool ResponseHeaders::IsProxyCacheable() const {
@@ -626,6 +639,9 @@ void ResponseHeaders::ComputeCaching() {
       has_date &&
       computer.IsAllowedCacheableStatusCode() &&
       (force_caching_enabled || is_browser_cacheable));
+  proto_->set_requires_browser_revalidation(computer.MustRevalidate());
+  proto_->set_requires_proxy_revalidation(
+      computer.ProxyRevalidate() || proto_->requires_browser_revalidation());
   if (proto_->browser_cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce
     // the expiration_time_ms_.  This is, says, bmcquade@google.com,

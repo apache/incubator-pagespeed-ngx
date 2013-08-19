@@ -27,7 +27,7 @@ message NameValue {
   required string value = 2;
 };
 
-// NEXT ID: 13
+// NEXT ID: 15
 message HttpResponseHeaders {
   optional int32 status_code = 1;
   optional string reason_phrase = 2;
@@ -39,6 +39,8 @@ message HttpResponseHeaders {
   optional int64 cache_ttl_ms = 11;
   optional bool browser_cacheable = 7;
   optional bool proxy_cacheable = 8;
+  optional bool requires_browser_revalidation = 13;
+  optional bool requires_proxy_revalidation = 14;
   repeated NameValue header = 9;
   optional bool is_implicitly_cacheable = 12;
 };

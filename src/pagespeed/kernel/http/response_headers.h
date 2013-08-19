@@ -113,8 +113,13 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // accessors before ComputeCaching is called.
   void ComputeCaching();
 
+
   // Returns true if these response headers indicate the response is
-  // publicly cacheable if it was fetched w/o special authorization headers.
+  // publicly cacheable if it was fetched w/o special authorization
+  // headers.
+  //
+  // See also RequiresProxyRevalidation(), which must be used to
+  // determine whether stale content can be re-used by a proxy.
   //
   // Generally you want to use IsProxyCacheableGivenRequest() instead which will
   // also take the request headers into account, unless you know the request
@@ -129,6 +134,17 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   //
   // Generally you want to use IsProxyCacheable*() instead.
   bool IsBrowserCacheable() const;
+
+  // Determines whether must-revalidate is in any Cache-Control setting.
+  //
+  // Proxies such as PSOL likely want to use RequiresProxyRevalidation()
+  // instead.
+  bool RequiresBrowserRevalidation() const;
+
+  // Determines whether either must-revalidate or proxy-revalidate is
+  // in any Cache-Control setting.  These must be checked to see whether
+  // it's OK to serve stale content while freshening in the background.
+  bool RequiresProxyRevalidation() const;
 
   // Returns whether or not we can proxy cache these headers if we take into
   // account the Vary: headers. Note that we consider Vary: Cookie as cacheable
