@@ -22,12 +22,15 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class SystemRewriteOptions;
 class SystemServerContext;
 class Writer;
 
 // Handler which serves PSOL console.
 // Note: ConsoleHandler always succeeds.
-void ConsoleHandler(SystemServerContext* server_context, Writer* writer,
+void ConsoleHandler(SystemServerContext* server_context,
+                    SystemRewriteOptions* options,
+                    Writer* writer,
                     MessageHandler* handler);
 
 }  // namespace net_instaweb

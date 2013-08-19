@@ -26,10 +26,10 @@
 namespace net_instaweb {
 
 // Handler which serves PSOL console.
-void ConsoleHandler(SystemServerContext* server_context, Writer* writer,
+void ConsoleHandler(SystemServerContext* server_context,
+                    SystemRewriteOptions* options,
+                    Writer* writer,
                     MessageHandler* handler) {
-  const SystemRewriteOptions* options =
-      server_context->system_rewrite_options();
   bool statistics_enabled = options->statistics_enabled();
   bool logging_enabled = options->statistics_logging_enabled();
   bool log_dir_set = !options->log_dir().empty();
@@ -66,7 +66,6 @@ void ConsoleHandler(SystemServerContext* server_context, Writer* writer,
                   "      </p>\n"
                   "      <div id='pagespeed-graphs-container'></div>\n"
                   "    </div>\n"
-                  // TODO(sligocki): Compile this into console_js.
                   "    <script src='https://www.google.com/jsapi'></script>\n"
                   "    <script>var pagespeedStatisticsUrl = '", handler);
     writer->Write(options->statistics_handler_path(), handler);

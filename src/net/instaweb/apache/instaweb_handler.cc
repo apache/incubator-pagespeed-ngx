@@ -288,11 +288,11 @@ void send_out_headers_and_body(request_rec* request,
 // custom options (or NULL if global_options should be used).
 //
 // Caller takes ownership of options.
-RewriteOptions* get_custom_options(ApacheServerContext* server_context,
-                                   request_rec* request,
-                                   GoogleUrl* gurl,
-                                   RequestHeaders* request_headers,
-                                   RewriteOptions* global_options) {
+ApacheConfig* get_custom_options(ApacheServerContext* server_context,
+                                 request_rec* request,
+                                 GoogleUrl* gurl,
+                                 RequestHeaders* request_headers,
+                                 RewriteOptions* global_options) {
   // Set directory specific options.  These will be the options for the
   // directory the resource is in, which under some configurations will be
   // different from the options for the directory that the referencing html is
@@ -302,7 +302,7 @@ RewriteOptions* get_custom_options(ApacheServerContext* server_context,
   // hard to fix, so instead we're documenting that you must make sure the
   // configuration for your resources matches the configuration for your html
   // files.
-  RewriteOptions* custom_options = NULL;
+  ApacheConfig* custom_options = NULL;
   ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
   if ((directory_options != NULL) && directory_options->modified()) {
@@ -1000,9 +1000,18 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = instaweb_statistics_graphs_handler(request, config, message_handler);
 
   } else if (request_handler_str == kConsoleHandler) {
+    // Do a little dance to get correct options for this request.
+    RequestHeaders headers;
+    ApacheRequestToRequestHeaders(*request, &headers);
+    GoogleUrl gurl(InstawebContext::MakeRequestUrl(*config, request));
+    scoped_ptr<ApacheConfig> custom_options(get_custom_options(
+        server_context, request, &gurl, &headers, config));
+    ApacheConfig* options =
+        (custom_options.get() != NULL ? custom_options.get() : config);
+
     GoogleString output;
     StringWriter writer(&output);
-    ConsoleHandler(server_context, &writer, message_handler);
+    ConsoleHandler(server_context, options, &writer, message_handler);
     write_handler_response(output, request);
     ret = OK;
 

@@ -494,6 +494,20 @@
       ]
     },
     {
+      'target_name': 'instaweb_console_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'console_js',
+      },
+      'sources': [
+        'genfiles/rewriter/console_js_dbg.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_console_js_opt_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1092,6 +1106,7 @@
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_console_css_data2c',
+        'instaweb_console_js_data2c',
         'instaweb_console_js_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_critical_css_beacon_data2c',

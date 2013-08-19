@@ -18,6 +18,9 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 
+// Note: We must include apache_config.h to allow using ApacheConfig*
+// return-types for functions that return RewriteOptions* in base class.
+#include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -35,7 +38,6 @@ class ApacheServerContext;
 class MessageHandler;
 class ModSpdyFetchController;
 class QueuedWorkerPool;
-class RewriteOptions;
 class ServerContext;
 class SharedCircularBuffer;
 class SlowWorker;
@@ -122,13 +124,11 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // the last context.
   bool PoolDestroyed(ApacheServerContext* rm);
 
-  // Create a new RewriteOptions.  In this implementation it will be an
-  // ApacheConfig.
-  virtual RewriteOptions* NewRewriteOptions();
+  virtual ApacheConfig* NewRewriteOptions();
 
   // As above, but set a name on the ApacheConfig noting that it came from
   // a query.
-  virtual RewriteOptions* NewRewriteOptionsForQuery();
+  virtual ApacheConfig* NewRewriteOptionsForQuery();
 
   // Initializes all the statistics objects created transitively by
   // ApacheRewriteDriverFactory, including apache-specific and

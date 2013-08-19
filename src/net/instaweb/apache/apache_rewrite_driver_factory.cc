@@ -290,11 +290,11 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(
   return (no_active_server_contexts && uninitialized_server_contexts_.empty());
 }
 
-RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
+ApacheConfig* ApacheRewriteDriverFactory::NewRewriteOptions() {
   return new ApacheConfig(hostname_identifier(), thread_system());
 }
 
-RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
+ApacheConfig* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
   return new ApacheConfig("query", thread_system());
 }
 

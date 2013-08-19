@@ -45,6 +45,7 @@ extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
 extern const char* JS_client_domain_rewriter_opt;
+extern const char* JS_console_js;
 extern const char* JS_console_js_opt;
 extern const char* JS_critical_css_beacon;
 extern const char* JS_critical_css_beacon_opt;
@@ -210,8 +211,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   // unit test expects debug code to include comments->
   assets_[kBlinkJs]->js_debug = blink_js_string.c_str();
   assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
-  // TODO(sligocki): Allow debug version of console.
-  assets_[kConsoleJs]->js_debug = JS_console_js_opt;
+  assets_[kConsoleJs]->js_debug = JS_console_js;
   assets_[kCriticalCssBeaconJs]->js_debug = JS_critical_css_beacon;
   assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
   assets_[kDedupInlinedImagesJs]->js_debug = JS_dedup_inlined_images;
