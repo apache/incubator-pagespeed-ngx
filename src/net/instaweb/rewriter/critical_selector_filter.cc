@@ -74,7 +74,11 @@ template<typename VectorType> void Compact(VectorType* cl) {
 // console if desired.
 // See ModPagespeedTestOnlyCriticalSelectorFilterDontApplyOriginalCss.
 const char CriticalSelectorFilter::kAddStylesFunction[] =
+    "window['pagespeed'] = window['pagespeed'] || {};"
+    "window['pagespeed']['stylesAdded'] = false;"
     "var addAllStyles = function() {"
+    "  if (window['pagespeed']['stylesAdded']) return;"
+    "  window['pagespeed']['stylesAdded'] = true;"
     "  var n = document.getElementsByTagName(\"noscript\");"
     // Note that this uses separate loops to walk the noscript NodeList and
     // to modify the DOM as modifying the DOM while walking a collection risks
@@ -93,9 +97,10 @@ const char CriticalSelectorFilter::kAddStylesFunction[] =
     "    document.body.appendChild(div);"
     "  }"
     "};";
-// TODO(ksimbili): Move this to appropriate event instead of 'onload'.
+
 const char CriticalSelectorFilter::kAddStylesInvocation[] =
     "if (window.addEventListener) {"
+    "  document.addEventListener(\"DOMContentLoaded\", addAllStyles, false);"
     "  window.addEventListener(\"load\", addAllStyles, false);"
     "} else if (window.attachEvent) {"
     "  window.attachEvent(\"onload\", addAllStyles);"
