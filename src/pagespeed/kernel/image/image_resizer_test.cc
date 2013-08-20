@@ -61,7 +61,7 @@ const char* kValidImages[] = {
 const char kImagePagespeed[] = "pagespeed-128";
 
 // Size of the output image [width, height]. The size of the input image
-// is 32-by-32. We would like to test resizing ratioes of both integers
+// is 32-by-32. We would like to test resizing ratios of both integers
 // and non-integers.
 const size_t kOutputSize[][2] = {
   {16, kPreserveAspectRatio},   // Shrink image by 2 times in both directions.
@@ -69,7 +69,9 @@ const size_t kOutputSize[][2] = {
   {3, 3},    // Shrink image by 32/3 times in both directions.
   {16, 25},  // Shrink image by [2, 32/25] times.
   {32, 5},   // Shrink image by [1, 32/5] times.
-  {32, 32},  // Although the image is not shrinked, the algorithm is exercised.
+  {3, 32},   // Shrink image by [32/3, 1] times.
+  {31, 31},  // Shrink image by [32/31, 32/31] times.
+  {32, 32},  // Although the image did not shrink, the algorithm is exercised.
 };
 
 const size_t kValidImageCount = arraysize(kValidImages);

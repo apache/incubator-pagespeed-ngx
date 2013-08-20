@@ -229,6 +229,7 @@ const char kFlushEarlyRewrittenHtmlWithLazyloadDeferJsScript[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = %d</script>";
+const char kFlushEarlyPdf[] = "This is a dummy pdf text.";
 
 }  // namespace
 
@@ -449,7 +450,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
             StrCat("<img src=\"", rewritten_img_url_1_.data(), "\"/>"),
             is_ie);
       }
-
     } else {
       if (redirect_psa_off) {
         rewritten_html = RewrittenHtmlForRedirect();
@@ -943,6 +943,70 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestFallbackPageUsage) {
   const RewriterStats& fallback_stats = logging_info()->rewriter_stats(2);
   EXPECT_EQ(RewriterHtmlApplication::ACTIVE, fallback_stats.html_status());
   EXPECT_EQ(2, fallback_stats.status_counts_size());
+}
+
+TEST_F(FlushEarlyFlowTest, FallBackWithNonHtmlResourceIsRedirected) {
+  SetupForFlushEarlyFlow();
+
+  // Enable UseFallbackPropertyCacheValues.
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->set_use_fallback_property_cache_values(true);
+  SetRewriteOptions(custom_options.get());
+
+  // Setting up mock responses for the url and fallback url.
+  GoogleString url =
+      StrCat(kTestDomain, "a.html?different_query=some_pdf");
+  GoogleString fallback_url = StrCat(kTestDomain, "a.html?query=some_html");
+  ResponseHeaders response_headers;
+  response_headers.Add(
+      HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse(fallback_url,
+                                response_headers, kFlushEarlyHtml);
+  // Set some non html response to the url.
+  response_headers.Replace(
+      HttpAttributes::kContentType, kContentTypePdf.mime_type());
+  mock_url_fetcher_.SetResponse(url, response_headers, kFlushEarlyPdf);
+
+  noscript_redirect_url_ = StrCat(fallback_url,
+                                  "&amp;ModPagespeed=noscript");
+  GoogleString kOutputHtml =
+      StrCat(kPreHeadHtml,
+             StringPrintf(
+                 kFlushEarlyRewrittenHtmlLinkScript,
+                 rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
+                 rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
+                 rewritten_css_url_3_.data(),
+                 FlushEarlyContentWriterFilter::kDisableLinkTag),
+             RewrittenHtml(NoScriptRedirectHtml()));
+
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_script_tag");
+
+  FetchFromProxy(fallback_url, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(fallback_url, request_headers, true, &text, &headers);
+  EXPECT_STREQ(kOutputHtml, text);
+
+  EXPECT_EQ(0, statistics()->FindVariable(
+      FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
+
+  // Request another url with different query params so that fallback values
+  // will be used. Since the content type is different here, this request
+  // should be redirected.
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  redirect_url_ = StrCat(url, "&ModPagespeed=noscript");
+  EXPECT_EQ(FlushEarlyRewrittenHtml(
+      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false,
+      true, false, true, false), text);
+
+  EXPECT_EQ(1, statistics()->FindVariable(
+      FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestDisabled) {

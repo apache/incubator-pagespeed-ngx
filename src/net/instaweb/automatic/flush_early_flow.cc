@@ -185,7 +185,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
         flush_called_(false),
         done_called_(false),
         done_value_(false),
-        non_ok_status_code_(false) {
+        non_ok_response_(false) {
     set_request_headers(fetch->request_headers());
     Statistics* stats = server_context_->statistics();
     num_flush_early_requests_redirected_ = stats->GetTimedVariable(
@@ -202,7 +202,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
       if (!flushed_early && headers_complete_called_) {
         base_fetch_->response_headers()->CopyFrom(*response_headers());
       }
-      if (flushed_early && non_ok_status_code_) {
+      if (flushed_early && non_ok_response_) {
         SendRedirectToPsaOff();
       } else {
         // Write out all the buffered content and call Flush and Done if it were
@@ -234,9 +234,10 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   virtual void HandleHeadersComplete() {
     {
       ScopedMutex lock(mutex_.get());
-      non_ok_status_code_ =
-          (response_headers()->status_code() != HttpStatus::kOK);
-      if (flushed_early_ && non_ok_status_code_) {
+      non_ok_response_ =
+          ((response_headers()->status_code() != HttpStatus::kOK) ||
+           !response_headers()->IsHtmlLike());
+      if (flushed_early_ && non_ok_response_) {
         SendRedirectToPsaOff();
         return;
       }
@@ -253,7 +254,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) {
     {
       ScopedMutex lock(mutex_.get());
-      if (flushed_early_ && non_ok_status_code_) {
+      if (flushed_early_ && non_ok_response_) {
         return true;
       }
       if (!flush_early_flow_done_) {
@@ -269,7 +270,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   virtual bool HandleFlush(MessageHandler* handler) {
     {
       ScopedMutex lock(mutex_.get());
-      if (flushed_early_ && non_ok_status_code_) {
+      if (flushed_early_ && non_ok_response_) {
         return true;
       }
       if (!flush_early_flow_done_) {
@@ -322,7 +323,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   bool flush_called_;
   bool done_called_;
   bool done_value_;
-  bool non_ok_status_code_;
+  bool non_ok_response_;
 
   TimedVariable* num_flush_early_requests_redirected_;
 

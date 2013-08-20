@@ -110,7 +110,7 @@ class ScanlineResizer : public ScanlineReaderInterface {
   int row_;
 
   // Buffer for storing the intermediate results.
-  scoped_array<uint8> buffer_;
+  scoped_array<float> buffer_;
   int bytes_per_buffer_row_;
 
   DISALLOW_COPY_AND_ASSIGN(ScanlineResizer);
