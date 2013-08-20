@@ -156,8 +156,9 @@ TEST_F(WebpScanlineReaderTest, CompareToWebpGolds) {
     GoogleString png_image, webp_image;
     ReadTestFile(kWebpTestDir, kValidImages[i], "png", &png_image);
     ReadTestFile(kWebpTestDir, kValidImages[i], "webp", &webp_image);
-    DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
-                           IMAGE_WEBP, webp_image.c_str(), webp_image.length());
+    DecodeAndCompareImagesByPSNR(IMAGE_PNG, png_image.c_str(),
+                                 png_image.length(), IMAGE_WEBP,
+                                 webp_image.c_str(), webp_image.length(), 55);
   }
 }
 
