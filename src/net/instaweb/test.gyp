@@ -316,7 +316,6 @@
         '<(DEPTH)/pagespeed/kernel/util/url_multipart_encoder_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_to_filename_encoder_test.cc',
 # Rolling hash test fails to build in 32-bit g++ 4.1
-# [google] See b/9203004
 #        '<(DEPTH)/pagespeed/kernel/base/rolling_hash_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
       ],
