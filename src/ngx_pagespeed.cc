@@ -2123,20 +2123,6 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
-  ngx_table_elt_t* header;
-  net_instaweb::NgxListIterator it(&(r->headers_out.headers.part));
-  while ((header = it.Next()) != NULL) {
-    // If there is a proxy_cache configured in front of this ngx server,
-    // we expect it to add a X-Cache header with the value of the cache
-    // status (one of HIT, MISS, EXPIRED).
-    if (STR_CASE_EQ_LITERAL(header->key, "X-Cache") &&
-        STR_CASE_EQ_LITERAL(header->value, "HIT")) {
-      // Bypass content handling by pagespeed modules if this is a cache hit.
-      ctx->html_rewrite = false;
-      return ngx_http_next_header_filter(r);
-    }
-  }
-
   ngx_int_t rc = ps_resource_handler(r, true);
   if (rc != NGX_OK) {
     ctx->html_rewrite = false;
