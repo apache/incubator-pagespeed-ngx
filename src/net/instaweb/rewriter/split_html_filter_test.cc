@@ -380,6 +380,34 @@ TEST_F(SplitHtmlFilterTest, SplitTwoChunksHtmlATFWithFlushAndHelper) {
   EXPECT_EQ(expected_output, output_buffer_);
 }
 
+TEST_F(SplitHtmlFilterTest, FlushBeforeParse) {
+  options_->set_serve_split_html_in_two_chunks(true);
+  SetAtfRequest();
+  options_->set_critical_line_config("div[@id = \"abcd\"]/div[4]");
+  rewrite_driver()->AddOwnedEarlyPreRenderFilter(
+      new SplitHtmlHelperFilter(rewrite_driver()));
+
+  html_parse()->SetWriter(&write_to_string_);
+  html_parse()->StartParse("http://example.com");
+  html_parse()->Flush();
+  html_parse()->ParseText(kHtmlInputPart1);
+  html_parse()->ParseText(kHtmlInputPart2);
+  html_parse()->FinishParse();
+
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(
+      StringPrintf(SplitHtmlFilter::kSplitTwoChunkSuffixJsFormatString,
+                   HttpAttributes::kXPsaSplitConfig,
+                   "div[@id = \"abcd\"]/div[4],", "",
+                   SplitHtmlFilter::kLoadHiResImages,
+                   blink_js_url_, 3));
+  StrAppend(&expected_output,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+
+  EXPECT_EQ(expected_output, output_buffer_);
+}
+
 TEST_F(SplitHtmlFilterTest, ATFHeadersWithAllowAllOrigins) {
   request_headers_.Add(HttpAttributes::kOrigin, "abc.com");
   rewrite_driver()->SetRequestHeaders(request_headers_);

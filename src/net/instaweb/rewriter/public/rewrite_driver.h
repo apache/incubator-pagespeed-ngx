@@ -1037,7 +1037,7 @@ class RewriteDriver : public HtmlParse {
   }
 
  protected:
-  virtual void DetermineEnabledFilters();
+  virtual void DetermineEnabledFiltersImpl();
 
  private:
   friend class DistributedRewriteContextTest;

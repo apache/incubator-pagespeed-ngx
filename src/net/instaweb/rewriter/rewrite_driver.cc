@@ -599,6 +599,8 @@ void RewriteDriver::FlushAsync(Function* callback) {
   }
   flush_requested_ = false;
 
+  DetermineEnabledFilters();
+
   for (FilterList::iterator it = early_pre_render_filters_.begin();
       it != early_pre_render_filters_.end(); ++it) {
     HtmlFilter* filter = *it;
@@ -3323,7 +3325,7 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
   return ret;
 }
 
-void RewriteDriver::DetermineEnabledFilters() {
+void RewriteDriver::DetermineEnabledFiltersImpl() {
   for (FilterList::iterator it = early_pre_render_filters_.begin();
        it != early_pre_render_filters_.end(); ++it) {
     HtmlFilter* filter = *it;
@@ -3335,7 +3337,7 @@ void RewriteDriver::DetermineEnabledFilters() {
     filter->DetermineEnabled();
   }
   // Call parent DetermineEnabled to setup post render filters.
-  HtmlParse::DetermineEnabledFilters();
+  HtmlParse::DetermineEnabledFiltersImpl();
 }
 
 void RewriteDriver::ClearRequestProperties() {

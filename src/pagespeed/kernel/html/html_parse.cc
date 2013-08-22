@@ -248,15 +248,12 @@ void HtmlParse::EndFinishParse() {
 void HtmlParse::ParseTextInternal(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
-    if (!determine_enabled_filters_called_) {
-      determine_enabled_filters_called_ = true;
-      DetermineEnabledFilters();
-    }
+    DetermineEnabledFilters();
     lexer_->Parse(text, size);
   }
 }
 
-void HtmlParse::DetermineEnabledFilters() {
+void HtmlParse::DetermineEnabledFiltersImpl() {
   for (int i = 0, n = filters_.size(); i < n; ++i) {
     filters_[i]->DetermineEnabled();
   }
@@ -388,6 +385,11 @@ void HtmlParse::Flush() {
   if (running_filters_) {
     return;
   }
+
+  // If Flush is called before any bytes are received, StartDocument events
+  // will propagate to filters before DetermineEnabled is called on them. So we
+  // send DetermineEnabled here.
+  DetermineEnabledFilters();
 
   for (FilterVector::iterator it = event_listeners_.begin();
       it != event_listeners_.end(); ++it) {

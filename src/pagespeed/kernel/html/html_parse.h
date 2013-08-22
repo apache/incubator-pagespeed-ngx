@@ -437,13 +437,21 @@ class HtmlParse {
 
   virtual void ParseTextInternal(const char* content, int size);
 
+  // Calls DetermineEnabledFiltersImpl in an idempotent way.
+  void DetermineEnabledFilters() {
+    if (!determine_enabled_filters_called_) {
+      determine_enabled_filters_called_ = true;
+      DetermineEnabledFiltersImpl();
+    }
+  }
+
   // Call DetermineEnabled() on each filter. Should be called after
   // the property cache lookup has finished since some filters depend on
   // pcache results in their DetermineEnabled implementation. If a subclass has
   // filters that the base HtmlParse doesn't know about, it should override this
   // function and call DetermineEnabled on each of its filters, along with
-  // calling the base DetermineEnabledFilters.
-  virtual void DetermineEnabledFilters();
+  // calling the base DetermineEnabledFiltersImpl.
+  virtual void DetermineEnabledFiltersImpl();
 
  private:
   void ApplyFilterHelper(HtmlFilter* filter);

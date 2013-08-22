@@ -148,7 +148,9 @@ const char SplitHtmlFilter::kMetaReferer[] =
 SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
     : SuppressPreheadFilter(rewrite_driver),
       rewrite_driver_(rewrite_driver),
+      config_(NULL),
       options_(rewrite_driver->options()),
+      disable_filter_(true),
       last_script_index_before_panel_stub_(-1),
       panel_seen_(false),
       static_asset_manager_(NULL),
