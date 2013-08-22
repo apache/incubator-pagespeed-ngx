@@ -102,7 +102,12 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
 pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
   for(var renderedImageDimensions = {}, images = document.getElementsByTagName("img"), i = 0;i < images.length;++i) {
     var img = images[i], key = img.getAttribute("pagespeed_url_hash");
-    "undefined" != typeof img.naturalWidth && "undefined" != typeof img.naturalHeight && key && !renderedImageDimensions[key] && 0 < img.width && 0 < img.height && 0 < img.naturalWidth && 0 < img.naturalHeight ? renderedImageDimensions[key] = {renderedWidth:img.width, renderedHeight:img.height, originalWidth:img.naturalWidth, originalHeight:img.naturalHeight} : delete renderedImageDimensions[key]
+    if("undefined" == typeof img.naturalWidth || "undefined" == typeof img.naturalHeight || "undefined" == typeof key) {
+      break
+    }
+    if("undefined" == typeof renderedImageDimensions[img.src] && 0 < img.width && 0 < img.height && 0 < img.naturalWidth && 0 < img.naturalHeight || "undefined" != typeof renderedImageDimensions[img.src] && img.width >= renderedImageDimensions[img.src].renderedWidth && img.height >= renderedImageDimensions[img.src].renderedHeight) {
+      renderedImageDimensions[key] = {renderedWidth:img.width, renderedHeight:img.height, originalWidth:img.naturalWidth, originalHeight:img.naturalHeight}
+    }
   }
   return renderedImageDimensions
 };

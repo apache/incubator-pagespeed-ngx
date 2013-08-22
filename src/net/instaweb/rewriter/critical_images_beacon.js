@@ -204,21 +204,24 @@ pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
     var key = img.getAttribute('pagespeed_url_hash');
     // naturalWidth and naturalHeight is defined for all browers except in IE
     // versions 8 and before (non HTML5 support).
-    if (typeof img.naturalWidth != 'undefined' &&
-        typeof img.naturalHeight != 'undefined' &&
-        key && !renderedImageDimensions[key] &&
-        img.width > 0 && img.height > 0 &&
-        img.naturalWidth > 0 && img.naturalHeight > 0) {
+    // We bail out in case of other browsers or if hash is undefined.
+    if (typeof img.naturalWidth == 'undefined' ||
+        typeof img.naturalHeight == 'undefined' ||
+        typeof key == 'undefined') {
+          return renderedImageDimensions;
+    }
+    if ((typeof(renderedImageDimensions[img.src]) == 'undefined' &&
+         img.width > 0 && img.height > 0 &&
+         img.naturalWidth > 0 && img.naturalHeight > 0) ||
+        (typeof(renderedImageDimensions[img.src]) != 'undefined' &&
+         img.width >= renderedImageDimensions[img.src].renderedWidth &&
+         img.height >= renderedImageDimensions[img.src].renderedHeight)) {
       renderedImageDimensions[key] = {
         'renderedWidth' : img.width,
         'renderedHeight' : img.height,
         'originalWidth' : img.naturalWidth,
         'originalHeight' : img.naturalHeight
       };
-    } else {
-      // TODO(poojatandon): If there are multiple occurences of the same
-      // image, take the one with the largest wxh.
-      delete renderedImageDimensions[key];
     }
   }
   return renderedImageDimensions;
