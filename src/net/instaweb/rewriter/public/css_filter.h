@@ -176,10 +176,11 @@ class CssFilter : public RewriteFilter {
   // Get the charset of the HTML being parsed which can be specified in the
   // driver's headers, defaulting to ISO-8859-1 if isn't. Then, if a charset
   // is specified in the given element, check that they agree, and if not
-  // return false, otherwise return true and assign the first charset to the
-  // given string.
+  // return false and set the failure reason, otherwise return true and assign
+  // the first charset to '*charset'.
   bool GetApplicableCharset(const HtmlElement* element,
-                            GoogleString* charset) const;
+                            GoogleString* charset,
+                            GoogleString* failure_reason) const;
 
   // Get the media specified in the given element, if any. Returns true if
   // media were found false if not.
@@ -266,7 +267,8 @@ class CssFilter::Context : public SingleRewriteContext {
   void SetupAttributeRewrite(HtmlElement* element,
                              HtmlElement::Attribute* src,
                              InlineCssKind inline_css_kind);
-  void SetupExternalRewrite(const GoogleUrl& base_gurl,
+  void SetupExternalRewrite(HtmlElement* element,
+                            const GoogleUrl& base_gurl,
                             const GoogleUrl& trim_gurl);
 
   // Starts nested rewrite jobs for any imports or images contained in the CSS.
@@ -357,6 +359,10 @@ class CssFilter::Context : public SingleRewriteContext {
   // Backup transformer for AssociationTransformer. Absolutifies URLs and
   // rewrites their domains as necessary if they can't be cache extended.
   scoped_ptr<RewriteDomainTransformer> absolutifier_;
+
+  // The element containing the CSS being rewritten, either a script element
+  // (inline), a link element (external), or anything with a style attribute.
+  HtmlElement* rewrite_element_;
 
   // Style element containing inline CSS (see StartInlineRewrite) -or-
   // any element with a style attribute (see StartAttributeRewrite), or

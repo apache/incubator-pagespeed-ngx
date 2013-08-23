@@ -175,6 +175,10 @@ message CachedResult {
 
   // Stores the size of the rewritten resource.
   optional int64 size = 20;
+
+  // Stores any debug messages for this result, which are injected into the
+  // HTML as comments if the debug filter is enabled.
+  repeated string debug_message = 21;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

@@ -40,12 +40,15 @@
 
 namespace net_instaweb {
 
+const char CssHierarchy::kFailureReasonPrefix[] = "Flattening failed: ";
+
 // Representation of a CSS with all the information required for import
 // flattening, image rewriting, and minifying.
 
 CssHierarchy::CssHierarchy(CssFilter* filter)
     : filter_(filter),
       parent_(NULL),
+      charset_source_("from unknown"),
       input_contents_resolved_(false),
       flattening_succeeded_(true),
       unparseable_detected_(false),
@@ -157,23 +160,53 @@ bool CssHierarchy::DetermineRulesetMedia(StringVector* ruleset_media) {
   return result;
 }
 
-bool CssHierarchy::CheckCharsetOk(const ResourcePtr& resource) {
+void CssHierarchy::AddFlatteningFailureReason(const GoogleString& reason) {
+  if (!reason.empty()) {
+    StringPiece trimmed_reason(reason);
+    if (trimmed_reason.starts_with(kFailureReasonPrefix)) {
+      trimmed_reason.remove_prefix(STATIC_STRLEN(kFailureReasonPrefix));
+    }
+    if (flattening_failure_reason_.empty()) {
+      flattening_failure_reason_ = kFailureReasonPrefix;
+    } else {
+      StrAppend(&flattening_failure_reason_, " AND ");
+    }
+    StrAppend(&flattening_failure_reason_, trimmed_reason);
+  }
+}
+
+bool CssHierarchy::CheckCharsetOk(const ResourcePtr& resource,
+                                  GoogleString* failure_reason) {
   DCHECK(parent_ != NULL);
   // If we haven't already, determine the charset of this CSS;
   // per the CSS2.1 spec: 1st headers, 2nd @charset, 3rd owning document.
   if (charset_.empty()) {
     charset_ = resource->response_headers()->DetermineCharset();
+    charset_source_ = "from headers";
   }
   if (charset_.empty() && !stylesheet()->charsets().empty()) {
     charset_ = UnicodeTextToUTF8(stylesheet()->charset(0));
+    charset_source_ = "from an @charset";
   }
   if (charset_.empty()) {
     charset_ = parent_->charset();
+    charset_source_ = "from the enclosing CSS";
+    return true;  // Since the next if is now trivially false so we can skip it.
   }
 
   // Now check that it agrees with the owning document's charset since we
   // won't be able to change it in the final inlined CSS.
-  return StringCaseEqual(charset_, parent_->charset());
+  if (!StringCaseEqual(charset_, parent_->charset())) {
+    *failure_reason = "The charset of ";
+    StrAppend(failure_reason, url_for_humans(), " (", charset_, " ",
+              charset_source(), ")");
+    StrAppend(failure_reason, " is different from that of its parent (",
+              parent_->url_for_humans(), "): ", parent_->charset(), " ",
+              parent_->charset_source());
+    return false;
+  }
+
+  return true;
 }
 
 bool CssHierarchy::Parse() {
@@ -224,6 +257,8 @@ bool CssHierarchy::Parse() {
           // and partially unstripped. This shouldn't matter since we've
           // decided not to flatten this CSS file, but worth a note.
           set_flattening_succeeded(false);
+          AddFlatteningFailureReason(
+              StrCat("A media query is too complex in ", url_for_humans()));
           break;
         }
       }
@@ -248,6 +283,8 @@ bool CssHierarchy::ExpandChildren() {
       }
       message_handler_->Message(kInfo, "Invalid import URL %s", url.c_str());
       child->set_flattening_succeeded(false);
+      child->AddFlatteningFailureReason(StrCat("Invalid import URL ", url,
+                                               " in ", url_for_humans()));
     } else {
       // We currently do not allow flattening of any @import statements with
       // complex CSS3-version media queries. Only plain media types (like
@@ -262,6 +299,8 @@ bool CssHierarchy::ExpandChildren() {
               filter_->num_flatten_imports_recursion_->Add(1);
             }
             child->set_flattening_succeeded(false);
+            child->AddFlatteningFailureReason(
+                StrCat("Recursive @import of ", child->url_for_humans()));
           } else {
             result = true;
           }
@@ -272,6 +311,9 @@ bool CssHierarchy::ExpandChildren() {
           filter_->num_flatten_imports_complex_queries_->Add(1);
         }
         child->set_flattening_succeeded(false);
+        child->AddFlatteningFailureReason(
+            StrCat("Complex media queries in the @import of ",
+                   child->url_for_humans()));
       }
     }
   }
@@ -302,7 +344,10 @@ void CssHierarchy::RollUpContents() {
 
   // Check if flattening has worked so far for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
-    flattening_succeeded_ = children_[i]->flattening_succeeded_;
+    if (!children_[i]->flattening_succeeded_) {
+      flattening_succeeded_ = false;
+      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
+    }
   }
 
   // Check if any of our children have anything unparseable in them.
@@ -315,7 +360,10 @@ void CssHierarchy::RollUpContents() {
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
     // RollUpContents can change flattening_succeeded_ so check it again.
     children_[i]->RollUpContents();
-    flattening_succeeded_ = children_[i]->flattening_succeeded_;
+    if (!children_[i]->flattening_succeeded_) {
+      flattening_succeeded_ = false;
+      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
+    }
   }
 
   if (!flattening_succeeded_) {
@@ -329,7 +377,7 @@ void CssHierarchy::RollUpContents() {
     }
   } else {
     // Flattening succeeded so concatenate our children's minified contents.
-    for (int i = 0; i < n && flattening_succeeded_; ++i) {
+    for (int i = 0; i < n; ++i) {
       StrAppend(&minified_contents_, children_[i]->minified_contents());
     }
 
@@ -351,6 +399,8 @@ void CssHierarchy::RollUpContents() {
         filter_->num_flatten_imports_minify_failed_->Add(1);
       }
       flattening_succeeded_ = false;
+      AddFlatteningFailureReason(StrCat("Minification failed for ",
+                                        url_for_humans()));
     } else if (flattened_result_limit_ > 0) {
       int64 flattened_result_size = minified_contents_.size();
       if (flattened_result_size >= flattened_result_limit_) {
@@ -358,6 +408,12 @@ void CssHierarchy::RollUpContents() {
           filter_->num_flatten_imports_limit_exceeded_->Add(1);
         }
         flattening_succeeded_ = false;
+        AddFlatteningFailureReason(
+            StrCat("Flattening limit (",
+                   IntegerToString(flattened_result_limit_),
+                   ") exceeded (",
+                   IntegerToString(flattened_result_size),
+                   ")"));
       }
     }
     if (!flattening_succeeded_) {
@@ -393,7 +449,8 @@ bool CssHierarchy::RollUpStylesheets() {
       // unable to be flattened. If we can parse them and they have @charset
       // or @import rules then they must have failed to flatten when they
       // were first cached because we expressly remove these below. The earlier
-      // failure has already been added to the statistics so don't do so here.
+      // failure has already been added to the statistics so don't do so here,
+      // nor do we note the reason in debug.
       if (!stylesheet_->charsets().empty() || !stylesheet_->imports().empty()) {
         flattening_succeeded_ = false;
       }
@@ -405,7 +462,10 @@ bool CssHierarchy::RollUpStylesheets() {
 
   // Check if flattening worked for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
-    flattening_succeeded_ = children_[i]->flattening_succeeded_;
+    if (!children_[i]->flattening_succeeded_) {
+      flattening_succeeded_ = false;
+      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
+    }
   }
 
   // Check if any of our children have anything unparseable in them.
@@ -417,8 +477,11 @@ bool CssHierarchy::RollUpStylesheets() {
   // If not, we treat it the same as flattening not succeeding. Since this
   // method can change flattening_succeeded_ we have to check it again.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
-    flattening_succeeded_ = (children_[i]->RollUpStylesheets() &&
-                             children_[i]->flattening_succeeded_);
+    if (!children_[i]->RollUpStylesheets() ||
+        !children_[i]->flattening_succeeded_) {
+      flattening_succeeded_ = false;
+      AddFlatteningFailureReason(children_[i]->flattening_failure_reason());
+    }
   }
 
   if (flattening_succeeded_) {

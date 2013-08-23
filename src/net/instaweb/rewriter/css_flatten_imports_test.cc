@@ -92,6 +92,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   virtual void SetUpFilters() {
     options()->EnableFilter(RewriteOptions::kFlattenCssImports);
     options()->EnableFilter(RewriteOptions::kExtendCacheImages);
+    options()->DisableFilter(RewriteOptions::kDebug);
     options()->set_always_rewrite_css(true);
     rewrite_driver()->AddFilters();
   }
@@ -117,6 +118,19 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     RewriteTestBase::SetUp();
     SetUpFilters();
     SetUpResponses();
+    debug_message_.clear();
+  }
+
+  void TurnOnDebug(const GoogleString& failure_reason) {
+    // Turn on debug to get the flattening failure reason in an HTML comment.
+    options()->ClearSignatureForTesting();
+    options()->ForceEnableFilter(RewriteOptions::kDebug);
+    server_context()->ComputeSignature(options());
+    debug_message_ = failure_reason;
+  }
+
+  virtual GoogleString CssDebugMessage(int flags) const {
+    return (FlagSet(flags, kOutputHtml) ? debug_message_ : "");
   }
 
   // General routine to test flattening of nested resources referenced with
@@ -296,9 +310,9 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                                  kExpectSuccess | kNoOtherContexts |
                                  kNoClearFetcher | meta_tag_flag);
       // Check things work when data is already cached.
-      ValidateRewriteExternalCss("flatten_nested_media_repeat",
+      ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_out,
-                                 kExpectSuccess | kNoOtherContexts |
+                                 kExpectCached | kNoOtherContexts |
                                  kNoClearFetcher | meta_tag_flag);
     } else {
       ValidateRewriteExternalCss("flatten_nested_media",
@@ -306,21 +320,23 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                                  kExpectSuccess | kNoOtherContexts |
                                  kNoClearFetcher | meta_tag_flag |
                                  kFlattenImportsCharsetMismatch);
-      ValidateRewriteExternalCss("flatten_nested_media_repeat",
+      ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_in,
-                                 kExpectSuccess | kNoOtherContexts |
+                                 kExpectCached | kNoOtherContexts |
                                  kNoClearFetcher | meta_tag_flag);
     }
   }
 
   // Test the css_flatten_max_bytes() setting.
   void TestLimit(const StringPiece test_id,
+                 bool limit_exceeded,
                  int flattening_limit,
+                 int actual_amount,
                  const GoogleString& css_in,
-                 const GoogleString& css_out,
-                 bool limit_exceeded) {
+                 const GoogleString& css_out) {
     options()->ClearSignatureForTesting();
     options()->set_css_flatten_max_bytes(flattening_limit);
+    options()->ForceEnableFilter(RewriteOptions::kDebug);
     server_context()->ComputeSignature(options());
 
     SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
@@ -329,15 +345,17 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     ValidationFlags extra_flag = kNoFlags;
     if (limit_exceeded) {
       extra_flag = kFlattenImportsLimitExceeded;
+      debug_message_ = StringPrintf("<!--Flattening failed: "
+                                    "Flattening limit (%d) exceeded (%d)-->",
+                                    flattening_limit, actual_amount);
     }
-
     ValidateRewriteExternalCss(test_id, css_in, css_out,
                                kExpectSuccess | kNoClearFetcher | extra_flag);
     // We do not specify kNoClearFetcher, so the fetcher is cleared. Thus,
     // content must be pulled from the cache. kNoOtherContexts because
     // other contexts won't have this value cached.
-    ValidateRewriteExternalCss(StrCat(test_id, "_cached"), css_in, css_out,
-                               kExpectSuccess | kNoOtherContexts | extra_flag);
+    ValidateRewriteExternalCss(test_id, css_in, css_out,
+                               kExpectCached | kNoOtherContexts | extra_flag);
   }
 
   // Test relative URLs in CSS that itself is referenced via a relative URL.
@@ -381,6 +399,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   GoogleString kTopCssContents;
   GoogleString kFlattenedTopCssContents;
   GoogleString kFlattenedOneLevelDownContents1;
+  GoogleString debug_message_;
 };
 
 TEST_F(CssFlattenImportsTest, FlattenInlineCss) {
@@ -434,6 +453,11 @@ TEST_F(CssFlattenImportsTest, Flatten404) {
 }
 
 TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  const char kFailureReason[] = "<!--Flattening failed: Cannot parse the CSS "
+                                "in http://test.com/error.css-->";
+  TurnOnDebug(kFailureReason);
+
   const char kInvalidMediaCss[] = "@media }}";
   ValidateRewriteExternalCss("flatten_invalid_css_media",
                              kInvalidMediaCss, kInvalidMediaCss,
@@ -453,6 +477,7 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
 
   GoogleString kFlattenedInvalidCss = StrCat(kSimpleCss, "a{#color: 333 }");
 
+  debug_message_.clear();
   ValidateRewriteExternalCss("flatten_unparseable_css_rule",
                              kUnparseableCss, kFlattenedInvalidCss,
                              kExpectSuccess | kNoClearFetcher);
@@ -477,6 +502,7 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   const char kRewrittenImportErrorCss[] =
       "@import url(error.css) ;body{color:#000}";
   // Note: Rewrite succeeds, but flatten fails.
+  debug_message_ = kFailureReason;
   ValidateRewriteExternalCss("no_flatten_error_in_import",
                              kImportErrorCss, kRewrittenImportErrorCss,
                              kExpectSuccess | kFlattenImportsMinifyFailed |
@@ -501,8 +527,8 @@ TEST_F(CssFlattenImportsTest, FlattenSimple) {
   ValidateRewriteExternalCss("flatten_simple", css_in, kSimpleCss,
                              kExpectSuccess | kNoClearFetcher);
   // Check things work when data is already cached.
-  ValidateRewriteExternalCss("flatten_simple_repeat", css_in, kSimpleCss,
-                             kExpectSuccess | kNoOtherContexts);
+  ValidateRewriteExternalCss("flatten_simple", css_in, kSimpleCss,
+                             kExpectCached | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenUnderLargeLimit) {
@@ -513,8 +539,10 @@ TEST_F(CssFlattenImportsTest, FlattenUnderLargeLimit) {
       "@import url(http://test.com/simple.css);\n";
   const GoogleString css_out = StrCat(kSimpleCss, kSimpleCss);
 
-  TestLimit("flatten_under_limit", 1 + css_out.size(), css_in, css_out,
-            false /* limit_exceeded */);
+  TestLimit("flatten_under_limit", false /* limit_exceeded */,
+            1 + css_out.size() /* flattening_limit */,
+            0 /* no limit exceeded comment */,
+            css_in, css_out);
 }
 
 TEST_F(CssFlattenImportsTest, DontFlattenOverMediumLimit) {
@@ -528,9 +556,10 @@ TEST_F(CssFlattenImportsTest, DontFlattenOverMediumLimit) {
       "@import url(http://test.com/simple.css) ;"
       "@import url(http://test.com/simple.css) ;";
 
-  TestLimit("dont_flatten_over_limit",
-            1 + STATIC_STRLEN(css_out), css_in, css_out,
-            true /* limit_exceeded */);
+  TestLimit("dont_flatten_over_limit", true /* limit_exceeded */,
+            1 + STATIC_STRLEN(css_out) /* flattening_limit */,
+            52 + STATIC_STRLEN(css_out) /* actual_amount */,
+            css_in, css_out);
 }
 
 TEST_F(CssFlattenImportsTest, DontFlattenOverTinyLimit) {
@@ -543,8 +572,9 @@ TEST_F(CssFlattenImportsTest, DontFlattenOverTinyLimit) {
       "@import url(http://test.com/simple.css) ;"
       "@import url(http://test.com/simple.css) ;";
 
-  TestLimit("dont_flatten_over_tiny_limit", 10, css_in, css_out,
-            true /* limit_exceeded */);
+  TestLimit("dont_flatten_over_tiny_limit", true /* limit_exceeded */,
+            10 /* flattening_limit */, 67 /* actual_amount */,
+            css_in, css_out);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenEmpty) {
@@ -560,8 +590,8 @@ TEST_F(CssFlattenImportsTest, FlattenEmpty) {
   // We do not specify kNoClearFetcher, so the fetcher is cleared. Thus,
   // content must be pulled from the cache. kNoOtherContexts because
   // other contexts won't have this value cached.
-  ValidateRewriteExternalCss("flatten_empty_repeat", css_in, css_out,
-                             kExpectSuccess | kNoOtherContexts);
+  ValidateRewriteExternalCss("flatten_empty", css_in, css_out,
+                             kExpectCached | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
@@ -642,11 +672,9 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheDirectly) {
   // other contexts won't have this value cached.
   ValidateRewriteExternalCss("flatten_from_cache_directly",
                              css_in, kFlattenedTopCssContents,
-                             kExpectSuccess | kNoStatCheck | kNoOtherContexts);
+                             kExpectCached | kNoOtherContexts);
 
-  // Check that everything was read from the cache in one hit, taking into
-  // account that ValidateRewriteExternalCss with kExpectSuccess also reads
-  // the resource after rewriting it, hence there will be TWO cache hits.
+  // Check that everything was read from the cache.
   EXPECT_EQ(num_elements, lru_cache()->num_elements());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_hits());
@@ -753,9 +781,9 @@ TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
                              kExpectSuccess | kNoClearFetcher);
 
   // Test when everything is already cached.
-  ValidateRewriteExternalCss("flatten_then_cache_extend_repeat",
+  ValidateRewriteExternalCss("flatten_then_cache_extend",
                              css_before, css_after,
-                             kExpectSuccess | kNoClearFetcher);
+                             kExpectCached | kNoClearFetcher);
 }
 
 TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedAbsoluteUrls) {
@@ -770,6 +798,10 @@ TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedRelativeUrls) {
 }
 
 TEST_F(CssFlattenImportsTest, FlattenRecursion) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "Recursive @import of http://test.com/recursive.css-->");
+
   const char kFilename[] = "recursive.css";
   const GoogleString css_in =
       StrCat("@import url(http://test.com/", kFilename, ") ;");
@@ -796,8 +828,8 @@ TEST_F(CssFlattenImportsTest, FlattenSimpleMedia) {
   // We do not specify kNoClearFetcher, so the fetcher is cleared. Thus,
   // content must be pulled from the cache. kNoOtherContexts because
   // other contexts won't have this value cached.
-  ValidateRewriteExternalCss("flatten_simple_media_repeat", css_in, css_out,
-                             kExpectSuccess | kNoOtherContexts);
+  ValidateRewriteExternalCss("flatten_simple_media", css_in, css_out,
+                             kExpectCached | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
@@ -859,9 +891,9 @@ TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
   ValidateRewriteExternalCss("flatten_nested_media", css_in, css_out,
                              kExpectSuccess | kNoClearFetcher);
   // Check things work when data is already cached.
-  ValidateRewriteExternalCss("flatten_nested_media_repeat",
+  ValidateRewriteExternalCss("flatten_nested_media",
                              css_in, css_out,
-                             kExpectSuccess | kNoOtherContexts);
+                             kExpectCached | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
@@ -910,8 +942,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
       StrCat("@import url(http://test.com/", kFilename, ") print ;");
   ValidateRewriteExternalCss("flatten_mixed_media_print",
                              print_in, css_print,
-                             kExpectSuccess |
-                             kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher);
 
   // The sequence in this case, for the new external link (_repeat on the end):
   // MISS   for the external link's partition key.
@@ -983,11 +1014,23 @@ TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsOk) {
 }
 
 TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsMismatch) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "The charset of http://test.com/styles.css "
+              "(utf-8 from headers) is different from that of its parent "
+              "(inline): iso-8859-1 from unknown-->");
+
   // HTML = iso-8859-1 (default), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "", false);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "The charset of the HTML (iso-8859-1, the default) "
+              "is different from the charset attribute "
+              "on the preceding element (utf-8)-->");
+
   const char kStylesFilename[] = "styles.css";
   SetResponseWithDefaultHeaders(kStylesFilename, kContentTypeCss,
                                 kSimpleCss, 100);
@@ -1013,6 +1056,12 @@ TEST_F(CssFlattenImportsTest, FlattenRespectsHttpEquivCharset) {
 }
 
 TEST_F(CssFlattenImportsTest, FlattenRespectsHttpEquivCharsetUnquoted) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "The charset of http://test.com/styles.css "
+              "(utf-8 from headers) is different from that of its parent "
+              "(inline): ISO-8859-1 from unknown-->");
+
   // HTML = iso-8859-1 (3rd argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "iso-8859-1", false);
 }
@@ -1023,12 +1072,22 @@ TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag1) {
 }
 
 TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "The charset of http://test.com/styles.css "
+              "(utf-8 from headers) is different from that of its parent "
+              "(inline): iso-8859-1 from unknown-->");
+
   // HTML = iso-8859-1 (1st argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("iso-8859-1", "utf-8", "", false);
 }
 
 // Make sure we deal correctly with invalid URL in child.
 TEST_F(CssFlattenImportsTest, InvalidGrandchildUrl) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "Invalid import URL //// in http://test.com/child.css-->");
+
   // Invalid URL.
   SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
                                 "@import url(////);", 100);
@@ -1043,6 +1102,10 @@ TEST_F(CssFlattenImportsTest, InvalidGrandchildUrl) {
 
 // Test that we do not flatten @imports that have complex media queries.
 TEST_F(CssFlattenImportsTest, NoFlattenMediaQueries) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "Complex media queries in the @import of inline-->");
+
   ValidateRewrite("media_queries",
                   // We do not flatten @imports with complex media queries.
                   "@import url(child.css) not screen;",
@@ -1052,6 +1115,10 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueries) {
 
 // Still don't flatten because child @import has complex media query.
 TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesChild) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: "
+              "Complex media queries in the @import of inline-->");
+
   SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
                                 "@import url(g.css) screen and (color);", 100);
 
@@ -1073,6 +1140,10 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesChild) {
 // possible for some media queries (like those with "not"). We should only
 // do this if there we think it is impacting our performance.
 TEST_F(CssFlattenImportsTest, MergeMediaQueries) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: A media query "
+              "is too complex in http://test.com/child.css-->");
+
   const char child_contents[] =
       "@media screen and (color) { .a { color: red; } }\n"
       "@media print and (max-width: 400px), only screen { .b { color: blue } }";
@@ -1096,6 +1167,10 @@ TEST_F(CssFlattenImportsTest, MergeMediaQueries) {
 // intersection of "screen" and "not print and (max-width: 400px)"?
 // "screen and (not-max-width: 400px)"?? We just give up with "not".
 TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesAtMedia) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  TurnOnDebug("<!--Flattening failed: A media query "
+              "is too complex in http://test.com/child.css-->");
+
   const char child_contents[] =
       "@media screen and (color) { .a { color: red; } }\n"
       "@media not print and (max-width: 400px) { .b { color: blue; } }\n";

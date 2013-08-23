@@ -188,6 +188,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       css_rewritten_(false),
       has_utf8_bom_(false),
       fallback_mode_(false),
+      rewrite_element_(NULL),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
@@ -257,6 +258,22 @@ void CssFilter::Context::Render() {
       driver_->log_record()->SetRewriterLoggingStatus(
           id(), slot(0)->resource()->url(), RewriterApplication::APPLIED_OK);
     }
+
+    // If +debug is enabled and we have any debug messages, insert a comment
+    // for each one (iff the original element hasn't been flushed yet).
+    if (result.debug_message_size() > 0 &&
+        driver_->DebugMode() &&
+        driver_->IsRewritable(rewrite_element_)) {
+      HtmlNode* preceding_node = rewrite_element_;
+      for (int i = 0; i < result.debug_message_size(); ++i) {
+        HtmlNode* comment_node =
+            driver_->NewCommentNode(preceding_node->parent(),
+                                    result.debug_message(i));
+        driver_->InsertNodeAfterNode(preceding_node, comment_node);
+        preceding_node = comment_node;
+      }
+    }
+
     filter_->num_uses_->Add(1);
   }
 }
@@ -265,6 +282,7 @@ void CssFilter::Context::SetupInlineRewrite(HtmlElement* style_element,
                                             HtmlCharactersNode* text) {
   // To handle nested rewrites of inline CSS, we internally handle it
   // as a rewrite of a data: URL.
+  rewrite_element_ = style_element;
   rewrite_inline_element_ = style_element;
   rewrite_inline_char_node_ = text;
   rewrite_inline_css_kind_ = kInsideStyleTag;
@@ -275,13 +293,16 @@ void CssFilter::Context::SetupAttributeRewrite(HtmlElement* element,
                                                InlineCssKind inline_css_kind) {
   DCHECK(inline_css_kind == kAttributeWithoutUrls ||
          inline_css_kind == kAttributeWithUrls);
+  rewrite_element_ = element;
   rewrite_inline_element_ = element;
   rewrite_inline_attribute_ = src;
   rewrite_inline_css_kind_ = inline_css_kind;
 }
 
-void CssFilter::Context::SetupExternalRewrite(const GoogleUrl& base_gurl,
+void CssFilter::Context::SetupExternalRewrite(HtmlElement* element,
+                                              const GoogleUrl& base_gurl,
                                               const GoogleUrl& trim_gurl) {
+  rewrite_element_ = element;
   css_base_gurl_.Reset(base_gurl);
   css_trim_gurl_.Reset(trim_gurl);
 }
@@ -576,6 +597,12 @@ void CssFilter::Context::Harvest() {
     } else {
       output_partition(0)->set_inlined_data(out_text);
     }
+  }
+
+  if (!hierarchy_.flattening_succeeded() &&
+      !hierarchy_.flattening_failure_reason().empty()) {
+    output_partition(0)->add_debug_message(
+        hierarchy_.flattening_failure_reason());
   }
 
   if (ok) {
@@ -926,10 +953,13 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
   // we only look at meta elements and headers in this case).
   CssHierarchy* hierarchy = rewriter->mutable_hierarchy();
   GetApplicableMedia(element, hierarchy->mutable_media());
+  GoogleString failure_reason;
   hierarchy->set_flattening_succeeded(
-      GetApplicableCharset(NULL, hierarchy->mutable_charset()));
+      GetApplicableCharset(NULL, hierarchy->mutable_charset(),
+                           &failure_reason));
   if (!hierarchy->flattening_succeeded()) {
     num_flatten_imports_charset_mismatch_->Add(1);
+    hierarchy->AddFlatteningFailureReason(failure_reason);
   }
 }
 
@@ -946,6 +976,7 @@ void CssFilter::StartAttributeRewrite(HtmlElement* element,
   // @import is not allowed (nor handled) in attribute CSS, which must be
   // declarations only, so disable flattening from the get-go. Since this
   // is not a failure to flatten as such, don't update the statistics.
+  // Not setting the failure reason suppresses +debug from emitting it.
   rewriter->mutable_hierarchy()->set_flattening_succeeded(false);
 }
 
@@ -965,16 +996,19 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
   // TODO(sligocki): I don't think css_trim_gurl_ should be set to
   // decoded_base_url(). But I also think that the values passed in here
   // will always be overwritten later. This should be cleaned up.
-  rewriter->SetupExternalRewrite(input_resource_gurl, decoded_base_url());
+  rewriter->SetupExternalRewrite(link, input_resource_gurl, decoded_base_url());
 
   // Get the applicable media and charset. If the charset on the link doesn't
   // agree with that of the source page, we can't flatten.
   CssHierarchy* hierarchy = rewriter->mutable_hierarchy();
   GetApplicableMedia(link, hierarchy->mutable_media());
+  GoogleString failure_reason;
   hierarchy->set_flattening_succeeded(
-      GetApplicableCharset(link, hierarchy->mutable_charset()));
+      GetApplicableCharset(link, hierarchy->mutable_charset(),
+                           &failure_reason));
   if (!hierarchy->flattening_succeeded()) {
     num_flatten_imports_charset_mismatch_->Add(1);
+    hierarchy->AddFlatteningFailureReason(failure_reason);
   }
 }
 
@@ -1005,29 +1039,42 @@ CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
 }
 
 bool CssFilter::GetApplicableCharset(const HtmlElement* element,
-                                     GoogleString* charset) const {
+                                     GoogleString* charset,
+                                     GoogleString* failure_reason) const {
   // HTTP1.1 says the default charset is ISO-8859-1 but as the W3C says (in
   // http://www.w3.org/International/O-HTTP-charset.en.php) not many browsers
   // actually do this so a default of "" might be better. Starting from that
   // base, if the headers specify a charset that is used, otherwise if a meta
   // tag specifies a charset that is used.
   StringPiece our_charset("iso-8859-1");
+  const char* our_charset_source = "the default";
   GoogleString headers_charset;
   const ResponseHeaders* headers = driver_->response_headers();
   if (headers != NULL) {
     headers_charset = headers->DetermineCharset();
     if (!headers_charset.empty()) {
       our_charset = headers_charset;
+      our_charset_source = "from headers";
     }
   }
   if (headers_charset.empty() && !meta_tag_charset_.empty()) {
     our_charset = meta_tag_charset_;
+    our_charset_source = "from a meta tag";
   }
   if (element != NULL) {
     const HtmlElement::Attribute* charset_attribute =
         element->FindAttribute(HtmlName::kCharset);
     if (charset_attribute != NULL) {
-      if (our_charset != charset_attribute->DecodedValueOrNull()) {
+      const char* elements_charset = charset_attribute->DecodedValueOrNull();
+      if (our_charset != elements_charset) {
+        *failure_reason = StrCat(StrCat("The charset of the HTML (",
+                                        our_charset, ", ",
+                                        our_charset_source, ") "),
+                                 StrCat("is different from the charset "
+                                        "attribute on the preceding element (",
+                                        (elements_charset == NULL
+                                         ? "not set" : elements_charset),
+                                        ")"));
         return false;  // early return!
       }
     }

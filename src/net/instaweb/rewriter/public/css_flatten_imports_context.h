@@ -112,11 +112,14 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     }
 
     bool ok = true;
+    GoogleString failure_reason;
     if (!hierarchy_->Parse()) {
       // If we cannot parse the CSS then we cannot flatten it.
       ok = false;
+      failure_reason = StrCat("Cannot parse the CSS in ",
+                              hierarchy_->url_for_humans());
       filter_->num_flatten_imports_minify_failed_->Add(1);
-    } else if (!hierarchy_->CheckCharsetOk(input_resource)) {
+    } else if (!hierarchy_->CheckCharsetOk(input_resource, &failure_reason)) {
       ok = false;
       filter_->num_flatten_imports_charset_mismatch_->Add(1);
     } else {
@@ -125,6 +128,7 @@ class CssFlattenImportsContext : public SingleRewriteContext {
 
     if (!ok) {
       hierarchy_->set_flattening_succeeded(false);
+      hierarchy_->AddFlatteningFailureReason(failure_reason);
       RewriteDone(kRewriteFailed, 0);
     } else if (num_nested() > 0) {
       StartNestedTasks();  // Initiates rewriting of @import'd files.
@@ -181,7 +185,8 @@ class CssFlattenImportsContext : public SingleRewriteContext {
       // Something has gone wrong earlier. It could be that the resource is
       // not valid and cacheable (see SingleRewriteContext::Partition) or it
       // could be that we're handling a cached failure, but it's hard to tell.
-      // So, mark flattening as failed but don't record a failure statistic.
+      // So, mark flattening as failed but don't record a failure statistic
+      // nor a failure reason.
       hierarchy_->set_flattening_succeeded(false);
     }
   }

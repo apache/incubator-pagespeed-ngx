@@ -551,15 +551,18 @@ TEST_F(CssHierarchyTest, CompatibleCharset) {
 
   // First check that with no charsets anywhere we match.
   CssHierarchy* child = top.children()[0];
-  EXPECT_TRUE(child->CheckCharsetOk(resource));
+  GoogleString failure_reason;
+  EXPECT_TRUE(child->CheckCharsetOk(resource, &failure_reason));
+  EXPECT_TRUE(failure_reason.empty());
 
   // Now set both the charsets to something compatible.
   StringPiece charset("iso-8859-1");
   response_headers->MergeContentType(StrCat(kContentTypeCss.mime_type(),
                                             "; charset=", charset));
   charset.CopyToString(top.mutable_charset());
-  EXPECT_TRUE(child->CheckCharsetOk(resource));
+  EXPECT_TRUE(child->CheckCharsetOk(resource, &failure_reason));
   EXPECT_EQ(charset, child->charset());
+  EXPECT_TRUE(failure_reason.empty());
 }
 
 TEST_F(CssHierarchyTest, IncompatibleCharset) {
@@ -578,8 +581,12 @@ TEST_F(CssHierarchyTest, IncompatibleCharset) {
   StringPiece charset("iso-8859-1");
   charset.CopyToString(top.mutable_charset());
   CssHierarchy* child = top.children()[0];
-  EXPECT_FALSE(child->CheckCharsetOk(resource));
+  GoogleString failure_reason;
+  EXPECT_FALSE(child->CheckCharsetOk(resource, &failure_reason));
   EXPECT_EQ("utf-8", child->charset());
+  EXPECT_EQ("The charset of http://test.com/nested1.css (utf-8 from headers) "
+            "is different from that of its parent (inline): "
+            "iso-8859-1 from unknown", failure_reason);
 }
 
 TEST_F(CssHierarchyTest, RollUpContentsNested) {

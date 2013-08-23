@@ -73,35 +73,41 @@ class CssRewriteTestBase : public RewriteTestBase {
   enum ValidationFlags {
     kNoFlags = 0,
 
-    kExpectSuccess = 1,   // CSS parser succeeds and URL should be rewritten.
-    kExpectNoChange = 2,  // CSS parser succeeds but URL not rewritten because
-                          // we increased the size of contents.
-    kExpectFallback = 4,  // CSS parser fails, fallback succeeds.
-    kExpectFailure = 8,   // CSS parser fails, fallback failed or disabled.
+    kExpectSuccess = 1<<0,   // CSS parser succeeds and URL should be rewritten.
+    kExpectCached = 1<<1,    // CSS parser succeeds and URL should be rewritten,
+                             // but everything is from the cache so zero stats.
+    kExpectNoChange = 1<<2,  // CSS parser succeeds but the URL is not rewritten
+                             // because we increased the size of contents.
+    kExpectFallback = 1<<3,  // CSS parser fails, fallback succeeds.
+    kExpectFailure = 1<<4,   // CSS parser fails, fallback failed or disabled.
 
     // TODO(sligocki): Explain why we turn off stats check at each use-site.
-    kNoStatCheck = 16,
+    kNoStatCheck = 1<<5,
     // TODO(sligocki): Why would we ever want to clear fetcher?
-    kNoClearFetcher = 32,
+    kNoClearFetcher = 1<<6,
     // TODO(sligocki): Explain why we turn off other contexts.
-    kNoOtherContexts = 64,
+    kNoOtherContexts = 1<<7,
 
-    kLinkCharsetIsUTF8 = 128,
-    kLinkScreenMedia = 256,
-    kLinkPrintMedia = 512,
+    kLinkCharsetIsUTF8 = 1<<8,
+    kLinkScreenMedia = 1<<9,
+    kLinkPrintMedia = 1<<10,
 
-    kMetaCharsetUTF8 = 1024,
-    kMetaCharsetISO88591 = 2048,
-    kMetaHttpEquiv = 4096,
-    kMetaHttpEquivUnquoted = 8192,
+    kMetaCharsetUTF8 = 1<<11,
+    kMetaCharsetISO88591 = 1<<12,
+    kMetaHttpEquiv = 1<<13,
+    kMetaHttpEquivUnquoted = 1<<14,
 
     // Flags to the check various import flattening failure statistics.
-    kFlattenImportsCharsetMismatch = 1<<14,
-    kFlattenImportsInvalidUrl = 1<<15,
-    kFlattenImportsLimitExceeded = 1<<16,
-    kFlattenImportsMinifyFailed = 1<<17,
-    kFlattenImportsRecursion = 1<<18,
-    kFlattenImportsComplexQueries = 1<<19,
+    kFlattenImportsCharsetMismatch = 1<<15,
+    kFlattenImportsInvalidUrl = 1<<16,
+    kFlattenImportsLimitExceeded = 1<<17,
+    kFlattenImportsMinifyFailed = 1<<18,
+    kFlattenImportsRecursion = 1<<19,
+    kFlattenImportsComplexQueries = 1<<20,
+
+    // Flags to allow methods to know if the HTML is the test input or output.
+    kInputHtml = 1<<21,
+    kOutputHtml = 1<<22,
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {
@@ -113,14 +119,18 @@ class CssRewriteTestBase : public RewriteTestBase {
   static bool ExactlyOneTrue(bool a, bool b, bool c, bool d) {
     return ExactlyOneTrue(a, ExactlyOneTrue(b, c, d));
   }
+  static bool ExactlyOneTrue(bool a, bool b, bool c, bool d, bool e) {
+    return ExactlyOneTrue(a, ExactlyOneTrue(b, c, d, e));
+  }
 
-  bool FlagSet(int flags, ValidationFlags f) {
+  bool FlagSet(int flags, ValidationFlags f) const {
     return (flags & f) != 0;
   }
 
   // Sanity check on flags passed in.
   void CheckFlags(int flags) {
     CHECK(ExactlyOneTrue(FlagSet(flags, kExpectSuccess),
+                         FlagSet(flags, kExpectCached),
                          FlagSet(flags, kExpectNoChange),
                          FlagSet(flags, kExpectFallback),
                          FlagSet(flags, kExpectFailure)));
@@ -174,6 +184,11 @@ class CssRewriteTestBase : public RewriteTestBase {
 
   // Extract the background image from the css text
   GoogleString ExtractCssBackgroundImage(const GoogleString &in_css);
+
+  // Return any debug message to be inserted into the expected output CSS.
+  virtual GoogleString CssDebugMessage(int flags) const {
+    return "";
+  }
 
   void ValidateRewrite(const StringPiece& id,
                        const GoogleString& css_input,
