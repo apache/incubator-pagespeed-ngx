@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/fix_reflow_filter.h"
 
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/custom_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -25,13 +27,16 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 
 namespace net_instaweb {
 
@@ -75,6 +80,12 @@ class FixReflowFilterTest : public CustomRewriteTestBase<RewriteOptions> {
                       result);
   }
 
+  void CheckFilterStatus(RewriterHtmlApplication::Status status) {
+    ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+    EXPECT_EQ(status, logging_info()->rewriter_stats(0).html_status());
+    EXPECT_EQ("fr", logging_info()->rewriter_stats(0).id());
+  }
+
   NullStatistics stats_;
   scoped_ptr<FixReflowFilter> fix_reflow_filter_;
 };
@@ -88,6 +99,22 @@ TEST_F(FixReflowFilterTest, NotInCache) {
   const GoogleString expected = input_html;
 
   ValidateExpectedUrl(kRequestUrl, input_html, expected);
+  rewrite_driver_->log_record()->WriteLog();
+  CheckFilterStatus(RewriterHtmlApplication::PROPERTY_CACHE_MISS);
+}
+
+TEST_F(FixReflowFilterTest, Disabled) {
+  const GoogleString input_html =
+      "<body>"
+      "<div id=\"contentContainer\"><h1>Hello 1</h1>"
+      "<div id=\"middleFooter\"><h3>Hello 3</h3></div></div>"
+      "</body>";
+  const GoogleString expected = input_html;
+
+  rewrite_driver_->SetUserAgent("junk");
+  ValidateExpectedUrl(kRequestUrl, input_html, expected);
+  rewrite_driver_->log_record()->WriteLog();
+  CheckFilterStatus(RewriterHtmlApplication::DISABLED);
 }
 
 TEST_F(FixReflowFilterTest, InCache) {
@@ -105,6 +132,12 @@ TEST_F(FixReflowFilterTest, InCache) {
       "</body>";
 
   ValidateExpectedUrl(kRequestUrl, input_html, expected);
+  LoggingInfo* info =rewrite_driver()->log_record()->logging_info();
+  EXPECT_EQ(1, info->rewriter_info_size());
+  EXPECT_EQ("fr", info->rewriter_info(0).id());
+  EXPECT_EQ(RewriterApplication::APPLIED_OK, info->rewriter_info(0).status());
+  rewrite_driver_->log_record()->WriteLog();
+  CheckFilterStatus(RewriterHtmlApplication::ACTIVE);
 }
 
 TEST_F(FixReflowFilterTest, InCacheExpires) {

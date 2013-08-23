@@ -18,16 +18,19 @@
 
 #include "net/instaweb/rewriter/public/fix_reflow_filter.h"
 
+#include <map>
 #include <memory>
 #include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
@@ -57,9 +60,15 @@ void FixReflowFilter::DetermineEnabled() {
                  // JsDeferDisabledFilter.
                  !rewrite_driver_->flushing_cached_html() &&
                  !rewrite_driver_->flushed_cached_html());
+  if (!is_enabled()) {
+    rewrite_driver_->log_record()->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kFixReflows),
+        RewriterHtmlApplication::DISABLED);
+  }
 }
 
 void FixReflowFilter::StartDocument() {
+  bool pcache_miss = true;
   PropertyPage* page = rewrite_driver_->property_page();
   const PropertyCache::Cohort* cohort =
       rewrite_driver_->server_context()->fix_reflow_cohort();
@@ -75,6 +84,7 @@ void FixReflowFilter::StartDocument() {
     if (property_value != NULL &&
         property_value->has_value() &&
         !property_cache->IsExpired(property_value, cache_ttl_ms)) {
+      pcache_miss = false;
       VLOG(1) << "FixReflowFilter.  Valid value in pcache.";
       // Parse property_value->value() into "id:height" and keep these locally.
       StringPieceVector element_height_vector;
@@ -88,6 +98,15 @@ void FixReflowFilter::StartDocument() {
       }
     }
   }
+  if (pcache_miss) {
+    rewrite_driver_->log_record()->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kFixReflows),
+        RewriterHtmlApplication::PROPERTY_CACHE_MISS);
+  } else {
+    rewrite_driver_->log_record()->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kFixReflows),
+        RewriterHtmlApplication::ACTIVE);
+  }
 }
 
 void FixReflowFilter::StartElement(HtmlElement* element) {
@@ -98,6 +117,9 @@ void FixReflowFilter::StartElement(HtmlElement* element) {
     if (id != NULL) {
       ElementHeightMap::const_iterator i = element_height_map_.find(id);
       if (i != element_height_map_.end()) {
+        rewrite_driver_->log_record()->SetRewriterLoggingStatus(
+            RewriteOptions::FilterId(RewriteOptions::kFixReflows),
+            RewriterApplication::APPLIED_OK);
         VLOG(1) << "div " << id << " has height " << i->second;
         element->AddAttribute(rewrite_driver_->MakeName(HtmlName::kStyle),
                               StrCat("min-height:", i->second),
