@@ -105,7 +105,6 @@ const char RewriteOptions::kEnableDeferJsExperimental[] =
 const char RewriteOptions::kEnableCachePurge[] = "EnableCachePurge";
 const char RewriteOptions::kEnableFlushEarlyCriticalCss[] =
     "EnableFlushEarlyCriticalCss";
-const char RewriteOptions::kEnableFixReflow[] = "EnableFixReflow";
 const char RewriteOptions::kEnableExtendedInstrumentation[] =
     "EnableExtendedInstrumentation";
 const char RewriteOptions::kEnableLazyLoadHighResImages[] =
@@ -581,12 +580,11 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kComputeVisibleText,  // internal, enabled conditionally
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
-  RewriteOptions::kDetectReflowWithDeferJavascript,  // internal,
-                                                     // enabled conditionally
   RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
   RewriteOptions::kExplicitCloseTags,
+  RewriteOptions::kFixReflows,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kPrioritizeCriticalCss,
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
@@ -605,7 +603,6 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDelayImages,
-  RewriteOptions::kDetectReflowWithDeferJavascript,
   RewriteOptions::kFlushSubresources,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kLocalStorageCache,
@@ -679,8 +676,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "dj", "Defer Javascript" },
   { RewriteOptions::kDelayImages,
     "di", "Delay Images" },
-  { RewriteOptions::kDetectReflowWithDeferJavascript,
-    "dr", "Detect Reflow With Defer Javascript" },
   { RewriteOptions::kDeterministicJs,
     "mj", "Deterministic Js" },
   { RewriteOptions::kDisableJavascript,
@@ -701,6 +696,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "es", "Cache Extend Scripts" },
   { RewriteOptions::kFallbackRewriteCssUrls,
     "fc", "Fallback Rewrite Css " },
+  { RewriteOptions::kFixReflows,
+    "fr", "Fix Reflows" },
   { RewriteOptions::kFlattenCssImports,
     RewriteOptions::kCssImportFlattenerId, "Flatten CSS Imports" },
   { RewriteOptions::kFlushSubresources,
@@ -1879,10 +1876,6 @@ void RewriteOptions::AddProperties() {
       kNonCacheablesForCachePartialHtml,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
-
-  AddBaseProperty(
-      false, &RewriteOptions::enable_fix_reflow_, "efr", kEnableFixReflow,
-      kDirectoryScope, NULL);   // Not applicable for mod_pagespeed.
 
   AddBaseProperty(
       kDefaultMaxLowResImageSizeBytes,

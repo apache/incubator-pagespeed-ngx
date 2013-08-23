@@ -104,7 +104,6 @@ class RewriteOptions {
     kDeferIframe,
     kDeferJavascript,
     kDelayImages,
-    kDetectReflowWithDeferJavascript,
     kDeterministicJs,
     kDisableJavascript,
     kDivStructure,
@@ -115,6 +114,7 @@ class RewriteOptions {
     kExtendCachePdfs,
     kExtendCacheScripts,
     kFallbackRewriteCssUrls,
+    kFixReflows,
     kFlattenCssImports,
     kFlushSubresources,
     kHandleNoscriptRedirect,
@@ -217,7 +217,6 @@ class RewriteOptions {
   static const char kEnableCachePurge[];
   static const char kEnableDeferJsExperimental[];
   static const char kEnableExtendedInstrumentation[];
-  static const char kEnableFixReflow[];
   static const char kEnableFlushEarlyCriticalCss[];
   static const char kEnableLazyLoadHighResImages[];
   static const char kEnablePrioritizingScripts[];
@@ -2206,13 +2205,6 @@ class RewriteOptions {
     return hide_referer_using_meta_.value();
   }
 
-  void set_enable_fix_reflow(bool x) {
-    set_option(x, &enable_fix_reflow_);
-  }
-  bool enable_fix_reflow() const {
-    return enable_fix_reflow_.value();
-  }
-
   void set_max_low_res_image_size_bytes(int64 x) {
     set_option(x, &max_low_res_image_size_bytes_);
   }
@@ -3483,9 +3475,6 @@ class RewriteOptions {
 
   // If set to true, hides the referer by adding meta tag to the HTML.
   Option<bool> hide_referer_using_meta_;
-
-  // Fix reflows due to defer js.
-  Option<bool> enable_fix_reflow_;
 
   // Options to control the edge-case behaviour of inline-previewed images. The
   // idea is to avoid inline-previewing when:

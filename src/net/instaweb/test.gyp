@@ -135,6 +135,7 @@
         'rewriter/experiment_matcher_test.cc',
         'rewriter/experiment_util_test.cc',
         'rewriter/file_load_policy_test.cc',
+        'rewriter/fix_reflow_filter_test.cc',
         'rewriter/flush_early_content_writer_filter_test.cc',
         'rewriter/flush_html_filter_test.cc',
         'rewriter/google_analytics_filter_test.cc',

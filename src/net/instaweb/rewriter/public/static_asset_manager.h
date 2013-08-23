@@ -57,7 +57,6 @@ class StaticAssetManager {
     kDeferJs,
     kDelayImagesInlineJs,
     kDelayImagesJs,
-    kDetectReflowJs,
     kDeterministicJs,
     kExtendedInstrumentationJs,
     kGhostClickBusterJs,

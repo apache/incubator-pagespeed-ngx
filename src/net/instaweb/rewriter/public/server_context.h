@@ -227,6 +227,13 @@ class ServerContext {
     critical_line_cohort_ = c;
   }
 
+  const PropertyCache::Cohort* fix_reflow_cohort() const {
+    return fix_reflow_cohort_;
+  }
+  void set_fix_reflow_cohort(const PropertyCache::Cohort* c) {
+    fix_reflow_cohort_ = c;
+  }
+
   // Cache for storing file system metadata. It must be private to a server,
   // preferably but not necessarily shared between its processes, and is
   // required if using load-from-file and memcached (or any cache shared
@@ -675,6 +682,7 @@ class ServerContext {
   const PropertyCache::Cohort* blink_cohort_;
   const PropertyCache::Cohort* beacon_cohort_;
   const PropertyCache::Cohort* critical_line_cohort_;
+  const PropertyCache::Cohort* fix_reflow_cohort_;
 
   // RewriteDrivers that were previously allocated, but have
   // been released with ReleaseRewriteDriver, and are ready

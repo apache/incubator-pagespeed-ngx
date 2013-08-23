@@ -59,8 +59,6 @@ extern const char* JS_delay_images;
 extern const char* JS_delay_images_inline;
 extern const char* JS_delay_images_inline_opt;
 extern const char* JS_delay_images_opt;
-extern const char* JS_detect_reflow;
-extern const char* JS_detect_reflow_opt;
 extern const char* JS_deterministic;
 extern const char* JS_deterministic_opt;
 extern const char* JS_extended_instrumentation;
@@ -175,7 +173,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDelayImagesJs]->file_name = "delay_images";
   assets_[kDelayImagesInlineJs]->file_name = "delay_images_inline";
   assets_[kLazyloadImagesJs]->file_name = "lazyload_images";
-  assets_[kDetectReflowJs]->file_name = "detect_reflow";
   assets_[kDeterministicJs]->file_name = "deterministic";
   assets_[kGhostClickBusterJs]->file_name = "ghost_click_buster";
   assets_[kLocalStorageCacheJs]->file_name = "local_storage_cache";
@@ -198,7 +195,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDelayImagesJs]->js_optimized = JS_delay_images_opt;
   assets_[kDelayImagesInlineJs]->js_optimized = JS_delay_images_inline_opt;
   assets_[kLazyloadImagesJs]->js_optimized = JS_lazyload_images_opt;
-  assets_[kDetectReflowJs]->js_optimized = JS_detect_reflow_opt;
   assets_[kDeterministicJs]->js_optimized = JS_deterministic_opt;
   assets_[kGhostClickBusterJs]->js_optimized = JS_ghost_click_buster_opt;
   assets_[kLocalStorageCacheJs]->js_optimized = JS_local_storage_cache_opt;
@@ -220,7 +216,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kDelayImagesJs]->js_debug = JS_delay_images;
   assets_[kDelayImagesInlineJs]->js_debug = JS_delay_images_inline;
   assets_[kLazyloadImagesJs]->js_debug = JS_lazyload_images;
-  assets_[kDetectReflowJs]->js_debug = JS_detect_reflow;
   assets_[kDeterministicJs]->js_debug = JS_deterministic;
   // GhostClickBuster uses goog.require, which needs to be minifed always.
   assets_[kGhostClickBusterJs]->js_debug = JS_ghost_click_buster_opt;

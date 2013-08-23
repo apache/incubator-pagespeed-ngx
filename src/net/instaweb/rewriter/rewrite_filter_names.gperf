@@ -49,7 +49,6 @@ struct FilterMap {
 "dedup_inlined_images",              RewriteOptions::kDedupInlinedImages
 "defer_iframe",                      RewriteOptions::kDeferIframe
 "defer_javascript",                  RewriteOptions::kDeferJavascript
-"detect_reflow_with_defer_js",       RewriteOptions::kDetectReflowWithDeferJavascript
 "deterministic_js",                  RewriteOptions::kDeterministicJs
 "disable_javascript",                RewriteOptions::kDisableJavascript
 "div_structure",                     RewriteOptions::kDivStructure
@@ -60,6 +59,7 @@ struct FilterMap {
 "extend_cache_pdfs",                 RewriteOptions::kExtendCachePdfs
 "extend_cache_scripts",              RewriteOptions::kExtendCacheScripts
 "fallback_rewrite_css_urls",         RewriteOptions::kFallbackRewriteCssUrls
+"fix_reflows",                       RewriteOptions::kFixReflows
 "flatten_css_imports",               RewriteOptions::kFlattenCssImports
 "flush_subresources",                RewriteOptions::kFlushSubresources
 "in_place_optimize_for_browser",     RewriteOptions::kInPlaceOptimizeForBrowser

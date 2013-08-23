@@ -76,7 +76,6 @@
 #include "net/instaweb/rewriter/public/dedup_inlined_images_filter.h"
 #include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
-#include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
 #include "net/instaweb/rewriter/public/deterministic_js_filter.h"
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -84,6 +83,7 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/fix_reflow_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
@@ -1186,12 +1186,10 @@ void RewriteDriver::AddPostRenderFilters() {
     // cached html or we have flushed cached html, this filter will disable
     // itself.
     AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
-    if (rewrite_options->Enabled(
-        RewriteOptions::kDetectReflowWithDeferJavascript)) {
-      // Detects reflows that might be caused by deferred execution of
-      // javascript.
-      AddOwnedPostRenderFilter(new DetectReflowJsDeferFilter(this));
-    }
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) &&
+      rewrite_options->Enabled(RewriteOptions::kFixReflows)) {
+    AddOwnedPostRenderFilter(new FixReflowFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
     AddOwnedPostRenderFilter(new DeterministicJsFilter(this));

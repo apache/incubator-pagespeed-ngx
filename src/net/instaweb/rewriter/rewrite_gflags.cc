@@ -491,9 +491,6 @@ DEFINE_bool(rewrite_uncacheable_resources, false,
             "in-place rewriting mode, regardless of resource's caching "
             "settings. in_place_wait_for_optimized flag should also be set.");
 
-DEFINE_bool(enable_fix_reflow, false,
-            "Fix reflows due to deferred execution of javascript.");
-
 DEFINE_bool(serve_ghost_click_buster_with_split_html, false,
             "Whether ghost click buster code is served along with split_html.");
 
@@ -885,10 +882,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("rewrite_uncacheable_resources")) {
     options->set_rewrite_uncacheable_resources(
         FLAGS_rewrite_uncacheable_resources);
-  }
-
-  if (WasExplicitlySet("enable_fix_reflow")) {
-    options->set_enable_fix_reflow(FLAGS_enable_fix_reflow);
   }
 
   if (WasExplicitlySet("in_place_wait_for_optimized")) {

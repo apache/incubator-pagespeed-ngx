@@ -298,34 +298,6 @@
       ]
     },
     {
-      'target_name': 'instaweb_detect_reflow_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
-        'var_name': 'detect_reflow',
-      },
-      'sources': [
-        'genfiles/rewriter/detect_reflow_dbg.js',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
-      'target_name': 'instaweb_detect_reflow_opt_data2c',
-      'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
-        'var_name': 'detect_reflow_opt',
-      },
-      'sources': [
-        'genfiles/rewriter/detect_reflow_opt.js',
-      ],
-      'includes': [
-        'data2c.gypi',
-      ]
-    },
-    {
       'target_name': 'instaweb_deterministic_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -1125,8 +1097,6 @@
         'instaweb_delay_images_inline_data2c',
         'instaweb_delay_images_inline_opt_data2c',
         'instaweb_delay_images_opt_data2c',
-        'instaweb_detect_reflow_data2c',
-        'instaweb_detect_reflow_opt_data2c',
         'instaweb_deterministic_data2c',
         'instaweb_deterministic_opt_data2c',
         'instaweb_extended_instrumentation_data2c',
@@ -1181,7 +1151,6 @@
         'rewriter/dedup_inlined_images_filter.cc',
         'rewriter/defer_iframe_filter.cc',
         'rewriter/delay_images_filter.cc',
-        'rewriter/detect_reflow_js_defer_filter.cc',
         'rewriter/deterministic_js_filter.cc',
         'rewriter/dom_stats_filter.cc',
         'rewriter/domain_rewrite_filter.cc',
@@ -1191,6 +1160,7 @@
         'rewriter/file_load_mapping.cc',
         'rewriter/file_load_policy.cc',
         'rewriter/file_load_rule.cc',
+        'rewriter/fix_reflow_filter.cc',
         'rewriter/flush_early_content_writer_filter.cc',
         'rewriter/flush_html_filter.cc',
         'rewriter/google_analytics_filter.cc',

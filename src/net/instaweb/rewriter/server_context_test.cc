@@ -459,9 +459,6 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferIframe));
   options->EnableFilter(RewriteOptions::kDeferJavascript);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferJavascript));
-  options->EnableFilter(RewriteOptions::kDetectReflowWithDeferJavascript);
-  EXPECT_FALSE(options->Enabled(
-      RewriteOptions::kDetectReflowWithDeferJavascript));
   options->EnableFilter(RewriteOptions::kFlushSubresources);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kFlushSubresources));
   options->EnableFilter(RewriteOptions::kLazyloadImages);

@@ -800,7 +800,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kEnableCachePurge);
   PassLookupOptionByName(RewriteOptions::kEnableDeferJsExperimental);
   PassLookupOptionByName(RewriteOptions::kEnableExtendedInstrumentation);
-  PassLookupOptionByName(RewriteOptions::kEnableFixReflow);
   PassLookupOptionByName(RewriteOptions::kEnableFlushEarlyCriticalCss);
   PassLookupOptionByName(RewriteOptions::kEnableLazyLoadHighResImages);
   PassLookupOptionByName(RewriteOptions::kEnablePrioritizingScripts);

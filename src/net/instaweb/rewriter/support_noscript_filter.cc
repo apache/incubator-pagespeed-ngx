@@ -84,7 +84,6 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
     switch (filter) {
       case RewriteOptions::kDeferIframe:
       case RewriteOptions::kDeferJavascript:
-      case RewriteOptions::kDetectReflowWithDeferJavascript:
       case RewriteOptions::kSplitHtml:
         // We don't need to insert a noscript redirect if we are just
         // instrumenting the page, instead of actually running split HTML.
