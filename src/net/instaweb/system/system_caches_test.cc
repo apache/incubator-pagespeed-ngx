@@ -72,7 +72,7 @@ const char kAltCachePath[] = "/mem/path_alt/";
 class SystemServerContextNoProxyHtml : public SystemServerContext {
  public:
   explicit SystemServerContextNoProxyHtml(RewriteDriverFactory* factory)
-      : SystemServerContext(factory) {
+      : SystemServerContext(factory, "fake_hostname", 80 /* fake port */) {
   }
 
   virtual bool ProxiesHtml() const { return false; }

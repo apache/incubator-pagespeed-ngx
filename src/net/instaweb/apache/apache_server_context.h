@@ -32,14 +32,9 @@ namespace net_instaweb {
 
 class ApacheRewriteDriverFactory;
 class ApacheRequestContext;
-class Histogram;
 class ProxyFetchFactory;
 class RewriteDriverPool;
 class RewriteDriver;
-class RewriteStats;
-class SharedMemStatistics;
-class Statistics;
-class UrlAsyncFetcherStats;
 
 // Creates an Apache-specific ServerContext.  This differs from base class
 // that it incorporates by adding per-VirtualHost configuration, including:
@@ -54,7 +49,6 @@ class ApacheServerContext : public SystemServerContext {
                       const StringPiece& version);
   virtual ~ApacheServerContext();
 
-  GoogleString hostname_identifier() { return hostname_identifier_; }
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
   ApacheConfig* config();
   bool InitPath(const GoogleString& path);
@@ -102,25 +96,9 @@ class ApacheServerContext : public SystemServerContext {
   // It will also compute signatures when done.
   void CollapseConfigOverlaysAndComputeSignatures();
 
-  // Initialize this ServerContext to have its own statistics domain.
-  // Must be called after global_statistics has been created and had
-  // ::Initialize called on it.
-  void CreateLocalStatistics(Statistics* global_statistics);
-
-  // Should be called after the child process is forked.
-  void ChildInit();
-
-  bool initialized() const { return initialized_; }
-
   // Called on notification from Apache on child exit. Returns true
   // if this is the last ServerContext that exists.
   bool PoolDestroyed();
-
-  // Accumulate in a histogram the amount of time spent rewriting HTML.
-  // TODO(sligocki): Remove in favor of RewriteStats::rewrite_latency_histogram.
-  void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
-
-  static void InitStats(Statistics* statistics);
 
   const server_rec* server() const { return server_rec_; }
 
@@ -150,23 +128,6 @@ class ApacheServerContext : public SystemServerContext {
   server_rec* server_rec_;
   GoogleString version_;
 
-  // hostname_identifier_ equals to "server_hostname:port" of Apache,
-  // it's used to distinguish the name of shared memory,
-  // so that each vhost has its own SharedCircularBuffer.
-  GoogleString hostname_identifier_;
-
-  bool initialized_;
-
-  // Non-NULL if we have per-vhost stats.
-  scoped_ptr<Statistics> split_statistics_;
-
-  // May be NULL. Owned by *split_statistics_.
-  SharedMemStatistics* local_statistics_;
-
-  // These are non-NULL if we have per-vhost stats.
-  scoped_ptr<RewriteStats> local_rewrite_stats_;
-  scoped_ptr<UrlAsyncFetcherStats> stats_fetcher_;
-
   // May be NULL. Constructed once we see things in config files that should
   // be stored in these.
   scoped_ptr<ApacheConfig> spdy_config_overlay_;
@@ -178,8 +139,6 @@ class ApacheServerContext : public SystemServerContext {
   // Owned by ServerContext via a call to ManageRewriteDriverPool.
   // May be NULL if we don't have a spdy-specific configuration.
   RewriteDriverPool* spdy_driver_pool_;
-
-  Histogram* html_rewrite_time_us_histogram_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 

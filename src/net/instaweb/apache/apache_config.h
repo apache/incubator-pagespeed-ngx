@@ -20,7 +20,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -34,15 +33,9 @@ class ApacheConfig : public SystemRewriteOptions {
   static void Initialize();
   static void Terminate();
 
-  ApacheConfig(const StringPiece& dir, ThreadSystem* thread_system);
+  ApacheConfig(const StringPiece& description, ThreadSystem* thread_system);
   explicit ApacheConfig(ThreadSystem* thread_system);
   ~ApacheConfig() {}
-
-  // Human-readable description of what this configuration is for.  This
-  // may be a directory, or a string indicating a combination of directives
-  // for multiple directories.
-  StringPiece description() const { return description_; }
-  void set_description(const StringPiece& x) { x.CopyToString(&description_); }
 
   bool experimental_fetch_from_mod_spdy() const {
     return experimental_fetch_from_mod_spdy_.value();
@@ -78,8 +71,6 @@ class ApacheConfig : public SystemRewriteOptions {
 
   static void AddProperties();
   void Init();
-
-  GoogleString description_;
 
   Option<bool> experimental_fetch_from_mod_spdy_;
 

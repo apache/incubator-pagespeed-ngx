@@ -211,7 +211,7 @@ void SystemRewriteDriverFactory::ChildInit() {
            p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     SystemServerContext* server_context = *p;
-    server_context->ChildInit();
+    server_context->ChildInit(this);
   }
   uninitialized_server_contexts_.clear();
 }

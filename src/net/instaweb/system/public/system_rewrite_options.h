@@ -33,6 +33,8 @@ class SystemRewriteOptions : public RewriteOptions {
   static void Initialize();
   static void Terminate();
 
+  SystemRewriteOptions(const StringPiece& description,
+                       ThreadSystem* thread_system);
   explicit SystemRewriteOptions(ThreadSystem* thread_system);
   virtual ~SystemRewriteOptions();
 
@@ -234,6 +236,12 @@ class SystemRewriteOptions : public RewriteOptions {
       const RewriteOptions* instance);
   static SystemRewriteOptions* DynamicCast(RewriteOptions* instance);
 
+  // Human-readable description of what this configuration is for.  This
+  // may be a directory, or a string indicating a combination of directives
+  // for multiple directories.  Should only be used for debugging.
+  StringPiece description() const { return description_; }
+  void set_description(const StringPiece& x) { x.CopyToString(&description_); }
+
  protected:
   // Apache and Nginx options classes need access to this.
   Option<GoogleString> statistics_handler_path_;
@@ -267,6 +275,9 @@ class SystemRewriteOptions : public RewriteOptions {
   }
 
   static void AddProperties();
+
+  // Debug string useful in understanding config merges.
+  GoogleString description_;
 
   Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;

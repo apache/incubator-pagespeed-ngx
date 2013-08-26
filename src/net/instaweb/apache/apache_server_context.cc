@@ -23,31 +23,18 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
-#include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
-#include "net/instaweb/util/public/split_statistics.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
 class RewriteOptions;
 
 namespace {
-
-// Statistics histogram names.
-const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
-
-const char kLocalFetcherStatsPrefix[] = "http";
 
 class SpdyOptionsRewriteDriverPool : public RewriteDriverPool {
  public:
@@ -70,17 +57,11 @@ ApacheServerContext::ApacheServerContext(
     ApacheRewriteDriverFactory* factory,
     server_rec* server,
     const StringPiece& version)
-    : SystemServerContext(factory),
+    : SystemServerContext(factory, server->server_hostname, server->port),
       apache_factory_(factory),
       server_rec_(server),
       version_(version.data(), version.size()),
-      hostname_identifier_(StrCat(server->server_hostname, ":",
-                                  IntegerToString(server->port))),
-      initialized_(false),
-      local_statistics_(NULL),
-      spdy_driver_pool_(NULL),
-      html_rewrite_time_us_histogram_(NULL) {
-  config()->set_description(hostname_identifier_);
+      spdy_driver_pool_(NULL) {
   // We may need the message handler for error messages very early, before
   // we get to InitServerContext in ChildInit().
   set_message_handler(apache_factory_->message_handler());
@@ -96,17 +77,6 @@ ApacheServerContext::ApacheServerContext(
 }
 
 ApacheServerContext::~ApacheServerContext() {
-}
-
-void ApacheServerContext::InitStats(Statistics* statistics) {
-  SystemServerContext::InitStats(statistics);
-  Histogram* html_rewrite_time_us_histogram =
-      statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
-  // We set the boundary at 2 seconds which is about 2 orders of magnitude
-  // worse than anything we have reasonably seen, to make sure we don't
-  // cut off actual samples.
-  html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
-  UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
 
 bool ApacheServerContext::InitPath(const GoogleString& path) {
@@ -175,70 +145,6 @@ void ApacheServerContext::CollapseConfigOverlaysAndComputeSignatures() {
   }
 }
 
-void ApacheServerContext::CreateLocalStatistics(
-    Statistics* global_statistics) {
-  local_statistics_ =
-      apache_factory_->AllocateAndInitSharedMemStatistics(
-          true /* local */, hostname_identifier(), *config());
-  split_statistics_.reset(new SplitStatistics(
-      apache_factory_->thread_system(), local_statistics_, global_statistics));
-  // local_statistics_ was ::InitStat'd by AllocateAndInitSharedMemStatistics,
-  // but we need to take care of split_statistics_.
-  ApacheRewriteDriverFactory::InitStats(split_statistics_.get());
-}
-
-void ApacheServerContext::ChildInit() {
-  DCHECK(!initialized_);
-  if (!initialized_) {
-    initialized_ = true;
-    set_lock_manager(apache_factory_->caches()->GetLockManager(config()));
-    UrlAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
-    set_default_system_fetcher(fetcher);
-
-    if (split_statistics_.get() != NULL) {
-      // Readjust the SHM stuff for the new process
-      local_statistics_->Init(false, message_handler());
-
-      // Create local stats for the ServerContext, and fill in its
-      // statistics() and rewrite_stats() using them; if we didn't do this here
-      // they would get set to the factory's by the InitServerContext call
-      // below.
-      set_statistics(split_statistics_.get());
-      local_rewrite_stats_.reset(new RewriteStats(
-          split_statistics_.get(), apache_factory_->thread_system(),
-          apache_factory_->timer()));
-      set_rewrite_stats(local_rewrite_stats_.get());
-
-      // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
-      // care of it rather than the original fetcher, so we get correct
-      // numbers for bytes fetched.
-      bool fetch_with_gzip = config()->fetch_with_gzip();
-      if (fetch_with_gzip) {
-        fetcher->set_fetch_with_gzip(false);
-      }
-      stats_fetcher_.reset(new UrlAsyncFetcherStats(
-          kLocalFetcherStatsPrefix, fetcher,
-          apache_factory_->timer(), split_statistics_.get()));
-      if (fetch_with_gzip) {
-        stats_fetcher_->set_fetch_with_gzip(true);
-      }
-      set_default_system_fetcher(stats_fetcher_.get());
-    }
-
-    // To allow Flush to come in while multiple threads might be
-    // referencing the signature, we must be able to mutate the
-    // timestamp and signature atomically.  RewriteOptions supports
-    // an optional read/writer lock for this purpose.
-    config()->set_cache_invalidation_timestamp_mutex(
-        thread_system()->NewRWLock());
-    apache_factory_->InitServerContext(this);
-
-    html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
-        kHtmlRewriteTimeUsHistogram);
-    html_rewrite_time_us_histogram_->SetMaxValue(2 * Timer::kSecondUs);
-  }
-}
-
 bool ApacheServerContext::PoolDestroyed() {
   ShutDownDrivers();
   return apache_factory_->PoolDestroyed(this);
@@ -252,12 +158,6 @@ bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
     flushed |= SpdyConfig()->UpdateCacheInvalidationTimestampMs(timestamp_ms);
   }
   return flushed;
-}
-
-void ApacheServerContext::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
-  if (html_rewrite_time_us_histogram_ != NULL) {
-    html_rewrite_time_us_histogram_->Add(rewrite_time_us);
-  }
 }
 
 RewriteDriverPool* ApacheServerContext::SelectDriverPool(bool using_spdy) {

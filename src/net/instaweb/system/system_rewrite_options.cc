@@ -52,6 +52,15 @@ SystemRewriteOptions::SystemRewriteOptions(ThreadSystem* thread_system)
   InitializeOptions(system_properties_);
 }
 
+SystemRewriteOptions::SystemRewriteOptions(const StringPiece& description,
+                                           ThreadSystem* thread_system)
+    : RewriteOptions(thread_system),
+      description_(description.data(), description.size()) {
+  DCHECK(system_properties_ != NULL)
+      << "Call SystemRewriteOptions::Initialize() before construction";
+  InitializeOptions(system_properties_);
+}
+
 SystemRewriteOptions::~SystemRewriteOptions() {
 }
 
@@ -195,7 +204,7 @@ void SystemRewriteOptions::AddProperties() {
   // Leave slurp_read_only out of the signature as (a) we don't actually change
   // this spontaneously, and (b) it's useful to keep the metadata cache between
   // slurping read-only and slurp read/write.
-  SystemRewriteOptions config(NULL);
+  SystemRewriteOptions config("dummy_options", NULL);
   config.slurp_read_only_.DoNotUseForSignatureComputation();
 }
 
@@ -206,7 +215,7 @@ SystemRewriteOptions* SystemRewriteOptions::Clone() const {
 }
 
 SystemRewriteOptions* SystemRewriteOptions::NewOptions() const {
-  return new SystemRewriteOptions(thread_system());
+  return new SystemRewriteOptions("new_options", thread_system());
 }
 
 const SystemRewriteOptions* SystemRewriteOptions::DynamicCast(

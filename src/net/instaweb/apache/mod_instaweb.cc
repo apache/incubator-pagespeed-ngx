@@ -546,7 +546,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
           // optimized a bit if we find that we're spending time here.
           ResponseHeaders tmp_err_resp_headers, tmp_resp_headers;
           ThreadSystem* thread_system = server_context->thread_system();
-          ApacheConfig unused_opts1(thread_system), unused_opts2(thread_system);
+          ApacheConfig unused_opts1("unused_options1", thread_system),
+                       unused_opts2("unused_options2", thread_system);
 
           ApacheRequestToResponseHeaders(*request, &tmp_resp_headers,
                                          &tmp_err_resp_headers);
@@ -1044,7 +1045,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       // If config has statistics on and we have per-vhost statistics on
       // as well, then set it up.
       if (config->statistics_enabled() && factory->use_per_vhost_statistics()) {
-        server_context->CreateLocalStatistics(statistics);
+        server_context->CreateLocalStatistics(statistics, factory);
       }
     }
   }
@@ -2044,7 +2045,7 @@ void ApacheProcessContext::InstallCommands() {
   // established very early when mod_pagespeed.so is dynamically loaded,
   // to build the Apache directives parse-table before Apache attempts
   // to initialize our module.
-  ApacheConfig config_template(NULL);
+  ApacheConfig config_template("install_commands", NULL);
   const RewriteOptions::OptionBaseVector& v = config_template.all_options();
   int num_cmds = arraysize(net_instaweb::mod_pagespeed_filter_cmds);
 

@@ -46,8 +46,7 @@ void ApacheConfig::Terminate() {
 
 ApacheConfig::ApacheConfig(const StringPiece& description,
                            ThreadSystem* thread_system)
-    : SystemRewriteOptions(thread_system),
-      description_(description.data(), description.size()) {
+    : SystemRewriteOptions(description, thread_system) {
   Init();
 }
 
@@ -84,18 +83,20 @@ void ApacheConfig::AddProperties() {
   // Instantiation of the options with a null thread system wouldn't usually be
   // safe but it's ok here because we're only updating the static properties on
   // process startup.  We won't have a thread-system yet or multiple threads.
-  ApacheConfig config(NULL);
+  ApacheConfig config("dummy_options", NULL);
   config.set_default_x_header_value(kModPagespeedVersion);
 }
 
 ApacheConfig* ApacheConfig::Clone() const {
-  ApacheConfig* options = new ApacheConfig(description_, thread_system());
+  ApacheConfig* options =
+      new ApacheConfig(StrCat("cloned from ", description()), thread_system());
   options->Merge(*this);
   return options;
 }
 
 ApacheConfig* ApacheConfig::NewOptions() const {
-  return new ApacheConfig(thread_system());
+  return new ApacheConfig(StrCat("derived from ", description()),
+                          thread_system());
 }
 
 const ApacheConfig* ApacheConfig::DynamicCast(const RewriteOptions* instance) {

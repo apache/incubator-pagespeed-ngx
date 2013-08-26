@@ -17,19 +17,24 @@
 #include "net/instaweb/system/public/system_server_context.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/add_headers_fetcher.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
 #include "net/instaweb/system/public/system_request_context.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -37,17 +42,25 @@ namespace net_instaweb {
 
 namespace {
 
+const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
+const char kLocalFetcherStatsPrefix[] = "http";
 const char kCacheFlushCount[] = "cache_flush_count";
 const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
 
 }  // namespace
 
-SystemServerContext::SystemServerContext(RewriteDriverFactory* factory)
+SystemServerContext::SystemServerContext(
+    RewriteDriverFactory* factory, StringPiece hostname, int port)
     : ServerContext(factory),
+      initialized_(false),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
-      cache_flush_count_(NULL),           // Lazy-initialized under mutex.
-      cache_flush_timestamp_ms_(NULL) {   // Lazy-initialized under mutex.
+      cache_flush_count_(NULL),  // Lazy-initialized under mutex.
+      cache_flush_timestamp_ms_(NULL),  // Lazy-initialized under mutex.
+      html_rewrite_time_us_histogram_(NULL),
+      local_statistics_(NULL),
+      hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))) {
+  system_rewrite_options()->set_description(hostname_identifier_);
 }
 
 SystemServerContext::~SystemServerContext() {
@@ -135,6 +148,12 @@ bool SystemServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
   return global_options()->UpdateCacheInvalidationTimestampMs(timestamp_ms);
 }
 
+void SystemServerContext::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
+  if (html_rewrite_time_us_histogram_ != NULL) {
+    html_rewrite_time_us_histogram_->Add(rewrite_time_us);
+  }
+}
+
 SystemRewriteOptions* SystemServerContext::system_rewrite_options() {
   SystemRewriteOptions* out =
       dynamic_cast<SystemRewriteOptions*>(global_options());
@@ -142,10 +161,83 @@ SystemRewriteOptions* SystemServerContext::system_rewrite_options() {
   return out;
 }
 
+void SystemServerContext::CreateLocalStatistics(
+    Statistics* global_statistics,
+    SystemRewriteDriverFactory* factory) {
+  local_statistics_ =
+      factory->AllocateAndInitSharedMemStatistics(
+          true /* local */, hostname_identifier(), *system_rewrite_options());
+  split_statistics_.reset(new SplitStatistics(
+      factory->thread_system(), local_statistics_, global_statistics));
+  // local_statistics_ was ::InitStat'd by AllocateAndInitSharedMemStatistics,
+  // but we need to take care of split_statistics_.
+  factory->NonStaticInitStats(split_statistics_.get());
+}
+
 void SystemServerContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
   statistics->AddVariable(kCacheFlushTimestampMs);
+  Histogram* html_rewrite_time_us_histogram =
+      statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
+  // We set the boundary at 2 seconds which is about 2 orders of magnitude worse
+  // than anything we have reasonably seen, to make sure we don't cut off actual
+  // samples.
+  html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
+  UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
+
+void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
+  DCHECK(!initialized_);
+  if (!initialized_) {
+    initialized_ = true;
+    set_lock_manager(factory->caches()->GetLockManager(
+        system_rewrite_options()));
+    UrlAsyncFetcher* fetcher = factory->GetFetcher(system_rewrite_options());
+    set_default_system_fetcher(fetcher);
+
+    if (split_statistics_.get() != NULL) {
+      // Readjust the SHM stuff for the new process
+      local_statistics_->Init(false, message_handler());
+
+      // Create local stats for the ServerContext, and fill in its
+      // statistics() and rewrite_stats() using them; if we didn't do this here
+      // they would get set to the factory's by the InitServerContext call
+      // below.
+      set_statistics(split_statistics_.get());
+      local_rewrite_stats_.reset(new RewriteStats(
+          split_statistics_.get(), factory->thread_system(), factory->timer()));
+      set_rewrite_stats(local_rewrite_stats_.get());
+
+      // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
+      // care of decompression rather than the original fetcher, so we get
+      // correct numbers for bytes fetched.
+      bool fetch_with_gzip = system_rewrite_options()->fetch_with_gzip();
+      if (fetch_with_gzip) {
+        fetcher->set_fetch_with_gzip(false);
+      }
+      stats_fetcher_.reset(new UrlAsyncFetcherStats(
+          kLocalFetcherStatsPrefix, fetcher,
+          factory->timer(), split_statistics_.get()));
+      if (fetch_with_gzip) {
+        stats_fetcher_->set_fetch_with_gzip(true);
+      }
+      set_default_system_fetcher(stats_fetcher_.get());
+    }
+
+    // To allow Flush to come in while multiple threads might be
+    // referencing the signature, we must be able to mutate the
+    // timestamp and signature atomically.  RewriteOptions supports
+    // an optional read/writer lock for this purpose.
+    global_options()->set_cache_invalidation_timestamp_mutex(
+        thread_system()->NewRWLock());
+    factory->InitServerContext(this);
+
+    html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
+        kHtmlRewriteTimeUsHistogram);
+    html_rewrite_time_us_histogram_->SetMaxValue(2 * Timer::kSecondUs);
+  }
+}
+
 
 void SystemServerContext::ApplySessionFetchers(
     const RequestContextPtr& request, RewriteDriver* driver) {
