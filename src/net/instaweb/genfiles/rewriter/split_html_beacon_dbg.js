@@ -53,22 +53,20 @@
 pagespeedutils.CriticalXPaths = function(viewportWidth, viewportHeight, document) {
   this.windowSize_ = {height:viewportHeight, width:viewportWidth};
   this.xpathPairs_ = [];
-  this.areIdsReused_ = !1;
   this.document_ = document
 };
 pagespeedutils.CriticalXPaths.prototype.getNonCriticalPanelXPathPairs = function() {
   this.findNonCriticalPanelBoundaries_(this.document_.body);
-  return this.areIdsReused_ ? [] : this.xpathPairs_
+  return this.xpathPairs_
 };
 pagespeedutils.CriticalXPaths.prototype.generateXPath_ = function(node) {
   for(var xpathUnits = [];node != this.document_.body;) {
-    if(node.hasAttribute("id")) {
+    if(node.hasAttribute("id") && 1 == this.document_.querySelectorAll('[id="' + node.getAttribute("id") + '"]').length) {
       xpathUnits.unshift(node.tagName.toLowerCase() + '[@id="' + node.getAttribute("id") + '"]');
-      1 != this.document_.querySelectorAll('[id="' + node.getAttribute("id") + '"]').length && (this.areIdsReused_ = !0);
       break
     }else {
       for(var i = 0, sibling = node;sibling;sibling = sibling.previousElementSibling) {
-        "SCRIPT" !== sibling.tagName && ("NOSCRIPT" !== sibling.tagName && "STYLE" !== sibling.tagName && "LINK" !== sibling.tagName) && ++i
+        "SCRIPT" !== sibling.tagName && "NOSCRIPT" !== sibling.tagName && "STYLE" !== sibling.tagName && "LINK" !== sibling.tagName && ++i
       }
       xpathUnits.unshift(node.tagName.toLowerCase() + "[" + i + "]")
     }
@@ -77,14 +75,16 @@ pagespeedutils.CriticalXPaths.prototype.generateXPath_ = function(node) {
   return xpathUnits.length ? xpathUnits.join("/") : ""
 };
 pagespeedutils.CriticalXPaths.prototype.addXPathPair_ = function(startXpath, endXpath) {
-  var xpathPair = startXpath;
-  endXpath && (xpathPair += ":" + endXpath);
-  this.xpathPairs_.push(xpathPair)
+  if(startXpath) {
+    var xpathPair = startXpath;
+    endXpath && (xpathPair += ":" + endXpath);
+    this.xpathPairs_.push(xpathPair)
+  }
 };
 pagespeedutils.CriticalXPaths.prototype.findNonCriticalPanelBoundaries_ = function(node) {
   for(var nodeIsCritical = pagespeedutils.inViewport(node, this.windowSize_), prevChildIsCritical = nodeIsCritical, startChildXPath = "", endChildXPath = "", firstChild = this.visibleNodeOrSibling_(node.firstChild), currNode = firstChild;null != currNode;currNode = this.visibleNodeOrSibling_(currNode.nextSibling)) {
     var currNodeIsCritical = this.findNonCriticalPanelBoundaries_(currNode);
-    currNodeIsCritical != prevChildIsCritical && (currNodeIsCritical ? (nodeIsCritical || (firstChild != currNode && (startChildXPath = this.generateXPath_(firstChild)), nodeIsCritical = !0), endChildXPath = this.generateXPath_(currNode), startChildXPath && this.addXPathPair_(startChildXPath, endChildXPath), startChildXPath = "") : (startChildXPath = this.generateXPath_(currNode), endChildXPath = ""), prevChildIsCritical = currNodeIsCritical)
+    currNodeIsCritical != prevChildIsCritical && (currNodeIsCritical ? (nodeIsCritical || (firstChild != currNode && (startChildXPath = this.generateXPath_(firstChild)), nodeIsCritical = !0), (endChildXPath = this.generateXPath_(currNode)) || (startChildXPath = ""), startChildXPath && this.addXPathPair_(startChildXPath, endChildXPath), startChildXPath = "") : (startChildXPath = this.generateXPath_(currNode), endChildXPath = ""), prevChildIsCritical = currNodeIsCritical)
   }
   startChildXPath && this.addXPathPair_(startChildXPath, endChildXPath);
   return nodeIsCritical

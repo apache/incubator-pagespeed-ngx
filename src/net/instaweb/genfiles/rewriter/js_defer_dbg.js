@@ -166,7 +166,7 @@ deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
   var newScript = this.origCreateElement_.call(document, "script");
   if(opt_script_elem) {
     for(var a = opt_script_elem.attributes, n = a.length, i = n - 1;0 <= i;--i) {
-      "type" != a[i].name && ("src" != a[i].name && "async" != a[i].name && "defer" != a[i].name && a[i].name != deferJsNs.DeferJs.PSA_ORIG_TYPE && a[i].name != deferJsNs.DeferJs.PSA_ORIG_SRC && a[i].name != deferJsNs.DeferJs.PSA_ORIG_INDEX && a[i].name != deferJsNs.DeferJs.PSA_CURRENT_NODE && a[i].name != this.psaNotProcessed_) && (newScript.setAttribute(a[i].name, a[i].value), opt_script_elem.removeAttribute(a[i].name))
+      "type" != a[i].name && "src" != a[i].name && "async" != a[i].name && "defer" != a[i].name && a[i].name != deferJsNs.DeferJs.PSA_ORIG_TYPE && a[i].name != deferJsNs.DeferJs.PSA_ORIG_SRC && a[i].name != deferJsNs.DeferJs.PSA_ORIG_INDEX && a[i].name != deferJsNs.DeferJs.PSA_CURRENT_NODE && a[i].name != this.psaNotProcessed_ && (newScript.setAttribute(a[i].name, a[i].value), opt_script_elem.removeAttribute(a[i].name))
     }
   }
   return newScript

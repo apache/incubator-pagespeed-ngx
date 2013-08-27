@@ -609,6 +609,9 @@ class RewriteContext {
   // deadline based on rewrite type, e.g., IPRO vs. HTML-path.
   virtual int64 GetRewriteDeadlineAlarmMs() const;
 
+  // Should the context call LockForCreation before checking the cache?
+  virtual bool CreationLockBeforeStartFetch() { return true; }
+
  private:
   class DistributedRewriteCallback;
   class DistributedRewriteFetch;
@@ -639,6 +642,7 @@ class RewriteContext {
   void Start();
   void SetPartitionKey();
   void StartFetch();
+  void StartFetchImpl();
   void CancelFetch();
   void OutputCacheDone(CacheLookupResult* cache_result);
   void OutputCacheHit(bool write_partitions);

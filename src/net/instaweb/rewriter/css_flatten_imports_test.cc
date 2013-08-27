@@ -626,7 +626,7 @@ TEST_F(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
   // 3 URLs (import.css/simple.css/rewritten) x 2 (partition key + contents).
   EXPECT_EQ(6, lru_cache()->num_elements());
   EXPECT_EQ(6, lru_cache()->num_inserts());
-  EXPECT_EQ(6, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(0, lru_cache()->num_deletes());

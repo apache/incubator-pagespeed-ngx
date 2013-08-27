@@ -2821,13 +2821,15 @@ void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
         CreateOutputResourceForCachedOutput(result, &output_resource)) {
-      if (fetch_->requested_hash() != output_resource->hash()) {
-        // Try to do a cache look up on the proper hash; if it's available,
-        // we can serve it.
-        FetchTryFallback(output_resource->HttpCacheKey(),
-                         output_resource->hash());
-        return;
-      }
+      // TODO(jkarlin): Add a NamedLock::HadContention() function and then
+      // we would only need to do this second lookup if there was contention
+      // on the lock or if the hash is different.
+
+      // Try to do a cache look up on the proper hash; if it's available,
+      // we can serve it.
+      FetchTryFallback(output_resource->HttpCacheKey(),
+                       output_resource->hash());
+      return;
     } else if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
       // The result is not optimizable, and it makes sense to use
       // the original instead, so try to do that.
@@ -2889,6 +2891,21 @@ bool RewriteContext::CanFetchFallbackToOriginal(
 
 void RewriteContext::StartFetch() {
   DCHECK_EQ(kind(), fetch_->output_resource()->kind());
+
+  if (!CreationLockBeforeStartFetch()) {
+    StartFetchImpl();
+  } else {
+    // Acquire the lock early, before checking the cache. This way, if another
+    // context finished a rewrite while this one waited for the lock we can use
+    // its cached output.
+    FindServerContext()->LockForCreation(
+        Lock(), Driver()->rewrite_worker(),
+        MakeFunction(this, &RewriteContext::StartFetchImpl,
+                     &RewriteContext::StartFetchImpl));
+  }
+}
+
+void RewriteContext::StartFetchImpl() {
   // If we have an on-the-fly resource, we almost always want to reconstruct it
   // --- there will be no shortcuts in the metadata cache unless the rewrite
   // fails, and it's ultra-cheap to reconstruct anyway.
@@ -2907,10 +2924,7 @@ void RewriteContext::StartFetchReconstruction() {
   // Note that in case of fetches we continue even if we didn't manage to
   // take the lock.
   partitions_->Clear();
-  FindServerContext()->LockForCreation(
-      Lock(), Driver()->rewrite_worker(),
-      MakeFunction(this, &RewriteContext::FetchInputs,
-                   &RewriteContext::FetchInputs));
+  FetchInputs();
 }
 
 void RewriteContext::DetachFetch() {

@@ -650,7 +650,7 @@ goog.string.countOf = function(s, ss) {
 };
 goog.string.removeAt = function(s, index, stringLength) {
   var resultStr = s;
-  0 <= index && (index < s.length && 0 < stringLength) && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
+  0 <= index && index < s.length && 0 < stringLength && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
   return resultStr
 };
 goog.string.remove = function(s, ss) {

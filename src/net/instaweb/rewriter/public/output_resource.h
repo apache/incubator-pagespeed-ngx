@@ -28,20 +28,16 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class CachedResult;
-class Function;
 class MessageHandler;
-class NamedLock;
-class ServerContext;
 class RewriteOptions;
+class ServerContext;
 class Writer;
 struct ContentType;
 
@@ -83,24 +79,6 @@ class OutputResource : public Resource {
   // The resource will be saved under the resource manager's filename_prefix()
   // using with URL escaped using its filename_encoder().
   void DumpToDisk(MessageHandler* handler);
-
-  // Lazily initialize and return creation_lock_.  If the resource is expensive
-  // to create, this lock should be held during its creation to avoid multiple
-  // rewrites happening at once.  The lock will be unlocked on destruction,
-  // DropCreationLock, or EndWrite (called from RewriteDriver::Write)
-  NamedLock* CreationLock();
-
-  // Attempt to obtain a named lock for the resource without blocking.  Return
-  // true if we do so.
-  bool TryLockForCreation();
-
-  // Attempt to obtain a named lock for the resource, scheduling the callback in
-  // the provided worker if we do so and scheduling a cancellation if locking
-  // times out.
-  void LockForCreation(QueuedWorkerPool::Sequence* worker, Function* callback);
-
-  // Drops the lock created by above, if any.
-  void DropCreationLock();
 
   // Update the passed in CachedResult from the CachedResult in this
   // OutputResource.
@@ -215,8 +193,6 @@ class OutputResource : public Resource {
 
   OutputResourceKind kind() const { return kind_; }
 
-  bool has_lock() const;
-
   // This is called by CacheCallback::Done in rewrite_driver.cc.
   void SetWritten(bool written) { writing_complete_ = true; }
 
@@ -284,10 +260,6 @@ class OutputResource : public Resource {
 
   // Lazily evaluated and cached result of the url() method, which is const.
   mutable GoogleString computed_url_;
-
-  // Lock guarding resource creation.  Lazily initialized by CreationLock(),
-  // unlocked on destruction, DropCreationLock or EndWrite.
-  scoped_ptr<NamedLock> creation_lock_;
 
   const RewriteOptions* rewrite_options_;
 

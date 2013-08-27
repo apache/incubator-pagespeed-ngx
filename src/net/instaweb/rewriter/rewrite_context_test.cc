@@ -779,11 +779,10 @@ TEST_F(RewriteContextTest, FetchNonOptimizableLowTtl) {
   ASSERT_EQ(2, values.size());
   EXPECT_STREQ("max-age=5", *values[0]);
   EXPECT_STREQ("private", *values[1]);
-  // Miss for request URL in http cache (twice, since we retry in
-  // RewriteDriver::CacheCallback), metadata, and input resource.  Insert
+  // Miss for request URL in http cache, metadata, and input resource. Insert
   // metadata, and input and output resource with correct hash in http cache.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -802,10 +801,10 @@ TEST_F(RewriteContextTest, FetchNonOptimizableLowTtl) {
   ASSERT_EQ(2, values2.size());
   EXPECT_STREQ("max-age=5", *values2[0]);
   EXPECT_STREQ("private", *values2[1]);
-  // Miss for request URL (twice).  Hit for metadata and output resource with
-  // correct hash.
+  // Miss for request URL. Hit for metadata and output resource with correct
+  // hash.
   EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
@@ -894,14 +893,10 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   EXPECT_EQ(
       0, server_context()->rewrite_stats()->cached_resource_fetches()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  // We did the output_resource lookup twice: once before acquiring the lock,
-  // and the second time after acquiring the lock, because presumably whoever
-  // released the lock has now written the resource.
-  //
   // TODO(jmarantz): have the lock-code return whether it had to wait to
   // get the lock or was able to acquire it immediately to avoid the
   // second cache lookup.
-  EXPECT_EQ(4, lru_cache()->num_misses());  // 2x output, metadata, input
+  EXPECT_EQ(3, lru_cache()->num_misses());  // output, metadata, input
   EXPECT_EQ(3, lru_cache()->num_inserts());  // output resource, input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
@@ -938,10 +933,7 @@ TEST_F(RewriteContextTest, TrimFetchSeedsCache) {
       &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  // We did the output_resource lookup twice: once before acquiring the lock,
-  // and the second time after acquiring the lock, because presumably whoever
-  // released the lock has now written the resource.
-  EXPECT_EQ(4, lru_cache()->num_misses());   // 2x output, metadata, input
+  EXPECT_EQ(3, lru_cache()->num_misses());   // output, metadata, input
   EXPECT_EQ(3, lru_cache()->num_inserts());  // output resource, input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, trim_filter_->num_rewrites());
@@ -969,7 +961,7 @@ TEST_F(RewriteContextTest, TrimFetchRewriteFailureSeedsCache) {
       &content));
   EXPECT_EQ("b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());   // 2x output, metadata, input
+  EXPECT_EQ(3, lru_cache()->num_misses());   // output, metadata, input
   EXPECT_EQ(2, lru_cache()->num_inserts());  // input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, trim_filter_->num_rewrites());
@@ -1140,8 +1132,8 @@ TEST_F(RewriteContextTest, HonorNoTransform) {
                             "a_no_transform.css", "css", &content, &headers));
   EXPECT_EQ(" a ", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  // Lookup the output resource twice, input resource once, and metadata once.
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  // Lookup the output resource, input resource, and metadata.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // meta data & original
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -1150,7 +1142,7 @@ TEST_F(RewriteContextTest, HonorNoTransform) {
                             "a_no_transform.css", "css", &content, &headers));
   EXPECT_EQ(" a ", content);
   EXPECT_EQ(2, lru_cache()->num_hits());     // meta data & original
-  EXPECT_EQ(2, lru_cache()->num_misses());   // output resource twice
+  EXPECT_EQ(1, lru_cache()->num_misses());   // output resource
   EXPECT_EQ(0, lru_cache()->num_inserts());  // name mapping & original
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 
@@ -1165,8 +1157,8 @@ TEST_F(RewriteContextTest, HonorNoTransform) {
   EXPECT_EQ("a", content);
   // TODO(mpalem): Verify the following comments are accurate.
   EXPECT_EQ(1, lru_cache()->num_hits());     // original
-  // output resource twice and metadata
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  // output resource and metadata
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // metadata & output resource
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
@@ -1523,8 +1515,8 @@ TEST_F(RewriteContextTest, CombineFetchHealthyCache) {
   EXPECT_EQ(" a b", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(5, lru_cache()->num_misses())
-      << "output (twice; once after lock), metadata, 2 inputs";
+  EXPECT_EQ(4, lru_cache()->num_misses())
+      << "output, metadata, 2 inputs";
   EXPECT_EQ(4, lru_cache()->num_inserts()) << "ouptput, metadata, 2 inputs";
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 
@@ -1727,7 +1719,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHash) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   // Should have 2 hits: metadata and .0., and 2 misses on wrong-hash version
   EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
@@ -1775,7 +1767,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailed) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   // Should have 2 hits: metadata and .0., and 2 misses on wrong-hash version
   EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
@@ -1907,8 +1899,8 @@ TEST_F(RewriteContextTest, FetchColdCacheRewrittenNotFound) {
                              "a.css", "css", &content));
   EXPECT_EQ(0, lru_cache()->num_hits());
 
-  // We lookup the output resource twice plus the inputs and metadata.
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  // We lookup the output resource plus the inputs and metadata.
+  EXPECT_EQ(3, lru_cache()->num_misses());
 
   // We remember the fetch failure, and the failed rewrite.
   EXPECT_EQ(2, lru_cache()->num_inserts());
@@ -1924,11 +1916,7 @@ TEST_F(RewriteContextTest, FetchColdCacheRewrittenNotFound) {
   EXPECT_FALSE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
                              "a.css", "css", &content));
   EXPECT_EQ(3, lru_cache()->num_hits());
-
-  // Because we don't write out under failed output resource name,
-  // will get two new cache misses here as well: once before we try to acquire
-  // the lock, and the second after having acquired the lock.
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
@@ -2411,8 +2399,8 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(5, lru_cache()->num_misses())
-      << "2 misses for the output.  1 before we acquire the lock, "
+  EXPECT_EQ(4, lru_cache()->num_misses())
+      << "1 miss for the output.  1 before we acquire the lock, "
       << "and one after we acquire the lock.  Then we miss on the metadata "
       << "and the two inputs.";
 

@@ -2393,8 +2393,8 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   EXPECT_EQ("a", out_text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());  // 2x output, metadata, input
-  EXPECT_EQ(3, http_cache()->cache_misses()->Get());  // 2x output, input
+  EXPECT_EQ(3, lru_cache()->num_misses());  // 2x output, metadata, input
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());  // 2x output, input
   EXPECT_EQ(2, lru_cache()->num_inserts());  // mapping, uncacheable memo
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // uncacheable memo
 

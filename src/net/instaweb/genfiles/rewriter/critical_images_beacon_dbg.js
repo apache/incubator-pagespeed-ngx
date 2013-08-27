@@ -81,7 +81,7 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
   for(var tags = ["img", "input"], critical_imgs = [], critical_imgs_keys = {}, i = 0;i < tags.length;++i) {
     for(var elements = document.getElementsByTagName(tags[i]), j = 0;j < elements.length;++j) {
       var key = elements[j].getAttribute("pagespeed_url_hash");
-      key && (elements[j].getBoundingClientRect && this.isCritical_(elements[j])) && !(key in critical_imgs_keys) && (critical_imgs.push(key), critical_imgs_keys[key] = !0)
+      key && elements[j].getBoundingClientRect && this.isCritical_(elements[j]) && !(key in critical_imgs_keys) && (critical_imgs.push(key), critical_imgs_keys[key] = !0)
     }
   }
   var is_data_available = !1, data = "oh=" + this.optionsHash_;

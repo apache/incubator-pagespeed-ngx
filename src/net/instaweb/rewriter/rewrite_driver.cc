@@ -1624,8 +1624,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         filter_(filter),
         output_resource_(output_resource),
         async_fetch_(async_fetch),
-        handler_(handler),
-        did_locking_(false) {
+        handler_(handler) {
     // Canonicalize the URL before looking it up.  Applies
     // rewrite-domain mappings, and reverses any sharding.  E.g.
     // if you have
@@ -1665,7 +1664,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
       async_fetch_->Done(success);
       driver_->FetchComplete();
       delete this;
-    } else if (did_locking_) {
+    } else {
       if (output_resource_->IsWritten()) {
         // OutputResources can also be loaded while not in cache if
         // FetchOutputResource() somehow got called on an already written
@@ -1679,8 +1678,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         async_fetch_->Done(async_fetch_->Write(content, handler_));
         driver_->FetchComplete();
       } else {
-        // We already had the lock and failed our cache lookup.  Use the filter
-        // to reconstruct.
+        // Use the filter to reconstruct.
         if (filter_ != NULL) {
           FilterFetch::Start(filter_, output_resource_, async_fetch_, handler_);
         } else {
@@ -1690,19 +1688,6 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         }
       }
       delete this;
-    } else {
-      // Take creation lock and re-try operation (did_locking_ will hold and we
-      // won't get here again). Note that we purposefully continue here even if
-      // locking fails (so that stale locks not old enough to steal wouldn't
-      // cause us to needlessly fail fetches); which is also why we use
-      // did_locking_ above and not has_lock().
-      did_locking_ = true;
-      // The use of rewrite_worker() here is for more predictability in
-      // testing, as it keeps the individual lock ops ordered with respect
-      // to the rewrite graph state machine.
-      output_resource_->LockForCreation(
-          driver_->rewrite_worker(),
-          MakeFunction(this, &CacheCallback::Find, &CacheCallback::Find));
     }
   }
 
@@ -1712,7 +1697,6 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   OutputResourcePtr output_resource_;
   AsyncFetch* async_fetch_;
   MessageHandler* handler_;
-  bool did_locking_;
   GoogleString canonical_url_;
 };
 

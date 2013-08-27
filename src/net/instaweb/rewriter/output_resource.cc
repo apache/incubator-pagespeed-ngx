@@ -39,10 +39,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -140,7 +137,6 @@ void OutputResource::EndWrite(MessageHandler* handler) {
   full_name_.set_hash(hasher->Hash(contents()));
   computed_url_.clear();  // Since dependent on full_name_.
   writing_complete_ = true;
-  DropCreationLock();
 }
 
 StringPiece OutputResource::suffix() const {
@@ -245,38 +241,6 @@ void OutputResource::SetType(const ContentType* content_type) {
         << "OutputResource with extension length > "
            "ContentType::MaxProducedExtensionLength()";
   }
-}
-
-NamedLock* OutputResource::CreationLock() {
-  if (creation_lock_.get() == NULL) {
-    creation_lock_.reset(server_context_->MakeCreationLock(name_key()));
-  }
-  return creation_lock_.get();
-}
-
-bool OutputResource::has_lock() const {
-  return ((creation_lock_.get() != NULL) && creation_lock_->Held());
-}
-
-bool OutputResource::TryLockForCreation() {
-  if (has_lock()) {
-    return true;
-  } else {
-    return server_context_->TryLockForCreation(CreationLock());
-  }
-}
-
-void OutputResource::LockForCreation(QueuedWorkerPool::Sequence* worker,
-                                     Function* callback) {
-  if (has_lock()) {
-    worker->Add(callback);
-  } else {
-    server_context_->LockForCreation(CreationLock(), worker, callback);
-  }
-}
-
-void OutputResource::DropCreationLock() {
-  creation_lock_.reset();
 }
 
 CachedResult* OutputResource::EnsureCachedResultCreated() {

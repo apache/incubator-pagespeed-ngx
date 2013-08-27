@@ -106,6 +106,10 @@ class InPlaceRewriteContext : public SingleRewriteContext {
       const ResourceContext* resource_context) const;
   virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context);
 
+  // We don't lock for IPRO because IPRO would rather stream back the original
+  // resource than wait for the optimization.
+  virtual bool CreationLockBeforeStartFetch() { return false; }
+
  private:
   friend class RecordingFetch;
   // Implements RewriteContext::Harvest().

@@ -402,17 +402,17 @@ TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilter) {
   EXPECT_EQ(1, distributed_rewrite_successes_->Get());
   EXPECT_EQ(0, distributed_rewrite_failures_->Get());
 
-  // Ingress task starts on cc filter, misses HTTP twice, metadata once,
-  // and then fetches its CssFilter input, which distributes.
-  // Distributed task CssFilter misses HTTP twice, metadata once, input resource
-  // once, and then fetches the input resource and inserts the metadata,
-  // original resource, and optimized resource into cache.
+  // Ingress task starts on cc filter, misses HTTP, metadata once, and then
+  // fetches its CssFilter input, which distributes.
+  // Distributed task CssFilter misses HTTP, metadata once, input resource once,
+  // and then fetches the input resource and inserts the metadata, original
+  // resource, and optimized resource into cache.
   // Ingress task writes its metadata and optimized to cache.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(5, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(5, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
   EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
 }
 
@@ -465,17 +465,17 @@ TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilterBlocks) {
   EXPECT_EQ(1, distributed_rewrite_successes_->Get());
   EXPECT_EQ(0, distributed_rewrite_failures_->Get());
 
-  // Ingress task starts on cc filter, misses HTTP twice, metadata once,
-  // and then fetches its CssFilter input, which distributes.
-  // Distributed task CssFilter misses HTTP twice, metadata once, input resource
-  // once, and then fetches the input resource and inserts the metadata,
-  // original resource, and optimized resource into cache.
+  // Ingress task starts on cc filter, misses HTTP, metadata, and then fetches
+  // its CssFilter input, which distributes.
+  // Distributed task CssFilter misses HTTP, metadata, and input resource and
+  // then fetches the input resource and inserts the metadata, original
+  // resource, and optimized resource into cache.
   // Ingress task writes its metadata and optimized resource to cache.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(5, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(5, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
   EXPECT_EQ(3, http_cache()->cache_inserts()->Get());
 }
 
@@ -652,14 +652,14 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFetch) {
                         1);  // number of rewrites
 
   // Ingress task distributes.
-  // Rewrite task misses on three HTTP lookups (twice for rewritten resource
-  // plus once for original resource) and one metdata lookup. Then inserts
-  // original resource, optimized resource, and metadata.
+  // Rewrite task misses on two HTTP lookups (once for rewritten resource plus
+  // once for original resource) and one metdata lookup. Then inserts original
+  // resource, optimized resource, and metadata.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 
   // On the second .pagespeed. request the optimized resource should be in the
@@ -707,14 +707,14 @@ TEST_F(DistributedRewriteContextTest, DistributeFetchesDisabled) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
 
-  // Ingress task misses on three HTTP lookups (twice for rewritten resource
-  // plus once for original resource) and one metdata lookup. Then inserts
-  // original resource, optimized resource, and metadata.
+  // Ingress task misses on two HTTP lookups (rewritten resource plus once for
+  // original resource) and one metadata lookup. Then inserts original resource,
+  // optimized resource, and metadata.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 
   // On the second .pagespeed. request the optimized resource should be in the
@@ -769,14 +769,14 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
                         0);  // number of rewrites
 
   // Ingress task distributes and streams back the 404.
-  // Rewrite task misses on three HTTP lookups (twice for rewritten resource
-  // plus once for original resource) and one metadata lookup. Then inserts
-  // 404'd original resource and metadata.
+  // Rewrite task misses on two HTTP lookups (once for rewritten resource plus
+  // once for original resource) and one metadata lookup. Then inserts 404'd
+  // original resource and metadata.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
 
   // Fetching again causes another reconstruction and therefore another
@@ -795,7 +795,7 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
                         0);  // number of rewrites
 
   EXPECT_EQ(3, lru_cache()->num_hits());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
 }
 
@@ -826,14 +826,14 @@ TEST_F(DistributedRewriteContextTest,
                         1);  // number of rewrites
 
   // Ingress task: Distributed rewrite streams but then fails.
-  // Distributed task: Misses http cache twice, then metadata. Fetches original
+  // Distributed task: Misses http cache, then metadata. Fetches original
   // (misses in process), writes it, optimizes, writes optimized, and writes
   // metadata.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 }
 
@@ -890,15 +890,14 @@ TEST_F(DistributedRewriteContextTest,
   EXPECT_EQ(0, other_trim_filter_->num_rewrites());
   EXPECT_EQ(0, distributed_metadata_failures_->Get());
 
-  // Ingress task: Distributed rewrite streams but fails early, resorts
-  // to local rewrite. Misses http cache twice, then metadata. Fetches original
-  // (misses in process), writes it, optimizes, writes optimized, and writes
-  // metadata.
+  // Ingress task: Distributed rewrite streams but fails early, resorts to local
+  // rewrite. Misses http cache, then metadata. Fetches original (misses in
+  // process), writes it, optimizes, writes optimized, and writes metadata.
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(3, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 }
 

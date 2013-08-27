@@ -161,24 +161,16 @@ class ServerContextTest : public RewriteTestBase {
     EXPECT_EQ(expect_content, fetch_result.buffer());
   }
 
-  GoogleString GetOutputResourceWithoutLock(const OutputResourcePtr& resource) {
+  GoogleString GetOutputResource(const OutputResourcePtr& resource) {
     StringAsyncFetch fetch(RequestContext::NewTestRequestContext(
         server_context()->thread_system()));
     EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &fetch));
-    EXPECT_FALSE(resource->has_lock());
-    return fetch.buffer();
-  }
-
-  GoogleString GetOutputResourceWithLock(const OutputResourcePtr& resource) {
-    StringAsyncFetch fetch(CreateRequestContext());
-    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &fetch));
-    EXPECT_TRUE(resource->has_lock());
     return fetch.buffer();
   }
 
   // Returns whether there was an existing copy of data for the resource.
   // If not, makes sure the resource is wrapped.
-  bool TryFetchExtantOutputResourceOrLock(const OutputResourcePtr& resource) {
+  bool TryFetchExtantOutputResource(const OutputResourcePtr& resource) {
     StringAsyncFetch dummy_fetch(CreateRequestContext());
     return FetchExtantOutputResourceHelper(resource, &dummy_fetch);
   }
@@ -220,28 +212,26 @@ class ServerContextTest : public RewriteTestBase {
     GoogleString name_key = output->name_key();
     RemoveUrlPrefix(kUrlPrefix, &name_key);
     EXPECT_EQ(output->full_name().EncodeIdName(), name_key);
-    // Make sure the resource hasn't already been created (and lock it for
-    // creation). We do need to give it a hash for fetching to do anything.
+    // Make sure the resource hasn't already been created. We do need to give it
+    // a hash for fetching to do anything.
     output->SetHash("42");
-    EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(output));
+    EXPECT_FALSE(TryFetchExtantOutputResource(output));
     EXPECT_FALSE(output->IsWritten());
 
     {
-      // Check that a non-blocking attempt to lock another resource
+      // Check that a non-blocking attempt to create another resource
       // with the same name returns quickly. We don't need a hash in this
       // case since we're just trying to create the resource, not fetch it.
       OutputResourcePtr output1(
           rewrite_driver()->CreateOutputResourceWithPath(
               kUrlPrefix, filter_prefix, name, kRewrittenResource));
       ASSERT_TRUE(output1.get() != NULL);
-      EXPECT_FALSE(output1->TryLockForCreation());
       EXPECT_FALSE(output1->IsWritten());
     }
 
     {
       // Here we attempt to create the object with the hash and fetch it.
-      // The fetch fails as there is no active filter to resolve it
-      // (but returns after timing out the lock, however).
+      // The fetch fails as there is no active filter to resolve it.
       ResourceNamer namer;
       namer.CopyFrom(output->full_name());
       namer.set_hash("0");
@@ -250,10 +240,8 @@ class ServerContextTest : public RewriteTestBase {
       OutputResourcePtr output1(CreateOutputResourceForFetch(name));
       ASSERT_TRUE(output1.get() != NULL);
 
-      // non-blocking
-      EXPECT_FALSE(output1->TryLockForCreation());
       // blocking but stealing
-      EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(output1));
+      EXPECT_FALSE(TryFetchExtantOutputResource(output1));
     }
 
     // Write some data
@@ -271,7 +259,7 @@ class ServerContextTest : public RewriteTestBase {
     // from the http_cache.
     OutputResourcePtr output4(CreateOutputResourceForFetch(output->url()));
     EXPECT_EQ(output->url(), output4->url());
-    EXPECT_EQ(contents, GetOutputResourceWithoutLock(output4));
+    EXPECT_EQ(contents, GetOutputResource(output4));
   }
 
   bool ResourceIsCached() {
