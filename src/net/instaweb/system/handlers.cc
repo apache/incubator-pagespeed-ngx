@@ -16,14 +16,39 @@
 
 #include "net/instaweb/system/public/handlers.h"
 
+#include <cstddef>  // for size_t
+#include <memory>
+#include <set>  // for set
+#include <vector>  // for vector
+#include "pagespeed/kernel/base/basictypes.h"  // for int64
+#include "pagespeed/kernel/base/timer.h"  // for Timer
+#include "pagespeed/kernel/http/content_type.h"
+
+
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_server_context.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
+
+extern const char* JS_mod_pagespeed_console_js;
+extern const char* CSS_mod_pagespeed_console_css;
+extern const char* HTML_mod_pagespeed_console_body;
+
+// Writes text wrapped in a <pre> block
+void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
+  writer->Write("<pre>\n", handler);
+  writer->Write(str, handler);
+  writer->Write("</pre>\n", handler);
+}
 
 // Handler which serves PSOL console.
 void ConsoleHandler(SystemServerContext* server_context,
@@ -100,6 +125,160 @@ void ConsoleHandler(SystemServerContext* server_context,
                   "  for more details.\n"
                   "</p>\n", handler);
   }
+}
+
+// TODO(sligocki): integrate this into the pagespeed_console.
+void StatisticsGraphsHandler(SystemRewriteOptions* options,
+                             Writer* writer,
+                             MessageHandler* message_handler) {
+  writer->Write("<!DOCTYPE html>"
+               "<title>mod_pagespeed console</title>",
+               message_handler);
+  writer->Write("<style>", message_handler);
+  writer->Write(CSS_mod_pagespeed_console_css, message_handler);
+  writer->Write("</style>", message_handler);
+  writer->Write(HTML_mod_pagespeed_console_body, message_handler);
+  writer->Write("<script>", message_handler);
+  if (options->statistics_logging_charts_js().size() > 0 &&
+      options->statistics_logging_charts_css().size() > 0) {
+    writer->Write("var chartsOfflineJS = '", message_handler);
+    writer->Write(options->statistics_logging_charts_js(), message_handler);
+    writer->Write("';", message_handler);
+    writer->Write("var chartsOfflineCSS = '", message_handler);
+    writer->Write(options->statistics_logging_charts_css(), message_handler);
+    writer->Write("';", message_handler);
+  } else {
+    if (options->statistics_logging_charts_js().size() > 0 ||
+        options->statistics_logging_charts_css().size() > 0) {
+      message_handler->Message(kWarning, "Using online Charts API.");
+    }
+    writer->Write("var chartsOfflineJS, chartsOfflineCSS;", message_handler);
+  }
+  writer->Write(JS_mod_pagespeed_console_js, message_handler);
+  writer->Write("</script>", message_handler);
+}
+
+const char* StatisticsHandler(
+    SystemRewriteDriverFactory* factory,
+    SystemServerContext* server_context,
+    SystemRewriteOptions* spdy_config,  /* may be null */
+    bool is_global_request,
+    StringPiece query_params,
+    ContentType* content_type,
+    Writer* writer,
+    MessageHandler* message_handler) {
+  int64 start_time, end_time, granularity_ms;
+  std::set<GoogleString> var_titles;
+  QueryParams params;
+  params.Parse(query_params);
+
+  Statistics* statistics =
+      is_global_request ? factory->statistics() : server_context->statistics();
+
+  // Parse various mode query params.
+  bool print_normal_config = params.Has("config");
+  bool print_spdy_config = params.Has("spdy_config");
+
+  // JSON statistics handling is done only if we have a console logger.
+  bool json_output = false;
+  *content_type = kContentTypeHtml;
+  if (statistics->console_logger() != NULL) {
+    // Default values for start_time, end_time, and granularity_ms in case the
+    // query does not include these parameters.
+    start_time = 0;
+    end_time = server_context->timer()->NowMs();
+    // Granularity is the difference in ms between data points. If it is not
+    // specified by the query, the default value is 3000 ms, the same as the
+    // default logging granularity.
+    granularity_ms = 3000;
+    for (int i = 0; i < params.size(); ++i) {
+      const GoogleString value =
+          (params.value(i) == NULL) ? "" : *params.value(i);
+      const char* name = params.name(i);
+      if (strcmp(name, "json") == 0) {
+        json_output = true;
+        *content_type = kContentTypeJson;
+      } else if (strcmp(name, "start_time") == 0) {
+        StringToInt64(value, &start_time);
+      } else if (strcmp(name, "end_time") == 0) {
+        StringToInt64(value, &end_time);
+      } else if (strcmp(name, "var_titles") == 0) {
+        std::vector<StringPiece> variable_names;
+        SplitStringPieceToVector(value, ",", &variable_names, true);
+        for (size_t i = 0; i < variable_names.size(); ++i) {
+          var_titles.insert(variable_names[i].as_string());
+        }
+      } else if (strcmp(name, "granularity") == 0) {
+        StringToInt64(value, &granularity_ms);
+      }
+    }
+  } else {
+    if (params.Has("json")) {
+      return "console_logger must be enabled to use '?json' query parameter.";
+    }
+  }
+  if (json_output) {
+    statistics->console_logger()->DumpJSON(var_titles, start_time, end_time,
+                                           granularity_ms, writer,
+                                           message_handler);
+  } else {
+    // Generate some navigational links to the right to help
+    // our users get to other modes.
+    writer->Write(
+        "<div style='float:right'>View "
+        "<a href='?config'>Configuration</a>, "
+        "<a href='?spdy_config'>SPDY Configuration</a>, "
+        "<a href='?'>Statistics</a> "
+        "(<a href='?memcached'>with memcached Stats</a>). "
+        "</div>",
+        message_handler);
+
+    // Only print stats or configuration, not both.
+    if (!print_normal_config && !print_spdy_config) {
+      writer->Write(is_global_request ?
+                   "Global Statistics" : "VHost-Specific Statistics",
+                   message_handler);
+
+      // Write <pre></pre> for Dump to keep good format.
+      writer->Write("<pre>", message_handler);
+      statistics->Dump(writer, message_handler);
+      writer->Write("</pre>", message_handler);
+      statistics->RenderHistograms(writer, message_handler);
+
+      int flags = SystemCaches::kDefaultStatFlags;
+      if (is_global_request) {
+        flags |= SystemCaches::kGlobalView;
+      }
+
+      if (params.Has("memcached")) {
+        flags |= SystemCaches::kIncludeMemcached;
+      }
+
+      GoogleString backend_stats;
+      factory->caches()->PrintCacheStats(
+          static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
+      if (!backend_stats.empty()) {
+        WritePre(backend_stats, writer, message_handler);
+      }
+    }
+
+    if (print_normal_config) {
+      writer->Write("Configuration:<br>", message_handler);
+      WritePre(server_context->system_rewrite_options()->OptionsToString(),
+               writer, message_handler);
+    }
+
+    if (print_spdy_config) {
+      if (spdy_config == NULL) {
+        writer->Write("SPDY-specific configuration missing, using default.",
+                     message_handler);
+      } else {
+        writer->Write("SPDY-specific configuration:<br>", message_handler);
+        WritePre(spdy_config->OptionsToString(), writer, message_handler);
+      }
+    }
+  }
+  return NULL;  // No errors.
 }
 
 }  // namespace net_instaweb
