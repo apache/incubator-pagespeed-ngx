@@ -760,9 +760,17 @@ void ps_merge_options(net_instaweb::NgxRewriteOptions* parent_options,
   }
 }
 
+namespace {
+
+int times_ps_merge_srv_conf_called = 0;
+
+}  // namespace
+
 // Called exactly once per server block to merge the main configuration with the
 // configuration for this server.
 char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
+  times_ps_merge_srv_conf_called += 1;
+
   ps_srv_conf_t* parent_cfg_s =
       static_cast<ps_srv_conf_t*>(parent);
   ps_srv_conf_t* cfg_s =
@@ -774,10 +782,19 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     return NGX_CONF_OK;  // No pagespeed options; don't do anything.
   }
 
+  // ServerContext needs a hostname and port, but I don't see how to get this
+  // and it ignores that a server can have multiple names and ports.  Because
+  // the server context only needs them to make a unique identifier and to make
+  // debugging easier, substitute our own unique identifier.
+  // TODO(jefftk): either figure out how to get a hostname and port for this
+  // server block or change ServerContext not to ask for them.
+  int dummy_port = -times_ps_merge_srv_conf_called;
+
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
   cfg_m->driver_factory->set_main_conf(parent_cfg_s->options);
-  cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
+  cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext(
+      "dummy_hostname", dummy_port);
   // The server context sets some options when we call global_options(). So
   // let it do that, then merge in options we got from the config file.
   // Once we do that we're done with cfg_s->options.
@@ -2469,7 +2486,8 @@ ngx_int_t ps_console_handler(
   net_instaweb::MessageHandler* message_handler = factory->message_handler();
   GoogleString output;
   net_instaweb::StringWriter writer(&output);
-  ConsoleHandler(server_context->config(), &writer, message_handler);
+  ConsoleHandler(
+      server_context, server_context->config(), &writer, message_handler);
   ps_write_handler_response(output, r, factory->timer());
   return NGX_OK;
 }
@@ -3050,17 +3068,12 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
             cfg_m->driver_factory->MakeGlobalSharedMemStatistics(*config);
       }
 
-      // The hostname identifier is used by the shared memory statistics
-      // to allocate a segment, and should be unique name per server
-      GoogleString hostname_identifier = net_instaweb::StrCat(
-          "Host[", base::IntToString(static_cast<int>(s)), "]");
-      cfg_s->server_context->set_hostname_identifier(hostname_identifier);
-
       // If config has statistics on and we have per-vhost statistics on
       // as well, then set it up.
       if (config->statistics_enabled()
           && cfg_m->driver_factory->use_per_vhost_statistics()) {
-        cfg_s->server_context->CreateLocalStatistics(statistics);
+        cfg_s->server_context->CreateLocalStatistics(
+            statistics, cfg_m->driver_factory);
       }
     }
   }

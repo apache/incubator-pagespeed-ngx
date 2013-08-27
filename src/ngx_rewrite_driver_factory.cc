@@ -171,8 +171,9 @@ bool NgxRewriteDriverFactory::CheckResolver() {
   return true;
 }
 
-NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
-  NgxServerContext* server_context = new NgxServerContext(this);
+NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext(
+    StringPiece hostname, int port) {
+  NgxServerContext* server_context = new NgxServerContext(this, hostname, port);
   uninitialized_server_contexts_.insert(server_context);
   return server_context;
 }
