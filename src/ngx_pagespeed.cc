@@ -32,7 +32,6 @@
 #include "ngx_caching_headers.h"
 #include "ngx_list_iterator.h"
 #include "ngx_message_handler.h"
-#include "ngx_request_context.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
@@ -54,6 +53,7 @@
 #include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
@@ -1606,9 +1606,9 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx) {
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
       cfg_s->server_context,
-      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
-      cfg_s->server_context->thread_system()->NewMutex(),
-      cfg_s->server_context->timer(), r)), ctx->modify_caching_headers);
+      net_instaweb::RequestContextPtr(
+          cfg_s->server_context->NewRequestContext(r)),
+      ctx->modify_caching_headers);
 
   return NGX_OK;
 }
@@ -2673,9 +2673,8 @@ void ps_beacon_handler_helper(ngx_http_request_t* r,
   cfg_s->server_context->HandleBeacon(
       beacon_data,
       user_agent,
-      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
-          cfg_s->server_context->thread_system()->NewMutex(),
-          cfg_s->server_context->timer(), r)));
+      net_instaweb::RequestContextPtr(
+          cfg_s->server_context->NewRequestContext(r)));
 
   ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
 
@@ -3143,7 +3142,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     }
   }
 
-  if (!cfg_m->driver_factory->InitNgxUrlAsyncFetcher()) {
+  if (!cfg_m->driver_factory->InitNgxUrlAsyncFetchers()) {
     return NGX_ERROR;
   }
   cfg_m->driver_factory->StartThreads();
