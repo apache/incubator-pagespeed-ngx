@@ -2547,7 +2547,10 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(
 void RewriteDriver::Cleanup() {
   {
     ScopedMutex lock(log_record()->mutex());
-    log_record()->logging_info()->set_experiment_id(options()->experiment_id());
+    if (!log_record()->logging_info()->has_experiment_id()) {
+      log_record()->logging_info()->set_experiment_id(
+          options()->experiment_id());
+    }
   }
   if (!externally_managed_) {
     bool should_release = false;
