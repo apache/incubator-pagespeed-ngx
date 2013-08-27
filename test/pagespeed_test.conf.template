@@ -200,6 +200,16 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name renderedimagebeacon.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters resize_rendered_image_dimensions;
+    pagespeed CriticalImagesBeaconEnabled true;
+  }
+
+  server {
     # Sets up a virtual host where we can specify forbidden filters without
     # affecting any other hosts.
     listen @@SECONDARY_PORT@@;
@@ -215,6 +225,21 @@ http {
     pagespeed ForbidFilters rewrite_css,resize_images;
     # ... and disable but not forbid this one (to ensure we retain its URL).
     pagespeed DisableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name client-domain-rewrite.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    # Don't actually try to rewrite any resources; the ones in
+    # rewrite_domains.html don't actually exist.
+    pagespeed RewriteLevel PassThrough;
+
+    pagespeed MapRewriteDomain http://client-domain-rewrite.example.com
+              http://src.example.com;
+    pagespeed ClientDomainRewrite true;
+    pagespeed EnableFilters rewrite_domains;
   }
 
   server {
