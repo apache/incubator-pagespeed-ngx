@@ -296,13 +296,25 @@ TEST_F(GoogleUrlTest, TestPort) {
 }
 
 TEST_F(GoogleUrlTest, TestExtraSlash) {
+  // Note: Currently we allow // in GoogleUrls constructed with no base.
+  GoogleUrl no_base("http://example.com//extra_slash/index.html");
+  EXPECT_STREQ("http://example.com//extra_slash/index.html", no_base.Spec());
+
+  // But not those constructed with a base.
   GoogleUrl base("http://www.example.com");
-  GoogleUrl example_extra_slash(
-      base, "http://www.example.com//extra_slash/index.html");
-  GoogleUrl a_extra_slash(base, "http://a.com//extra_slash/index.html");
-  EXPECT_STREQ("http://www.example.com/extra_slash/index.html",
-               example_extra_slash.Spec());
-  EXPECT_STREQ("http://a.com/extra_slash/index.html", a_extra_slash.Spec());
+  GoogleUrl early_slashes(base, "http://a.com//extra_slash/index.html");
+  EXPECT_STREQ("http://a.com/extra_slash/index.html", early_slashes.Spec());
+
+  // Unless the // is later in the URL.
+  GoogleUrl late_slashes(base, "http://a.com/extra_slash//index.html");
+  EXPECT_STREQ("http://a.com/extra_slash//index.html", late_slashes.Spec());
+
+  // Extra slashes causes worse problems!
+  GoogleUrl three_slashes(base, "http://a.com///extra_slash/index.html");
+  EXPECT_STREQ("http://extra_slash/index.html", three_slashes.Spec());
+
+  // TODO(sligocki): We should make this more consistent. I think we should
+  // just allow // anywhere in the URL, why not?
 }
 
 TEST_F(GoogleUrlTest, SchemeRelativeBase) {

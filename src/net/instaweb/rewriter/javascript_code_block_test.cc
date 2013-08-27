@@ -330,6 +330,18 @@ TEST_F(JsCodeBlockTest, BogusLibraryRegistration) {
   // Try to register a library with a bad url
   EXPECT_FALSE(libraries_.RegisterLibrary(47, kBogusLibraryMD5,
                                           "totally://bogus.protocol/"));
+  EXPECT_FALSE(libraries_.RegisterLibrary(74, kBogusLibraryMD5,
+                                          "totally:bogus.protocol"));
+
+  // Don't allow non-standard protocols either.
+  EXPECT_FALSE(libraries_.RegisterLibrary(138, kBogusLibraryMD5,
+                                          "mailto:johndoe@example.com"));
+  EXPECT_FALSE(libraries_.RegisterLibrary(150, kBogusLibraryMD5,
+                                          "ftp://www.example.com/test.js"));
+  EXPECT_FALSE(libraries_.RegisterLibrary(222, kBogusLibraryMD5,
+                                          "file:///etc/passwd"));
+  EXPECT_FALSE(libraries_.RegisterLibrary(234, kBogusLibraryMD5,
+                                          "data:text/plain,Hello-world"));
 }
 
 }  // namespace

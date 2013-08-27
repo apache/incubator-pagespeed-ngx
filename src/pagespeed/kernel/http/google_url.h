@@ -137,10 +137,15 @@ class GoogleUrl {
   // Returns the effective port number, which is dependent on the scheme.
   int EffectiveIntPort() const { return gurl_.EffectiveIntPort(); }
 
+  // Is a valid web (HTTP or HTTPS) URL. Most users will want this.
+  bool IsWebValid() const {
+    return gurl_.is_valid() && (SchemeIs("http") || SchemeIs("https"));
+  }
+
   // Returns validity of stored url.
   bool is_valid() const { return gurl_.is_valid(); }
-
   bool is_standard() const { return gurl_.IsStandard(); }
+
   bool is_empty() const { return gurl_.is_empty(); }
   bool has_scheme() const { return gurl_.has_scheme(); }
   bool has_path() const { return gurl_.has_path(); }

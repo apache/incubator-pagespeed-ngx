@@ -45,7 +45,7 @@ bool JavascriptLibraryIdentification::RegisterLibrary(
   // Check url for basic validity by resolving it against example.com.
   GoogleUrl base("http://www.example.com/");
   GoogleUrl gurl(base, canonical_url);
-  if (!gurl.is_valid()) {
+  if (!gurl.IsWebValid()) {
     return false;
   }
   MD5ToUrlMap& bytes_entry = libraries_[bytes];  // Creates inner map if absent.
