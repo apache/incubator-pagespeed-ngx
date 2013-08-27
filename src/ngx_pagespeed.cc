@@ -1427,136 +1427,6 @@ bool is_pagespeed_subrequest(ngx_http_request_t* r) {
   return (user_agent.find(kModPagespeedSubrequestUserAgent) != user_agent.npos);
 }
 
-
-// TODO(jud): Reuse the version in proxy_interface.cc.
-bool UrlMightHavePropertyCacheEntry(const net_instaweb::GoogleUrl& url) {
-  const net_instaweb::ContentType* type =
-      net_instaweb::NameExtensionToContentType(url.LeafSansQuery());
-  if (type == NULL) {
-    return true;  // http://www.example.com/  -- no extension; could be HTML.
-  }
-
-  // Use a complete switch-statement rather than type()->IsHtmlLike()
-  // so that every time we add a new content-type we make an explicit
-  // decision about whether it should induce a pcache read.
-  //
-  // TODO(jmarantz): currently this returns false for ".txt".  Thus we will
-  // do no optimizations relying on property-cache on HTML files ending with
-  // ".txt".  We should determine whether this is the right thing or not.
-  switch (type->type()) {
-    case net_instaweb::ContentType::kHtml:
-    case net_instaweb::ContentType::kXhtml:
-    case net_instaweb::ContentType::kCeHtml:
-      return true;
-    case net_instaweb::ContentType::kJavascript:
-    case net_instaweb::ContentType::kCss:
-    case net_instaweb::ContentType::kText:
-    case net_instaweb::ContentType::kXml:
-    case net_instaweb::ContentType::kPng:
-    case net_instaweb::ContentType::kGif:
-    case net_instaweb::ContentType::kJpeg:
-    case net_instaweb::ContentType::kSwf:
-    case net_instaweb::ContentType::kWebp:
-    case net_instaweb::ContentType::kIco:
-    case net_instaweb::ContentType::kPdf:
-    case net_instaweb::ContentType::kOther:
-    case net_instaweb::ContentType::kJson:
-    case net_instaweb::ContentType::kVideo:
-    case net_instaweb::ContentType::kOctetStream:
-      return false;
-  }
-  LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()
-              << "; " << type->mime_type() << "; " << type->file_extension();
-  return false;
-}
-
-// TODO(jud): Reuse ProxyInterface::InitiatePropertyCacheLookup.
-net_instaweb::ProxyFetchPropertyCallbackCollector*
-ps_initiate_property_cache_lookup(
-    net_instaweb::ServerContext* server_context,
-    bool is_resource_fetch,
-    const net_instaweb::GoogleUrl& request_url,
-    net_instaweb::RewriteOptions* options,
-    net_instaweb::AsyncFetch* async_fetch,
-    bool* added_page_property_callback) {
-  net_instaweb::RequestContextPtr request_ctx = async_fetch->request_context();
-
-  StringPiece user_agent = async_fetch->request_headers()->Lookup1(
-      net_instaweb::HttpAttributes::kUserAgent);
-  net_instaweb::UserAgentMatcher::DeviceType device_type =
-      server_context->user_agent_matcher()->GetDeviceTypeForUA(user_agent);
-
-  scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
-      callback_collector(new net_instaweb::ProxyFetchPropertyCallbackCollector(
-          server_context, request_url.Spec(), request_ctx, options,
-          device_type));
-  bool added_callback = false;
-  net_instaweb::PropertyPageStarVector property_callbacks;
-
-  net_instaweb::ProxyFetchPropertyCallback* property_callback = NULL;
-  net_instaweb::ProxyFetchPropertyCallback* fallback_property_callback = NULL;
-  net_instaweb::PropertyCache* page_property_cache =
-      server_context->page_property_cache();
-  if (!is_resource_fetch &&
-      server_context->page_property_cache()->enabled() &&
-      UrlMightHavePropertyCacheEntry(request_url) &&
-      async_fetch->request_headers()->method() ==
-      net_instaweb::RequestHeaders::kGet) {
-    GoogleString options_signature_hash;
-    if (options != NULL) {
-      server_context->ComputeSignature(options);
-      options_signature_hash =
-          server_context->GetRewriteOptionsSignatureHash(options);
-    }
-    net_instaweb::AbstractMutex* mutex =
-        server_context->thread_system()->NewMutex();
-    property_callback = new net_instaweb::ProxyFetchPropertyCallback(
-        net_instaweb::ProxyFetchPropertyCallback::kPropertyCachePage,
-        page_property_cache, request_url.Spec(), options_signature_hash,
-        device_type, callback_collector.get(), mutex);
-    callback_collector->AddCallback(property_callback);
-    added_callback = true;
-    if (added_page_property_callback != NULL) {
-      *added_page_property_callback = true;
-    }
-    // Trigger property cache lookup for the requests which contains query param
-    // as cache key without query params. The result of this lookup will be used
-    // if actual property page does not contains property value.
-    GoogleString fallback_page_url;
-    if (options != NULL &&
-        options->use_fallback_property_cache_values() &&
-        request_url.has_query() &&
-        request_url.PathAndLeaf() != "/" &&
-        !request_url.PathAndLeaf().empty()) {
-      // Don't bother looking up fallback properties for the root, "/", since
-      // there is nothing to fall back to.
-      fallback_page_url =
-          net_instaweb::FallbackPropertyPage::GetFallbackPageUrl(request_url);
-    }
-    if (!fallback_page_url.empty()) {
-      fallback_property_callback = new net_instaweb::ProxyFetchPropertyCallback(
-          net_instaweb::ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
-          page_property_cache, fallback_page_url, options_signature_hash,
-          device_type, callback_collector.get(),
-          server_context->thread_system()->NewMutex());
-      callback_collector->AddCallback(fallback_property_callback);
-    }
-  }
-
-  // All callbacks need to be registered before Reads to avoid race.
-  if (property_callback != NULL) {
-    page_property_cache->Read(property_callback);
-  }
-  if (fallback_property_callback != NULL) {
-    page_property_cache->Read(fallback_property_callback);
-  }
-
-  if (!added_callback) {
-    callback_collector.reset(NULL);
-  }
-  return callback_collector.release();
-}
-
 // TODO(chaizhenhua): merge into NgxBaseFetch::Release()
 void ps_release_base_fetch(ps_request_ctx_t* ctx) {
   // In the normal flow BaseFetch doesn't delete itself in HandleDone() because
@@ -1816,10 +1686,15 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   bool page_callback_added = false;
   scoped_ptr<net_instaweb::ProxyFetchPropertyCallbackCollector>
-      property_callback(ps_initiate_property_cache_lookup(
-          cfg_s->server_context,
-          !html_rewrite, url, options, ctx->base_fetch,
-          &page_callback_added));
+      property_callback(
+          net_instaweb::ProxyFetchFactory::InitiatePropertyCacheLookup(
+              !html_rewrite /* is_resource_fetch */,
+              url,
+              cfg_s->server_context,
+              options,
+              ctx->base_fetch,
+              false /* requires_blink_cohort (no longer unused) */,
+              &page_callback_added));
 
   if (!html_rewrite
     && cfg_s->server_context->IsPagespeedResource(url)) {
