@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/image/png_optimizer.h"
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
@@ -43,6 +44,7 @@ extern "C" {
 #include "third_party/optipng/src/opngreduc/opngreduc.h"
 }
 
+using net_instaweb::MessageHandler;
 using pagespeed::image_compression::PngCompressParams;
 
 namespace {
@@ -71,7 +73,7 @@ void ReadPngFromStream(png_structp read_ptr,
     input->set_offset(input->offset() + length);
 
   } else {
-    DLOG(INFO) << "ReadPngFromStream: Unexpected EOF.";
+    PS_DLOG_INFO(input->message_handler(), "Unexpected EOF.");
 
     // We weren't able to satisfy the read, so abort.
 #if PNG_LIBPNG_VER >= 10400
@@ -100,7 +102,8 @@ void WritePngToString(png_structp write_ptr,
 }
 
 void PngErrorFn(png_structp png_ptr, png_const_charp msg) {
-  DLOG(INFO) << "libpng error: " << msg;
+  PS_DLOG_ERROR(static_cast<MessageHandler*>(png_get_error_ptr(png_ptr)), \
+                "libpng error: %s", msg);
 
   // Invoking the error function indicates a terminal failure, which
   // means we must longjmp to abort the libpng invocation.
@@ -122,7 +125,8 @@ void PngErrorFn(png_structp png_ptr, png_const_charp msg) {
 }
 
 void PngWarningFn(png_structp png_ptr, png_const_charp msg) {
-  DLOG(INFO) << "libpng warning: " << msg;
+  PS_DLOG_WARN(static_cast<MessageHandler*>(png_get_error_ptr(png_ptr)), \
+               "libpng warning: %s", msg);
 }
 
 // no-op
@@ -147,47 +151,47 @@ PngCompressParams::PngCompressParams(int level, int strategy)
     : filter_level(level), compression_strategy(strategy) {
 }
 
-ScopedPngStruct::ScopedPngStruct(Type type)
-    : png_ptr_(NULL), info_ptr_(NULL), type_(type) {
+ScopedPngStruct::ScopedPngStruct(Type type,
+    MessageHandler* handler)
+  : png_ptr_(NULL),
+    info_ptr_(NULL),
+    type_(type),
+    message_handler_(handler) {
+  DCHECK(type == READ || type == WRITE);
   switch (type) {
     case READ:
       png_ptr_ = png_create_read_struct(PNG_LIBPNG_VER_STRING,
-                                       NULL, NULL, NULL);
+                                        NULL, NULL, NULL);
       break;
     case WRITE:
       png_ptr_ = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-                                        NULL, NULL, NULL);
+                                         NULL, NULL, NULL);
       break;
     default:
-      LOG(DFATAL) << "Invalid Type " << type_;
-      break;
+      PS_LOG_DFATAL(handler, "Invalid type");
   }
   if (png_ptr_ != NULL) {
     info_ptr_ = png_create_info_struct(png_ptr_);
   }
 
-  png_set_error_fn(png_ptr_, NULL, &PngErrorFn, &PngWarningFn);
+  png_set_error_fn(png_ptr_, message_handler_, &PngErrorFn, &PngWarningFn);
 }
 
 bool ScopedPngStruct::reset() {
-  switch (type_) {
-    case READ:
-      png_destroy_read_struct(&png_ptr_, &info_ptr_, NULL);
-      png_ptr_ = png_create_read_struct(PNG_LIBPNG_VER_STRING,
-                                        NULL, NULL, NULL);
-      break;
-    case WRITE:
-      png_destroy_write_struct(&png_ptr_, &info_ptr_);
-      png_ptr_ = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-                                         NULL, NULL, NULL);
-      break;
-    default:
-      LOG(DFATAL) << "Invalid Type " << type_;
-      break;
+  DCHECK(type_ == READ || type_ == WRITE);
+  if (type_ == READ) {
+    png_destroy_read_struct(&png_ptr_, &info_ptr_, NULL);
+    png_ptr_ = png_create_read_struct(PNG_LIBPNG_VER_STRING,
+                                      NULL, NULL, NULL);
+  } else {
+    png_destroy_write_struct(&png_ptr_, &info_ptr_);
+    png_ptr_ = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+                                       NULL, NULL, NULL);
   }
 
   if (setjmp(png_jmpbuf(png_ptr_))) {
-    LOG(DFATAL) << "png_jumpbuf not set locally: risk of memory leaks";
+    PS_LOG_DFATAL(message_handler_, \
+        "png_jumpbuf not set locally: risk of memory leaks");
     return false;
   }
 
@@ -195,7 +199,7 @@ bool ScopedPngStruct::reset() {
     info_ptr_ = png_create_info_struct(png_ptr_);
   }
 
-  png_set_error_fn(png_ptr_, NULL, &PngErrorFn, &PngWarningFn);
+  png_set_error_fn(png_ptr_, message_handler_, &PngErrorFn, &PngWarningFn);
 
   return true;
 }
@@ -219,10 +223,11 @@ PngReaderInterface::PngReaderInterface() {
 PngReaderInterface::~PngReaderInterface() {
 }
 
-PngOptimizer::PngOptimizer()
-    : read_(ScopedPngStruct::READ),
-      write_(ScopedPngStruct::WRITE),
-      best_compression_(false) {
+PngOptimizer::PngOptimizer(MessageHandler* handler)
+    : read_(ScopedPngStruct::READ, handler),
+      write_(ScopedPngStruct::WRITE, handler),
+      best_compression_(false),
+      message_handler_(handler) {
 }
 
 PngOptimizer::~PngOptimizer() {
@@ -230,10 +235,11 @@ PngOptimizer::~PngOptimizer() {
 
 bool PngOptimizer::CreateOptimizedPng(const PngReaderInterface& reader,
                                       const GoogleString& in,
-                                      GoogleString* out) {
+                                      GoogleString* out,
+                                      MessageHandler* handler) {
   if (!read_.valid() || !write_.valid()) {
-    LOG(DFATAL) << "Invalid ScopedPngStruct r: "
-                << read_.valid() << ", w: " << write_.valid();
+    PS_LOG_DFATAL(handler, "Invalid ScopedPngStruct r: %d, w: %d", \
+                 read_.valid(), write_.valid());
     return false;
   }
 
@@ -241,12 +247,12 @@ bool PngOptimizer::CreateOptimizedPng(const PngReaderInterface& reader,
 
   // Configure error handlers.
   if (setjmp(png_jmpbuf(read_.png_ptr()))) {
-    LOG(DFATAL) << "png_jmpbuf not set locally: risk of memory leaks";
+    PS_LOG_DFATAL(handler, "png_jmpbuf not set locally: risk of memory leaks");
     return false;
   }
 
   if (setjmp(png_jmpbuf(write_.png_ptr()))) {
-    LOG(DFATAL) << "png_jmpbuf not set locally: risk of memory leaks";
+    PS_LOG_DFATAL(handler, "png_jmpbuf not set locally: risk of memory leaks");
     return false;
   }
 
@@ -282,7 +288,7 @@ bool PngOptimizer::CreateBestOptimizedPngForParams(
     GoogleString* out) {
   bool success = false;
   for (size_t idx = 0; idx < param_list_size; ++idx) {
-    ScopedPngStruct write(ScopedPngStruct::WRITE);
+    ScopedPngStruct write(ScopedPngStruct::WRITE, message_handler_);
     GoogleString temp_output;
     // libpng doesn't allow for reuse of the write structs, so we must copy on
     // each iteration of the loop.
@@ -316,20 +322,23 @@ bool PngOptimizer::CreateOptimizedPngWithParams(ScopedPngStruct* write,
 
 bool PngOptimizer::OptimizePng(const PngReaderInterface& reader,
                                const GoogleString& in,
-                               GoogleString* out) {
-  PngOptimizer o;
-  return o.CreateOptimizedPng(reader, in, out);
+                               GoogleString* out,
+                               MessageHandler* handler) {
+  PngOptimizer o(handler);
+  return o.CreateOptimizedPng(reader, in, out, handler);
 }
 
 bool PngOptimizer::OptimizePngBestCompression(const PngReaderInterface& reader,
-                                              const GoogleString& in,
-                                              GoogleString* out) {
-  PngOptimizer o;
+    const GoogleString& in,
+    GoogleString* out,
+    MessageHandler* handler) {
+  PngOptimizer o(handler);
   o.EnableBestCompression();
-  return o.CreateOptimizedPng(reader, in, out);
+  return o.CreateOptimizedPng(reader, in, out, handler);
 }
 
-PngReader::PngReader() {
+PngReader::PngReader(MessageHandler* handler)
+  : message_handler_(handler) {
 }
 
 PngReader::~PngReader() {
@@ -340,7 +349,7 @@ bool PngReader::ReadPng(const GoogleString& body,
                         png_infop info_ptr,
                         int transforms,
                         bool require_opaque) const {
-    ScanlineStreamInput input;
+    ScanlineStreamInput input(message_handler_);
     input.Initialize(body);
 
     if (setjmp(png_jmpbuf(png_ptr))) {
@@ -358,7 +367,7 @@ bool PngReader::ReadPng(const GoogleString& body,
         // Image has an alpha channel. Make sure it's opaque, and
         // strip it.
 
-        if (!IsAlphaChannelOpaque(png_ptr, info_ptr)) {
+        if (!IsAlphaChannelOpaque(png_ptr, info_ptr, message_handler_)) {
           return false;
         }
         if ((OPNG_REDUCE_STRIP_ALPHA &
@@ -549,12 +558,12 @@ bool PngOptimizer::CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to) {
 
 // static
 bool PngReaderInterface::IsAlphaChannelOpaque(
-    png_structp png_ptr, png_infop info_ptr) {
+    png_structp png_ptr, png_infop info_ptr,
+    MessageHandler* handler) {
   png_uint_32 height;
   png_uint_32 width;
   int bit_depth;
   int color_type;
-
   if (setjmp(png_jmpbuf(png_ptr))) {
     return false;
   }
@@ -563,8 +572,8 @@ bool PngReaderInterface::IsAlphaChannelOpaque(
 
   if ((color_type & PNG_COLOR_MASK_ALPHA) == 0) {
     // Image doesn't have alpha.
-    LOG(DFATAL)
-        << "IsAlphaChannelOpaque called for image without alpha channel.";
+    PS_LOG_DFATAL(handler, \
+        "IsAlphaChannelOpaque called for image without alpha channel.");
     return false;
   }
 
@@ -592,7 +601,7 @@ bool PngReaderInterface::IsAlphaChannelOpaque(
     if ((color_type & PNG_COLOR_MASK_PALETTE) != 0) {
       // If we go this far, we have an image with
       // PNG_COLOR_MASK_ALPHA but no tRNS block. We're confused.
-      LOG(DFATAL) << "PNG_COLOR_MASK is set but could not read tRNS.";
+      PS_LOG_DFATAL(handler, "PNG_COLOR_MASK is set but could not read tRNS.");
       return false;
     }
   }
@@ -601,25 +610,28 @@ bool PngReaderInterface::IsAlphaChannelOpaque(
 
   if (color_type == PNG_COLOR_TYPE_RGB_ALPHA) {
     if (channels != 4) {
-      LOG(DFATAL) << "Encountered unexpected number of channels for RGBA"
-                  << " image: " << channels;
+      PS_LOG_DFATAL(handler, \
+          "Encountered unexpected number of channels for RGBA image: %d", \
+          channels);
       return false;
     }
   } else if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
     if (channels != 2) {
-      LOG(DFATAL) << "Encountered unexpected number of channels for "
-                  << "Gray + Alpha image: " << channels;
+      PS_LOG_DFATAL(handler, \
+        "Encountered unexpected number of channels for Gray + Alpha image:" \
+        " %d", channels);
       return false;
     }
   } else {
-    LOG(DFATAL) << "Encountered alpha image of unknown type :" << color_type;
+    PS_LOG_DFATAL(handler, \
+        "Encountered alpha image of unknown type :%d", color_type);
     return false;
   }
 
   // We currently detect alpha only for 8/16 bit Gray/TrueColor with Alpha
   // channel. Only 8 or 16 bit depths are supported for these modes.
   if (bit_depth % 8 != 0) {
-    DLOG(INFO) << "Received unexpected bit_depth: " << bit_depth;
+    PS_DLOG_INFO(handler, "Received unexpected bit_depth: %d", bit_depth);
     return false;
   }
 
@@ -650,7 +662,8 @@ bool PngReaderInterface::IsAlphaChannelOpaque(
 // static
 bool PngReaderInterface::GetBackgroundColor(
     png_structp png_ptr, png_infop info_ptr,
-    unsigned char *red, unsigned char* green, unsigned char* blue) {
+    unsigned char *red, unsigned char* green, unsigned char* blue,
+    MessageHandler* handler) {
   if (setjmp(png_jmpbuf(png_ptr))) {
     return false;
   }
@@ -681,20 +694,21 @@ bool PngReaderInterface::GetBackgroundColor(
   } else {
     // TODO(bmcquade): we currently fall through to this case for
     // 1-bit paletted images. Consider adding support.
-    DLOG(INFO) << "Unsupported bit_depth: "
-               << static_cast<int>(bit_depth) << " color type: "
-               << static_cast<int>(color_type);
+    PS_DLOG_INFO(handler, \
+                 "Unsupported bit_depth: %d color type: %d", \
+                 static_cast<int>(bit_depth), static_cast<int>(color_type));
     return false;
   }
 
   return true;
 }
 
-PngScanlineReader::PngScanlineReader()
-    : read_(ScopedPngStruct::READ),
+PngScanlineReader::PngScanlineReader(MessageHandler* handler)
+    : read_(ScopedPngStruct::READ, handler),
       current_scanline_(0),
       transform_(PNG_TRANSFORM_IDENTITY),
-      require_opaque_(false) {
+      require_opaque_(false),
+      message_handler_(handler) {
 }
 
 jmp_buf* PngScanlineReader::GetJmpBuf() {
@@ -722,7 +736,8 @@ bool PngScanlineReader::InitializeRead(const PngReaderInterface& reader,
                                        const GoogleString& in,
                                        bool* is_opaque) {
   if (!read_.valid()) {
-    LOG(DFATAL) << "Invalid ScopedPngStruct r: " << read_.valid();
+    PS_LOG_DFATAL(message_handler_, \
+                  "Invalid ScopedPngStruct r: %d", read_.valid());
     return false;
   }
 
@@ -740,7 +755,7 @@ bool PngScanlineReader::InitializeRead(const PngReaderInterface& reader,
     *is_opaque = ((color_type & PNG_COLOR_MASK_ALPHA) == 0);
     if (!(*is_opaque) &&
         PngReaderInterface::IsAlphaChannelOpaque(
-            read_.png_ptr(), read_.info_ptr())) {
+            read_.png_ptr(), read_.info_ptr(), message_handler_)) {
       // Clear the read pointers.
       if (!read_.reset()) {
         return false;
@@ -768,7 +783,7 @@ bool PngScanlineReader::HasMoreScanLines() {
 
 bool PngScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
   if (!HasMoreScanLines()) {
-    LOG(DFATAL) << "Read past last scanline.";
+    PS_LOG_DFATAL(message_handler_, "Read past last scanline.");
     return false;
   }
 
@@ -818,10 +833,11 @@ PixelFormat PngScanlineReader::GetPixelFormat() {
 bool PngScanlineReader::GetBackgroundColor(
   unsigned char* red, unsigned char* green, unsigned char* blue) {
   return PngReaderInterface::GetBackgroundColor(
-      read_.png_ptr(), read_.info_ptr(), red, green, blue);
+      read_.png_ptr(), read_.info_ptr(), red, green, blue, message_handler_);
 }
 
-PngScanlineReaderRaw::PngScanlineReaderRaw()
+PngScanlineReaderRaw::PngScanlineReaderRaw(
+    MessageHandler* handler)
   : pixel_format_(UNSUPPORTED),
     is_progressive_(false),
     height_(0),
@@ -829,7 +845,8 @@ PngScanlineReaderRaw::PngScanlineReaderRaw()
     bytes_per_row_(0),
     row_(0),
     was_initialized_(false),
-    png_struct_(ScopedPngStruct::READ) {
+    png_struct_(ScopedPngStruct::READ, handler),
+    message_handler_(handler) {
 }
 
 PngScanlineReaderRaw::~PngScanlineReaderRaw() {
@@ -860,7 +877,7 @@ bool PngScanlineReaderRaw::Initialize(const void* image_buffer,
                                       size_t buffer_length) {
   // Allocate and initialize png_input_, if that has not been done.
   if (png_input_ == NULL) {
-    png_input_.reset(new ScanlineStreamInput());
+    png_input_.reset(new ScanlineStreamInput(message_handler_));
     if (png_input_ == NULL) {
       return false;
     }
@@ -940,7 +957,7 @@ bool PngScanlineReaderRaw::Initialize(const void* image_buffer,
       pixel_format_ = RGBA_8888;
       break;
     default:  // Unrecognized format.
-      LOG(INFO) << "Unrecognized color type.";
+      PS_LOG_INFO(message_handler_, "Unrecognized color type.");
       png_struct_.reset();
       return false;
   }
@@ -948,7 +965,8 @@ bool PngScanlineReaderRaw::Initialize(const void* image_buffer,
   // Copy the information to the object properties.
   width_ = width;
   height_ = height;
-  bytes_per_row_ = width_ * GetNumChannelsFromPixelFormat(pixel_format_);
+  bytes_per_row_ = width_ * GetNumChannelsFromPixelFormat(pixel_format_,
+                                                          message_handler_);
   row_ = 0;
   is_progressive_ = (interlace_type == PNG_INTERLACE_ADAM7);
   was_initialized_ = true;
@@ -1020,13 +1038,14 @@ bool PngScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
   return true;
 }
 
-PngScanlineWriter::PngScanlineWriter() :
+  PngScanlineWriter::PngScanlineWriter(MessageHandler* handler) :
   width_(0),
   height_(0),
   row_(0),
   pixel_format_(UNSUPPORTED),
-  png_struct_(ScopedPngStruct::WRITE),
-  was_initialized_(false) {
+  png_struct_(ScopedPngStruct::WRITE, handler),
+  was_initialized_(false),
+  message_handler_(handler) {
 }
 
 PngScanlineWriter::~PngScanlineWriter() {
@@ -1054,14 +1073,10 @@ bool PngScanlineWriter::Validate(const PngCompressParams* params,
     // PNG_ALL_FILTERS == (PNG_FILTER_NONE | PNG_FILTER_SUB | PNG_FILTER_UP |
     //                     PNG_FILTER_AVG | PNG_FILTER_PAETH)
     if (params->filter_level & (~PNG_ALL_FILTERS)) {
-      LOG(DFATAL) << "Filter level must be one of the following values, "
-                  << "or bitwise OR of some of them: "
-                  << "PNG_NO_FILTERS, "
-                  << "PNG_FILTER_NONE, "
-                  << "PNG_FILTER_SUB, "
-                  << "PNG_FILTER_UP, "
-                  << "PNG_FILTER_AVG, "
-                  << "PNG_FILTER_PAETH.";
+      PS_LOG_DFATAL(message_handler_, \
+          "Filter level must be one of the following values, " \
+          "or bitwise OR of some of them: PNG_NO_FILTERS, PNG_FILTER_NONE, " \
+          "PNG_FILTER_SUB, PNG_FILTER_UP, PNG_FILTER_AVG, PNG_FILTER_PAETH.");
     }
 
     switch (params->compression_strategy) {
@@ -1072,19 +1087,15 @@ bool PngScanlineWriter::Validate(const PngCompressParams* params,
       case Z_FIXED:
         break;
       default:
-        LOG(DFATAL) << "Compression strategy must be one of the following "
-                    << "values: "
-                    << "Z_DEFAULT_STRATEGY, "
-                    << "Z_FILTERED, "
-                    << "Z_HUFFMAN_ONLY, "
-                    << "Z_RLE, "
-                    << "Z_FIXED.";
+        PS_LOG_DFATAL(message_handler_, \
+            "Compression strategy must be one of the following values: " \
+            "Z_DEFAULT_STRATEGY, Z_FILTERED, Z_HUFFMAN_ONLY, Z_RLE, Z_FIXED.");
         return false;
     }
   }
 
   if (png_image == NULL) {
-    LOG(DFATAL) << "Ouput PNG image cannot be NULL.";
+    PS_LOG_DFATAL(message_handler_, "Ouput PNG image cannot be NULL.");
     return false;
   }
   return true;
@@ -1094,17 +1105,18 @@ bool PngScanlineWriter::Init(const size_t width, const size_t height,
                              PixelFormat pixel_format) {
   // Reset the reader if it has been initialized before.
   if (was_initialized_ && !Reset()) {
-    LOG(DFATAL) << "Failed to re-initialize the writer.";
+    PS_LOG_DFATAL(message_handler_, "Failed to re-initialize the writer.");
     return false;
   }
 
   if (!png_struct_.valid()) {
-    LOG(DFATAL) << "Invalid png_struct.";
+    PS_LOG_DFATAL(message_handler_, "Invalid png_struct.");
     return false;
   }
 
   if (width < 1 || height < 1) {
-    LOG(DFATAL) << "Width and height of the image must be positive values.";
+    PS_LOG_DFATAL(message_handler_, \
+        "Width and height of the image must be positive values.");
     return false;
   }
 
@@ -1114,7 +1126,8 @@ bool PngScanlineWriter::Init(const size_t width, const size_t height,
     case RGBA_8888:
       break;
     default:
-      LOG(DFATAL) << "Pixel format must be GRAY_8, RGB_888, or RGBA_8888";
+      PS_LOG_DFATAL(message_handler_, \
+          "Pixel format must be GRAY_8, RGB_888, or RGBA_8888");
       return false;
   }
 

@@ -19,14 +19,18 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_JPEG_UTILS_H_
 #define PAGESPEED_KERNEL_IMAGE_JPEG_UTILS_H_
 
-#include "base/basictypes.h"
-#include "pagespeed/kernel/base/string.h"
+#include <cstddef>
+#include "pagespeed/kernel/base/basictypes.h"
 
-struct jpeg_decompress_struct;
+namespace net_instaweb {
+class MessageHandler;
+}
 
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 // Utility class that reads jpeg parameter from jpeg images.
 class JpegUtils {
@@ -38,7 +42,8 @@ class JpegUtils {
   // See comments in implementation for additional details on how quality is
   // computed.
   static int GetImageQualityFromImage(const void* image_data,
-                                      size_t image_length);
+                                      size_t image_length,
+                                      MessageHandler* handler);
 
  private:
   JpegUtils();

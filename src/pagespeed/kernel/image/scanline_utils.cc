@@ -18,14 +18,15 @@
 
 #include "pagespeed/kernel/image/scanline_utils.h"
 
-#include "base/logging.h"
+#include "pagespeed/kernel/base/message_handler.h"
 
 namespace pagespeed {
 
 namespace image_compression {
 
-size_t GetNumChannelsFromPixelFormat(PixelFormat format) {
-  int num_channels;
+size_t GetNumChannelsFromPixelFormat(PixelFormat format,
+                                     MessageHandler* handler) {
+  int num_channels = 0;
   switch (format) {
     case GRAY_8:
       num_channels = 1;
@@ -37,8 +38,7 @@ size_t GetNumChannelsFromPixelFormat(PixelFormat format) {
       num_channels = 4;
       break;
     default:
-      LOG(INFO) << "Invalid pixel format.";
-      num_channels = 0;
+      PS_LOG_DFATAL(handler, "Invalid pixel format.");
   }
   return num_channels;
 }

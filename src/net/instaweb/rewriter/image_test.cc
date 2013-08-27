@@ -33,16 +33,19 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/image/jpeg_optimizer_test_helper.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
 
+using net_instaweb::MockMessageHandler;
+using net_instaweb::NullMutex;
 using pagespeed::image_compression::JpegUtils;
 using pagespeed_testing::image_compression::GetNumScansInJpeg;
 using pagespeed_testing::image_compression::IsJpegSegmentPresent;
@@ -205,7 +208,10 @@ class ConversionVarChecker {
 
 class ImageTest : public ImageTestBase {
  public:
-  ImageTest() : options_(new Image::CompressionOptions()) {}
+  ImageTest() :
+      options_(new Image::CompressionOptions()),
+      message_handler_(new NullMutex) {
+}
 
  protected:
   GoogleString* GetOutputContents(Image* image) {
@@ -404,6 +410,7 @@ class ImageTest : public ImageTestBase {
 
   ImageUrlEncoder encoder_;
   scoped_ptr<Image::CompressionOptions> options_;
+  MockMessageHandler message_handler_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ImageTest);
@@ -896,7 +903,8 @@ TEST_F(ImageTest, UseJpegLossyIfInputQualityIsLowTest) {
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
       50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
-                                              image->Contents().size()));
+                                              image->Contents().size(),
+                                              &message_handler_));
 
   // When num progressive scans is set, we use lossy path. The compression
   // quality is the minimum of the input and the configuration, i.e., 50.
@@ -909,7 +917,8 @@ TEST_F(ImageTest, UseJpegLossyIfInputQualityIsLowTest) {
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
       50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
-                                              image->Contents().size()));
+                                              image->Contents().size(),
+                                              &message_handler_));
 
   // Empty image will return -1 when we try to determine its quality.
   options = new Image::CompressionOptions();
@@ -919,7 +928,8 @@ TEST_F(ImageTest, UseJpegLossyIfInputQualityIsLowTest) {
                        &timer_, &handler_));
   EXPECT_EQ(
       -1, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
-                                              image->Contents().size()));
+                                              image->Contents().size(),
+                                              &message_handler_));
 }
 
 TEST_F(ImageTest, JpegRetainColorProfileTest) {
@@ -1201,7 +1211,8 @@ TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
       50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
-                                              image->Contents().size()));
+                                              image->Contents().size(),
+                                              &message_handler_));
 
   // When jpeg_num_progressive_scans > 0, lossy will be used and the quality
   // will be set to the minimum of input quality and jpeg_quality.
@@ -1214,7 +1225,8 @@ TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
       50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
-                                              image->Contents().size()));
+                                              image->Contents().size(),
+                                              &message_handler_));
 
   // When jpeg_quality is less than input quality, lossy will be used and the
   // output quality is the minimum of them.
@@ -1226,7 +1238,8 @@ TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
       49, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
-                                              image->Contents().size()));
+                                              image->Contents().size(),
+                                              &message_handler_));
 }
 
 void SetBaseJpegOptions(Image::CompressionOptions* options) {

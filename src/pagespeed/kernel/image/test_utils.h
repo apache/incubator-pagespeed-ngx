@@ -23,12 +23,17 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+
+namespace net_instaweb {
+class MessageHandler;
+}
 
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
   const char kTestRootDir[] = "/pagespeed/kernel/image/testdata/";
 
@@ -168,7 +173,8 @@ void DecodeAndCompareImages(
     size_t buffer_length1,
     pagespeed::image_compression::ImageFormat image_format2,
     const void* image_buffer2,
-    size_t buffer_length2);
+    size_t buffer_length2,
+    MessageHandler* message_handler);
 
 void DecodeAndCompareImagesByPSNR(
     pagespeed::image_compression::ImageFormat image_format1,
@@ -177,7 +183,8 @@ void DecodeAndCompareImagesByPSNR(
     pagespeed::image_compression::ImageFormat image_format2,
     const void* image_buffer2,
     size_t buffer_length2,
-    double min_psnr);
+    double min_psnr,
+    MessageHandler* message_handler);
 
 }  // namespace image_compression
 

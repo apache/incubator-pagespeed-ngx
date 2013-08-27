@@ -21,7 +21,7 @@
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "base/logging.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/gif_reader.h"
@@ -34,14 +34,18 @@ namespace pagespeed {
 
 namespace image_compression {
 
+using net_instaweb::MessageHandler;
+
 // Create a scanline image reader.
 ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
-                                              const void* image_buffer,
-                                              size_t buffer_length) {
+    const void* image_buffer,
+    size_t buffer_length,
+    MessageHandler* handler) {
   switch (image_type) {
     case IMAGE_PNG:
       {
-        scoped_ptr<PngScanlineReaderRaw> png_reader(new PngScanlineReaderRaw());
+        scoped_ptr<PngScanlineReaderRaw> png_reader(
+            new PngScanlineReaderRaw(handler));
         if (png_reader != NULL &&
             png_reader->Initialize(image_buffer, buffer_length)) {
           return png_reader.release();
@@ -51,7 +55,8 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
 
     case IMAGE_GIF:
       {
-        scoped_ptr<GifScanlineReaderRaw> gif_reader(new GifScanlineReaderRaw());
+        scoped_ptr<GifScanlineReaderRaw> gif_reader(
+            new GifScanlineReaderRaw(handler));
         if (gif_reader != NULL &&
             gif_reader->Initialize(image_buffer, buffer_length)) {
           return gif_reader.release();
@@ -61,7 +66,8 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
 
     case IMAGE_JPEG:
       {
-        scoped_ptr<JpegScanlineReader> jpeg_reader(new JpegScanlineReader());
+        scoped_ptr<JpegScanlineReader> jpeg_reader(
+            new JpegScanlineReader(handler));
         if (jpeg_reader != NULL &&
             jpeg_reader->Initialize(image_buffer, buffer_length)) {
           return jpeg_reader.release();
@@ -71,7 +77,8 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
 
     case IMAGE_WEBP:
       {
-        scoped_ptr<WebpScanlineReader> webp_reader(new WebpScanlineReader());
+        scoped_ptr<WebpScanlineReader> webp_reader(
+            new WebpScanlineReader(handler));
         if (webp_reader != NULL &&
             webp_reader->Initialize(image_buffer, buffer_length)) {
           return webp_reader.release();
@@ -80,7 +87,7 @@ ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
       break;
 
     default:
-      LOG(DFATAL) << "Invalid image type.";
+      PS_LOG_DFATAL(handler, "Invalid image type.");
   }
 
   return NULL;
@@ -93,11 +100,12 @@ ScanlineWriterInterface* CreateScanlineWriter(
     size_t width,
     size_t height,
     const void* config,
-    GoogleString* image_data) {
+    GoogleString* image_data,
+    MessageHandler* handler) {
   switch (image_type) {
     case pagespeed::image_compression::IMAGE_JPEG:
       {
-        scoped_ptr<JpegScanlineWriter> writer(new JpegScanlineWriter());
+        scoped_ptr<JpegScanlineWriter> writer(new JpegScanlineWriter(handler));
         if (writer != NULL) {
           const JpegCompressionOptions* jpeg_config =
               reinterpret_cast<const JpegCompressionOptions*>(config);
@@ -127,7 +135,7 @@ ScanlineWriterInterface* CreateScanlineWriter(
 
     case pagespeed::image_compression::IMAGE_PNG:
       {
-        scoped_ptr<PngScanlineWriter> writer(new PngScanlineWriter());
+        scoped_ptr<PngScanlineWriter> writer(new PngScanlineWriter(handler));
         if (writer != NULL) {
           const PngCompressParams* png_config =
               reinterpret_cast<const PngCompressParams*>(config);
@@ -141,7 +149,7 @@ ScanlineWriterInterface* CreateScanlineWriter(
 
     case pagespeed::image_compression::IMAGE_WEBP:
       {
-        scoped_ptr<WebpScanlineWriter> writer(new WebpScanlineWriter());
+        scoped_ptr<WebpScanlineWriter> writer(new WebpScanlineWriter(handler));
         if (writer != NULL) {
           const WebpConfiguration* webp_config =
               reinterpret_cast<const WebpConfiguration*>(config);
@@ -154,7 +162,7 @@ ScanlineWriterInterface* CreateScanlineWriter(
       break;
 
     default:
-      LOG(FATAL) << "Invalid image type";
+      PS_LOG_DFATAL(handler, "Invalid image type.");
   }
   return NULL;
 }
@@ -166,10 +174,12 @@ bool ReadImage(ImageFormat image_type,
                PixelFormat* pixel_format,
                size_t* width,
                size_t* height,
-               size_t* stride) {
+               size_t* stride,
+               MessageHandler* handler) {
   // Instantiate and initialize the reader based on image type.
   scoped_ptr<ScanlineReaderInterface> reader;
-  reader.reset(CreateScanlineReader(image_type, image_buffer, buffer_length));
+  reader.reset(CreateScanlineReader(image_type, image_buffer, buffer_length,
+                                    handler));
   if (reader.get() == NULL) {
     return false;
   }

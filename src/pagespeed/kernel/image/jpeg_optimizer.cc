@@ -25,6 +25,7 @@
 #include <cstdlib>
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 
@@ -36,6 +37,7 @@ extern "C" {
 #endif
 }
 
+using net_instaweb::MessageHandler;
 using pagespeed::image_compression::ColorSampling;
 using pagespeed::image_compression::JpegCompressionOptions;
 using pagespeed::image_compression::JpegLossyOptions;
@@ -218,7 +220,7 @@ void SetJpegCompressAfterStartCompress(const JpegCompressionOptions& options,
 
 class JpegOptimizer {
  public:
-  JpegOptimizer();
+  explicit JpegOptimizer(MessageHandler* handler);
   ~JpegOptimizer();
 
   // Take the given input file and compress it, either losslessly or lossily,
@@ -244,16 +246,18 @@ class JpegOptimizer {
                      GoogleString *compressed,
                      const JpegCompressionOptions& options);
 
-  pagespeed::image_compression::JpegReader reader_;
-
   // Structures for jpeg compression.
   jpeg_compress_struct jpeg_compress_;
   jpeg_error_mgr compress_error_;
+  MessageHandler* message_handler_;
+  pagespeed::image_compression::JpegReader reader_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegOptimizer);
 };
 
-JpegOptimizer::JpegOptimizer() {
+JpegOptimizer::JpegOptimizer(MessageHandler* handler)
+  : message_handler_(handler),
+    reader_(handler) {
   InitJpegCompress(&jpeg_compress_, &compress_error_);
 }
 
@@ -266,7 +270,8 @@ bool JpegOptimizer::OptimizeLossy(
     GoogleString *compressed,
     const JpegCompressionOptions& options) {
   if (!options.lossy) {
-    LOG(DFATAL) << "lossy is not set in options for lossy jpeg compression";
+    PS_LOG_DFATAL(message_handler_, \
+        "lossy is not set in options for lossy jpeg compression");
     return false;
   }
 
@@ -329,7 +334,8 @@ bool JpegOptimizer::OptimizeLossy(
 bool JpegOptimizer::OptimizeLossless(jpeg_decompress_struct *jpeg_decompress,
     GoogleString *compressed, const JpegCompressionOptions& options) {
   if (options.lossy) {
-    LOG(DFATAL) << "Lossy options are not allowed in lossless compression.";
+    PS_LOG_DFATAL(message_handler_, \
+        "Lossy options are not allowed in lossless compression.");
     return false;
   }
 
@@ -450,7 +456,9 @@ struct JpegScanlineWriter::Data {
   jpeg_error_mgr compress_error_;
 };
 
-JpegScanlineWriter::JpegScanlineWriter() : data_(new Data()) {
+JpegScanlineWriter::JpegScanlineWriter(MessageHandler* handler)
+  : data_(new Data()),
+    message_handler_(handler) {
 }
 
 JpegScanlineWriter::~JpegScanlineWriter() {
@@ -473,7 +481,8 @@ bool JpegScanlineWriter::Init(const size_t width, const size_t height,
     data_->jpeg_compress_.input_components = 1;
     data_->jpeg_compress_.in_color_space = JCS_GRAYSCALE;
   } else {
-    LOG(INFO) << "Invalid pixel format " << GetPixelFormatString(pixel_format);
+    PS_LOG_INFO(message_handler_, \
+                "Invalid pixel format %s", GetPixelFormatString(pixel_format));
     return false;
   }
 
@@ -489,8 +498,9 @@ bool JpegScanlineWriter::Init(const size_t width, const size_t height,
 void JpegScanlineWriter::SetJpegCompressParams(
     const JpegCompressionOptions& options) {
   if (!options.lossy) {
-    LOG(DFATAL) << "Unable to perform lossless encoding in JpegScanlineWriter."
-                << "Using jpeg default lossy encoding options.";
+    PS_LOG_DFATAL(message_handler_, \
+        "Unable to perform lossless encoding in JpegScanlineWriter." \
+        " Using jpeg default lossy encoding options.");
   }
   SetJpegCompressBeforeStartCompress(options, NULL, &data_->jpeg_compress_);
 }
@@ -517,19 +527,22 @@ void JpegScanlineWriter::AbortWrite() {
 }
 
 bool OptimizeJpeg(const GoogleString &original,
-                  GoogleString *compressed) {
-  JpegOptimizer optimizer;
+                  GoogleString *compressed,
+                  MessageHandler* handler) {
+  JpegOptimizer optimizer(handler);
   JpegCompressionOptions options;
   return optimizer.CreateOptimizedJpeg(original, compressed, options);
 }
 
 bool OptimizeJpegWithOptions(const GoogleString &original,
                              GoogleString *compressed,
-                             const JpegCompressionOptions &options) {
-  JpegOptimizer optimizer;
+                             const JpegCompressionOptions &options,
+                             MessageHandler* handler) {
+  JpegOptimizer optimizer(handler);
   return optimizer.CreateOptimizedJpeg(original, compressed, options);
 }
 
 }  // namespace image_compression
 
 }  // namespace pagespeed
+

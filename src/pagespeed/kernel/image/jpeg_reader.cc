@@ -33,6 +33,10 @@ extern "C" {
 #endif
 }
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace {
 
 // Unfortunately, libjpeg normally only supports reading images from C FILE
@@ -111,13 +115,16 @@ namespace pagespeed {
 
 namespace image_compression {
 
+using net_instaweb::MessageHandler;
+
 struct JpegEnv {
   jpeg_decompress_struct jpeg_decompress_;
   jpeg_error_mgr decompress_error_;
   jmp_buf jmp_buf_env_;
 };
 
-JpegReader::JpegReader() {
+JpegReader::JpegReader(MessageHandler* handler)
+  : message_handler_(handler) {
   jpeg_decompress_ = static_cast<jpeg_decompress_struct*>(
       malloc(sizeof(jpeg_decompress_struct)));
   decompress_error_ = static_cast<jpeg_error_mgr*>(
@@ -142,14 +149,15 @@ void JpegReader::PrepareForRead(const void* image_data, size_t image_length) {
   JpegStringReader(jpeg_decompress_, image_data, image_length);
 }
 
-JpegScanlineReader::JpegScanlineReader() :
+JpegScanlineReader::JpegScanlineReader(MessageHandler* handler) :
   jpeg_env_(NULL),
   pixel_format_(UNSUPPORTED),
   height_(0),
   width_(0),
   row_(0),
   bytes_per_row_(0),
-  was_initialized_(false) {
+  was_initialized_(false),
+  message_handler_(handler) {
   row_pointer_[0] = NULL;
 }
 

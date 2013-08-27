@@ -26,9 +26,15 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 struct WebpConfiguration {
   // This contains a subset of the options in WebPConfig and
@@ -71,7 +77,7 @@ struct WebpConfiguration {
 
 class WebpScanlineWriter : public ScanlineWriterInterface {
  public:
-  WebpScanlineWriter();
+  explicit WebpScanlineWriter(MessageHandler* handler);
   virtual ~WebpScanlineWriter();
 
   virtual bool Init(const size_t width, const size_t height,
@@ -85,6 +91,10 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
   // InitializeWrite() and FinalizeWrite() may be called repeatedly to
   // write the image with, say, different configs.
   virtual bool FinalizeWrite();
+
+  MessageHandler* message_handler() {
+    return message_handler_;
+  }
 
  private:
   // Number of bytes per row. See
@@ -136,6 +146,8 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
   // in progress_hook_, passing it progress_hook_data_.
   static int ProgressHook(int percent, const WebPPicture* picture);
 
+  MessageHandler* message_handler_;
+
   DISALLOW_COPY_AND_ASSIGN(WebpScanlineWriter);
 };
 
@@ -145,7 +157,7 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
 // is not supported.
 class WebpScanlineReader : public ScanlineReaderInterface {
  public:
-  WebpScanlineReader();
+  explicit WebpScanlineReader(MessageHandler* handler);
   virtual ~WebpScanlineReader();
 
   // Reset the scanline reader to its initial state.
@@ -182,6 +194,8 @@ class WebpScanlineReader : public ScanlineReaderInterface {
 
   // Buffer for holding the decoded pixels.
   scoped_array<uint8_t> pixels_;
+
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(WebpScanlineReader);
 };

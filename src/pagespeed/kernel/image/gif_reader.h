@@ -37,9 +37,15 @@ extern "C" {
 #endif
 }
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 class ScopedGifStruct;
 struct PaletteRGBA;
@@ -47,7 +53,7 @@ struct PaletteRGBA;
 // Reader for GIF-encoded data.
 class GifReader : public PngReaderInterface {
  public:
-  GifReader();
+  explicit GifReader(MessageHandler* handler);
   virtual ~GifReader();
 
   virtual bool ReadPng(const GoogleString& body,
@@ -63,6 +69,7 @@ class GifReader : public PngReaderInterface {
                              int* out_color_type) const;
 
  private:
+  MessageHandler* message_handler_;
   DISALLOW_COPY_AND_ASSIGN(GifReader);
 };
 
@@ -79,7 +86,7 @@ class GifReader : public PngReaderInterface {
 //
 class GifScanlineReaderRaw : public ScanlineReaderInterface {
  public:
-  GifScanlineReaderRaw();
+  explicit GifScanlineReaderRaw(MessageHandler* handler);
   virtual ~GifScanlineReaderRaw();
   virtual bool Reset();
 
@@ -132,6 +139,7 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   // track of the length of data that giflib has read. It is initialized
   // in Initialize() and is updated in ReadNextScanline().
   scoped_ptr<ScopedGifStruct> gif_struct_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(GifScanlineReaderRaw);
 };

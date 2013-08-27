@@ -20,9 +20,10 @@
 
 #include <setjmp.h>  // for longjmp
 // 'stdio.h' provides FILE for jpeglib (needed for certain builds)
+
 #include <stdio.h>
 
-#include "pagespeed/kernel/base/string.h"
+
 #include "pagespeed/kernel/image/jpeg_reader.h"
 
 extern "C" {
@@ -31,6 +32,10 @@ extern "C" {
 #else
 #include "third_party/libjpeg_turbo/src/jpeglib.h"
 #endif
+}
+
+namespace net_instaweb {
+class MessageHandler;
 }
 
 namespace {
@@ -70,12 +75,15 @@ namespace pagespeed {
 
 namespace image_compression {
 
+using net_instaweb::MessageHandler;
+
 JpegUtils::JpegUtils() {
 }
 
 int JpegUtils::GetImageQualityFromImage(const void* image_data,
-                                        size_t image_length) {
-  JpegReader reader;
+                                        size_t image_length,
+                                        MessageHandler* handler) {
+  JpegReader reader(handler);
   jpeg_decompress_struct* jpeg_decompress = reader.decompress_struct();
 
   // libjpeg's error handling mechanism requires that longjmp be used
@@ -146,3 +154,4 @@ int JpegUtils::GetImageQualityFromImage(const void* image_data,
 }  // namespace image_compression
 
 }  // namespace pagespeed
+

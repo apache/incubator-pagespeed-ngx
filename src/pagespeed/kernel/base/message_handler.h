@@ -102,6 +102,38 @@ class MessageHandler {
   MessageType min_message_type_;
 };
 
+// Macros for logging messages.
+#define PS_LOG_INFO(handler, ...) \
+    handler->Info(__FILE__, __LINE__, __VA_ARGS__)
+#define PS_LOG_WARN(handler, ...) \
+    handler->Warning(__FILE__, __LINE__, __VA_ARGS__)
+#define PS_LOG_ERROR(handler, ...) \
+    handler->Error(__FILE__, __LINE__, __VA_ARGS__)
+#define PS_LOG_FATAL(handler, ...) \
+    handler->FatalError(__FILE__, __LINE__, __VA_ARGS__)
+
+#ifndef NDEBUG
+#define PS_LOG_DFATAL(handler, ...) \
+    PS_LOG_FATAL(handler, __VA_ARGS__)
+#else
+#define PS_LOG_DFATAL(handler, ...) \
+    PS_LOG_ERROR(handler, __VA_ARGS__)
+#endif  // NDEBUG
+
+// Macros for logging debugging messages. They expand to no-ops in opt-mode
+// builds.
+#ifndef NDEBUG
+#define PS_DLOG_INFO(handler, ...) \
+    PS_LOG_INFO(handler, __VA_ARGS__)
+#define PS_DLOG_WARN(handler, ...) \
+    PS_LOG_WARN(handler, __VA_ARGS__)
+#define PS_DLOG_ERROR(handler, ...) \
+    PS_LOG_ERROR(handler, __VA_ARGS__)
+#else
+#define PS_DLOG_INFO(handler, ...)
+#define PS_DLOG_WARN(handler, ...)
+#define PS_DLOG_ERROR(handler, ...)
+#endif  // NDEBUG
 }  // namespace net_instaweb
 
 #endif  // PAGESPEED_KERNEL_BASE_MESSAGE_HANDLER_H_

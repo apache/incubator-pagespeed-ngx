@@ -19,15 +19,24 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_IMAGE_CONVERTER_H_
 #define PAGESPEED_KERNEL_IMAGE_IMAGE_CONVERTER_H_
 
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
-#include "pagespeed/kernel/image/png_optimizer.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
+
+namespace net_instaweb {
+class MessageHandler;
+}
 
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
+
+class PngReaderInterface;
+class ScanlineReaderInterface;
+class ScanlineWriterInterface;
 
 class ImageConverter {
  public:
@@ -46,7 +55,8 @@ class ImageConverter {
       const PngReaderInterface& png_struct_reader,
       const GoogleString& in,
       const JpegCompressionOptions& options,
-      GoogleString* out);
+      GoogleString* out,
+      MessageHandler* handler);
 
   // Reads the PNG encoded in 'in' with 'png_struct_reader', encodes
   // it in WebP format using the options in 'config', and writes the
@@ -59,7 +69,8 @@ class ImageConverter {
       const GoogleString& in,
       const WebpConfiguration& config,
       GoogleString* out,
-      bool* is_opaque);
+      bool* is_opaque,
+      MessageHandler* handler);
 
   // Reads the PNG encoded in 'in' with 'png_struct_reader', encodes
   // it in WebP format using the options in 'config', and writes the
@@ -77,7 +88,8 @@ class ImageConverter {
       const WebpConfiguration& config,
       GoogleString* out,
       bool* is_opaque,
-      WebpScanlineWriter** webp_writer);
+      WebpScanlineWriter** webp_writer,
+      MessageHandler* handler);
 
   // Optimizes the given png image, also converts to jpeg and take the
   // the one that has smaller size and set the output. Returns false
@@ -87,7 +99,8 @@ class ImageConverter {
       const GoogleString& in,
       const JpegCompressionOptions& options,
       GoogleString* out,
-      bool* is_out_png);
+      bool* is_out_png,
+      MessageHandler* handler);
 
   // Populates 'out' with a version of the input image 'in' resulting
   // in the smallest size, and returns the corresponding
@@ -107,7 +120,8 @@ class ImageConverter {
       const GoogleString& in,
       const JpegCompressionOptions* jpeg_options,
       const WebpConfiguration* webp_config,
-      GoogleString* out);
+      GoogleString* out,
+      MessageHandler* handler);
 
  private:
   ImageConverter();

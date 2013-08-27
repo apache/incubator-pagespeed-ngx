@@ -19,8 +19,8 @@
 #include "pagespeed/kernel/image/gif_reader.h"
 
 #include <setjmp.h>
-#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
@@ -42,6 +42,7 @@ extern "C" {
 #include "third_party/giflib/lib/gif_lib.h"
 }
 
+using net_instaweb::MessageHandler;
 using pagespeed::image_compression::ScopedPngStruct;
 
 namespace {
@@ -93,17 +94,18 @@ int ReadGifFromStream(GifFileType* gif_file, GifByteType* data, int length) {
     input->set_offset(input->offset() + length);
     return length;
   } else {
-    LOG(ERROR) << "ReadGifFromStream: Unexpected EOF.";
+    PS_LOG_ERROR(input->message_handler(), "Unexpected EOF.");
     return 0;
   }
 }
 
 bool AddTransparencyChunk(png_structp png_ptr,
                           png_infop info_ptr,
-                          int transparent_palette_index) {
+                          int transparent_palette_index,
+                          MessageHandler* handler) {
   const int num_trans = transparent_palette_index + 1;
   if (num_trans <= 0 || num_trans > info_ptr->num_palette) {
-    LOG(INFO) << "Transparent palette index out of bounds.";
+    PS_LOG_INFO(handler, "Transparent palette index out of bounds.");
     return false;
   }
 
@@ -124,14 +126,15 @@ bool AddTransparencyChunk(png_structp png_ptr,
 bool ReadImageDescriptor(GifFileType* gif_file,
                          png_structp png_ptr,
                          png_infop info_ptr,
-                         png_color* palette) {
+                         png_color* palette,
+                         MessageHandler* handler) {
   if (DGifGetImageDesc(gif_file) == GIF_ERROR) {
-    DLOG(INFO) << "Failed to get image descriptor.";
+    PS_DLOG_INFO(handler, "Failed to get image descriptor.");
     return false;
   }
   if (gif_file->ImageCount != 1) {
-    DLOG(INFO) << "Unable to optimize image with "
-               << gif_file->ImageCount << " frames.";
+    PS_DLOG_INFO(handler, "Unable to optimize image with %d frames.", \
+                gif_file->ImageCount);
     return false;
   }
   const GifWord row = gif_file->Image.Top;
@@ -142,7 +145,7 @@ bool ReadImageDescriptor(GifFileType* gif_file,
   // Validate coordinates.
   if (pixel + width > gif_file->SWidth ||
       row + height > gif_file->SHeight) {
-    DLOG(INFO) << "Image coordinates outside of resolution.";
+    PS_DLOG_INFO(handler, "Image coordinates outside of resolution.");
     return false;
   }
 
@@ -152,12 +155,12 @@ bool ReadImageDescriptor(GifFileType* gif_file,
       gif_file->Image.ColorMap : gif_file->SColorMap;
 
   if (color_map == NULL) {
-    DLOG(INFO) << "Failed to find color map.";
+    PS_DLOG_INFO(handler, "Failed to find color map.");
     return false;
   }
 
   if (color_map->ColorCount < 0 || color_map->ColorCount > kNumColorForUint8) {
-    DLOG(INFO) << "Invalid color count " << color_map->ColorCount;
+    PS_DLOG_INFO(handler, "Invalid color count %d", color_map->ColorCount);
     return false;
   }
   for (int i = 0; i < color_map->ColorCount; ++i) {
@@ -176,7 +179,7 @@ bool ReadImageDescriptor(GifFileType* gif_file,
                       static_cast<GifPixelType*>(
                           &info_ptr->row_pointers[row + i][pixel]),
                       width) == GIF_ERROR) {
-        DLOG(INFO) << "Failed to DGifGetLine";
+        PS_DLOG_INFO(handler, "Failed to DGifGetLine");
         return false;
       }
     }
@@ -191,7 +194,7 @@ bool ReadImageDescriptor(GifFileType* gif_file,
                         static_cast<GifPixelType*>(
                             &info_ptr->row_pointers[j][pixel]),
                         width) == GIF_ERROR) {
-          DLOG(INFO) << "Failed to DGifGetLine";
+          PS_DLOG_INFO(handler, "Failed to DGifGetLine");
           return false;
         }
       }
@@ -208,11 +211,12 @@ bool ReadImageDescriptor(GifFileType* gif_file,
 bool ReadExtension(GifFileType* gif_file,
                    png_structp png_ptr,
                    png_infop info_ptr,
-                   int* out_transparent_index) {
+                   int* out_transparent_index,
+                   MessageHandler* handler) {
   GifByteType* extension = NULL;
   int ext_code = 0;
   if (DGifGetExtension(gif_file, &ext_code, &extension) == GIF_ERROR) {
-    DLOG(INFO) << "Failed to read extension.";
+    PS_DLOG_INFO(handler, "Failed to read extension.");
     return false;
   }
 
@@ -221,7 +225,8 @@ bool ReadExtension(GifFileType* gif_file,
   if (ext_code == GRAPHICS_EXT_FUNC_CODE) {
     // Make sure that the extension has the expected length.
     if (extension[0] < 4) {
-      DLOG(INFO) << "Received graphics extension with unexpected length.";
+      PS_DLOG_INFO(handler, \
+                  "Received graphics extension with unexpected length.");
       return false;
     }
     // The first payload byte contains the flags. Check to see whether the
@@ -230,7 +235,8 @@ bool ReadExtension(GifFileType* gif_file,
       if (*out_transparent_index >= 0) {
         // The transparent index has already been set. Ignore new
         // values.
-        DLOG(INFO) << "Found multiple transparency entries. Using first entry.";
+        PS_DLOG_INFO(handler, \
+            "Found multiple transparency entries. Using first entry.");
       } else {
         // We found a transparency entry. The transparent index is in
         // the 4th payload byte.
@@ -246,7 +252,7 @@ bool ReadExtension(GifFileType* gif_file,
   // blocks.
   while (extension != NULL) {
     if (DGifGetExtensionNext(gif_file, &extension) == GIF_ERROR) {
-      DLOG(INFO) << "Failed to read next extension.";
+      PS_DLOG_INFO(handler, "Failed to read next extension.");
       return false;
     }
   }
@@ -344,10 +350,11 @@ bool ReadGifToPng(GifFileType* gif_file,
                   png_infop info_ptr,
                   bool expand_colormap,
                   bool strip_alpha,
-                  bool require_opaque) {
+                  bool require_opaque,
+                  MessageHandler* handler) {
   if (static_cast<png_size_t>(gif_file->SHeight) >
       PNG_UINT_32_MAX/png_sizeof(png_bytep)) {
-    DLOG(INFO) << "GIF image is too big to process.";
+    PS_DLOG_INFO(handler, "GIF image is too big to process.");
     return false;
   }
 
@@ -363,9 +370,10 @@ bool ReadGifToPng(GifFileType* gif_file,
   if (expand_colormap) {
     // We read the image into a separate struct before expanding the
     // colormap.
-    paletted_png.reset(new ScopedPngStruct(ScopedPngStruct::READ));
+    paletted_png.reset(new ScopedPngStruct(ScopedPngStruct::READ, handler));
     if (!paletted_png->valid()) {
-      LOG(DFATAL) << "Invalid ScopedPngStruct r: " << paletted_png->valid();
+      PS_LOG_DFATAL(handler, "Invalid ScopedPngStruct r: %d", \
+                    paletted_png->valid());
       return false;
     }
     paletted_png_ptr = paletted_png->png_ptr();
@@ -408,13 +416,13 @@ bool ReadGifToPng(GifFileType* gif_file,
   while (!found_terminator) {
     GifRecordType record_type = UNDEFINED_RECORD_TYPE;
     if (DGifGetRecordType(gif_file, &record_type) == GIF_ERROR) {
-      DLOG(INFO) << "Failed to read GifRecordType";
+      PS_DLOG_INFO(handler, "Failed to read GifRecordType");
       return false;
     }
     switch (record_type) {
       case IMAGE_DESC_RECORD_TYPE:
         if (!ReadImageDescriptor(gif_file, paletted_png_ptr,
-                                 paletted_info_ptr, palette)) {
+                                 paletted_info_ptr, palette, handler)) {
           return false;
         }
         break;
@@ -423,7 +431,8 @@ bool ReadGifToPng(GifFileType* gif_file,
         if (!ReadExtension(gif_file,
                            paletted_png_ptr,
                            paletted_info_ptr,
-                           &transparent_palette_index)) {
+                           &transparent_palette_index,
+                           handler)) {
           return false;
         }
         break;
@@ -433,7 +442,7 @@ bool ReadGifToPng(GifFileType* gif_file,
         break;
 
       default:
-        DLOG(INFO) << "Found unexpected record type " << record_type;
+        PS_DLOG_INFO(handler, "Found unexpected record type %d", record_type);
         return false;
     }
   }
@@ -449,7 +458,7 @@ bool ReadGifToPng(GifFileType* gif_file,
     // the information we need for ExpandColorMap below.
     if (!strip_alpha && !expand_colormap) {
       if (!AddTransparencyChunk(paletted_png_ptr, paletted_info_ptr,
-                                transparent_palette_index)) {
+                                transparent_palette_index, handler)) {
         return false;
       }
     }
@@ -474,7 +483,8 @@ namespace pagespeed {
 
 namespace image_compression {
 
-GifReader::GifReader() {
+GifReader::GifReader(MessageHandler* handler)
+  : message_handler_(handler) {
 }
 
 GifReader::~GifReader() {
@@ -495,7 +505,7 @@ bool GifReader::ReadPng(const GoogleString& body,
       PNG_TRANSFORM_STRIP_ALPHA;
 
   if ((transforms & ~allowed_transforms) != 0) {
-    LOG(DFATAL) << "Unsupported transform " << transforms;
+    PS_LOG_DFATAL(message_handler_, "Unsupported transform %d", transforms);
     return false;
   }
 
@@ -505,7 +515,7 @@ bool GifReader::ReadPng(const GoogleString& body,
   // Wrap the resource's response body in a structure that keeps a
   // pointer to the body and a read offset, and pass a pointer to this
   // object as the user data to be received by the GIF read function.
-  ScanlineStreamInput input;
+  ScanlineStreamInput input(message_handler_);
   input.Initialize(body);
 
 #if GIFLIB_MAJOR < 5
@@ -519,9 +529,9 @@ bool GifReader::ReadPng(const GoogleString& body,
 
   bool result = ReadGifToPng(gif_file, png_ptr, info_ptr,
                              expand_colormap, strip_alpha,
-                             require_opaque);
+                             require_opaque, message_handler_);
   if (DGifCloseFile(gif_file) == GIF_ERROR) {
-    DLOG(INFO) << "Failed to close GIF.";
+    PS_DLOG_INFO(message_handler_, "Failed to close GIF.");
   }
 
   return result;
@@ -561,8 +571,10 @@ bool GifReader::GetAttributes(const GoogleString& body,
 
 class ScopedGifStruct {
  public:
-  ScopedGifStruct() :
-    gif_file_(NULL) {
+  explicit ScopedGifStruct(MessageHandler* handler) :
+    gif_file_(NULL),
+    message_handler_(handler),
+    gif_input_(ScanlineStreamInput(handler)) {
   }
 
   ~ScopedGifStruct() {
@@ -582,7 +594,7 @@ class ScopedGifStruct {
   bool Reset() {
     if (gif_file_ != NULL) {
       if (DGifCloseFile(gif_file_) == GIF_ERROR) {
-        LOG(ERROR) << "Failed to close GIF file.";
+        PS_LOG_ERROR(message_handler_, "Failed to close GIF file.");
         return false;
       }
       gif_file_ = NULL;
@@ -620,7 +632,7 @@ class ScopedGifStruct {
 #endif
 
     if (gif_file_ == NULL) {
-      LOG(ERROR) << "Failed to open GIF file.";
+      PS_LOG_ERROR(message_handler_, "Failed to open GIF file.");
       return false;
     }
     return true;
@@ -628,10 +640,13 @@ class ScopedGifStruct {
 
  private:
   GifFileType* gif_file_;
+  MessageHandler* message_handler_;
   ScanlineStreamInput gif_input_;
 };
 
-GifScanlineReaderRaw::GifScanlineReaderRaw() {
+GifScanlineReaderRaw::GifScanlineReaderRaw(
+    MessageHandler* handler)
+  : message_handler_(handler) {
   Reset();
 }
 
@@ -691,7 +706,7 @@ bool GifScanlineReaderRaw::ProcessSingleImageGif(size_t* first_frame_offset,
   while (!found_terminator) {
     GifRecordType record_type = UNDEFINED_RECORD_TYPE;
     if (DGifGetRecordType(gif_file, &record_type) == GIF_ERROR) {
-      LOG(ERROR) << "Failed to read GifRecordType";
+      PS_LOG_ERROR(message_handler_, "Failed to read GifRecordType");
       return false;
     }
 
@@ -701,14 +716,15 @@ bool GifScanlineReaderRaw::ProcessSingleImageGif(size_t* first_frame_offset,
     switch (record_type) {
       case IMAGE_DESC_RECORD_TYPE:
         if (DGifGetImageDesc(gif_file) == GIF_ERROR) {
-          LOG(ERROR) << "Failed to get image descriptor.";
+        PS_LOG_ERROR(message_handler_, "Failed to get image descriptor.");
           return false;
         }
 
         // Currently we only support single frame GIF.
         ++num_frames;
         if (num_frames > 1) {
-          LOG(ERROR) << "Multiple frame GIF is not supported.";
+          PS_LOG_ERROR(message_handler_, \
+                       "Multiple frame GIF is not supported.");
           return false;
         } else {
           *first_frame_offset = current_offset;
@@ -733,7 +749,7 @@ bool GifScanlineReaderRaw::ProcessSingleImageGif(size_t* first_frame_offset,
           // Variable "index" is initialized to "-1" so ReadExtension() will
           // assign a new value to it.
           int index = -1;
-          if (!ReadExtension(gif_file, NULL, NULL, &index)) {
+          if (!ReadExtension(gif_file, NULL, NULL, &index, message_handler_)) {
             return false;
           }
 
@@ -760,7 +776,8 @@ bool GifScanlineReaderRaw::ProcessSingleImageGif(size_t* first_frame_offset,
         break;
 
       default:
-        LOG(ERROR) << "Found unexpected record type " << record_type;
+        PS_LOG_ERROR(message_handler_, \
+                     "Found unexpected record type %d", record_type);
         return false;
     }
   }
@@ -775,13 +792,15 @@ bool GifScanlineReaderRaw::CreateColorMap() {
     gif_file->Image.ColorMap != NULL ?
     gif_file->Image.ColorMap : gif_file->SColorMap;
   if (color_map == NULL) {
-    LOG(ERROR) << "Neither the image nor the screen has a colormap.";
+    PS_LOG_ERROR(message_handler_, \
+                 "Neither the image nor the screen has a colormap.");
     return false;
   }
 
   GifColorType* palette_in = color_map->Colors;
   if (palette_in == NULL) {
-    LOG(ERROR) << "The color type in the colormap is invalid.";
+    PS_LOG_ERROR(message_handler_, \
+                 "The color type in the colormap is invalid.");
     return false;
   }
 
@@ -797,7 +816,7 @@ bool GifScanlineReaderRaw::CreateColorMap() {
   // in the 257th element of color palette.
   int background_index = gif_file->SBackGroundColor;
   if (background_index >= color_map->ColorCount) {
-    LOG(ERROR) << "Invalid background color.";
+    PS_LOG_ERROR(message_handler_, "Invalid background color.");
     return false;
   }
   gif_palette_[kPaletteBackgroundIndex].red_ =
@@ -821,7 +840,7 @@ bool GifScanlineReaderRaw::Initialize(const void* image_buffer,
   } else {
     // Allocate and initialize gif_struct_, if that has not been done.
     if (gif_struct_ == NULL) {
-      gif_struct_.reset(new ScopedGifStruct());
+      gif_struct_.reset(new ScopedGifStruct(message_handler_));
       if (gif_struct_ == NULL) {
         return false;
       }
@@ -856,7 +875,7 @@ bool GifScanlineReaderRaw::Initialize(const void* image_buffer,
   // information of the image.
   gif_struct_->set_offset(image1_offset);
   if (DGifGetImageDesc(gif_file) == GIF_ERROR) {
-    LOG(ERROR) << "Failed to get image descriptor.";
+    PS_LOG_ERROR(message_handler_, "Failed to get image descriptor.");
     Reset();
     return false;
   }
@@ -870,7 +889,8 @@ bool GifScanlineReaderRaw::Initialize(const void* image_buffer,
   if (gif_struct_->first_row() < 0 || gif_struct_->first_col() < 0 ||
       gif_struct_->last_row() >= static_cast<int>(GetImageHeight()) ||
       gif_struct_->last_col() >= static_cast<int>(GetImageWidth())) {
-    LOG(ERROR) << "The first image is outside the logical screen.";
+    PS_LOG_ERROR(message_handler_, \
+                 "The first image is outside the logical screen.");
     Reset();
     return false;
   }
@@ -930,7 +950,7 @@ bool GifScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
       // For a progressive GIF, we have to decode the entire image before
       // rendering any row.
       if (!DecodeProgressiveGif()) {
-        LOG(ERROR) << "Failed to progressively decode GIF.";
+        PS_LOG_ERROR(message_handler_, "Failed to progressively decode GIF.");
         Reset();
         return false;
       }
@@ -950,7 +970,7 @@ bool GifScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
     // For a non-progressive GIF, we decode the image a row at a time.
     index_buffer = image_index_.get();
     if (DGifGetLine(gif_file, index_buffer, actual_width) == GIF_ERROR) {
-      LOG(ERROR) << "Failed to DGifGetLine";
+      PS_LOG_ERROR(message_handler_, "Failed to DGifGetLine");
       Reset();
       return false;
     }

@@ -20,13 +20,15 @@
 
 #include <math.h>
 
-#include "base/logging.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
 namespace pagespeed {
 
 namespace {
+
+using net_instaweb::MessageHandler;
 
 // Table for storing the resizing coefficients.
 //
@@ -108,14 +110,15 @@ inline bool IsApproximatelyInteger(float val) {
 //
 ResizeTableEntry* CreateTableForAreaMethod(int in_size,
                                            int out_size,
-                                           float ratio) {
+                                           float ratio,
+                                           MessageHandler* handler) {
   if (in_size <= 0 || out_size <= 0 || ratio <= 0) {
-    LOG(DFATAL) << "The inputs must be positive values.";
+    PS_LOG_DFATAL(handler, "The inputs must be positive values.");
     return NULL;
   }
   ResizeTableEntry* table = new ResizeTableEntry[out_size];
   if (table == NULL) {
-    LOG(DFATAL) << "Failed to allocate memory.";
+    PS_LOG_DFATAL(handler, "Failed to allocate memory.");
     return NULL;
   }
 
@@ -164,7 +167,8 @@ void ComputeResizedSizeRatio(int input_width,
                              int* width,
                              int* height,
                              float* ratio_x,
-                             float* ratio_y) {
+                             float* ratio_y,
+                             MessageHandler* handler) {
   float original_width = static_cast<float>(input_width);
   float original_height = static_cast<float>(input_height);
   float resized_width = static_cast<float>(output_width);
@@ -182,7 +186,7 @@ void ComputeResizedSizeRatio(int input_width,
     *ratio_x = *ratio_y;
     resized_width = Round(original_width / *ratio_x);
   } else {
-    LOG(DFATAL) << "Should not be reached.";
+    PS_LOG_DFATAL(handler, "Should not be reached.");
     *ratio_x = 0;
     *ratio_y = 0;
   }
@@ -304,7 +308,7 @@ class ResizeRow {
   virtual ~ResizeRow() {}
   virtual const void* Resize(const uint8_t* in_data) = 0;
   virtual bool Initialize(int in_size, int out_size, float ratio,
-                          float* output_buffer) = 0;
+                          float* output_buffer, MessageHandler* handler) = 0;
 };
 
 // Base class for the vertical resizer. If the object is initialized with
@@ -320,7 +324,8 @@ class ResizeCol {
                           float ratio_x,
                           float ratio_y,
                           int elements_per_output_row,
-                          uint8_t* output_buffer) = 0;
+                          uint8_t* output_buffer,
+                          MessageHandler* handler) = 0;
 
   // To compute an output scanline, multiple input scanlines may be required.
   // The following code shows an example.
@@ -344,7 +349,7 @@ class ResizeRowArea : public ResizeRow {
 
   virtual const void* Resize(const uint8_t* in_data);
   virtual bool Initialize(int in_size, int out_size, float ratio,
-                          float* output_buffer);
+                          float* output_buffer, MessageHandler* handler);
 
  protected:
   int pixels_per_row_;
@@ -354,8 +359,8 @@ class ResizeRowArea : public ResizeRow {
 
 template<int num_channels>
 bool ResizeRowArea<num_channels>::Initialize(int in_size,
-    int out_size, float ratio, float* output_buffer) {
-  table_.reset(CreateTableForAreaMethod(in_size, out_size, ratio));
+    int out_size, float ratio, float* output_buffer, MessageHandler* handler) {
+  table_.reset(CreateTableForAreaMethod(in_size, out_size, ratio, handler));
   if (table_ != NULL) {
     // Modify the indices so they are based on bytes instead of pixels.
     for (int i = 0; i < out_size; ++i) {
@@ -405,7 +410,8 @@ class ResizeColArea : public ResizeCol {
                           float ratio_x,
                           float ratio_y,
                           int elements_per_output_row,
-                          uint8_t* output_buffer);
+                          uint8_t* output_buffer,
+                          MessageHandler* handler);
 
   void InitializeResize() {
     need_more_scanlines_ = true;
@@ -445,8 +451,9 @@ bool ResizeColArea<BufferType>::Initialize(
     float ratio_x,
     float ratio_y,
     int elements_per_output_row,
-    uint8_t* output_buffer) {
-  table_.reset(CreateTableForAreaMethod(in_size, out_size, ratio_y));
+    uint8_t* output_buffer,
+    MessageHandler* handler) {
+  table_.reset(CreateTableForAreaMethod(in_size, out_size, ratio_y, handler));
   if (table_ == NULL) {
     return false;
   }
@@ -602,7 +609,9 @@ const uint8_t* ResizeColArea<BufferType>::Resize(const void* in_data_ptr) {
 template<class BufferType>
 bool InstantiateResizers(pagespeed::image_compression::PixelFormat pixel_format,
                          scoped_ptr<ResizeRow>* resizer_x,
-                         scoped_ptr<ResizeCol>* resizer_y) {
+                         scoped_ptr<ResizeCol>* resizer_y,
+                         MessageHandler* handler) {
+  resizer_x->reset(NULL);
   switch (pixel_format) {
     case GRAY_8:
       resizer_x->reset(new ResizeRowArea<1>());
@@ -613,20 +622,21 @@ bool InstantiateResizers(pagespeed::image_compression::PixelFormat pixel_format,
     case RGBA_8888:
       resizer_x->reset(new ResizeRowArea<4>());
       break;
-    case UNSUPPORTED:
-      LOG(DFATAL) << "Invalid pixel format.";
+    default:
+      PS_LOG_DFATAL(handler, "Invalid pixel format.");
   }
   resizer_y->reset(new ResizeColArea<BufferType>());
   return (resizer_x->get() != NULL && resizer_y->get() != NULL);
 }
 
-ScanlineResizer::ScanlineResizer()
+ScanlineResizer::ScanlineResizer(MessageHandler* handler)
   : reader_(NULL),
     width_(0),
     height_(0),
     elements_per_row_(0),
     row_(0),
-    bytes_per_buffer_row_(0) {
+    bytes_per_buffer_row_(0),
+    message_handler_(handler) {
 }
 
 ScanlineResizer::~ScanlineResizer() {
@@ -685,14 +695,15 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
   if (reader == NULL ||
       reader->GetImageWidth() == 0 ||
       reader->GetImageHeight() == 0) {
-    LOG(DFATAL) << "The input image cannot be empty.";
+    PS_LOG_DFATAL(message_handler_, "The input image cannot be empty.");
     return false;
   }
 
   if (request_width == kPreserveAspectRatio &&
       request_height == kPreserveAspectRatio) {
-    LOG(DFATAL) << "Output width and height cannot be kPreserveAspectRatio "
-                << "at the same time.";
+    PS_LOG_DFATAL(message_handler_, \
+        "Output width and height cannot be kPreserveAspectRatio " \
+        "at the same time.");
     return false;
   }
 
@@ -707,8 +718,9 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
   // it will be truncated. In other words, the image will not be enlarged.
   if (static_cast<int>(request_width) > input_width ||
       static_cast<int>(request_height) > input_height) {
-    DLOG(INFO) << "The requested output size will be truncated because it is "
-               << "larger than the input.";
+    PS_DLOG_INFO(message_handler_, \
+                 "The requested output size will be truncated because it is " \
+                 "larger than the input.");
   }
   const int output_width = (static_cast<int>(request_width) <= input_width ?
                             request_width : input_width);
@@ -725,7 +737,8 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
                           &resized_width,
                           &resized_height,
                           &ratio_x,
-                          &ratio_y);
+                          &ratio_y,
+                          message_handler_);
 
   reader_ = reader;
   height_ = resized_height;
@@ -733,7 +746,8 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
   row_ = 0;
   const PixelFormat pixel_format = reader->GetPixelFormat();
   elements_per_row_ = resized_width *
-      pagespeed::image_compression::GetNumChannelsFromPixelFormat(pixel_format);
+    pagespeed::image_compression::GetNumChannelsFromPixelFormat(
+        pixel_format, message_handler_);
 
   // Ratios           | X Resizer | X Buff | Y Input | Y Resizer      | Y Buff
   // x != 1 && y != 1 | Resize    | Valid  | float   | Resize & Scale | Valid
@@ -746,7 +760,8 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
   float* resizer_x_buffer = NULL;
   uint8_t* resizer_y_buffer = NULL;
   if (need_resize_x) {
-    InstantiateResizers<float>(pixel_format, &resizer_x_, &resizer_y_);
+    InstantiateResizers<float>(pixel_format, &resizer_x_, &resizer_y_,
+                               message_handler_);
     buffer_.reset(new float[elements_per_row_]);
     resizer_x_buffer = buffer_.get();
     output_.reset(new uint8_t[elements_per_row_]);
@@ -755,7 +770,8 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
       return false;
     }
   } else {
-    InstantiateResizers<uint8_t>(pixel_format, &resizer_x_, &resizer_y_);
+    InstantiateResizers<uint8_t>(pixel_format, &resizer_x_, &resizer_y_,
+                                 message_handler_);
     if (need_resize_y) {
       output_.reset(new uint8_t[elements_per_row_]);
       resizer_y_buffer = output_.get();
@@ -766,11 +782,12 @@ bool ScanlineResizer::Initialize(ScanlineReaderInterface* reader,
   }
 
   if (!resizer_x_->Initialize(input_width, resized_width, ratio_x,
-                              resizer_x_buffer)) {
+                              resizer_x_buffer, message_handler_)) {
     return false;
   }
   if (!resizer_y_->Initialize(input_height, resized_height, ratio_x, ratio_y,
-                              elements_per_row_, resizer_y_buffer)) {
+                              elements_per_row_, resizer_y_buffer,
+                              message_handler_)) {
     return false;
   }
 

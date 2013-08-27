@@ -33,14 +33,17 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
 
+using net_instaweb::MockMessageHandler;
+using net_instaweb::NullMutex;
 using pagespeed::image_compression::JpegUtils;
 
 namespace net_instaweb {
@@ -105,8 +108,10 @@ class CssImageRewriterTest : public CssRewriteTestBase {
     EXPECT_EQ(HTTPCache::kFound, HttpBlockingFind(image_url, http_cache(),
         &value_out, &headers_out));
     value_out.ExtractContents(&out_image);
+    MockMessageHandler message_handler(new NullMutex);
     int quality = JpegUtils::GetImageQualityFromImage(out_image.data(),
-                                                      out_image.size());
+                                                      out_image.size(),
+                                                      &message_handler);
     return quality;
   }
 };

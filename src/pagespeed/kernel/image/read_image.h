@@ -23,9 +23,15 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 // TODO(huibao): Add an overload function
 // CreateScanlineReader(const void* image_buffer, size_t buffer_length).
@@ -33,8 +39,9 @@ namespace image_compression {
 // Return a scanline image reader. The following formats are supported:
 // IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, and IMAGE_WEBP.
 ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
-                                              const void* image_buffer,
-                                              size_t buffer_length);
+    const void* image_buffer,
+    size_t buffer_length,
+    MessageHandler* handler);
 
 // Return a scanline image writer. The following formats are supported:
 // IMAGE_PNG, IMAGE_JPEG, and IMAGE_WEBP.
@@ -44,7 +51,8 @@ ScanlineWriterInterface* CreateScanlineWriter(
     size_t width,               // Width, in pixels, of the image
     size_t height,              // Height, in pixels, of the image
     const void* config,         // Configuration for the output image
-    GoogleString* image_data);  // Output image
+    GoogleString* image_data,   // Output image
+    MessageHandler* handler);   // Message handler
 
 // Decode the image stream and return the image information. Use non-null
 // pointers to retrieve the informatin you need, and use null pointers to
@@ -67,7 +75,8 @@ bool ReadImage(ImageFormat image_type,
                PixelFormat* pixel_format,
                size_t* width,
                size_t* height,
-               size_t* stride);
+               size_t* stride,
+               MessageHandler* handler);
 
 }  // namespace image_compression
 

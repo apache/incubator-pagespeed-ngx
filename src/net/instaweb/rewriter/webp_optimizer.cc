@@ -50,6 +50,8 @@ using pagespeed::image_compression::JpegUtils;
 
 namespace net_instaweb {
 
+class MessageHandler;
+
 namespace {
 
 // Whether to enable support for YUV -> YUV conversion.  Is currently disabled,
@@ -87,7 +89,7 @@ int GoogleStringWebpWriter(const uint8_t* data, size_t data_size,
 
 class WebpOptimizer {
  public:
-  WebpOptimizer();
+  explicit WebpOptimizer(MessageHandler* handler);
   ~WebpOptimizer();
 
   // Take the given input file and transcode it to webp.
@@ -122,6 +124,7 @@ class WebpOptimizer {
   static int ProgressHook(int percent, const WebPPicture* picture);
 
   // Structure for jpeg decompression
+  MessageHandler* message_handler_;
   pagespeed::image_compression::JpegReader reader_;
   uint8* pixels_;
   uint8** rows_;  // Holds offsets into pixels_ during decompression
@@ -135,14 +138,18 @@ class WebpOptimizer {
   DISALLOW_COPY_AND_ASSIGN(WebpOptimizer);
 };  // class WebpOptimizer
 
-WebpOptimizer::WebpOptimizer()
-    : pixels_(NULL),
+WebpOptimizer::WebpOptimizer(MessageHandler* handler)
+    : message_handler_(handler),
+      reader_(handler),
+      pixels_(NULL),
       rows_(NULL),
       width_(0),
       height_(0),
       row_stride_(0),
       progress_hook_(NULL),
-      progress_hook_data_(NULL) { }
+      progress_hook_data_(NULL) {
+}
+
 WebpOptimizer::~WebpOptimizer() {
   delete[] pixels_;
   DCHECK(rows_ == NULL);
@@ -337,7 +344,8 @@ bool WebpOptimizer::CreateOptimizedWebp(
   WebPPicture picture;
   WebPConfig config;
   int input_quality = JpegUtils::GetImageQualityFromImage(original_jpeg.data(),
-                                                          original_jpeg.size());
+                                                          original_jpeg.size(),
+                                                          message_handler_);
 
   if (!WebPPictureInit(&picture) || !WebPConfigInit(&config)) {
     // Version mismatch.
@@ -427,8 +435,9 @@ bool WebpOptimizer::CreateOptimizedWebp(
 
 bool OptimizeWebp(const GoogleString& original_jpeg, int configured_quality,
                   WebpProgressHook progress_hook, void* progress_hook_data,
-                  GoogleString* compressed_webp) {
-  WebpOptimizer optimizer;
+                  GoogleString* compressed_webp,
+                  MessageHandler* message_handler) {
+  WebpOptimizer optimizer(message_handler);
   return optimizer.CreateOptimizedWebp(original_jpeg, configured_quality,
                                        progress_hook, progress_hook_data,
                                        compressed_webp);

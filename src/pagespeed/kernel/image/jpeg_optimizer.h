@@ -20,15 +20,23 @@
 #define PAGESPEED_KERNEL_IMAGE_JPEG_OPTIMIZER_H_
 
 #include <setjmp.h>
+#include <cstddef>
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
 // DO NOT INCLUDE LIBJPEG HEADERS HERE. Doing so causes build errors
 // on Windows.
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 enum ColorSampling {
   RETAIN,
@@ -79,12 +87,14 @@ struct JpegCompressionOptions {
 // Performs lossless optimization, that is, the output image will be
 // pixel-for-pixel identical to the input image.
 bool OptimizeJpeg(const GoogleString &original,
-                  GoogleString *compressed);
+                  GoogleString *compressed,
+                  MessageHandler* handler);
 
 // Performs JPEG optimizations with the provided options.
 bool OptimizeJpegWithOptions(const GoogleString &original,
                              GoogleString *compressed,
-                             const JpegCompressionOptions &options);
+                             const JpegCompressionOptions &options,
+                             MessageHandler* handler);
 
 // User of this class must call this functions in the following sequence
 // func () {
@@ -106,7 +116,7 @@ bool OptimizeJpegWithOptions(const GoogleString &original,
 // }
 class JpegScanlineWriter : public ScanlineWriterInterface {
  public:
-  JpegScanlineWriter();
+  explicit JpegScanlineWriter(MessageHandler* handler);
   virtual ~JpegScanlineWriter();
 
   // Set the environment for longjmp calls.
@@ -131,6 +141,7 @@ class JpegScanlineWriter : public ScanlineWriterInterface {
   // JPEG-compressor-specific structures.
   struct Data;
   Data* const data_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegScanlineWriter);
 };

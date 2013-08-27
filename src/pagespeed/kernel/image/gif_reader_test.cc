@@ -20,17 +20,20 @@
 
 // Author: Victor Chudnovsky
 
-#include "base/logging.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/gif_reader.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
-#include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
 namespace {
 
+using net_instaweb::MockMessageHandler;
+using net_instaweb::NullMutex;
 using pagespeed::image_compression::kGifTestDir;
 using pagespeed::image_compression::kPngSuiteGifTestDir;
 using pagespeed::image_compression::kPngSuiteTestDir;
@@ -81,129 +84,136 @@ const char kInterlacedImage[] = "interlaced";
 const char kTransparentGif[] = "transparent";
 const char kZeroSizeAnimatedGif[] = "zero_size_animation";
 
-TEST(GifReaderTest, LoadValidGifsWithoutTransforms) {
-  ScopedPngStruct read(ScopedPngStruct::READ);
-  scoped_ptr<PngReaderInterface> gif_reader(new GifReader);
+class GifReaderTest : public testing::Test {
+ public:
+  GifReaderTest()
+    : message_handler_(new NullMutex),
+      gif_reader_(new GifReader(&message_handler_)),
+      read_(ScopedPngStruct::READ, &message_handler_) {
+  }
+
+ protected:
+  MockMessageHandler message_handler_;
+  scoped_ptr<PngReaderInterface> gif_reader_;
+  ScopedPngStruct read_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GifReaderTest);
+};
+
+TEST_F(GifReaderTest, LoadValidGifsWithoutTransforms) {
   GoogleString in, out;
   for (size_t i = 0; i < kValidOpaqueGifImageCount; i++) {
     ReadTestFile(
         kPngSuiteGifTestDir, kValidOpaqueGifImages[i], "gif", &in);
     ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_IDENTITY))
+    ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                     PNG_TRANSFORM_IDENTITY))
         << kValidOpaqueGifImages[i];
-    ASSERT_TRUE(read.reset());
+    ASSERT_TRUE(read_.reset());
   }
 
   for (size_t i = 0; i < kValidTransparentGifImageCount; i++) {
     ReadTestFile(
         kPngSuiteGifTestDir, kValidTransparentGifImages[i], "gif", &in);
     ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_IDENTITY))
+    ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                     PNG_TRANSFORM_IDENTITY))
         << kValidTransparentGifImages[i];
-    ASSERT_TRUE(read.reset());
+    ASSERT_TRUE(read_.reset());
   }
 
   ReadTestFile(kGifTestDir, "transparent", "gif", &in);
   ASSERT_NE(static_cast<size_t>(0), in.length());
-  ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                 PNG_TRANSFORM_IDENTITY));
+  ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                   PNG_TRANSFORM_IDENTITY));
 }
 
-TEST(GifReaderTest, ExpandColorMapForValidGifs) {
-  ScopedPngStruct read(ScopedPngStruct::READ);
-  scoped_ptr<PngReaderInterface> gif_reader(new GifReader);
+TEST_F(GifReaderTest, ExpandColorMapForValidGifs) {
   GoogleString in, out;
   for (size_t i = 0; i < kValidOpaqueGifImageCount; i++) {
     ReadTestFile(
         kPngSuiteGifTestDir, kValidOpaqueGifImages[i], "gif", &in);
     ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_EXPAND))
+    ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                     PNG_TRANSFORM_EXPAND))
         << kValidOpaqueGifImages[i];
-    ASSERT_TRUE(read.reset());
+    ASSERT_TRUE(read_.reset());
   }
 
   for (size_t i = 0; i < kValidTransparentGifImageCount; i++) {
     ReadTestFile(
         kPngSuiteGifTestDir, kValidTransparentGifImages[i], "gif", &in);
     ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_EXPAND))
+    ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                     PNG_TRANSFORM_EXPAND))
         << kValidTransparentGifImages[i];
-    ASSERT_TRUE(read.reset());
+    ASSERT_TRUE(read_.reset());
   }
 
   ReadTestFile(kGifTestDir, "transparent", "gif", &in);
   ASSERT_NE(static_cast<size_t>(0), in.length());
-  ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                 PNG_TRANSFORM_EXPAND));
+  ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                   PNG_TRANSFORM_EXPAND));
 }
 
-TEST(GifReaderTest, RequireOpaqueForValidGifs) {
-  ScopedPngStruct read(ScopedPngStruct::READ);
-  scoped_ptr<PngReaderInterface> gif_reader(new GifReader);
+TEST_F(GifReaderTest, RequireOpaqueForValidGifs) {
   GoogleString in;
   for (size_t i = 0; i < kValidOpaqueGifImageCount; i++) {
     ReadTestFile(
         kPngSuiteGifTestDir, kValidOpaqueGifImages[i], "gif", &in);
     ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                    PNG_TRANSFORM_IDENTITY, true))
-        << kValidOpaqueGifImages[i];
-    ASSERT_TRUE(read.reset());
-  }
-
-  for (size_t i = 0; i < kValidTransparentGifImageCount; i++) {
-    ReadTestFile(
-        kPngSuiteGifTestDir, kValidTransparentGifImages[i], "gif", &in);
-    ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_FALSE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
+    ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
                                      PNG_TRANSFORM_IDENTITY, true))
-        << kValidTransparentGifImages[i];
-    ASSERT_TRUE(read.reset());
-  }
-
-  ReadTestFile(kGifTestDir, "transparent", "gif", &in);
-  ASSERT_NE(static_cast<size_t>(0), in.length());
-  ASSERT_FALSE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_IDENTITY, true));
-}
-
-TEST(GifReaderTest, ExpandColormapAndRequireOpaqueForValidGifs) {
-  ScopedPngStruct read(ScopedPngStruct::READ);
-  scoped_ptr<PngReaderInterface> gif_reader(new GifReader);
-  GoogleString in;
-  for (size_t i = 0; i < kValidOpaqueGifImageCount; i++) {
-    ReadTestFile(
-        kPngSuiteGifTestDir, kValidOpaqueGifImages[i], "gif", &in);
-    ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                    PNG_TRANSFORM_EXPAND, true))
         << kValidOpaqueGifImages[i];
-    ASSERT_TRUE(read.reset());
+    ASSERT_TRUE(read_.reset());
   }
 
   for (size_t i = 0; i < kValidTransparentGifImageCount; i++) {
     ReadTestFile(
         kPngSuiteGifTestDir, kValidTransparentGifImages[i], "gif", &in);
     ASSERT_NE(static_cast<size_t>(0), in.length());
-    ASSERT_FALSE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                    PNG_TRANSFORM_EXPAND, true))
+    ASSERT_FALSE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                      PNG_TRANSFORM_IDENTITY, true))
         << kValidTransparentGifImages[i];
-    ASSERT_TRUE(read.reset());
+    ASSERT_TRUE(read_.reset());
   }
 
   ReadTestFile(kGifTestDir, "transparent", "gif", &in);
   ASSERT_NE(static_cast<size_t>(0), in.length());
-  ASSERT_FALSE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_EXPAND, true));
+  ASSERT_FALSE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                    PNG_TRANSFORM_IDENTITY, true));
 }
 
-TEST(GifReaderTest, StripAlpha) {
-  ScopedPngStruct read(ScopedPngStruct::READ);
-  scoped_ptr<PngReaderInterface> gif_reader(new GifReader);
+TEST_F(GifReaderTest, ExpandColormapAndRequireOpaqueForValidGifs) {
+  GoogleString in;
+  for (size_t i = 0; i < kValidOpaqueGifImageCount; i++) {
+    ReadTestFile(
+        kPngSuiteGifTestDir, kValidOpaqueGifImages[i], "gif", &in);
+    ASSERT_NE(static_cast<size_t>(0), in.length());
+    ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                     PNG_TRANSFORM_EXPAND, true))
+        << kValidOpaqueGifImages[i];
+    ASSERT_TRUE(read_.reset());
+  }
+
+  for (size_t i = 0; i < kValidTransparentGifImageCount; i++) {
+    ReadTestFile(
+        kPngSuiteGifTestDir, kValidTransparentGifImages[i], "gif", &in);
+    ASSERT_NE(static_cast<size_t>(0), in.length());
+    ASSERT_FALSE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                      PNG_TRANSFORM_EXPAND, true))
+        << kValidTransparentGifImages[i];
+    ASSERT_TRUE(read_.reset());
+  }
+
+  ReadTestFile(kGifTestDir, "transparent", "gif", &in);
+  ASSERT_NE(static_cast<size_t>(0), in.length());
+  ASSERT_FALSE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                    PNG_TRANSFORM_EXPAND, true));
+}
+
+TEST_F(GifReaderTest, StripAlpha) {
   GoogleString in;
   png_uint_32 height;
   png_uint_32 width;
@@ -215,40 +225,38 @@ TEST(GifReaderTest, StripAlpha) {
 
   ReadTestFile(kGifTestDir, "transparent", "gif", &in);
   ASSERT_NE(static_cast<size_t>(0), in.length());
-  ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                  PNG_TRANSFORM_STRIP_ALPHA, false));
-  png_get_IHDR(read.png_ptr(), read.info_ptr(),
+  ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                   PNG_TRANSFORM_STRIP_ALPHA, false));
+  png_get_IHDR(read_.png_ptr(), read_.info_ptr(),
                &width, &height, &bit_depth, &color_type,
                NULL, NULL, NULL);
   ASSERT_TRUE((color_type & PNG_COLOR_MASK_ALPHA) == 0);  // NOLINT
   ASSERT_EQ(static_cast<unsigned int>(0),
-            png_get_tRNS(read.png_ptr(),
-                         read.info_ptr(),
+            png_get_tRNS(read_.png_ptr(),
+                         read_.info_ptr(),
                          &trans,
                          &num_trans,
                          &trans_values));
 
-  read.reset();
+  read_.reset();
 
-  ASSERT_TRUE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                  PNG_TRANSFORM_STRIP_ALPHA |
-                                  PNG_TRANSFORM_EXPAND, false));
-  png_get_IHDR(read.png_ptr(), read.info_ptr(),
+  ASSERT_TRUE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                   PNG_TRANSFORM_STRIP_ALPHA |
+                                   PNG_TRANSFORM_EXPAND, false));
+  png_get_IHDR(read_.png_ptr(), read_.info_ptr(),
                &width, &height, &bit_depth, &color_type,
                NULL, NULL, NULL);
   ASSERT_TRUE((color_type & PNG_COLOR_MASK_ALPHA) == 0);  // NOLINT
 
   ASSERT_EQ(static_cast<unsigned int>(0),
-            png_get_tRNS(read.png_ptr(),
-                         read.info_ptr(),
+            png_get_tRNS(read_.png_ptr(),
+                         read_.info_ptr(),
                          &trans,
                          &num_trans,
                          &trans_values));
 }
 
-TEST(GifReaderTest, ExpandColormapOnZeroSizeCanvasAndCatchLibPngError) {
-  ScopedPngStruct read(ScopedPngStruct::READ);
-  scoped_ptr<PngReaderInterface> gif_reader(new GifReader);
+TEST_F(GifReaderTest, ExpandColormapOnZeroSizeCanvasAndCatchLibPngError) {
   GoogleString in;
   // This is a free image from
   // <http://www.gifs.net/subcategory/40/0/20/Email>, with the canvas
@@ -256,28 +264,31 @@ TEST(GifReaderTest, ExpandColormapOnZeroSizeCanvasAndCatchLibPngError) {
   // libpng error.
   ReadTestFile(kGifTestDir, "zero_size_animation", "gif", &in);
   ASSERT_NE(static_cast<size_t>(0), in.length());
-  ASSERT_FALSE(gif_reader->ReadPng(in, read.png_ptr(), read.info_ptr(),
-                                   PNG_TRANSFORM_EXPAND, true));
+  ASSERT_FALSE(gif_reader_->ReadPng(in, read_.png_ptr(), read_.info_ptr(),
+                                    PNG_TRANSFORM_EXPAND, true));
 }
 
 class GifScanlineReaderRawTest : public testing::Test {
  public:
   GifScanlineReaderRawTest()
-    : scanline_(NULL) {
+    : scanline_(NULL),
+      message_handler_(new NullMutex),
+      reader_(&message_handler_) {
   }
 
   bool Initialize(const char* file_name) {
     if (!ReadTestFile(kGifTestDir, file_name, "gif", &input_image_)) {
-      LOG(DFATAL) << "Failed to read file: " << file_name;
+      PS_LOG_DFATAL((&message_handler_), "Failed to read file: %s", file_name);
       return false;
     }
     return reader_.Initialize(input_image_.c_str(), input_image_.length());
   }
 
  protected:
+  void* scanline_;
+  MockMessageHandler message_handler_;
   GifScanlineReaderRaw reader_;
   GoogleString input_image_;
-  void* scanline_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GifScanlineReaderRawTest);
@@ -287,7 +298,8 @@ TEST_F(GifScanlineReaderRawTest, CorruptHeader) {
   ReadTestFile(kGifTestDir, kTransparentGif, "gif", &input_image_);
   // Make GifRecordType invalid.
   input_image_[781] = 0;
-  ASSERT_FALSE(reader_.Initialize(input_image_.c_str(), input_image_.length()));
+  ASSERT_FALSE(reader_.Initialize(input_image_.c_str(),
+      input_image_.length()));
 }
 
 TEST_F(GifScanlineReaderRawTest, InitializeWithoutRead) {
@@ -332,8 +344,6 @@ TEST_F(GifScanlineReaderRawTest, ZeroSizeGif) {
 // Check the accuracy of the reader. Compare the decoded results with the gold
 // data (".gif.rgba"). The test images include transparent and opaque ones.
 TEST_F(GifScanlineReaderRawTest, ValidGifs) {
-  GifScanlineReaderRaw reader;
-
   for (size_t i = 0; i < kValidGifImageCount; i++) {
     GoogleString rgba_image, gif_image;
     const char* file_name = kValidGifImages[i].filename;
@@ -344,13 +354,14 @@ TEST_F(GifScanlineReaderRawTest, ValidGifs) {
         reinterpret_cast<const uint8*>(rgba_image.data());
     uint8* decoded_pixels = NULL;
 
-    ASSERT_TRUE(reader.Initialize(gif_image.data(), gif_image.length()));
+    ASSERT_TRUE(reader_.Initialize(gif_image.data(), gif_image.length()));
 
-    PixelFormat pixel_format = reader.GetPixelFormat();
-    int width = reader.GetImageWidth();
-    int height = reader.GetImageHeight();
-    int bytes_per_row = reader.GetBytesPerScanline();
-    int num_channels = GetNumChannelsFromPixelFormat(pixel_format);
+    PixelFormat pixel_format = reader_.GetPixelFormat();
+    int width = reader_.GetImageWidth();
+    int height = reader_.GetImageHeight();
+    int bytes_per_row = reader_.GetBytesPerScanline();
+    int num_channels = GetNumChannelsFromPixelFormat(pixel_format,
+                                                     &message_handler_);
 
     EXPECT_EQ(kValidGifImages[i].width, width);
     EXPECT_EQ(kValidGifImages[i].height, height);
@@ -365,8 +376,8 @@ TEST_F(GifScanlineReaderRawTest, ValidGifs) {
 
     // Decode and check the image a row at a time.
     int row = 0;
-    while (reader.HasMoreScanLines()) {
-      EXPECT_TRUE(reader.ReadNextScanline(
+    while (reader_.HasMoreScanLines()) {
+      EXPECT_TRUE(reader_.ReadNextScanline(
         reinterpret_cast<void**>(&decoded_pixels)));
 
       for (int x = 0; x < width; ++x) {
@@ -392,7 +403,8 @@ TEST_F(GifScanlineReaderRawTest, Interlaced) {
   ReadTestFile(kGifTestDir, kInterlacedImage, "png", &png_image);
   ReadTestFile(kGifTestDir, kInterlacedImage, "gif", &gif_image);
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
-                         IMAGE_GIF, gif_image.c_str(), gif_image.length());
+                         IMAGE_GIF, gif_image.c_str(), gif_image.length(),
+                         &message_handler_);
 }
 
 }  // namespace

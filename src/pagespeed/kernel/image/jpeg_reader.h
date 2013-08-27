@@ -26,9 +26,15 @@
 struct jpeg_decompress_struct;
 struct jpeg_error_mgr;
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 struct JpegEnv;
 
@@ -48,7 +54,7 @@ struct JpegEnv;
 // // perform other operations on jpeg_decompress.
 class JpegReader {
  public:
-  JpegReader();
+  explicit JpegReader(MessageHandler* handler);
   ~JpegReader();
 
   jpeg_decompress_struct *decompress_struct() const { return jpeg_decompress_; }
@@ -58,6 +64,7 @@ class JpegReader {
  private:
   jpeg_decompress_struct *jpeg_decompress_;
   jpeg_error_mgr *decompress_error_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegReader);
 };
@@ -67,7 +74,7 @@ class JpegReader {
 // image has JCS_GRAYSCALE format, or RGB_888 otherwise.
 class JpegScanlineReader : public ScanlineReaderInterface {
  public:
-  JpegScanlineReader();
+  explicit JpegScanlineReader(MessageHandler* handler);
   virtual ~JpegScanlineReader();
   virtual bool Reset();
 
@@ -95,6 +102,7 @@ class JpegScanlineReader : public ScanlineReaderInterface {
   size_t row_;
   size_t bytes_per_row_;
   bool was_initialized_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(JpegScanlineReader);
 };

@@ -24,9 +24,15 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 
+namespace net_instaweb {
+class MessageHandler;
+}
+
 namespace pagespeed {
 
 namespace image_compression {
+
+using net_instaweb::MessageHandler;
 
 class ResizeRow;
 class ResizeCol;
@@ -45,7 +51,7 @@ class ResizeCol;
 //
 class ScanlineResizer : public ScanlineReaderInterface {
  public:
-  ScanlineResizer();
+  explicit ScanlineResizer(MessageHandler* handler);
   virtual ~ScanlineResizer();
 
   // Initialize the resizer. You must provide an initialized reader implementing
@@ -112,6 +118,7 @@ class ScanlineResizer : public ScanlineReaderInterface {
   // Buffer for storing the intermediate results.
   scoped_array<float> buffer_;
   int bytes_per_buffer_row_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(ScanlineResizer);
 };

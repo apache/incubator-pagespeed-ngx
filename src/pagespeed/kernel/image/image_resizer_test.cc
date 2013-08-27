@@ -18,6 +18,8 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_resizer.h"
@@ -30,6 +32,9 @@
 namespace {
 
 // Pixel formats
+using net_instaweb::MessageHandler;
+using net_instaweb::MockMessageHandler;
+using net_instaweb::NullMutex;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::GRAY_8;
 using pagespeed::image_compression::RGB_888;
@@ -80,6 +85,9 @@ const size_t KOutputSizeCount = arraysize(kOutputSize);
 class ScanlineResizerTest : public testing::Test {
  public:
   ScanlineResizerTest() :
+      message_handler_(new NullMutex),
+      reader_(&message_handler_),
+      resizer_(&message_handler_),
       scanline_(NULL) {
   }
 
@@ -91,6 +99,7 @@ class ScanlineResizerTest : public testing::Test {
                                    input_image_.length()));
   }
 
+  MockMessageHandler message_handler_;
   PngScanlineReaderRaw reader_;
   ScanlineResizer resizer_;
   GoogleString input_image_;
@@ -117,7 +126,8 @@ ScanlineWriterInterface* CreateWriter(PixelFormat pixel_format,
                                       size_t width,
                                       size_t height,
                                       GoogleString* image_data,
-                                      GoogleString* file_ext) {
+                                      GoogleString* file_ext,
+                                      MessageHandler* handler) {
   if (pixel_format == GRAY_8) {
     *file_ext = "jpg";
     JpegCompressionOptions jpeg_config;
@@ -126,14 +136,14 @@ ScanlineWriterInterface* CreateWriter(PixelFormat pixel_format,
     return reinterpret_cast<ScanlineWriterInterface*>(
         CreateScanlineWriter(pagespeed::image_compression::IMAGE_JPEG,
                              pixel_format, width, height, &jpeg_config,
-                             image_data));
+                             image_data, handler));
   } else {
     *file_ext = "webp";
     WebpConfiguration webp_config;  // Use lossless by default
     return reinterpret_cast<ScanlineWriterInterface*>(
         CreateScanlineWriter(pagespeed::image_compression::IMAGE_WEBP,
                              pixel_format, width, height, &webp_config,
-                             image_data));
+                             image_data, handler));
   }
 }
 
@@ -142,7 +152,7 @@ ScanlineWriterInterface* CreateWriter(PixelFormat pixel_format,
 // file name. For example, an image resized to 16-by-16 is
 // third_party/pagespeed/kernel/image/testdata/resized/basi0g04_w16_h16.png
 TEST_F(ScanlineResizerTest, Accuracy) {
-  PngScanlineReaderRaw gold_reader;
+  PngScanlineReaderRaw gold_reader(&message_handler_);
 
   for (size_t index_image = 0;
        index_image < kValidImageCount;
@@ -211,7 +221,8 @@ TEST_F(ScanlineResizerTest, ResizeAndWrite) {
                       resizer_.GetImageWidth(),
                       resizer_.GetImageHeight(),
                       &output_image,
-                      &file_ext));
+                      &file_ext,
+                      &message_handler_));
 
       while (resizer_.HasMoreScanLines()) {
         ASSERT_TRUE(resizer_.ReadNextScanline(&scanline_));
