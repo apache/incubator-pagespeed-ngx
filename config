@@ -151,7 +151,6 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_list_iterator.h \
     $ps_src/ngx_message_handler.h \
     $ps_src/ngx_pagespeed.h \
-    $ps_src/ngx_request_context.h \
     $ps_src/ngx_rewrite_driver_factory.h \
     $ps_src/ngx_rewrite_options.h \
     $ps_src/ngx_server_context.h \
@@ -165,7 +164,6 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_list_iterator.cc \
     $ps_src/ngx_message_handler.cc \
     $ps_src/ngx_pagespeed.cc \
-    $ps_src/ngx_request_context.cc \
     $ps_src/ngx_rewrite_driver_factory.cc \
     $ps_src/ngx_rewrite_options.cc \
     $ps_src/ngx_server_context.cc \

@@ -23,6 +23,10 @@
 
 #include "net/instaweb/system/public/system_server_context.h"
 
+extern "C" {
+#include <ngx_http.h>
+}
+
 namespace net_instaweb {
 
 class NgxRewriteDriverFactory;
@@ -30,6 +34,8 @@ class NgxRewriteOptions;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
+class SystemRequestContext;
+class UrlAsyncFetcherStats;
 
 class NgxServerContext : public SystemServerContext {
  public:
@@ -50,12 +56,11 @@ class NgxServerContext : public SystemServerContext {
   // ::Initialize called on it.
   void CreateLocalStatistics(Statistics* global_statistics);
   static void InitStats(Statistics* statistics);
-  virtual void ApplySessionFetchers(const RequestContextPtr& req,
-                                    RewriteDriver* driver);
   bool initialized() const { return initialized_; }
   GoogleString hostname_identifier() { return hostname_identifier_; }
   void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; }
   NgxRewriteDriverFactory* ngx_rewrite_driver_factory() { return ngx_factory_; }
+  SystemRequestContext* NewRequestContext(ngx_http_request_t* r);
 
  private:
   NgxRewriteDriverFactory* ngx_factory_;
@@ -71,6 +76,7 @@ class NgxServerContext : public SystemServerContext {
   SharedMemStatistics* local_statistics_;
   // These are non-NULL if we have per-vhost stats.
   scoped_ptr<RewriteStats> local_rewrite_stats_;
+  scoped_ptr<UrlAsyncFetcherStats> stats_fetcher_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };

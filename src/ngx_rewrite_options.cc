@@ -63,18 +63,11 @@ void NgxRewriteOptions::AddProperties() {
   // Nothing ngx-specific for now.
 
   MergeSubclassProperties(ngx_properties_);
-  // We create a dummy NgxRewriteOptions object here so that we can
-  // call InitializeSignaturesAndDefaults on it, and in turn get the
-  // global defaults (for say, X-Page-Speed header value) setup correctly.
+
+  // Default properties are global but to set them the current API requires
+  // a RewriteOptions instance and we're in a static method.
   NgxRewriteOptions dummy_config(NULL);
-  dummy_config.InitializeSignaturesAndDefaults();
-}
-
-void NgxRewriteOptions::InitializeSignaturesAndDefaults() {
-  // Calls to foo_.DoNotUseForSignatureComputation() would go here.
-
-  // Set default header value.
-  set_default_x_header_value(kModPagespeedVersion);
+  dummy_config.set_default_x_header_value(kModPagespeedVersion);
 }
 
 void NgxRewriteOptions::Initialize() {
@@ -121,17 +114,15 @@ RewriteOptions::OptionSettingResult
     }
   }
 
-  // TODO(jefftk): port these (no enums for them yet, even!)
-  //  DangerPermitFetchFromUnknownHosts, FetchWithGzip, ForceCaching
-
   return SystemRewriteOptions::ParseAndSetOptionFromName1(
       name, arg, msg, handler);
 }
 
+template <class DriverFactoryT>
 RewriteOptions::OptionSettingResult ParseAndSetOptionHelper(
     StringPiece option_value,
-    NgxRewriteDriverFactory* driver_factory,
-    void (NgxRewriteDriverFactory::*set_option_method)(bool)) {
+    DriverFactoryT* driver_factory,
+    void (DriverFactoryT::*set_option_method)(bool)) {
   bool parsed_value;
   if (StringCaseEqual(option_value, "on") ||
       StringCaseEqual(option_value, "true")) {
@@ -170,11 +161,11 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
     // TODO(morlovich): Remove these special hacks, and handle these via
     // ParseAndSetOptionFromEnum1.
     if (IsDirective(directive, "UsePerVHostStatistics")) {
-      result = ParseAndSetOptionHelper(
+      result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_use_per_vhost_statistics);
     } else if (IsDirective(directive, "InstallCrashHandler")) {
-      result = ParseAndSetOptionHelper(
+      result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_install_crash_handler);
     } else if (IsDirective(directive, "MessageBufferSize")) {
@@ -187,17 +178,33 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
         result = RewriteOptions::kOptionValueInvalid;
       }
     } else if (IsDirective(directive, "UseNativeFetcher")) {
-      result = ParseAndSetOptionHelper(
+      result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_use_native_fetcher);
     } else if (IsDirective(directive, "RateLimitBackgroundFetches")) {
-      result = ParseAndSetOptionHelper(
+      result = ParseAndSetOptionHelper<NgxRewriteDriverFactory>(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_rate_limit_background_fetches);
     } else if (IsDirective(directive, "ForceCaching")) {
-      result = ParseAndSetOptionHelper(
+      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,
-          &NgxRewriteDriverFactory::set_force_caching);
+          &SystemRewriteDriverFactory::set_force_caching);
+    } else if (IsDirective(directive, "DangerFetchFromUnknownHosts")) {
+      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
+          arg, driver_factory,
+          &SystemRewriteDriverFactory::set_disable_loopback_routing);
+    } else if (IsDirective(directive, "FetchWithGzip")) {
+      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
+          arg, driver_factory,
+          &SystemRewriteDriverFactory::set_fetch_with_gzip);
+    } else if (IsDirective(directive, "ListOutstandingUrlsOnError")) {
+      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
+          arg, driver_factory,
+          &SystemRewriteDriverFactory::list_outstanding_urls_on_error);
+    } else if (IsDirective(directive, "TrackOriginalContentLength")) {
+      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
+          arg, driver_factory,
+          &SystemRewriteDriverFactory::set_track_original_content_length);
     } else {
       result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
     }

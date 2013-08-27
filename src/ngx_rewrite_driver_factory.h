@@ -60,7 +60,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
                                    int port);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
-  virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
+  virtual UrlAsyncFetcher* AllocateFetcher(SystemRewriteOptions* config);
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
@@ -72,7 +72,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Initializes the StaticAssetManager.
   virtual void InitStaticAssetManager(
       StaticAssetManager* static_asset_manager);
-  bool InitNgxUrlAsyncFetcher();
+  bool InitNgxUrlAsyncFetchers();
   // Check resolver configured or not.
   bool CheckResolver();
 
@@ -158,7 +158,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   NgxMessageHandler* ngx_html_parse_message_handler_;
   bool install_crash_handler_;
 
-  NgxUrlAsyncFetcher* ngx_url_async_fetcher_;
+  std::vector<NgxUrlAsyncFetcher*> ngx_url_async_fetchers_;
   ngx_log_t* log_;
   ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
