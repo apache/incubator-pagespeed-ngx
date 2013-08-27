@@ -42,7 +42,6 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
       handle_error_(true),
       modify_caching_headers_(modify_caching_headers) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
-  PopulateRequestHeaders();
 }
 
 NgxBaseFetch::~NgxBaseFetch() {
@@ -56,15 +55,6 @@ void NgxBaseFetch::Lock() {
 void NgxBaseFetch::Unlock() {
   pthread_mutex_unlock(&mutex_);
 }
-
-void NgxBaseFetch::PopulateRequestHeaders() {
-  ngx_psol::copy_request_headers_from_ngx(request_, request_headers());
-}
-
-void NgxBaseFetch::PopulateResponseHeaders() {
-  ngx_psol::copy_response_headers_from_ngx(request_, response_headers());
-}
-
 
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
                                MessageHandler* handler) {
