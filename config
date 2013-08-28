@@ -169,8 +169,6 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_server_context.cc \
     $ps_src/ngx_thread_system.cc \
     $ps_src/ngx_url_async_fetcher.cc \
-    $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/system/console_out.cc \
-    $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/system/console_css_out.cc \
     $mod_pagespeed_dir/net/instaweb/system/add_headers_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/system/loopback_route_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/system/serf_url_async_fetcher.cc"

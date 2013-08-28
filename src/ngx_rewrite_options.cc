@@ -43,6 +43,12 @@ const char kNgxPagespeedStatisticsHandlerPath[] = "/ngx_pagespeed_statistics";
 
 RewriteOptions::Properties* NgxRewriteOptions::ngx_properties_ = NULL;
 
+NgxRewriteOptions::NgxRewriteOptions(const StringPiece& description,
+                                     ThreadSystem* thread_system)
+    : SystemRewriteOptions(description, thread_system) {
+  Init();
+}
+
 NgxRewriteOptions::NgxRewriteOptions(ThreadSystem* thread_system)
     : SystemRewriteOptions(thread_system) {
   Init();
@@ -189,14 +195,6 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,
           &SystemRewriteDriverFactory::set_force_caching);
-    } else if (IsDirective(directive, "DangerFetchFromUnknownHosts")) {
-      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
-          arg, driver_factory,
-          &SystemRewriteDriverFactory::set_disable_loopback_routing);
-    } else if (IsDirective(directive, "FetchWithGzip")) {
-      result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
-          arg, driver_factory,
-          &SystemRewriteDriverFactory::set_fetch_with_gzip);
     } else if (IsDirective(directive, "ListOutstandingUrlsOnError")) {
       result = ParseAndSetOptionHelper<SystemRewriteDriverFactory>(
           arg, driver_factory,
@@ -256,7 +254,8 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
 }
 
 NgxRewriteOptions* NgxRewriteOptions::Clone() const {
-  NgxRewriteOptions* options = new NgxRewriteOptions(thread_system());
+  NgxRewriteOptions* options = new NgxRewriteOptions(
+      StrCat("cloned from ", description()), thread_system());
   options->Merge(*this);
   return options;
 }

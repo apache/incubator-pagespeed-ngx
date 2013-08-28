@@ -80,7 +80,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // NgxRewriteDriverFactory, including nginx-specific and
   // platform-independent statistics.
   static void InitStats(Statistics* statistics);
-  NgxServerContext* MakeNgxServerContext();
+  NgxServerContext* MakeNgxServerContext(StringPiece hostname, int port);
   ServerContext* NewServerContext();
 
   // Starts pagespeed threads if they've not been started already.  Must be
