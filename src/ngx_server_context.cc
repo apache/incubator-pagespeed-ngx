@@ -73,7 +73,7 @@ SystemRequestContext* NgxServerContext::NewRequestContext(
   return new SystemRequestContext(thread_system()->NewMutex(),
                                   timer(),
                                   local_port,
-                                  ngx_psol::str_to_string_piece(local_ip));
+                                  str_to_string_piece(local_ip));
 }
 
 }  // namespace net_instaweb

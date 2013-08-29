@@ -28,13 +28,11 @@ bool NgxCachingHeaders::Lookup(const GoogleString& key,
   ngx_table_elt_t* header;
   NgxListIterator it(&(request_->headers_out.headers.part));
   while ((header = it.Next()) != NULL) {
-    if (header->hash != 0 &&
-        key == ngx_psol::str_to_string_piece(header->key)) {
+    if (header->hash != 0 && key == str_to_string_piece(header->key)) {
       // This will be called multiple times if there are multiple headers with
       // this name.  Each time it will append to values.
-      SplitStringPieceToVector(
-          ngx_psol::str_to_string_piece(header->value), ",", values,
-                                        true /* omit empty strings */);
+      SplitStringPieceToVector(str_to_string_piece(header->value), ",", values,
+                               true /* omit empty strings */);
     }
   }
 

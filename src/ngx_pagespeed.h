@@ -46,9 +46,6 @@ class RewriteDriver;
 class RequestHeaders;
 class ResponseHeaders;
 class InPlaceResourceRecorder;
-}  // namespace net_instaweb
-
-namespace ngx_psol {
 
 // Allocate chain links and buffers from the supplied pool, and copy over the
 // data from the string piece.  If the string piece is empty, return
@@ -79,7 +76,7 @@ StringPiece str_to_string_piece(ngx_str_t s);
 char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
 
 typedef struct {
-  net_instaweb::NgxBaseFetch* base_fetch;
+  NgxBaseFetch* base_fetch;
 
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
@@ -92,25 +89,25 @@ typedef struct {
   bool modify_caching_headers;
 
   // for html rewrite
-  net_instaweb::ProxyFetch* proxy_fetch;
-  net_instaweb::GzipInflater* inflater_;
+  ProxyFetch* proxy_fetch;
+  GzipInflater* inflater_;
 
   // for in place resource
-  net_instaweb::RewriteDriver* driver;
-  net_instaweb::InPlaceResourceRecorder* recorder;
+  RewriteDriver* driver;
+  InPlaceResourceRecorder* recorder;
 } ps_request_ctx_t;
 
 
 void copy_request_headers_from_ngx(const ngx_http_request_t* r,
-       net_instaweb::RequestHeaders* headers);
+                                   RequestHeaders* headers);
 
 void copy_response_headers_from_ngx(const ngx_http_request_t* r,
-       net_instaweb::ResponseHeaders* headers);
+                                    ResponseHeaders* headers);
 
-ngx_int_t copy_response_headers_to_ngx(
-            ngx_http_request_t* r,
-            const net_instaweb::ResponseHeaders& pagespeed_headers,
-            bool modify_caching_headers);
-}  // namespace ngx_psol
+ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
+                                       const ResponseHeaders& pagespeed_headers,
+                                       bool modify_caching_headers);
+
+}  // namespace net_instaweb
 
 #endif  // NGX_PAGESPEED_H_
