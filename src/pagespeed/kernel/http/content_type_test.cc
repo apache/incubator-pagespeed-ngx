@@ -60,6 +60,9 @@ TEST_F(ContentTypeTest, TestExtensions) {
   EXPECT_EQ(ContentType::kVideo,      ExtToType(".3gp"));
   EXPECT_EQ(ContentType::kVideo,      ExtToType(".flv"));
   EXPECT_EQ(ContentType::kVideo,      ExtToType(".ogg"));
+
+  EXPECT_EQ(ContentType::kAudio,      ExtToType(".mp3"));
+  EXPECT_EQ(ContentType::kAudio,      ExtToType(".wav"));
 }
 
 TEST_F(ContentTypeTest, TestMimeType) {
@@ -87,10 +90,24 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kWebp,       MimeToType("image/webp"));
   EXPECT_EQ(ContentType::kIco,        MimeToType("image/x-icon"));
   EXPECT_EQ(ContentType::kIco,        MimeToType("image/vnd.microsoft.icon"));
-  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/3gpp"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/3gp"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/mpeg"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/x-flv"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/ogg"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/mpeg4"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/webm"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/x-ms-asf"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/x-ms-wmv"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/quicktime"));
+
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/ogg"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/mpeg"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/webm"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/mp3"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/x-mpeg"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/x-wav"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/mp4"));
+  EXPECT_EQ(ContentType::kAudio,      MimeToType("audio/wav"));
 
   EXPECT_EQ(ContentType::kOctetStream, MimeToType("application/octet-stream"));
   EXPECT_EQ(ContentType::kOctetStream, MimeToType("binary/octet-stream"));

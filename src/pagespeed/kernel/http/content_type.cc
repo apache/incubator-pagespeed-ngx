@@ -69,11 +69,26 @@ const ContentType kTypes[] = {
   {"text/html",                ".htm",  ContentType::kHtml},
   {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
 
-  {"video/mpeg",                ".mpg", ContentType::kVideo},  // RFC 2045
-  {"video/mp4",                 ".mp4", ContentType::kVideo},  // RFC 4337
-  {"video/3gpp",                ".3gp", ContentType::kVideo},
-  {"video/x-flv",               ".flv", ContentType::kVideo},
-  {"video/ogg",                 ".ogg", ContentType::kVideo},  // RFC 5334
+  {"video/mpeg",                ".mpg",  ContentType::kVideo},  // RFC 2045
+  {"video/mp4",                 ".mp4",  ContentType::kVideo},  // RFC 4337
+  {"video/3gp",                 ".3gp",  ContentType::kVideo},
+  {"video/x-flv",               ".flv",  ContentType::kVideo},
+  {"video/ogg",                 ".ogg",  ContentType::kVideo},  // RFC 5334
+  {"video/webm",                ".webm", ContentType::kVideo},
+  {"video/x-ms-asf",            ".asf",  ContentType::kVideo},
+  {"video/x-ms-wmv",            ".wmv",  ContentType::kVideo},
+  {"video/quicktime",           ".mov",  ContentType::kVideo},
+  {"video/mpeg4",               ".mp4",  ContentType::kVideo},
+
+  {"audio/mpeg",               ".mp3",  ContentType::kAudio},
+  {"audio/ogg",                ".ogg",  ContentType::kAudio},
+  {"audio/webm",               "webm",  ContentType::kAudio},
+  {"audio/mp4",                ".mp4",  ContentType::kAudio},
+  {"audio/x-mpeg",             ".mp3",  ContentType::kAudio},
+  {"audio/x-wav",              ".wav",  ContentType::kAudio},
+  {"audio/mp3",                ".mp3",  ContentType::kAudio},
+  {"audio/wav",                ".wav",  ContentType::kAudio},
+
   {"binary/octet-stream",       ".bin", ContentType::kOctetStream },
 };
 const int kNumTypes = arraysize(kTypes);
@@ -154,6 +169,10 @@ bool ContentType::IsImage() const {
 
 bool ContentType::IsVideo() const {
   return type_ == kVideo;
+}
+
+bool ContentType::IsAudio() const {
+  return type_ == kAudio;
 }
 
 const ContentType* NameExtensionToContentType(const StringPiece& name) {
@@ -275,6 +294,7 @@ bool ContentType::IsLikelyStaticResource() const {
     case kPng:
     case kSwf:
     case kVideo:
+    case kAudio:
     case kWebp:
       return true;
   };
