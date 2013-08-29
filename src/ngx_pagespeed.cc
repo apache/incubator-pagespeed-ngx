@@ -2301,12 +2301,13 @@ ngx_int_t send_out_headers_and_body(
 // Write response headers and send out headers and output, including the option
 // for a custom Content-Type.
 void ps_write_handler_response(const StringPiece& output,
-                            ngx_http_request_t* r,
-                            net_instaweb::ContentType content_type,
-                            const StringPiece& cache_control,
-                            net_instaweb::Timer* timer) {
+                               ngx_http_request_t* r,
+                               net_instaweb::HttpStatus::Code status,
+                               net_instaweb::ContentType content_type,
+                               const StringPiece& cache_control,
+                               net_instaweb::Timer* timer) {
   net_instaweb::ResponseHeaders response_headers;
-  response_headers.SetStatusAndReason(net_instaweb::HttpStatus::kOK);
+  response_headers.SetStatusAndReason(status);
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);
 
@@ -2331,24 +2332,25 @@ void ps_write_handler_response(const StringPiece& output,
   send_out_headers_and_body(r, response_headers, output.as_string());
 }
 
-// Writes text wrapped in a <pre> block
-void ps_write_pre(StringPiece str, net_instaweb::Writer* writer,
-              net_instaweb::MessageHandler* handler) {
-  writer->Write("<pre>\n", handler);
-  writer->Write(str, handler);
-  writer->Write("</pre>\n", handler);
+void ps_write_handler_response(const StringPiece& output,
+                               ngx_http_request_t* r,
+                               net_instaweb::ContentType content_type,
+                               const StringPiece& cache_control,
+                               net_instaweb::Timer* timer) {
+  ps_write_handler_response(output, r, net_instaweb::HttpStatus::kOK,
+                            content_type, cache_control, timer);
 }
 
 void ps_write_handler_response(const StringPiece& output,
-                            ngx_http_request_t* r,
-                            net_instaweb::ContentType content_type,
-                            net_instaweb::Timer* timer) {
+                               ngx_http_request_t* r,
+                               net_instaweb::ContentType content_type,
+                               net_instaweb::Timer* timer) {
   ps_write_handler_response(output, r, net_instaweb::kContentTypeHtml,
-                         net_instaweb::HttpAttributes::kNoCache, timer);
+                            net_instaweb::HttpAttributes::kNoCache, timer);
 }
 
 void ps_write_handler_response(const StringPiece& output, ngx_http_request_t* r,
-                            net_instaweb::Timer* timer) {
+                               net_instaweb::Timer* timer) {
   ps_write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
 }
 
@@ -2372,155 +2374,37 @@ ngx_int_t ps_console_handler(
 ngx_int_t ps_statistics_handler(
     ngx_http_request_t* r,
     net_instaweb::NgxServerContext* server_context) {
-
-  StringPiece request_uri_path = str_to_string_piece(r->uri);
-  bool general_stats_request = net_instaweb::StringCaseStartsWith(
-      request_uri_path, "/ngx_pagespeed_statistics");
-  bool global_stats_request =
-      net_instaweb::StringCaseStartsWith(
-          request_uri_path, "/ngx_pagespeed_global_statistics");
   net_instaweb::NgxRewriteDriverFactory* factory =
       static_cast<net_instaweb::NgxRewriteDriverFactory*>(
           server_context->factory());
+  // A request is always global if we don't have per-vhost stats, otherwise
+  // it's only global if it came to /...global_statistics.
+  StringPiece request_uri_path = str_to_string_piece(r->uri);
+  bool is_global_request = !factory->use_per_vhost_statistics() ||
+      net_instaweb::StringCaseStartsWith(
+          request_uri_path, "/ngx_pagespeed_global_statistics");
   net_instaweb::MessageHandler* message_handler = factory->message_handler();
-
-  int64 start_time, end_time, granularity_ms;
-  std::set<GoogleString> var_titles;
-  std::set<GoogleString> hist_titles;
-  if (general_stats_request && !factory->use_per_vhost_statistics()) {
-    global_stats_request = true;
-  }
-
-  // Choose the correct statistics.
-  net_instaweb::Statistics* statistics = global_stats_request ?
-      factory->statistics() : server_context->statistics();
-
-  net_instaweb::QueryParams params;
-  StringPiece query_string = StringPiece(
-      reinterpret_cast<char*>(r->args.data), r->args.len);
-  params.Parse(query_string);
-
-  // Parse various mode query params.
-  bool print_normal_config = params.Has("config");
-
-  // JSON statistics handling is done only if we have a console logger.
-  bool json = false;
-  if (statistics->console_logger() != NULL) {
-    // Default values for start_time, end_time, and granularity_ms in case the
-    // query does not include these parameters.
-    start_time = 0;
-    end_time = server_context->timer()->NowMs();
-    // Granularity is the difference in ms between data points. If it is not
-    // specified by the query, the default value is 3000 ms, the same as the
-    // default logging granularity.
-    granularity_ms = 3000;
-    for (int i = 0; i < params.size(); ++i) {
-      const GoogleString value =
-          (params.value(i) == NULL) ? "" : *params.value(i);
-      const char* name = params.name(i);
-      if (strcmp(name, "json") == 0) {
-        json = true;
-      } else if (strcmp(name, "start_time") == 0) {
-        net_instaweb::StringToInt64(value, &start_time);
-      } else if (strcmp(name, "end_time") == 0) {
-        net_instaweb::StringToInt64(value, &end_time);
-      } else if (strcmp(name, "var_titles") == 0) {
-        std::vector<StringPiece> variable_names;
-        net_instaweb::SplitStringPieceToVector(
-            value, ",", &variable_names, true);
-        for (size_t i = 0; i < variable_names.size(); ++i) {
-          var_titles.insert(variable_names[i].as_string());
-        }
-      } else if (strcmp(name, "hist_titles") == 0) {
-        std::vector<StringPiece> histogram_names;
-        net_instaweb::SplitStringPieceToVector(
-            value, ",", &histogram_names, true);
-        for (size_t i = 0; i < histogram_names.size(); ++i) {
-          // TODO(morlovich): Cleanup & publicize UrlToFileNameEncoder::Unescape
-          // and use it here, instead of this GlobalReplaceSubstring hack.
-          GoogleString name = histogram_names[i].as_string();
-          net_instaweb::GlobalReplaceSubstring("%20", " ", &(name));
-          hist_titles.insert(name);
-        }
-      } else if (strcmp(name, "granularity") == 0) {
-        net_instaweb::StringToInt64(value, &granularity_ms);
-      }
-    }
-  }
+  net_instaweb::ContentType content_type;
   GoogleString output;
   net_instaweb::StringWriter writer(&output);
-  if (json) {
-    statistics->console_logger()->DumpJSON(var_titles,
-                                           start_time, end_time,
-                                           granularity_ms, &writer,
-                                           message_handler);
+  const char* error_message = StatisticsHandler(
+      factory,
+      server_context,
+      NULL,  // No SPDY-specific config in ngx_pagespeed.
+      is_global_request,
+      StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
+      &content_type,
+      &writer,
+      message_handler);
+  if (error_message != NULL) {
+    ps_write_handler_response(error_message, r,
+                              net_instaweb::HttpStatus::kNotFound,
+                              content_type,
+                              net_instaweb::HttpAttributes::kNoCache,
+                              factory->timer());
   } else {
-    // Generate some navigational links to the right to help
-    // our users get to other modes.
-    writer.Write(
-                "<div style='float:right'>View "
-                        "<a href='?config'>Configuration</a>, "
-                        "<a href='?'>Statistics</a> "
-                        "(<a href='?memcached'>with memcached Stats</a>). "
-                "</div>",
-                message_handler);
-
-    // Only print stats or configuration, not both.
-    if (!print_normal_config) {
-      writer.Write(global_stats_request ?
-                   "Global Statistics" : "VHost-Specific Statistics",
-                   message_handler);
-
-      // TODO(oschaaf): for when refactoring this with the apache code,
-      // this note is a reminder that this is different in nginx:
-      // we prepend the host identifier here
-      if (!global_stats_request) {
-        writer.Write(
-            net_instaweb::StrCat("[",
-                                 server_context->hostname_identifier(), "]"),
-            message_handler);
-      }
-
-      // Write <pre></pre> for Dump to keep good format.
-      writer.Write("<pre>", message_handler);
-      statistics->Dump(&writer, message_handler);
-      writer.Write("</pre>", message_handler);
-      statistics->RenderHistograms(&writer, message_handler);
-
-      int flags = net_instaweb::SystemCaches::kDefaultStatFlags;
-      if (global_stats_request) {
-        flags |= net_instaweb::SystemCaches::kGlobalView;
-      }
-
-      if (params.Has("memcached")) {
-        flags |= net_instaweb::SystemCaches::kIncludeMemcached;
-      }
-
-      GoogleString backend_stats;
-      factory->caches()->PrintCacheStats(
-          static_cast<net_instaweb::SystemCaches::StatFlags>(flags),
-          &backend_stats);
-      if (!backend_stats.empty()) {
-        writer.Write("<pre>\n", message_handler);
-        writer.Write(backend_stats, message_handler);
-        writer.Write("</pre>\n", message_handler);
-      }
-    }
-
-    if (print_normal_config) {
-      writer.Write("Configuration:<br>", message_handler);
-      ps_write_pre(server_context->config()->OptionsToString(),
-               &writer, message_handler);
-    }
+    ps_write_handler_response(output, r, content_type, factory->timer());
   }
-
-  if (json) {
-    ps_write_handler_response(output, r, net_instaweb::kContentTypeJson,
-                           factory->timer());
-  } else {
-    ps_write_handler_response(output, r, factory->timer());
-  }
-
   return NGX_OK;
 }
 
