@@ -75,7 +75,7 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
     return NGX_AGAIN;
   }
 
-  int rc = ngx_psol::string_piece_to_buffer_chain(
+  int rc = string_piece_to_buffer_chain(
       request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
   if (rc != NGX_OK) {
     return rc;
@@ -112,8 +112,8 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   //   headers_out->content_length_n = content_length();
   // }
 
-  return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers,
-                                                modify_caching_headers_);
+  return copy_response_headers_to_ngx(request_, *pagespeed_headers,
+                                      modify_caching_headers_);
 }
 
 void NgxBaseFetch::RequestCollection() {
