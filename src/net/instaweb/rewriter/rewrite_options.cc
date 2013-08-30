@@ -3058,10 +3058,9 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   // thing to do -- we should ensure that within a system all the
   // RewriteOptions that are instantiated are the same sublcass, so
   // DCHECK that they have the same number of options.
-  size_t options_to_read = std::max(all_options_.size(),
-                                    src.all_options_.size());
   DCHECK_EQ(all_options_.size(), src.all_options_.size());
-  size_t options_to_merge = std::min(options_to_read, all_options_.size());
+  size_t options_to_merge = std::min(all_options_.size(),
+                                     src.all_options_.size());
   for (size_t i = 0; i < options_to_merge; ++i) {
     all_options_[i]->Merge(src.all_options_[i]);
   }

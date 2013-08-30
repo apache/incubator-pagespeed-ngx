@@ -2942,9 +2942,9 @@ class RewriteOptions {
   //
   // TODO(jmarantz): This method should be removed and such properties
   // should be moved into RequestContext.
-  template<class OptionClass, class RewriteOptionsSubclass>
+  template<class OptionClass>
   static void AddRequestProperty(typename OptionClass::ValueType default_value,
-                                 OptionClass RewriteOptionsSubclass::*offset,
+                                 OptionClass RewriteOptions::*offset,
                                  const char* id) {
     AddProperty(default_value, offset, id, kNullOption, kProcessScope,
                 NULL, properties_);
@@ -2952,9 +2952,9 @@ class RewriteOptions {
 
   // Adds a property with a unique option_name_ field, allowing use of
   // SetOptionFromName.
-  template<class RewriteOptionsSubclass, class OptionClass>
+  template<class OptionClass>
   static void AddBaseProperty(typename OptionClass::ValueType default_value,
-                              OptionClass RewriteOptionsSubclass::*offset,
+                              OptionClass RewriteOptions::*offset,
                               const char* id,
                               StringPiece option_name,
                               OptionScope scope,

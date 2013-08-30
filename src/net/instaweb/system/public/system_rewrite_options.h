@@ -253,9 +253,9 @@ class SystemRewriteOptions : public RewriteOptions {
 
   // Adds an option to system_properties_.
   //
-  template<class RewriteOptionsSubclass, class OptionClass>
+  template<class OptionClass>
   static void AddSystemProperty(typename OptionClass::ValueType default_value,
-                                OptionClass RewriteOptionsSubclass::*offset,
+                                OptionClass SystemRewriteOptions::*offset,
                                 const char* id,
                                 StringPiece option_name,
                                 const char* help) {
@@ -263,9 +263,9 @@ class SystemRewriteOptions : public RewriteOptions {
                 system_properties_);
   }
 
-  template<class RewriteOptionsSubclass, class OptionClass>
+  template<class OptionClass>
   static void AddSystemProperty(typename OptionClass::ValueType default_value,
-                                OptionClass RewriteOptionsSubclass::*offset,
+                                OptionClass SystemRewriteOptions::*offset,
                                 const char* id,
                                 StringPiece option_name,
                                 OptionScope scope,

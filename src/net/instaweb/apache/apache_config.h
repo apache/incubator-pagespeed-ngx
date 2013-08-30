@@ -58,9 +58,9 @@ class ApacheConfig : public SystemRewriteOptions {
   static Properties* apache_properties_;
 
   // Adds an option to apache_properties_.
-  template<class RewriteOptionsSubclass, class OptionClass>
+  template<class OptionClass>
   static void AddApacheProperty(typename OptionClass::ValueType default_value,
-                                OptionClass RewriteOptionsSubclass::*offset,
+                                OptionClass ApacheConfig::*offset,
                                 const char* id,
                                 StringPiece option_name,
                                 const char* help) {
