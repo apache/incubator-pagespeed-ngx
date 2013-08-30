@@ -229,7 +229,7 @@ void InsertDnsPrefetchFilter::MarkAlreadyInHead(
   if (urlattr != NULL && urlattr->DecodedValueOrNull() != NULL) {
     GoogleUrl url(driver()->base_url(), urlattr->DecodedValueOrNull());
     GoogleString domain;
-    if (url.is_valid()) {
+    if (url.IsWebValid()) {
       url.Host().CopyToString(&domain);
     }
     if (!domain.empty()) {

@@ -384,7 +384,7 @@ void RewriteDriver::Clear() {
   made_downstream_purge_attempt_ = false;
   write_property_cache_dom_cohort_ = false;
   base_url_.Clear();
-  DCHECK(!base_url_.is_valid());
+  DCHECK(!base_url_.IsAnyValid());
   decoded_base_url_.Clear();
   fetch_url_.clear();
 
@@ -1187,8 +1187,7 @@ void RewriteDriver::AddPostRenderFilters() {
     // itself.
     AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) &&
-      rewrite_options->Enabled(RewriteOptions::kFixReflows)) {
+  if (rewrite_options->Enabled(RewriteOptions::kFixReflows)) {
     AddOwnedPostRenderFilter(new FixReflowFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
@@ -1406,7 +1405,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
 
   // First, we can't handle anything that's not a valid URL nor is named
   // properly as our resource.
-  if (!gurl.is_valid()) {
+  if (!gurl.IsWebValid()) {
     return false;
   }
 
@@ -1451,7 +1450,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
       return false;
     }
     GoogleUrl decoded_gurl(decoded_url);
-    if (decoded_gurl.is_valid()) {
+    if (decoded_gurl.IsWebValid()) {
       *url_base = (decoded_gurl.AllExceptLeaf()).as_string();
     } else {
       return false;
@@ -1925,7 +1924,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
 void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
                                          bool proxy_mode,
                                          AsyncFetch* async_fetch) {
-  CHECK(gurl.is_valid()) << "Invalid URL " << gurl.spec_c_str();
+  CHECK(gurl.IsWebValid()) << "Invalid URL " << gurl.spec_c_str();
   fetch_url_ = gurl.Spec().as_string();
   StringPiece base = gurl.AllExceptLeaf();
   ResourceNamer namer;
@@ -2103,7 +2102,7 @@ void RewriteDriver::FetchCompleteImpl(bool signal, ScopedMutex* lock) {
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
                                   const GoogleUrl& input_url) const {
   bool ret = false;
-  if (domain_url.is_valid()) {
+  if (domain_url.IsWebValid()) {
     if (options()->IsAllowed(input_url.Spec())) {
       ret = options()->domain_lawyer()->IsDomainAuthorized(
           domain_url, input_url);
@@ -2113,7 +2112,7 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
 }
 
 bool RewriteDriver::MatchesBaseUrl(const GoogleUrl& input_url) const {
-  return (decoded_base_url_.is_valid() &&
+  return (decoded_base_url_.IsWebValid() &&
           options()->IsAllowed(input_url.Spec()) &&
           decoded_base_url_.Origin() == input_url.Origin());
 }
@@ -2127,7 +2126,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
     // optimizing.  We have optimized them in the past, but that code is likely
     // to have bit-rotted since it was disabled.
     return resource;
-  } else if (decoded_base_url_.is_valid()) {
+  } else if (decoded_base_url_.IsAnyValid()) {
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
     // In the case where we are proxying and we have resources that have been
     // rewritten multiple times, input_url will still have the encoded domain,
@@ -2161,7 +2160,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
 ResourcePtr RewriteDriver::CreateInputResourceAbsoluteUnchecked(
     const StringPiece& absolute_url) {
   GoogleUrl url(absolute_url);
-  if (!url.is_valid()) {
+  if (!url.IsWebOrDataValid()) {
     // Note: Bad user-content can leave us here.  But it's really hard
     // to concatenate a valid protocol and domain onto an arbitrary string
     // and end up with an invalid GURL.
@@ -2270,7 +2269,7 @@ void RewriteDriver::SetDecodedUrlFromBase() {
   } else {
     decoded_base_url_.Reset(base_url_);
   }
-  DCHECK(decoded_base_url_.is_valid());
+  DCHECK(decoded_base_url_.IsAnyValid());
 }
 
 bool RewriteDriver::ShouldSkipParsing() {
@@ -2445,7 +2444,7 @@ void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
   if (request_headers() != NULL &&
       request_headers()->Lookup1(kPsaPurgeRequest) == NULL &&
       !made_downstream_purge_attempt_ &&
-      google_url().is_valid() &&
+      google_url().IsWebValid() &&
       ShouldPurgeRewrittenResponse() &&
       RewriteDriver::GetPurgeUrl(google_url(), options(),
                                  &purge_url, &purge_method)) {
@@ -2867,7 +2866,7 @@ void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {
   // HTML4.01.  FF3.x does it HTML4.01 way, Chrome, Opera 11 and FF4
   // betas do it according to HTML5, as is our implementation here.
   GoogleUrl new_base_url(base_url_, new_base);
-  if (new_base_url.is_valid()) {
+  if (new_base_url.IsAnyValid()) {
     if (base_was_set_) {
       if (new_base_url.Spec() != base_url_.Spec()) {
         InfoHere("Conflicting base tags: %s and %s",
@@ -2896,7 +2895,7 @@ void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
   // We at least assume that base_url_ is valid since it was checked when
   // output_resource was created.
   base_url_.Reset(url);
-  DCHECK(base_url_.is_valid());
+  DCHECK(base_url_.IsAnyValid());
   SetDecodedUrlFromBase();
   base_was_set_ = false;
 }

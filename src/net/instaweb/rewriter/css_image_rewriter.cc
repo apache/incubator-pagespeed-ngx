@@ -216,9 +216,7 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
                 // TODO(abliss): only do this resolution once.
                 const GoogleUrl original_url(hierarchy->css_resolution_base(),
                                              rel_url);
-                if (!original_url.is_valid()) {
-                  handler->Message(kInfo, "Invalid URL in CSS: %s",
-                                   rel_url.c_str());
+                if (!original_url.IsWebValid()) {
                   continue;
                 }
                 if (!options->IsAllowed(original_url.Spec())) {

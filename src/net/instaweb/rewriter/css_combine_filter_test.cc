@@ -1012,7 +1012,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
                            MultiUrl("b.css", "c.css"), "css"),
             css_urls[1]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
-  EXPECT_TRUE(GoogleUrl(css_urls[1]).is_valid());
+  EXPECT_TRUE(GoogleUrl(css_urls[1]).IsWebValid());
 }
 
 // Same invalid configuration, but now with a full qualified url before
@@ -1041,7 +1041,7 @@ TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
                            MultiUrl("a.css", "b.css"), "css"),
             css_urls[0]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
-  EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
+  EXPECT_TRUE(GoogleUrl(css_urls[0]).IsWebValid());
 }
 
 // Here's the same test as NoCombineCssBaseUrlOutOfOrder, legalized to have
@@ -1070,7 +1070,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
                            RewriteOptions::kCssCombinerId, "0",
                            MultiUrl("a.css", "b.css"), "css"),
             css_urls[0]);
-  EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
+  EXPECT_TRUE(GoogleUrl(css_urls[0]).IsWebValid());
 }
 
 TEST_F(CssCombineFilterTest, CombineCssNoInput) {
@@ -1287,7 +1287,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   GoogleString actual_combination;
   EXPECT_TRUE(FetchResourceUrl(css_out[0]->url_, &actual_combination));
   GoogleUrl gurl(css_out[0]->url_);
-  ASSERT_TRUE(gurl.is_valid());
+  ASSERT_TRUE(gurl.IsWebValid());
   GoogleUrl dummy_encoded(Encode(StrCat(kTestDomain, long_name, "/"), "x", "0",
                                  "x", "x"));
   EXPECT_EQ(dummy_encoded.PathSansLeaf(), gurl.PathSansLeaf());

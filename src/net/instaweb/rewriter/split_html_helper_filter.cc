@@ -139,7 +139,7 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
       // For an above-the-fold image, insert the url as a critical image.
       GoogleUrl image_gurl(driver()->base_url(),
                            src->DecodedValueOrNull());
-      if (image_gurl.is_valid()) {
+      if (image_gurl.IsWebValid()) {
         GoogleString url(image_gurl.spec_c_str());
         CriticalImagesFinder* finder =
             driver()->server_context()->critical_images_finder();

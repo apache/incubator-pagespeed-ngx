@@ -169,7 +169,7 @@ GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
     const StringPiece& filter_id,
     const ContentType& content_type) {
   GoogleUrl original_gurl(original_url);
-  DCHECK(original_gurl.is_valid());
+  DCHECK(original_gurl.IsWebValid());
   return EncodeWithBase(original_gurl.Origin(),
                         original_gurl.AllExceptLeaf(), filter_id,
                         hasher()->Hash(expected_contents),

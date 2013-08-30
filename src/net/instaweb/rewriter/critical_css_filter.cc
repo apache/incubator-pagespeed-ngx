@@ -430,7 +430,7 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
 
 GoogleString CriticalCssFilter::DecodeUrl(const GoogleString& url) {
   GoogleUrl gurl(driver_->base_url(), url);
-  if (!gurl.is_valid()) {
+  if (!gurl.IsWebValid()) {
     return "";
   }
   StringVector decoded_urls;

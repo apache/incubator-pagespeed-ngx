@@ -46,7 +46,7 @@ class GoogleUrlTest : public testing::Test {
     StringPiece before_url_original(before_url.UncheckedSpec());
     scoped_ptr<GoogleUrl> after_url(before_url.CopyAndAddQueryParam("r", "s"));
     EXPECT_EQ(after_url->UncheckedSpec(), after);
-    EXPECT_TRUE(after_url->is_valid());
+    EXPECT_TRUE(after_url->IsWebValid());
     EXPECT_EQ(before_url_original, before_url.UncheckedSpec());
   }
 
@@ -92,7 +92,9 @@ class GoogleUrlTest : public testing::Test {
     RunMostMethods(url_string);
 
     GoogleUrl url(url_string);
-    ASSERT_TRUE(url.is_valid()) << url_string << " is invalid";
+    ASSERT_TRUE(url.IsAnyValid()) << url_string << " is invalid";
+    url.IsWebValid();
+    url.IsWebOrDataValid();
     url.Spec();
     url.spec_c_str();
   }
@@ -104,21 +106,28 @@ class GoogleUrlTest : public testing::Test {
 // Document which sorts of strings are and are not valid.
 TEST_F(GoogleUrlTest, TestNotValid) {
   GoogleUrl invalid_url("Hello, world!");
-  EXPECT_FALSE(invalid_url.is_valid());
+  EXPECT_FALSE(invalid_url.IsWebValid());
 
   GoogleUrl relative_url1("/foo/bar.html");
-  EXPECT_FALSE(relative_url1.is_valid());
+  EXPECT_FALSE(relative_url1.IsWebValid());
 
   GoogleUrl relative_url2("foo/bar.html");
-  EXPECT_FALSE(relative_url2.is_valid());
+  EXPECT_FALSE(relative_url2.IsWebValid());
 
   GoogleUrl relative_url3("bar.html");
-  EXPECT_FALSE(relative_url3.is_valid());
+  EXPECT_FALSE(relative_url3.IsWebValid());
 
-  // Aparently this is close enough to be considered valid, but not standard.
+  // Only http: and https: are considered WebValid.
   GoogleUrl proxy_filename("proxy:http://www.example.com/index.html");
-  EXPECT_TRUE(proxy_filename.is_valid());
-  EXPECT_FALSE(proxy_filename.is_standard());
+  EXPECT_FALSE(proxy_filename.IsWebValid());
+  EXPECT_FALSE(proxy_filename.IsWebOrDataValid());
+  // But it's still considered to be a valid URL, oddly enough.
+  EXPECT_TRUE(proxy_filename.IsAnyValid());
+
+  GoogleUrl data_url("data:plain/text,foobar");
+  EXPECT_FALSE(data_url.IsWebValid());
+  EXPECT_TRUE(data_url.IsWebOrDataValid());
+  EXPECT_TRUE(data_url.IsAnyValid());
 }
 
 TEST_F(GoogleUrlTest, TestSpec) {
@@ -237,7 +246,7 @@ TEST_F(GoogleUrlTest, TestAllExceptLeafIsIdempotent) {
   GoogleUrl queryless("http://a.com/b/c/d.ext");
   StringPiece all_except_leaf(queryless.AllExceptLeaf());
   GoogleUrl all_except_leaf_url(all_except_leaf);
-  EXPECT_TRUE(all_except_leaf_url.is_valid());
+  EXPECT_TRUE(all_except_leaf_url.IsWebValid());
   EXPECT_EQ(all_except_leaf, all_except_leaf_url.AllExceptLeaf());
 }
 
@@ -248,27 +257,27 @@ TEST_F(GoogleUrlTest, TestTrivialLeafSansQuery) {
 
 TEST_F(GoogleUrlTest, ResolveRelative) {
   GoogleUrl base(StringPiece("http://www.google.com"));
-  ASSERT_TRUE(base.is_valid());
+  ASSERT_TRUE(base.IsWebValid());
   GoogleUrl resolved(base, "test.html");
-  ASSERT_TRUE(resolved.is_valid());
+  ASSERT_TRUE(resolved.IsWebValid());
   EXPECT_STREQ("http://www.google.com/test.html", resolved.Spec());
   EXPECT_STREQ("/test.html", resolved.PathSansQuery());
 }
 
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
   GoogleUrl base(StringPiece("http://www.google.com"));
-  ASSERT_TRUE(base.is_valid());
+  ASSERT_TRUE(base.IsWebValid());
   GoogleUrl resolved(base, "http://www.google.com");
-  ASSERT_TRUE(resolved.is_valid());
+  ASSERT_TRUE(resolved.IsWebValid());
   EXPECT_STREQ("http://www.google.com/", resolved.Spec());
   EXPECT_STREQ("/", resolved.PathSansQuery());
 }
 
 TEST_F(GoogleUrlTest, TestReset) {
   GoogleUrl url("http://www.google.com");
-  EXPECT_TRUE(url.is_valid());
+  EXPECT_TRUE(url.IsWebValid());
   url.Clear();
-  EXPECT_FALSE(url.is_valid());
+  EXPECT_FALSE(url.IsWebValid());
   EXPECT_TRUE(url.is_empty());
   EXPECT_TRUE(url.UncheckedSpec().empty());
 }
@@ -320,20 +329,20 @@ TEST_F(GoogleUrlTest, TestExtraSlash) {
 TEST_F(GoogleUrlTest, SchemeRelativeBase) {
   GoogleUrl base("http://www.example.com");
   GoogleUrl resolved(base, "//other.com/file.ext");
-  ASSERT_TRUE(resolved.is_valid());
+  ASSERT_TRUE(resolved.IsWebValid());
   EXPECT_STREQ("http://other.com/file.ext", resolved.Spec());
 }
 
 TEST_F(GoogleUrlTest, SchemeRelativeHttpsBase) {
   GoogleUrl base("https://www.example.com");
   GoogleUrl resolved(base, "//other.com/file.ext");
-  ASSERT_TRUE(resolved.is_valid());
+  ASSERT_TRUE(resolved.IsWebValid());
   EXPECT_STREQ("https://other.com/file.ext", resolved.Spec());
 }
 
 TEST_F(GoogleUrlTest, SchemeRelativeNoBase) {
   GoogleUrl gurl("//other.com/file.ext");
-  EXPECT_FALSE(gurl.is_valid());
+  EXPECT_FALSE(gurl.IsWebValid());
 }
 
 // Make sure weird URLs don't crash our system.

@@ -778,17 +778,18 @@ TEST_F(RewriteDriverTest, RelativeBaseTag) {
 
 TEST_F(RewriteDriverTest, InvalidBaseTag) {
   // Encountering an invalid base tag should be ignored (except info message).
-  ASSERT_TRUE(rewrite_driver()->StartParse("slwly://example.com/index.html"));
-  rewrite_driver()->ParseText("<base href='subdir_not_allowed_on_slwly/'>");
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+  // Note: Even nonsensical protocols must be accepted as base URLs.
+  rewrite_driver()->ParseText("<base href='slwly:example.com/subdir'>");
   rewrite_driver()->Flush();
+  EXPECT_EQ(0, message_handler()->TotalMessages());
+  EXPECT_EQ("slwly:example.com/subdir", BaseUrlSpec());
 
-  EXPECT_EQ(1, message_handler()->TotalMessages());
-  EXPECT_EQ("slwly://example.com/index.html", BaseUrlSpec());
-
-  // And we will accept a subsequent base-tag with legal aboslute syntax.
+  // Reasonable base URLs following that do not change it.
   rewrite_driver()->ParseText("<base href='http://example.com/absolute/'>");
   rewrite_driver()->Flush();
-  EXPECT_EQ("http://example.com/absolute/", BaseUrlSpec());
+  EXPECT_EQ("slwly:example.com/subdir", BaseUrlSpec());
 }
 
 // The TestUrlNamer produces a url like below which is too long.

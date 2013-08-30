@@ -26,7 +26,7 @@ CssTagScanner::Transformer::TransformStatus CssUrlCounter::Transform(
   // Note: we do not mess with empty URLs at all.
   if (!in.empty()) {
     GoogleUrl in_url(*base_url_, in);
-    if (!in_url.is_valid()) {
+    if (!in_url.IsWebOrDataValid()) {
       handler_->Message(kInfo, "Invalid URL in CSS %s expands to %s",
                         in.as_string().c_str(), in_url.spec_c_str());
       ret = kFailure;

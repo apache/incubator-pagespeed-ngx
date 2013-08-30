@@ -59,7 +59,7 @@ class UaSensitiveFetcher : public UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* fetch) {
     GoogleUrl parsed_url(url);
-    ASSERT_TRUE(parsed_url.is_valid());
+    ASSERT_TRUE(parsed_url.IsWebValid());
     GoogleString ua_string;
     const char* specified_ua =
         fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);

@@ -210,7 +210,7 @@ class ImageRewriteTest : public RewriteTestBase {
     // Make sure the next two checks won't abort().
     EXPECT_LT(domain.AllExceptLeaf().size() + 4, img_srcs[0].size());
     const GoogleUrl img_gurl(img_srcs[0]);
-    EXPECT_TRUE(img_gurl.is_valid());
+    EXPECT_TRUE(img_gurl.IsWebValid());
     EXPECT_EQ(domain.AllExceptLeaf(), img_gurl.AllExceptLeaf());
     EXPECT_TRUE(img_gurl.LeafSansQuery().ends_with(
         content_type.file_extension()));
@@ -444,7 +444,7 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_EQ(1, image_urls.size());
     const GoogleString& rewritten_url = image_urls[0];
     const GoogleUrl rewritten_gurl(rewritten_url);
-    EXPECT_TRUE(rewritten_gurl.is_valid());
+    EXPECT_TRUE(rewritten_gurl.IsWebOrDataValid()) << rewritten_url;
 
     if (expect_inline) {
       EXPECT_TRUE(rewritten_gurl.SchemeIs("data"))
@@ -1348,7 +1348,7 @@ TEST_F(ImageRewriteTest, ImageRewriteDropSometimes) {
     EXPECT_EQ(1, image_urls.size());
     const GoogleString& rewritten_url = image_urls[0];
     const GoogleUrl rewritten_gurl(rewritten_url);
-    EXPECT_TRUE(rewritten_gurl.is_valid());
+    EXPECT_TRUE(rewritten_gurl.IsWebValid());
 
     if (initial_url == rewritten_url) {
       found_not_rewritten = true;
@@ -2028,21 +2028,21 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
   GoogleUrl new_png_gurl(new_png_url);
-  EXPECT_TRUE(new_png_gurl.is_valid());
+  EXPECT_TRUE(new_png_gurl.IsWebValid());
   GoogleUrl encoded_png_gurl(EncodeWithBase("http://other_domain.test/",
                                             "http://other_domain.test/foo/bar/",
                                             "x", "0", "a.png", "x"));
   EXPECT_EQ(encoded_png_gurl.AllExceptLeaf(), new_png_gurl.AllExceptLeaf());
 
   GoogleUrl new_jpeg_gurl(new_jpeg_url);
-  EXPECT_TRUE(new_jpeg_gurl.is_valid());
+  EXPECT_TRUE(new_jpeg_gurl.IsWebValid());
   GoogleUrl encoded_jpeg_gurl(EncodeWithBase("http://other_domain.test/",
                                              "http://other_domain.test/baz/",
                                              "x", "0", "b.jpeg", "x"));
   EXPECT_EQ(encoded_jpeg_gurl.AllExceptLeaf(), new_jpeg_gurl.AllExceptLeaf());
 
   GoogleUrl new_gif_gurl(new_gif_url);
-  EXPECT_TRUE(new_gif_gurl.is_valid());
+  EXPECT_TRUE(new_gif_gurl.IsWebValid());
   GoogleUrl encoded_gif_gurl(EncodeWithBase("http://other_domain.test/",
                                             "http://other_domain.test/foo/",
                                             "x", "0", "c.gif", "x"));

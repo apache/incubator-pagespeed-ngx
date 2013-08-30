@@ -1552,7 +1552,7 @@ void ImageRewriteFilter::GetDimensions(
     StringPiece src_value(src->DecodedValueOrNull());
     if (!src_value.empty()) {
       GoogleUrl src_gurl(driver_->base_url(), src_value);
-      if (src_gurl.is_valid()) {
+      if (src_gurl.IsWebOrDataValid()) {
         std::pair<int32, int32> dimensions;
         CriticalImagesFinder* finder =
             driver_->server_context()->critical_images_finder();

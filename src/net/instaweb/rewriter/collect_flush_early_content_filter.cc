@@ -178,7 +178,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
     // end up flushing wrong resources. Use the absolutified url that is
     // computed in CreateInputResource call.
     GoogleUrl gurl(resource->url());
-    if (gurl.is_valid()) {
+    if (gurl.IsWebValid()) {
       StringVector decoded_url;
       // Decode the url if it is encoded.
       if (driver()->DecodeUrl(gurl, &decoded_url)) {

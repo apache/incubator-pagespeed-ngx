@@ -44,7 +44,7 @@ GoogleFontServiceInputResource::~GoogleFontServiceInputResource() {
 GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
     const StringPiece& url, RewriteDriver* rewrite_driver) {
   GoogleUrl parsed_url(url);
-  if (!parsed_url.is_valid()) {
+  if (!parsed_url.IsWebValid()) {
     return NULL;
   }
 

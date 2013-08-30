@@ -217,7 +217,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     // other than image sprites.
     gurl.Reset(decoded_url_vector[0]);
   }
-  if (!gurl.is_valid()) {
+  if (!gurl.IsAnyValid()) {
     // Do not lazily load images with invalid urls.
     return;
   }

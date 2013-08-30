@@ -307,7 +307,7 @@ ModSpdyFetcher::ModSpdyFetcher(ModSpdyFetchController* controller,
       fallback_fetcher_(driver->async_fetcher()),
       connection_factory_(factory) {
   GoogleUrl gurl(url);
-  if (gurl.is_valid()) {
+  if (gurl.IsWebValid()) {
     gurl.Origin().CopyToString(&own_origin_);
   }
 }
@@ -333,7 +333,7 @@ void ModSpdyFetcher::Fetch(const GoogleString& url,
   // connection, and if we have access to appropriate mod_spdy exports.
   GoogleUrl parsed_url(url);
   if (connection_factory_ != NULL &&
-      parsed_url.is_valid() && !own_origin_.empty() &&
+      parsed_url.IsWebValid() && !own_origin_.empty() &&
       parsed_url.Origin() == own_origin_) {
     controller_->ScheduleBlockingFetch(this, url, message_handler, fetch);
   } else {

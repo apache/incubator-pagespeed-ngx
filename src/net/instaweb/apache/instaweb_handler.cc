@@ -452,7 +452,7 @@ bool handle_as_resource(ApacheServerContext* server_context,
                         request_rec* request,
                         GoogleUrl* gurl,
                         const GoogleString& url) {
-  if (!gurl->is_valid()) {
+  if (!gurl->IsWebValid()) {
     return false;
   }
 
@@ -663,7 +663,7 @@ bool parse_query_params(const request_rec* request, GoogleString* data,
   GoogleUrl base("http://www.example.com");
   GoogleUrl url(base, request->unparsed_uri);
 
-  if (!url.is_valid() || !url.has_query()) {
+  if (!url.IsWebValid() || !url.has_query()) {
     *ret = HTTP_BAD_REQUEST;
     return false;
   }
@@ -801,7 +801,7 @@ bool IsBeaconUrl(const RewriteOptions::BeaconUrl& beacons,
   // either the http or https version (we're too lazy to check specifically).
   // This handles both GETs, which include query parameters, and POSTs,
   // which will only have the originating url in the query params.
-  if (!gurl.is_valid()) {
+  if (!gurl.IsWebValid()) {
     return false;
   }
   // Ignore query params in the beacon URLs. Normally the beacon URL won't have
@@ -914,7 +914,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     // Do not try to rewrite our own sub-request.
     if (url != NULL) {
       GoogleUrl gurl(url);
-      if (!gurl.is_valid()) {
+      if (!gurl.IsWebValid()) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                       "Ignoring invalid URL: %s", gurl.spec_c_str());
       } else if (IsBeaconUrl(server_context->global_options()->beacon_url(),
@@ -1016,7 +1016,7 @@ apr_status_t save_url_in_note(request_rec *request,
   GoogleUrl gurl(url);
 
   bool bypass_mod_rewrite = false;
-  if (gurl.is_valid()) {
+  if (gurl.IsWebValid()) {
     // Note: We cannot use request->handler because it may not be set yet :(
     // TODO(sligocki): Make this robust to custom statistics and beacon URLs.
     StringPiece leaf = gurl.LeafSansQuery();

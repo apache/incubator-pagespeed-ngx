@@ -43,7 +43,7 @@ FileLoadPolicy::~FileLoadPolicy() {
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
                                         GoogleString* filename) const {
-  if (!url.is_valid()) {
+  if (!url.IsWebValid()) {
     return false;
   }
 

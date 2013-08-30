@@ -56,7 +56,7 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
   GoogleString url = original_url;
   GoogleUrl parsed_url(original_url);
 
-  if (!parsed_url.is_valid()) {
+  if (!parsed_url.IsWebValid()) {
     // Fail immediately in case we can't parse the URL, rather than risk
     // getting weird handling due to inconsistencies in parsing between us
     // and backend_fetcher_.

@@ -198,7 +198,7 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
   determine_enabled_filters_called_ = false;
   url.CopyToString(&url_);
   GoogleUrl gurl(url);
-  url_valid_ = gurl.is_valid();
+  url_valid_ = gurl.IsWebValid();
   if (!url_valid_) {
     message_handler_->Message(kWarning, "HtmlParse: Invalid document url %s",
                               url_.c_str());

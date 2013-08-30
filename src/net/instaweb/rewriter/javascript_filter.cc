@@ -226,7 +226,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     server_context->message_handler()->Message(
         kInfo, "Canonical script %s is %s", code_block.message_id().c_str(),
         library_gurl.UncheckedSpec().as_string().c_str());
-    if (!library_gurl.is_valid()) {
+    if (!library_gurl.IsWebValid()) {
       return false;
     }
     // We remember the canonical url in the CachedResult in the metadata cache,

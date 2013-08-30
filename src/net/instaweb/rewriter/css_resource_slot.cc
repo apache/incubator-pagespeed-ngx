@@ -47,7 +47,7 @@ void CssResourceSlot::Render() {
 #ifndef NDEBUG
     // Check that it's an absolute URL.
     GoogleUrl rel_gurl(rel_url);
-    DCHECK(rel_gurl.is_valid());
+    DCHECK(rel_gurl.IsWebValid());
 #endif  // NDEBUG
 
     // Trim URL.

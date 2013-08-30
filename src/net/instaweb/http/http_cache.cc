@@ -447,7 +447,9 @@ bool HTTPCache::IsCacheableBodySize(int64 body_size) const {
 bool HTTPCache::MayCacheUrl(const GoogleString& url,
                             const ResponseHeaders& headers) {
   GoogleUrl gurl(url);
-  if (!gurl.is_valid()) {
+  // TODO(sligocki): Should we restrict this to IsWebValid()?
+  // That would break google_font_service_input_resource which uses gfnt:
+  if (!gurl.IsAnyValid()) {
     return false;
   }
   if (disable_html_caching_on_https_ && gurl.SchemeIs("https")) {

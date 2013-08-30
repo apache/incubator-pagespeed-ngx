@@ -71,13 +71,13 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
                              const StringPiece& url_to_trim,
                              GoogleString* trimmed_url,
                              MessageHandler* handler) {
-  if (!base_url.is_valid() || !base_url.is_standard() || url_to_trim.empty()) {
+  if (!base_url.IsWebValid() || url_to_trim.empty()) {
     return false;
   }
 
   GoogleUrl long_url(base_url, url_to_trim);
   //  Don't try to rework an invalid url
-  if (!long_url.is_valid() || !long_url.is_standard()) {
+  if (!long_url.IsWebValid()) {
     return false;
   }
 
@@ -155,9 +155,9 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
     }
     GoogleUrl resolved_newurl(base_url, trimmed_url_piece);
     // Error condition: this shouldn't happen.
-    DCHECK(resolved_newurl.is_valid());
+    DCHECK(resolved_newurl.IsWebValid());
     DCHECK(resolved_newurl == long_url);
-    if (!resolved_newurl.is_valid() || resolved_newurl != long_url) {
+    if (!resolved_newurl.IsWebValid() || resolved_newurl != long_url) {
       return false;
     }
     *trimmed_url = trimmed_url_piece.as_string();

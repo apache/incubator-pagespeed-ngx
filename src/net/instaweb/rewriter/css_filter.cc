@@ -109,7 +109,7 @@ class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
 
   virtual TransformStatus Transform(const StringPiece& in, GoogleString* out) {
     GoogleUrl abs(*base_url_, in);
-    if (abs.is_valid()) {
+    if (abs.IsWebValid()) {
       abs.Spec().CopyToString(out);
       return kSuccess;
     } else {
@@ -195,7 +195,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       rewrite_inline_css_kind_(kInsideStyleTag),
       in_text_size_(-1) {
   css_base_gurl_.Reset(filter_->decoded_base_url());
-  DCHECK(css_base_gurl_.is_valid());
+  DCHECK(css_base_gurl_.IsWebValid());
   css_trim_gurl_.Reset(css_base_gurl_);
 
   if (parent != NULL) {
@@ -493,7 +493,8 @@ bool CssFilter::Context::FallbackRewriteUrls(const StringPiece& in_text) {
       // TODO(sligocki): Use count of occurrences to decide which URLs to
       // inline. it->second has the count of how many occurrences of this
       // URL there were.
-      CHECK(url.is_valid());  // This is guaranteed by CssUrlCounter.
+      // This is guaranteed by CssUrlCounter.
+      CHECK(url.IsAnyValid()) << it->first;
       // Add slot.
       ResourcePtr resource = driver_->CreateInputResource(url);
       if (resource.get()) {

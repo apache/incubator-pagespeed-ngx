@@ -2066,7 +2066,7 @@ void RewriteContext::WritePartition() {
           const CachedResult& partition = partitions_->partition(i);
           if (partition.optimizable() && !partition.has_inlined_data()) {
             GoogleUrl gurl(partition.url());
-            DCHECK(gurl.is_valid()) << partition.url();
+            DCHECK(gurl.IsWebValid()) << partition.url();
           }
         }
 #endif
@@ -2501,7 +2501,7 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
       NameExtensionToContentType(StrCat(".", cached_result->extension()));
 
   ResourceNamer namer;
-  if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
+  if (gurl.IsWebValid() && namer.Decode(gurl.LeafWithQuery())) {
     output_resource->reset(
         new OutputResource(FindServerContext(),
                            gurl.AllExceptLeaf() /* resolved_base */,
@@ -2537,7 +2537,7 @@ void RewriteContext::CrossThreadPartitionDone(bool result) {
 ResourcePtr RewriteContext::CreateUrlResource(const StringPiece& input_url) {
   const GoogleUrl resource_url(input_url);
   ResourcePtr resource;
-  if (resource_url.is_valid() && resource_url.is_standard()) {
+  if (resource_url.IsWebValid()) {
     resource = Driver()->CreateInputResource(resource_url);
   }
   return resource;
@@ -2711,7 +2711,7 @@ bool RewriteContext::PrepareFetch(
     bool is_valid = true;
     for (int i = 0, n = url_vector.size(); i < n; ++i) {
       GoogleUrl* url = url_vector[i];
-      if (!url->is_valid()) {
+      if (!url->IsWebValid()) {
         is_valid = false;
         break;
       }
@@ -2758,7 +2758,7 @@ bool RewriteContext::LookupMetadataForOutputResource(
   RewriteFilter* filter = NULL;
   GoogleUrl gurl(url);
 
-  if (!gurl.is_valid()) {
+  if (!gurl.IsWebValid()) {
     *error_out = "Unable to parse URL.";
     return false;
   }

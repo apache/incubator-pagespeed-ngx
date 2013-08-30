@@ -572,7 +572,7 @@ bool RewriteTestBase::CssLink::DecomposeCombinedUrl(
     GoogleString* base, StringVector* segments, MessageHandler* handler) {
   GoogleUrl gurl(url_);
   bool ret = false;
-  if (gurl.is_valid()) {
+  if (gurl.IsWebValid()) {
     gurl.AllExceptLeaf().CopyToString(base);
     ResourceNamer namer;
     if (namer.Decode(gurl.LeafWithQuery()) &&
@@ -715,7 +715,7 @@ GoogleString RewriteTestBase::EncodeWithBase(
     ResourceNamer namer;
     EncodePathAndLeaf(id, hash, name_vector, ext, &namer);
     GoogleUrl path_gurl(path);
-    if (path_gurl.is_valid()) {
+    if (path_gurl.IsWebValid()) {
       return TestUrlNamer::EncodeUrl(base, path_gurl.Origin(),
                                      path_gurl.PathSansLeaf(), namer);
     } else {

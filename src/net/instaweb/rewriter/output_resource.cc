@@ -183,7 +183,7 @@ GoogleString OutputResource::HttpCacheKey() const {
   // MapRequestToDomain needs a base URL, which ought to be irrelevant here,
   // as we're already absolute.
   GoogleUrl base(canonical_url);
-  if (base.is_valid() &&
+  if (base.IsWebValid() &&
       lawyer->MapRequestToDomain(
           base, canonical_url, &mapped_domain_name, &resolved_request,
           server_context()->message_handler())) {

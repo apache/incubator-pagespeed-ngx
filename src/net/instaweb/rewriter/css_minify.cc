@@ -68,7 +68,7 @@ bool CssMinify::AbsolutifyImports(Css::Stylesheet* stylesheet,
     Css::Import* import = *iter;
     StringPiece url(import->link().utf8_data(), import->link().utf8_length());
     GoogleUrl gurl(base, url);
-    if (gurl.is_valid() && gurl.Spec() != url) {
+    if (gurl.IsWebValid() && gurl.Spec() != url) {
       url = gurl.Spec();
       import->set_link(UTF8ToUnicodeText(url.data(), url.length()));
       result = true;

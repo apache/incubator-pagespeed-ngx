@@ -121,7 +121,7 @@ GoogleString TestUrlNamer::EncodeUrl(const StringPiece& original_base,
 }
 
 bool TestUrlNamer::IsProxyEncoded(const GoogleUrl& url) const {
-  if (!url.is_valid()) {
+  if (!url.IsWebValid()) {
     return false;
   }
   GoogleString url_origin = url.Origin().as_string();

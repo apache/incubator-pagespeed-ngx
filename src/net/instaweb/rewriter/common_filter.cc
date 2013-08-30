@@ -145,12 +145,12 @@ ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
   if (!input_url.empty()) {
     if (!BaseUrlIsValid()) {
       const GoogleUrl resource_url(input_url);
-      if (resource_url.is_valid() && resource_url.is_standard()) {
+      if (resource_url.IsWebValid()) {
         resource = driver_->CreateInputResource(resource_url);
       }
-    } else if (base_url().is_valid()) {
+    } else if (base_url().IsWebValid()) {
       const GoogleUrl resource_url(base_url(), input_url);
-      if (resource_url.is_valid() && resource_url.is_standard()) {
+      if (resource_url.IsWebValid()) {
         resource = driver_->CreateInputResource(resource_url);
       }
     }

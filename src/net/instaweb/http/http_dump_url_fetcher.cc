@@ -78,7 +78,7 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
     handler->Message(kError,
                      "GetFilenameFromUrl: root_dir must end in slash, was %s",
                      root_dir.as_string().c_str());
-  } else if (!gurl.is_valid()) {
+  } else if (!gurl.IsWebValid()) {
     handler->Message(kError, "GetFilenameFromUrl: gurl is invalid");
   } else {
     ret = true;
@@ -192,7 +192,7 @@ void HttpDumpUrlFetcher::Fetch(
   GoogleUrl gurl(url);
   const RequestHeaders& request_headers = *fetch->request_headers();
   ResponseHeaders* response_headers = fetch->response_headers();
-  if (gurl.is_valid() && gurl.is_standard() &&
+  if (gurl.IsWebValid() &&
       GetFilenameFromUrl(root_dir_, gurl, &filename, handler)) {
     NullMessageHandler null_handler;
     // Pass in NullMessageHandler so that we don't get errors for file not found

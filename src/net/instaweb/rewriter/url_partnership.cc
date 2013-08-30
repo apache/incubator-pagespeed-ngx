@@ -57,7 +57,7 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
     handler->Message(
         kInfo, "Cannot rewrite empty URL relative to %s",
         original_origin_and_path_.spec_c_str());
-  } else if (!original_origin_and_path_.is_valid()) {
+  } else if (!original_origin_and_path_.IsWebValid()) {
     handler->Message(
         kInfo, "Cannot rewrite %s relative to invalid url %s",
         resource_url.c_str(),
@@ -67,7 +67,7 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
     // options.
     scoped_ptr<GoogleUrl> resolved_request(
         new GoogleUrl(original_origin_and_path_, resource_url));
-    if (!resolved_request->is_valid()) {
+    if (!resolved_request->IsWebValid()) {
       handler->Message(
           kInfo, "URL %s cannot be resolved relative to base URL %s",
           resource_url.c_str(),
@@ -108,7 +108,7 @@ bool UrlPartnership::FindResourceDomain(GoogleUrl* resource,
   GoogleString resource_url;
   if (url_namer_->Decode(*resource, NULL, &resource_url)) {
     resource->Reset(resource_url);
-    ret = resource->is_valid();
+    ret = resource->IsWebValid();
     resource->Origin().CopyToString(domain);
   } else {
     ret = rewrite_options_->domain_lawyer()->MapRequestToDomain(
@@ -136,7 +136,7 @@ void UrlPartnership::Reset(const GoogleUrl& original_request) {
   STLDeleteElements(&url_vector_);
   url_vector_.clear();
   common_components_.clear();
-  if (original_request.is_valid()) {
+  if (original_request.IsWebValid()) {
     original_origin_and_path_.Reset(original_request.AllExceptLeaf());
   }
 }

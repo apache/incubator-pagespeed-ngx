@@ -44,7 +44,7 @@ void DecodeRewrittenUrlsFilter::StartElement(HtmlElement* element) {
     return;
   }
   GoogleUrl gurl(driver_->base_url(), url);
-  if (gurl.is_valid()) {
+  if (gurl.IsWebValid()) {
     StringVector decoded_url;
     if (driver_->DecodeUrl(gurl, &decoded_url)) {
       // An encoded URL.

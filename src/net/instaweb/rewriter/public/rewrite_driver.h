@@ -546,7 +546,7 @@ class RewriteDriver : public HtmlParse {
   // Checks to see if the input_url has the same origin as and the base url, to
   // make sure we're not fetching from another server. Does not consult the
   // domain lawyer, and is not affected by AddDomain().
-  // Precondition: input_url.is_valid()
+  // Precondition: input_url.IsWebValid()
   bool MatchesBaseUrl(const GoogleUrl& input_url) const;
 
   // Checks to see if we can write the input_url resource in the

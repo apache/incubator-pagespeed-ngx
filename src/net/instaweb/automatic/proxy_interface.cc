@@ -107,7 +107,7 @@ void ProxyInterface::InitStats(Statistics* statistics) {
 
 bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
   bool ret = false;
-  if (url.is_valid()) {
+  if (url.IsWebValid()) {
     if (url.has_path()) {
       StringPiece path = url.PathAndLeaf();
       GoogleString filename = url.ExtractFileName();
@@ -115,8 +115,6 @@ bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
       if (path_len >= 0) {
         ret = true;
       }
-    } else if (!url.has_scheme()) {
-      LOG(ERROR) << "URL has no scheme: " << url.Spec();
     } else {
       LOG(ERROR) << "URL has no path: " << url.Spec();
     }
@@ -126,7 +124,7 @@ bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
 
 bool ProxyInterface::UrlAndPortMatchThisServer(const GoogleUrl& url) {
   bool ret = false;
-  if (url.is_valid() && (url.EffectiveIntPort() == port_)) {
+  if (url.IsWebValid() && (url.EffectiveIntPort() == port_)) {
     // TODO(atulvasu): This should support matching the actual host this
     // machine can receive requests from. Ideally some flag control would
     // help. For example this server could be running multiple virtual
@@ -154,7 +152,7 @@ void ProxyInterface::Fetch(const GoogleString& requested_url_string,
       (async_fetch->request_headers()->method() == RequestHeaders::kHead);
 
   all_requests_->IncBy(1);
-  if (!(requested_url.is_valid() && IsWellFormedUrl(requested_url))) {
+  if (!(requested_url.IsWebValid() && IsWellFormedUrl(requested_url))) {
     LOG(WARNING) << "Bad URL, failing request: " << requested_url_string;
     async_fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     async_fetch->Done(false);

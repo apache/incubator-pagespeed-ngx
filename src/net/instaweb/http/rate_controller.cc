@@ -231,7 +231,7 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
                            AsyncFetch* fetch) {
   GoogleUrl gurl(url);
   GoogleString host;
-  if (gurl.is_valid()) {
+  if (gurl.IsWebValid()) {
     host = gurl.Host().as_string();
     LowerString(&host);
   } else {

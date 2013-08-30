@@ -126,7 +126,7 @@ bool ExtractUrl(const HtmlElement::Attribute* attr,
     return false;
   }
   gurl->Reset(driver->base_url(), url);
-  if (!gurl->is_valid()) {
+  if (!gurl->IsWebValid()) {
     return false;
   }
   StringVector decoded_url;

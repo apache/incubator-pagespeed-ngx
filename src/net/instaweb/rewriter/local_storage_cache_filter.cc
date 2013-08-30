@@ -133,7 +133,7 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
         num_local_storage_cache_stored_total_->Add(1);
         StringPiece given_url(url);
         GoogleUrl abs_url(base_url(), given_url);
-        StringPiece lsc_url(abs_url.is_valid() ? abs_url.Spec() : given_url);
+        StringPiece lsc_url(abs_url.IsWebValid() ? abs_url.Spec() : given_url);
         GoogleString snippet("pagespeed.localStorageCache.");
         if (is_img) {
           num_local_storage_cache_stored_images_->Add(1);
@@ -188,7 +188,7 @@ bool LocalStorageCacheFilter::AddStorableResource(const StringPiece& url,
     // Get the absolute LSC url from the link url if it's valid otherwise as-is.
     if (state->enabled_) {
       GoogleUrl gurl(driver->base_url(), url);
-      StringPiece best_url(gurl.is_valid() ? gurl.Spec() : url);
+      StringPiece best_url(gurl.IsWebValid() ? gurl.Spec() : url);
       best_url.CopyToString(&state->url_);
     }
 
@@ -247,7 +247,7 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
   }
 
   GoogleUrl gurl(driver->base_url(), url);
-  StringPiece lsc_url(gurl.is_valid() ? gurl.Spec() : url);
+  StringPiece lsc_url(gurl.IsWebValid() ? gurl.Spec() : url);
   GoogleString hash = driver->server_context()->hasher()->Hash(lsc_url);
   driver->AddAttribute(element, HtmlName::kPagespeedLscHash, hash);
   if (cached.input_size() > 0) {

@@ -33,21 +33,27 @@ const size_t GoogleUrl::npos = std::string::npos;
 
 GoogleUrl::GoogleUrl()
     : gurl_() {
+  Init();
 }
 
 GoogleUrl::GoogleUrl(const GURL& gurl)
     : gurl_(gurl) {
+  Init();
 }
 
 GoogleUrl::GoogleUrl(const GoogleString& spec)
     : gurl_(spec) {
+  Init();
 }
+
 GoogleUrl::GoogleUrl(const StringPiece& sp)
     : gurl_(sp.as_string()) {
+  Init();
 }
 
 GoogleUrl::GoogleUrl(const char* str)
     : gurl_(str) {
+  Init();
 }
 
 // The following three constructors create a new GoogleUrl by resolving the
@@ -64,6 +70,17 @@ GoogleUrl::GoogleUrl(const GoogleUrl& base, const char* str) {
   Reset(base, str);
 }
 
+void GoogleUrl::Swap(GoogleUrl* google_url) {
+  gurl_.Swap(&google_url->gurl_);
+  Init();
+}
+
+void GoogleUrl::Init() {
+  is_web_valid_ = gurl_.is_valid() && (SchemeIs("http") || SchemeIs("https"));
+  is_web_or_data_valid_ =
+      is_web_valid_ || (gurl_.is_valid() && SchemeIs("data"));
+}
+
 bool GoogleUrl::ResolveHelper(const GURL& base, const std::string& url) {
   gurl_ = base.Resolve(url);
   bool ret = gurl_.is_valid();
@@ -77,6 +94,7 @@ bool GoogleUrl::ResolveHelper(const GURL& base, const std::string& url) {
       }
     }
   }
+  Init();
   return ret;
 }
 
@@ -90,6 +108,40 @@ bool GoogleUrl::Reset(const GoogleUrl& base, const StringPiece& sp) {
 
 bool GoogleUrl::Reset(const GoogleUrl& base, const char* str) {
   return ResolveHelper(base.gurl_, str);
+}
+
+bool GoogleUrl::Reset(const StringPiece& new_value) {
+  gurl_ = GURL(new_value.as_string());
+  Init();
+  return gurl_.is_valid();
+}
+
+bool GoogleUrl::Reset(const GoogleUrl& new_value) {
+  gurl_ = GURL(new_value.gurl_);
+  Init();
+  return gurl_.is_valid();
+}
+
+void GoogleUrl::Clear() {
+  gurl_ = GURL();
+  Init();
+}
+
+bool GoogleUrl::IsWebValid() const {
+  DCHECK(is_web_valid_ ==
+         (gurl_.is_valid() && (SchemeIs("http") || SchemeIs("https"))));
+  return is_web_valid_;
+}
+
+bool GoogleUrl::IsWebOrDataValid() const {
+  DCHECK(is_web_or_data_valid_ ==
+         (gurl_.is_valid() && (SchemeIs("http") || SchemeIs("https") ||
+                               SchemeIs("data"))));
+  return is_web_or_data_valid_;
+}
+
+bool GoogleUrl::IsAnyValid() const {
+  return gurl_.is_valid();
 }
 
 GoogleUrl* GoogleUrl::CopyAndAddQueryParam(const StringPiece& name,
@@ -168,20 +220,6 @@ size_t GoogleUrl::PathStartPosition(const GURL& gurl) {
 // Find the start of the path, includes '/'
 size_t GoogleUrl::PathStartPosition() const {
   return PathStartPosition(gurl_);
-}
-
-bool GoogleUrl::Reset(const StringPiece& new_value) {
-  gurl_ = GURL(new_value.as_string());
-  return gurl_.is_valid();
-}
-
-bool GoogleUrl::Reset(const GoogleUrl& new_value) {
-  gurl_ = GURL(new_value.gurl_);
-  return gurl_.is_valid();
-}
-
-void GoogleUrl::Clear() {
-  gurl_ = GURL();
 }
 
 StringPiece GoogleUrl::AllExceptQuery() const {

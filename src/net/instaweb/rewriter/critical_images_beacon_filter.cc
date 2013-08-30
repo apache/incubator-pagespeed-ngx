@@ -23,13 +23,11 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -189,7 +187,7 @@ void CriticalImagesBeaconFilter::EndElement(HtmlElement* element) {
          element->keyword() == HtmlName::kInput)) {
       StringPiece url(src->DecodedValueOrNull());
       GoogleUrl gurl(driver_->base_url(), url);
-      if (gurl.is_valid()) {
+      if (gurl.IsAnyValid()) {
         unsigned int hash_val = HashString<CasePreserve, unsigned int>(
             gurl.spec_c_str(), strlen(gurl.spec_c_str()));
         GoogleString hash_str = UintToString(hash_val);

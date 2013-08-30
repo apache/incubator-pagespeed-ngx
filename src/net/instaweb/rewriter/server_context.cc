@@ -558,7 +558,7 @@ bool ServerContext::HandleBeacon(StringPiece params,
     // so decode it.
     url_query_param.Reset(UrlToFilenameEncoder::Unescape(*query_param_str));
 
-    if (!url_query_param.is_valid()) {
+    if (!url_query_param.IsWebValid()) {
       message_handler_->Message(kWarning,
                                 "Invalid URL parameter in beacon: %s",
                                 query_param_str->c_str());

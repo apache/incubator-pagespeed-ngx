@@ -447,7 +447,7 @@ void DomainLawyer::FindDomainsRewrittenTo(
     ConstStringStarVector* from_domains) const {
   // TODO(rahulbansal): Make this more efficient by maintaining the map of
   // rewrite_domain -> from_domains.
-  if (!original_url.is_valid()) {
+  if (!original_url.IsWebValid()) {
     LOG(ERROR) << "Invalid url " << original_url.Spec();
     return;
   }
@@ -471,13 +471,13 @@ bool DomainLawyer::MapRequestToDomain(
     GoogleString* mapped_domain_name,
     GoogleUrl* resolved_request,
     MessageHandler* handler) const {
-  CHECK(original_request.is_valid());
+  CHECK(original_request.IsAnyValid());
   GoogleUrl original_origin(original_request.Origin());
   resolved_request->Reset(original_request, resource_url);
 
   bool ret = false;
   // We can map a request to/from http/https.
-  if (resolved_request->is_valid()) {
+  if (resolved_request->IsWebValid()) {
     GoogleUrl resolved_origin(resolved_request->Origin());
 
     // Looks at the resolved domain name + path from the original request
@@ -531,8 +531,8 @@ bool DomainLawyer::IsDomainAuthorized(const GoogleUrl& original_request,
     return true;
   }
   bool ret = false;
-  if (domain_to_check.is_valid()) {
-    if (original_request.is_valid() &&
+  if (domain_to_check.IsWebValid()) {
+    if (original_request.IsWebValid() &&
         (original_request.Origin() == domain_to_check.Origin())) {
       ret = true;
     } else {
@@ -544,7 +544,7 @@ bool DomainLawyer::IsDomainAuthorized(const GoogleUrl& original_request,
 }
 
 bool DomainLawyer::IsOriginKnown(const GoogleUrl& domain_to_check) const {
-  if (domain_to_check.is_valid()) {
+  if (domain_to_check.IsWebValid()) {
     Domain* path_domain = FindDomain(domain_to_check);
     return (path_domain != NULL);
   }
@@ -554,7 +554,7 @@ bool DomainLawyer::IsOriginKnown(const GoogleUrl& domain_to_check) const {
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out,
                              bool* is_proxy) const {
   GoogleUrl gurl(in);
-  return gurl.is_valid() && MapOriginUrl(gurl, out, is_proxy);
+  return gurl.IsWebValid() && MapOriginUrl(gurl, out, is_proxy);
 }
 
 bool DomainLawyer::MapOriginUrl(const GoogleUrl& gurl,
@@ -563,7 +563,7 @@ bool DomainLawyer::MapOriginUrl(const GoogleUrl& gurl,
   *is_proxy = false;
 
   // We can map an origin to/from http/https.
-  if (gurl.is_valid()) {
+  if (gurl.IsWebValid()) {
     ret = true;
     gurl.Spec().CopyToString(out);
     Domain* domain = FindDomain(gurl);
@@ -611,12 +611,12 @@ bool DomainLawyer::MapUrlHelper(const Domain& from_domain,
   GoogleString rel_url =
       StrCat("./", path_and_leaf.substr(from_domain_path.size()));
   // Make sure this isn't a valid absolute URL.
-  DCHECK(!GoogleUrl(rel_url).is_valid())
+  DCHECK(!GoogleUrl(rel_url).IsWebValid())
       << "URL " << gurl.Spec() << " is being mapped to absolute URL "
       << rel_url << " which will break many things.";
   GoogleUrl to_domain_gurl(to_domain.name());
   mapped_gurl->Reset(to_domain_gurl, rel_url);
-  return mapped_gurl->is_valid();
+  return mapped_gurl->IsWebValid();
 }
 
 bool DomainLawyer::AddRewriteDomainMapping(

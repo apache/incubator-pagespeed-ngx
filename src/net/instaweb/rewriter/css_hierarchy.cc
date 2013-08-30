@@ -277,7 +277,7 @@ bool CssHierarchy::ExpandChildren() {
     CssHierarchy* child = children_[i];
     GoogleString url(import->link().utf8_data(), import->link().utf8_length());
     const GoogleUrl import_url(css_resolution_base(), url);
-    if (!import_url.is_valid()) {
+    if (!import_url.IsWebValid()) {
       if (filter_ != NULL) {
         filter_->num_flatten_imports_invalid_url_->Add(1);
       }

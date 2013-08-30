@@ -1448,9 +1448,7 @@ TEST_F(DomainLawyerTest, AboutBlank) {
   GoogleUrl foo("about:blank");
   GoogleString out;
   bool is_proxy = true;
-  EXPECT_TRUE(lawyer.MapOriginUrl(foo, &out, &is_proxy));
-  EXPECT_STREQ("about:blank", out);
-  EXPECT_FALSE(is_proxy);
+  EXPECT_FALSE(lawyer.MapOriginUrl(foo, &out, &is_proxy));
 }
 
 }  // namespace net_instaweb

@@ -513,7 +513,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       custom_options.reset(merged_options);
       options = merged_options;
 
-      if (gurl.is_valid()) {
+      if (gurl.IsWebValid()) {
         // Set final url to gurl which has PageSpeed* query params
         // stripped.
         final_url = gurl.Spec().as_string();

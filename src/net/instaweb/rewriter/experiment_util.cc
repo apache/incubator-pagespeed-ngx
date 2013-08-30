@@ -67,7 +67,7 @@ void SetExperimentCookie(ResponseHeaders* headers,
                       int64 expiration_time_ms) {
   GoogleUrl request_url(url);
   // If we can't parse this url, don't try to set headers on the response.
-  if (!request_url.is_valid()) {
+  if (!request_url.IsWebValid()) {
     return;
   }
   GoogleString expires;

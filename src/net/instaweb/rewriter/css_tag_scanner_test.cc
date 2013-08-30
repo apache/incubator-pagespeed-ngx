@@ -62,7 +62,7 @@ class CssTagScannerTest : public testing::Test {
   void CheckGurlResolve(const GoogleUrl& base, const char* relative_path,
                         const char* abs_path) {
     GoogleUrl resolved(base, relative_path);
-    EXPECT_TRUE(resolved.is_valid());
+    EXPECT_TRUE(resolved.IsWebValid());
     EXPECT_STREQ(resolved.Spec(), abs_path);
   }
 
@@ -83,14 +83,14 @@ class CssTagScannerTest : public testing::Test {
 // This test verifies that we understand how Resolve works.
 TEST_F(CssTagScannerTest, TestGurl) {
   GoogleUrl base_slash("http://base/");
-  EXPECT_TRUE(base_slash.is_valid());
+  EXPECT_TRUE(base_slash.IsWebValid());
   CheckGurlResolve(base_slash, "r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_slash, "/r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_slash, "../r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_slash, "./r/path.ext", "http://base/r/path.ext");
 
   GoogleUrl base_no_slash("http://base");
-  EXPECT_TRUE(base_no_slash.is_valid());
+  EXPECT_TRUE(base_no_slash.IsWebValid());
   CheckGurlResolve(base_no_slash, "r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_no_slash, "/r/path.ext", "http://base/r/path.ext");
   CheckGurlResolve(base_no_slash, "../r/path.ext", "http://base/r/path.ext");

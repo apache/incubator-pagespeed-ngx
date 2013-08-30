@@ -2645,7 +2645,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
     WriteableDomainLawyer()->AddDomain(arg, handler);
   } else if (StringCaseEqual(name, kDownstreamCachePurgeLocationPrefix)) {
     GoogleUrl gurl(arg);
-    if (gurl.is_valid()) {
+    if (gurl.IsWebValid()) {
       // The host:port location where purge requests are to be sent should
       // be made "known" to the DomainLawyer so that when the
       // LoopbackRouteFetcher tries to send the request, it does not consider

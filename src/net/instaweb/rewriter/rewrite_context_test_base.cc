@@ -100,11 +100,11 @@ void NestedFilter::Context::RewriteSingle(
   SplitStringPieceToVector(input->contents(), "\n", &pieces, true);
 
   GoogleUrl base(input->url());
-  if (base.is_valid()) {
+  if (base.IsWebValid()) {
     // Add a new nested multi-slot context.
     for (int i = 0, n = pieces.size(); i < n; ++i) {
       GoogleUrl url(base, pieces[i]);
-      if (url.is_valid()) {
+      if (url.IsWebValid()) {
         ResourcePtr resource(Driver()->CreateInputResource(url));
         if (resource.get() != NULL) {
           ResourceSlotPtr slot(new NestedSlot(resource));

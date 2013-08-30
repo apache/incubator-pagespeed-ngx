@@ -158,7 +158,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       if (href != NULL && href->DecodedValueOrNull() != NULL
           && driver_->MayCacheExtendPdfs()) {
         GoogleUrl url(driver_->base_url(), href->DecodedValueOrNull());
-        if (url.is_valid() && StringCaseEndsWith(
+        if (url.IsWebValid() && StringCaseEndsWith(
                 url.LeafSansQuery(), kContentTypePdf.file_extension())) {
           may_load = true;
         }

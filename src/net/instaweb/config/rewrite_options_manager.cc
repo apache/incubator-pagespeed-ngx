@@ -44,7 +44,7 @@ void RewriteOptionsManager::PrepareRequest(
   }
 
   GoogleUrl gurl(*url);
-  if (!gurl.is_valid()) {
+  if (!gurl.IsWebValid()) {
     callback->Run(false);
     return;
   }

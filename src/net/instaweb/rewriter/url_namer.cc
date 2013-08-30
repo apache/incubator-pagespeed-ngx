@@ -82,7 +82,7 @@ bool UrlNamer::IsAuthorized(const GoogleUrl& request_url,
 bool UrlNamer::ResolveToOriginUrl(const RewriteOptions& options,
                                   const StringPiece& referer_url_str,
                                   GoogleUrl* url) const {
-  if (!url->is_valid() || IsProxyEncoded(*url)) {
+  if (!url->IsWebValid() || IsProxyEncoded(*url)) {
     return false;
   }
 
@@ -108,7 +108,7 @@ bool UrlNamer::ResolveToOriginUrl(const RewriteOptions& options,
       GoogleUrl temp_url(referer_origin_url);
       GoogleUrl final_url(temp_url,
           StrCat(url->PathAndLeaf(), url->AllAfterQuery()));
-      if (final_url.is_valid()) {
+      if (final_url.IsWebValid()) {
         url->Swap(&final_url);
         return true;
       }

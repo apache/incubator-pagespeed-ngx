@@ -125,20 +125,12 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   }
 
   GoogleUrl orig_url(base_url, url_to_rewrite);
-  if (!orig_url.is_valid()) {
+  if (!orig_url.IsWebOrDataValid()) {
     return kFail;
   }
-  if (!orig_url.is_standard()) {
-    // If the schemes are the same url_to_rewrite was -probably- relative,
-    // so fail this rewrite since the absolute result can't be handled;
-    // if they're different then it was definitely absolute and we should
-    // just leave it as it was.
-    if (orig_url.Scheme() == base_url.Scheme()) {
-      return kFail;
-    } else {
-      orig_url.Spec().CopyToString(rewritten_url);
-      return kDomainUnchanged;
-    }
+
+  if (!orig_url.IsWebValid()) {
+    return kDomainUnchanged;
   }
 
   StringPiece orig_spec = orig_url.Spec();
