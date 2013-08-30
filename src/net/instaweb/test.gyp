@@ -302,6 +302,7 @@
         '<(DEPTH)/pagespeed/kernel/thread/scheduler_thread_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/slow_worker_test.cc',
         '<(DEPTH)/pagespeed/kernel/thread/thread_synchronizer_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/categorized_refcount_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/copy_on_write_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/file_system_lock_manager_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/filename_encoder_test.cc',
