@@ -422,11 +422,6 @@ enum Response {
 
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
-void ps_write_handler_response(const StringPiece& output,
-                               ngx_http_request_t* r,
-                               ContentType content_type,
-                               const StringPiece& cache_control,
-                               Timer* timer);
 
 ngx_command_t ps_commands[] = {
   { ngx_string("pagespeed"),
@@ -1936,7 +1931,7 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
-  ngx_int_t rc = ps_resource_handler(r, true);
+  ngx_int_t rc = ps_resource_handler(r, true /* html rewrite */);
   if (rc != NGX_OK) {
     ctx->html_rewrite = false;
     return ngx_http_next_header_filter(r);
@@ -2169,29 +2164,6 @@ void ps_in_place_filter_init() {
 
 using in_place::ps_in_place_filter_init;
 
-ngx_int_t ps_static_handler(ngx_http_request_t* r) {
-  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-
-  StringPiece request_uri_path = str_to_string_piece(r->uri);
-
-  // Strip out the common prefix url before sending to
-  // StaticJavascriptManager.
-  StringPiece file_name = request_uri_path.substr(
-      strlen(NgxRewriteDriverFactory::kStaticAssetPrefix));
-  StringPiece file_contents;
-  StringPiece cache_header;
-  ContentType content_type;
-  bool found = cfg_s->server_context->static_asset_manager()->GetAsset(
-      file_name, &file_contents, &content_type, &cache_header);
-  if (!found) {
-    return NGX_DECLINED;
-  }
-
-  ps_write_handler_response(file_contents, r, content_type, cache_header,
-                            cfg_s->server_context->factory()->timer());
-  return NGX_OK;
-}
-
 ngx_int_t send_out_headers_and_body(
     ngx_http_request_t* r,
     const ResponseHeaders& response_headers,
@@ -2221,135 +2193,93 @@ ngx_int_t send_out_headers_and_body(
   return ngx_http_output_filter(r, out);
 }
 
-// Write response headers and send out headers and output, including the option
-// for a custom Content-Type.
-void ps_write_handler_response(const StringPiece& output,
-                               ngx_http_request_t* r,
-                               HttpStatus::Code status,
-                               ContentType content_type,
-                               const StringPiece& cache_control,
-                               Timer* timer) {
+ngx_int_t ps_simple_handler(ngx_http_request_t* r,
+                            NgxServerContext* server_context,
+                            RequestRouting::Response response_category) {
+  NgxRewriteDriverFactory* factory =
+      static_cast<NgxRewriteDriverFactory*>(
+          server_context->factory());
+  NgxMessageHandler* message_handler = factory->ngx_message_handler();
+  StringPiece request_uri_path = str_to_string_piece(r->uri);
+
+  GoogleString output;
+  StringWriter writer(&output);
+  HttpStatus::Code status = HttpStatus::kOK;
+  ContentType content_type = kContentTypeHtml;
+  StringPiece cache_control = HttpAttributes::kNoCache;
+  const char* error_message = NULL;
+
+  switch (response_category) {
+    case RequestRouting::kStaticContent: {
+      StringPiece file_contents;
+      if (!server_context->static_asset_manager()->GetAsset(
+              request_uri_path.substr(
+                  strlen(NgxRewriteDriverFactory::kStaticAssetPrefix)),
+              &file_contents, &content_type, &cache_control)) {
+        return NGX_DECLINED;
+      }
+      file_contents.CopyToString(&output);
+      break;
+    }
+    case RequestRouting::kStatistics:
+      error_message = StatisticsHandler(
+          factory,
+          server_context,
+          NULL,  // No SPDY-specific config in ngx_pagespeed.
+          !factory->use_per_vhost_statistics() || StringCaseStartsWith(
+              request_uri_path, "/ngx_pagespeed_global_statistics"),
+          StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
+          &content_type,
+          &writer,
+          message_handler);
+      break;
+    case RequestRouting::kConsole:
+      ConsoleHandler(
+          server_context, server_context->config(), &writer, message_handler);
+      break;
+    case RequestRouting::kMessages:
+      // Write <pre></pre> for Dump to keep good format.
+      writer.Write("<pre>", message_handler);
+      if (!message_handler->Dump(&writer)) {
+        writer.Write("Writing to ngx_pagespeed_message failed. \n"
+                     "Please check if it's enabled in pagespeed.conf.\n",
+                     message_handler);
+      }
+      writer.Write("</pre>", message_handler);
+      break;
+    default:
+      ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                    "ps_simple_handler: unknown RequestRouting.");
+      return NGX_ERROR;
+  }
+
+  if (error_message != NULL) {
+    status = HttpStatus::kNotFound;
+    content_type = kContentTypeHtml;
+    output = error_message;
+  }
+
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(status);
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);
 
-  response_headers.Add(HttpAttributes::kContentType,
-                       content_type.mime_type());
+  response_headers.Add(HttpAttributes::kContentType, content_type.mime_type());
 
-  int64 now_ms = timer->NowMs();
+  int64 now_ms = factory->timer()->NowMs();
   response_headers.SetDate(now_ms);
   response_headers.SetLastModified(now_ms);
-  response_headers.Add(HttpAttributes::kCacheControl,
-                       cache_control);
+  response_headers.Add(HttpAttributes::kCacheControl, cache_control);
 
   char* cache_control_s = string_piece_to_pool_string(r->pool, cache_control);
   if (cache_control_s != NULL) {
     if (FindIgnoreCase(cache_control, "private") ==
         static_cast<int>(StringPiece::npos)) {
-      response_headers.Add(HttpAttributes::kEtag,
-                           "W/\"0\"");
+      response_headers.Add(HttpAttributes::kEtag, "W/\"0\"");
     }
   }
 
-  send_out_headers_and_body(r, response_headers, output.as_string());
-}
-
-void ps_write_handler_response(const StringPiece& output,
-                               ngx_http_request_t* r,
-                               ContentType content_type,
-                               const StringPiece& cache_control,
-                               Timer* timer) {
-  ps_write_handler_response(output, r, HttpStatus::kOK,
-                            content_type, cache_control, timer);
-}
-
-void ps_write_handler_response(const StringPiece& output,
-                               ngx_http_request_t* r,
-                               ContentType content_type,
-                               Timer* timer) {
-  ps_write_handler_response(output, r, kContentTypeHtml,
-                            HttpAttributes::kNoCache, timer);
-}
-
-void ps_write_handler_response(const StringPiece& output,
-                               ngx_http_request_t* r,
-                               Timer* timer) {
-  ps_write_handler_response(output, r, kContentTypeHtml, timer);
-}
-
-ngx_int_t ps_console_handler(
-    ngx_http_request_t* r,
-    NgxServerContext* server_context) {
-  NgxRewriteDriverFactory* factory =
-      static_cast<NgxRewriteDriverFactory*>(
-          server_context->factory());
-  MessageHandler* message_handler = factory->message_handler();
-  GoogleString output;
-  StringWriter writer(&output);
-  ConsoleHandler(
-      server_context, server_context->config(), &writer, message_handler);
-  ps_write_handler_response(output, r, factory->timer());
-  return NGX_OK;
-}
-
-// TODO(oschaaf): port SPDY specific functionality, shmcache stats
-// TODO(oschaaf): refactor this with the apache code to share this code
-ngx_int_t ps_statistics_handler(
-    ngx_http_request_t* r,
-    NgxServerContext* server_context) {
-  NgxRewriteDriverFactory* factory =
-      static_cast<NgxRewriteDriverFactory*>(
-          server_context->factory());
-  // A request is always global if we don't have per-vhost stats, otherwise
-  // it's only global if it came to /...global_statistics.
-  StringPiece request_uri_path = str_to_string_piece(r->uri);
-  bool is_global_request = !factory->use_per_vhost_statistics() ||
-      StringCaseStartsWith(
-          request_uri_path, "/ngx_pagespeed_global_statistics");
-  MessageHandler* message_handler = factory->message_handler();
-  ContentType content_type;
-  GoogleString output;
-  StringWriter writer(&output);
-  const char* error_message = StatisticsHandler(
-      factory,
-      server_context,
-      NULL,  // No SPDY-specific config in ngx_pagespeed.
-      is_global_request,
-      StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
-      &content_type,
-      &writer,
-      message_handler);
-  if (error_message != NULL) {
-    ps_write_handler_response(error_message, r,
-                              HttpStatus::kNotFound,
-                              content_type,
-                              HttpAttributes::kNoCache,
-                              factory->timer());
-  } else {
-    ps_write_handler_response(output, r, content_type, factory->timer());
-  }
-  return NGX_OK;
-}
-
-ngx_int_t ps_messages_handler(
-    ngx_http_request_t* r,
-    NgxServerContext* server_context) {
-  GoogleString output;
-  StringWriter writer(&output);
-  NgxRewriteDriverFactory* factory =
-      server_context->ngx_rewrite_driver_factory();
-  NgxMessageHandler* message_handler =
-      factory->ngx_message_handler();
-  // Write <pre></pre> for Dump to keep good format.
-  writer.Write("<pre>", message_handler);
-  if (!message_handler->Dump(&writer)) {
-    writer.Write("Writing to ngx_pagespeed_message failed. \n"
-                 "Please check if it's enabled in pagespeed.conf.\n",
-                 message_handler);
-  }
-  writer.Write("</pre>", message_handler);
-  ps_write_handler_response(output, r, factory->timer());
+  send_out_headers_and_body(r, response_headers, output);
   return NGX_OK;
 }
 
@@ -2524,8 +2454,9 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);
 
-  switch (ps_route_request(
-      r, true /* is a resource fetch */)) {
+  RequestRouting::Response response_category =
+      ps_route_request(r, true /* is a resource fetch */);
+  switch (response_category) {
     case RequestRouting::kError:
       return NGX_ERROR;
     case RequestRouting::kNotUnderstood:
@@ -2538,15 +2469,12 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case RequestRouting::kBeacon:
       return ps_beacon_handler(r);
     case RequestRouting::kStaticContent:
-      return ps_static_handler(r);
     case RequestRouting::kStatistics:
-      return ps_statistics_handler(r, cfg_s->server_context);
     case RequestRouting::kConsole:
-      return ps_console_handler(r, cfg_s->server_context);
     case RequestRouting::kMessages:
-      return ps_messages_handler(r, cfg_s->server_context);
+      return ps_simple_handler(r, cfg_s->server_context, response_category);
     case RequestRouting::kResource:
-      return ps_resource_handler(r, false);
+      return ps_resource_handler(r, false /* html rewrite */);
   }
 
   CHECK(0);
