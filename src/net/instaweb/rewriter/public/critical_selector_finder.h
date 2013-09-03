@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_SELECTOR_FINDER_H_
 
 #include "net/instaweb/rewriter/critical_keys.pb.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -88,10 +89,9 @@ class CriticalSelectorFinder {
   // Given a set of candidate critical selectors, decide whether beaconing
   // should take place.  We should *always* beacon if there's new critical
   // selector data.  Otherwise re-beaconing is based on a time and request
-  // interval.  Returns beacon nonce if beaconing should occur, otherwise
-  // returns an empty string.  Returns kValidNonce if nonces aren't being used
-  // (ShouldReplacePriorResult() returns true).
-  GoogleString PrepareForBeaconInsertion(
+  // interval.  Returns the BeaconMetadata; result.status indicates whether
+  // beaconing should occur.
+  BeaconMetadata PrepareForBeaconInsertion(
       const StringSet& selector_set, RewriteDriver* driver);
 
   // Gets the SupportInterval for a new beacon result.
@@ -128,7 +128,7 @@ class BeaconCriticalSelectorFinder : public CriticalSelectorFinder {
       : CriticalSelectorFinder(cohort, nonce_generator, stats) {}
 
   static void WriteCriticalSelectorsToPropertyCacheFromBeacon(
-      const StringSet& selector_set, StringPiece none,
+      const StringSet& selector_set, StringPiece nonce,
       const PropertyCache* cache, const PropertyCache::Cohort* cohort,
       AbstractPropertyPage* page, MessageHandler* message_handler,
       Timer* timer);

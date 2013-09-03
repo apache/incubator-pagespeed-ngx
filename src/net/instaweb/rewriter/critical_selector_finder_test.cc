@@ -108,16 +108,20 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
 
   void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
     finder_->WriteCriticalSelectorsToPropertyCache(
-        selectors, last_nonce_, rewrite_driver());
+        selectors, last_beacon_metadata_.nonce, rewrite_driver());
+  }
+
+  virtual BeaconStatus ExpectedBeaconStatus() {
+    return kBeaconWithNonce;
   }
 
   // Simulate beacon insertion, with candidates_.
   void Beacon() {
     WriteBackAndResetDriver();
     factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
-    last_nonce_ =
+    last_beacon_metadata_ =
         finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-    EXPECT_FALSE(last_nonce_.empty());
+    ASSERT_EQ(ExpectedBeaconStatus(), last_beacon_metadata_.status);
   }
 
   // Set up legacy critical selectors value.  We have to do this by hand using
@@ -177,7 +181,7 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
 
   CriticalSelectorFinder* finder_;
   StringSet candidates_;
-  GoogleString last_nonce_;
+  BeaconMetadata last_beacon_metadata_;
 };
 
 TEST_F(CriticalSelectorFinderTest, StoreRestore) {
@@ -243,7 +247,7 @@ TEST_F(CriticalSelectorFinderTest, StoreMultiple) {
 // doesn't time out).
 TEST_F(CriticalSelectorFinderTest, OutOfOrder) {
   Beacon();
-  GoogleString initial_nonce = last_nonce_;
+  GoogleString initial_nonce(last_beacon_metadata_.nonce);
   // A second beacon occurs and the result comes back first.
   Beacon();
   StringSet selectors;
@@ -272,7 +276,7 @@ TEST_F(CriticalSelectorFinderTest, OutOfOrder) {
 TEST_F(CriticalSelectorFinderTest, NonceTimeout) {
   // Make sure that beacons time out after kBeaconTimeoutIntervalMs.
   Beacon();
-  GoogleString initial_nonce = last_nonce_;
+  GoogleString initial_nonce(last_beacon_metadata_.nonce);
   // kMinBeaconIntervalMs passes (in mock time) before the next call completes:
   Beacon();
   factory()->mock_timer()->AdvanceMs(kBeaconTimeoutIntervalMs);
@@ -387,6 +391,7 @@ TEST_F(CriticalSelectorFinderTest, EvidenceOverflow) {
   StringSet new_selectors;
   new_selectors.insert(".a");
   for (int i = 0; i < finder_->SupportInterval(); ++i) {
+    Beacon();
     WriteCriticalSelectorsToPropertyCache(new_selectors);
     EXPECT_STREQ(".a", CriticalSelectorsString());
   }
@@ -395,9 +400,9 @@ TEST_F(CriticalSelectorFinderTest, EvidenceOverflow) {
 // Make sure we don't beacon if we have an empty set of candidate selectors.
 TEST_F(CriticalSelectorFinderTest, NoCandidatesNoBeacon) {
   StringSet empty;
-  GoogleString nonce =
+  BeaconMetadata last_beacon_metadata =
       finder_->PrepareForBeaconInsertion(empty, rewrite_driver());
-  EXPECT_TRUE(nonce.empty());
+  EXPECT_EQ(kDoNotBeacon, last_beacon_metadata.status);
 }
 
 TEST_F(CriticalSelectorFinderTest, DontRebeaconBeforeTimeout) {
@@ -405,9 +410,9 @@ TEST_F(CriticalSelectorFinderTest, DontRebeaconBeforeTimeout) {
   // Now simulate a beacon insertion attempt without timing out.
   WriteBackAndResetDriver();
   factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs / 2);
-  GoogleString nonce =
+  BeaconMetadata last_beacon_metadata =
       finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-  EXPECT_TRUE(nonce.empty());
+  EXPECT_EQ(kDoNotBeacon, last_beacon_metadata.status);
   // But we'll re-beacon if some more time passes.
   Beacon();  // kMinBeaconIntervalMs passes in Beacon() call.
 }
@@ -433,6 +438,9 @@ class UnverifiedCriticalSelectorFinder : public CriticalSelectorFinder {
 // Test that unverified results apply.
 class UnverifiedSelectorsTest : public CriticalSelectorFinderTest {
  protected:
+  virtual BeaconStatus ExpectedBeaconStatus() {
+    return kBeaconNoNonce;
+  }
   virtual CriticalSelectorFinder* CreateFinder(
       const PropertyCache::Cohort* cohort) {
     return new UnverifiedCriticalSelectorFinder(cohort, statistics());

@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -119,7 +120,7 @@ void CriticalCssBeaconFilter::AppendSelectorsInitJs(
 //   pagespeed.criticalCssBeaconInit('beacon_url','page_url','options_hash',
 //        pagespeed.selectors);
 void CriticalCssBeaconFilter::AppendBeaconInitJs(
-    StringPiece nonce, GoogleString* script) {
+    const BeaconMetadata& metadata, GoogleString* script) {
   GoogleString beacon_url = driver()->IsHttps() ?
       driver()->options()->beacon_url().https :
       driver()->options()->beacon_url().http;
@@ -131,7 +132,7 @@ void CriticalCssBeaconFilter::AppendBeaconInitJs(
   StrAppend(script,
             "pagespeed.criticalCssBeaconInit('",
             beacon_url, "','", page_url, "','",
-            options_hash, "','", nonce, "',pagespeed.selectors);");
+            options_hash, "','", metadata.nonce, "',pagespeed.selectors);");
 }
 
 void CriticalCssBeaconFilter::SummariesDone() {
@@ -180,9 +181,10 @@ void CriticalCssBeaconFilter::SummariesDone() {
         continue;
     }
   }
-  GoogleString nonce = driver()->server_context()->critical_selector_finder()->
-      PrepareForBeaconInsertion(selectors, driver());
-  if (nonce.empty()) {
+  BeaconMetadata metadata =
+      driver()->server_context()->critical_selector_finder()->
+          PrepareForBeaconInsertion(selectors, driver());
+  if (metadata.status == kDoNotBeacon) {
     // No beaconing required according to current pcache state and computed
     // selector set.
     return;
@@ -196,7 +198,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
   AppendSelectorsInitJs(&script, selectors);
   if (driver()->server_context()->factory()->UseBeaconResultsInFilters()) {
     // Insert the beaconing initialization code.
-    AppendBeaconInitJs(nonce, &script);
+    AppendBeaconInitJs(metadata, &script);
   }
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
   driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");

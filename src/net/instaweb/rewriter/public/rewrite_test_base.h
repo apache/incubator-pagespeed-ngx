@@ -53,6 +53,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 
 namespace net_instaweb {
@@ -72,8 +73,6 @@ class ResourceNamer;
 class RewriteFilter;
 class Statistics;
 class WaitUrlAsyncFetcher;
-
-struct ContentType;
 
 class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
  protected:
@@ -701,6 +700,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     current_user_agent_ = user_agent;
   }
 
+  GoogleString ExpectedNonce();
+
   // The mock fetchers & stats are global across all Factories used in the
   // tests.
   MockUrlFetcher mock_url_fetcher_;
@@ -729,6 +730,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   UrlSegmentEncoder default_encoder_;
   ResponseHeaders response_headers_;
   const GoogleString kEtag0;  // Etag with a 0 hash.
+  uint64 expected_nonce_;
 };
 
 }  // namespace net_instaweb

@@ -79,6 +79,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/base/base64_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/content_type.h"
 
@@ -123,7 +124,8 @@ RewriteTestBase::RewriteTestBase()
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()),
-      kEtag0(HTTPCache::FormatEtag("0")) {
+      kEtag0(HTTPCache::FormatEtag("0")),
+      expected_nonce_(0) {
   Init();
 }
 
@@ -139,7 +141,8 @@ RewriteTestBase::RewriteTestBase(Statistics* statistics)
                                                   &test_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
-      other_options_(other_factory_->NewRewriteOptions()) {
+      other_options_(other_factory_->NewRewriteOptions()),
+      expected_nonce_(0) {
   Init();
 }
 
@@ -151,7 +154,8 @@ RewriteTestBase::RewriteTestBase(
       other_factory_(factories.second),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
-      other_options_(other_factory_->NewRewriteOptions()) {
+      other_options_(other_factory_->NewRewriteOptions()),
+      expected_nonce_(0) {
   Init();
 }
 
@@ -1188,6 +1192,16 @@ void RewriteTestBase::EnableCachePurge() {
   options()->ClearSignatureForTesting();
   options()->set_enable_cache_purge(true);
   options()->ComputeSignature();
+}
+
+GoogleString RewriteTestBase::ExpectedNonce() {
+  GoogleString result;
+  StringPiece nonce_piece(reinterpret_cast<char*>(&expected_nonce_),
+                          sizeof(expected_nonce_));
+  Web64Encode(nonce_piece, &result);
+  result.resize(11);
+  ++expected_nonce_;
+  return result;
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

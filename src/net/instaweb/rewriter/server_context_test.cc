@@ -1132,9 +1132,11 @@ class BeaconTest : public ServerContextTest {
     // Simulate effects on pcache of CSS beacon insertion.
     rewrite_driver()->set_property_page(MockPageForUA(user_agent));
     factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
-    last_nonce_ = server_context()->critical_selector_finder()
-        ->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-    EXPECT_FALSE(last_nonce_.empty());
+    last_beacon_metadata_ =
+        server_context()->critical_selector_finder()->
+            PrepareForBeaconInsertion(candidates_, rewrite_driver());
+    ASSERT_EQ(kBeaconWithNonce, last_beacon_metadata_.status);
+    ASSERT_FALSE(last_beacon_metadata_.nonce.empty());
     rewrite_driver()->property_page()->WriteCohort(
         server_context()->beacon_cohort());
   }
@@ -1156,7 +1158,9 @@ class BeaconTest : public ServerContextTest {
     }
 
     if (critical_css_selectors != NULL) {
-      StrAppend(&beacon_url, "&n=", last_nonce_, "&cs=");
+      ASSERT_EQ(kBeaconWithNonce, last_beacon_metadata_.status) <<
+          "Remember to insert a beacon!";
+      StrAppend(&beacon_url, "&n=", last_beacon_metadata_.nonce, "&cs=");
       AppendJoinCollection(&beacon_url, *critical_css_selectors, ",");
     }
 
@@ -1198,7 +1202,7 @@ class BeaconTest : public ServerContextTest {
   scoped_ptr<RenderedImages> rendered_images_;
   // This field holds candidate critical css selectors.
   StringSet candidates_;
-  GoogleString last_nonce_;
+  BeaconMetadata last_beacon_metadata_;
 };
 
 TEST_F(BeaconTest, BasicPcacheSetup) {

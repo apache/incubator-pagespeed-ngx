@@ -33,6 +33,7 @@ class Stylesheet;
 
 namespace net_instaweb {
 
+struct BeaconMetadata;
 class HtmlElement;
 class RewriteDriver;
 class Statistics;
@@ -77,7 +78,7 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   void AppendSelectorsInitJs(GoogleString* script, const StringSet& selectors);
 
   // Append the beaconing initialization JavaScript.
-  void AppendBeaconInitJs(StringPiece nonce, GoogleString* script);
+  void AppendBeaconInitJs(const BeaconMetadata& metadata, GoogleString* script);
 
   // The total number of times the beacon is added to a page.
   Variable* critical_css_beacon_added_count_;

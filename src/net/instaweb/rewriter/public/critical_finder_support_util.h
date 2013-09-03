@@ -35,8 +35,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_FINDER_SUPPORT_UTIL_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_FINDER_SUPPORT_UTIL_H_
 
-#include <map>
-
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
@@ -48,15 +46,21 @@ namespace net_instaweb {
 // Default rebeaconing time.
 const int64 kMinBeaconIntervalMs = 5 * Timer::kSecondMs;
 const int64 kBeaconTimeoutIntervalMs = Timer::kMinuteMs;
-// A nonce value that's valid, used as a placeholder when nonce generation is
-// switched off.
-const char kValidNonce[] = "*";
 
 class CriticalKeys;
 class MessageHandler;
 class NonceGenerator;
 
-typedef std::map<GoogleString, int> SupportMap;
+enum BeaconStatus {
+  kDoNotBeacon,
+  kBeaconNoNonce,
+  kBeaconWithNonce
+};
+
+struct BeaconMetadata {
+  BeaconStatus status;
+  GoogleString nonce;
+};
 
 // Generate a list of the critical keys from a proto, storing it into keys.
 // Takes into account legacy keys that may have been added before.  A key is
@@ -80,7 +84,7 @@ void UpdateCriticalKeys(bool require_prior_support,
 // Update the property cache with a new set of keys. This will update the
 // support value for the new keys, ignoring any keys that are not already
 // present in the property cache (preventing spurious keys from being injected).
-// Note, that it only increases the support value for the new keys, it does not
+// Note that it only increases the support value for the new keys, it does not
 // decay values that are not present. PrepareForBeaconInsertion should have been
 // called previously if !should_replace_prior_result and nonces must be checked.
 void WriteCriticalKeysToPropertyCache(
@@ -91,12 +95,16 @@ void WriteCriticalKeysToPropertyCache(
 
 // Given a set of candidate critical keys, decide whether beaconing should take
 // place.  We should *always* beacon if there's new critical key data.
-// Otherwise re-beaconing is based on a time and request interval.
-GoogleString PrepareForBeaconInsertion(
+// Otherwise re-beaconing is based on a time and request interval.  Sets status
+// and nonce appropriately in *result (nonce will be empty if no nonce is
+// required).  If candidate keys are not required, keys may be empty (but new
+// candidate detection will not occur).  If result->status != kDontBeacon,
+// caller should write proto back to the property cache using
+// UpdateInPropertyCache.
+void PrepareForBeaconInsertion(
     const StringSet& keys, CriticalKeys* proto, int support_interval,
-    bool should_replace_prior_result, StringPiece property_name,
-    const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
-    NonceGenerator* nonce_generator, Timer* timer);
+    NonceGenerator* nonce_generator, Timer* timer,
+    BeaconMetadata* result);
 
 }  // namespace net_instaweb
 

@@ -105,13 +105,14 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
 
   void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
     factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
-    last_nonce_ = server_context()->critical_selector_finder()
-        ->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-    EXPECT_FALSE(last_nonce_.empty());
+    last_beacon_metadata_ =
+        server_context()->critical_selector_finder()->
+            PrepareForBeaconInsertion(candidates_, rewrite_driver());
+    ASSERT_EQ(kBeaconWithNonce, last_beacon_metadata_.status);
     ResetDriver();
     server_context()->critical_selector_finder()->
         WriteCriticalSelectorsToPropertyCache(
-            selectors, last_nonce_, rewrite_driver());
+            selectors, last_beacon_metadata_.nonce, rewrite_driver());
     page_->WriteCohort(server_context()->beacon_cohort());
   }
 
@@ -153,7 +154,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
   PropertyCache* pcache_;
   PropertyPage* page_;
   StringSet candidates_;
-  GoogleString last_nonce_;
+  BeaconMetadata last_beacon_metadata_;
 };
 
 TEST_F(CriticalSelectorFilterTest, BasicOperation) {

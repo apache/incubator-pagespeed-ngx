@@ -148,13 +148,31 @@ void CriticalSelectorFinder::UpdateCriticalSelectorInfoInDriver(
   driver->set_critical_selector_info(critical_selector_info);
 }
 
-GoogleString CriticalSelectorFinder::PrepareForBeaconInsertion(
+BeaconMetadata CriticalSelectorFinder::PrepareForBeaconInsertion(
     const StringSet& selectors, RewriteDriver* driver) {
   UpdateCriticalSelectorInfoInDriver(driver);
-  return net_instaweb::PrepareForBeaconInsertion(
-      selectors, &driver->critical_selector_info()->proto, SupportInterval(),
-      ShouldReplacePriorResult(), kCriticalSelectorsPropertyName, cohort_,
-      driver->property_page(), nonce_generator_, driver->timer());
+  BeaconMetadata result;
+  result.status = kDoNotBeacon;
+  if (selectors.empty()) {
+    return result;
+  }
+  if (ShouldReplacePriorResult()) {
+    // The computed critical keys will not require a nonce as we trust all
+    // beacon results.
+    result.status = kBeaconNoNonce;
+    return result;
+  }
+  // Avoid memory copy by capturing computed_nonce using RVA and swapping the
+  // two strings.
+  CriticalKeys& proto = driver->critical_selector_info()->proto;
+  net_instaweb::PrepareForBeaconInsertion(
+      selectors, &proto, SupportInterval(), nonce_generator_, driver->timer(),
+      &result);
+  if (result.status != kDoNotBeacon) {
+    UpdateInPropertyCache(proto, cohort_, kCriticalSelectorsPropertyName,
+                          true /* write_cohort */, driver->property_page());
+  }
+  return result;
 }
 
 void

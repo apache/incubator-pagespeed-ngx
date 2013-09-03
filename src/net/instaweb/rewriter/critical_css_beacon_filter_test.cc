@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -33,7 +34,6 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/kernel/base/base64_util.h"
 
 namespace net_instaweb {
 
@@ -77,7 +77,7 @@ const char kEvilUrl[] = "http://evil.com/d.css";
 // Common setup / result generation code for all tests
 class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
  public:
-  CriticalCssBeaconFilterTestBase() : expected_nonce_(0) { }
+  CriticalCssBeaconFilterTestBase() { }
   virtual ~CriticalCssBeaconFilterTestBase() { }
 
  protected:
@@ -145,19 +145,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
                   BeaconScriptFor(selectors), "</body>");
   }
 
-  GoogleString ExpectedNonce() {
-    GoogleString result;
-    StringPiece nonce_piece(reinterpret_cast<char*>(&expected_nonce_),
-                            sizeof(expected_nonce_));
-    Web64Encode(nonce_piece, &result);
-    result.resize(11);
-    ++expected_nonce_;
-    return result;
-  }
-
  private:
-  uint64 expected_nonce_;
-
   DISALLOW_COPY_AND_ASSIGN(CriticalCssBeaconFilterTestBase);
 };
 
@@ -348,9 +336,12 @@ TEST_F(CriticalCssBeaconOnlyTest, ExtantPCache) {
   selectors.insert("span");  // Doesn't occur in our CSS
   CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
   RewriteDriver* driver = rewrite_driver();
-  GoogleString nonce = finder->PrepareForBeaconInsertion(selectors, driver);
-  EXPECT_EQ(ExpectedNonce(), nonce);
-  finder->WriteCriticalSelectorsToPropertyCache(selectors, nonce, driver);
+  BeaconMetadata metadata =
+      finder->PrepareForBeaconInsertion(selectors, driver);
+  ASSERT_TRUE(metadata.status == kBeaconWithNonce);
+  EXPECT_EQ(ExpectedNonce(), metadata.nonce);
+  finder->WriteCriticalSelectorsToPropertyCache(
+      selectors, metadata.nonce, driver);
   // Force cohort to persist.
   rewrite_driver()->property_page()
       ->WriteCohort(server_context()->beacon_cohort());

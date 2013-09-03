@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 
 #include <algorithm>
+#include <map>
 #include <set>
 #include <utility>
 
@@ -36,6 +37,8 @@
 namespace net_instaweb {
 
 namespace {
+
+typedef std::map<GoogleString, int> SupportMap;
 
 // *dest += addend, but capping at kint32max
 inline void SaturatingAddTo(int32 addend, int32* dest) {
@@ -155,19 +158,19 @@ void ClearInvalidNonces(const int64 now_ms, CriticalKeys* critical_keys) {
 }
 
 // Generate a nonce and record the existence of a beacon with that nonce sent at
-// timestamp_ms, before returning the new nonce.
-GoogleString AddNonceToCriticalSelectors(const int64 timestamp_ms,
-                                         NonceGenerator* nonce_generator,
-                                         CriticalKeys* critical_keys) {
-  GoogleString nonce;
+// timestamp_ms, updating *nonce with the new value.
+void AddNonceToCriticalSelectors(const int64 timestamp_ms,
+                                 NonceGenerator* nonce_generator,
+                                 CriticalKeys* critical_keys,
+                                 GoogleString* nonce) {
   CHECK(nonce_generator != NULL);
   uint64 nonce_value = nonce_generator->NewNonce();
   StringPiece nonce_piece(reinterpret_cast<char*>(&nonce_value),
                           sizeof(nonce_value));
-  Web64Encode(nonce_piece, &nonce);
-  if (nonce.size() > 11) {
+  Web64Encode(nonce_piece, nonce);
+  if (nonce->size() > 11) {
     // Only keep the first 66 bits of nonce since original value is 64 bits.
-    nonce.resize(11);
+    nonce->resize(11);
   }
   ClearInvalidNonces(timestamp_ms, critical_keys);
   // Look for an invalid entry to reuse.
@@ -184,8 +187,7 @@ GoogleString AddNonceToCriticalSelectors(const int64 timestamp_ms,
     pending_nonce = critical_keys->add_pending_nonce();
   }
   pending_nonce->set_timestamp_ms(timestamp_ms);
-  pending_nonce->set_nonce(nonce);
-  return nonce;
+  pending_nonce->set_nonce(*nonce);
 }
 
 // Check whether the given nonce is valid, invalidating any expired nonce
@@ -348,56 +350,46 @@ void WriteCriticalKeysToPropertyCache(
   }
 }
 
-GoogleString PrepareForBeaconInsertion(
+void PrepareForBeaconInsertion(
     const StringSet& keys, CriticalKeys* proto, int support_interval,
-    bool should_replace_prior_result, StringPiece property_name,
-    const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
-    NonceGenerator* nonce_generator, Timer* timer) {
-  GoogleString nonce;
-  if (keys.empty()) {
-    // Never instrument when there's nothing to check.
-    return nonce;
-  }
-
-  if (should_replace_prior_result) {
-    // The computed critical keys will replace any previous results
-    // without checking their support map (because they will come from a
-    // trusted source. Therfore, skip the support map write.
-    nonce.assign(kValidNonce);
-    return nonce;
-  }
-
-  SupportMap support_map =
-      ConvertCriticalKeysProtoToSupportMap(*proto, support_interval);
-  bool is_changed = false;
+    NonceGenerator* nonce_generator, Timer* timer,
+    BeaconMetadata* result) {
+  result->status = kDoNotBeacon;
+  bool changed = false;
   int64 now_ms = timer->NowMs();
   if (now_ms >= proto->next_beacon_timestamp_ms()) {
     // TODO(jmaessen): Add noise to inter-beacon interval.  How?
     // Currently first visit to page after next_beacon_timestamp_ms will beacon.
     proto->set_next_beacon_timestamp_ms(now_ms + kMinBeaconIntervalMs);
-    is_changed = true;  // Timestamp definitely changed.
+    changed = true;  // Timestamp definitely changed.
   }
-  // Check to see if candidate keys are already known to pcache.  Insert
-  // previously-unknown candidates with a support of 0, to indicate that beacon
-  // results for those keys will be considered valid.  Other keys
-  // returned in a beacon result will simply be ignored, avoiding DoSing the
-  // pcache.  New candidate keys cause us to re-beacon.
-  for (StringSet::const_iterator i = keys.begin(), end = keys.end();
-       i != end; ++i) {
-    if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
-      is_changed = true;
+  if (!keys.empty()) {
+    // Check to see if candidate keys are already known to pcache.  Insert
+    // previously-unknown candidates with a support of 0, to indicate that
+    // beacon results for those keys will be considered valid.  Other keys
+    // returned in a beacon result will simply be ignored, avoiding DoSing the
+    // pcache.  New candidate keys cause us to re-beacon.
+    SupportMap support_map =
+        ConvertCriticalKeysProtoToSupportMap(*proto, support_interval);
+    bool support_map_changed = false;
+    for (StringSet::const_iterator i = keys.begin(), end = keys.end();
+         i != end; ++i) {
+      if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
+        support_map_changed = true;
+      }
+    }
+    if (support_map_changed) {
+      // Update the proto value with the new set of keys. Note that we are not
+      // changing the calculated set of critical keys, so we don't need to
+      // update the state in the RewriteDriver.
+      WriteSupportMapToCriticalKeysProto(support_map, proto);
+      changed = true;
     }
   }
-  if (is_changed) {
-    nonce = AddNonceToCriticalSelectors(now_ms, nonce_generator, proto);
-    // Update the proto value with the new set of keys. Note that we are
-    // not changing the calculated set of critical keys, so we don't need
-    // to update the state in the RewriteDriver.
-    WriteSupportMapToCriticalKeysProto(support_map, proto);
-    UpdateInPropertyCache(*proto, cohort, property_name,
-                          true /* write_cohort */, page);
+  if (changed) {
+    AddNonceToCriticalSelectors(now_ms, nonce_generator, proto, &result->nonce);
+    result->status = kBeaconWithNonce;
   }
-  return nonce;
 }
 
 }  // namespace net_instaweb
