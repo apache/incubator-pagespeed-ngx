@@ -72,7 +72,12 @@ GoogleUrl::GoogleUrl(const GoogleUrl& base, const char* str) {
 
 void GoogleUrl::Swap(GoogleUrl* google_url) {
   gurl_.Swap(&google_url->gurl_);
-  Init();
+  bool old_is_web_valid = is_web_valid_;
+  bool old_is_web_or_data_valid = is_web_or_data_valid_;
+  is_web_valid_ = google_url->is_web_valid_;
+  is_web_or_data_valid_ = google_url->is_web_or_data_valid_;
+  google_url->is_web_valid_ = old_is_web_valid;
+  google_url->is_web_or_data_valid_ = old_is_web_or_data_valid;
 }
 
 void GoogleUrl::Init() {
