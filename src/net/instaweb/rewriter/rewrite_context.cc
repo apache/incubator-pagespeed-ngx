@@ -1907,7 +1907,7 @@ void RewriteContext::FetchInputs() {
           bool ret = nested_driver->FetchResource(resource->url(), callback);
           DCHECK(ret);
         } else {
-          FindServerContext()->ReleaseRewriteDriver(nested_driver);
+          nested_driver->Cleanup();
         }
       }
 

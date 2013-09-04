@@ -1115,7 +1115,6 @@ class BeaconTest : public ServerContextTest {
 
   void ResetDriver() {
     rewrite_driver()->Clear();
-    rewrite_driver()->StartParse("http://www.example.com");
   }
 
   MockPropertyPage* MockPageForUA(StringPiece user_agent) {
@@ -1592,24 +1591,6 @@ TEST_F(ServerContextTest, WriteChecksInputVector) {
 
   // Make sure nothing extra in the cache at this point.
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
-}
-
-TEST_F(ServerContextTest, ShutDownAssumptions) {
-  // The code in ServerContext::ShutDownWorkers assumes that some potential
-  // interleaving of operations are safe. Since they are pretty unlikely
-  // in practice, this test exercises them.
-  RewriteDriver* driver =
-      server_context()->NewRewriteDriver(CreateRequestContext());
-  EnableRewriteDriverCleanupMode(true);
-  driver->WaitForShutDown();
-  driver->WaitForShutDown();
-  driver->Cleanup();
-  driver->Cleanup();
-  driver->WaitForShutDown();
-
-  EnableRewriteDriverCleanupMode(false);
-  // Should actually clean it up this time.
-  driver->Cleanup();
 }
 
 TEST_F(ServerContextTest, IsPagespeedResource) {

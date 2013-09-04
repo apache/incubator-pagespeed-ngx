@@ -116,6 +116,11 @@ class HtmlParse {
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
                             const ContentType& content_type);
 
+  // Sets url() for test purposes. Normally this is done by StartParseId,
+  // but sometimes tests need to set it without worrying about parse
+  // state.
+  void SetUrlForTesting(const StringPiece& url);
+
   // Parses an arbitrary block of an html file, queuing up the events.  Call
   // Flush to send the events through the Filter.
   //

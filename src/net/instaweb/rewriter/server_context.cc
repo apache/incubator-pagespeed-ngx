@@ -272,6 +272,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       fix_reflow_cohort_(NULL),
       available_rewrite_drivers_(new GlobalOptionsRewriteDriverPool(this)),
       trying_to_cleanup_rewrite_drivers_(false),
+      shutdown_drivers_called_(false),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system_->NewMutex()),
       html_workers_(NULL),
@@ -339,6 +340,7 @@ void ServerContext::InitWorkersAndDecodingDriver() {
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
   decoding_driver_.reset(NewUnmanagedRewriteDriver(
       NULL, global_options()->Clone(), RequestContextPtr(NULL)));
+  decoding_driver_->set_externally_managed(true);
   // Apply platform configuration mutation for consistency's sake.
   factory_->ApplyPlatformSpecificConfiguration(decoding_driver_.get());
   // Inserts platform-specific rewriters into the resource_filter_map_, so that
@@ -719,6 +721,10 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
   if (has_default_distributed_fetcher()) {
     rewrite_driver->set_distributed_fetcher(default_distributed_fetcher_);
   }
+  // Set the initial reference, as the expectation is that the client
+  // will need to call Cleanup() or FinishParse()
+  rewrite_driver->AddUserReference();
+
   ApplySessionFetchers(request_ctx, rewrite_driver);
   return rewrite_driver;
 }
@@ -768,6 +774,7 @@ RewriteDriver* ServerContext::NewRewriteDriverFromPool(
       factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
     }
   } else {
+    rewrite_driver->AddUserReference();
     rewrite_driver->set_request_context(request_ctx);
     ApplySessionFetchers(request_ctx, rewrite_driver);
   }
@@ -815,6 +822,14 @@ void ServerContext::ShutDownDrivers() {
     // during the shutdown.
     trying_to_cleanup_rewrite_drivers_ = true;
   }
+
+  // Don't do this twice if subclassing of RewriteDriverFactory causes us
+  // to get called twice.
+  // TODO(morlovich): Fix the ShutDown code to not get run many times instead.
+  if (shutdown_drivers_called_) {
+    return;
+  }
+  shutdown_drivers_called_ = true;
 
   if (!active_rewrite_drivers_.empty()) {
     message_handler_->Message(kInfo, "%d rewrite(s) still ongoing at exit",

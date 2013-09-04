@@ -231,15 +231,12 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       refs_before_base_(false),
       filters_added_(false),
       externally_managed_(false),
-      fetch_queued_(false),
-      fetch_detached_(false),
-      detached_fetch_main_path_complete_(false),
-      detached_fetch_detached_path_complete_(false),
-      parsing_(false),
+      ref_counts_(this),
+      release_driver_(false),
       waiting_(kNoWait),
+      waiting_deadline_reached_(false),
       fully_rewrite_on_flush_(false),
       fast_blocking_rewrite_(true),
-      cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       flush_occurred_(false),
       flushed_cached_html_(false),
@@ -247,19 +244,15 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flushed_early_(false),
       flushing_early_(false),
       is_lazyload_script_flushed_(false),
-      release_driver_(false),
       made_downstream_purge_attempt_(false),
       write_property_cache_dom_cohort_(false),
-      rewrites_to_delete_(0),
       should_skip_parsing_(kNotSet),
       response_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
       max_page_processing_delay_ms_(-1),
       num_initiated_rewrites_(0),
       num_detached_rewrites_(0),
-      pending_rewrites_(0),
       possibly_quick_rewrites_(0),
-      pending_async_events_(0),
       file_system_(file_system),
       server_context_(NULL),
       scheduler_(NULL),
@@ -378,8 +371,11 @@ RewriteDriver* RewriteDriver::Clone() {
 }
 
 void RewriteDriver::Clear() {
+  // If this was a fetch, fetch_rewrites_ may still hold a reference to a
+  // RewriteContext.
+  STLDeleteElements(&fetch_rewrites_);
+
   DCHECK(!flush_requested_);
-  cleanup_on_fetch_complete_ = false;
   release_driver_ = false;
   made_downstream_purge_attempt_ = false;
   write_property_cache_dom_cohort_ = false;
@@ -389,26 +385,23 @@ void RewriteDriver::Clear() {
   fetch_url_.clear();
 
   if (!server_context_->shutting_down()) {
+    if (!externally_managed_) {
+      ref_counts_.DCheckAllCountsZero();
+    }
     DCHECK(primary_rewrite_context_map_.empty());
     DCHECK(initiated_rewrites_.empty());
     DCHECK(detached_rewrites_.empty());
     DCHECK(rewrites_.empty());
-    DCHECK_EQ(0, rewrites_to_delete_);
-    DCHECK_EQ(0, pending_rewrites_);
     DCHECK_EQ(0, possibly_quick_rewrites_);
-    DCHECK(!fetch_queued_);
-    DCHECK_EQ(0, pending_async_events_);
   }
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 
   should_skip_parsing_ = kNotSet;
-  pending_async_events_ = 0;
   max_page_processing_delay_ms_ = -1;
   request_headers_.reset(NULL);
   response_headers_ = NULL;
   status_code_ = 0;
-  fetch_detached_ = false;
   flush_requested_ = false;
   flush_occurred_ = false;
   flushed_cached_html_ = false;
@@ -421,9 +414,6 @@ void RewriteDriver::Clear() {
   base_was_set_ = false;
   refs_before_base_ = false;
   containing_charset_.clear();
-  detached_fetch_detached_path_complete_ = false;
-  parsing_ = false;
-  detached_fetch_main_path_complete_ = false;
   client_id_.clear();
   fully_rewrite_on_flush_ = false;
   fast_blocking_rewrite_ = true;
@@ -466,14 +456,22 @@ void RewriteDriver::Clear() {
 
 // Must be called with rewrite_mutex() held.
 bool RewriteDriver::RewritesComplete() const {
-  return ((pending_rewrites_ == 0) && !fetch_queued_ &&
-          detached_rewrites_.empty() && (rewrites_to_delete_ == 0));
-}
+  // 3 kinds of rewrites triggered from HTML:
+  bool no_pending_rewrites =
+      (ref_counts_.QueryCountMutexHeld(kRefPendingRewrites) == 0);
+  bool no_deleting_rewrites =
+      (ref_counts_.QueryCountMutexHeld(kRefDeletingRewrites) == 0);
+  bool no_detached_rewrites = detached_rewrites_.empty();
+  DCHECK_EQ(static_cast<int>(detached_rewrites_.size()),
+            ref_counts_.QueryCountMutexHeld(kRefDetachedRewrites));
 
-bool RewriteDriver::HaveBackgroundFetchRewrite() const {
-  return (fetch_detached_ &&
-          !(detached_fetch_main_path_complete_ &&
-            detached_fetch_detached_path_complete_));
+  // And also user-facing fetches. Note that background fetches are handled
+  // by IsDone separately.
+  bool no_user_facing_fetch =
+      (ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing) == 0);
+
+  return no_pending_rewrites && no_deleting_rewrites && no_detached_rewrites &&
+         no_user_facing_fetch;
 }
 
 void RewriteDriver::WaitForCompletion() {
@@ -502,6 +500,7 @@ void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
   DCHECK_NE(kNoWait, wait_mode);
   DCHECK_EQ(kNoWait, waiting_);
   waiting_ = wait_mode;
+  waiting_deadline_reached_ = false;
 
   int64 end_time_ms;
   if (timeout_ms <= 0) {
@@ -516,15 +515,14 @@ void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
 void RewriteDriver::TryCheckForCompletion(
     WaitMode wait_mode, int64 end_time_ms, Function* done) {
   scheduler_->DCheckLocked();
-  bool deadline_reached;
   int64 now_ms = server_context_->timer()->NowMs();
   int64 sleep_ms;
   if (end_time_ms < 0) {
-    deadline_reached = false;  // Unlimited wait..
+    waiting_deadline_reached_ = false;  // Unlimited wait..
     sleep_ms = kTestTimeoutMs;
   } else {
-    deadline_reached = (now_ms >= end_time_ms);
-    if (deadline_reached) {
+    waiting_deadline_reached_ = (now_ms >= end_time_ms);
+    if (waiting_deadline_reached_) {
       // If deadline is already reached if we keep going we will want to use
       // long sleeps since we expect to be woken up based on conditions.
       sleep_ms = kTestTimeoutMs;
@@ -535,7 +533,7 @@ void RewriteDriver::TryCheckForCompletion(
 
   // Note that we may end up going past the deadline in order to make sure
   // that at least the metadata cache lookups have a chance to come in.
-  if (!IsDone(wait_mode, deadline_reached)) {
+  if (!IsDone(wait_mode, waiting_deadline_reached_)) {
     scheduler_->TimedWaitMs(
         sleep_ms,
         MakeFunction(this, &RewriteDriver::TryCheckForCompletion,
@@ -548,14 +546,17 @@ void RewriteDriver::TryCheckForCompletion(
 }
 
 bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
-  if (pending_async_events_ > 0 && WaitForPendingAsyncEvents(wait_mode)) {
+  int async_events = ref_counts_.QueryCountMutexHeld(kRefAsyncEvents);
+  if (async_events > 0 && WaitForPendingAsyncEvents(wait_mode)) {
     return false;
   }
 
   // Before deadline, we're happy only if we're 100% done.
   if (!deadline_reached) {
+    bool have_background_fetch =
+        (ref_counts_.QueryCountMutexHeld(kRefFetchBackground) != 0);
     return RewritesComplete() &&
-           !((wait_mode == kWaitForShutDown) && HaveBackgroundFetchRewrite());
+           !((wait_mode == kWaitForShutDown) && have_background_fetch);
   } else {
     // When we've reached the deadline, if we're Render()'ing
     // we also give the jobs we can serve from cache a chance to finish
@@ -620,7 +621,6 @@ void RewriteDriver::FlushAsync(Function* callback) {
   // is reached, where we initiate all the RewriteContexts.
   DCHECK(initiated_rewrites_.empty());
   int num_rewrites = rewrites_.size();
-  DCHECK_EQ(pending_rewrites_, num_rewrites);
 
   // Copy all of the RewriteContext* into the initiated_rewrites_ set
   // *before* initiating them, as we are doing this before we lock.
@@ -633,6 +633,8 @@ void RewriteDriver::FlushAsync(Function* callback) {
     // initiated_rewrites_.empty(), is a READ and it's OK to have
     // concurrent READs.
     ScopedMutex lock(rewrite_mutex());
+    DCHECK_EQ(ref_counts_.QueryCountMutexHeld(kRefPendingRewrites),
+              num_rewrites);
     initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
     num_initiated_rewrites_ += num_rewrites;
 
@@ -650,7 +652,8 @@ void RewriteDriver::FlushAsync(Function* callback) {
 
   {
     ScopedMutex lock(rewrite_mutex());
-    DCHECK(!fetch_queued_);
+    DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing));
+    DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchBackground));
     Function* flush_async_done =
         MakeFunction(this, &RewriteDriver::QueueFlushAsyncDone,
                      num_rewrites, callback);
@@ -696,7 +699,9 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   {
     ScopedMutex lock(rewrite_mutex());
     DCHECK_EQ(0, possibly_quick_rewrites_);
-    int completed_rewrites = num_rewrites - pending_rewrites_;
+    int still_pending_rewrites =
+        ref_counts_.QueryCountMutexHeld(kRefPendingRewrites);
+    int completed_rewrites = num_rewrites - still_pending_rewrites;
 
     // If the output cache lookup came as a HIT in after the deadline, that
     // means that (a) we can't use the result and (b) we don't need
@@ -706,7 +711,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
     //
     RewriteStats* stats = server_context_->rewrite_stats();
     stats->cached_output_hits()->Add(completed_rewrites);
-    stats->cached_output_missed_deadline()->Add(pending_rewrites_);
+    stats->cached_output_missed_deadline()->Add(still_pending_rewrites);
     {
       // Add completed_rewrites (from this flush window) to the logged value.
       ScopedMutex lock(log_record()->mutex());
@@ -725,9 +730,10 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
       rewrite_context->WillNotRender();
       detached_rewrites_.insert(rewrite_context);
       ++num_detached_rewrites_;
-      --pending_rewrites_;
+      ref_counts_.AddRefMutexHeld(kRefDetachedRewrites);
+      ref_counts_.ReleaseRefMutexHeld(kRefPendingRewrites);
     }
-    DCHECK_EQ(0, pending_rewrites_);
+    DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefPendingRewrites));
     initiated_rewrites_.clear();
 
     slots_.clear();
@@ -831,6 +837,7 @@ void RewriteDriver::SetServerContext(ServerContext* server_context) {
   DCHECK(server_context_ == NULL);
   server_context_ = server_context;
   scheduler_ = server_context_->scheduler();
+  ref_counts_.set_mutex(rewrite_mutex());
   set_timer(server_context->timer());
   rewrite_worker_ = server_context_->rewrite_workers()->NewSequence();
   html_worker_ = server_context_->html_workers()->NewSequence();
@@ -1881,9 +1888,9 @@ bool RewriteDriver::DistributeFetch(const StringPiece& url,
 
 bool RewriteDriver::FetchResource(const StringPiece& url,
                                   AsyncFetch* async_fetch) {
-  DCHECK(!fetch_queued_) << this;
-  DCHECK(!fetch_detached_) << this;
-  DCHECK_EQ(0, pending_rewrites_) << this;
+  DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing));
+  DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchBackground));
+  DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefParsing));
   bool handled = false;
 
   fetch_url_ = url.as_string();
@@ -1941,7 +1948,7 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
     return;
   }
 
-  fetch_queued_ = true;
+  ref_counts_.AddRef(kRefFetchUserFacing);
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
   context->set_proxy_mode(proxy_mode);
 
@@ -2006,7 +2013,7 @@ bool RewriteDriver::FetchOutputResource(
     queued = false;
   } else {
     SetBaseUrlForFetch(output_resource->url());
-    fetch_queued_ = true;
+    ref_counts_.AddRef(kRefFetchUserFacing);
     if (output_resource->kind() == kOnTheFlyResource ||
         MetadataRequested(*async_fetch->request_headers())) {
       // Don't bother to look up the resource in the cache: ask the filter. If
@@ -2033,70 +2040,18 @@ bool RewriteDriver::FetchOutputResource(
 }
 
 void RewriteDriver::FetchComplete() {
-  ScopedMutex lock(rewrite_mutex());
-  if (!fetch_detached_) {
-    FetchCompleteImpl(true /* want to signal*/, &lock);
-  } else {
-    DCHECK(!detached_fetch_main_path_complete_);
-    detached_fetch_main_path_complete_ = true;
-    if (detached_fetch_detached_path_complete_) {
-      FetchCompleteImpl(true /* want to signal*/, &lock);
-    } else {
-      // Make sure to mark us as having no active fetch for
-      // purposes of RewritesComplete()
-      fetch_queued_ = false;
-      scheduler_->Signal();
-    }
-  }
+  DropReference(kRefFetchUserFacing);
 }
 
 void RewriteDriver::DetachFetch() {
   ScopedMutex lock(rewrite_mutex());
-  fetch_detached_ = true;
+  CHECK_EQ(1, ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing));
+  CHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchBackground));
+  ref_counts_.AddRefMutexHeld(kRefFetchBackground);
 }
 
 void RewriteDriver::DetachedFetchComplete() {
-  ScopedMutex lock(rewrite_mutex());
-
-  DCHECK(fetch_detached_);
-  DCHECK(!detached_fetch_detached_path_complete_);
-  detached_fetch_detached_path_complete_ = true;
-  if (detached_fetch_main_path_complete_) {
-    FetchCompleteImpl(false, /* do not signal, was done on FetchComplete*/
-                      &lock);
-  }
-}
-
-void RewriteDriver::FetchCompleteImpl(bool signal, ScopedMutex* lock) {
-  rewrite_mutex()->DCheckLocked();  // lock->mutex_ == rewrite_mutex().
-  DCHECK_EQ(fetch_queued_, signal);
-  DCHECK_EQ(0, pending_rewrites_);
-
-  STLDeleteElements(&rewrites_);
-  fetch_queued_ = false;
-  bool do_cleanup = cleanup_on_fetch_complete_;
-
-  if (signal) {
-    // 1) If Cleanup() happens before this critical section, then
-    // cleanup_on_fetch_complete_ will be true, so we would set
-    // do_cleanup = true and call it.  It will do it because
-    // RewritesComplete() will return false as fetch_queued_ is true.
-    // Note the call to HaveBackgroundFetchRewrite().
-    //
-    // 2) If Cleanup() happens after, then cleanup_on_fetch_complete_
-    // will be false, so this code will not do a clean, while
-    // BlockingFetch/etc. will just call Cleanup() and that will
-    // cleanup since everything is done.
-    scheduler_->Signal();  // Momentarily drops rewrite_mutex() (surprisingly)
-  }
-  lock->Release();
-
-  if (do_cleanup) {
-    // If cleanup_on_fetch_complete_ is set, the main thread has already tried
-    // to call Cleanup on us, so it's not going to be touching us any more ---
-    // and so this is race-free.
-    Cleanup();
-  }
+  DropReference(kRefFetchBackground);
 }
 
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
@@ -2231,9 +2186,10 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   }
 
   bool ret = HtmlParse::StartParseId(url, id, content_type);
-  {
+  if (ret) {
     ScopedMutex lock(rewrite_mutex());
-    parsing_ = true;
+    DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefParsing));
+    ref_counts_.AddRefMutexHeld(kRefParsing);
   }
 
   if (ret) {
@@ -2291,87 +2247,79 @@ bool RewriteDriver::ShouldSkipParsing() {
   return (should_skip_parsing_ == kTrue);
 }
 
+bool RewriteDriver::PrepareShouldSignal() {
+  // Basically, we just save IsDone() from before state changes.
+  return IsDone(waiting_, waiting_deadline_reached_);
+}
+
+void RewriteDriver::SignalIfRequired(bool result_of_prepare_should_signal) {
+  // If we were already done before, or no one is waiting, no need to signal
+  if (result_of_prepare_should_signal || waiting_ == kNoWait) {
+    return;
+  }
+
+  if (IsDone(waiting_, waiting_deadline_reached_)) {
+    // If someone is waiting, refcount shouldn't be 0!
+    DCHECK(!release_driver_);
+    scheduler_->Signal();
+  }
+}
+
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context,
                                     bool permit_render) {
-  ScopedMutex lock(rewrite_mutex());
-  DCHECK(!fetch_queued_);
-  bool signal = false;
-  bool attached = false;
-  RewriteContextSet::iterator p = initiated_rewrites_.find(rewrite_context);
-  if (p != initiated_rewrites_.end()) {
-    if (rewrite_context->is_metadata_cache_miss()) {
-      // If the rewrite completed within the deadline and it actually involved
-      // and fetch rewrite (not a metadata hit or successful revalidate) then
-      // bump up the corresponding counter in log record.
-      ScopedMutex lock(log_record()->mutex());
-      MetadataCacheInfo* metadata_log_info =
-          log_record()->logging_info()->mutable_metadata_cache_info();
-      metadata_log_info->set_num_successful_rewrites_on_miss(
-          metadata_log_info->num_successful_rewrites_on_miss() + 1);
-    }
-    initiated_rewrites_.erase(p);
-    attached = true;
+  {
+    ScopedMutex lock(rewrite_mutex());
+    DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing));
+    bool signal_cookie = PrepareShouldSignal();
+    bool attached = false;
 
-    --pending_rewrites_;
-    if (!rewrite_context->slow()) {
-      --possibly_quick_rewrites_;
-      if ((possibly_quick_rewrites_ == 0) &&
-          (waiting_ == kWaitForCachedRender)) {
-        signal = true;
+    // Rewrite transitions either pending -> deleting or detached -> deleting
+    ref_counts_.AddRefMutexHeld(kRefDeletingRewrites);
+    RewriteContextSet::iterator p = initiated_rewrites_.find(rewrite_context);
+    if (p != initiated_rewrites_.end()) {
+      if (rewrite_context->is_metadata_cache_miss()) {
+        // If the rewrite completed within the deadline and it actually involved
+        // and fetch rewrite (not a metadata hit or successful revalidate) then
+        // bump up the corresponding counter in log record.
+        ScopedMutex lock(log_record()->mutex());
+        MetadataCacheInfo* metadata_log_info =
+            log_record()->logging_info()->mutable_metadata_cache_info();
+        metadata_log_info->set_num_successful_rewrites_on_miss(
+            metadata_log_info->num_successful_rewrites_on_miss() + 1);
       }
-    }
+      initiated_rewrites_.erase(p);
+      attached = true;
 
-    if (pending_rewrites_ == 0) {
-      signal = true;
+      ref_counts_.ReleaseRefMutexHeld(kRefPendingRewrites);
+      if (!rewrite_context->slow()) {
+        --possibly_quick_rewrites_;
+      }
+    } else {
+      int erased = detached_rewrites_.erase(rewrite_context);
+      CHECK_EQ(1, erased) << " rewrite_context " << rewrite_context
+                          << " not in either detached_rewrites or "
+                          << "initiated_rewrites_";
+      ref_counts_.ReleaseRefMutexHeld(kRefDetachedRewrites);
     }
-  } else {
-    int erased = detached_rewrites_.erase(rewrite_context);
-    CHECK_EQ(1, erased) << " rewrite_context " << rewrite_context
-                        << " not in either detached_rewrites or "
-                        << "initiated_rewrites_";
-    if ((waiting_ == kWaitForCompletion || waiting_ == kWaitForShutDown) &&
-        detached_rewrites_.empty()) {
-      signal = true;
-    }
-  }
-  rewrite_context->Propagate(attached && permit_render);
-  ++rewrites_to_delete_;
-  if (signal) {
-    DCHECK(!fetch_queued_);
-    scheduler_->Signal();
+    // release_driver_ should be false since we moved a count between
+    // categories, and didn't change the total.
+    DCHECK(!release_driver_) << ref_counts_.DebugStringMutexHeld();
+    rewrite_context->Propagate(attached && permit_render);
+    SignalIfRequired(signal_cookie);
   }
 }
 
 void RewriteDriver::ReportSlowRewrites(int num) {
   ScopedMutex lock(rewrite_mutex());
+  bool signal_cookie = PrepareShouldSignal();
   possibly_quick_rewrites_ -= num;
   CHECK_LE(0, possibly_quick_rewrites_) << base_url_.Spec();
-  if ((possibly_quick_rewrites_ == 0) && (waiting_ == kWaitForCachedRender)) {
-    scheduler_->Signal();
-  }
+  SignalIfRequired(signal_cookie);
 }
 
 void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
-  bool should_release = false;
-  {
-    ScopedMutex lock(rewrite_mutex());
-    DCHECK_LT(0, rewrites_to_delete_);
-    --rewrites_to_delete_;
-    delete rewrite_context;
-    release_driver_ = false;
-    if (RewritesComplete()) {
-      if (waiting_ != kNoWait) {
-        // Note: relinquishes a lock so must be last line in the mutex's scope.
-        scheduler_->Signal();
-      } else {
-        release_driver_ = !externally_managed_ && !parsing_;
-        should_release = release_driver_ && (pending_async_events_ == 0);
-      }
-    }
-  }
-  if (should_release) {
-    PossiblyPurgeCachedResponseAndReleaseDriver();
-  }
+  delete rewrite_context;
+  DropReference(kRefDeletingRewrites);
 }
 
 bool RewriteDriver::GetPurgeUrl(const GoogleUrl& page_url,
@@ -2432,6 +2380,11 @@ void RewriteDriver::PurgeDownstreamCache(const GoogleString& purge_url,
 }
 
 void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
+  DCHECK(!externally_managed_);
+  // We might temporarily (due to purging) revive the object here, so
+  // better clear the "we were told it's dead!" bit.
+  release_driver_ = false;
+
   GoogleString purge_url;
   GoogleString purge_method;
   // If request headers have not been set or this is a looped back purge
@@ -2452,8 +2405,10 @@ void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
     // version available on the next request. The purge request will
     // use the same request headers as the request (and hence the same
     // UserAgent etc.).
-    PurgeDownstreamCache(purge_url, purge_method);
+    // Note: we need to bump the stats before calling the method, since
+    // we could in principle get deleted by it.
     server_context_->rewrite_stats()->downstream_cache_purge_attempts()->Add(1);
+    PurgeDownstreamCache(purge_url, purge_method);
   } else {
     server_context_->ReleaseRewriteDriver(this);
   }
@@ -2545,39 +2500,19 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(
 
 void RewriteDriver::Cleanup() {
   {
+    // TODO(morlovich): Clean this up, it's a rather inappropriate place to
+    // do this.
     ScopedMutex lock(log_record()->mutex());
     if (!log_record()->logging_info()->has_experiment_id()) {
       log_record()->logging_info()->set_experiment_id(
           options()->experiment_id());
     }
   }
-  if (!externally_managed_) {
-    bool should_release = false;
-    {
-      ScopedMutex lock(rewrite_mutex());
-      release_driver_ = false;
-      if (!RewritesComplete()) {
-        parsing_ = false;  // Permit recycle when contexts done.
-        if (fetch_queued_) {
-          // Asynchronous resource fetch we gave up on --- make sure to cleanup
-          // ourselves when we are done.
-          cleanup_on_fetch_complete_ = true;
-        }
-      } else {
-        // Even if we're finished, we may still have a fetch job trying to do
-        // some work in the background.
-        if (HaveBackgroundFetchRewrite()) {
-          cleanup_on_fetch_complete_ = true;
-        } else {
-          release_driver_ = true;
-          should_release = (pending_async_events_ == 0);
-        }
-      }
-    }
-    if (should_release) {
-      PossiblyPurgeCachedResponseAndReleaseDriver();
-    }
-  }
+  DropReference(kRefUser);
+}
+
+void RewriteDriver::AddUserReference() {
+  ref_counts_.AddRef(kRefUser);
 }
 
 namespace {
@@ -2598,12 +2533,6 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
     StrAppend(&out, "containing_charset: ", containing_charset_, "\n");
     AppendBool(&out, "filters_added", filters_added_);
     AppendBool(&out, "externally_managed", externally_managed_);
-    AppendBool(&out, "fetch_queued", fetch_queued_);
-    AppendBool(&out, "fetch_detached", fetch_detached_);
-    AppendBool(&out, "detached_fetch_main_path_complete",
-               detached_fetch_main_path_complete_);
-    AppendBool(&out, "detached_fetch_detached_path_complete",
-               detached_fetch_detached_path_complete_);
     AppendBool(&out, "parsing", parsing_);
     switch (waiting_) {
       case kNoWait:
@@ -2622,8 +2551,7 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
         StrAppend(&out, "waiting: ", IntegerToString(waiting_));
         break;
     }
-    StrAppend(&out, "pending_rewrites: ", IntegerToString(pending_rewrites_),
-              "\n");
+    AppendBool(&out, "waiting_deadline_reached", waiting_deadline_reached_);
     StrAppend(&out, "detached_rewrites_.size(): ",
               IntegerToString(detached_rewrites_.size()), "\n");
 
@@ -2635,14 +2563,9 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
                   detached_rewrite->ToString("  "));
       }
     }
-    StrAppend(&out, "rewrites_to_delete: ",
-              IntegerToString(rewrites_to_delete_), "\n");
     AppendBool(&out, "RewritesComplete()", RewritesComplete());
-    AppendBool(&out, "HaveBackgroundFetchRewrite()",
-               HaveBackgroundFetchRewrite());
     AppendBool(&out, "fully_rewrite_on_flush", fully_rewrite_on_flush_);
     AppendBool(&out, "fast_blocking_rewrite", fast_blocking_rewrite_);
-    AppendBool(&out, "cleanup_on_fetch_complete", cleanup_on_fetch_complete_);
     AppendBool(&out, "flush_requested", flush_requested_);
     AppendBool(&out, "flush_occurred", flush_occurred_);
     AppendBool(&out, "flushed_early", flushed_early_);
@@ -2658,6 +2581,7 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
     AppendBool(&out, "is_blink_request", is_blink_request_);
     AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
     AppendBool(&out, "is_nested", is_nested());
+    StrAppend(&out, "ref counts:\n", ref_counts_.DebugStringMutexHeld());
   }
   return out;
 }
@@ -2724,6 +2648,7 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
     stats_logger->UpdateAndDumpIfRequired();
   }
 
+  DropReference(kRefParsing);
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();
@@ -2926,6 +2851,13 @@ HtmlResourceSlotPtr RewriteDriver::GetSlot(
 }
 
 bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
+#ifndef NDEBUG
+  {
+    ScopedMutex lock(rewrite_mutex());
+    DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing));
+  }
+#endif
+
   // Drop all rewrites if metadata_cache is unhealthy.  This has
   // got to be done 100% or not at all, otherwise we can wind up with
   // a broken slot-context graph.
@@ -2934,7 +2866,6 @@ bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
   // (StartParseId), so that we don't decide in the middle of an HTML
   // rewrite that we won't be able to initialize the resource, thus leaving
   // us with a partially constructed slot-graph.
-  DCHECK(!fetch_queued_);
   if (!can_rewrite_resources_) {
     if (rewrites_.empty()) {
       rewrite_context->DetachSlots();
@@ -2950,7 +2881,7 @@ bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
     }
   }
   rewrites_.push_back(rewrite_context);
-  ++pending_rewrites_;
+  ref_counts_.AddRef(kRefPendingRewrites);
   ++possibly_quick_rewrites_;
   return true;
 }
@@ -2963,14 +2894,9 @@ void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
   // the origin resource as it's fetched.  For combined resources, of
   // course, we'll have to run the combiner logic on the fetched data
   // after we collect it all in memory.
-
-  // Note that we don't let the fetch start until ::FlushAsync(), above,
-  // loops through all the rewriters_ and calls Initiate().  This
-  // avoids races between rewriters mutating slots, and filters adding
-  // new Rewriters with slots.
-  DCHECK_EQ(0, pending_rewrites_);
-  DCHECK(fetch_queued_);
-  rewrites_.push_back(rewrite_context);
+  DCHECK_EQ(0, ref_counts_.QueryCountMutexHeld(kRefParsing));
+  DCHECK_EQ(1, ref_counts_.QueryCountMutexHeld(kRefFetchUserFacing));
+  fetch_rewrites_.push_back(rewrite_context);
 }
 
 bool RewriteDriver::MayCacheExtendCss() const {
@@ -3112,33 +3038,63 @@ void RewriteDriver::increment_num_inline_preview_images() {
   ++num_inline_preview_images_;
 }
 
-void RewriteDriver::increment_async_events_count() {
-  ScopedMutex lock(rewrite_mutex());
-  ++pending_async_events_;
+StringPiece RewriteDriver::RefCategoryName(RefCategory cat) {
+  switch (cat) {
+    case kRefUser:
+      return "User references";
+    case kRefParsing:
+      return "Parsing";
+    case kRefPendingRewrites:
+      return "Pending rewrites";
+    case kRefDetachedRewrites:
+      return "Detached rewrites";
+    case kRefDeletingRewrites:
+      return "Deleting rewrites";
+    case kRefFetchUserFacing:
+      return "User-facing fetch rewrite";
+    case kRefFetchBackground:
+      return "Background fetch rewrite";
+    case kRefAsyncEvents:
+      return "Misc async event";
+    case kNumRefCategories:
+      break;
+  }
+  LOG(DFATAL) << "Invalid argument to RefCategoryName" << cat;
+  return "";
 }
 
-void RewriteDriver::decrement_async_events_count() {
+void RewriteDriver::LastRefRemoved() {
+  if (!externally_managed_) {
+    release_driver_ = true;
+  } else {
+    ref_counts_.DCheckAllCountsZeroMutexHeld();
+
+    // In externally managed mode, we always keep at least one "user"
+    // reference to the driver for our bookkeeping purposes.
+    ref_counts_.AddRefMutexHeld(kRefUser);
+  }
+}
+
+void RewriteDriver::DropReference(RefCategory ref_cat) {
   bool should_release = false;
-  bool should_wakeup = false;
   {
     ScopedMutex lock(rewrite_mutex());
-    --pending_async_events_;
-    should_release = release_driver_ && (pending_async_events_ == 0);
-    // We may need to wake up someone waiting for completion and let them
-    // take control of cleanup, but only if someone like that actually exists.
-    // There may be no such waiter e.g. when WaitForPendingAsyncEvents() is true
-    // and a .pagespeed. request is being handled via a fully async path.
-    should_wakeup = WaitForPendingAsyncEvents(waiting_) &&
-        (pending_async_events_ == 0) && (waiting_ != kNoWait);
-    if (should_wakeup) {
-      scheduler_->Signal();
-      DCHECK(!should_release);
-      return;
-    }
+    bool signal_cookie = PrepareShouldSignal();
+    ref_counts_.ReleaseRefMutexHeld(ref_cat);
+    should_release = release_driver_;
+    SignalIfRequired(signal_cookie);
   }
   if (should_release) {
     PossiblyPurgeCachedResponseAndReleaseDriver();
   }
+}
+
+void RewriteDriver::increment_async_events_count() {
+  ref_counts_.AddRef(kRefAsyncEvents);
+}
+
+void RewriteDriver::decrement_async_events_count() {
+  DropReference(kRefAsyncEvents);
 }
 
 void RewriteDriver::EnableBlockingRewrite(RequestHeaders* request_headers) {

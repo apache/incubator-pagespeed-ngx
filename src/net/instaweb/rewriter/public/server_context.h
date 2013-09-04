@@ -710,6 +710,7 @@ class ServerContext {
   // Protected by rewrite_drivers_mutex_.
   bool trying_to_cleanup_rewrite_drivers_;
   RewriteDriverSet deferred_release_rewrite_drivers_;
+  bool shutdown_drivers_called_;
 
   // If set, a RewriteDriverFactory provides a mechanism to add
   // platform-specific filters to a RewriteDriver.

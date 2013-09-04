@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/util/categorized_refcount.h"
 
 namespace net_instaweb {
 
@@ -82,7 +83,6 @@ class ResponseHeaders;
 class RewriteContext;
 class RewriteDriverPool;
 class RewriteFilter;
-class ScopedMutex;
 class SplitHtmlConfig;
 class Statistics;
 class UrlAsyncFetcher;
@@ -438,6 +438,8 @@ class RewriteDriver : public HtmlParse {
   const RewriteOptions* options() const { return options_.get(); }
 
   // Override HtmlParse's StartParseId to propagate any required options.
+  // Note that if this (or other variants) returns true you should use
+  // FinishParse(), otherwise Cleanup().
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
                             const ContentType& content_type);
 
@@ -629,6 +631,12 @@ class RewriteDriver : public HtmlParse {
   // If this is a fetch, calling this also signals to the system that you
   // are no longer interested in its results.
   void Cleanup();
+
+  // Adds an extra external reference to the object. You should not
+  // normally need to call it (NewRewriteDriver does it initially), unless for
+  // some reason you want to pin the object (e.g. in tests). Matches up with
+  // Cleanup.
+  void AddUserReference();
 
   // Debugging routines to print out data about the driver.
   GoogleString ToString(bool show_detached_contexts);
@@ -934,12 +942,11 @@ class RewriteDriver : public HtmlParse {
     ++num_flushed_early_pagespeed_resources_;
   }
 
-  // Increments the value of pending_async_events_. pending_async_events_ will
-  // be incremented whenever an async event wants rewrite driver to be alive
-  // upon its completion.
+  // Increment reference count for misc. async ops that need the RewriteDriver
+  // kept alive.
   void increment_async_events_count();
 
-  // Decrements the value of pending_async_events_.
+  // Decrements a reference count bumped up by increment_async_events_count()
   void decrement_async_events_count();
 
   // Determines whether the document's Content-Type has a mimetype indicating
@@ -1065,12 +1072,6 @@ class RewriteDriver : public HtmlParse {
   bool DistributeFetch(const StringPiece& url, const StringPiece& filter_id,
                        AsyncFetch* async_fetch);
 
-  // Backend for both FetchComplete() and DetachedFetchComplete().
-  // If 'signal' is true will wake up those waiting for completion on the
-  // scheduler. It assumes that rewrite_mutex() will be held via
-  // the lock parameter; and releases it when done.
-  void FetchCompleteImpl(bool signal, ScopedMutex* lock);
-
   // Checks whether outstanding rewrites are completed in a satisfactory
   // fashion with respect to given wait_mode and timeout, and invokes
   // done->Run() when either finished or timed out.
@@ -1115,12 +1116,6 @@ class RewriteDriver : public HtmlParse {
 
   // Must be called with rewrites_mutex_ held.
   bool RewritesComplete() const;
-
-  // Returns true if there is a trailing background portion of a detached
-  // rewrite for a fetch going on, even if a preliminary answer has
-  // already been given.
-  // Must be called with rewrites_mutex_ held.
-  bool HaveBackgroundFetchRewrite() const;
 
   // Sets the base GURL in response to a base-tag being parsed.  This
   // should only be called by ScanFilter.
@@ -1221,6 +1216,25 @@ class RewriteDriver : public HtmlParse {
   // Log statistics to the AbstractLogRecord.
   void LogStats();
 
+  // This pair of calls helps determine if code that changes event state
+  // should wake up anyone waiting for rewrite driver's completion.
+  //
+  // The usage pattern is something like this:
+  //   ScopedMutex lock(rewrite_mutex());
+  //   bool should_signal_cookie = PrepareShouldSignal();
+  //
+  //   // Change state
+  //   ...
+  //
+  //   SignalIfRequired(should_signal_cookie);
+  //
+  // Precondition: rewrite_mutex() is held.
+  // WARNING: SignalIfRequired() drops the lock temporarily, so 'this'
+  // could get deleted after it returns, so it should not be accessed
+  // afterwards.
+  bool PrepareShouldSignal();
+  void SignalIfRequired(bool result_of_prepare_should_signal);
+
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -1246,25 +1260,68 @@ class RewriteDriver : public HtmlParse {
   bool filters_added_;
   bool externally_managed_;
 
-  // Indicates that a resource fetch has been dispatched to a RewriteContext,
-  // and thus the RewriteDriver should not recycled until that RewriteContext
-  // has called FetchComplete().
-  bool fetch_queued_;            // protected by rewrite_mutex()
+  // Memory management stuff. Some of the reference counts we keep track of
+  // also are used as a count of events, to help determine when we are done.
+  //
+  // WARNING: every time you decrement reference counts, you should
+  // check release_driver_ within the critical section, and call
+  // PossiblyPurgeCachedResponseAndReleaseDriver() if it is true
+  // after releasing the lock. The easiest way to get it right is to just call
+  // DropReference().
+  enum RefCategory {
+    kRefUser,  // External refcount from users
+    kRefParsing,  // Parser active
 
-  // Indicates that a RewriteContext handling a fetch has elected to
-  // return early with unoptimized results and continue rewriting in the
-  // background. In this case, the driver (and the context) will not
-  // be released until DetachedFetchComplete() has been called.
-  bool fetch_detached_;     // protected by rewrite_mutex()
+    // The number of rewrites (RewriteContext) that have been requested,
+    // and not yet completed, and for which we still hope to render
+    // them within the flush window. This is waited for.
+    kRefPendingRewrites,
 
-  // For detached fetches, two things have to finish before we can clean them
-  // up: the path that answers quickly, and the background path that finishes
-  // up the rewrite and writes into the cache. We need to keep track of them
-  // carefully since it's not impossible that the "slow" background path
-  // might just finish before the "fast" main path in weird thread schedules.
-  // Protected by rewrite_mutex()
-  bool detached_fetch_main_path_complete_;
-  bool detached_fetch_detached_path_complete_;
+    // The number of rewrites (RewriteContext) that have missed the rendering
+    // deadline. We don't wait for them, but they still need to keep
+    // the RewriteDriver alive.
+    kRefDetachedRewrites,
+
+    // Tracks the number of RewriteContexts that have been completed,
+    // but not yet deleted.  Once RewriteComplete has been called,
+    // rewrite_context->Propagate() is called to render slots (if not
+    // detached) and to queue up activity that must occur prior to the
+    // context being deleted: specifically running any successors.
+    // After all that occurs, DeleteRewriteContext must be called and
+    // that will decrement this counter.
+    kRefDeletingRewrites,
+
+    // Keeps track of fetch-responding work that's user-facing.
+    kRefFetchUserFacing,
+
+    // Keeps track of any background continuation of a fetch.
+    kRefFetchBackground,
+
+    // Misc async references from outside
+    //
+    // TODO(morlovich): Split between events people might want to wait for
+    // and events which they don't in a follow up.
+    kRefAsyncEvents,
+
+    kNumRefCategories
+  };
+
+  friend class CategorizedRefcount<RewriteDriver, RefCategory>;
+
+  // protected by rewrite_mutex()
+  CategorizedRefcount<RewriteDriver, RefCategory> ref_counts_;
+
+  // Interface to CategorizedRefcount
+  void LastRefRemoved();
+  StringPiece RefCategoryName(RefCategory cat);
+
+  // Drops a reference of given kind, signaling any waiters
+  // and potentially even releasing the rewrite driver.
+  void DropReference(RefCategory cat);
+
+  // Set to true when the refcount reaches 0. See comment
+  // above RefCategory for how this should be used.
+  bool release_driver_;
 
   // Indicates that the rewrite driver is currently parsing the HTML,
   // and thus should not be recycled under FinishParse() is called.
@@ -1275,6 +1332,9 @@ class RewriteDriver : public HtmlParse {
   // everything having been finished in a given mode.
   WaitMode waiting_;  // protected by rewrite_mutex()
 
+  // This is set to true if the current wait's deadline has expired.
+  bool waiting_deadline_reached_;  // protected by rewrite_mutex()
+
   // If this is true, the usual HTML streaming interface will let rendering
   // of every flush window fully complete before proceeding rather than
   // use a deadline. This means rewriting of HTML may be slow, and hence
@@ -1284,10 +1344,6 @@ class RewriteDriver : public HtmlParse {
   // If this is true, we don't wait for async events before flushing bytes to
   // the client during a blocking rewrite; else we do wait for async events.
   bool fast_blocking_rewrite_;
-
-  // If this is true, this RewriteDriver should Cleanup() itself when it
-  // finishes handling the current fetch.
-  bool cleanup_on_fetch_complete_;
 
   bool flush_requested_;
   bool flush_occurred_;
@@ -1310,9 +1366,6 @@ class RewriteDriver : public HtmlParse {
   // flow.
   bool is_lazyload_script_flushed_;
 
-  // Set to true if RewriteDriver can be released.
-  bool release_driver_;
-
   // Set to true if we are keeping the driver alive to make a purge request to
   // a downstream cache, so we don't keep trying to do it.
   bool made_downstream_purge_attempt_;
@@ -1321,15 +1374,6 @@ class RewriteDriver : public HtmlParse {
   // enabled. Writes to the property cache for this cohort are predicated on
   // this.
   bool write_property_cache_dom_cohort_;
-
-  // Tracks the number of RewriteContexts that have been completed,
-  // but not yet deleted.  Once RewriteComplete has been called,
-  // rewrite_context->Propagate() is called to render slots (if not
-  // detached) and to queue up activity that must occur prior to the
-  // context being deleted: specifically running any successors.
-  // After all that occurs, DeleteRewriteContext must be called and
-  // that will decrement this counter.
-  int rewrites_to_delete_;       // protected by rewrite_mutex()
 
   // URL of the HTML pages being rewritten in the HTML flow or the
   // of the resource being rewritten in the resource flow.
@@ -1378,6 +1422,15 @@ class RewriteDriver : public HtmlParse {
   // Number of total initiated rewrites for the request.
   int64 num_initiated_rewrites_;          // protected by rewrite_mutex()
 
+  // Number of total detached rewrites for the request, i.e. rewrites whose
+  // results did not make it to the response. This is different from
+  // kRefDetachedRewrites (and detached_rewrites_.size(), which is equal to it)
+  // since that counter is for the number of rewrites
+  // currently in the detached state for the current flush window,
+  // while this variable is total that ever got detached over all of the
+  // document.
+  int64 num_detached_rewrites_;           // protected by rewrite_mutex()
+
   // Contains the RewriteContext* that were still running at the deadline.
   // They are said to be in a "detached" state although the RewriteContexts
   // themselves don't know that.  They will continue performing their
@@ -1387,24 +1440,12 @@ class RewriteDriver : public HtmlParse {
   // have been retired.
   RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex()
 
-  // Number of total detached rewrites for the request, i.e. rewrites whose
-  // results did not make it to the response.
-  int64 num_detached_rewrites_;           // protected by rewrite_mutex()
-
-  // The number of rewrites that have been requested, and not yet
-  // completed.  This can actually be derived, more or less, from
-  // initiated_rewrites_.size() and rewrites_.size() but is kept
-  // separate for programming convenience.
-  int pending_rewrites_;                  // protected by rewrite_mutex()
-
   // Rewrites that may possibly be satisfied from metadata cache alone.
   int possibly_quick_rewrites_;           // protected by rewrite_mutex()
 
-  // The number of async events that have been issued, and not yet completed.
-  // This is usually used to make the life of driver longer so that any async
-  // event that depends on RewriteDriver will be completed before the driver is
-  // released.
-  int pending_async_events_;             // protected by rewrite_mutex()
+  // List of RewriteContext objects for fetch to delete. We do it in
+  // clear as a simplification.
+  RewriteContextVector fetch_rewrites_;
 
   // These objects are provided on construction or later, and are
   // owned by the caller.

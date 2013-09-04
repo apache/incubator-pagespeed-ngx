@@ -160,7 +160,7 @@ bool StaticRewriter::ParseText(const StringPiece& url,
   driver->SetWriter(writer);
   if (!driver->StartParseId(url, id, kContentTypeHtml)) {
     fprintf(stderr, "StartParseId failed on url %s\n", url.as_string().c_str());
-    server_context_->ReleaseRewriteDriver(driver);
+    driver->Cleanup();
     return false;
   }
 

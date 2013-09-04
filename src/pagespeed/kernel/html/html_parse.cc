@@ -219,6 +219,12 @@ bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
   return url_valid_;
 }
 
+void HtmlParse::SetUrlForTesting(const StringPiece& url) {
+  url.CopyToString(&url_);
+  bool ok = google_url_.Reset(url);
+  CHECK(ok) << url;
+}
+
 void HtmlParse::ShowProgress(const char* message) {
   if (log_rewrite_timing_) {
     long delta = static_cast<long>(timer_->NowUs() - parse_start_time_us_);

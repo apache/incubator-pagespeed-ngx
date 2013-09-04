@@ -54,6 +54,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 
 namespace net_instaweb {
 
@@ -82,6 +83,7 @@ class RewriteDriverTest : public RewriteTestBase {
   }
 
   bool IsDone(RewriteDriver::WaitMode wait_mode, bool deadline_reached) {
+    ScopedMutex lock(rewrite_driver()->rewrite_mutex());
     return rewrite_driver()->IsDone(wait_mode, deadline_reached);
   }
 
@@ -1703,6 +1705,11 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheEnabled) {
   // Use a wait fetcher so that the response does not get a chance to get
   // rewritten.
   SetupWaitFetcher();
+  // Since we want to call both FinishParse() and WaitForCompletion() (it's
+  // inside CallFetcherCallbacksForDriver) on a managed rewrite driver,
+  // we have to pin it, since otherwise FinishParse will drop our last
+  // reference.
+  rewrite_driver()->AddUserReference();
   SetupResponsesForDownstreamCacheTesting();
   // Setup request headers since the subsequent purge request needs this.
   RequestHeaders request_headers;
@@ -1714,13 +1721,13 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheEnabled) {
   // would have completed), we allow the fetches to complete now.
   factory()->CallFetcherCallbacksForDriver(rewrite_driver());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
-  // The purge-request-fetch can be allowed to complete without any waiting.
-  // Hence, we set the pass-through-mode to true.
+
+  // Now we want to permit fetches to go ahead once we let purge happen
   factory()->wait_url_async_fetcher()->SetPassThroughMode(true);
-  factory()->CallFetcherCallbacksForDriver(rewrite_driver());
-  // We need to initate the shut-down so that the purge-request-fetch is
-  // processed fully, and available for the checks below.
-  factory()->ShutDown();
+  rewrite_driver()->Cleanup();  // Drop our ref, to let purge go ahead.
+
+  // We can actually check the result of flush already because
+  // our fetcher is immediate.
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://localhost:1234/purge/",
                counting_url_async_fetcher()->most_recent_fetched_url());
@@ -1733,6 +1740,11 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheDisabled) {
   // Use a wait fetcher so that the response does not get a chance to get
   // rewritten.
   SetupWaitFetcher();
+  // Since we want to call both FinishParse() and WaitForCompletion() (it's
+  // inside CallFetcherCallbacksForDriver) on a managed rewrite driver,
+  // we have to pin it, since otherwise FinishParse will drop our last
+  // reference.
+  rewrite_driver()->AddUserReference();
   SetupResponsesForDownstreamCacheTesting();
   // Setup request headers since the subsequent purge request needs this.
   RequestHeaders request_headers;
@@ -1744,13 +1756,12 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest, DownstreamCacheDisabled) {
   // would have completed), we allow the fetches to complete now.
   factory()->CallFetcherCallbacksForDriver(rewrite_driver());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
   // The purge-request-fetch can be allowed to complete without any waiting.
   // Hence, we set the pass-through-mode to true.
   factory()->wait_url_async_fetcher()->SetPassThroughMode(true);
-  factory()->CallFetcherCallbacksForDriver(rewrite_driver());
-  // We need to initate the shut-down so that the purge-request-fetch, if any,
-  // is processed fully, and available for the checks below.
-  factory()->ShutDown();
+  rewrite_driver()->Cleanup();  // Drop our ref, to let any purge go ahead.
+
   // We expect no purges in this flow.
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://test.com/test/b.css",
@@ -1771,9 +1782,7 @@ TEST_F(DownstreamCacheWithPossiblePurgeTest,
   ProcessHtmlForDownstreamCacheTesting();
   EXPECT_STREQ(kRewrittenCachableHtmlWithCacheExtension, output_buffer_);
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
-  // We need to initate the shut-down so that the purge-request-fetch, if any,
-  // is processed fully, and available for the checks below.
-  factory()->ShutDown();
+
   // We expect no purges in this flow.
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_STREQ("http://test.com/test/b.css",
@@ -1787,18 +1796,20 @@ TEST_F(DownstreamCacheWithNoPossiblePurgeTest, DownstreamCacheNoInitRewrites) {
   // Use a wait fetcher so that the response does not get a chance to get
   // rewritten.
   SetupWaitFetcher();
+  rewrite_driver()->AddUserReference();
   SetupResponsesForDownstreamCacheTesting();
   // Setup request headers since the subsequent purge request needs this.
   RequestHeaders request_headers;
   rewrite_driver()->SetRequestHeaders(request_headers);
   ProcessHtmlForDownstreamCacheTesting();
   EXPECT_STREQ(kRewrittenCachableHtmlWithCollapseWhitespace, output_buffer_);
+
   // Since only collapse-whitespace is enabled in this test, we do not expect
   // any fetches (or fetch callbacks for the wait fetcher) here.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  // We need to initate the shut-down so that the purge-request-fetch, if any,
-  // is processed fully, and available for the checks below.
-  factory()->ShutDown();
+
+  // Release RewriteDriver and trigger any purge.
+  rewrite_driver()->Cleanup();
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, factory()->rewrite_stats()->
                    downstream_cache_purge_attempts()->Get());

@@ -384,7 +384,7 @@ class ProxyFetch : public SharedAsyncFetch {
   // held.
   void ScheduleQueueExecutionIfNeeded();
 
-  // Frees up the RewriteDriver (via FinishParse or ReleaseRewriteDriver),
+  // Frees up the RewriteDriver (via FinishParse or Cleanup),
   // calls the callback (nulling out callback_ to ensure that we don't
   // do it again), notifies the ProxyInterface that the fetch is
   // complete, and deletes the ProxyFetch.
