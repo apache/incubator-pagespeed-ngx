@@ -17,9 +17,12 @@
 #ifndef PAGESPEED_KERNEL_BASE_STRING_MULTI_MAP_H_
 #define PAGESPEED_KERNEL_BASE_STRING_MULTI_MAP_H_
 
-#include <map>
+#include <algorithm>
+#include <set>
 #include <utility>
 #include <vector>
+
+#include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -29,6 +32,10 @@ namespace net_instaweb {
 // Implements an ordered string map, providing case-sensitive and case
 // insensitive versions.  The order of insertion is retained and
 // names/value pairs can be accessed by index or looked up by name.
+//
+// The keys and values in the map may contain embedded NUL characters.
+// The values can also be the NULL pointer, which the API retains
+// distinctly from empty strings.
 template<class StringCompare> class StringMultiMap {
  public:
   StringMultiMap() { }
@@ -44,12 +51,12 @@ template<class StringCompare> class StringMultiMap {
     for (int i = 0, n = vector_.size(); i < n; ++i) {
       delete vector_[i].second;
     }
-    map_.clear();
+    set_.clear();
     vector_.clear();
   }
 
   // Returns the number of distinct names
-  int num_names() const { return map_.size(); }
+  int num_names() const { return set_.size(); }
 
   // Returns the number of distinct values, which can be larger than num_names
   // if Add is called twice with the same name.
@@ -60,11 +67,13 @@ template<class StringCompare> class StringMultiMap {
   // with the same variable, and each of these values will be returned
   // in the vector.
   bool Lookup(const StringPiece& name, ConstStringStarVector* values) const {
-    typename Map::const_iterator p = map_.find(name.as_string());
+    SetEntry lookup_entry(name);
+    typename Set::const_iterator p = set_.find(lookup_entry);
     bool ret = false;
-    if (p != map_.end()) {
+    if (p != set_.end()) {
       ret = true;
-      *values = p->second;
+      const SetEntry& stored_entry = *p;
+      *values = stored_entry.values();
     }
     return ret;
   }
@@ -80,53 +89,110 @@ template<class StringCompare> class StringMultiMap {
   }
 
   bool Has(const StringPiece& name) const {
-    return map_.find(name.as_string()) != map_.end();
+    SetEntry lookup_entry(name);
+    return set_.find(lookup_entry) != set_.end();
   }
 
   // Remove all variables by name.  Returns true if anything was removed.
-  bool RemoveAll(const StringPiece& var_name) {
-    GoogleString var_string(var_name.data(), var_name.size());
-    typename Map::iterator p = map_.find(var_string);
-    bool removed = (p != map_.end());
-    if (removed) {
+  bool RemoveAll(const StringPiece& key) {
+    return RemoveAllFromSortedArray(&key, 1);
+  }
+
+  // Remove all variables by name.  Returns true if anything was removed.
+  //
+  // The 'names' vector must be sorted based on StringCompare.
+  bool RemoveAllFromSortedArray(const StringPiece* names, int names_size) {
+#ifndef NDEBUG
+    for (int i = 1; i < names_size; ++i) {
+      StringCompare compare;
+      // The complicated comparison we do here is to account for
+      // duplicate entries, such as the two Set-Cookie entries that occur in
+      // ResponseHeadersTest.TestUpdateFrom.  We could also require call-sites
+      // to de-dup but this seems easier.
+      DCHECK(compare(names[i - 1], names[i]) ||
+             (!compare(names[i - 1], names[i]) &&
+              !compare(names[i], names[i - 1])))
+          << "\"" << names[i - 1] << "\" vs \"" << names[i];
+    }
+#endif
+
+    // Keep around dummy entry for stuffing in keys and doing lookups.
+    // The values field for this instance is unused.
+    SetEntry lookup_entry;
+
+    // First, see if any of the names are in the map.  This way we'll avoid
+    // making any allocations if there is no work to be done.  We cannot
+    // actually remove the map entries, though, until we rebuild the vector,
+    // since the map owns the StringPiece key storage used by the vector.
+    const int kNotFound = -1;
+    int index_of_first_match = kNotFound;
+    typename Set::iterator set_entry_of_first_match;
+    for (int i = 0; i < names_size; ++i) {
+      lookup_entry.set_key(names[i]);
+      set_entry_of_first_match = set_.find(lookup_entry);
+      if (set_entry_of_first_match != set_.end()) {
+        index_of_first_match = i;
+        break;
+      }
+    }
+
+    if (index_of_first_match == kNotFound) {
+      return false;
+    } else {
       StringPairVector temp_vector;  // Temp variable for new vector.
-      temp_vector.reserve(vector_.size());
+      temp_vector.reserve(vector_.size() - 1);
+      StringCompare compare;
       for (int i = 0; i < num_values(); ++i) {
-        if (!StringCaseEqual(name(i),  var_string)) {
-          temp_vector.push_back(vector_[i]);
-        } else {
-          removed = true;
+        if (std::binary_search(names, names + names_size, name(i), compare)) {
           delete vector_[i].second;
+        } else {
+          temp_vector.push_back(vector_[i]);
         }
       }
 
       vector_.swap(temp_vector);
 
-      // Note: we have to erase from the map second, because map owns the name.
-      map_.erase(p);
+      set_.erase(set_entry_of_first_match);
+      for (int i = index_of_first_match + 1; i < names_size; ++i) {
+        lookup_entry.set_key(names[i]);
+        set_.erase(lookup_entry);
+      }
     }
-    return removed;
+    return true;
   }
 
-  const char* name(int index) const { return vector_[index].first; }
+  StringPiece name(int index) const { return vector_[index].first; }
 
   // Note that the value can be NULL.
   const GoogleString* value(int index) const { return vector_[index].second; }
 
   // Add a new variable.  The value can be null.
-  void Add(const StringPiece& var_name, const StringPiece& value) {
-    ConstStringStarVector dummy_values;
-    GoogleString name_buf(var_name.data(), var_name.size());
-    std::pair<typename Map::iterator, bool> iter_inserted = map_.insert(
-        typename Map::value_type(name_buf, dummy_values));
-    typename Map::iterator iter = iter_inserted.first;
-    ConstStringStarVector& values = iter->second;
+  void Add(const StringPiece& key, const StringPiece& value) {
+    SetEntry lookup_entry(key);
+    std::pair<typename Set::iterator, bool> iter_inserted =
+        set_.insert(lookup_entry);
+    typename Set::iterator iter = iter_inserted.first;
+
+    // To avoid letting you corrupt the comparison sanity of an STL set,
+    // the 'insert' method returns an iterator that returns you only a
+    // const reference to the stored entry.  However, the mutation we are
+    // going to do here is to change the key to point to storage we'll
+    // own in the entry, which we want to allocate only the first time
+    // it is added.
+    //
+    // We also need to be able to mutate the entry to allow adding new
+    // value entries.
+    SetEntry& entry = const_cast<SetEntry&>(*iter);
+    if (iter_inserted.second) {
+      // The first time we insert, make a copy of the key in storage we own.
+      entry.SaveKey();
+    }
     GoogleString* value_copy = NULL;
     if (value.data() != NULL) {
       value_copy = new GoogleString(value.as_string());
     }
-    values.push_back(value_copy);
-    vector_.push_back(StringPair(iter->first.c_str(), value_copy));
+    entry.AddValue(value_copy);
+    vector_.push_back(StringPair(iter->key(), value_copy));
   }
 
   // Parse and add from a string of name-value pairs.
@@ -165,19 +231,82 @@ template<class StringCompare> class StringMultiMap {
   }
 
  private:
+  // We are creating a map-like object using a std::set to make it clearer
+  // how we are managing key storage within the entry.
+  class SetEntry {
+   public:
+    SetEntry() { }
+    SetEntry(StringPiece key) : key_(key) { }
+    SetEntry(const SetEntry& src)
+        : key_(src.key_) {
+      // Note that a copy-construction does occur in Add, but only of
+      // the lookup_entry, which will not have a saved key.
+      DCHECK(!src.IsKeySaved());
+      DCHECK(src.values_.empty());
+    }
+
+    SetEntry& operator=(const SetEntry& src) {
+      if (&src != this) {
+        DCHECK(!src.IsKeySaved());
+        DCHECK(src.values_.empty());
+        key_ = src.key_;
+      }
+      return *this;
+    }
+
+    void set_key(StringPiece key) {
+      DCHECK(!IsKeySaved());
+      key_ = key;
+    }
+
+    void AddValue(const GoogleString* value) {
+      DCHECK(IsKeySaved());
+      values_.push_back(value);
+    }
+
+    bool IsKeySaved() const {
+      return key_storage_.data() == key_.data();
+    }
+
+    // During lookups, key will point to the passed-in StringPiece.
+    // However, the persistent entry we put in the map must duplicate
+    // the key into key_storage and change key to point to that.
+    void SaveKey() {
+      key_.CopyToString(&key_storage_);
+      key_ = key_storage_;
+    }
+
+    StringPiece key() const { return key_; }
+    const ConstStringStarVector& values() const { return values_; }
+
+   private:
+    GoogleString key_storage_;
+    StringPiece key_;
+    ConstStringStarVector values_;
+  };
+
+  struct EntryCompare {
+    bool operator()(const SetEntry& a, const SetEntry& b) const {
+      return compare(a.key(), b.key());
+    }
+
+    StringCompare compare;
+  };
+
   // We are keeping two structures, conceptually map<String,vector<String>> and
   // vector<pair<String,String>>, so we can do associative lookups and
   // also order-preserving iteration and easy indexed access.
   //
-  // To avoid duplicating the strings, we will have the map own the
-  // Names (keys) in a GoogleString, and the string-pair-vector own the
-  // value as an explicitly newed char*.  The risk of using a GoogleString
-  // to hold the value is that the pointers will not survive a resize.
-  typedef std::pair<const char*, GoogleString*> StringPair;  // owns the value
-  typedef std::map<GoogleString, ConstStringStarVector, StringCompare> Map;
+  // To avoid duplicating the strings and superfluous string-allocations on
+  // lookups, we implement this via a set, whose entries own the keys.  A
+  // separate string-pair-vector owns the values as new'd GoogleString*.  We
+  // use a pointer here to avoid the cost of string-copies as the vector is
+  // resized.
+  typedef std::pair<StringPiece, GoogleString*> StringPair;  // owns the value
+  typedef std::set<SetEntry, EntryCompare> Set;
   typedef std::vector<StringPair> StringPairVector;
 
-  Map map_;
+  Set set_;
   StringPairVector vector_;
 
   DISALLOW_COPY_AND_ASSIGN(StringMultiMap);

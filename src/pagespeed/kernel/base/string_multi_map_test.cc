@@ -151,4 +151,38 @@ TEST_F(StringMultiMapTest, TestClear) {
   EXPECT_EQ(0, string_map_.num_values());
 }
 
+TEST_F(StringMultiMapTest, TestEmbeddedNulsInKey) {
+  static StringPiece a1("a\0_1", 4), a2("a\0_2", 4);
+  string_map_.Add(a1, "100");
+  string_map_.Add(a2, "200");
+  ASSERT_EQ(7, string_map_.num_names());
+  ASSERT_EQ(8, string_map_.num_values());
+
+  // Test indexed lookup.
+  EXPECT_STREQ(a1, string_map_.name(6));
+  EXPECT_STREQ("100", *(string_map_.value(6)));
+  EXPECT_STREQ(a2, string_map_.name(7));
+  EXPECT_STREQ("200", *(string_map_.value(7)));
+  EXPECT_STREQ("a", string_map_.name(0));
+  EXPECT_STREQ("1", *(string_map_.value(0)));
+
+  // Now test associative lookup.
+  EXPECT_STREQ("100", *string_map_.Lookup1(a1));
+  EXPECT_STREQ("200", *string_map_.Lookup1(a2));
+  EXPECT_TRUE(string_map_.Has("a"));
+  EXPECT_FALSE(string_map_.Has(StringPiece("a\0_3", 4)));
+}
+
+TEST_F(StringMultiMapTest, TestRemoveFromSortedArray) {
+  static const StringPiece kRemoveVector[] = {"c", "D"};
+  EXPECT_TRUE(string_map_.RemoveAllFromSortedArray(
+      kRemoveVector, arraysize(kRemoveVector)));
+  EXPECT_EQ(3, string_map_.num_names());
+  EXPECT_TRUE(string_map_.Has("a"));
+  EXPECT_TRUE(string_map_.Has("b"));
+  EXPECT_TRUE(string_map_.Has("e"));
+  EXPECT_FALSE(string_map_.Has("c"));
+  EXPECT_FALSE(string_map_.Has("d"));
+}
+
 }  // namespace net_instaweb

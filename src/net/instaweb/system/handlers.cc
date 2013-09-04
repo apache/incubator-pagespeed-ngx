@@ -194,21 +194,21 @@ const char* StatisticsHandler(
     for (int i = 0; i < params.size(); ++i) {
       const GoogleString value =
           (params.value(i) == NULL) ? "" : *params.value(i);
-      const char* name = params.name(i);
-      if (strcmp(name, "json") == 0) {
+      StringPiece name = params.name(i);
+      if (name == "json") {
         json_output = true;
         *content_type = kContentTypeJson;
-      } else if (strcmp(name, "start_time") == 0) {
+      } else if (name =="start_time") {
         StringToInt64(value, &start_time);
-      } else if (strcmp(name, "end_time") == 0) {
+      } else if (name == "end_time") {
         StringToInt64(value, &end_time);
-      } else if (strcmp(name, "var_titles") == 0) {
+      } else if (name == "var_titles") {
         std::vector<StringPiece> variable_names;
         SplitStringPieceToVector(value, ",", &variable_names, true);
         for (size_t i = 0; i < variable_names.size(); ++i) {
           var_titles.insert(variable_names[i].as_string());
         }
-      } else if (strcmp(name, "granularity") == 0) {
+      } else if (name == "granularity") {
         StringToInt64(value, &granularity_ms);
       }
     }

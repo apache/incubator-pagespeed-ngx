@@ -328,13 +328,13 @@ struct CharStarCompareSensitive {
 };
 
 struct StringCompareSensitive {
-  bool operator()(const GoogleString& s1, const GoogleString& s2) const {
-    return (strcmp(s1.c_str(), s2.c_str()) < 0);
+  bool operator()(const StringPiece& s1, const StringPiece& s2) const {
+    return s1 < s2;
   }
 };
 
 struct StringCompareInsensitive {
-  bool operator()(const GoogleString& s1, const GoogleString& s2) const {
+  bool operator()(const StringPiece& s1, const StringPiece& s2) const {
     return (StringCaseCompare(s1, s2) < 0);
   }
 };
