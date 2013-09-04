@@ -49,6 +49,9 @@ using Css::Rulesets;
 
 namespace net_instaweb {
 
+const char CriticalCssBeaconFilter::kInitializePageSpeedJs[] =
+    "var pagespeed = pagespeed || {};";
+
 // Counters.
 const char CriticalCssBeaconFilter::kCriticalCssBeaconAddedCount[] =
     "critical_css_beacon_filter_script_added_count";
@@ -190,15 +193,18 @@ void CriticalCssBeaconFilter::SummariesDone() {
     return;
   }
 
-  // Insert the beaconing code.
+  // Insert the beaconing code and selectors.
+  GoogleString script;
   StaticAssetManager* asset_manager =
       driver()->server_context()->static_asset_manager();
-  GoogleString script = asset_manager->GetAsset(
-      StaticAssetManager::kCriticalCssBeaconJs, driver()->options());
-  AppendSelectorsInitJs(&script, selectors);
   if (driver()->server_context()->factory()->UseBeaconResultsInFilters()) {
-    // Insert the beaconing initialization code.
+    script = asset_manager->GetAsset(
+        StaticAssetManager::kCriticalCssBeaconJs, driver()->options());
+    AppendSelectorsInitJs(&script, selectors);
     AppendBeaconInitJs(metadata, &script);
+  } else {
+    script = kInitializePageSpeedJs;
+    AppendSelectorsInitJs(&script, selectors);
   }
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
   driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");

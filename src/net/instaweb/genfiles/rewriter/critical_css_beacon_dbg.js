@@ -52,7 +52,6 @@
 }};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
-pagespeed.computeCriticalSelectors = pagespeed.computeCriticalSelectors;
 pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce, selectors) {
   this.MAXITERS_ = 250;
   this.beaconUrl_ = beaconUrl;

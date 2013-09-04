@@ -31,8 +31,6 @@ goog.require('pagespeedutils');
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
-pagespeed['computeCriticalSelectors'] = pagespeed.computeCriticalSelectors;
-
 /**
  * @constructor
  * @param {string} beaconUrl The URL on the server to send the beacon to.

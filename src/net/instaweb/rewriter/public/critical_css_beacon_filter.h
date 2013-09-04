@@ -46,6 +46,8 @@ class Variable;
 // Assumes CSS @imports have been flattened first.
 class CriticalCssBeaconFilter : public CssSummarizerBase {
  public:
+  static const char kInitializePageSpeedJs[];
+
   // Statistics:
   static const char kCriticalCssBeaconAddedCount[];
   static const char kCriticalCssNoBeaconDueToMissingData[];

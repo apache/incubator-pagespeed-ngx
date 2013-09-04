@@ -120,29 +120,32 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     return CssLinkHref(UrlOpt(url));
   }
 
-  GoogleString BeaconScriptFor(StringPiece selectors) {
-    GoogleString script = StrCat(
-        "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-        server_context()->static_asset_manager()->GetAsset(
-            StaticAssetManager::kCriticalCssBeaconJs, options()),
-        "pagespeed.selectors=[", selectors, "];");
-    if (factory()->UseBeaconResultsInFilters()) {
-      StrAppend(&script,
-                "pagespeed.criticalCssBeaconInit('",
-                options()->beacon_url().http, "','", kTestDomain,
-                "','0','", ExpectedNonce(), "',pagespeed.selectors);");
-    }
-    StrAppend(&script, "</script>");
-    return script;
-  }
-
   GoogleString InputHtml(StringPiece head) {
     return StrCat("<head>", head, "</head><body><p>content</p></body>");
   }
 
   GoogleString BeaconHtml(StringPiece head, StringPiece selectors) {
-    return StrCat("<head>", head, "</head><body><p>content</p>",
-                  BeaconScriptFor(selectors), "</body>");
+    GoogleString html = StrCat(
+        "<head>", head, "</head><body><p>content</p>"
+        "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+        server_context()->static_asset_manager()->GetAsset(
+            StaticAssetManager::kCriticalCssBeaconJs, options()),
+        "pagespeed.selectors=[", selectors, "];");
+    StrAppend(&html,
+              "pagespeed.criticalCssBeaconInit('",
+              options()->beacon_url().http, "','", kTestDomain,
+              "','0','", ExpectedNonce(), "',pagespeed.selectors);"
+              "</script></body>");
+    return html;
+  }
+
+  GoogleString SelectorsOnlyHtml(StringPiece head, StringPiece selectors) {
+    return StrCat(
+        "<head>", head, "</head><body><p>content</p>"
+        "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+        CriticalCssBeaconFilter::kInitializePageSpeedJs,
+        "pagespeed.selectors=[", selectors, "];"
+        "</script></body>");
   }
 
  private:
@@ -291,8 +294,7 @@ TEST_F(CriticalCssBeaconFilterTest, FalseBeaconResultsGivesEmptyBeaconUrl) {
   factory()->set_use_beacon_results_in_filters(false);
   GoogleString input_html = InputHtml(
       StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHref("b.css")));
-  // BeaconHtml() (via BeaconScriptFor) will use an empty beacon url.
-  GoogleString expected_html = BeaconHtml(
+  GoogleString expected_html = SelectorsOnlyHtml(
       StrCat(CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css")),
       kSelectorsInlineAB);
   ValidateExpectedUrl(kTestDomain, input_html, expected_html);
