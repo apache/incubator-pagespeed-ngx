@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/rendered_image.pb.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -400,7 +401,8 @@ TEST_F(CriticalImagesFinderTest, NoCriticalImages) {
 TEST_F(CriticalImagesFinderTest, TestRenderedImageExtractionFromPropertyCache) {
   RenderedImages rendered_images;
   RenderedImages_Image* images = rendered_images.add_image();
-  images->set_src("imageA.jpeg");
+  GoogleString url_str = "http://example.com/imageA.jpeg";
+  images->set_src(url_str);
   images->set_rendered_width(40);
   images->set_rendered_height(54);
   PropertyPage* page = rewrite_driver()->property_page();
@@ -413,10 +415,16 @@ TEST_F(CriticalImagesFinderTest, TestRenderedImageExtractionFromPropertyCache) {
           finder()->ExtractRenderedImageDimensionsFromCache(rewrite_driver()));
 
   EXPECT_EQ(1, extracted_rendered_images->image_size());
-  EXPECT_STREQ("imageA.jpeg",
-               extracted_rendered_images->image(0).src());
+  EXPECT_STREQ(url_str, extracted_rendered_images->image(0).src());
   EXPECT_EQ(40, extracted_rendered_images->image(0).rendered_width());
   EXPECT_EQ(54, extracted_rendered_images->image(0).rendered_height());
+
+  options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
+  std::pair<int32, int32> dimensions;
+  GoogleUrl gurl(url_str);
+  EXPECT_TRUE(finder()->GetRenderedImageDimensions(rewrite_driver(), gurl,
+                                                   &dimensions));
+  EXPECT_EQ(std::make_pair(40, 54), dimensions);
 }
 
 TEST_F(CriticalImagesHistoryFinderTest, TestLegacyDataMigration) {

@@ -313,6 +313,12 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     }
   }
 
+  // Store an empty CriticalImagesInfo back into the driver if we don't have any
+  // beacon results yet.
+  if (info == NULL) {
+    info = new CriticalImagesInfo;
+  }
+
   if (driver->options()->Enabled(
       RewriteOptions::kResizeToRenderedImageDimensions)) {
     scoped_ptr<RenderedImages> rendered_images(
@@ -323,11 +329,6 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     }
   }
 
-  // Store an empty CriticalImagesInfo back into the driver if we don't have any
-  // beacon results yet.
-  if (info == NULL) {
-    info = new CriticalImagesInfo;
-  }
   driver->set_critical_images_info(info);
 }
 
