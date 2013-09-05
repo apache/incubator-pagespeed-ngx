@@ -193,6 +193,9 @@ DEFINE_int64(
     min_resource_cache_time_to_rewrite_ms,
     RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs,
     "No resources with Cache-Control TTL less than this will be rewritten.");
+DEFINE_bool(
+    hide_referer_using_meta,
+    false, "Hide referer by adding meta tag to the HTML.");
 DEFINE_int64(
     max_low_res_image_size_bytes,
     RewriteOptions::kDefaultMaxLowResImageSizeBytes,
@@ -921,6 +924,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("access_control_allow_origins")) {
     options->set_access_control_allow_origins(
         FLAGS_access_control_allow_origins);
+  }
+  if (WasExplicitlySet("hide_referer_using_meta")) {
+    options->set_hide_referer_using_meta(
+        FLAGS_hide_referer_using_meta);
   }
   if (WasExplicitlySet("max_low_res_image_size_bytes")) {
     options->set_max_low_res_image_size_bytes(
