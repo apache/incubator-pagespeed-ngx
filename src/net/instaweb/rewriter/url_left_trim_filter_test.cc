@@ -288,7 +288,7 @@ TEST_F(UrlLeftTrimFilterTest, DoubleSlashPath) {
 
 TEST_F(UrlLeftTrimFilterTest, DoubleSlashBeginningPath) {
   SetFilterBaseUrl("http://foo.bar/index.html");
-  OneTrim(true, "http://foo.bar//other.html", "other.html");
+  OneTrim(false, "http://foo.bar//other.html", "http://foo.bar//other.html");
 }
 
 TEST_F(UrlLeftTrimFilterTest, TripleSlashPath) {

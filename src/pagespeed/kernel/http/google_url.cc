@@ -88,19 +88,8 @@ void GoogleUrl::Init() {
 
 bool GoogleUrl::ResolveHelper(const GURL& base, const std::string& url) {
   gurl_ = base.Resolve(url);
-  bool ret = gurl_.is_valid();
-  if (ret) {
-    const StringPiece& path_and_leaf = PathAndLeaf();
-    if (path_and_leaf.starts_with("//")) {
-      GURL origin(Origin().as_string());
-      if (origin.is_valid()) {
-        gurl_ = origin.Resolve(path_and_leaf.substr(1).as_string());
-        ret = gurl_.is_valid();
-      }
-    }
-  }
   Init();
-  return ret;
+  return gurl_.is_valid();
 }
 
 bool GoogleUrl::Reset(const GoogleUrl& base, const GoogleString& str) {
