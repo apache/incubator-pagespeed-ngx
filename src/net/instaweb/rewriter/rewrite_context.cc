@@ -1762,7 +1762,6 @@ void RewriteContext::DistributeRewriteDone(bool success) {
                                             *response_headers, contents,
                                             &output_resource)) {
           outputs_.push_back(output_resource);
-          slots_[0]->SetResource(ResourcePtr(output_resource));
           output_resource->DetermineContentType();
         }
       }
