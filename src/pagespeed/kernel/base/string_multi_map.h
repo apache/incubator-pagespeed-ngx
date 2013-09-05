@@ -105,13 +105,12 @@ template<class StringCompare> class StringMultiMap {
 #ifndef NDEBUG
     for (int i = 1; i < names_size; ++i) {
       StringCompare compare;
-      // The complicated comparison we do here is to account for
-      // duplicate entries, such as the two Set-Cookie entries that occur in
-      // ResponseHeadersTest.TestUpdateFrom.  We could also require call-sites
-      // to de-dup but this seems easier.
-      DCHECK(compare(names[i - 1], names[i]) ||
-             (!compare(names[i - 1], names[i]) &&
-              !compare(names[i], names[i - 1])))
+      // compare implements <, and we want <= to allow for for
+      // duplicate entries, such as the two Set-Cookie entries that
+      // occur in ResponseHeadersTest.TestUpdateFrom.  We could also
+      // require call-sites to de-dup but this seems easier.  We can
+      // implement a<=b via !compare(b, a).
+      DCHECK(!compare(names[i], names[i - 1]))
           << "\"" << names[i - 1] << "\" vs \"" << names[i];
     }
 #endif
