@@ -1138,7 +1138,6 @@
         'rewriter/critical_css_finder.cc',
         'rewriter/critical_finder_support_util.cc',
         'rewriter/critical_images_beacon_filter.cc',
-        'rewriter/critical_images_callback.cc',
         'rewriter/critical_selector_filter.cc',
         'rewriter/critical_selector_finder.cc',
         'rewriter/css_inline_filter.cc',
