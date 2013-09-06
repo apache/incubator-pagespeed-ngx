@@ -352,12 +352,15 @@ void ProxyFetchPropertyCallbackCollector::ExecuteConnectProxyFetch(
   DCHECK(proxy_fetch_ == NULL);
   DCHECK(!detached_);
   proxy_fetch_ = proxy_fetch;
-  std::set<ProxyFetchPropertyCallback*>::iterator iter;
-  for (iter = pending_callbacks_.begin(); iter != pending_callbacks_.end();
-      ++iter) {
-    // Finish all the PropertyCache lookups as soon as possible as origin
-    // starts sending content.
-    (*iter)->FastFinishLookup();
+
+  if (options_ == NULL || !options_->await_pcache_lookup()) {
+    std::set<ProxyFetchPropertyCallback*>::iterator iter;
+    for (iter = pending_callbacks_.begin(); iter != pending_callbacks_.end();
+        ++iter) {
+      // Finish all the PropertyCache lookups as soon as possible as origin
+      // starts sending content.
+      (*iter)->FastFinishLookup();
+    }
   }
   ThreadSynchronizer* sync = server_context_->thread_synchronizer();
   if (done_) {

@@ -288,6 +288,10 @@ DEFINE_bool(use_fallback_property_cache_values, false,
             "values(i.e. without query params) in case actual values are not "
             "available.");
 
+DEFINE_bool(await_pcache_lookup, false,
+            "Boolean indicating whether to always wait for property cache "
+            "lookup to finish.");
+
 DEFINE_string(lazyload_images_blank_url, "",
               "The initial image url to load in the lazyload images filter.");
 
@@ -711,6 +715,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("use_fallback_property_cache_values")) {
     options->set_use_fallback_property_cache_values(
         FLAGS_use_fallback_property_cache_values);
+  }
+  if (WasExplicitlySet("await_pcache_lookup")) {
+    options->set_await_pcache_lookup(FLAGS_await_pcache_lookup);
   }
   if (WasExplicitlySet("lazyload_images_blank_url")) {
     options->set_lazyload_images_blank_url(

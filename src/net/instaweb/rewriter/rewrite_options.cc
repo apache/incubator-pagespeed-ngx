@@ -253,6 +253,8 @@ const char RewriteOptions::kUseBlankImageForInlinePreview[] =
     "UseBlankImageForInlinePreview";
 const char RewriteOptions::kUseFallbackPropertyCacheValues[] =
     "UseFallbackPropertyCacheValues";
+const char RewriteOptions::kAwaitPcacheLookup[] =
+    "AwaitPcacheLookup";
 const char RewriteOptions::kUseSmartDiffInBlink[] = "UseSmartDiffInBlink";
 const char RewriteOptions::kXModPagespeedHeaderValue[] =
     "XHeaderValue";
@@ -1699,6 +1701,12 @@ void RewriteOptions::AddProperties() {
         "if query paramaters are removed. Example: http://www.test.com?a=1 and "
         "http://www.test.com?a=2 share same fallback properties though they "
         "are two different urls.");
+  AddBaseProperty(
+        false,
+        &RewriteOptions::await_pcache_lookup_,
+        "wpcl", kAwaitPcacheLookup,
+        kServerScope,
+        NULL);
   AddBaseProperty(
       true, &RewriteOptions::support_noscript_enabled_, "snse",
       kSupportNoScriptEnabled,

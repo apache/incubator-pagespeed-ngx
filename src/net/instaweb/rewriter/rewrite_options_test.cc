@@ -903,6 +903,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
                          kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss);
   PassLookupOptionByName(RewriteOptions::kUseBlankImageForInlinePreview);
   PassLookupOptionByName(RewriteOptions::kUseFallbackPropertyCacheValues);
+  PassLookupOptionByName(RewriteOptions::kAwaitPcacheLookup);
   PassLookupOptionByName(RewriteOptions::kUseSmartDiffInBlink);
   PassLookupOptionByName(RewriteOptions::kXModPagespeedHeaderValue);
   PassLookupOptionByName(RewriteOptions::kXPsaBlockingRewrite);

@@ -73,6 +73,15 @@ class RequestHeaders;
 // RewriteOptions::Initialize.  Subclasses may also add new Properties
 // and so property-list-merging takes place at Initialization time.
 class RewriteOptions {
+ private:
+  // These being private is against the style guide but necessary to keep
+  // them private while still being used by the Option class hierarchy.
+  // Note that iwyu.py incorrectly complains about the template classes but
+  // scripts/iwyu manually removes the warning.
+  class PropertyBase;
+  template<class ValueType> class Property;
+  template<class RewriteOptionsSubclass, class OptionClass> class PropertyLeaf;
+
  public:
   // If you add or remove anything from this list, you must also update the
   // kFilterVectorStaticInitializer array in rewrite_options.cc.  If you add
@@ -312,6 +321,7 @@ class RewriteOptions {
   static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
   static const char kUseBlankImageForInlinePreview[];
   static const char kUseFallbackPropertyCacheValues[];
+  static const char kAwaitPcacheLookup[];
   static const char kUseSmartDiffInBlink[];
   static const char kXModPagespeedHeaderValue[];
   static const char kXPsaBlockingRewrite[];
@@ -482,53 +492,6 @@ class RewriteOptions {
   // parameters), as well as sets of those pairs.
   typedef std::pair<StringPiece, StringPiece> OptionStringPair;
   typedef std::set<OptionStringPair> OptionSet;
-
-  // The base class for a Property.  This class contains fields of
-  // Properties that are independent of type.
-  class PropertyBase {
-   public:
-    PropertyBase(const char* id, StringPiece option_name)
-        : id_(id),
-          help_text_(NULL),
-          option_name_(option_name),
-          scope_(kDirectoryScope),
-          do_not_use_for_signature_computation_(false),
-          index_(-1) {
-    }
-    virtual ~PropertyBase();
-
-    // Connect the specified RewriteOption to this property.
-    // set_index() must previously have been called on this.
-    virtual void InitializeOption(RewriteOptions* options) const = 0;
-
-    void set_do_not_use_for_signature_computation(bool x) {
-      do_not_use_for_signature_computation_ = x;
-    }
-    bool is_used_for_signature_computation() const {
-      return !do_not_use_for_signature_computation_;
-    }
-
-    void set_scope(OptionScope x) { scope_ = x; }
-    OptionScope scope() const { return scope_; }
-
-    void set_help_text(const char* x) { help_text_ = x; }
-    const char* help_text() const { return help_text_; }
-
-    void set_index(int index) { index_ = index; }
-    const char* id() const { return id_; }
-    StringPiece option_name() const { return option_name_; }
-    int index() const { return index_; }
-
-   private:
-    const char* id_;
-    const char* help_text_;
-    StringPiece option_name_;  // Key into all_options_.
-    OptionScope scope_;
-    bool do_not_use_for_signature_computation_;  // Default is false.
-    int index_;
-
-    DISALLOW_COPY_AND_ASSIGN(PropertyBase);
-  };
 
   typedef std::vector<PropertyBase*> PropertyVector;
 
@@ -1975,6 +1938,13 @@ class RewriteOptions {
     return use_fallback_property_cache_values_.value();
   }
 
+  void set_await_pcache_lookup(bool x) {
+    set_option(x, &await_pcache_lookup_);
+  }
+  bool await_pcache_lookup() const {
+    return await_pcache_lookup_.value();
+  }
+
   void set_enable_prioritizing_scripts(bool x) {
     set_option(x, &enable_prioritizing_scripts_);
   }
@@ -2468,78 +2438,6 @@ class RewriteOptions {
   ThreadSystem* thread_system() const { return thread_system_; }
 
  protected:
-  // Type-specific class of Property.  This subclass of PropertyBase
-  // knows what sort of value the Option will hold, and so we can put
-  // the default value here.
-  template<class ValueType>
-  class Property : public PropertyBase {
-   public:
-    // When adding a new Property, we take the default_value by value,
-    // not const-reference.  This is because when calling AddProperty
-    // we may want to use a compile-time constant
-    // (e.g. Timer::kHourMs) which does not have a linkable address.
-    Property(ValueType default_value,
-             const char* id,
-             StringPiece option_name)
-        : PropertyBase(id, option_name),
-          default_value_(default_value) {
-    }
-
-    void set_default(ValueType value) { default_value_ = value; }
-    const ValueType& default_value() const { return default_value_; }
-
-   private:
-    ValueType default_value_;
-
-    DISALLOW_COPY_AND_ASSIGN(Property);
-  };
-
-  // Leaf subclass of Property<ValueType>, which is templated on the class of
-  // the corresponding Option.  The template parameters here are
-  //   RewriteOptionsSubclass -- the subclass of RewriteOptions in which
-  //     this option is instantiated, e.g. ApacheConfig.
-  //   OptionClass -- the subclass of OptionBase that is being instantiated
-  //     in each RewriteOptionsSubclass.
-  // These template parameters are generally automatically discovered by
-  // the compiler when AddProperty is called.
-  //
-  // TODO(jmarantz): It looks tempting to fold Property<T> and
-  // PropertyLeaf<T> together, but this is difficult because of the
-  // way that the Option class hiearchy is structured and the
-  // precision of C++ pointers-to-members.  Attempting that is
-  // probably a worthwhile follow-up task.
-  template<class RewriteOptionsSubclass, class OptionClass>
-  class PropertyLeaf : public Property<typename OptionClass::ValueType> {
-   public:
-    // Fancy C++ pointers to members; a typesafe version of offsetof.  See
-    // http://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?
-    // topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Fcplr034.htm
-    typedef OptionClass RewriteOptionsSubclass::*OptionOffset;
-    typedef typename OptionClass::ValueType ValueType;
-
-    PropertyLeaf(ValueType default_value,
-                 OptionOffset offset,
-                 const char* id,
-                 StringPiece option_name)
-        : Property<ValueType>(default_value, id, option_name),
-          offset_(offset) {
-    }
-
-    virtual void InitializeOption(RewriteOptions* options) const {
-      RewriteOptionsSubclass* options_subclass =
-          static_cast<RewriteOptionsSubclass*>(options);
-      OptionClass& option = options_subclass->*offset_;
-      option.set_property(this);
-      DCHECK_NE(-1, this->index()) << "Call Property::set_index first.";
-      options->set_option_at(this->index(), &option);
-    }
-
-   private:
-    OptionOffset offset_;
-
-    DISALLOW_COPY_AND_ASSIGN(PropertyLeaf);
-  };
-
   // Helper class to represent an Option, whose value is held in some class T.
   // An option is explicitly initialized with its default value, although the
   // default value can be altered later.  It keeps track of whether a
@@ -2599,7 +2497,7 @@ class RewriteOptions {
       // default value out of properties_ when !was_set_;
       value_ = property->default_value();
     }
-    virtual const Property<T>* property() const { return property_; }
+    virtual const PropertyBase* property() const { return property_; }
 
     // Sets a the option default value globally.  This is thread-unsafe,
     // and reaches into the option property_ field via a const-cast to
@@ -2732,7 +2630,7 @@ class RewriteOptions {
  protected:
   // Adds a new Property to 'properties' (the last argument).
   template<class RewriteOptionsSubclass, class OptionClass>
-  static PropertyBase* AddProperty(
+  static void AddProperty(
       typename OptionClass::ValueType default_value,
       OptionClass RewriteOptionsSubclass::*offset,
       const char* id,
@@ -2746,7 +2644,6 @@ class RewriteOptions {
     property->set_scope(scope);
     property->set_help_text(help_text);
     properties->push_back(property);
-    return property;
   }
 
   // Merges properties into all_properties so that
@@ -2820,6 +2717,125 @@ class RewriteOptions {
 
  private:
   struct OptionIdCompare;
+
+  // The base class for a Property.  This class contains fields of
+  // Properties that are independent of type.
+  class PropertyBase {
+   public:
+    PropertyBase(const char* id, StringPiece option_name)
+        : id_(id),
+          help_text_(NULL),
+          option_name_(option_name),
+          scope_(kDirectoryScope),
+          do_not_use_for_signature_computation_(false),
+          index_(-1) {
+    }
+    virtual ~PropertyBase();
+
+    // Connect the specified RewriteOption to this property.
+    // set_index() must previously have been called on this.
+    virtual void InitializeOption(RewriteOptions* options) const = 0;
+
+    void set_do_not_use_for_signature_computation(bool x) {
+      do_not_use_for_signature_computation_ = x;
+    }
+    bool is_used_for_signature_computation() const {
+      return !do_not_use_for_signature_computation_;
+    }
+
+    void set_scope(OptionScope x) { scope_ = x; }
+    OptionScope scope() const { return scope_; }
+
+    void set_help_text(const char* x) { help_text_ = x; }
+    const char* help_text() const { return help_text_; }
+
+    void set_index(int index) { index_ = index; }
+    const char* id() const { return id_; }
+    StringPiece option_name() const { return option_name_; }
+    int index() const { return index_; }
+
+   private:
+    const char* id_;
+    const char* help_text_;
+    StringPiece option_name_;  // Key into all_options_.
+    OptionScope scope_;
+    bool do_not_use_for_signature_computation_;  // Default is false.
+    int index_;
+
+    DISALLOW_COPY_AND_ASSIGN(PropertyBase);
+  };
+
+  // Type-specific class of Property.  This subclass of PropertyBase
+  // knows what sort of value the Option will hold, and so we can put
+  // the default value here.
+  template<class ValueType>
+  class Property : public PropertyBase {
+   public:
+    // When adding a new Property, we take the default_value by value,
+    // not const-reference.  This is because when calling AddProperty
+    // we may want to use a compile-time constant
+    // (e.g. Timer::kHourMs) which does not have a linkable address.
+    Property(ValueType default_value,
+             const char* id,
+             StringPiece option_name)
+        : PropertyBase(id, option_name),
+          default_value_(default_value) {
+    }
+
+    void set_default(ValueType value) { default_value_ = value; }
+    const ValueType& default_value() const { return default_value_; }
+
+   private:
+    ValueType default_value_;
+
+    DISALLOW_COPY_AND_ASSIGN(Property);
+  };
+
+  // Leaf subclass of Property<ValueType>, which is templated on the class of
+  // the corresponding Option.  The template parameters here are
+  //   RewriteOptionsSubclass -- the subclass of RewriteOptions in which
+  //     this option is instantiated, e.g. ApacheConfig.
+  //   OptionClass -- the subclass of OptionBase that is being instantiated
+  //     in each RewriteOptionsSubclass.
+  // These template parameters are generally automatically discovered by
+  // the compiler when AddProperty is called.
+  //
+  // TODO(jmarantz): It looks tempting to fold Property<T> and
+  // PropertyLeaf<T> together, but this is difficult because of the
+  // way that the Option class hiearchy is structured and the
+  // precision of C++ pointers-to-members.  Attempting that is
+  // probably a worthwhile follow-up task.
+  template<class RewriteOptionsSubclass, class OptionClass>
+  class PropertyLeaf : public Property<typename OptionClass::ValueType> {
+   public:
+    // Fancy C++ pointers to members; a typesafe version of offsetof.  See
+    // http://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?
+    // topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Fcplr034.htm
+    typedef OptionClass RewriteOptionsSubclass::*OptionOffset;
+    typedef typename OptionClass::ValueType ValueType;
+
+    PropertyLeaf(ValueType default_value,
+                 OptionOffset offset,
+                 const char* id,
+                 StringPiece option_name)
+        : Property<ValueType>(default_value, id, option_name),
+          offset_(offset) {
+    }
+
+    virtual void InitializeOption(RewriteOptions* options) const {
+      RewriteOptionsSubclass* options_subclass =
+          static_cast<RewriteOptionsSubclass*>(options);
+      OptionClass& option = options_subclass->*offset_;
+      option.set_property(this);
+      DCHECK_NE(-1, this->index()) << "Call Property::set_index first.";
+      options->set_option_at(this->index(), &option);
+    }
+
+   private:
+    OptionOffset offset_;
+
+    DISALLOW_COPY_AND_ASSIGN(PropertyLeaf);
+  };
 
   static Properties* properties_;          // from RewriteOptions only
   static Properties* all_properties_;      // includes subclass properties
@@ -3389,6 +3405,8 @@ class RewriteOptions {
   Option<bool> use_smart_diff_in_blink_;
   // Use fallback values from property cache.
   Option<bool> use_fallback_property_cache_values_;
+  // Always wait for property cache lookup to finish.
+  Option<bool> await_pcache_lookup_;
   // Enable Prioritizing of scripts in defer javascript.
   Option<bool> enable_prioritizing_scripts_;
   // Enables rewriting of uncacheable resources.
