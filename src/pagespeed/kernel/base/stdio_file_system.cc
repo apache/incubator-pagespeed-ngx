@@ -18,7 +18,11 @@
 
 #include "pagespeed/kernel/base/stdio_file_system.h"
 
+#ifdef WIN32
+#include <windows.h>
+#else
 #include <dirent.h>
+#endif  // WIN32
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -317,6 +321,38 @@ BoolOrError StdioFileSystem::IsDir(const char* path, MessageHandler* handler) {
 
 bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
                                    MessageHandler* handler) {
+#ifdef WIN32
+  const char kDirSeparator[] = "\\";
+  GoogleString dir_string = dir.as_string();
+  if (!dir_string.ends_with(kDirSeparator)) {
+    dir_string.append(kDirSeparator);
+  }
+  char sys_err[1024];
+  strcpy(sys_err, "UNKNOWN ERROR");  // In case strerror_s fails.
+  WIN32_FIND_DATA entry;
+  HANDLE iter = FindFirstFile(dir_string + "*", &entry);
+  if (iter == INVALID_HANDLE_VALUE) {
+    strerror_s(sys_err, sizeof(sys_err), GetLastError());
+    handler->Error(dir_string.c_str(), 0,
+                   "Failed to FindFirstFile: %s", sys_err);
+    return false;
+  }
+  do {
+    if ((strcmp(entry.cFileName, ".") != 0) &&
+        (strcmp(entry.cFileName, "..") != 0)) {
+      files->push_back(dir_string + entry.cFileName);
+    }
+  } while (FindNextFile(iter, &entry) != 0);
+  if (GetLastError() != ERROR_NO_MORE_FILES) {
+    strerror_s(sys_err, sizeof(sys_err), GetLastError());
+    handler->Error(dir_string.c_str(), 0,
+                   "Failed to FindNextFile: %s", sys_err);
+    FindClose(iter);
+    return false;
+  }
+  FindClose(iter);
+  return true;
+#else
   GoogleString dir_string = dir.as_string();
   EnsureEndsInSlash(&dir_string);
   const char* dirname = dir_string.c_str();
@@ -339,6 +375,7 @@ bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
     }
     return true;
   }
+#endif  // WIN32
 }
 
 bool StdioFileSystem::Stat(const StringPiece& path, struct stat* statbuf,
