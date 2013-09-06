@@ -167,8 +167,9 @@ class ApacheCachingHeaders : public CachingHeaders {
         request_(request) {
   }
 
-  virtual bool Lookup(const GoogleString& key, StringPieceVector* values) {
-    const char* value = apr_table_get(request_->headers_out, key.c_str());
+  virtual bool Lookup(const StringPiece& key, StringPieceVector* values) {
+    const char* value = apr_table_get(request_->headers_out,
+                                      key.as_string().c_str());
     if (value == NULL) {
       return false;
     }

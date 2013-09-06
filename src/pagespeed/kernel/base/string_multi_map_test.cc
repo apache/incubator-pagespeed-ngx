@@ -130,7 +130,6 @@ TEST_F(StringMultiMapTest, TestLookupHas) {
 }
 
 TEST_F(StringMultiMapTest, TestRemove) {
-  ConstStringStarVector v;
   EXPECT_TRUE(string_map_.RemoveAll("e"));
   EXPECT_EQ(4, string_map_.num_names());
   EXPECT_TRUE(string_map_.RemoveAll("a"));

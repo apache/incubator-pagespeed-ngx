@@ -711,7 +711,7 @@ TEST_F(ResponseHeadersTest, TestRemoveAll) {
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
 }
 
-TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
+TEST_F(ResponseHeadersTest, TestRemoveAllFromSortedArray) {
   ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
                       "Set-Cookie: CG=US:CA:Mountain+View\r\n"
@@ -726,48 +726,57 @@ TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
   ExpectSizes(8, 4);
 
   // Empty set means remove nothing and return false.
-  StringSetInsensitive removes0;
-  EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes0));
+  EXPECT_FALSE(response_headers_.RemoveAllFromSortedArray(NULL, 0));
   ExpectSizes(8, 4);
 
   // Removing headers which aren't there removes nothing and returns false.
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kLocation, &vs));
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kGzip, &vs));
-  removes0.insert(HttpAttributes::kLocation);
-  removes0.insert(HttpAttributes::kGzip);
-  EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes0));
+  const StringPiece removes0[] = {
+    HttpAttributes::kGzip,
+    HttpAttributes::kLocation,
+  };
+  EXPECT_FALSE(response_headers_.RemoveAllFromSortedArray(
+      removes0, arraysize(removes0)));
   ExpectSizes(8, 4);
 
   // Removing multiple headers works.
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
-  StringSetInsensitive removes1;
-  removes1.insert(HttpAttributes::kVary);
-  removes1.insert(HttpAttributes::kSetCookie);
-  EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes1));
+  const StringPiece removes1[] = {
+    HttpAttributes::kSetCookie,
+    HttpAttributes::kVary,
+  };
+  EXPECT_TRUE(response_headers_.RemoveAllFromSortedArray(
+      removes1, arraysize(removes1)));
   ExpectSizes(2, 2);
   EXPECT_EQ(2, response_headers_.NumAttributes());
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kVary, &vs));
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kSetCookie, &vs));
 
   // Removing something which has already been removed has no effect.
-  EXPECT_FALSE(response_headers_.RemoveAllFromSet(removes1));
+  EXPECT_FALSE(response_headers_.RemoveAllFromSortedArray(
+      removes1, arraysize(removes1)));
   ExpectSizes(2, 2);
 
   // Removing one header works.
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
-  StringSetInsensitive removes2;
-  removes2.insert(HttpAttributes::kDate);
-  EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes2));
+  static StringPiece removes2[] = {
+    HttpAttributes::kDate
+  };
+  EXPECT_TRUE(response_headers_.RemoveAllFromSortedArray(
+      removes2, arraysize(removes2)));
   ExpectSizes(1, 1);
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kDate, &vs));
 
   // Removing a header that is there after one that isn't works.
   EXPECT_TRUE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
-  StringSetInsensitive removes3;
-  removes3.insert("X-Bogus-Attribute");
-  removes3.insert(HttpAttributes::kCacheControl);
-  EXPECT_TRUE(response_headers_.RemoveAllFromSet(removes3));
+  const StringPiece removes3[] = {
+    HttpAttributes::kCacheControl,
+    "X-Bogus-Attribute",
+  };
+  EXPECT_TRUE(response_headers_.RemoveAllFromSortedArray(
+      removes3, arraysize(removes3)));
   ExpectSizes(0, 0);
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
 }
@@ -1052,10 +1061,12 @@ TEST_F(ResponseHeadersTest, TestRemoveDoesntSeparateCommaValues) {
       "\r\n";
   EXPECT_EQ(expected_headers2, response_headers_.ToString());
 
-  // 3) RemoveAllFromSet
-  StringSetInsensitive set;
-  set.insert(HttpAttributes::kVary);
-  EXPECT_TRUE(response_headers_.RemoveAllFromSet(set));
+  // 3) RemoveAllFromSortedArray
+  const StringPiece remove_vector[] = {
+    HttpAttributes::kVary,
+  };
+  EXPECT_TRUE(response_headers_.RemoveAllFromSortedArray(
+      remove_vector, arraysize(remove_vector)));
 
   const char expected_headers3[] =
       "HTTP/1.0 0 (null)\r\n"

@@ -44,7 +44,7 @@ class CachingHeaders {
   virtual ~CachingHeaders();
 
   // Implementors supply this method to provide HTTP response header values.
-  virtual bool Lookup(const GoogleString& key, StringPieceVector* values) = 0;
+  virtual bool Lookup(const StringPiece& key, StringPieceVector* values) = 0;
 
   // To obtain correct heuristics on URLs with query-parameters, supply the URL.
   void set_url(StringPiece x) { url_ = x; }

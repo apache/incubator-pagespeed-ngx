@@ -31,7 +31,7 @@ class TestCachingHeaders : public CachingHeaders {
         cacheable_resource_status_code_(true) {
   }
 
-  virtual bool Lookup(const GoogleString& key, StringPieceVector* values) {
+  virtual bool Lookup(const StringPiece& key, StringPieceVector* values) {
     if (key == HttpAttributes::kCacheControl) {
       SplitStringPieceToVector(cache_control_, ",", values, true);
       for (int i = 0, n = values->size(); i < n; ++i) {

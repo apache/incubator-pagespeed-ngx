@@ -16,8 +16,8 @@
 
 #include "pagespeed/kernel/http/headers.h"
 
+#include <algorithm>
 #include <cstddef>
-#include <set>
 #include <vector>
 
 #include "base/logging.h"
@@ -333,42 +333,53 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
 }
 
 template<class Proto> bool Headers<Proto>::RemoveAll(const StringPiece& name) {
-  StringSetInsensitive names;
-  names.insert(name.as_string());
-  return RemoveAllFromSet(names);
+  return RemoveAllFromSortedArray(&name, 1);
 }
 
-template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
-    const StringSetInsensitive& names) {
+template<class Proto> bool Headers<Proto>::RemoveAllFromSortedArray(
+    const StringPiece* names, int names_size) {
   // First, we update the map.
   PopulateMap();
-  bool removed_anything = false;
-  for (StringSetInsensitive::const_iterator iter = names.begin();
-       iter != names.end(); ++iter) {
-    if (map_->RemoveAll(*iter)) {
-      removed_anything = true;
-    }
-  }
+  bool removed_anything = map_->RemoveAllFromSortedArray(names, names_size);
 
   // If we removed anything, we update the proto as well.
   if (removed_anything) {
     // Remove all headers that are slated for removal.
     protobuf::RepeatedPtrField<NameValue>* headers = proto_->mutable_header();
-    RemoveFromHeaders(names, headers);
+    // Note: you might be tempted to consider repopulating the protobuf
+    // from the map, which should be correct at this point, rather
+    // than doing more searches.  This is feasible, but will result in
+    // splitting multi-value entries into separate headers, e.g.
+    // Cache-Control:max-age=0, no-cache will become two separate Cache-Control
+    // entries, which will cause
+    // ResponseHeadersTest.TestRemoveDoesntSeparateCommaValues to fail.
+    // headers->Clear();
+    // for (int i = 0; i < map_->num_values(); ++i) {
+    //   NameValue* name_value = proto_->add_header();
+    //   name_value->set_name(map_->name(i));
+    //   const GoogleString* value = map_->value(i);
+    //   name_value->set_value(value->data(), value->size());
+    // }
+    //
+    // Instead, we call this helper, which re-implements StringMultiMap
+    // functionality in the protobuf.
+    RemoveFromHeaders(names, names_size, headers);
   }
 
   return removed_anything;
 }
 
 template<class Proto> void Headers<Proto>::RemoveFromHeaders(
-    const StringSetInsensitive& names,
+    const StringPiece* names, int names_size,
     protobuf::RepeatedPtrField<NameValue>* headers) {
   // Remove all headers that are slated for removal.
   std::vector<bool> to_keep;
   to_keep.reserve(headers->size());
 
+  StringCompareInsensitive compare;
   for (int i = 0, n = headers->size(); i < n; ++i) {
-    to_keep.push_back(names.find(headers->Get(i).name()) == names.end());
+    to_keep.push_back(!std::binary_search(
+        names, names + names_size, headers->Get(i).name(), compare));
   }
   RemoveUnneeded(to_keep, headers);
 }
@@ -397,12 +408,16 @@ template<class Proto> void Headers<Proto>::Replace(
 template<class Proto> void Headers<Proto>::UpdateFrom(
     const Headers<Proto>& other) {
   // Get set of names to remove.
-  StringSetInsensitive removing_names;
-  for (int i = 0, n = other.NumAttributes(); i < n; ++i) {
-    removing_names.insert(other.Name(i));
+  int n = other.NumAttributes();
+  scoped_array<StringPiece> removing_names(new StringPiece[n]);
+  for (int i = 0; i < n; ++i) {
+    removing_names[i] = other.Name(i);
   }
+  std::sort(removing_names.get(), removing_names.get() + n,
+            StringCompareInsensitive());
+
   // Remove them.
-  RemoveAllFromSet(removing_names);
+  RemoveAllFromSortedArray(removing_names.get(), n);
   // Add new values.
   for (int i = 0, n = other.NumAttributes(); i < n; ++i) {
     Add(other.Name(i), other.Value(i));

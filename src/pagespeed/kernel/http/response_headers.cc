@@ -78,6 +78,13 @@ void ApplyTimeDelta(const char* attr, int64 delta_ms,
   }
 }
 
+StringPieceVector NamesToSanitize() {
+  StringPieceVector v(2);
+  v.push_back(HttpAttributes::kSetCookie);
+  v.push_back(HttpAttributes::kSetCookie2);
+  return v;
+}
+
 }  // namespace
 
 bool ResponseHeaders::IsImminentlyExpiring(
@@ -344,8 +351,10 @@ bool ResponseHeaders::RemoveAll(const StringPiece& name) {
   return false;
 }
 
-bool ResponseHeaders::RemoveAllFromSet(const StringSetInsensitive& names) {
-  if (Headers<HttpResponseHeaders>::RemoveAllFromSet(names)) {
+bool ResponseHeaders::RemoveAllFromSortedArray(
+    const StringPiece* names, int names_size) {
+  if (Headers<HttpResponseHeaders>::RemoveAllFromSortedArray(
+          names, names_size)) {
     cache_fields_dirty_ = true;
     return true;
   }
@@ -478,18 +487,18 @@ void ResponseHeaders::SetOriginalContentLength(int64 content_length) {
 }
 
 bool ResponseHeaders::Sanitize() {
-  bool cookie = RemoveAll(HttpAttributes::kSetCookie);
-  bool cookie2 = RemoveAll(HttpAttributes::kSetCookie2);
-  return cookie || cookie2;
+  // Remove cookies, which we will never store in a cache.
+  StringPieceVector names_to_sanitize = NamesToSanitize();
+  return RemoveAllFromSortedArray(&names_to_sanitize[0],
+                                  names_to_sanitize.size());
 }
 
 void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
   proto->CopyFrom(*proto_.get());
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
-  StringSetInsensitive names;
-  names.insert(HttpAttributes::kSetCookie);
-  names.insert(HttpAttributes::kSetCookie2);
-  RemoveFromHeaders(names, headers);
+  StringPieceVector names_to_sanitize = NamesToSanitize();
+  return RemoveFromHeaders(&names_to_sanitize[0],
+                           names_to_sanitize.size(), headers);
 }
 
 bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {
@@ -582,7 +591,7 @@ class InstawebCacheComputer : public CachingHeaders {
     return (type != NULL) && type->IsLikelyStaticResource();
   }
 
-  virtual bool Lookup(const GoogleString& key, StringPieceVector* values) {
+  virtual bool Lookup(const StringPiece& key, StringPieceVector* values) {
     ConstStringStarVector value_strings;
     bool ret = response_headers_.Lookup(key, &value_strings);
     if (ret) {

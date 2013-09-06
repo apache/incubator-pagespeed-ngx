@@ -101,12 +101,15 @@ template<class Proto> class Headers {
   // Removes all headers by name.  Return true if anything was removed.
   virtual bool RemoveAll(const StringPiece& name);
 
-  // Removes all headers whose name is in |names|.
-  // Return true if anything was removed.
-  virtual bool RemoveAllFromSet(const StringSetInsensitive& names);
+  // Removes all headers whose name is in |names|, which must be in
+  // case-insensitive sorted order.
+  virtual bool RemoveAllFromSortedArray(const StringPiece* names,
+                                        int names_size);
 
-  // Removes all headers whose name is in |names|.
-  static void RemoveFromHeaders(const StringSetInsensitive& names,
+  // Removes all headers whose name is in |names|, which must be in
+  // string-insensitive sorted order.
+  static void RemoveFromHeaders(const StringPiece* names,
+                                int names_size,
                                 protobuf::RepeatedPtrField<NameValue>* headers);
 
   // Removes all headers whose name starts with prefix.
@@ -156,7 +159,6 @@ template<class Proto> class Headers {
   // NOTE: the map will contain the comma-split values, but the protobuf
   // will contain the original pairs including comma-separated values.
   void AddToMap(const StringPiece& name, const StringPiece& value) const;
-
 
   DISALLOW_COPY_AND_ASSIGN(Headers);
 };
