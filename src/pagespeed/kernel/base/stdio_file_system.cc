@@ -18,14 +18,16 @@
 
 #include "pagespeed/kernel/base/stdio_file_system.h"
 
-#ifdef WIN32
-#include <windows.h>
-#else
+#ifndef WIN32
 #include <dirent.h>
 #endif  // WIN32
 #include <errno.h>
 #include <sys/stat.h>
+#ifndef WIN32
 #include <unistd.h>
+#else
+#include <windows.h>
+#endif  // WIN32
 
 #include <algorithm>
 #include <cstddef>
