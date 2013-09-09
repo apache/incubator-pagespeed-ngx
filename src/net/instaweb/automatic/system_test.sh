@@ -2,8 +2,8 @@
 # Copyright 2010 Google Inc. All Rights Reserved.
 # Author: abliss@google.com (Adam Bliss)
 #
-# Generic system test, which should work on any implementation of
-# Page Speed Automatic (not just the Apache module).
+# Generic system test, which should work on any implementation of Page Speed
+# Automatic.
 #
 # See system_test_helpers.sh for usage.
 #
@@ -93,9 +93,7 @@ start_test Query params and headers are recognized in resource flow.
 URL=$REWRITTEN_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
 echo "Image gets rewritten by default."
 # TODO(sligocki): Replace this fetch_until with single blocking fetch once
-# the blocking rewrite header below works correctly. Unfortunately that
-# currently fails in PSS :/ (Note: it works in MPS tests although might be
-# flaky).
+# the blocking rewrite header below works correctly.
 WGET_ARGS="--header='X-PSA-Blocking-Rewrite:psatest'"
 fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
 echo "Image doesn't get rewritten when we turn it off with headers."
@@ -782,8 +780,8 @@ check_from "$OUT" grep -aq 'Content-Type: application/pdf'
 # Test DNS prefetching. DNS prefetching is dependent on user agent, but is
 # enabled for Wget UAs, allowing this test to work with our default wget params.
 test_filter insert_dns_prefetch
-fetch_until $URL 'fgrep -c //ref.pssdemos.com' 2
-fetch_until $URL 'fgrep -c //ajax.googleapis.com' 2
+fetch_until $URL 'fgrep -ci //ref.pssdemos.com' 2
+fetch_until $URL 'fgrep -ci //ajax.googleapis.com' 2
 
 # Test dedup_inlined_images
 test_filter dedup_inlined_images,inline_images

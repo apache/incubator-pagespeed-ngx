@@ -6,14 +6,18 @@
 # Runs all Apache-specific experiment framework tests that don't depend on
 # Google Analytics.
 #
-# See system_test_helpers.sh for usage.
+# See automatic/system_test_helpers.sh for usage.
 #
 # Not intended to be run stand-alone.  Should be run only by
 # apache_experiment_no_ge_test and apache_experiment_ga_test.
 #
 
-this_dir=$(dirname $0)
-source "$this_dir/system_test_helpers.sh" || exit 1
+this_dir="$( dirname "${BASH_SOURCE[0]}" )"
+INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
+if [ ! -e "$INSTAWEB_CODE_DIR" ] ; then
+  INSTAWEB_CODE_DIR="$this_dir/../../"
+fi
+source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 EXAMPLE="$1/mod_pagespeed_example"
 EXTEND_CACHE="$EXAMPLE/extend_cache.html"

@@ -141,7 +141,7 @@ const char kPngString[] = "png";
 // Dividing 49152 by 5 (multiplying by 0.2) gets us just under our
 // default 10k byte threshold.
 //
-// Making this number smaller will break apache_system_test.sh with this
+// Making this number smaller will break apache/system_test.sh with this
 // failure:
 //     failure at line 353
 // FAILed Input: /tmp/.../fetched_directory/*256x192*Puzzle* : 8251 -le 8157

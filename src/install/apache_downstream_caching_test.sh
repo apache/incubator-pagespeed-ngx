@@ -14,8 +14,12 @@
 # before and after the test or it can be overwritten by the updated
 # sample_conf.vcl. By default, it is assumed to have the value 1.
 
-this_dir=$(dirname $0)
-source "$this_dir/system_test_helpers.sh" || exit 1
+this_dir="$( dirname "${BASH_SOURCE[0]}" )"
+INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
+if [ ! -e "$INSTAWEB_CODE_DIR" ] ; then
+  INSTAWEB_CODE_DIR="$this_dir/../../"
+fi
+source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 DEFAULT_VCL="/etc/varnish/default.vcl"
 BACKUP_DEFAULT_VCL=$TEMPDIR"/default.vcl.bak"

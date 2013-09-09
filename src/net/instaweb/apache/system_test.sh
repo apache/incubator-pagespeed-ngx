@@ -4,7 +4,7 @@
 #
 # Runs all Apache-specific and general system tests.
 #
-# See system_test_helpers.sh for usage.
+# See automatic/system_test_helpers.sh for usage.
 #
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
 # APACHE_LOG to the log file.
@@ -37,7 +37,11 @@ TEST_PROXY_ORIGIN=${TEST_PROXY_ORIGIN:-modpagespeed.com}
 
 # Run General system tests.
 this_dir=$(dirname $0)
-source "$this_dir/system_test.sh" || exit 1
+source "$this_dir/../system/system_test.sh" || exit 1
+
+# TODO(jefftk): most of these tests aren't Apache-specific and should be
+# slightly generalized and moved to system/ where other implementations (like
+# ngx_pagespeed) can use them.
 
 # Define a mechanism to start a test before the cache-flush and finish it
 # after the cache-flush.  This mechanism is preferable to flushing cache

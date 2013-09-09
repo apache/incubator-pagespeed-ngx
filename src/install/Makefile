@@ -481,7 +481,7 @@ restart : stop
 # Tests that the installed mod_pagespeed server is working.
 test :
 	CACHE_FLUSH_TEST=on APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-		./apache_system_test.sh localhost
+		../system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
 # Each test is on it's own line for better diff/merge support.

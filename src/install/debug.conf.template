@@ -232,14 +232,14 @@ ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/gstatic_images \
 </Directory>
 
 # This is needed for the server-side includes test in
-# apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
+# apache/system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>
   LoadModule include_module @@APACHE_MODULES@@/mod_include.so
 </IfModule>
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 
-# For the mod_rewrite test in apache_system_test.sh
+# For the mod_rewrite test in apache/system_test.sh
 <IfModule !rewrite_module>
   LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
 </IfModule>
@@ -262,7 +262,7 @@ Header append 'X-Extra-Header' '1'
 # However we should not allow user-specified cache-control on
 # rewritten HTML or resources.  This setting helps us make
 # sure that we strip any user-specified cache-control when
-# we rewrite HTML.  We test this in apache_system_test.sh.
+# we rewrite HTML.  We test this in apache/system_test.sh.
 Header set Cache-Control "max-age=600"
 
 # For regression test of connection failing.
