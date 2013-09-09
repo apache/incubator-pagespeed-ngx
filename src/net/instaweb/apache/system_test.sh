@@ -1735,6 +1735,22 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
       $FETCH_UNTIL_OUTFILE) = 1 ]
   check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
   check [ $(grep -c 'styles/bold.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
+
+  # Test to make sure we have a sane Connection Header.  See
+  # https://code.google.com/p/modpagespeed/issues/detail?id=664
+  #
+  # Note that this bug is dependent on seeing a resource for the
+  # first time in the InPlaceResourceOptimization path, because
+  # in that flow we are caching the response-headers from Apache.
+  # The reponse-headers from Serf never seem to include the
+  # Connection header.  So we have to pick a JS file that is
+  # not otherwise used after cache is flushed in this block.
+  start_test Sane Connection header
+  URL="$TEST_ROOT/normal.js"
+  fetch_until -save $URL 'grep -c W/\"PSA-aj-' 1 --save-headers
+  CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
+  check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
+  check_from "$CONNECTION" fgrep -qi "Keep-Alive"
 fi
 
 WGET_ARGS=""

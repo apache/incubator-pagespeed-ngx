@@ -274,13 +274,20 @@ class CacheFindCallback : public HTTPCache::Callback {
                    RequestHeaders::kHead) {
           DCHECK_EQ(base_fetch_->request_headers()->method(),
                     RequestHeaders::kGet);
-          base_fetch_->HeadersComplete();
 
+          // Before calling HeadersComplete, record the content-length so that
+          // http server gaskets have an opportunity to examine
+          // content_length_known() in HandleHeadersComplete and thereby serve
+          // non-chunked responses.
           StringPiece contents;
           http_value()->ExtractContents(&contents);
+          base_fetch_->set_content_length(contents.size());
+          base_fetch_->HeadersComplete();
+
           // TODO(sligocki): We are writing all the content in one shot, this
           // fact might be useful to the HtmlParser if this is HTML. Perhaps
-          // we should add an API for conveying that information.
+          // we should add an API for conveying that information, which can
+          // be detected via AsyncFetch::content_length_known().
           base_fetch_->Write(contents, handler_);
         }
 

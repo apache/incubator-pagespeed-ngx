@@ -147,7 +147,20 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     bool is_expired = false;
     if ((backend_state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
-        callback_->IsCacheValid(key_, *headers)) {
+        callback_->IsCacheValid(key_, *headers) &&
+        // To resolve Issue 664 we sanitize 'Connection' headers on
+        // HTTPCache::Put, but cache entries written before the bug
+        // was fixed may have Connection or Transfer-Encoding so treat
+        // unsanitary headers as a MISS.  Note that we could at this
+        // point actually write the sanitized headers back into the
+        // HTTPValue, or better still the HTTPCache, but the former
+        // would be slow, and the latter might be complex for
+        // write-throughs.  Simply responding with a MISS will let us
+        // correct our caches permanently, without having to do a one
+        // time full-flush that would impact clean cache entries.
+        // Once the caches are all clean, the Sanitize call will be a
+        // relatively fast check.
+        !headers->Sanitize()) {
       // While stale responses can potentially be used in case of fetch
       // failures, responses invalidated via a cache flush should never be
       // returned under any scenario.

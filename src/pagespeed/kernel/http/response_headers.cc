@@ -78,13 +78,6 @@ void ApplyTimeDelta(const char* attr, int64 delta_ms,
   }
 }
 
-StringPieceVector NamesToSanitize() {
-  StringPieceVector v(2);
-  v.push_back(HttpAttributes::kSetCookie);
-  v.push_back(HttpAttributes::kSetCookie2);
-  return v;
-}
-
 }  // namespace
 
 bool ResponseHeaders::IsImminentlyExpiring(
@@ -488,7 +481,7 @@ void ResponseHeaders::SetOriginalContentLength(int64 content_length) {
 
 bool ResponseHeaders::Sanitize() {
   // Remove cookies, which we will never store in a cache.
-  StringPieceVector names_to_sanitize = NamesToSanitize();
+  StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
   return RemoveAllFromSortedArray(&names_to_sanitize[0],
                                   names_to_sanitize.size());
 }
@@ -496,7 +489,7 @@ bool ResponseHeaders::Sanitize() {
 void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
   proto->CopyFrom(*proto_.get());
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
-  StringPieceVector names_to_sanitize = NamesToSanitize();
+  StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
   return RemoveFromHeaders(&names_to_sanitize[0],
                            names_to_sanitize.size(), headers);
 }

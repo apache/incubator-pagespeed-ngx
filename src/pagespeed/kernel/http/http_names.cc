@@ -16,8 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-
 #include "pagespeed/kernel/http/http_names.h"
+
+
+#include "base/logging.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -46,6 +49,7 @@ const char HttpAttributes::kGzip[] = "gzip";
 const char HttpAttributes::kHost[] = "Host";
 const char HttpAttributes::kIfModifiedSince[] = "If-Modified-Since";
 const char HttpAttributes::kIfNoneMatch[] = "If-None-Match";
+const char HttpAttributes::kKeepAlive[] = "Keep-Alive";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
 const char HttpAttributes::kMaxAge[] = "max-age";
@@ -55,21 +59,25 @@ const char HttpAttributes::kNoStore[] = "no-store";
 const char HttpAttributes::kOrigin[] = "Origin";
 const char HttpAttributes::kPragma[] = "Pragma";
 const char HttpAttributes::kPrivate[] = "private";
+const char HttpAttributes::kProxyAuthenticate[] = "Proxy-Authenticate";
 const char HttpAttributes::kProxyAuthorization[] = "Proxy-Authorization";
 const char HttpAttributes::kPublic[] = "public";
 const char HttpAttributes::kReferer[] = "Referer";  // sic
 const char HttpAttributes::kServer[] = "Server";
-const char HttpAttributes::kSetCookie[] = "Set-Cookie";
 const char HttpAttributes::kSetCookie2[] = "Set-Cookie2";
+const char HttpAttributes::kSetCookie[] = "Set-Cookie";
+const char HttpAttributes::kTE[] = "TE";
+const char HttpAttributes::kTrailers[] = "Trailers";
 const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";
+const char HttpAttributes::kUpgrade[] = "Upgrade";
 const char HttpAttributes::kUserAgent[] = "User-Agent";
 const char HttpAttributes::kVary[] = "Vary";
 const char HttpAttributes::kVia[] = "Via";
 const char HttpAttributes::kWarning[] = "Warning";
-const char HttpAttributes::kXmlHttpRequest[] = "XMLHttpRequest";
 const char HttpAttributes::kXAssociatedContent[] = "X-Associated-Content";
 const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 const char HttpAttributes::kXForwardedProto[] = "X-Forwarded-Proto";
+const char HttpAttributes::kXmlHttpRequest[] = "XMLHttpRequest";
 const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
 const char HttpAttributes::kXGoogleRequestEventId[] =
@@ -168,6 +176,29 @@ const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
       return "Internal Server Error";
   }
   return "";
+}
+
+StringPieceVector HttpAttributes::SortedHopByHopHeaders() {
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+  const int kReserveSize = 10;
+  int index = 0;
+  StringPieceVector names(kReserveSize);
+
+  // This exact mechanism of initializing the names is used because it allows
+  // populating a StringPieceVector from locally defined string constants
+  // without having runtime calls to strlen to find the length.
+  names[index++] = StringPiece(HttpAttributes::kConnection);
+  names[index++] = StringPiece(HttpAttributes::kKeepAlive);
+  names[index++] = StringPiece(HttpAttributes::kProxyAuthenticate);
+  names[index++] = StringPiece(HttpAttributes::kProxyAuthorization);
+  names[index++] = StringPiece(HttpAttributes::kSetCookie);
+  names[index++] = StringPiece(HttpAttributes::kSetCookie2);
+  names[index++] = StringPiece(HttpAttributes::kTE);
+  names[index++] = StringPiece(HttpAttributes::kTrailers);
+  names[index++] = StringPiece(HttpAttributes::kTransferEncoding);
+  names[index++] = StringPiece(HttpAttributes::kUpgrade);
+  DCHECK_EQ(kReserveSize, index);
+  return names;
 }
 
 }  // namespace net_instaweb

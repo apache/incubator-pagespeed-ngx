@@ -21,6 +21,8 @@
 #ifndef PAGESPEED_KERNEL_HTTP_HTTP_NAMES_H_
 #define PAGESPEED_KERNEL_HTTP_HTTP_NAMES_H_
 
+#include "pagespeed/kernel/base/string_util.h"
+
 namespace net_instaweb {
 
 // Global constants for common HTML attributes names and values.
@@ -51,6 +53,7 @@ struct HttpAttributes {
   static const char kHost[];
   static const char kIfModifiedSince[];
   static const char kIfNoneMatch[];
+  static const char kKeepAlive[];
   static const char kLastModified[];
   static const char kLocation[];
   static const char kMaxAge[];
@@ -60,13 +63,17 @@ struct HttpAttributes {
   static const char kOrigin[];
   static const char kPragma[];
   static const char kPrivate[];
+  static const char kProxyAuthenticate[];
   static const char kProxyAuthorization[];
   static const char kPublic[];
   static const char kReferer[];  // sic
   static const char kServer[];
   static const char kSetCookie[];
   static const char kSetCookie2[];
+  static const char kTE[];
+  static const char kTrailers[];
   static const char kTransferEncoding[];
+  static const char kUpgrade[];
   static const char kUserAgent[];
   static const char kVary[];
   static const char kVia[];
@@ -135,6 +142,12 @@ struct HttpAttributes {
 
   // The config to be used fo the split html xpath.
   static const char kXPsaSplitConfig[];
+
+  // Gets a sorted StringPieceVector containing all the hop-by-hop headers,
+  // plus Set-Cookie and Set-Cookie2, per
+  //
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+  static StringPieceVector SortedHopByHopHeaders();
 };
 
 namespace HttpStatus {
