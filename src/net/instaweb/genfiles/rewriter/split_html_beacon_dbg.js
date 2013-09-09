@@ -50,18 +50,13 @@
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width
 }};
-pagespeedutils.CriticalXPaths = function(viewportWidth, viewportHeight, document) {
-  this.windowSize_ = {height:viewportHeight, width:viewportWidth};
-  this.xpathPairs_ = [];
-  this.document_ = document
+pagespeedutils.CriticalXPaths = function(viewportWidth, viewportHeight) {
+  this.windowSize_ = {height:viewportHeight, width:viewportWidth}
 };
-pagespeedutils.CriticalXPaths.prototype.getNonCriticalPanelXPathPairs = function() {
-  this.findNonCriticalPanelBoundaries_(this.document_.body);
-  return this.xpathPairs_
-};
-pagespeedutils.CriticalXPaths.prototype.generateXPath_ = function(node) {
-  for(var xpathUnits = [];node != this.document_.body;) {
-    if(node.hasAttribute("id") && 1 == this.document_.querySelectorAll('[id="' + node.getAttribute("id") + '"]').length) {
+pagespeedutils.generateXPath = function(node, doc) {
+  for(var xpathUnits = [];node != doc.body;) {
+    var id = node.getAttribute("id");
+    if(id && 1 == doc.querySelectorAll("#" + id).length) {
       xpathUnits.unshift(node.tagName.toLowerCase() + '[@id="' + node.getAttribute("id") + '"]');
       break
     }else {
@@ -74,50 +69,38 @@ pagespeedutils.CriticalXPaths.prototype.generateXPath_ = function(node) {
   }
   return xpathUnits.length ? xpathUnits.join("/") : ""
 };
-pagespeedutils.CriticalXPaths.prototype.addXPathPair_ = function(startXpath, endXpath) {
-  if(startXpath) {
-    var xpathPair = startXpath;
-    endXpath && (xpathPair += ":" + endXpath);
-    this.xpathPairs_.push(xpathPair)
-  }
-};
-pagespeedutils.CriticalXPaths.prototype.findNonCriticalPanelBoundaries_ = function(node) {
-  for(var nodeIsCritical = pagespeedutils.inViewport(node, this.windowSize_), prevChildIsCritical = nodeIsCritical, startChildXPath = "", endChildXPath = "", firstChild = this.visibleNodeOrSibling_(node.firstChild), currNode = firstChild;null != currNode;currNode = this.visibleNodeOrSibling_(currNode.nextSibling)) {
-    var currNodeIsCritical = this.findNonCriticalPanelBoundaries_(currNode);
-    currNodeIsCritical != prevChildIsCritical && (currNodeIsCritical ? (nodeIsCritical || (firstChild != currNode && (startChildXPath = this.generateXPath_(firstChild)), nodeIsCritical = !0), (endChildXPath = this.generateXPath_(currNode)) || (startChildXPath = ""), startChildXPath && this.addXPathPair_(startChildXPath, endChildXPath), startChildXPath = "") : (startChildXPath = this.generateXPath_(currNode), endChildXPath = ""), prevChildIsCritical = currNodeIsCritical)
-  }
-  startChildXPath && this.addXPathPair_(startChildXPath, endChildXPath);
-  return nodeIsCritical
-};
-pagespeedutils.CriticalXPaths.prototype.visibleNodeOrSibling_ = function(node) {
-  for(;null != node;node = node.nextSibling) {
-    if(node.nodeType == node.ELEMENT_NODE && (0 != node.offsetWidth || 0 != node.offsetHeight) && (node.offsetParent || "BODY" == node.tagName)) {
-      return node
-    }
-  }
-  return null
-};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
-pagespeed.SplitHtmlBeacon = function(beaconUrl, htmlUrl, optionsHash) {
-  this.xpathPairs = [];
+pagespeed.SplitHtmlBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce) {
+  this.btfNodes_ = [];
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
+  this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize()
 };
+pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(node) {
+  for(var allChildrenBtf = !0, btfChildren = [], currChild = node.firstChild;null != currChild;currChild = currChild.nextSibling) {
+    currChild.nodeType === node.ELEMENT_NODE && "SCRIPT" !== currChild.tagName && "NOSCRIPT" !== currChild.tagName && "STYLE" !== currChild.tagName && "LINK" !== currChild.tagName && (this.walkDom_(currChild) ? btfChildren.push(currChild) : allChildrenBtf = !1)
+  }
+  if(allChildrenBtf && !pagespeedutils.inViewport(node, this.windowSize_)) {
+    return!0
+  }
+  for(var i = 0;i < btfChildren.length;++i) {
+    this.btfNodes_.push(pagespeedutils.generateXPath(btfChildren[i], window.document))
+  }
+  return!1
+};
 pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
-  var criticalXPaths = new pagespeedutils.CriticalXPaths(this.windowSize_.width, this.windowSize_.height, document);
-  this.xpathPairs = criticalXPaths.getNonCriticalPanelXPathPairs();
-  if(0 != this.xpathPairs.length) {
-    for(var data = "oh=" + this.optionsHash_, data = data + ("&xp=" + encodeURIComponent(this.xpathPairs[0])), i = 1;i < this.xpathPairs.length;++i) {
-      var tmp = "," + encodeURIComponent(this.xpathPairs[i]);
+  this.walkDom_(document.body);
+  if(0 != this.btfNodes_.length) {
+    for(var data = "oh=" + this.optionsHash_ + "&n=" + this.nonce_, data = data + ("&xp=" + encodeURIComponent(this.btfNodes_[0])), i = 1;i < this.btfNodes_.length;++i) {
+      var tmp = "," + encodeURIComponent(this.btfNodes_[i]);
       if(131072 < data.length + tmp.length) {
         break
       }
       data += tmp
     }
-    pagespeed.splitHtmlBeaconData = data;
     pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data)
   }
 };

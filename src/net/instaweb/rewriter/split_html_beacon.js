@@ -22,7 +22,6 @@
  */
 
 goog.require('pagespeedutils');
-goog.require('pagespeedutils.CriticalXPaths');
 
 // Exporting functions using quoted attributes to prevent js compiler from
 // renaming them.
@@ -40,17 +39,59 @@ var pagespeed = window['pagespeed'];
  * @param {string} nonce The nonce set by the server.
  */
 pagespeed.SplitHtmlBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce) {
-  /**
-   * List of xpath pairs in the form start_xpath:end_xpath.
-   */
-  this.xpathPairs = [];
+  // XPaths of below the fold nodes.
+  this.btfNodes_ = [];
 
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
   this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize();
-  this.imgLocations_ = {};
+};
+
+/**
+ * Walk the DOM recursively, generating the list of below-the-fold node XPaths
+ * as we go. A node is added to btfNodes if it is below-the-fold, and its parent
+ * or one of its siblings is not. This logic depends on the property/belief that
+ * for a node to be considered below-the-fold either it must not be in the
+ * unscrolled viewport and must either be a leaf node or all of its descendants
+ * must be considered below-the-fold.
+ * @param {Node} node Node to check. document.body should be passed in on the
+ *     first call.
+ * @return {boolean} Returns true if the node (and all of its children) is BTF.
+ *     Otherwise, all BTF children of node are added to btfNodes and false is
+ *     returned.
+ * @private
+ */
+pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(node) {
+  var allChildrenBtf = true;
+  var btfChildren = [];
+  for (var currChild = node.firstChild; currChild != null;
+       currChild = currChild.nextSibling) {
+    if (currChild.nodeType !== node.ELEMENT_NODE ||
+        currChild.tagName === 'SCRIPT' ||
+        currChild.tagName === 'NOSCRIPT' ||
+        currChild.tagName === 'STYLE' ||
+        currChild.tagName === 'LINK') {
+      continue;
+    }
+    if (this.walkDom_(currChild)) {
+      btfChildren.push(currChild);
+    } else {
+      allChildrenBtf = false;
+    }
+  }
+
+  if (allChildrenBtf && !pagespeedutils.inViewport(node, this.windowSize_)) {
+    return true;
+  }
+
+  for (var i = 0; i < btfChildren.length; ++i) {
+    this.btfNodes_.push(pagespeedutils.generateXPath(
+        btfChildren[i], window.document));
+  }
+
+  return false;
 };
 
 /**
@@ -64,15 +105,13 @@ pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
   // TODO(jud): Factor out this const so that it matches kMaxPostSizeBytes.
   var MAX_DATA_LEN = 131072;
 
-  var criticalXPaths = new pagespeedutils.CriticalXPaths(
-      this.windowSize_.width, this.windowSize_.height, document);
-  this.xpathPairs = criticalXPaths.getNonCriticalPanelXPathPairs();
+  this.walkDom_(document.body);
 
-  if (this.xpathPairs.length != 0) {
-    var data = 'oh=' + this.optionsHash_;
-    data += '&xp=' + encodeURIComponent(this.xpathPairs[0]);
-    for (var i = 1; i < this.xpathPairs.length; ++i) {
-      var tmp = ',' + encodeURIComponent(this.xpathPairs[i]);
+  if (this.btfNodes_.length != 0) {
+    var data = 'oh=' + this.optionsHash_ + '&n=' + this.nonce_;
+    data += '&xp=' + encodeURIComponent(this.btfNodes_[0]);
+    for (var i = 1; i < this.btfNodes_.length; ++i) {
+      var tmp = ',' + encodeURIComponent(this.btfNodes_[i]);
       // TODO(jud): Currently we just truncate the data if it exceeds our
       // maximum POST request size limit. Check how large typical XPath sets
       // are, and if they are approaching this limit, either raise the limit or
@@ -82,10 +121,8 @@ pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
       }
       data += tmp;
     }
-    // Export the URL for testing purposes.
-    pagespeed['splitHtmlBeaconData'] = data;
-    // TODO(jud): This beacon should coordinate with the add_instrumentation JS
-    // so that only one beacon request is sent if both filters are enabled.
+    // TODO(jud): Coordinate with other beacons so that only 1 request needs to
+    // be sent.
     pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data);
   }
 };
