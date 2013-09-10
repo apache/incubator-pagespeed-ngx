@@ -16,7 +16,7 @@
 # We need to know the directory this file is located in.  Unfortunately,
 # if we're 'source'd from a script in a different directory $(dirname $0) gives
 # us the directory that *that* script is located in
-this_dir="$( dirname "${BASH_SOURCE[0]}" )"
+this_dir=$(dirname "${BASH_SOURCE[0]}")
 source "$this_dir/system_test_helpers.sh" || exit 1
 
 # General system tests

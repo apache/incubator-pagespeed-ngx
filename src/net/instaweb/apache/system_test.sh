@@ -36,7 +36,11 @@ SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
 TEST_PROXY_ORIGIN=${TEST_PROXY_ORIGIN:-modpagespeed.com}
 
 # Run General system tests.
-this_dir=$(dirname $0)
+#
+# We need to know the directory this file is located in.  Unfortunately,
+# if we're 'source'd from a script in a different directory $(dirname $0) gives
+# us the directory that *that* script is located in
+this_dir=$(dirname "${BASH_SOURCE[0]}")
 source "$this_dir/../system/system_test.sh" || exit 1
 
 # TODO(jefftk): most of these tests aren't Apache-specific and should be
