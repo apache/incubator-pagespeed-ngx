@@ -547,6 +547,19 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name ipro.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+    pagespeed on;
+    pagespeed InPlaceResourceOptimization on;
+
+    location /mod_pagespeed_test/ipro/nocache/test_image_dont_reuse.png {
+      add_header Cache-Control no-cache;
+    }
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
@@ -705,7 +718,6 @@ http {
     location /mod_pagespeed_test/ipro/test_image_dont_reuse.png {
       expires 5m;
     }
-
 
     pagespeed EnableFilters remove_comments;
 
