@@ -37,7 +37,7 @@ class NgxCachingHeaders : public CachingHeaders {
         request_(request) {
   }
 
-  virtual bool Lookup(const GoogleString& key, StringPieceVector* values);
+  virtual bool Lookup(const StringPiece& key, StringPieceVector* values);
 
   virtual bool IsLikelyStaticResourceType() const {
     DCHECK(false);  // not called in our use-case.

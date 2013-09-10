@@ -23,7 +23,7 @@
 
 namespace net_instaweb {
 
-bool NgxCachingHeaders::Lookup(const GoogleString& key,
+bool NgxCachingHeaders::Lookup(const StringPiece& key,
                                StringPieceVector* values) {
   ngx_table_elt_t* header;
   NgxListIterator it(&(request_->headers_out.headers.part));

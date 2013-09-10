@@ -204,7 +204,7 @@ else
 fi
 
 # run generic system tests
-SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/install/system_test.sh"
+SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/net/instaweb/system/system_test.sh"
 
 if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   echo "Not finding $SYSTEM_TEST_FILE -- is mod_pagespeed not in a parallel"
@@ -215,7 +215,9 @@ fi
 PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
-PAGESPEED_EXPECTED_FAILURES=""
+PAGESPEED_EXPECTED_FAILURES="
+~IPRO-optimized resources should have fixed size, not chunked.~
+"
 
 # The existing system test takes its arguments as positional parameters, and
 # wants different ones than we want, so we need to reset our positional args.
@@ -1442,7 +1444,7 @@ check_from "$OUT" grep "$BEACON_CODE"
 start_test The no-experiment group beacon should not include an experiment id.
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=0' \
      $EXP_EXTEND_CACHE)
-check_not_from "$OUT" grep 'mod_pagespeed_beacon.*exptid'
+check_not_from "$OUT" grep 'pagespeed_beacon.*exptid'
 
 # We expect id=7 to be index=a and id=2 to be index=b because that's the
 # order they're defined in the config file.
@@ -1593,16 +1595,17 @@ http_proxy=$SECONDARY_HOSTNAME\
 '--header=X-PSA-Blocking-Rewrite:psatest'
 check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
   $OUTDIR/image_resize_using_rendered_dimensions.html) = 1 ];
-OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
-  $OUTDIR/image_resize_using_rendered_dimensions.html | \
-  awk -F\' '{print $(NF-3)}')
+OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+               $OUTDIR/image_resize_using_rendered_dimensions.html)
+NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+        $OUTDIR/image_resize_using_rendered_dimensions.html)
 
 # Send a beacon response using POST indicating that OptPuzzle.jpg is
 # critical and has rendered dimensions.
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_URL+="?url=http%3A%2F%2Frenderedimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
-BEACON_DATA="oh=$OPTIONS_HASH&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
+BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
   $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
 check_from "$OUT" egrep -q "HTTP/1[.]. 204"
@@ -1620,11 +1623,14 @@ URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
 # lazyloaded by default.
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-
 check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
   $OUTDIR/rewrite_images.html) = 1 ];
-# We need the options hash to send a critical image beacon, so extract it from
-# injected beacon JS.
+# We need the options hash and nonce to send a critical image beacon, so extract
+# it from injected beacon JS.
+OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+               $OUTDIR/rewrite_images.html)
+NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+        $OUTDIR/rewrite_images.html)
 OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
   $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
 # Send a beacon response using POST indicating that Puzzle.jpg is a critical
@@ -1632,7 +1638,7 @@ OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_URL+="image_rewriting%2Frewrite_images.html"
-BEACON_DATA="oh=$OPTIONS_HASH&ci=2932493096"
+BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=2932493096"
 # See the comments about 204 responses and --no-http-keep-alive above.
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
   wget -q --save-headers -O - --no-http-keep-alive \
@@ -1646,17 +1652,27 @@ http_proxy=$SECONDARY_HOSTNAME \
 # Now test sending a beacon with a GET request, instead of POST. Indicate that
 # Puzzle.jpg and Cuppa.png are the critical images. In practice we expect only
 # POSTs to be used by the critical image beacon, but both code paths are
-# supported. We need to do this several times since 80% support is required
-# for an image to be considered critical.
+# supported.  We add query params to URL to ensure that we get an instrumented
+# page without blocking.
+URL="$URL?id=4"
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+    "$OUTDIR/rewrite_images.html?id=4") = 1 ];
+OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+               "$OUTDIR/rewrite_images.html?id=4")
+NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+       "$OUTDIR/rewrite_images.html?id=4")
+BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
+BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+BEACON_URL+="image_rewriting%2Frewrite_images.html%3Fid%3D4"
+BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=2932493096"
 # Add the hash for Cuppa.png to BEACON_DATA, which will be used as the query
 # params for the GET.
 BEACON_DATA+=",2644480723"
-for i in {1..4}; do
-  OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-    $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
-  check_from "$OUT" egrep -q "HTTP/1[.]. 204"
-done
-
+OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+  $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
+check_from "$OUT" egrep -q "HTTP/1[.]. 204"
 # Now only BikeCrashIcn.png should be lazyloaded.
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
@@ -1706,6 +1722,22 @@ check [ $(grep -c 'styles/yellow.css+blue.css.pagespeed.' \
     $FETCH_UNTIL_OUTFILE) = 1 ]
 check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 
+# Test to make sure we have a sane Connection Header.  See
+# https://code.google.com/p/modpagespeed/issues/detail?id=664
+#
+# Note that this bug is dependent on seeing a resource for the first time in the
+# InPlaceResourceOptimization path, because in that flow we are caching the
+# response-headers from the server.  The reponse-headers from Serf never seem to
+# include the Connection header.  So we have to pick a JS file that is not
+# otherwise used after cache is flushed in this block.
+WGET_ARGS=""
+start_test Sane Connection header
+URL="$TEST_ROOT/normal.js"
+fetch_until -save $URL 'grep -c W/\"PSA-aj-' 1 --save-headers
+CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
+check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
+check_from "$CONNECTION" fgrep -qi "Keep-Alive"
+
 test_filter ngx_pagespeed_static defer js served with correct headers.
 # First, determine which hash js_defer is served with. We need a correct hash
 # to get it served up with an Etag, which is one of the things we want to test.
@@ -1731,5 +1763,152 @@ OUT=$($WGET_DUMP --header=Host:response-header-filters.example.com $URL)
 check_from "$OUT" egrep -qi 'addInstrumentationInit'
 OUT=$($WGET_DUMP --header=Host:response-header-disable.example.com $URL)
 check_not_from "$OUT" egrep -qi 'addInstrumentationInit'
+
+start_test IPRO flow uses cache as expected.
+# TODO(sligocki): Use separate VHost instead to separate stats.
+STATS=$OUTDIR/blocking_rewrite_stats
+IPRO_ROOT=http://ipro.example.com/mod_pagespeed_test/ipro
+URL=$IPRO_ROOT/test_image_dont_reuse2.png
+IPRO_STATS_URL=http://ipro.example.com/ngx_pagespeed_statistics?PageSpeed=off
+
+# Initial stats.
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.0
+
+# First IPRO request.
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.1
+
+# Resource not in cache the first time.
+check_stat $STATS.0 $STATS.1 cache_hits 0
+check_stat $STATS.0 $STATS.1 cache_misses 1
+check_stat $STATS.0 $STATS.1 ipro_served 0
+check_stat $STATS.0 $STATS.1 ipro_not_rewritable 0
+# So we run the ipro recorder flow and insert it into the cache.
+check_stat $STATS.0 $STATS.1 ipro_not_in_cache 1
+check_stat $STATS.0 $STATS.1 ipro_recorder_resources 1
+check_stat $STATS.0 $STATS.1 ipro_recorder_inserted_into_cache 1
+# Image doesn't get rewritten the first time.
+# TODO(sligocki): This should change to 1 when we get image rewrites started
+# in the Apache output filter flow.
+check_stat $STATS.0 $STATS.1 image_rewrites 0
+
+# Second IPRO request.
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+# Wait for image rewrite to finish.
+sleep 1
+# TODO(sligocki): Replace sleep with some sort of reasonable check.
+# Unfortunately bash has thwarted my every effort to compose a reaonable
+# check. Both the below checks do not run:
+#fetch_until $IPRO_STATS_URL \
+#            'grep image_ongoing_rewrites | egrep -o "[0-9]"' 0
+#fetch_until $IPRO_STATS_URL \
+#            "sed -ne 's/^.*image_ongoing_rewrites: *\([0-9]*\).*$/\1/p'" 0
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.2
+
+# Resource is found in cache the second time.
+check_stat $STATS.1 $STATS.2 cache_hits 1
+check_stat $STATS.1 $STATS.2 ipro_served 1
+check_stat $STATS.1 $STATS.2 ipro_not_rewritable 0
+# So we don't run the ipro recorder flow.
+check_stat $STATS.1 $STATS.2 ipro_not_in_cache 0
+check_stat $STATS.1 $STATS.2 ipro_recorder_resources 0
+# Image gets rewritten on the second pass through this filter.
+# TODO(sligocki): This should change to 0 when we get image rewrites started
+# in the Apache output filter flow.
+check_stat $STATS.1 $STATS.2 image_rewrites 1
+
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
+
+check_stat $STATS.2 $STATS.3 cache_hits 1
+check_stat $STATS.2 $STATS.3 ipro_served 1
+check_stat $STATS.2 $STATS.3 ipro_recorder_resources 0
+check_stat $STATS.2 $STATS.3 image_rewrites 0
+
+start_test "IPRO flow doesn't copy uncacheable resources multiple times."
+URL=$IPRO_ROOT/nocache/test_image_dont_reuse.png
+
+# Initial stats.
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.0
+
+# First IPRO request.
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.1
+
+# Resource not in cache the first time.
+check_stat $STATS.0 $STATS.1 cache_hits 0
+check_stat $STATS.0 $STATS.1 cache_misses 1
+check_stat $STATS.0 $STATS.1 ipro_served 0
+check_stat $STATS.0 $STATS.1 ipro_not_rewritable 0
+# So we run the ipro recorder flow, but the resource is not cacheable.
+check_stat $STATS.0 $STATS.1 ipro_not_in_cache 1
+check_stat $STATS.0 $STATS.1 ipro_recorder_resources 1
+check_stat $STATS.0 $STATS.1 ipro_recorder_not_cacheable 1
+# Uncacheable, so no rewrites.
+check_stat $STATS.0 $STATS.1 image_rewrites 0
+check_stat $STATS.0 $STATS.1 image_ongoing_rewrites 0
+
+# Second IPRO request.
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.2
+
+check_stat $STATS.1 $STATS.2 cache_hits 0
+# Note: This should load a RecentFetchFailed record from cache, but that
+# is reported as a cache miss.
+check_stat $STATS.1 $STATS.2 cache_misses 1
+check_stat $STATS.1 $STATS.2 ipro_served 0
+check_stat $STATS.1 $STATS.2 ipro_not_rewritable 1
+# Important: We do not record this resource the second and third time
+# because we remember that it was not cacheable.
+check_stat $STATS.1 $STATS.2 ipro_not_in_cache 0
+check_stat $STATS.1 $STATS.2 ipro_recorder_resources 0
+check_stat $STATS.1 $STATS.2 image_rewrites 0
+check_stat $STATS.1 $STATS.2 image_ongoing_rewrites 0
+
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
+
+# Same as second fetch.
+check_stat $STATS.2 $STATS.3 cache_hits 0
+check_stat $STATS.2 $STATS.3 cache_misses 1
+check_stat $STATS.2 $STATS.3 ipro_not_rewritable 1
+check_stat $STATS.2 $STATS.3 ipro_recorder_resources 0
+check_stat $STATS.2 $STATS.3 image_rewrites 0
+check_stat $STATS.2 $STATS.3 image_ongoing_rewrites 0
+
+start_test IPRO-optimized resources should have fixed size, not chunked.
+URL="$EXAMPLE_ROOT/images/Puzzle.jpg"
+URL+="?PageSpeedJpegRecompressionQuality=75"
+fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
+CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
+  awk '/Content-Length:/ {print $2}')
+check [ "$CONTENT_LENGTH" -lt 90000 ];
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
+    fgrep -q 'Transfer-Encoding: chunked'
+
+# Test handling of large HTML files. We first test with a cold cache, and verify
+# that we bail out of parsing and insert a script redirecting to
+# ?PageSpeed=off. This should also insert an entry into the property cache so
+# that the next time we fetch the file it will not be parsed at all.
+echo TEST: Handling of large files.
+# Add a timestamp to the URL to ensure it's not in the property cache.
+FILE="max_html_parse_size/large_file.html?value=$(date +%s)"
+URL=$TEST_ROOT/$FILE
+# Enable a filter that will modify something on this page, since we testing that
+# this page should not be rewritten.
+WGET_ARGS="--header=PageSpeedFilters:rewrite_images"
+WGET_EC="$WGET_DUMP $WGET_ARGS"
+echo $WGET_EC $URL
+LARGE_OUT=$($WGET_EC $URL)
+check_from "$LARGE_OUT" grep -q window.location=".*&ModPagespeed=off"
+
+# The file should now be in the property cache so make sure that the page is no
+# longer parsed. Use fetch_until because we need to wait for a potentially
+# non-blocking write to the property cache from the previous test to finish
+# before this will succeed.
+fetch_until -save $URL 'grep -c window.location=".*&ModPagespeed=off"' 0
+check_not fgrep -q pagespeed.ic $FETCH_FILE
+
 
 check_failures_and_exit
