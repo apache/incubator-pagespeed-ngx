@@ -83,9 +83,15 @@ else
   buildtype=Release
 fi
 
+# The compiler needs to know that __sync_add_and_fetch_4 is ok,
+# and this requires an instruction that didn't exist on i586 or i386.
+if [ "$uname_arch" = "i686" ]; then
+  $FLAG_MARCH='march=i686'
+fi
+
 # Building with HTTPS fetching enabled pulls in a version of OpenSSL that causes
 # linker errors, so disable it here.
-CFLAGS="$CFLAGS -DSERF_HTTPS_FETCHING=0"
+CFLAGS="$CFLAGS -DSERF_HTTPS_FETCHING=0 $FLAG_MARCH"
 
 pagespeed_include="\
   $mod_pagespeed_dir \
