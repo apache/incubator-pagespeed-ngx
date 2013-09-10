@@ -23,6 +23,7 @@
 #ifdef WIN32
 #include <direct.h>
 #include <io.h>
+#include <stdio.h>
 #include <string.h>
 #include <windows.h>
 #else
@@ -256,11 +257,13 @@ FileSystem::OutputFile* StdioFileSystem::OpenTempFileHelper(
     message_handler->Error(template_name, 0,
                            "opening temp file: %s", strerror(errno));
   } else {
-    FILE* f = fdopen(fd, "w");
-    if (f == NULL) {
 #ifdef WIN32
+    FILE* f = _fdopen(fd, "w");
+    if (f == NULL) {
       _close(fd);
 #else
+    FILE* f = fdopen(fd, "w");
+    if (f == NULL) {
       close(fd);
 #endif
       message_handler->Error(template_name, 0,
