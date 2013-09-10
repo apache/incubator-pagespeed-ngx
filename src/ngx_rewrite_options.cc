@@ -198,6 +198,25 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       result = ParseAndSetOptionHelper(
           arg, driver_factory,
           &NgxRewriteDriverFactory::set_force_caching);
+    } else if (IsDirective(directive, "IproMaxResponseBytes")) {
+      int ipro_max_response_bytes;
+      bool ok = StringToInt(arg.as_string(), &ipro_max_response_bytes);
+      if (ok && ipro_max_response_bytes >= 0) {
+        driver_factory->set_ipro_max_response_bytes(ipro_max_response_bytes);
+        result = RewriteOptions::kOptionOk;
+      } else {
+        result = RewriteOptions::kOptionValueInvalid;
+      }
+    } else if (IsDirective(directive, "IproMaxConcurrentRecordings")) {
+      int ipro_max_concurrent_recordings;
+      bool ok = StringToInt(arg.as_string(), &ipro_max_concurrent_recordings);
+      if (ok && ipro_max_concurrent_recordings >= 0) {
+        driver_factory->set_ipro_max_concurrent_recordings(
+            ipro_max_concurrent_recordings);
+        result = RewriteOptions::kOptionOk;
+      } else {
+        result = RewriteOptions::kOptionValueInvalid;
+      }
     } else {
       result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
     }

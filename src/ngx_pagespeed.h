@@ -45,7 +45,7 @@ class ProxyFetch;
 class RewriteDriver;
 class RequestHeaders;
 class ResponseHeaders;
-class InPlaceResourceRecorder;
+class NgxInPlaceResourceRecorder;
 }  // namespace net_instaweb
 
 namespace ngx_psol {
@@ -97,7 +97,7 @@ typedef struct {
 
   // for in place resource
   net_instaweb::RewriteDriver* driver;
-  net_instaweb::InPlaceResourceRecorder* recorder;
+  net_instaweb::NgxInPlaceResourceRecorder* recorder;
 } ps_request_ctx_t;
 
 

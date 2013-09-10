@@ -170,6 +170,18 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void set_rate_limit_background_fetches(bool x) {
     rate_limit_background_fetches_ = x;
   }
+  int ipro_max_response_bytes() {
+    return ipro_max_response_bytes_;
+  }
+  void set_ipro_max_response_bytes(int x) {
+    ipro_max_response_bytes_ = x;
+  }
+  int ipro_max_concurrent_recordings() {
+    return ipro_max_concurrent_recordings_;
+  }
+  void set_ipro_max_concurrent_recordings(int x) {
+    ipro_max_concurrent_recordings_ = x;
+  }
 
   // We use a beacon handler to collect data for critical images,
   // css, etc., so filters should be configured accordingly.
@@ -215,6 +227,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   bool rate_limit_background_fetches_;
   typedef std::set<NgxMessageHandler*> NgxMessageHandlerSet;
   NgxMessageHandlerSet server_context_message_handlers_;
+  int ipro_max_concurrent_recordings_;
+  int ipro_max_response_bytes_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
