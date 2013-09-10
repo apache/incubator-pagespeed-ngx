@@ -356,9 +356,7 @@ CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
 
 CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder(
     ServerContext* server_context) {
-  if (UseSelectorFilterForCriticalCss()) {
-    // TODO(pulkitg): Don't create CriticalSelectorFinder if beacon cohort is
-    // not added.
+  if (server_context->beacon_cohort() != NULL) {
     return new BeaconCriticalSelectorFinder(server_context->beacon_cohort(),
                                             nonce_generator(), statistics());
   }

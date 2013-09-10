@@ -1634,6 +1634,7 @@ class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {
     rewrite_options->DisableFilter(RewriteOptions::kRewriteJavascript);
 
     rewrite_options->set_enable_flush_early_critical_css(true);
+    rewrite_options->set_use_selectors_for_critical_css(false);
     rewrite_options->ComputeSignature();
   }
 
@@ -1795,6 +1796,11 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
       url(), "" /* hash */, UserAgentMatcher::kDesktop);
   rewrite_driver()->set_property_page(page);
   pcache->Read(page);
+
+  RewriteOptions* rewrite_options = server_context()->global_options();
+  rewrite_options->ClearSignatureForTesting();
+  rewrite_options->set_use_selectors_for_critical_css(true);
+  rewrite_options->ComputeSignature();
 
   server_context()->set_critical_selector_finder(new TestCriticalSelectorFinder(
       server_context()->beacon_cohort(), statistics()));

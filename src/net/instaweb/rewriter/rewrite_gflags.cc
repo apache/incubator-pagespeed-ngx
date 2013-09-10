@@ -248,6 +248,9 @@ DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
 DEFINE_bool(enable_flush_early_critical_css, false,
             "If true, inlined critical css rules are flushed early if both"
             "flush subresources and critical css filter are enabled");
+DEFINE_bool(use_selectors_for_critical_css, false,
+            "Use CriticalSelectorFilter instead of CriticalCssFilter for "
+            "the prioritize_critical_css filter.");
 DEFINE_int32(max_inlined_preview_images_index,
              RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex,
              "Number of first N images for which low res image is generated. "
@@ -673,6 +676,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_flush_early_critical_css")) {
     options->set_enable_flush_early_critical_css(
         FLAGS_enable_flush_early_critical_css);
+  }
+  if (WasExplicitlySet("use_selectors_for_critical_css")) {
+    options->set_use_selectors_for_critical_css(
+        FLAGS_use_selectors_for_critical_css);
   }
   if (WasExplicitlySet("max_inlined_preview_images_index")) {
     options->set_max_inlined_preview_images_index(

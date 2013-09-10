@@ -867,9 +867,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     http_proxy=$SECONDARY_HOSTNAME \
       $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_OLDSTATS
     echo "Make sure we can reconstruct the image."
+    # Fetch the url until it is less than its original size (i.e. compressed).
     http_proxy=$SECONDARY_HOSTNAME \
-      check wget -O $TEMPDIR/tp.jpg $PDT_IMG_URL
-    check_file_size $TEMPDIR/tp.jpg -lt 241260
+      fetch_until $PDT_IMG_URL "wc -c" 241260 "" "-lt"
     # Double check that we actually reconstructed.
     http_proxy=$SECONDARY_HOSTNAME \
       $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_NEWSTATS

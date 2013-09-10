@@ -1038,15 +1038,11 @@ void ServerContext::set_critical_images_finder(CriticalImagesFinder* finder) {
 }
 
 void ServerContext::set_critical_css_finder(CriticalCssFinder* finder) {
-  CHECK(finder == NULL || critical_selector_finder_ == NULL)
-      << "Only one non-NULL finder for prioritize_critical_css";
   critical_css_finder_.reset(finder);
 }
 
 void ServerContext::set_critical_selector_finder(
     CriticalSelectorFinder* finder) {
-  CHECK(finder == NULL || critical_css_finder_ == NULL)
-      << "Only one non-NULL finder for prioritize_critical_css";
   critical_selector_finder_.reset(finder);
 }
 

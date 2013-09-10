@@ -190,13 +190,6 @@ class RewriteDriverFactory {
   // beacon-based filters.
   virtual bool UseBeaconResultsInFilters() const = 0;
 
-  // Returns true if this platform uses the CriticalSelectorFilter to implement
-  // the prioritize_critical_css filter option.
-  // TODO(slamm): Remove this once all platforms have transitioned to use it.
-  virtual bool UseSelectorFilterForCriticalCss() const {
-    return UseBeaconResultsInFilters();
-  }
-
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
   // RewriteDriverFactory implementation.

@@ -153,11 +153,11 @@ void InitDriverWithPropertyCacheValues(
       server_context->critical_selector_finder();
   if (selector_finder != NULL) {
     selector_finder->GetCriticalSelectors(cache_html_driver);
-  } else {
-    CriticalCssFinder* css_finder = server_context->critical_css_finder();
-    if (css_finder != NULL) {
-      css_finder->UpdateCriticalCssInfoInDriver(cache_html_driver);
-    }
+  }
+
+  CriticalCssFinder* css_finder = server_context->critical_css_finder();
+  if (css_finder != NULL) {
+    css_finder->UpdateCriticalCssInfoInDriver(cache_html_driver);
   }
 
   CacheHtmlInfoFinder* cache_html_finder =

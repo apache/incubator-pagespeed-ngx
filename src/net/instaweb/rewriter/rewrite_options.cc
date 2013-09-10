@@ -324,6 +324,8 @@ const char RewriteOptions::kStatisticsLoggingMaxFileSizeKb[] =
     "StatisticsLoggingMaxFileSizeKb";
 const char RewriteOptions::kTestProxy[] = "TestProxy";
 const char RewriteOptions::kTestProxySlurp[] = "TestProxySlurp";
+const char RewriteOptions::kUseSelectorsForCriticalCss[] =
+    "UseSelectorsForCriticalCss";
 const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
 const char RewriteOptions::kNullOption[] = "";
 
@@ -1387,6 +1389,11 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       false, &RewriteOptions::enable_flush_early_critical_css_, "efcc",
       kEnableFlushEarlyCriticalCss,
+      kDirectoryScope,
+      NULL);  // Not applicable for mod_pagespeed.
+  AddBaseProperty(
+      false, &RewriteOptions::use_selectors_for_critical_css_, "scss",
+      kUseSelectorsForCriticalCss,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(

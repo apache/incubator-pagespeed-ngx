@@ -998,7 +998,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // css since that works against this.
     // TODO(slamm): Figure out if move_css_to_head needs to be disabled.
     CriticalCssFinder* finder = server_context()->critical_css_finder();
-    if (finder != NULL) {
+    if (finder != NULL && !CriticalSelectorsEnabled()) {
       AppendOwnedPreRenderFilter(new CriticalCssFilter(this, finder));
     }
   } else if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
@@ -1033,7 +1033,7 @@ void RewriteDriver::AddPreRenderFilters() {
   if ((rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
        server_context()->factory()->UseBeaconResultsInFilters()) ||
       (rewrite_options->Enabled(RewriteOptions::kComputeCriticalCss) &&
-       server_context()->critical_selector_finder() != NULL)) {
+       rewrite_options->use_selectors_for_critical_css())) {
     // Add the critical selector instrumentation before the rewriting filter.
     AppendOwnedPreRenderFilter(new CriticalCssBeaconFilter(this));
   }
@@ -3032,6 +3032,12 @@ void RewriteDriver::set_unowned_fallback_property_page(
   }
   fallback_property_page_ = page;
   owns_property_page_ = false;
+}
+
+bool RewriteDriver::CriticalSelectorsEnabled() const {
+  return (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
+          (server_context()->factory()->UseBeaconResultsInFilters() ||
+           options()->use_selectors_for_critical_css()));
 }
 
 void RewriteDriver::increment_num_inline_preview_images() {

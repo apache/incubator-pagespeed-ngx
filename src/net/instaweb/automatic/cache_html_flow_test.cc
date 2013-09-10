@@ -1596,6 +1596,7 @@ class CacheHtmlPrioritizeCriticalCssTest : public CacheHtmlFlowTest {
     options_->set_non_cacheables_for_cache_partial_html(
         "class=item,id=beforeItems");
     options_->set_in_place_rewriting_enabled(true);
+    options_->set_use_selectors_for_critical_css(false);
     options_->ComputeSignature();
   }
 
@@ -1746,6 +1747,11 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalSelectors) {
       url(), kMockHashValue /* hash */, UserAgentMatcher::kDesktop);
   rewrite_driver()->set_property_page(page);
   pcache->Read(page);
+
+  options_->ClearSignatureForTesting();
+  options_->set_use_selectors_for_critical_css(true);
+  options_->ComputeSignature();
+
   server_context()->set_critical_selector_finder(new TestCriticalSelectorFinder(
       server_context()->beacon_cohort(), statistics()));
 

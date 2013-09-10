@@ -908,10 +908,7 @@ class RewriteDriver : public HtmlParse {
 
   // Return true if we must prioritize critical selectors, and we should
   // therefore enable its prerequisite filters as well.
-  bool CriticalSelectorsEnabled() const {
-    return (options()->Enabled(RewriteOptions::kPrioritizeCriticalCss) &&
-            server_context()->critical_selector_finder() != NULL);
-  }
+  bool CriticalSelectorsEnabled() const;
 
   // Return true if we must flatten css imports, either because the filter is
   // enabled explicitly or because it is enabled by CriticalSelectorsEnabled.

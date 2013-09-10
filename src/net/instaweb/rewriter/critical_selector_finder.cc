@@ -51,6 +51,7 @@ CriticalSelectorFinder::CriticalSelectorFinder(
     const PropertyCache::Cohort* cohort, NonceGenerator* nonce_generator,
     Statistics* statistics)
     : cohort_(cohort), nonce_generator_(nonce_generator) {
+  DCHECK(cohort_ != NULL);
   critical_selectors_valid_count_ = statistics->GetTimedVariable(
       kCriticalSelectorsValidCount);
   critical_selectors_expired_count_ = statistics->GetTimedVariable(

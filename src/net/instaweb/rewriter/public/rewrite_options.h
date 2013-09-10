@@ -322,6 +322,7 @@ class RewriteOptions {
   static const char kUseBlankImageForInlinePreview[];
   static const char kUseFallbackPropertyCacheValues[];
   static const char kAwaitPcacheLookup[];
+  static const char kUseSelectorsForCriticalCss[];
   static const char kUseSmartDiffInBlink[];
   static const char kXModPagespeedHeaderValue[];
   static const char kXPsaBlockingRewrite[];
@@ -1570,6 +1571,13 @@ class RewriteOptions {
   }
   bool enable_flush_early_critical_css() const {
     return enable_flush_early_critical_css_.value();
+  }
+
+  void set_use_selectors_for_critical_css(bool x) {
+    set_option(x, &use_selectors_for_critical_css_);
+  }
+  bool use_selectors_for_critical_css() const {
+    return use_selectors_for_critical_css_.value();
   }
 
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
@@ -3208,6 +3216,8 @@ class RewriteOptions {
   Option<int64> serve_stale_while_revalidate_threshold_sec_;
   // Whether to flush the inlined critical css rules early.
   Option<bool> enable_flush_early_critical_css_;
+  // Whether to use CriticalSelectorFilter for prioritize_critical_css filter.
+  Option<bool> use_selectors_for_critical_css_;
   // When default_cache_html_ is false (default) we do not cache
   // input HTML which lacks Cache-Control headers. But, when set true,
   // we will cache those inputs for the implicit lifetime just like we
