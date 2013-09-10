@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #ifdef WIN32
+#include <direct.h>
 #include <io.h>
 #include <string.h>
 #include <windows.h>
@@ -246,7 +247,7 @@ FileSystem::OutputFile* StdioFileSystem::OpenTempFileHelper(
   memcpy(template_name, prefix.data(), prefix_len);
   memcpy(template_name + prefix_len, mkstemp_hook, sizeof(mkstemp_hook));
 #ifdef WIN32
-  int fd = _mkstemp_s(template_name, prefix_len + sizeof(mkstemp_hook));
+  int fd = _mktemp_s(template_name, prefix_len + sizeof(mkstemp_hook));
 #else
   int fd = mkstemp(template_name);
 #endif  // WIN32
@@ -537,7 +538,7 @@ bool StdioFileSystem::Unlock(const StringPiece& lock_name,
   const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
 #ifdef WIN32
-  if (_rmdir(path) == 0) {
+  if (_rmdir(lock_str) == 0) {
 #else
   if (rmdir(lock_str) == 0) {
 #endif  // WIN32
