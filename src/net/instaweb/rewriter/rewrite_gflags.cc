@@ -509,7 +509,7 @@ DEFINE_string(access_control_allow_origins, "",
               "cross-origin requests. These domain requests are served with "
               "Access-Control-Allow-Origin header.");
 
-DEFINE_bool(use_image_scanline_api, false,
+DEFINE_bool(use_image_scanline_api, true,
             "If set to true, do not use OpenCV for image rewrites.");
 
 namespace net_instaweb {

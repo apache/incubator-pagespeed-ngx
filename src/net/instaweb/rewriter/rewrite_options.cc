@@ -1902,7 +1902,7 @@ void RewriteOptions::AddProperties() {
       NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
 
   AddBaseProperty(
-      false,
+      true,
       &RewriteOptions::use_image_scanline_api_, "uisa",
       kUseImageScanlineApi,
       kServerScope,

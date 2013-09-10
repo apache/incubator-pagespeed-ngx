@@ -19,7 +19,6 @@
 
 #include "net/instaweb/rewriter/public/image_test_base.h"
 
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -61,6 +60,7 @@ Image* ImageTestBase::ImageFromString(
   image_options->jpeg_quality = -1;
   image_options->progressive_jpeg = progressive;
   image_options->convert_png_to_jpeg =  output_type == IMAGE_JPEG;
+  image_options->recompress_png = true;
 
   return NewImage(contents, name, GTestTempDir(), image_options,
                   &timer_, &handler_);

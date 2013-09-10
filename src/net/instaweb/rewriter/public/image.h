@@ -112,7 +112,7 @@ class Image {
           conversions_attempted(0),
           preserve_lossless(false),
           webp_conversion_variables(NULL),
-          use_image_scanline_api(false) {}
+          use_image_scanline_api(true) {}
 
     // These options are set by the client to specify what type of
     // conversion to perform:

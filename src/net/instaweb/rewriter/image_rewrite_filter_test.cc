@@ -1746,7 +1746,7 @@ TEST_F(ImageRewriteTest, TestLoggingWithOptimize) {
                   true /* is_image_inlined */,
                   true /* is_critical_image */,
                   true /* is_url_rewritten */,
-                  5733 /* rewritten size */,
+                  5735 /* rewritten size */,
                   false /* try_low_res_src_insertion */,
                   false /* low_res_src_inserted */,
                   IMAGE_UNKNOWN /* low res image type */,
@@ -1822,7 +1822,7 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
       IMAGE_GIF, /* original_type */
       IMAGE_PNG, /* optimized_type */
       24941, /* original_size */
-      5733, /* optimized_size */
+      5735, /* optimized_size */
       true, /* is_recompressed */
       true, /* is_resized */
       192, /* original width */
@@ -3019,7 +3019,7 @@ TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
       IMAGE_GIF, /* original_type */
       IMAGE_PNG, /* optimized_type */
       24941, /* original_size */
-      11491, /* optimized_size */
+      11489, /* optimized_size */
       true, /* is_recompressed */
       true, /* is_resized */
       192, /* original width */

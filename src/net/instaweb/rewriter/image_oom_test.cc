@@ -25,14 +25,16 @@
 #include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image_test_base.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 
 namespace net_instaweb {
 namespace {
+
+const char kLargeJpeg[] = "Large.jpg";
 
 class ImageOomTest : public ImageTestBase {
  public:
@@ -85,36 +87,58 @@ class ImageOomTest : public ImageTestBase {
   rlimit old_mem_limit_;
 };
 
-TEST_F(ImageOomTest, BlankImage) {
+TEST_F(ImageOomTest, BlankImageTooLarge) {
   if (RunningOnValgrind()) {
     return;
   }
 
   Image::CompressionOptions* options = new Image::CompressionOptions();
-  options->recompress_png = true;
   // Make sure creating gigantic image fails cleanly.
-  ImagePtr giant(BlankImageWithOptions(10000, 10000, IMAGE_PNG,
+  ImagePtr giant(BlankImageWithOptions(10000000, 10000, IMAGE_PNG,
                                        GTestTempDir(), &timer_,
                                        &handler_, options));
-  EXPECT_FALSE(giant->EnsureLoaded(true));
+  EXPECT_EQ(NULL, giant.get());
 }
 
-TEST_F(ImageOomTest, LoadImage) {
+TEST_F(ImageOomTest, BlankImageNotTooLarge) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  ImagePtr not_too_large(BlankImageWithOptions(100000, 10000, IMAGE_PNG,
+                                               GTestTempDir(), &timer_,
+                                               &handler_, options));
+  // Image of this size can be created.
+  EXPECT_NE(static_cast<net_instaweb::Image*>(NULL), not_too_large.get());
+}
+
+TEST_F(ImageOomTest, LoadLargeJpeg) {
   if (RunningOnValgrind()) {
     return;
   }
 
   GoogleString buf;
   bool not_progressive = false;
-  ImagePtr giant(ReadImageFromFile(IMAGE_JPEG, kLarge, &buf,
+  ImagePtr giant(ReadImageFromFile(IMAGE_JPEG, kLargeJpeg, &buf,
                                    not_progressive));
-  EXPECT_FALSE(giant->EnsureLoaded(true));
+  // We do not rewrite JPEG images of such large size, so the input and output
+  // images have the same length.
+  EXPECT_EQ(buf.length(), giant->output_size());
+}
 
-  // Make sure we can still load a reasonable image OK.
-  buf.clear();
-  ImagePtr small(
-      ReadImageFromFile(IMAGE_PNG, kCuppa, &buf, not_progressive));
-  EXPECT_TRUE(small->EnsureLoaded(true));
+TEST_F(ImageOomTest, LoadLargePng) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  GoogleString buf;
+  bool not_progressive = true;
+  ImagePtr image(ReadImageFromFile(IMAGE_PNG, kLarge, &buf,
+                                   not_progressive));
+  // PNG images needs less memory to rewrite than JPEG. After rewriting
+  // this image shrinks.
+  EXPECT_GT(buf.length(), image->output_size());
 }
 
 }  // namespace
