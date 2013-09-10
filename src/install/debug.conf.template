@@ -918,6 +918,19 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   ModPagespeed off
 </VirtualHost>
 
+# Help tests detect whether mod_spdy is loaded. Only sees it if it's loaded
+# before us, unfortunately, but we can at least make it so during our own
+# testing.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName spdy.example.com
+  <IfModule !spdy_module>
+    DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/nonspdy"
+  </IfModule>
+  <IfModule spdy_module>
+    DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/spdy"
+  </IfModule>
+</VirtualHost>
+
 # For testing where we do our loopback routing. Note that this is listening
 # on an unusual loopback IP.
 Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
