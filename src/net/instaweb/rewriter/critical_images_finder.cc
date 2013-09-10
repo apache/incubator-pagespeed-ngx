@@ -52,30 +52,6 @@ const char kOriginalImageJsonWidthKey[] = "originalWidth";
 const char kOriginalImageJsonHeightKey[] = "originalHeight";
 const char kEmptyValuePlaceholder[] = "\n";
 
-// Setup the HTML and CSS critical image sets in critical_images_info from the
-// property_value. Return true if property_value had a value, and
-// deserialization of it succeeded.
-bool PopulateCriticalImagesFromPropertyValue(
-    const PropertyValue* property_value,
-    CriticalImages* critical_images) {
-  DCHECK(property_value != NULL);
-  DCHECK(critical_images != NULL);
-  if (!property_value->has_value()) {
-    return false;
-  }
-  // Check if we have the placeholder string value, indicating an empty value.
-  // This will be stored when we have an empty set of critical images, since the
-  // property cache doesn't store empty values.
-  if (property_value->value() == kEmptyValuePlaceholder) {
-    critical_images->Clear();
-    return true;
-  }
-
-  ArrayInputStream input(property_value->value().data(),
-                         property_value->value().size());
-  return critical_images->ParseFromZeroCopyStream(&input);
-}
-
 void MigrateLegacyCriticalBeacons(
     protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* beacons,
     protobuf::RepeatedPtrField<GoogleString>* critical_images_field,
@@ -119,22 +95,22 @@ CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
     int percent_seen_for_critical,
     const PropertyValue* property_value) {
   DCHECK(property_value != NULL);
-  CriticalImages crit_images;
-  if (!PopulateCriticalImagesFromPropertyValue(property_value, &crit_images)) {
+  scoped_ptr<CriticalImagesInfo> info(new CriticalImagesInfo());
+  if (!CriticalImagesFinder::PopulateCriticalImagesFromPropertyValue(
+          property_value, &info->proto)) {
     return NULL;
   }
   // The existence of kEmptyValuePlaceholder should mean that "no data" will be
   // distinguished from "no critical images" by the above call.
-  MigrateLegacyCriticalImages(&crit_images);
-
-  CriticalImagesInfo* critical_images_info = new CriticalImagesInfo();
+  MigrateLegacyCriticalImages(&info->proto);
+  // Fill in map fields based on proto value so that image lookups are O(lg n).
   GetCriticalKeysFromProto(percent_seen_for_critical,
-                           crit_images.html_critical_image_support(),
-                           &critical_images_info->html_critical_images);
+                           info->proto.html_critical_image_support(),
+                           &info->html_critical_images);
   GetCriticalKeysFromProto(percent_seen_for_critical,
-                           crit_images.css_critical_image_support(),
-                           &critical_images_info->css_critical_images);
-  return critical_images_info;
+                           info->proto.css_critical_image_support(),
+                           &info->css_critical_images);
+  return info.release();
 }
 
 void UpdateCriticalImagesSetInProto(
@@ -283,7 +259,6 @@ StringSet* CriticalImagesFinder::mutable_css_critical_images(
   return &driver_info->css_critical_images;
 }
 
-
 // Copy the critical images for this request from the property cache into the
 // RewriteDriver. The critical images are not stored in CriticalImageFinder
 // because the ServerContext holds the CriticalImageFinder and hence is shared
@@ -346,6 +321,30 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
       SupportInterval(), GetCriticalImagesCohort(), page);
 }
 
+// Setup the HTML and CSS critical image sets in *critical_images using
+// *property_value.  Return true if property_value had a value, and
+// deserialization of it succeeded.
+bool CriticalImagesFinder::PopulateCriticalImagesFromPropertyValue(
+    const PropertyValue* property_value,
+    CriticalImages* critical_images) {
+  DCHECK(property_value != NULL);
+  DCHECK(critical_images != NULL);
+  if (!property_value->has_value()) {
+    return false;
+  }
+  // Check if we have the placeholder string value, indicating an empty value.
+  // This will be stored when we have an empty set of critical images, since the
+  // property cache doesn't store empty values.
+  if (property_value->value() == kEmptyValuePlaceholder) {
+    critical_images->Clear();
+    return true;
+  }
+  // Having dealt with the unusual cases, parse the proto.
+  ArrayInputStream input(property_value->value().data(),
+                         property_value->value().size());
+  return critical_images->ParseFromZeroCopyStream(&input);
+}
+
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     const StringSet* html_critical_images_set,
     const StringSet* css_critical_images_set,
@@ -362,28 +361,39 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     LOG(WARNING) << "Critical Images Cohort is NULL.";
     return false;
   }
-
-  // Update RenderedImages proto in property Cache.
-  if (rendered_images_set != NULL) {
-    UpdateInPropertyCache(
-        *rendered_images_set, cohort, kRenderedImageDimensionsProperty,
-        false /* don't write cohort */, page);
-  }
-
   PropertyValue* property_value = page->GetProperty(
       cohort, kCriticalImagesPropertyName);
   // Read in the current critical images, and preserve the current HTML or
   // CSS critical images if they are not being updated.
   CriticalImages critical_images;
   PopulateCriticalImagesFromPropertyValue(property_value, &critical_images);
+  return UpdateAndWriteBackCriticalImagesCacheEntry(
+      html_critical_images_set, css_critical_images_set, rendered_images_set,
+      support_interval, cohort, page, &critical_images);
+}
+
+bool CriticalImagesFinder::UpdateAndWriteBackCriticalImagesCacheEntry(
+    const StringSet* html_critical_images_set,
+    const StringSet* css_critical_images_set,
+    const RenderedImages* rendered_images_set,
+    int support_interval,
+    const PropertyCache::Cohort* cohort,
+    AbstractPropertyPage* page,
+    CriticalImages* critical_images) {
+  // Update RenderedImages proto in property Cache.
+  if (rendered_images_set != NULL) {
+    UpdateInPropertyCache(
+        *rendered_images_set, cohort, kRenderedImageDimensionsProperty,
+        false /* don't write cohort */, page);
+  }
   if (!UpdateCriticalImages(
       html_critical_images_set, css_critical_images_set,
-      support_interval, &critical_images)) {
+      support_interval, critical_images)) {
     return false;
   }
 
   GoogleString buf;
-  if (!critical_images.SerializeToString(&buf)) {
+  if (!critical_images->SerializeToString(&buf)) {
     LOG(WARNING) << "Serialization of critical images protobuf failed.";
     return false;
   }
@@ -432,7 +442,7 @@ bool CriticalImagesFinder::UpdateCriticalImages(
 RenderedImages* CriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
     RewriteDriver* driver) {
   PropertyCacheDecodeResult pcache_status;
-  scoped_ptr<RenderedImages> result(
+  scoped_ptr<RenderedImages> dimensions(
       DecodeFromPropertyCache<RenderedImages>(
           driver,
           GetCriticalImagesCohort(),
@@ -444,7 +454,7 @@ RenderedImages* CriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
         kWarning, "Unable to parse Critical RenderedImage PropertyValue for %s",
         driver->url());
   }
-  return result.release();
+  return dimensions.release();
 }
 
 RenderedImages* CriticalImagesFinder::JsonMapToRenderedImagesMap(

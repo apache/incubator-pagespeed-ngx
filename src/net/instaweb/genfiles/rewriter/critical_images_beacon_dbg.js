@@ -52,10 +52,11 @@
 }};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
-pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled) {
+pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled, nonce) {
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
+  this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize();
   this.is_resize_using_rendered_dimensions_enabled_ = is_resize_using_rendered_dimensions_enabled;
   this.imgLocations_ = {}
@@ -86,6 +87,7 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
   }
   var is_data_available = !1, data = "oh=" + this.optionsHash_;
   if(0 != critical_imgs.length) {
+    this.nonce_.empty() || (data += "&n=" + this.nonce_);
     data += "&ci=" + encodeURIComponent(critical_imgs[0]);
     for(i = 1;i < critical_imgs.length;++i) {
       var tmp = "," + encodeURIComponent(critical_imgs[i]);
@@ -111,8 +113,8 @@ pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
   }
   return renderedImageDimensions
 };
-pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled) {
-  var temp = new pagespeed.CriticalImagesBeacon(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled), beacon_onload = function() {
+pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled, nonce) {
+  var temp = new pagespeed.CriticalImagesBeacon(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled, nonce), beacon_onload = function() {
     window.setTimeout(function() {
       temp.checkCriticalImages_()
     }, 0)

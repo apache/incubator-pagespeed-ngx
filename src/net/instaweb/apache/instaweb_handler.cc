@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
@@ -378,6 +379,8 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
 
   RewriteDriver* driver = ResourceFetch::GetDriver(
       *stripped_gurl, custom_options, server_context, request_context);
+  const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
+      driver->options());
 
   ApacheProxyFetch fetch(
       original_url, server_context->thread_system(), driver, request);
@@ -401,7 +404,10 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
     // be stripped from the cache key before we store the result in HTTPCache.
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
         stripped_gurl->Spec(), request_headers.release(),
-        driver->options()->respect_vary(), server_context->http_cache(),
+        options->respect_vary(),
+        options->ipro_max_response_bytes(),
+        options->ipro_max_concurrent_recordings(),
+        server_context->http_cache(),
         server_context->statistics(), server_context->message_handler());
     ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
                          request, request->connection);

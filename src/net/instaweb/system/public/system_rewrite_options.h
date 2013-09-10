@@ -197,6 +197,12 @@ class SystemRewriteOptions : public RewriteOptions {
   bool fetch_with_gzip() const {
     return fetch_with_gzip_.value();
   }
+  int64 ipro_max_response_bytes() const {
+    return ipro_max_response_bytes_.value();
+  }
+  int64 ipro_max_concurrent_recordings() const {
+    return ipro_max_concurrent_recordings_.value();
+  }
 
   // If this is set to true, we'll turn on our fallback proxy-like behavior
   // on non-.pagespeed. URLs without changing the main fetcher from Serf
@@ -327,6 +333,8 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<int64> cache_flush_poll_interval_sec_;
   Option<int64> statistics_logging_max_file_size_kb_;
   Option<int64> slurp_flush_limit_;
+  Option<int64> ipro_max_response_bytes_;
+  Option<int64> ipro_max_concurrent_recordings_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteOptions);
 };

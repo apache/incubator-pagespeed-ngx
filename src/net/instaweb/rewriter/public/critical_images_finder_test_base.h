@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/null_statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -32,12 +33,17 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
  public:
   virtual CriticalImagesFinder* finder() = 0;
 
-  bool CallUpdateCriticalImagesCacheEntry(
+  virtual bool UpdateCriticalImagesCacheEntry(
       const StringSet* critical_images_set,
       const StringSet* css_critical_images_set) {
     return finder()->UpdateCriticalImagesCacheEntryFromDriver(
         critical_images_set, css_critical_images_set, rewrite_driver());
   }
+
+  void CheckCriticalImageFinderStats(int hits, int expiries, int not_found);
+
+  bool IsHtmlCriticalImage(const GoogleString& url);
+  bool IsCssCriticalImage(const GoogleString& url);
 
  protected:
   NullStatistics stats_;

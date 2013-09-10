@@ -18,6 +18,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BEACON_CRITICAL_IMAGES_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BEACON_CRITICAL_IMAGES_FINDER_H_
 
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
@@ -29,6 +30,7 @@ class NonceGenerator;
 class RenderedImages;
 class RewriteDriver;
 class Statistics;
+class Timer;
 
 // Support critical (above the fold) image detection through a javascript beacon
 // on the client.
@@ -63,8 +65,15 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
       const RenderedImages* rendered_images_set,
+      const StringPiece& nonce,
       const PropertyCache::Cohort* cohort,
-      AbstractPropertyPage* page);
+      AbstractPropertyPage* page,
+      Timer* timer);
+
+  // Check beacon interval and nonce state, and return appropriate
+  // BeaconMetadata; result.status indicates whether beaconing should occur, and
+  // result.nonce contains the nonce (if required).
+  virtual BeaconMetadata PrepareForBeaconInsertion(RewriteDriver* driver);
 
  private:
   virtual GoogleString GetKeyForUrl(const GoogleString& url);

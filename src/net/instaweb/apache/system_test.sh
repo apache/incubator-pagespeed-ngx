@@ -347,8 +347,8 @@ wget -O - -S $TEST_ROOT/no_transform/BikeCrashIcn.png $WGET_ARGS &> $FETCHED
 check grep -q 'Cache-Control:.*no-transform' $FETCHED
 WGET_ARGS=""
 
-# TODO(jkarlin): Once IPRO is in place for apache we should test that
-# we obey no-transform in that path.
+# TODO(jkarlin): Now that IPRO is in place for apache we should test that we
+# obey no-transform in that path.
 
 # TODO(sligocki): This test needs to be run before below tests.
 # Remove once below tests are moved to system_test.sh.
@@ -849,7 +849,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   # The js should be fetched locally and inlined.
   http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until -save -recursive $URL 'fgrep -c CDATA' 1
+    fetch_until -save -recursive $URL 'fgrep -c document.write' 1
 
   # Save the image URL so we can try to reconstruct it later.
   PDT_IMG_URL=`egrep -o \"[^\"]*xPuzzle[^\"]*\.pagespeed[^\"]*\" $FETCH_FILE | \
@@ -1582,16 +1582,17 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   '--header=X-PSA-Blocking-Rewrite:psatest'
   check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
     $OUTDIR/image_resize_using_rendered_dimensions.html) = 1 ];
-  OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
-    $OUTDIR/image_resize_using_rendered_dimensions.html | \
-    awk -F\' '{print $(NF-3)}')
+  OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+                 $OUTDIR/image_resize_using_rendered_dimensions.html)
+  NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+          $OUTDIR/image_resize_using_rendered_dimensions.html)
 
   # Send a beacon response using POST indicating that OptPuzzle.jpg is
   # critical and has rendered dimensions.
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
   BEACON_URL+="?url=http%3A%2F%2Frenderedimagebeacon.example.com%2Fmod_pagespeed_test%2F"
   BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
-  BEACON_DATA="oh=$OPTIONS_HASH&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
+  BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
     $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
@@ -1609,19 +1610,20 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # lazyloaded by default.
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-
   check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
     $OUTDIR/rewrite_images.html) = 1 ];
-  # We need the options hash to send a critical image beacon, so extract it from
-  # injected beacon JS.
-  OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
-    $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
+  # We need the options hash and nonce to send a critical image beacon, so
+  # extract it from injected beacon JS.
+  OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+                 $OUTDIR/rewrite_images.html)
+  NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+          $OUTDIR/rewrite_images.html)
   # Send a beacon response using POST indicating that Puzzle.jpg is a critical
   # image.
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
   BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
   BEACON_URL+="image_rewriting%2Frewrite_images.html"
-  BEACON_DATA="oh=$OPTIONS_HASH&ci=2932493096"
+  BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=2932493096"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
     $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
@@ -1632,16 +1634,27 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Now test sending a beacon with a GET request, instead of POST. Indicate that
   # Puzzle.jpg and Cuppa.png are the critical images. In practice we expect only
   # POSTs to be used by the critical image beacon, but both code paths are
-  # supported.  We need to do this several times since 80% support is required
-  # for an image to be considered critical.
+  # supported.  We add query params to URL to ensure that we get an instrumented
+  # page without blocking.
+  URL="$URL?id=4"
+  http_proxy=$SECONDARY_HOSTNAME\
+    fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+  check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+    "$OUTDIR/rewrite_images.html?id=4") = 1 ];
+  OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+                 "$OUTDIR/rewrite_images.html?id=4")
+  NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+          "$OUTDIR/rewrite_images.html?id=4")
+  BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
+  BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+  BEACON_URL+="image_rewriting%2Frewrite_images.html%3Fid%3D4"
+  BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=2932493096"
   # Add the hash for Cuppa.png to BEACON_DATA, which will be used as the query
   # params for the GET.
   BEACON_DATA+=",2644480723"
-  for i in {1..4}; do
-    OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-      $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
-    check_from "$OUT" egrep -q "HTTP/1[.]. 204"
-  done
+  OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP "$BEACON_URL&$BEACON_DATA")
+  check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now only BikeCrashIcn.png should be lazyloaded.
   http_proxy=$SECONDARY_HOSTNAME \
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
@@ -1822,8 +1835,7 @@ URL+="?PageSpeedJpegRecompressionQuality=75"
 fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
 check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
 CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
-  fgrep Content-Length: | \
-  awk '{print $2}')
+  awk '/Content-Length:/ {print $2}')
 check [ "$CONTENT_LENGTH" -lt 90000 ];
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
     fgrep -q 'Transfer-Encoding: chunked'

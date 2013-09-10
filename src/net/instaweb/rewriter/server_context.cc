@@ -165,8 +165,8 @@ class BeaconPropertyCallback : public PropertyPage {
     // struct to nicely package up all of the pcache arguments.
     BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
         html_critical_images_set_.get(), css_critical_images_set_.get(),
-        rendered_images_set_.get(), server_context_->beacon_cohort(), this);
-
+        rendered_images_set_.get(), nonce_, server_context_->beacon_cohort(),
+        this, server_context_->timer());
     if (critical_css_selector_set_ != NULL) {
       BeaconCriticalSelectorFinder::
           WriteCriticalSelectorsToPropertyCacheFromBeacon(

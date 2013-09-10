@@ -21,9 +21,10 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -53,6 +54,25 @@ CriticalImagesFinderTestBase::GetCriticalImagesUpdatedValue() {
   const PropertyValue* property_value = page->GetProperty(
       cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
   return property_value;
+}
+
+void CriticalImagesFinderTestBase::CheckCriticalImageFinderStats(
+    int hits, int expiries, int not_found) {
+  EXPECT_EQ(hits, statistics()->GetVariable(
+      CriticalImagesFinder::kCriticalImagesValidCount)->Get());
+  EXPECT_EQ(expiries, statistics()->GetVariable(
+      CriticalImagesFinder::kCriticalImagesExpiredCount)->Get());
+  EXPECT_EQ(not_found, statistics()->GetVariable(
+      CriticalImagesFinder::kCriticalImagesNotFoundCount)->Get());
+}
+
+bool CriticalImagesFinderTestBase::IsHtmlCriticalImage(
+    const GoogleString& url) {
+  return finder()->IsHtmlCriticalImage(url, rewrite_driver());
+}
+bool CriticalImagesFinderTestBase::IsCssCriticalImage(
+    const GoogleString& url) {
+  return finder()->IsCssCriticalImage(url, rewrite_driver());
 }
 
 }  // namespace net_instaweb

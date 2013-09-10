@@ -195,6 +195,15 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty(false, &SystemRewriteOptions::fetch_with_gzip_,
                     "afg", "FetchWithGzip", kProcessScope,
                     "Request http content from origin servers using gzip");
+  AddSystemProperty(1024 * 1024 * 10,  /* 10 Megabytes */
+                    &SystemRewriteOptions::ipro_max_response_bytes_,
+                    "imrb", "IproMaxResponseBytes", kProcessScope,
+                    "Limit allowed size of IPRO responses. "
+                    "Set to 0 for unlimited.");
+  AddSystemProperty(10,
+                    &SystemRewriteOptions::ipro_max_concurrent_recordings_,
+                    "imcr", "IproMaxConcurrentRecordings", kProcessScope,
+                    "Limit allowed number of IPRO recordings");
   MergeSubclassProperties(system_properties_);
 
   // We allow a special instantiation of the options with a null thread system

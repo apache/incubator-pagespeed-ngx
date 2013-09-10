@@ -1140,6 +1140,19 @@ class BeaconTest : public ServerContextTest {
         server_context()->beacon_cohort());
   }
 
+  void InsertImageBeacon(StringPiece user_agent) {
+    // Simulate effects on pcache of image beacon insertion.
+    rewrite_driver()->set_property_page(MockPageForUA(user_agent));
+    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    last_beacon_metadata_ =
+        server_context()->critical_images_finder()->
+            PrepareForBeaconInsertion(rewrite_driver());
+    ASSERT_EQ(kBeaconWithNonce, last_beacon_metadata_.status);
+    ASSERT_FALSE(last_beacon_metadata_.nonce.empty());
+    rewrite_driver()->property_page()->WriteCohort(
+        server_context()->beacon_cohort());
+  }
+
   // Send a beacon through ServerContext::HandleBeacon and verify that the
   // property cache entries for critical images, critical selectors and rendered
   // dimensions of images were updated correctly.
@@ -1147,26 +1160,23 @@ class BeaconTest : public ServerContextTest {
                   const StringSet* critical_css_selectors,
                   const GoogleString* rendered_images_json_map,
                   StringPiece user_agent) {
+    ASSERT_EQ(kBeaconWithNonce, last_beacon_metadata_.status)
+        << "Remember to insert a beacon!";
     // Setup the beacon_url and pass to HandleBeacon.
     GoogleString beacon_url = StrCat(
         "url=http%3A%2F%2Fwww.example.com"
-        "&oh=", kOptionsHash);
+        "&oh=", kOptionsHash, "&n=", last_beacon_metadata_.nonce);
     if (critical_image_hashes != NULL) {
       StrAppend(&beacon_url, "&ci=");
       AppendJoinCollection(&beacon_url, *critical_image_hashes, ",");
     }
-
     if (critical_css_selectors != NULL) {
-      ASSERT_EQ(kBeaconWithNonce, last_beacon_metadata_.status) <<
-          "Remember to insert a beacon!";
-      StrAppend(&beacon_url, "&n=", last_beacon_metadata_.nonce, "&cs=");
+      StrAppend(&beacon_url, "&cs=");
       AppendJoinCollection(&beacon_url, *critical_css_selectors, ",");
     }
-
     if (rendered_images_json_map != NULL) {
       StrAppend(&beacon_url, "&rd=", *rendered_images_json_map);
     }
-
     EXPECT_TRUE(server_context()->HandleBeacon(
         beacon_url,
         user_agent,
@@ -1230,8 +1240,10 @@ TEST_F(BeaconTest, HandleBeaconRenderedDimensionsofImages) {
   GoogleString json_map_rendered_dimensions = StrCat(
       "{\"", hash1, "\":{\"renderedWidth\":40,",
       "\"renderedHeight\":50,\"originalWidth\":160,\"originalHeight\":200}}");
+  InsertImageBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   TestBeacon(NULL, NULL, &json_map_rendered_dimensions,
               UserAgentMatcherTestBase::kChromeUserAgent);
+  ASSERT_FALSE(rendered_images_.get() == NULL);
   EXPECT_EQ(1, rendered_images_->image_size());
   EXPECT_STREQ(hash1, rendered_images_->image(0).src());
   EXPECT_EQ(40, rendered_images_->image(0).rendered_width());
@@ -1248,6 +1260,7 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
 
   StringSet critical_image_hashes;
   critical_image_hashes.insert(hash1);
+  InsertImageBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
@@ -1258,11 +1271,13 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
   // beacon support decays over time.
   critical_image_hashes.insert(hash2);
   for (int i = 0; i < 3; ++i) {
+    InsertImageBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
     TestBeacon(&critical_image_hashes, NULL, NULL,
                UserAgentMatcherTestBase::kChromeUserAgent);
     EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
   }
   GoogleString expected = StrCat(hash1, ",", hash2);
+  InsertImageBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(expected, JoinCollection(critical_html_images_, ","));
@@ -1270,12 +1285,14 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
   // Test with a different user agent, providing support only for img1.
   critical_image_hashes.clear();
   critical_image_hashes.insert(hash1);
+  InsertImageBeacon(UserAgentMatcherTestBase::kIPhoneUserAgent);
   TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kIPhoneUserAgent);
   EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));
 
   // Beacon once more with the original user agent and with only img1; img2
   // loses 80% support again.
+  InsertImageBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   TestBeacon(&critical_image_hashes, NULL, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ(hash1, JoinCollection(critical_html_images_, ","));

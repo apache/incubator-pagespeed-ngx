@@ -39,12 +39,14 @@ var pagespeed = window['pagespeed'];
  * @param {boolean} is_resize_using_rendered_dimensions_enabled The bool to show
  *     if resizing is being done using the rendered dimensions. If yes we
  *     capture the rendered dimensions and send it back with the beacon.
+ * @param {string} nonce The nonce sent by the server.
  */
 pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash,
-    is_resize_using_rendered_dimensions_enabled) {
+    is_resize_using_rendered_dimensions_enabled, nonce) {
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
+  this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize();
   this.is_resize_using_rendered_dimensions_enabled_ =
       is_resize_using_rendered_dimensions_enabled;
@@ -158,6 +160,9 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
   var is_data_available = false;
   var data = 'oh=' + this.optionsHash_;
   if (critical_imgs.length != 0) {
+    if (!this.nonce_.empty()) {
+      data += '&n=' + this.nonce_;
+    }
     data += '&ci=' + encodeURIComponent(critical_imgs[0]);
     for (var i = 1; i < critical_imgs.length; ++i) {
       var tmp = ',' + encodeURIComponent(critical_imgs[i]);
@@ -235,12 +240,13 @@ pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
  * @param {boolean} is_resize_using_rendered_dimensions_enabled The bool to show
  *     if resizing is being done using the rendered dimensions. If yes we
  *     capture the rendered dimensions and send it back with the beacon.
+ * @param {string} nonce The nonce sent by the server.
  */
 pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
-    is_resize_using_rendered_dimensions_enabled) {
+    is_resize_using_rendered_dimensions_enabled, nonce) {
   var temp = new pagespeed.CriticalImagesBeacon(
       beaconUrl, htmlUrl, optionsHash,
-      is_resize_using_rendered_dimensions_enabled);
+      is_resize_using_rendered_dimensions_enabled, nonce);
   // Add event to the onload handler to scan images and beacon back the visible
   // ones.
   var beacon_onload = function() {

@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -83,51 +82,47 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     rewrite_driver()->set_property_page(page);
     pcache->set_enabled(true);
     pcache->Read(page);
+
+    GoogleUrl base(GetTestUrl());
+    image_gurl_.Reset(base, kChefGifFile);
+  }
+
+  void PrepareInjection() {
+    rewrite_driver()->AddFilters();
+    AddFileToMockFetcher(image_gurl_.Spec(), kChefGifFile,
+                         kContentTypeJpeg, 100);
+  }
+
+  void AddImageTags(GoogleString* html) {
+    // Add the relative image URL.
+    StrAppend(html, "<img src=\"", kChefGifFile, "\" ", kChefGifDims, ">");
+    // Add the absolute image URL.
+    StrAppend(html, "<img src=\"", image_gurl_.Spec(), "\" ",
+              kChefGifDims, ">");
   }
 
   void RunInjection() {
-    rewrite_driver()->AddFilters();
-    // The filter should absolutify img URLs before generating the hash of the
-    // URL, so test with both a relative and absolute URL and make sure the
-    // hashes match.
-    GoogleUrl base(GetTestUrl());
-    GoogleUrl img_gurl(base, kChefGifFile);
-
-    AddFileToMockFetcher(img_gurl.Spec(), kChefGifFile, kContentTypeJpeg, 100);
-
+    PrepareInjection();
     GoogleString html = "<head></head><body>";
-    // Add the relative image URL.
-    StrAppend(&html, "<img src=\"", kChefGifFile, "\" ", kChefGifDims, ">");
-    // Add the absolute image URL.
-    StrAppend(&html, "<img src=\"", img_gurl.Spec(), "\" ", kChefGifDims, ">");
+    AddImageTags(&html);
     StrAppend(&html, "</body>");
+    ParseUrl(GetTestUrl(), html);
+  }
+
+  void RunInjectionNoBody() {
+    // As above, but we omit <head> and (more relevant) <body> tags.  We should
+    // still inject the script at the end of the document.  The filter used to
+    // get this wrong.
+    PrepareInjection();
+    GoogleString html;
+    AddImageTags(&html);
     ParseUrl(GetTestUrl(), html);
   }
 
   void VerifyInjection() {
     EXPECT_EQ(1, statistics()->GetVariable(
         CriticalImagesBeaconFilter::kCriticalImagesBeaconAddedCount)->Get());
-    VerifyIfRenderedDimensionsInBeacons();
     EXPECT_TRUE(output_buffer_.find(CreateInitString()) != GoogleString::npos);
-  }
-
-  void VerifyIfRenderedDimensionsInBeacons() {
-    GoogleString init_string = CreateInitString();
-    GoogleString url;
-    EscapeToJsStringLiteral(rewrite_driver()->google_url().Spec(), false, &url);
-    StringPiece beacon_url = https_mode_ ? options()->beacon_url().https :
-        options()->beacon_url().http;
-    GoogleString str = "pagespeed.criticalImagesBeaconInit";
-    StrAppend(&str, "('", beacon_url, "', '", url);
-    if (options()->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
-        rewrite_driver()->request_properties()->
-            SupportsCriticalImagesBeacon()) {
-      StrAppend(&str, "', '0', 'true'");
-      EXPECT_STREQ(str, init_string);
-    } else {
-      StrAppend(&str, "', '0', 'false'");
-      EXPECT_STREQ(str, init_string);
-    }
   }
 
   void VerifyNoInjection() {
@@ -139,8 +134,6 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 
   void VerifyWithNoImageRewrite() {
     const GoogleString hash_str = ImageUrlHash(kChefGifFile);
-    GoogleUrl base(GetTestUrl());
-    GoogleUrl img_gurl(base, kChefGifFile);
     EXPECT_TRUE(output_buffer_.find(
         StrCat("pagespeed_url_hash=\"", hash_str)) != GoogleString::npos);
   }
@@ -156,10 +149,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 
   GoogleString ImageUrlHash(StringPiece url) {
     // Absolutify the URL before hashing.
-    GoogleUrl base(GetTestUrl());
-    GoogleUrl img_gurl(base, url);
     unsigned int hash_val = HashString<CasePreserve, unsigned int>(
-        img_gurl.spec_c_str(), strlen(img_gurl.spec_c_str()));
+        image_gurl_.spec_c_str(), strlen(image_gurl_.spec_c_str()));
     return UintToString(hash_val);
   }
 
@@ -173,20 +164,28 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
         rewrite_driver()->server_context()->hasher()->Hash(
             rewrite_driver()->options()->signature());
     GoogleString str = "pagespeed.criticalImagesBeaconInit(";
-    StrAppend(&str, "'", beacon_url, "', ");
-    StrAppend(&str, "'", url, "', ");
-    StrAppend(&str, "'", options_signature_hash, "', ");
-    StrAppend(&str, "'", BoolToString(
+    StrAppend(&str, "'", beacon_url, "',");
+    StrAppend(&str, "'", url, "',");
+    StrAppend(&str, "'", options_signature_hash, "',");
+    StrAppend(&str, BoolToString(
         CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(
-            rewrite_driver())), "'");
+            rewrite_driver())), ",");
+    StrAppend(&str, "'", ExpectedNonce(), "');");
     return str;
   }
 
   bool https_mode_;
+  GoogleUrl image_gurl_;
 };
 
 TEST_F(CriticalImagesBeaconFilterTest, ScriptInjection) {
   RunInjection();
+  VerifyInjection();
+  VerifyWithNoImageRewrite();
+}
+
+TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionNoBody) {
+  RunInjectionNoBody();
   VerifyInjection();
   VerifyWithNoImageRewrite();
 }

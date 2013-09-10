@@ -17,13 +17,18 @@
 
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 
+#include "base/logging.h"
+#include "net/instaweb/rewriter/critical_images.pb.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/rendered_image.pb.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
@@ -42,14 +47,29 @@ bool BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
       const StringSet* html_critical_images_set,
       const StringSet* css_critical_images_set,
       const RenderedImages* rendered_images_set,
+      const StringPiece& nonce,
       const PropertyCache::Cohort* cohort,
-      AbstractPropertyPage* page) {
-  return CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
-      html_critical_images_set,
-      css_critical_images_set,
-      rendered_images_set,
-      kBeaconImageSupportInterval,
-      cohort, page);
+      AbstractPropertyPage* page, Timer* timer) {
+  DCHECK(cohort != NULL);
+  DCHECK(page != NULL);
+  PropertyValue* property_value =
+      page->GetProperty(cohort, kCriticalImagesPropertyName);
+  if (property_value == NULL) {
+    return false;
+  }
+  CriticalImages critical_images;
+  if (!PopulateCriticalImagesFromPropertyValue(
+          property_value, &critical_images)) {
+    return false;
+  }
+  if (!ValidateAndExpireNonce(
+          timer->NowMs(), nonce,
+          critical_images.mutable_html_critical_image_support())) {
+    return false;
+  }
+  return CriticalImagesFinder::UpdateAndWriteBackCriticalImagesCacheEntry(
+      html_critical_images_set, css_critical_images_set, rendered_images_set,
+      kBeaconImageSupportInterval, cohort, page, &critical_images);
 }
 
 GoogleString BeaconCriticalImagesFinder::GetKeyForUrl(const GoogleString& url) {
@@ -68,6 +88,25 @@ bool BeaconCriticalImagesFinder::IsMeaningful(
   }
   return driver->options()->critical_images_beacon_enabled() &&
       driver->server_context()->factory()->UseBeaconResultsInFilters();
+}
+
+BeaconMetadata BeaconCriticalImagesFinder::PrepareForBeaconInsertion(
+    RewriteDriver* driver) {
+  BeaconMetadata metadata;
+  UpdateCriticalImagesSetInDriver(driver);
+  const StringSet empty;
+  CriticalImages& proto = driver->critical_images_info()->proto;
+  // We store the metadata about last beacon time and nonce generation in the
+  // html_critical_image_support field of the CriticalImages proto.
+  net_instaweb::PrepareForBeaconInsertion(
+      empty, proto.mutable_html_critical_image_support(), SupportInterval(),
+      nonce_generator_, driver->timer(), &metadata);
+  if (metadata.status != kDoNotBeacon) {
+    UpdateInPropertyCache(proto, cohort_, kCriticalImagesPropertyName,
+                          true /* write_cohort */,
+                          driver->fallback_property_page());
+  }
+  return metadata;
 }
 
 }  // namespace net_instaweb

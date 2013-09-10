@@ -190,6 +190,8 @@ void AddNonceToCriticalSelectors(const int64 timestamp_ms,
   pending_nonce->set_nonce(*nonce);
 }
 
+}  // namespace
+
 // Check whether the given nonce is valid, invalidating any expired nonce
 // entries we might encounter.  To avoid the need to copy and clear the nonce
 // list, we invalidate the entry used and any expired entries by clearing the
@@ -213,8 +215,6 @@ bool ValidateAndExpireNonce(int64 now_ms, StringPiece nonce,
   }
   return false;
 }
-
-}  // namespace
 
 void GetCriticalKeysFromProto(int64 support_percentage,
                               const CriticalKeys& critical_keys,

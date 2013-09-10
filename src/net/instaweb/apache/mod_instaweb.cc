@@ -805,9 +805,12 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
   CHECK(recorder != NULL);
 
   // Iterate through all buckets, saving content in the recorder and passing
-  // the buckets along when there is a flush.
+  // the buckets along when there is a flush.  Abort early if we hit EOS or the
+  // recorder fails.
   for (apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
-       bucket != APR_BRIGADE_SENTINEL(bb);
+       !(bucket == APR_BRIGADE_SENTINEL(bb) ||
+         APR_BUCKET_IS_EOS(bucket) ||
+         recorder->failed());
        bucket = APR_BUCKET_NEXT(bucket)) {
     if (!APR_BUCKET_IS_METADATA(bucket)) {
       // Content bucket.
@@ -828,26 +831,19 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
       // splitting the brigade, etc.
       apr_status_t return_code = apr_bucket_read(bucket, &buf, &bytes,
                                                  APR_BLOCK_READ);
-      StringPiece contents(buf, bytes);
-      if (return_code == APR_SUCCESS) {
-        // Ignore headers for now. They are checked by
-        // instaweb_in_place_check_headers_filter.
-        recorder->Write(contents, recorder->handler());
-      } else {
+      if (return_code != APR_SUCCESS) {
         ap_log_rerror(APLOG_MARK, APLOG_ERR, return_code, request,
                       "Reading bucket failed (rcode=%d)", return_code);
         recorder->Fail();
         return return_code;
       }
+      StringPiece contents(buf, bytes);
+      recorder->Write(contents, recorder->handler());
     } else if (APR_BUCKET_IS_FLUSH(bucket)) {
       recorder->Flush(recorder->handler());
-    } else if (APR_BUCKET_IS_EOS(bucket)) {
-      // instaweb_in_place_check_headers_filter calls
-      // recorder->DoneAndSetHeaders().
-      break;
     }
   }
-
+  // instaweb_in_place_check_headers_filter cleans up the recorder.
   return ap_pass_brigade(filter->next, bb);
 }
 
@@ -897,7 +893,9 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
       response_headers.SetDate(timer.NowMs());
       response_headers.ComputeCaching();
 
-      recorder->DoneAndSetHeaders(&response_headers);
+      // We now have the final headers.  If they don't let us cache then we'll
+      // abort even though we've already buffered up the whole resource.
+      recorder->DoneAndSetHeaders(&response_headers);  // Deletes recorder.
     }
   }
 

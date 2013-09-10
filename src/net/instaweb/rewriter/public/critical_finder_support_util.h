@@ -58,9 +58,18 @@ enum BeaconStatus {
 };
 
 struct BeaconMetadata {
+  BeaconMetadata() : status(kDoNotBeacon) { }
   BeaconStatus status;
   GoogleString nonce;
 };
+
+// Check whether the given nonce is valid, invalidating any expired nonce
+// entries we might encounter.  To avoid the need to copy and clear the nonce
+// list, we invalidate the entry used and any expired entries by clearing the
+// nonce value and timestamp.  These entries will be reused by
+// AddNonceToCriticalSelectors.
+bool ValidateAndExpireNonce(int64 now_ms, StringPiece nonce,
+                            CriticalKeys* critical_keys);
 
 // Generate a list of the critical keys from a proto, storing it into keys.
 // Takes into account legacy keys that may have been added before.  A key is

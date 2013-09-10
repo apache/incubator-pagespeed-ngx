@@ -19,15 +19,19 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 
+#include <map>
+#include <utility>
+
+#include "net/instaweb/rewriter/critical_images.pb.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class CriticalImages;
+class GoogleUrl;
 class RenderedImages;
 class RewriteDriver;
 class RewriteOptions;
@@ -50,6 +54,7 @@ struct CriticalImagesInfo {
       : is_critical_image_info_present(false) {}
   StringSet html_critical_images;
   StringSet css_critical_images;
+  CriticalImages proto;
   bool is_critical_image_info_present;
   RenderedImageDimensionsMap rendered_images_map;
 };
@@ -83,7 +88,7 @@ class CriticalImagesFinder {
   // function returns what percentage of the sets need to include the image for
   // it be considered critical.
   virtual int PercentSeenForCritical() const {
-    return kDefaultPercentSeenForCritial;
+    return kDefaultPercentSeenForCritical;
   }
 
   // Minimum interval to store support for critical image results. This affects
@@ -146,6 +151,13 @@ class CriticalImagesFinder {
       const StringSet* css_critical_images_set,
       RewriteDriver* driver);
 
+  // Setup the HTML and CSS critical image sets in critical_images_info from the
+  // property_value. Return true if property_value had a value, and
+  // deserialization of it succeeded.  Here because helper code needs access to
+  // it.
+  static bool PopulateCriticalImagesFromPropertyValue(
+      const PropertyValue* property_value, CriticalImages* critical_images);
+
   // Alternative interface to update the critical images cache entry. This is
   // useful in contexts like the beacon handler where the RewriteDriver for the
   // original request no longer exists.
@@ -174,7 +186,28 @@ class CriticalImagesFinder {
   RenderedImages* JsonMapToRenderedImagesMap(const GoogleString& str,
                                              const RewriteOptions* options);
 
+  // Check property cache state and prepare to insert beacon.  Returns the
+  // metadata where result.status == kDoNotBeacon if no beaconing should occur,
+  // and result.nonce contains the nonce if required (default implementation
+  // always beacons without a nonce).
+  virtual BeaconMetadata PrepareForBeaconInsertion(RewriteDriver* driver) {
+    BeaconMetadata result;
+    result.status = kBeaconNoNonce;
+    return result;
+  }
+
  protected:
+  // Completes a critical image set update operation and writes the data back to
+  // the property cache.
+  static bool UpdateAndWriteBackCriticalImagesCacheEntry(
+      const StringSet* html_critical_images_set,
+      const StringSet* css_critical_images_set,
+      const RenderedImages* rendered_images_set,
+      int support_interval,
+      const PropertyCache::Cohort* cohort,
+      AbstractPropertyPage* page,
+      CriticalImages* critical_images);
+
   // Gets critical images if present in the property cache and updates the
   // critical_images set in RewriteDriver with the obtained set.  If you
   // override this method, driver->critical_images_info() must not return NULL
@@ -206,7 +239,7 @@ class CriticalImagesFinder {
 
   // By default, store 1 critical image set and require an image to be in that
   // set for it to be critical.
-  static const int kDefaultPercentSeenForCritial = 100;
+  static const int kDefaultPercentSeenForCritical = 100;
   static const int kDefaultImageSupportInterval = 1;
 
   Variable* critical_images_valid_count_;
