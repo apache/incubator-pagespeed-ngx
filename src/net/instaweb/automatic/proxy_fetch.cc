@@ -353,7 +353,11 @@ void ProxyFetchPropertyCallbackCollector::ExecuteConnectProxyFetch(
   DCHECK(!detached_);
   proxy_fetch_ = proxy_fetch;
 
-  if (options_ == NULL || !options_->await_pcache_lookup()) {
+  // Use global options in case options is NULL.
+  const RewriteOptions* options =
+      options_ != NULL ? options_ : server_context_->global_options();
+
+  if (!options->await_pcache_lookup()) {
     std::set<ProxyFetchPropertyCallback*>::iterator iter;
     for (iter = pending_callbacks_.begin(); iter != pending_callbacks_.end();
         ++iter) {

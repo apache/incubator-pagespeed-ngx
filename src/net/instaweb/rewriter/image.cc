@@ -580,9 +580,9 @@ bool ImageImpl::GenerateBlankImage() {
     return false;
   }
 
-  // Create a blank scanline.
+  // Create a transparent scanline.
   const size_t bytes_per_scanline = dims_.width() *
-      GetNumChannelsFromPixelFormat(pagespeed::image_compression::RGB_888,
+      GetNumChannelsFromPixelFormat(pagespeed::image_compression::RGBA_8888,
                                     handler_);
   scoped_array<unsigned char> scanline(new unsigned char[bytes_per_scanline]);
   memset(scanline.get(), 0, bytes_per_scanline);
@@ -949,14 +949,13 @@ bool ImageImpl::LoadOpenCvEmpty() {
   if (ImageUrlEncoder::HasValidDimensions(dims_)) {
     // TODO(abliss): Need to figure out the right values for these.
     int depth = 8, channels = 3;
+    if (options_->use_transparent_for_blank_image) {
+      channels = 4;
+    }
     try {
       opencv_image_ = cvCreateImage(cvSize(dims_.width(), dims_.height()),
                                     depth, channels);
-      if (options_->use_white_for_blank_image) {
-        cvSet(opencv_image_, cvScalarAll(255), 0);
-      } else {
-        cvSetZero(opencv_image_);
-      }
+      cvSetZero(opencv_image_);
       changed_ = true;
       ok = true;
     } catch (cv::Exception& e) {

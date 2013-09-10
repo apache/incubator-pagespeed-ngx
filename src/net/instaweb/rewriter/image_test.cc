@@ -1151,11 +1151,11 @@ TEST_F(ImageTest, DrawImage) {
             canvas->output_size());
 }
 
-TEST_F(ImageTest, BlankWhiteImage) {
+TEST_F(ImageTest, BlankTransparentImage) {
   int width = 1000, height = 1000;
   Image::CompressionOptions* options = new Image::CompressionOptions();
 
-  options->use_white_for_blank_image = true;
+  options->use_transparent_for_blank_image = true;
   ImagePtr blank(BlankImageWithOptions(width, height, IMAGE_PNG, GTestTempDir(),
                                        &timer_, &handler_, options));
   bool loaded = blank->EnsureLoaded(false);

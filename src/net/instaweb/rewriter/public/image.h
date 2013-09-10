@@ -105,7 +105,7 @@ class Image {
           retain_color_profile(false),
           retain_color_sampling(false),
           retain_exif_data(false),
-          use_white_for_blank_image(false),
+          use_transparent_for_blank_image(false),
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans),
           webp_conversion_timeout_ms(-1),
@@ -131,7 +131,7 @@ class Image {
     bool retain_color_profile;
     bool retain_color_sampling;
     bool retain_exif_data;
-    bool use_white_for_blank_image;
+    bool use_transparent_for_blank_image;
     int64 jpeg_num_progressive_scans;
     int64 webp_conversion_timeout_ms;
 
@@ -264,7 +264,7 @@ Image* NewImage(const StringPiece& original_contents,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.
-// For now, this is assumed to be an 8-bit 3-channel image.
+// For now, this is assumed to be an 8-bit 4-channel image transparent image.
 Image* BlankImageWithOptions(int width, int height, ImageType type,
                              const StringPiece& tmp_dir,
                              Timer* timer,

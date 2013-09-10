@@ -979,7 +979,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
       scoped_ptr<Image> low_image;
       if (driver_->options()->use_blank_image_for_inline_preview()) {
-        image_options->use_white_for_blank_image = true;
+        image_options->use_transparent_for_blank_image = true;
         low_image.reset(BlankImageWithOptions(image_width, image_height,
             IMAGE_PNG, server_context_->filename_prefix(),
             driver_->timer(), message_handler, image_options));
