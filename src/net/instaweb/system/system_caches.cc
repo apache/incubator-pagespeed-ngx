@@ -451,6 +451,13 @@ void SystemCaches::ChildInit() {
 }
 
 void SystemCaches::StopCacheActivity() {
+  if (is_root_process_) {
+    // No caches used in root process, so nothing to shutdown.  We could run the
+    // shutdown code anyway, except that starts a thread which is unsafe to do
+    // in a forking server like Nginx.
+    return;
+  }
+
   // Iterate through the map of CacheInterface* objects constructed for
   // the memcached.  Note that these are not typically AprMemCache* objects,
   // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
