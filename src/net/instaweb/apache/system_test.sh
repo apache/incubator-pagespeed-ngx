@@ -876,6 +876,30 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     check_stat $PDT_OLDSTATS $PDT_NEWSTATS image_rewrites 1
   }
   on_cache_flush map_proxy_domain_cdn_reconstruct
+
+  # See if mod_spdy is available
+  SPDY_SUPPORT=$(http_proxy=$SECONDARY_HOSTNAME wget -q -O- spdy.example.com)
+  if [ "$SPDY_SUPPORT" = "mod_spdy supported." ]; then
+    echo "Testing fetching SSL with help of mod_spdy"
+    # Now, try fetching a document from the spdyfetch.example.com vhost over SSL
+    # Note that we cannot use the usual proxy trick, since it won't work with
+    # SSL, but luckily we can still mess around with the Host: header and
+    # X-Forwarded-Proto: headers directly and get what we want.
+    DATA=$(wget -q -O - --no-check-certificate \
+        --header="X-Forwarded-Proto: https" \
+        --header="Host: spdyfetch.example.com"\
+        $HTTPS_EXAMPLE_ROOT/styles/A.blue.css.pagespeed.cf.0.css)
+    check [ $? = 0 ]
+    check_from "$DATA" grep -q blue
+
+    # Sanity-check that it fails for non-spdyfetch enabled code.
+    echo "Sanity-check with mod_spdy fetch off"
+    DATA=$(wget -q -O - --no-check-certificate \
+        --header="X-Forwarded-Proto: https" \
+        --header="Host: nospdyfetch.example.com"\
+        $HTTPS_EXAMPLE_ROOT/styles/A.blue.css.pagespeed.cf.0.css)
+    check [ $? = 8 ]
+  fi
 fi
 
 # TODO(sligocki): start_test ModPagespeedMaxSegmentLength

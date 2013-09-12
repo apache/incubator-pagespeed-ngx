@@ -931,6 +931,24 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   </IfModule>
 </VirtualHost>
 
+# For testing fetching via mod_spdy.
+NameVirtualHost @@APACHE_HTTPS_DOMAIN@@
+<VirtualHost @@APACHE_HTTPS_DOMAIN@@>
+  ServerName spdyfetch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_spdyfetch"
+  ModPagespeed on
+  ModPagespeedExperimentalFetchFromModSpdy on
+</VirtualHost>
+
+<VirtualHost @@APACHE_HTTPS_DOMAIN@@>
+  ServerName nospdyfetch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_nospdyfetch"
+  ModPagespeed on
+  ModPagespeedExperimentalFetchFromModSpdy off
+</VirtualHost>
+
 # For testing where we do our loopback routing. Note that this is listening
 # on an unusual loopback IP.
 Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
