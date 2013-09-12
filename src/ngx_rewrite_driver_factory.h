@@ -42,22 +42,21 @@ namespace net_instaweb {
 class NgxMessageHandler;
 class NgxRewriteOptions;
 class NgxServerContext;
-class NgxThreadSystem;
 class NgxUrlAsyncFetcher;
 class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SlowWorker;
 class StaticAssetManager;
 class Statistics;
+class SystemThreadSystem;
 
 class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   static const char kStaticAssetPrefix[];
 
   // We take ownership of the thread system.
-  explicit NgxRewriteDriverFactory(NgxThreadSystem* ngx_thread_system,
-                                   StringPiece hostname,
-                                   int port);
+  explicit NgxRewriteDriverFactory(
+      SystemThreadSystem* system_thread_system, StringPiece hostname, int port);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlAsyncFetcher* AllocateFetcher(SystemRewriteOptions* config);
@@ -142,7 +141,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer);
 
  private:
-  NgxThreadSystem* ngx_thread_system_;
   Timer* timer_;
 
   // main_conf will have only options set in the main block.  It may be NULL,
