@@ -100,9 +100,10 @@ class HtmlLexer {
   inline void EvalStart(char c);
   inline void EvalTag(char c);
   inline void EvalTagOpen(char c);
-  inline void EvalTagCloseNoName(char c);
   inline void EvalTagClose(char c);
+  inline void EvalTagCloseTerminate(char c);
   inline void EvalTagBriefClose(char c);
+  inline void EvalTagBriefCloseAttr(char c);
   inline void EvalCommentStart1(char c);
   inline void EvalCommentStart2(char c);
   inline void EvalCommentBody(char c);
@@ -119,14 +120,12 @@ class HtmlLexer {
   inline void EvalCdataEnd2(char c);
   inline void EvalAttribute(char c);
   inline void EvalAttrName(char c);
-  inline void EvalAttrNameSpace(char c);
   inline void EvalAttrEq(char c);
   inline void EvalAttrVal(char c);
   inline void EvalAttrValSq(char c);
   inline void EvalAttrValDq(char c);
   inline void EvalLiteralTag(char c);
   inline void EvalDirective(char c);
-  inline void EvalBogusComment(char c);
 
   // Makes an element based on token_, which will be parsed as the tag
   // name.
@@ -184,11 +183,11 @@ class HtmlLexer {
   enum State {
     START,
     TAG,                   // "<"
-    TAG_CLOSE_NO_NAME,     // "</"
-    TAG_CLOSE,             // "</x"
+    TAG_CLOSE,             // "</"
     TAG_CLOSE_TERMINATE,   // "</x "
     TAG_OPEN,              // "<x"
-    TAG_BRIEF_CLOSE,       // "<x/" or "<x /" or "<x y/" or "x y=/z" etc
+    TAG_BRIEF_CLOSE,       // "<x/"
+    TAG_BRIEF_CLOSE_ATTR,  // "<x /" or "<x y/" or "x y=/z" etc
     COMMENT_START1,        // "<!"
     COMMENT_START2,        // "<!-"
     COMMENT_BODY,          // "<!--"
@@ -211,8 +210,7 @@ class HtmlLexer {
     TAG_ATTR_VALDQ,        // '<x y="' value terminated by double-quote
     TAG_ATTR_VALSQ,        // "<x y='" value terminated by single-quote
     LITERAL_TAG,           // "<script " or "<iframe "
-    DIRECTIVE,             // "<!x"
-    BOGUS_COMMENT,         // "<?foo>" or "</?foo>"
+    DIRECTIVE              // "<!x"
   };
 
   HtmlParse* html_parse_;

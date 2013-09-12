@@ -259,6 +259,12 @@ Header append 'X-Extra-Header' '1'
   Header append 'Cache-Control' 'no-store'
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/bug781" >
+  ModPagespeedCssImageInlineMaxBytes 3000
+  ModPagespeedEnableFilters convert_png_to_jpeg
+  ModPagespeedJpegRecompressionQuality 50
+</Directory>
+
 # However we should not allow user-specified cache-control on
 # rewritten HTML or resources.  This setting helps us make
 # sure that we strip any user-specified cache-control when

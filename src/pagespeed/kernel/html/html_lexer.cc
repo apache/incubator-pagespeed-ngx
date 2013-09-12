@@ -187,11 +187,10 @@ void HtmlLexer::EvalStart(char c) {
   }
 }
 
-// Browsers only allow letters for first char in tag name --- see
-// HTML5 "Tag open state"
-// TODO(morlovich): Use an ASCII method rather than isalpha
+// Browsers appear to only allow letters for first char in tag name,
+// plus ? for <?xml version="1.0" encoding="UTF-8"?>
 bool HtmlLexer::IsLegalTagFirstChar(char c) {
-  return isalpha(c);
+  return isalpha(c) || (c == '?');
 }
 
 // ... and letters, digits, unicode and some symbols for subsequent chars.
@@ -201,32 +200,26 @@ bool HtmlLexer::IsLegalTagFirstChar(char c) {
 // http://www.w3.org/TR/REC-xml/#NT-NameChar .  This
 // XML spec may or may not inform of us of what we need to do
 // to parse all HTML on the web.
-// TODO(morlovich): It's completely bogus for HTML.
 bool HtmlLexer::IsLegalTagChar(char c) {
   return (IsI18nChar(c) ||
           (isalnum(c) || (c == '<') || (c == '-') || (c == '#') ||
           (c == '_') || (c == ':')));
 }
 
-// TODO(morlovich): This is even more bogus, since it's true for
-// anything that's not =, >, / or whitespace.
 bool HtmlLexer::IsLegalAttrNameChar(char c) {
   return (IsI18nChar(c) ||
           ((c != '=') && (c != '>') && (c != '/') && !IsHtmlSpace(c)));
 }
 
 // Handle the case where "<" was recently parsed.
-// HTML5 spec state name: Tag open state
 void HtmlLexer::EvalTag(char c) {
   if (c == '/') {
-    state_ = TAG_CLOSE_NO_NAME;
+    state_ = TAG_CLOSE;
   } else if (IsLegalTagFirstChar(c)) {   // "<x"
     state_ = TAG_OPEN;
     token_ += c;
   } else if (c == '!') {
     state_ = COMMENT_START1;
-  } else if (c == '?') {
-    state_ = BOGUS_COMMENT;
   } else {
     //  Illegal tag syntax; just pass it through as raw characters
     SyntaxError("Invalid tag syntax: unexpected sequence `<%c'", c);
@@ -257,46 +250,82 @@ void HtmlLexer::EvalTagOpen(char c) {
   }
 }
 
-// Handle several cases of seeing "/" in the middle of a tag.
-// Examples: "<x/", "<x /", "<x foo/", "<x foo /"
-// Important thing to note about this is
-// that this state isn't entered when parsing an attribute value, e.g.
-// after =, only before it.
-// HTML5 spec state name:  Self-closing start tag state.
-void HtmlLexer::EvalTagBriefClose(char c) {
-  DCHECK(!has_attr_value_);
+// Handle several cases of seeing "/" in the middle of a tag, but after
+// the identifier has been completed.  Examples: "<x /" or "<x y/" or "x y=/z".
+void HtmlLexer::EvalTagBriefCloseAttr(char c) {
   if (c == '>') {
-    // FinishAttribute is robust with attr_name_ being empty,
-    // which happens if we just have <foo/>; we might need to actually
-    // create the element itself, though.
-    MakeElement();
-    FinishAttribute(c, has_attr_value_, true /* self-closing*/);
-  } else {
+    FinishAttribute(c, has_attr_value_, true);
+  } else if (IsHtmlSpace(c)) {
+    // "<x y/ ".  This can lead to "<x y/ z" where z would be
+    // a new attribute, or "<x y/ >" where the tag would be
+    // closed without adding a new attribute.  In either case,
+    // we will be completing this attribute.
+    //
+    // TODO(jmarantz): what about "<x y/ =z>"?  I am not sure
+    // sure if this matters, because testing that would require
+    // a browser that could react to a named attribute with a
+    // slash in the name (not the value).  But should we wind
+    // up with 1 attributes or 2 for this case?  There are probably
+    // more important questions, but if we ever need to answer that
+    // one, this is the place.
     if (!attr_name_.empty()) {
+      if (has_attr_value_) {
+        // The "/" should be interpreted as the last character in
+        // the attribute, so we must tack it on before making it.
+        attr_value_ += '/';
+      }
       MakeAttribute(has_attr_value_);
     }
-    state_ = TAG_ATTRIBUTE;
-    EvalAttribute(c);
-  }
-}
-
-// Called after </
-// HTML5 spec state name: End tag open state
-void HtmlLexer::EvalTagCloseNoName(char c) {
-  if (IsLegalTagChar(c)) {
-    token_ += c;
-    state_ = TAG_CLOSE;
-  } else if (c == '>') {
-    SyntaxError("Invalid tag syntax: </>");
-    token_.clear();
-    EvalStart(c);
   } else {
-    // Anything else after </ is handled as bogus comment.
-    state_ = BOGUS_COMMENT;
+    // Slurped www.google.com has
+    //   <a href=/advanced_search?hl=en>Advanced Search</a>
+    // So when we first see the "/" it looks like it might
+    // be a brief-close, .e.g. <a href=/>.  But when we see
+    // that what follows the '/' is not '>' then we know it's
+    // just part off the attribute name or value.  So there's
+    // no need to even warn.
+    if (has_attr_value_) {
+      attr_value_ += '/';
+      state_ = TAG_ATTR_VAL;
+      EvalAttrVal(c);
+      // we know it's not the double-quoted or single-quoted versions
+      // because then we wouldn't have let the '/' get us into the
+      // brief-close state.
+    } else {
+      attr_name_ += '/';
+      state_ = TAG_ATTR_NAME;
+      EvalAttrName(c);
+    }
   }
 }
 
-// Handle the case where "</a" was recently parsed.  This function
+// Handle the case where "<x/" was recently parsed, where "x" can
+// be any length tag identifier.  Note that we if we anything other
+// than a ">" after this, we will just consider the "/" to be part
+// of the tag identifier, and go back to the TAG_OPEN state.
+void HtmlLexer::EvalTagBriefClose(char c) {
+  if (c == '>') {
+    MakeElement();
+    EmitTagOpen(false);
+    EmitTagBriefClose();
+  } else {
+    GoogleString expected(literal_.data(), literal_.size() - 1);
+    SyntaxError("Invalid close tag syntax: expected %s>, got %s",
+                expected.c_str(), literal_.c_str());
+    // Recover by returning to the mode from whence we came.
+    if (element_ != NULL) {
+      token_ += '/';
+      state_ = TAG_OPEN;
+      EvalTagOpen(c);
+    } else {
+      // E.g. "<R/A", see testdata/invalid_brief.html.
+      state_ = START;
+      token_.clear();
+    }
+  }
+}
+
+// Handle the case where "</" was recently parsed.  This function
 // is also called for "</a ", in which case state will be TAG_CLOSE_TERMINATE.
 // We distinguish that case to report an error on "</a b>".
 void HtmlLexer::EvalTagClose(char c) {
@@ -329,16 +358,6 @@ void HtmlLexer::EvalDirective(char c) {
     EmitDirective();
   } else {
     token_ += c;
-  }
-}
-
-// HTML5 handles things like <?foo> and </?foo> as a special kind of messed up
-// comments, terminated by >. We do likewise, but also pass the bytes along
-// HTML5 state name: Bogus comment state
-void HtmlLexer::EvalBogusComment(char c) {
-  if (c == '>') {
-    EmitLiteral();
-    state_ = START;
   }
 }
 
@@ -758,7 +777,6 @@ void HtmlLexer::MakeAttribute(bool has_value) {
   state_ = TAG_ATTRIBUTE;
 }
 
-// HTML5 spec state name: before attribute name state
 void HtmlLexer::EvalAttribute(char c) {
   MakeElement();
   attr_name_.clear();
@@ -766,59 +784,36 @@ void HtmlLexer::EvalAttribute(char c) {
   if (c == '>') {
     EmitTagOpen(true);
   } else if (c == '/') {
-    state_ = TAG_BRIEF_CLOSE;
+    state_ = TAG_BRIEF_CLOSE_ATTR;
   } else if (IsLegalAttrNameChar(c)) {
     attr_name_ += c;
     state_ = TAG_ATTR_NAME;
   } else if (!IsHtmlSpace(c)) {
     SyntaxError("Unexpected char `%c' in attribute list", c);
-    // Per HTML5, we still switch to the attribute name state here,
-    // even for weird things like ", =, etc.
-    attr_name_ += c;
-    state_ = TAG_ATTR_NAME;
   }
 }
 
-// "<x y".
-// HTML5 spec state name: Attribute name
+// "<x y" or  "<x y ".
 void HtmlLexer::EvalAttrName(char c) {
   if (c == '=') {
     state_ = TAG_ATTR_EQ;
     has_attr_value_ = true;
-  } else if (IsHtmlSpace(c)) {
-    state_ = TAG_ATTR_NAME_SPACE;
-  } else if (c == '>') {
-    MakeAttribute(false);
-    EmitTagOpen(true);
-  } else if (c == '/') {
-    state_ = TAG_BRIEF_CLOSE;
-  } else {
-    // This includes both legal characters, and anything else, even stuff
-    // like <, etc.
+  } else if (IsLegalAttrNameChar(c) && (state_ != TAG_ATTR_NAME_SPACE)) {
     attr_name_ += c;
-  }
-}
-
-//"<x y ".
-// HTML5 spec state name: After attribute name
-void HtmlLexer::EvalAttrNameSpace(char c) {
-  if (c == '=') {
-    state_ = TAG_ATTR_EQ;
-    has_attr_value_ = true;
   } else if (IsHtmlSpace(c)) {
     state_ = TAG_ATTR_NAME_SPACE;
   } else if (c == '>') {
     MakeAttribute(false);
     EmitTagOpen(true);
-  } else if (c == '/') {
-    state_ = TAG_BRIEF_CLOSE;
-  } else {
+  } else if (state_ == TAG_ATTR_NAME_SPACE) {
     // "<x y z".  Now that we see the 'z', we need
     // to finish 'y' as an attribute, then queue up
     // 'z' (c) as the start of a new attribute.
     MakeAttribute(false);
     state_ = TAG_ATTR_NAME;
     attr_name_ += c;
+  } else {
+    FinishAttribute(c, false, false);
   }
 }
 
@@ -826,9 +821,23 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
   if (IsHtmlSpace(c)) {
     MakeAttribute(has_value);
     state_ = TAG_ATTRIBUTE;
+  } else if (c == '/') {
+    // If / was seen terminating an attribute, without
+    // the closing quote or whitespace, it might just be
+    // part of a syntactically dubious attribute.  We'll
+    // hold off completing the attribute till we see the
+    // next character.
+    state_ = TAG_BRIEF_CLOSE_ATTR;
   } else if (c == '>') {
     if (!attr_name_.empty()) {
-      MakeAttribute(has_value);
+      if (!brief_close &&
+          (strcmp(attr_name_.c_str(), "/") == 0) && !has_value) {
+        brief_close = true;
+        attr_name_.clear();
+        attr_value_.clear();
+      } else {
+        MakeAttribute(has_value);
+      }
     }
     EmitTagOpen(!brief_close);
     if (brief_close) {
@@ -837,12 +846,15 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
 
     has_attr_value_ = false;
   } else {
-    // We are only supposed to be involved on space and >
-    LOG(DFATAL) << "FinishAttribute called with a weird c:" << c;
+    // Some other funny character within a tag.  Probably can't
+    // trust the tag at all.  Check the web and see when this
+    // happens.
+    SyntaxError("Unexpected character in attribute: %c", c);
+    MakeAttribute(has_value);
+    has_attr_value_ = false;
   }
 }
 
-// HTML5 state name: before attribute value
 void HtmlLexer::EvalAttrEq(char c) {
   if (c == '"') {
     attr_quote_ = HtmlElement::DOUBLE_QUOTE;
@@ -861,7 +873,6 @@ void HtmlLexer::EvalAttrEq(char c) {
   }
 }
 
-// HTML5 state name: Attribute value (unquoted) state
 void HtmlLexer::EvalAttrVal(char c) {
   if (IsHtmlSpace(c) || (c == '>')) {
     FinishAttribute(c, true, false);
@@ -870,7 +881,6 @@ void HtmlLexer::EvalAttrVal(char c) {
   }
 }
 
-// HTML5 state name: Attribute value (double-quoted) state
 void HtmlLexer::EvalAttrValDq(char c) {
   if (c == '"') {
     MakeAttribute(true);
@@ -879,7 +889,6 @@ void HtmlLexer::EvalAttrValDq(char c) {
   }
 }
 
-// HTML5 state name: Attribute value (single-quoted) state
 void HtmlLexer::EvalAttrValSq(char c) {
   if (c == '\'') {
     MakeAttribute(true);
@@ -954,10 +963,10 @@ void HtmlLexer::Parse(const char* text, int size) {
       case START:                 EvalStart(c);               break;
       case TAG:                   EvalTag(c);                 break;
       case TAG_OPEN:              EvalTagOpen(c);             break;
-      case TAG_CLOSE_NO_NAME:     EvalTagCloseNoName(c);      break;
       case TAG_CLOSE:             EvalTagClose(c);            break;
       case TAG_CLOSE_TERMINATE:   EvalTagClose(c);            break;
       case TAG_BRIEF_CLOSE:       EvalTagBriefClose(c);       break;
+      case TAG_BRIEF_CLOSE_ATTR:  EvalTagBriefCloseAttr(c);   break;
       case COMMENT_START1:        EvalCommentStart1(c);       break;
       case COMMENT_START2:        EvalCommentStart2(c);       break;
       case COMMENT_BODY:          EvalCommentBody(c);         break;
@@ -974,14 +983,13 @@ void HtmlLexer::Parse(const char* text, int size) {
       case CDATA_END2:            EvalCdataEnd2(c);           break;
       case TAG_ATTRIBUTE:         EvalAttribute(c);           break;
       case TAG_ATTR_NAME:         EvalAttrName(c);            break;
-      case TAG_ATTR_NAME_SPACE:   EvalAttrNameSpace(c);       break;
+      case TAG_ATTR_NAME_SPACE:   EvalAttrName(c);            break;
       case TAG_ATTR_EQ:           EvalAttrEq(c);              break;
       case TAG_ATTR_VAL:          EvalAttrVal(c);             break;
       case TAG_ATTR_VALDQ:        EvalAttrValDq(c);           break;
       case TAG_ATTR_VALSQ:        EvalAttrValSq(c);           break;
       case LITERAL_TAG:           EvalLiteralTag(c);          break;
       case DIRECTIVE:             EvalDirective(c);           break;
-      case BOGUS_COMMENT:         EvalBogusComment(c);        break;
     }
   }
 }

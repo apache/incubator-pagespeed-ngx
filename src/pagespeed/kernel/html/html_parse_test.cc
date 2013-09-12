@@ -97,6 +97,29 @@ TEST_F(HtmlParseTest, AmpersandInHref) {
       "<a href=\"http://myhost.com/path?arg1=val1&arg2=val2\">Hello</a>");
 }
 
+TEST_F(HtmlParseTest, CorrectTaggify) {
+  // Don't turn <2 -> <2>
+  ValidateNoChanges("no_taggify_digit", "<p>1<2</p>");
+  ValidateNoChanges("no_taggify_unicode", "<p>☃<☕</p>");
+
+  // Under HTML5 rules (and recent Chrome and FF practice), something like
+  // <foo<bar> actually makes an element named <foo<bar>.
+  // (See 13.2.4.10 Tag name state). We don't entirely identify it reliably
+  // if a / is also present, but we don't damage it, either, which is
+  // good enough for our purpose.
+  ValidateNoChanges("letter", "<p>x<y</p>");
+
+  ValidateNoChanges("taggify_letter+digit", "<p>x1<y2</p>");
+  ValidateNoChanges("taggify_letter+unicode", "<p>x☃<y☕</p>");
+
+  ValidateNoChanges("no_taggify_digit+letter", "<p>1x<2y</p>");
+  ValidateNoChanges("no_taggify_unicode+letter", "<p>☃x<☕y</p>");
+
+  // Found on http://www.taobao.com/
+  // Don't turn <1... -> <1...>
+  ValidateNoChanges("taobao", "<a>1+1<1母婴全场加1元超值购</a>");
+}
+
 TEST_F(HtmlParseTest, BooleanSpaceCloseInTag) {
   ValidateExpected("bool_space_close", "<a b >foo</a>", "<a b>foo</a>");
   ValidateNoChanges("bool_close", "<a b>foo</a>");
@@ -199,13 +222,12 @@ TEST_F(HtmlParseTest, SequentialDefaultedTagsLost) {
       "</option>\n"
       "</select>");
 
-  // Illegal attribute "http://www.yahoo.com", per HTML5, is two attributes:
-  // http: and "yahoo.com", with the slashes going into the ether.
-  // (This is also how Chrome and Firefox parse it.)
-  ValidateExpected(
-      "yahoo",
-      "<a href=\"#\" http://www.yahoo.com class=\"a b\">yahoo</a>",
-      "<a href=\"#\" http: www.yahoo.com class=\"a b\">yahoo</a>");
+  // Illegal attribute "http://www.yahoo.com" mangled by parser into
+  // "http:", although if the parser changes how it mangles that somehow
+  // it's fine to regold.
+  ValidateNoChanges("yahoo",
+      "<a href=\"#\" http://www.yahoo.com "
+      "class=\"pa-btn-open hide-textindent\">yahoo</a>");
 
   // Here's another interesting thing from the bug testcase.
   // Specifying a literal "&" without a recognized sequence
@@ -465,13 +487,6 @@ TEST_F(HtmlParseTest, AutoClose) {
   // TODO(jmarantz): add more tests related to formatting keywords.
 }
 
-TEST_F(HtmlParseTest, BogusComment) {
-  ValidateNoChanges("what_php",
-                    "<?php include('includes/_pagebottom.tpl.php'); ?>");
-
-  ValidateNoChanges("bad break", "</\na>");
-}
-
 namespace {
 
 class AnnotatingHtmlFilter : public EmptyHtmlFilter {
@@ -531,89 +546,11 @@ class HtmlAnnotationTest : public HtmlParseTestNoBody {
   }
 
   const GoogleString& annotation() { return annotation_.buffer(); }
-  void ResetAnnotation() { annotation_.Clear(); }
   virtual bool AddHtmlTags() const { return false; }
 
  private:
   AnnotatingHtmlFilter annotation_;
 };
-
-TEST_F(HtmlAnnotationTest, CorrectTaggify) {
-  // Under HTML5 rules (and recent Chrome and FF practice), something like
-  // <foo</bar> makes an element named foo<, with attribute named bar.
-  // (See 12.2.4.10 Tag name state).
-  //
-  // However, we have to be careful not to turn just anything following <
-  // into an element name, since sometimes there are <'s which are
-  // meant to just be less than signs.
-  //
-  ValidateNoChanges("no_taggify_digit", "<p>1<2</p>");
-  EXPECT_EQ("+p '1<2' -p(e)", annotation());
-  ResetAnnotation();
-
-  ValidateNoChanges("no_taggify_unicode", "<p>☃<☕</p>");
-  EXPECT_EQ("+p '☃<☕' -p(e)", annotation());
-  ResetAnnotation();
-
-  ValidateExpected("letter",
-                   "<p>x<y</p>", "<p>x<y< p>");  // lost the / since 'p' is attr.
-  EXPECT_EQ("+p 'x' +y<:p -y<(u) -p(u)", annotation());
-  ResetAnnotation();
-
-  ValidateExpected("taggify_letter+digit",
-                   "<p>x1<y2</p>", "<p>x1<y2< p>");
-  EXPECT_EQ("+p 'x1' +y2<:p -y2<(u) -p(u)", annotation());
-  ResetAnnotation();
-
-  ValidateExpected("taggify_letter+unicode", "<p>x☃<y☕</p>",
-                   "<p>x☃<y☕< p>");  // no / since p is attr on a y☕< element.
-  EXPECT_EQ("+p 'x☃' +y☕<:p -y☕<(u) -p(u)", annotation());
-  ResetAnnotation();
-
-  ValidateNoChanges("no_taggify_digit+letter", "<p>1x<2y</p>");
-  EXPECT_EQ("+p '1x<2y' -p(e)", annotation());
-  ResetAnnotation();
-
-  ValidateNoChanges("no_taggify_unicode+letter", "<p>☃x<☕y</p>");
-  EXPECT_EQ("+p '☃x<☕y' -p(e)", annotation());
-  ResetAnnotation();
-
-  // Found on http://www.taobao.com/
-  // Don't turn <1... -> <1...>
-  ValidateNoChanges("taobao", "<a>1+1<1母婴全场加1元超值购</a>");
-  EXPECT_EQ("+a '1+1<1母婴全场加1元超值购' -a(e)", annotation());
-  ResetAnnotation();
-}
-
-TEST_F(HtmlAnnotationTest, WeirdAttributes) {
-  // Just about everything can be an attribute
-  ValidateNoChanges("weird_attr", "<a ,=\"foo\">");
-  EXPECT_EQ("+a:,=\"foo\" -a(u)", annotation());
-  ResetAnnotation();
-
-  // ... even an equal sign
-  ValidateNoChanges("weird_attr_equal", "<a ==\"foo\">");
-  EXPECT_EQ("+a:==\"foo\" -a(u)", annotation());
-  ResetAnnotation();
-}
-
-TEST_F(HtmlAnnotationTest, WeirdCloseCase) {
-  // </> is nothing useful, but we preserve it as a literal.
-  ValidateNoChanges("close_nothing", "</><foo>");
-  EXPECT_EQ("'</>' +foo -foo(u)", annotation());
-  ResetAnnotation();
-
-  // <foo / > isn't an attempt at self-close, it just has a stray /
-  // we can't represent.
-  ValidateExpected("not_self_close", "<foo / >", "<foo>");
-  EXPECT_EQ("+foo -foo(u)", annotation());
-  ResetAnnotation();
-
-  // <foo /> is a self-close.
-  ValidateExpected("self_close", "<foo />", "<foo/>");
-  EXPECT_EQ("+foo -foo(b)", annotation());
-  ResetAnnotation();
-}
 
 TEST_F(HtmlAnnotationTest, UnbalancedMarkup) {
   // The second 'tr' closes the first one, and our HtmlWriter will not
