@@ -127,7 +127,8 @@ TEST_F(FixReflowFilterTest, InCache) {
       "</body>";
   const GoogleString expected =
       "<body>"
-      "<div id=\"contentContainer\" style=\"min-height:10px\"><h1>Hello 1</h1>"
+      "<div id=\"contentContainer\" style=\"min-height:10px\" "
+      "data-pagespeed-fix-reflow=\"\"><h1>Hello 1</h1>"
       "<div id=\"middleFooter\"><h3>Hello 3</h3></div></div>"
       "</body>";
 
@@ -161,8 +162,10 @@ TEST_F(FixReflowFilterTest, InCacheExpires) {
 
   const GoogleString expected2 =
       "<body>"
-      "<div id=\"contentContainer\" style=\"min-height:20px\"><h1>Hello 1</h1>"
-      "<div id=\"middleFooter\" style=\"min-height:10px\"><h3>Hello 3</h3>"
+      "<div id=\"contentContainer\" style=\"min-height:20px\" "
+      "data-pagespeed-fix-reflow=\"\"><h1>Hello 1</h1>"
+      "<div id=\"middleFooter\" style=\"min-height:10px\" "
+      "data-pagespeed-fix-reflow=\"\"><h3>Hello 3</h3>"
       "</div></div></body>";
 
   ValidateExpectedUrl(kRequestUrl, input_html, expected2);

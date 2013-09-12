@@ -216,6 +216,14 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   virtual ~OutputCacheCallback() {}
 
   virtual void Done(CacheInterface::KeyState state) {
+    // Check if the cache content being used is stale. If so, mark it as a
+    // cache hit but set the stale_rewrite flag in the context.
+    if (cache_result_->useable_cache_content &&
+        cache_result_->is_stale_rewrite &&
+        !cache_result_->cache_ok) {
+      cache_result_->cache_ok = true;
+      rewrite_context_->stale_rewrite_ = true;
+    }
     RewriteDriver* rewrite_driver = rewrite_context_->Driver();
     rewrite_driver->AddRewriteTask(MakeFunction(
         rewrite_context_, function_, cache_result_.release()));
@@ -230,8 +238,17 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     // the current cache's value.  Note that the cache_ok field of this is not
     // used as we update cache_result_->cache_ok directly.
     CacheLookupResult candidate_cache_result;
-    cache_result_->cache_ok = TryDecodeCacheResult(
+    bool local_cache_ok = TryDecodeCacheResult(
         state, *value(), &candidate_cache_result);
+
+    // cache_ok determines whether or not a second level cache is looked up. If
+    // this is a stale rewrite, ensure there is an additional look up in the
+    // remote cache in case there is fresh content elsewhere.
+    bool stale_rewrite = candidate_cache_result.is_stale_rewrite;
+    cache_result_->cache_ok = local_cache_ok && !stale_rewrite;
+
+    // If local_cache_ok is true, then can_revalidate is guaranteed to be true
+    // for the candidate cache result.
     bool use_this_revalidate = (candidate_cache_result.can_revalidate &&
                                 (!cache_result_->can_revalidate ||
                                  (candidate_cache_result.revalidate.size() <
@@ -241,7 +258,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     // will also be true (since cache_result_->can_revalidate will be false from
     // CacheLookupResult construction).
     bool use_partitions = true;
-    if (!cache_result_->cache_ok) {
+    if (!local_cache_ok) {
       if (use_this_revalidate) {
         cache_result_->can_revalidate = true;
         cache_result_->revalidate.swap(candidate_cache_result.revalidate);
@@ -257,10 +274,15 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     }
     // At this point the following holds:
     // use_partitions is true iff cache_result_->cache_ok is true or revalidate
-    // has been moved to cache_result_->revalidate.
+    // has been moved to cache_result_->revalidate or local_cache_ok and
+    // stale_rewrite is true.
     if (use_partitions) {
       cache_result_->partitions.reset(
           candidate_cache_result.partitions.release());
+      // Remember that the cache contents are useable if needed. Also remember
+      // if we are using stale contents.
+      cache_result_->useable_cache_content = true;
+      cache_result_->is_stale_rewrite = stale_rewrite;
     }
     // We return cache_result_->cache_ok.  This means for the last call to
     // ValidateCandidate we might return false when we might actually end up
@@ -353,7 +375,8 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   }
 
   // Checks whether the given input is still unchanged.
-  bool IsInputValid(const InputInfo& input_info, int64 now_ms, bool* purged) {
+  bool IsInputValid(const InputInfo& input_info, int64 now_ms, bool* purged,
+                    bool* stale_rewrite) {
     switch (input_info.type()) {
       case InputInfo::CACHED: {
         // It is invalid if cacheable inputs have expired or ...
@@ -374,7 +397,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
         } else if (
             !rewrite_context_->has_parent() &&
             ttl_ms + options->metadata_cache_staleness_threshold_ms() > 0) {
-          rewrite_context_->stale_rewrite_ = true;
+          *stale_rewrite = true;
           return true;
         }
         return false;
@@ -440,7 +463,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   // *revalidate will contain info on resources to re-check, with the InputInfo
   // pointers being pointers into the partition.
   bool IsCachedResultValid(CachedResult* partition,
-                           bool* can_revalidate,
+                           bool* can_revalidate, bool* is_stale_rewrite,
                            InputInfoStarVector* revalidate) {
     bool valid = true;
     *can_revalidate = true;
@@ -448,7 +471,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     for (int j = 0, m = partition->input_size(); j < m; ++j) {
       const InputInfo& input_info = partition->input(j);
       bool purged = false;
-      if (!IsInputValid(input_info, now_ms, &purged)) {
+      if (!IsInputValid(input_info, now_ms, &purged, is_stale_rewrite)) {
         valid = false;
         // We currently do not attempt to re-check file-based resources
         // based on contents; as mtime is a lot more reliable than
@@ -471,11 +494,13 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
 
   // Checks whether all the entries in the given partition tables' other
   // dependency table are valid.
-  bool IsOtherDependencyValid(const OutputPartitions* partitions) {
+  bool IsOtherDependencyValid(const OutputPartitions* partitions,
+                              bool* is_stale_rewrite) {
     int64 now_ms = rewrite_context_->FindServerContext()->timer()->NowMs();
     for (int j = 0, m = partitions->other_dependency_size(); j < m; ++j) {
       bool purged;
-      if (!IsInputValid(partitions->other_dependency(j), now_ms, &purged)) {
+      if (!IsInputValid(partitions->other_dependency(j), now_ms, &purged,
+                        is_stale_rewrite)) {
         return false;
       }
     }
@@ -500,7 +525,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     bool* can_revalidate = &(result->can_revalidate);
     InputInfoStarVector* revalidate = &(result->revalidate);
     OutputPartitions* partitions = result->partitions.get();
-
+    bool* is_stale_rewrite = &(result->is_stale_rewrite);
     if (state != CacheInterface::kAvailable) {
       rewrite_context_->FindServerContext()->rewrite_stats()->
           cached_output_misses()->Add(1);
@@ -512,14 +537,14 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     StringPiece val_str = value.Value();
     ArrayInputStream input(val_str.data(), val_str.size());
     if (partitions->ParseFromZeroCopyStream(&input) &&
-        IsOtherDependencyValid(partitions)) {
+        IsOtherDependencyValid(partitions, is_stale_rewrite)) {
       bool ok = true;
       *can_revalidate = true;
       for (int i = 0, n = partitions->partition_size(); i < n; ++i) {
         CachedResult* partition = partitions->mutable_partition(i);
         bool can_revalidate_resource;
         if (!IsCachedResultValid(partition, &can_revalidate_resource,
-                                 revalidate)) {
+                                 is_stale_rewrite, revalidate)) {
           ok = false;
           *can_revalidate = *can_revalidate && can_revalidate_resource;
         }

@@ -39,6 +39,7 @@
 namespace {
 
 const char kReflowValueSeparators[] = ",:";
+const char kReflowClassAttribute[] = "data-pagespeed-fix-reflow";
 
 }  // namespace
 
@@ -124,6 +125,8 @@ void FixReflowFilter::StartElement(HtmlElement* element) {
         element->AddAttribute(rewrite_driver_->MakeName(HtmlName::kStyle),
                               StrCat("min-height:", i->second),
                               HtmlElement::DOUBLE_QUOTE);
+        element->AddAttribute(rewrite_driver_->MakeName(kReflowClassAttribute),
+                              "", HtmlElement::DOUBLE_QUOTE);
         // TODO(sriharis):  Should we add js to delete the added style
         // attributes?  Maybe a function that is called from js_defer.js's
         // AfterDefer hook.

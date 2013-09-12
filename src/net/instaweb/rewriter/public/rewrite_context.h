@@ -160,10 +160,14 @@ class RewriteContext {
     CacheLookupResult()
         : cache_ok(false),
           can_revalidate(false),
+          useable_cache_content(false),
+          is_stale_rewrite(false),
           partitions(new OutputPartitions) {}
 
     bool cache_ok;
     bool can_revalidate;
+    bool useable_cache_content;
+    bool is_stale_rewrite;
     InputInfoStarVector revalidate;
     scoped_ptr<OutputPartitions> partitions;
   };

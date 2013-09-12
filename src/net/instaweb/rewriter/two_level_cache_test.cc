@@ -181,6 +181,110 @@ class TwoLevelCacheTest : public RewriteContextTestBase {
     other_rewrite_driver()->FinishParse();
   }
 
+  void TwoCachesInDifferentState(bool stale_ok) {
+    InitTrimFilters(kOnTheFlyResource);
+    InitResources();
+
+    if (stale_ok) {
+      options()->ClearSignatureForTesting();
+      options()->set_metadata_cache_staleness_threshold_ms(2 * kOriginTtlMs);
+      options()->ComputeSignature();
+      other_options()->ClearSignatureForTesting();
+      other_options()->set_metadata_cache_staleness_threshold_ms(
+          2 * kOriginTtlMs);
+      other_options()->ComputeSignature();
+    }
+
+    // The first rewrite was successful because we got an 'instant' url
+    // fetch, not because we did any cache lookups. We'll have 2 cache
+    // misses: one for the OutputPartitions, one for the fetch.  We
+    // should need two items in the cache: the element and the resource
+    // mapping (OutputPartitions).  The output resource should not be
+    // stored.
+    GoogleString input_html(CssLinkHref("a.css"));
+    GoogleString output_html(CssLinkHref(
+        Encode(kTestDomain, "tw", "0", "a.css", "css")));
+    ValidateExpected("trimmable", input_html, output_html);
+    EXPECT_EQ(0, cache1_->num_hits());
+    EXPECT_EQ(2, cache1_->num_misses());
+    EXPECT_EQ(2, cache1_->num_inserts());  // 2 because it's kOnTheFlyResource
+    EXPECT_EQ(0, cache2_->num_hits());
+    // Miss only for metadata and not HTTPcache.
+    EXPECT_EQ(1, cache2_->num_misses());
+    EXPECT_EQ(1, cache2_->num_inserts());  // Only OutputPartitions
+    EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(1, logging_info()->metadata_cache_info().num_misses());
+    EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+    EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
+    ClearStats();
+
+    // The second time we request this URL, we should find no additional
+    // cache inserts or fetches.  The rewrite should complete using a
+    // single cache hit for the metadata.  No cache misses will occur.
+    ValidateExpected("trimmable", input_html, output_html);
+    EXPECT_EQ(1, cache1_->num_hits());
+    EXPECT_EQ(0, cache1_->num_misses());
+    EXPECT_EQ(0, cache1_->num_inserts());
+    EXPECT_EQ(0, cache2_->num_hits());
+    EXPECT_EQ(0, cache2_->num_misses());
+    EXPECT_EQ(0, cache2_->num_inserts());
+    EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+    EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+    EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
+    ClearStats();
+
+    AdvanceTimeMs(2 * kOriginTtlMs);
+    other_factory_->AdvanceTimeMs(2 * kOriginTtlMs);
+    // The third time we request this URL through the other_rewrite_driver
+    // (which has cache2 as metadata cache) so that we have a fresh value in
+    // cache2 which is the L2 cache for the write through cache used in
+    // rewrite_driver.
+    ParseWithOther("trimmable", input_html);
+    EXPECT_EQ(1, cache1_->num_hits());
+    EXPECT_EQ(0, cache1_->num_misses());
+    EXPECT_EQ(1, cache1_->num_inserts());
+    EXPECT_EQ(1, cache2_->num_hits());
+    EXPECT_EQ(0, cache2_->num_misses());
+    EXPECT_EQ(1, cache2_->num_inserts());
+    EXPECT_EQ(1, other_factory_->counting_url_async_fetcher()->fetch_count());
+    LoggingInfo* other_logging_info =
+        other_rewrite_driver()->request_context()->log_record()->logging_info();
+    EXPECT_EQ(0, other_logging_info->metadata_cache_info().num_misses());
+    if (stale_ok) {
+      // If metadata staleness threshold is set, we would get a cache hit
+      // as we allow stale rewrites.
+      EXPECT_EQ(
+          1, other_logging_info->metadata_cache_info().num_stale_rewrites());
+      EXPECT_EQ(0,
+                other_logging_info->metadata_cache_info().num_revalidates());
+      EXPECT_EQ(1, other_logging_info->metadata_cache_info().num_hits());
+    } else {
+      EXPECT_EQ(1,
+                other_logging_info->metadata_cache_info().num_revalidates());
+      EXPECT_EQ(0, other_logging_info->metadata_cache_info().num_hits());
+    }
+
+    ClearStats();
+    // The fourth time we request this URL, we find fresh metadata in the write
+    // through cache (in its L2 cache) and so there is no fetch.  The metadata
+    // is also inserted into L1 cache.
+    ValidateExpected("trimmable", input_html, output_html);
+    // We have an expired hit for metadata in cache1, and a fresh hit for it in
+    // cache2.  The fresh metadata is inserted in cache1.
+    EXPECT_EQ(1, cache1_->num_hits());     // expired hit
+    EXPECT_EQ(0, cache1_->num_misses());
+    EXPECT_EQ(1, cache1_->num_inserts());  // re-inserts after expiration.
+    EXPECT_EQ(1, cache2_->num_hits());     // fresh hit
+    EXPECT_EQ(0, cache2_->num_misses());
+    EXPECT_EQ(0, cache2_->num_inserts());
+    EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+    EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+    EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
+    ClearStats();
+  }
+
   LRUCache* cache1_;
   LRUCache* cache2_;
 };
@@ -265,84 +369,11 @@ TEST_F(TwoLevelCacheTest, BothCachesInSameState) {
 }
 
 TEST_F(TwoLevelCacheTest, BothCachesInDifferentState) {
-  InitTrimFilters(kOnTheFlyResource);
-  InitResources();
+  TwoCachesInDifferentState(false);
+}
 
-  // The first rewrite was successful because we got an 'instant' url
-  // fetch, not because we did any cache lookups. We'll have 2 cache
-  // misses: one for the OutputPartitions, one for the fetch.  We
-  // should need two items in the cache: the element and the resource
-  // mapping (OutputPartitions).  The output resource should not be
-  // stored.
-  GoogleString input_html(CssLinkHref("a.css"));
-  GoogleString output_html(CssLinkHref(
-      Encode(kTestDomain, "tw", "0", "a.css", "css")));
-  ValidateExpected("trimmable", input_html, output_html);
-  EXPECT_EQ(0, cache1_->num_hits());
-  EXPECT_EQ(2, cache1_->num_misses());
-  EXPECT_EQ(2, cache1_->num_inserts());  // 2 because it's kOnTheFlyResource
-  EXPECT_EQ(0, cache2_->num_hits());
-  EXPECT_EQ(1, cache2_->num_misses());   // Only for metadata and not HTTPcache
-  EXPECT_EQ(1, cache2_->num_inserts());  // Only OutputPartitions
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
-  ClearStats();
-
-  // The second time we request this URL, we should find no additional
-  // cache inserts or fetches.  The rewrite should complete using a
-  // single cache hit for the metadata.  No cache misses will occur.
-  ValidateExpected("trimmable", input_html, output_html);
-  EXPECT_EQ(1, cache1_->num_hits());
-  EXPECT_EQ(0, cache1_->num_misses());
-  EXPECT_EQ(0, cache1_->num_inserts());
-  EXPECT_EQ(0, cache2_->num_hits());
-  EXPECT_EQ(0, cache2_->num_misses());
-  EXPECT_EQ(0, cache2_->num_inserts());
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
-  ClearStats();
-
-  AdvanceTimeMs(2 * kOriginTtlMs);
-  other_factory_->AdvanceTimeMs(2 * kOriginTtlMs);
-
-  // The third time we request this URL through the other_rewrite_driver (which
-  // has cache2 as metadata cache) so that we have a fresh value in cache2 which
-  // is the L2 cache for the write through cache used in rewrite_driver.
-  ParseWithOther("trimmable", input_html);
-  EXPECT_EQ(1, cache1_->num_hits());
-  EXPECT_EQ(0, cache1_->num_misses());
-  EXPECT_EQ(1, cache1_->num_inserts());
-  EXPECT_EQ(1, cache2_->num_hits());
-  EXPECT_EQ(0, cache2_->num_misses());
-  EXPECT_EQ(1, cache2_->num_inserts());
-  EXPECT_EQ(1, other_factory_->counting_url_async_fetcher()->fetch_count());
-  LoggingInfo* other_logging_info =
-      other_rewrite_driver()->request_context()->log_record()->logging_info();
-  EXPECT_EQ(0, other_logging_info->metadata_cache_info().num_misses());
-  EXPECT_EQ(1, other_logging_info->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, other_logging_info->metadata_cache_info().num_hits());
-  ClearStats();
-
-  // The fourth time we request this URL, we find fresh metadata in the write
-  // through cache (in its L2 cache) and so there is no fetch.  The metadata is
-  // also inserted into L1 cache.
-  ValidateExpected("trimmable", input_html, output_html);
-  // We have an expired hit for metadata in cache1, and a fresh hit for it in
-  // cache2.  The fresh metadata is inserted in cache1.
-  EXPECT_EQ(1, cache1_->num_hits());     // expired hit
-  EXPECT_EQ(0, cache1_->num_misses());
-  EXPECT_EQ(1, cache1_->num_inserts());  // re-inserts after expiration.
-  EXPECT_EQ(1, cache2_->num_hits());     // fresh hit
-  EXPECT_EQ(0, cache2_->num_misses());
-  EXPECT_EQ(0, cache2_->num_inserts());
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
+TEST_F(TwoLevelCacheTest, BothCachesInDifferentStaleState) {
+  TwoCachesInDifferentState(true);
 }
 
 }  // namespace net_instaweb
