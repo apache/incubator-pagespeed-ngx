@@ -35,7 +35,6 @@
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
-#include "ngx_thread_system.h"
 
 #include "apr_time.h"
 
@@ -55,6 +54,7 @@
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_thread_system.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
@@ -662,7 +662,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   NgxRewriteDriverFactory::Initialize();
 
   cfg_m->driver_factory = new NgxRewriteDriverFactory(
-      new NgxThreadSystem(),
+      new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);

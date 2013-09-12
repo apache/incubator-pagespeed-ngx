@@ -24,7 +24,6 @@
 #include "ngx_message_handler.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
-#include "ngx_thread_system.h"
 #include "ngx_url_async_fetcher.h"
 
 #include "net/instaweb/http/public/content_type.h"
@@ -70,9 +69,8 @@ const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
 class SharedCircularBuffer;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(
-    NgxThreadSystem* ngx_thread_system, StringPiece hostname, int port)
-    : SystemRewriteDriverFactory(ngx_thread_system, hostname, port),
-      ngx_thread_system_(ngx_thread_system),
+    SystemThreadSystem* system_thread_system, StringPiece hostname, int port)
+    : SystemRewriteDriverFactory(system_thread_system, hostname, port),
       main_conf_(NULL),
       threads_started_(false),
       use_per_vhost_statistics_(false),
@@ -198,7 +196,6 @@ void NgxRewriteDriverFactory::StartThreads() {
   if (threads_started_) {
     return;
   }
-  ngx_thread_system_->PermitThreadStarting();
   // TODO(jefftk): use a native nginx timer instead of running our own thread.
   // See issue #111.
   SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());
