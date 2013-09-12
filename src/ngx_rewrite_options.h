@@ -104,9 +104,9 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   void Init();
 
   // Add an option to ngx_properties_
-  template<class RewriteOptionsSubclass, class OptionClass>
+  template<class OptionClass>
   static void add_ngx_option(typename OptionClass::ValueType default_value,
-                             OptionClass RewriteOptionsSubclass::*offset,
+                             OptionClass NgxRewriteOptions::*offset,
                              const char* id,
                              StringPiece option_name) {
     AddProperty(default_value, offset, id, option_name, ngx_properties_);

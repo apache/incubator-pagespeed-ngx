@@ -54,6 +54,7 @@
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_request_context.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
@@ -1477,7 +1478,7 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
   GoogleString url_string = ps_determine_url(r);
   GoogleUrl url(url_string);
 
-  if (!url.is_valid()) {
+  if (!url.IsWebValid()) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid url");
 
     // Let nginx deal with the error however it wants; we will see a NULL ctx in
@@ -1531,7 +1532,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   GoogleString url_string = ps_determine_url(r);
   GoogleUrl url(url_string);
 
-  CHECK(url.is_valid());
+  CHECK(url.IsWebValid());
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   scoped_ptr<ResponseHeaders> response_headers(new ResponseHeaders);
@@ -1565,9 +1566,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
     if (modified_url) {
       url.Reset(url_string);
-      CHECK(url.is_valid()) << "The output of ps_apply_x_forwarded_proto should"
-                            << " always be a valid url because it only changes"
-                            << " the scheme between http and https.";
+      CHECK(url.IsWebValid()) << "The output of ps_apply_x_forwarded_proto"
+                              << " should always be a valid url because it only"
+                              << " changes the scheme between http and https.";
     }
   }
 
@@ -2066,7 +2067,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         "Could not rewrite resource in-place "
         "because URL is not in cache: %s",
         url.c_str());
-
+    const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
+        ctx->driver->options());
     scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
     copy_request_headers_from_ngx(r, request_headers.get());
     // This URL was not found in cache (neither the input resource nor
@@ -2074,12 +2076,14 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
-           url,
-           request_headers.release(),
-           ctx->driver->options()->respect_vary(),
-           server_context->http_cache(),
-           server_context->statistics(),
-           message_handler);
+        url,
+        request_headers.release(),
+        options->respect_vary(),
+        options->ipro_max_response_bytes(),
+        options->ipro_max_concurrent_recordings(),
+        server_context->http_cache(),
+        server_context->statistics(),
+        message_handler);
     // set in memory flag for in place_body_filter
     r->filter_need_in_memory = 1;
   } else {
@@ -2107,13 +2111,41 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
                  "ps in place body filter: %V", &r->uri);
 
   InPlaceResourceRecorder* recorder = ctx->recorder;
+  bool headers_considered = false;
+
+  // Prepare response headers.
+  ResponseHeaders headers;
+  // TODO(oschaaf): We don't get a Date response header here.
+  // Currently, we invent one and set it to the current date/time.
+  // We need to investigate why we don't receive it.
+  headers.set_major_version(r->http_version / 1000);
+  headers.set_minor_version(r->http_version % 1000);
+  copy_headers_from_table(r->headers_out.headers, &headers);
+  headers.set_status_code(r->headers_out.status);
+  headers.Add(HttpAttributes::kContentType,
+              str_to_string_piece(r->headers_out.content_type));
+  if (r->headers_out.location != NULL) {
+    headers.Add(HttpAttributes::kLocation,
+                str_to_string_piece(r->headers_out.location->value));
+  }
+  StringPiece date = headers.Lookup1(HttpAttributes::kDate);
+  if (date.empty()) {
+    headers.SetDate(ngx_current_msec);
+  }
+  headers.ComputeCaching();
 
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
        CHECK(ngx_buf_in_memory(cl->buf));
        StringPiece contents(reinterpret_cast<char *>(cl->buf->pos),
                                  ngx_buf_size(cl->buf));
-
+       if (!headers_considered) {
+         // Unlike in Apache we get the final response headers before we get the
+         // content.  This means we can consider them earlier and abort the
+         // request if need be without buffering everything.
+         recorder->ConsiderResponseHeaders(&headers);
+         headers_considered = true;
+       }
        recorder->Write(contents, recorder->handler());
     }
 
@@ -2121,28 +2153,7 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
       recorder->Flush(recorder->handler());
     }
 
-    if (cl->buf->last_buf) {
-      ResponseHeaders headers;
-      // TODO(oschaaf): We don't get a Date response header here.
-      // Currently, we invent one and set it to the current date/time.
-      // We need to investigate why we don't receive it.
-      headers.set_major_version(r->http_version / 1000);
-      headers.set_minor_version(r->http_version % 1000);
-      copy_headers_from_table(r->headers_out.headers, &headers);
-      headers.set_status_code(r->headers_out.status);
-      headers.Add(HttpAttributes::kContentType,
-                  str_to_string_piece(r->headers_out.content_type));
-      if (r->headers_out.location != NULL) {
-        headers.Add(HttpAttributes::kLocation,
-                    str_to_string_piece(r->headers_out.location->value));
-      }
-
-      StringPiece date = headers.Lookup1(HttpAttributes::kDate);
-      if (date.empty()) {
-        headers.SetDate(ngx_current_msec);
-      }
-
-      headers.ComputeCaching();
+    if (cl->buf->last_buf || recorder->failed()) {
       ctx->recorder->DoneAndSetHeaders(&headers);
       ctx->recorder = NULL;
       break;
