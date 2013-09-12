@@ -112,7 +112,7 @@ StringSet* CommaSeparatedStringToSet(StringPiece str) {
   StringSet* set = new StringSet();
   for (StringPieceVector::const_iterator it = str_values.begin();
        it != str_values.end(); ++it) {
-    set->insert(UrlToFilenameEncoder::Unescape(it->as_string()));
+    set->insert(UrlToFilenameEncoder::Unescape(*it));
   }
   return set;
 }

@@ -360,7 +360,7 @@ HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
       content = &new_content;
     }
     hash = hasher_->Hash(*content);
-    headers->Add(HttpAttributes::kEtag, FormatEtag(hash.c_str()));
+    headers->Add(HttpAttributes::kEtag, FormatEtag(hash));
     headers_mutated = true;
   }
 

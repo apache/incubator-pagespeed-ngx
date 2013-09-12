@@ -474,12 +474,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                      FlushEarlyContentWriterFilter::kDisableLinkTag).c_str(),
               4);
           if (lazyload_enabled) {
-            StrAppend(&flush_early_html, StrCat(
-                "<script type=\"text/javascript\">",
-                LazyloadImagesFilter::GetLazyloadJsSnippet(
-                    options_,
-                    server_context()->static_asset_manager()),
-                "</script>").c_str());
+            StrAppend(
+                &flush_early_html,
+                StrCat("<script type=\"text/javascript\">",
+                       LazyloadImagesFilter::GetLazyloadJsSnippet(
+                           options_, server_context()->static_asset_manager()),
+                       "</script>"));
           }
         } else {
           flush_early_html = StringPrintf(
@@ -577,7 +577,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     GoogleString text;
     RequestHeaders request_headers;
     ResponseHeaders headers;
-    request_headers.Replace(HttpAttributes::kUserAgent, user_agent.as_string());
+    request_headers.Replace(HttpAttributes::kUserAgent, user_agent);
     FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
     // Check total number of cache inserts.
     // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.

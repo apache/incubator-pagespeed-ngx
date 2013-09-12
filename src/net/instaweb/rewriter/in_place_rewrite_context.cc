@@ -342,9 +342,8 @@ void InPlaceRewriteContext::FetchTryFallback(const GoogleString& url,
 void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   if (is_rewritten_) {
     if (!rewritten_hash_.empty()) {
-      headers->Replace(
-          HttpAttributes::kEtag,
-          HTTPCache::FormatEtag(StrCat(id(), "-", rewritten_hash_).c_str()));
+      headers->Replace(HttpAttributes::kEtag, HTTPCache::FormatEtag(StrCat(
+                                                  id(), "-", rewritten_hash_)));
     }
     if (ShouldAddVaryUserAgent()) {
       headers->Replace(HttpAttributes::kVary, HttpAttributes::kUserAgent);

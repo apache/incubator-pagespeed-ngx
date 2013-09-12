@@ -304,7 +304,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
           non_critical_json.c_str(),
           rewrite_driver_->flushing_cached_html() ? "true" : "false"));
     } else {
-      WriteString(non_critical_json.c_str());
+      WriteString(non_critical_json);
     }
     if (!json.empty()) {
       rewrite_driver_->log_record()->SetRewriterLoggingStatus(

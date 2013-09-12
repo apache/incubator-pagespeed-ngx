@@ -444,7 +444,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     blink_output_partial_ = StringPrintf(
         kBlinkOutputCommon, kTestUrl, kTestUrl,
         GetJsDisableScriptSnippet(options).c_str());
-    blink_output_ = StrCat(blink_output_partial_.c_str(), kCookieScript,
+    blink_output_ = StrCat(blink_output_partial_, kCookieScript,
                            StringPrintf(kBlinkOutputSuffix, "image1"));
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,
@@ -1299,10 +1299,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithWebp) {
       kTestDomain, RewriteOptions::kImageCompressionId, "0", "image1", "webp");
 
   GoogleString blink_output_with_webp =
-      StrCat(blink_output_partial_.c_str(), kCookieScript,
-             StringPrintf(
-                 kBlinkOutputSuffix,
-                 correct_url.c_str()));
+      StrCat(blink_output_partial_, kCookieScript,
+             StringPrintf(kBlinkOutputSuffix, correct_url.c_str()));
   EXPECT_STREQ(blink_output_with_webp, text);
 }
 
