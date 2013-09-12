@@ -1035,9 +1035,11 @@ goog.array.slice = function(arr, start, opt_end) {
   goog.asserts.assert(null != arr.length);
   return 2 >= arguments.length ? goog.array.ARRAY_PROTOTYPE_.slice.call(arr, start) : goog.array.ARRAY_PROTOTYPE_.slice.call(arr, start, opt_end)
 };
-goog.array.removeDuplicates = function(arr, opt_rv) {
-  for(var returnArray = opt_rv || arr, seen = {}, cursorInsert = 0, cursorRead = 0;cursorRead < arr.length;) {
-    var current = arr[cursorRead++], key = goog.isObject(current) ? "o" + goog.getUid(current) : (typeof current).charAt(0) + current;
+goog.array.removeDuplicates = function(arr, opt_rv, opt_hashFn) {
+  for(var returnArray = opt_rv || arr, defaultHashFn = function() {
+    return goog.isObject(current) ? "o" + goog.getUid(current) : (typeof current).charAt(0) + current
+  }, hashFn = opt_hashFn || defaultHashFn, seen = {}, cursorInsert = 0, cursorRead = 0;cursorRead < arr.length;) {
+    var current = arr[cursorRead++], key = hashFn(current);
     Object.prototype.hasOwnProperty.call(seen, key) || (seen[key] = !0, returnArray[cursorInsert++] = current)
   }
   returnArray.length = cursorInsert

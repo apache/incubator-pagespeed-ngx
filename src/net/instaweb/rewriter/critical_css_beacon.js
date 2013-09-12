@@ -31,6 +31,8 @@ goog.require('pagespeedutils');
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
+
+
 /**
  * @constructor
  * @param {string} beaconUrl The URL on the server to send the beacon to.
@@ -63,12 +65,13 @@ pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash,
   this.optionsHash_ = optionsHash;
   this.nonce_ = nonce;
   this.selectors_ = selectors;
-  this.critical_selectors_ = [];
+  this.criticalSelectors_ = [];
   this.idx_ = 0;
 };
 
+
 /**
- * Send the selectors that have been collected into the critical_selectors_
+ * Send the selectors that have been collected into the criticalSelectors_
  * member var back to the server.
  * @private
  */
@@ -81,9 +84,9 @@ pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
 
   var data = 'oh=' + this.optionsHash_ + '&n=' + this.nonce_;
   data += '&cs=';
-  for (var i = 0; i < this.critical_selectors_.length; ++i) {
+  for (var i = 0; i < this.criticalSelectors_.length; ++i) {
     var tmp = (i > 0) ? ',' : '';
-    tmp += encodeURIComponent(this.critical_selectors_[i]);
+    tmp += encodeURIComponent(this.criticalSelectors_[i]);
     // TODO(jud): Don't truncate the critical selectors list if we exceed
     // MAX_DATA_LEN. Either send a signal back that we exceeded the limit, or
     // send multiple beacons back with all the data.
@@ -99,6 +102,7 @@ pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
   pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data);
 };
 
+
 /**
  * Check if CSS selectors apply to DOM elements that are visible on initial page
  * load.
@@ -112,7 +116,7 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function(callback) {
     try {
       // If this selector matched any DOM elements, then consider it critical.
       if (document.querySelector(this.selectors_[this.idx_]) != null) {
-        this.critical_selectors_.push(this.selectors_[this.idx_]);
+        this.criticalSelectors_.push(this.selectors_[this.idx_]);
       }
     } catch (e) {
       // SYNTAX_ERR is thrown if the browser can't parse a selector (eg, CSS3 in
@@ -130,6 +134,7 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function(callback) {
     callback();
   }
 };
+
 
 /**
  * Initialize.

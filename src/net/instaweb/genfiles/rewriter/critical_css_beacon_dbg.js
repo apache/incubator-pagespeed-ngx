@@ -59,12 +59,12 @@ pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce, s
   this.optionsHash_ = optionsHash;
   this.nonce_ = nonce;
   this.selectors_ = selectors;
-  this.critical_selectors_ = [];
+  this.criticalSelectors_ = [];
   this.idx_ = 0
 };
 pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
-  for(var data = "oh=" + this.optionsHash_ + "&n=" + this.nonce_, data = data + "&cs=", i = 0;i < this.critical_selectors_.length;++i) {
-    var tmp = 0 < i ? "," : "", tmp = tmp + encodeURIComponent(this.critical_selectors_[i]);
+  for(var data = "oh=" + this.optionsHash_ + "&n=" + this.nonce_, data = data + "&cs=", i = 0;i < this.criticalSelectors_.length;++i) {
+    var tmp = 0 < i ? "," : "", tmp = tmp + encodeURIComponent(this.criticalSelectors_[i]);
     if(131072 < data.length + tmp.length) {
       break
     }
@@ -76,7 +76,7 @@ pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
 pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function(callback) {
   for(var i = 0;i < this.MAXITERS_ && this.idx_ < this.selectors_.length;++i, ++this.idx_) {
     try {
-      null != document.querySelector(this.selectors_[this.idx_]) && this.critical_selectors_.push(this.selectors_[this.idx_])
+      null != document.querySelector(this.selectors_[this.idx_]) && this.criticalSelectors_.push(this.selectors_[this.idx_])
     }catch(e) {
     }
   }

@@ -29,6 +29,8 @@ goog.require('pagespeedutils');
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
+
+
 /**
  * @constructor
  * @param {string} beaconUrl The URL on the server to send the beacon to.
@@ -48,6 +50,7 @@ pagespeed.SplitHtmlBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce) {
   this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize();
 };
+
 
 /**
  * Walk the DOM recursively, generating the list of below-the-fold node XPaths
@@ -69,10 +72,10 @@ pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(node) {
   for (var currChild = node.firstChild; currChild != null;
        currChild = currChild.nextSibling) {
     if (currChild.nodeType !== node.ELEMENT_NODE ||
-        currChild.tagName === 'SCRIPT' ||
-        currChild.tagName === 'NOSCRIPT' ||
-        currChild.tagName === 'STYLE' ||
-        currChild.tagName === 'LINK') {
+        currChild.tagName == 'SCRIPT' ||
+        currChild.tagName == 'NOSCRIPT' ||
+        currChild.tagName == 'STYLE' ||
+        currChild.tagName == 'LINK') {
       continue;
     }
     if (this.walkDom_(currChild)) {
@@ -94,16 +97,16 @@ pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(node) {
   return false;
 };
 
+
 /**
- * Check position of images and input tags and beacon back images that are
- * visible on initial page load.
+ * Check position of HTML elements and beacon back below-the-fold elements.
  * @private
  */
 pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
   // Define the maximum size of a POST that the server will accept. We shouldn't
   // send more data than this.
   // TODO(jud): Factor out this const so that it matches kMaxPostSizeBytes.
-  var MAX_DATA_LEN = 131072;
+  /** @const */ var MAX_DATA_LEN = 131072;
 
   this.walkDom_(document.body);
 
@@ -127,6 +130,7 @@ pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
   }
 };
 
+
 /**
  * Initialize.
  * @param {string} beaconUrl The URL on the server to send the beacon to.
@@ -140,10 +144,10 @@ pagespeed.splitHtmlBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
       beaconUrl, htmlUrl, optionsHash, nonce);
   // Add event to the onload handler to scan images and beacon back the visible
   // ones.
-  var beacon_onload = function() {
+  var beaconOnload = function() {
     temp.checkSplitHtml_();
   };
-  pagespeedutils.addHandler(window, 'load', beacon_onload);
+  pagespeedutils.addHandler(window, 'load', beaconOnload);
 };
 
 pagespeed['splitHtmlBeaconInit'] = pagespeed.splitHtmlBeaconInit;

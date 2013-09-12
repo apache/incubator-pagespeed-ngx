@@ -29,6 +29,8 @@ goog.require('pagespeedutils');
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
+
+
 /**
  * @constructor
  * @param {string} beaconUrl The URL on the server to send the beacon to.
@@ -36,22 +38,22 @@ var pagespeed = window['pagespeed'];
  * @param {string} optionsHash The hash of the rewrite options. This is required
  *     to perform the property cache lookup when the beacon is handled by the
  *     sever.
- * @param {boolean} is_resize_using_rendered_dimensions_enabled The bool to show
- *     if resizing is being done using the rendered dimensions. If yes we
- *     capture the rendered dimensions and send it back with the beacon.
+ * @param {boolean} checkRenderedImageSizes The bool to show if resizing is
+ *     being done using the rendered dimensions. If yes we capture the rendered
+ *     dimensions and send it back with the beacon.
  * @param {string} nonce The nonce sent by the server.
  */
 pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash,
-    is_resize_using_rendered_dimensions_enabled, nonce) {
+    checkRenderedImageSizes, nonce) {
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
   this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize();
-  this.is_resize_using_rendered_dimensions_enabled_ =
-      is_resize_using_rendered_dimensions_enabled;
+  this.checkRenderedImageSizes_ = checkRenderedImageSizes;
   this.imgLocations_ = {};
 };
+
 
 /**
  * Returns the absolute position of the top left corner of the element.
@@ -67,22 +69,23 @@ pagespeed.CriticalImagesBeacon.prototype.elLocation_ = function(element) {
 
   // getBoundingClientRect() is w.r.t. the viewport. Add the amount scolled to
   // calculate the absolute position of the element.
-  var scroll_x, scroll_y;
+  var scrollX, scrollY;
   // From https://developer.mozilla.org/en-US/docs/DOM/window.scrollX
-  scroll_x = (window.pageXOffset !== undefined) ? window.pageXOffset :
+  scrollX = (window.pageXOffset !== undefined) ? window.pageXOffset :
       (document.documentElement ||
        document.body.parentNode ||
        document.body).scrollLeft;
-  scroll_y = (window.pageYOffset !== undefined) ? window.pageYOffset :
+  scrollY = (window.pageYOffset !== undefined) ? window.pageYOffset :
       (document.documentElement ||
        document.body.parentNode ||
        document.body).scrollTop;
 
   return {
-    top: rect.top + scroll_y,
-    left: rect.left + scroll_x
+    top: rect.top + scrollY,
+    left: rect.left + scrollX
   };
 };
+
 
 /**
  * Returns true if an element is visible upon initial page load.
@@ -122,6 +125,7 @@ pagespeed.CriticalImagesBeacon.prototype.isCritical_ = function(element) {
           elLocation.left <= this.windowSize_.width);
 };
 
+
 /**
  * Check position of images and input tags and beacon back images that are
  * visible on initial page load.
@@ -131,15 +135,15 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
   // Define the maximum size of a POST that the server will accept. We shouldn't
   // send more data than this.
   // TODO(jud): Factor out this const so that it matches kMaxPostSizeBytes.
-  var MAX_DATA_LEN = 131072;
+  /** @const */ var MAX_DATA_LEN = 131072;
 
   // List of tags whose elements we will check to see if they are critical.
   var tags = ['img', 'input'];
 
-  var critical_imgs = [];
-  // Use an object to store the keys for critical_imgs so that we get a unique
+  var criticalImgs = [];
+  // Use an object to store the keys for criticalImgs so that we get a unique
   // list of them.
-  var critical_imgs_keys = {};
+  var criticalImgsKeys = {};
 
   for (var i = 0; i < tags.length; ++i) {
     var elements = document.getElementsByTagName(tags[i]);
@@ -150,45 +154,50 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
       // user agent whitelist to exclude UAs that don't support it correctly.
       if (key && elements[j].getBoundingClientRect &&
           this.isCritical_(elements[j])) {
-        if (!(key in critical_imgs_keys)) {
-          critical_imgs.push(key);
-          critical_imgs_keys[key] = true;
+        if (!(key in criticalImgsKeys)) {
+          criticalImgs.push(key);
+          criticalImgsKeys[key] = true;
         }
       }
     }
   }
-  var is_data_available = false;
+  var isDataAvailable = false;
   var data = 'oh=' + this.optionsHash_;
-  if (critical_imgs.length != 0) {
-    if (!this.nonce_.empty()) {
-      data += '&n=' + this.nonce_;
-    }
-    data += '&ci=' + encodeURIComponent(critical_imgs[0]);
-    for (var i = 1; i < critical_imgs.length; ++i) {
-      var tmp = ',' + encodeURIComponent(critical_imgs[i]);
+  if (this.nonce_) {
+    data += '&n=' + this.nonce_;
+  }
+
+  if (criticalImgs.length != 0) {
+    data += '&ci=' + encodeURIComponent(criticalImgs[0]);
+    for (var i = 1; i < criticalImgs.length; ++i) {
+      var tmp = ',' + encodeURIComponent(criticalImgs[i]);
       if ((data.length + tmp.length) > MAX_DATA_LEN) {
         break;
       }
       data += tmp;
     }
-    is_data_available = true;
+    isDataAvailable = true;
   }
 
   // Add rendered image dimensions as a query param to the beacon url.
-  if (this.is_resize_using_rendered_dimensions_enabled_) {
-    data += '&rd=' +
+  if (this.checkRenderedImageSizes_) {
+    var tmp = '&rd=' +
         encodeURIComponent(JSON.stringify(this.getImageRenderedMap()));
-    is_data_available = true;
+    if (data.length + tmp.length <= MAX_DATA_LEN) {
+      data += tmp;
+    }
+    isDataAvailable = true;
   }
 
-  if (is_data_available) {
-    // Export the URL for testing purposes.
-    pagespeed['criticalImagesBeaconData'] = data;
+  // Export the URL for testing purposes.
+  pagespeed['criticalImagesBeaconData'] = data;
+  if (isDataAvailable) {
     // TODO(jud): This beacon should coordinate with the add_instrumentation JS
     // so that only one beacon request is sent if both filters are enabled.
     pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data);
   }
 };
+
 
 /**
  * Retrieves the rendered width and height of images.
@@ -207,13 +216,13 @@ pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
   for (var i = 0; i < images.length; ++i) {
     var img = images[i];
     var key = img.getAttribute('pagespeed_url_hash');
-    // naturalWidth and naturalHeight is defined for all browers except in IE
+    // naturalWidth and naturalHeight is defined for all browsers except in IE
     // versions 8 and before (non HTML5 support).
     // We bail out in case of other browsers or if hash is undefined.
     if (typeof img.naturalWidth == 'undefined' ||
         typeof img.naturalHeight == 'undefined' ||
         typeof key == 'undefined') {
-          return renderedImageDimensions;
+      return renderedImageDimensions;
     }
     if ((typeof(renderedImageDimensions[img.src]) == 'undefined' &&
          img.width > 0 && img.height > 0 &&
@@ -232,24 +241,24 @@ pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
   return renderedImageDimensions;
 };
 
+
 /**
  * Initialize.
  * @param {string} beaconUrl The URL on the server to send the beacon to.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  * @param {string} optionsHash The hash of the rewrite options.
- * @param {boolean} is_resize_using_rendered_dimensions_enabled The bool to show
- *     if resizing is being done using the rendered dimensions. If yes we
- *     capture the rendered dimensions and send it back with the beacon.
+ * @param {boolean} checkRenderedImageSizes The bool to show if resizing is
+ *     being done using the rendered dimensions. If yes we capture the rendered
+ *     dimensions and send it back with the beacon.
  * @param {string} nonce The nonce sent by the server.
  */
 pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
-    is_resize_using_rendered_dimensions_enabled, nonce) {
+    checkRenderedImageSizes, nonce) {
   var temp = new pagespeed.CriticalImagesBeacon(
-      beaconUrl, htmlUrl, optionsHash,
-      is_resize_using_rendered_dimensions_enabled, nonce);
+      beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce);
   // Add event to the onload handler to scan images and beacon back the visible
   // ones.
-  var beacon_onload = function() {
+  var beaconOnload = function() {
     // Attempt not to block other onload events on the page by wrapping in
     // setTimeout().
     // TODO(jud): checkCriticalImages_ should not run until after lazyload
@@ -260,7 +269,7 @@ pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash,
       temp.checkCriticalImages_();
     }, 0);
   };
-  pagespeedutils.addHandler(window, 'load', beacon_onload);
+  pagespeedutils.addHandler(window, 'load', beaconOnload);
 };
 
 pagespeed['criticalImagesBeaconInit'] = pagespeed.criticalImagesBeaconInit;

@@ -52,20 +52,20 @@
 }};
 window.pagespeed = window.pagespeed || {};
 var pagespeed = window.pagespeed;
-pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled, nonce) {
+pagespeed.CriticalImagesBeacon = function(beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce) {
   this.beaconUrl_ = beaconUrl;
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
   this.nonce_ = nonce;
   this.windowSize_ = pagespeedutils.getWindowSize();
-  this.is_resize_using_rendered_dimensions_enabled_ = is_resize_using_rendered_dimensions_enabled;
+  this.checkRenderedImageSizes_ = checkRenderedImageSizes;
   this.imgLocations_ = {}
 };
 pagespeed.CriticalImagesBeacon.prototype.elLocation_ = function(element) {
-  var rect = element.getBoundingClientRect(), scroll_x, scroll_y;
-  scroll_x = void 0 !== window.pageXOffset ? window.pageXOffset : (document.documentElement || document.body.parentNode || document.body).scrollLeft;
-  scroll_y = void 0 !== window.pageYOffset ? window.pageYOffset : (document.documentElement || document.body.parentNode || document.body).scrollTop;
-  return{top:rect.top + scroll_y, left:rect.left + scroll_x}
+  var rect = element.getBoundingClientRect(), scrollX, scrollY;
+  scrollX = void 0 !== window.pageXOffset ? window.pageXOffset : (document.documentElement || document.body.parentNode || document.body).scrollLeft;
+  scrollY = void 0 !== window.pageYOffset ? window.pageYOffset : (document.documentElement || document.body.parentNode || document.body).scrollTop;
+  return{top:rect.top + scrollY, left:rect.left + scrollX}
 };
 pagespeed.CriticalImagesBeacon.prototype.isCritical_ = function(element) {
   if(0 >= element.offsetWidth && 0 >= element.offsetHeight) {
@@ -79,27 +79,28 @@ pagespeed.CriticalImagesBeacon.prototype.isCritical_ = function(element) {
   return elLocation.top <= this.windowSize_.height && elLocation.left <= this.windowSize_.width
 };
 pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
-  for(var tags = ["img", "input"], critical_imgs = [], critical_imgs_keys = {}, i = 0;i < tags.length;++i) {
+  for(var tags = ["img", "input"], criticalImgs = [], criticalImgsKeys = {}, i = 0;i < tags.length;++i) {
     for(var elements = document.getElementsByTagName(tags[i]), j = 0;j < elements.length;++j) {
       var key = elements[j].getAttribute("pagespeed_url_hash");
-      key && elements[j].getBoundingClientRect && this.isCritical_(elements[j]) && !(key in critical_imgs_keys) && (critical_imgs.push(key), critical_imgs_keys[key] = !0)
+      key && elements[j].getBoundingClientRect && this.isCritical_(elements[j]) && !(key in criticalImgsKeys) && (criticalImgs.push(key), criticalImgsKeys[key] = !0)
     }
   }
-  var is_data_available = !1, data = "oh=" + this.optionsHash_;
-  if(0 != critical_imgs.length) {
-    this.nonce_.empty() || (data += "&n=" + this.nonce_);
-    data += "&ci=" + encodeURIComponent(critical_imgs[0]);
-    for(i = 1;i < critical_imgs.length;++i) {
-      var tmp = "," + encodeURIComponent(critical_imgs[i]);
+  var isDataAvailable = !1, data = "oh=" + this.optionsHash_;
+  this.nonce_ && (data += "&n=" + this.nonce_);
+  if(0 != criticalImgs.length) {
+    data += "&ci=" + encodeURIComponent(criticalImgs[0]);
+    for(i = 1;i < criticalImgs.length;++i) {
+      var tmp = "," + encodeURIComponent(criticalImgs[i]);
       if(131072 < data.length + tmp.length) {
         break
       }
       data += tmp
     }
-    is_data_available = !0
+    isDataAvailable = !0
   }
-  this.is_resize_using_rendered_dimensions_enabled_ && (data += "&rd=" + encodeURIComponent(JSON.stringify(this.getImageRenderedMap())), is_data_available = !0);
-  is_data_available && (pagespeed.criticalImagesBeaconData = data, pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data))
+  this.checkRenderedImageSizes_ && (tmp = "&rd=" + encodeURIComponent(JSON.stringify(this.getImageRenderedMap())), 131072 >= data.length + tmp.length && (data += tmp), isDataAvailable = !0);
+  pagespeed.criticalImagesBeaconData = data;
+  isDataAvailable && pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data)
 };
 pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
   for(var renderedImageDimensions = {}, images = document.getElementsByTagName("img"), i = 0;i < images.length;++i) {
@@ -113,13 +114,13 @@ pagespeed.CriticalImagesBeacon.prototype.getImageRenderedMap = function() {
   }
   return renderedImageDimensions
 };
-pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled, nonce) {
-  var temp = new pagespeed.CriticalImagesBeacon(beaconUrl, htmlUrl, optionsHash, is_resize_using_rendered_dimensions_enabled, nonce), beacon_onload = function() {
+pagespeed.criticalImagesBeaconInit = function(beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce) {
+  var temp = new pagespeed.CriticalImagesBeacon(beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce), beaconOnload = function() {
     window.setTimeout(function() {
       temp.checkCriticalImages_()
     }, 0)
   };
-  pagespeedutils.addHandler(window, "load", beacon_onload)
+  pagespeedutils.addHandler(window, "load", beaconOnload)
 };
 pagespeed.criticalImagesBeaconInit = pagespeed.criticalImagesBeaconInit;
 })();
