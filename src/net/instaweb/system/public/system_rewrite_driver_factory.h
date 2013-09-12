@@ -41,15 +41,15 @@ class Statistics;
 class SystemCaches;
 class SystemRewriteOptions;
 class SystemServerContext;
+class SystemThreadSystem;
 class Timer;
-class ThreadSystem;
 class UrlAsyncFetcher;
 
 // A server context with features specific to a psol port on a unix system.
 class SystemRewriteDriverFactory : public RewriteDriverFactory {
  public:
   // Takes ownership of thread_system.
-  SystemRewriteDriverFactory(ThreadSystem* thread_system,
+  SystemRewriteDriverFactory(SystemThreadSystem* thread_system,
                              StringPiece hostname,
                              int port);
   virtual ~SystemRewriteDriverFactory();
@@ -258,6 +258,9 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   FetcherMap fetcher_map_;
 
   GoogleString https_options_;
+
+  // The same as our parent's thread_system_, but without casting.
+  SystemThreadSystem* system_thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteDriverFactory);
 };

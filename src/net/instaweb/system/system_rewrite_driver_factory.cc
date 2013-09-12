@@ -34,6 +34,7 @@
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_server_context.h"
+#include "net/instaweb/system/public/system_thread_system.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -64,7 +65,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 }  // namespace
 
 SystemRewriteDriverFactory::SystemRewriteDriverFactory(
-    ThreadSystem* thread_system,
+    SystemThreadSystem* thread_system,
     StringPiece hostname,
     int port)
     : RewriteDriverFactory(thread_system),
@@ -78,7 +79,8 @@ SystemRewriteDriverFactory::SystemRewriteDriverFactory(
       hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))),
       message_buffer_size_(0),
       track_original_content_length_(false),
-      list_outstanding_urls_on_error_(false) {
+      list_outstanding_urls_on_error_(false),
+      system_thread_system_(thread_system) {
   // Some implementations, such as Apache, call caches.set_thread_limit in
   // their constructors and override this limit.
   int thread_limit = 1;
@@ -197,6 +199,8 @@ void SystemRewriteDriverFactory::RootInit() {
 
 void SystemRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
+  system_thread_system_->PermitThreadStarting();
+
   ParentOrChildInit();
 
   SetupMessageHandlers();

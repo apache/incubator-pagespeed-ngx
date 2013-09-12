@@ -1307,6 +1307,7 @@
         'system/system_rewrite_options.cc',
         'system/system_request_context.cc',
         'system/system_server_context.cc',
+        'system/system_thread_system.cc',
         '<(DEPTH)/third_party/aprutil/apr_memcache2.c',
       ],
     },

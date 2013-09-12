@@ -17,24 +17,12 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 
 #include "net/instaweb/apache/apache_thread_system.h"
-#include "net/instaweb/apache/apr_timer.h"
 
-#include "apr_thread_proc.h"
+#include "net/instaweb/apache/apr_timer.h"
 
 namespace net_instaweb {
 
 class Timer;
-
-ApacheThreadSystem::ApacheThreadSystem() {}
-
-ApacheThreadSystem::~ApacheThreadSystem() {}
-
-void ApacheThreadSystem::BeforeThreadRunHook() {
-  // We disable all signals here, since we don't want Apache's use of SIGTERM
-  // to cause the 'delete everything' handle to be run everywhere.
-  // (this is only needed for prefork, threaded MPMs do it already)
-  apr_setup_signal_thread();
-}
 
 Timer* ApacheThreadSystem::NewTimer() {
   return new AprTimer;
