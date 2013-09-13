@@ -52,6 +52,7 @@ static const int kInterlaceOffsets[] = { 0, 4, 2, 1 };
 static const int kInterlaceJumps[] = { 8, 8, 4, 2 };
 const int kInterlaceNumPass = arraysize(kInterlaceOffsets);
 const uint8 kAlphaOpaque = 255;
+const uint8 kAlphaTransparent = 0;
 const int kNumColorForUint8 = 256;
 const int kPaletteBackgroundIndex = 256;
 const int kGifPaletteSize = kPaletteBackgroundIndex + 1;
@@ -118,7 +119,7 @@ bool AddTransparencyChunk(png_structp png_ptr,
   // First, set all palette indices to fully opaque.
   memset(trans, 0xff, num_trans);
   // Set the one transparent index to fully transparent.
-  trans[transparent_palette_index] = 0;
+  trans[transparent_palette_index] = kAlphaTransparent;
   png_set_tRNS(png_ptr, info_ptr, trans, num_trans, NULL);
   return true;
 }
@@ -784,7 +785,7 @@ bool GifScanlineReaderRaw::ProcessSingleImageGif(size_t* first_frame_offset,
   return true;
 }
 
-bool GifScanlineReaderRaw::CreateColorMap() {
+bool GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
   GifFileType* gif_file = gif_struct_->gif_file();
 
   // Populate the color map.
@@ -825,7 +826,12 @@ bool GifScanlineReaderRaw::CreateColorMap() {
       gif_palette_[background_index].green_;
   gif_palette_[kPaletteBackgroundIndex].blue_ =
       gif_palette_[background_index].blue_;
-  gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaOpaque;
+
+  if (background_index == transparent_index) {
+    gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaTransparent;
+  } else {
+    gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaOpaque;
+  }
 
   return true;
 }
@@ -880,7 +886,7 @@ bool GifScanlineReaderRaw::Initialize(const void* image_buffer,
     return false;
   }
 
-  if (!CreateColorMap()) {
+  if (!CreateColorMap(image1_transparent_index)) {
     Reset();
     return false;
   }
@@ -900,7 +906,7 @@ bool GifScanlineReaderRaw::Initialize(const void* image_buffer,
   if (image1_transparent_index >= 0) {
     pixel_format_ = RGBA_8888;
     pixel_size_ = 4;
-    gif_palette_[image1_transparent_index].alpha_ = 0;
+    gif_palette_[image1_transparent_index].alpha_ = kAlphaTransparent;
   } else {
     pixel_format_ = RGB_888;
     pixel_size_ = 3;
@@ -962,36 +968,36 @@ bool GifScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
     }
   }
 
-  // Find out the color index for the requested row.
-  GifPixelType* index_buffer = NULL;
-  GifFileType* gif_file = gif_struct_->gif_file();
-  int actual_width = gif_struct_->last_col() - gif_struct_->first_col() + 1;
-  if (!is_progressive_) {
-    // For a non-progressive GIF, we decode the image a row at a time.
-    index_buffer = image_index_.get();
-    if (DGifGetLine(gif_file, index_buffer, actual_width) == GIF_ERROR) {
-      PS_LOG_ERROR(message_handler_, "Failed to DGifGetLine");
-      Reset();
-      return false;
-    }
-  } else {
-    // For a progressive GIF, we simply point the output to the corresponding
-    // row, because the image has already been decoded.
-    index_buffer = image_index_.get() + row_ * GetImageWidth();
-  }
-
   // Convert the color index to the actual color.
   GifPixelType* color_buffer = image_buffer_.get();
   const PaletteRGBA* background_color = gif_palette_.get() +
                                         kPaletteBackgroundIndex;
-  int i = 0;
+  int pixel_index = 0;
   if (row_ >= gif_struct_->first_row() && row_ <= gif_struct_->last_row()) {
-    for (; i < gif_struct_->first_col(); ++i) {
+    // Find out the color index for the requested row.
+    GifPixelType* index_buffer = NULL;
+    GifFileType* gif_file = gif_struct_->gif_file();
+    int actual_width = gif_struct_->last_col() - gif_struct_->first_col() + 1;
+    if (!is_progressive_) {
+      // For a non-progressive GIF, we decode the image a row at a time.
+      index_buffer = image_index_.get();
+      if (DGifGetLine(gif_file, index_buffer, actual_width) == GIF_ERROR) {
+        PS_LOG_ERROR(message_handler_, "Failed to DGifGetLine");
+        Reset();
+        return false;
+      }
+    } else {
+      // For a progressive GIF, we simply point the output to the corresponding
+      // row, because the image has already been decoded.
+      index_buffer = image_index_.get() + row_ * GetImageWidth();
+    }
+
+    for (; pixel_index < gif_struct_->first_col(); ++pixel_index) {
       // Pad background color to the beginning of the row.
       memcpy(color_buffer, background_color, pixel_size_);
       color_buffer += pixel_size_;
     }
-    for (; i <= gif_struct_->last_col(); ++i) {
+    for (; pixel_index <= gif_struct_->last_col(); ++pixel_index) {
       // Convert the color index to the actual color.
       int color_index = *(index_buffer++);
       memcpy(color_buffer, gif_palette_.get() + color_index, pixel_size_);
@@ -1001,7 +1007,7 @@ bool GifScanlineReaderRaw::ReadNextScanline(void** out_scanline_bytes) {
 
   // Pad background color to the end of the row if the current row contains
   // valid output pixels, or to the entire row if not.
-  for (; i < static_cast<int>(GetImageWidth()); ++i) {
+  for (; pixel_index < static_cast<int>(GetImageWidth()); ++pixel_index) {
     memcpy(color_buffer, background_color, pixel_size_);
     color_buffer += pixel_size_;
   }

@@ -83,6 +83,7 @@ const char kBadGif[] = "bad";
 const char kInterlacedImage[] = "interlaced";
 const char kTransparentGif[] = "transparent";
 const char kZeroSizeAnimatedGif[] = "zero_size_animation";
+const char kCompletelyTransparentImage[] = "completely_transparent";
 
 class GifReaderTest : public testing::Test {
  public:
@@ -402,6 +403,15 @@ TEST_F(GifScanlineReaderRawTest, Interlaced) {
   GoogleString png_image, gif_image;
   ReadTestFile(kGifTestDir, kInterlacedImage, "png", &png_image);
   ReadTestFile(kGifTestDir, kInterlacedImage, "gif", &gif_image);
+  DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
+                         IMAGE_GIF, gif_image.c_str(), gif_image.length(),
+                         &message_handler_);
+}
+
+TEST_F(GifScanlineReaderRawTest, CompletelyTransparent) {
+  GoogleString png_image, gif_image;
+  ReadTestFile(kGifTestDir, kCompletelyTransparentImage, "png", &png_image);
+  ReadTestFile(kGifTestDir, kCompletelyTransparentImage, "gif", &gif_image);
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                          IMAGE_GIF, gif_image.c_str(), gif_image.length(),
                          &message_handler_);

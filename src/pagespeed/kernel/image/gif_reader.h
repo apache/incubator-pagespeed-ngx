@@ -111,8 +111,10 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   virtual PixelFormat GetPixelFormat() { return pixel_format_; }
 
  private:
+  // 'transparent_index' will be set to '-1' if no transparent color has been
+  // defined.
   bool ProcessSingleImageGif(size_t* offset, int* transparent_index);
-  bool CreateColorMap();
+  bool CreateColorMap(int transparent_index);
   bool DecodeProgressiveGif();
 
  private:
