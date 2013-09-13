@@ -160,7 +160,6 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_driver_factory.h \
     $ps_src/ngx_rewrite_options.h \
     $ps_src/ngx_server_context.h \
-    $ps_src/ngx_thread_system.h \
     $ps_src/ngx_url_async_fetcher.h"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ps_src/log_message_handler.cc \
@@ -173,7 +172,6 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_driver_factory.cc \
     $ps_src/ngx_rewrite_options.cc \
     $ps_src/ngx_server_context.cc \
-    $ps_src/ngx_thread_system.cc \
     $ps_src/ngx_url_async_fetcher.cc \
     $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/apache/install/mod_pagespeed_example/mod_pagespeed_console_out.cc \
     $mod_pagespeed_dir/out/$buildtype/obj/gen/data2c_out/instaweb/net/instaweb/apache/install/mod_pagespeed_example/mod_pagespeed_console_css_out.cc \
