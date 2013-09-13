@@ -249,6 +249,9 @@ bool NgxRewriteDriverFactory::CheckResolver() {
 }
 
 void NgxRewriteDriverFactory::StopCacheActivity() {
+  if (is_root_process_) {
+    return;  // No caches used in root process.
+  }
   RewriteDriverFactory::StopCacheActivity();
   caches_->StopCacheActivity();
 }
