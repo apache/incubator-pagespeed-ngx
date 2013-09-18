@@ -191,7 +191,7 @@ void HtmlLexer::EvalStart(char c) {
 // HTML5 "Tag open state"
 // TODO(morlovich): Use an ASCII method rather than isalpha
 bool HtmlLexer::IsLegalTagFirstChar(char c) {
-  return static_cast<bool>(isalpha(c));  // Cast required by MSVC 10.0 :-(
+  return (isalpha(c) != 0);  // Required by MSVC 10.0: warning C4800 :-(
 }
 
 // ... and letters, digits, unicode and some symbols for subsequent chars.

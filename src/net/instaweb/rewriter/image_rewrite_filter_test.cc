@@ -2484,7 +2484,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   // Base image quality is set, but for_small_screens is not, return base.
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2495,7 +2494,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_recompress_quality(-1);
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2506,7 +2504,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_recompress_quality(-1);
   options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2517,7 +2514,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality(85);
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2532,7 +2528,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality(85);
   options()->set_image_jpeg_recompress_quality_for_small_screens(20);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2576,7 +2571,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   rewrite_driver()->SetUserAgent("iPhone OS Safari");
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(70);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2588,7 +2582,6 @@ TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_jpeg_recompress_quality_for_small_screens(70);
   options()->set_image_jpeg_recompress_quality(60);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2617,7 +2610,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality(85);
   options()->set_image_webp_recompress_quality_for_small_screens(-1);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2629,7 +2621,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->set_image_recompress_quality(-1);
   options()->set_image_webp_recompress_quality(-1);
   options()->set_image_webp_recompress_quality_for_small_screens(20);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2640,7 +2631,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality(85);
   options()->set_image_webp_recompress_quality_for_small_screens(20);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2655,7 +2645,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality(85);
   options()->set_image_webp_recompress_quality_for_small_screens(20);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2700,7 +2689,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   ctx.Clear();
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality_for_small_screens(70);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2713,7 +2701,6 @@ TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
   options()->ClearSignatureForTesting();
   options()->set_image_webp_recompress_quality_for_small_screens(70);
   options()->set_image_webp_recompress_quality(55);
-  rewrite_driver()->set_custom_options(options());
   image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
   img_options.reset(
       image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
@@ -2740,7 +2727,6 @@ void SetNumberOfScans(int num_scans, int num_scans_small_screen,
       options->set_image_jpeg_num_progressive_scans_for_small_screens(
           num_scans_small_screen);
     }
-    rewrite_driver->set_custom_options(options);
   }
   image_rewrite_filter->EncodeUserAgentIntoResourceContext(ctx);
   img_options->reset(
