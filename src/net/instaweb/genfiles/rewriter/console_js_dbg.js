@@ -1496,6 +1496,15 @@ goog.iter.cycle = function(iterable) {
   };
   return iter
 };
+goog.iter.count = function(opt_start, opt_step) {
+  var counter = opt_start || 0, step = goog.isDef(opt_step) ? opt_step : 1, iter = new goog.iter.Iterator;
+  iter.next = function() {
+    var returnValue = counter;
+    counter += step;
+    return returnValue
+  };
+  return iter
+};
 goog.object = {};
 goog.object.forEach = function(obj, f, opt_obj) {
   for(var key in obj) {
