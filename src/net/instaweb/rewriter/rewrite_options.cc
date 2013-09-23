@@ -1084,7 +1084,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::progressive_jpeg_min_bytes_,
       "jp", kProgressiveJpegMinBytes,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Minimum size in bytes for converting a jpeg to progressive");
   AddBaseProperty(
       kDefaultMaxCacheableResponseContentLength,
       &RewriteOptions::max_cacheable_response_content_length_, "rcl",
@@ -1096,7 +1096,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::max_html_cache_time_ms_, "hc",
       kMaxHtmlCacheTimeMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL);  // TODO(jud): Add doc when split_html is made availabile in MPS.
   AddBaseProperty(
       kDefaultMaxHtmlParseBytes,
       &RewriteOptions::max_html_parse_bytes_, "hpb",
@@ -1109,13 +1109,14 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::max_image_bytes_for_webp_in_css_, "miwc",
       kMaxImageBytesForWebpInCss,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL);  // TODO(jmarantz): clean this up & doc it, or delete it.
+  // "Maximum byte size of webp images rewritten from CSS"
   AddBaseProperty(
       kDefaultMinResourceCacheTimeToRewriteMs,
       &RewriteOptions::min_resource_cache_time_to_rewrite_ms_, "rc",
       kMinResourceCacheTimeToRewriteMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      NULL);  // TODO(jmarantz): remove this or document it.
   AddBaseProperty(
       kDefaultCacheInvalidationTimestamp,
       &RewriteOptions::cache_invalidation_timestamp_, "it",
@@ -1152,7 +1153,8 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::implicit_cache_ttl_ms_, "ict",
       kImplicitCacheTtlMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Time in milliseconds to cache resources that lack an Expires or "
+      "Cache-Control header");
   AddBaseProperty(
       kDefaultImageMaxRewritesAtOnce,
       &RewriteOptions::image_max_rewrites_at_once_,
