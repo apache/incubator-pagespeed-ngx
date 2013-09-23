@@ -189,10 +189,16 @@ void StatisticsLogger::DumpJSON(
     Writer* writer, MessageHandler* message_handler) const {
   FileSystem::InputFile* log_file =
       file_system_->OpenInputFile(logfile_name_.c_str(), message_handler);
+  if (log_file == NULL) {
+    // If logfile_name_ represents a file that doesn't exist, OpenInputFile
+    // logged an error and log_file will be null.  Return an empty json object.
+    writer->Write("{}", message_handler);
+    return;
+  }
   VarMap parsed_var_data;
   std::vector<int64> list_of_timestamps;
   StatisticsLogfileReader reader(log_file, start_time, end_time,
-                                        granularity_ms, message_handler);
+                                 granularity_ms, message_handler);
   ParseDataFromReader(var_titles, &reader, &list_of_timestamps,
                       &parsed_var_data);
   PrintJSON(list_of_timestamps, parsed_var_data, writer, message_handler);
