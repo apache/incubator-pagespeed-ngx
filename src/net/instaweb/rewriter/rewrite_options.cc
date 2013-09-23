@@ -287,9 +287,8 @@ const char RewriteOptions::kLibrary[] = "Library";
 const char RewriteOptions::kCacheFlushFilename[] = "CacheFlushFilename";
 const char RewriteOptions::kCacheFlushPollIntervalSec[] =
     "CacheFlushPollIntervalSec";
-const char RewriteOptions::kExperimentalFetchFromModSpdy[] =
-    "ExperimentalFetchFromModSpdy";
 const char RewriteOptions::kFetchHttps[] = "FetchHttps";
+const char RewriteOptions::kFetchFromModSpdy[] = "FetchFromModSpdy";
 const char RewriteOptions::kFetcherTimeOutMs[] = "FetcherTimeOutMs";
 const char RewriteOptions::kFileCacheCleanInodeLimit[] =
     "FileCacheInodeLimit";

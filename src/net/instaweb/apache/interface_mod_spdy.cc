@@ -103,7 +103,7 @@ spdy_slave_connection_factory* mod_spdy_create_slave_connection_factory(
     conn_rec* master_connection) {
   if (spdy_create_slave_connection_factory_ptr == NULL) {
     // TODO(morlovich): We should warn when this happens, but only
-    // in cases where ModPagespeed[Experimental]FetchFromModSpdy is on,
+    // in cases where ModPagespeedFetchFromModSpdy is on,
     // and not in a spammy way.
     return NULL;
   }

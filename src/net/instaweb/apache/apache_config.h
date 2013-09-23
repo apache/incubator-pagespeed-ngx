@@ -37,8 +37,8 @@ class ApacheConfig : public SystemRewriteOptions {
   explicit ApacheConfig(ThreadSystem* thread_system);
   ~ApacheConfig() {}
 
-  bool experimental_fetch_from_mod_spdy() const {
-    return experimental_fetch_from_mod_spdy_.value();
+  bool fetch_from_mod_spdy() const {
+    return fetch_from_mod_spdy_.value();
   }
 
   // Make an identical copy of these options and return it.
@@ -72,7 +72,7 @@ class ApacheConfig : public SystemRewriteOptions {
   static void AddProperties();
   void Init();
 
-  Option<bool> experimental_fetch_from_mod_spdy_;
+  Option<bool> fetch_from_mod_spdy_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
 };

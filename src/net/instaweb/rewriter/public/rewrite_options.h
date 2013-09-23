@@ -357,8 +357,8 @@ class RewriteOptions {
   static const char kCacheFlushFilename[];
   static const char kCacheFlushPollIntervalSec[];
   static const char kCompressMetadataCache[];
-  static const char kExperimentalFetchFromModSpdy[];
   static const char kFetcherProxy[];
+  static const char kFetchFromModSpdy[];
   static const char kFetchHttps[];
   static const char kFileCacheCleanInodeLimit[];
   static const char kFileCacheCleanIntervalMs[];

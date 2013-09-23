@@ -177,7 +177,7 @@ void ApacheServerContext::MaybeApplySpdySessionFetcher(
   // This should have already been caught by the caller.
   CHECK(apache_request != NULL);
 
-  if (conf->experimental_fetch_from_mod_spdy() &&
+  if (conf->fetch_from_mod_spdy() &&
       apache_request->use_spdy_fetcher()) {
     driver->SetSessionFetcher(new ModSpdyFetcher(
         apache_factory_->mod_spdy_fetch_controller(), apache_request->url(),

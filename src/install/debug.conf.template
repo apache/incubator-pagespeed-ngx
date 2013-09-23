@@ -944,7 +944,7 @@ NameVirtualHost @@APACHE_HTTPS_DOMAIN@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_spdyfetch"
   ModPagespeed on
-  ModPagespeedExperimentalFetchFromModSpdy on
+  ModPagespeedFetchFromModSpdy on
 </VirtualHost>
 
 <VirtualHost @@APACHE_HTTPS_DOMAIN@@>
@@ -952,7 +952,7 @@ NameVirtualHost @@APACHE_HTTPS_DOMAIN@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_nospdyfetch"
   ModPagespeed on
-  ModPagespeedExperimentalFetchFromModSpdy off
+  ModPagespeedFetchFromModSpdy off
 </VirtualHost>
 
 # For testing where we do our loopback routing. Note that this is listening

@@ -973,7 +973,7 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
   FailLookupOptionByName(RewriteOptions::kCacheFlushFilename);
   FailLookupOptionByName(RewriteOptions::kCacheFlushPollIntervalSec);
   FailLookupOptionByName(RewriteOptions::kCompressMetadataCache);
-  FailLookupOptionByName(RewriteOptions::kExperimentalFetchFromModSpdy);
+  FailLookupOptionByName(RewriteOptions::kFetchFromModSpdy);
   FailLookupOptionByName(RewriteOptions::kFetchHttps);
   FailLookupOptionByName(RewriteOptions::kFetcherProxy);
   FailLookupOptionByName(RewriteOptions::kFileCacheCleanIntervalMs);

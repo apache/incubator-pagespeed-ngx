@@ -68,9 +68,9 @@ void ApacheConfig::Init() {
 
 void ApacheConfig::AddProperties() {
   AddApacheProperty(
-      false, &ApacheConfig::experimental_fetch_from_mod_spdy_, "effms",
-      RewriteOptions::kExperimentalFetchFromModSpdy,
-      "Under construction. Do not use");
+      false, &ApacheConfig::fetch_from_mod_spdy_, "ffms",
+      RewriteOptions::kFetchFromModSpdy,
+      "Fetch SSL resources with help of recent mod_spdy");
 
   MergeSubclassProperties(apache_properties_);
 
