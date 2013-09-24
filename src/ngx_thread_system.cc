@@ -29,7 +29,7 @@ NgxThreadSystem::NgxThreadSystem() : may_start_threads_(false) {}
 NgxThreadSystem::~NgxThreadSystem() {}
 
 void NgxThreadSystem::PermitThreadStarting() {
-  CHECK(!may_start_threads_);
+  DCHECK(!may_start_threads_);
   may_start_threads_ = true;
 }
 
@@ -40,7 +40,7 @@ void NgxThreadSystem::BeforeThreadRunHook() {
 
   // If this fails you can get a backtrace from gdb by setting a breakpoint on
   // "pthread_create".
-  CHECK(may_start_threads_);
+  DCHECK(may_start_threads_);
 }
 
 }  // namespace net_instaweb
