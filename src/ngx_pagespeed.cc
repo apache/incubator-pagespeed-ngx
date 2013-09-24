@@ -1706,7 +1706,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   ctx->base_fetch->Done(false);
   ps_release_base_fetch(ctx);
-  // set html_rewrite flag.
+
   ctx->html_rewrite = true;
   return NGX_DECLINED;
 }
@@ -2094,9 +2094,6 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
 
   ctx->driver->Cleanup();
   ctx->driver = NULL;
-  // enable html_rewrite
-  ctx->html_rewrite = true;
-  ctx->in_place = false;
 
   return ps_decline_request(r);
 }
