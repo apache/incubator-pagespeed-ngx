@@ -642,6 +642,16 @@ void ps_cleanup_srv_conf(void* data) {
   // from being executed
 
   if (!factory_deleted && cfg_s->server_context != NULL) {
+    // We never start threads in the master process, but with with memcached on,
+    // it looks like a new thread is started during destruction of the factory.
+    // As a temporary workaround, we permit threads to start here.
+    net_instaweb::NgxRewriteDriverFactory* factory =
+        dynamic_cast<net_instaweb::NgxRewriteDriverFactory*>(
+            cfg_s->server_context->factory());
+    if (!factory->ngx_thread_system()->may_start_threads()) {
+      factory->ngx_thread_system()->PermitThreadStarting();
+    }
+
     delete cfg_s->server_context->factory();
     factory_deleted = true;
   }
