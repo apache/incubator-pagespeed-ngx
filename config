@@ -93,6 +93,24 @@ fi
 # linker errors, so disable it here.
 CFLAGS="$CFLAGS -DSERF_HTTPS_FETCHING=0 $FLAG_MARCH"
 
+case "$NGX_GCC_VER" in
+  4.8*)
+    # On GCC 4.8 and above, -Wall enables -Wunused-local-typedefs.  This breaks
+    # on VerifySizesAreEqual in bit_cast in chromium/src/base/basictypes.h which
+    # has a typedef that is intentionally unused.
+    CFLAGS="$CFLAGS -Wno-unused-local-typedefs"
+
+    # On GCC 4.8 and above, we get the following compiler warning:
+    # chromium/src/base/memory/scoped_ptr.h:133:7: warning: declaration of ‘class scoped_ptr<C>’ [enabled by default]
+    # Based on discussion at http://gcc.gnu.org/bugzilla/show_bug.cgi?id=54055,
+    # this is invalid code, but hasn't been fixed yet in chromium.
+    # Unfortunately, there also does not appear to be a flag for just disabling
+    # that warning, so we add Wno-error to override nginx's default -Werror
+    # option.
+    CFLAGS="$CFLAGS -Wno-error"
+  ;;
+esac
+
 pagespeed_include="\
   $mod_pagespeed_dir \
   $mod_pagespeed_dir/third_party/chromium/src \
