@@ -85,7 +85,13 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Initializes all the statistics objects created transitively by
   // NgxRewriteDriverFactory, including nginx-specific and
   // platform-independent statistics.
+
   static void InitStats(Statistics* statistics);
+
+  // Initializes static variables.  Initialize/Terminate calls must be paired.
+  static void Initialize();
+  static void Terminate();
+
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
