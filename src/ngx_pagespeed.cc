@@ -1456,6 +1456,12 @@ void ps_release_request_context(void* data) {
     ctx->driver = NULL;
   }
 
+  if (ctx->recorder != NULL) {
+    ctx->recorder->Fail();
+    ctx->recorder->DoneAndSetHeaders();  // Deletes recorder.
+    ctx->recorder = NULL;
+  }
+
   ps_release_base_fetch(ctx);
   delete ctx;
 }
@@ -1586,6 +1592,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx->pagespeed_connection = NULL;
     // See build_context_for_request() in mod_instaweb.cc
     ctx->modify_caching_headers = options->modify_caching_headers();
+    ctx->recorder = NULL;
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
