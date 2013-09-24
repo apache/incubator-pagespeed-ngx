@@ -27,7 +27,11 @@
 #include "pagespeed/kernel/base/string_util.h"
 
 
-#include "googleurl/src/gurl.h"
+#if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 193439
+#  include "third_party/chromium/src/url/gurl.h"
+#else
+#  include "googleurl/src/gurl.h"
+#endif  // defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 193439
 
 namespace net_instaweb {
 
