@@ -15,7 +15,9 @@
  */
 
 // Author: sligocki@google.com (Shawn Ligocki)
+
 #include <algorithm>
+#include <memory>
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -472,15 +474,16 @@ TEST_F(CssImageCombineTest, SpriteWrongMime) {
 }
 
 class CssImageMultiFilterTest : public CssImageCombineTest {
-  virtual void SetUp() {
-    // We setup the options before the upcall so that the
-    // CSS filter is created aware of these.
-    options()->EnableFilter(RewriteOptions::kExtendCacheImages);
-    CssImageCombineTest::SetUp();
-  }
+  // Users must call CssImageCombineTest::SetUp().
+  virtual void SetUp() {}
 };
 
 TEST_F(CssImageMultiFilterTest, SpritesAndNonSprites) {
+  // We setup the options before the upcall so that the
+  // CSS filter is created aware of these.
+  options()->EnableFilter(RewriteOptions::kExtendCacheImages);
+  CssImageCombineTest::SetUp();
+
   GoogleString before, after, encoded, cuppa_encoded, sprite;
   // With the same image present 3 times, there should be no sprite.
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
@@ -508,6 +511,71 @@ TEST_F(CssImageMultiFilterTest, SpritesAndNonSprites) {
   after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
                        0, 999, cuppa_encoded.c_str());
   ValidateExpected("sprite_none_dimmensions", before, after);
+}
+
+TEST_F(CssImageMultiFilterTest, WithFlattening) {
+  // We setup the options before the upcall so that the
+  // CSS filter is created aware of these.
+  options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+  CssImageCombineTest::SetUp();
+
+  AddFileToMockFetcher("dir/Cuppa.png", kCuppaPngFile, kContentTypePng, 100);
+  AddFileToMockFetcher("dir/BikeCrashIcn.png", kBikePngFile,
+                       kContentTypePng, 100);
+
+  const char kLeafCss[] =
+      ".a {background: 0px 0px url(Cuppa.png) no-repeat;"
+      " width:10px; height:10px}"
+      ".b {background: 0px 0px url(BikeCrashIcn.png) no-repeat;"
+      " width:10px; height:10px}";
+  SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kLeafCss, 100);
+
+  const char kBeforeHtml[] = "<style>@import url(dir/a.css);</style>";
+  // Note: This is flattened and combined.
+  // TODO(sligocki): Keep URLs relative.
+  const char kAfterHtml[] =
+      "<style>"
+      ".a{background:0px 0px"
+      " url(http://test.com/dir/Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
+      " no-repeat;width:10px;height:10px}"
+      ".b{background:0px -70px"
+      " url(http://test.com/dir/Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
+      " no-repeat;width:10px;height:10px}"
+      "</style>";
+
+  ValidateExpected("with_flattening", kBeforeHtml, kAfterHtml);
+}
+
+TEST_F(CssImageMultiFilterTest, NoCombineAcrossFlattening) {
+  // We setup the options before the upcall so that the
+  // CSS filter is created aware of these.
+  options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+  CssImageCombineTest::SetUp();
+
+  AddFileToMockFetcher("dir/Cuppa.png", kCuppaPngFile, kContentTypePng, 100);
+
+  const char kLeafCss[] =
+      ".a {background: 0px 0px url(Cuppa.png) no-repeat;"
+      " width:10px; height:10px}";
+  SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kLeafCss, 100);
+
+  const char kBeforeHtml[] =
+      "<style>\n"
+      "@import url(dir/a.css);\n"
+      ".b {background: 0px 0px url(BikeCrashIcn.png) no-repeat;"
+      " width:10px; height:10px}\n"
+      "</style>";
+  // TODO(sligocki): Any reason not to combine images across flattening
+  // boundaries? Currently we don't seem to.
+  const char kAfterHtml[] =
+      "<style>"
+      ".a{background:0px 0px url(http://test.com/dir/Cuppa.png) no-repeat;"
+      "width:10px;height:10px}"
+      ".b{background:0px 0px url(http://test.com/BikeCrashIcn.png) no-repeat;"
+      "width:10px;height:10px}"
+      "</style>";
+
+  ValidateExpected("with_flattening", kBeforeHtml, kAfterHtml);
 }
 
 }  // namespace

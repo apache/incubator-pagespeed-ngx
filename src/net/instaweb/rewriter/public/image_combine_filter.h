@@ -70,6 +70,7 @@ class ImageCombineFilter : public RewriteFilter {
   // This will succeed even in cases when it turns out (later) the image
   // can not be sprited.
   void AddCssBackgroundContext(const GoogleUrl& original_url,
+                               const GoogleUrl& base_url,
                                Css::Values* values,
                                int value_index,
                                CssFilter::Context* parent,

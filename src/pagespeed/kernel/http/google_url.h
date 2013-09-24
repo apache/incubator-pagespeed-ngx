@@ -35,6 +35,13 @@
 
 namespace net_instaweb {
 
+enum UrlRelativity {
+  kAbsoluteUrl,   // http://example.com/foo/bar/file.ext?k=v#f
+  kNetPath,       // //example.com/foo/bar/file.ext?k=v#f
+  kAbsolutePath,  // /foo/bar/file.ext?k=v#f
+  kRelativePath,  // bar/file.ext?k=v#f
+};
+
 class GoogleUrl {
  public:
   explicit GoogleUrl(const GoogleString& spec);
@@ -113,6 +120,12 @@ class GoogleUrl {
   // and excluding the query.
   StringPiece PathSansQuery() const;
 
+  // Scheme-relative URL. Spec() == Scheme() + ":" + NetPath().
+  // Named based on http://tools.ietf.org/html/rfc1808#section-2.2
+  // For "http://a.com/b/c/d?E=f/g#r" returns "//a.com/b/c/d?E=f/g#r".
+  // For "file:///tmp/foo" returns "///tmp/foo".
+  StringPiece NetPath() const;
+
   // Extracts the filename portion of the path and returns it. The filename
   // is everything after the last slash in the path. This may be empty.
   GoogleString ExtractFileName() const;
@@ -163,6 +176,17 @@ class GoogleUrl {
   bool SchemeIs(const StringPiece& lower_ascii_scheme) const {
     return gurl_.SchemeIs(lower_ascii_scheme.as_string().c_str());
   }
+
+  // Find out how relative the URL string is.
+  static UrlRelativity FindRelativity(StringPiece url);
+
+  // If possible, produce a URL as relative as url_relativity, relative to
+  // base_url. If not possible, simply returns the absolute URL string.
+  // Returns a StringPiece, only valid for the lifetime of this object.
+  //
+  // It is illegal to call this for invalid urls (check IsWebValid() first).
+  StringPiece Relativize(UrlRelativity url_relativity,
+                         const GoogleUrl& base_url) const;
 
   // Defiant equality operator!
   bool operator==(const GoogleUrl& other) const {

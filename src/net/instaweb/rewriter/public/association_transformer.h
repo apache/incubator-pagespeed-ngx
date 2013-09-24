@@ -33,6 +33,7 @@ namespace net_instaweb {
 
 class GoogleUrl;
 class MessageHandler;
+class RewriteOptions;
 
 // Transformer that uses a std::map to specify which URLs to rewrite to
 // which other URLs.
@@ -46,13 +47,14 @@ class AssociationTransformer : public CssTagScanner::Transformer {
   // association has been set in AssociationTransformer's map_. It may be
   // set to NULL if no backup is needed.
   //
-  // base_url, backup_transformer and handler must live longer than
+  // base_url, options, backup_transformer and handler must live longer than
   // AssociationTransformer.
   AssociationTransformer(const GoogleUrl* base_url,
+                         const RewriteOptions* options,
                          CssTagScanner::Transformer* backup_transformer,
                          MessageHandler* handler)
-      : base_url_(base_url), backup_transformer_(backup_transformer),
-        handler_(handler) {}
+      : base_url_(base_url), options_(options),
+        backup_transformer_(backup_transformer), handler_(handler) {}
   virtual ~AssociationTransformer();
 
   // Map is exposed so that you can set associations.
@@ -72,6 +74,7 @@ class AssociationTransformer : public CssTagScanner::Transformer {
 
   // Base URL for CSS file, needed to absolutify URLs in Transform.
   const GoogleUrl* base_url_;
+  const RewriteOptions* options_;
 
   // Transformer to be applied to URLs we don't rewrite. For example, we might
   // want to make sure we absolutify all URLs, even if we don't rewrite them.

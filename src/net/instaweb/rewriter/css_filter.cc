@@ -484,7 +484,8 @@ bool CssFilter::Context::FallbackRewriteUrls(const StringPiece& in_text) {
     // into it. When they are rendered they will set the map used by
     // AssociationTransformer.
     fallback_transformer_.reset(new AssociationTransformer(
-        &css_base_gurl_, absolutifier_.get(), driver_->message_handler()));
+        &css_base_gurl_, driver_->options(), absolutifier_.get(),
+        driver_->message_handler()));
 
     const StringIntMap& url_counts = url_counter.url_counts();
     for (StringIntMap::const_iterator it = url_counts.begin();

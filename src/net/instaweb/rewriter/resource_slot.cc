@@ -20,12 +20,13 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class RewriteContext;
 
 ResourceSlot::~ResourceSlot() {
@@ -68,6 +69,23 @@ GoogleString FetchResourceSlot::LocationString() {
   return StrCat("Fetch of ", resource()->url());
 }
 
+HtmlResourceSlot::HtmlResourceSlot(const ResourcePtr& resource,
+                                   HtmlElement* element,
+                                   HtmlElement::Attribute* attribute,
+                                   RewriteDriver* driver)
+    : ResourceSlot(resource),
+      element_(element),
+      attribute_(attribute),
+      driver_(driver),
+      // TODO(sligocki): This is always the URL used to create resource, right?
+      // Maybe we could construct the input resource here just to guarantee
+      // that and simplify the code?
+      url_relativity_(
+          GoogleUrl::FindRelativity(attribute->DecodedValueOrNull())),
+      begin_line_number_(element->begin_line_number()),
+      end_line_number_(element->end_line_number()) {
+}
+
 HtmlResourceSlot::~HtmlResourceSlot() {
 }
 
@@ -76,11 +94,21 @@ void HtmlResourceSlot::Render() {
     return;  // nothing done here.
   } else if (should_delete_element()) {
     if (element_ != NULL) {
-      html_parse_->DeleteNode(element_);
+      driver_->DeleteNode(element_);
       element_ = NULL;
     }
   } else {
-    DirectSetUrl(resource()->url());
+    // TODO(sligocki): Maybe collect all uses of this pattern into a
+    // single function like RelativizeOrPassthrough().
+    if (driver_->options()->preserve_url_relativity()) {
+      // Set possibly relative URL.
+      // TODO(sligocki): Return GoogleUrl from resource()->url().
+      GoogleUrl output_url(resource()->url());
+      DirectSetUrl(output_url.Relativize(url_relativity_, driver_->base_url()));
+    } else {
+      // Set absolute URL.
+      DirectSetUrl(resource()->url());
+    }
     // Note that to insert image dimensions, we explicitly save
     // a reference to the element in the enclosing Context object.
   }
@@ -88,9 +116,9 @@ void HtmlResourceSlot::Render() {
 
 GoogleString HtmlResourceSlot::LocationString() {
   if (begin_line_number_ == end_line_number_) {
-    return StrCat(html_parse_->id(), ":", IntegerToString(begin_line_number_));
+    return StrCat(driver_->id(), ":", IntegerToString(begin_line_number_));
   } else {
-    return StrCat(html_parse_->id(), ":",
+    return StrCat(driver_->id(), ":",
                   IntegerToString(begin_line_number_),
                   "-", IntegerToString(end_line_number_));
   }

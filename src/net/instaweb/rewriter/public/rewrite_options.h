@@ -194,6 +194,7 @@ class RewriteOptions {
   static const char kAlwaysRewriteCss[];
   static const char kAnalyticsID[];
   static const char kAvoidRenamingIntrospectiveJavascript[];
+  static const char kAwaitPcacheLookup[];
   static const char kBeaconReinstrumentTimeSec[];
   static const char kBeaconUrl[];
   static const char kBlinkMaxHtmlSizeRewritable[];
@@ -217,7 +218,6 @@ class RewriteOptions {
   static const char kDistributedRewriteTimeoutMs[];
   static const char kDomainRewriteHyperlinks[];
   static const char kDomainShardCount[];
-  static const char kUseImageScanlineApi[];
   static const char kDownstreamCachePurgeMethod[];
   static const char kDownstreamCacheRewrittenPercentageThreshold[];
   static const char kEnableAggressiveRewritersForMobile[];
@@ -298,6 +298,7 @@ class RewriteOptions {
   static const char kObliviousPagespeedUrls[];
   static const char kOverrideCachingTtlMs[];
   static const char kPersistBlinkBlacklist[];
+  static const char kPreserveUrlRelativity[];
   static const char kProactivelyFreshenUserFacingRequest[];
   static const char kProactiveResourceFreshening[];
   static const char kProgressiveJpegMinBytes[];
@@ -321,7 +322,7 @@ class RewriteOptions {
   static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
   static const char kUseBlankImageForInlinePreview[];
   static const char kUseFallbackPropertyCacheValues[];
-  static const char kAwaitPcacheLookup[];
+  static const char kUseImageScanlineApi[];
   static const char kUseSelectorsForCriticalCss[];
   static const char kUseSmartDiffInBlink[];
   static const char kXModPagespeedHeaderValue[];
@@ -1256,6 +1257,13 @@ class RewriteOptions {
   }
   void set_persist_blink_blacklist(bool x) {
     set_option(x, &persist_blink_blacklist_);
+  }
+
+  bool preserve_url_relativity() const {
+    return preserve_url_relativity_.value();
+  }
+  void set_preserve_url_relativity(bool x) {
+    set_option(x, &preserve_url_relativity_);
   }
 
   bool use_image_scanline_api() const {
@@ -3398,6 +3406,10 @@ class RewriteOptions {
   Option<int64> blink_blacklist_end_timestamp_ms_;
   // Persist blink blacklist.
   Option<bool> persist_blink_blacklist_;
+
+  // Keep rewritten URLs as relative as the original resource URL was.
+  // TODO(sligocki): Remove this option once we know it's always safe.
+  Option<bool> preserve_url_relativity_;
 
   Option<GoogleString> ga_id_;
 

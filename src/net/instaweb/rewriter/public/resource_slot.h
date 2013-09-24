@@ -29,13 +29,15 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/vector_deque.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
-class HtmlParse;
 class HtmlResourceSlot;
 class ResourceSlot;
 class RewriteContext;
+class RewriteDriver;
 
 typedef RefCountedPtr<ResourceSlot> ResourceSlotPtr;
 typedef RefCountedPtr<HtmlResourceSlot> HtmlResourceSlotPtr;
@@ -200,14 +202,7 @@ class HtmlResourceSlot : public ResourceSlot {
   HtmlResourceSlot(const ResourcePtr& resource,
                    HtmlElement* element,
                    HtmlElement::Attribute* attribute,
-                   HtmlParse* html_parse)
-      : ResourceSlot(resource),
-        element_(element),
-        attribute_(attribute),
-        html_parse_(html_parse),
-        begin_line_number_(element->begin_line_number()),
-        end_line_number_(element->end_line_number()) {
-  }
+                   RewriteDriver* driver);
 
   HtmlElement* element() { return element_; }
   HtmlElement::Attribute* attribute() { return attribute_; }
@@ -224,7 +219,8 @@ class HtmlResourceSlot : public ResourceSlot {
  private:
   HtmlElement* element_;
   HtmlElement::Attribute* attribute_;
-  HtmlParse* html_parse_;
+  RewriteDriver* driver_;
+  UrlRelativity url_relativity_;
 
   int begin_line_number_;
   int end_line_number_;

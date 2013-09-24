@@ -54,6 +54,7 @@ const char RewriteOptions::kAlwaysRewriteCss[] = "AlwaysRewriteCss";
 const char RewriteOptions::kAnalyticsID[] = "AnalyticsID";
 const char RewriteOptions::kAvoidRenamingIntrospectiveJavascript[] =
     "AvoidRenamingIntrospectiveJavascript";
+const char RewriteOptions::kAwaitPcacheLookup[] = "AwaitPcacheLookup";
 const char RewriteOptions::kBeaconReinstrumentTimeSec[] =
     "BeaconReinstrumentTimeSec";
 const char RewriteOptions::kBeaconUrl[] = "BeaconUrl";
@@ -92,8 +93,6 @@ const char RewriteOptions::kDownstreamCachePurgeMethod[] =
     "DownstreamCachePurgeMethod";
 const char RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold[] =
     "DownstreamCacheRewrittenPercentageThreshold";
-const char RewriteOptions::kUseImageScanlineApi[] =
-    "UseImageScanlineApi";
 const char RewriteOptions::kEnableAggressiveRewritersForMobile[] =
     "EnableAggressiveRewritersForMobile";
 const char RewriteOptions::kEnableBlinkHtmlChangeDetection[] =
@@ -215,6 +214,7 @@ const char RewriteOptions::kNonCacheablesForCachePartialHtml[] =
 const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
 const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
 const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
+const char RewriteOptions::kPreserveUrlRelativity[] = "PreserveUrlRelativity";
 const char RewriteOptions::kProactivelyFreshenUserFacingRequest[] =
     "ProactivelyFreshenUserFacingRequest";
 const char RewriteOptions::kProactiveResourceFreshening[] =
@@ -253,8 +253,7 @@ const char RewriteOptions::kUseBlankImageForInlinePreview[] =
     "UseBlankImageForInlinePreview";
 const char RewriteOptions::kUseFallbackPropertyCacheValues[] =
     "UseFallbackPropertyCacheValues";
-const char RewriteOptions::kAwaitPcacheLookup[] =
-    "AwaitPcacheLookup";
+const char RewriteOptions::kUseImageScanlineApi[] = "UseImageScanlineApi";
 const char RewriteOptions::kUseSmartDiffInBlink[] = "UseSmartDiffInBlink";
 const char RewriteOptions::kXModPagespeedHeaderValue[] =
     "XHeaderValue";
@@ -1881,6 +1880,11 @@ void RewriteOptions::AddProperties() {
       "pbb", kPersistBlinkBlacklist,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
+
+  AddBaseProperty(
+      false, &RewriteOptions::preserve_url_relativity_,
+      "pur", kPreserveUrlRelativity, kDirectoryScope,
+      "Keep rewritten URLs as relative as the original resource URL was.");
 
   AddBaseProperty(
       false, &RewriteOptions::allow_logging_urls_in_log_record_,

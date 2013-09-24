@@ -722,9 +722,11 @@ class ImageCombineFilter::Combiner : public ResourceCombiner {
 // Special resource slot that has a future_ pointer.
 class SpriteFutureSlot : public CssResourceSlot {
  public:
-  SpriteFutureSlot(const ResourcePtr& resource, Css::Values* values,
-                   size_t value_index, SpriteFuture* future)
-      : CssResourceSlot(resource, values, value_index),
+  SpriteFutureSlot(const ResourcePtr& resource,
+                   const GoogleUrl& base_url, const RewriteOptions* options,
+                   Css::Values* values, size_t value_index,
+                   SpriteFuture* future)
+      : CssResourceSlot(resource, base_url, options, values, value_index),
         future_(future),
         may_sprite_(false) {
   }
@@ -1155,7 +1157,8 @@ bool ImageCombineFilter::GetDeclarationDimensions(
 // Must initialize context_ with appropriate parent before hand.
 // parent passed here because it's private.
 void ImageCombineFilter::AddCssBackgroundContext(
-    const GoogleUrl& original_url, Css::Values* values, int value_index,
+    const GoogleUrl& original_url, const GoogleUrl& base_url,
+    Css::Values* values, int value_index,
     CssFilter::Context* parent, Css::Declarations* decls,
     MessageHandler* handler) {
   CHECK(context_ != NULL);
@@ -1172,7 +1175,7 @@ void ImageCombineFilter::AddCssBackgroundContext(
   if (resource.get() != NULL) {
     // transfers ownership of future to slot_obj
     SpriteFutureSlot* slot_obj = new SpriteFutureSlot(
-        resource, values, value_index, future);
+        resource, base_url, driver()->options(), values, value_index, future);
     CssResourceSlotPtr slot(slot_obj);
     parent->slot_factory()->UniquifySlot(slot);
     // Spriting must run before all other filters so that the slot for the

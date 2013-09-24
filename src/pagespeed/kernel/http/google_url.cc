@@ -368,6 +368,22 @@ StringPiece GoogleUrl::PathSansLeaf() const {
   }
 }
 
+StringPiece GoogleUrl::NetPath() const {
+  if (!gurl_.is_valid()) {
+    LOG(DFATAL) << "Invalid URL: " << gurl_.possibly_invalid_spec();
+    return StringPiece();
+  }
+
+  if (!gurl_.has_scheme()) {
+    return Spec();
+  }
+  const std::string& spec = gurl_.possibly_invalid_spec();
+  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  // Just remove scheme and : from beginning of URL.
+  return StringPiece(spec.data() + parsed.scheme.end() + 1,
+                     spec.size() - parsed.scheme.end() - 1);
+}
+
 // Extracts the filename portion of the path and returns it. The filename
 // is everything after the last slash in the path. This may be empty.
 GoogleString GoogleUrl::ExtractFileName() const {
@@ -458,6 +474,60 @@ StringPiece GoogleUrl::Spec() const {
 StringPiece GoogleUrl::UncheckedSpec() const {
   const std::string& spec = gurl_.possibly_invalid_spec();
   return StringPiece(spec.data(), spec.size());
+}
+
+UrlRelativity GoogleUrl::FindRelativity(StringPiece url) {
+  GoogleUrl temp(url);
+  if (temp.IsAnyValid()) {
+    return kAbsoluteUrl;
+  } else if (url.starts_with("//")) {
+    return kNetPath;
+  } else if (url.starts_with("/")) {
+    return kAbsolutePath;
+  } else {
+    return kRelativePath;
+  }
+}
+
+StringPiece GoogleUrl::Relativize(UrlRelativity url_relativity,
+                                  const GoogleUrl& base_url) const {
+  // Default, in case we cannot relativize appropriately.
+  StringPiece result = Spec();
+
+  switch (url_relativity) {
+    case kRelativePath: {
+      StringPiece url_spec = Spec();
+      StringPiece relative_path = base_url.AllExceptLeaf();
+      if (url_spec.starts_with(relative_path)) {
+        result = url_spec.substr(relative_path.size());
+      }
+      break;  // TODO(sligocki): Should we fall through here?
+    }
+    case kAbsolutePath:
+      if (Origin() == base_url.Origin()) {
+        result = PathAndLeaf();
+      }
+      break;
+    case kNetPath:
+      if (Scheme() == base_url.Scheme()) {
+        result = NetPath();
+      }
+      break;
+    case kAbsoluteUrl:
+      result = Spec();
+      break;
+  }
+
+  // There are several corner cases that the naive algorithm above fails on.
+  // Ex: http://foo.com/?bar or http://foo.com//bar relative to
+  // http://foo.com/bar.html. Check if result resolves correctly and if not,
+  // return absolute URL.
+  GoogleUrl resolved_result(base_url, result);
+  if (resolved_result != *this) {
+    result = Spec();
+  }
+
+  return result;
 }
 
 }  // namespace net_instaweb

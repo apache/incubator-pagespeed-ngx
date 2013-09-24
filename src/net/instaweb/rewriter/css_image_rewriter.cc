@@ -101,20 +101,13 @@ void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
   }
 
   CssResourceSlotPtr slot(
-      root_context_->slot_factory()->GetSlot(resource, values, value_index));
-  if (driver_->options()->image_preserve_urls()) {
+      root_context_->slot_factory()->GetSlot(resource, trim_url, options,
+                                             values, value_index));
+  if (options->image_preserve_urls()) {
     slot->set_disable_rendering(true);
   }
 
   RewriteSlot(ResourceSlotPtr(slot), image_inline_max_bytes, parent);
-
-  // Note: We don't do this for RewriteSlot, because EnableTrim is a
-  // CssResourceSlot-specific method.
-  if (options->trim_urls_in_css() &&
-      options->Enabled(RewriteOptions::kLeftTrimUrls)) {
-    // TODO(sligocki): Make sure this is the correct (final) URL of the CSS.
-    slot->EnableTrim(trim_url);
-  }
 }
 
 void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
@@ -223,9 +216,17 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
                   continue;
                 }
                 if (spriting_ok) {
+                  // TODO(sligocki): Pass in the correct base URL here.
+                  // Specifically, the final base URL of the CSS that will
+                  // be used to trim the final URLs.
+                  // hierarchy->css_base_url(), hierarchy->css_trim_url(),
+                  // or hierarchy->css_resolution_base()?
+                  // Note that currently preserving URLs doesn't work for
+                  // image combining filter, so we need to fix that before
+                  // testing which URL is correct.
                   image_combiner_->AddCssBackgroundContext(
-                      original_url, values, value_index, root_context_,
-                      &decls, handler);
+                      original_url, hierarchy->css_trim_url(),
+                      values, value_index, root_context_, &decls, handler);
                 }
                 RewriteImage(image_inline_max_bytes,
                              hierarchy->css_trim_url(), original_url,
