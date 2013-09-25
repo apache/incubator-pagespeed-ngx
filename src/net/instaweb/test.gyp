@@ -23,8 +23,9 @@
   'targets': [
     {
       'variables': {
-        # OpenCV has compile warnings in gcc 4.1 in a header file so turn off
-        # strict checking.
+        # Although OpenCV has been removed, there are still compile
+        # warnings about signed and unsigned value comparison, so strict
+        # checking continues to be off.
         #
         # TODO(jmarantz): disable the specific warning rather than
         # turning off all warnings, and also scope this down to a
@@ -331,8 +332,9 @@
     },
     {
       'variables': {
-        # OpenCV has compile warnings in gcc 4.1 in a header file so turn off
-        # strict checking.
+        # Although OpenCV has been removed, there are still compile
+        # warnings about signed and unsigned value comparison, so strict
+        # checking continues to be off.
         #
         # TODO(jmarantz): disable the specific warning rather than
         # turning off all warnings, and also scope this down to a

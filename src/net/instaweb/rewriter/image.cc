@@ -47,35 +47,17 @@
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
 extern "C" {
-#ifdef USE_SYSTEM_LIBPNG
-#include "png.h"  // NOLINT
-#else
-#include "third_party/libpng/png.h"
-#endif
-}  // extern "C"
-
-extern "C" {
 #ifdef USE_SYSTEM_LIBWEBP
 #include "webp/decode.h"
 #else
 #include "third_party/libwebp/webp/decode.h"
 #endif
+#ifdef USE_SYSTEM_LIBPNG
+#include "png.h"  // NOLINT
+#else
+#include "third_party/libpng/png.h"
+#endif
 }
-#ifdef USE_SYSTEM_OPENCV
-#include "cv.h"
-#include "highgui.h"
-#else
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#endif
-
-#if (CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1) || (CV_MAJOR_VERSION > 2)
-#include <vector>
-#define USE_OPENCV_2_1
-#else
-#include "net/instaweb/util/public/stdio_file_system.h"
-#endif
 
 using pagespeed::image_compression::CreateScanlineReader;
 using pagespeed::image_compression::CreateScanlineWriter;
@@ -325,12 +307,15 @@ ImageFormat GetOutputImageFormat(ImageFormat in_format) {
 
 ScanlineWriterInterface* CreateUncompressedPngWriter(
     size_t width, size_t height, GoogleString* output,
-    MessageHandler* handler) {
+    MessageHandler* handler, bool use_transparent_for_blank_image) {
   PngCompressParams config(PNG_FILTER_NONE, Z_NO_COMPRESSION);
+  pagespeed::image_compression::PixelFormat pixel_format =
+      use_transparent_for_blank_image ?
+      pagespeed::image_compression::RGBA_8888 :
+      pagespeed::image_compression::RGB_888;
   return CreateScanlineWriter(
       pagespeed::image_compression::IMAGE_PNG,
-      pagespeed::image_compression::RGB_888,
-      width, height, &config, output, handler);
+      pixel_format, width, height, &config, output, handler);
 }
 
 }  // namespace
@@ -363,16 +348,7 @@ class ImageImpl : public Image {
 
   StringPiece original_contents() { return original_contents_; }
 
-  virtual ~ImageImpl();
-
  private:
-  // byte buffer type most convenient for working with given OpenCV version
-#ifdef USE_OPENCV_2_1
-  typedef std::vector<unsigned char> OpenCvBuffer;
-#else
-  typedef GoogleString OpenCvBuffer;
-#endif
-
   // Maximum number of libpagespeed conversion attempts.
   // TODO(vchudnov): Consider making this tunable.
   static const int kMaxConversionAttempts = 2;
@@ -387,7 +363,6 @@ class ImageImpl : public Image {
       bool fall_back_to_png,
       const char* dbg_input_format,
       ConversionVariables::VariableType var_type);
-  bool QuickLoadGifToOutputContents();
 
   // Helper methods
   static bool ComputePngTransparency(const StringPiece& buf);
@@ -399,32 +374,10 @@ class ImageImpl : public Image {
   void FindGifSize();
   void FindWebpSize();
   bool HasTransparency(const StringPiece& buf);
-  bool LoadOpenCv();
-  void CleanOpenCv();
 
   // Convert the given options object to jpeg compression options.
   void ConvertToJpegOptions(const Image::CompressionOptions& options,
                             JpegCompressionOptions* jpeg_options);
-
-  // Initializes an empty image.
-  bool LoadOpenCvEmpty();
-
-  // Assumes all filetype + transparency checks have been done.
-  // Reads data, writes to opencv_image_
-  bool LoadOpenCvFromBuffer(const StringPiece& data);
-
-  // Reads from opencv_image_, writes to buf
-  bool SaveOpenCvToBuffer(OpenCvBuffer* buf);
-
-  // Encodes 'buf' in a StringPiece
-  static StringPiece OpenCvBufferToStringPiece(const OpenCvBuffer& buf);
-
-#ifndef USE_OPENCV_2_1
-  // Helper that creates & writes a temporary file for us in proper prefix with
-  // proper extension.
-  bool TempFileForImage(FileSystem* fs, const StringPiece& contents,
-                        GoogleString* filename);
-#endif
 
   // Optimizes the png image_data, readable via png_reader.
   bool OptimizePng(
@@ -485,8 +438,6 @@ class ImageImpl : public Image {
 
   const GoogleString file_prefix_;
   MessageHandler* handler_;
-  IplImage* opencv_image_;        // Lazily filled on OpenCV load.
-  bool opencv_load_possible_;     // Attempt opencv_load in future?
   bool changed_;
   const GoogleString url_;
   ImageDim dims_;
@@ -526,8 +477,6 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
       handler_(handler),
-      opencv_image_(NULL),
-      opencv_load_possible_(true),
       changed_(false),
       url_(url),
       options_(options),
@@ -558,8 +507,6 @@ ImageImpl::ImageImpl(int width, int height, ImageType type,
     : Image(type),
       file_prefix_(tmp_dir.data(), tmp_dir.size()),
       handler_(handler),
-      opencv_image_(NULL),
-      opencv_load_possible_(true),
       changed_(false),
       low_quality_enabled_(false),
       timer_(timer) {
@@ -574,7 +521,8 @@ bool ImageImpl::GenerateBlankImage() {
   // Create a PNG writer with no compression.
   scoped_ptr<ScanlineWriterInterface> png_writer(
       CreateUncompressedPngWriter(dims_.width(), dims_.height(),
-                                  &output_contents_, handler_));
+                                  &output_contents_, handler_,
+                                  options_->use_transparent_for_blank_image));
   if (png_writer == NULL) {
     LOG(ERROR) << "Failed to create an image writer.";
     return false;
@@ -606,23 +554,15 @@ Image* BlankImageWithOptions(int width, int height, ImageType type,
                              const StringPiece& tmp_dir,
                              Timer* timer, MessageHandler* handler,
                              Image::CompressionOptions* options) {
-  if (options->use_image_scanline_api) {
-    scoped_ptr<ImageImpl> image(new ImageImpl(width, height, type, tmp_dir,
-                                              timer, handler, options));
-    if (image != NULL && image->GenerateBlankImage()) {
-      return image.release();
-    }
-    return NULL;
+  scoped_ptr<ImageImpl> image(new ImageImpl(width, height, type, tmp_dir,
+                                            timer, handler, options));
+  if (image != NULL && image->GenerateBlankImage()) {
+    return image.release();
   }
-
-  return new ImageImpl(width, height, type, tmp_dir, timer, handler, options);
+  return NULL;
 }
 
 Image::~Image() {
-}
-
-ImageImpl::~ImageImpl() {
-  CleanOpenCv();
 }
 
 // Looks through blocks of jpeg stream to find SOFn block
@@ -876,121 +816,8 @@ bool ImageImpl::HasTransparency(const StringPiece& buf) {
   return result;
 }
 
-// Makes sure OpenCV version of image is loaded if that is possible.
-// Returns value of opencv_load_possible_ after load attempted.
-// Note that if the load fails, opencv_load_possible_ will be false
-// and future calls to EnsureLoaded will fail fast.
 bool ImageImpl::EnsureLoaded(bool output_useful) {
-  if (options_->use_image_scanline_api) {
-    return true;
-  }
-
-  if (!(opencv_image_ == NULL && opencv_load_possible_)) {
-    // Already attempted load, fall through.
-  } else if (image_type() == IMAGE_UNKNOWN) {
-    // Can't load, remember that fact.
-    opencv_load_possible_ = false;
-  } else {
-    // Attempt to load into opencv.
-    StringPiece image_data_source(original_contents_);
-    if (image_type_ == IMAGE_GIF) {
-      // OpenCV doesn't understand gif format directly, but png works well.  So
-      // we perform a pre-emptive early translation to png.
-      // If the output may be useful, the PNG will be optimized, which we will
-      // end up keeping if the OpenCV load or resize operations fail.
-      // If the output is not expected to be written out, we will produce an
-      // unoptimized PNG instead.
-      if (output_valid_) {
-        // Output bits already available.
-        opencv_load_possible_ = true;
-      } else {
-        // Need to load.
-        if (output_useful) {
-          opencv_load_possible_ = ComputeOutputContents();
-        } else {
-          opencv_load_possible_ = QuickLoadGifToOutputContents();
-        }
-      }
-      image_data_source = output_contents_;
-    }
-    if (original_contents_.size() == 0) {
-      opencv_load_possible_ = LoadOpenCvEmpty();
-    } else if (opencv_load_possible_) {
-      opencv_load_possible_ = !HasTransparency(image_data_source);
-      if (opencv_load_possible_) {
-        opencv_load_possible_ = LoadOpenCvFromBuffer(image_data_source);
-      }
-    }
-    if (opencv_load_possible_ && ImageUrlEncoder::HasValidDimensions(dims_)) {
-      // A bit of belt and suspenders dimension checking.  We used to do this
-      // for every image we loaded, but now we only do it when we're already
-      // paying the cost of OpenCV image conversion.
-      DCHECK(dims_.width() == opencv_image_->width)
-          << "Computed width " << dims_.width() << " doesn't match OpenCV "
-          << opencv_image_->width << " for URL " << url_;
-      DCHECK(dims_.height() == opencv_image_->height)
-          << "Computed height " << dims_.height() << " doesn't match OpenCV "
-          << opencv_image_->height << " for URL " << url_;
-    }
-  }
-  return opencv_load_possible_;
-}
-
-// Get rid of OpenCV image data gracefully (requires a call to OpenCV).
-void ImageImpl::CleanOpenCv() {
-  if (opencv_image_ != NULL) {
-    cvReleaseImage(&opencv_image_);
-  }
-}
-
-bool ImageImpl::LoadOpenCvEmpty() {
-  // empty canvas -- width and height must be set already.
-  bool ok = false;
-  if (ImageUrlEncoder::HasValidDimensions(dims_)) {
-    // TODO(abliss): Need to figure out the right values for these.
-    int depth = 8, channels = 3;
-    if (options_->use_transparent_for_blank_image) {
-      channels = 4;
-    }
-    try {
-      opencv_image_ = cvCreateImage(cvSize(dims_.width(), dims_.height()),
-                                    depth, channels);
-      cvSetZero(opencv_image_);
-      changed_ = true;
-      ok = true;
-    } catch (cv::Exception& e) {
-      handler_->Message(
-          kError,
-#ifdef USE_OPENCV_2_1
-          "OpenCv exception in LoadOpenCvEmpty: %s", e.what()
-#else
-          // No .what() on cv::Exception in OpenCv 2.0
-          "OpenCv exception in LoadOpenCvEmpty"
-#endif
-                        );  // NOLINT
-  }
-}
-return ok;
-}
-
-#ifdef USE_OPENCV_2_1
-// OpenCV 2.1 supports memory-to-memory format conversion.
-
-bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
-  CvMat cv_original_contents =
-      cvMat(1, data.size(), CV_8UC1, const_cast<char*>(data.data()));
-
-  // Note: this is more convenient than imdecode as it lets us
-  // get an image pointer directly, and not just a Mat
-  try {
-    opencv_image_ = cvDecodeImage(&cv_original_contents);
-  } catch (cv::Exception& e) {
-    handler_->Error(
-        url_.c_str(), 0, "OpenCv exception in LoadOpenCvFromBuffer: %s",
-        e.what());
-    return false;
-  }
-  return opencv_image_ != NULL;
+  return true;
 }
 
 // Determine the quality level for compressing the resized image.
@@ -1015,68 +842,6 @@ int ImageImpl::EstimateQualityForResizedJpeg() {
   }
 }
 
-bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
-  // This is preferable to cvEncodeImage as it makes it easy to avoid a copy.
-  // Note: period included with the extension on purpose.
-  std::vector<int> quality_setting;
-  if (image_type() == IMAGE_JPEG) {
-    int quality = EstimateQualityForResizedJpeg();
-    quality_setting.push_back(CV_IMWRITE_JPEG_QUALITY);
-    quality_setting.push_back(quality);
-  } else {
-    int quality = 0;  // 0 corresponds to the fastest compression.
-    quality_setting.push_back(CV_IMWRITE_PNG_COMPRESSION);
-    quality_setting.push_back(quality);
-  }
-  return cv::imencode(content_type()->file_extension(), cv::Mat(opencv_image_),
-                      *buf, quality_setting);
-}
-
-#else
-// Older OpenCV libraries require compressed data to reside on disk,
-// so we need to write image data out and read it back in.
-
-bool ImageImpl::TempFileForImage(FileSystem* fs,
-                                 const StringPiece& contents,
-                                 GoogleString* filename) {
-  GoogleString tmp_filename;
-  bool ok = fs->WriteTempFile(file_prefix_, contents, &tmp_filename, handler_);
-  if (ok) {
-    *filename = StrCat(tmp_filename, content_type()->file_extension());
-    ok = fs->RenameFile(tmp_filename.c_str(), filename->c_str(), handler_);
-  }
-  return ok;
-}
-
-bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
-  StdioFileSystem fs;
-  GoogleString filename;
-  bool ok = TempFileForImage(&fs, data, &filename);
-  if (ok) {
-    opencv_image_ = cvLoadImage(filename.c_str());
-    fs.RemoveFile(filename.c_str(), handler_);
-  }
-  return opencv_image_ != NULL;
-}
-
-bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
-  StdioFileSystem fs;
-  GoogleString filename;
-  bool ok = TempFileForImage(&fs, StringPiece(), &filename);
-  if (ok) {
-    cvSaveImage(filename.c_str(), opencv_image_);
-    ok = fs.ReadFile(filename.c_str(), buf, handler_);
-    fs.RemoveFile(filename.c_str(), handler_);
-  }
-  return ok;
-}
-
-#endif
-
-StringPiece ImageImpl::OpenCvBufferToStringPiece(const OpenCvBuffer& buf) {
-  return StringPiece(reinterpret_cast<const char*>(&buf[0]), buf.size());
-}
-
 void ImageImpl::Dimensions(ImageDim* natural_dim) {
   if (!ImageUrlEncoder::HasValidDimensions(dims_)) {
     ComputeImageType();
@@ -1095,132 +860,98 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
     UndoChange();
   }
 
-  if (options_->use_image_scanline_api) {
-    // TODO(huibao): Enable resizing for WebP and images with alpha channel.
-    // We have the tools ready but no tests.
-    const ImageFormat original_format = ImageTypeToImageFormat(image_type());
-    if (original_format == pagespeed::image_compression::IMAGE_WEBP) {
-      return false;
-    }
-
-    scoped_ptr<ScanlineReaderInterface> image_reader(
-        CreateScanlineReader(original_format,
-                             original_contents_.data(),
-                             original_contents_.length(),
-                             handler_));
-    if (image_reader == NULL) {
-      LOG(ERROR) << "Cannot open the image to resize.";
-      return false;
-    }
-
-    if (image_reader->GetPixelFormat() ==
-        pagespeed::image_compression::RGBA_8888) {
-      return false;
-    }
-
-    ScanlineResizer resizer(handler_);
-    if (!resizer.Initialize(image_reader.get(), new_dim.width(),
-                            new_dim.height())) {
-      return false;
-    }
-
-    // Create a writer.
-    scoped_ptr<ScanlineWriterInterface> writer;
-    const ImageFormat resized_format = GetOutputImageFormat(original_format);
-    switch (resized_format) {
-      case pagespeed::image_compression::IMAGE_JPEG:
-        {
-          JpegCompressionOptions jpeg_config;
-          jpeg_config.lossy = true;
-          jpeg_config.lossy_options.quality = EstimateQualityForResizedJpeg();
-          writer.reset(CreateScanlineWriter(resized_format,
-                                            resizer.GetPixelFormat(),
-                                            resizer.GetImageWidth(),
-                                            resizer.GetImageHeight(),
-                                            &jpeg_config,
-                                            &resized_image_,
-                                            handler_));
-        }
-        break;
-
-      case pagespeed::image_compression::IMAGE_PNG:
-        {
-          PngCompressParams png_config(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY);
-          writer.reset(CreateScanlineWriter(resized_format,
-                                            resizer.GetPixelFormat(),
-                                            resizer.GetImageWidth(),
-                                            resizer.GetImageHeight(),
-                                            &png_config,
-                                            &resized_image_,
-                                            handler_));
-        }
-        break;
-
-      default:
-        LOG(DFATAL) << "Unsupported image format";
-    }
-
-    if (writer == NULL) {
-      return false;
-    }
-
-    // Resize the image and save the results in 'resized_image_'.
-    void* scanline = NULL;
-    while (resizer.HasMoreScanLines()) {
-      if (!resizer.ReadNextScanline(&scanline)) {
-        return false;
-      }
-      if (!writer->WriteNextScanline(scanline)) {
-        return false;
-      }
-    }
-    if (!writer->FinalizeWrite()) {
-      return false;
-    }
-
-    changed_ = true;
-    output_valid_ = false;
-    rewrite_attempted_ = false;
-    output_contents_.clear();
-    resized_dimensions_ = new_dim;
-    return true;
+  // TODO(huibao): Enable resizing for WebP and images with alpha channel.
+  // We have the tools ready but no tests.
+  const ImageFormat original_format = ImageTypeToImageFormat(image_type());
+  if (original_format == pagespeed::image_compression::IMAGE_WEBP) {
+    return false;
   }
 
-  bool ok = opencv_image_ != NULL || EnsureLoaded(false);
-  if (ok) {
-    IplImage* rescaled_image =
-        cvCreateImage(cvSize(new_dim.width(), new_dim.height()),
-                      opencv_image_->depth,
-                      opencv_image_->nChannels);
-    ok = rescaled_image != NULL;
-    if (ok) {
-#ifdef USE_OPENCV_2_1
+  scoped_ptr<ScanlineReaderInterface> image_reader(
+      CreateScanlineReader(original_format,
+                           original_contents_.data(),
+                           original_contents_.length(),
+                           handler_));
+  if (image_reader == NULL) {
+    LOG(ERROR) << "Cannot open the image to resize.";
+    return false;
+  }
+
+  if (image_reader->GetPixelFormat() ==
+      pagespeed::image_compression::RGBA_8888) {
+    return false;
+  }
+
+  ScanlineResizer resizer(handler_);
+  if (!resizer.Initialize(image_reader.get(), new_dim.width(),
+                          new_dim.height())) {
+    return false;
+  }
+
+  // Create a writer.
+  scoped_ptr<ScanlineWriterInterface> writer;
+  const ImageFormat resized_format = GetOutputImageFormat(original_format);
+  switch (resized_format) {
+    case pagespeed::image_compression::IMAGE_JPEG:
       {
-        // Inlined from: cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);
-        cv::Mat src = cv::cvarrToMat(opencv_image_);
-        cv::Mat dst = cv::cvarrToMat(rescaled_image);
-        DCHECK(src.type() == dst.type());
-        cv::resize(src, dst, dst.size(), static_cast<double>(dst.cols)/src.cols,
-                   static_cast<double>(dst.rows)/src.rows, CV_INTER_AREA);
+        JpegCompressionOptions jpeg_config;
+        jpeg_config.lossy = true;
+        jpeg_config.lossy_options.quality = EstimateQualityForResizedJpeg();
+        writer.reset(CreateScanlineWriter(resized_format,
+                                          resizer.GetPixelFormat(),
+                                          resizer.GetImageWidth(),
+                                          resizer.GetImageHeight(),
+                                          &jpeg_config,
+                                          &resized_image_,
+                                          handler_));
       }
-#else
-      cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);
-#endif
-      cvReleaseImage(&opencv_image_);
-      opencv_image_ = rescaled_image;
-      changed_ = true;
-      output_valid_ = false;
-      rewrite_attempted_ = false;
-      output_contents_.clear();
-      resized_dimensions_ = new_dim;
+      break;
+
+    case pagespeed::image_compression::IMAGE_PNG:
+      {
+        PngCompressParams png_config(PNG_FILTER_NONE, Z_DEFAULT_STRATEGY);
+        writer.reset(CreateScanlineWriter(resized_format,
+                                          resizer.GetPixelFormat(),
+                                          resizer.GetImageWidth(),
+                                          resizer.GetImageHeight(),
+                                          &png_config,
+                                          &resized_image_,
+                                          handler_));
+      }
+      break;
+
+    default:
+      LOG(DFATAL) << "Unsupported image format";
+  }
+
+  if (writer == NULL) {
+    return false;
+  }
+
+  // Resize the image and save the results in 'resized_image_'.
+  void* scanline = NULL;
+  while (resizer.HasMoreScanLines()) {
+    if (!resizer.ReadNextScanline(&scanline)) {
+      return false;
+    }
+    if (!writer->WriteNextScanline(scanline)) {
+      return false;
     }
   }
-  return changed_;
+  if (!writer->FinalizeWrite()) {
+    return false;
+  }
+
+  changed_ = true;
+  output_valid_ = false;
+  rewrite_attempted_ = false;
+  output_contents_.clear();
+  resized_dimensions_ = new_dim;
+  return true;
 }
 
 void ImageImpl::UndoChange() {
   if (changed_) {
-    CleanOpenCv();
     output_valid_ = false;
     rewrite_attempted_ = false;
     output_contents_.clear();
@@ -1258,29 +989,13 @@ bool ImageImpl::ComputeOutputContents() {
     StringPiece contents;
     bool resized;
 
-    // Declare 'opencv_contents' before the following 'if-else' statement
-    // because its data will be used after 'if-else'.
-    OpenCvBuffer opencv_contents;
-
     // Choose appropriate source for image contents.
     // Favor original contents if image unchanged.
-    if (options_->use_image_scanline_api) {
-      resized = !resized_image_.empty();
-      if (resized) {
-        contents = resized_image_;
-      } else {
-        contents = original_contents_;
-      }
+    resized = !resized_image_.empty();
+    if (resized) {
+      contents = resized_image_;
     } else {
       contents = original_contents_;
-      resized = false;
-      if (changed_ && opencv_image_ != NULL) {
-        ok = SaveOpenCvToBuffer(&opencv_contents);
-        if (ok) {
-          resized = true;
-          contents = OpenCvBufferToStringPiece(opencv_contents);
-        }
-      }
     }
 
     // Take image contents and re-compress them.
@@ -1342,80 +1057,32 @@ bool ImageImpl::ComputeOutputContents() {
           }
           break;
         case IMAGE_PNG:
-          if (options_->use_image_scanline_api) {
-            png_reader.reset(
-                new pagespeed::image_compression::PngReader(handler_));
-            ok = ComputeOutputContentsFromPngReader(
-                string_for_image,
-                png_reader.get(),
-                (resized || options_->recompress_png),
-                kPngString,
-                Image::ConversionVariables::FROM_PNG);
-          } else {
-            // If the original image was a GIF and has been resized,
-            // its type would have been converted to PNG. So for logging
-            // purpose we need to find out the original type from the
-            // original contents.
-
-            // TODO(huibao): Remove resetting 'image_type_' and 'dims_'
-            // when OpenCV is removed.
-            Image::ConversionVariables::VariableType original_type =
-                Image::ConversionVariables::FROM_PNG;
-            const char* original_type_name = kPngString;
-            ImageDim original_dims = dims_;
-            if (resized) {
-              // ComputeImageType() computes the image type from
-              // original_contents_ and stores it in image_type_.
-              ImageType current_type = image_type_;
-              ComputeImageType();
-              if (image_type_ == IMAGE_GIF) {
-                original_type = Image::ConversionVariables::FROM_GIF;
-                original_type_name = kGifString;
-              }
-              image_type_ = current_type;
-              dims_ = original_dims;
-            }
-
-            png_reader.reset(
-                new pagespeed::image_compression::PngReader(handler_));
-            ok = ComputeOutputContentsFromPngReader(
-                string_for_image,
-                png_reader.get(),
-                (resized || options_->recompress_png),
-                original_type_name,
-                original_type);
-          }
+          png_reader.reset(
+              new pagespeed::image_compression::PngReader(handler_));
+          ok = ComputeOutputContentsFromPngReader(
+              string_for_image,
+              png_reader.get(),
+              (resized || options_->recompress_png),
+              kPngString,
+              Image::ConversionVariables::FROM_PNG);
           break;
         case IMAGE_GIF:
-          if (options_->use_image_scanline_api) {
-            if (resized) {
-              // If the GIF image has been resized, it has already been
-              // converted to a PNG image.
-              png_reader.reset(
-                  new pagespeed::image_compression::PngReader(handler_));
-            } else if (options_->convert_gif_to_png || low_quality_enabled_) {
-              png_reader.reset(
-                  new pagespeed::image_compression::GifReader(handler_));
-            }
-            if (png_reader.get() != NULL) {
-              ok = ComputeOutputContentsFromPngReader(
-                  string_for_image,
-                  png_reader.get(),
-                  true /* fall_back_to_png */,
-                  kGifString,
-                  Image::ConversionVariables::FROM_GIF);
-            }
-          } else {
-            if (options_->convert_gif_to_png || low_quality_enabled_) {
-              png_reader.reset(
-                  new pagespeed::image_compression::GifReader(handler_));
-              ok = ComputeOutputContentsFromPngReader(
-                  string_for_image,
-                  png_reader.get(),
-                  true /* fall_back_to_png */,
-                  kGifString,
-                  Image::ConversionVariables::FROM_GIF);
-            }
+          if (resized) {
+            // If the GIF image has been resized, it has already been
+            // converted to a PNG image.
+            png_reader.reset(
+                new pagespeed::image_compression::PngReader(handler_));
+          } else if (options_->convert_gif_to_png || low_quality_enabled_) {
+            png_reader.reset(
+                new pagespeed::image_compression::GifReader(handler_));
+          }
+          if (png_reader.get() != NULL) {
+            ok = ComputeOutputContentsFromPngReader(
+                string_for_image,
+                png_reader.get(),
+                true /* fall_back_to_png */,
+                kGifString,
+                Image::ConversionVariables::FROM_GIF);
           }
           break;
       }
@@ -1600,25 +1267,6 @@ bool ImageImpl::OptimizePngOrConvertToJpeg(
   return ok;
 }
 
-// Converts gif into a png in output_contents_ as quickly as possible;
-// that is, unlike ComputeOutputContents it does not use BestCompression.
-bool ImageImpl::QuickLoadGifToOutputContents() {
-  CHECK(!output_valid_);
-  CHECK_EQ(image_type(), IMAGE_GIF);
-  CHECK(!changed_);
-
-  GoogleString string_for_image(original_contents_.data(),
-                                original_contents_.size());
-  pagespeed::image_compression::GifReader gif_reader(handler_);
-  bool ok = PngOptimizer::OptimizePng(gif_reader, string_for_image,
-                                      &output_contents_, handler_);
-  output_valid_ = ok;
-  if (ok) {
-    image_type_ = IMAGE_PNG;
-  }
-  return ok;
-}
-
 void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
                                      JpegCompressionOptions* jpeg_options) {
   int input_quality = GetJpegQualityFromImage(original_contents_);
@@ -1688,164 +1336,126 @@ StringPiece Image::Contents() {
 }
 
 bool ImageImpl::DrawImage(Image* image, int x, int y) {
-  if (options_->use_image_scanline_api) {
-    // Create a reader for reading the original canvas image.
-    scoped_ptr<ScanlineReaderInterface> canvas_reader(CreateScanlineReader(
-        pagespeed::image_compression::IMAGE_PNG,
-        output_contents_.data(),
-        output_contents_.length(),
-        handler_));
-    if (canvas_reader == NULL) {
-      LOG(ERROR) << "Cannot open canvas image.";
-      return false;
-    }
-
-    // Get the size of the original canvas image.
-    const size_t canvas_width = canvas_reader->GetImageWidth();
-    const size_t canvas_height = canvas_reader->GetImageHeight();
-
-    // Initialize a reader for reading the image which will be sprited.
-    ImageImpl* impl = static_cast<ImageImpl*>(image);
-    scoped_ptr<ScanlineReaderInterface> image_reader(CreateScanlineReader(
-        ImageTypeToImageFormat(impl->image_type()),
-        impl->original_contents().data(),
-        impl->original_contents().length(),
-        handler_));
-    if (image_reader == NULL) {
-      LOG(ERROR) << "Cannot open the image which will be sprited.";
-      return false;
-    }
-
-    // Get the size of the image which will be sprited.
-    const size_t image_width = image_reader->GetImageWidth();
-    const size_t image_height = image_reader->GetImageHeight();
-    const pagespeed::image_compression::PixelFormat image_pixel_format =
-        image_reader->GetPixelFormat();
-
-    if (x + image_width > canvas_width || y + image_height > canvas_height) {
-      LOG(ERROR) << "The new image cannot fit into the canvas.";
-      return false;
-    }
-
-    // Create a writer for writing the new canvas image.
-    GoogleString canvas_image;
-    scoped_ptr<ScanlineWriterInterface> canvas_writer(
-        CreateUncompressedPngWriter(canvas_width, canvas_height,
-                                    &canvas_image, handler_));
-    if (canvas_writer == NULL) {
-      LOG(ERROR) << "Failed to create canvas writer.";
-      return false;
-    }
-
-    // Overlay the new image onto the canvas image.
-    for (int row = 0; row < static_cast<int>(canvas_height); ++row) {
-      uint8* canvas_line = NULL;
-      uint8* image_line = NULL;
-
-      if (!canvas_reader->ReadNextScanline(
-          reinterpret_cast<void**>(&canvas_line))) {
-        LOG(ERROR) << "Failed to read canvas image.";
-        return false;
-      }
-
-      if (row >= y && row < y + static_cast<int>(image_height)) {
-        if (!image_reader->ReadNextScanline(
-            reinterpret_cast<void**>(&image_line))) {
-          LOG(ERROR) << "Failed to read the image which will be sprited.";
-          return false;
-        }
-
-        uint8* canvas_ptr = canvas_line + 3 * x;
-        uint8* image_ptr = image_line;
-
-        switch (image_pixel_format) {
-          case pagespeed::image_compression::GRAY_8:
-            for (size_t i = 0; i < image_width; ++i) {
-              canvas_ptr[0] = image_ptr[0];
-              canvas_ptr[1] = image_ptr[0];
-              canvas_ptr[2] = image_ptr[0];
-              canvas_ptr += 3;
-              ++image_ptr;
-            }
-            break;
-
-          case pagespeed::image_compression::RGB_888:
-            for (size_t i = 0; i < image_width; ++i) {
-              canvas_ptr[0] = image_ptr[0];
-              canvas_ptr[1] = image_ptr[1];
-              canvas_ptr[2] = image_ptr[2];
-              canvas_ptr += 3;
-              image_ptr += 3;
-            }
-            break;
-
-          case pagespeed::image_compression::RGBA_8888:
-            for (size_t i = 0; i < image_width; ++i) {
-              canvas_ptr[0] = image_ptr[0];
-              canvas_ptr[1] = image_ptr[1];
-              canvas_ptr[2] = image_ptr[2];
-              canvas_ptr += 3;
-              image_ptr += 4;
-            }
-            break;
-
-          default:
-            LOG(DFATAL) << "Unsupported image format.";
-            return false;
-        }
-      }
-
-      if (!canvas_writer->WriteNextScanline(
-          reinterpret_cast<void*>(canvas_line))) {
-        LOG(ERROR) << "Failed to write canvas image.";
-        return false;
-      }
-    }
-
-    if (!canvas_writer->FinalizeWrite()) {
-      LOG(ERROR) << "Failed to close canvas file.";
-      return false;
-    }
-
-    output_contents_ = canvas_image;
-    output_valid_ = true;
-    return true;
+  // Create a reader for reading the original canvas image.
+  scoped_ptr<ScanlineReaderInterface> canvas_reader(CreateScanlineReader(
+      pagespeed::image_compression::IMAGE_PNG,
+      output_contents_.data(),
+      output_contents_.length(),
+      handler_));
+  if (canvas_reader == NULL) {
+    LOG(ERROR) << "Cannot open canvas image.";
+    return false;
   }
 
-  // Use OpenCV to draw image.
+  // Get the size of the original canvas image.
+  const size_t canvas_width = canvas_reader->GetImageWidth();
+  const size_t canvas_height = canvas_reader->GetImageHeight();
+
+  // Initialize a reader for reading the image which will be sprited.
   ImageImpl* impl = static_cast<ImageImpl*>(image);
-  if (!EnsureLoaded(false) || !image->EnsureLoaded(false)) {
+  scoped_ptr<ScanlineReaderInterface> image_reader(CreateScanlineReader(
+      ImageTypeToImageFormat(impl->image_type()),
+      impl->original_contents().data(),
+      impl->original_contents().length(),
+      handler_));
+  if (image_reader == NULL) {
+    LOG(ERROR) << "Cannot open the image which will be sprited.";
     return false;
   }
-  ImageDim other_dim;
-  impl->Dimensions(&other_dim);
-  if (!ImageUrlEncoder::HasValidDimensions(dims_) ||
-      !ImageUrlEncoder::HasValidDimensions(other_dim) ||
-      (other_dim.width() + x > dims_.width())
-      || (other_dim.height() + y > dims_.height())) {
-    // image will not fit.
+
+  // Get the size of the image which will be sprited.
+  const size_t image_width = image_reader->GetImageWidth();
+  const size_t image_height = image_reader->GetImageHeight();
+  const pagespeed::image_compression::PixelFormat image_pixel_format =
+      image_reader->GetPixelFormat();
+
+  if (x + image_width > canvas_width || y + image_height > canvas_height) {
+    LOG(ERROR) << "The new image cannot fit into the canvas.";
     return false;
   }
-#ifdef USE_OPENCV_2_1
-  // OpenCV 2.1.0 api
-  cv::Mat mat(impl->opencv_image_, false);
-  cv::Mat canvas(opencv_image_, false);
-  cv::Mat submat = canvas.rowRange(y, y + other_dim.height())
-      .colRange(x, x + other_dim.width());
-  mat.copyTo(submat);
-#else
-  // OpenCV 1.0.0 api
-  CvMat mat;
-  cvGetMat(impl->opencv_image_, &mat);
-  CvMat canvas;
-  cvGetMat(opencv_image_, &canvas);
-  CvMat submat;
-  cvGetRows(opencv_image_, &submat, y, y + other_dim.height(), 1);
-  CvMat submat2;
-  cvGetCols(&submat, &submat2, x, x + other_dim.width());
-  cvCopy(&mat, &submat2);
-#endif
-  changed_ = true;
+
+  // Create a writer for writing the new canvas image.
+  GoogleString canvas_image;
+  scoped_ptr<ScanlineWriterInterface> canvas_writer(
+      CreateUncompressedPngWriter(canvas_width, canvas_height,
+                                    &canvas_image, handler_, false));
+  if (canvas_writer == NULL) {
+    LOG(ERROR) << "Failed to create canvas writer.";
+    return false;
+  }
+
+  // Overlay the new image onto the canvas image.
+  for (int row = 0; row < static_cast<int>(canvas_height); ++row) {
+    uint8* canvas_line = NULL;
+    uint8* image_line = NULL;
+
+    if (!canvas_reader->ReadNextScanline(
+        reinterpret_cast<void**>(&canvas_line))) {
+      LOG(ERROR) << "Failed to read canvas image.";
+      return false;
+    }
+
+    if (row >= y && row < y + static_cast<int>(image_height)) {
+      if (!image_reader->ReadNextScanline(
+          reinterpret_cast<void**>(&image_line))) {
+        LOG(ERROR) << "Failed to read the image which will be sprited.";
+        return false;
+      }
+
+      uint8* canvas_ptr = canvas_line + 3 * x;
+      uint8* image_ptr = image_line;
+
+      switch (image_pixel_format) {
+        case pagespeed::image_compression::GRAY_8:
+          for (size_t i = 0; i < image_width; ++i) {
+            canvas_ptr[0] = image_ptr[0];
+            canvas_ptr[1] = image_ptr[0];
+            canvas_ptr[2] = image_ptr[0];
+            canvas_ptr += 3;
+            ++image_ptr;
+          }
+          break;
+
+        case pagespeed::image_compression::RGB_888:
+          for (size_t i = 0; i < image_width; ++i) {
+            canvas_ptr[0] = image_ptr[0];
+            canvas_ptr[1] = image_ptr[1];
+            canvas_ptr[2] = image_ptr[2];
+            canvas_ptr += 3;
+            image_ptr += 3;
+          }
+          break;
+
+        case pagespeed::image_compression::RGBA_8888:
+          for (size_t i = 0; i < image_width; ++i) {
+            canvas_ptr[0] = image_ptr[0];
+            canvas_ptr[1] = image_ptr[1];
+            canvas_ptr[2] = image_ptr[2];
+            canvas_ptr += 3;
+            image_ptr += 4;
+          }
+          break;
+
+        default:
+          LOG(DFATAL) << "Unsupported image format.";
+          return false;
+      }
+    }
+
+    if (!canvas_writer->WriteNextScanline(
+        reinterpret_cast<void*>(canvas_line))) {
+      LOG(ERROR) << "Failed to write canvas image.";
+      return false;
+    }
+  }
+
+  if (!canvas_writer->FinalizeWrite()) {
+    LOG(ERROR) << "Failed to close canvas file.";
+    return false;
+  }
+
+  output_contents_ = canvas_image;
+  output_valid_ = true;
   return true;
 }
 
