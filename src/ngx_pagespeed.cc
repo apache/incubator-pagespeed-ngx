@@ -1462,6 +1462,11 @@ void ps_release_request_context(void* data) {
     ctx->recorder = NULL;
   }
 
+  if (ctx->ipro_response_headers != NULL) {
+    delete ctx->ipro_response_headers;
+    ctx->ipro_response_headers = NULL;
+  }
+
   ps_release_base_fetch(ctx);
   delete ctx;
 }
@@ -1586,6 +1591,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx = new ps_request_ctx_t();
 
     ctx->r = r;
+    ctx->ipro_response_headers = NULL;
     ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
@@ -2118,41 +2124,42 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
                  "ps in place body filter: %V", &r->uri);
 
   InPlaceResourceRecorder* recorder = ctx->recorder;
-  bool headers_considered = false;
 
-  // Prepare response headers.
-  ResponseHeaders headers;
-  // TODO(oschaaf): We don't get a Date response header here.
-  // Currently, we invent one and set it to the current date/time.
-  // We need to investigate why we don't receive it.
-  headers.set_major_version(r->http_version / 1000);
-  headers.set_minor_version(r->http_version % 1000);
-  copy_headers_from_table(r->headers_out.headers, &headers);
-  headers.set_status_code(r->headers_out.status);
-  headers.Add(HttpAttributes::kContentType,
-              str_to_string_piece(r->headers_out.content_type));
-  if (r->headers_out.location != NULL) {
-    headers.Add(HttpAttributes::kLocation,
-                str_to_string_piece(r->headers_out.location->value));
+  if (ctx->ipro_response_headers == NULL) {
+    // Prepare response headers.
+    ctx->ipro_response_headers = new ResponseHeaders();
+
+    // TODO(oschaaf): We don't get a Date response header here.
+    // Currently, we invent one and set it to the current date/time.
+    // We need to investigate why we don't receive it.
+    ctx->ipro_response_headers->set_major_version(r->http_version / 1000);
+    ctx->ipro_response_headers->set_minor_version(r->http_version % 1000);
+    copy_headers_from_table(r->headers_out.headers, ctx->ipro_response_headers);
+    ctx->ipro_response_headers->set_status_code(r->headers_out.status);
+    ctx->ipro_response_headers->Add(HttpAttributes::kContentType,
+                str_to_string_piece(r->headers_out.content_type));
+    if (r->headers_out.location != NULL) {
+      ctx->ipro_response_headers->Add(HttpAttributes::kLocation,
+                  str_to_string_piece(r->headers_out.location->value));
+    }
+    StringPiece date =
+        ctx->ipro_response_headers->Lookup1(HttpAttributes::kDate);
+    if (date.empty()) {
+      ctx->ipro_response_headers->SetDate(ngx_current_msec);
+    }
+    ctx->ipro_response_headers->ComputeCaching();
+
+    // Unlike in Apache we get the final response headers before we get the
+    // content.  This means we can consider them earlier and abort the
+    // request if need be without buffering everything.
+    recorder->ConsiderResponseHeaders(ctx->ipro_response_headers);
   }
-  StringPiece date = headers.Lookup1(HttpAttributes::kDate);
-  if (date.empty()) {
-    headers.SetDate(ngx_current_msec);
-  }
-  headers.ComputeCaching();
 
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
        CHECK(ngx_buf_in_memory(cl->buf));
        StringPiece contents(reinterpret_cast<char *>(cl->buf->pos),
                                  ngx_buf_size(cl->buf));
-       if (!headers_considered) {
-         // Unlike in Apache we get the final response headers before we get the
-         // content.  This means we can consider them earlier and abort the
-         // request if need be without buffering everything.
-         recorder->ConsiderResponseHeaders(&headers);
-         headers_considered = true;
-       }
        recorder->Write(contents, recorder->handler());
     }
 
@@ -2161,7 +2168,7 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     }
 
     if (cl->buf->last_buf || recorder->failed()) {
-      ctx->recorder->DoneAndSetHeaders(&headers);
+      ctx->recorder->DoneAndSetHeaders(ctx->ipro_response_headers);
       ctx->recorder = NULL;
       break;
     }
