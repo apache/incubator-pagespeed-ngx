@@ -95,6 +95,7 @@ typedef struct {
   // for in place resource
   RewriteDriver* driver;
   InPlaceResourceRecorder* recorder;
+  ResponseHeaders* ipro_response_headers;
 } ps_request_ctx_t;
 
 
