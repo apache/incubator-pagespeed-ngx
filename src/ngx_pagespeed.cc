@@ -1458,7 +1458,7 @@ void ps_release_request_context(void* data) {
 
   if (ctx->recorder != NULL) {
     ctx->recorder->Fail();
-    ctx->recorder->DoneAndSetHeaders();  // Deletes recorder.
+    ctx->recorder->DoneAndSetHeaders(NULL);  // Deletes recorder.
     ctx->recorder = NULL;
   }
 
