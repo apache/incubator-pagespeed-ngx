@@ -946,6 +946,7 @@
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_image_processing',
+        '<(DEPTH)/third_party/opencv/opencv.gyp:highgui',
       ],
       'sources': [
         'rewriter/image.cc',

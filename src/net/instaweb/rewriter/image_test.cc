@@ -1168,6 +1168,24 @@ TEST_F(ImageTest, BlankTransparentImage) {
   EXPECT_EQ(blank_dim.height(), height);
 }
 
+// Test OpenCV bug where width * height of image could be allocated on the
+// stack. kLarge is a 10000x10000 image, so it will try to allocate > 100MB
+// on the stack, which should overflow the stack and SEGV.
+TEST_F(ImageTest, OpencvStackOverflow) {
+  // This test takes ~90000 ms on Valgrind and need not be run there.
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  GoogleString buf;
+  ImagePtr image(ReadImageFromFile(IMAGE_JPEG, kLarge, &buf, false));
+
+  ImageDim new_dim;
+  new_dim.set_width(1);
+  new_dim.set_height(1);
+  image->ResizeTo(new_dim);
+}
+
 TEST_F(ImageTest, ResizeTo) {
   GoogleString buf;
   ImagePtr image(ReadImageFromFile(IMAGE_JPEG, kPuzzle, &buf, false));

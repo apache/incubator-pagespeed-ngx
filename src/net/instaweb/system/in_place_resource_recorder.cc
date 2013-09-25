@@ -150,7 +150,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
 
 void InPlaceResourceRecorder::DoneAndSetHeaders(
     ResponseHeaders* response_headers) {
-  if (!failure_ && !response_headers_considered_) {
+  if (!response_headers_considered_) {
     ConsiderResponseHeaders(response_headers);
   }
   if (failure_) {
