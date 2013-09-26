@@ -56,6 +56,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
     : SystemRewriteDriverFactory(
           new ApacheThreadSystem,
+          NULL, /* default shared memory runtime */
           server->server_hostname,
           server->port),
       server_rec_(server),

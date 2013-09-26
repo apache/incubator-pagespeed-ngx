@@ -66,14 +66,9 @@ const char kShutdownCount[] = "child_shutdown_count";
 
 SystemRewriteDriverFactory::SystemRewriteDriverFactory(
     SystemThreadSystem* thread_system,
-    StringPiece hostname,
-    int port)
+    AbstractSharedMem* shared_mem_runtime, /* may be null */
+    StringPiece hostname, int port)
     : RewriteDriverFactory(thread_system),
-#ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
-      shared_mem_runtime_(new PthreadSharedMem()),
-#else
-      shared_mem_runtime_(new NullSharedMem()),
-#endif
       statistics_frozen_(false),
       is_root_process_(true),
       hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))),
@@ -81,6 +76,14 @@ SystemRewriteDriverFactory::SystemRewriteDriverFactory(
       track_original_content_length_(false),
       list_outstanding_urls_on_error_(false),
       system_thread_system_(thread_system) {
+  if (shared_mem_runtime == NULL) {
+#ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
+    shared_mem_runtime = new PthreadSharedMem();
+#else
+    shared_mem_runtime = new NullSharedMem();
+#endif
+  }
+  shared_mem_runtime_.reset(shared_mem_runtime);
   // Some implementations, such as Apache, call caches.set_thread_limit in
   // their constructors and override this limit.
   int thread_limit = 1;
