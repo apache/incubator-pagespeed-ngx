@@ -53,11 +53,6 @@ vars = {
     "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1",
   "apache_httpd24_revision": "@head",
 
-  # Using the official github mirror of the opencv repo because it is much
-  # faster to clone than the official opencv.org repo.
-  "opencv_src": "http://github.com/Itseez/opencv.git",
-  "opencv_revision": "@2.3.1",
-
   "jsoncpp_src": "https://svn.code.sf.net/p/jsoncpp/code/trunk",
   "jsoncpp_revision": "@247",
 
@@ -204,9 +199,6 @@ deps = {
      Var("libpagespeed_revision")),
 
   "src/third_party/protobuf": From(Var("libpagespeed_deps_root")),
-
-  "src/third_party/opencv/src/opencv/":
-    Var("opencv_src") + Var("opencv_revision"),
 
   # Json cpp.
   "src/third_party/jsoncpp/src":

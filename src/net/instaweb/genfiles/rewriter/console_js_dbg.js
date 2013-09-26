@@ -1207,6 +1207,108 @@ goog.array.shuffle = function(arr, opt_randFn) {
     arr[j] = tmp
   }
 };
+goog.functions = {};
+goog.functions.constant = function(retValue) {
+  return function() {
+    return retValue
+  }
+};
+goog.functions.FALSE = goog.functions.constant(!1);
+goog.functions.TRUE = goog.functions.constant(!0);
+goog.functions.NULL = goog.functions.constant(null);
+goog.functions.identity = function(opt_returnValue) {
+  return opt_returnValue
+};
+goog.functions.error = function(message) {
+  return function() {
+    throw Error(message);
+  }
+};
+goog.functions.fail = function(err) {
+  return function() {
+    throw err;
+  }
+};
+goog.functions.lock = function(f, opt_numArgs) {
+  opt_numArgs = opt_numArgs || 0;
+  return function() {
+    return f.apply(this, Array.prototype.slice.call(arguments, 0, opt_numArgs))
+  }
+};
+goog.functions.nth = function(n) {
+  return function() {
+    return arguments[n]
+  }
+};
+goog.functions.withReturnValue = function(f, retValue) {
+  return goog.functions.sequence(f, goog.functions.constant(retValue))
+};
+goog.functions.compose = function(fn, var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    var result;
+    length && (result = functions[length - 1].apply(this, arguments));
+    for(var i = length - 2;0 <= i;i--) {
+      result = functions[i].call(this, result)
+    }
+    return result
+  }
+};
+goog.functions.sequence = function(var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    for(var result, i = 0;i < length;i++) {
+      result = functions[i].apply(this, arguments)
+    }
+    return result
+  }
+};
+goog.functions.and = function(var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    for(var i = 0;i < length;i++) {
+      if(!functions[i].apply(this, arguments)) {
+        return!1
+      }
+    }
+    return!0
+  }
+};
+goog.functions.or = function(var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    for(var i = 0;i < length;i++) {
+      if(functions[i].apply(this, arguments)) {
+        return!0
+      }
+    }
+    return!1
+  }
+};
+goog.functions.not = function(f) {
+  return function() {
+    return!f.apply(this, arguments)
+  }
+};
+goog.functions.create = function(constructor, var_args) {
+  var temp = function() {
+  };
+  temp.prototype = constructor.prototype;
+  var obj = new temp;
+  constructor.apply(obj, Array.prototype.slice.call(arguments, 1));
+  return obj
+};
+goog.functions.CACHE_RETURN_VALUE = !0;
+goog.functions.cacheReturnValue = function(fn) {
+  var called = !1, value;
+  return function() {
+    if(!goog.functions.CACHE_RETURN_VALUE) {
+      return fn()
+    }
+    called || (value = fn(), called = !0);
+    return value
+  }
+};
 goog.math = {};
 goog.math.randomInt = function(a) {
   return Math.floor(Math.random() * a)
@@ -1603,6 +1705,111 @@ goog.iter.count = function(opt_start, opt_step) {
     return returnValue
   };
   return iter
+};
+goog.iter.repeat = function(value) {
+  var iter = new goog.iter.Iterator;
+  iter.next = goog.functions.constant(value);
+  return iter
+};
+goog.iter.accumulate = function(iterable) {
+  var iterator = goog.iter.toIterator(iterable), total = 0, iter = new goog.iter.Iterator;
+  iter.next = function() {
+    return total += iterator.next()
+  };
+  return iter
+};
+goog.iter.zip = function(var_args) {
+  var args = arguments, iter = new goog.iter.Iterator;
+  if(0 < args.length) {
+    var iterators = goog.array.map(args, goog.iter.toIterator);
+    iter.next = function() {
+      var arr = goog.array.map(iterators, function(it) {
+        return it.next()
+      });
+      return arr
+    }
+  }
+  return iter
+};
+goog.iter.zipLongest = function(fillValue, var_args) {
+  var args = goog.array.slice(arguments, 1), iter = new goog.iter.Iterator;
+  if(0 < args.length) {
+    var iterators = goog.array.map(args, goog.iter.toIterator);
+    iter.next = function() {
+      var iteratorsHaveValues = !1, arr = goog.array.map(iterators, function(it) {
+        var returnValue;
+        try {
+          returnValue = it.next(), iteratorsHaveValues = !0
+        }catch(ex) {
+          if(ex !== goog.iter.StopIteration) {
+            throw ex;
+          }
+          returnValue = fillValue
+        }
+        return returnValue
+      });
+      if(!iteratorsHaveValues) {
+        throw goog.iter.StopIteration;
+      }
+      return arr
+    }
+  }
+  return iter
+};
+goog.iter.compress = function(iterable, selectors) {
+  var selectorIterator = goog.iter.toIterator(selectors);
+  return goog.iter.filter(iterable, function() {
+    return!!selectorIterator.next()
+  })
+};
+goog.iter.GroupByIterator_ = function(iterable, opt_keyFunc) {
+  this.iterator = goog.iter.toIterator(iterable);
+  this.keyFunc = opt_keyFunc || goog.functions.identity
+};
+goog.inherits(goog.iter.GroupByIterator_, goog.iter.Iterator);
+goog.iter.GroupByIterator_.prototype.next = function() {
+  for(;this.currentKey == this.targetKey;) {
+    this.currentValue = this.iterator.next(), this.currentKey = this.keyFunc(this.currentValue)
+  }
+  this.targetKey = this.currentKey;
+  return[this.currentKey, this.groupItems_(this.targetKey)]
+};
+goog.iter.GroupByIterator_.prototype.groupItems_ = function(targetKey) {
+  for(var arr = [];this.currentKey == targetKey;) {
+    arr.push(this.currentValue);
+    try {
+      this.currentValue = this.iterator.next()
+    }catch(ex) {
+      if(ex !== goog.iter.StopIteration) {
+        throw ex;
+      }
+      break
+    }
+    this.currentKey = this.keyFunc(this.currentValue)
+  }
+  return arr
+};
+goog.iter.groupBy = function(iterable, opt_keyFunc) {
+  return new goog.iter.GroupByIterator_(iterable, opt_keyFunc)
+};
+goog.iter.tee = function(iterable, opt_num) {
+  var iterator = goog.iter.toIterator(iterable), num = goog.isNumber(opt_num) ? opt_num : 2, buffers = goog.array.map(goog.array.range(num), function() {
+    return[]
+  }), addNextIteratorValueToBuffers = function() {
+    var val = iterator.next();
+    goog.array.forEach(buffers, function(buffer) {
+      buffer.push(val)
+    })
+  }, createIterator = function(buffer) {
+    var iter = new goog.iter.Iterator;
+    iter.next = function() {
+      goog.array.isEmpty(buffer) && addNextIteratorValueToBuffers();
+      goog.asserts.assert(!goog.array.isEmpty(buffer));
+      return buffer.shift()
+    };
+    return iter
+  };
+  return goog.array.map(buffers, createIterator)
 };
 goog.iter.enumerate = function(iterable, opt_start) {
   return goog.iter.zip(goog.iter.count(opt_start), iterable)

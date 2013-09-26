@@ -145,9 +145,6 @@ BASE_LIBS = \
   third_party/libwebp/libwebp_dsp.a \
   third_party/libwebp/libwebp_enc.a \
   third_party/libwebp/libwebp_utils.a \
-  third_party/opencv/libhighgui.a \
-  third_party/opencv/libopencv_core.a \
-  third_party/opencv/libopencv_imgproc.a \
   third_party/optipng/libopngreduc.a \
   third_party/protobuf/libprotobuf_lite.a \
   third_party/re2/libre2.a \

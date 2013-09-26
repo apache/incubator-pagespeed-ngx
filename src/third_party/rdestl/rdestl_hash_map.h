@@ -11,6 +11,7 @@
 #ifndef RDESTL_HASH_MAP_H
 #define RDESTL_HASH_MAP_H
 
+#include <inttypes.h>  // for uintptr_t
 #include <utility>  // for std::pair
 #include "algorithm.h"
 #include "allocator.h"
