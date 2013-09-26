@@ -212,11 +212,11 @@ TEST_F(AddInstrumentationFilterTest, TestNon200Response) {
 }
 
 TEST_F(AddInstrumentationFilterTest, TestRequestId) {
-  rewrite_driver()->request_context()->set_request_id(123456789012345L);
+  rewrite_driver()->request_context()->set_request_id(1234567890L);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(options()->beacon_url().http, "load",
-                       "&id=123456789012345")) != GoogleString::npos);
+                       "&id=1234567890")) != GoogleString::npos);
 }
 
 TEST_F(AddInstrumentationFilterTest, TestNoDeferInstrumentationScript) {
