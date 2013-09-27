@@ -55,10 +55,6 @@ check_not fgrep -i 'Last-Modified' $HTTP_FILE
 echo Checking for presence of Cache-Control: max-age=0, no-cache
 check fgrep -qi 'Cache-Control: max-age=0, no-cache' $HTTP_FILE
 
-# TODO(sligocki): We should have Expires headers in HTML just like resources.
-#echo Checking for absence of Expires
-#check_not fgrep -i 'Expires' $HTTP_FILE
-
 echo Checking for absence of X-Frame-Options: SAMEORIGIN
 check_not fgrep -i "X-Frame-Options" $HTTP_FILE
 

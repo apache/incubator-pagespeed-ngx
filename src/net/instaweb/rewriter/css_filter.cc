@@ -937,9 +937,6 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
-  // TODO(sligocki): Clean this up to not need to pass parent around explicitly.
-  // The few places that actually need to know the parent can call
-  // text->parent() themselves.
   HtmlElement* element = text->parent();
   ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
   CssFilter::Context* rewriter = StartRewriting(slot);

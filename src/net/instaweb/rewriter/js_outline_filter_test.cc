@@ -43,7 +43,6 @@ class JsOutlineFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilters();
   }
 
-  // TODO(sligocki): factor out common elements in OutlineStyle and Script.
   // Test outlining scripts with options to write headers.
   void OutlineScript(const StringPiece& id, bool expect_outline) {
     GoogleString script_text = "FOOBAR";
@@ -123,9 +122,6 @@ TEST_F(JsOutlineFilterTest, OutlineScriptWithBase) {
 TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   GoogleString file_prefix = GTestTempDir() + "/no_outline";
   GoogleString url_prefix = "http://mysite/no_outline";
-
-  // TODO(sligocki): Maybe test with other hashers.
-  // SetHasher(hasher);
 
   options()->EnableFilter(RewriteOptions::kOutlineCss);
   SetupOutliner();

@@ -117,7 +117,6 @@ bool JsOutlineFilter::WriteResource(const GoogleString& content,
 }
 
 // Create file with script content and remove that element from DOM.
-// TODO(sligocki): We probably will break any relative URL references here.
 void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
                                     const GoogleString& content) {
   if (driver_->IsRewritable(inline_element)) {

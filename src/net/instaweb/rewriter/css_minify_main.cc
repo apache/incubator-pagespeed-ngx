@@ -81,7 +81,6 @@ bool MinifyCss_main(int argc, char** argv) {
   }
 
   // Re-serialize.
-  // TODO(sligocki): Allow to be an actual file?
   FileSystem::OutputFile* outfile = file_system.Stdout();
   FileWriter writer(outfile);
   bool written = CssMinify::Stylesheet(*stylesheet, &writer, &handler);
