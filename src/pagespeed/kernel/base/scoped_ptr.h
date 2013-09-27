@@ -25,4 +25,20 @@
 // base/memory, just with the compatibility alias still available.
 #include "base/memory/scoped_ptr.h"
 
+#if !defined(CHROMIUM_REVISION) || CHROMIUM_REVISION <= 194649
+#define INSTAWEB_HAVE_SCOPED_ARRAY
+#endif
+
+
+#if !defined(INSTAWEB_HAVE_SCOPED_ARRAY)
+namespace net_instaweb {
+template<typename T> class scoped_array : public scoped_ptr<T[]> {
+ public:
+  scoped_array() : scoped_ptr<T[]>() {}
+  explicit scoped_array(T* t) : scoped_ptr<T[]>(t) {}
+};
+
+}
+#endif
+
 #endif  // PAGESPEED_KERNEL_BASE_SCOPED_PTR_H_
