@@ -101,6 +101,11 @@ ModPagespeedEnableFilters add_instrumentation
     AllowOverride All
 </Directory>
 
+# Enable resize_rendered_image_dimensions
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/resize_rendered_dimensions" >
+    ModPagespeedCriticalImagesBeaconEnabled true
+</Directory>
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/" >
     AllowOverride All
     # Some versions of mod_rewrite will refuse to do any work if
