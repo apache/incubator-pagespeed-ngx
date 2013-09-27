@@ -673,6 +673,7 @@ fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # With the proper hash, we'll get a long cache lifetime.
   SECONDARY_HOST="http://secondary.example.com/gstatic_images"
+  check ls $OUTDIR/*1.gif.pagespeed*
   PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/*1.gif.pagespeed*)"
   WGET_ARGS="--save-headers"
 
@@ -1118,9 +1119,11 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   start_test Relative images embedded in a CSS file served from a mapped domain
   DIR="mod_pagespeed_test/map_css_embedded"
   URL="http://www.example.com/$DIR/issue494.html"
-  MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.SilaP5mfIb.css"
+  MAPPED_PREFIX="$DIR/A.styles.css.pagespeed.cf"
   http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
-      "grep -c cdn.example.com/$MAPPED_CSS" 1
+      "grep -c cdn.example.com/$MAPPED_PREFIX" 1
+  MAPPED_CSS=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL | \
+               grep -o "$MAPPED_PREFIX..*.css")
 
   # Now fetch the resource using a different host, which is mapped to the first
   # one.  To get the correct bytes, matching hash, and long TTL, we need to do

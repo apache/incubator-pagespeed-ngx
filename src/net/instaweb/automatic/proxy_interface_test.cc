@@ -105,7 +105,6 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     sync->EnableForPrefix(ProxyFetch::kCollectorDoneFinish);
     sync->EnableForPrefix(ProxyFetch::kCollectorDetachFinish);
     sync->EnableForPrefix(ProxyFetch::kCollectorConnectProxyFetchFinish);
-    RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
     const PropertyCache::Cohort* dom_cohort =
         SetupCohort(server_context_->page_property_cache(),
@@ -115,11 +114,15 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
                     BlinkUtil::kBlinkCohort);
     server_context()->set_dom_cohort(dom_cohort);
     server_context()->set_blink_cohort(blink_cohort);
+    RewriteOptions* options = server_context()->global_options();
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     options->set_in_place_rewriting_enabled(true);
     options->Disallow("*blacklist*");
+    // TODO(sligocki): Once this becomes default on in RewriteOptions, remove
+    // this set here.
+    options->set_preserve_url_relativity(true);
     server_context()->ComputeSignature(options);
     ProxyInterfaceTestBase::SetUp();
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
@@ -1952,7 +1955,7 @@ TEST_F(ProxyInterfaceTest, EatCookiesOnReconstructFailure) {
   ResponseHeaders out_response_headers;
   RequestHeaders request_headers;
   GoogleString text;
-  FetchFromProxy(Encode(kTestDomain, "cf", "0", "a.css", "css"),
+  FetchFromProxy(Encode("", "cf", "0", "a.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &text,
@@ -1990,7 +1993,7 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(1);
   CheckHeaders(headers, kContentTypeHtml);
-  EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
+  EXPECT_EQ(CssLinkHref(Encode("", "cf", "0", "a.css", "css")), text);
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + kHtmlCacheTimeSec * Timer::kSecondMs,
             headers.CacheExpirationTimeMs());
@@ -2003,7 +2006,7 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   headers.Clear();
   ClearStats();
   RequestHeaders request_headers;
-  FetchFromProxy(Encode(kTestDomain, "cf", "0", "a.css", "css"),
+  FetchFromProxy(Encode("", "cf", "0", "a.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &text,
@@ -2222,7 +2225,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
 
   // Use EncodeNormal because it matches the logic used by ProxyUrlNamer.
   const GoogleString kExtendedBackgroundImage =
-      EncodeNormal(kTestDomain, "ce", "0", kBackgroundImage, "png");
+      EncodeNormal("", "ce", "0", kBackgroundImage, "png");
 
   // Now when we fetch the options, we'll find the image in the CSS
   // cache-extended.
@@ -2255,7 +2258,7 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
   GoogleString text;
   ResponseHeaders headers;
   FetchFromProxy(kPageUrl, true, &text, &headers);
-  EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
+  EXPECT_EQ(CssLinkHref(Encode("", "cf", "0", "a.css", "css")), text);
 }
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
@@ -2383,7 +2386,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   GoogleString out_text;
 
   // cf is not on-the-fly, and we can reconstruct it while keeping it private.
-  FetchFromProxy(Encode(kTestDomain, "cf", "0", "style.css", "css"),
+  FetchFromProxy(Encode("", "cf", "0", "style.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &out_text,
@@ -2401,7 +2404,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   out_text.clear();
   ClearStats();
   // ce is on-the-fly, and we can recover even though style.css is private.
-  FetchFromProxy(Encode(kTestDomain, "ce", "0", "style.css", "css"),
+  FetchFromProxy(Encode("", "ce", "0", "style.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &out_text,
@@ -2419,7 +2422,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
 
   out_text.clear();
   ClearStats();
-  FetchFromProxy(Encode(kTestDomain, "ce", "0", "style.css", "css"),
+  FetchFromProxy(Encode("", "ce", "0", "style.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &out_text,
@@ -2441,7 +2444,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
   out_text.clear();
   ClearStats();
-  FetchFromProxy(Encode(kTestDomain, "ce", "0", "style.css", "css"),
+  FetchFromProxy(Encode("", "ce", "0", "style.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &out_text,
@@ -2762,7 +2765,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch) {
   ResponseHeaders out_headers;
   GoogleString out_text;
   RequestHeaders request_headers;
-  FetchFromProxy(Encode(kTestDomain, "ce", "0", "file.css", "css"),
+  FetchFromProxy(Encode("", "ce", "0", "file.css", "css"),
                  request_headers,
                  true,
                  &out_text,
@@ -2803,7 +2806,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
   ResponseHeaders out_headers;
   GoogleString out_text;
   RequestHeaders request_headers;
-  FetchFromProxy(Encode(kTestDomain, "cf", "0", "file.css", "css"),
+  FetchFromProxy(Encode("", "cf", "0", "file.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &out_text,
@@ -3398,7 +3401,7 @@ TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
   // This request is rewritten.
   FetchFromProxy(kPageUrl, true, &text, &headers);
   EXPECT_EQ("<html><head></head><body>"
-            "<img src=\"http://test.com/1.jpg.pagespeed.ce.0.jpg\">"
+            "<img src=\"1.jpg.pagespeed.ce.0.jpg\">"
             "</body></html>", text);
 }
 
@@ -3423,7 +3426,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfoRewriteInfoMaxSize) {
   FetchFromProxy(kPageUrl, true, &text, &headers);
 
   GoogleString expected_response(content);
-  GlobalReplaceSubstring("1.jpg", "http://test.com/1.jpg.pagespeed.ce.0.jpg",
+  GlobalReplaceSubstring("1.jpg", "1.jpg.pagespeed.ce.0.jpg",
                          &expected_response);
   EXPECT_STREQ(expected_response, text);
   EXPECT_EQ(10, logging_info()->rewriter_info_size());
@@ -3443,7 +3446,7 @@ TEST_F(ProxyInterfaceTest, WebpImageReconstruction) {
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent, "webp");
 
-  const GoogleString kWebpUrl = Encode(kTestDomain, "ic", "0", "1.jpg", "webp");
+  const GoogleString kWebpUrl = Encode("", "ic", "0", "1.jpg", "webp");
 
   FetchFromProxy(
       kWebpUrl,
@@ -3462,7 +3465,7 @@ TEST_F(ProxyInterfaceTest, WebpImageReconstruction) {
       "embedded.css", kContentTypeCss,
       StringPrintf(kCssWithEmbeddedImage, "1.jpg"), kHtmlCacheTimeSec * 2);
 
-  FetchFromProxy(Encode(kTestDomain, "cf", "0", "embedded.css", "css"),
+  FetchFromProxy(Encode("", "cf", "0", "embedded.css", "css"),
                  request_headers,
                  true,  /* expect_success */
                  &text,

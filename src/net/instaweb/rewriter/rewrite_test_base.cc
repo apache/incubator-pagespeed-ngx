@@ -573,8 +573,10 @@ void RewriteTestBase::CssLink::Vector::Add(
 }
 
 bool RewriteTestBase::CssLink::DecomposeCombinedUrl(
-    GoogleString* base, StringVector* segments, MessageHandler* handler) {
-  GoogleUrl gurl(url_);
+    StringPiece base_url, GoogleString* base,
+    StringVector* segments, MessageHandler* handler) {
+  GoogleUrl base_gurl(base_url);
+  GoogleUrl gurl(base_gurl, url_);
   bool ret = false;
   if (gurl.IsWebValid()) {
     gurl.AllExceptLeaf().CopyToString(base);
@@ -842,8 +844,9 @@ void RewriteTestBase::TestRetainExtraHeaders(
   GoogleString content;
   ResponseHeaders response;
 
-  GoogleString rewritten_url = Encode(kTestDomain, filter_id, "0", name, ext);
-  ASSERT_TRUE(FetchResourceUrl(rewritten_url, &content, &response));
+  GoogleString rewritten_url = Encode("", filter_id, "0", name, ext);
+  ASSERT_TRUE(FetchResourceUrl(StrCat(kTestDomain, rewritten_url),
+                               &content, &response));
 
   // Extra non-blacklisted header is preserved.
   ConstStringStarVector v;

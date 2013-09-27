@@ -456,7 +456,7 @@ check [ $(grep -c "ic.pagespeed.is" "$SPRITE_CSS_OUT") -gt 0 ]
 test_filter rewrite_javascript minifies JavaScript and saves bytes.
 # External scripts rewritten.
 fetch_until -save -recursive \
-  $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
+  $URL 'grep -c src=.*rewrite_javascript\.js\.pagespeed\.jm\.' 2
 check_not grep "removed" $OUTDIR/*.pagespeed.jm.*  # No comments should remain.
 check_file_size $FETCH_FILE -lt 1560               # Net savings
 check grep -q preserved $FETCH_FILE                # Preserves certain comments.
@@ -501,9 +501,7 @@ if [ -n "$HTTPS_HOST" ]; then
       "grep -ic $EXPECTED" 1 --no-check-certificate
 
   echo Checking for combined CSS URL without URL trimming
-  EXPECTED="href=\"$HTTPS_EXAMPLE_ROOT/"
-  EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
-  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css"/>'
+  # Without URL trimming we still preserve URL relativity.
   fetch_until "$URL?PageSpeedFilters=combine_css" "grep -ic $EXPECTED" 1 \
      --no-check-certificate
 fi
@@ -762,13 +760,20 @@ WGET_EC="$WGET_DUMP $WGET_ARGS"
 
 start_test Html is rewritten with cache-extended PDFs.
 fetch_until -save $URL 'fgrep -c .pagespeed.' 3
-check grep -q 'a href="http://.*pagespeed.*\.pdf' $FETCH_FILE
-check grep -q 'embed src="http://.*pagespeed.*\.pdf' $FETCH_FILE
+check grep -q 'a href=".*pagespeed.*\.pdf' $FETCH_FILE
+check grep -q 'embed src=".*pagespeed.*\.pdf' $FETCH_FILE
 check fgrep -q '<a href="example.notpdf">' $FETCH_FILE
-check grep -q 'a href="http://.*pagespeed.*\.pdf?a=b' $FETCH_FILE
+check grep -q '<a href=".*pagespeed.*\.pdf">example.pdf?a=b' $FETCH_FILE
 
 start_test Cache-extended PDFs load and have the right mime type.
-PDF_CE_URL="$(grep -o 'http://.*pagespeed.[^\"]*\.pdf' $FETCH_FILE | head -n 1)"
+PDF_CE_URL=$(grep -o 'http://[^\"]*pagespeed.[^\"]*\.pdf' $FETCH_FILE | \
+             head -n 1)
+if [ -z "$PDF_CE_URL" ]; then
+  # If PreserveUrlRelativity is on, we need to find the relative URL and
+  # absolutify it ourselves.
+  PDF_CE_URL="$EXAMPLE_ROOT/"
+  PDF_CE_URL+=$(grep -o '[^\"]*pagespeed.[^\"]*\.pdf' $FETCH_FILE | head -n 1)
+fi
 echo Extracted cache-extended url $PDF_CE_URL
 OUT=$($WGET_EC $PDF_CE_URL)
 check_from "$OUT" grep -aq 'Content-Type: application/pdf'

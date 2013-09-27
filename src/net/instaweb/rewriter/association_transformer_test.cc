@@ -84,6 +84,7 @@ class AssociationTransformerTest : public ::testing::Test {
       : thread_system_(Platform::CreateThreadSystem()) {
     RewriteOptions::Initialize();
     options_.reset(new RewriteOptions(thread_system_.get()));
+    options_->set_preserve_url_relativity(true);
   }
 
   template <class T>
@@ -156,7 +157,8 @@ TEST_F(AssociationTransformerTest, TransformsCorrectly) {
       // DummyTransformer.
       "Dummy:image.gif",
       // before.css was rewritten in both places to after.css.
-      "http://example.com/after.css",
+      // The first one stays relative and the second stays absolute.
+      "after.css",
       "http://example.com/after.css",
       // Passed through DummyTransformer.
       "Dummy:http://other.org/foo.ttf",

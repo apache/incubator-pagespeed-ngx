@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 
+#include <memory>
 #include <vector>
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
@@ -405,8 +406,11 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
                                "<script src=", js_url_2, "></script>"));
   ASSERT_EQ(2, scripts.size());
-  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
-  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
+  GoogleUrl base_url(kTestDomain);
+  GoogleUrl url0(base_url, scripts[0].url);
+  ServeResourceFromManyContexts(url0.spec_c_str(), kMinifiedJs1);
+  GoogleUrl url1(base_url, scripts[1].url);
+  ServeResourceFromManyContexts(url1.spec_c_str(), kMinifiedJs2);
 }
 
 class JsFilterAndCombineProxyTest : public JsFilterAndCombineFilterTest {
@@ -449,12 +453,16 @@ TEST_F(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
                                "<script src=", js_url_2, "></script>"));
   ASSERT_EQ(2, scripts.size()) << "If combination fails, we get 2 scripts";
-  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
+
+  // Note: This absolutifies path because it uses TestUrlNamer which moves
+  // it to a different domain.
   EXPECT_EQ(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"),
             scripts[0].url);
-  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
+  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
+
   EXPECT_EQ(Encode(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
             scripts[1].url);
+  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
 }
 
 TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
@@ -612,11 +620,11 @@ TEST_F(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
                    StrCat("<script src=", kJsUrl1, "></script>",
                           "<script src=", kJsUrl2, ">TEXT HERE</script>"),
                    StrCat("<script src=",
-                          Encode(kTestDomain, "jm", "FUEwDOA7jh", "a.js", "js"),
+                          Encode("", "jm", "FUEwDOA7jh", "a.js", "js"),
                           ">",
                           "</script>",
                           "<script src=",
-                          Encode(kTestDomain, "jm", "Y1kknPfzVs", "b.js", "js"),
+                          Encode("", "jm", "Y1kknPfzVs", "b.js", "js"),
                           ">",
                           "TEXT HERE</script>"));
 }

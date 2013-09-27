@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -573,8 +572,8 @@ TEST_F(CriticalSelectorWithRewriteCssFilterTest, ProperlyUsedOptimized) {
       "<style>@media screen{*{margin:0px}}</style>";  // from b.css
 
   GoogleString optimized_css = StrCat(
-      CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")),
-      CssLinkHref(Encode(kTestDomain, "cf", "0", "b.css", "css")));
+      CssLinkHref(Encode("", "cf", "0", "a.css", "css")),
+      CssLinkHref(Encode("", "cf", "0", "b.css", "css")));
   GoogleString html = StrCat(
       "<head>",
       css,
@@ -607,7 +606,7 @@ TEST_F(CriticalSelectorWithCombinerFilterTest, Interaction) {
       "<style>div,*::first-letter{display:block}"  // from a.css
       "@media screen{*{margin:0px}}</style>";  // from b.css
 
-  GoogleString combined_url = Encode(kTestDomain, "cc", "0",
+  GoogleString combined_url = Encode("", "cc", "0",
                                      MultiUrl("a.css", "b.css"), "css");
 
   ValidateExpected("with_combiner",
@@ -630,8 +629,7 @@ TEST_F(CriticalSelectorWithCombinerFilterTest, ResolveWhenCombineAcrossPaths) {
       "<style>*{background-image:url(dir/d.png)}"  // from dir/a.css
       "@media screen{*{margin:0px}}</style>";  // from b.css
 
-  GoogleString combined_url =
-      StrCat(kTestDomain, "dir,_a.css+b.css.pagespeed.cc.0.css");
+  GoogleString combined_url = "dir,_a.css+b.css.pagespeed.cc.0.css";
 
   ValidateExpected("with_combiner_rel",
                    css,

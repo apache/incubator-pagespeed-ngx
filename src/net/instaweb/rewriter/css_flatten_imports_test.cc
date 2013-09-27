@@ -767,7 +767,7 @@ TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
       "}\n";
   const GoogleString css_after =
       StrCat("body{background-image:url(",
-             Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+             Encode("", "ce", "0", "foo.png", "png"),
              ")}");
   SetResponseWithDefaultHeaders(kCssFilename, kContentTypeCss, css_before, 100);
 

@@ -31,9 +31,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"               // for StrCat
@@ -41,7 +39,6 @@
 namespace {
 
 static const char kHtmlUrl[] = "http://html.parse.test/event_list_test.html";
-static const char kUpdatedUrl[] = "http://html.parse.test/new_css.css";
 
 }  // namespace
 
@@ -166,20 +163,20 @@ TEST_F(ResourceSlotTest, Comparator) {
 // Tests that a slot resource-update has the desired effect on the DOM.
 TEST_F(ResourceSlotTest, RenderUpdate) {
   SetupWriter();
-  GoogleUrl gurl(kUpdatedUrl);
 
   // Before update: first href=v1.
   EXPECT_EQ("<link href=\"v1\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>",
             GetHtmlDomAsString());
 
+  GoogleUrl gurl("http://html.parse.test/new_css.css");
   ResourcePtr updated(rewrite_driver()->CreateInputResource(gurl));
   slot(0)->SetResource(updated);
   slot(0)->Render();
 
-  // After update: first href=kUpdated.
-  EXPECT_EQ(StrCat("<link href=\"", kUpdatedUrl,
-                   "\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>"),
-            GetHtmlDomAsString());
+  // After update: first href=new_css.css. Note: that we relativize the URL.
+  EXPECT_EQ(
+      "<link href=\"new_css.css\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>",
+      GetHtmlDomAsString());
 }
 
 // Tests that a slot deletion takes effect as expected.

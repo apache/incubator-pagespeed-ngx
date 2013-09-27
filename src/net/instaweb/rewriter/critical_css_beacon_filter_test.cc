@@ -112,7 +112,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
 
   // Return a css_filter optimized url.
   GoogleString UrlOpt(StringPiece url) {
-    return Encode(kTestDomain, RewriteOptions::kCssFilterId, "0", url, "css");
+    return Encode("", RewriteOptions::kCssFilterId, "0", url, "css");
   }
 
   // Return a link tag with a css_filter optimized url.

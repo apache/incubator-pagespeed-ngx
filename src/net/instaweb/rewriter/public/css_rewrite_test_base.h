@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -141,12 +140,6 @@ class CssRewriteTestBase : public RewriteTestBase {
                                 const StringPiece& css_input,
                                 const StringPiece& expected_css_output,
                                 int flags);
-
-  // Return the expected new URL with hash and all based on necessary data.
-  GoogleString ExpectedRewrittenUrl(const StringPiece& original_url,
-                                    const StringPiece& expected_contents,
-                                    const StringPiece& filter_id,
-                                    const ContentType& content_type);
 
   void GetNamerForCss(const StringPiece& id,
                       const GoogleString& expected_css_output,

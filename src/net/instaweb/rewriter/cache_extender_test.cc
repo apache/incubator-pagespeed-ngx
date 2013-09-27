@@ -112,23 +112,23 @@ class CacheExtenderTest : public RewriteTestBase {
   // Helper to test for how we handle trailing junk in URLs
   void TestCorruptUrl(StringPiece junk, bool append_junk) {
     InitTest(kShortTtlSec);
-    GoogleString a_ext = Encode(kCssPath, "ce", "0", kCssTail, "css");
-    GoogleString b_ext = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
-    GoogleString c_ext = Encode(kTestDomain, "ce", "0", "c.js", "js");
+    GoogleString a_ext = Encode(kCssSubdir, "ce", "0", kCssTail, "css");
+    GoogleString b_ext = Encode("", "ce", "0", "b.jpg", "jpg");
+    GoogleString c_ext = Encode("", "ce", "0", "c.js", "js");
 
     ValidateExpected("no_ext_corrupt_fetched",
                      GenerateHtml(kCssFile, "b.jpg", "c.js"),
                      GenerateHtml(a_ext, b_ext, c_ext));
     GoogleString output;
-    EXPECT_TRUE(
-        FetchResourceUrl(
-            ChangeSuffix(a_ext, append_junk, ".css", junk), &output));
-    EXPECT_TRUE(
-        FetchResourceUrl(
-            ChangeSuffix(b_ext, append_junk, ".jpg", junk), &output));
-    EXPECT_TRUE(
-        FetchResourceUrl(
-            ChangeSuffix(c_ext, append_junk, ".js", junk), &output));
+    EXPECT_TRUE(FetchResourceUrl(
+        ChangeSuffix(StrCat(kTestDomain, a_ext), append_junk, ".css", junk),
+        &output));
+    EXPECT_TRUE(FetchResourceUrl(
+        ChangeSuffix(StrCat(kTestDomain, b_ext), append_junk, ".jpg", junk),
+        &output));
+    EXPECT_TRUE(FetchResourceUrl(
+        ChangeSuffix(StrCat(kTestDomain, c_ext), append_junk, ".js", junk),
+        &output));
     ValidateExpected("no_ext_corrupt_cached",
                      GenerateHtml(kCssFile, "b.jpg", "c.js"),
                      GenerateHtml(a_ext, b_ext, c_ext));
@@ -149,9 +149,9 @@ class CacheExtenderTest : public RewriteTestBase {
         ValidateExpected(
             "do_extend",
             input_html,
-            GenerateHtml(Encode(kCssPath, "ce", "0", kCssTail, "css"),
-                         Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
-                         Encode(kTestDomain, "ce", "0", "c.js", "js")));
+            GenerateHtml(Encode(kCssSubdir, "ce", "0", kCssTail, "css"),
+                         Encode("", "ce", "0", "b.jpg", "jpg"),
+                         Encode("", "ce", "0", "c.js", "js")));
         EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
         EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
@@ -233,13 +233,13 @@ class CacheExtenderTestPreserveURLs : public CacheExtenderTest {
     GoogleString expected_js_html = "c.js";
 
     if (img_extend) {
-      expected_img_html = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
+      expected_img_html = Encode("", "ce", "0", "b.jpg", "jpg");
     }
     if (css_extend) {
-      expected_css_html = Encode(kCssPath, "ce", "0", kCssTail, "css");
+      expected_css_html = Encode(kCssSubdir, "ce", "0", kCssTail, "css");
     }
     if (js_extend) {
-      expected_js_html = Encode(kTestDomain, "ce", "0", "c.js", "js");
+      expected_js_html = Encode("", "ce", "0", "c.js", "js");
     }
     ValidateExpected(
         "do_extend",
@@ -293,8 +293,7 @@ TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascript) {
       "do_extend_introspective_js",
       StringPrintf(kJsTemplate, "introspective.js"),
       StringPrintf(kJsTemplate,
-                   Encode(kTestDomain, "ce", "0",
-                          "introspective.js", "js").c_str()));
+                   Encode("", "ce", "0", "introspective.js", "js").c_str()));
 }
 
 TEST_F(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {
@@ -304,7 +303,7 @@ TEST_F(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {
       "extend_ci",
       StringPrintf(kMixedCaseTemplate, kCssFile),
       StringPrintf(kMixedCaseTemplate,
-                   Encode(kCssPath, "ce", "0", kCssTail, "css").c_str()));
+                   Encode(kCssSubdir, "ce", "0", kCssTail, "css").c_str()));
 }
 
 TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
@@ -320,9 +319,7 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
     ValidateExpected(
         "do_extend",
         GenerateHtml(kCssFile, "b.jpg", "c.js"),
-        GenerateHtml(kCssFile,
-                     Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
-                     "c.js"));
+        GenerateHtml(kCssFile, Encode("", "ce", "0", "b.jpg", "jpg"), "c.js"));
     EXPECT_EQ((i + 1), num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
     EXPECT_STREQ("ei", AppliedRewriterStringFromLog());
@@ -649,7 +646,7 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
   // Make sure our fetches go through on-the-fly construction and not the cache.
   InitTest(kMediumTtlSec);
 
-  GoogleString b_ext = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
+  GoogleString b_ext = Encode("", "ce", "0", "b.jpg", "jpg");
   ValidateExpected("and_img", "<img src=\"b.jpg\">",
                    StrCat("<img src=\"", b_ext, "\">"));
 
@@ -657,7 +654,7 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
   EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
   EXPECT_EQ(0, stats->succeeded_filter_resource_fetches()->Get());
   GoogleString out;
-  EXPECT_TRUE(FetchResourceUrl(b_ext, &out));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, b_ext), &out));
   EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
   EXPECT_EQ(1, stats->succeeded_filter_resource_fetches()->Get());
 }
@@ -739,7 +736,7 @@ TEST_F(CacheExtenderTest, AlternateStylesheet) {
   InitTest(kMediumTtlSec);
 
   const char html_format[] = "<link rel='%s' href='%s' title='foo'>";
-  const GoogleString new_url = Encode(kCssPath, "ce", "0", kCssTail, "css");
+  const GoogleString new_url = Encode(kCssSubdir, "ce", "0", kCssTail, "css");
 
   ValidateExpected("preferred_stylesheet",
                    StringPrintf(html_format, "stylesheet", kCssFile),
@@ -763,6 +760,24 @@ TEST_F(CacheExtenderTest, AlternateStylesheet) {
                                 new_url.c_str()));
   ValidateNoChanges("alternate_not_stylesheet",
                     StringPrintf(html_format, "alternate snowflake", kCssFile));
+}
+
+TEST_F(CacheExtenderTest, PreserveUrlRelativity) {
+  options()->set_preserve_url_relativity(true);
+  InitTest(kMediumTtlSec);
+
+  ValidateExpected("preserve_url_relativity",
+                   "<img src=b.jpg>",
+                   "<img src=b.jpg.pagespeed.ce.0.jpg>");
+}
+
+TEST_F(CacheExtenderTest, NoPreserveUrlRelativity) {
+  options()->set_preserve_url_relativity(false);
+  InitTest(kMediumTtlSec);
+
+  ValidateExpected("preserve_url_relativity",
+                   "<img src=b.jpg>",
+                   "<img src=http://test.com/b.jpg.pagespeed.ce.0.jpg>");
 }
 
 }  // namespace

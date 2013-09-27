@@ -80,7 +80,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
       case kSummarySlotRemoved:
         return "SlotRemoved";
     }
-  };
+  }
 
   virtual void RenderSummary(int pos,
                              HtmlElement* element,
@@ -425,7 +425,7 @@ class CssSummarizerBaseWithCombinerFilterTest : public CssSummarizerBaseTest {
 TEST_F(CssSummarizerBaseWithCombinerFilterTest, Interaction) {
   SetResponseWithDefaultHeaders("a2.css", kContentTypeCss,
                                  "span { display: inline; }", 100);
-  GoogleString combined_url = Encode(kTestDomain, "cc", "0",
+  GoogleString combined_url = Encode("", "cc", "0",
                                      MultiUrl("a.css", "a2.css"), "css");
 
   Parse("with_combine", StrCat(CssLinkHref("a.css"), CssLinkHref("a2.css")));
@@ -441,17 +441,16 @@ TEST_F(CssSummarizerBaseWithCombinerFilterTest, BaseAcrossPaths) {
   filter_->set_include_base(true);
   SetResponseWithDefaultHeaders("b/a2.css", kContentTypeCss,
                                  "span { display: inline; }", 100);
-  GoogleString combined_url =
-      StrCat(kTestDomain, "b,_a2.css+a.css.pagespeed.cc.0.css");
+  GoogleString combined_url = "b,_a2.css+a.css.pagespeed.cc.0.css";
 
   Parse("base_accross_paths",
         StrCat(CssLinkHref("b/a2.css"), CssLinkHref("a.css")));
-  EXPECT_EQ(
-      StrCat("<html>\n", CssLinkHref(combined_url), "\n",
-             StrCat("<!--OK/span{displ/rel=stylesheet/base=", combined_url),
-             StrCat("|SlotRemoved//rel=stylesheet/base=", kTestDomain, "a.css"),
-             "|--></html>"),
-      output_buffer_);
+  EXPECT_EQ(StrCat(
+      "<html>\n", CssLinkHref(combined_url), "\n"
+      "<!--OK/span{displ/rel=stylesheet/base=", kTestDomain, combined_url,
+      "|SlotRemoved//rel=stylesheet/base=", kTestDomain, "a.css"
+      "|--></html>"),
+            output_buffer_);
 }
 
 }  // namespace

@@ -74,7 +74,7 @@ class JavascriptFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    expected_rewritten_path_ = Encode(kTestDomain, kFilterId, "0",
+    expected_rewritten_path_ = Encode("", kFilterId, "0",
                                       kRewrittenJsName, "js");
 
     blocks_minified_ = statistics()->GetVariable(
@@ -143,7 +143,7 @@ class JavascriptFilterTest : public RewriteTestBase {
                      ".js", new_suffix);
 
     GoogleString out;
-    EXPECT_TRUE(FetchResourceUrl(munged_url, &out));
+    EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, munged_url), &out));
 
     // Rewrite again; should still get normal URL
     ValidateExpected("no_ext_corruption",
@@ -404,7 +404,8 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
   EXPECT_EQ(0, num_uses_->Get());
 
   // Finally, serve from a completely separate server.
-  ServeResourceFromManyContexts(expected_rewritten_path_, kJsMinData);
+  ServeResourceFromManyContexts(StrCat(kTestDomain, expected_rewritten_path_),
+                                kJsMinData);
 }
 
 TEST_F(JavascriptFilterTest, ServeFilesUnhealthy) {
@@ -471,7 +472,7 @@ TEST_F(JavascriptFilterTest, InvalidInputMimetype) {
   SetResponseWithDefaultHeaders(kNotJsFile, not_java_script, kJsData, 100);
   ValidateExpected("wrong_mime",
                    GenerateHtml(kNotJsFile),
-                   GenerateHtml(Encode(kTestDomain, "jm", "0",
+                   GenerateHtml(Encode("", "jm", "0",
                                        kNotJsFile, "js").c_str()));
 }
 
@@ -541,7 +542,7 @@ TEST_F(JavascriptFilterTest, StripInlineWhitespace) {
       "StripInlineWhitespace",
       StrCat("<script src='", kOrigJsName, "'>   \t\n   </script>"),
       StrCat("<script src='",
-             Encode(kTestDomain, "jm", "0", kOrigJsName, "js"),
+             Encode("", "jm", "0", kOrigJsName, "js"),
              "'></script>"));
 }
 
@@ -551,7 +552,7 @@ TEST_F(JavascriptFilterTest, RetainInlineData) {
   ValidateExpected("StripInlineWhitespace",
                    StrCat("<script src='", kOrigJsName, "'> data </script>"),
                    StrCat("<script src='",
-                          Encode(kTestDomain, "jm", "0", kOrigJsName, "js"),
+                          Encode("", "jm", "0", kOrigJsName, "js"),
                           "'> data </script>"));
 }
 
@@ -647,7 +648,7 @@ TEST_F(JavascriptFilterTest, WeirdSrcCrash) {
   SetResponseWithDefaultHeaders(kUrl, kContentTypeJavascript, kJsData, 300);
   ValidateExpected("weird_attr", "<script src=foo<bar>Content",
                    StrCat("<script src=",
-                          Encode(kTestDomain, "jm", "0", kUrl, "js"),
+                          Encode("", "jm", "0", kUrl, "js"),
                           ">Content"));
   ValidateNoChanges("weird_tag", "<script<foo>");
 }

@@ -380,6 +380,7 @@ TEST_F(CssInlineFilterTest, InlineMinimizeInteraction) {
   TestInlineCssWithOutputUrl(
       StrCat(kTestDomain, "minimize_but_not_inline.html"), "",
       StrCat(kTestDomain, "a.css"),
+      // Note: Original URL was absolute, so rewritten one is as well.
       Encode(kTestDomain, "cf", "0", "a.css", "css"),
       "", /* no other attributes*/
       "div{display: none;}",

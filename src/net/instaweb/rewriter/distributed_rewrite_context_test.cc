@@ -211,7 +211,7 @@ TEST_F(DistributedRewriteContextTest, TrimRewrittenOptimizable) {
   // resources, optimized resource, and metadata.
   ValidateExpected(
       "trimmable", CssLinkHref("a.css"),
-      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+      CssLinkHref(Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                          "a.css", "css")));
 
   CheckDistributedFetch(1,   // successful distributed fetches
@@ -228,7 +228,7 @@ TEST_F(DistributedRewriteContextTest, TrimRewrittenOptimizable) {
   // for the metadata. No cache misses will occur.
   ValidateExpected(
       "trimmable", CssLinkHref("a.css"),
-      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+      CssLinkHref(Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                          "a.css", "css")));
   CheckDistributedFetch(0,   // successful distributed fetches
                         0,   // unsuccessful distributed fetches
@@ -277,9 +277,9 @@ TEST_F(DistributedRewriteContextTest, TrimRepeatedOptimizable) {
   SetupDistributedTest();
   ValidateExpected(
       "trimmable2", StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
-      StrCat(CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+      StrCat(CssLinkHref(Encode("", TrimWhitespaceRewriter::kFilterId,
                                 "0", "a.css", "css")),
-             CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+             CssLinkHref(Encode("", TrimWhitespaceRewriter::kFilterId,
                                 "0", "a.css", "css"))));
   CheckDistributedFetch(1,   // successful distributed fetches
                         0,   // unsuccessful distributed fetches
@@ -293,7 +293,7 @@ TEST_F(DistributedRewriteContextTest, TwoFilters) {
   ValidateExpected(
       "two_filters", CssLinkHref("a.css"),
       CssLinkHref(
-          Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+          Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                  Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
                  "css")));
   EXPECT_EQ(1, distributed_rewrite_successes_->Get());
@@ -309,7 +309,7 @@ TEST_F(DistributedRewriteContextTest, TwoFiltersRewritten) {
   ValidateExpected(
       "two_filters", CssLinkHref("a.css"),
       CssLinkHref(
-          Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+          Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                  Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
                  "css")));
   EXPECT_EQ(1, distributed_rewrite_successes_->Get());
@@ -340,7 +340,7 @@ TEST_F(DistributedRewriteContextTest, TwoFiltersDelayedFetches) {
   ValidateExpected(
       "delayed_fetches", CssLinkHref("a.css"),
       CssLinkHref(
-          Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+          Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                  Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
                  "css")));
   EXPECT_EQ(1, distributed_rewrite_successes_->Get());
@@ -358,11 +358,11 @@ TEST_F(DistributedRewriteContextTest, RepeatedTwoFilters) {
   ValidateExpected(
       "two_filters2", StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")),
       StrCat(CssLinkHref(Encode(
-                 kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 "", TrimWhitespaceRewriter::kFilterId, "0",
                  Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
                  "css")),
              CssLinkHref(Encode(
-                 kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                 "", TrimWhitespaceRewriter::kFilterId, "0",
                  Encode("", UpperCaseRewriter::kFilterId, "0", "a.css", "css"),
                  "css"))));
   EXPECT_EQ(1, distributed_rewrite_successes_->Get());
@@ -504,7 +504,7 @@ TEST_F(DistributedRewriteContextTest, IngressDistributedRewriteFailFallback) {
   // Try again, this time we should have the result in shared cache.
   ValidateExpected(
       "trimmable", CssLinkHref("a.css"),
-      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+      CssLinkHref(Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                          "a.css", "css")));
 
   // Ingress: Misses metadata, and does not optimize after unsuccessful
@@ -593,7 +593,7 @@ TEST_F(DistributedRewriteContextTest, TrimDelayed) {
   ClearStats();
   ValidateExpected(
       "trimmable", CssLinkHref("a.css"),
-      CssLinkHref(Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+      CssLinkHref(Encode("", TrimWhitespaceRewriter::kFilterId, "0",
                          "a.css", "css")));
 
   CheckDistributedFetch(0,                // successful distributed fetches

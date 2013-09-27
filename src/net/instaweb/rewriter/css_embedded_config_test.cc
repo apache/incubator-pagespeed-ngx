@@ -118,11 +118,12 @@ class CssEmbeddedConfigTest : public CssRewriteTestBase {
   GoogleString EncodedImageUrl(StringPiece image_name,
                                StringPiece ext,
                                StringPiece option_segment) {
-    GoogleString image_url = Encode(kTestDomain, "ic", "0", image_name, ext);
+    GoogleString image_url = Encode("", "ic", "0", image_name, ext);
     return AddOptionsToEncodedUrl(image_url, option_segment);
   }
 
   GoogleString EncodedCssUrl(StringPiece option_segment) {
+    // Original CSS file had absolute path, so rewritten one does too.
     GoogleString css_link = Encode(kTestDomain, "cf", "0", kEmbedCss, "css");
     return AddOptionsToEncodedUrl(css_link, option_segment);
   }
@@ -136,9 +137,9 @@ TEST_F(CssEmbeddedConfigTest, CacheExtend) {
   GoogleString css_link = RewriteImageInCss("foo.png");
   EXPECT_STREQ(EncodedCssUrl("ei"), css_link);
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
-  EXPECT_STREQ(Encode(kTestDomain, "ce", "0", "foo.png", "png"),
-               image_url);
-  EXPECT_STREQ(kDummyContent, FetchImageFromCache(image_url));
+  EXPECT_STREQ(Encode("", "ce", "0", "foo.png", "png"), image_url);
+  EXPECT_STREQ(kDummyContent,
+               FetchImageFromCache(StrCat(kTestDomain, image_url)));
 }
 
 TEST_F(CssEmbeddedConfigTest, RewriteJpeg) {
@@ -151,7 +152,7 @@ TEST_F(CssEmbeddedConfigTest, RewriteJpeg) {
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
   EXPECT_STREQ(EncodedImageUrl(kPuzzleJpgFile, "jpg", "rj+iq=81"),
                image_url);
-  EXPECT_GE(103704, FetchImageFromCache(image_url).size());
+  EXPECT_GE(103704, FetchImageFromCache(StrCat(kTestDomain, image_url)).size());
 }
 
 TEST_F(CssEmbeddedConfigTest, RewriteJpegProgressive) {
@@ -165,7 +166,7 @@ TEST_F(CssEmbeddedConfigTest, RewriteJpegProgressive) {
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
   EXPECT_STREQ(EncodedImageUrl(kPuzzleJpgFile, "jpg", "jp+rj+iq=81"),
                image_url);
-  EXPECT_GE(100349, FetchImageFromCache(image_url).size());
+  EXPECT_GE(100349, FetchImageFromCache(StrCat(kTestDomain, image_url)).size());
 }
 
 TEST_F(CssEmbeddedConfigTest, InlineImageToCss) {
@@ -188,8 +189,8 @@ TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallThresholdExtend) {
   GoogleString css_link = RewriteImageInCss(kCuppaPngFile);
   EXPECT_STREQ(EncodedCssUrl("ei+ii+cii=5"), css_link);
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
-  EXPECT_STREQ(Encode(kTestDomain, "ce", "0", kCuppaPngFile, "png"), image_url);
-  EXPECT_EQ(1763, FetchImageFromCache(image_url).size());
+  EXPECT_STREQ(Encode("", "ce", "0", kCuppaPngFile, "png"), image_url);
+  EXPECT_EQ(1763, FetchImageFromCache(StrCat(kTestDomain, image_url)).size());
 }
 
 TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallThresholdCompress) {
@@ -203,7 +204,7 @@ TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallThresholdCompress) {
   EXPECT_STREQ(EncodedCssUrl("ii+rj+cii=5+iq=60"), css_link);
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
   EXPECT_STREQ(EncodedImageUrl(kPuzzleJpgFile, "jpg", "rj+iq=60"), image_url);
-  EXPECT_GE(67113, FetchImageFromCache(image_url).size());
+  EXPECT_GE(67113, FetchImageFromCache(StrCat(kTestDomain, image_url)).size());
 }
 
 TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallTranscode) {
@@ -221,7 +222,7 @@ TEST_F(CssEmbeddedConfigTest, InlineImageToCssSmallTranscode) {
   EXPECT_STREQ(EncodedCssUrl("jw+ii+iw=60"), css_link);
   GoogleString image_url = ExtractImageFromCssFilename(css_link);
   EXPECT_STREQ(EncodedImageUrl(kPuzzleJpgFile, "webp", "jw+iw=60"), image_url);
-  EXPECT_GE(36350, FetchImageFromCache(image_url).size());
+  EXPECT_GE(36350, FetchImageFromCache(StrCat(kTestDomain, image_url)).size());
 }
 
 }  // namespace net_instaweb

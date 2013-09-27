@@ -78,17 +78,17 @@ const char kFlushEarlyHtml[] =
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
     "<title>Flush Subresources Early example</title>"
-    "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
-    "<link rel=\"stylesheet\" type=\"text/css\" href=\"2.css\">"
-    "<script src=\"1.js\"></script>"
-    "<script src=\"2.js\"></script>"
-    "<img src=\"1.jpg\"/>"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://test.com/1.css\">"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://test.com/2.css\">"
+    "<script src=\"http://test.com/1.js\"></script>"
+    "<script src=\"http://test.com/2.js\"></script>"
+    "<img src=\"http://test.com/1.jpg\"/>"
     "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>"
     "Hello, mod_pagespeed!"
-    "<link rel=\"stylesheet\" type=\"text/css\" href=\"3.css\">"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://test.com/3.css\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
     "<link rel=\"stylesheet\" type=\"text/css\""
     " href=\"http://www.domain3.com/3.css\">"
@@ -102,10 +102,10 @@ const char kFlushEarlyMoreResourcesInputHtml[] =
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
     "<title>Flush Subresources Early example</title>"
-    "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://test.com/1.css\">"
     "</head>"
     "<body>"
-    "<script src=\"1.js\"></script>"
+    "<script src=\"http://test.com/1.js\"></script>"
     "Hello, mod_pagespeed!"
     "</body>"
     "</html>";
@@ -254,15 +254,18 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   virtual void SetUp() {
     SetMockHashValue("00000");  // Base64 encodes to kMockHashValue.
-    RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
     const PropertyCache::Cohort* dom_cohort =
         SetupCohort(server_context_->page_property_cache(),
                     RewriteDriver::kDomCohort);
     server_context_->set_dom_cohort(dom_cohort);
+    RewriteOptions* options = server_context()->global_options();
     options->ClearSignatureForTesting();
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     options->set_in_place_rewriting_enabled(true);
+    // TODO(sligocki): Once this becomes default on in RewriteOptions, remove
+    // this set here.
+    options->set_preserve_url_relativity(true);
     server_context()->ComputeSignature(options);
     ProxyInterfaceTestBase::SetUp();
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
@@ -606,8 +609,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "<title>Flush Subresources Early example</title>"
         "</head>"
         "<body>"
-        "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
-        "<img src=1.jpg />"
+        "<link rel=\"stylesheet\" type=\"text/css\""
+        " href=\"http://test.com/1.css\">"
+        "<img src=http://test.com/1.jpg />"
         "Hello, mod_pagespeed!"
         "</body>"
         "</html>";
@@ -733,7 +737,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "<html>"
         "<head>"
         "<title>Flush Subresources Early example</title>"
-        "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+        "<link rel=\"stylesheet\" type=\"text/css\""
+        " href=\"http://test.com/1.css\">"
         "</head>"
         "<body>"
         "<img src=1.jpg />"
@@ -1301,7 +1306,8 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
       "<meta charset=\"UTF-8\"/>"
       "<title>Flush Subresources Early example</title>"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+      "<link rel=\"stylesheet\" type=\"text/css\""
+      " href=\"http://test.com/1.css\">"
       "</head>"
       "<body>"
       "Hello, mod_pagespeed!"
@@ -1457,7 +1463,7 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       "<title>Flush Subresources Early example</title>"
       "</head>"
       "<body>"
-      "<img src=1.jpg />"
+      "<img src=http://test.com/1.jpg />"
       "Hello, mod_pagespeed!"
       "</body>"
       "</html>";
@@ -1707,7 +1713,7 @@ class FlushEarlyPrioritizeCriticalCssTest : public FlushEarlyFlowTest {
   GoogleString CssLinkEncodedHref(GoogleString url) {
     return StrCat(
         "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
-        Encode(kTestDomain, "cf", kMockHashValue, url, "css"),
+        Encode("", "cf", kMockHashValue, url, "css"),
         "\">");
   }
 

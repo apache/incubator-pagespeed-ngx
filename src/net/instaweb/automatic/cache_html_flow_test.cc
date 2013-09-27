@@ -1652,7 +1652,7 @@ class CacheHtmlPrioritizeCriticalCssTest : public CacheHtmlFlowTest {
   GoogleString CssLinkEncodedHref(GoogleString url) {
     return StrCat(
         "<link rel=\"stylesheet\" type=\"text/css\" href=\"",
-        Encode(kTestDomain, "cf", kMockHashValue, url, "css"),
+        Encode("", "cf", kMockHashValue, url, "css"),
         "\">");
   }
 

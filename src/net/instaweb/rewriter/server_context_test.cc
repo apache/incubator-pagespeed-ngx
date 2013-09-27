@@ -1874,7 +1874,7 @@ TEST_F(ServerContextTestThreadedCache, RepeatedFetches) {
     // Here we will be rewriting the combination with its input
     // coming in from cached previous rewrites, which have repeats.
     GoogleString minified_a(
-        StrCat("<script src=", Encode(kTestDomain, "jm", "0", "a.js", "js"),
+        StrCat("<script src=", Encode("", "jm", "0", "a.js", "js"),
                "></script>"));
     ValidateExpected(
         "par",
@@ -1891,6 +1891,7 @@ TEST_F(ServerContextTestThreadedCache, RepeatedFetches) {
     GoogleString minified_a_leaf(Encode("", "jm", "0", "a.js", "js"));
     GoogleString combination(
       StrCat("<script src=\"",
+             // TODO(sligocki): Preserve relative URL.
              Encode(kTestDomain, "jc", "0",
                     MultiUrl(minified_a_leaf,  minified_a_leaf), "js"),
              "\"></script>"));

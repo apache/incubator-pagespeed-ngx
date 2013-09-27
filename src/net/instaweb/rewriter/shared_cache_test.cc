@@ -68,7 +68,7 @@ class SharedCacheTest : public RewriteContextTestBase {
     EXPECT_EQ(NULL, server1_->filesystem_metadata_cache());
     EXPECT_EQ(NULL, server2_->filesystem_metadata_cache());
 
-    kRewrittenHref = Encode(kTestDomain, "tw", "0", kOriginalHref, "css");
+    kRewrittenHref = Encode("", "tw", "0", kOriginalHref, "css");
 
     // Make the metadata and HTTP caches the same for this test.
     factory1_ = factory();
@@ -168,7 +168,7 @@ class SharedCacheTest : public RewriteContextTestBase {
 
     // Check the rewritten content then check that we got it from the cache.
     GoogleString output;
-    EXPECT_TRUE(FetchResourceUrl(kRewrittenHref, &output));
+    EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, kRewrittenHref), &output));
     EXPECT_EQ(expected_contents, output);
     EXPECT_EQ(1, shared_cache_->num_hits() - shared_num_hits_);
     ++shared_num_hits_;

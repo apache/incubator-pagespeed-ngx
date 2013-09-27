@@ -85,7 +85,7 @@ class DebugFilterTest : public RewriteTestBase {
 
   GoogleString OptScriptHtml() {
     return StringPrintf(kScriptFormat,
-                        Encode(kTestDomain, "ce", "0", kScript, "js").c_str());
+                        Encode("", "ce", "0", kScript, "js").c_str());
   }
 
   void InitiateScriptRewrite() {

@@ -185,8 +185,8 @@ const char kNonRewrittenCachableHtml[] =
 
 const char kRewrittenCachableHtmlWithCacheExtension[] =
     "<html>\n"
-    "<link rel=stylesheet href=http://test.com/a.css.pagespeed.ce.0.css>  "
-    "<link rel=stylesheet href=http://test.com/test/b.css.pagespeed.ce.0.css>"
+    "<link rel=stylesheet href=a.css.pagespeed.ce.0.css>  "
+    "<link rel=stylesheet href=test/b.css.pagespeed.ce.0.css>"
     "\n</html>";
 
 const char kRewrittenCachableHtmlWithCollapseWhitespace[] =
@@ -1381,8 +1381,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
       "http://test.com/dir/B.a.css.pagespeed.cf.0.css";
 
   GoogleString correct_url = Encode(
-      StrCat(kTestDomain, "dir/"),
-      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css", "css");
+      "dir/", RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1395,7 +1395,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
   EXPECT_EQ(3, cold_num_inserts);
 
   EXPECT_EQ(HTTPCache::kFound,
-            HttpBlockingFindStatus(correct_url, http_cache()));
+            HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
+                                   http_cache()));
 
   GoogleString input_html(CssLinkHref("dir/a.css"));
   GoogleString output_html(CssLinkHref(correct_url));
@@ -1412,8 +1413,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithLowerCasedncodingCharacter) {
       "http://test.com/dir/a.a.css.pagespeed.cf.0.css";
 
   GoogleString correct_url = Encode(
-      StrCat(kTestDomain, "dir/"),
-      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css", "css");
+      "dir/", RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1426,7 +1427,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithLowerCasedncodingCharacter) {
   EXPECT_EQ(3, cold_num_inserts);
 
   EXPECT_EQ(HTTPCache::kFound,
-            HttpBlockingFindStatus(correct_url, http_cache()));
+            HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
+                                   http_cache()));
 
   GoogleString input_html(CssLinkHref("dir/a.css"));
   GoogleString output_html(CssLinkHref(correct_url));
@@ -1443,8 +1445,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithExperimentId) {
       "http://test.com/dir/A.a.css.pagespeed.b.cf.0.css";
 
   GoogleString correct_url = Encode(
-      StrCat(kTestDomain, "dir/"),
-      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css", "css");
+      "dir/", RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1457,7 +1459,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithExperimentId) {
   EXPECT_EQ(3, cold_num_inserts);
 
   EXPECT_EQ(HTTPCache::kFound,
-            HttpBlockingFindStatus(correct_url, http_cache()));
+            HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
+                                   http_cache()));
 
   GoogleString input_html(CssLinkHref("dir/a.css"));
   GoogleString output_html(CssLinkHref(correct_url));
@@ -1474,8 +1477,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
       "http://test.com/dir/A.a.css,qver%3D3.pagespeed.cf.0.css";
 
   GoogleString correct_url = Encode(
-      StrCat(kTestDomain, "dir/"),
-      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css?ver=3", "css");
+      "dir/", RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css?ver=3", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1488,7 +1491,8 @@ TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
   EXPECT_EQ(3, cold_num_inserts);
 
   EXPECT_EQ(HTTPCache::kFound,
-            HttpBlockingFindStatus(correct_url, http_cache()));
+            HttpBlockingFindStatus(StrCat(kTestDomain, correct_url),
+                                   http_cache()));
 
   GoogleString input_html(CssLinkHref("dir/a.css?ver=3"));
   GoogleString output_html(CssLinkHref(correct_url));
@@ -1510,7 +1514,7 @@ TEST_F(RewriteDriverTest, NoLoggingForImagesRewrittenInsideCss) {
                        kContentTypePng, 100);
 
   GoogleString correct_url = Encode(
-        kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(contents),
+        "", RewriteOptions::kCssFilterId, hasher()->Hash(contents),
         "a.css", "css");
 
   GoogleString input_html(CssLinkHref("a.css"));
@@ -1533,9 +1537,9 @@ TEST_F(RewriteDriverTest, DecodeMultiUrlsEncodesCorrectly) {
 
   // Combine filters
   GoogleString multi_url = Encode(
-      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "", RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
       "a.css+test,_b.css.pagespeed.cc.0.css", "css");
-  EXPECT_TRUE(TryFetchResource(multi_url));
+  EXPECT_TRUE(TryFetchResource(StrCat(kTestDomain, multi_url)));
 
   GoogleString input_html(
       StrCat(CssLinkHref("a.css"), CssLinkHref("test/b.css")));
@@ -1587,8 +1591,7 @@ TEST_F(RewriteDriverTest, RenderDoneTest) {
   driver->StartParse(kTestDomain);
   rewrite_driver()->ParseText("<img src=\"a.png\">");
   driver->FinishParse();
-  EXPECT_EQ(Encode(kTestDomain, RewriteOptions::kCacheExtenderId, "0",
-                   "a.png", "png"),
+  EXPECT_EQ(Encode("", RewriteOptions::kCacheExtenderId, "0", "a.png", "png"),
             filter->src());
 }
 

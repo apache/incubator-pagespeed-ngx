@@ -243,8 +243,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
     // Parses a combined CSS elementand provides the segments from which
     // it came.
-    bool DecomposeCombinedUrl(GoogleString* base, StringVector* segments,
-                              MessageHandler* handler);
+    bool DecomposeCombinedUrl(StringPiece base_url, GoogleString* base,
+                              StringVector* segments, MessageHandler* handler);
 
     GoogleString url_;
     GoogleString content_;

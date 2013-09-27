@@ -203,7 +203,7 @@ class TwoLevelCacheTest : public RewriteContextTestBase {
     // stored.
     GoogleString input_html(CssLinkHref("a.css"));
     GoogleString output_html(CssLinkHref(
-        Encode(kTestDomain, "tw", "0", "a.css", "css")));
+        Encode("", "tw", "0", "a.css", "css")));
     ValidateExpected("trimmable", input_html, output_html);
     EXPECT_EQ(0, cache1_->num_hits());
     EXPECT_EQ(2, cache1_->num_misses());
@@ -301,7 +301,7 @@ TEST_F(TwoLevelCacheTest, BothCachesInSameState) {
   // stored.
   GoogleString input_html(CssLinkHref("a.css"));
   GoogleString output_html(CssLinkHref(
-      Encode(kTestDomain, "tw", "0", "a.css", "css")));
+      Encode("", "tw", "0", "a.css", "css")));
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(0, cache1_->num_hits());
   EXPECT_EQ(2, cache1_->num_misses());

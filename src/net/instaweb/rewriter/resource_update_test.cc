@@ -442,7 +442,7 @@ TEST_F(ResourceUpdateTest, NestedTestExpireNested404) {
   const int64 kDecadeMs = 10 * Timer::kYearMs;
 
   // Have the nested one have a 404...
-  const GoogleString kOutUrl = Encode(kTestDomain, "nf", "sdUklQf3sx",
+  const GoogleString kOutUrl = Encode("", "nf", "sdUklQf3sx",
                                       "main.txt", "css");
   SetResponseWithDefaultHeaders("http://test.com/main.txt", kContentTypeCss,
                                 "a.css\n", 4 * kDecadeMs / 1000);
@@ -450,7 +450,7 @@ TEST_F(ResourceUpdateTest, NestedTestExpireNested404) {
 
   ValidateExpected("nested_404", CssLinkHref("main.txt"), CssLinkHref(kOutUrl));
   GoogleString contents;
-  EXPECT_TRUE(FetchResourceUrl(kOutUrl, &contents));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, kOutUrl), &contents));
   EXPECT_EQ("http://test.com/a.css\n", contents);
 
   // Determine if we're using the TestUrlNamer, for the hash later.
@@ -462,16 +462,15 @@ TEST_F(ResourceUpdateTest, NestedTestExpireNested404) {
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, " lowercase ", 100);
   ReconfigureNestedFilter(NestedFilter::kExpectNestedRewritesSucceed);
   const GoogleString kFullOutUrl =
-      Encode(kTestDomain, "nf",
-             test_url_namer ? "jPITKUE2Yd" : "G60oQsKZ9F",
+      Encode("", "nf", test_url_namer ? "jPITKUE2Yd" : "G60oQsKZ9F",
              "main.txt", "css");
-  const GoogleString kInnerUrl = StrCat(Encode(kTestDomain, "uc", "N4LKMOq9ms",
+  const GoogleString kInnerUrl = StrCat(Encode("", "uc", "N4LKMOq9ms",
                                                "a.css", "css"), "\n");
   ValidateExpected("nested_404", CssLinkHref("main.txt"),
                    CssLinkHref(kFullOutUrl));
-  EXPECT_TRUE(FetchResourceUrl(kFullOutUrl, &contents));
-  EXPECT_EQ(kInnerUrl, contents);
-  EXPECT_TRUE(FetchResourceUrl(kInnerUrl, &contents));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, kFullOutUrl), &contents));
+  EXPECT_EQ(StrCat(kTestDomain, kInnerUrl), contents);
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, kInnerUrl), &contents));
   EXPECT_EQ(" LOWERCASE ", contents);
 }
 

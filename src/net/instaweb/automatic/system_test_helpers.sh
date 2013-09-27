@@ -459,7 +459,7 @@ function test_filter() {
 # Helper to test if we mess up extensions on requests to broken url
 function test_resource_ext_corruption() {
   URL=$1
-  RESOURCE=$EXAMPLE_ROOT/$2
+  RESOURCE=$2
 
   # Make sure the resource is actually there, that the test isn't broken
   echo checking that wgetting $URL finds $RESOURCE ...
@@ -468,7 +468,7 @@ function test_resource_ext_corruption() {
 
   # Now fetch the broken version. This should succeed anyway, as we now
   # ignore the noise.
-  check $WGET_PREREQ $WGET_ARGS "$RESOURCE"broken
+  check $WGET_PREREQ $WGET_ARGS "${EXAMPLE_ROOT}/${RESOURCE}broken"
 
   # Fetch normal again; ensure rewritten url for RESOURCE doesn't contain broken
   OUT=$($WGET_DUMP $WGET_ARGS $URL)

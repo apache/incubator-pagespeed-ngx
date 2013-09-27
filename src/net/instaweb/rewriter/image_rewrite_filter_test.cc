@@ -2180,7 +2180,7 @@ TEST_F(ImageRewriteTest, RewriteCacheExtendInteraction) {
 
   ValidateExpected("cache_extend_fallback", "<img src=a.png>",
                    StrCat("<img src=",
-                          Encode("http://test.com/", "ce", "0", "a.png", "png"),
+                          Encode("", "ce", "0", "a.png", "png"),
                           ">"));
 }
 
@@ -2213,8 +2213,8 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   GoogleString in_css = StringPrintf(kCssTemplate, kPngFile);
   SetResponseWithDefaultHeaders(kCssFile,  kContentTypeCss, in_css, 100);
 
-  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
-  GoogleString out_png_url = Encode(kTestDomain, "ic", "0", kPngFile, "png");
+  GoogleString out_css_url = Encode("", "cf", "0", kCssFile, "css");
+  GoogleString out_png_url = Encode("", "ic", "0", kPngFile, "png");
 
   // Set the current # of rewrites very high, so we stop doing more
   // due to "load".
@@ -2227,12 +2227,9 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   ValidateNoChanges("img_in_css", CssLinkHref(kCssFile));
 
   GoogleString out_css;
-  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
-  // During this time, the out_css should only be absolutified, and a dropped
-  // image rewrite be recorded.
-  GoogleString abs_png_url = AbsolutifyUrl(kPngFile);
-  GoogleString abs_css = StringPrintf(kCssTemplate, abs_png_url.c_str());
-  EXPECT_EQ(abs_css, out_css);
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, out_css_url), &out_css));
+  // Nothing changes in the HTML and a dropped image rewrite should be recorded.
+  EXPECT_EQ(in_css, out_css);
   TimedVariable* drops = statistics()->GetTimedVariable(
       ImageRewriteFilter::kImageRewritesDroppedDueToLoad);
   EXPECT_EQ(1, drops->Get(TimedVariable::START));
@@ -2244,7 +2241,7 @@ TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
                    CssLinkHref(out_css_url));
   GoogleString expected_out_css =
       StringPrintf(kCssTemplate, out_png_url.c_str());
-  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, out_css_url), &out_css));
   // This time, however, CSS should be altered (and the drop count still be 1).
   EXPECT_EQ(expected_out_css, out_css);
   EXPECT_EQ(1, drops->Get(TimedVariable::START));
@@ -2368,13 +2365,14 @@ TEST_F(ImageRewriteTest, InlinableCssImagesInsertedIntoPropertyCache) {
       "p{background-image:url(%s)}", kPngFile1, kPngFile1, kPngFile2);
   SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, css_contents, 100);
   // Parse the CSS and ensure contents are unchanged.
-  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
+  GoogleString out_css_url = Encode("", "cf", "0", kCssFile, "css");
   GoogleString out_css;
   StringAsyncFetch async_fetch(RequestContext::NewTestRequestContext(
       server_context()->thread_system()), &out_css);
   ResponseHeaders response;
   async_fetch.set_response_headers(&response);
-  EXPECT_TRUE(rewrite_driver_->FetchResource(out_css_url, &async_fetch));
+  EXPECT_TRUE(rewrite_driver_->FetchResource(StrCat(kTestDomain, out_css_url),
+                                             &async_fetch));
   rewrite_driver_->WaitForShutDown();
   EXPECT_TRUE(async_fetch.success());
 

@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/wildcard.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
@@ -163,21 +164,6 @@ bool CssRewriteTestBase::ValidateWithStats(
   return success;
 }
 
-GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
-    const StringPiece& original_url,
-    const StringPiece& expected_contents,
-    const StringPiece& filter_id,
-    const ContentType& content_type) {
-  GoogleUrl original_gurl(original_url);
-  DCHECK(original_gurl.IsWebValid());
-  return EncodeWithBase(original_gurl.Origin(),
-                        original_gurl.AllExceptLeaf(), filter_id,
-                        hasher()->Hash(expected_contents),
-                        original_gurl.LeafWithQuery(),
-                        content_type.file_extension() + 1);  // +1 to skip '.'
-}
-
-
 void CssRewriteTestBase::GetNamerForCss(const StringPiece& leaf_name,
                                         const GoogleString& expected_css_output,
                                         ResourceNamer* namer) {
@@ -189,8 +175,7 @@ void CssRewriteTestBase::GetNamerForCss(const StringPiece& leaf_name,
 
 GoogleString CssRewriteTestBase::ExpectedUrlForNamer(
     const ResourceNamer& namer) {
-  return Encode(kTestDomain, namer.id(), namer.hash(), namer.name(),
-                namer.ext());
+  return Encode("", namer.id(), namer.hash(), namer.name(), namer.ext());
 }
 
 GoogleString CssRewriteTestBase::ExpectedUrlForCss(
@@ -350,7 +335,7 @@ void CssRewriteTestBase::TestCorruptUrl(const char* new_suffix) {
       ChangeSuffix(css_url, false /*replace*/, ".css", new_suffix);
 
   GoogleString output;
-  EXPECT_TRUE(FetchResourceUrl(munged_url, &output));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, munged_url), &output));
 
   // Now see that output is correct
   ValidateRewriteExternalCss(

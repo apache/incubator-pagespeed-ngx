@@ -1881,6 +1881,7 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
 
+  // TODO(sligocki): Default to true once it's had some time to be tested.
   AddBaseProperty(
       false, &RewriteOptions::preserve_url_relativity_,
       "pur", kPreserveUrlRelativity, kDirectoryScope,
