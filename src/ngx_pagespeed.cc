@@ -90,6 +90,11 @@ extern ngx_module_t ngx_pagespeed;
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
+// The process context takes care of proactively initialising
+// a few libraries for us, some of which are not thread-safe
+// when they are initialized lazily.
+ProcessContext* process_context = new ProcessContext();
+bool process_context_cleanup_hooked = false;
 
 StringPiece str_to_string_piece(ngx_str_t s) {
   return StringPiece(reinterpret_cast<char*>(s.data), s.len);
@@ -652,7 +657,16 @@ void ps_set_conf_cleanup_handler(
   }
 }
 
+void terminate_process_context() {
+  delete process_context;
+  process_context = NULL;
+}
+
 void* ps_create_main_conf(ngx_conf_t* cf) {
+  if (!process_context_cleanup_hooked) {
+    atexit(terminate_process_context);
+    process_context_cleanup_hooked = true;
+  }
   ps_main_conf_t* cfg_m = ps_create_conf<ps_main_conf_t>(cf);
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
