@@ -33,6 +33,7 @@
 namespace net_instaweb {
 
 class RewriteOptions;
+class Statistics;
 
 namespace {
 
@@ -77,6 +78,11 @@ ApacheServerContext::ApacheServerContext(
 }
 
 ApacheServerContext::~ApacheServerContext() {
+}
+
+void ApacheServerContext::InitStats(Statistics* statistics) {
+  SystemServerContext::InitStats(statistics);
+  ModSpdyFetcher::InitStats(statistics);
 }
 
 bool ApacheServerContext::InitPath(const GoogleString& path) {

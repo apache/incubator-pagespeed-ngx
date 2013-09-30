@@ -264,6 +264,7 @@ void SystemRewriteDriverFactory::ShutDown() {
     defer_cleanup(new Deleter<UrlAsyncFetcher>(fetcher));
   }
   fetcher_map_.clear();
+  ShutDownFetchers();
 
   RewriteDriverFactory::ShutDown();
 

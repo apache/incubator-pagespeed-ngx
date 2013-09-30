@@ -37,15 +37,21 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/timer.h"
 
 struct spdy_slave_connection;
 
 namespace net_instaweb {
 
 namespace {
+
+const char kFetchExecutionLatencyUsHistogram[] =
+    "fetch_from_mod_spdy_execution_latency_us";
+const int kFetchExecutionLatencyUsHistogramMaxValue = 500 * 1000;
 
 ap_filter_rec_t* apache_to_mps_filter_handle = NULL;
 ap_filter_rec_t* mps_to_apache_filter_handle = NULL;
@@ -305,6 +311,7 @@ ModSpdyFetcher::ModSpdyFetcher(ModSpdyFetchController* controller,
                                spdy_slave_connection_factory* factory)
     : controller_(controller),
       fallback_fetcher_(driver->async_fetcher()),
+      stats_(driver->statistics()),
       connection_factory_(factory) {
   GoogleUrl gurl(url);
   if (gurl.IsWebValid()) {
@@ -313,6 +320,13 @@ ModSpdyFetcher::ModSpdyFetcher(ModSpdyFetchController* controller,
 }
 
 ModSpdyFetcher::~ModSpdyFetcher() {
+}
+
+void ModSpdyFetcher::InitStats(Statistics* statistics) {
+  Histogram* histo =
+      statistics->AddHistogram(kFetchExecutionLatencyUsHistogram);
+  histo->SetMaxValue(kFetchExecutionLatencyUsHistogramMaxValue);
+  ModSpdyFetchController::InitStats(statistics);
 }
 
 bool ModSpdyFetcher::ShouldUseOn(request_rec* req) {
@@ -335,15 +349,18 @@ void ModSpdyFetcher::Fetch(const GoogleString& url,
   if (connection_factory_ != NULL &&
       parsed_url.IsWebValid() && !own_origin_.empty() &&
       parsed_url.Origin() == own_origin_) {
-    controller_->ScheduleBlockingFetch(this, url, message_handler, fetch);
+    controller_->ScheduleBlockingFetch(this, url, stats_,
+                                       message_handler, fetch);
   } else {
     fallback_fetcher_->Fetch(url, message_handler, fetch);
   }
 }
 
 void ModSpdyFetcher::BlockingFetch(
-    const GoogleString& url, MessageHandler* message_handler,
-    AsyncFetch* fetch) {
+    const GoogleString& url, ModSpdyFetchController* controller,
+    Statistics* stats, MessageHandler* message_handler, AsyncFetch* fetch) {
+  int64 start_time_us = controller->timer()->NowUs();
+
   // These will normally be deleted by their filter functions
   // (but we do cleanup if something went wrong)
   MpsToApacheFilterContext* in_context =
@@ -359,6 +376,18 @@ void ModSpdyFetcher::BlockingFetch(
   if (slave_connection != NULL) {
     mod_spdy_run_slave_connection(slave_connection);
     mod_spdy_destroy_slave_connection(slave_connection);
+
+    // Important: at this point 'this' may already be deleted, since any
+    // user callbacks may have run (potentially releasing the owning
+    // RewriteDriver), so we should not be accessing any member
+    // variables.
+    if (!controller->is_shut_down()) {
+      // Don't report stats once the controller is shut down, since
+      // things may be getting torn down right about now.
+      int64 end_time_us = controller->timer()->NowUs();
+      stats->GetHistogram(kFetchExecutionLatencyUsHistogram)->Add(
+          end_time_us - start_time_us);
+    }
     return;
   } else {
     delete in_context;

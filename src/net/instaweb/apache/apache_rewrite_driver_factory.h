@@ -166,6 +166,7 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   virtual void SetupMessageHandlers();
   virtual void ShutDownMessageHandlers();
+  virtual void ShutDownFetchers();
 
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer);
 

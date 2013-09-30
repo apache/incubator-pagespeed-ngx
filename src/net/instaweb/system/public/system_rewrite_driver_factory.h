@@ -190,6 +190,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   virtual void ShutDownMessageHandlers() {}
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer) {}
 
+  // Can be overridden by subclasses to shutdown any fetchers we don't
+  // know about.
+  virtual void ShutDownFetchers() {}
+
   // Once ServerContexts are initialized via
   // RewriteDriverFactory::InitServerContext, they will be
   // managed by the RewriteDriverFactory.  But in the root process

@@ -217,7 +217,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
   SystemRewriteDriverFactory::ChildInit();
   mod_spdy_fetch_controller_.reset(
       new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
-                                 statistics()));
+                                 timer(), statistics()));
 }
 
 
@@ -238,6 +238,12 @@ void ApacheRewriteDriverFactory::SetupMessageHandlers() {
   apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
   apache_html_parse_message_handler_->SetPidString(
             static_cast<int64>(getpid()));
+}
+
+void ApacheRewriteDriverFactory::ShutDownFetchers() {
+  if (mod_spdy_fetch_controller_.get() != NULL) {
+    mod_spdy_fetch_controller_->ShutDown();
+  }
 }
 
 void ApacheRewriteDriverFactory::SetCircularBuffer(

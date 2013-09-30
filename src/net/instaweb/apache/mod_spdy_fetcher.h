@@ -41,17 +41,21 @@ class AsyncFetch;
 class MessageHandler;
 class ModSpdyFetchController;
 class RewriteDriver;
+class Statistics;
 
 class ModSpdyFetcher : public UrlAsyncFetcher {
  public:
-  // Initializes various filters this fetcher needs for operation.
-  // This must be from within a register hooks implementation.
-  static void Initialize();
-
   ModSpdyFetcher(ModSpdyFetchController* controller,
                  StringPiece url, RewriteDriver* driver,
                  spdy_slave_connection_factory* connection_factory);
   virtual ~ModSpdyFetcher();
+
+  // Initializes various filters this fetcher needs for operation.
+  // This must be from within a register hooks implementation.
+  static void Initialize();
+
+  // This must be called for every statistics object in use before using this.
+  static void InitStats(Statistics* statistics);
 
   virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
@@ -70,11 +74,14 @@ class ModSpdyFetcher : public UrlAsyncFetcher {
   // The actual implementation of fetching code, normally called by
   // ModSpdyFetchController.
   void BlockingFetch(const GoogleString& url,
+                     ModSpdyFetchController* controller,
+                     Statistics* stats,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 
   ModSpdyFetchController* controller_;
   UrlAsyncFetcher* fallback_fetcher_;
+  Statistics* stats_;
   GoogleString own_origin_;  // empty if we couldn't figure it out.
   spdy_slave_connection_factory* connection_factory_;
 

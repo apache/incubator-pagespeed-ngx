@@ -35,6 +35,7 @@ class ApacheRequestContext;
 class ProxyFetchFactory;
 class RewriteDriverPool;
 class RewriteDriver;
+class Statistics;
 
 // Creates an Apache-specific ServerContext.  This differs from base class
 // that it incorporates by adding per-VirtualHost configuration, including:
@@ -48,6 +49,9 @@ class ApacheServerContext : public SystemServerContext {
                       server_rec* server,
                       const StringPiece& version);
   virtual ~ApacheServerContext();
+
+  // This must be called for every statistics object in use before using this.
+  static void InitStats(Statistics* statistics);
 
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
   ApacheConfig* config();

@@ -26,6 +26,7 @@
 #define NET_INSTAWEB_APACHE_MOD_SPDY_FETCH_CONTROLLER_H_
 
 #include "net/instaweb/http/public/rate_controller.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
@@ -36,6 +37,7 @@ class AsyncFetch;
 class MessageHandler;
 class ModSpdyFetcher;
 class Statistics;
+class Timer;
 class ThreadSystem;
 
 class ModSpdyFetchController {
@@ -43,22 +45,32 @@ class ModSpdyFetchController {
   // Note: RateController::InitStats must have been called before using this.
   ModSpdyFetchController(int num_threads,
                          ThreadSystem* thread_system,
+                         Timer* timer,
                          Statistics* statistics);
   ~ModSpdyFetchController();
 
+  // This must be called for every statistics object in use before using this.
+  static void InitStats(Statistics* statistics);
+
   // Arranges for fetcher->BlockingFetch to be called on our thread pool.
   void ScheduleBlockingFetch(
-      ModSpdyFetcher* fetcher, const GoogleString& url,
+      ModSpdyFetcher* fetcher, const GoogleString& url, Statistics* stats,
       MessageHandler* message_handler, AsyncFetch* fetch);
 
-  // TODO(morlovich): Add a ShutDown(), with semantics matching those
-  // of UrlAsyncFetcher::ShutDown, and invoked similarly.
+  // Makes any further fetches quick-fail, and makes us more careful about
+  // using external dependencies on things like stats.
+  void ShutDown() { shutdown_.set_value(true); }
+  bool is_shut_down() const { return shutdown_.value(); }
+
+  Timer* timer() const { return timer_; }
 
  private:
   class FetchDispatcher;
 
+  Timer* timer_;
   RateController rate_controller_;
   QueuedWorkerPool thread_pool_;
+  AtomicBool shutdown_;
   DISALLOW_COPY_AND_ASSIGN(ModSpdyFetchController);
 };
 
