@@ -38,6 +38,7 @@ class HtmlResourceSlot;
 class ResourceSlot;
 class RewriteContext;
 class RewriteDriver;
+class RewriteOptions;
 
 typedef RefCountedPtr<ResourceSlot> ResourceSlotPtr;
 typedef RefCountedPtr<HtmlResourceSlot> HtmlResourceSlotPtr;
@@ -160,6 +161,14 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // in log messages.
   virtual GoogleString LocationString() = 0;
 
+  // Either relativize the URL or pass it through depending on options set.
+  // PRECONDITION: url must parse as a valid GoogleUrl.
+  // TODO(sligocki): Take a GoogleUrl for url?
+  static GoogleString RelativizeOrPassthrough(const RewriteOptions* options,
+                                              StringPiece url,
+                                              UrlRelativity url_relativity,
+                                              const GoogleUrl& base_url);
+
  protected:
   virtual ~ResourceSlot();
   REFCOUNT_FRIEND_DECLARATION(ResourceSlot);
@@ -211,6 +220,10 @@ class HtmlResourceSlot : public ResourceSlot {
   virtual GoogleString LocationString();
   virtual void DirectSetUrl(const StringPiece& url);
   virtual bool CanDirectSetUrl() { return true; }
+
+  // How relative the original URL was. If PreserveUrlRelativity is enabled,
+  // Render will try to make the final URL just as relative.
+  UrlRelativity url_relativity() const { return url_relativity_; }
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);

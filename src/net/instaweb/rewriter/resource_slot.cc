@@ -58,6 +58,25 @@ void ResourceSlot::DetachContext(RewriteContext* context) {
   }
 }
 
+GoogleString ResourceSlot::RelativizeOrPassthrough(
+    const RewriteOptions* options, StringPiece url,
+    UrlRelativity url_relativity, const GoogleUrl& base_url) {
+  if (options->preserve_url_relativity()) {
+    // Set possibly relative URL.
+    // TODO(sligocki): Get GoogleUrl in interface?
+    GoogleUrl output_url(url);
+    if (output_url.IsAnyValid()) {
+      return output_url.Relativize(url_relativity, base_url).as_string();
+    } else {
+      LOG(DFATAL) << "Invalid URL passed to RelativizeOrPassthrough: " << url;
+      return url.as_string();
+    }
+  } else {
+    // Pass through absolute URL.
+    return url.as_string();
+  }
+}
+
 FetchResourceSlot::~FetchResourceSlot() {
 }
 
@@ -98,17 +117,8 @@ void HtmlResourceSlot::Render() {
       element_ = NULL;
     }
   } else {
-    // TODO(sligocki): Maybe collect all uses of this pattern into a
-    // single function like RelativizeOrPassthrough().
-    if (driver_->options()->preserve_url_relativity()) {
-      // Set possibly relative URL.
-      // TODO(sligocki): Return GoogleUrl from resource()->url().
-      GoogleUrl output_url(resource()->url());
-      DirectSetUrl(output_url.Relativize(url_relativity_, driver_->base_url()));
-    } else {
-      // Set absolute URL.
-      DirectSetUrl(resource()->url());
-    }
+    DirectSetUrl(RelativizeOrPassthrough(driver_->options(), resource()->url(),
+                                         url_relativity_, driver_->base_url()));
     // Note that to insert image dimensions, we explicitly save
     // a reference to the element in the enclosing Context object.
   }

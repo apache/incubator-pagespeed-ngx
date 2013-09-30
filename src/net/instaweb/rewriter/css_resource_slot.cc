@@ -74,14 +74,9 @@ void CssResourceSlot::Render() {
             resource()->server_context()->message_handler())) {
       // TODO(sligocki): Make sure this is the correct (final) URL of the CSS.
       DirectSetUrl(trimmed_url);
-    } else if (options_->preserve_url_relativity()) {
-      // Set possibly relative URL.
-      // TODO(sligocki): Return GoogleUrl from resource()->url().
-      GoogleUrl gurl(url);
-      DirectSetUrl(gurl.Relativize(url_relativity_, trim_url_));
     } else {
-      // Set absolute URL.
-      DirectSetUrl(url);
+      DirectSetUrl(RelativizeOrPassthrough(options_, url, url_relativity_,
+                                           trim_url_));
     }
   }
 }

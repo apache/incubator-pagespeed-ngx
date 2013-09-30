@@ -190,7 +190,10 @@ class JsCombineFilterTest : public RewriteTestBase {
     // We need to check against the encoded form of the given domain.
     GoogleUrl encoded(EncodeWithBase(base_url, domain, "x", "0", "x", "x"));
     // The combination url should incorporate both names...
-    GoogleUrl combination_url(info.url);
+    GoogleUrl base_gurl(base_url);
+    GoogleUrl combination_url(base_gurl, info.url);
+    ASSERT_TRUE(encoded.IsAnyValid()) << encoded.UncheckedSpec();
+    ASSERT_TRUE(combination_url.IsAnyValid()) << info.url;
     EXPECT_STREQ(encoded.AllExceptLeaf(), combination_url.AllExceptLeaf());
     ResourceNamer namer;
     EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
@@ -244,7 +247,8 @@ class JsCombineFilterTest : public RewriteTestBase {
                      const StringPiece& domain) {
     ScriptInfoVector scripts;
     PrepareToCollectScriptsInto(&scripts);
-    ParseUrl(kTestDomain, TestHtml());
+    GoogleUrl html_url(kTestDomain);
+    ParseUrl(html_url.Spec(), TestHtml());
 
     // This should produce 3 script elements, with the first one referring to
     // the combination, and the second and third using eval.
@@ -258,6 +262,13 @@ class JsCombineFilterTest : public RewriteTestBase {
     // Now check the actual contents. These might change slightly
     // during implementation changes, requiring update of the test;
     // but this is also not dependent on VarName working right.
+    EXPECT_STREQ(AddHtmlBody(
+        StrCat("<script src=\"", scripts[0].url, "\"></script>"
+               "<script>eval(mod_pagespeed_", hash1, ");</script>"
+               "<script>eval(mod_pagespeed_", hash2, ");</script>")),
+        output_buffer_);
+
+    // Check that the combined URL is what we'd expect.
     GoogleString combined_path =
         Encode("", "jc", combined_hash, combined_name, "js");
     GoogleUrl encoded_domain(Encode(domain, "x", "0", "x", "x"));
@@ -265,16 +276,13 @@ class JsCombineFilterTest : public RewriteTestBase {
     // two commas, which is not what we want, so reverse that. We can be given
     // such URLs because it's too hard to do the encoding programatically.
     GlobalReplaceSubstring(",,M", ",M", &combined_path);
-    EXPECT_STREQ(AddHtmlBody(
-        StrCat("<script src=\"", encoded_domain.AllExceptLeaf(),
-               combined_path, "\"></script>"
-               "<script>eval(mod_pagespeed_", hash1, ");</script>"
-               "<script>eval(mod_pagespeed_", hash2, ");</script>")),
-        output_buffer_);
+    GoogleUrl output_url(html_url, scripts[0].url);
+    EXPECT_EQ(StrCat(encoded_domain.AllExceptLeaf(), combined_path),
+              output_url.Spec());
 
     // Now fetch the combined URL.
     GoogleString combination_src;
-    ASSERT_TRUE(FetchResourceUrl(scripts[0].url, &combination_src));
+    ASSERT_TRUE(FetchResourceUrl(output_url.Spec(), &combination_src));
     EXPECT_STREQ(StrCat(
         StrCat("var mod_pagespeed_", hash1, " = ",
                (minified ? kMinifiedEscapedJs1 : kEscapedJs1), ";\n"),
@@ -282,7 +290,8 @@ class JsCombineFilterTest : public RewriteTestBase {
                (minified ? kMinifiedEscapedJs2 : kEscapedJs2), ";\n")),
                  combination_src);
 
-    ServeResourceFromManyContexts(scripts[0].url, combination_src);
+    ServeResourceFromManyContexts(output_url.Spec().as_string(),
+                                  combination_src);
   }
 
  protected:
@@ -923,14 +932,14 @@ TEST_F(JsCombineFilterTest, AllDifferentCharsets) {
 
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
-  GoogleString input_buffer(StrCat(
+  GoogleString input_buffer =
       "<head>\n"
       "  <meta charset=\"gb\">\n"
-      "  <script src=a.js></script>",
-      "  <script src=b.js charset=us-ascii></script>",
-      "  <script src=c.js></script>",
-      "  <script src=d.js></script>",
-      "</head>\n"));
+      "  <script src=a.js></script>"
+      "  <script src=b.js charset=us-ascii></script>"
+      "  <script src=c.js></script>"
+      "  <script src=d.js></script>"
+      "</head>\n";
   ParseUrl(html_url, input_buffer);
 
   // This should leave the same 4 original scripts.
@@ -970,11 +979,11 @@ TEST_F(JsCombineFilterTest, BomMismatch) {
 
   ASSERT_EQ(2, scripts.size());
 
-  GoogleString input_buffer_reversed(StrCat(
+  GoogleString input_buffer_reversed =
       "<head>\n"
-      "  <script src=y.js></script>\n",
-      "  <script src=x.js></script>\n",
-      "</head>\n"));
+      "  <script src=y.js></script>\n"
+      "  <script src=x.js></script>\n"
+      "</head>\n";
   scripts.clear();
   ParseUrl(html_url, input_buffer_reversed);
   ASSERT_EQ(2, scripts.size());
@@ -983,7 +992,7 @@ TEST_F(JsCombineFilterTest, BomMismatch) {
 TEST_F(JsCombineFilterTest, EmbeddedBom) {
   // Test that we can combine 2 JS, one with a BOM and one without, and that
   // the BOM is retained in the combination.
-  GoogleString html_url = StrCat(kTestDomain, "bom.html");
+  GoogleUrl html_url(StrCat(kTestDomain, "bom.html"));
   GoogleString x_js_url = "x.js";
   GoogleString y_js_url = "y.js";
 
@@ -1001,13 +1010,13 @@ TEST_F(JsCombineFilterTest, EmbeddedBom) {
   PrepareToCollectScriptsInto(&scripts);
 
   // x.js now has a charset of utf-8 thanks to the meta tag.
-  GoogleString input_buffer(StrCat(
+  GoogleString input_buffer =
       "<head>\n"
       "  <meta charset=\"UTF-8\">\n"
-      "  <script src=x.js></script>\n",
-      "  <script src=y.js></script>\n",
-      "</head>\n"));
-  ParseUrl(html_url, input_buffer);
+      "  <script src=x.js></script>\n"
+      "  <script src=y.js></script>\n"
+      "</head>\n";
+  ParseUrl(html_url.Spec(), input_buffer);
 
   ASSERT_EQ(3, scripts.size());
   VerifyCombined(scripts[0], MultiUrl(x_js_url, y_js_url));
@@ -1015,24 +1024,26 @@ TEST_F(JsCombineFilterTest, EmbeddedBom) {
   VerifyUse(scripts[2], y_js_url);
 
   GoogleString actual_combination;
-  EXPECT_TRUE(FetchResourceUrl(scripts[0].url, &actual_combination));
+  GoogleUrl output_url(html_url, scripts[0].url);
+  EXPECT_TRUE(FetchResourceUrl(output_url.Spec(), &actual_combination));
   int bom_pos = actual_combination.find(kUtf8Bom);
   EXPECT_EQ(73, bom_pos);  // WARNING: MAGIC VALUE!
 
-  GoogleString input_buffer_reversed(StrCat(
+  GoogleString input_buffer_reversed =
       "<head>\n"
       "  <meta charset=\"UTF-8\">\n"
-      "  <script src=y.js></script>\n",
-      "  <script src=x.js></script>\n",
-      "</head>\n"));
+      "  <script src=y.js></script>\n"
+      "  <script src=x.js></script>\n"
+      "</head>\n";
   scripts.clear();
-  ParseUrl(html_url, input_buffer_reversed);
+  ParseUrl(html_url.Spec(), input_buffer_reversed);
   actual_combination.clear();
   ASSERT_EQ(3UL, scripts.size());
   VerifyCombined(scripts[0], MultiUrl(y_js_url, x_js_url));
   VerifyUse(scripts[1], y_js_url);
   VerifyUse(scripts[2], x_js_url);
-  EXPECT_TRUE(FetchResourceUrl(scripts[0].url, &actual_combination));
+  output_url.Reset(html_url, scripts[0].url);
+  EXPECT_TRUE(FetchResourceUrl(output_url.Spec(), &actual_combination));
   bom_pos = actual_combination.find(kUtf8Bom);
   EXPECT_EQ(32, bom_pos);  // WARNING: MAGIC VALUE!
 }
@@ -1087,6 +1098,39 @@ TEST_F(JsCombineFilterTest, NoCombineNoDeferAttribute) {
       "pagespeed_no_defer",
       StrCat("<script src=", kJsUrl1, " pagespeed_no_defer></script>",
              "<script src=", kJsUrl2, "></script>"));
+}
+
+TEST_F(JsCombineFilterTest, PreserveUrlRelativity) {
+  options()->ClearSignatureForTesting();
+  options()->set_preserve_url_relativity(true);
+  server_context()->ComputeSignature(options());
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  Parse("preserve_url_relativity",
+        StrCat("<script src=", kJsUrl1, "></script>"
+               "<script src=", kJsUrl2, "></script>"));
+
+  ASSERT_EQ(3, scripts.size());  // Combine URL script + 2 eval scripts.
+  StringPiece combine_url(scripts[0].url);
+  EXPECT_TRUE(combine_url.starts_with("a.js+b.js.pagespeed.jc")) << combine_url;
+}
+
+TEST_F(JsCombineFilterTest, NoPreserveUrlRelativity) {
+  options()->ClearSignatureForTesting();
+  options()->set_preserve_url_relativity(false);
+  server_context()->ComputeSignature(options());
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  Parse("preserve_url_relativity",
+        StrCat("<script src=", kJsUrl1, "></script>"
+               "<script src=", kJsUrl2, "></script>"));
+
+  ASSERT_EQ(3, scripts.size());  // Combine URL script + 2 eval scripts.
+  StringPiece combine_url(scripts[0].url);
+  EXPECT_TRUE(combine_url.starts_with("http://test.com/a.js+b.js.pagespeed.jc"))
+      << combine_url;
 }
 
 }  // namespace net_instaweb

@@ -1891,8 +1891,7 @@ TEST_F(ServerContextTestThreadedCache, RepeatedFetches) {
     GoogleString minified_a_leaf(Encode("", "jm", "0", "a.js", "js"));
     GoogleString combination(
       StrCat("<script src=\"",
-             // TODO(sligocki): Preserve relative URL.
-             Encode(kTestDomain, "jc", "0",
+             Encode("", "jc", "0",
                     MultiUrl(minified_a_leaf,  minified_a_leaf), "js"),
              "\"></script>"));
     const char kEval[] = "<script>eval(mod_pagespeed_0);</script>";

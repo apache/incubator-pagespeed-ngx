@@ -21,7 +21,7 @@
 #include <utility>
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 
@@ -47,14 +47,10 @@ CssTagScanner::Transformer::TransformStatus AssociationTransformer::Transform(
       in_url.Spec().CopyToString(&in_string);
       StringStringMap::const_iterator it = map_.find(in_string);
       if (it != map_.end()) {
+        UrlRelativity url_relativity = GoogleUrl::FindRelativity(in);
+        *out = ResourceSlot::RelativizeOrPassthrough(
+            options_, it->second, url_relativity, *base_url_);
         ret = kSuccess;
-        if (options_->preserve_url_relativity()) {
-          UrlRelativity url_relativity = GoogleUrl::FindRelativity(in);
-          GoogleUrl output_url(it->second);
-          output_url.Relativize(url_relativity, *base_url_).CopyToString(out);
-        } else {
-          *out = it->second;
-        }
       } else {
         if (backup_transformer_ != NULL) {
           ret = backup_transformer_->Transform(in, out);
