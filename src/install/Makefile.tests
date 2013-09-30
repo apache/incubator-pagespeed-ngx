@@ -108,16 +108,16 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	FIRST_RUN=true \
-	$(MOD_PAGESPEED_ROOT)/apache/system_test.sh $(APACHE_SERVER) \
-	                                            $(APACHE_HTTPS_SERVER)
+	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	@echo '***' System-test with warm cache
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	$(MOD_PAGESPEED_ROOT)/apache/system_test.sh $(APACHE_SERVER) \
-	                                            $(APACHE_HTTPS_SERVER)
+	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
 	sed -e "s/# ModPagespeedStatistics off/ModPagespeedStatistics off/" \
@@ -130,7 +130,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	    $(MOD_PAGESPEED_ROOT)/apache/system_test.sh \
+	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Now turn off ModPagespeedInheritVHostConfig, turn stats back on.
@@ -147,7 +147,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	    $(MOD_PAGESPEED_ROOT)/apache/system_test.sh \
+	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
@@ -189,15 +189,15 @@ apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
 	# Note: We run apache/system_test.sh twice inside
 	# run_program_with_memcached.sh. That is why we have \; below.
 	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh -multi \
-	    $(MOD_PAGESPEED_ROOT)/apache/system_test.sh $(APACHE_SERVER) \
-	        $(APACHE_HTTPS_SERVER) \; \
+	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER) \; \
 	    env \
 	    CACHE_FLUSH_TEST=on \
 	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	    APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	    $(MOD_PAGESPEED_ROOT)/apache/system_test.sh $(APACHE_SERVER) \
-	        $(APACHE_HTTPS_SERVER)
+	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 	@echo PASS
@@ -382,5 +382,5 @@ apache_debug_stats_logging_test :
 	$(MAKE) apache_install_conf \
 	    OPT_STATS_LOGGING_TEST="STATS_LOGGING_TEST=1"
 	$(MAKE) apache_debug_restart
-	$(MOD_PAGESPEED_ROOT)/apache/system_test.sh $(APACHE_SERVER) \
-	                                            $(APACHE_HTTPS_SERVER)
+	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
