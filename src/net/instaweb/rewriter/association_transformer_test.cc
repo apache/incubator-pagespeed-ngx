@@ -87,6 +87,10 @@ class AssociationTransformerTest : public ::testing::Test {
     options_->set_preserve_url_relativity(true);
   }
 
+  ~AssociationTransformerTest() {
+    RewriteOptions::Terminate();
+  }
+
   template <class T>
   void ExpectValue(const std::map<GoogleString, T>& map,
                    const StringPiece& key, const T& expected_value) {
