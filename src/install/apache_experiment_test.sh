@@ -21,19 +21,11 @@ source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 EXAMPLE="$1/mod_pagespeed_example"
 EXTEND_CACHE="$EXAMPLE/extend_cache.html"
-EXAMPLE_FILE_DIR="$this_dir/mod_pagespeed_example"
-TEST_ROOT_FILE_DIR="$this_dir/mod_pagespeed_test"
 
 echo Testing whether or not the experiment framework is working.
-start_test mod_pagespeed_example must have a .htaccess file.
-check test -f $EXAMPLE_FILE_DIR/.htaccess
-
 start_test PageSpeedExperiment cookie is set.
 OUT=$($WGET_DUMP $EXTEND_CACHE)
 check_from "$OUT" fgrep "PageSpeedExperiment="
-
-start_test mod_pagespeed_test must not have a .htaccess file.
-check_not test -f $TEST_ROOT_FILE_DIR/.htaccess
 
 start_test PageSpeedFilters query param should disable experiments.
 OUT=$($WGET_DUMP '$EXTEND_CACHE?PageSpeed=on&PageSpeedFilters=rewrite_css')
