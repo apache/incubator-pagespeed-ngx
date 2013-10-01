@@ -109,14 +109,14 @@ See here: https://developers.google.com/speed/pagespeed/module/filter-canonicali
 To make this work with Nginx Pagespeed. Do the following on your web server. 
 
 ```bash
-bash scripts/google_hosted.sh > ~/hosted_js.conf 
-sudo cp ~/hosted_js.conf /etc/nginx/
+bash scripts/pagespeed_libraries_generator.sh > ~/pagespeed_libraries.conf 
+sudo cp ~/pagespeed_libraries.conf /etc/nginx/
 ```
 
 In the Nginx.conf file above, right after you say pagespeed on; add this
 
 ```nginx
-include hosted_js.conf;
+include pagespeed_libraries.conf;
 pagespeed EnableFilters canonicalize_javascript_libraries; 
 ``` 
 
