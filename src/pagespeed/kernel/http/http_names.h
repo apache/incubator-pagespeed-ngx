@@ -66,6 +66,7 @@ struct HttpAttributes {
   static const char kProxyAuthenticate[];
   static const char kProxyAuthorization[];
   static const char kPublic[];
+  static const char kPurpose[];
   static const char kReferer[];  // sic
   static const char kServer[];
   static const char kSetCookie[];

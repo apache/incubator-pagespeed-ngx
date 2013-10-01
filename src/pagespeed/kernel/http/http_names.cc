@@ -62,6 +62,7 @@ const char HttpAttributes::kPrivate[] = "private";
 const char HttpAttributes::kProxyAuthenticate[] = "Proxy-Authenticate";
 const char HttpAttributes::kProxyAuthorization[] = "Proxy-Authorization";
 const char HttpAttributes::kPublic[] = "public";
+const char HttpAttributes::kPurpose[] = "Purpose";
 const char HttpAttributes::kReferer[] = "Referer";  // sic
 const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie2[] = "Set-Cookie2";
