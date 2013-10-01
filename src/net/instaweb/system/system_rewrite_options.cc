@@ -104,11 +104,15 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty(false, &SystemRewriteOptions::statistics_logging_enabled_,
                     "asle", RewriteOptions::kStatisticsLoggingEnabled,
                     "Whether to log statistics if they're being collected.");
-  AddSystemProperty(1 * Timer::kMinuteMs,
+  AddSystemProperty(10 * Timer::kMinuteMs,
                     &SystemRewriteOptions::statistics_logging_interval_ms_,
                     "asli", RewriteOptions::kStatisticsLoggingIntervalMs,
                     "How often to log statistics, in milliseconds.");
-  AddSystemProperty(100 * 1024 /* 100 Megabytes */,
+  // 2 Weeks of data w/ 10 minute intervals.
+  // Takes about 0.1s to parse 1MB file for modpagespeed.com/pagespeed_console
+  // TODO(sligocki): Increase once we have a better method for reading
+  // historical data.
+  AddSystemProperty(1 * 1024 /* 1 Megabytes */,
                     &SystemRewriteOptions::statistics_logging_max_file_size_kb_,
                     "aslfs", RewriteOptions::kStatisticsLoggingMaxFileSizeKb,
                     "Max size for statistics logging file.");
