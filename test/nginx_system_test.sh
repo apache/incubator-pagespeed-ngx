@@ -178,7 +178,7 @@ check_not_simple grep @@ $PAGESPEED_CONF
 # start nginx with new config
 if $USE_VALGRIND; then
   echo "Run this command in another terminal and then press enter:"
-  echo "  valgrind $NGINX_EXECUTABLE -c $PAGESPEED_CONF"
+  echo "  valgrind --leak-check=full $NGINX_EXECUTABLE -c $PAGESPEED_CONF"
   read
 else
   TRACE_FILE="$TEST_TMP/conf_loading_trace"
