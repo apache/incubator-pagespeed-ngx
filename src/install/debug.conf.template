@@ -49,6 +49,9 @@ ModPagespeedRetainComment " google_ad_section*"
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
                            http://@@TEST_PROXY_ORIGIN@@/do_not_modify
 
+# Turn on "KeepAlive" so we can test it in system_test.sh.
+KeepAlive On
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch" >
   ModPagespeedDisableFilters inline_images
   ModPagespeedDomain https://@@TEST_PROXY_ORIGIN@@
