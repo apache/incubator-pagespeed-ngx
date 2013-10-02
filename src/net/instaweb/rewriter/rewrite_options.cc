@@ -1614,7 +1614,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::image_resolution_limit_bytes_,
       "irlb", kImageResolutionLimitBytes,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Maximum byte size of an image for optimization");
   AddBaseProperty(
       0, &RewriteOptions::rewrite_random_drop_percentage_, "rrdp",
       kRewriteRandomDropPercentage, kDirectoryScope,

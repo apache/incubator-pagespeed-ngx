@@ -1021,6 +1021,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImageLimitResizeAreaPercent 80
 #ALL_DIRECTIVES ModPagespeedImageMaxRewritesAtOnce 5
 #ALL_DIRECTIVES ModPagespeedImageRecompressionQuality 75
+#ALL_DIRECTIVES ModPagespeedImageResolutionLimitBytes 10000000
 #ALL_DIRECTIVES ModPagespeedImagePreserveURLs false
 #ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
 #ALL_DIRECTIVES ModPagespeedImplicitCacheTtlMs 60000
