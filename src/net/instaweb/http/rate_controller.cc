@@ -184,9 +184,17 @@ class RateController::CustomFetch : public SharedAsyncFetch {
       // Trigger a fetch for the queued up request.
       CustomFetch* wrapper_fetch = new CustomFetch(
           fetch_info_, deferred_fetch->fetch, controller_);
-      deferred_fetch->fetcher->Fetch(deferred_fetch->url,
-                                     deferred_fetch->handler,
-                                     wrapper_fetch);
+
+      if (controller_->is_shut_down()) {
+        deferred_fetch->handler->Message(
+            kWarning, "RateController: drop deferred fetch of %s on shutdown",
+            deferred_fetch->url.c_str());
+        wrapper_fetch->Done(false);
+      } else {
+        deferred_fetch->fetcher->Fetch(deferred_fetch->url,
+                                       deferred_fetch->handler,
+                                       wrapper_fetch);
+      }
       delete deferred_fetch;
     } else {
       controller_->DeleteFetchInfoIfPossible(fetch_info_);
@@ -229,6 +237,14 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
                            const GoogleString& url,
                            MessageHandler* message_handler,
                            AsyncFetch* fetch) {
+  if (is_shut_down()) {
+    message_handler->Message(
+        kWarning, "RateController: drop fetch of %s on shutdown",
+        url.c_str());
+    fetch->Done(false);
+    return;
+  }
+
   GoogleUrl gurl(url);
   GoogleString host;
   if (gurl.IsWebValid()) {

@@ -21,6 +21,7 @@
 
 #include <map>
 
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -63,6 +64,10 @@ class RateController {
 
   virtual ~RateController();
 
+  // Makes any further fetches quick-fail.
+  void ShutDown() { shutdown_.set_value(true); }
+  bool is_shut_down() const { return shutdown_.value(); }
+
   // Applies our shaping policies, and either (eventually) asks fetcher to
   // fetch the given URL or drops it.
   void Fetch(UrlAsyncFetcher* fetcher,
@@ -102,6 +107,8 @@ class RateController {
   // Using a variable here, since we want to be able to track this in the server
   // statistics.
   Variable* current_global_fetch_queue_size_;
+
+  AtomicBool shutdown_;
 
   DISALLOW_COPY_AND_ASSIGN(RateController);
 };

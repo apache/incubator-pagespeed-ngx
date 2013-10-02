@@ -50,8 +50,15 @@ void RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
 }
 
 void RateControllingUrlAsyncFetcher::ShutDown() {
-  // For now, we rely on the base fetcher shutdown to quickly reject everything
-  // we push to it.
+  // Note: shutting down the controller before the base fetcher serves to
+  // workaround a deadlock when base_fetcher_ is SerfUrlAsyncFetcher.
+  // The scenario there is that calls into RateController while holding a lock,
+  // which then calls Fetch, which tries to grab an another lock and deadlocks
+  // against SerfUrlAsyncFetcher::ShutDown, which grabs in the opposite order
+  // (the normal convention for the class). Shutting down the rate controller
+  // first means we will simply not be trying any more Serf fetches at point
+  // that happens before the Serf shutdown.
+  rate_controller_->ShutDown();
   base_fetcher_->ShutDown();
 }
 
