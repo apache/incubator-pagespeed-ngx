@@ -48,6 +48,14 @@ const char kRequestUrl[] = "http://www.example.com/";
 
 class CriticalSelectorFilterTest : public RewriteTestBase {
  protected:
+  virtual void SetUpBeforeSelectorsFilter() {
+    rewrite_driver()->AddFilters();
+  }
+
+  virtual void SetUpAfterSelectorsFilter() {
+    server_context()->ComputeSignature(options());
+  }
+
   virtual void SetUp() {
     RewriteTestBase::SetUp();
 
@@ -56,10 +64,10 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
 
     // Enable critical selector filter alone so that
     // testing isn't disrupted by beacon injection.
-    rewrite_driver()->AddFilters();
+    SetUpBeforeSelectorsFilter();
     filter_ = new CriticalSelectorFilter(rewrite_driver());
     rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
-    server_context()->ComputeSignature(options());
+    SetUpAfterSelectorsFilter();
     // Setup pcache.
     pcache_ = rewrite_driver()->server_context()->page_property_cache();
     const PropertyCache::Cohort* beacon_cohort =
@@ -635,6 +643,38 @@ TEST_F(CriticalSelectorWithCombinerFilterTest, ResolveWhenCombineAcrossPaths) {
                    css,
                    StrCat(critical_css,
                           LoadRestOfCss(CssLinkHref(combined_url))));
+}
+
+class CriticalSelectorWithInlineCssFilterTest
+    : public CriticalSelectorFilterTest {
+ protected:
+  virtual void SetUpBeforeSelectorsFilter() {}
+
+  // Add the inline css filter after the critical selector filter so
+  // it matches the order that is in RewriteDriver.
+  virtual void SetUpAfterSelectorsFilter() {
+    options()->EnableFilter(RewriteOptions::kInlineCss);
+    rewrite_driver()->AddFilters();
+  }
+};
+
+TEST_F(CriticalSelectorWithInlineCssFilterTest, AvoidTryingToInlineTwice) {
+  // Verify that the critical selector filter stops further processing of
+  // the rewrite contexts.
+  GoogleString css = StrCat(
+      CssLinkHref("a.css"),
+      CssLinkHref("b.css"));
+  GoogleString critical_css =
+      "<style>div,*::first-letter{display:block}</style>"  // from a.css
+      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString input_html = StrCat(
+      "<head>", css, "</head>"
+      "<body><div>Stuff</div></body>");
+  GoogleString expected_html = StrCat(
+      "<head>", critical_css, "</head>"
+      "<body><div>Stuff</div>", LoadRestOfCss(css), "</body>");
+  ValidateExpected("with_inline_css", input_html, expected_html);
 }
 
 }  // namespace

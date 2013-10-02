@@ -161,10 +161,11 @@ void CssSummarizerBase::Context::Render() {
   DCHECK_LE(0, pos_);
   DCHECK_LT(static_cast<size_t>(pos_), filter_->summaries_.size());
   SummaryInfo& summary_info = filter_->summaries_[pos_];
+  bool is_element_deleted = false;
   if (num_output_partitions() == 0) {
     // Failed at partition -> resource fetch failed or uncacheable.
     summary_info.state = kSummaryInputUnavailable;
-    filter_->WillNotRenderSummary(pos_, element_, text_);
+    filter_->WillNotRenderSummary(pos_, element_, text_, &is_element_deleted);
   } else {
     const CachedResult& result = *output_partition(0);
     // Transfer the summarization result from the metadata cache (where it was
@@ -180,18 +181,24 @@ void CssSummarizerBase::Context::Render() {
       if (summary_info.is_external) {
         summary_info.base = slot(0)->resource()->url();
       }
-      filter_->RenderSummary(pos_, element_, text_);
+      filter_->RenderSummary(pos_, element_, text_, &is_element_deleted);
     } else {
       summary_info.state = kSummaryCssParseError;
-      filter_->WillNotRenderSummary(pos_, element_, text_);
+      filter_->WillNotRenderSummary(pos_, element_, text_, &is_element_deleted);
     }
   }
-
+  if (is_element_deleted) {
+    slot(0)->set_disable_further_processing(true);
+  }
   ReportDone();
 }
 
 void CssSummarizerBase::Context::WillNotRender() {
-  filter_->WillNotRenderSummary(pos_, element_, text_);
+  bool is_element_deleted = false;
+  filter_->WillNotRenderSummary(pos_, element_, text_, &is_element_deleted);
+  if (is_element_deleted) {
+    slot(0)->set_disable_further_processing(true);
+  }
 }
 
 void CssSummarizerBase::Context::Cancel() {
@@ -272,11 +279,13 @@ void CssSummarizerBase::SummariesDone() {
 }
 
 void CssSummarizerBase::RenderSummary(
-    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node,
+    bool* is_element_deleted) {
 }
 
 void CssSummarizerBase::WillNotRenderSummary(
-    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node,
+    bool* is_element_deleted) {
 }
 
 void CssSummarizerBase::Clear() {
@@ -438,7 +447,9 @@ void CssSummarizerBase::StartExternalRewrite(
     const char* url = src->DecodedValueOrNull();
     summaries_.back().location = (url != NULL ? url : driver_->UrlLine());
 
-    WillNotRenderSummary(summaries_.size() - 1, link, NULL);
+    bool is_element_deleted = false;  // unused after call because no slot here
+    WillNotRenderSummary(summaries_.size() - 1, link, NULL /* char_node */,
+                         &is_element_deleted);
 
     // TODO(morlovich): Stat?
     if (DebugMode()) {

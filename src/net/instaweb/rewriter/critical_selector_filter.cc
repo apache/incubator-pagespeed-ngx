@@ -280,7 +280,8 @@ void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
 }
 
 void CriticalSelectorFilter::RenderSummary(
-    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node,
+    bool* is_element_deleted) {
   RememberFullCss(pos, element, char_node);
 
   const SummaryInfo& summary = GetSummaryForStyle(pos);
@@ -311,7 +312,7 @@ void CriticalSelectorFilter::RenderSummary(
     HtmlCharactersNode* content =
         driver_->NewCharactersNode(style_element, *css_to_use);
     driver_->AppendChild(style_element, content);
-    driver_->DeleteNode(element);
+    *is_element_deleted = driver_->DeleteNode(element);
     element = style_element;
   }
 
@@ -373,7 +374,8 @@ void CriticalSelectorFilter::RenderSummary(
 }
 
 void CriticalSelectorFilter::WillNotRenderSummary(
-    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node,
+    bool* is_element_deleted) {
   RememberFullCss(pos, element, char_node);
 }
 

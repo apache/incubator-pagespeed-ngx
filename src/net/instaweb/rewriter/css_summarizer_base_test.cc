@@ -84,7 +84,8 @@ class MinifyExcerptFilter : public CssSummarizerBase {
 
   virtual void RenderSummary(int pos,
                              HtmlElement* element,
-                             HtmlCharactersNode* char_node) {
+                             HtmlCharactersNode* char_node,
+                             bool* is_element_deleted) {
     if (!render_summaries_in_place_) {
       return;
     }
@@ -103,12 +104,14 @@ class MinifyExcerptFilter : public CssSummarizerBase {
           driver_->NewCharactersNode(style_element, summary.data);
       driver_->AppendChild(style_element, content);
       EXPECT_TRUE(driver_->DeleteNode(element));
+      *is_element_deleted = true;
     }
   }
 
   virtual void WillNotRenderSummary(int pos,
                                     HtmlElement* element,
-                                    HtmlCharactersNode* char_node) {
+                                    HtmlCharactersNode* char_node,
+                                    bool* is_element_deleted) {
     // Note that these should not normally mutate the DOM, we only
     // get away with this because the tests we use this in don't really do
     // any flushing.

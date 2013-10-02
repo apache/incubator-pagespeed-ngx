@@ -69,10 +69,12 @@ class CriticalSelectorFilter : public CssSummarizerBase {
                          GoogleString* out) const;
   virtual void RenderSummary(int pos,
                              HtmlElement* element,
-                             HtmlCharactersNode* char_node);
+                             HtmlCharactersNode* char_node,
+                             bool* is_element_deleted);
   virtual void WillNotRenderSummary(int pos,
                                     HtmlElement* element,
-                                    HtmlCharactersNode* char_node);
+                                    HtmlCharactersNode* char_node,
+                                    bool* is_element_deleted);
 
   // Since our computation depends on the selectors that are relevant to the
   // webpage, we incorporate them into the cache key as well.
