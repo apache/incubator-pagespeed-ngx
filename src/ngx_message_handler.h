@@ -54,6 +54,7 @@ class NgxMessageHandler : public GoogleMessageHandler {
   // Messages logged before that will be passed on to handler_;
   void set_buffer(SharedCircularBuffer* buff);
   void set_log(ngx_log_t* log) { log_ = log; }
+  ngx_log_t* log() { return log_; }
 
   void SetPidString(const int64 pid) {
     pid_string_ = StrCat("[", Integer64ToString(pid), "]");

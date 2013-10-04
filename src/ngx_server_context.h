@@ -21,6 +21,7 @@
 #ifndef NGX_SERVER_CONTEXT_H_
 #define NGX_SERVER_CONTEXT_H_
 
+#include "ngx_message_handler.h"
 #include "net/instaweb/system/public/system_server_context.h"
 
 extern "C" {
@@ -49,6 +50,10 @@ class NgxServerContext : public SystemServerContext {
 
   NgxRewriteDriverFactory* ngx_rewrite_driver_factory() { return ngx_factory_; }
   SystemRequestContext* NewRequestContext(ngx_http_request_t* r);
+
+  NgxMessageHandler* ngx_message_handler() {
+    return dynamic_cast<NgxMessageHandler*>(message_handler());
+  }
 
  private:
   NgxRewriteDriverFactory* ngx_factory_;
