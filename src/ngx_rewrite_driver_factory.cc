@@ -206,6 +206,7 @@ void NgxRewriteDriverFactory::StartThreads() {
 }
 
 void NgxRewriteDriverFactory::LoggingInit(ngx_log_t* log) {
+  net_instaweb::log_message_handler::Install(log);
   if (install_crash_handler_) {
     NgxMessageHandler::InstallCrashHandler(log);
   }
