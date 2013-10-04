@@ -1147,8 +1147,19 @@ void ps_connection_read_handler(ngx_event_t* ev) {
   ngx_http_finalize_request(r, ps_base_fetch_handler(r));
 }
 
-ngx_int_t ps_create_connection(ps_request_ctx_t* ctx, int pipe_fd) {
-  ngx_connection_t* c = ngx_get_connection(pipe_fd, ctx->r->connection->log);
+ngx_int_t ps_create_connection(
+    ps_request_ctx_t* ctx, NgxServerContext* server_context, int pipe_fd) {
+  // We have to use the server_context's log (which is the server context's
+  // ngx_http_core_loc_conf_t->error_log) and not the request's log because
+  // this connection can outlast the request by a little while.
+  ngx_log_t* server_context_log = server_context->ngx_message_handler()->log();
+  if (server_context_log == NULL) {
+    ngx_log_debug0(NGX_LOG_INFO, ctx->r->connection->log, 0,
+                   "ps_create_connection failed to get server context log");
+    return NGX_ERROR;
+  }
+
+  ngx_connection_t* c = ngx_get_connection(pipe_fd, server_context_log);
   if (c == NULL) {
     return NGX_ERROR;
   }
@@ -1427,7 +1438,7 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx) {
     return NGX_ERROR;
   }
 
-  rc = ps_create_connection(ctx, file_descriptors[0]);
+  rc = ps_create_connection(ctx, cfg_s->server_context, file_descriptors[0]);
   if (rc != NGX_OK) {
     close(file_descriptors[0]);
     close(file_descriptors[1]);
