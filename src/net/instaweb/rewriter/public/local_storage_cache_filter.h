@@ -136,6 +136,9 @@ class LocalStorageCacheFilter : public RewriteFilter {
                              const StringPiece hash,
                              std::set<StringPiece>* hash_set);
   static GoogleString ExtractOtherImgAttributes(const HtmlElement* element);
+  static GoogleString GenerateHashFromUrlAndElement(const RewriteDriver* driver,
+                                                    const StringPiece& lsc_url,
+                                                    const HtmlElement* element);
 
   // Have we inserted the script of utility functions?
   bool script_inserted_;

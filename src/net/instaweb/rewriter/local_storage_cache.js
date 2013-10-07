@@ -107,9 +107,11 @@ pagespeed.LocalStorageCache.prototype['inlineCss'] =
 /**
  * Inline the IMG with the given URL.
  * @param {string} url is the URL of the image to inline.
+ * @param {string} hash is the hash of the image to inline.
  */
-pagespeed.LocalStorageCache.prototype.inlineImg = function(url) {
-  var obj = window.localStorage.getItem('pagespeed_lsc_url:' + url);
+pagespeed.LocalStorageCache.prototype.inlineImg = function(url, hash) {
+  var obj = window.localStorage.getItem('pagespeed_lsc_url:' + url + ' ' +
+                                        'pagespeed_lsc_hash:' + hash);
   var newNode = document.createElement('img');
   if (obj && !this.hasExpired(obj)) {
     newNode.src = this.getData(obj);
@@ -118,7 +120,7 @@ pagespeed.LocalStorageCache.prototype.inlineImg = function(url) {
     this.regenerate_cookie_ = true;
   }
   // Copy over any other original attributes.
-  for (var i = 1, n = arguments.length; i < n; ++i) {
+  for (var i = 2, n = arguments.length; i < n; ++i) {
     var pos = arguments[i].indexOf('=');
     newNode.setAttribute(arguments[i].substring(0, pos),
                          arguments[i].substring(pos + 1));
@@ -130,15 +132,17 @@ pagespeed.LocalStorageCache.prototype['inlineImg'] =
     pagespeed.LocalStorageCache.prototype.inlineImg;
 
 /**
- * For each element of the given tag name, check if it has a pagespeed_lsc_hash
- * attribute and if so saves the element's hash, expiry, and data local storage.
- * If any elements are saved regenerate_cookie_ is set to true to force
- * regeneration.
+ * For each element of the given tag name, check if it has pagespeed_lsc_url
+ * and pagespeed_lsc_hash attributes and, if so, save the element's hash,
+ * expiry, and data in local storage. regenerate_cookie_ is set to true if
+ * any elements are saved, which later triggers regeneration of the cookie.
  * @param {string} tagName Tag Name of elements to process.
+ * @param {boolean} isHashInKey True iff the hash is part of the lookup key.
  * @param {function ({Element})} dataFunc Function to get an element's data.
  * @private
  */
 pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
+                                                              isHashInKey,
                                                               dataFunc) {
   var elements = document.getElementsByTagName(tagName);
   for (var i = 0, n = elements.length; i < n; ++i) {
@@ -147,6 +151,9 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
     var url = element.getAttribute('pagespeed_lsc_url');
     if (hash && url) {
       var urlkey = 'pagespeed_lsc_url:' + url;
+      if (isHashInKey) {
+        urlkey += ' pagespeed_lsc_hash:' + hash;
+      }
       var expiry = element.getAttribute('pagespeed_lsc_expiry');
       var millis = (expiry ? (new Date(expiry)).getTime() : '');
       var data = dataFunc(element);
@@ -171,8 +178,9 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
  * @private
  */
 pagespeed.LocalStorageCache.prototype.saveInlinedData_ = function() {
-  this.processTags_('img', function(e) { return e.src; });
-  this.processTags_('style',
+  this.processTags_('img', true /* isHashInKey */,
+                    function(e) { return e.src; });
+  this.processTags_('style', false /* isHashInKey */,
                     function(e) {
                       return (e.firstChild ? e.firstChild.nodeValue : null);
                     });

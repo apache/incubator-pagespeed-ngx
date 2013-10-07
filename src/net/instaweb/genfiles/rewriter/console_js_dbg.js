@@ -1384,7 +1384,7 @@ goog.math.sum = function(var_args) {
 goog.math.average = function(var_args) {
   return goog.math.sum.apply(null, arguments) / arguments.length
 };
-goog.math.standardDeviation = function(var_args) {
+goog.math.sampleVariance = function(var_args) {
   var sampleSize = arguments.length;
   if(2 > sampleSize) {
     return 0
@@ -1392,7 +1392,10 @@ goog.math.standardDeviation = function(var_args) {
   var mean = goog.math.average.apply(null, arguments), variance = goog.math.sum.apply(null, goog.array.map(arguments, function(val) {
     return Math.pow(val - mean, 2)
   })) / (sampleSize - 1);
-  return Math.sqrt(variance)
+  return variance
+};
+goog.math.standardDeviation = function(var_args) {
+  return Math.sqrt(goog.math.sampleVariance.apply(null, arguments))
 };
 goog.math.isInt = function(num) {
   return isFinite(num) && 0 == num % 1
@@ -1603,39 +1606,10 @@ goog.iter.toArray = function(iterable) {
   return array
 };
 goog.iter.equals = function(iterable1, iterable2) {
-  iterable1 = goog.iter.toIterator(iterable1);
-  iterable2 = goog.iter.toIterator(iterable2);
-  var b1, b2;
-  try {
-    for(;;) {
-      b1 = b2 = !1;
-      var val1 = iterable1.next();
-      b1 = !0;
-      var val2 = iterable2.next();
-      b2 = !0;
-      if(val1 != val2) {
-        break
-      }
-    }
-  }catch(ex) {
-    if(ex !== goog.iter.StopIteration) {
-      throw ex;
-    }
-    if(b1 && !b2) {
-      return!1
-    }
-    if(!b2) {
-      try {
-        iterable2.next()
-      }catch(ex1) {
-        if(ex1 !== goog.iter.StopIteration) {
-          throw ex1;
-        }
-        return!0
-      }
-    }
-  }
-  return!1
+  var fillValue = {}, pairs = goog.iter.zipLongest(fillValue, iterable1, iterable2);
+  return goog.iter.every(pairs, function(pair) {
+    return pair[0] == pair[1]
+  })
 };
 goog.iter.nextOrValue = function(iterable, defaultValue) {
   try {
@@ -1844,19 +1818,32 @@ goog.iter.hasDuplicates_ = function(arr) {
   return arr.length != deduped.length
 };
 goog.iter.permutations = function(iterable, opt_length) {
-  var pool = goog.iter.toArray(iterable), length = goog.isNumber(opt_length) ? opt_length : pool.length, sets = goog.array.repeat(pool, length), product = goog.iter.product.apply(void 0, sets);
+  var elements = goog.iter.toArray(iterable), length = goog.isNumber(opt_length) ? opt_length : elements.length, sets = goog.array.repeat(elements, length), product = goog.iter.product.apply(void 0, sets);
   return goog.iter.filter(product, function(arr) {
     return!goog.iter.hasDuplicates_(arr)
   })
 };
 goog.iter.combinations = function(iterable, length) {
-  var pool = goog.iter.toArray(iterable), indexes = goog.iter.range(pool.length), indexIterator = goog.iter.permutations(indexes, length), sortedIndexIterator = goog.iter.filter(indexIterator, function(arr) {
+  function getIndexFromElements(index) {
+    return elements[index]
+  }
+  var elements = goog.iter.toArray(iterable), indexes = goog.iter.range(elements.length), indexIterator = goog.iter.permutations(indexes, length), sortedIndexIterator = goog.iter.filter(indexIterator, function(arr) {
     return goog.array.isSorted(arr)
   }), iter = new goog.iter.Iterator;
   iter.next = function() {
-    return goog.array.map(sortedIndexIterator.next(), function(i) {
-      return pool[i]
-    })
+    return goog.array.map(sortedIndexIterator.next(), getIndexFromElements)
+  };
+  return iter
+};
+goog.iter.combinationsWithReplacement = function(iterable, length) {
+  function getIndexFromElements(index) {
+    return elements[index]
+  }
+  var elements = goog.iter.toArray(iterable), indexes = goog.array.range(elements.length), sets = goog.array.repeat(indexes, length), indexIterator = goog.iter.product.apply(void 0, sets), sortedIndexIterator = goog.iter.filter(indexIterator, function(arr) {
+    return goog.array.isSorted(arr)
+  }), iter = new goog.iter.Iterator;
+  iter.next = function() {
+    return goog.array.map(sortedIndexIterator.next(), getIndexFromElements)
   };
   return iter
 };

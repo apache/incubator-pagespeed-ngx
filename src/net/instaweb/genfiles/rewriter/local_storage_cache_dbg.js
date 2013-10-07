@@ -76,21 +76,23 @@ pagespeed.LocalStorageCache.prototype.inlineCss = function(url) {
   this.replaceLastScript(newNode)
 };
 pagespeed.LocalStorageCache.prototype.inlineCss = pagespeed.LocalStorageCache.prototype.inlineCss;
-pagespeed.LocalStorageCache.prototype.inlineImg = function(url) {
-  var obj = window.localStorage.getItem("pagespeed_lsc_url:" + url), newNode = document.createElement("img");
+pagespeed.LocalStorageCache.prototype.inlineImg = function(url, hash) {
+  var obj = window.localStorage.getItem("pagespeed_lsc_url:" + url + " pagespeed_lsc_hash:" + hash), newNode = document.createElement("img");
   obj && !this.hasExpired(obj) ? newNode.src = this.getData(obj) : (newNode.src = url, this.regenerate_cookie_ = !0);
-  for(var i = 1, n = arguments.length;i < n;++i) {
+  for(var i = 2, n = arguments.length;i < n;++i) {
     var pos = arguments[i].indexOf("=");
     newNode.setAttribute(arguments[i].substring(0, pos), arguments[i].substring(pos + 1))
   }
   this.replaceLastScript(newNode)
 };
 pagespeed.LocalStorageCache.prototype.inlineImg = pagespeed.LocalStorageCache.prototype.inlineImg;
-pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName, dataFunc) {
+pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName, isHashInKey, dataFunc) {
   for(var elements = document.getElementsByTagName(tagName), i = 0, n = elements.length;i < n;++i) {
     var element = elements[i], hash = element.getAttribute("pagespeed_lsc_hash"), url = element.getAttribute("pagespeed_lsc_url");
     if(hash && url) {
-      var urlkey = "pagespeed_lsc_url:" + url, expiry = element.getAttribute("pagespeed_lsc_expiry"), millis = expiry ? (new Date(expiry)).getTime() : "", data = dataFunc(element);
+      var urlkey = "pagespeed_lsc_url:" + url;
+      isHashInKey && (urlkey += " pagespeed_lsc_hash:" + hash);
+      var expiry = element.getAttribute("pagespeed_lsc_expiry"), millis = expiry ? (new Date(expiry)).getTime() : "", data = dataFunc(element);
       if(!data) {
         var obj = window.localStorage.getItem(urlkey);
         obj && (data = this.getData(obj))
@@ -100,10 +102,10 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName, dataFunc)
   }
 };
 pagespeed.LocalStorageCache.prototype.saveInlinedData_ = function() {
-  this.processTags_("img", function(e) {
+  this.processTags_("img", !0, function(e) {
     return e.src
   });
-  this.processTags_("style", function(e) {
+  this.processTags_("style", !1, function(e) {
     return e.firstChild ? e.firstChild.nodeValue : null
   })
 };

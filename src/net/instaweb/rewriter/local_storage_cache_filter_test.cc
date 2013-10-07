@@ -81,6 +81,30 @@ const char kCuppaPngInlineData[] =
     "Mao2yafwOt6A05wAv+DYCuJsZMMIUOHjwov5cq4DSL5hwoAPZy67/86LDKzMzElV8T5ejV3H"
     "KA9+vXr9MbvQ50qrNnz57RYTmyevPO19bWRo/HmjTwXYs/Q2o2GaWaNxxGCTAGJq070BjgcB"
     "MiwMFN73nXNjAO3vWlG0+BcXDTe961DYyDd33pxtN/Wk9wIrGXNoUAAAAASUVORK5CYII=";
+const char kCuppaPng30sqInlineData[] =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAAAAAAeW/F+AAABLU"
+    "lEQVQoz2P4jxcwUEv6z4H//99u+/7/1U2s0pv0//+tMP74vzUbm/Qvm6D/TyRj/v3XzsIm/U"
+    "iy+P8Zxtz/f1nzsUl/VdH/91xe681/G9U32OyOYbz0N4tx+f/FzIuxSc9m7Pm/nSHx3wOGYm"
+    "zScxnn/N/M0PR/O+sqbNIJUh/+psjf/x/o8R2L9De19f9faK//f0fmHjaX/5vy4//z5t//7y"
+    "3ECNTXxyDg6CEQAcTHPyBLr2FAB72rTv2ES+/DkFZ3NCz4DZO+hCF94fd1jRsw6W8saLIyH/"
+    "+/MbsEd7kmmrTfr38bTN7DpQvRpCf+WyYzG+HvSxyo0k56egv/IaT/1DAiSXKlrjv1HSXUPq"
+    "Uxw2XZp/zGCNR/m+WhsvpbsCbFi7Mg4BUtsgEZ0gD3t6kusa+ehQAAAABJRU5ErkJggg==";
+const char kCuppaPng150sqInlineData[] =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEEAAABGCAAAAAC2maYhAAACyU"
+    "lEQVRYw+3XXWjVdRzH8ffZXE5wK4T0SnFCzJYXSlghofiADwQmEyy6G01KSBEKDNMlgXMYyI"
+    "aRj3SRESlOnIweoDJR1FLQkEQsrTnFqQg+rrkdz7uLc86F+j/n/H4EQbjvze/m/3vx//8ePl"
+    "/++G+LQeFxED7vyI4dH3Wq2tWSjhOOMVvVsxW8r2oTh6OEzIvUq7oAvlDNjGN9lLAP3lM9nY"
+    "KTqj/BO1HCy/CZ6mKoSqu+BR/GCL8DZ9RMNcxU9XlojxH2QLXqH0CDaroSDsUIrVB+V+0Cpq"
+    "r2lcMnMUIn8L3qaBh6VbUOpsQI3cBi1TeAZtVV5DYldC9GwIh+9RtgzH21qwzejhEWAd9mDx"
+    "J0qs6FqtsRQgfQqLoSeFX1K+DLCOEiMFr1F+DJ/NKsiLkXwyD1t3oL4JJ6G1gWczfHAldVn4"
+    "Bh93IvszPmHSqhRvU8MEN1G5RfjhD+ApbnF3BD7q4tjdnNjTD0ouo8qLunnoBRN2KEabBS9c"
+    "8UqYOqDbAj5lRfKaO2T/XT3EnsqmB+VNKegt2q1lN7J/tVT/dECTeZlFF1PD+rup6tkWn/Qi"
+    "5O5r2SHXc92x8pDORDvzs79nb/Vz1r+wcBtfpYEWE6IbWuiDA/SGje39qy5Vqy0EBwVTf3Jg"
+    "nvBgPlMD1JWBs0e8mPZ65nGuFogrApSDiiOlDDwgRhdwhQdlfV1UxMEH4LEWqzz37M5AShvy"
+    "JAeD37bFu+Cz54qp8LEFryGfRmkvBa6EJ6EA4kCetKA0+lVS/XUZNJEs6WFupVLzwDm5Nv9+"
+    "SSwibtaxsJSwrkQ2tJ4bv2pjHAnIECQs+QoGM5YUe6YEY1lZxdNbFhf7GUG3ip6PSpe3tK5u"
+    "S5qiJXoi0oafdWFhQ2BGb10bGFgiE47W81Jn7CmvsR/aJ9+CPArF/jOs7XqYeA5dE96/gPD1"
+    "bv4P/moPC/Ef4BwgJ0BoZbWwQAAAAASUVORK5CYII=";
 
 class LocalStorageCacheTest : public RewriteTestBase,
                               public ::testing::WithParamInterface<bool> {
@@ -348,7 +372,7 @@ TEST_F(LocalStorageCacheTest, RepeatViews) {
   GoogleString scripted_img = StrCat("<script pagespeed_no_defer>"
                                      "pagespeed.localStorageCache.inlineImg("
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
-                                     ");</script>");
+                                     ", \"du_OhARrJl\");</script>");
   TestLocalStorage("third_view",
                    css, InsertScriptBefore(scripted_css),
                    img, scripted_img);
@@ -430,6 +454,7 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
   GoogleString scripted_img = StrCat("<script pagespeed_no_defer>"
                                      "pagespeed.localStorageCache.inlineImg("
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
+                                     ", \"du_OhARrJl\""
                                      ", \"alt=A cup of joe\""
                                      ", \"alt=A cup of joe\""
                                      ", \"alt=A cup of joe\\'s \\\"joe\\\"\""
@@ -438,6 +463,102 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
   TestLocalStorage("third_view",
                    css, InsertScriptBefore(scripted_css),
                    img, scripted_img);
+}
+
+TEST_F(LocalStorageCacheTest, RepeatViewsOfSameImageAtDifferentSizes) {
+  // Enable "rewrite_images" so that the first instance of the image is
+  // rescaled.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToProgressive);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kJpegSubsampling);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kRecompressWebp);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kStripImageColorProfile);
+  options()->EnableFilter(RewriteOptions::kStripImageMetaData);
+  server_context()->ComputeSignature(options());
+
+  UseMd5Hasher();
+  const char kHash30x30[] = "07FPv8sBor";
+  const char kHash150x150[] = "jSr1gEyima";
+
+  GoogleString imgs = StrCat("<img src='", kCuppaPngFilename, "'"
+                             "width=\"30\" height=\"30\">"
+                             "<img src='", kCuppaPngFilename, "'"
+                             "width=\"150\" height=\"150\">");
+
+  // First view shouldn't rewrite anything though lsc_url attributes are added.
+  // Don't rewrite because in the real world the fetch and processing of the
+  // resource could take longer than the rewriting timeout, and we want to
+  // simulate that here. We redo it below with the rewriting completing in time.
+  GoogleString external_imgs =
+      StrCat(StrCat("<img src='", kCuppaPngFilename, "'"
+                    " width=\"30\" height=\"30\""
+                    " pagespeed_lsc_url=""\"",
+                    kTestDomain, kCuppaPngFilename, "\">"),
+             StrCat("<img src='", kCuppaPngFilename, "'"
+                    " width=\"150\" height=\"150\""
+                    " pagespeed_lsc_url=\"",
+                    kTestDomain, kCuppaPngFilename, "\">"));
+
+  SetupWaitFetcher();
+  TestLocalStorage("first_view", "", "",
+                   imgs, InsertScriptBefore(external_imgs));
+  CallFetcherCallbacks();
+
+  // Second view will inline them and add an expiry.
+  GoogleString inlined_imgs =
+      StrCat(StrCat("<img src='", kCuppaPng30sqInlineData, "'"
+                    // This is dropped; see below for why.
+                    // " width=\"30\" height=\"30\""
+                    " pagespeed_lsc_url=\"",
+                    kTestDomain, kCuppaPngFilename, "\""
+                    " pagespeed_lsc_hash=\"", kHash30x30, "\""
+                    " pagespeed_lsc_expiry="
+                    "\"Tue, 02 Feb 2010 18:53:06 GMT\">"),
+             StrCat("<img src='", kCuppaPng150sqInlineData, "'"
+                    " width=\"150\" height=\"150\""
+                    " pagespeed_lsc_url=\"",
+                    kTestDomain, kCuppaPngFilename, "\""
+                    " pagespeed_lsc_hash=\"", kHash150x150, "\""
+                    " pagespeed_lsc_expiry="
+                    "\"Tue, 02 Feb 2010 18:53:06 GMT\">"));
+  // NOTE: Why are width=30 and height=30 dropped from the first img tag?
+  // Because the image rewriter calls DeleteMatchingImageDimsAfterInline for
+  // each inlined image, and at this point the cached version of Cuppa.png is
+  // the 30x30 version, so the attributes are stripped, but the 150x150 version
+  // is different so its attributes are kept.
+  // TODO(matterbury): Work out if the image rewriter needs to be smarter about
+  // cached versions on inline images in this situation: same image, inlined
+  // at different resolutions.
+  TestLocalStorage("second_view", "", "",
+                   imgs, InsertScriptBefore(inlined_imgs));
+
+  // The JavaScript would set this cookie for the next request.
+  GoogleString cookie = StrCat(LocalStorageCacheFilter::kLscCookieName,
+                               "=", kHash30x30, "!", kHash150x150);
+  request_headers_.Add(HttpAttributes::kCookie, cookie);
+
+  // Third view will not send the inlined data and will send scripts in place
+  // of the link and img elements.
+  GoogleString scripted_imgs =
+      StrCat(StrCat("<script pagespeed_no_defer>"
+                    "pagespeed.localStorageCache.inlineImg("
+                    "\"", kTestDomain, kCuppaPngFilename,
+                    "\", \"", kHash30x30, "\""
+                    ", \"width=30\", \"height=30\""
+                    ");</script>"),
+             StrCat("<script pagespeed_no_defer>"
+                    "pagespeed.localStorageCache.inlineImg("
+                    "\"", kTestDomain, kCuppaPngFilename,
+                    "\", \"", kHash150x150, "\""
+                    ", \"width=150\", \"height=150\""
+                    ");</script>"));
+  TestLocalStorage("third_view", "", "",
+                   imgs, InsertScriptBefore(scripted_imgs));
 }
 
 }  // namespace

@@ -1327,10 +1327,12 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         << "Modifying a URL slot despite "
         << "image_inlining_identify_and_cache_without_rewriting set.";
     src->SetValue(data_url);
-    DeleteMatchingImageDimsAfterInline(cached, element);
     // Note the use of the ORIGINAL url not the data url.
     LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
                                               driver_, element);
+    // AddLscAttributes uses the width and height attributes so must be called
+    // before we delete them with:
+    DeleteMatchingImageDimsAfterInline(cached, element);
     image_inline_count_->Add(1);
     rewrote_url = true;
     image_inlined = true;
