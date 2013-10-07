@@ -98,8 +98,6 @@ namespace net_instaweb {
 namespace log_message_handler {
 
 
-const int kDebugLogLevel = -2;
-
 void Install(ngx_log_t* log_in) {
   log = log_in;
   logging::SetLogMessageHandler(&LogMessageHandler);
