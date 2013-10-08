@@ -798,7 +798,6 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   Image::CompressionOptions* image_options =
       ImageOptionsForLoadedResource(resource_context, input_resource,
                                     rewrite_context->is_css_);
-  image_options->use_image_scanline_api = options->use_image_scanline_api();
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
                server_context_->filename_prefix(), image_options,
@@ -975,7 +974,6 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->retain_color_sampling = false;
       image_options->jpeg_num_progressive_scans =
           options->image_jpeg_num_progressive_scans();
-      image_options->use_image_scanline_api = options->use_image_scanline_api();
 
       scoped_ptr<Image> low_image;
       if (driver_->options()->use_blank_image_for_inline_preview()) {
@@ -1075,8 +1073,6 @@ void ImageRewriteFilter::ResizeLowQualityImage(
         options->Enabled(RewriteOptions::kRecompressPng);
     image_options->recompress_webp =
         options->Enabled(RewriteOptions::kRecompressWebp);
-    image_options->use_image_scanline_api =
-        driver()->options()->use_image_scanline_api();
     scoped_ptr<Image> image(
         NewImage(low_image->Contents(), input_resource->url(),
                  server_context_->filename_prefix(), image_options,

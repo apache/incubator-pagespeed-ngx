@@ -46,6 +46,12 @@ using pagespeed::image_compression::PngReader;
 using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::ReadTestFile;
+using pagespeed::image_compression::kMessagePatternLibpngError;
+using pagespeed::image_compression::kMessagePatternLibpngWarning;
+using pagespeed::image_compression::kMessagePatternPixelFormat;
+using pagespeed::image_compression::kMessagePatternStats;
+using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
+using pagespeed::image_compression::kMessagePatternWritingToWebp;
 
 struct ImageCompressionInfo {
   const char* filename;
@@ -255,6 +261,16 @@ class ImageConverterTest : public testing::Test {
  public:
   ImageConverterTest()
     : message_handler_(new NullMutex) {
+  }
+
+ protected:
+  virtual void SetUp() {
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngError);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngWarning);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternPixelFormat);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternStats);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternWritingToWebp);
   }
 
  protected:

@@ -31,7 +31,7 @@ ImageSpriter::ImageSpriter(ImageLibraryInterface* image_lib)
     : image_lib_(image_lib) {}
 
 SpriterResult* ImageSpriter::Sprite(
-    const SpriterInput& spriter_input, bool use_image_scanline_api) {
+    const SpriterInput& spriter_input) {
   scoped_ptr<SpriterResult> spriter_result(new SpriterResult);
 
   spriter_result->set_id(spriter_input.id());
@@ -41,8 +41,7 @@ SpriterResult* ImageSpriter::Sprite(
       spriter_input.options().output_image_path());
   switch (spriter_input.options().placement_method()) {
     case VERTICAL_STRIP: {
-      if (!DrawImagesInVerticalStrip(spriter_input, spriter_result.get(),
-                                     use_image_scanline_api))
+      if (!DrawImagesInVerticalStrip(spriter_input, spriter_result.get()))
         return NULL;
     } break;
 
@@ -57,8 +56,7 @@ SpriterResult* ImageSpriter::Sprite(
 
 bool ImageSpriter::DrawImagesInVerticalStrip(
     const SpriterInput& spriter_input,
-    SpriterResult* spriter_result,
-    bool use_image_scanline_api) {
+    SpriterResult* spriter_result) {
   typedef std::vector<ImageLibraryInterface::Image*> ImagePointerVector;
   ImagePointerVector images;
   STLElementDeleter<ImagePointerVector> images_deleter(&images);
@@ -95,8 +93,7 @@ bool ImageSpriter::DrawImagesInVerticalStrip(
 
   // Write all images into a canvas, and write the canvas to a file.
   scoped_ptr<ImageLibraryInterface::Canvas> canvas(
-      image_lib_->CreateCanvas(max_image_width, total_y_offset,
-      use_image_scanline_api));
+      image_lib_->CreateCanvas(max_image_width, total_y_offset));
   if (!canvas.get())
     return false;
 

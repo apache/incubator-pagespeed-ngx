@@ -75,7 +75,7 @@ TEST_F(ImageOomTest, BlankImageTooLarge) {
   // Make sure creating gigantic image fails cleanly.
   ImagePtr giant(BlankImageWithOptions(10000000, 10000, IMAGE_PNG,
                                        GTestTempDir(), &timer_,
-                                       &handler_, options));
+                                       &message_handler_, options));
   EXPECT_EQ(NULL, giant.get());
 }
 
@@ -87,7 +87,7 @@ TEST_F(ImageOomTest, BlankImageNotTooLarge) {
   Image::CompressionOptions* options = new Image::CompressionOptions();
   ImagePtr not_too_large(BlankImageWithOptions(100000, 10000, IMAGE_PNG,
                                                GTestTempDir(), &timer_,
-                                               &handler_, options));
+                                               &message_handler_, options));
   // Image of this size can be created.
   EXPECT_NE(static_cast<net_instaweb::Image*>(NULL), not_too_large.get());
 }

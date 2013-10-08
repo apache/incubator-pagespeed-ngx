@@ -40,31 +40,32 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
-#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/image/jpeg_optimizer_test_helper.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
+#include "pagespeed/kernel/image/test_utils.h"
 
-using net_instaweb::MockMessageHandler;
-using net_instaweb::NullMutex;
-using pagespeed::image_compression::JpegUtils;
-using pagespeed_testing::image_compression::GetNumScansInJpeg;
-using pagespeed_testing::image_compression::IsJpegSegmentPresent;
 using pagespeed_testing::image_compression::GetColorProfileMarker;
 using pagespeed_testing::image_compression::GetExifDataMarker;
 using pagespeed_testing::image_compression::GetJpegNumComponentsAndSamplingFactors;
+using pagespeed_testing::image_compression::GetNumScansInJpeg;
+using pagespeed_testing::image_compression::IsJpegSegmentPresent;
+using pagespeed::image_compression::JpegUtils;
+using pagespeed::image_compression::kMessagePatternAnimatedGif;
+using pagespeed::image_compression::kMessagePatternPixelFormat;
+using pagespeed::image_compression::kMessagePatternStats;
+using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
+using pagespeed::image_compression::kMessagePatternWritingToWebp;
 
+namespace net_instaweb {
 namespace {
 
 const char kProgressiveHeader[] = "\xFF\xC2";
 const int kProgressiveHeaderStartIndex = 158;
 const char kMessagePatternDataTruncated[] = "*data truncated*";
 const char kMessagePatternFailedToCreateWebp[] = "*Failed to create webp*";
+const char kMessagePatternFailedToEncodeWebp[] = "Could not encode webp data*";
 const char kMessagePatternNoWebpDimension[] = "*Couldn't find * dimensions*";
 const char kMessagePatternTimedOut[] = "*conversion timed out*";
-
-}  // namespace
-
-namespace net_instaweb {
 
 class ConversionVarChecker {
  public:
@@ -206,14 +207,30 @@ class ConversionVarChecker {
   Image::ConversionVariables webp_conversion_variables_;
 };
 
+}  // namespace
+
 class ImageTest : public ImageTestBase {
  public:
   ImageTest() :
-      options_(new Image::CompressionOptions()),
-      message_handler_(new NullMutex) {
-}
+      options_(new Image::CompressionOptions()) {
+  }
 
  protected:
+  virtual void SetUp() {
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternAnimatedGif);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternDataTruncated);
+    message_handler_.AddPatternToSkipPrinting(
+        kMessagePatternFailedToCreateWebp);
+    message_handler_.AddPatternToSkipPrinting(
+        kMessagePatternFailedToEncodeWebp);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternNoWebpDimension);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternPixelFormat);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternStats);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternTimedOut);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternWritingToWebp);
+  }
+
   GoogleString* GetOutputContents(Image* image) {
     return &(image->output_contents_);
   }
@@ -350,8 +367,6 @@ class ImageTest : public ImageTestBase {
 
     // Now truncate the file in various ways and make sure we still
     // get partial data.
-    handler_.AddPatternToSkipPrinting(kMessagePatternDataTruncated);
-    handler_.AddPatternToSkipPrinting(kMessagePatternNoWebpDimension);
     GoogleString dim_data(contents, 0, min_bytes_to_dimensions);
     ImagePtr dim_image(
         ImageFromString(intended_output_type, filename, dim_data, progressive));
@@ -387,7 +402,7 @@ class ImageTest : public ImageTestBase {
                               GoogleString* url) {
     ResourceContext context;
     StringVector urls;
-    bool result = encoder_.Decode(encoded, &urls, &context, &handler_);
+    bool result = encoder_.Decode(encoded, &urls, &context, &message_handler_);
     if (result) {
       EXPECT_EQ(1, urls.size());
       url->assign(urls.back());
@@ -410,11 +425,12 @@ class ImageTest : public ImageTestBase {
 
   ImageUrlEncoder encoder_;
   scoped_ptr<Image::CompressionOptions> options_;
-  MockMessageHandler message_handler_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ImageTest);
 };
+
+namespace {
 
 TEST_F(ImageTest, EmptyImageUnidentified) {
   CheckInvalid("Empty string", "", IMAGE_UNKNOWN, IMAGE_UNKNOWN,
@@ -688,7 +704,6 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
                               0, 0, 0,   // jpeg
                               false);
 
-  handler_.AddPatternToSkipPrinting(kMessagePatternTimedOut);
   GoogleString buffer;
   ImagePtr image(ReadFromFileWithOptions(kRedbrush, &buffer, options));
   timer_.SetTimeDeltaUs(1);  // When setting deadline
@@ -925,7 +940,7 @@ TEST_F(ImageTest, UseJpegLossyIfInputQualityIsLowTest) {
   SetJpegRecompressionAndQuality(options);
   options->progressive_jpeg = true;
   image.reset(NewImage("", "", GTestTempDir(), options,
-                       &timer_, &handler_));
+                       &timer_, &message_handler_));
   EXPECT_EQ(
       -1, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
                                               image->Contents().size(),
@@ -1047,8 +1062,6 @@ TEST_F(ImageTest, JpegToWebpTimesOutTest) {
                               0, 0, 0,   // jpeg
                               true);
 
-  handler_.AddPatternToSkipPrinting(kMessagePatternFailedToCreateWebp);
-  handler_.AddPatternToSkipPrinting(kMessagePatternTimedOut);
   GoogleString buffer;
   ImagePtr image(ReadFromFileWithOptions(kPuzzle, &buffer, options));
   image->output_size();
@@ -1083,7 +1096,6 @@ TEST_F(ImageTest, JpegToWebpDoesNotTimeOutTest) {
                               0, 0, 0,   // jpeg
                               true);
 
-  handler_.AddPatternToSkipPrinting(kMessagePatternTimedOut);
   GoogleString buffer;
   ImagePtr image(ReadFromFileWithOptions(kPuzzle, &buffer, options));
   image->output_size();
@@ -1140,7 +1152,7 @@ TEST_F(ImageTest, DrawImage) {
   options->recompress_png = true;
   ImagePtr canvas(BlankImageWithOptions(width, height, IMAGE_PNG,
                                         GTestTempDir(), &timer_,
-                                        &handler_, options));
+                                        &message_handler_, options));
   EXPECT_TRUE(canvas->DrawImage(image1.get(), 0, 0));
   EXPECT_TRUE(canvas->DrawImage(image2.get(), 0, image_dim1.height()));
   // The combined image should be bigger than either of the components, but
@@ -1157,7 +1169,7 @@ TEST_F(ImageTest, BlankTransparentImage) {
 
   options->use_transparent_for_blank_image = true;
   ImagePtr blank(BlankImageWithOptions(width, height, IMAGE_PNG, GTestTempDir(),
-                                       &timer_, &handler_, options));
+                                       &timer_, &message_handler_, options));
   bool loaded = blank->EnsureLoaded(false);
   EXPECT_EQ(loaded, true);
   EXPECT_GT(blank->Contents().size(), 0);
@@ -1243,7 +1255,6 @@ TEST_F(ImageTest, IgnoreTimeoutWhenFinishingWebp) {
   Image::CompressionOptions* jpeg_options = new Image::CompressionOptions;
   SetBaseJpegOptions(jpeg_options);
 
-  handler_.AddPatternToSkipPrinting(kMessagePatternTimedOut);
   GoogleString jpeg_buffer;
   ImagePtr jpeg_image(ReadFromFileWithOptions(kBikeCrash,
                                               &jpeg_buffer,
@@ -1334,4 +1345,6 @@ TEST_F(ImageTest, IgnoreTimeoutWhenFinishingWebp) {
   EXPECT_EQ(expected,
             almost_done_webp_image->Contents());
 }
+
+}  // namespace
 }  // namespace net_instaweb

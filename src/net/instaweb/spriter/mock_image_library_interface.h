@@ -62,8 +62,7 @@ class MockImageLibraryInterface : public ImageLibraryInterface {
                                    ImageFormat format));
   };
 
-  MOCK_METHOD3(CreateCanvas, Canvas* (int width, int height,
-                                      bool use_image_scanline_api));
+  MOCK_METHOD2(CreateCanvas, Canvas* (int width, int height));
 
   virtual ~MockImageLibraryInterface() {}
 };

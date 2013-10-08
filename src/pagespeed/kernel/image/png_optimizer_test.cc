@@ -62,6 +62,17 @@ using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::ScanlineReaderInterface;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::ScopedPngStruct;
+using pagespeed::image_compression::kMessagePatternAnimatedGif;
+using pagespeed::image_compression::kMessagePatternFailedToRead;
+using pagespeed::image_compression::kMessagePatternLibpngError;
+using pagespeed::image_compression::kMessagePatternLibpngWarning;
+using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
+
+// Message to ignore.
+const char kMessagePatternBadGifDescriptor[] =
+    "Failed to get image descriptor.";
+const char kMessagePatternBadGifLine[] = "Failed to DGifGetLine";
+const char kMessagePatternUnrecognizedColor[] = "Unrecognized color type.";
 
 // Structure that holds metadata and actual pixel data for a decoded
 // PNG.
@@ -511,6 +522,17 @@ class PngOptimizerTest : public testing::Test {
  public:
   PngOptimizerTest()
     : message_handler_(new NullMutex) {
+  }
+
+ protected:
+  virtual void SetUp() {
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternAnimatedGif);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternBadGifDescriptor);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternBadGifLine);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternFailedToRead);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngError);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngWarning);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
   }
 
  protected:
@@ -1133,6 +1155,9 @@ TEST_F(PngScanlineReaderRawTest, ReadAfterReset) {
 }
 
 TEST_F(PngScanlineReaderRawTest, InvalidPngs) {
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngError);
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngWarning);
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
   PngScanlineReaderRaw reader(&message_handler_);
   for (size_t i = 0; i < kInvalidFileCount; i++) {
     GoogleString image_string;
@@ -1155,6 +1180,7 @@ TEST_F(PngScanlineReaderRawTest, InvalidPngs) {
 // PngScanlineWriter works on all of these options, the test uses a rotation
 // of configurations and verifies that all of the rewritten images are good.
 TEST_F(PngScanlineWriterTest, RewritePng) {
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternUnrecognizedColor);
   PngScanlineReaderRaw original_reader(&message_handler_);
   PngScanlineReaderRaw rewritten_reader(&message_handler_);
 

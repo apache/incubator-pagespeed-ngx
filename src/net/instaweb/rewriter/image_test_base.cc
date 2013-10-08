@@ -63,7 +63,7 @@ Image* ImageTestBase::ImageFromString(
   image_options->recompress_png = true;
 
   return NewImage(contents, name, GTestTempDir(), image_options,
-                  &timer_, &handler_);
+                  &timer_, &message_handler_);
 }
 
 Image* ImageTestBase::ReadFromFileWithOptions(
@@ -71,9 +71,9 @@ Image* ImageTestBase::ReadFromFileWithOptions(
     Image::CompressionOptions* options) {
   EXPECT_TRUE(file_system_.ReadFile(
       StrCat(GTestSrcDir(), kTestData, name).c_str(),
-      contents, &handler_));
+      contents, &message_handler_));
   return NewImage(*contents, name, GTestTempDir(), options,
-                  &timer_, &handler_);
+                  &timer_, &message_handler_);
 }
 
 Image* ImageTestBase::ReadImageFromFile(
@@ -81,7 +81,7 @@ Image* ImageTestBase::ReadImageFromFile(
     bool progressive) {
   EXPECT_TRUE(file_system_.ReadFile(
       StrCat(GTestSrcDir(), kTestData, filename).c_str(),
-      buffer, &handler_));
+      buffer, &message_handler_));
   return ImageFromString(output_type, filename, *buffer, progressive);
 }
 

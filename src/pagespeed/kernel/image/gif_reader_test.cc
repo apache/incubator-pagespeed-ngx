@@ -49,6 +49,11 @@ using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::ScopedPngStruct;
+using pagespeed::image_compression::kMessagePatternFailedToOpen;
+using pagespeed::image_compression::kMessagePatternFailedToRead;
+using pagespeed::image_compression::kMessagePatternLibpngError;
+using pagespeed::image_compression::kMessagePatternLibpngWarning;
+using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
 
 const char *kValidOpaqueGifImages[] = {
   "basi0g01",
@@ -85,12 +90,22 @@ const char kTransparentGif[] = "transparent";
 const char kZeroSizeAnimatedGif[] = "zero_size_animation";
 const char kCompletelyTransparentImage[] = "completely_transparent";
 
+// Message to ignore.
+const char kMessagePatternMultipleFrameGif[] =
+    "Multiple frame GIF is not supported.";
+
 class GifReaderTest : public testing::Test {
  public:
   GifReaderTest()
     : message_handler_(new NullMutex),
       gif_reader_(new GifReader(&message_handler_)),
       read_(ScopedPngStruct::READ, &message_handler_) {
+  }
+
+ protected:
+  virtual void SetUp() {
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngError);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngWarning);
   }
 
  protected:
@@ -283,6 +298,14 @@ class GifScanlineReaderRawTest : public testing::Test {
       return false;
     }
     return reader_.Initialize(input_image_.c_str(), input_image_.length());
+  }
+
+ protected:
+  virtual void SetUp() {
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternFailedToOpen);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternFailedToRead);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternMultipleFrameGif);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
   }
 
  protected:

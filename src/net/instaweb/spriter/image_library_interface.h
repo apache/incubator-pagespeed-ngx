@@ -86,8 +86,7 @@ class ImageLibraryInterface {
     DISALLOW_COPY_AND_ASSIGN(Canvas);
   };
 
-  virtual Canvas* CreateCanvas(int width, int height,
-                               bool use_image_scanline_api) = 0;
+  virtual Canvas* CreateCanvas(int width, int height) = 0;
 
   // Constructor for custom subclasses.  Prefer to use
   // ImageLibraryInterfaceFactory() if possible.

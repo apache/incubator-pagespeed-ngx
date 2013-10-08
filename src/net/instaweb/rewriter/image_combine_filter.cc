@@ -496,15 +496,13 @@ class Library : public spriter::ImageLibraryInterface {
   class Canvas : public spriter::ImageLibraryInterface::Canvas {
    public:
     Canvas(int width, int height, Library* lib,
-           const StringPiece& tmp_dir, Timer* timer, MessageHandler* handler,
-           bool use_image_scanline_api) :
+           const StringPiece& tmp_dir, Timer* timer, MessageHandler* handler) :
         spriter::ImageLibraryInterface::Canvas(lib),
         lib_(lib) {
       DCHECK(lib != NULL);
       net_instaweb::Image::CompressionOptions* options =
           new net_instaweb::Image::CompressionOptions();
       options->recompress_png = true;
-      options->use_image_scanline_api = use_image_scanline_api;
       image_.reset(BlankImageWithOptions(width, height,
                                          net_instaweb::IMAGE_PNG,
                                          tmp_dir, timer, handler, options));
@@ -557,18 +555,15 @@ class Library : public spriter::ImageLibraryInterface {
     return new SpriterImage(image, this);
   }
 
-  virtual Canvas* CreateCanvas(int width, int height,
-                               bool use_image_scanline_api) {
-    return new Canvas(width, height, this, tmp_dir_, timer_, handler_,
-                      use_image_scanline_api);
+  virtual Canvas* CreateCanvas(int width, int height) {
+    return new Canvas(width, height, this, tmp_dir_, timer_, handler_);
   }
 
   // Does not take ownership of the resource.  Returns true if the image could
   // be detected as a valid format, in which case we'll keep our own pointer to
   // the image backed by the resource, meaning that resource must not be
   // destroyed before the next call to Clear().
-  bool Register(Resource* resource, MessageHandler* handler,
-                bool use_image_scanline_api) {
+  bool Register(Resource* resource, MessageHandler* handler) {
     net_instaweb::Image* prev_image = fake_fs_[resource->url()];
     if (prev_image != NULL) {
       // Already registered
@@ -582,7 +577,6 @@ class Library : public spriter::ImageLibraryInterface {
         RewriteOptions::kDefaultImageJpegRecompressQuality;
     // TODO(nikhilmadan): Use appropriate progressive setting for spriting.
     image_options->progressive_jpeg = false;
-    image_options->use_image_scanline_api = use_image_scanline_api;
 
     scoped_ptr<net_instaweb::Image> image(NewImage(
         resource->contents(), resource->url(), tmp_dir_, image_options,
@@ -668,8 +662,7 @@ class ImageCombineFilter::Combiner : public ResourceCombiner {
       input.add_input_image_set()->set_path(resource->url());
     }
 
-    scoped_ptr<spriter::SpriterResult> result(spriter.Sprite(
-        input, rewrite_driver_->options()->use_image_scanline_api()));
+    scoped_ptr<spriter::SpriterResult> result(spriter.Sprite(input));
     if (result.get() == NULL) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "Could not sprite.");
@@ -954,8 +947,7 @@ class ImageCombineFilter::Context : public RewriteContext {
 
   // Put this resource in the library.
   bool RegisterResource(Resource* resource) {
-    return library_.Register(resource, filter_->driver()->message_handler(),
-        filter_->driver()->options()->use_image_scanline_api());
+    return library_.Register(resource, filter_->driver()->message_handler());
   }
 
   bool EnsureLoaded(const GoogleString& url) {

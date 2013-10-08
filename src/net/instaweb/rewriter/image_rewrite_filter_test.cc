@@ -72,10 +72,15 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer, etc
+#include "pagespeed/kernel/image/test_utils.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
+
+using pagespeed::image_compression::kMessagePatternPixelFormat;
+using pagespeed::image_compression::kMessagePatternStats;
+using pagespeed::image_compression::kMessagePatternWritingToWebp;
 
 namespace {
 
@@ -98,6 +103,10 @@ const char kPixelDims[] = " width='1' height='1'";
 const int kIgnoreSize = -1;
 
 const char kCriticalImagesCohort[] = "critical_images";
+
+// Message to ignore.
+const char kMessagePatternFailedToEncodeWebp[] = "Could not encode webp data*";
+const char kMessagePatternWebpTimeOut[] = "WebP conversion timed out!";
 
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
@@ -180,6 +189,14 @@ class ImageRewriteTest : public RewriteTestBase {
     pcache->set_enabled(true);
     rewrite_driver()->set_property_page(page);
     pcache->Read(page);
+
+    // Ignore trivial message.
+    MockMessageHandler* handler = message_handler();
+    handler->AddPatternToSkipPrinting(kMessagePatternFailedToEncodeWebp);
+    handler->AddPatternToSkipPrinting(kMessagePatternPixelFormat);
+    handler->AddPatternToSkipPrinting(kMessagePatternStats);
+    handler->AddPatternToSkipPrinting(kMessagePatternWebpTimeOut);
+    handler->AddPatternToSkipPrinting(kMessagePatternWritingToWebp);
   }
 
   void RewriteImageFromHtml(const GoogleString& tag_string,

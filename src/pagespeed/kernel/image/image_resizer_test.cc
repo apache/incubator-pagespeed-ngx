@@ -51,6 +51,10 @@ using pagespeed::image_compression::ScanlineResizer;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::WebpScanlineWriter;
+using pagespeed::image_compression::kMessagePatternPixelFormat;
+using pagespeed::image_compression::kMessagePatternStats;
+using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
+using pagespeed::image_compression::kMessagePatternWritingToWebp;
 
 const size_t kPreserveAspectRatio =
     pagespeed::image_compression::ScanlineResizer::kPreserveAspectRatio;
@@ -202,6 +206,9 @@ TEST_F(ScanlineResizerTest, Accuracy) {
 
 // Resize the image and write the result to a JPEG or a WebP image.
 TEST_F(ScanlineResizerTest, ResizeAndWrite) {
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternPixelFormat);
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternStats);
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternWritingToWebp);
   for (size_t index_image = 0; index_image < kValidImageCount; ++index_image) {
     const char* file_name = kValidImages[index_image];
     ASSERT_TRUE(ReadTestFile(kPngSuiteTestDir, file_name, "png",
@@ -283,6 +290,7 @@ TEST_F(ScanlineResizerTest, ReadNextScanline) {
 // The reader is able decode the image header, but not the pixels.
 // The resizer should return false when the reader failes.
 TEST_F(ScanlineResizerTest, BadReader) {
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
   ASSERT_TRUE(ReadTestFile(kPngSuiteTestDir, kValidImages[0], "png",
                            &input_image_));
   ASSERT_TRUE(reader_.Initialize(input_image_.data(), 100));

@@ -37,6 +37,7 @@ using net_instaweb::MessageHandler;
 
   const char kTestRootDir[] = "/pagespeed/kernel/image/testdata/";
 
+// Directory for test data.
 const char kGifTestDir[] = "gif/";
 const char kJpegTestDir[] = "jpeg/";
 const char kPngSuiteGifTestDir[] = "pngsuite/gif/";
@@ -44,6 +45,18 @@ const char kPngSuiteTestDir[] = "pngsuite/";
 const char kPngTestDir[] = "png/";
 const char kWebpTestDir[] = "webp/";
 const char kResizedTestDir[] = "resized/";
+
+// Message to ignore.
+const char kMessagePatternAnimatedGif[] =
+    "Unable to optimize image with * frames.";
+const char kMessagePatternFailedToOpen[] = "Failed to open*";
+const char kMessagePatternFailedToRead[] = "Failed to read*";
+const char kMessagePatternLibpngError[] = "libpng error:*";
+const char kMessagePatternLibpngWarning[] = "libpng warning:*";
+const char kMessagePatternPixelFormat[] = "Pixel format:*";
+const char kMessagePatternStats[] = "Stats:*";
+const char kMessagePatternUnexpectedEOF[] = "Unexpected EOF.";
+const char kMessagePatternWritingToWebp[] = "Writing to webp:*";
 
 struct ImageCompressionInfo {
  public:

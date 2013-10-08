@@ -26,8 +26,6 @@ const char kTestData[] = "/net/instaweb/rewriter/testdata/";
 const char kCuppa[] = "Cuppa.png";
 const char kBikeCrash[] = "BikeCrashIcn.png";
 
-const bool kUseImageScanlineApi = true;
-
 }  // namespace
 
 namespace net_instaweb {
@@ -51,9 +49,8 @@ class LibpngImageLibraryTest : public testing::Test {
   ImageLibraryInterface::Image* ReadFromFile(const StringPiece& filename) {
     return src_library_->ReadFromFile(filename.as_string());
   }
-  ImageLibraryInterface::Canvas* CreateCanvas(int width, int height,
-                                              bool use_image_scanline_api) {
-    return src_library_->CreateCanvas(width, height, kUseImageScanlineApi);
+  ImageLibraryInterface::Canvas* CreateCanvas(int width, int height) {
+    return src_library_->CreateCanvas(width, height);
   }
   ImageLibraryInterface::Image* WriteAndRead(ImageLibraryInterface::Canvas* c) {
     bool success = c->WriteToFile("out.png", PNG);
@@ -75,8 +72,7 @@ TEST_F(LibpngImageLibraryTest, TestCompose) {
   scoped_ptr<ImageLibraryInterface::Image> image2(ReadFromFile(kBikeCrash));
   ASSERT_TRUE(image1.get() != NULL);
   ASSERT_TRUE(image2.get() != NULL);
-  scoped_ptr<ImageLibraryInterface::Canvas>
-      canvas(CreateCanvas(100, 170, kUseImageScanlineApi));
+  scoped_ptr<ImageLibraryInterface::Canvas> canvas(CreateCanvas(100, 170));
   ASSERT_TRUE(canvas != NULL);
   ASSERT_TRUE(canvas->DrawImage(image1.get(), 0, 0));
   ASSERT_TRUE(canvas->DrawImage(image2.get(), 0, 70));

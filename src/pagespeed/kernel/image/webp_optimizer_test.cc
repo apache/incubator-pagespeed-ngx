@@ -43,6 +43,9 @@ using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::WebpScanlineReader;
 using pagespeed::image_compression::WebpScanlineWriter;
+using pagespeed::image_compression::kMessagePatternPixelFormat;
+using pagespeed::image_compression::kMessagePatternStats;
+using pagespeed::image_compression::kMessagePatternWritingToWebp;
 
 // Each file in kValidImages is saved in both PNG format and WebP format.
 // alpha_32x32.webp is lossless, while opaque_32x20.webp is lossy.
@@ -57,6 +60,9 @@ const size_t kValidImageCount = arraysize(kValidImages);
 const char kFileCorruptedHeader[] = "corrupt_header";
 const char kFileCorruptedBody[] = "corrupt_body";
 const double kMinPSNR = 33.0;
+
+// Message to ignore.
+const char kMessagePatternInvalidWebPData[] = "Invalid WebP data.";
 
 class WebpScanlineReaderTest : public testing::Test {
  public:
@@ -107,6 +113,14 @@ class WebpScanlineReaderTest : public testing::Test {
           reinterpret_cast<void*>(scanline)));
     }
     ASSERT_TRUE(webp_writer->FinalizeWrite());
+  }
+
+ protected:
+  virtual void SetUp() {
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternInvalidWebPData);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternPixelFormat);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternStats);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternWritingToWebp);
   }
 
  protected:
