@@ -188,7 +188,7 @@ void SystemServerContext::InitStats(Statistics* statistics) {
 
 void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
   DCHECK(!initialized_);
-  if (!initialized_) {
+  if (!initialized_ && !global_options()->unplugged()) {
     initialized_ = true;
     set_lock_manager(factory->caches()->GetLockManager(
         system_rewrite_options()));

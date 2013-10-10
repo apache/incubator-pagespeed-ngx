@@ -55,6 +55,7 @@ apache_vm_system_tests :
 	$(MAKE) apache_debug_https_fetch_test
 	$(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
 	$(MAKE) FAST_RESTART=1 apache_debug_all_directives_test
+	$(MAKE) FAST_RESTART=1 apache_debug_unplugged_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
 # Apache server in a consistent state.
@@ -384,3 +385,31 @@ apache_debug_stats_logging_test :
 	$(MAKE) apache_debug_restart
 	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+
+# Tests that setting the root configuration 'unplugged' can't be overridden
+# with a query-param, but can be overridden with an explicit vhost setting.
+EXAMPLE_INDEX = mod_pagespeed_example/index.html
+apache_debug_unplugged_test : apache_install_conf apache_debug_restart
+	$(MAKE) stop
+	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
+	# Note - there are multiple occurrences of "ModPagespeed on" in our
+	# debug pagespeed.conf.  This article shows how to replace only the
+	# first one with sed: http://stackoverflow.com/questions/148451/
+	# how-to-use-sed-to-replace-only-the-first-occurrence-in-a-file
+	sed -e '0,/ModPagespeed on/{s/ModPagespeed on/ModPagespeed unplugged/}' \
+		< $(APACHE_DEBUG_PAGESPEED_CONF).save \
+		> $(APACHE_DEBUG_PAGESPEED_CONF)
+	$(MAKE) start
+	# Fetching from the root should be off, even if we try to turn it on.
+	[ -z "`$(WGET) -q --save-headers -O - \
+		$(APACHE_SERVER)/$(EXAMPLE_INDEX)?ModPagespeed=on | \
+		grep X-Mod-Pagespeed`" ]
+	# Fetching from the secondary host should be on.
+	http_proxy=$(APACHE_SECONDARY_SERVER) $(WGET) -q --save-headers -O - \
+		 http://secondary.example.com/$(EXAMPLE_INDEX) | \
+		grep X-Mod-Pagespeed
+	#
+	# Restore config
+	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
+	$(MAKE) apache_debug_stop
+	@echo PASS

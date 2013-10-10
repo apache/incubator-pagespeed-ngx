@@ -64,7 +64,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-#include "util_filter.h"
+#include "util_filter.h"                                             // NOLINT
 // Note: a very useful reference is this file, which demos many Apache module
 // options:
 //    http://svn.apache.org/repos/asf/httpd/httpd/trunk/modules/examples/mod_example_hooks.c
@@ -85,7 +85,7 @@
 #include "net/instaweb/apache/apache_logging_includes.h"
 
 #include "net/instaweb/apache/log_message_handler.h"
-#include "unixd.h"
+#include "unixd.h"                                                 // NOLINT
 
 #if (AP_SERVER_MAJORVERSION_NUMBER == 2) && (AP_SERVER_MINORVERSION_NUMBER >= 4)
 #define MPS_APACHE_24
@@ -902,24 +902,25 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
   return ap_pass_brigade(filter->next, bb);
 }
 
-void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
-  // Escape ASAP if we're in unplugged mode.
-  ApacheServerContext* server_context =
-      InstawebContext::ServerContextFromServerRec(server);
-  if (server_context->config()->unplugged()) {
-    return;
-  }
-
+void pagespeed_child_init(apr_pool_t* pool, server_rec* server_list) {
   // Create PageSpeed context used by instaweb rewrite-driver.  This is
   // per-process, so we initialize all the server's context by iterating the
   // server lists in server->next.
-  ApacheRewriteDriverFactory* factory = apache_process_context.factory(server);
-  factory->ChildInit();
-  for (; server != NULL; server = server->next) {
+  bool need_init = true;
+  for (server_rec* server = server_list; server != NULL;
+       server = server->next) {
     ApacheServerContext* server_context =
         InstawebContext::ServerContextFromServerRec(server);
-    DCHECK(server_context != NULL);
-    DCHECK(server_context->initialized());
+    if (!server_context->config()->unplugged()) {
+      if (need_init) {
+        ApacheRewriteDriverFactory* factory = apache_process_context.factory(
+            server_list);
+        factory->ChildInit();
+        need_init = false;
+      }
+      DCHECK(server_context != NULL);
+      DCHECK(server_context->initialized());
+    }
   }
 }
 
