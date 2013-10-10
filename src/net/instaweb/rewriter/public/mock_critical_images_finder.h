@@ -18,8 +18,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_MOCK_CRITICAL_IMAGES_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOCK_CRITICAL_IMAGES_FINDER_H_
 
-#include "base/logging.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/rendered_image.pb.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -33,11 +32,14 @@ class Statistics;
 
 // Mock implementation of CriticalImagesFinder that can store and retrieve
 // critical images. Note that this doesn't use property cache.
-class MockCriticalImagesFinder : public CriticalImagesFinder {
+class MockCriticalImagesFinder : public TestCriticalImagesFinder {
  public:
   explicit MockCriticalImagesFinder(Statistics* stats)
-      : CriticalImagesFinder(stats),
-        compute_calls_(0) {}
+      : TestCriticalImagesFinder(NULL, stats), compute_calls_(0) {}
+
+  MockCriticalImagesFinder(const PropertyCache::Cohort* cohort,
+                           Statistics* stats)
+      : TestCriticalImagesFinder(cohort, stats), compute_calls_(0) {}
 
   ~MockCriticalImagesFinder();
 
@@ -51,10 +53,6 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
 
   virtual void ComputeCriticalImages(RewriteDriver* driver) {
     ++compute_calls_;
-  }
-
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return cohort_;
   }
 
   int num_compute_calls() { return compute_calls_; }
@@ -71,39 +69,16 @@ class MockCriticalImagesFinder : public CriticalImagesFinder {
     rendered_images_.reset(rendered_images);
   }
 
-  void set_critical_images_cohort(const PropertyCache::Cohort* cohort) {
-    cohort_ = cohort;
-  }
-
   virtual bool IsCriticalImageInfoPresent(RewriteDriver* driver) {
     return true;
   }
 
  private:
   int compute_calls_;
-  const PropertyCache::Cohort* cohort_;
   scoped_ptr<StringSet> critical_images_;
   scoped_ptr<StringSet> css_critical_images_;
   scoped_ptr<RenderedImages> rendered_images_;
   DISALLOW_COPY_AND_ASSIGN(MockCriticalImagesFinder);
-};
-
-// This is currently used only to get a property cache miss in tests.
-// This just forwards UpdateCriticalImagesSetInDriver and
-// IsCriticalImageInfoPresent to the abstract base class CriticalImagesFinder.
-class ForwardingMockCriticalImagesFinder : public MockCriticalImagesFinder {
- public:
-  explicit ForwardingMockCriticalImagesFinder(Statistics* stats) :
-    MockCriticalImagesFinder(stats) {}
-  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver) {
-    CriticalImagesFinder::UpdateCriticalImagesSetInDriver(driver);
-  }
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return NULL;
-  }
-  virtual bool IsCriticalImageInfoPresent(RewriteDriver* driver) {
-    return CriticalImagesFinder::IsCriticalImageInfoPresent(driver);
-  }
 };
 
 }  // namespace net_instaweb

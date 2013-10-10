@@ -15,10 +15,13 @@
  */
 // Author: nikhilmadan@google.com (Nikhil Madan)
 
-#include <map>                          // for map<>::mapped_type
-#include <utility>                      // for make_pair
 #include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 
+
+#include <map>                          // for map<>::mapped_type
+#include <utility>                      // for make_pair
+
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {

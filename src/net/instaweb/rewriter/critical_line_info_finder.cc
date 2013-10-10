@@ -25,7 +25,6 @@
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -37,12 +36,11 @@ namespace net_instaweb {
 const char CriticalLineInfoFinder::kCriticalLineInfoPropertyName[] =
     "critical_line_info";
 
-CriticalLineInfoFinder::~CriticalLineInfoFinder() {}
+CriticalLineInfoFinder::CriticalLineInfoFinder(
+    const PropertyCache::Cohort* cohort)
+    : cohort_(cohort) {}
 
-const PropertyCache::Cohort* CriticalLineInfoFinder::Cohort(
-    RewriteDriver* driver) const {
-  return driver->server_context()->critical_line_cohort();
-}
+CriticalLineInfoFinder::~CriticalLineInfoFinder() {}
 
 const CriticalLineInfo* CriticalLineInfoFinder::GetCriticalLine(
     RewriteDriver* driver) {
@@ -73,9 +71,7 @@ void CriticalLineInfoFinder::UpdateInDriver(RewriteDriver* driver) {
     PropertyCacheDecodeResult pcache_status;
     scoped_ptr<CriticalLineInfo> critical_line_info(
         DecodeFromPropertyCache<CriticalLineInfo>(
-            driver,
-            Cohort(driver),
-            Property(),
+            driver, cohort_, kCriticalLineInfoPropertyName,
             driver->options()->finder_properties_cache_expiration_time_ms(),
             &pcache_status));
     switch (pcache_status) {

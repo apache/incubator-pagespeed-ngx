@@ -372,8 +372,11 @@ CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
   return NULL;
 }
 
-CriticalLineInfoFinder* RewriteDriverFactory::DefaultCriticalLineInfoFinder() {
-  return new CriticalLineInfoFinder();
+CriticalLineInfoFinder* RewriteDriverFactory::DefaultCriticalLineInfoFinder(
+    ServerContext* server_context) {
+  // TODO(jud): Return a BeaconCriticalLineInfoFinder for split_html beacon
+  // support when that class exists.
+  return new CriticalLineInfoFinder(server_context->beacon_cohort());
 }
 
 UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
@@ -502,7 +505,7 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_cache_html_info_finder(
       DefaultCacheHtmlInfoFinder(pcache, server_context));
   server_context->set_critical_line_info_finder(
-      DefaultCriticalLineInfoFinder());
+      DefaultCriticalLineInfoFinder(server_context));
   server_context->set_hostname(hostname_);
   server_context->InitWorkersAndDecodingDriver();
   server_contexts_.insert(server_context);

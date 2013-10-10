@@ -65,13 +65,13 @@ bool CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(
 
   // Instrument if we don't have any rendered image dimensions information or if
   // the pcache entry has expired.
-  // TODO(poojatandon): These checks should be moved to property_cache_util.
+  // TODO(poojatandon): These checks should be moved to property_cache_util, or
+  // to CriticalImagesFinder.
   const PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   PropertyPage* page = driver->property_page();
   const PropertyCache::Cohort* cohort =
-      driver->server_context()->critical_images_finder()->
-          GetCriticalImagesCohort();
+      driver->server_context()->critical_images_finder()->cohort();
 
   if (!page_property_cache->enabled() || (page == NULL) || (cohort == NULL)) {
     return false;

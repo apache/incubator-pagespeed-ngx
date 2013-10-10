@@ -63,9 +63,7 @@ class CriticalLineInfoFinderTest : public RewriteTestBase {
   void WriteToPcache(CriticalLineInfo config) {
     server_context()->page_property_cache()->set_enabled(true);
 
-    const PropertyCache::Cohort* cohort = SetupCohort(
-        server_context()->page_property_cache(), "mycohort");
-    server_context()->set_critical_line_cohort(cohort);
+    const PropertyCache::Cohort* cohort = finder_->cohort();
     rewrite_driver()->set_property_page(NewMockPage("http://www.test.com"));
     server_context()->page_property_cache()->Read(
         rewrite_driver()->property_page());
@@ -75,18 +73,25 @@ class CriticalLineInfoFinderTest : public RewriteTestBase {
     ASSERT_TRUE(config.SerializeToZeroCopyStream(&sstream));
     PropertyPage* page = rewrite_driver()->property_page();
     ASSERT_TRUE(page != NULL);
-    ASSERT_EQ("mycohort", server_context()->critical_line_cohort()->name());
-    page->GetProperty(
-        cohort, server_context()->critical_line_info_finder()->Property());
+    ASSERT_EQ("beacon_cohort", cohort->name());
+    page->GetProperty(cohort,
+                      CriticalLineInfoFinder::kCriticalLineInfoPropertyName);
     page->UpdateValue(
-        server_context()->critical_line_cohort(),
-        server_context()->critical_line_info_finder()->Property(),
-        buf);
-    rewrite_driver()->property_page()->WriteCohort(
-        server_context()->critical_line_cohort());
+        cohort, CriticalLineInfoFinder::kCriticalLineInfoPropertyName, buf);
+    rewrite_driver()->property_page()->WriteCohort(cohort);
   }
 
  protected:
+  virtual void SetUp() {
+    RewriteTestBase::SetUp();
+    const PropertyCache::Cohort* beacon_cohort =
+        SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+    server_context()->set_beacon_cohort(beacon_cohort);
+    finder_ = new CriticalLineInfoFinder(beacon_cohort);
+    server_context()->set_critical_line_info_finder(finder_);
+  }
+
+  CriticalLineInfoFinder* finder_;
   RequestHeaders request_headers_;
 };
 

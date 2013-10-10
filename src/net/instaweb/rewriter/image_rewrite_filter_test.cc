@@ -826,10 +826,6 @@ class ImageRewriteTest : public RewriteTestBase {
     if (height != 0) {
       images->set_rendered_height(height);
     }
-    const PropertyCache::Cohort* cohort =
-        server_context_->page_property_cache()->GetCohort(
-            kCriticalImagesCohort);
-    finder->set_critical_images_cohort(cohort);
 
     // Original size of kChefGifFile is 192x256
     finder->set_rendered_images(rendered_images);
@@ -1901,8 +1897,7 @@ TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
 }
 
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
-  MockCriticalImagesFinder* finder =
-      new MockCriticalImagesFinder(statistics());
+  MockCriticalImagesFinder* finder = new MockCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -2998,8 +2993,7 @@ TEST_F(ImageRewriteTest, TooBusyReturnsOriginalResource) {
 }
 
 TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
-  MockCriticalImagesFinder* finder =
-      new MockCriticalImagesFinder(statistics());
+  MockCriticalImagesFinder* finder = new MockCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
   options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
   options()->set_log_background_rewrites(true);

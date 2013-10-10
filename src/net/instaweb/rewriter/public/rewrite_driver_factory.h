@@ -343,7 +343,8 @@ class RewriteDriverFactory {
   virtual FlushEarlyInfoFinder* DefaultFlushEarlyInfoFinder();
 
   // Default implementation returns a valid CriticalSelectorFinder.
-  virtual CriticalLineInfoFinder* DefaultCriticalLineInfoFinder();
+  virtual CriticalLineInfoFinder* DefaultCriticalLineInfoFinder(
+      ServerContext* server_context);
 
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.

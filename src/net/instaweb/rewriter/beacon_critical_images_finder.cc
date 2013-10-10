@@ -33,12 +33,9 @@
 namespace net_instaweb {
 
 BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(
-    const PropertyCache::Cohort* cohort,
-    NonceGenerator* nonce_generator,
+    const PropertyCache::Cohort* cohort, NonceGenerator* nonce_generator,
     Statistics* stats)
-    : CriticalImagesFinder(stats),
-      cohort_(cohort),
-      nonce_generator_(nonce_generator) { }
+    : CriticalImagesFinder(cohort, stats), nonce_generator_(nonce_generator) {}
 
 BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 }
@@ -102,7 +99,7 @@ BeaconMetadata BeaconCriticalImagesFinder::PrepareForBeaconInsertion(
       empty, proto.mutable_html_critical_image_support(), SupportInterval(),
       nonce_generator_, driver->timer(), &metadata);
   if (metadata.status != kDoNotBeacon) {
-    UpdateInPropertyCache(proto, cohort_, kCriticalImagesPropertyName,
+    UpdateInPropertyCache(proto, cohort(), kCriticalImagesPropertyName,
                           true /* write_cohort */,
                           driver->fallback_property_page());
   }

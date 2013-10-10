@@ -72,7 +72,7 @@ class CriticalImagesFinder {
   // render response for the page.
   static const char kRenderedImageDimensionsProperty[];
 
-  explicit CriticalImagesFinder(Statistics* stats);
+  CriticalImagesFinder(const PropertyCache::Cohort* cohort, Statistics* stats);
   virtual ~CriticalImagesFinder();
 
   static void InitStats(Statistics* statistics);
@@ -139,7 +139,9 @@ class CriticalImagesFinder {
 
   // Identifies which cohort in the PropertyCache the critical image information
   // is located in.
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const = 0;
+  // TODO(jud): Make this protected. There is a lingering public usage in
+  // critical_images_beacon_filter.cc.
+  const PropertyCache::Cohort* cohort() const { return cohort_; }
 
   // Updates the critical images property cache entry. Returns whether the
   // update succeeded or not. Note that this base implementation does not call
@@ -241,6 +243,8 @@ class CriticalImagesFinder {
   // set for it to be critical.
   static const int kDefaultPercentSeenForCritical = 100;
   static const int kDefaultImageSupportInterval = 1;
+
+  const PropertyCache::Cohort* cohort_;
 
   Variable* critical_images_valid_count_;
   Variable* critical_images_expired_count_;

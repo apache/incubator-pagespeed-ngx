@@ -20,14 +20,14 @@
 
 #include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
-#include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -36,9 +36,9 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/wildcard.h"  // for Wildcard
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/base/wildcard.h"  // for Wildcard
 
 namespace net_instaweb {
 
@@ -382,8 +382,8 @@ TEST_F(SplitHtmlHelperFilterTest, BtfRequestConfigInHeader) {
 }
 
 TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithLazyload) {
-  ForwardingMockCriticalImagesFinder* finder =
-      new ForwardingMockCriticalImagesFinder(statistics());
+  TestCriticalImagesFinder* finder =
+      new TestCriticalImagesFinder(NULL, statistics());
   server_context()->set_critical_images_finder(finder);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   options()->set_support_noscript_enabled(false);
@@ -412,8 +412,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithLazyload) {
 }
 
 TEST_F(SplitHtmlHelperFilterTest, BtfRequestWithLazyload) {
-  ForwardingMockCriticalImagesFinder* finder =
-      new ForwardingMockCriticalImagesFinder(statistics());
+  TestCriticalImagesFinder* finder =
+      new TestCriticalImagesFinder(NULL, statistics());
   server_context()->set_critical_images_finder(finder);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   options()->set_support_noscript_enabled(false);
@@ -444,8 +444,8 @@ TEST_F(SplitHtmlHelperFilterTest, BtfRequestWithLazyload) {
 }
 
 TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithInlinePreview) {
-  ForwardingMockCriticalImagesFinder* finder =
-      new ForwardingMockCriticalImagesFinder(statistics());
+  TestCriticalImagesFinder* finder =
+      new TestCriticalImagesFinder(NULL, statistics());
   server_context()->set_critical_images_finder(finder);
   options()->EnableFilter(RewriteOptions::kDelayImages);
   options()->set_support_noscript_enabled(false);
@@ -475,8 +475,8 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithInlinePreview) {
 }
 
 TEST_F(SplitHtmlHelperFilterTest, BtfRequestWithInlinePreview) {
-  ForwardingMockCriticalImagesFinder* finder =
-      new ForwardingMockCriticalImagesFinder(statistics());
+  TestCriticalImagesFinder* finder =
+      new TestCriticalImagesFinder(NULL, statistics());
   server_context()->set_critical_images_finder(finder);
   options()->EnableFilter(RewriteOptions::kDelayImages);
   options()->set_support_noscript_enabled(false);
@@ -505,8 +505,8 @@ TEST_F(SplitHtmlHelperFilterTest, BtfRequestWithInlinePreview) {
 }
 
 TEST_F(SplitHtmlHelperFilterTest, AtfNestedPanelsRequestWithInlinePreview) {
-  ForwardingMockCriticalImagesFinder* finder =
-      new ForwardingMockCriticalImagesFinder(statistics());
+  TestCriticalImagesFinder* finder =
+      new TestCriticalImagesFinder(NULL, statistics());
   server_context()->set_critical_images_finder(finder);
   options()->EnableFilter(RewriteOptions::kDelayImages);
   options()->set_support_noscript_enabled(false);

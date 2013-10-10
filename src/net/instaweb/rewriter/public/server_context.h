@@ -220,13 +220,6 @@ class ServerContext {
   const PropertyCache::Cohort* beacon_cohort() const { return beacon_cohort_; }
   void set_beacon_cohort(const PropertyCache::Cohort* c) { beacon_cohort_ = c; }
 
-  const PropertyCache::Cohort* critical_line_cohort() const {
-    return critical_line_cohort_;
-  }
-  void set_critical_line_cohort(const PropertyCache::Cohort* c) {
-    critical_line_cohort_ = c;
-  }
-
   const PropertyCache::Cohort* fix_reflow_cohort() const {
     return fix_reflow_cohort_;
   }
@@ -681,7 +674,6 @@ class ServerContext {
   const PropertyCache::Cohort* dom_cohort_;
   const PropertyCache::Cohort* blink_cohort_;
   const PropertyCache::Cohort* beacon_cohort_;
-  const PropertyCache::Cohort* critical_line_cohort_;
   const PropertyCache::Cohort* fix_reflow_cohort_;
 
   // RewriteDrivers that were previously allocated, but have

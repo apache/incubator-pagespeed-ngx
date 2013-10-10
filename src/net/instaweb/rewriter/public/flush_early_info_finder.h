@@ -34,7 +34,7 @@ class FlushEarlyInfoFinder {
  public:
   static const char kFlushEarlyRenderPropertyName[];
 
-  FlushEarlyInfoFinder() {}
+  explicit FlushEarlyInfoFinder(const PropertyCache::Cohort* cohort);
   virtual ~FlushEarlyInfoFinder();
 
   // Checks whether GetCharset will return meaningful result. The default
@@ -56,14 +56,13 @@ class FlushEarlyInfoFinder {
   // meaningful results and provide a default behavior if it does not.
   virtual const char* GetCharset(const RewriteDriver* driver);
 
-  virtual const PropertyCache::Cohort* GetCohort() const = 0;
-
  protected:
   void UpdateFlushEarlyInfoCacheEntry(
       RewriteDriver* driver,
       FlushEarlyRenderInfo* flush_early_render_info);
 
  private:
+  const PropertyCache::Cohort* cohort_;
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyInfoFinder);
 };
 

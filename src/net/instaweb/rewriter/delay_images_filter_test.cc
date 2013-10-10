@@ -25,12 +25,12 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/image_types.pb.h"
+#include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
-#include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -591,8 +591,8 @@ TEST_F(DelayImagesFilterTest, NoHeadTag) {
 }
 
 TEST_F(DelayImagesFilterTest, PcacheMiss) {
-  ForwardingMockCriticalImagesFinder* finder =
-      new ForwardingMockCriticalImagesFinder(statistics());
+  TestCriticalImagesFinder* finder =
+      new TestCriticalImagesFinder(NULL, statistics());
   server_context()->set_critical_images_finder(finder);
 
   AddFilter(RewriteOptions::kDelayImages);

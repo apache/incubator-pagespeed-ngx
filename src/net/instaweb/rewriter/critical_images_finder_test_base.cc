@@ -47,7 +47,7 @@ CriticalImagesFinderTestBase::GetCriticalImagesUpdatedValue() {
   if (page == NULL) {
     return NULL;
   }
-  const PropertyCache::Cohort* cohort = finder()->GetCriticalImagesCohort();
+  const PropertyCache::Cohort* cohort = finder()->cohort();
   if (cohort == NULL) {
     return NULL;
   }
@@ -74,5 +74,7 @@ bool CriticalImagesFinderTestBase::IsCssCriticalImage(
     const GoogleString& url) {
   return finder()->IsCssCriticalImage(url, rewrite_driver());
 }
+
+TestCriticalImagesFinder::~TestCriticalImagesFinder() {}
 
 }  // namespace net_instaweb

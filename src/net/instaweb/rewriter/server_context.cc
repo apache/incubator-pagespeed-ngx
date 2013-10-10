@@ -268,7 +268,6 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       dom_cohort_(NULL),
       blink_cohort_(NULL),
       beacon_cohort_(NULL),
-      critical_line_cohort_(NULL),
       fix_reflow_cohort_(NULL),
       available_rewrite_drivers_(new GlobalOptionsRewriteDriverPool(this)),
       trying_to_cleanup_rewrite_drivers_(false),

@@ -21,7 +21,6 @@
 
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -32,14 +31,10 @@ class RewriteDriver;
 // class can be used by tests which manually manage FlushEarlyRenderInfo.
 class MeaningfulFlushEarlyInfoFinder : public FlushEarlyInfoFinder {
  public:
-  MeaningfulFlushEarlyInfoFinder() : num_compute_calls_(0) {}
+  MeaningfulFlushEarlyInfoFinder()
+      : FlushEarlyInfoFinder(NULL), num_compute_calls_(0) {}
   virtual ~MeaningfulFlushEarlyInfoFinder() {}
-  virtual bool IsMeaningful(const RewriteDriver* driver) const {
-    return true;
-  }
-  virtual const PropertyCache::Cohort* GetCohort() const {
-    return NULL;
-  }
+  virtual bool IsMeaningful(const RewriteDriver* driver) const { return true; }
   virtual int64 cache_expiration_time_ms() const {
     return Timer::kHourMs;
   }

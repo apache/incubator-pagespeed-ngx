@@ -18,16 +18,28 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_TEST_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_TEST_BASE_H_
 
-#include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/null_statistics.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class PropertyValue;
+class RewriteDriver;
+class Statistics;
+
+// Provide stub implementation of abstract base class for testing purposes.
+class TestCriticalImagesFinder : public CriticalImagesFinder {
+ public:
+  TestCriticalImagesFinder(const PropertyCache::Cohort* cohort,
+                           Statistics* stats)
+      : CriticalImagesFinder(cohort, stats) {}
+  virtual ~TestCriticalImagesFinder();
+  virtual bool IsMeaningful(const RewriteDriver* driver) const { return true; }
+  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
+};
 
 class CriticalImagesFinderTestBase : public RewriteTestBase {
  public:

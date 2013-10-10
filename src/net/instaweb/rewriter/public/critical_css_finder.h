@@ -37,7 +37,7 @@ class CriticalCssFinder {
   static const char kCriticalCssNotFoundCount[];
   static const char kCriticalCssPropertyName[];
 
-  explicit CriticalCssFinder(Statistics* stats);
+  CriticalCssFinder(const PropertyCache::Cohort* cohort, Statistics* stats);
   virtual ~CriticalCssFinder();
 
   static void InitStats(Statistics* statistics);
@@ -64,9 +64,10 @@ class CriticalCssFinder {
   // released and it stays with the driver.
   virtual CriticalCssResult* GetCriticalCss(RewriteDriver* driver);
 
-  virtual const PropertyCache::Cohort* GetCohort() const = 0;
+  const PropertyCache::Cohort* cohort() const { return cohort_; }
 
  private:
+  const PropertyCache::Cohort* cohort_;
   TimedVariable* critical_css_valid_count_;
   TimedVariable* critical_css_expired_count_;
   TimedVariable* critical_css_not_found_count_;

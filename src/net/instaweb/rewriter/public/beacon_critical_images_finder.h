@@ -55,10 +55,6 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
 
   virtual void ComputeCriticalImages(RewriteDriver* driver) {}
 
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return cohort_;
-  }
-
   // Update the critical image entry in the property cache. This is meant to be
   // called in the beacon handler, where there is no RewriteDriver available.
   static bool UpdateCriticalImagesCacheEntry(
@@ -83,7 +79,6 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   // This is a guess for how many samples we need to get stable data.
   static const int kBeaconImageSupportInterval = 10;
 
-  const PropertyCache::Cohort* cohort_;
   NonceGenerator* nonce_generator_;
 };
 

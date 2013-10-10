@@ -33,35 +33,15 @@
 
 namespace net_instaweb {
 
-// Provide stub implementation of abstract base class for testing purposes.
-class CriticalImagesFinderMock : public CriticalImagesFinder {
- public:
-  explicit CriticalImagesFinderMock(
-      const PropertyCache::Cohort* cohort, Statistics* stats)
-      : CriticalImagesFinder(stats),
-        cohort_(cohort) {}
-
-  // Provide stub instantions for pure virtual functions
-  virtual void ComputeCriticalImages(RewriteDriver* driver) {}
-
-  virtual const PropertyCache::Cohort* GetCriticalImagesCohort() const {
-    return cohort_;
-  }
-
-  virtual bool IsMeaningful(const RewriteDriver* driver) const {
-    return false;
-  }
- private:
-  const PropertyCache::Cohort* cohort_;
-};
+namespace {
 
 // Mock class for testing a critical image finder like the beacon finder that
 // stores a history of previous critical image sets.
-class CriticalImagesHistoryFinderMock : public CriticalImagesFinderMock {
+class HistoryTestCriticalImagesFinder : public TestCriticalImagesFinder {
  public:
-  explicit CriticalImagesHistoryFinderMock(
-      const PropertyCache::Cohort* cohort, Statistics* stats)
-      : CriticalImagesFinderMock(cohort, stats) {}
+  HistoryTestCriticalImagesFinder(const PropertyCache::Cohort* cohort,
+                                  Statistics* stats)
+      : TestCriticalImagesFinder(cohort, stats) {}
 
   virtual int PercentSeenForCritical() const {
     return 80;
@@ -74,6 +54,8 @@ class CriticalImagesHistoryFinderMock : public CriticalImagesFinderMock {
 
 const char kCriticalImagesCohort[] = "critical_images";
 
+}  // namespace
+
 class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
  public:
   virtual CriticalImagesFinder* finder() { return finder_.get(); }
@@ -82,7 +64,7 @@ class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
   virtual void SetUp() {
     CriticalImagesFinderTestBase::SetUp();
     SetupCohort(page_property_cache(), kCriticalImagesCohort);
-    finder_.reset(new CriticalImagesFinderMock(
+    finder_.reset(new TestCriticalImagesFinder(
         page_property_cache()->GetCohort(kCriticalImagesCohort), statistics()));
     ResetDriver();
   }
@@ -90,7 +72,7 @@ class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
  private:
   friend class CriticalImagesHistoryFinderTest;
 
-  scoped_ptr<CriticalImagesFinderMock> finder_;
+  scoped_ptr<TestCriticalImagesFinder> finder_;
 };
 
 class CriticalImagesHistoryFinderTest : public CriticalImagesFinderTest {
@@ -98,7 +80,7 @@ class CriticalImagesHistoryFinderTest : public CriticalImagesFinderTest {
   virtual void SetUp() {
     CriticalImagesFinderTestBase::SetUp();
     SetupCohort(page_property_cache(), kCriticalImagesCohort);
-    finder_.reset(new CriticalImagesHistoryFinderMock(
+    finder_.reset(new HistoryTestCriticalImagesFinder(
         page_property_cache()->GetCohort(kCriticalImagesCohort), statistics()));
     ResetDriver();
   }
@@ -141,8 +123,7 @@ TEST_F(CriticalImagesFinderTest,
       &html_critical_images_set, &css_critical_images_set));
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
-  rewrite_driver()->property_page()->WriteCohort(
-      finder()->GetCriticalImagesCohort());
+  rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
 }
 
 TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySetNULL) {
@@ -195,8 +176,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
       &html_critical_images_set, &css_critical_images_set));
   // Write the updated value to the pcache.
-  rewrite_driver()->property_page()->WriteCohort(
-      finder()->GetCriticalImagesCohort());
+  rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
 
   // critical_images_info() is NULL because there is no previous call to
@@ -265,8 +245,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     ResetDriver();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images_set, &css_critical_images_set));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
     EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
     EXPECT_TRUE(IsHtmlCriticalImage("imgB.jpeg"));
@@ -282,8 +261,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     ResetDriver();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
     EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
     EXPECT_TRUE(IsHtmlCriticalImage("imgB.jpeg"));
@@ -295,8 +273,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     ResetDriver();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
     EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
     EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
@@ -311,8 +288,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     ResetDriver();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
     EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
     EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
@@ -333,8 +309,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     ResetDriver();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
     EXPECT_FALSE(IsHtmlCriticalImage("imgA.jpeg"));
     EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
@@ -347,8 +322,7 @@ TEST_F(CriticalImagesHistoryFinderTest, GetCriticalImagesTest) {
     ResetDriver();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images_set, NULL));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
     EXPECT_FALSE(IsHtmlCriticalImage("imgA.jpeg"));
     EXPECT_FALSE(IsHtmlCriticalImage("imgB.jpeg"));
@@ -363,8 +337,7 @@ TEST_F(CriticalImagesFinderTest, NoCriticalImages) {
   StringSet critical;
   EXPECT_TRUE(critical.empty());
   EXPECT_TRUE(UpdateCriticalImagesCacheEntry(&critical, &critical));
-  rewrite_driver()->property_page()->WriteCohort(
-      finder()->GetCriticalImagesCohort());
+  rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
   ResetDriver();
   EXPECT_FALSE(IsHtmlCriticalImage("imgA.jpeg"));
   EXPECT_FALSE(IsCssCriticalImage("imgA.jpeg"));
@@ -375,8 +348,7 @@ TEST_F(CriticalImagesFinderTest, NoCriticalImages) {
   for (int i = 0; i < finder()->SupportInterval(); ++i) {
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(&critical, &critical));
   }
-  rewrite_driver()->property_page()->WriteCohort(
-      finder()->GetCriticalImagesCohort());
+  rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
   ResetDriver();
   EXPECT_TRUE(IsHtmlCriticalImage("imgA.jpeg"));
   EXPECT_TRUE(IsCssCriticalImage("imgA.jpeg"));
@@ -390,8 +362,7 @@ TEST_F(CriticalImagesFinderTest, TestRenderedImageExtractionFromPropertyCache) {
   images->set_rendered_width(40);
   images->set_rendered_height(54);
   PropertyPage* page = rewrite_driver()->property_page();
-  UpdateInPropertyCache(rendered_images,
-                        finder()->GetCriticalImagesCohort(),
+  UpdateInPropertyCache(rendered_images, finder()->cohort(),
                         finder()->kRenderedImageDimensionsProperty,
                         false /* don't write cohort */, page);
   // Check if Finder extracts properly.
@@ -438,10 +409,10 @@ TEST_F(CriticalImagesHistoryFinderTest, TestLegacyDataMigration) {
   css_beacon2->add_critical_images("image2.jpg");
   css_beacon2->add_critical_images("image1.jpg");
   // Write the constructed proto into the property cache.
-  PropertyCacheUpdateResult result = UpdateInPropertyCache(
-      critical_images, finder()->GetCriticalImagesCohort(),
-      CriticalImagesFinder::kCriticalImagesPropertyName, true,
-      rewrite_driver()->property_page());
+  PropertyCacheUpdateResult result =
+      UpdateInPropertyCache(critical_images, finder()->cohort(),
+                            CriticalImagesFinder::kCriticalImagesPropertyName,
+                            true, rewrite_driver()->property_page());
   EXPECT_EQ(kPropertyCacheUpdateOk, result);
   // Now examine the legacy data and make sure we get usable critical image
   // information out.
@@ -462,8 +433,7 @@ TEST_F(CriticalImagesHistoryFinderTest, TestLegacyDataMigration) {
   ResetDriver();
   EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
       &html_critical_images, &css_critical_images));
-  rewrite_driver()->property_page()->WriteCohort(
-      finder()->GetCriticalImagesCohort());
+  rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
   ResetDriver();
   // Make sure the updates are reflected in image criticality.
   EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpg"));
@@ -476,8 +446,7 @@ TEST_F(CriticalImagesHistoryFinderTest, TestLegacyDataMigration) {
   for (int i = 0; i < 2; ++i) {
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
         &html_critical_images, &css_critical_images));
-    rewrite_driver()->property_page()->WriteCohort(
-        finder()->GetCriticalImagesCohort());
+    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
     ResetDriver();
   }
   EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpg"));

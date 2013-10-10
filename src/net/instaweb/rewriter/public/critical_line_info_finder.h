@@ -37,19 +37,17 @@ class CriticalLineInfoFinder {
  public:
   static const char kCriticalLineInfoPropertyName[];
 
-  CriticalLineInfoFinder() {}
+  explicit CriticalLineInfoFinder(const PropertyCache::Cohort* cohort);
   virtual ~CriticalLineInfoFinder();
 
-  // Returns the property name in pcache which stores the critical line info.
-  virtual const char* Property() const { return kCriticalLineInfoPropertyName; }
-
   // Returns the cohort in pcache which stores the critical line info.
-  const PropertyCache::Cohort* Cohort(RewriteDriver* driver) const;
+  const PropertyCache::Cohort* cohort() const { return cohort_; }
 
   // Populates the critical line information in the driver and return it.
   const CriticalLineInfo* GetCriticalLine(RewriteDriver* driver);
 
  private:
+  const PropertyCache::Cohort* cohort_;
   // Updates the critical line information in the driver.
   void UpdateInDriver(RewriteDriver* driver);
 

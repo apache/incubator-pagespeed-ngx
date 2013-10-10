@@ -161,7 +161,9 @@ const char CriticalImagesFinder::kCriticalImagesNotFoundCount[] =
 const char CriticalImagesFinder::kRenderedImageDimensionsProperty[] =
     "rendered_image_dimensions";
 
-CriticalImagesFinder::CriticalImagesFinder(Statistics* statistics) {
+CriticalImagesFinder::CriticalImagesFinder(const PropertyCache::Cohort* cohort,
+                                           Statistics* statistics)
+    : cohort_(cohort) {
   critical_images_valid_count_ = statistics->GetVariable(
       kCriticalImagesValidCount);
   critical_images_expired_count_ = statistics->GetVariable(
@@ -270,12 +272,11 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     return;
   }
   CriticalImagesInfo* info = NULL;
-  const PropertyCache::Cohort* cohort = GetCriticalImagesCohort();
   // Fallback properties can be used for critical images.
   AbstractPropertyPage* page = driver->fallback_property_page();
-  if (page != NULL && cohort != NULL) {
+  if (page != NULL && cohort() != NULL) {
     PropertyValue* property_value = page->GetProperty(
-        cohort, kCriticalImagesPropertyName);
+        cohort(), kCriticalImagesPropertyName);
     info = ExtractCriticalImagesFromCache(driver, property_value);
     if (info != NULL) {
       info->is_critical_image_info_present = true;
@@ -318,7 +319,7 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
   return UpdateCriticalImagesCacheEntry(
       html_critical_images_set, css_critical_images_set,
       NULL /* RenderedImages Proto */,
-      SupportInterval(), GetCriticalImagesCohort(), page);
+      SupportInterval(), cohort(), page);
 }
 
 // Setup the HTML and CSS critical image sets in *critical_images using
@@ -445,7 +446,7 @@ RenderedImages* CriticalImagesFinder::ExtractRenderedImageDimensionsFromCache(
   scoped_ptr<RenderedImages> dimensions(
       DecodeFromPropertyCache<RenderedImages>(
           driver,
-          GetCriticalImagesCohort(),
+          cohort(),
           kRenderedImageDimensionsProperty,
           driver->options()->finder_properties_cache_expiration_time_ms(),
           &pcache_status));
