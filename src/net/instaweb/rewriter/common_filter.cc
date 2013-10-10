@@ -45,7 +45,7 @@ CommonFilter::CommonFilter(RewriteDriver* driver)
 CommonFilter::~CommonFilter() {}
 
 void CommonFilter::InsertNodeAtBodyEnd(HtmlNode* data) {
-  if (end_body_point_ != NULL && driver_->IsRewritable(end_body_point_)) {
+  if (end_body_point_ != NULL && driver_->CanAppendChild(end_body_point_)) {
     driver_->AppendChild(end_body_point_, data);
   } else {
     driver_->InsertNodeBeforeCurrent(data);
@@ -99,8 +99,8 @@ void CommonFilter::EndElement(HtmlElement* element) {
       break;
     case HtmlName::kHtml:
       if ((end_body_point_ == NULL ||
-           !driver()->IsRewritable(end_body_point_)) &&
-          driver()->IsRewritable(element)) {
+           !driver()->CanAppendChild(end_body_point_)) &&
+          driver()->CanAppendChild(element)) {
         // Try to inject before </html> if before </body> won't work.
         end_body_point_ = element;
       }

@@ -238,88 +238,111 @@ class CommonFilterInsertNodeAtBodyEndTest : public RewriteTestBase {
     SetupWriter();
   }
 
+  void StartTest(StringPiece pre_comment) {
+    GoogleString url = "http://www.example.com/";
+    rewrite_driver()->StartParse(url);
+    rewrite_driver()->ParseText(pre_comment);
+  }
+
+  const GoogleString FinishTest(StringPiece pre_comment,
+                                StringPiece post_comment) {
+    const GoogleString expected_html =
+        StrCat(pre_comment, kEndDocumentComment, post_comment);
+    rewrite_driver()->ParseText(post_comment);
+    rewrite_driver()->FinishParse();
+    return expected_html;
+  }
+
+  const GoogleString FullTest(StringPiece pre_comment,
+                              StringPiece post_comment) {
+    StartTest(pre_comment);
+    return FinishTest(pre_comment, post_comment);
+  }
+
+  const GoogleString FlushTest(StringPiece pre_flush, StringPiece pre_comment,
+                               StringPiece post_comment) {
+    StartTest(pre_flush);
+    rewrite_driver()->Flush();
+    rewrite_driver()->ParseText(pre_comment);
+    GoogleString full_pre_comment = StrCat(pre_flush, pre_comment);
+    return FinishTest(full_pre_comment, post_comment);
+  }
+
   scoped_ptr<EndDocumentInserterFilter> filter_;
 };
 
 TEST_F(CommonFilterInsertNodeAtBodyEndTest, OneBody) {
-  GoogleString doc_url = "http://www.example.com/";
-  RewriteDriver* driver = rewrite_driver();
-  driver->StartParse(doc_url);
-  driver->Flush();
+  GoogleString expected =
+      FullTest("<html><head></head><body>", "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
 
-  GoogleString html_in = "<html><head></head><body></body></html>";
-  GoogleString expected = StrCat("<html><head></head><body>",
-                                 kEndDocumentComment,
-                                 "</body></html>");
-  driver->ParseText(html_in);
-  driver->FinishParse();
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, WhiteSpace) {
+  GoogleString expected =
+      FullTest("<html><head></head><body>", "</body>\n</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
 
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, NoBody) {
+  GoogleString expected =
+      FullTest("some content without body tag\n</html>", "");
   EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(CommonFilterInsertNodeAtBodyEndTest, NoCloseBody) {
-  GoogleString doc_url = "http://www.example.com/";
-  RewriteDriver* driver = rewrite_driver();
-  driver->StartParse(doc_url);
-  driver->Flush();
+  GoogleString expected =
+      FullTest("<html><head></head><body><img src=\"a.jpg\">", "</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
 
-  GoogleString html_in = "<html><head></head><body><img src=\"a.jpg\"></html>";
-  GoogleString expected = StrCat("<html><head></head><body><img src=\"a.jpg\">",
-                                 kEndDocumentComment,
-                                 "</html>");
-  driver->ParseText(html_in);
-  driver->FinishParse();
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, FlushInBody) {
+  GoogleString expected =
+      FlushTest("<html><head></head><body>", "", "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
 
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, FlushBeforeBody) {
+  GoogleString expected =
+      FlushTest("<html><head></head>", "<body>", "</body></html>");
   EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(CommonFilterInsertNodeAtBodyEndTest, FlushAfterCloseBody) {
-  GoogleString doc_url = "http://www.example.com/";
-  RewriteDriver* driver = rewrite_driver();
-  driver->StartParse(doc_url);
-  driver->Flush();
+  // kEndDocumentComment gets inserted after </body> since both the open and
+  // close tags have been flushed already.
+  GoogleString expected =
+      FlushTest("<html><head></head><body></body>", "", "</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
 
-  driver->ParseText("<html><head></head><body></body>");
-  driver->Flush();
-  driver->ParseText("</html>");
-  driver->FinishParse();
-
-  // kEndDocumentComment gets inserted after </html> despite it being in the
-  // last flush window. This is because HtmlParse::IsRewritable only returns
-  // true if both the open and close elements are in the flush window.
-  GoogleString expected = StrCat("<html><head></head><body></body></html>",
-                                 kEndDocumentComment);
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, FlushAtEnd) {
+  // This causes us to append to the end of document after the flush.
+  GoogleString expected =
+      FlushTest("<html><head></head><body></body></html>", "", "");
   EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(CommonFilterInsertNodeAtBodyEndTest, TwoBodies) {
-  GoogleString doc_url = "http://www.example.com/";
-  RewriteDriver* driver = rewrite_driver();
-  driver->StartParse(doc_url);
-  driver->Flush();
-
-  driver->ParseText("<html><head></head><body></body><body></body></html>");
-  driver->FinishParse();
-
   GoogleString expected =
-      StrCat("<html><head></head><body></body><body>",
-             kEndDocumentComment,
-             "</body></html>");
+      FullTest("<html><head></head><body></body><body>", "</body></html>");
   EXPECT_STREQ(expected, output_buffer_);
 }
 
 TEST_F(CommonFilterInsertNodeAtBodyEndTest, TextAfterCloseBody) {
-  GoogleString doc_url = "http://www.example.com/";
-  RewriteDriver* driver = rewrite_driver();
-  driver->StartParse(doc_url);
-  driver->Flush();
-
-  driver->ParseText("<html><head></head><body></body></html>extra text");
-  driver->FinishParse();
-
   GoogleString expected =
-      StrCat("<html><head></head><body></body></html>extra text",
-             kEndDocumentComment);
+      FullTest("<html><head></head><body></body>extra text", "</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+}
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, TextAfterCloseHtml) {
+  GoogleString expected =
+      FullTest("<html><head></head><body></body></html>extra text", "");
+  EXPECT_STREQ(expected, output_buffer_);
+}
+
+TEST_F(CommonFilterInsertNodeAtBodyEndTest, BodyInNoscript) {
+  GoogleString expected = FullTest(
+      "<html><head></head><noscript><body></body></noscript>", "</html>");
   EXPECT_STREQ(expected, output_buffer_);
 }
 

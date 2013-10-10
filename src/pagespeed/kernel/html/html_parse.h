@@ -301,6 +301,11 @@ class HtmlParse {
   HtmlName MakeName(HtmlName::Keyword keyword);
 
   bool IsRewritable(const HtmlNode* node) const;
+  // IsRewritable will return false for a node if either the open or close tag
+  // has been flushed, but this is too conservative if we only want to call
+  // AppendChild on that node, since we can append even if the open tag has
+  // already been flushed.
+  bool CanAppendChild(const HtmlNode* node) const;
 
   void ClearElements();
 

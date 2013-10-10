@@ -41,8 +41,7 @@ const char SplitHtmlBeaconFilter::kSplitHtmlBeaconAddedCount[] =
     "split_html_beacon_filter_script_added_count";
 
 SplitHtmlBeaconFilter::SplitHtmlBeaconFilter(RewriteDriver* driver)
-    : driver_(driver), added_script_(false) {
-  Clear();
+    : CommonFilter(driver) {
   Statistics* stats = driver->server_context()->statistics();
   split_html_beacon_added_count_ =
       stats->GetVariable(kSplitHtmlBeaconAddedCount);
@@ -54,10 +53,6 @@ void SplitHtmlBeaconFilter::DetermineEnabled() {
 
 void SplitHtmlBeaconFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kSplitHtmlBeaconAddedCount);
-}
-
-void SplitHtmlBeaconFilter::StartDocument() {
-  Clear();
 }
 
 bool SplitHtmlBeaconFilter::ShouldApply(RewriteDriver* driver) {
@@ -74,15 +69,7 @@ bool SplitHtmlBeaconFilter::ShouldApply(RewriteDriver* driver) {
           driver->options()->Enabled(RewriteOptions::kSplitHtml));
 }
 
-void SplitHtmlBeaconFilter::Clear() {
-  added_script_ = false;
-}
-
-void SplitHtmlBeaconFilter::EndElement(HtmlElement* element) {
-  if (added_script_ || (element->keyword() != HtmlName::kBody)) {
-    return;
-  }
-
+void SplitHtmlBeaconFilter::EndDocument() {
   StaticAssetManager* static_asset_manager =
       driver_->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
@@ -107,12 +94,10 @@ void SplitHtmlBeaconFilter::EndElement(HtmlElement* element) {
   StrAppend(&js, "'", options_signature_hash, "', ");
   StrAppend(&js, "'", nonce, "');");
 
-  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  driver_->InsertNodeBeforeCurrent(script);
+  HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
+  InsertNodeAtBodyEnd(script);
   static_asset_manager->AddJsToElement(js, script, driver_);
   driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-
-  added_script_ = true;
   split_html_beacon_added_count_->Add(1);
 }
 

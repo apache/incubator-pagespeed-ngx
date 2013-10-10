@@ -50,7 +50,6 @@ DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {}
 
 void DomainRewriteFilter::StartDocumentImpl() {
-  client_domain_rewriter_script_written_ = false;
   bool rewrite_hyperlinks = driver_->options()->domain_rewrite_hyperlinks();
 
   if (rewrite_hyperlinks) {
@@ -184,38 +183,36 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   }
 }
 
-void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
-  if (driver_->options()->client_domain_rewrite() &&
-      (element->keyword() == HtmlName::kBody &&
-      !client_domain_rewriter_script_written_)) {
-    const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-    ConstStringStarVector from_domains;
-    lawyer->FindDomainsRewrittenTo(driver_->base_url(), &from_domains);
-
-    if (from_domains.empty()) {
-      return;
-    }
-
-    GoogleString comma_separated_from_domains;
-    for (int i = 0, n = from_domains.size(); i < n; i++) {
-      StrAppend(&comma_separated_from_domains, "\"", *(from_domains[i]), "\"");
-      if (i != n - 1) {
-        StrAppend(&comma_separated_from_domains, ",");
-      }
-    }
-
-    HtmlElement* script_node = driver_->NewElement(element, HtmlName::kScript);
-    driver_->AppendChild(element, script_node);
-    StaticAssetManager* static_asset_manager =
-        driver_->server_context()->static_asset_manager();
-    GoogleString js = StrCat(
-        static_asset_manager->GetAsset(
-            StaticAssetManager::kClientDomainRewriter, driver_->options()),
-            "pagespeed.clientDomainRewriterInit([",
-            comma_separated_from_domains, "]);");
-    static_asset_manager->AddJsToElement(js, script_node, driver_);
-    client_domain_rewriter_script_written_ = true;
+void DomainRewriteFilter::EndDocument() {
+  if (!driver_->options()->client_domain_rewrite()) {
+    return;
   }
+  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+  ConstStringStarVector from_domains;
+  lawyer->FindDomainsRewrittenTo(driver_->base_url(), &from_domains);
+
+  if (from_domains.empty()) {
+    return;
+  }
+
+  GoogleString comma_separated_from_domains;
+  for (int i = 0, n = from_domains.size(); i < n; i++) {
+    StrAppend(&comma_separated_from_domains, "\"", *(from_domains[i]), "\"");
+    if (i != n - 1) {
+      StrAppend(&comma_separated_from_domains, ",");
+    }
+  }
+
+  HtmlElement* script_node = driver_->NewElement(NULL, HtmlName::kScript);
+  InsertNodeAtBodyEnd(script_node);
+  StaticAssetManager* static_asset_manager =
+      driver_->server_context()->static_asset_manager();
+  GoogleString js =
+      StrCat(static_asset_manager->GetAsset(
+                 StaticAssetManager::kClientDomainRewriter, driver_->options()),
+             "pagespeed.clientDomainRewriterInit([",
+             comma_separated_from_domains, "]);");
+  static_asset_manager->AddJsToElement(js, script_node, driver_);
 }
 
 }  // namespace net_instaweb

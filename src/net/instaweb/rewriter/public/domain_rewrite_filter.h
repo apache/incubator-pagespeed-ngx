@@ -43,8 +43,9 @@ class DomainRewriteFilter : public CommonFilter {
   ~DomainRewriteFilter();
   static void InitStats(Statistics* statistics);
   virtual void StartDocumentImpl();
+  virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
-  virtual void EndElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element) {}
 
   virtual const char* Name() const { return "DomainRewrite"; }
 
@@ -73,7 +74,6 @@ class DomainRewriteFilter : public CommonFilter {
  private:
   // Stats on how much domain-rewriting we've done.
   Variable* rewrite_count_;
-  bool client_domain_rewriter_script_written_;
 
   DISALLOW_COPY_AND_ASSIGN(DomainRewriteFilter);
 };

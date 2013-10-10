@@ -19,9 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_ADD_INSTRUMENTATION_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_ADD_INSTRUMENTATION_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -31,7 +32,7 @@ class Statistics;
 class Variable;
 
 // Injects javascript instrumentation for monitoring page-rendering time.
-class AddInstrumentationFilter : public EmptyHtmlFilter {
+class AddInstrumentationFilter : public CommonFilter {
  public:
   static const char kLoadTag[];
   static const char kUnloadTag[];
@@ -46,9 +47,10 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
 
   static void InitStats(Statistics* statistics);
 
-  virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartDocumentImpl();
+  virtual void EndDocument();
+  virtual void StartElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "AddInstrumentation"; }
 
  protected:
@@ -56,18 +58,15 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   Variable* instrumentation_script_added_count_;
 
  private:
-  // Adds a script node to given element using the specified format and
-  // tag name.
-  void AddScriptNode(HtmlElement* element, const GoogleString& tag_name);
+  // Returns JS using the specified event.
+  GoogleString GetScriptJs(StringPiece event);
 
   // Adds the kHeadScript just before the current event only if the element is
   // not a <title> or <meta>.
   void AddHeadScript(HtmlElement* element);
 
-  RewriteDriver* driver_;
   bool found_head_;
   bool added_head_script_;
-  bool added_tail_script_;
   bool added_unload_script_;
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);

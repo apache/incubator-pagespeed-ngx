@@ -796,6 +796,11 @@ bool HtmlParse::IsRewritable(const HtmlNode* node) const {
           IsInEventWindow(node->end()));
 }
 
+bool HtmlParse::CanAppendChild(const HtmlNode* node) const {
+  return (node->live() &&  // Avoid dereferencing NULL data for closed elements.
+          IsInEventWindow(node->end()));
+}
+
 bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {
   return iter != queue_.end();
 }

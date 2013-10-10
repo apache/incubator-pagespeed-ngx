@@ -22,7 +22,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_BEACON_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SPLIT_HTML_BEACON_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
@@ -33,7 +33,7 @@ class Statistics;
 class Variable;
 
 // Inject JavaScript for detecting the below-the-fold HTML panels.
-class SplitHtmlBeaconFilter : public EmptyHtmlFilter {
+class SplitHtmlBeaconFilter : public CommonFilter {
  public:
   // Counters.
   static const char kSplitHtmlBeaconAddedCount[];
@@ -45,8 +45,10 @@ class SplitHtmlBeaconFilter : public EmptyHtmlFilter {
 
   static void InitStats(Statistics* statistics);
 
-  virtual void StartDocument();
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartDocumentImpl() {}
+  virtual void EndDocument();
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "SplitHtmlBeacon"; }
 
   // Returns true if this filter is going to inject a beacon for this request.
@@ -56,11 +58,6 @@ class SplitHtmlBeaconFilter : public EmptyHtmlFilter {
   static bool ShouldApply(RewriteDriver* driver);
 
  private:
-  void Clear();
-
-  RewriteDriver* driver_;
-  bool added_script_;
-
   Variable* split_html_beacon_added_count_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlBeaconFilter);

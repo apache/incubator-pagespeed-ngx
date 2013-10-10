@@ -60,10 +60,9 @@ const char AddInstrumentationFilter::kUnloadTag[] = "unload:";
 const char AddInstrumentationFilter::kInstrumentationScriptAddedCount[] =
     "instrumentation_filter_script_added_count";
 AddInstrumentationFilter::AddInstrumentationFilter(RewriteDriver* driver)
-    : driver_(driver),
+    : CommonFilter(driver),
       found_head_(false),
       added_head_script_(false),
-      added_tail_script_(false),
       added_unload_script_(false) {
   Statistics* stats = driver->server_context()->statistics();
   instrumentation_script_added_count_ = stats->GetVariable(
@@ -76,10 +75,9 @@ void AddInstrumentationFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kInstrumentationScriptAddedCount);
 }
 
-void AddInstrumentationFilter::StartDocument() {
+void AddInstrumentationFilter::StartDocumentImpl() {
   found_head_ = false;
   added_head_script_ = false;
-  added_tail_script_ = false;
   added_unload_script_ = false;
 }
 
@@ -101,7 +99,7 @@ void AddInstrumentationFilter::AddHeadScript(HtmlElement* element) {
   }
 }
 
-void AddInstrumentationFilter::StartElement(HtmlElement* element) {
+void AddInstrumentationFilter::StartElementImpl(HtmlElement* element) {
   if (found_head_ && !added_head_script_) {
     AddHeadScript(element);
   }
@@ -110,35 +108,50 @@ void AddInstrumentationFilter::StartElement(HtmlElement* element) {
   }
 }
 
-void AddInstrumentationFilter::EndElement(HtmlElement* element) {
-  if (!added_tail_script_ && element->keyword() == HtmlName::kBody) {
-    // We relied on the existence of a <head> element.  This should have been
-    // assured by add_head_filter.
-    CHECK(found_head_) << "Reached end of document without finding <head>."
-        "  Please turn on the add_head filter.";
-    // TODO(jud): Refactor to insert the tail script in EndDocument using
-    // CommonFilter::InsertNodeAtBodyEnd.
-    AddScriptNode(element, kLoadTag);
-    added_tail_script_ = true;
-  } else if (found_head_ && element->keyword() == HtmlName::kHead) {
+void AddInstrumentationFilter::EndElementImpl(HtmlElement* element) {
+  if (found_head_ && element->keyword() == HtmlName::kHead) {
     if (!added_head_script_) {
       AddHeadScript(element);
     }
     if (driver_->options()->report_unload_time() &&
         !added_unload_script_) {
-      AddScriptNode(element, kUnloadTag);
+      GoogleString js = GetScriptJs(kUnloadTag);
+      HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+      if (!driver_->defer_instrumentation_script()) {
+        driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+      }
+      driver_->InsertNodeBeforeCurrent(script);
+      driver_->server_context()->static_asset_manager()->AddJsToElement(
+          js, script, driver_);
       added_unload_script_ = true;
     }
   }
 }
 
-void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
-                                             const GoogleString& event) {
+void AddInstrumentationFilter::EndDocument() {
+  // We relied on the existence of a <head> element.  This should have been
+  // assured by add_head_filter.
+  if (!found_head_) {
+    LOG(WARNING) << "Reached end of document without finding <head>."
+                    "  Please turn on the add_head filter.";
+    return;
+  }
+  GoogleString js = GetScriptJs(kLoadTag);
+  HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
+  if (!driver_->defer_instrumentation_script()) {
+    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  }
+  InsertNodeAtBodyEnd(script);
+  driver_->server_context()->static_asset_manager()->AddJsToElement(js, script,
+                                                                    driver_);
+}
+
+GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
   GoogleString js;
   StaticAssetManager* static_asset_manager =
       driver_->server_context()->static_asset_manager();
   // Only add the static JS once.
-  if (!added_tail_script_ && !added_unload_script_) {
+  if (!added_unload_script_) {
     if (driver_->options()->enable_extended_instrumentation()) {
       js = static_asset_manager->GetAsset(
           StaticAssetManager::kExtendedInstrumentationJs, driver_->options());
@@ -199,19 +212,13 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
                           false, /* no quotes */
                           &html_url);
 
-  GoogleString init_js = "\npagespeed.addInstrumentationInit(";
-  StrAppend(&init_js, "'", *beacon_url, "', ");
-  StrAppend(&init_js, "'", js_event, "', ");
-  StrAppend(&init_js, "'", extra_params, "', ");
-  StrAppend(&init_js, "'", html_url, "');");
+  StrAppend(&js, "\npagespeed.addInstrumentationInit(");
+  StrAppend(&js, "'", *beacon_url, "', ");
+  StrAppend(&js, "'", js_event, "', ");
+  StrAppend(&js, "'", extra_params, "', ");
+  StrAppend(&js, "'", html_url, "');");
 
-  StrAppend(&js, init_js);
-  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  if (!driver_->defer_instrumentation_script()) {
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-  }
-  driver_->InsertNodeBeforeCurrent(script);
-  static_asset_manager->AddJsToElement(js, script, driver_);
+  return js;
 }
 
 }  // namespace net_instaweb

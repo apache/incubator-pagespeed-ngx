@@ -250,13 +250,6 @@ TEST_F(CssSummarizerBaseTest, BasicOperation) {
   EXPECT_STREQ(kExpectedResult, filter_->result());
 }
 
-TEST_F(CssSummarizerBaseTest, BasicOperationWhitespace) {
-  GoogleString expected =
-      FullTest("whitespace", "<body> <p>some content</p> ", "</body>\n</html>");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
 TEST_F(CssSummarizerBaseTest, RenderSummary) {
   filter_->set_render_summaries_in_place(true);
   Parse("link", StrCat(CssLinkHref("a.css"),
@@ -337,83 +330,6 @@ TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
                "<style>div{displa</style>\n"
                "<!--OK/*{backgrou|OK/div{displa/rel=stylesheet|--></html>",
                output_buffer_);
-}
-
-TEST_F(CssSummarizerBaseTest, NoBody) {
-  GoogleString expected =
-      FullTest("no_body", "some content without body tag\n", "</html>");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, TwoBodies) {
-  GoogleString expected =
-      FullTest("two_bodies",
-               "<body>First body</body><body>Second body", "</body></html>");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, StuffAfterBody) {
-  GoogleString expected =
-      FullTest("stuff_after_body",
-               "<body>Howdy!</body><p>extra stuff</p>", "</html>");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, StuffAfterHtml) {
-  GoogleString expected =
-      FullTest("stuff_after_html",
-               "<body>Howdy!</body></html>extra stuff", "");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, FlushAfterBody) {
-  // Even though we flush between </body> and </html>, !IsRewritable(</html>)
-  // (since the inital <html> was in a different flush window) so we inject at
-  // end of document.
-  GoogleString expected =
-      FlushTest("flush_after_body",
-                "<body> some content </body>", "</html>", "");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, FlushDuringBody) {
-  // As above we end up inserting at end.
-  GoogleString expected =
-      FlushTest("flush_during_body",
-                "<body> partial", " content </body></html>", "");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, FlushBeforeBody) {
-  // Here we can insert at end of body.
-  GoogleString expected =
-      FlushTest("flush_before_body",
-                "", "<body> post-flush content ", "</body></html>");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, FlushAtEnd) {
-  // This causes us to append to the end of document after the flush.
-  GoogleString expected =
-      FlushTest("flush_at_end",
-                "<body>pre-flush content</body></html>", "", "");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
-}
-
-TEST_F(CssSummarizerBaseTest, EnclosedBody) {
-  GoogleString expected =
-      FullTest("enclosed_body",
-               "<noscript><body>no script body</body></noscript>", "</html>");
-  EXPECT_STREQ(expected, output_buffer_);
-  EXPECT_STREQ(kExpectedResult, filter_->result());
 }
 
 class CssSummarizerBaseWithCombinerFilterTest : public CssSummarizerBaseTest {
