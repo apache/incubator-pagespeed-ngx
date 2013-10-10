@@ -1049,7 +1049,6 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
 #ALL_DIRECTIVES ModPagespeedMapOriginDomain example.com localhost
 #ALL_DIRECTIVES ModPagespeedMapRewriteDomain example.com static.example.com
-# #ALL_DIRECTIVES ModPagespeedMaxImageBytesForWebpInCss 1000
 #ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
 #ALL_DIRECTIVES ModPagespeedMaxInlinedPreviewImagesIndex 80
 #ALL_DIRECTIVES ModPagespeedMaxSegmentLength 100
