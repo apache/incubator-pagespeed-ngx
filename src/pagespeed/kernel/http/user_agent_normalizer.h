@@ -17,6 +17,8 @@
 #ifndef PAGESPEED_KERNEL_HTTP_USER_AGENT_NORMALIZER_H_
 #define PAGESPEED_KERNEL_HTTP_USER_AGENT_NORMALIZER_H_
 
+#include <vector>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/util/re2.h"
@@ -32,7 +34,13 @@ class UserAgentNormalizer {
   UserAgentNormalizer() {}
   virtual ~UserAgentNormalizer();
 
-  virtual GoogleString Normalize(const GoogleString& in) = 0;
+  virtual GoogleString Normalize(const GoogleString& in) const = 0;
+
+  // Helper that applies all the normalizers in the ua_normalizers list
+  // to ua_in.
+  static GoogleString NormalizeWithAll(
+      const std::vector<const UserAgentNormalizer*>& ua_normalizers,
+      const GoogleString& ua_in);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UserAgentNormalizer);
@@ -45,7 +53,7 @@ class AndroidUserAgentNormalizer : public UserAgentNormalizer {
   AndroidUserAgentNormalizer();
   virtual ~AndroidUserAgentNormalizer();
 
-  virtual GoogleString Normalize(const GoogleString& in);
+  virtual GoogleString Normalize(const GoogleString& in) const;
 
  private:
   RE2 dalvik_ua_;
@@ -61,7 +69,7 @@ class IEUserAgentNormalizer : public UserAgentNormalizer {
   IEUserAgentNormalizer();
   virtual ~IEUserAgentNormalizer();
 
-  virtual GoogleString Normalize(const GoogleString& in);
+  virtual GoogleString Normalize(const GoogleString& in) const;
 
  private:
   RE2 ie_ua_;

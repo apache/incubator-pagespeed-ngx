@@ -61,6 +61,7 @@ class UrlAsyncFetcher;
 class UrlNamer;
 class UsageDataReporter;
 class UserAgentMatcher;
+class UserAgentNormalizer;
 
 // Manages the construction and ownership of most objects needed to create
 // RewriteDrivers. If you have your own versions of these classes (specific
@@ -151,13 +152,16 @@ class RewriteDriverFactory {
   RewriteOptions* default_options() { return default_options_.get(); }
   virtual RewriteOptionsManager* NewRewriteOptionsManager();
 
-  // These accessors are *not* thread-safe.  They must be called once prior
-  // to forking threads, e.g. via ComputeUrlAsyncFetcher().
+  // These accessors are *not* thread-safe until after the first call, as they
+  // do unlocked lazy initialization, so they must be called at least once prior
+  // to starting threads. Normally this is done by CreateServerContext() or
+  // InitServerContext().
   Timer* timer();
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolCategory pool);
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
+  const std::vector<const UserAgentNormalizer*>& user_agent_normalizers();
 
   // Computes URL fetchers using the base fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
@@ -249,7 +253,7 @@ class RewriteDriverFactory {
 
   // Creates a new empty RewriteOptions object, with no default settings.
   // Generally configurations go factory's default_options() ->
-  // ServerContext::global_options() -> RewriteDriveFactory,
+  // ServerContext::global_options() -> RewriteDriverFactory,
   // but this method just provides a blank set of options.
   virtual RewriteOptions* NewRewriteOptions();
 
@@ -323,7 +327,7 @@ class RewriteDriverFactory {
 
   virtual Hasher* NewHasher() = 0;
 
-  // Creates a new ServerContext* object.  ServerContexst itself must be
+  // Creates a new ServerContext* object.  ServerContext itself must be
   // overridden per Factory as it has at least one pure virtual method.
   virtual ServerContext* NewServerContext() = 0;
 
@@ -356,6 +360,15 @@ class RewriteDriverFactory {
 
   virtual UserAgentMatcher* DefaultUserAgentMatcher();
   virtual UsageDataReporter* DefaultUsageDataReporter();
+
+  // Provides an optional hook to add user-agent normalizers specific to
+  // needs of a specific RewriteDriverFactory implementation. The new entries
+  // should be appended to the end of *out (without clearing it), and should
+  // still be owned by the RewriteDriverFactory subclass.
+  //
+  // Default implementation does nothing.
+  virtual void AddPlatformSpecificUserAgentNormalizers(
+      std::vector<const UserAgentNormalizer*>* out);
 
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
@@ -408,6 +421,11 @@ class RewriteDriverFactory {
   scoped_ptr<NonceGenerator> nonce_generator_;
   scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<UserAgentMatcher> user_agent_matcher_;
+
+  // Lazily filled-in list of UA normalizers, including the default ones
+  // this class adds, and any additional ones added by user_agent_normalizers()
+  // calling subclass' AddPlatformSpecificUserAgentNormalizers on this.
+  std::vector<const UserAgentNormalizer*> user_agent_normalizers_;
   scoped_ptr<StaticAssetManager> static_asset_manager_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;

@@ -24,6 +24,16 @@ namespace net_instaweb {
 
 UserAgentNormalizer::~UserAgentNormalizer() {}
 
+GoogleString UserAgentNormalizer::NormalizeWithAll(
+    const std::vector<const UserAgentNormalizer*>& ua_normalizers,
+    const GoogleString& ua_in) {
+  GoogleString ua = ua_in;
+  for (int i = 0, n = ua_normalizers.size(); i < n; ++i) {
+    ua = ua_normalizers[i]->Normalize(ua);
+  }
+  return ua;
+}
+
 // Samples:
 // Dalvik/1.4.0 (Linux; U; Android 2.3.7; M5 Build/GRK39F)
 // Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03L) AppleWebKit/537.31 (KHTML, like Gecko) Chrome/26.0.1410.58 Safari/537.31
@@ -51,7 +61,8 @@ AndroidUserAgentNormalizer::AndroidUserAgentNormalizer()
 AndroidUserAgentNormalizer::~AndroidUserAgentNormalizer() {
 }
 
-GoogleString AndroidUserAgentNormalizer::Normalize(const GoogleString& in) {
+GoogleString AndroidUserAgentNormalizer::Normalize(
+    const GoogleString& in) const {
   Re2StringPiece match, match2, match3;
   if (RE2::FullMatch(in, dalvik_ua_, &match)) {
     return StrCat(Re2ToStringPiece(match), ")");
@@ -79,7 +90,7 @@ IEUserAgentNormalizer::IEUserAgentNormalizer()
 IEUserAgentNormalizer::~IEUserAgentNormalizer() {
 }
 
-GoogleString IEUserAgentNormalizer::Normalize(const GoogleString& in) {
+GoogleString IEUserAgentNormalizer::Normalize(const GoogleString& in) const {
   Re2StringPiece match, match2;
   if (RE2::FullMatch(in, ie_ua_, &match, &match2)) {
     // IE UA strings enumerate things like installed .NET versions which

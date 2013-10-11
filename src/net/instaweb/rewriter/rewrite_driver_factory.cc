@@ -59,6 +59,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/user_agent_normalizer.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
@@ -323,6 +324,24 @@ UsageDataReporter* RewriteDriverFactory::usage_data_reporter() {
   return usage_data_reporter_.get();
 }
 
+const std::vector<const UserAgentNormalizer*>&
+    RewriteDriverFactory::user_agent_normalizers() {
+  if (user_agent_normalizers_.empty()) {
+    // Note: it's possible that we may want separate lists of normalizers for
+    // different applications in the future. For now, though, we centralize
+    // one list, because:
+    // a) It's simpler b) Regexp compilation isn't free.
+    AndroidUserAgentNormalizer* an = new AndroidUserAgentNormalizer();
+    IEUserAgentNormalizer* ien = new IEUserAgentNormalizer();
+    TakeOwnership(an);
+    TakeOwnership(ien);
+    user_agent_normalizers_.push_back(an);
+    user_agent_normalizers_.push_back(ien);
+    AddPlatformSpecificUserAgentNormalizers(&user_agent_normalizers_);
+  }
+  return user_agent_normalizers_;
+}
+
 NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
   return new FileSystemLockManager(file_system(), LockFilePrefix(),
                                    scheduler(), message_handler());
@@ -509,6 +528,10 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_hostname(hostname_);
   server_context->InitWorkersAndDecodingDriver();
   server_contexts_.insert(server_context);
+
+  // Make sure that all lazy state gets initialized, even if we don't copy it to
+  // ServerContext
+  user_agent_normalizers();
 }
 
 void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(
@@ -521,6 +544,10 @@ void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
 
 void RewriteDriverFactory::ApplyPlatformSpecificConfiguration(
     RewriteDriver* driver) {
+}
+
+void RewriteDriverFactory::AddPlatformSpecificUserAgentNormalizers(
+    std::vector<const UserAgentNormalizer*>* out) {
 }
 
 UrlAsyncFetcher* RewriteDriverFactory::ComputeUrlAsyncFetcher() {

@@ -18,24 +18,29 @@
 
 #include "net/instaweb/rewriter/public/google_font_service_input_resource.h"
 
+#include <vector>
+
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/user_agent_normalizer.h"
 
 namespace net_instaweb {
 
 GoogleFontServiceInputResource::GoogleFontServiceInputResource(
     RewriteDriver* rewrite_driver,
     const StringPiece& url,
-    const StringPiece& cache_key)
+    const StringPiece& cache_key,
+    const GoogleString& user_agent)
     : CacheableResourceBase("font_service_input_resource",
-                            url, cache_key, &kContentTypeCss, rewrite_driver) {
+                            url, cache_key, &kContentTypeCss, rewrite_driver),
+      user_agent_(user_agent) {
 }
 
 GoogleFontServiceInputResource::~GoogleFontServiceInputResource() {
@@ -52,11 +57,16 @@ GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
     return NULL;
   }
 
-  // Compute cache key, incorporating the UA string.
-  // TODO(morlovich): UA normalization goes here.
+  // Compute cache key, incorporating the UA string --- but normalize it first,
+  // to cut down on irrelevant noise.
+  const std::vector<const UserAgentNormalizer*>& ua_normalizers =
+      rewrite_driver->server_context()->factory()->user_agent_normalizers();
+  GoogleString ua = UserAgentNormalizer::NormalizeWithAll(
+                        ua_normalizers, rewrite_driver->user_agent());
+
   StringPiece url_plus_ua_spec;
-  scoped_ptr<GoogleUrl> url_plus_ua(parsed_url.CopyAndAddQueryParam(
-      "X-PS-UA", rewrite_driver->user_agent()));
+  scoped_ptr<GoogleUrl> url_plus_ua(
+      parsed_url.CopyAndAddQueryParam("X-PS-UA", ua));
   url_plus_ua_spec = url_plus_ua->Spec();
 
   GoogleString cache_key;
@@ -71,7 +81,8 @@ GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
     return NULL;
   }
 
-  return new GoogleFontServiceInputResource(rewrite_driver, url, cache_key);
+  return new GoogleFontServiceInputResource(rewrite_driver, url, cache_key,
+                                            rewrite_driver->user_agent());
 }
 
 void GoogleFontServiceInputResource::InitStats(Statistics* stats) {
@@ -80,16 +91,19 @@ void GoogleFontServiceInputResource::InitStats(Statistics* stats) {
 
 void GoogleFontServiceInputResource::PrepareRequestHeaders(
     RequestHeaders* headers) {
-  // We want to give the font service the exact UA the client used, so
-  // that it can optimize for the visitor's browser, and not something
-  // like Serf/1.1 mod_pagespeed/x.y
-  headers->Replace(HttpAttributes::kUserAgent, rewrite_driver()->user_agent());
+  // We want to give the font service the UA the client used, so that it can
+  // optimize for the visitor's browser, and not something like Serf/1.1
+  // mod_pagespeed/x.y
+  headers->Replace(HttpAttributes::kUserAgent, user_agent_);
 }
 
 void GoogleFontServiceInputResource::PrepareResponseHeaders(
     ResponseHeaders* headers) {
-  // TODO(morlovich): Check for anything suspicious, like the wrong type
-  // and fail the request?
+  // Refuse to deal with anything but CSS.
+  const ContentType* content_type = headers->DetermineContentType();
+  if (content_type == NULL || !content_type->IsCss()) {
+    headers->set_status_code(HttpStatus::kNotAcceptable);
+  }
 
   // The resource is served with cache-control: private; we need to swizzle
   // that in order to save it in the cache.

@@ -174,6 +174,30 @@ TEST_F(UserAgentNormalizerTest, NormalizeMobileChrome) {
                 "  Safari/535.19"));
 }
 
+TEST_F(UserAgentNormalizerTest, NormalizeWithAll) {
+  std::vector<const UserAgentNormalizer*> normalizers;
+  normalizers.push_back(&normalize_ie_);
+  normalizers.push_back(&normalize_android_);
+
+  EXPECT_EQ(
+      "Mozilla/5.0 (Linux; Android 4.1.2; )"
+          " AppleWebKit/537.31 (KHTML, like Gecko)"
+          " Chrome/26.0.1410.58 Mobile Safari/537.31",
+      UserAgentNormalizer::NormalizeWithAll(
+          normalizers,
+          "Mozilla/5.0 (Linux; Android 4.1.2; GT-I9300 Build/JZO54K)"
+            " AppleWebKit/537.31 (KHTML, like Gecko)"
+            " Chrome/26.0.1410.58 Mobile Safari/537.31"));
+
+  EXPECT_EQ(
+      "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)",
+      UserAgentNormalizer::NormalizeWithAll(
+          normalizers,
+          "Mozilla/4.0 (compatible; MSIE 8.0; "
+          "Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727;"
+          " OfficeLiveConnector.1.3; OfficeLivePatch.0.0)"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

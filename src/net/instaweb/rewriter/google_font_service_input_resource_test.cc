@@ -47,6 +47,7 @@ namespace {
 
 const char kRoboto[] = "http://fonts.googleapis.com/css?family=Roboto";
 const char kRobotoSsl[] = "https://fonts.googleapis.com/css?family=Roboto";
+const char kNonCss[] = "http://fonts.googleapis.com/some.txt";
 
 // A helper fetcher that adds in UA to the URL, so we can use
 // MockUrlAsyncFetcher w/UA-sensitive things.
@@ -106,6 +107,11 @@ class GoogleFontServiceInputResourceTest : public RewriteTestBase {
 
     SetFetchResponse(StrCat(kRobotoSsl, "&UA=Safieri"),
                      response_headers, "sfont_safieri");
+
+    ResponseHeaders non_css;
+    SetDefaultLongCacheHeaders(&kContentTypeText, &non_css);
+    SetFetchResponse(StrCat(kNonCss, "?UA=Chromezilla"),
+                     non_css, "something weird");
   }
 };
 
@@ -228,6 +234,56 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
+TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
+  const char kIE7a[] =
+      "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; "
+      ".NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)";
+
+  GoogleUrl url(kRoboto);
+  scoped_ptr<GoogleUrl> url_plus_ua(url.CopyAndAddQueryParam("UA", kIE7a));
+  ResponseHeaders response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &response_headers);
+  response_headers.SetDateAndCaching(
+      timer()->NowMs(), 86400 * Timer::kSecondMs, ", private");
+  SetFetchResponse(url_plus_ua->Spec(), response_headers, "font_IE7");
+
+  // Try fetches with a couple of possible aliases. The one we uploaded it under
+  // is first, since it's the only one the fetcher replies to.
+  rewrite_driver()->SetUserAgent(kIE7a);
+
+  ResourcePtr resource(
+      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+  ASSERT_TRUE(resource.get() != NULL);
+  MockResourceCallback callback(resource,
+                                server_context()->thread_system());
+  resource->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
+  EXPECT_TRUE(callback.done());
+  EXPECT_TRUE(callback.success());
+  EXPECT_EQ("font_IE7", resource->contents());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Different list of .NET versions.
+  const char kIE7b[] =
+      "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; "
+      ".NET CLR 2.0.50727; .NET4.0C; .NET4.0E)";
+  rewrite_driver()->SetUserAgent(kIE7b);
+
+  ResourcePtr resource2(
+      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+  ASSERT_TRUE(resource2.get() != NULL);
+  MockResourceCallback callback2(resource2,
+                                 server_context()->thread_system());
+  resource2->LoadAsync(Resource::kReportFailureIfNotCacheable,
+                       rewrite_driver()->request_context(),
+                       &callback2);
+  EXPECT_TRUE(callback2.done());
+  EXPECT_TRUE(callback2.success());
+  EXPECT_EQ("font_IE7", resource->contents());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
 TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
   SetupWaitFetcher();
 
@@ -262,6 +318,55 @@ TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
   ASSERT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
   EXPECT_EQ("font_safieri", resource2->contents());
+}
+
+TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
+  SetFetchFailOnUnexpected(false);
+
+  // Regression test --- don't crash when fetch fails.
+  // Bug discovered by accident due to a bug in a test.
+  rewrite_driver()->SetUserAgent("Huhzilla");
+  ResourcePtr resource(
+      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+  ASSERT_TRUE(resource.get() != NULL);
+  MockResourceCallback callback(resource,
+                                server_context()->thread_system());
+  resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
+  EXPECT_TRUE(callback.done());
+  EXPECT_FALSE(callback.success());
+  EXPECT_EQ("", resource->contents());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(GoogleFontServiceInputResourceTest, DontLoadNonCss) {
+  rewrite_driver()->SetUserAgent("Chromezilla");
+
+  ResourcePtr resource(
+      GoogleFontServiceInputResource::Make(kNonCss, rewrite_driver()));
+  ASSERT_TRUE(resource.get() != NULL);
+  MockResourceCallback callback(resource,
+                                server_context()->thread_system());
+  resource->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                      rewrite_driver()->request_context(),
+                      &callback);
+  EXPECT_TRUE(callback.done());
+  EXPECT_FALSE(resource->HttpStatusOk());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Make sure we don't end up caching a success, either.
+  ResourcePtr resource2(
+      GoogleFontServiceInputResource::Make(kNonCss, rewrite_driver()));
+  ASSERT_TRUE(resource2.get() != NULL);
+  MockResourceCallback callback2(resource2,
+                                 server_context()->thread_system());
+  resource2->LoadAsync(Resource::kLoadEvenIfNotCacheable,
+                       rewrite_driver()->request_context(),
+                       &callback2);
+  EXPECT_TRUE(callback2.done());
+  EXPECT_FALSE(resource->HttpStatusOk());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
 
 }  // namespace

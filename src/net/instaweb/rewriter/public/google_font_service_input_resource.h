@@ -28,8 +28,9 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_GOOGLE_FONT_SERVICE_INPUT_RESOURCE_H_
 
 #include "net/instaweb/rewriter/public/cacheable_resource_base.h"
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -55,7 +56,9 @@ class GoogleFontServiceInputResource : public CacheableResourceBase {
  private:
   GoogleFontServiceInputResource(RewriteDriver* rewrite_driver,
                                  const StringPiece& url,
-                                 const StringPiece& cache_key);
+                                 const StringPiece& cache_key,
+                                 const GoogleString& user_agent);
+  GoogleString user_agent_;
 
   DISALLOW_COPY_AND_ASSIGN(GoogleFontServiceInputResource);
 };
