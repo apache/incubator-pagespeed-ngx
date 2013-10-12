@@ -25,6 +25,8 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/rate_controller.h"
+#include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -61,6 +63,7 @@ class MessageHandler;
 class NonceGenerator;
 class RewriteFilter;
 class Scheduler;
+class Statistics;
 class UrlAsyncFetcher;
 class UrlNamer;
 
@@ -85,6 +88,10 @@ class TestServerContext : public ServerContext {
 const int64 TestRewriteDriverFactory::kStartTimeMs =
     MockTimer::kApr_5_2010_ms - 2 * Timer::kMonthMs;
 
+const int TestRewriteDriverFactory::kMaxFetchGlobalQueueSize;
+const int TestRewriteDriverFactory::kFetchesPerHostOutgoingRequestThreshold;
+const int TestRewriteDriverFactory::kFetchesPerHostQueuedRequestThreshold;
+
 const char TestRewriteDriverFactory::kUrlNamerScheme[] = "URL_NAMER_SCHEME";
 
 TestRewriteDriverFactory::TestRewriteDriverFactory(
@@ -96,7 +103,7 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
       delay_cache_(NULL),
       mock_url_fetcher_(mock_fetcher),
       test_distributed_fetcher_(test_distributed_fetcher),
-      counting_url_async_fetcher_(NULL),
+      rate_controlling_url_async_fetcher_(NULL),
       counting_distributed_async_fetcher_(NULL),
       mem_file_system_(NULL),
       mock_hasher_(NULL),
@@ -110,6 +117,11 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
 }
 
 TestRewriteDriverFactory::~TestRewriteDriverFactory() {
+}
+
+void TestRewriteDriverFactory::InitStats(Statistics* statistics) {
+  RateController::InitStats(statistics);
+  RewriteDriverFactory::InitStats(statistics);
 }
 
 void TestRewriteDriverFactory::SetupWaitFetcher() {
@@ -139,9 +151,17 @@ void TestRewriteDriverFactory::CallFetcherCallbacksForDriver(
 }
 
 UrlAsyncFetcher* TestRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  DCHECK(counting_url_async_fetcher_ == NULL);
-  counting_url_async_fetcher_ = new CountingUrlAsyncFetcher(mock_url_fetcher_);
-  return counting_url_async_fetcher_;
+  DCHECK(counting_url_async_fetcher_.get() == NULL);
+  counting_url_async_fetcher_.reset(new CountingUrlAsyncFetcher(
+      mock_url_fetcher_));
+  rate_controlling_url_async_fetcher_ = new RateControllingUrlAsyncFetcher(
+      counting_url_async_fetcher_.get(),
+      kMaxFetchGlobalQueueSize,
+      kFetchesPerHostOutgoingRequestThreshold,
+      kFetchesPerHostQueuedRequestThreshold,
+      thread_system(),
+      statistics());
+  return rate_controlling_url_async_fetcher_;
 }
 
 UrlAsyncFetcher* TestRewriteDriverFactory::DefaultDistributedUrlFetcher() {

@@ -31,8 +31,10 @@
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
+#include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -45,6 +47,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -147,6 +150,21 @@ class RewriteContextTest : public RewriteContextTestBase {
     EXPECT_EQ(0, fetch_successes_->Get());  // no more fetches.
     EXPECT_EQ(0, fetch_failures_->Get());
     ClearStats();
+  }
+
+  int RewriteAndCountUnrewrittenCss(const GoogleString& id,
+                                    const GoogleString& input_html) {
+    Parse(id, input_html);
+    CssLink::Vector css_links;
+    GoogleString rewritten_html = output_buffer_;
+    CollectCssLinks("collecting_links", rewritten_html, &css_links);
+    int num_unrewritten_css = 0;
+    for (int i = 0, n = css_links.size(); i < n; ++i) {
+      if (css_links[i]->url_.find(".pagespeed.") == GoogleString::npos) {
+        ++num_unrewritten_css;
+      }
+    }
+    return num_unrewritten_css;
   }
 
   Variable* fetch_failures_;
@@ -4431,6 +4449,85 @@ TEST_F(RewriteContextTest, CacheTtlWithDuplicateOtherDeps) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(4, lru_cache()->num_inserts());
   ClearStats();
+}
+
+TEST_F(RewriteContextTest, DropFetchesAndRecover) {
+  // Construct some HTML with more resources to fetch than our rate-limiting
+  // fetcher will allow.
+  InitUpperFilter(kRewrittenResource, rewrite_driver());
+  SetupWaitFetcher();
+  options()->ComputeSignature();
+  rewrite_driver()->AddFilters();
+
+  // Build HTML content that has 33 more CSS links than we can queue up due
+  // to rate-limited fetching.
+  const int kExcessResources =
+      TestRewriteDriverFactory::kFetchesPerHostOutgoingRequestThreshold / 3;
+  const int kResourceCount =
+      TestRewriteDriverFactory::kMaxFetchGlobalQueueSize +
+      TestRewriteDriverFactory::kFetchesPerHostOutgoingRequestThreshold +
+      kExcessResources;
+  GoogleString html;
+  for (int i = 0; i < kResourceCount; ++i) {
+    GoogleString url = StringPrintf("x%d.css", i);
+    GoogleString content = StringPrintf("a%d", i);  // Rewriter will upper-case.
+    SetResponseWithDefaultHeaders(url, kContentTypeCss, content, 100 /* sec */);
+    StrAppend(&html, CssLinkHref(url));
+  }
+
+  // Rewrite the HTML.  None of the fetches will be done before the deadline,
+  // so no changes will be made to the HTML.
+  ValidateNoChanges("no_changes_call_all_fetches_delayed", html);
+
+  // Let's take a look at the rate-controlling fetcher's stats and make
+  // sure they are sane.
+  Variable* queued_fetches = statistics()->GetVariable(
+      RateController::kQueuedFetchCount);
+  Variable* dropped_fetches = statistics()->GetVariable(
+      RateController::kDroppedFetchCount);
+  Variable* fetch_queue_size = statistics()->GetVariable(
+      RateController::kCurrentGlobalFetchQueueSize);
+  EXPECT_EQ(TestRewriteDriverFactory::kFetchesPerHostQueuedRequestThreshold,
+            queued_fetches->Get());
+  EXPECT_EQ(kExcessResources, dropped_fetches->Get());
+  EXPECT_EQ(TestRewriteDriverFactory::kMaxFetchGlobalQueueSize,
+            fetch_queue_size->Get());
+
+  // Now let the fetches all go -- the ones that weren't dropped, anyway.
+  factory()->wait_url_async_fetcher()->SetPassThroughMode(true);
+  rewrite_driver()->WaitForCompletion();
+
+  // Having waited for those fetches to complete, there are no more queued.
+  EXPECT_EQ(0, fetch_queue_size->Get());
+
+  // And the rewritten page will have all but kExcessResources rewritten.
+  int num_unrewritten_css = RewriteAndCountUnrewrittenCss("1st_round", html);
+  EXPECT_EQ(kExcessResources, num_unrewritten_css);
+
+  // OK that's not a very happy state.  Even after we let the fetches
+  // finish, an immediate page refresh still won't get the entire page
+  // rewritten.  But we can't grow the dropped-request list unbounded.
+  // The important thing is that we can recover in a limited amount of
+  // time, say, 10.001 seconds.
+  AdvanceTimeMs(http_cache()->remember_fetch_dropped_ttl_seconds() *
+                Timer::kSecondMs + 1);
+
+  // OK now all is well.  Note that if we had a lot more fetches beyond our
+  // max queue size, we might have to wait another 10 seconds for another
+  // round of fetches to make it through.  So initiate another HTML rewrite
+  // which will queue up the fetches that were previously dropped.  But we
+  // delay them so they don't show up within the deadline first.  The fetches
+  // will be queued up and not dropped, but we are still see kExcessResource
+  // unrewritten resources.
+  factory()->wait_url_async_fetcher()->SetPassThroughMode(false);
+  num_unrewritten_css = RewriteAndCountUnrewrittenCss("10.001_delay", html);
+  EXPECT_EQ(kExcessResources, num_unrewritten_css);
+
+  // Release the fetches.  The HTML will be fully rewritten on the next refresh.
+  factory()->wait_url_async_fetcher()->SetPassThroughMode(true);
+  rewrite_driver()->WaitForCompletion();
+  num_unrewritten_css = RewriteAndCountUnrewrittenCss("10.001_release", html);
+  EXPECT_EQ(0, num_unrewritten_css);
 }
 
 }  // namespace net_instaweb

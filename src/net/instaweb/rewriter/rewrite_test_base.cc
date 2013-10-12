@@ -162,7 +162,7 @@ RewriteTestBase::RewriteTestBase(
 void RewriteTestBase::Init() {
   DCHECK(statistics_ != NULL);
   RewriteDriverFactory::Initialize();
-  RewriteDriverFactory::InitStats(statistics_.get());
+  TestRewriteDriverFactory::InitStats(statistics_.get());
   factory_->SetStatistics(statistics_.get());
   other_factory_->SetStatistics(statistics_.get());
   server_context_ = factory_->CreateServerContext();

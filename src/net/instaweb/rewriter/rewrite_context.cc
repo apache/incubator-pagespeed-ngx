@@ -1511,9 +1511,14 @@ void RewriteContext::AddRecheckDependency() {
   int64 now_ms = FindServerContext()->timer()->NowMs();
   if (num_slots() == 1) {
     ResourcePtr resource(slot(0)->resource());
+    HTTPCache* http_cache = FindServerContext()->http_cache();
     switch (resource->fetch_response_status()) {
       case Resource::kFetchStatusOK:
         ttl_ms = std::max(ttl_ms, (resource->CacheExpirationTimeMs() - now_ms));
+        break;
+      case Resource::kFetchStatusDropped:
+        ttl_ms = http_cache->remember_fetch_dropped_ttl_seconds() *
+            Timer::kSecondMs;
         break;
       case Resource::kFetchStatusNotSet:
       case Resource::kFetchStatusOther:

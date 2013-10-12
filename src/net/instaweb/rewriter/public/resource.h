@@ -72,6 +72,7 @@ class Resource : public RefCounted<Resource> {
     kFetchStatusOK,
     kFetchStatusUncacheable,
     kFetchStatus4xxError,
+    kFetchStatusDropped,
     kFetchStatusOther,
   };
 

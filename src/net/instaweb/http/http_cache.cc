@@ -43,12 +43,20 @@ namespace {
 //
 // TODO(jmarantz): We could handle cc-private a little differently:
 // in this case we could arguably remember it using the original cc-private ttl.
-const int kRememberNotCacheableTtl = 300;
-const int kRememberFetchFailedTtl = 300;
+const int kRememberNotCacheableTtlSec = 300;
+const int kRememberFetchFailedTtlSec = 300;
 
 // We use an extremely low TTL for load-shed resources since we don't
-// want this to get in the way of debugging.
-const int kRememberFetchDroppedTtl = 10;
+// want this to get in the way of debugging, or letting a page with
+// large numbers of refresh converge towards being fully optimized.
+//
+// Note if you bump this number too high, then
+// RewriteContextTest.DropFetchesAndRecover cannot pass because we
+// won't try fetches for dropped resources until after the rewrites
+// for the successful fetches will expire.  In system terms, that means
+// that you can never complete rewrites for a page with so many resources
+// that the initial round of fetches gets some dropped.
+const int kRememberFetchDroppedTtlSec = 10;
 
 // Maximum size of response content in bytes. -1 indicates that there is no size
 // limit.
@@ -86,9 +94,9 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_inserts_(stats->GetVariable(kCacheInserts)),
       cache_deletes_(stats->GetVariable(kCacheDeletes)),
       name_(FormatName(cache->Name())) {
-  remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
-  remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
-  remember_fetch_dropped_ttl_seconds_ = kRememberFetchDroppedTtl;
+  remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtlSec;
+  remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtlSec;
+  remember_fetch_dropped_ttl_seconds_ = kRememberFetchDroppedTtlSec;
   max_cacheable_response_content_length_ = kCacheSizeUnlimited;
 }
 

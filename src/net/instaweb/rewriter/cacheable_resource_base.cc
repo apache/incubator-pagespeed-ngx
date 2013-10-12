@@ -367,11 +367,14 @@ class CacheableResourceBase::LoadFetchCallback
     } else {
       // Record the type of the fetched response before clearing the response
       // headers.
-      int status_code = response_headers()->status_code();
-      if (status_code >= 400 && status_code < 500) {
+      ResponseHeaders* headers = response_headers();
+      int status_code = headers->status_code();
+      if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
+        resource_->set_fetch_response_status(Resource::kFetchStatusDropped);
+      } else if (status_code >= 400 && status_code < 500) {
         resource_->set_fetch_response_status(Resource::kFetchStatus4xxError);
       } else if (status_code == HttpStatus::kOK &&
-                 !response_headers()->IsProxyCacheable()) {
+                 !headers->IsProxyCacheable()) {
         resource_->set_fetch_response_status(Resource::kFetchStatusUncacheable);
       } else {
         resource_->set_fetch_response_status(Resource::kFetchStatusOther);
@@ -383,7 +386,7 @@ class CacheableResourceBase::LoadFetchCallback
       // with this particular resource. In that case, make sure to clear the
       // response_headers() so the various validity bits in Resource are
       // accurate.
-      response_headers()->Clear();
+      headers->Clear();
     }
 
     Statistics* stats = resource_->server_context()->statistics();
