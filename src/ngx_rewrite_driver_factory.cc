@@ -70,7 +70,8 @@ class SharedCircularBuffer;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(
     SystemThreadSystem* system_thread_system, StringPiece hostname, int port)
-    : SystemRewriteDriverFactory(system_thread_system, hostname, port),
+    : SystemRewriteDriverFactory(system_thread_system,
+        NULL /* default shared memory runtime */, hostname, port),
       main_conf_(NULL),
       threads_started_(false),
       use_per_vhost_statistics_(false),
