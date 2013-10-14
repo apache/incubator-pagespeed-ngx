@@ -785,6 +785,7 @@ void ps_release_request_context(void* data) {
 
   if (ctx->pipe_fd != -1) {
     close(ctx->pipe_fd);
+    ctx->pipe_fd = -1;
   }
 
   delete ctx;
@@ -930,10 +931,12 @@ ngx_int_t ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
       perror("ps_connection_read_handler");
       return NGX_ERROR;
     }
-  } else {
-    // We're done iff we read 0 bytes because that means the pipe was closed.
-    done = (rc == 0);
+  } else if (rc == 0) {
+    // The other end of the pipe was closed
+    return NGX_OK;
   }
+
+  done = (chr == 'B' && rc == 1);
 
   // Get output from pagespeed.
   if (ctx->is_resource_fetch && !ctx->sent_headers) {

@@ -97,7 +97,7 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Indicate to nginx that we would like it to call
   // CollectAccumulatedWrites().
-  void RequestCollection();
+  void RequestCollection(bool done);
 
   // Lock must be acquired first.
   // Returns:

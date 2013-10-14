@@ -43,6 +43,7 @@ NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
 }
 
 NgxBaseFetch::~NgxBaseFetch() {
+  CHECK(pipe_fd_ == -1);
   pthread_mutex_destroy(&mutex_);
 }
 
@@ -144,9 +145,11 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
 }
 
-void NgxBaseFetch::RequestCollection() {
+void NgxBaseFetch::RequestCollection(bool done) {
+  CHECK(pipe_fd_ != -1) << "Attempt to write a closed pipe";
   int rc;
-  char c = 'A';  // What byte we write is arbitrary.
+  char c = done ? 'B' : 'A';  // B=Done, A=Update
+
   while (true) {
     rc = write(pipe_fd_, &c, 1);
     if (rc == 1) {
@@ -156,9 +159,18 @@ void NgxBaseFetch::RequestCollection() {
       // we get into a case where the pipe fills up and we spin forever?
 
     } else {
-      perror("NgxBaseFetch::RequestCollection");
+      if (references_ == 1 && !last_buf_sent_) { 
+        // Happens we requests are aborted, don't spam
+        // the log with 'broken pipe' errors.
+      } else {
+        perror("NgxBaseFetch::RequestCollection");        
+      }
       break;
     }
+  }
+  if (done) {
+    close(pipe_fd_);
+    pipe_fd_ = -1;
   }
 }
 
@@ -168,11 +180,12 @@ void NgxBaseFetch::HandleHeadersComplete() {
     server_context_->rewrite_stats()->resource_404_count()->Add(1);
   }
 
-  RequestCollection();  // Headers available.
+  RequestCollection(false /* not done */);  // Headers available.
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
-  RequestCollection();  // A new part of the response body is available.
+  // A new part of the response body is available.
+  RequestCollection(false /* not done */);
   return true;
 }
 
@@ -192,11 +205,8 @@ void NgxBaseFetch::HandleDone(bool success) {
   // CopyBufferToNginx to only read done_called_ once.
   Lock();
   done_called_ = true;
+  RequestCollection(true /* done */);
   Unlock();
-
-  close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
-  pipe_fd_ = -1;
-
   DecrefAndDeleteIfUnreferenced();
 }
 
