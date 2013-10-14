@@ -469,21 +469,32 @@ void JpegScanlineWriter::SetJmpBufEnv(jmp_buf* env) {
   data_->jpeg_compress_.client_data = static_cast<void *>(env);
 }
 
-bool JpegScanlineWriter::Init(const size_t width, const size_t height,
-                              PixelFormat pixel_format) {
+ScanlineStatus JpegScanlineWriter::InitWithStatus(const size_t width,
+                                                  const size_t height,
+                                                  PixelFormat pixel_format) {
   data_->jpeg_compress_.image_width = width;
   data_->jpeg_compress_.image_height = height;
 
-  if (pixel_format == RGB_888) {
-    data_->jpeg_compress_.input_components = 3;
-    data_->jpeg_compress_.in_color_space = JCS_RGB;
-  } else if (pixel_format == GRAY_8) {
-    data_->jpeg_compress_.input_components = 1;
-    data_->jpeg_compress_.in_color_space = JCS_GRAYSCALE;
-  } else {
-    PS_LOG_INFO(message_handler_, \
-                "Invalid pixel format %s", GetPixelFormatString(pixel_format));
-    return false;
+  switch (pixel_format) {
+    case RGB_888:
+      data_->jpeg_compress_.input_components = 3;
+      data_->jpeg_compress_.in_color_space = JCS_RGB;
+      break;
+    case GRAY_8:
+      data_->jpeg_compress_.input_components = 1;
+      data_->jpeg_compress_.in_color_space = JCS_GRAYSCALE;
+      break;
+    case RGBA_8888:
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+                              SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                              SCANLINE_JPEGWRITER, "transparency");
+      break;
+    default:
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+                              SCANLINE_STATUS_UNSUPPORTED_FEATURE,
+                              SCANLINE_JPEGWRITER,
+                              "unknown pixel format: %s",
+                              GetPixelFormatString(pixel_format));
   }
 
   // Set the default options.
@@ -492,7 +503,7 @@ bool JpegScanlineWriter::Init(const size_t width, const size_t height,
   // Set optimize huffman to true.
   data_->jpeg_compress_.optimize_coding = TRUE;
 
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
 void JpegScanlineWriter::SetJpegCompressParams(
@@ -505,20 +516,41 @@ void JpegScanlineWriter::SetJpegCompressParams(
   SetJpegCompressBeforeStartCompress(options, NULL, &data_->jpeg_compress_);
 }
 
-bool JpegScanlineWriter::InitializeWrite(GoogleString *compressed) {
+ScanlineStatus JpegScanlineWriter::InitializeWriteWithStatus(
+    const void* const params,
+    GoogleString * const compressed) {
+  if (params == NULL) {
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            SCANLINE_JPEGWRITER,
+                            "missing JpegCompressionOptions*");
+  }
+  const JpegCompressionOptions* jpeg_compression_options =
+      static_cast<const JpegCompressionOptions*>(params);
+  SetJpegCompressParams(*jpeg_compression_options);
   JpegStringWriter(&data_->jpeg_compress_, compressed);
   jpeg_start_compress(&data_->jpeg_compress_, TRUE);
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-bool JpegScanlineWriter::WriteNextScanline(void *scanline_bytes) {
+ScanlineStatus JpegScanlineWriter::WriteNextScanlineWithStatus(
+    void *scanline_bytes) {
   JSAMPROW row_pointer[1] = { static_cast<JSAMPLE*>(scanline_bytes) };
-  return jpeg_write_scanlines(&data_->jpeg_compress_, row_pointer, 1) == 1;
+  unsigned int result = jpeg_write_scanlines(&data_->jpeg_compress_,
+                                             row_pointer, 1);
+  if (result == 1) {
+    return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  } else {
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            SCANLINE_JPEGWRITER,
+                            "jpeg_write_scanlines()");
+  }
 }
 
-bool JpegScanlineWriter::FinalizeWrite() {
+ScanlineStatus JpegScanlineWriter::FinalizeWriteWithStatus() {
   jpeg_finish_compress(&data_->jpeg_compress_);
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
 void JpegScanlineWriter::AbortWrite() {
@@ -545,4 +577,3 @@ bool OptimizeJpegWithOptions(const GoogleString &original,
 }  // namespace image_compression
 
 }  // namespace pagespeed
-

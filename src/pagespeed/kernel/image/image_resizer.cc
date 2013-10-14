@@ -653,10 +653,23 @@ bool ScanlineResizer::Reset() {
   return true;
 }
 
+ScanlineStatus ScanlineResizer::InitializeWithStatus(
+    const void* /* image_buffer */,
+    size_t /* buffer_length */) {
+  return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                          SCANLINE_STATUS_INVOCATION_ERROR,
+                          SCANLINE_RESIZER,
+                          "unexpected call to InitializeWithStatus()");
+}
+
 // Reads the next available scanline.
-bool ScanlineResizer::ReadNextScanline(void** out_scanline_bytes) {
+ScanlineStatus ScanlineResizer::ReadNextScanlineWithStatus(
+    void** out_scanline_bytes) {
   if (reader_ == NULL || !HasMoreScanLines()) {
-    return false;
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            SCANLINE_RESIZER,
+                            "null reader or no more scanlines");
   }
 
   // Fetch scanlines from the reader until we have enough input rows for
@@ -664,12 +677,18 @@ bool ScanlineResizer::ReadNextScanline(void** out_scanline_bytes) {
   resizer_y_->InitializeResize();
   while (resizer_y_->NeedMoreScanlines()) {
     if (!reader_->HasMoreScanLines()) {
-      return false;
+      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
+                              SCANLINE_RESIZER,
+                              "HasMoreScanLines()");
     }
     void* in_scanline_bytes = NULL;
     if (!reader_->ReadNextScanline(&in_scanline_bytes)) {
       Reset();
-      return false;
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
+                              SCANLINE_RESIZER,
+                              "ReadNextScanline()");
     }
 
     // Resize the input scanline horizontally and put the results in buffer_.
@@ -679,7 +698,7 @@ bool ScanlineResizer::ReadNextScanline(void** out_scanline_bytes) {
   }
 
   ++row_;
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
 // Initialize the resizer. For computational efficiency, we try to use

@@ -22,6 +22,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 struct jpeg_decompress_struct;
 struct jpeg_error_mgr;
@@ -80,10 +81,11 @@ class JpegScanlineReader : public ScanlineReaderInterface {
 
   // Initialize the reader with the given image stream. Note that image_buffer
   // must remain unchanged until the last call to ReadNextScanline().
-  bool Initialize(const void* image_buffer, size_t buffer_length);
+  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
+                                              size_t buffer_length);
 
   // Return the next row of pixels.
-  virtual bool ReadNextScanline(void** out_scanline_bytes);
+  virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
 
   // Return the number of bytes in a row (without padding).
   virtual size_t GetBytesPerScanline() { return bytes_per_row_; }

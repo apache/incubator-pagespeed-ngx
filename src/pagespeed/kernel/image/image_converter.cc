@@ -85,24 +85,29 @@ namespace pagespeed {
 
 namespace image_compression {
 
-bool ImageConverter::ConvertImage(
+ScanlineStatus ImageConverter::ConvertImageWithStatus(
     ScanlineReaderInterface* reader,
     ScanlineWriterInterface* writer) {
   void* scan_row;
   while (reader->HasMoreScanLines()) {
-    if (!reader->ReadNextScanline(&scan_row)) {
-      return false;
+    ScanlineStatus reader_status =
+        reader->ReadNextScanlineWithStatus(&scan_row);
+    if (!reader_status.Success()) {
+      return reader_status;
     }
-    if (!writer->WriteNextScanline(scan_row)) {
-      return false;
+    ScanlineStatus writer_status =
+        writer->WriteNextScanlineWithStatus(scan_row);
+    if (!writer_status.Success()) {
+      return writer_status;
     }
   }
 
-  if (!writer->FinalizeWrite()) {
-    return false;
+  ScanlineStatus writer_status = writer->FinalizeWriteWithStatus();
+  if (!writer_status.Success()) {
+    return writer_status;
   }
 
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
 bool ImageConverter::ConvertPngToJpeg(
@@ -157,8 +162,7 @@ bool ImageConverter::ConvertPngToJpeg(
     } else {
       jpeg_writer.SetJmpBufEnv(&env);
       if (jpeg_writer.Init(width, height, format)) {
-        jpeg_writer.SetJpegCompressParams(options);
-        jpeg_writer.InitializeWrite(out);
+        jpeg_writer.InitializeWrite(&options, out);
         jpeg_success = ConvertImage(&png_reader, &jpeg_writer);
       }
     }
@@ -259,7 +263,7 @@ bool ImageConverter::ConvertPngToWebp(
 
   if (height > 0 && width > 0 && format != UNSUPPORTED) {
     if ((*webp_writer)->Init(width, height, format) &&
-        (*webp_writer)->InitializeWrite(webp_config, out)) {
+        (*webp_writer)->InitializeWrite(&webp_config, out)) {
       webp_success = ConvertImage(&png_reader, *webp_writer);
     }
   }
@@ -292,7 +296,7 @@ ImageConverter::ImageType ImageConverter::GetSmallestOfPngJpegWebp(
     webp_lossless_out.clear();
   }
   if ((webp_config != NULL) &&
-      (!webp_writer->InitializeWrite(*webp_config, &webp_lossy_out) ||
+      (!webp_writer->InitializeWrite(webp_config, &webp_lossy_out) ||
        !webp_writer->FinalizeWrite())) {
     PS_DLOG_INFO(handler, "Could not convert image to custom WebP");
     webp_lossy_out.clear();
@@ -345,4 +349,3 @@ ImageConverter::ImageType ImageConverter::GetSmallestOfPngJpegWebp(
 }  // namespace image_compression
 
 }  // namespace pagespeed
-

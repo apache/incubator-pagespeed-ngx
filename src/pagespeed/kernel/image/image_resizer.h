@@ -23,6 +23,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -67,7 +68,7 @@ class ScanlineResizer : public ScanlineReaderInterface {
   // is not available. This can happen when the reader cannot provide enough
   // image rows, or when all of the scanlines have been read.
   //
-  virtual bool ReadNextScanline(void** out_scanline_bytes);
+  virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
 
   // Reset the resizer to its initial state. Always returns true.
   virtual bool Reset();
@@ -97,6 +98,10 @@ class ScanlineResizer : public ScanlineReaderInterface {
   virtual PixelFormat GetPixelFormat() {
     return reader_->GetPixelFormat();
   }
+
+  // This is a no-op and should not be called.
+  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
+                                              size_t buffer_length);
 
   static const size_t kPreserveAspectRatio = 0;
 

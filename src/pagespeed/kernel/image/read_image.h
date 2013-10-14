@@ -22,6 +22,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -37,11 +38,21 @@ using net_instaweb::MessageHandler;
 // CreateScanlineReader(const void* image_buffer, size_t buffer_length).
 
 // Return a scanline image reader. The following formats are supported:
-// IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, and IMAGE_WEBP.
+// IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, and IMAGE_WEBP
 ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
-    const void* image_buffer,
-    size_t buffer_length,
-    MessageHandler* handler);
+                                              const void* image_buffer,
+                                              size_t buffer_length,
+                                              MessageHandler* handler,
+                                              ScanlineStatus* status);
+
+inline ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
+                                                     const void* image_buffer,
+                                                     size_t buffer_length,
+                                                     MessageHandler* handler) {
+  ScanlineStatus status;
+  return CreateScanlineReader(image_type, image_buffer, buffer_length,
+                              handler, &status);
+}
 
 // Return a scanline image writer. The following formats are supported:
 // IMAGE_PNG, IMAGE_JPEG, and IMAGE_WEBP.
@@ -52,7 +63,20 @@ ScanlineWriterInterface* CreateScanlineWriter(
     size_t height,              // Height, in pixels, of the image
     const void* config,         // Configuration for the output image
     GoogleString* image_data,   // Output image
-    MessageHandler* handler);   // Message handler
+    MessageHandler* handler,    // Message handler
+    ScanlineStatus* status);    // Status code
+
+inline ScanlineWriterInterface* CreateScanlineWriter(ImageFormat image_type,
+                                                     PixelFormat pixel_format,
+                                                     size_t width,
+                                                     size_t height,
+                                                     const void* config,
+                                                     GoogleString* image_data,
+                                                     MessageHandler* handler) {
+  ScanlineStatus status;
+  return CreateScanlineWriter(image_type, pixel_format, width, height,
+                              config, image_data, handler, &status);
+}
 
 // Decode the image stream and return the image information. Use non-null
 // pointers to retrieve the informatin you need, and use null pointers to

@@ -21,6 +21,7 @@
 #include <setjmp.h>
 #include <stdlib.h>
 
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 
 extern "C" {
@@ -31,10 +32,6 @@ extern "C" {
 #include "third_party/libjpeg_turbo/src/jerror.h"
 #include "third_party/libjpeg_turbo/src/jpeglib.h"
 #endif
-}
-
-namespace net_instaweb {
-class MessageHandler;
 }
 
 namespace {
@@ -183,8 +180,8 @@ bool JpegScanlineReader::Reset() {
   return true;
 }
 
-bool JpegScanlineReader::Initialize(const void* image_data,
-                                    size_t image_length) {
+ScanlineStatus JpegScanlineReader::InitializeWithStatus(const void* image_data,
+                                                        size_t image_length) {
   if (was_initialized_) {
     // Reset the reader if it has been initialized before.
     Reset();
@@ -200,7 +197,10 @@ bool JpegScanlineReader::Initialize(const void* image_data,
     // longjmp(env). It will reset the object to a state where it can be used
     // again.
     Reset();
-    return false;
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            SCANLINE_JPEGREADER,
+                            "longjmp()");
   }
 
   jpeg_error_mgr* decompress_error = &(jpeg_env_->decompress_error_);
@@ -235,12 +235,16 @@ bool JpegScanlineReader::Initialize(const void* image_data,
   }
 
   was_initialized_ = true;
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-bool JpegScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
+ScanlineStatus JpegScanlineReader::ReadNextScanlineWithStatus(
+    void** out_scanline_bytes) {
   if (!was_initialized_ || !HasMoreScanLines()) {
-    return false;
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            SCANLINE_JPEGREADER,
+                            "not initialized or no more scanlines");
   }
 
   if (setjmp(jpeg_env_->jmp_buf_env_)) {
@@ -248,7 +252,10 @@ bool JpegScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
     // longjmp(env). It will reset the object to a state where it can be used
     // again.
     Reset();
-    return false;
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            SCANLINE_JPEGREADER,
+                            "longjmp()");
   }
 
   // At the time when ReadNextScanline is called, allocate buffer for holding
@@ -264,7 +271,10 @@ bool JpegScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
       jpeg_read_scanlines(jpeg_decompress, row_pointer_, 1);
   if (num_scanlines_read != 1) {
     Reset();
-    return false;
+    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                            SCANLINE_STATUS_PARSE_ERROR,
+                            SCANLINE_JPEGREADER,
+                            "jpeg_read_scanlines()");
   }
   *out_scanline_bytes = row_pointer_[0];
   ++row_;
@@ -273,7 +283,7 @@ bool JpegScanlineReader::ReadNextScanline(void** out_scanline_bytes) {
   if (!HasMoreScanLines()) {
     jpeg_finish_decompress(jpeg_decompress);
   }
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
 }  // namespace image_compression

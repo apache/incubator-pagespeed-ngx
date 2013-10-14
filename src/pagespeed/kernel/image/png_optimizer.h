@@ -36,6 +36,7 @@ extern "C" {
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -188,7 +189,7 @@ class PngScanlineReader : public ScanlineReaderInterface {
 
   virtual size_t GetBytesPerScanline();
   virtual bool HasMoreScanLines();
-  virtual bool ReadNextScanline(void** out_scanline_bytes);
+  virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
   virtual size_t GetImageHeight();
   virtual size_t GetImageWidth();
   virtual PixelFormat GetPixelFormat();
@@ -198,6 +199,10 @@ class PngScanlineReader : public ScanlineReaderInterface {
   int GetColorType();
   bool GetBackgroundColor(
       unsigned char* red, unsigned char* green, unsigned char* blue);
+
+  // This is a no-op and should not be called.
+  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
+                                              size_t buffer_length);
 
  private:
   ScopedPngStruct read_;
@@ -304,13 +309,15 @@ class PngScanlineReaderRaw : public ScanlineReaderInterface {
 
   // Initialize the reader with the given image stream. Note that image_buffer
   // must remain unchanged until the last call to ReadNextScanline().
-  bool Initialize(const void* image_buffer, size_t buffer_length);
+  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
+                                              size_t buffer_length);
 
-  // Return the next row of pixels. For non-progressive PNG, ReadNextScanline
-  // will decode one row of pixels each time when it is called, but for
-  // progressive PNG, ReadNextScanline will decode the entire image at the
+  // Return the next row of pixels. For non-progressive PNG,
+  // ReadNextScanlineWithStatus will decode one row of pixels each
+  // time when it is called, but for progressive PNG,
+  // ReadNextScanlineWithStatus will decode the entire image at the
   // first time when it is called.
-  virtual bool ReadNextScanline(void** out_scanline_bytes);
+  virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
 
   // Return the number of bytes in a row (without padding).
   virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
@@ -349,21 +356,22 @@ class PngScanlineWriter : public ScanlineWriterInterface {
 
   // Initialize the basic parameters for writing the image. Size of the image
   // must be 1-by-1 or larger.
-  virtual bool Init(const size_t width, const size_t height,
-                    PixelFormat pixel_format);
+  virtual ScanlineStatus InitWithStatus(const size_t width, const size_t height,
+                                        PixelFormat pixel_format);
 
-  // Initialize additional parameters for writing the image. You can set
+  // Initialize additional parameters for writing the image using
+  // 'params', which should be a PngCompressParams*. You can set
   // 'params' to NULL to use the default compression configuration.
-  bool Initialize(const PngCompressParams* params,
-                  GoogleString* png_image);
+  virtual ScanlineStatus InitializeWriteWithStatus(const void* params,
+                                                   GoogleString* png_image);
 
   // Write a scanline with the data provided. Return false in case of error.
-  virtual bool WriteNextScanline(void *scanline_bytes);
+  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes);
 
   // Finalize write structure once all scanlines are written.
   // If FinalizeWriter() is called before all of the scanlines have been
   // written, the object will be reset to the initial state.
-  virtual bool FinalizeWrite();
+  virtual ScanlineStatus FinalizeWriteWithStatus();
 
  private:
   // Reset the object to the usable state.

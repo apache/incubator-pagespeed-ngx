@@ -130,9 +130,14 @@ class MessageHandler {
 #define PS_DLOG_ERROR(handler, ...) \
     PS_LOG_ERROR(handler, __VA_ARGS__)
 #else
-#define PS_DLOG_INFO(handler, ...)
-#define PS_DLOG_WARN(handler, ...)
-#define PS_DLOG_ERROR(handler, ...)
+// A dummy function that will be optimized away. This is needed
+// because the macros below are sometimes used in comma expressions and
+// thus can't expand to nothing.
+inline void NoOpMacroPlaceholder() {}
+
+#define PS_DLOG_INFO(handler, ...) ::net_instaweb::NoOpMacroPlaceholder()
+#define PS_DLOG_WARN(handler, ...) ::net_instaweb::NoOpMacroPlaceholder()
+#define PS_DLOG_ERROR(handler, ...) ::net_instaweb::NoOpMacroPlaceholder()
 #endif  // NDEBUG
 }  // namespace net_instaweb
 

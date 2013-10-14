@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 extern "C" {
 #include "third_party/giflib/lib/gif_lib.h"
@@ -73,16 +74,18 @@ class GifReader : public PngReaderInterface {
   DISALLOW_COPY_AND_ASSIGN(GifReader);
 };
 
-// GifScanlineReaderRaw decodes GIF images and outputs the raw pixel data, image
-// size, pixel type, etc. The class accepts single frame (non-animated) GIF.
-// The output is RGB_888 if transparent color is not specified, or RGBA_8888
-// otherwise. Animated GIFs are not supported and fail on Initialize().
+// GifScanlineReaderRaw decodes GIF images and outputs the raw pixel
+// data, image size, pixel type, etc. The class accepts single frame
+// (non-animated) GIF. The output is RGB_888 if transparent color is
+// not specified, or RGBA_8888 otherwise. Animated GIFs are not
+// supported and fail on Initialize().
 //
-// Note: The input image stream must be valid throughout the life of the
-//   object. In other words, the image_buffer input you set to Initialize()
-//   cannot be changed until your last call to the ReadNextScanline().
-//   That has been said, if you are sure that your image is a progressive GIF,
-//   you can modify image_buffer after the first call to ReadNextScanline().
+// Note: The input image stream must be valid throughout the life of
+//   the object. In other words, the image_buffer input you set to
+//   Initialize() cannot be changed until your last call to the
+//   ReadNextScanlineWithStatus(). That said, if you are sure that
+//   your image is a progressive GIF, you can modify image_buffer
+//   after the first call to ReadNextScanlineWithStatus().
 //
 class GifScanlineReaderRaw : public ScanlineReaderInterface {
  public:
@@ -90,15 +93,18 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   virtual ~GifScanlineReaderRaw();
   virtual bool Reset();
 
-  // Initialize the reader with the given image stream. Note that image_buffer
-  // must remain unchanged until the last call to ReadNextScanline().
-  bool Initialize(const void* image_buffer, size_t buffer_length);
+  // Initialize the reader with the given image stream. Note that
+  // image_buffer must remain unchanged until the last call to
+  // ReadNextScanlineWithStatus().
+  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
+                                              size_t buffer_length);
 
-  // Return the next row of pixels. For non-progressive GIF, ReadNextScanline
-  // will decode one row of pixels each time when it is called, but for
-  // progressive GIF, ReadNextScanline will decode the entire image at the
+  // Return the next row of pixels. For non-progressive GIF,
+  // ReadNextScanlineWithStatus will decode one row of pixels each
+  // time when it is called, but for progressive GIF,
+  // ReadNextScanlineWithStatus will decode the entire image at the
   // first time when it is called.
-  virtual bool ReadNextScanline(void** out_scanline_bytes);
+  virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
 
   // Return the number of bytes in a row (without padding).
   virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
@@ -113,9 +119,9 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
  private:
   // 'transparent_index' will be set to '-1' if no transparent color has been
   // defined.
-  bool ProcessSingleImageGif(size_t* offset, int* transparent_index);
-  bool CreateColorMap(int transparent_index);
-  bool DecodeProgressiveGif();
+  ScanlineStatus ProcessSingleImageGif(size_t* offset, int* transparent_index);
+  ScanlineStatus CreateColorMap(int transparent_index);
+  ScanlineStatus DecodeProgressiveGif();
 
  private:
   PixelFormat pixel_format_;
@@ -124,9 +130,9 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   int row_;
   size_t pixel_size_;
   size_t bytes_per_row_;
-  // If the encoded image covers the entire logical screen, we don't need to
-  // draw the background and no_background will be set to true. Most GIF images
-  // belong to this category.
+  // If the encoded image covers the entire logical screen, we don't
+  // need to draw the background and no_background will be set to
+  // true. Most GIF images belong to this category.
   bool no_background_;
   bool was_initialized_;
   // Palette of the image. It has 257 entries. The last one stores the
@@ -137,9 +143,10 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   // Buffer for holding the palette index for a row of pixels (for
   // non-progressive GIF) or for the entire image (for progressive GIF).
   scoped_array<GifByteType> image_index_;
-  // gif_struct_ stores a pointer to the input image stream. It also keeps
-  // track of the length of data that giflib has read. It is initialized
-  // in Initialize() and is updated in ReadNextScanline().
+  // gif_struct_ stores a pointer to the input image stream. It also
+  // keeps track of the length of data that giflib has read. It is
+  // initialized in Initialize() and is updated in
+  // ReadNextScanlineWithStatus().
   scoped_ptr<ScopedGifStruct> gif_struct_;
   MessageHandler* message_handler_;
 

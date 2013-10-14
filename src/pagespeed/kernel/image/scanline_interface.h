@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,16 @@
 
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 namespace pagespeed {
 
 namespace image_compression {
 
-#if defined(PAGESPEED_SCANLINE_IMAGE_FORMAT) || \
-  defined(PAGESPEED_SCANLINE_FORMAT_ENUM_NAME) || \
-  defined(PAGESPEED_SCANLINE_FORMAT_ENUM_STRING) || \
+#if defined(PAGESPEED_SCANLINE_IMAGE_FORMAT) ||         \
+  defined(PAGESPEED_SCANLINE_FORMAT_ENUM_NAME) ||       \
+  defined(PAGESPEED_SCANLINE_FORMAT_ENUM_STRING) ||     \
   defined(PAGESPEED_SCANLINE_FORMAT_MIME_STRING)
 #error "Preprocessor macro collision"
 #endif
@@ -69,15 +71,15 @@ inline const char* ImageFormatToString(ImageFormat img_type) {
 #undef PAGESPEED_SCANLINE_FORMAT_ENUM_NAME
 #undef PAGESPEED_SCANLINE_IMAGE_FORMAT
 
-#if defined(PAGESPEED_SCANLINE_PIXEL_FORMAT) || \
-  defined(PAGESPEED_SCANLINE_PIXEL_ENUM_NAME) || \
+#if defined(PAGESPEED_SCANLINE_PIXEL_FORMAT) ||         \
+  defined(PAGESPEED_SCANLINE_PIXEL_ENUM_NAME) ||        \
   defined(PAGESPEED_SCANLINE_PIXEL_ENUM_STRING)
 #error "Preprocessor macro collision."
 #endif
 
 #define PAGESPEED_SCANLINE_PIXEL_FORMAT(_X)  \
-  _X(UNSUPPORTED),   /* Not supported for reading the image. */ \
-  _X(RGB_888),       /* RGB triplets, 24 bits per pixel */  \
+  _X(UNSUPPORTED),   /* Not supported for reading the image. */         \
+  _X(RGB_888),       /* RGB triplets, 24 bits per pixel */              \
   _X(RGBA_8888),     /* RGB triplet plus alpha channel, 32 bits per pixel */ \
   _X(GRAY_8)         /* Grayscale, 8 bits per pixel */
 
@@ -89,10 +91,10 @@ enum PixelFormat {
 };
 
 inline const char* GetPixelFormatString(PixelFormat pf) {
-  static const char* format_names[] = {
+  static const char* kFormatNames[] = {
     PAGESPEED_SCANLINE_PIXEL_FORMAT(PAGESPEED_SCANLINE_PIXEL_ENUM_STRING)
   };
-  return format_names[pf];
+  return kFormatNames[pf];
 }
 #undef PAGESPEED_SCANLINE_PIXEL_ENUM_STRING
 #undef PAGESPEED_SCANLINE_PIXEL_ENUM_NAME
@@ -103,9 +105,9 @@ class ScanlineReaderInterface {
   ScanlineReaderInterface() {}
   virtual ~ScanlineReaderInterface() {}
 
-  // Reset the scanline reader to its initial state.  This will only
-  // return false as a result of an unhandled error condition, such
-  // as a longjmp due to a libpng error.
+  // Reset the ScanlineReaderIngterface to its initial state.  This
+  // will only return false as a result of an unhandled error
+  // condition, such as a longjmp due to a libpng error.
   virtual bool Reset() = 0;
 
   // Returns number of bytes that required to store a scanline.
@@ -114,9 +116,22 @@ class ScanlineReaderInterface {
   // Returns true if there are more scanlines to read.
   virtual bool HasMoreScanLines() = 0;
 
+  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
+                                              size_t buffer_length) = 0;
+  inline bool Initialize(const void* image_buffer, size_t buffer_length) {
+    return InitializeWithStatus(image_buffer, buffer_length).Success();
+  }
+
+  // Reads the next available scanline. Returns the ScanlineStatus of
+  // the conversion.
+  virtual ScanlineStatus ReadNextScanlineWithStatus(
+      void** out_scanline_bytes) = 0;
+
   // Reads the next available scanline. Returns false if the
   // scan fails.
-  virtual bool ReadNextScanline(void** out_scanline_bytes) = 0;
+  inline bool ReadNextScanline(void** out_scanline_bytes) {
+    return ReadNextScanlineWithStatus(out_scanline_bytes).Success();
+  }
 
   // Returns the height of the image.
   virtual size_t GetImageHeight() = 0;
@@ -137,15 +152,32 @@ class ScanlineWriterInterface {
   virtual ~ScanlineWriterInterface() {}
 
   // Initialize the basic parameter for writing the image.
-  virtual bool Init(const size_t width, const size_t height,
-                    PixelFormat pixel_format) = 0;
+  virtual ScanlineStatus InitWithStatus(const size_t width, const size_t height,
+                                        PixelFormat pixel_format) = 0;
+  inline bool Init(const size_t width, const size_t height,
+                   PixelFormat pixel_format) {
+    return InitWithStatus(width, height, pixel_format).Success();
+  }
+
+  virtual ScanlineStatus InitializeWriteWithStatus(const void* config,
+                                                   GoogleString* const out) = 0;
+  inline bool InitializeWrite(const void* config,
+                              GoogleString* const out) {
+    return InitializeWriteWithStatus(config, out).Success();
+  }
 
   // Writes the current scan line with data provided. Returns false
   // if the write fails.
-  virtual bool WriteNextScanline(void *scanline_bytes) = 0;
+  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes) = 0;
+  inline bool WriteNextScanline(void *scanline_bytes) {
+    return WriteNextScanlineWithStatus(scanline_bytes).Success();
+  }
 
   // Finalizes write structure once all scanlines are written.
-  virtual bool FinalizeWrite() = 0;
+  virtual ScanlineStatus FinalizeWriteWithStatus() = 0;
+  inline bool FinalizeWrite() {
+    return FinalizeWriteWithStatus().Success();
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ScanlineWriterInterface);

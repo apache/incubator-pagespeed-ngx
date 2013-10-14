@@ -22,6 +22,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
 namespace net_instaweb {
@@ -48,8 +49,13 @@ class ImageConverter {
   };
 
   // Converts image one line at a time, between different image formats.
-  static bool ConvertImage(ScanlineReaderInterface* reader,
-                           ScanlineWriterInterface* writer);
+  static ScanlineStatus ConvertImageWithStatus(
+      ScanlineReaderInterface* reader,
+      ScanlineWriterInterface* writer);
+  inline static bool ConvertImage(ScanlineReaderInterface* reader,
+                                  ScanlineWriterInterface* writer) {
+    return ConvertImageWithStatus(reader, writer).Success();
+  }
 
   static bool ConvertPngToJpeg(
       const PngReaderInterface& png_struct_reader,

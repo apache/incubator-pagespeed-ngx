@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_status.h"
 
 // DO NOT INCLUDE LIBJPEG HEADERS HERE. Doing so causes build errors
 // on Windows.
@@ -126,17 +127,22 @@ class JpegScanlineWriter : public ScanlineWriterInterface {
   // cleaning up the jpeg structs.
   void AbortWrite();
 
+  virtual ScanlineStatus InitWithStatus(const size_t width, const size_t height,
+                                        PixelFormat pixel_format);
+  // Set the compression options via 'params', which should be a
+  // JpegCompressionOptions*. Since writer only supports lossy
+  // encoding, it is an error to pass in a 'params' that has the lossy
+  // field set to false.
+  virtual ScanlineStatus InitializeWriteWithStatus(const void* params,
+                                                   GoogleString *compressed);
+  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes);
+  virtual ScanlineStatus FinalizeWriteWithStatus();
+
+ private:
   // Since writer only supports lossy encoding, it is an error to pass
   // in a compression options that has lossy field set to false.
   void SetJpegCompressParams(const JpegCompressionOptions& options);
-  bool InitializeWrite(GoogleString *compressed);
 
-  virtual bool Init(const size_t width, const size_t height,
-                    PixelFormat pixel_format);
-  virtual bool WriteNextScanline(void *scanline_bytes);
-  virtual bool FinalizeWrite();
-
- private:
   // Opaque struct that is defined in the cc file and contains our
   // JPEG-compressor-specific structures.
   struct Data;
