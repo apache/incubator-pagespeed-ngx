@@ -1731,13 +1731,6 @@ class RewriteOptions {
     return metadata_input_errors_cache_ttl_ms_.value();
   }
 
-  void set_downstream_cache_lifetime_ms(int64 x) {
-    set_option(x, &downstream_cache_lifetime_ms_);
-  }
-  int64 downstream_cache_lifetime_ms() const {
-    return downstream_cache_lifetime_ms_.value();
-  }
-
   const GoogleString& downstream_cache_purge_method() const {
     return downstream_cache_purge_method_.value();
   }
@@ -3372,13 +3365,6 @@ class RewriteOptions {
 
   // The metadata cache ttl for input resources which are 4xx errors.
   Option<int64> metadata_input_errors_cache_ttl_ms_;
-
-  // The lifetime for responses which are stored in the downstream cache.
-  // TODO(anupama): This is right now used to only detect whether the
-  // rewritten-caching feature is enabled. Provide support for
-  // caches to respect this value by communicating them via headers
-  // to external caching layers.
-  Option<int64> downstream_cache_lifetime_ms_;
 
   // The HTTP method to use ("PURGE", "GET" etc.) for purge requests sent to
   // downstream caches (e.g. proxy_cache, Varnish).
