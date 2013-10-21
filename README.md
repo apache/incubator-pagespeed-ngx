@@ -101,6 +101,29 @@ X-Page-Speed: 1.6.29.5-...
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
+### Use Google Hosted JS (Canonicalize Javascript Libraries) 
+
+This is handy when you want to allow some of the more common javascript files to load from Google's servers. 
+See here: https://developers.google.com/speed/pagespeed/module/filter-canonicalize-js 
+
+To make this work with Nginx Pagespeed. Do the following on your web server. 
+
+```bash
+bash scripts/pagespeed_libraries_generator.sh > ~/pagespeed_libraries.conf 
+sudo cp ~/pagespeed_libraries.conf /etc/nginx/
+```
+
+In the Nginx.conf file above, right after you say pagespeed on; add this
+
+```nginx
+include pagespeed_libraries.conf;
+pagespeed EnableFilters canonicalize_javascript_libraries; 
+``` 
+
+Now most of your common JS files will load from //ajax.googleapis.com/... 
+
+
+
 For complete documentation, see [Using
 PageSpeed](https://developers.google.com/speed/pagespeed/module/using).
 
