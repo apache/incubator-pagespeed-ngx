@@ -113,6 +113,11 @@ class DomainLawyer {
   //
   // Note that this method returning true does not mean that resources from the
   // given domain should be rewritten.
+  //
+  // The intent of this method is identify external hostnames fetchers should
+  // connect to. IMPORTANT: users of this method MUST NOT trust the Host:
+  // header for authorizing external connections, since doing that would
+  // make it trivial to bypass the check.
   bool IsOriginKnown(const GoogleUrl& domain_to_check) const;
 
   // Maps an origin resource; just prior to fetching it.  This fails
