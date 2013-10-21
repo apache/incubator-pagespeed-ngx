@@ -101,28 +101,6 @@ X-Page-Speed: 1.6.29.5-...
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
-### Use Google Hosted JS (Canonicalize Javascript Libraries)
-
-This is handy when you want to allow some of the more common javascript files to
-load from Google's servers.  See [the
-documentation](https://developers.google.com/speed/pagespeed/module/filter-canonicalize-js).
-
-To make this work with ngx_pagespeed, run:
-
-```bash
-$ scripts/pagespeed_libraries_generator.sh > ~/pagespeed_libraries.conf
-$ sudo mv ~/pagespeed_libraries.conf /etc/nginx/
-```
-
-In the Nginx.conf file above, right after you say `pagespeed on`; add this
-
-```nginx
-include pagespeed_libraries.conf;
-pagespeed EnableFilters canonicalize_javascript_libraries;
-```
-
-Now most of your common JS files will load from `//ajax.googleapis.com/...``.
-
 For complete documentation, see [Using
 PageSpeed](https://developers.google.com/speed/pagespeed/module/using).
 
@@ -137,3 +115,20 @@ the progress of the project:
   list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
 - [ngx-pagespeed-announce mailing
   list](https://groups.google.com/forum/#!forum/ngx-pagespeed-announce)
+
+Note: The
+[canonicalize_javascript_libraries](https://developers.google.com/speed/pagespeed/module/filter-canonicalize-js)
+depends on `pagespeed_libraries.conf` which is distributed in Apache's format.
+To convert it to the Nginx format, run:
+
+```bash
+$ scripts/pagespeed_libraries_generator.sh > ~/pagespeed_libraries.conf
+$ sudo mv ~/pagespeed_libraries.conf /etc/nginx/
+```
+
+And then include it in your Nginx configuration by reference:
+
+```nginx
+include pagespeed_libraries.conf;
+pagespeed EnableFilters canonicalize_javascript_libraries;
+```
