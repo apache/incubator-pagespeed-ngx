@@ -180,7 +180,7 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kSlurpReadOnly,
                     "Only read from the slurped directory, fail to fetch "
                     "URLs not already in the slurped directory");
-  AddSystemProperty(false,
+  AddSystemProperty(true,
                     &SystemRewriteOptions::rate_limit_background_fetches_,
                     "rlbf",
                     RewriteOptions::kRateLimitBackgroundFetches,
