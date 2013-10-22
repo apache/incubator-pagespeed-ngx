@@ -941,7 +941,10 @@ apr_status_t instaweb_handler(request_rec* request) {
       }
     }
 
-    if (ret != OK && (config->slurping_enabled() || config->test_proxy())) {
+    // Check for HTTP_NO_CONTENT here since that's the status used for a
+    // successfully handled beacon.
+    if (ret != OK && ret != HTTP_NO_CONTENT &&
+        (config->slurping_enabled() || config->test_proxy())) {
       SlurpUrl(server_context, request);
       if (request->status == HTTP_NOT_FOUND) {
         RewriteStats* stats = server_context->rewrite_stats();
