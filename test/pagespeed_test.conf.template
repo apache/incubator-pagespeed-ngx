@@ -262,6 +262,9 @@ http {
     pagespeed UrlValuedAttribute custom a Image;
     pagespeed UrlValuedAttribute custom b otherResource;
     pagespeed UrlValuedAttribute custom c hyperlink;
+    pagespeed UrlValuedAttribute img alt-src Image;
+    pagespeed UrlValuedAttribute video alt-a Image;
+    pagespeed UrlValuedAttribute video alt-b Image;
   }
 
   server {
