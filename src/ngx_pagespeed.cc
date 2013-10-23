@@ -61,6 +61,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -532,6 +533,45 @@ bool ps_is_global_only_option(const StringPiece& option_name) {
   return false;
 }
 
+char* ps_init_dir(const StringPiece& directive,
+                  const StringPiece& path,
+                  ngx_conf_t* cf) {
+  if (path.size() == 0 || path[0] != '/') {
+    return string_piece_to_pool_string(
+        cf->pool, net_instaweb::StrCat(directive, " ", path,
+                                       " must start with a slash"));
+  }
+
+  net_instaweb::StdioFileSystem file_system;
+  net_instaweb::NullMessageHandler message_handler;
+  GoogleString gs_path;
+  path.CopyToString(&gs_path);
+  if (!file_system.IsDir(gs_path.c_str(), &message_handler).is_true()) {
+    if (!file_system.RecursivelyMakeDir(path, &message_handler)) {
+      return string_piece_to_pool_string(
+          cf->pool, net_instaweb::StrCat(
+              directive, " path ", path,
+              " does not exist and could not be created."));
+    }
+    // Directory created, but may not be readable by the worker processes.
+  }
+
+  if (geteuid() != 0) {
+    return NULL;  // We're not root, so we're staying whoever we are.
+  }
+
+  ngx_core_conf_t* ccf =
+      (ngx_core_conf_t*)(ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
+  CHECK(ccf != NULL);
+
+  if (chown(gs_path.c_str(), ccf->user, ccf->group) != 0) {
+    return string_piece_to_pool_string(
+        cf->pool, net_instaweb::StrCat(
+            directive, " ", path, " unable to set permissions"));
+  }
+  return NULL;
+}
+
 #define NGX_PAGESPEED_MAX_ARGS 10
 char* ps_configure(ngx_conf_t* cf,
                    NgxRewriteOptions** options,
@@ -562,6 +602,21 @@ char* ps_configure(ngx_conf_t* cf,
       return string_piece_to_pool_string(cf->pool, StrCat(
           "\"", args[0], "\" cannot be set at location scope"));
     }
+  }
+
+  // Some options require the worker process to be able to read and write to
+  // a specific directory.  Generally the master process is root while the
+  // worker is nobody, so we need to change permissions and create the directory
+  // if necessary.
+  if (n_args == 2 &&
+      (net_instaweb::StringCaseEqual("LogDir", args[0]) ||
+       net_instaweb::StringCaseEqual("FileCachePath", args[0]))) {
+    char* error_message = ps_init_dir(args[0], args[1], cf);
+    if (error_message != NULL) {
+      return error_message;
+    }
+    // The directory has been prepared, but we haven't actually parsed the
+    // directive yet.  That happens below in ParseAndSetOptions().
   }
 
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(

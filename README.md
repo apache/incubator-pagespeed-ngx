@@ -72,8 +72,6 @@ In your `nginx.conf`, add to the main or server block:
 
 ```nginx
 pagespeed on;
-
-# needs to exist and be writable by nginx
 pagespeed FileCachePath /var/ngx_pagespeed_cache;
 ```
 
@@ -115,3 +113,20 @@ the progress of the project:
   list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
 - [ngx-pagespeed-announce mailing
   list](https://groups.google.com/forum/#!forum/ngx-pagespeed-announce)
+
+Note: The
+[canonicalize_javascript_libraries](https://developers.google.com/speed/pagespeed/module/filter-canonicalize-js)
+depends on `pagespeed_libraries.conf` which is distributed in Apache's format.
+To convert it to the Nginx format, run:
+
+```bash
+$ scripts/pagespeed_libraries_generator.sh > ~/pagespeed_libraries.conf
+$ sudo mv ~/pagespeed_libraries.conf /etc/nginx/
+```
+
+And then include it in your Nginx configuration by reference:
+
+```nginx
+include pagespeed_libraries.conf;
+pagespeed EnableFilters canonicalize_javascript_libraries;
+```
