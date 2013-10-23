@@ -120,14 +120,14 @@ PROXY_CACHE="$TEST_TMP/proxycache"
 TMP_PROXY_CACHE="$TEST_TMP/tmpproxycache"
 ERROR_LOG="$TEST_TMP/error.log"
 ACCESS_LOG="$TEST_TMP/access.log"
-check_simple mkdir "$PROXY_CACHE"
-check_simple mkdir "$TMP_PROXY_CACHE"
+
+# Check that we do ok with directories that already exist.
 FILE_CACHE="$TEST_TMP/file-cache"
 check_simple mkdir "$FILE_CACHE"
+
+# And directories that don't.
 SECONDARY_CACHE="$TEST_TMP/file-cache/secondary/"
-check_simple mkdir "$SECONDARY_CACHE"
-SHM_CACHE="$TEST_TMP/file-cache/with_shm/"
-check_simple mkdir "$SHM_CACHE"
+SHM_CACHE="$TEST_TMP/file-cache/intermediate/directories/with_shm/"
 
 VALGRIND_OPTIONS=""
 

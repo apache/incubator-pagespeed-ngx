@@ -72,8 +72,6 @@ In your `nginx.conf`, add to the main or server block:
 
 ```nginx
 pagespeed on;
-
-# needs to exist and be writable by nginx
 pagespeed FileCachePath /var/ngx_pagespeed_cache;
 ```
 
