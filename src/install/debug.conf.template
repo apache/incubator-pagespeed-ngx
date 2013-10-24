@@ -513,6 +513,9 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedUrlValuedAttribute custom a Image
   ModPagespeedUrlValuedAttribute custom b otherResource
   ModPagespeedUrlValuedAttribute custom c hyperlink
+  ModPagespeedUrlValuedAttribute img alt-src Image
+  ModPagespeedUrlValuedAttribute video alt-a Image
+  ModPagespeedUrlValuedAttribute video alt-b Image
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
@@ -1021,6 +1024,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssPreserveURLs off
+#ALL_DIRECTIVES ModPagespeedDefaultSharedMemoryCacheKB 1000
 #ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
 #ALL_DIRECTIVES ModPagespeedDisallow bar
 #ALL_DIRECTIVES ModPagespeedDomain http://example.com

@@ -96,6 +96,35 @@ TEST_F(CollectFlushEarlyContentFilterTest, CollectFlushEarlyContentFilter) {
   EXPECT_STREQ(output_buffer_, html_input);
 }
 
+// Without flush_more_resources_early_if_time_permits we ignore custom
+// url-valued attributes.
+TEST_F(CollectFlushEarlyContentFilterTest, MultipleUrlValuedAttributes) {
+  options()->ClearSignatureForTesting();
+  options()->AddUrlValuedAttribute(
+      "script", "data-src", semantic_type::kScript);
+  server_context()->ComputeSignature(options());
+
+  GoogleString html_input =
+      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+      "<html>"
+      "<head>"
+        "<script src=\"a.js\" data-src=\"b.js\"></script>"
+      "</head>"
+      "<body>"
+        "<script src=\"c.js\" data-src=\"d.js\"></script>"
+      "</body>"
+      "</html>";
+
+  Parse("not_flushed_early", html_input);
+  FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  EXPECT_STREQ("<script src=\"http://test.com/a.js\"></script>"
+               "<body>"
+               "<script src=\"http://test.com/c.js\"></script>"
+               "</body>",
+               flush_early_info->resource_html());
+  EXPECT_STREQ(output_buffer_, html_input);
+}
+
 TEST_F(CollectFlushEarlyContentFilterTest, WithNoScriptCssAddStyles) {
   GoogleString html_input =
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
@@ -182,6 +211,60 @@ TEST_F(CollectFlushEarlyContentFilterTest, RelativeUrlsWithBaseTag) {
   EXPECT_STREQ("<link type=\"text/css\" rel=\"stylesheet\" "
                "href=\"http://test.com/c.css\"/><body></body>",
                flush_early_info->resource_html());
+}
+
+// If an element has only a single resource, flush it early.
+TEST_F(CollectFlushEarlyContentFilterTest, ApplySrcAndDataSrc) {
+  rewrite_driver()->set_flushing_early(true);
+  options()->ClearSignatureForTesting();
+  options()->set_flush_more_resources_early_if_time_permits(true);
+  options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
+  server_context()->ComputeSignature(options());
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"),
+                                kContentTypeJpeg, "placeholder", 100);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.jpg"),
+                                kContentTypeJpeg, "fullrez", 100);
+  GoogleString input_html =
+    "<head></head>"
+    "<body>"
+      "<img src=\"1.jpg\">"
+      "<img data-src=\"2.jpg\">"
+    "</body>";
+  GoogleString output_html =
+    "<head></head>"
+    "<body>"
+      "<img src=\"1.jpg\" pagespeed_size=\"11\">"
+      "<img data-src=\"2.jpg\" pagespeed_size=\"7\">"
+    "</body>";
+  ValidateExpected("flushing_early", input_html, output_html);
+  FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  EXPECT_STREQ("", flush_early_info->resource_html());
+}
+
+// If an element has multiple url valued attributes but only one resource, flush
+// that resource early.
+TEST_F(CollectFlushEarlyContentFilterTest, ApplyToPosterAndNotSrcOnVideo) {
+  rewrite_driver()->set_flushing_early(true);
+  options()->ClearSignatureForTesting();
+  options()->set_flush_more_resources_early_if_time_permits(true);
+  server_context()->ComputeSignature(options());
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.video"),
+                                kContentTypeJpeg, "video", 100);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.poster"),
+                                kContentTypeJpeg, "poster", 100);
+  GoogleString input_html =
+    "<head></head>"
+    "<body>"
+      "<video src=\"1.video\" poster=\"2.poster\"></video>"
+    "</body>";
+  GoogleString output_html =
+    "<head></head>"
+    "<body>"
+      "<video src=\"1.video\" poster=\"2.poster\" pagespeed_size=\"6\"></video>"
+    "</body>";
+  ValidateExpected("flushing_early", input_html, output_html);
+  FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  EXPECT_STREQ("", flush_early_info->resource_html());
 }
 
 TEST_F(CollectFlushEarlyContentFilterTest, ApplyIfFlushingEarlyAndOptionSet) {

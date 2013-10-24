@@ -17,6 +17,9 @@
 
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 
+#include <memory>
+
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -124,6 +127,13 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   // Note that this may cause the order of CSS elements stored in resource html
   // to be different from the order in which elements are parsed in HTML. This
   // can cause downloads to be in a different order too.
+  //
+  // FlushEarlyContentWriterFilter depends on us not flushing multiple resources
+  // for the same element for two reasons:
+  //  - The pagespeed_size attribute doesn't specify which url-valued attribute
+  //    it refers to.
+  //  - If there are multiple such attributes at least one is unlikely to be
+  //    used and so not worth flushing.
   if (element == noscript_element()) {
     if (driver()->options()->enable_flush_early_critical_css()) {
       const char* cls = noscript_element()->AttributeValue(HtmlName::kClass);
@@ -144,38 +154,80 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
     StrAppend(&resource_html_, "<body>");
     return;
   }
-  semantic_type::Category category;
-  HtmlElement::Attribute* attr =  resource_tag_scanner::ScanElement(
-      element, driver(), &category);
-  if (attr == NULL) {
-    return;
-  }
-  StringPiece url(attr->DecodedValueOrNull());
-  if (url.empty() || IsDataUrl(url)) {
-    return;
-  }
-  ResourcePtr resource = CreateInputResource(url);
-  if (resource.get() == NULL) {
-    return;
-  }
 
   if (driver()->flushing_early() &&
       driver()->options()->flush_more_resources_early_if_time_permits()) {
-    if (category == semantic_type::kStylesheet ||
-        category == semantic_type::kScript ||
-        category == semantic_type::kImage) {
-      ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
+    resource_tag_scanner::UrlCategoryVector attributes;
+    resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+    // We only want to flush early if there is a single flushable resource.
+    HtmlElement::Attribute* resource_url = NULL;
+    for (int i = 0, n = attributes.size(); i < n; ++i) {
+      if (attributes[i].category == semantic_type::kStylesheet ||
+          attributes[i].category == semantic_type::kScript ||
+          attributes[i].category == semantic_type::kImage) {
+        if (resource_url != NULL) {
+          // This should never happen.  When StartElementImpl is called with
+          // driver()->flushing_early() being true we're parsing the content
+          // which we want to flush early.  That content was already filtered to
+          // contain only elements with single resources to be flushed early.
+          DCHECK(false);
+          return;
+        }
+        resource_url = attributes[i].url;
+      }
+    }
+    if (resource_url != NULL) {
+      // We found a single resource to flush early.
+      StringPiece url(resource_url->DecodedValueOrNull());
+      if (url.empty() || IsDataUrl(url)) {
+        return;
+      }
+      ResourcePtr resource = CreateInputResource(url);
+      if (resource.get() == NULL) {
+        return;
+      }
+      ResourceSlotPtr slot(driver()->GetSlot(resource, element, resource_url));
       Context* context = new Context(driver());
       context->AddSlot(slot);
       driver()->InitiateRewrite(context);
     }
-    return;
-  }
-  // Find javascript elements in the head, and css elements in the entire page.
-  if ((category == semantic_type::kStylesheet ||
-       (category == semantic_type::kScript))) {
-    // We need to always use the abosultified urls while flushing, else we might
-    // end up flushing wrong resources. Use the absolutified url that is
+  } else {
+    // Find javascript elements in the head, and css elements in the entire
+    // page.  Only look at standard link-href/script-src tags because those are
+    // the only ones we can handle with AppendToHtml() and because we're only
+    // able to flush one resource early per element.
+    HtmlName::Keyword attribute_name;
+    if (element->keyword() == HtmlName::kScript) {
+      attribute_name = HtmlName::kSrc;
+    } else if (element->keyword() == HtmlName::kLink) {
+      attribute_name = HtmlName::kHref;
+    } else {
+      return;
+    }
+    HtmlElement::Attribute* resource_url =
+        element->FindAttribute(attribute_name);
+    semantic_type::Category category =
+        resource_tag_scanner::CategorizeAttribute(
+            element, resource_url, driver_->options());
+    if (element->keyword() == HtmlName::kScript &&
+        category != semantic_type::kScript) {
+      return;
+    }
+    if (element->keyword() == HtmlName::kLink &&
+        category != semantic_type::kStylesheet) {
+      return;
+    }
+
+    StringPiece url(resource_url->DecodedValueOrNull());
+    if (url.empty() || IsDataUrl(url)) {
+      return;
+    }
+    ResourcePtr resource = CreateInputResource(url);
+    if (resource.get() == NULL) {
+      return;
+    }
+    // We need to always use the absolutified urls while flushing, else we
+    // might end up flushing wrong resources. Use the absolutified url that is
     // computed in CreateInputResource call.
     GoogleUrl gurl(resource->url());
     if (gurl.IsWebValid()) {

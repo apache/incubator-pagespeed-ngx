@@ -120,6 +120,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "language",                   HtmlName::kLanguage
 "li",                         HtmlName::kLi
 "link",                       HtmlName::kLink
+"longdesc",                   HtmlName::kLongdesc
 "loop",                       HtmlName::kLoop
 "manifest",                   HtmlName::kManifest
 "mark",                       HtmlName::kMark
@@ -163,6 +164,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "pagespeed_size",             HtmlName::kPagespeedSize
 "pagespeed_url_hash",         HtmlName::kPagespeedUrlHash
 "param",                      HtmlName::kParam
+"poster",                     HtmlName::kPoster
 "pre",                        HtmlName::kPre
 "profile",                    HtmlName::kProfile
 "q",                          HtmlName::kQ

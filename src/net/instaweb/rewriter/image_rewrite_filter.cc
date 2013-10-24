@@ -21,6 +21,7 @@
 #include <limits.h>
 
 #include <algorithm>                    // for min
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -1363,6 +1364,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   bool try_low_res_src_insertion = false;
   ImageType low_res_image_type = IMAGE_UNKNOWN;
   if (options->Enabled(RewriteOptions::kDelayImages) &&
+      src->keyword() == HtmlName::kSrc &&
       (element->keyword() == HtmlName::kImg ||
        element->keyword() == HtmlName::kInput)) {
     try_low_res_src_insertion = true;
@@ -1651,35 +1653,39 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (driver_->HasChildrenInFlushWindow(element)) {
     return;
   }
-  // Don't rewrite if we cannot find the src attribute or if it's not an image.
-  semantic_type::Category category;
-  HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
-      element, driver_, &category);
-  if (category != semantic_type::kImage ||
-      src == NULL || src->DecodedValueOrNull() == NULL) {
-    return;
-  }
-
   // Don't rewrite if there is a pagespeed_no_transform attribute.
   if (element->FindAttribute(HtmlName::kPagespeedNoTransform)) {
     // Remove the attribute
     element->DeleteAttribute(HtmlName::kPagespeedNoTransform);
     return;
   }
+  // Rewrite any image-valued attributes we find.
+  resource_tag_scanner::UrlCategoryVector attributes;
+  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    if (attributes[i].category != semantic_type::kImage ||
+        attributes[i].url->DecodedValueOrNull() == NULL) {
+      continue;
+    }
 
-  // Ask the LSC filter to work out how to handle this element. A return
-  // value of true means we don't have to rewrite it so can skip that.
-  // The state is carried forward to after we initiate rewriting since
-  // we might still have to modify the element.
-  LocalStorageCacheFilter::InlineState state;
-  if (LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
-                                                   driver_,
-                                                   false /* check cookie */,
-                                                   element, &state)) {
-    return;
+    // The LSC filter only knows how to handle the src attribute.
+    if (attributes[i].url->keyword() == HtmlName::kSrc) {
+      // Ask the LSC filter to work out how to handle this element. A return
+      // value of true means we don't have to rewrite it so can skip that.
+      // The state is carried forward to after we initiate rewriting since
+      // we might still have to modify the element.
+      LocalStorageCacheFilter::InlineState state;
+      if (LocalStorageCacheFilter::AddStorableResource(
+              attributes[i].url->DecodedValueOrNull(),
+              driver_,
+              false /* check cookie */,
+              element, &state)) {
+        continue;
+      }
+    }
+
+    BeginRewriteImageUrl(element, attributes[i].url);
   }
-
-  BeginRewriteImageUrl(element, src);
 }
 
 const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {

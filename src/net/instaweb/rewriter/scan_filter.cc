@@ -18,11 +18,12 @@
 
 #include "net/instaweb/rewriter/public/scan_filter.h"
 
+#include <memory>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
@@ -107,17 +108,17 @@ void ScanFilter::StartElement(HtmlElement* element) {
     }
     // TODO(jmarantz): handle base targets in addition to hrefs.
   } else {
-    semantic_type::Category category;
-    HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
-        element, driver_, &category);
-
-    // Don't count <html manifest=...> as a ref for the purpose of determining
-    // if there are refs before base.  It's also important not to count <head
-    // profile=...> but ScanElement skips that.
-    if (!seen_refs_ && !seen_base_ && href != NULL &&
-        !(element->keyword() == HtmlName::kHtml &&
-          href->keyword() == HtmlName::kManifest)) {
-      seen_refs_ = true;
+    resource_tag_scanner::UrlCategoryVector attributes;
+    resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+    for (int i = 0, n = attributes.size(); i < n; ++i) {
+      // Don't count <html manifest=...> as a ref for the purpose of determining
+      // if there are refs before base.  It's also important not to count <head
+      // profile=...> but ScanElement skips that.
+      if (!seen_refs_ && !seen_base_ &&
+          !(element->keyword() == HtmlName::kHtml &&
+            attributes[i].url->keyword() == HtmlName::kManifest)) {
+        seen_refs_ = true;
+      }
     }
   }
 

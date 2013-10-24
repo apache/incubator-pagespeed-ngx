@@ -17,6 +17,9 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
+
+#include <memory>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -84,31 +87,30 @@ void DomainRewriteFilter::UpdateLocationHeader(const GoogleUrl& base_url,
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
-  semantic_type::Category category;
-  HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
-      element, driver_, &category);
-
-  // Disable domain_rewrite for non-image, non-script, non-stylesheet urls
-  // unless ModPagespeedDomainRewriteHyperlinks is on
-  if (category != semantic_type::kImage &&
-      category != semantic_type::kScript &&
-      category != semantic_type::kStylesheet &&
-      !driver_->options()->domain_rewrite_hyperlinks()) {
-    return;
-  }
-  if (href != NULL) {
-    StringPiece val(href->DecodedValueOrNull());
+  resource_tag_scanner::UrlCategoryVector attributes;
+  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    // Disable domain_rewrite for non-image, non-script, non-stylesheet urls
+    // unless ModPagespeedDomainRewriteHyperlinks is on
+    if (attributes[i].category != semantic_type::kImage &&
+        attributes[i].category != semantic_type::kScript &&
+        attributes[i].category != semantic_type::kStylesheet &&
+        !driver_->options()->domain_rewrite_hyperlinks()) {
+      continue;
+    }
+    StringPiece val(attributes[i].url->DecodedValueOrNull());
     GoogleString rewritten_val;
     // Don't shard hyperlinks, prefetch, embeds, frames, or iframes.
-    bool apply_sharding = (category != semantic_type::kHyperlink &&
-                           category != semantic_type::kPrefetch &&
-                           element->keyword() != HtmlName::kEmbed &&
-                           element->keyword() != HtmlName::kFrame &&
-                           element->keyword() != HtmlName::kIframe);
+    bool apply_sharding = (
+        attributes[i].category != semantic_type::kHyperlink &&
+        attributes[i].category != semantic_type::kPrefetch &&
+        element->keyword() != HtmlName::kEmbed &&
+        element->keyword() != HtmlName::kFrame &&
+        element->keyword() != HtmlName::kIframe);
     if (!val.empty() && BaseUrlIsValid() &&
         (Rewrite(val, driver_->base_url(), driver_,
                  apply_sharding, &rewritten_val) == kRewroteDomain)) {
-      href->SetValue(rewritten_val);
+      attributes[i].url->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
   }

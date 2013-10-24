@@ -22,6 +22,7 @@
 
 #include "net/instaweb/rewriter/public/split_html_helper_filter.h"
 
+#include <memory>
 #include <vector>
 
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -122,28 +123,29 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
       StartPanelInstance(element, panel_id);
     }
   }
-  semantic_type::Category category;
-  HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
-      element, driver(), &category);
-  if (category == semantic_type::kImage &&
-      src != NULL && src->DecodedValueOrNull() != NULL &&
-      driver()->request_context()->split_request_type() !=
-      RequestContext::SPLIT_BELOW_THE_FOLD) {
-    if (!state_->current_panel_id().empty()) {
-      // For a below-the-fold image, insert a pagespeed_no_transform attribute
-      // to prevent inline-preview-images filter from doing any rewriting.
-      element->AddAttribute(
-          driver()->MakeName(HtmlName::kPagespeedNoTransform),
-          "", HtmlElement::NO_QUOTE);
-    } else {
-      // For an above-the-fold image, insert the url as a critical image.
-      GoogleUrl image_gurl(driver()->base_url(),
-                           src->DecodedValueOrNull());
-      if (image_gurl.IsWebValid()) {
-        GoogleString url(image_gurl.spec_c_str());
-        CriticalImagesFinder* finder =
-            driver()->server_context()->critical_images_finder();
-        finder->AddHtmlCriticalImage(url, driver());
+  resource_tag_scanner::UrlCategoryVector attributes;
+  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    if (attributes[i].category == semantic_type::kImage &&
+        attributes[i].url->DecodedValueOrNull() != NULL &&
+        (driver()->request_context()->split_request_type() !=
+         RequestContext::SPLIT_BELOW_THE_FOLD)) {
+      if (!state_->current_panel_id().empty()) {
+        // For a below-the-fold image, insert a pagespeed_no_transform attribute
+        // to prevent inline-preview-images filter from doing any rewriting.
+        element->AddAttribute(
+            driver()->MakeName(HtmlName::kPagespeedNoTransform),
+            "", HtmlElement::NO_QUOTE);
+      } else {
+        // For an above-the-fold image, insert the url as a critical image.
+        GoogleUrl image_gurl(driver()->base_url(),
+                             attributes[i].url->DecodedValueOrNull());
+        if (image_gurl.IsWebValid()) {
+          GoogleString url(image_gurl.spec_c_str());
+          CriticalImagesFinder* finder =
+              driver()->server_context()->critical_images_finder();
+          finder->AddHtmlCriticalImage(url, driver());
+        }
       }
     }
   }

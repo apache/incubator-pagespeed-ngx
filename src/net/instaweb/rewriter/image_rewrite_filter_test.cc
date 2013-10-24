@@ -65,6 +65,7 @@
 #include "net/instaweb/util/public/md5_hasher.h"  // for MD5Hasher
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_property_page.h"
+#include "net/instaweb/util/public/null_thread_system.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -308,11 +309,14 @@ class ImageRewriteTest : public RewriteTestBase {
     }
 
     virtual void StartElement(HtmlElement* element) {
-      semantic_type::Category category;
-      HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
-          element, NULL /* driver */, &category);
-      if (src != NULL && category == semantic_type::kImage) {
-        img_srcs_->push_back(src->DecodedValueOrNull());
+      resource_tag_scanner::UrlCategoryVector attributes;
+      NullThreadSystem thread_system;
+      RewriteOptions options(&thread_system);
+      resource_tag_scanner::ScanElement(element, &options, &attributes);
+      for (int i = 0, n = attributes.size(); i < n; ++i) {
+        if (attributes[i].category == semantic_type::kImage) {
+          img_srcs_->push_back(attributes[i].url->DecodedValueOrNull());
+        }
       }
     }
 
@@ -3041,5 +3045,40 @@ TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
                             " width=\"100\" height=\"100\"",
                             expected_rewritten_url, 0);
 }
+
+TEST_F(ImageRewriteTest, RewriteMultipleAttributes) {
+  // Test a complex setup with both regular and custom image urls, including an
+  // invalid image which should only get cache-extended.
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kExtendCacheImages);
+
+  rewrite_driver()->AddFilters();
+
+  options()->ClearSignatureForTesting();
+  options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
+  server_context()->ComputeSignature(options());
+
+  // A, B, and D are real image files, so they should be properly rewritten.
+  AddFileToMockFetcher("a.jpg", kPuzzleJpgFile, kContentTypeJpeg, 100);
+  AddFileToMockFetcher("b.jpg", kPuzzleJpgFile, kContentTypeJpeg, 100);
+  AddFileToMockFetcher("d.jpg", kPuzzleJpgFile, kContentTypeJpeg, 100);
+
+  // C is not an image file, so image rewrite fails (but cache extension works).
+  SetResponseWithDefaultHeaders("c.jpg", kContentTypeJpeg, "Not a JPG", 600);
+
+  // TODO(jefftk): All of these should be relative urls, but only c is because
+  // of a bug in the interaction between PreserveUrlRelativity and image
+  // rewriting.  Leave it as is for now and fix the bug in a separate change.
+  ValidateExpected(
+      "multiple_attributes",
+      "<img src=a.jpg data-src=b.jpg data-src=c.jpg data-src=d.jpg>",
+      StrCat(
+          "<img src=", Encode("http://test.com/", "ic", "0", "a.jpg", "jpg"),
+          " data-src=", Encode("http://test.com/", "ic", "0", "b.jpg", "jpg"),
+          " data-src=", Encode("", "ce", "0", "c.jpg", "jpg"),
+          " data-src=", Encode("http://test.com/", "ic", "0", "d.jpg", "jpg"),
+          ">"));
+}
+
 
 }  // namespace net_instaweb

@@ -95,19 +95,18 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     // current DOM walk in the above js files would need to be modified to
     // handle the large number of tags that we can identify in
     // resource_tag_scanner::ScanElement.
-    semantic_type::Category category;
-    HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
-        element, driver_, &category);
-
-    if (src == NULL || src->DecodedValueOrNull() == NULL ||
-        category != semantic_type::kImage) {
-      return;
-    }
-    bool is_attribute_src = (src->keyword() == HtmlName::kSrc);
     HtmlElement::Attribute* low_res_src =
         element->FindAttribute(HtmlName::kPagespeedLowResSrc);
     if (low_res_src == NULL || low_res_src->DecodedValueOrNull() == NULL) {
       return;
+    }
+    HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
+    semantic_type::Category category =
+        resource_tag_scanner::CategorizeAttribute(
+            element, src, driver_->options());
+    if (category != semantic_type::kImage ||
+        src->DecodedValueOrNull() == NULL) {
+      return;  // Failed to find valid Image-valued src attribute.
     }
     ++num_low_res_inlined_images_;
     if (element->FindAttribute(HtmlName::kOnload) == NULL) {
@@ -115,22 +114,15 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
           RewriteOptions::FilterId(RewriteOptions::kDelayImages),
           RewriterApplication::APPLIED_OK);
       // High res src is added and original img src attribute is removed
-      // from img tag. Note that we only do this if the attribute we are
-      // rewriting is an src attribute.
-      if (is_attribute_src) {
-        driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
-      }
-      if (!is_attribute_src || insert_low_res_images_inplace_) {
-        // Force inplace rewriting if we are not rewriting an src attribute.
+      // from img tag.
+      driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
+      if (insert_low_res_images_inplace_) {
         // Set the src as the low resolution image.
         driver_->AddAttribute(element, HtmlName::kSrc,
                               low_res_src->DecodedValueOrNull());
-        if (is_attribute_src) {
-          // Add an onload function to set the high resolution image, and we are
-          // rewriting an src attribute.
-          driver_->AddEscapedAttribute(
-              element, HtmlName::kOnload, kOnloadFunction);
-        }
+        // Add an onload function to set the high resolution image.
+        driver_->AddEscapedAttribute(
+            element, HtmlName::kOnload, kOnloadFunction);
       } else {
         // Low res image data is collected in low_res_data_map_ map. This
         // low_res_src will be moved just after last low res image in the flush

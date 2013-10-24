@@ -19,18 +19,31 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 
+#include <cstddef>  // for NULL
+#include <vector>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/semantic_type.h"
 
 namespace net_instaweb {
-class RewriteDriver;
+
+class RewriteOptions;
+
 namespace resource_tag_scanner {
-// Examines an HTML element to determine if it's a link to any sort of
-// resource, extracting out the HREF, SRC, or other URL attribute and
-// identifying it's category.  Because, for example, a LINK tag can be an
-// image, stylesheet, or nearly anything else, it's no longer sufficient for
-// callers to assume they can figure out the category from the element's
-// name.
+
+struct UrlCategoryPair {
+  HtmlElement::Attribute* url;
+  semantic_type::Category category;
+
+  UrlCategoryPair()
+      : url(NULL),
+        category(semantic_type::kUndefined) {}
+};
+
+typedef std::vector<UrlCategoryPair> UrlCategoryVector;
+
+// If the attribute is url-valued, determine it's semantic category.  Return
+// kUndefined otherwise.
 //
 // Supported patterns are:
 //   Scripts:
@@ -52,59 +65,71 @@ namespace resource_tag_scanner {
 //     <tfoot background=...>
 //     <input type="image" src=...>
 //     <command icon=...>
+//     <video poster=...>
 //   Hyperlink:
 //     <a href=...>
 //     <area href=...>
 //     <form action=...>
-//     <blockquote cite="">
-//     <q cite="">
-//     <ins cite="">
-//     <del cite="">
-//     <button formaction="">
+//     <blockquote cite=...>
+//     <body cite=...>
+//     <q cite=...>
+//     <ins cite=...>
+//     <del cite=...>
+//     <button formaction=...>
+//     <input formaction=...>
+//     <frame longdesc=...>
+//     <iframe longdesc=...>
+//     <img longdesc=...>
 //   OtherResource:
-//     <audio src="">
-//     <video src="">
-//     <source src="">
-//     <track src="">
+//     <audio src=...>
+//     <video src=...>
+//     <source src=...>
+//     <track src=...>
 //     <html manifest=...>
-//     <embed src="">
-//     <frame src="">
-//     <iframe src="">
+//     <embed src=...>
+//     <frame src=...>
+//     <iframe src=...>
 //
 // Exceptions:
 //
-// 1. In a small number of cases an element can have multiple url-valued
-//    attributes.  We just take the most common one or the one we can do the
-//    most to improve, rather than complicate the interface:
-//
-//      video: src but not poster
-//      frame, iframe, img: src but not longdesc
-//      input: src but not formaction
-//      body: background but not cite
-//
-// 2. Because we don't parse the codebase attribute of applet or object elements
+// 1. Because we don't parse the codebase attribute of applet or object elements
 //    it's not safe for us to manipulate any of their other url-valued
 //    attributes.
 //
-// 3. The base tag is dealt with elsewhere, but here we skip it.  It's not safe
+// 2. The base tag is dealt with elsewhere, but here we skip it.  It's not safe
 //    to make any changes to it, so this is safe.  It's also not safe to make
 //    changes to <head profile=...> because one use of a profile is as a
 //    globally unique name which a browser or other agent recognizes and
-//    interprets without acessing, so we skip it too.
+//    interprets without accessing, so we skip it too.
 //
-// 4. While usemap, an attribute of img, input, and object, is technically a
+// 3. While usemap, an attribute of img, input, and object, is technically a
 //    url, it always has the form #name or #id, which means there's nothing we
-//    can do to improve it and there's no harm in leaving it out.  Also, all
-//    three cases would be covered by (1) or (2) above.
+//    can do to improve it and there's no harm in leaving it out.
 //
 // These exceptions aside, we should support all url-valued attributes in
 // html4 and html5:
 //   http://dev.w3.org/html5/spec/section-index.html#attributes-1
 //   http://www.w3.org/TR/REC-html40/index/attributes.html
 //
+semantic_type::Category CategorizeAttribute(
+    const HtmlElement* element,
+    const HtmlElement::Attribute* attribute,
+    const RewriteOptions* options);
+
+// Examines an HTML element to determine if it's a link to any sort of resource,
+// extracting out the HREF, SRC, or other URL attributes and identifying their
+// categories.  Because, for example, a LINK tag can be an image, stylesheet, or
+// nearly anything else, it's not sufficient for callers to assume they can
+// figure out the category from the element's name.
 //
-HtmlElement::Attribute* ScanElement(HtmlElement* element, RewriteDriver* driver,
-                                    semantic_type::Category* category);
+// See CategorizeAttribute for the meaning of "url-valued attribute".
+//
+// Attributes that we can't decode, such as non-ascii urls, will be skipped.
+//
+// Attributes are returned in left-to-right order.
+void ScanElement(HtmlElement* element, const RewriteOptions* options,
+                 UrlCategoryVector* attributes);
+
 }  // namespace resource_tag_scanner
 }  // namespace net_instaweb
 

@@ -344,7 +344,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithUnescapedQueryParam) {
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
-TEST_F(DelayImagesFilterTest, DelayImageWithUrlValuedAttribute) {
+TEST_F(DelayImagesFilterTest, DelayImageWithOnlyUrlValuedAttribute) {
   options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
@@ -352,13 +352,32 @@ TEST_F(DelayImagesFilterTest, DelayImageWithUrlValuedAttribute) {
   GoogleString input_html = "<head></head><body>"
       "<img data-src=\"http://test.com/1.webp\"/>"
       "</body>";
-  // Inlined image will be a blank png instead of a low res webp.
+  // No change made.
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img data-src=\"http://test.com/1.webp\" "
-      "src=\"", kSampleWebpData, "\"/>",
+      "<img data-src=\"http://test.com/1.webp\"/>",
       "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageWithSrcAndUrlValuedAttribute) {
+  options()->AddUrlValuedAttribute("img", "data-src", semantic_type::kImage);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  AddFileToMockFetcher("http://test.com/2.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  GoogleString input_html = "<head></head><body>"
+      "<img src=\"http://test.com/1.webp\""
+      "     data-src=\"http://test.com/2.jpeg\"/>"
+      "</body>";
+  // Inlined image will be a blank png instead of a low res webp.
+  GoogleString output_html = StrCat(
+      "<head></head><body>", GetNoscript(),
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\" "
+      "data-src=\"http://test.com/2.jpeg\" src=\"", kSampleWebpData,
+      "\" onload=\"", DelayImagesFilter::kOnloadFunction, "\"/></body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -429,12 +448,11 @@ TEST_F(DelayImagesFilterTest, DelayImageMobileWithUrlValuedAttribute) {
   GoogleString input_html = "<head></head><body>"
       "<img data-src=\"http://test.com/1.webp\"/>"
       "</body>";
-  // Inlined image will be a blank png instead of a low res webp.
+  // No inlining.
   GoogleString output_html = StrCat(
       "<head></head><body>",
       GetNoscript(),
-      "<img data-src=\"http://test.com/1.webp\" "
-      "src=\"", kSampleWebpData, "\"/>",
+      "<img data-src=\"http://test.com/1.webp\"/>",
       "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }

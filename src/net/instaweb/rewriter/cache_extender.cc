@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/cache_extender.h"
 
+#include <memory>
+
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -139,53 +141,57 @@ bool CacheExtender::ShouldRewriteResource(
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {
-  semantic_type::Category category;
-  HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
-      element, driver_, &category);
-  bool may_load = false;
-  switch (category) {
-    case semantic_type::kStylesheet:
-      may_load = driver_->MayCacheExtendCss();
-      break;
-    case semantic_type::kImage:
-      may_load = driver_->MayCacheExtendImages();
-      break;
-    case semantic_type::kScript:
-      may_load = driver_->MayCacheExtendScripts();
-      break;
-    default:
-      // Does the url in the attribute end in .pdf, ignoring query params?
-      if (href != NULL && href->DecodedValueOrNull() != NULL
-          && driver_->MayCacheExtendPdfs()) {
-        GoogleUrl url(driver_->base_url(), href->DecodedValueOrNull());
+  resource_tag_scanner::UrlCategoryVector attributes;
+  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    bool may_load = false;
+    switch (attributes[i].category) {
+      case semantic_type::kStylesheet:
+        may_load = driver_->MayCacheExtendCss();
+        break;
+      case semantic_type::kImage:
+        may_load = driver_->MayCacheExtendImages();
+        break;
+      case semantic_type::kScript:
+        may_load = driver_->MayCacheExtendScripts();
+        break;
+      default:
+        // Does the url in the attribute end in .pdf, ignoring query params?
+        if (attributes[i].url->DecodedValueOrNull() != NULL
+            && driver_->MayCacheExtendPdfs()) {
+        GoogleUrl url(driver_->base_url(),
+                      attributes[i].url->DecodedValueOrNull());
         if (url.IsWebValid() && StringCaseEndsWith(
                 url.LeafSansQuery(), kContentTypePdf.file_extension())) {
           may_load = true;
         }
       }
       break;
-  }
-  if (!may_load) {
-    return;
-  }
-
-  // TODO(jmarantz): We ought to be able to domain-shard even if the
-  // resources are non-cacheable or privately cacheable.
-  if ((href != NULL) && driver_->IsRewritable(element)) {
-    ResourcePtr input_resource(CreateInputResource(href->DecodedValueOrNull()));
-    if (input_resource.get() == NULL) {
-      return;
+    }
+    if (!may_load) {
+      continue;
     }
 
-    GoogleUrl input_gurl(input_resource->url());
-    if (server_context_->IsPagespeedResource(input_gurl)) {
-      return;
-    }
+    // TODO(jmarantz): We ought to be able to domain-shard even if the
+    // resources are non-cacheable or privately cacheable.
+    if (driver_->IsRewritable(element)) {
+      ResourcePtr input_resource(CreateInputResource(
+          attributes[i].url->DecodedValueOrNull()));
+      if (input_resource.get() == NULL) {
+        continue;
+      }
 
-    ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
-    Context* context = new Context(this, driver_, NULL /* not nested */);
-    context->AddSlot(slot);
-    driver_->InitiateRewrite(context);
+      GoogleUrl input_gurl(input_resource->url());
+      if (server_context_->IsPagespeedResource(input_gurl)) {
+        continue;
+      }
+
+      ResourceSlotPtr slot(driver_->GetSlot(
+          input_resource, element, attributes[i].url));
+      Context* context = new Context(this, driver_, NULL /* not nested */);
+      context->AddSlot(slot);
+      driver_->InitiateRewrite(context);
+    }
   }
 }
 

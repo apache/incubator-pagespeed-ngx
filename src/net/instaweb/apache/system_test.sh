@@ -1578,9 +1578,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   start_test Additional url-valued attributes are fully respected.
 
-  # There are five resources that should be optimized
+  function count_exact_matches() {
+    # Needed because "fgrep -c" counts lines with matches, not pure matches.
+    fgrep -o "$1" | wc -l
+  }
+
+  # There are nine resources that should be optimized.
   http_proxy=$SECONDARY_HOSTNAME \
-      fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 5
+      fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.' 9
 
   # Make sure <custom d=...> isn't modified at all, but that everything else is
   # recognized as a url and rewritten from ../foo to /foo.  This means that only
@@ -1590,9 +1595,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME \
       fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
 
-  # There are five images that should be optimized.
+  # There are nine images that should be optimized, so grep including .ic.
   http_proxy=$SECONDARY_HOSTNAME \
-      fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
+      fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 9
 
   # This test checks that the ModPagespeedClientDomainRewrite directive
   # can turn on.

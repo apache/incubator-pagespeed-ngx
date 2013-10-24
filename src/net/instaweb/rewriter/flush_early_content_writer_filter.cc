@@ -17,6 +17,7 @@
 
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
+#include <memory>
 #include <set>
 
 #include "base/logging.h"
@@ -315,10 +316,8 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
     is_flushing_critical_style_element_ = true;
     css_output_content_.clear();
   } else {
-    semantic_type::Category category;
-    // Extract the resource urls from the page.
-    HtmlElement::Attribute* attr = resource_tag_scanner::ScanElement(
-        element, driver_, &category);
+    // There will only ever be at most one size attribute and one resource here,
+    // guaranteed by CollectFlushEarlyContentFilter.
     HtmlElement::Attribute* size_attr =
         element->FindAttribute(HtmlName::kPagespeedSize);
     int64 size = 0;
@@ -331,103 +330,111 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
       }
     }
 
-    if (category == semantic_type::kScript &&
-        (defer_javascript_enabled_ || split_html_enabled_ || in_body_)) {
-      // Don't flush javascript resources if defer_javascript is enabled or
-      // split HTML filters are enabled.
-      // TODO(nikhilmadan): Check if the User-Agent supports defer_javascript.
-      GoogleUrl gurl;
-      GoogleString original_url;
-      if (flush_more_resources_early_if_time_permits_ &&
-          ExtractUrl(attr, driver_, &gurl, &original_url)) {
-        bool is_pagespeed_resource =
-            driver_->server_context()->IsPagespeedResource(gurl);
-        // Scripts can be flushed for kPrefetchLinkScriptTag prefetch
-        // mechanism only if defer_javascript is disabled and
-        // flush_more_resources_in_ie_and_firefox is enabled.
-        bool can_flush_js_for_prefetch_link_script_tag =
-            prefetch_mechanism_ ==
-            UserAgentMatcher::kPrefetchLinkScriptTag &&
-            driver_->options()->flush_more_resources_in_ie_and_firefox() &&
-            !(defer_javascript_enabled_ || split_html_enabled_);
-        FlushEarlyResourceInfo::ResourceType resource_type =
-            GetResourceType(gurl, is_pagespeed_resource);
-        if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
-             can_flush_js_for_prefetch_link_script_tag) &&
-            IsFlushable(gurl, resource_type) && size > 0) {
-          // TODO(pulkitg): Add size of private resources also.
-          // TODO(pulkitg): Add a mechanism to flush javascript if
-          // defer_javascript is enabled and prefetch mechanism is
-          // kPrefetchLinkScriptTag.
-          int64 time_to_download = TimeToDownload(size);
-          ResourceInfo* js_info = new ResourceInfo(
-              attr->DecodedValueOrNull(), original_url, time_to_download,
-              is_pagespeed_resource, !in_body_);
-          js_resources_info_.push_back(js_info);
-        } else {
+    resource_tag_scanner::UrlCategoryVector attributes;
+    resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+    if (!attributes.empty()) {
+      DCHECK_EQ(1U, attributes.size());
+      HtmlElement::Attribute* resource_url = attributes[0].url;
+      semantic_type::Category category = attributes[0].category;
+      if (category == semantic_type::kScript &&
+          (defer_javascript_enabled_ || split_html_enabled_ || in_body_)) {
+        // Don't flush javascript resources if defer_javascript is enabled or
+        // split HTML filters are enabled.
+        // TODO(nikhilmadan): Check if the User-Agent supports defer_javascript.
+        GoogleUrl gurl;
+        GoogleString original_url;
+        if (flush_more_resources_early_if_time_permits_ &&
+            ExtractUrl(resource_url, driver_, &gurl, &original_url)) {
+          bool is_pagespeed_resource =
+              driver_->server_context()->IsPagespeedResource(gurl);
+          // Scripts can be flushed for kPrefetchLinkScriptTag prefetch
+          // mechanism only if defer_javascript is disabled and
+          // flush_more_resources_in_ie_and_firefox is enabled.
+          bool can_flush_js_for_prefetch_link_script_tag =
+              prefetch_mechanism_ ==
+              UserAgentMatcher::kPrefetchLinkScriptTag &&
+              driver_->options()->flush_more_resources_in_ie_and_firefox() &&
+              !(defer_javascript_enabled_ || split_html_enabled_);
+          FlushEarlyResourceInfo::ResourceType resource_type =
+              GetResourceType(gurl, is_pagespeed_resource);
+          if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+               can_flush_js_for_prefetch_link_script_tag) &&
+              IsFlushable(gurl, resource_type) && size > 0) {
+            // TODO(pulkitg): Add size of private resources also.
+            // TODO(pulkitg): Add a mechanism to flush javascript if
+            // defer_javascript is enabled and prefetch mechanism is
+            // kPrefetchLinkScriptTag.
+            int64 time_to_download = TimeToDownload(size);
+            ResourceInfo* js_info = new ResourceInfo(
+                resource_url->DecodedValueOrNull(), original_url,
+                time_to_download, is_pagespeed_resource, !in_body_);
+            js_resources_info_.push_back(js_info);
+          } else {
+            driver_->log_record()->LogFlushEarlyActivity(
+                RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+                original_url,
+                RewriterApplication::NOT_APPLIED,
+                FlushEarlyResourceInfo::JS,
+                resource_type,
+                false /* not affected by bandwidth */,
+                !in_body_);
+          }
+        }
+      } else if (category == semantic_type::kPrefetch) {
+        // Flush the element as such if category is kPrefetch.
+        current_element_ = element;
+        HtmlWriterFilter::TerminateLazyCloseElement();
+        set_writer(original_writer_);
+        if (insert_close_script_) {
+          WriteToOriginalWriter("})()</script>");
+          insert_close_script_ = false;
+        }
+      } else {
+        GoogleUrl gurl;
+        GoogleString original_url;
+        if (ExtractUrl(resource_url, driver_, &gurl, &original_url)) {
+          bool call_flush_resources = true;
+          int64 time_to_download = 0;
+          bool is_bandwidth_affected = false;
+          bool is_flushed = false;
+          if (category == semantic_type::kImage) {
+            time_to_download = size / kConnectionSpeedBytesPerMs;
+            bool is_prefetch_mechanism_ok =
+                (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+                 prefetch_mechanism_ ==
+                 UserAgentMatcher::kPrefetchLinkScriptTag);
+            bool is_bandwidth_available = (size > 0) &&
+                (max_available_time_ms_ > time_consumed_ms_ + time_to_download);
+            call_flush_resources = is_prefetch_mechanism_ok &&
+                is_bandwidth_available;
+            is_bandwidth_affected = is_prefetch_mechanism_ok;
+          } else {
+            time_to_download =
+                size / (kConnectionSpeedBytesPerMs * kGzipMultiplier);
+          }
+          bool is_pagespeed_resource =
+              driver_->server_context()->IsPagespeedResource(gurl);
+          FlushEarlyResourceInfo::ResourceType resource_type =
+              GetResourceType(gurl, is_pagespeed_resource);
+          if (call_flush_resources &&
+              IsFlushable(gurl, resource_type)) {
+            StringPiece url(resource_url->DecodedValueOrNull());
+            FlushResources(url, time_to_download, is_pagespeed_resource,
+                           category);
+            is_flushed = true;
+          }
+          RewriterApplication::Status status = is_flushed ?
+              RewriterApplication::APPLIED_OK :
+              RewriterApplication::NOT_APPLIED;
           driver_->log_record()->LogFlushEarlyActivity(
               RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
               original_url,
-              RewriterApplication::NOT_APPLIED,
-              FlushEarlyResourceInfo::JS,
+              status,
+              GetContentType(category),
               resource_type,
-              false /* not affected by bandwidth */,
+              is_bandwidth_affected,
               !in_body_);
         }
-      }
-    } else if (category == semantic_type::kPrefetch) {
-      // Flush the element as such if category is kPrefetch.
-      current_element_ = element;
-      HtmlWriterFilter::TerminateLazyCloseElement();
-      set_writer(original_writer_);
-      if (insert_close_script_) {
-        WriteToOriginalWriter("})()</script>");
-        insert_close_script_ = false;
-      }
-    } else {
-      GoogleUrl gurl;
-      GoogleString original_url;
-      if (ExtractUrl(attr, driver_, &gurl, &original_url)) {
-        bool call_flush_resources = true;
-        int64 time_to_download = 0;
-        bool is_bandwidth_affected = false;
-        bool is_flushed = false;
-        if (category == semantic_type::kImage) {
-          time_to_download = size / kConnectionSpeedBytesPerMs;
-          bool is_prefetch_mechanism_ok =
-              (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
-               prefetch_mechanism_ ==
-                   UserAgentMatcher::kPrefetchLinkScriptTag);
-          bool is_bandwidth_available = (size > 0) &&
-              (max_available_time_ms_ > time_consumed_ms_ + time_to_download);
-          call_flush_resources = is_prefetch_mechanism_ok &&
-              is_bandwidth_available;
-          is_bandwidth_affected = is_prefetch_mechanism_ok;
-        } else {
-          time_to_download =
-              size / (kConnectionSpeedBytesPerMs * kGzipMultiplier);
-        }
-        bool is_pagespeed_resource =
-            driver_->server_context()->IsPagespeedResource(gurl);
-        FlushEarlyResourceInfo::ResourceType resource_type =
-            GetResourceType(gurl, is_pagespeed_resource);
-        if (call_flush_resources &&
-            IsFlushable(gurl, resource_type)) {
-          StringPiece url(attr->DecodedValueOrNull());
-          FlushResources(url, time_to_download, is_pagespeed_resource,
-                         category);
-          is_flushed = true;
-        }
-        RewriterApplication::Status status = is_flushed ?
-            RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED;
-        driver_->log_record()->LogFlushEarlyActivity(
-            RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
-            original_url,
-            status,
-            GetContentType(category),
-            resource_type,
-            is_bandwidth_affected,
-            !in_body_);
       }
     }
   }
