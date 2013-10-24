@@ -19,10 +19,13 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_REQUEST_CONTEXT_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_REQUEST_CONTEXT_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string_util.h"
+#include <set>
+
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -128,6 +131,24 @@ class RequestContext : public RefCounted<RequestContext> {
   }
   void set_request_id(int64 x) {
     request_id_ = x;
+  }
+
+  // Authorized a particular external domain to be fetched from. The caller of
+  // this method MUST ensure that the domain is not some internal site within
+  // the firewall/LAN hosting the server. Note that this doesn't affect
+  // rewriting at all.
+  // TODO(morlovich): It's not clearly this is the appropriate mechanism
+  // for all the authorizations --- we may want to scope this to a request
+  // only.
+  void AddSessionAuthorizedFetchOrigin(const GoogleString& origin) {
+    session_authorized_fetch_origins_.insert(origin);
+  }
+
+  // Returns true for exactly the origins that were authorized for this
+  // particular session by calls to AddSessionAuthorizedFetchOrigin()
+  bool IsSessionAuthorizedFetchOrigin(const GoogleString& origin) const {
+    return session_authorized_fetch_origins_.find(origin)
+           != session_authorized_fetch_origins_.end();
   }
 
   // Prepare the AbstractLogRecord for a subsequent call to WriteLog.  This
@@ -322,6 +343,8 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // Log for recording background rewritings.
   scoped_ptr<AbstractLogRecord> background_rewrite_log_record_;
+
+  StringSet session_authorized_fetch_origins_;
 
   bool using_spdy_;
   SplitRequestType split_request_type_;;

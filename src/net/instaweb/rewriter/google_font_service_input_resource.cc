@@ -35,12 +35,14 @@ namespace net_instaweb {
 
 GoogleFontServiceInputResource::GoogleFontServiceInputResource(
     RewriteDriver* rewrite_driver,
+    bool is_https,
     const StringPiece& url,
     const StringPiece& cache_key,
     const GoogleString& user_agent)
     : CacheableResourceBase("font_service_input_resource",
                             url, cache_key, &kContentTypeCss, rewrite_driver),
-      user_agent_(user_agent) {
+      user_agent_(user_agent),
+      is_https_(is_https) {
 }
 
 GoogleFontServiceInputResource::~GoogleFontServiceInputResource() {
@@ -70,31 +72,38 @@ GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
   url_plus_ua_spec = url_plus_ua->Spec();
 
   GoogleString cache_key;
+  bool is_https = false;
   if (StringCaseStartsWith(url_plus_ua_spec, "http://")) {
     url_plus_ua_spec.remove_prefix(STATIC_STRLEN("http://"));
     cache_key = StrCat("gfnt://", url_plus_ua_spec);
+    is_https = false;
   } else if (StringCaseStartsWith(url_plus_ua_spec, "https://")) {
     url_plus_ua_spec.remove_prefix(STATIC_STRLEN("https://"));
     cache_key = StrCat("gfnts://", url_plus_ua_spec);
+    is_https = true;
   } else {
     // Huh?
     return NULL;
   }
 
-  return new GoogleFontServiceInputResource(rewrite_driver, url, cache_key,
-                                            rewrite_driver->user_agent());
+  return new GoogleFontServiceInputResource(
+      rewrite_driver, is_https, url, cache_key, rewrite_driver->user_agent());
 }
 
 void GoogleFontServiceInputResource::InitStats(Statistics* stats) {
   CacheableResourceBase::InitStats("font_service_input_resource", stats);
 }
 
-void GoogleFontServiceInputResource::PrepareRequestHeaders(
-    RequestHeaders* headers) {
+void GoogleFontServiceInputResource::PrepareRequest(
+    const RequestContextPtr& request_context, RequestHeaders* headers) {
   // We want to give the font service the UA the client used, so that it can
   // optimize for the visitor's browser, and not something like Serf/1.1
   // mod_pagespeed/x.y
   headers->Replace(HttpAttributes::kUserAgent, user_agent_);
+
+  request_context->AddSessionAuthorizedFetchOrigin(
+      is_https_ ?
+          "https://fonts.googleapis.com" : "http://fonts.googleapis.com");
 }
 
 void GoogleFontServiceInputResource::PrepareResponseHeaders(

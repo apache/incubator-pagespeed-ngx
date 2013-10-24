@@ -200,7 +200,8 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
           server_context_->rewrite_stats()->num_conditional_refreshes());
       fetch = conditional_fetch;
     }
-    resource_->PrepareRequestHeaders(fetch->request_headers());
+    resource_->PrepareRequest(fetch->request_context(),
+                              fetch->request_headers());
     fetcher_->Fetch(fetch_url_, message_handler_, fetch);
   }
 
@@ -533,8 +534,7 @@ void CacheableResourceBase::LoadHttpCacheCallback::LoadAndSaveToCache() {
       << "The callback must keep a reference to the resource";
   DCHECK(!resource_->loaded()) << "Shouldn't get this far if already loaded.";
   LoadFetchCallback* cb =
-      new LoadFetchCallback(resource_callback_, resource_,
-                            resource_->rewrite_driver()->request_context());
+      new LoadFetchCallback(resource_callback_, resource_, request_context());
   if (not_cacheable_policy_ == Resource::kLoadEvenIfNotCacheable) {
     cb->set_no_cache_ok(true);
   }
@@ -752,7 +752,8 @@ const RewriteOptions* CacheableResourceBase::rewrite_options() const {
   return rewrite_driver_->options();
 }
 
-void CacheableResourceBase::PrepareRequestHeaders(RequestHeaders* headers) {
+void CacheableResourceBase::PrepareRequest(
+    const RequestContextPtr& request_context, RequestHeaders* headers) {
 }
 
 void CacheableResourceBase::PrepareResponseHeaders(ResponseHeaders* headers) {

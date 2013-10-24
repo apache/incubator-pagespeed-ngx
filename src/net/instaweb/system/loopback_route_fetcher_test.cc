@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"  // for ThreadSystem
+#include "pagespeed/kernel/base/ref_counted_ptr.h"
 
 #include "apr_network_io.h"
 #include "apr_pools.h"
@@ -85,7 +86,10 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
 
 TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   // As we use the reflecting fetcher as the backend here, the reply
-  // messages will contain the URL the fetcher got as payload.
+  // messages will contain the URL the fetcher got as payload. Further,
+  // the reflecting fetcher will copy all the request headers it got into its
+  // response's header, so we can use the result's response_headers to check
+  // the request headers we sent.
 
   ExpectStringAsyncFetch dest(
       true, RequestContext::NewTestRequestContext(thread_system_.get()));
@@ -117,6 +121,31 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   EXPECT_STREQ(StrCat("http://", kOwnIp, ":42/url"), dest4.buffer());
   EXPECT_STREQ("somehost.cdn.com:123",
                dest4.response_headers()->Lookup1("Host"));
+
+  // Now add a session authorization for the CDN's origin. It should now
+  // connect directly.
+  RequestContextPtr request_context5(
+      RequestContext::NewTestRequestContext(thread_system_.get()));
+  request_context5->AddSessionAuthorizedFetchOrigin(
+      "http://somehost.cdn.com:123");
+
+  ExpectStringAsyncFetch dest5(true, request_context5);
+  loopback_route_fetcher_.Fetch("http://somehost.cdn.com:123/url",
+                                &handler_, &dest5);
+  EXPECT_STREQ("http://somehost.cdn.com:123/url", dest5.buffer());
+
+  // The same authorization doesn't permit a different port, however.
+  RequestContextPtr request_context6(
+      RequestContext::NewTestRequestContext(thread_system_.get()));
+  request_context5->AddSessionAuthorizedFetchOrigin(
+      "http://somehost.cdn.com:123");
+
+  ExpectStringAsyncFetch dest6(true, request_context6);
+  loopback_route_fetcher_.Fetch("http://somehost.cdn.com:456/url",
+                                &handler_, &dest6);
+  EXPECT_STREQ(StrCat("http://", kOwnIp, ":42/url"), dest6.buffer());
+  EXPECT_STREQ("somehost.cdn.com:456",
+               dest6.response_headers()->Lookup1("Host"));
 }
 
 TEST_F(LoopbackRouteFetcherTest, CanDetectSelfSrc) {

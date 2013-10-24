@@ -65,11 +65,13 @@ class TestResource : public CacheableResourceBase {
     ck.CopyToString(&cache_key_);
   }
 
-  virtual void PrepareRequestHeaders(RequestHeaders* headers) {
+  virtual void PrepareRequest(const RequestContextPtr& request_context,
+                              RequestHeaders* headers) {
     if (do_prepare_request_) {
       // To test that this gets invoked properly, we set the referer header
       // since MockUrlFetcher records those.
       headers->Replace(HttpAttributes::kReferer, kTestRef);
+      request_context->AddSessionAuthorizedFetchOrigin(kTestUrl);
     }
   }
 
@@ -459,16 +461,16 @@ TEST_F(CacheableResourceBaseTest, SameUrlDifferentKey) {
 }
 
 TEST_F(CacheableResourceBaseTest, PrepareHooks) {
-  // Test to see that PrepareRequestHeaders works.
+  // Test to see that PrepareRequest works.
   SetResponseWithDefaultHeaders(kTestUrl, kContentTypeText,
                                 kContent, 1000);
 
   MockResourceCallback callback(ResourcePtr(resource_.get()),
                                 server_context()->thread_system());
+  RequestContextPtr request_context(
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
   resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
-                       RequestContext::NewTestRequestContext(
-                           server_context()->thread_system()),
-                       &callback);
+                       request_context, &callback);
   EXPECT_TRUE(callback.done());
   EXPECT_TRUE(callback.success());
   EXPECT_EQ(kContent, resource_->contents());
@@ -476,6 +478,7 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
 
   // w/o the hook
   EXPECT_EQ("", mock_url_fetcher()->last_referer());
+  EXPECT_FALSE(request_context->IsSessionAuthorizedFetchOrigin(kTestUrl));
 
   // now turn the hook on.
   resource_->Reset();
@@ -483,17 +486,20 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
   lru_cache()->Delete(kTestUrl);
   MockResourceCallback callback2(ResourcePtr(resource_.get()),
                                  server_context()->thread_system());
+  RequestContextPtr request_context2(
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
   resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
-                       RequestContext::NewTestRequestContext(
-                           server_context()->thread_system()),
-                       &callback2);
+                       request_context2, &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
   EXPECT_EQ(kContent, resource_->contents());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 
-  // the PrepareRequestHeaders() hook should have changed the referrer.
+  // the PrepareRequest() hook should have changed the referrer.
   EXPECT_EQ(kTestRef, mock_url_fetcher()->last_referer());
+
+  // ... And authorized a domain
+  EXPECT_TRUE(request_context2->IsSessionAuthorizedFetchOrigin(kTestUrl));
 
   // Now test with and without PrepareResponseHeaders
 

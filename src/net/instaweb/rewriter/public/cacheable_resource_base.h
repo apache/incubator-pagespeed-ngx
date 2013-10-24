@@ -77,9 +77,10 @@ class CacheableResourceBase : public Resource {
 
   static void InitStats(StringPiece stat_prefix, Statistics* statistics);
 
-  // Permits the subclass to alter request headers used for a fetch.
-  // Default implementation does nothing.
-  virtual void PrepareRequestHeaders(RequestHeaders* headers);
+  // Permits the subclass to alter request headers or request context used for
+  // a fetch. Default implementation does nothing.
+  virtual void PrepareRequest(const RequestContextPtr& request_context,
+                              RequestHeaders* headers);
 
   // Permits the subclass to alter the response headers returned from a
   // fetch before the entry gets added to the cache.

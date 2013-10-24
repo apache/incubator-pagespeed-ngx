@@ -50,7 +50,8 @@ const char kRobotoSsl[] = "https://fonts.googleapis.com/css?family=Roboto";
 const char kNonCss[] = "http://fonts.googleapis.com/some.txt";
 
 // A helper fetcher that adds in UA to the URL, so we can use
-// MockUrlAsyncFetcher w/UA-sensitive things.
+// MockUrlAsyncFetcher w/UA-sensitive things. It also enforces the
+// domain whitelist.
 class UaSensitiveFetcher : public UrlAsyncFetcher {
  public:
   explicit UaSensitiveFetcher(UrlAsyncFetcher* base_fetcher) :
@@ -61,6 +62,11 @@ class UaSensitiveFetcher : public UrlAsyncFetcher {
                      AsyncFetch* fetch) {
     GoogleUrl parsed_url(url);
     ASSERT_TRUE(parsed_url.IsWebValid());
+    if (!fetch->request_context()->IsSessionAuthorizedFetchOrigin(
+            parsed_url.Origin().as_string())) {
+      fetch->Done(false);
+      return;
+    }
     GoogleString ua_string;
     const char* specified_ua =
         fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
@@ -118,6 +124,24 @@ class GoogleFontServiceInputResourceTest : public RewriteTestBase {
 TEST_F(GoogleFontServiceInputResourceTest, FetcherSanityChecks) {
   // Sanity check to make sure our UaSensitiveFetcher test fixture setup
   // actually works.
+
+  // First attempts to fetch should fail due to lack of domain authorization.
+  ExpectStringAsyncFetch evil_chromezilla_fetch(
+      false, rewrite_driver()->request_context());
+  evil_chromezilla_fetch.request_headers()->Add(
+      HttpAttributes::kUserAgent, "Chromezilla");
+
+  rewrite_driver()->async_fetcher()->Fetch(
+      kRoboto, message_handler(), &evil_chromezilla_fetch);
+  EXPECT_TRUE(evil_chromezilla_fetch.done());
+  EXPECT_FALSE(evil_chromezilla_fetch.success());
+
+  // Now authorized both fonts hosts.
+  rewrite_driver()->request_context()->AddSessionAuthorizedFetchOrigin(
+      "http://fonts.googleapis.com");
+  rewrite_driver()->request_context()->AddSessionAuthorizedFetchOrigin(
+      "https://fonts.googleapis.com");
+
   ExpectStringAsyncFetch chromezilla_fetch(
       true, rewrite_driver()->request_context());
   chromezilla_fetch.request_headers()->Add(
