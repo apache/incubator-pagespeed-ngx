@@ -657,6 +657,8 @@ GifScanlineReaderRaw::~GifScanlineReaderRaw() {
 bool GifScanlineReaderRaw::Reset() {
   pixel_format_ = UNSUPPORTED;
   is_progressive_ = false;
+  width_ = 0;
+  height_ = 0;
   row_ = 0;
   pixel_size_ = 0;
   bytes_per_row_ = 0;
@@ -667,14 +669,6 @@ bool GifScanlineReaderRaw::Reset() {
   }
 
   return true;
-}
-
-size_t GifScanlineReaderRaw::GetImageHeight() {
-  return gif_struct_->height();
-}
-
-size_t GifScanlineReaderRaw::GetImageWidth() {
-  return gif_struct_->width();
 }
 
 // ProcessSingleImageGif() checks whether the GIF file is valid and whether it
@@ -857,6 +851,19 @@ ScanlineStatus GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
+// Some images have screen size smaller than that of the encoded pixels,
+// so we may need to extend the screen (image) size.
+void GifScanlineReaderRaw::ComputeOrExtendImageSize() {
+  width_ = gif_struct_->width();
+  if (width_ <= gif_struct_->last_col()) {
+    width_ = gif_struct_->last_col() + 1;
+  }
+  height_ = gif_struct_->height();
+  if (height_ <= gif_struct_->last_row()) {
+    height_ = gif_struct_->last_row() + 1;
+  }
+}
+
 // Initialize the reader with the given image stream. Note that image_buffer
 // must remain unchanged until the last call to ReadNextScanline().
 ScanlineStatus GifScanlineReaderRaw::InitializeWithStatus(
@@ -920,6 +927,7 @@ ScanlineStatus GifScanlineReaderRaw::InitializeWithStatus(
                             SCANLINE_GIFREADERRAW,
                             "DGifGetImageDesc()");
   }
+  ComputeOrExtendImageSize();
 
   ScanlineStatus colormap_status = CreateColorMap(image1_transparent_index);
   if (!colormap_status.Success()) {
@@ -927,16 +935,9 @@ ScanlineStatus GifScanlineReaderRaw::InitializeWithStatus(
     return colormap_status;
   }
 
-  // Check whether the image is inside the logical screen.
-  if (gif_struct_->first_row() < 0 || gif_struct_->first_col() < 0 ||
-      gif_struct_->last_row() >= static_cast<int>(GetImageHeight()) ||
-      gif_struct_->last_col() >= static_cast<int>(GetImageWidth())) {
-    Reset();
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
-                            SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_GIFREADERRAW,
-                            "first image outside logical screen");
-  }
+
+
+
 
   // Process the transparency information. The output format will be RGBA
   // if the transparent color has been specified, or RGB otherwise.

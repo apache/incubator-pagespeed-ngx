@@ -109,8 +109,8 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   // Return the number of bytes in a row (without padding).
   virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
 
-  virtual size_t GetImageHeight();
-  virtual size_t GetImageWidth();
+  virtual size_t GetImageHeight() { return height_; }
+  virtual size_t GetImageWidth() { return width_; }
   virtual bool HasMoreScanLines() {
     return (row_ < static_cast<int>(GetImageHeight()));
   }
@@ -122,10 +122,13 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   ScanlineStatus ProcessSingleImageGif(size_t* offset, int* transparent_index);
   ScanlineStatus CreateColorMap(int transparent_index);
   ScanlineStatus DecodeProgressiveGif();
+  void ComputeOrExtendImageSize();
 
  private:
   PixelFormat pixel_format_;
   bool is_progressive_;
+  int width_;
+  int height_;
   // The current output row.
   int row_;
   size_t pixel_size_;

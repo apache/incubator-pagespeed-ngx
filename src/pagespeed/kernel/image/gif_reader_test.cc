@@ -85,10 +85,12 @@ const size_t kValidTransparentGifImageCount =
 
 const char kAnimatedGif[] = "animated";
 const char kBadGif[] = "bad";
+const char kCompletelyTransparentImage[] = "completely_transparent";
 const char kInterlacedImage[] = "interlaced";
+const char kRedConforming[] = "red_conforming";
+const char kRedEmptyScreen[] = "red_empty_screen";
 const char kTransparentGif[] = "transparent";
 const char kZeroSizeAnimatedGif[] = "zero_size_animation";
-const char kCompletelyTransparentImage[] = "completely_transparent";
 
 // Message to ignore.
 const char kMessagePatternMultipleFrameGif[] =
@@ -435,6 +437,15 @@ TEST_F(GifScanlineReaderRawTest, CompletelyTransparent) {
   GoogleString png_image, gif_image;
   ReadTestFile(kGifTestDir, kCompletelyTransparentImage, "png", &png_image);
   ReadTestFile(kGifTestDir, kCompletelyTransparentImage, "gif", &gif_image);
+  DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
+                         IMAGE_GIF, gif_image.c_str(), gif_image.length(),
+                         &message_handler_);
+}
+
+TEST_F(GifScanlineReaderRawTest, EmptyScreen) {
+  GoogleString png_image, gif_image;
+  ReadTestFile(kGifTestDir, kRedConforming, "png", &png_image);
+  ReadTestFile(kGifTestDir, kRedEmptyScreen, "gif", &gif_image);
   DecodeAndCompareImages(IMAGE_PNG, png_image.c_str(), png_image.length(),
                          IMAGE_GIF, gif_image.c_str(), gif_image.length(),
                          &message_handler_);

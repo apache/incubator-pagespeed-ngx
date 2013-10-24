@@ -733,6 +733,17 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 #COVERAGE   ModPagespeedCompressMetadataCache true
 #COVERAGE   ModPagespeedRewriteLevel AllFilters
+#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters add_instrumentation
+#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters local_storage_cache,debug
+#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters lazyload_images
+#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters add_base_tag
+#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters dedup_inlined_images
+#IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters convert_jpeg_to_webp
+#COVERAGE
+#COVERAGE   # flush_subsresources doesn't work in MPS but disables
+#COVERAGE   # combine_css and combine_javascript, so we don't want to
+#COVERAGE   # load-test it.
+#COVERAGE   ModPagespeedDisableFilters flush_subresources
 #COVERAGE   ModPagespeedEnableFilters elide_attributes
 #COVERAGE   ModPagespeedDomain *
 #COVERAGE   ModPagespeedFileCacheSizeKb              102400
@@ -753,6 +764,16 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
 #COVERAGE   ModPagespeedJpegRecompressionQuality         -1
 #COVERAGE   ModPagespeedImageLimitOptimizedPercent      100
 #COVERAGE   ModPagespeedImageLimitResizeAreaPercent     100
+#COVERAGE
+#COVERAGE   # Enabling beacons is not interesting in our current
+#COVERAGE   # load-test framework as the load-tester doesn't run JS
+#COVERAGE   # and thus can't send back any beacons.  This means we
+#COVERAGE   # won't be able to test inline images, since we don't know
+#COVERAGE   # which images are critical.  Better to turn it off.
+#COVERAGE   # TODO(jud): Load-test the critical images beacon in a
+#COVERAGE   # context that sends back beacons.
+#COVERAGE   ModPagespeedCriticalImagesBeaconEnabled false
+#COVERAGE
 #COVERAGE   <Location /mod_pagespeed_statistics>
 #COVERAGE       Order allow,deny
 #COVERAGE       Allow from localhost
