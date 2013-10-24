@@ -1024,7 +1024,6 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssPreserveURLs off
-#ALL_DIRECTIVES ModPagespeedDefaultSharedMemoryCacheKB 1000
 #ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
 #ALL_DIRECTIVES ModPagespeedDisallow bar
 #ALL_DIRECTIVES ModPagespeedDomain http://example.com

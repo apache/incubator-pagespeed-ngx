@@ -26,6 +26,7 @@
 #include <memory>
 #include <set>
 #include <utility>  // for pair
+#include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
@@ -56,6 +57,7 @@
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -998,10 +1000,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   ApacheRewriteDriverFactory* factory = apache_process_context.factory(
       server_list);
 
-  // In the first pass, we see whether any of the servers have
-  // statistics enabled, if found, do the static initialization of
-  // statistics to establish global memory segments.
-  Statistics* statistics = NULL;
+  std::vector<SystemServerContext*> server_contexts;
   std::set<ApacheServerContext*> server_contexts_covered;
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
@@ -1009,44 +1008,31 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         InstawebContext::ServerContextFromServerRec(server);
     if (server_contexts_covered.insert(server_context).second) {
       CHECK(server_context != NULL);
-      server_context->CollapseConfigOverlaysAndComputeSignatures();
-      ApacheConfig* config = server_context->config();
-
-      // Escape ASAP if we're in unplugged mode.
-      if (config->unplugged()) {
-        continue;
-      }
-
-      if (config->enabled()) {
-        GoogleString file_cache_path = config->file_cache_path();
-        if (file_cache_path.empty()) {
-          server_context->message_handler()->Message(
-              kError, "mod_pagespeed is enabled. %s must not be empty:"
-              " defn_name=%s"
-              " defn_line_number=%d"
-              " server_hostname=%s"
-              " port=%d",
-              kModPagespeedFileCachePath,
-              server->defn_name, server->defn_line_number,
-              server->server_hostname, server->port);
-          return HTTP_INTERNAL_SERVER_ERROR;
-        }
-      }
-
-      // Lazily create shared-memory statistics if enabled in any
-      // config, even when mod_pagespeed is totally disabled.  This
-      // allows statistics to work if mod_pagespeed gets turned on via
-      // .htaccess or query param.
-      if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics = factory->MakeGlobalSharedMemStatistics(*config);
-      }
-
-      // If config has statistics on and we have per-vhost statistics on
-      // as well, then set it up.
-      if (config->statistics_enabled() && factory->use_per_vhost_statistics()) {
-        server_context->CreateLocalStatistics(statistics, factory);
-      }
+      server_contexts.push_back(server_context);
     }
+  }
+
+  GoogleString error_message;
+  int error_index = -1;
+  Statistics* global_statistics = NULL;
+  factory->PostConfig(
+      server_contexts, &error_message, &error_index, &global_statistics);
+  if (error_index != -1) {
+    ApacheServerContext* server_context =
+        dynamic_cast<ApacheServerContext*>(server_contexts[error_index]);
+    server_context->message_handler()->Message(
+        kError,
+        "mod_pagespeed is enabled. %s:"
+        " defn_name=%s"
+        " defn_line_number=%d"
+        " server_hostname=%s"
+        " port=%d",
+        error_message.c_str(),
+        server_context->server()->defn_name,
+        server_context->server()->defn_line_number,
+        server_context->server()->server_hostname,
+        server_context->server()->port);
+    return HTTP_INTERNAL_SERVER_ERROR;
   }
 
   // chown any directories we created. We may have to do it here in
@@ -1060,9 +1046,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 
   // If no shared-mem statistics are enabled, then init using the default
   // NullStatistics.
-  if (statistics == NULL) {
-    statistics = factory->statistics();
-    ApacheRewriteDriverFactory::InitStats(statistics);
+  if (global_statistics == NULL) {
+    ApacheRewriteDriverFactory::InitStats(factory->statistics());
   }
 
   factory->RootInit();

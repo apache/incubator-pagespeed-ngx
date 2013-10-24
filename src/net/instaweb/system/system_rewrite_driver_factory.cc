@@ -98,7 +98,7 @@ SystemRewriteDriverFactory::~SystemRewriteDriverFactory() {
 // Initializes global statistics object if needed, using factory to
 // help with the settings if needed.
 // Note: does not call set_statistics() on the factory.
-Statistics* SystemRewriteDriverFactory::MakeGlobalSharedMemStatistics(
+Statistics* SystemRewriteDriverFactory::SetUpGlobalSharedMemStatistics(
     const SystemRewriteOptions& options) {
   if (shared_mem_statistics_.get() == NULL) {
     shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
@@ -238,6 +238,46 @@ void SystemRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
     if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
       SetCircularBuffer(shared_circular_buffer_.get());
      }
+  }
+}
+
+void SystemRewriteDriverFactory::PostConfig(
+    const std::vector<SystemServerContext*>& server_contexts,
+    GoogleString* error_message,
+    int* error_index,
+    Statistics** global_statistics) {
+  for (int i = 0, n = server_contexts.size(); i < n; ++i) {
+    server_contexts[i]->CollapseConfigOverlaysAndComputeSignatures();
+    SystemRewriteOptions* options =
+        server_contexts[i]->system_rewrite_options();
+    if (options->unplugged()) {
+      continue;
+    }
+
+    if (options->enabled()) {
+      GoogleString file_cache_path = options->file_cache_path();
+      if (file_cache_path.empty()) {
+        *error_index = i;
+        *error_message = "FileCachePath must not be empty";
+        return;
+      }
+    }
+
+    if (options->statistics_enabled()) {
+      // Lazily create shared-memory statistics if enabled in any config, even
+      // when PageSpeed is totally disabled.  This allows statistics to work if
+      // PageSpeed gets turned on via .htaccess or query param.
+      if (*global_statistics == NULL) {
+        *global_statistics = SetUpGlobalSharedMemStatistics(*options);
+      }
+
+      // If we have per-vhost statistics on as well, then set it up.
+      if (use_per_vhost_statistics()) {
+        server_contexts[i]->CreateLocalStatistics(*global_statistics, this);
+      }
+    }
+
+    // TODO(jefftk): Here we could set up default shm caches.
   }
 }
 

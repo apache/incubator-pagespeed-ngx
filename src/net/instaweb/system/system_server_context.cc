@@ -284,4 +284,8 @@ void SystemServerContext::ApplySessionFetchers(
   }
 }
 
+void SystemServerContext::CollapseConfigOverlaysAndComputeSignatures() {
+  ComputeSignature(system_rewrite_options());
+}
+
 }  // namespace net_instaweb

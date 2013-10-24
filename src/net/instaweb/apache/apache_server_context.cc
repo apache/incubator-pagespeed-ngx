@@ -143,7 +143,7 @@ void ApacheServerContext::CollapseConfigOverlaysAndComputeSignatures() {
     config()->Merge(*non_spdy_config_overlay_);
   }
 
-  ComputeSignature(config());
+  SystemServerContext::CollapseConfigOverlaysAndComputeSignatures();
 
   if (spdy_specific_config_.get() != NULL) {
     spdy_driver_pool_ = new SpdyOptionsRewriteDriverPool(this);

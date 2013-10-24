@@ -19,6 +19,7 @@
 
 #include <map>
 #include <set>
+#include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 
@@ -60,11 +61,6 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
                              AbstractSharedMem* shared_mem_runtime,
                              StringPiece hostname, int port);
   virtual ~SystemRewriteDriverFactory();
-
-  // Build global shared-memory statistics.  This is invoked if at least
-  // one server context (global or VirtualHost) enables statistics.
-  Statistics* MakeGlobalSharedMemStatistics(
-      const SystemRewriteOptions& options);
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -111,6 +107,18 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
   virtual void ParentOrChildInit();
+
+  // After the whole configuration has been read, we need to do additional
+  // configuration that requires a global view.
+  // - server_contexts should be all server contexts on the system
+  // - error_message and error_index are set if there's an error, and
+  //   error_index is the index in server_contexts of the one with the issue.
+  // - global_statistics is lazily initialized to a shared memory statistics
+  //   owned by this factory if any of the server contexts require it.
+  void PostConfig(const std::vector<SystemServerContext*>& server_contexts,
+                  GoogleString* error_message,
+                  int* error_index,
+                  Statistics** global_statistics);
 
   // Initialize SharedCircularBuffer and pass it to SystemMessageHandler and
   // SystemHtmlParseMessageHandler. is_root is true if this is invoked from
@@ -178,6 +186,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   virtual int max_queue_size() { return 500 * requests_per_host(); }
   virtual int queued_per_host() { return 500 * requests_per_host(); }
 
+  // By default statistics are collected separately for each virtual host.
+  // Allow implementations to indicate that they don't support this.
+  virtual bool use_per_vhost_statistics() const { return true; }
+
  protected:
   // Initializes all the statistics objects created transitively by
   // SystemRewriteDriverFactory.  Only subclasses should call this.
@@ -213,6 +225,11 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   virtual NamedLockManager* DefaultLockManager();
 
  private:
+  // Build global shared-memory statistics, taking ownership.  This is invoked
+  // if at least one server context (global or VirtualHost) enables statistics.
+  Statistics* SetUpGlobalSharedMemStatistics(
+      const SystemRewriteOptions& options);
+
   // Generates a cache-key incorporating all the parameters from config that
   // might be relevant to fetching.  When include_slurping_config, then
   // slurping-related options are ignored for the fetch-key.

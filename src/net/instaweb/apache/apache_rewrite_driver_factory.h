@@ -80,7 +80,7 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
     return num_expensive_rewrite_threads_;
   }
 
-  bool use_per_vhost_statistics() const {
+  virtual bool use_per_vhost_statistics() const {
     return use_per_vhost_statistics_;
   }
 

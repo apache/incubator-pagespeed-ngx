@@ -98,7 +98,7 @@ class ApacheServerContext : public SystemServerContext {
   // This should be called after all configuration parsing is done to collapse
   // configuration inside the config overlays into actual ApacheConfig objects.
   // It will also compute signatures when done.
-  void CollapseConfigOverlaysAndComputeSignatures();
+  virtual void CollapseConfigOverlaysAndComputeSignatures();
 
   // Called on notification from Apache on child exit. Returns true
   // if this is the last ServerContext that exists.

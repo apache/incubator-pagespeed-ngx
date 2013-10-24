@@ -92,6 +92,12 @@ class SystemServerContext : public ServerContext {
   // TODO(sligocki): Remove in favor of RewriteStats::rewrite_latency_histogram.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
 
+  // Hook called after all configuration parsing is done to support implementers
+  // like ApacheServerContext that need to collapse configuration inside the
+  // config overlays into actual RewriteOptions objects.  It will also compute
+  // signatures when done, and by default that's the only thing it does.
+  virtual void CollapseConfigOverlaysAndComputeSignatures();
+
  protected:
   // Flush the cache by updating the cache flush timestamp in the global
   // options.  This will change its signature, which is part of the cache key,
