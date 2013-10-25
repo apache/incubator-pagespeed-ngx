@@ -668,6 +668,20 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   ModPagespeedCriticalImagesBeaconEnabled false
 </VirtualHost>
 
+# Test host for issue 809: losing extra headers with cache-control set early.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName issue809.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
+
+  header add Issue809 Issue809Value
+  header add Cache-Control max-age=60 early
+
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedCriticalImagesBeaconEnabled false
+  ModPagespeedModifyCachingHeaders on
+</VirtualHost>
+
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS # Make sure we behave OK with this on, too.
 #PER_VHOST_STATS ModPagespeedFetchWithGzip on

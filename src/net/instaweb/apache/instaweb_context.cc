@@ -102,8 +102,7 @@ InstawebContext::InstawebContext(request_rec* request,
       request_headers_(request_headers),
       started_parse_(false),
       sent_headers_(false),
-      populated_headers_(false),
-      modify_caching_headers_(true) {
+      populated_headers_(false) {
   if (options.running_experiment()) {
     // The experiment framework requires custom options because it has to make
     // changes based on what ExperimentSpec the user should be seeing.
@@ -128,8 +127,6 @@ InstawebContext::InstawebContext(request_rec* request,
   } else {
     rewrite_driver_ = server_context_->NewRewriteDriver(request_context);
   }
-  modify_caching_headers_ =
-      rewrite_driver_->options()->modify_caching_headers();
 
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
@@ -423,8 +420,7 @@ void InstawebContext::SetExperimentStateAndCookie(request_rec* request,
         experiment_value, url,
         timer.NowMs() + options->experiment_cookie_duration_ms(),
         &resp_headers);
-    AddResponseHeadersToRequest(&resp_headers, NULL,
-                                options->modify_caching_headers(), request);
+    ResponseHeadersToApacheRequest(resp_headers, request);
   }
 }
 

@@ -258,9 +258,9 @@ void send_out_headers_and_body(request_rec* request,
                                const GoogleString& output) {
   // We always disable downstream header filters when sending out
   // pagespeed resources, since we've captured them in the origin fetch.
-  ResponseHeadersToApacheRequest(response_headers,
-                                 true,  // Disable downstream header filters.
-                                 request);
+  ResponseHeadersToApacheRequest(response_headers, request);
+  request->status = response_headers.status_code();
+  DisableDownstreamHeaderFilters(request);
   if (response_headers.status_code() == HttpStatus::kOK &&
       IsCompressibleContentType(request->content_type)) {
     // Make sure compression is enabled for this response.

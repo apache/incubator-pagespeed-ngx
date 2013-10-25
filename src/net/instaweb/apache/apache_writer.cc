@@ -79,9 +79,11 @@ void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
     ap_set_content_length(request_, content_length_);
   }
 
-  ResponseHeadersToApacheRequest(*response_headers,
-                                 disable_downstream_header_filters_,
-                                 request_);
+  ResponseHeadersToApacheRequest(*response_headers, request_);
+  request_->status = response_headers->status_code();
+  if (disable_downstream_header_filters_) {
+    DisableDownstreamHeaderFilters(request_);
+  }
   if (strip_cookies_ && response_headers->Sanitize()) {
     response_headers->ComputeCaching();
   }

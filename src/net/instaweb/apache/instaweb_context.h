@@ -137,8 +137,6 @@ class InstawebContext {
   static const char* MakeRequestUrl(const RewriteOptions& options,
                                     request_rec* request);
 
-  bool modify_caching_headers() const { return  modify_caching_headers_; }
-
  private:
   void ComputeContentEncoding(request_rec* request);
 
@@ -170,7 +168,6 @@ class InstawebContext {
   bool started_parse_;
   bool sent_headers_;
   bool populated_headers_;
-  bool modify_caching_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

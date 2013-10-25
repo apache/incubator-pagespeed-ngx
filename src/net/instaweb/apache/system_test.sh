@@ -1807,6 +1807,13 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
   check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
   check_from "$CONNECTION" fgrep -qi "Keep-Alive"
+
+  start_test Pass through headers when Cache-Control is set early on HTML.
+  http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      http://issue809.example.com/mod_pagespeed_example/index.html \
+      -O $TEMPDIR/issue809.http
+  check_from "$(extract_headers $TEMPDIR/issue809.http)" \
+      grep -q "Issue809: Issue809Value"
 fi
 
 WGET_ARGS=""
