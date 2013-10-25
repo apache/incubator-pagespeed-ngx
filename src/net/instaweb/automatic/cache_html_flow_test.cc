@@ -1295,8 +1295,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithWebp) {
   ClearStats();
   VerifyCacheHtmlResponse(response_headers);
   UnEscapeString(&text);
-  GoogleString correct_url = Encode(
-      kTestDomain, RewriteOptions::kImageCompressionId, "0", "image1", "webp");
+  GoogleString correct_url =
+      Encode("", RewriteOptions::kImageCompressionId, "0", "image1", "webp");
 
   GoogleString blink_output_with_webp =
       StrCat(blink_output_partial_, kCookieScript,

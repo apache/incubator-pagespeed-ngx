@@ -760,7 +760,7 @@ GoogleString RewriteTestBase::EncodeCssName(const StringPiece& name,
 }
 
 GoogleString RewriteTestBase::ChangeSuffix(
-    GoogleString old_url, bool append_new_suffix,
+    StringPiece old_url, bool append_new_suffix,
     StringPiece old_suffix, StringPiece new_suffix) {
   if (!StringCaseEndsWith(old_url, old_suffix)) {
     ADD_FAILURE() << "Can't seem to find old extension!";

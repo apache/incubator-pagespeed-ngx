@@ -354,8 +354,15 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
 check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000      # re-encoded
 check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126    # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?PageSpeedFilters=rewrite_images"
-IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
-check [ x"$IMG_URL" != x ]
+
+IMG_URL=$(egrep -o 'http://[^"]*pagespeed.[^"]*.jpg' $FETCHED | head -n1)
+if [ -z "$IMG_URL" ]; then
+  # If PreserveUrlRelativity is on, we need to find the relative URL and
+  # absolutify it ourselves.
+  IMG_URL="$EXAMPLE_ROOT/"
+  IMG_URL+=$(grep -o '[^\"]*pagespeed.[^\"]*\.jpg' $FETCHED | head -n 1)
+fi
+
 start_test headers for rewritten image
 echo "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \

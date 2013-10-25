@@ -354,7 +354,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // with new_suffix.
   // Either way, precondition: old_url ends with old_suffix
   static GoogleString ChangeSuffix(
-      GoogleString old_url, bool append_new_suffix,
+      StringPiece old_url, bool append_new_suffix,
       StringPiece old_suffix, StringPiece new_suffix);
 
   // Overrides the async fetcher on the primary context to be a

@@ -207,7 +207,7 @@ class ImageRewriteFilter : public RewriteFilter {
   bool FinishRewriteImageUrl(
       const CachedResult* cached, const ResourceContext* resource_context,
       HtmlElement* element, HtmlElement::Attribute* src, int image_index,
-      ResourceSlot* slot);
+      HtmlResourceSlot* slot);
 
   // Save image contents in cached if the image is inlinable.
   void SaveIfInlinable(const StringPiece& contents,

@@ -225,9 +225,7 @@ class ImageRewriteTest : public RewriteTestBase {
     CollectImgSrcs("RewriteImage/collect_sources", output_buffer_, &img_srcs);
     // output_buffer_ should have exactly one image file (Puzzle.jpg).
     EXPECT_EQ(1UL, img_srcs.size());
-    // Make sure the next two checks won't abort().
-    EXPECT_LT(domain.AllExceptLeaf().size() + 4, img_srcs[0].size());
-    const GoogleUrl img_gurl(img_srcs[0]);
+    const GoogleUrl img_gurl(html_gurl(), img_srcs[0]);
     EXPECT_TRUE(img_gurl.IsWebValid());
     EXPECT_EQ(domain.AllExceptLeaf(), img_gurl.AllExceptLeaf());
     EXPECT_TRUE(img_gurl.LeafSansQuery().ends_with(
@@ -263,6 +261,8 @@ class ImageRewriteTest : public RewriteTestBase {
                "\" width=\"1023\" height=\"766\"/></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
+    GoogleUrl img_gurl(html_gurl(), src_string);
+
     // Fetch the version we just put into the cache, so we can
     // make sure we produce it consistently.
     GoogleString rewritten_image;
@@ -270,7 +270,8 @@ class ImageRewriteTest : public RewriteTestBase {
     HTTPCacheStringCallback cache_callback(
         options(), rewrite_driver()->request_context(),
         &rewritten_image, &rewritten_headers);
-    http_cache()->Find(src_string, message_handler(), &cache_callback);
+    http_cache()->Find(img_gurl.Spec().as_string(), message_handler(),
+                       &cache_callback);
     cache_callback.ExpectFound();
 
     // Make sure the headers produced make sense.
@@ -284,7 +285,8 @@ class ImageRewriteTest : public RewriteTestBase {
     expect_headers.clear();
     AppendDefaultHeaders(content_type, &expect_headers);
 
-    EXPECT_TRUE(rewrite_driver()->FetchResource(src_string, &expect_callback));
+    EXPECT_TRUE(rewrite_driver()->FetchResource(img_gurl.Spec(),
+                                                &expect_callback));
     rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK,
               expect_callback.response_headers()->status_code()) <<
@@ -294,7 +296,7 @@ class ImageRewriteTest : public RewriteTestBase {
                  expect_callback.response_headers()->ToString());
     // Try to fetch from an independent server.
     ServeResourceFromManyContextsWithUA(
-        src_string, rewritten_image,
+        img_gurl.Spec().as_string(), rewritten_image,
         rewrite_driver()->user_agent());
 
     // Check that filter application was logged.
@@ -406,16 +408,20 @@ class ImageRewriteTest : public RewriteTestBase {
     GoogleString url2 = img_srcs[1];
     GoogleString url3 = img_srcs[2];
 
+    GoogleUrl gurl1(html_gurl(), url1);
+    GoogleUrl gurl2(html_gurl(), url2);
+    GoogleUrl gurl3(html_gurl(), url3);
+
     // Fetch messed up versions. Currently image rewriter doesn't actually
     // fetch them.
     GoogleString out;
-    EXPECT_TRUE(
-        FetchResourceUrl(ChangeSuffix(url1, append_junk, ".jpg", junk), &out));
-    EXPECT_TRUE(
-        FetchResourceUrl(ChangeSuffix(url2, append_junk, ".png", junk), &out));
+    EXPECT_TRUE(FetchResourceUrl(ChangeSuffix(gurl1.Spec(), append_junk,
+                                              ".jpg", junk), &out));
+    EXPECT_TRUE(FetchResourceUrl(ChangeSuffix(gurl2.Spec(), append_junk,
+                                              ".png", junk), &out));
     // This actually has .png in the output since we convert gif -> png.
-    EXPECT_TRUE(
-        FetchResourceUrl(ChangeSuffix(url3, append_junk, ".png", junk), &out));
+    EXPECT_TRUE(FetchResourceUrl(ChangeSuffix(gurl3.Spec(), append_junk,
+                                              ".png", junk), &out));
 
     // Now run through again to make sure we didn't cache the messed up URL
     img_srcs.clear();
@@ -2043,21 +2049,22 @@ TEST_F(ImageRewriteTest, RespectsBaseUrl) {
 
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-  GoogleUrl new_png_gurl(new_png_url);
+  GoogleUrl base_gurl("http://other_domain.test/foo/");
+  GoogleUrl new_png_gurl(base_gurl, new_png_url);
   EXPECT_TRUE(new_png_gurl.IsWebValid());
   GoogleUrl encoded_png_gurl(EncodeWithBase("http://other_domain.test/",
                                             "http://other_domain.test/foo/bar/",
                                             "x", "0", "a.png", "x"));
   EXPECT_EQ(encoded_png_gurl.AllExceptLeaf(), new_png_gurl.AllExceptLeaf());
 
-  GoogleUrl new_jpeg_gurl(new_jpeg_url);
+  GoogleUrl new_jpeg_gurl(base_gurl, new_jpeg_url);
   EXPECT_TRUE(new_jpeg_gurl.IsWebValid());
   GoogleUrl encoded_jpeg_gurl(EncodeWithBase("http://other_domain.test/",
                                              "http://other_domain.test/baz/",
                                              "x", "0", "b.jpeg", "x"));
   EXPECT_EQ(encoded_jpeg_gurl.AllExceptLeaf(), new_jpeg_gurl.AllExceptLeaf());
 
-  GoogleUrl new_gif_gurl(new_gif_url);
+  GoogleUrl new_gif_gurl(base_gurl, new_gif_url);
   EXPECT_TRUE(new_gif_gurl.IsWebValid());
   GoogleUrl encoded_gif_gurl(EncodeWithBase("http://other_domain.test/",
                                             "http://other_domain.test/foo/",
@@ -2945,17 +2952,18 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   options()->set_image_jpeg_recompress_quality(73);
   GoogleString img_src;
   RewriteImageFromHtml("img", kContentTypeJpeg, &img_src);
-  GoogleUrl gurl(img_src);
-  EXPECT_STREQ("", gurl.Query());
+  GoogleUrl img_gurl(html_gurl(), img_src);
+  EXPECT_STREQ("", img_gurl.Query());
   ResourceNamer namer;
-  EXPECT_TRUE(namer.Decode(gurl.LeafSansQuery()));
+  EXPECT_TRUE(namer.Decode(img_gurl.LeafSansQuery()));
   EXPECT_STREQ("gp+jw+pj+rj+rp+rw+iq=73", namer.options());
 
   // Serve this from rewrite_driver(), which has the same cache & the
   // same options set so will have the canonical results.
   GoogleString golden_content, remote_content;
   ResponseHeaders golden_response, remote_response;
-  EXPECT_TRUE(FetchResourceUrl(img_src, &golden_content, &golden_response));
+  EXPECT_TRUE(FetchResourceUrl(img_gurl.Spec(), &golden_content,
+                               &golden_response));
   // EXPECT_EQ(84204, golden_content.size());
 
   // TODO(jmarantz): We cannot test fetches using a flow that
@@ -3046,6 +3054,20 @@ TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
                             expected_rewritten_url, 0);
 }
 
+TEST_F(ImageRewriteTest, PreserveUrlRelativity) {
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  rewrite_driver()->AddFilters();
+  AddFileToMockFetcher("a.jpg", kPuzzleJpgFile, kContentTypeJpeg, 100);
+  AddFileToMockFetcher("b.jpg", kPuzzleJpgFile, kContentTypeJpeg, 100);
+  ValidateExpected(
+      "single_attribute",
+      "<img src=a.jpg>"
+      "<img src=http://test.com/b.jpg>",
+      StrCat("<img src=", Encode("", "ic", "0", "a.jpg", "jpg"), ">"
+             "<img src=", Encode("http://test.com/", "ic", "0", "b.jpg", "jpg"),
+             ">"));
+}
+
 TEST_F(ImageRewriteTest, RewriteMultipleAttributes) {
   // Test a complex setup with both regular and custom image urls, including an
   // invalid image which should only get cache-extended.
@@ -3066,17 +3088,14 @@ TEST_F(ImageRewriteTest, RewriteMultipleAttributes) {
   // C is not an image file, so image rewrite fails (but cache extension works).
   SetResponseWithDefaultHeaders("c.jpg", kContentTypeJpeg, "Not a JPG", 600);
 
-  // TODO(jefftk): All of these should be relative urls, but only c is because
-  // of a bug in the interaction between PreserveUrlRelativity and image
-  // rewriting.  Leave it as is for now and fix the bug in a separate change.
   ValidateExpected(
       "multiple_attributes",
       "<img src=a.jpg data-src=b.jpg data-src=c.jpg data-src=d.jpg>",
       StrCat(
-          "<img src=", Encode("http://test.com/", "ic", "0", "a.jpg", "jpg"),
-          " data-src=", Encode("http://test.com/", "ic", "0", "b.jpg", "jpg"),
+          "<img src=", Encode("", "ic", "0", "a.jpg", "jpg"),
+          " data-src=", Encode("", "ic", "0", "b.jpg", "jpg"),
           " data-src=", Encode("", "ce", "0", "c.jpg", "jpg"),
-          " data-src=", Encode("http://test.com/", "ic", "0", "d.jpg", "jpg"),
+          " data-src=", Encode("", "ic", "0", "d.jpg", "jpg"),
           ">"));
 }
 

@@ -406,8 +406,7 @@ void ImageRewriteFilter::Context::Render() {
           resource_slot);
       rewrote_url = filter_->FinishRewriteImageUrl(
           result, resource_context(),
-          html_slot->element(), html_slot->attribute(), html_index_,
-          resource_slot);
+          html_slot->element(), html_slot->attribute(), html_index_, html_slot);
     }
     // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
@@ -1299,7 +1298,7 @@ void DeleteMatchingImageDimsAfterInline(
 bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, const ResourceContext* resource_context,
     HtmlElement* element, HtmlElement::Attribute* src, int image_index,
-    ResourceSlot* slot) {
+    HtmlResourceSlot* slot) {
   GoogleString src_value(src->DecodedValueOrNull());
   if (src_value.empty()) {
     return false;
@@ -1340,7 +1339,9 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     LocalStorageCacheFilter::RemoveLscAttributes(element, driver_);
     if (cached->optimizable()) {
       // Rewritten HTTP url
-      src->SetValue(cached->url());
+      src->SetValue(ResourceSlot::RelativizeOrPassthrough(
+          driver_->options(), cached->url(), slot->url_relativity(),
+          driver_->base_url()));
       image_rewrite_uses_->Add(1);
       rewrote_url = true;
     }
