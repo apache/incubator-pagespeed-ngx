@@ -952,26 +952,40 @@ ScanlineStatus PngScanlineReaderRaw::InitializeWithStatus(
   //
   // Strip 16 bit per color down to 8 bits per color.
   png_set_strip_16(png_ptr);
-  // Expand paletted colors into true RGB triplets.
+
   // Expand grayscale images to full 8 bits from 1, 2, or 4 bits per pixel.
   // Expand paletted or RGB images with transparency to full alpha channels
   // so the data will be available as RGBA quartets.
   if ((bit_depth < 8) ||
-      (color_type == PNG_COLOR_TYPE_PALETTE) ||
       (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))) {
     png_set_expand(png_ptr);
   }
+
   // Set up callbacks for interlacing (progressive) image.
   png_set_interlace_handling(png_ptr);
-  // Expand Gray_Alpha to RGBA.
-  if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
-    png_set_gray_to_rgb(png_ptr);
-  }
 
   // Update the reader struct after setting the transformations.
   png_read_update_info(png_ptr, info_ptr);
+
   // Get the updated color type.
   color_type = png_get_color_type(png_ptr, info_ptr);
+
+  if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA ||
+      color_type == PNG_COLOR_TYPE_PALETTE) {
+    if (color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+      // Expand Gray_Alpha to RGBA.
+      png_set_gray_to_rgb(png_ptr);
+    } else {
+      // Expand paletted colors into true RGB triplets.
+      png_set_palette_to_rgb(png_ptr);
+    }
+
+    // Update the reader struct after modifying the transformations.
+    png_read_update_info(png_ptr, info_ptr);
+
+    // Get the updated color type.
+    color_type = png_get_color_type(png_ptr, info_ptr);
+  }
 
   // Determine the pixel format and the number of channels.
   switch (color_type) {

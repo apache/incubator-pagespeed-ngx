@@ -50,6 +50,7 @@ using pagespeed::image_compression::kValidGifImageCount;
 using pagespeed::image_compression::kValidGifImages;
 using pagespeed::image_compression::GifReader;
 using pagespeed::image_compression::ImageCompressionInfo;
+using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PngCompressParams;
 using pagespeed::image_compression::PngOptimizer;
@@ -73,6 +74,11 @@ const char kMessagePatternBadGifDescriptor[] =
     "Failed to get image descriptor.";
 const char kMessagePatternBadGifLine[] = "Failed to DGifGetLine";
 const char kMessagePatternUnrecognizedColor[] = "Unrecognized color type.";
+
+// "rgb_alpha.png" and "gray_alpha.png" have the same image contents, but
+// with different format.
+const char kImageRGBA[] = "rgb_alpha";
+const char kImageGA[] = "gray_alpha";
 
 // Structure that holds metadata and actual pixel data for a decoded
 // PNG.
@@ -1283,6 +1289,15 @@ TEST_F(PngScanlineWriterTest, ReinitializeAndTooManyScanlines) {
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
   ASSERT_TRUE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
   ASSERT_FALSE(writer_->WriteNextScanline(reinterpret_cast<void*>(scanline_)));
+}
+
+TEST_F(PngScanlineWriterTest, DecodeGrayAlpha) {
+  GoogleString rgba_image, ga_image;
+  ASSERT_TRUE(ReadTestFile(kPngTestDir, kImageRGBA, "png", &rgba_image));
+  ASSERT_TRUE(ReadTestFile(kPngTestDir, kImageGA, "png", &ga_image));
+  DecodeAndCompareImages(IMAGE_PNG, rgba_image.c_str(), rgba_image.length(),
+                         IMAGE_PNG, ga_image.c_str(), ga_image.length(),
+                         &message_handler_);
 }
 
 }  // namespace
