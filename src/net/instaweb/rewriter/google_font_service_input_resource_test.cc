@@ -18,73 +18,29 @@
 
 #include "net/instaweb/rewriter/public/google_font_service_input_resource.h"
 
-#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/ua_sensitive_test_fetcher.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for Resource, etc
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
-#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 namespace {
 
 const char kRoboto[] = "http://fonts.googleapis.com/css?family=Roboto";
 const char kRobotoSsl[] = "https://fonts.googleapis.com/css?family=Roboto";
 const char kNonCss[] = "http://fonts.googleapis.com/some.txt";
-
-// A helper fetcher that adds in UA to the URL, so we can use
-// MockUrlAsyncFetcher w/UA-sensitive things. It also enforces the
-// domain whitelist.
-class UaSensitiveFetcher : public UrlAsyncFetcher {
- public:
-  explicit UaSensitiveFetcher(UrlAsyncFetcher* base_fetcher) :
-      base_fetcher_(base_fetcher) {}
-
-  virtual void Fetch(const GoogleString& url,
-                     MessageHandler* message_handler,
-                     AsyncFetch* fetch) {
-    GoogleUrl parsed_url(url);
-    ASSERT_TRUE(parsed_url.IsWebValid());
-    if (!fetch->request_context()->IsSessionAuthorizedFetchOrigin(
-            parsed_url.Origin().as_string())) {
-      fetch->Done(false);
-      return;
-    }
-    GoogleString ua_string;
-    const char* specified_ua =
-        fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
-    ua_string = (specified_ua == NULL ? "unknown" : specified_ua);
-
-    scoped_ptr<GoogleUrl> with_ua(
-      parsed_url.CopyAndAddQueryParam("UA", ua_string));
-    base_fetcher_->Fetch(with_ua->Spec().as_string(), message_handler, fetch);
-  }
-
-  virtual bool SupportsHttps() const {
-    return base_fetcher_->SupportsHttps();
-  }
-
- private:
-  UrlAsyncFetcher* base_fetcher_;
-  DISALLOW_COPY_AND_ASSIGN(UaSensitiveFetcher);
-};
 
 class GoogleFontServiceInputResourceTest : public RewriteTestBase {
  protected:
@@ -93,7 +49,7 @@ class GoogleFontServiceInputResourceTest : public RewriteTestBase {
     GoogleFontServiceInputResource::InitStats(statistics());
 
     rewrite_driver()->SetSessionFetcher(
-        new UaSensitiveFetcher(rewrite_driver()->async_fetcher()));
+        new UserAgentSensitiveTestFetcher(rewrite_driver()->async_fetcher()));
 
     // Font loader CSS gets Cache-Control:private, max-age=86400
     ResponseHeaders response_headers;
@@ -120,67 +76,6 @@ class GoogleFontServiceInputResourceTest : public RewriteTestBase {
                      non_css, "something weird");
   }
 };
-
-TEST_F(GoogleFontServiceInputResourceTest, FetcherSanityChecks) {
-  // Sanity check to make sure our UaSensitiveFetcher test fixture setup
-  // actually works.
-
-  // First attempts to fetch should fail due to lack of domain authorization.
-  ExpectStringAsyncFetch evil_chromezilla_fetch(
-      false, rewrite_driver()->request_context());
-  evil_chromezilla_fetch.request_headers()->Add(
-      HttpAttributes::kUserAgent, "Chromezilla");
-
-  rewrite_driver()->async_fetcher()->Fetch(
-      kRoboto, message_handler(), &evil_chromezilla_fetch);
-  EXPECT_TRUE(evil_chromezilla_fetch.done());
-  EXPECT_FALSE(evil_chromezilla_fetch.success());
-
-  // Now authorized both fonts hosts.
-  rewrite_driver()->request_context()->AddSessionAuthorizedFetchOrigin(
-      "http://fonts.googleapis.com");
-  rewrite_driver()->request_context()->AddSessionAuthorizedFetchOrigin(
-      "https://fonts.googleapis.com");
-
-  ExpectStringAsyncFetch chromezilla_fetch(
-      true, rewrite_driver()->request_context());
-  chromezilla_fetch.request_headers()->Add(
-      HttpAttributes::kUserAgent, "Chromezilla");
-
-  rewrite_driver()->async_fetcher()->Fetch(
-      kRoboto, message_handler(), &chromezilla_fetch);
-  EXPECT_TRUE(chromezilla_fetch.done());
-  EXPECT_EQ("font_chromezilla", chromezilla_fetch.buffer());
-
-  // Now over "SSL"
-  chromezilla_fetch.Reset();
-  chromezilla_fetch.request_headers()->Add(
-      HttpAttributes::kUserAgent, "Chromezilla");
-  rewrite_driver()->async_fetcher()->Fetch(
-      kRobotoSsl, message_handler(), &chromezilla_fetch);
-  EXPECT_TRUE(chromezilla_fetch.done());
-  EXPECT_EQ("sfont_chromezilla", chromezilla_fetch.buffer());
-
-  // Same for the other "UA"
-  ExpectStringAsyncFetch safieri_fetch(
-      true, rewrite_driver()->request_context());
-  safieri_fetch.request_headers()->Add(
-      HttpAttributes::kUserAgent, "Safieri");
-
-  rewrite_driver()->async_fetcher()->Fetch(
-      kRoboto, message_handler(), &safieri_fetch);
-  EXPECT_TRUE(safieri_fetch.done());
-  EXPECT_EQ("font_safieri", safieri_fetch.buffer());
-
-  // Now over "SSL"
-  safieri_fetch.Reset();
-  safieri_fetch.request_headers()->Add(
-      HttpAttributes::kUserAgent, "Safieri");
-  rewrite_driver()->async_fetcher()->Fetch(
-      kRobotoSsl, message_handler(), &safieri_fetch);
-  EXPECT_TRUE(safieri_fetch.done());
-  EXPECT_EQ("sfont_safieri", safieri_fetch.buffer());
-}
 
 TEST_F(GoogleFontServiceInputResourceTest, Creation) {
   rewrite_driver()->SetUserAgent("Chromezilla");

@@ -86,6 +86,8 @@
         'http/reflecting_test_fetcher_test.cc',
         'http/request_context_test.cc',
         'http/sync_fetcher_adapter_test.cc',
+        'http/ua_sensitive_test_fetcher.cc',
+        'http/ua_sensitive_test_fetcher_test.cc',
         'http/url_async_fetcher_stats_test.cc',
         'http/wait_url_async_fetcher_test.cc',
         'http/write_through_http_cache_test.cc',
