@@ -742,6 +742,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters add_base_tag
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters dedup_inlined_images
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters convert_jpeg_to_webp
+#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlaceRewriteDeadlineMs 1000
 #COVERAGE
 #COVERAGE   # flush_subsresources doesn't work in MPS but disables
 #COVERAGE   # combine_css and combine_javascript, so we don't want to
@@ -1091,7 +1092,8 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedRespectVary true
 #ALL_DIRECTIVES ModPagespeedRespectXForwardedProto off
 #ALL_DIRECTIVES ModPagespeedRetainComment "special"
-#ALL_DIRECTIVES ModPagespeedRewriteDeadlinePerFlushMs 10
+#ALL_DIRECTIVES ModPagespeedRewriteDeadlinePerFlushMs 100
+#ALL_DIRECTIVES ModPagespeedInPlaceRewriteDeadlineMs 100
 #ALL_DIRECTIVES ModPagespeedRewriteLevel CoreFilters
 #ALL_DIRECTIVES ModPagespeedRewriteRandomDropPercentage 0
 #ALL_DIRECTIVES ModPagespeedRunExperiment true

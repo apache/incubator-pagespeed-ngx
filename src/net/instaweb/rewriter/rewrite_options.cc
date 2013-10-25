@@ -1208,7 +1208,8 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",
       kInPlaceRewriteDeadlineMs,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Time to wait for an in-place resource optimization before"
+      "falling back to the original resource for the request.");
   AddBaseProperty(
       true, &RewriteOptions::in_place_preemptive_rewrite_css_,
       "ipprc", kInPlacePreemptiveRewriteCss,
