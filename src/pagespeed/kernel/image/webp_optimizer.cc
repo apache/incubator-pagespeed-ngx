@@ -36,6 +36,7 @@ namespace pagespeed {
 
 namespace image_compression {
 
+using image_compression::GetNumChannelsFromPixelFormat;
 using net_instaweb::MessageHandler;
 
 // Copied from libwebp/v0_2/examples/cwebp.c
@@ -170,12 +171,21 @@ ScanlineStatus WebpScanlineWriter::InitWithStatus(const size_t width,
                             "image dimensions larger than the maximum of %d",
                             WEBP_MAX_DIMENSION);
   }
+
+  should_expand_gray_to_rgb_ = false;
+  PixelFormat new_pixel_format = pixel_format;
   switch (pixel_format) {
     case RGB_888:
       has_alpha_ = false;
       break;
     case RGBA_8888:
       has_alpha_ = true;
+      break;
+    case GRAY_8:
+      // GRAY_8 will be expanded to RGB_888.
+      has_alpha_ = false;
+      should_expand_gray_to_rgb_ = true;
+      new_pixel_format = RGB_888;
       break;
     default:
       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
@@ -200,7 +210,9 @@ ScanlineStatus WebpScanlineWriter::InitWithStatus(const size_t width,
 #endif
 
   COMPILE_ASSERT(sizeof(*rgb_) == 1, Expected_size_of_one_byte);
-  stride_bytes_ = (has_alpha_ ? 4 : 3) * picture_.width * sizeof(*rgb_);
+  stride_bytes_ = picture_.width * sizeof(*rgb_) *
+      GetNumChannelsFromPixelFormat(new_pixel_format, message_handler_);
+
   int size_bytes = stride_bytes_ * picture_.height;
   if (rgb_ != NULL) {
     return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
@@ -235,7 +247,19 @@ ScanlineStatus WebpScanlineWriter::WriteNextScanlineWithStatus(
                             SCANLINE_WEBPWRITER,
                             "attempting to write past allocated memory");
   }
-  memcpy(position_bytes_, scanline_bytes, stride_bytes_);
+
+  const int kNumRgbChannels = 3;
+  if (should_expand_gray_to_rgb_) {
+    // Replicate the luminance to RGB.
+    uint8_t* in_bytes = reinterpret_cast<uint8_t*>(scanline_bytes);
+    for (int idx_in = 0, idx_out = 0;
+         idx_in < picture_.width;
+         ++idx_in, idx_out += kNumRgbChannels) {
+      memset(position_bytes_+idx_out, in_bytes[idx_in], kNumRgbChannels);
+    }
+  } else {
+    memcpy(position_bytes_, scanline_bytes, stride_bytes_);
+  }
   position_bytes_ += stride_bytes_;
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }

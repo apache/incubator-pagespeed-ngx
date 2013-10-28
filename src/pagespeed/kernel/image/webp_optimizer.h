@@ -148,6 +148,11 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
   // in progress_hook_, passing it progress_hook_data_.
   static int ProgressHook(int percent, const WebPPicture* picture);
 
+  // WebP does not have native support for gray scale images. The workaround
+  // is to replicate the luminance to RGB; then WebP can compress the expanded
+  // images efficiently.
+  bool should_expand_gray_to_rgb_;
+
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(WebpScanlineWriter);
