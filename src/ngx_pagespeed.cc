@@ -63,6 +63,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -2143,6 +2144,12 @@ void ps_write_handler_response(const StringPiece& output,
 
   response_headers.Add(net_instaweb::HttpAttributes::kContentType,
                        content_type.mime_type());
+  // http://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx
+  // Script and styleSheet elements will reject responses with
+  // incorrect MIME types if the server sends the response header
+  // "X-Content-Type-Options: nosniff". This is a security feature
+  // that helps prevent attacks based on MIME-type confusion.
+  response_headers.Add("X-Content-Type-Options", "nosniff");
 
   int64 now_ms = timer->NowMs();
   response_headers.SetDate(now_ms);
@@ -2150,14 +2157,6 @@ void ps_write_handler_response(const StringPiece& output,
   response_headers.Add(net_instaweb::HttpAttributes::kCacheControl,
                        cache_control);
   send_out_headers_and_body(r, response_headers, output.as_string());
-}
-
-// Writes text wrapped in a <pre> block
-void ps_write_pre(StringPiece str, net_instaweb::Writer* writer,
-              net_instaweb::MessageHandler* handler) {
-  writer->Write("<pre>\n", handler);
-  writer->Write(str, handler);
-  writer->Write("</pre>\n", handler);
 }
 
 void ps_write_handler_response(const StringPiece& output,
@@ -2301,25 +2300,27 @@ ngx_int_t ps_statistics_handler(
             message_handler);
       }
 
-      // Write <pre></pre> for Dump to keep good format.
-      writer.Write("<pre>", message_handler);
-      statistics->Dump(&writer, message_handler);
-      writer.Write("</pre>", message_handler);
+      GoogleString stats;
+      net_instaweb::StringWriter stats_writer(&stats);
+      statistics->Dump(&stats_writer, message_handler);
+      net_instaweb::HtmlKeywords::WritePre(stats, &writer, message_handler);
       statistics->RenderHistograms(&writer, message_handler);
 
       if (params.Has("memcached")) {
         GoogleString memcached_stats;
         factory->PrintMemCacheStats(&memcached_stats);
         if (!memcached_stats.empty()) {
-          ps_write_pre(memcached_stats, &writer, message_handler);
+          net_instaweb::HtmlKeywords::WritePre(
+              memcached_stats, &writer, message_handler);
         }
       }
     }
 
     if (print_normal_config) {
       writer.Write("Configuration:<br>", message_handler);
-      ps_write_pre(server_context->config()->OptionsToString(),
-               &writer, message_handler);
+      net_instaweb::HtmlKeywords::WritePre(
+          server_context->config()->OptionsToString(),
+          &writer, message_handler);
     }
   }
 
@@ -2342,14 +2343,15 @@ ngx_int_t ps_messages_handler(
       server_context->ngx_rewrite_driver_factory();
   net_instaweb::NgxMessageHandler* message_handler =
       factory->ngx_message_handler();
-  // Write <pre></pre> for Dump to keep good format.
-  writer.Write("<pre>", message_handler);
-  if (!message_handler->Dump(&writer)) {
+  GoogleString log;
+  net_instaweb::StringWriter log_writer(&log);
+  if (!message_handler->Dump(&log_writer)) {
     writer.Write("Writing to ngx_pagespeed_message failed. \n"
                  "Please check if it's enabled in pagespeed.conf.\n",
                  message_handler);
+  } else {
+    net_instaweb::HtmlKeywords::WritePre(log, &writer, message_handler);
   }
-  writer.Write("</pre>", message_handler);
   ps_write_handler_response(output, r, factory->timer());
   return NGX_OK;
 }
