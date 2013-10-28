@@ -123,6 +123,7 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   ScanlineStatus CreateColorMap(int transparent_index);
   ScanlineStatus DecodeProgressiveGif();
   void ComputeOrExtendImageSize();
+  bool HasVisibleBackground();
 
  private:
   PixelFormat pixel_format_;
@@ -133,10 +134,6 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   int row_;
   size_t pixel_size_;
   size_t bytes_per_row_;
-  // If the encoded image covers the entire logical screen, we don't
-  // need to draw the background and no_background will be set to
-  // true. Most GIF images belong to this category.
-  bool no_background_;
   bool was_initialized_;
   // Palette of the image. It has 257 entries. The last one stores the
   // background color.

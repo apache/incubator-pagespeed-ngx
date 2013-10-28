@@ -828,24 +828,26 @@ ScanlineStatus GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
   // If the image does not cover the entire screen, the background color will
   // be used to fill the uncovered portion. The background color will be stored
   // in the 257th element of color palette.
-  int background_index = gif_file->SBackGroundColor;
-  if (background_index >= color_map->ColorCount) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
-                            SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_GIFREADERRAW,
-                            "invalid background color");
-  }
-  gif_palette_[kPaletteBackgroundIndex].red_ =
-      gif_palette_[background_index].red_;
-  gif_palette_[kPaletteBackgroundIndex].green_ =
-      gif_palette_[background_index].green_;
-  gif_palette_[kPaletteBackgroundIndex].blue_ =
-      gif_palette_[background_index].blue_;
+  if (HasVisibleBackground()) {
+    int background_index = gif_file->SBackGroundColor;
+    if (background_index >= color_map->ColorCount) {
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+                              SCANLINE_STATUS_INTERNAL_ERROR,
+                              SCANLINE_GIFREADERRAW,
+                              "invalid background color");
+    }
+    gif_palette_[kPaletteBackgroundIndex].red_ =
+        gif_palette_[background_index].red_;
+    gif_palette_[kPaletteBackgroundIndex].green_ =
+        gif_palette_[background_index].green_;
+    gif_palette_[kPaletteBackgroundIndex].blue_ =
+        gif_palette_[background_index].blue_;
 
-  if (background_index == transparent_index) {
-    gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaTransparent;
-  } else {
-    gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaOpaque;
+    if (background_index == transparent_index) {
+      gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaTransparent;
+    } else {
+      gif_palette_[kPaletteBackgroundIndex].alpha_ = kAlphaOpaque;
+    }
   }
 
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
@@ -862,6 +864,13 @@ void GifScanlineReaderRaw::ComputeOrExtendImageSize() {
   if (height_ <= gif_struct_->last_row()) {
     height_ = gif_struct_->last_row() + 1;
   }
+}
+
+bool GifScanlineReaderRaw::HasVisibleBackground() {
+  return (gif_struct_->first_row() > 0 || gif_struct_->first_col() > 0 ||
+          gif_struct_->last_row() < static_cast<int>(GetImageHeight()) - 1 ||
+          gif_struct_->last_col() < static_cast<int>(GetImageWidth()) - 1);
+
 }
 
 // Initialize the reader with the given image stream. Note that image_buffer
