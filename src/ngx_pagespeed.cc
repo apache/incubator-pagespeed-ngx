@@ -70,6 +70,7 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -2342,16 +2343,18 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
       ConsoleHandler(
           server_context, server_context->config(), &writer, message_handler);
       break;
-    case RequestRouting::kMessages:
-      // Write <pre></pre> for Dump to keep good format.
-      writer.Write("<pre>", message_handler);
-      if (!message_handler->Dump(&writer)) {
+    case RequestRouting::kMessages: {
+      GoogleString log;
+      StringWriter log_writer(&log);
+      if (!message_handler->Dump(&log_writer)) {
         writer.Write("Writing to ngx_pagespeed_message failed. \n"
                      "Please check if it's enabled in pagespeed.conf.\n",
                      message_handler);
+      } else {
+        HtmlKeywords::WritePre(log, &writer, message_handler);
       }
-      writer.Write("</pre>", message_handler);
       break;
+    }
     default:
       ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                     "ps_simple_handler: unknown RequestRouting.");
@@ -2370,6 +2373,12 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
   response_headers.set_minor_version(1);
 
   response_headers.Add(HttpAttributes::kContentType, content_type.mime_type());
+  // http://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx
+  // Script and styleSheet elements will reject responses with
+  // incorrect MIME types if the server sends the response header
+  // "X-Content-Type-Options: nosniff". This is a security feature
+  // that helps prevent attacks based on MIME-type confusion.
+  response_headers.Add("X-Content-Type-Options", "nosniff");
 
   int64 now_ms = factory->timer()->NowMs();
   response_headers.SetDate(now_ms);
