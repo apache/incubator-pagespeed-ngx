@@ -26,6 +26,7 @@
 
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/file_writer.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -34,6 +35,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/base/writer.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 
 namespace net_instaweb {
 
@@ -293,10 +295,12 @@ void StatisticsLogger::PrintVarDataAsJSON(
     if (iterator != parsed_var_data.begin()) {
       writer->Write(",", message_handler);
     }
-    // StringPrintf not used so that StringPiece not converted to GoogleString.
-    writer->Write("\"", message_handler);
-    writer->Write(var_name, message_handler);
-    writer->Write("\": [", message_handler);
+    GoogleString html_name, json_name;
+    HtmlKeywords::Escape(var_name, &html_name);
+    EscapeToJsStringLiteral(html_name, true /* add_quotes*/, &json_name);
+
+    writer->Write(json_name, message_handler);
+    writer->Write(": [", message_handler);
     for (size_t i = 0; i < info.size(); ++i) {
       writer->Write(info[i], message_handler);
       // If we are at the last recorded variable, we do not want the

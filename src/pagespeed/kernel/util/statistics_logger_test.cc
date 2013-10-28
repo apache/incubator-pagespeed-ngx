@@ -33,6 +33,7 @@
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 
@@ -69,6 +70,10 @@ class StatisticsLoggerTest : public ::testing::Test {
   }
 
   virtual ~StatisticsLoggerTest() {}
+
+  static void SetUpTestCase() {
+    HtmlKeywords::Init();
+  }
 
   void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer) {
     logger_.DumpConsoleVarsToWriter(current_time_ms, writer);
@@ -296,6 +301,7 @@ TEST_F(StatisticsLoggerTest, NoMalformedJson) {
   Json::Reader json_reader;
   EXPECT_TRUE(json_reader.parse(json_dump.c_str(), complete_json)) << json_dump;
 }
+
 
 // Make sure we return sensible results when there is data missing from log.
 // This is not just to deal with data corruption, but any time the set of

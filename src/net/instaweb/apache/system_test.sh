@@ -1369,6 +1369,7 @@ flushes,image_ongoing_rewrites"
     t=$(($t+1))
   done
 
+
   start_test Statistics console is available.
   CONSOLE_URL=http://$HOSTNAME/pagespeed_console
   CONSOLE_HTML=$OUTDIR/console.html

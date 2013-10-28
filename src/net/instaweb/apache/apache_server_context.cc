@@ -16,7 +16,8 @@
 
 #include "net/instaweb/apache/apache_server_context.h"
 
-#include "httpd.h"
+#include "httpd.h"                  // NOLINT
+#include "http_protocol.h"          // NOLINT
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_request_context.h"
@@ -29,11 +30,13 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
 class RewriteOptions;
-class Statistics;
 
 namespace {
 
@@ -203,6 +206,18 @@ ApacheRequestContext* ApacheServerContext::NewApacheRequestContext(
       request->connection->local_addr->port,
       request->connection->local_ip,
       request);
+}
+
+void ApacheServerContext::ReportNotFoundHelper(StringPiece error_message,
+                                               request_rec* request,
+                                               Variable* error_count) {
+  error_count->Add(1);
+  request->status = HttpStatus::kNotFound;
+  ap_send_error_response(request, 0);
+  message_handler()->Message(kWarning, "%s %s: not found (404)",
+                             (error_message.empty() ? "(null)" :
+                              error_message.as_string().c_str()),
+                             error_count->GetName().as_string().c_str());
 }
 
 }  // namespace net_instaweb

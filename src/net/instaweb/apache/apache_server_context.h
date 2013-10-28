@@ -19,6 +19,7 @@
 
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -36,6 +37,7 @@ class ProxyFetchFactory;
 class RewriteDriverPool;
 class RewriteDriver;
 class Statistics;
+class Variable;
 
 // Creates an Apache-specific ServerContext.  This differs from base class
 // that it incorporates by adding per-VirtualHost configuration, including:
@@ -125,8 +127,36 @@ class ApacheServerContext : public SystemServerContext {
 
   ApacheRequestContext* NewApacheRequestContext(request_rec* request);
 
+  // Reports an error status to the HTTP resource request, and logs
+  // the error as a Warning to the log file, and bumps a stat as
+  // needed.
+  void ReportResourceNotFound(StringPiece error_message, request_rec* request) {
+    ReportNotFoundHelper(error_message, request,
+                         rewrite_stats()->resource_404_count());
+  }
+
+  // Reports an error status to the HTTP statistics request, and logs
+  // the error as a Warning to the log file, and bumps a stat as
+  // needed.
+  void ReportStatisticsNotFound(StringPiece error_message,
+                                request_rec* request) {
+    ReportNotFoundHelper(error_message, request, statistics_404_count());
+  }
+
+  // Reports an error status to the HTTP slurp request, and logs
+  // the error as a Warning to the log file, and bumps a stat as
+  // needed.
+  void ReportSlurpNotFound(StringPiece error_message, request_rec* request) {
+    ReportNotFoundHelper(error_message, request,
+                         rewrite_stats()->slurp_404_count());
+  }
+
  private:
   virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
+
+  void ReportNotFoundHelper(StringPiece url,
+                            request_rec* request,
+                            Variable* error_count);
 
   ApacheRewriteDriverFactory* apache_factory_;
   server_rec* server_rec_;

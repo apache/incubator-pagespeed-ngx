@@ -36,19 +36,13 @@
 #include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 
 namespace net_instaweb {
 
 extern const char* JS_mod_pagespeed_console_js;
 extern const char* CSS_mod_pagespeed_console_css;
 extern const char* HTML_mod_pagespeed_console_body;
-
-// Writes text wrapped in a <pre> block
-void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
-  writer->Write("<pre>\n", handler);
-  writer->Write(str, handler);
-  writer->Write("</pre>\n", handler);
-}
 
 // Handler which serves PSOL console.
 void ConsoleHandler(SystemServerContext* server_context,
@@ -258,14 +252,15 @@ const char* StatisticsHandler(
       factory->caches()->PrintCacheStats(
           static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
       if (!backend_stats.empty()) {
-        WritePre(backend_stats, writer, message_handler);
+        HtmlKeywords::WritePre(backend_stats, writer, message_handler);
       }
     }
 
     if (print_normal_config) {
       writer->Write("Configuration:<br>", message_handler);
-      WritePre(server_context->system_rewrite_options()->OptionsToString(),
-               writer, message_handler);
+      HtmlKeywords::WritePre(
+          server_context->system_rewrite_options()->OptionsToString(),
+          writer, message_handler);
     }
 
     if (print_spdy_config) {
@@ -274,7 +269,8 @@ const char* StatisticsHandler(
                      message_handler);
       } else {
         writer->Write("SPDY-specific configuration:<br>", message_handler);
-        WritePre(spdy_config->OptionsToString(), writer, message_handler);
+        HtmlKeywords::WritePre(spdy_config->OptionsToString(), writer,
+                               message_handler);
       }
     }
   }

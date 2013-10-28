@@ -117,6 +117,8 @@ class SystemServerContext : public ServerContext {
   virtual void MaybeApplySpdySessionFetcher(const RequestContextPtr& request,
                                             RewriteDriver* driver) {}
 
+  Variable* statistics_404_count();
+
  private:
   bool initialized_;
 

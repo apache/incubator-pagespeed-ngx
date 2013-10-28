@@ -260,7 +260,8 @@ void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
                        request_context, handler);
   ApacheRequestToRequestHeaders(*r, fetch.request_headers());
 
-  if (fetch.Fetch()) {
+  bool fetch_succeeded = fetch.Fetch();
+  if (fetch_succeeded) {
     // We always disable downstream header filters when sending out
     // slurped resources, since we've captured them from the origin
     // in the fetch we did to write the slurp.
@@ -276,7 +277,10 @@ void SlurpUrl(ApacheServerContext* server_context, request_rec* r) {
                      stripped_url.c_str(),
                      fetch.request_headers()->ToString().c_str(),
                      fetch.response_headers()->ToString().c_str());
-    SlurpDefaultHandler(r);
+  }
+
+  if (!fetch_succeeded || fetch.response_headers()->IsErrorStatus()) {
+    server_context->ReportSlurpNotFound(stripped_url, r);
   }
 }
 

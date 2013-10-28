@@ -43,8 +43,10 @@
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/write_through_cache.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 
 namespace net_instaweb {
 
@@ -491,8 +493,9 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
       if (cache_info->cache_backend != NULL) {
         StrAppend(out, "Shared memory metadata cache '", p->first,
                   "' statistics:<br>");
-        StrAppend(out, "<pre>", cache_info->cache_backend->DumpStats(),
-                  "</pre>");
+        StringWriter writer(out);
+        HtmlKeywords::WritePre(cache_info->cache_backend->DumpStats(),
+                               &writer, factory_->message_handler());
       }
     }
   }

@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/html/html_name.h"
 
 namespace net_instaweb {
@@ -656,8 +657,9 @@ StringPiece HtmlKeywords::EscapeHelper(const StringPiece& unescaped,
     // This function, unfortunately, does not know what quoting was used.
     // TODO(jmarantz): in remove_quotes filter, switch between ' and " for
     // quoting based on whatever is in the attr value.
-    if ((ch > 127) || (ch < 32) || (ch == '"') || (ch == '\'') || (ch == '&') ||
-        (ch == '<') || (ch == '>')) {
+    if (!IsHtmlSpace(ch) &&
+        ((ch > 127) || (ch < 32) || (ch == '"') || (ch == '\'') ||
+         (ch == '&') || (ch == '<') || (ch == '>'))) {
       char_to_escape.clear();
       char_to_escape += ch;
       StringStringSparseHashMapSensitive::const_iterator p =
@@ -796,6 +798,15 @@ void HtmlKeywords::InitOptionallyClosedKeywords() {
   AddToSet(kListElements, &optionally_closed_);
   AddToSet(kTableElements, &optionally_closed_);
   PrepareForBinarySearch(&optionally_closed_);
+}
+
+bool HtmlKeywords::WritePre(StringPiece str, Writer* writer,
+                            MessageHandler* handler) {
+  bool ret = writer->Write("<pre>\n", handler);
+  GoogleString escaped;
+  ret &= writer->Write(HtmlKeywords::Escape(str, &escaped), handler);
+  ret &= writer->Write("</pre>\n", handler);
+  return ret;
 }
 
 }  // namespace net_instaweb

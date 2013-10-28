@@ -46,6 +46,7 @@ const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
 const char kLocalFetcherStatsPrefix[] = "http";
 const char kCacheFlushCount[] = "cache_flush_count";
 const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
+const char kStatistics404Count[] = "statistics_404_count";
 
 }  // namespace
 
@@ -55,7 +56,7 @@ SystemServerContext::SystemServerContext(
       initialized_(false),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
-      cache_flush_count_(NULL),  // Lazy-initialized under mutex.
+      cache_flush_count_(NULL),         // Lazy-initialized under mutex.
       cache_flush_timestamp_ms_(NULL),  // Lazy-initialized under mutex.
       html_rewrite_time_us_histogram_(NULL),
       local_statistics_(NULL),
@@ -177,6 +178,7 @@ void SystemServerContext::CreateLocalStatistics(
 void SystemServerContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
   statistics->AddVariable(kCacheFlushTimestampMs);
+  statistics->AddVariable(kStatistics404Count);
   Histogram* html_rewrite_time_us_histogram =
       statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
   // We set the boundary at 2 seconds which is about 2 orders of magnitude worse
@@ -184,6 +186,10 @@ void SystemServerContext::InitStats(Statistics* statistics) {
   // samples.
   html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
   UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
+}
+
+Variable* SystemServerContext::statistics_404_count() {
+  return statistics()->GetVariable(kStatistics404Count);
 }
 
 void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {

@@ -41,6 +41,13 @@ class HtmlKeywordsTest : public testing::Test {
     EXPECT_STREQ(unescaped, Unescape(escaped, &buf));
   }
 
+  // Validates that the provided text is not altered by escaping it.
+  void Unchanged(const GoogleString& text) {
+    GoogleString buf;
+    EXPECT_STREQ(text, HtmlKeywords::Escape(text, &buf));
+    EXPECT_STREQ(text, Unescape(text, &buf));
+  }
+
   void TestEscape(const GoogleString& symbolic_code, char value) {
     GoogleString symbolic_escaped = StrCat("&", symbolic_code, ";");
     GoogleString numeric_escaped = StringPrintf(
@@ -274,6 +281,14 @@ TEST_F(HtmlKeywordsTest, Ocircoooo) {
   GoogleString buf;
   EXPECT_STREQ("&ocircoooo", Unescape("&ocircoooo", &buf));
   BiTest("&amp;ocircoooo", "&ocircoooo");
+}
+
+TEST_F(HtmlKeywordsTest, WhitespaceNotChanged) {
+  Unchanged("a b");
+  Unchanged("a\nb");
+  Unchanged("a\rb");
+  Unchanged("a\tb");
+  Unchanged("a\fb");
 }
 
 }  // namespace net_instaweb

@@ -31,6 +31,9 @@
 
 namespace net_instaweb {
 
+class MessageHandler;
+class Writer;
+
 // Helper class for HtmlParser to recognize HTML keywords, handle escaping
 // and unescaping, and assist the lexer in understanding how to interpret
 // unbalanced tags.
@@ -112,6 +115,11 @@ class HtmlKeywords {
                               singleton_->optionally_closed_.end(),
                               keyword);
   }
+
+  // Wraps text in a pre-tag and sends it to writer, returning false if the
+  // writer failed.
+  static bool WritePre(StringPiece text, Writer* writer,
+                       MessageHandler* handler);
 
  private:
   typedef int32 KeywordPair;  // Encoded via shift & OR.
