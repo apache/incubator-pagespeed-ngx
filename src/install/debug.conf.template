@@ -137,6 +137,12 @@ ModPagespeedEnableFilters add_instrumentation
     AddType text/javascript .custom_ext
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/" >
+    # Files in this directory should include an err_headers_out
+    # header.  'Header always' writes to err_headers_out.
+    Header always set X-TestHeader "hello"
+</Directory>
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >
     # Files in this directory should be served uncacheable.
     Header set Cache-control "no-cache"

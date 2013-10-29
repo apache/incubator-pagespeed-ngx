@@ -1201,6 +1201,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   IPRO_ROOT=http://ipro.example.com/mod_pagespeed_test/ipro
   URL=$IPRO_ROOT/test_image_dont_reuse2.png
   IPRO_STATS_URL=http://ipro.example.com/mod_pagespeed_statistics?PageSpeed=off
+  OUTFILE=$OUTDIR/ipro_output
 
   # Initial stats.
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.0
@@ -1248,13 +1249,17 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   # in the Apache output filter flow.
   check_stat $STATS.1 $STATS.2 image_rewrites 1
 
-  http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+  http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O $OUTFILE
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
 
   check_stat $STATS.2 $STATS.3 cache_hits 1
   check_stat $STATS.2 $STATS.3 ipro_served 1
   check_stat $STATS.2 $STATS.3 ipro_recorder_resources 0
   check_stat $STATS.2 $STATS.3 image_rewrites 0
+
+  # Check that the IPRO served file didn't discard any Apache err_response_out
+  # headers.
+  check_from "$(extract_headers $OUTFILE)" grep -q "X-TestHeader: hello"
 
   start_test "IPRO flow doesn't copy uncacheable resources multiple times."
   URL=$IPRO_ROOT/nocache/test_image_dont_reuse.png
