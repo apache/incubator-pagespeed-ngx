@@ -634,6 +634,8 @@ using spriter_binding::SpriteFuture;
 class ImageCombineFilter::Combiner : public ResourceCombiner {
  public:
   Combiner(ImageCombineFilter* filter, Library* library)
+      // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+      // make this convention consistent and fix all code.
       : ResourceCombiner(filter->driver(), kContentTypePng.file_extension() + 1,
                          filter),
         library_(library) { }
@@ -752,8 +754,6 @@ typedef RefCountedPtr<SpriteFutureSlot> SpriteFutureSlotPtr;
 
 class ImageCombineFilter::Context : public RewriteContext {
  public:
-  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-  // make this convention consistent and fix all code.
   Context(ImageCombineFilter* filter, RewriteContext* parent,
           const GoogleUrl& css_url, const StringPiece& css_text)
       : RewriteContext(NULL, parent, NULL),
@@ -762,6 +762,7 @@ class ImageCombineFilter::Context : public RewriteContext {
                  filter->driver()->timer(),
                  filter->driver()->message_handler()),
         filter_(filter) {
+    css_base_url_.Reset(css_url);
     MD5Hasher hasher;
     key_suffix_ = StrCat("css-key=", hasher.Hash(css_text),
                          "_", hasher.Hash(css_url.AllExceptLeaf()));
@@ -859,8 +860,6 @@ class ImageCombineFilter::Context : public RewriteContext {
           url_to_clip_rect[image_position.path()] = &image_position.clip_rect();
         }
 
-        GoogleString new_url = partition->url();
-        const char* new_url_cstr = new_url.c_str();
         StringSet replaced_urls;  // for stats purposes
         for (int i = 0; i < num_inputs; ++i) {
           int slot_index = partition->input(i).index();
@@ -876,11 +875,21 @@ class ImageCombineFilter::Context : public RewriteContext {
             continue;
           }
           if (clip_rect != NULL) {
-            future->Realize(new_url_cstr, clip_rect->x_pos(),
+            DCHECK(css_base_url_.IsAnyValid());
+            GoogleString new_url;
+            if (css_base_url_.IsAnyValid()) {
+              new_url = ResourceSlot::RelativizeOrPassthrough(
+                  filter_->driver()->options(), partition->url(),
+                  sprite_slot->url_relativity(), css_base_url_);
+            } else {
+              new_url = partition->url();
+            }
+
+            future->Realize(new_url.c_str(), clip_rect->x_pos(),
                             clip_rect->y_pos());
             MessageHandler* handler = filter_->driver()->message_handler();
             handler->Message(kInfo, "Inserted sprite, url: %s\n",
-                             new_url_cstr);
+                             new_url.c_str());
             replaced_urls.insert(future->old_url());
             sprite_slot->set_may_sprite(true);
           }
@@ -1119,6 +1128,9 @@ class ImageCombineFilter::Context : public RewriteContext {
   Library library_;
   ImageCombineFilter* filter_;
   GoogleString key_suffix_;
+  // Only stored when actually rewriting CSS. Not for reconstruction requests
+  // for the image .pagespeed. sprite itself.
+  GoogleUrl css_base_url_;
 };
 
 ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver)

@@ -64,12 +64,8 @@ class CssImageCombineTest : public CssRewriteTestBase {
   }
   void TestSpriting(const char* bike_position, const char* expected_position,
                     bool should_sprite) {
-    // TODO(sligocki): This URL should remain relative (since the input URLs
-    // were relative). Update ImageCombineFilter::Context::Render() to
-    // preserve URL relativity.
     const GoogleString sprite_string =
-        Encode(kTestDomain, "is", "0",
-               MultiUrl(kCuppaPngFile, kBikePngFile), "png");
+        Encode("", "is", "0", MultiUrl(kCuppaPngFile, kBikePngFile), "png");
     const char* sprite = sprite_string.c_str();
     // The JPEG will not be included in the sprite because we only handle PNGs.
     const char* html = "<head><style>"
@@ -165,8 +161,7 @@ TEST_F(CssImageCombineTest, SpritesMultiple) {
   // duplication.
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
-  // TODO(sligocki): Preserve relative URL.
-  sprite = Encode(kTestDomain, "is", "0",
+  sprite = Encode("", "is", "0",
                   MultiUrl(kBikePngFile, kCuppaPngFile), "png").c_str();
   after = StringPrintf(kHtmlTemplate3Divs, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
@@ -229,10 +224,8 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   CallFetcherCallbacks();
 
   // On the second run, we get spriting.
-  // TODO(sligocki): Preserve relative URL.
   const GoogleString sprite =
-      Encode(kTestDomain, "is", "0",
-             MultiUrl(kCuppaPngFile, kBikePngFile), "png");
+      Encode("", "is", "0", MultiUrl(kCuppaPngFile, kBikePngFile), "png");
   const GoogleString spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
       "width:10px;height:10px;"
@@ -373,7 +366,7 @@ TEST_F(CssImageCombineTest, CombineManyFiles) {
       combo.push_back(StringPrintf("%.02d%s", image_index, kBikePngFile));
       ++image_index;
     }
-    // TODO(sligocki): Preserve relative URL.
+    // Original URL is absolute, so rewritten one is as well.
     combinations.push_back(Encode(kTestDomain, "is", "0", combo, "png"));
   }
 
@@ -403,10 +396,8 @@ TEST_F(CssImageCombineTest, SpritesBrokenUp) {
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kPuzzleJpgFile, 0, 10,
                         kCuppaPngFile, 0);
 
-  // TODO(sligocki): Preserve relative URL.
   const GoogleString sprite_string =
-      Encode(kTestDomain, "is", "0",
-             MultiUrl(kBikePngFile, kCuppaPngFile), "png");
+      Encode("", "is", "0", MultiUrl(kBikePngFile, kCuppaPngFile), "png");
   const char* sprite = sprite_string.c_str();
 
   after = StringPrintf(kHtmlTemplate3Divs, sprite, kPuzzleJpgFile, 0, 10,
@@ -422,10 +413,8 @@ TEST_F(CssImageCombineTest, SpritesGifsWithPngs) {
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kChefGifFile, 0, 10,
                         kCuppaPngFile, 0);
 
-  // TODO(sligocki): Preserve relative URL.
   const GoogleString sprite_string =
-      Encode(kTestDomain, "is", "0",
-             MultiUrl(kBikePngFile, kChefGifFile, kCuppaPngFile),
+      Encode("", "is", "0", MultiUrl(kBikePngFile, kChefGifFile, kCuppaPngFile),
              "png");
   const char* sprite = sprite_string.c_str();
 
@@ -447,14 +436,13 @@ TEST_F(CssImageCombineTest, SpriteWrongMime) {
   AddFileToMockFetcher(wrong_cuppa, kCuppaPngFile,
                        kContentTypeJpeg, 100);
 
-  // TODO(sligocki): Preserve relative URL.
-  const GoogleString sprite_string =
-      Encode(kTestDomain, "is", "0",
+  GoogleString rel_sprite =
+      Encode("", "is", "0",
              MultiUrl(StrCat("w", kBikePngFile),
                       StrCat("w", kCuppaPngFile),
                       kCuppaPngFile),
              "png");
-  const char* sprite = sprite_string.c_str();
+  GoogleString abs_sprite = StrCat(kTestDomain, rel_sprite);
 
   GoogleString before, after;
   before = StringPrintf(kHtmlTemplate3Divs, wrong_bike.c_str(),
@@ -463,8 +451,12 @@ TEST_F(CssImageCombineTest, SpriteWrongMime) {
   // The BikePng is 100px tall, the cuppa is 70px tall, so we
   // expect the cuppa to be offset by -100, and the right-path cuppa to be
   // offset by -170.
-  after = StringPrintf(kHtmlTemplate3Divs, sprite, sprite, -100, 10,
-                       sprite, -170);
+  //
+  // First 2 original URLs were absolute, so rewritten ones are as well.
+  // Last was relative, so it is preserved as relative.
+  after = StringPrintf(kHtmlTemplate3Divs,
+                       abs_sprite.c_str(), abs_sprite.c_str(), -100, 10,
+                       rel_sprite.c_str(), -170);
   ValidateExpected("wrong_mime", before, after);
 }
 
@@ -492,8 +484,7 @@ TEST_F(CssImageMultiFilterTest, SpritesAndNonSprites) {
   // duplication.
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
-  // TODO(sligocki): Preserve relative URL.
-  sprite = Encode(kTestDomain, "is", "0",
+  sprite = Encode("", "is", "0",
                   MultiUrl(kBikePngFile, kCuppaPngFile), "png").c_str();
   after = StringPrintf(kHtmlTemplate3Divs, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
@@ -507,6 +498,41 @@ TEST_F(CssImageMultiFilterTest, SpritesAndNonSprites) {
   after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
                        0, 999, cuppa_encoded.c_str());
   ValidateExpected("sprite_none_dimmensions", before, after);
+}
+
+// A test in which base URL inside CSS is different than inside HTML.
+// Specifically CSS base URL is inside subdir/.
+// This might also be the only test for external stylesheets.
+TEST_F(CssImageCombineTest, CssDifferentBase) {
+  // Set up resources.
+  AddFileToMockFetcher("subdir/Cuppa.png", kCuppaPngFile, kContentTypePng, 100);
+  AddFileToMockFetcher("subdir/BikeCrashIcn.png", kBikePngFile,
+                       kContentTypePng, 100);
+  GoogleString css_before =
+      ".a {background: 0px 0px url(Cuppa.png) no-repeat;"
+      " width:10px; height:10px}"
+      ".b {background: 0px 0px url(BikeCrashIcn.png) no-repeat;"
+      " width:10px; height:10px}";
+  SetResponseWithDefaultHeaders("subdir/foo.css", kContentTypeCss,
+                                css_before, 100);
+
+  GoogleString expected_css_after =
+      ".a{background:0px 0px"
+      " url(Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
+      " no-repeat;width:10px;height:10px}"
+      ".b{background:0px -70px"
+      " url(Cuppa.png+BikeCrashIcn.png.pagespeed.is.0.png)"
+      " no-repeat;width:10px;height:10px}";
+
+  GoogleString rewritten_url = Encode("subdir/", "cf", "0", "foo.css", "css");
+  ValidateExpected("diff_base",
+                   CssLinkHref("subdir/foo.css"),
+                   CssLinkHref(rewritten_url));
+
+  GoogleString actual_css_after;
+  ASSERT_TRUE(FetchResourceUrl(StrCat(kTestDomain, rewritten_url),
+                               &actual_css_after));
+  EXPECT_EQ(expected_css_after, actual_css_after);
 }
 
 TEST_F(CssImageMultiFilterTest, WithFlattening) {
@@ -528,7 +554,8 @@ TEST_F(CssImageMultiFilterTest, WithFlattening) {
 
   const char kBeforeHtml[] = "<style>@import url(dir/a.css);</style>";
   // Note: This is flattened and combined.
-  // TODO(sligocki): Keep URLs relative.
+  // TODO(sligocki): Perhaps http://test.com/dir/Cuppa.png should be relative
+  // given that the original URL in the original stylesheet was relative.
   const char kAfterHtml[] =
       "<style>"
       ".a{background:0px 0px"
