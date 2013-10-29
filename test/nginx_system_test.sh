@@ -502,8 +502,15 @@ check run_wget_with_args $URL
 check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000     # re-encoded
 check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126   # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?PageSpeedFilters=rewrite_images"
-IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
-check [ x"$IMG_URL" != x ]
+
+IMG_URL=$(egrep -o 'http://[^"]*pagespeed.[^"]*.jpg' $FETCHED | head -n1)
+if [ -z "$IMG_URL" ]; then
+  # If PreserveUrlRelativity is on, we need to find the relative URL and
+  # absolutify it ourselves.
+  IMG_URL="$EXAMPLE_ROOT/"
+  IMG_URL+=$(grep -o '[^\"]*pagespeed.[^\"]*\.jpg' $FETCHED | head -n 1)
+fi
+
 start_test headers for rewritten image
 echo IMG_URL="$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
@@ -1395,9 +1402,14 @@ check [ $MATCHES -eq 1 ]
 
 start_test Additional url-valued attributes are fully respected.
 
-# There are five resources that should be optimized
+function count_exact_matches() {
+  # Needed because "fgrep -c" counts lines with matches, not pure matches.
+  fgrep -o "$1" | wc -l
+}
+
+# There are nine resources that should be optimized
 http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 5
+    fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.' 9
 
 # Make sure <custom d=...> isn't modified at all, but that everything else is
 # recognized as a url and rewritten from ../foo to /foo.  This means that only
@@ -1407,9 +1419,9 @@ http_proxy=$SECONDARY_HOSTNAME \
 http_proxy=$SECONDARY_HOSTNAME \
     fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
 
-# There are five images that should be optimized.
+# There are nine images that should be optimized.
 http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
+    fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 9
 
 # Test the experiment framework (Furious).
 

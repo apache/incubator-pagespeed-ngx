@@ -2772,37 +2772,28 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       cmcf->servers.elts);
   ngx_uint_t s;
 
-  bool have_server_context = false;
-  Statistics* statistics = NULL;
-  // Iterate over all configured server{} blocks, and find out if we have
-  // an enabled ServerContext.
+  std::vector<SystemServerContext*> server_contexts;
+  // Iterate over all configured server{} blocks to collect the server contexts.
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
     if (cfg_s->server_context != NULL) {
-      have_server_context = true;
-
-      NgxRewriteOptions* config = cfg_s->server_context->config();
-      // Lazily create shared-memory statistics if enabled in any
-      // config, even when ngx_pagespeed is totally disabled.  This
-      // allows statistics to work if ngx_pagespeed gets turned on via
-      // .htaccess or query param.
-      if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics =
-            cfg_m->driver_factory->MakeGlobalSharedMemStatistics(*config);
-      }
-
-      // If config has statistics on and we have per-vhost statistics on
-      // as well, then set it up.
-      if (config->statistics_enabled()
-          && cfg_m->driver_factory->use_per_vhost_statistics()) {
-        cfg_s->server_context->CreateLocalStatistics(
-            statistics, cfg_m->driver_factory);
-      }
+      server_contexts.push_back(cfg_s->server_context);
     }
   }
 
-  if (have_server_context) {
+  GoogleString error_message;
+  int error_index = -1;
+  Statistics* global_statistics = NULL;
+  cfg_m->driver_factory->PostConfig(
+      server_contexts, &error_message, &error_index, &global_statistics);
+  if (error_index != -1) {
+    server_contexts[error_index]->message_handler()->Message(
+        kError, "ngx_pagespeed is enabled. %s", error_message.c_str());
+    return NGX_ERROR;
+  }
+
+  if (!server_contexts.empty()) {
     // TODO(oschaaf): this ignores sigpipe messages from memcached.
     // however, it would be better to not have those signals generated
     // in the first place, as suppressing them this way may interfere
@@ -2811,9 +2802,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
 
     // If no shared-mem statistics are enabled, then init using the default
     // NullStatistics.
-    if (statistics == NULL) {
-      statistics = cfg_m->driver_factory->statistics();
-      NgxRewriteDriverFactory::InitStats(statistics);
+    if (global_statistics == NULL) {
+      NgxRewriteDriverFactory::InitStats(cfg_m->driver_factory->statistics());
     }
 
     ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
