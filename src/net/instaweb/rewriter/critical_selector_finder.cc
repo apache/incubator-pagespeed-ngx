@@ -51,7 +51,6 @@ CriticalSelectorFinder::CriticalSelectorFinder(
     const PropertyCache::Cohort* cohort, NonceGenerator* nonce_generator,
     Statistics* statistics)
     : cohort_(cohort), nonce_generator_(nonce_generator) {
-  DCHECK(cohort_ != NULL);
   critical_selectors_valid_count_ = statistics->GetTimedVariable(
       kCriticalSelectorsValidCount);
   critical_selectors_expired_count_ = statistics->GetTimedVariable(
@@ -86,6 +85,7 @@ const StringSet& CriticalSelectorFinder::GetCriticalSelectors(
 
 void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
     const StringSet& selector_set, StringPiece nonce, RewriteDriver* driver) {
+  DCHECK(cohort_ != NULL);
   WriteCriticalSelectorsToPropertyCacheStatic(
       selector_set, nonce, SupportInterval(), ShouldReplacePriorResult(),
       driver->server_context()->page_property_cache(), cohort_,
@@ -171,6 +171,7 @@ BeaconMetadata CriticalSelectorFinder::PrepareForBeaconInsertion(
       selectors, &proto, SupportInterval(), nonce_generator_, driver->timer(),
       &result);
   if (result.status != kDoNotBeacon) {
+    DCHECK(cohort_ != NULL);
     UpdateInPropertyCache(proto, cohort_, kCriticalSelectorsPropertyName,
                           true /* write_cohort */, driver->property_page());
   }
