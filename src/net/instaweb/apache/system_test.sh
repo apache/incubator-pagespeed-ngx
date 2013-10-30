@@ -1837,11 +1837,15 @@ check_from "$OUT1" egrep -q "hello world"
 if [ $statistics_enabled = "1" ]; then
   OLDSTATS=$OUTDIR/proxy_fetch_stats.old
   NEWSTATS=$OUTDIR/proxy_fetch_stats.new
+  # TODO(jmarantz): experimental sleep to eliminate valgrind race. Fix properly.
+  sleep 1
   $WGET_DUMP $STATISTICS_URL > $OLDSTATS
 fi
 OUT2=$($WGET_DUMP $URL)
 check_from "$OUT2" egrep -q "hello world"
 if [ $statistics_enabled = "1" ]; then
+  # TODO(jmarantz): experimental sleep to eliminate valgrind race. Fix properly.
+  sleep 1
   $WGET_DUMP $STATISTICS_URL > $NEWSTATS
   check_stat $OLDSTATS $NEWSTATS cache_hits 1
   check_stat $OLDSTATS $NEWSTATS cache_misses 0
