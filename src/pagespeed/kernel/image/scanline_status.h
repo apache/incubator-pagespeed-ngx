@@ -44,11 +44,13 @@ namespace image_compression {
     _X(SCANLINE_STATUS_MEMORY_ERROR),                  \
     _X(SCANLINE_STATUS_INTERNAL_ERROR),                \
     _X(SCANLINE_STATUS_TIMEOUT_ERROR),                 \
-    _X(SCANLINE_STATUS_INVOCATION_ERROR)
+    _X(SCANLINE_STATUS_INVOCATION_ERROR),              \
+                                                       \
+    _X(NUM_SCANLINE_STATUS)
 
 // Note the source of the error message by means of an enum rather
 // than a string.
-#define PAGESPEED_SCANLINE_STATUS_SOURCE(_X) \
+#define PAGESPEED_SCANLINE_STATUS_SOURCE(_X)  \
   _X(SCANLINE_UNKNOWN),                      \
     _X(SCANLINE_PNGREADER),                  \
     _X(SCANLINE_PNGREADERRAW),               \
@@ -60,7 +62,9 @@ namespace image_compression {
     _X(SCANLINE_PNGWRITER),                  \
     _X(SCANLINE_JPEGWRITER),                 \
     _X(SCANLINE_WEBPWRITER),                 \
-    _X(SCANLINE_UTIL)
+    _X(SCANLINE_UTIL),                       \
+                                             \
+    _X(NUM_SCANLINE_SOURCE)
 
 #define PAGESPEED_SCANLINE_STATUS_ENUM_NAME(_Y) _Y
 #define PAGESPEED_SCANLINE_STATUS_ENUM_STRING(_Y) #_Y
@@ -73,35 +77,36 @@ enum ScanlineStatusSource {
   PAGESPEED_SCANLINE_STATUS_SOURCE(PAGESPEED_SCANLINE_STATUS_ENUM_NAME)
 };
 
-// A struct to report the success or error of ScanlineInterface
+// A class to report the success or error of ScanlineInterface
 // operations. Scanline*Interface should return the
 // ScanlineStatus corresponding to the earliest error
-// encountered. ScanlineStatus.details should be of the form
+// encountered. ScanlineStatus.details_ should be of the form
 // "FunctionThatFailed()" or "failure message".
-struct ScanlineStatus {
-  ScanlineStatus() : status_type(SCANLINE_STATUS_UNINITIALIZED),
-                     source(SCANLINE_UNKNOWN),
-                     details() {}
+class ScanlineStatus {
+ public:
+  ScanlineStatus() : type_(SCANLINE_STATUS_UNINITIALIZED),
+                     source_(SCANLINE_UNKNOWN),
+                     details_() {}
 
-  explicit ScanlineStatus(ScanlineStatusType the_status_type)
-      : status_type(the_status_type),
-        source(SCANLINE_UNKNOWN),
-        details() {}
+  ScanlineStatus(ScanlineStatusType type,
+                 ScanlineStatusSource source,
+                 const GoogleString& details)
+      : type_(type),
+        source_(source),
+        details_(details) {}
 
-  ScanlineStatus(ScanlineStatusType the_status_type,
-                 ScanlineStatusSource the_source,
-                 const GoogleString& the_details)
-      : status_type(the_status_type),
-        source(the_source),
-        details(the_details) {}
+  explicit ScanlineStatus(ScanlineStatusType type)
+      : type_(type),
+        source_(SCANLINE_UNKNOWN),
+        details_() {}
 
   // This function takes variadic arguments so that we can use the
   // same sets of arguments here and for logging via the
   // PS_LOGGED_STATUS macro below.
-  static inline ScanlineStatus New(ScanlineStatusType status_type,
-                                   ScanlineStatusSource source,
-                                   const char* details,
-                                   ...) INSTAWEB_PRINTF_FORMAT(3, 4) {
+  static ScanlineStatus New(ScanlineStatusType type,
+                            ScanlineStatusSource source,
+                            const char* details,
+                            ...) INSTAWEB_PRINTF_FORMAT(3, 4) {
     va_list args;
     GoogleString detail_list;
     // Ignore the name of this routine: it formats with vsnprintf.
@@ -109,30 +114,39 @@ struct ScanlineStatus {
     va_start(args, details);
     StringAppendV(&detail_list, details, args);
     va_end(args);
-    return ScanlineStatus(status_type, source, detail_list);
+    return ScanlineStatus(type, source, detail_list);
   };
 
-  inline const char* StatusTypeStr() const {
+  bool Success() const { return (type_ == SCANLINE_STATUS_SUCCESS); }
+  ScanlineStatusType type() const { return type_; }
+  ScanlineStatusSource source() const { return source_; }
+  const GoogleString& details() const { return details_; }
+
+  const char* TypeStr() const {
     static const char* kScanlineStatusTypeNames[] = {
       PAGESPEED_SCANLINE_STATUS(PAGESPEED_SCANLINE_STATUS_ENUM_STRING)
     };
-    return kScanlineStatusTypeNames[status_type];
+    return kScanlineStatusTypeNames[type_];
   }
 
-  inline const char* SourceTypeStr() const {
+  const char* SourceStr() const {
     static const char* kScanlineStatusSourceNames[] = {
       PAGESPEED_SCANLINE_STATUS_SOURCE(PAGESPEED_SCANLINE_STATUS_ENUM_STRING)
     };
-    return kScanlineStatusSourceNames[source];
+    return kScanlineStatusSourceNames[source_];
   }
 
-  inline bool Success() const {
-    return (status_type == SCANLINE_STATUS_SUCCESS);
+  const GoogleString ToString() const {
+    return GoogleString(SourceStr()) + ":" + TypeStr() + " " + details();
   }
 
-  ScanlineStatusType status_type;
-  ScanlineStatusSource source;
-  GoogleString details;
+ private:
+  ScanlineStatusType type_;
+  ScanlineStatusSource source_;
+  GoogleString details_;
+
+  // Note: we are allowing the implicit copy constructor and
+  // assignment operators.
 };
 
 #undef PAGESPEED_SCANLINE_STATUS_ENUM_STRING
@@ -141,7 +155,7 @@ struct ScanlineStatus {
 #undef PAGESPEED_SCANLINE_STATUS
 
 // Convenience macro for simultaneously logging error descriptions and
-// creating a ScanlineStatus with that error description. LOGGER_ is
+// creating a ScanlineStatus with that error description. _LOGGER is
 // meant to be one of the PS_LOG* macros defined in message_handler.h.
 #define PS_LOGGED_STATUS(_LOGGER, _HANDLER, _TYPE, _SOURCE, ...)     \
   (_LOGGER(_HANDLER, #_TYPE ":" #_SOURCE ": " __VA_ARGS__),          \
