@@ -148,7 +148,19 @@ struct HttpAttributes {
   // plus Set-Cookie and Set-Cookie2, per
   //
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+  // Note: The returned vector contains NULL-terminated char* entries but
+  // returning it via StringPieceVector causes us to lose this guarantee and we
+  // end up creating temporary GoogleStrings to convert these back to char*.
+  // This performance overhead might be revisited if considered important.
   static StringPieceVector SortedHopByHopHeaders();
+
+  // Gets a StringPieceVector containing the caching-related headers that should
+  // be removed from responses.
+  // Note: The returned vector contains NULL-terminated char* entries but
+  // returning it via StringPieceVector causes us to lose this guarantee and we
+  // end up creating temporary GoogleStrings to convert these back to char*.
+  // This performance overhead might be revisited if considered important.
+  static StringPieceVector CachingHeadersToBeRemoved();
 };
 
 namespace HttpStatus {

@@ -202,4 +202,20 @@ StringPieceVector HttpAttributes::SortedHopByHopHeaders() {
   return names;
 }
 
+StringPieceVector HttpAttributes::CachingHeadersToBeRemoved() {
+  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+  const int kReserveSize = 3;
+  int index = 0;
+  StringPieceVector names(kReserveSize);
+
+  // This exact mechanism of initializing the names is used because it allows
+  // populating a StringPieceVector from locally defined string constants
+  // without having runtime calls to strlen to find the length.
+  names[index++] = StringPiece(HttpAttributes::kLastModified);
+  names[index++] = StringPiece(HttpAttributes::kExpires);
+  names[index++] = StringPiece(HttpAttributes::kEtag);
+  DCHECK_EQ(kReserveSize, index);
+  return names;
+}
+
 }  // namespace net_instaweb

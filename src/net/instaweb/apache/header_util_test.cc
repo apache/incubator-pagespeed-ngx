@@ -51,6 +51,15 @@ class HeaderUtilTest : public testing::Test {
     apr_pool_destroy(pool_);
   }
 
+  void SetLastModified(const char* last_modified) {
+    apr_table_set(request_.headers_out, HttpAttributes::kLastModified,
+                  last_modified);
+  }
+
+  const char* GetLastModified() {
+    return apr_table_get(request_.headers_out, HttpAttributes::kLastModified);
+  }
+
   void SetCacheControl(const char* cache_control) {
     apr_table_set(request_.headers_out, HttpAttributes::kCacheControl,
                   cache_control);
@@ -65,31 +74,31 @@ class HeaderUtilTest : public testing::Test {
 };
 
 TEST_F(HeaderUtilTest, DisableEmpty) {
-  DisableCaching(&request_);
+  DisableCacheControlHeader(&request_);
   EXPECT_STREQ(HttpAttributes::kNoCacheMaxAge0, GetCacheControl());
 }
 
 TEST_F(HeaderUtilTest, DisableCaching) {
   SetCacheControl("max-age=60");
-  DisableCaching(&request_);
+  DisableCacheControlHeader(&request_);
   EXPECT_STREQ(HttpAttributes::kNoCacheMaxAge0, GetCacheControl());
 }
 
 TEST_F(HeaderUtilTest, DisablePrivateCaching) {
   SetCacheControl("private, max-age=60");
-  DisableCaching(&request_);
+  DisableCacheControlHeader(&request_);
   EXPECT_STREQ(HttpAttributes::kNoCacheMaxAge0, GetCacheControl());
 }
 
 TEST_F(HeaderUtilTest, DisablePublicCaching) {
   SetCacheControl("public, max-age=60");
-  DisableCaching(&request_);
+  DisableCacheControlHeader(&request_);
   EXPECT_STREQ(HttpAttributes::kNoCacheMaxAge0, GetCacheControl());
 }
 
 TEST_F(HeaderUtilTest, DisableNostore) {
   SetCacheControl("must-revalidate, private, no-store");
-  DisableCaching(&request_);
+  DisableCacheControlHeader(&request_);
   EXPECT_STREQ(StrCat(HttpAttributes::kNoCacheMaxAge0,
                       ", must-revalidate, ",
                       HttpAttributes::kNoStore),
@@ -98,7 +107,21 @@ TEST_F(HeaderUtilTest, DisableNostore) {
 
 TEST_F(HeaderUtilTest, DisableNostoreRetainNoCache) {
   SetCacheControl("no-cache, must-revalidate, private, no-store");
-  DisableCaching(&request_);
+  SetLastModified("some random string");
+  DisableCacheControlHeader(&request_);
+  EXPECT_STREQ(StrCat(HttpAttributes::kNoCacheMaxAge0,
+                      ", must-revalidate, ",
+                      HttpAttributes::kNoStore),
+               GetCacheControl());
+  EXPECT_STREQ("some random string", GetLastModified());
+}
+
+TEST_F(HeaderUtilTest, DisableCachingRelatedHeaders) {
+  SetCacheControl("no-cache, must-revalidate, private, no-store");
+  SetLastModified("some random string");
+  DisableCachingRelatedHeaders(&request_);
+  DisableCacheControlHeader(&request_);
+  EXPECT_EQ(NULL, GetLastModified());
   EXPECT_STREQ(StrCat(HttpAttributes::kNoCacheMaxAge0,
                       ", must-revalidate, ",
                       HttpAttributes::kNoStore),

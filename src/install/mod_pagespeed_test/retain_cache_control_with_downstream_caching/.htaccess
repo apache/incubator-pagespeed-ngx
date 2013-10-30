@@ -1,0 +1,5 @@
+ModPagespeedModifyCachingHeaders on
+ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020/"
+<FilesMatch "\.html$">
+  Header set Cache-Control "private, max-age=3000"
+</FilesMatch>

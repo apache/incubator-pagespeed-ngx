@@ -536,6 +536,12 @@ OUT=$($WGET_DUMP $URL)
 check_from "$OUT" grep -q "Cache-Control: private, max-age=3000"
 check_from "$OUT" grep -q "Last-Modified:"
 
+start_test ModPagespeedModifyCachingHeaders with DownstreamCaching enabled.
+URL=$TEST_ROOT/retain_cache_control_with_downstream_caching/index.html
+OUT=$($WGET_DUMP -S $URL)
+check_not_from "$OUT" grep -q "Last-Modified:"
+check_from "$OUT" grep -q "Cache-Control: private, max-age=3000"
+
 test_filter combine_javascript combines 2 JS files into 1.
 start_test combine_javascript with long URL still works
 URL=$TEST_ROOT/combine_js_very_many.html?PageSpeedFilters=combine_javascript

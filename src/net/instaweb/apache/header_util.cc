@@ -17,6 +17,7 @@
 #include "net/instaweb/apache/header_util.h"
 
 #include <cstdio>
+#include <memory>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -175,14 +176,22 @@ class ApacheCachingHeaders : public CachingHeaders {
   DISALLOW_COPY_AND_ASSIGN(ApacheCachingHeaders);
 };
 
-void DisableCaching(request_rec* request) {
-  // Turn off caching for the HTTP requests.
+void DisableCacheControlHeader(request_rec* request) {
+  // Turn off Cache-Control header for the HTTP requests.
   ApacheCachingHeaders headers(request);
   apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
                 headers.GenerateDisabledCacheControl().c_str());
-  apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
-  apr_table_unset(request->headers_out, HttpAttributes::kExpires);
-  apr_table_unset(request->headers_out, HttpAttributes::kEtag);
+}
+
+void DisableCachingRelatedHeaders(request_rec* request) {
+  // Turn off headers related to caching (but not Cache-Control) for the
+  // HTTP requests.
+  StringPieceVector response_headers_to_remove =
+      HttpAttributes::CachingHeadersToBeRemoved();
+  for (int i = 0, n = response_headers_to_remove.size(); i < n; ++i) {
+    apr_table_unset(request->headers_out,
+                    response_headers_to_remove[i].as_string().c_str());
+  }
 }
 
 }  // namespace net_instaweb

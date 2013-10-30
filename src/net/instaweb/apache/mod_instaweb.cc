@@ -362,6 +362,61 @@ class ScopedTimer {
   int64 start_time_us_;
 };
 
+
+const RewriteOptions* compute_request_options(
+    request_rec* request,
+    ApacheServerContext* server_context,
+    ApacheRewriteDriverFactory* factory,
+    ApacheRequestContext* apache_request,
+    RequestContextPtr request_context,
+    scoped_ptr<RewriteOptions>* custom_options,
+    bool *use_custom_options) {
+  ApacheConfig* directory_options = static_cast<ApacheConfig*>
+      ap_get_module_config(request->per_dir_config, &pagespeed_module);
+
+  bool using_spdy = request_context->using_spdy();
+  const RewriteOptions* host_options = server_context->global_options();
+  if (using_spdy && server_context->SpdyConfig() != NULL) {
+    host_options = server_context->SpdyConfig();
+  }
+  const RewriteOptions* options = host_options;
+
+  server_context->FlushCacheIfNecessary();
+
+  if ((directory_options != NULL) && directory_options->modified()) {
+    custom_options->reset(factory->NewRewriteOptions());
+    (*custom_options)->Merge(*host_options);
+    (*custom_options)->Merge(*directory_options);
+    server_context->ComputeSignature(custom_options->get());
+    options = custom_options->get();
+    *use_custom_options = true;
+  }
+  return options;
+}
+
+const RewriteOptions* get_request_options(
+    request_rec* request,
+    scoped_ptr<RewriteOptions>* custom_options) {
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  // Escape ASAP if we're in unplugged mode.
+  if (server_context->config()->unplugged()) {
+    return NULL;
+  }
+  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
+
+  ApacheRequestContext* apache_request =
+      server_context->NewApacheRequestContext(request);
+  RequestContextPtr request_context(apache_request);
+  bool use_custom_options = false;
+  return compute_request_options(
+       request, server_context, factory, apache_request, request_context,
+       custom_options,
+       &use_custom_options);
+}
+
+
+
 // Builds a new context for an HTML request, returning NULL if we decide
 // that we should not handle the request for various reasons.
 // TODO(sligocki): Move most of these checks into non-Apache specific code.
@@ -372,32 +427,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
   if (server_context->config()->unplugged()) {
     return NULL;
   }
-  ApacheConfig* directory_options = static_cast<ApacheConfig*>
-      ap_get_module_config(request->per_dir_config, &pagespeed_module);
   ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
   ApacheRequestContext* apache_request =
       server_context->NewApacheRequestContext(request);
   RequestContextPtr request_context(apache_request);
-  bool using_spdy = request_context->using_spdy();
-  const RewriteOptions* host_options = server_context->global_options();
-  if (using_spdy && server_context->SpdyConfig() != NULL) {
-    host_options = server_context->SpdyConfig();
-  }
-  const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 
-  server_context->FlushCacheIfNecessary();
-
-  if ((directory_options != NULL) && directory_options->modified()) {
-    custom_options.reset(factory->NewRewriteOptions());
-    custom_options->Merge(*host_options);
-    custom_options->Merge(*directory_options);
-    server_context->ComputeSignature(custom_options.get());
-    options = custom_options.get();
-    use_custom_options = true;
-  }
+  const RewriteOptions* options = compute_request_options(
+       request, server_context, factory, apache_request, request_context,
+       &custom_options, &use_custom_options);
 
   if (request->unparsed_uri == NULL) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
@@ -765,7 +805,13 @@ apr_status_t instaweb_fix_headers_filter(
   // TODO(jmarantz): merge this logic with that in
   // ResponseHeaders::CacheControlValuesToPreserve and
   // ServerContext::ApplyInputCacheControl
-  DisableCaching(request);
+  DisableCachingRelatedHeaders(request);
+
+  scoped_ptr<RewriteOptions> custom_options;
+  const RewriteOptions* options = get_request_options(request, &custom_options);
+  if (options->downstream_cache_purge_location_prefix().empty()) {
+    DisableCacheControlHeader(request);
+  }
 
   // TODO(sligocki): Why remove ourselves? Is it to assure that this filter
   // only looks at the first bucket in the brigade?
