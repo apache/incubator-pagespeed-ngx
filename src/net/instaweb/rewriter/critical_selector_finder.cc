@@ -99,6 +99,7 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCacheStatic(
     MessageHandler* message_handler, Timer* timer) {
   WriteCriticalKeysToPropertyCache(
       selector_set, nonce, support_interval, should_replace_prior_result,
+      !should_replace_prior_result /* require_prior_support */,
       kCriticalSelectorsPropertyName, cache, cohort, page, message_handler,
       timer);
 }

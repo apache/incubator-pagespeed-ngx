@@ -91,16 +91,18 @@ void UpdateCriticalKeys(bool require_prior_support,
                         CriticalKeys* critical_keys);
 
 // Update the property cache with a new set of keys. This will update the
-// support value for the new keys, ignoring any keys that are not already
-// present in the property cache (preventing spurious keys from being injected).
-// Note that it only increases the support value for the new keys, it does not
-// decay values that are not present. PrepareForBeaconInsertion should have been
-// called previously if !should_replace_prior_result and nonces must be checked.
+// support value for the new keys. If require_prior_support is set, any keys
+// that are not already present in the property cache will be ignored (to
+// prevent spurious keys from being injected). Note that it only increases the
+// support value for the new keys, it does not decay values that are not
+// present. PrepareForBeaconInsertion should have been called previously if
+// !should_replace_prior_result and nonces must be checked.
 void WriteCriticalKeysToPropertyCache(
     const StringSet& new_keys, StringPiece nonce, int support_interval,
-    bool should_replace_prior_result, StringPiece property_name,
-    const PropertyCache* cache, const PropertyCache::Cohort* cohort,
-    AbstractPropertyPage* page, MessageHandler* message_handler, Timer* timer);
+    bool should_replace_prior_result, bool require_prior_support,
+    StringPiece property_name, const PropertyCache* cache,
+    const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
+    MessageHandler* message_handler, Timer* timer);
 
 // Given a set of candidate critical keys, decide whether beaconing should take
 // place.  We should *always* beacon if there's new critical key data.

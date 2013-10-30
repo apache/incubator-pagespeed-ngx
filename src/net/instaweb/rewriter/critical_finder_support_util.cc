@@ -285,9 +285,10 @@ void UpdateCriticalKeys(bool require_prior_support,
 
 void WriteCriticalKeysToPropertyCache(
     const StringSet& new_keys, StringPiece nonce, int support_interval,
-    bool should_replace_prior_result, StringPiece property_name,
-    const PropertyCache* cache, const PropertyCache::Cohort* cohort,
-    AbstractPropertyPage* page, MessageHandler* message_handler, Timer* timer) {
+    bool should_replace_prior_result, bool require_prior_support,
+    StringPiece property_name, const PropertyCache* cache,
+    const PropertyCache::Cohort* cohort, AbstractPropertyPage* page,
+    MessageHandler* message_handler, Timer* timer) {
   // We can't do anything here if page is NULL, so bail out early.
   if (page == NULL) {
     return;
@@ -331,8 +332,8 @@ void WriteCriticalKeysToPropertyCache(
       return;
     }
   }
-  UpdateCriticalKeys(!should_replace_prior_result,
-                     new_keys, support_interval, critical_keys.get());
+  UpdateCriticalKeys(require_prior_support, new_keys, support_interval,
+                     critical_keys.get());
 
   PropertyCacheUpdateResult result = UpdateInPropertyCache(
       *critical_keys, cohort, property_name, false /* write_cohort */, page);
