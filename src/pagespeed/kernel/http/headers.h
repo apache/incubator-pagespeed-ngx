@@ -107,13 +107,19 @@ template<class Proto> class Headers {
                                         int names_size);
 
   // Removes all headers whose name is in |names|, which must be in
-  // string-insensitive sorted order.
-  static void RemoveFromHeaders(const StringPiece* names,
+  // string-insensitive sorted order.  Returns true if anything was
+  // removed.
+  static bool RemoveFromHeaders(const StringPiece* names,
                                 int names_size,
                                 protobuf::RepeatedPtrField<NameValue>* headers);
 
-  // Removes all headers whose name starts with prefix.
-  virtual void RemoveAllWithPrefix(const StringPiece& prefix);
+  // Removes all headers whose name starts with prefix.  Returns true if
+  // anything was removed.
+  virtual bool RemoveAllWithPrefix(const StringPiece& prefix);
+
+  // Removes any headers from this that are not in 'keep', considering both
+  // names and values.  Returns true if anything was removed.
+  virtual bool RemoveIfNotIn(const Headers& keep);
 
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.
@@ -149,8 +155,6 @@ template<class Proto> class Headers {
   scoped_ptr<Proto> proto_;
 
  private:
-  bool IsCommaSeparatedField(const StringPiece& name) const;
-
   // If name is a comma-separated field (above), then split value at commas,
   // and add name, val for each of the comma-separated values
   // (removing whitespace and commas).

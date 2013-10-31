@@ -781,6 +781,54 @@ TEST_F(ResponseHeadersTest, TestRemoveAllFromSortedArray) {
   EXPECT_FALSE(response_headers_.Lookup(HttpAttributes::kCacheControl, &vs));
 }
 
+TEST_F(ResponseHeadersTest, TestRemoveIfNotIn) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Set-Cookie: CG=US:CA:Mountain+View\r\n"
+                      "Set-Cookie: UA=chrome\r\n"
+                      "Set-Cookie: UA=chrome\r\n"  // kept: 2 in keep_set.
+                      "Set-Cookie: UA=chrome\r\n"  // pruned: bag will be empty.
+                      "Cache-Control: max-age=100, private, must-revalidate\r\n"
+                      "Set-Cookie: path=/\r\n"
+                      "Vary: User-Agent,User-Agent,User-Agent\r\n"  // keep 2/3
+                      "Set-Cookie: LA=1275937193\r\n"
+                      "\r\n"));
+  ResponseHeaders keep_set;
+  keep_set.Add(HttpAttributes::kSetCookie, "UA=chrome");
+  keep_set.Add(HttpAttributes::kSetCookie, "UA=chrome");
+  keep_set.Add(HttpAttributes::kSetCookie, "LA=1275937193");
+  keep_set.Add(HttpAttributes::kVary, "User-Agent, User-Agent");
+  keep_set.Add("cache-control", "max-age=100");  // case-insensitive.
+  keep_set.Add("CACHE-CONTROL", "must-revalidate");
+  keep_set.Add("not-in-original", "won't-be-added");
+  response_headers_.RemoveIfNotIn(keep_set);
+  ExpectSizes(5, 3);
+  EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                         "max-age=100"));
+  EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                         "must-revalidate"));
+  EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kSetCookie,
+                                         "LA=1275937193"));
+  EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kSetCookie,
+                                         "UA=chrome"));
+  EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kVary,
+                                         "User-Agent"));
+  EXPECT_FALSE(response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                          "private"));
+  EXPECT_FALSE(response_headers_.HasValue(HttpAttributes::kSetCookie,
+                                          "CG=US:CA:Mountain+View"));
+  EXPECT_FALSE(response_headers_.Has("Date"));
+  EXPECT_STREQ(
+      "HTTP/1.0 200 OK\r\n"
+      "Set-Cookie: UA=chrome\r\n"
+      "Set-Cookie: UA=chrome\r\n"  // kept: 2 in keep_set.
+      "Cache-Control: max-age=100, must-revalidate\r\n"
+      "Vary: User-Agent, User-Agent\r\n"  // note third 'User-Agent' is gone.
+      "Set-Cookie: LA=1275937193\r\n"
+      "\r\n",
+      response_headers_.ToString());
+}
+
 TEST_F(ResponseHeadersTest, TestReasonPhrase) {
   response_headers_.SetStatusAndReason(HttpStatus::kOK);
   EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
@@ -871,7 +919,8 @@ TEST_F(ResponseHeadersTest, TestUpdateFrom) {
   EXPECT_EQ(1, date_strings.size());
   EXPECT_EQ("Fri, 22 Apr 2011 19:49:59 GMT", *date_strings[0]);
   ConstStringStarVector set_cookie_strings;
-  EXPECT_TRUE(old_headers.Lookup("Set-Cookie", &set_cookie_strings));
+  EXPECT_TRUE(old_headers.Lookup(HttpAttributes::kSetCookie,
+                                 &set_cookie_strings));
   EXPECT_EQ(8, old_headers.NumAttributeNames());
 
   // Make sure protobuf is updated.

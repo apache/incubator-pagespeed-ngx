@@ -72,13 +72,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Returns true if the existing content-type header was changed.
   bool MergeContentType(const StringPiece& content_type);
 
-  // Remove headers by name and value.
+  // See headers.h for doc.
   virtual bool Remove(const StringPiece& name, const StringPiece& value);
-
-  // Remove all headers by name.
   virtual bool RemoveAll(const StringPiece& name);
-
-  // Remove all headers whose name is in |names|.
+  virtual bool RemoveAllWithPrefix(const StringPiece& prefix);
+  virtual bool RemoveIfNotIn(const Headers& that);
   virtual bool RemoveAllFromSortedArray(const StringPiece* names,
                                         int names_size);
 

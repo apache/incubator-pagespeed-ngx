@@ -18,6 +18,8 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <map>
+#include <utility>
 #include <vector>
 
 #include "base/logging.h"
@@ -73,7 +75,7 @@ bool RemoveCookieString(const StringPiece& cookie_name,
 
 // Helper that removes unneeded values from a headers proto array, without
 // changing the order of items kept.
-void RemoveUnneeded(const std::vector<bool>& needed,
+bool RemoveUnneeded(const std::vector<bool>& needed,
                     protobuf::RepeatedPtrField<NameValue>* headers) {
   CHECK_EQ(static_cast<size_t>(headers->size()), needed.size());
 
@@ -100,10 +102,12 @@ void RemoveUnneeded(const std::vector<bool>& needed,
     }
   }
 
+  bool ret = (size != out);
   while (size != out) {
     headers->RemoveLast();
     --size;
   }
+  return ret;
 }
 
 }  // namespace
@@ -206,8 +210,9 @@ template<class Proto> bool Headers<Proto>::HasValue(
   return false;
 }
 
-template<class Proto> bool Headers<Proto>::IsCommaSeparatedField(
-    const StringPiece& name) const {
+namespace {
+
+bool IsCommaSeparatedField(const StringPiece& name) {
   // TODO(nforman): Make this a complete list.  The list of header names
   // that are not safe to comma-split is at
   // http://src.chromium.org/viewvc/chrome/trunk/src/net/http/http_util.cc
@@ -221,6 +226,27 @@ template<class Proto> bool Headers<Proto>::IsCommaSeparatedField(
   }
 }
 
+// Takes a potentially comma-separated value list, and splits it into
+// a vector.  If the value is not comma-separatable, 'values' is
+// populated with the single value.
+void SplitValues(StringPiece name, StringPiece comma_separated_values,
+                 StringPieceVector* values) {
+  if (IsCommaSeparatedField(name)) {
+    SplitStringPieceToVector(comma_separated_values, ",", values, true);
+    if (values->empty()) {
+      values->push_back(comma_separated_values);
+    } else {
+      for (int i = 0, n = values->size(); i < n; ++i) {
+        TrimWhitespace(&((*values)[i]));
+      }
+    }
+  } else {
+    values->push_back(comma_separated_values);
+  }
+}
+
+}  // namespace
+
 template<class Proto> void Headers<Proto>::Add(
     const StringPiece& name, const StringPiece& value) {
   NameValue* name_value = proto_->add_header();
@@ -232,20 +258,10 @@ template<class Proto> void Headers<Proto>::Add(
 template<class Proto> void Headers<Proto>::AddToMap(
     const StringPiece& name, const StringPiece& value) const {
   if (map_.get() != NULL) {
-    if (IsCommaSeparatedField(name)) {
-      StringPieceVector split;
-      SplitStringPieceToVector(value, ",", &split, true);
-      if (split.size() > 0) {
-        for (int i = 0, n = split.size(); i < n; ++i) {
-          StringPiece val = split[i];
-          TrimWhitespace(&val);
-          map_->Add(name, val);
-        }
-      } else {
-        map_->Add(name, value);
-      }
-    } else {
-      map_->Add(name, value);
+    StringPieceVector split;
+    SplitValues(name, value, &split);
+    for (int i = 0, n = split.size(); i < n; ++i) {
+      map_->Add(name, split[i]);
     }
   }
 }
@@ -369,7 +385,7 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSortedArray(
   return removed_anything;
 }
 
-template<class Proto> void Headers<Proto>::RemoveFromHeaders(
+template<class Proto> bool Headers<Proto>::RemoveFromHeaders(
     const StringPiece* names, int names_size,
     protobuf::RepeatedPtrField<NameValue>* headers) {
   // Remove all headers that are slated for removal.
@@ -381,10 +397,10 @@ template<class Proto> void Headers<Proto>::RemoveFromHeaders(
     to_keep.push_back(!std::binary_search(
         names, names + names_size, headers->Get(i).name(), compare));
   }
-  RemoveUnneeded(to_keep, headers);
+  return RemoveUnneeded(to_keep, headers);
 }
 
-template<class Proto> void Headers<Proto>::RemoveAllWithPrefix(
+template<class Proto> bool Headers<Proto>::RemoveAllWithPrefix(
     const StringPiece& prefix) {
   protobuf::RepeatedPtrField<NameValue>* headers = proto_->mutable_header();
   std::vector<bool> to_keep;
@@ -393,9 +409,97 @@ template<class Proto> void Headers<Proto>::RemoveAllWithPrefix(
   for (int i = 0, n = headers->size(); i < n; ++i) {
     to_keep.push_back(!StringCaseStartsWith(headers->Get(i).name(), prefix));
   }
-  RemoveUnneeded(to_keep, headers);
+  bool ret = RemoveUnneeded(to_keep, headers);
+  if (ret) {
+    map_.reset(NULL);  // Map must be repopulated before next lookup operation.
+  }
+  return ret;
+}
 
-  map_.reset(NULL);  // Map must be repopulated before next lookup operation.
+template<class Proto> bool Headers<Proto>::RemoveIfNotIn(const Headers& keep) {
+  // There are two removal scenarios: removing every value for a header, and
+  // leaving some behind.  We don't use this->map_ to do this operation, but
+  // we must invalidate the map if we make any mutations.  However we do use
+  // keep.map_ via calls to keep.Lookup(name).
+  //
+  // Keep in mind also, that names may appear multiple times in the protobuf,
+  // each with multiple values.  Typically Set-Cookie appears multiple times
+  // with different values, and Cache-Control can appear one or more times, each
+  // with comma-separated values.
+
+  // First we loop through the protobuf, determining which elements to keep,
+  // and executing any partial removals.
+  std::vector<bool> to_keep;
+  bool ret = false;
+  typedef std::map<StringPiece, int> StringPieceBag;
+  typedef std::map<StringPiece, StringPieceBag> ValueBagMap;
+  ValueBagMap value_bag_map;
+
+  for (int a = 0, na = NumAttributes(); a < na; ++a) {
+    const GoogleString& name = Name(a);
+
+    // Use a bag to keep track of all the occurrences of 'name' in 'keep'.
+    // Note that we can encounter the same 'name' in multiple iterations of
+    // the loop and we only want to use each occurence in 'keep' once.  So
+    // we capture the occurrences in a name to bag that we collect as we
+    // iterate, rather than going back to 'keep' each time.
+    std::pair<ValueBagMap::iterator, bool> iter_found =
+        value_bag_map.insert(ValueBagMap::value_type(name, StringPieceBag()));
+    StringPieceBag& keep_value_bag = iter_found.first->second;
+    if (iter_found.second) {  // 1st time we encounter a name, populate the bag.
+      ConstStringStarVector keep_value_vector;
+      if (keep.Lookup(name, &keep_value_vector)) {
+        // Collect keep's values for name in a bag so we can do fast matches
+        // and prune the bag to avoid matching a value more than once.
+        for (int v = 0, nv = keep_value_vector.size(); v < nv; ++v) {
+          StringPiece value = *keep_value_vector[v];
+          int& value_count = keep_value_bag[value];
+          ++value_count;
+        }
+      }
+    }
+
+    bool needed = false;
+    if (!keep_value_bag.empty()) {
+      StringPieceVector this_values;
+      SplitValues(name, Value(a), &this_values);
+      bool partial = false;
+      int out = 0;
+      for (int in = 0, nv = this_values.size(); in < nv; ++in) {
+        StringPieceBag::iterator p = keep_value_bag.find(this_values[in]);
+        if (p != keep_value_bag.end()) {
+          int& value_count = p->second;
+          if (--value_count == 0) {
+            keep_value_bag.erase(p);
+          }
+          needed = true;
+          if (in != out) {
+            std::swap(this_values[in], this_values[out]);
+          }
+          ++out;
+        } else {
+          partial = true;
+        }
+      }
+      if (needed && partial) {
+        this_values.resize(out);
+        GoogleString new_value = JoinCollection(this_values, ", ");
+        proto_->mutable_header(a)->set_value(new_value);
+        ret = true;
+      }
+    }
+    to_keep.push_back(needed);
+  }
+
+  // Next we remove any protobuf entries with no matching values.
+  ret |= RemoveUnneeded(to_keep, proto_->mutable_header());
+
+  // Finally, if we did any mutations, clear the map_.  We didn't use this->map_
+  // to execute the removals, but we may have invalidated it.
+  if (ret) {
+    map_.reset(NULL);
+  }
+  return ret;
 }
 
 template<class Proto> void Headers<Proto>::Replace(

@@ -683,7 +683,15 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   header add Issue809 Issue809Value
   header add Cache-Control max-age=60 early
 
-  ModPagespeedEnableFilters rewrite_images
+  # The tests using this vhost scan for css-combine URLs and will not find
+  # them if the combined css file is then css-minified.  So we explicitly
+  # disable these and other distracting filters for easy output scanning.
+  #
+  # It is less effective to rely on 'level passthrough' because we might
+  # still inherit explicitly-enabled filters from the root configuration in
+  # some passes through system_test.sh.
+  ModPagespeedDisableFilters rewrite_css,add_instrumentation,flatten_css_imports
+  ModPagespeedEnableFilters rewrite_images,combine_css
   ModPagespeedCriticalImagesBeaconEnabled false
   ModPagespeedModifyCachingHeaders on
 </VirtualHost>

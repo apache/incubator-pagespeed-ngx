@@ -25,19 +25,18 @@
 
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 
-#include <cstdio>
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -47,11 +46,11 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
 class HtmlElement;
-class OutputResource;
 class UrlSegmentEncoder;
 
 namespace {
@@ -82,6 +81,13 @@ class TestCombineFilter : public RewriteFilter {
     explicit TestCombiner(RewriteDriver* driver, RewriteFilter* filter)
         : ResourceCombiner(driver, kTestCombinerExt, filter) {
     };
+
+    // Provides the test access to the protected method so we can
+    // directly test combining without setting up a complete filter
+    // with a RewriteContext.
+    OutputResourcePtr TestCombine(MessageHandler* handler) {
+      return Combine(handler);
+    }
 
    protected:
     virtual bool WritePiece(int index, const Resource* input,
@@ -163,6 +169,14 @@ class ResourceCombinerTest : public RewriteTestBase {
   // Create a resource with given data and TTL
   void MockResource(const char* rel_path, const StringPiece& data, int64 ttl) {
     SetResponseWithDefaultHeaders(rel_path, kContentTypeText, data, ttl);
+  }
+
+  // Adds a new response to header to the mock fetch system for a relative URL.
+  // TODO(jmarantz): standardize kTestDomain better so this can be
+  // usefully promoted to RewriteTestBase.
+  void AddHeader(StringPiece relative_url, StringPiece name,
+                 StringPiece value) {
+    AddToResponse(StrCat(kTestDomain, relative_url), name, value);
   }
 
   enum FetchFlags {
@@ -267,6 +281,16 @@ class ResourceCombinerTest : public RewriteTestBase {
     return partnership_->AddResourceNoFetch(resource, handler).value;
   }
 
+  void StartPartnership() {
+    EXPECT_EQ(0, partnership_->num_urls());
+    EXPECT_TRUE(AddResource(kTestPiece1, &message_handler_));
+    EXPECT_EQ(1, partnership_->num_urls());
+    EXPECT_TRUE(AddResource(kTestPiece2, &message_handler_));
+    EXPECT_EQ(2, partnership_->num_urls());
+    EXPECT_TRUE(AddResource(kTestPiece3, &message_handler_));
+    EXPECT_EQ("piece1.tcc+piece2.tcc+piece3.tcc", partnership_->UrlSafeId());
+  }
+
   TestCombineFilter* filter_;  // owned by the rewrite_driver_.
   TestCombineFilter::TestCombiner* partnership_;  // owned by the filter_
 };
@@ -275,16 +299,7 @@ TEST_F(ResourceCombinerTest, TestPartnershipBasic) {
   // Make sure we're actually combining names and filling in the
   // data arrays if everything is available.
 
-  printf("driver base url is %s\n", rewrite_driver()->base_url().spec_c_str());
-
-  EXPECT_EQ(0, partnership_->num_urls());
-  EXPECT_TRUE(AddResource(kTestPiece1, &message_handler_));
-  EXPECT_EQ(1, partnership_->num_urls());
-  EXPECT_TRUE(AddResource(kTestPiece2, &message_handler_));
-  EXPECT_EQ(2, partnership_->num_urls());
-  EXPECT_TRUE(AddResource(kTestPiece3, &message_handler_));
-  EXPECT_EQ("piece1.tcc+piece2.tcc+piece3.tcc", partnership_->UrlSafeId());
-
+  StartPartnership();
   VerifyUrlCount(3);
   VerifyResource(0, kTestPiece1);
   VerifyResource(1, kTestPiece2);
@@ -517,6 +532,22 @@ TEST_F(ResourceCombinerTest, TestMaxUrlOverflow2) {
   VerifyResource(0, kPathPiece);
   VerifyResource(1, kTestPiece1);
   VerifyLengthLimits();
+}
+
+TEST_F(ResourceCombinerTest, TestIntersectingHeaders) {
+  AddHeader(kTestPiece1, "rock", "gibralter");
+  AddHeader(kTestPiece1, "flake", "snow");
+  AddHeader(kTestPiece2, "rock", "gibralter");
+  AddHeader(kTestPiece2, "flake", "ash");
+  AddHeader(kTestPiece3, "rock", "gibralter");
+  AddHeader(kTestPiece2, "flake", "dandruff");
+
+  StartPartnership();
+  OutputResourcePtr output(partnership_->TestCombine(&message_handler_));
+  const ResponseHeaders& headers = *output->response_headers();
+  EXPECT_TRUE(headers.Has("rock"));
+  EXPECT_TRUE(headers.HasValue("rock", "gibralter"));
+  EXPECT_FALSE(headers.Has("flake"));
 }
 
 }  // namespace net_instaweb

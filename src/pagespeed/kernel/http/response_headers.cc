@@ -344,6 +344,22 @@ bool ResponseHeaders::RemoveAll(const StringPiece& name) {
   return false;
 }
 
+bool ResponseHeaders::RemoveAllWithPrefix(const StringPiece& prefix) {
+  if (Headers<HttpResponseHeaders>::RemoveAllWithPrefix(prefix)) {
+    cache_fields_dirty_ = true;
+    return true;
+  }
+  return false;
+}
+
+bool ResponseHeaders::RemoveIfNotIn(const Headers& headers) {
+  if (Headers<HttpResponseHeaders>::RemoveIfNotIn(headers)) {
+    cache_fields_dirty_ = true;
+    return true;
+  }
+  return false;
+}
+
 bool ResponseHeaders::RemoveAllFromSortedArray(
     const StringPiece* names, int names_size) {
   if (Headers<HttpResponseHeaders>::RemoveAllFromSortedArray(
@@ -490,8 +506,7 @@ void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
   proto->CopyFrom(*proto_.get());
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
   StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
-  return RemoveFromHeaders(&names_to_sanitize[0],
-                           names_to_sanitize.size(), headers);
+  RemoveFromHeaders(&names_to_sanitize[0], names_to_sanitize.size(), headers);
 }
 
 bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {

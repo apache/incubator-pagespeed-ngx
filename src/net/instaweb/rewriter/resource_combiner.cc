@@ -44,6 +44,7 @@
 #include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
@@ -253,6 +254,20 @@ bool ResourceCombiner::WriteCombination(
     written = WritePiece(i, input.get(), combination.get(), &writer, handler);
   }
   if (written) {
+    // Intersect the response headers from each input.
+    ResponseHeaders* output_headers = combination->response_headers();
+    DCHECK_EQ(0, output_headers->NumAttributes());
+
+    // We don't copy over all the resources from [0] because we don't
+    // want the input cache-control.  The output cache-control via
+    // RewriteDriver::Write when it calls
+    // ServerContext::SetDefaultLongCacheHeadersWithCharset.
+    server_context_->MergeNonCachingResponseHeaders(
+        *combine_resources[0]->response_headers(), output_headers);
+    for (int i = 1, n = combine_resources.size(); i < n; ++i) {
+      output_headers->RemoveIfNotIn(*combine_resources[i]->response_headers());
+    }
+
     // TODO(morlovich): Fix combiners to deal with charsets.
     written =
         rewrite_driver_->Write(

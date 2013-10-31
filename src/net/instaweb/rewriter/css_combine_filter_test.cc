@@ -48,6 +48,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
@@ -469,6 +470,22 @@ class CssCombineFilterTest : public RewriteTestBase {
                MultiUrl("a.css", "b.css"), "css");
     ASSERT_TRUE(FetchResourceUrl(combined_url, &content));
     EXPECT_EQ(StrCat(kACssBody, kBCssBody), content);
+  }
+
+  void AddHeader(StringPiece resource, StringPiece name, StringPiece value) {
+    AddToResponse(StrCat(kDomain, resource), name, value);
+  }
+
+  GoogleString SetupReconstructOriginHeaders() {
+    SetHtmlMimetype();
+    SetupCssResources("a.css", "b.css");
+    AddHeader("a.css", "in_all_3", "abc");
+    AddHeader("b.css", "in_all_3", "abc");
+    AddHeader("c.css", "in_all_3", "abc");
+    AddHeader("b.css", "in_b", "b");
+    AddHeader("c.css", "in_c", "c");
+    return Encode(kDomain, RewriteOptions::kCssCombinerId, "0",
+                  MultiUrl("a.css", "b.css", "c.css"), "css");
   }
 
   Variable* css_combine_opportunities_;
@@ -1809,6 +1826,58 @@ TEST_F(CssCombineMaxSizeTest, TwoFilesPlusOneByte) {
   const int num_output_files = 3;
   const int num_files_in_output[num_output_files] = {2, 2, 1};
   CombineAndCheck(kYellow, max_bytes, num_output_files, num_files_in_output);
+}
+
+TEST_F(CssCombineMaxSizeTest, ReconstructedResourceExpectedHeaders) {
+  GoogleString url = SetupReconstructOriginHeaders();
+  ResponseHeaders headers;
+  GoogleString content;
+  EXPECT_TRUE(FetchResourceUrl(url, &content, &headers));
+  EXPECT_TRUE(headers.HasValue("in_all_3", "abc"));
+  EXPECT_FALSE(headers.Has("in_b"));
+  EXPECT_FALSE(headers.Has("in_c"));
+  EXPECT_TRUE(headers.IsProxyCacheable());
+  EXPECT_EQ(timer()->NowMs() + ServerContext::kGeneratedMaxAgeMs,
+            headers.CacheExpirationTimeMs());
+  EXPECT_STREQ(
+      "HTTP/1.1 200 OK\r\n"
+      "in_all_3: abc\r\n"
+      "Content-Type: text/css\r\n"
+      "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Expires: Wed, 02 Feb 2011 18:51:26 GMT\r\n"
+      "Cache-Control: max-age=31536000\r\n"
+      "Etag: W/\"0\"\r\n"
+      "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "\r\n",
+      headers.ToString());
+}
+
+TEST_F(CssCombineMaxSizeTest, ReconstructedResourceExpectedHeadersNoStore) {
+  GoogleString url = SetupReconstructOriginHeaders();
+  // Contrive a case where someone requests a
+  // .pagespeed. resource which we don't have in cache, and we go to
+  // reconstruct it and once we fetch it, one of the inputs has
+  // Cache-Control: no-store.  We don't expect this to happen normally.
+  // This is only a corner case where someone has just converted a resource
+  // from public to private and we haven't updated yet.
+  AddHeader("b.css", HttpAttributes::kCacheControl, HttpAttributes::kNoStore);
+  ResponseHeaders headers;
+  GoogleString content;
+  EXPECT_TRUE(FetchResourceUrl(url, &content, &headers));
+  EXPECT_TRUE(headers.HasValue("in_all_3", "abc"));
+  EXPECT_FALSE(headers.Has("in_b"));
+  EXPECT_FALSE(headers.Has("in_c"));
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_STREQ(
+      "HTTP/1.1 200 OK\r\n"
+      "in_all_3: abc\r\n"
+      "Content-Type: text/css\r\n"
+      "Etag: W/\"0\"\r\n"  // TODO(jmarantz): is this etag right?
+      "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Cache-Control: max-age=0,no-cache,no-store\r\n\r\n",
+      headers.ToString());
 }
 
 class CollapseWhitespaceGeneralTest : public RewriteTestBase {
