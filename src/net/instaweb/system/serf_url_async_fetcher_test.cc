@@ -650,18 +650,11 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
 // when requested.
 TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
   serf_url_async_fetcher_->set_track_original_content_length(true);
-  RequestContextPtr ctx(
-      RequestContext::NewTestRequestContext(thread_system_.get()));
-  StringAsyncFetch async_fetch(ctx);
-  serf_url_async_fetcher_->Fetch(urls_[kModpagespeedSite], &message_handler_,
-                                 &async_fetch);
-  while (!async_fetch.done()) {
-    YieldToThread();
-    serf_url_async_fetcher_->Poll(kThreadedPollMs);
-  }
-  const char* ocl_header = async_fetch.response_headers()->Lookup1(
+  StartFetch(kModpagespeedSite);
+  WaitTillDone(kModpagespeedSite, kModpagespeedSite, kMaxMs);
+  const char* ocl_header = response_headers(kModpagespeedSite)->Lookup1(
       HttpAttributes::kXOriginalContentLength);
-  EXPECT_TRUE(ocl_header != NULL);
+  ASSERT_TRUE(ocl_header != NULL);
   int bytes_count =
       statistics_->GetVariable(SerfStats::kSerfFetchByteCount)->Get();
   int64 ocl_value;
