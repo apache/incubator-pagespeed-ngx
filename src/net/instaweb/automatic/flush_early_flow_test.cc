@@ -437,7 +437,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
 
     // Get rewritten html.
-    if (defer_js_enabled & !ua_only_for_flush_early_html) {
+    if (defer_js_enabled && !ua_only_for_flush_early_html) {
       if (lazyload_enabled) {
         rewritten_html = RewrittenHtmlWithDeferJs(
             split_html_enabled, StrCat(

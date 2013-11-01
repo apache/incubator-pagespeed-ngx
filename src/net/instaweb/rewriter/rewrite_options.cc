@@ -480,7 +480,7 @@ const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
 
 const int64 RewriteOptions::kDefaultMaxCombinedCssBytes = -1;  // No size limit
 // Setting the limit on combined js resource to -1 will bypass the size check.
-const int64 RewriteOptions::kDefaultMaxCombinedJsBytes = -1;
+const int64 RewriteOptions::kDefaultMaxCombinedJsBytes = 90 * 1024;
 const int64 RewriteOptions::kDefaultExperimentCookieDurationMs =
     Timer::kWeekMs;
 const int64 RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs =
@@ -537,10 +537,11 @@ namespace {
 const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
+  RewriteOptions::kCombineJavascript,
   RewriteOptions::kConvertGifToPng,                // rewrite_images
   RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
   RewriteOptions::kConvertMetaTags,
-  RewriteOptions::kConvertPngToJpeg,
+  RewriteOptions::kConvertPngToJpeg,               // rewrite_images
   RewriteOptions::kExtendCacheCss,                 // extend_cache
   RewriteOptions::kExtendCacheImages,              // extend_cache
   RewriteOptions::kExtendCacheScripts,             // extend_cache
@@ -567,10 +568,14 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
   RewriteOptions::kDebug,
+  RewriteOptions::kDeferIframe,
+  RewriteOptions::kDeferJavascript,
   RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
+  RewriteOptions::kLazyloadImages,
   RewriteOptions::kLeftTrimUrls,
   RewriteOptions::kMakeGoogleAnalyticsAsync,
+  RewriteOptions::kPrioritizeCriticalCss,
   RewriteOptions::kResizeToRenderedImageDimensions,
   RewriteOptions::kRewriteDomains,
   RewriteOptions::kSpriteImages,
@@ -581,15 +586,11 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kCachePartialHtml,
   RewriteOptions::kCanonicalizeJavascriptLibraries,
   RewriteOptions::kComputeVisibleText,  // internal, enabled conditionally
-  RewriteOptions::kDeferIframe,
-  RewriteOptions::kDeferJavascript,
   RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kFixReflows,
-  RewriteOptions::kLazyloadImages,
-  RewriteOptions::kPrioritizeCriticalCss,
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
   RewriteOptions::kSplitHtmlHelper,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
@@ -2473,6 +2474,7 @@ bool RewriteOptions::AddByNameToFilterSet(
       // Every filter here needs to be listed in kCoreFilterSet as well.
       set->Insert(kConvertGifToPng);
       set->Insert(kConvertJpegToProgressive);
+      set->Insert(kConvertPngToJpeg);
       set->Insert(kInlineImages);
       set->Insert(kJpegSubsampling);
       set->Insert(kRecompressJpeg);

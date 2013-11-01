@@ -116,6 +116,8 @@
     # ModPagespeedJsInlineMaxBytes         2048
     # ModPagespeedCssOutlineMinBytes       3000
     # ModPagespeedJsOutlineMinBytes        3000
+    # ModPagespeedMaxCombinedCssBytes      -1
+    # ModPagespeedMaxCombinedJsBytes       92160
 
     # Limit the number of inodes in the file cache. Set to 0 for no limit.
     # The default value if this paramater is not specified is 0 (no limit).

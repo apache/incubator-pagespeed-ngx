@@ -387,7 +387,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   EXPECT_TRUE(options->enabled());
   CheckExtendCache(options.get(), true);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferJavascript));
 
   // Now explicitly enable a filter, which should disable others.
   options.reset(GetCustomOptions(
@@ -396,7 +396,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   ASSERT_TRUE(options.get() != NULL);
   CheckExtendCache(options.get(), true);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDeferJavascript));
 
   // Now put a request-header in, turning off pagespeed.  request-headers get
   // priority over query-params.
