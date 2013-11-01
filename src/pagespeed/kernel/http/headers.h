@@ -84,7 +84,7 @@ template<class Proto> class Headers {
   void RemoveCookie(const StringPiece& cookie_name);
 
   // Adds a new header, even if a header with the 'name' exists already.
-  virtual void Add(const StringPiece& name, const StringPiece& value);
+  void Add(const StringPiece& name, const StringPiece& value);
 
   // Remove headers by name and value. Return true if anything was removed.
   // Note: If the original headers were:
@@ -96,15 +96,15 @@ template<class Proto> class Headers {
   // and -
   // attr: val1
   // attr: val3 (otherwise).
-  virtual bool Remove(const StringPiece& name, const StringPiece& value);
+  bool Remove(const StringPiece& name, const StringPiece& value);
 
   // Removes all headers by name.  Return true if anything was removed.
-  virtual bool RemoveAll(const StringPiece& name);
+  bool RemoveAll(const StringPiece& name);
 
   // Removes all headers whose name is in |names|, which must be in
   // case-insensitive sorted order.
-  virtual bool RemoveAllFromSortedArray(const StringPiece* names,
-                                        int names_size);
+  bool RemoveAllFromSortedArray(const StringPiece* names,
+                                int names_size);
 
   // Removes all headers whose name is in |names|, which must be in
   // string-insensitive sorted order.  Returns true if anything was
@@ -115,11 +115,11 @@ template<class Proto> class Headers {
 
   // Removes all headers whose name starts with prefix.  Returns true if
   // anything was removed.
-  virtual bool RemoveAllWithPrefix(const StringPiece& prefix);
+  bool RemoveAllWithPrefix(const StringPiece& prefix);
 
   // Removes any headers from this that are not in 'keep', considering both
   // names and values.  Returns true if anything was removed.
-  virtual bool RemoveIfNotIn(const Headers& keep);
+  bool RemoveIfNotIn(const Headers& keep);
 
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.
@@ -145,6 +145,10 @@ template<class Proto> class Headers {
 
  protected:
   void PopulateMap() const;  // const is a lie, mutates map_.
+
+  // Called whenever a mutation occurrs.  Subclasses may override to update
+  // any local copies of data.
+  virtual void UpdateHook();
 
   // We have two represenations for the name/value pairs.  The
   // HttpResponseHeader protobuf contains a simple string-pair vector, but

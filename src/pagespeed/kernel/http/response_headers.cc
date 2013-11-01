@@ -256,11 +256,6 @@ bool ResponseHeaders::is_implicitly_cacheable() const {
   return proto_->is_implicitly_cacheable();
 }
 
-void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
-  Headers<HttpResponseHeaders>::Add(name, value);
-  cache_fields_dirty_ = true;
-}
-
 // Return true if Content type field changed.
 // If there's already a content type specified, leave it.
 // If there's already a mime type or a charset specified,
@@ -325,55 +320,6 @@ bool ResponseHeaders::MergeContentType(const StringPiece& content_type) {
     cache_fields_dirty_ = true;
   }
   return ret;
-}
-
-bool ResponseHeaders::Remove(const StringPiece& name,
-                             const StringPiece& value) {
-  if (Headers<HttpResponseHeaders>::Remove(name, value)) {
-    cache_fields_dirty_ = true;
-    return true;
-  }
-  return false;
-}
-
-bool ResponseHeaders::RemoveAll(const StringPiece& name) {
-  if (Headers<HttpResponseHeaders>::RemoveAll(name)) {
-    cache_fields_dirty_ = true;
-    return true;
-  }
-  return false;
-}
-
-bool ResponseHeaders::RemoveAllWithPrefix(const StringPiece& prefix) {
-  if (Headers<HttpResponseHeaders>::RemoveAllWithPrefix(prefix)) {
-    cache_fields_dirty_ = true;
-    return true;
-  }
-  return false;
-}
-
-bool ResponseHeaders::RemoveIfNotIn(const Headers& headers) {
-  if (Headers<HttpResponseHeaders>::RemoveIfNotIn(headers)) {
-    cache_fields_dirty_ = true;
-    return true;
-  }
-  return false;
-}
-
-bool ResponseHeaders::RemoveAllFromSortedArray(
-    const StringPiece* names, int names_size) {
-  if (Headers<HttpResponseHeaders>::RemoveAllFromSortedArray(
-          names, names_size)) {
-    cache_fields_dirty_ = true;
-    return true;
-  }
-  return false;
-}
-
-void ResponseHeaders::Replace(
-    const StringPiece& name, const StringPiece& value) {
-  cache_fields_dirty_ = true;
-  Headers<HttpResponseHeaders>::Replace(name, value);
 }
 
 void ResponseHeaders::UpdateFrom(const Headers<HttpResponseHeaders>& other) {
@@ -1024,6 +970,10 @@ bool ResponseHeaders::HasCookie(StringPiece name,
     }
   }
   return has_cookie;
+}
+
+void ResponseHeaders::UpdateHook() {
+  cache_fields_dirty_ = true;
 }
 
 }  // namespace net_instaweb

@@ -144,6 +144,18 @@ class ResponseHeadersTest : public testing::Test {
     EXPECT_EQ(empty_response_headers.ToString(), response_headers_.ToString());
   }
 
+  // Wrapper method to expose the cache-dirty bit so we can test to
+  // ensure it gets set on mutations.
+  bool ResponseCachingDirty() const {
+    return response_headers_.cache_fields_dirty_;
+  }
+
+  template<class Proto>
+  void RemoveIfNotInOverrideWrapper(const Headers<Proto>& keep,
+                                    Headers<Proto>* headers) {
+    headers->RemoveIfNotIn(keep);
+  }
+
   GoogleMessageHandler message_handler_;
   ResponseHeaders response_headers_;
   ResponseHeadersParser parser_;
@@ -801,7 +813,10 @@ TEST_F(ResponseHeadersTest, TestRemoveIfNotIn) {
   keep_set.Add("cache-control", "max-age=100");  // case-insensitive.
   keep_set.Add("CACHE-CONTROL", "must-revalidate");
   keep_set.Add("not-in-original", "won't-be-added");
-  response_headers_.RemoveIfNotIn(keep_set);
+  response_headers_.ComputeCaching();
+  EXPECT_FALSE(ResponseCachingDirty());
+  RemoveIfNotInOverrideWrapper(keep_set, &response_headers_);
+  EXPECT_TRUE(ResponseCachingDirty());
   ExpectSizes(5, 3);
   EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kCacheControl,
                                          "max-age=100"));

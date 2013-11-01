@@ -65,24 +65,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   void CopyFrom(const ResponseHeaders& other);
 
-  // Add a new header.
-  virtual void Add(const StringPiece& name, const StringPiece& value);
-
   // Merge the new content_type with what is already in the headers.
   // Returns true if the existing content-type header was changed.
   bool MergeContentType(const StringPiece& content_type);
-
-  // See headers.h for doc.
-  virtual bool Remove(const StringPiece& name, const StringPiece& value);
-  virtual bool RemoveAll(const StringPiece& name);
-  virtual bool RemoveAllWithPrefix(const StringPiece& prefix);
-  virtual bool RemoveIfNotIn(const Headers& that);
-  virtual bool RemoveAllFromSortedArray(const StringPiece* names,
-                                        int names_size);
-
-  // Similar to RemoveAll followed by Add.  Note that the attribute
-  // order may be changed as a side effect of this operation.
-  virtual void Replace(const StringPiece& name, const StringPiece& value);
 
   // Merge headers. Replaces all headers specified both here and in
   // other with the version in other. Useful for updating headers
@@ -321,6 +306,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // It is a limitation of this API that a cookie value of "name=value;name" is
   // indistinguishable from a cookie value of "name=value".
   bool HasCookie(StringPiece name, StringPieceVector* values) const;
+
+ protected:
+  virtual void UpdateHook();
 
  private:
   // Parse the original and fresh content types, and add a new header based

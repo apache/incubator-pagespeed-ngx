@@ -253,6 +253,7 @@ template<class Proto> void Headers<Proto>::Add(
   name_value->set_name(name.data(), name.size());
   name_value->set_value(value.data(), value.size());
   AddToMap(name, value);
+  UpdateHook();
 }
 
 template<class Proto> void Headers<Proto>::AddToMap(
@@ -342,6 +343,7 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
           Add(name, new_vals[i]);
         }
       }
+      UpdateHook();
       return true;
     }
   }
@@ -380,6 +382,7 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSortedArray(
     // Instead, we call this helper, which re-implements StringMultiMap
     // functionality in the protobuf.
     RemoveFromHeaders(names, names_size, headers);
+    UpdateHook();
   }
 
   return removed_anything;
@@ -412,6 +415,7 @@ template<class Proto> bool Headers<Proto>::RemoveAllWithPrefix(
   bool ret = RemoveUnneeded(to_keep, headers);
   if (ret) {
     map_.reset(NULL);  // Map must be repopulated before next lookup operation.
+    UpdateHook();
   }
   return ret;
 }
@@ -498,6 +502,7 @@ template<class Proto> bool Headers<Proto>::RemoveIfNotIn(const Headers& keep) {
   // to execute the removals, but we may have invalidated it.
   if (ret) {
     map_.reset(NULL);
+    UpdateHook();
   }
   return ret;
 }
@@ -561,6 +566,10 @@ template<class Proto> bool Headers<Proto>::WriteAsHttp(
 template<class Proto>
 void Headers<Proto>::CopyToProto(Proto* proto) {
   proto->CopyFrom(*proto_);
+}
+
+template<class Proto>
+void Headers<Proto>::UpdateHook() {
 }
 
 // Explicit template class instantiation.
