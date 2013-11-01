@@ -129,6 +129,7 @@ class RewriteOptions {
     kHandleNoscriptRedirect,
     kHtmlWriterFilter,
     kInlineCss,
+    kInlineGoogleFontCss,
     kInlineImages,
     kInlineImportToLink,
     kInlineJavascript,
@@ -450,6 +451,7 @@ class RewriteOptions {
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
   static const char kCssInlineId[];
+  static const char kGoogleFontCssInlineId[];
   static const char kImageCombineId[];
   static const char kImageCompressionId[];
   static const char kInPlaceRewriteId[];

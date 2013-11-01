@@ -56,6 +56,11 @@ class InlineRewriteContext : public RewriteContext {
                             const StringPiece& text,
                             HtmlElement* element) = 0;
 
+  // Subclasses of InlineRewriteContext may override this to customize
+  // resource creation. Default version just uses
+  // CommonFilter::CreateInputResource().
+  // url is permitted to be NULL.
+  virtual ResourcePtr CreateResource(const char* url);
 
   // InlineRewriteContext takes care of these methods from RewriteContext;
   virtual bool Partition(OutputPartitions* partitions,

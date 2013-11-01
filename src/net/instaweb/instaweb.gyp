@@ -1162,6 +1162,7 @@
         'rewriter/flush_early_content_writer_filter.cc',
         'rewriter/flush_html_filter.cc',
         'rewriter/google_analytics_filter.cc',
+        'rewriter/google_font_css_inline_filter.cc',
         'rewriter/google_font_service_input_resource.cc',
         'rewriter/handle_noscript_redirect_filter.cc',
         'rewriter/image_rewrite_filter.cc',

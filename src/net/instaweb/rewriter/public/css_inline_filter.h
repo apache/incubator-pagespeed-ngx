@@ -46,17 +46,26 @@ class CssInlineFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "InlineCss"; }
 
+ protected:
+  // Changes filter id code (which shows up in cache keys and
+  // .pagespeed.id. URLs). Expects id to be a literal.
+  void set_id(const char* id) { id_ = id; }
+
+  // Delegated from InlineRewriteContext::CreateResource --- see there
+  // for semantics.
+  virtual ResourcePtr CreateResource(const char* url);
+
  private:
   class Context;
   friend class Context;
 
-  bool ContainsNonStandardAttributes(const HtmlElement* element);
   bool ShouldInline(const ResourcePtr& resource,
                     const StringPiece& attrs_attribute) const;
   void RenderInline(const ResourcePtr& resource, const CachedResult& cached,
                     const GoogleUrl& base_url, const StringPiece& text,
                     HtmlElement* element);
 
+  const char* id_;  // filter ID code.
   const size_t size_threshold_bytes_;
 
   GoogleString domain_;

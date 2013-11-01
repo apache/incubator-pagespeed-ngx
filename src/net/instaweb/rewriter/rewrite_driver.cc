@@ -87,6 +87,7 @@
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
+#include "net/instaweb/rewriter/public/google_font_css_inline_filter.h"
 #include "net/instaweb/rewriter/public/handle_noscript_redirect_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
@@ -808,6 +809,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   DedupInlinedImagesFilter::InitStats(statistics);
   DomainRewriteFilter::InitStats(statistics);
   GoogleAnalyticsFilter::InitStats(statistics);
+  GoogleFontCssInlineFilter::InitStats(statistics);
   ImageCombineFilter::InitStats(statistics);
   ImageRewriteFilter::InitStats(statistics);
   InPlaceRewriteContext::InitStats(statistics);
@@ -1045,6 +1047,10 @@ void RewriteDriver::AddPreRenderFilters() {
     // run before we decide what counts as "small".
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssInlineFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kInlineGoogleFontCss)) {
+    // Inline small Google Font Service CSS files.
+    AppendOwnedPreRenderFilter(new GoogleFontCssInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.

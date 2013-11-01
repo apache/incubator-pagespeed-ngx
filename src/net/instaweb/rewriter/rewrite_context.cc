@@ -1456,9 +1456,9 @@ void RewriteContext::SetPartitionKey() {
   // slashes.  We want the FileCache hierarchies to reflect the URL
   // hierarchies if possible.  So we use a dummy URL of "" in our
   // url-list for now.
-  StringVector urls;
+  StringVector url_keys;
   const Hasher* hasher = FindServerContext()->lock_hasher();
-  GoogleString url;
+  GoogleString url_key;
   GoogleString signature = hasher->Hash(Options()->signature());
   GoogleString suffix = CacheKeySuffix();
 
@@ -1467,16 +1467,18 @@ void RewriteContext::SetPartitionKey() {
     // image dimension will be placed ahead of the URL.  However,
     // in the cache context, we want to put it at the end, so
     // put this encoding right before any context-specific suffix.
-    urls.push_back("");
+    url_keys.push_back("");
     GoogleString encoding;
-    encoder()->Encode(urls, resource_context_.get(), &encoding);
+    encoder()->Encode(url_keys, resource_context_.get(), &encoding);
     StrAppend(&suffix, encoding, "@",
               UserAgentCacheKey(resource_context_.get()), "_",
               CacheKeySuffix());
 
-    url = slot(0)->resource()->url();
-    if (IsDataUrl(url)) {
-      url = HashSplit(hasher, url);
+    url_key = slot(0)->resource()->cache_key();
+    // TODO(morlovich): What this is really trying to ask is whether the
+    // cache key is long and lacking natural /-separated structure.
+    if (IsDataUrl(url_key)) {
+      url_key = HashSplit(hasher, url_key);
     }
   } else if (num_slots() == 0) {
     // Ideally we should not be writing cache entries for 0-slot
@@ -1491,19 +1493,19 @@ void RewriteContext::SetPartitionKey() {
     // TODO(morlovich): Maksim has a fix in progress which will
     // eliminate this case.
     suffix.clear();
-    url = "empty";
+    url_key = "empty";
   } else {
     for (int i = 0, n = num_slots(); i < n; ++i) {
       ResourcePtr resource(slot(i)->resource());
-      urls.push_back(resource->url());
+      url_keys.push_back(resource->cache_key());
     }
-    encoder()->Encode(urls, resource_context_.get(), &url);
-    url = HashSplit(hasher, url);
+    encoder()->Encode(url_keys, resource_context_.get(), &url_key);
+    url_key = HashSplit(hasher, url_key);
   }
 
   partition_key_ = StrCat(ServerContext::kCacheKeyResourceNamePrefix,
                           id(), "_", signature, "/",
-                          url, "@", suffix);
+                          url_key, "@", suffix);
 }
 
 void RewriteContext::AddRecheckDependency() {

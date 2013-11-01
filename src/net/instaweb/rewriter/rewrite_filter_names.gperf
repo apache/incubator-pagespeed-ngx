@@ -64,6 +64,7 @@ struct FilterMap {
 "flush_subresources",                RewriteOptions::kFlushSubresources
 "in_place_optimize_for_browser",     RewriteOptions::kInPlaceOptimizeForBrowser
 "inline_css",                        RewriteOptions::kInlineCss
+"inline_google_font_css",            RewriteOptions::kInlineGoogleFontCss
 "inline_images",                     RewriteOptions::kInlineImages
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink
 "inline_javascript",                 RewriteOptions::kInlineJavascript

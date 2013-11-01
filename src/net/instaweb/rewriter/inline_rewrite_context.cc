@@ -46,8 +46,7 @@ InlineRewriteContext::~InlineRewriteContext() {
 
 bool InlineRewriteContext::StartInlining() {
   RewriteDriver* driver = filter_->driver();
-  ResourcePtr input_resource(filter_->CreateInputResource(
-      src_->DecodedValueOrNull()));
+  ResourcePtr input_resource(CreateResource(src_->DecodedValueOrNull()));
   if (input_resource.get() != NULL) {
     ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
     AddSlot(slot);
@@ -57,6 +56,10 @@ bool InlineRewriteContext::StartInlining() {
     delete this;
     return false;
   }
+}
+
+ResourcePtr InlineRewriteContext::CreateResource(const char* url) {
+  return filter_->CreateInputResource(url);
 }
 
 bool InlineRewriteContext::Partition(OutputPartitions* partitions,

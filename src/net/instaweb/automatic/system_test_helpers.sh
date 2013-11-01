@@ -91,7 +91,7 @@ mkdir -p $TEMPDIR || exit 1
 export WGETRC=$TEMPDIR/wgetrc
 # Use a Chrome User-Agent, so that we get real responses (including compression)
 cat > $WGETRC <<EOF
-user_agent = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0"
+user_agent = Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0
 EOF
 
 HOSTNAME=$1

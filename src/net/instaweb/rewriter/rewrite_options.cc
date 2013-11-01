@@ -334,6 +334,7 @@ const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
 const char RewriteOptions::kCssImportFlattenerId[] = "if";
 const char RewriteOptions::kCssInlineId[] = "ci";
+const char RewriteOptions::kGoogleFontCssInlineId[] = "gf";
 const char RewriteOptions::kImageCombineId[] = "is";
 const char RewriteOptions::kImageCompressionId[] = "ic";
 const char RewriteOptions::kInPlaceRewriteId[] = "aj";  // Comes from ajax.
@@ -710,6 +711,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "hw", "Flushes html" },
   { RewriteOptions::kInlineCss,
     RewriteOptions::kCssInlineId, "Inline Css" },
+  { RewriteOptions::kInlineGoogleFontCss,
+    RewriteOptions::kGoogleFontCssInlineId, "Inline Google Font CSS" },
   { RewriteOptions::kInlineImages,
     "ii", "Inline Images" },
   { RewriteOptions::kInlineImportToLink,
@@ -814,6 +817,7 @@ const RewriteOptions::Filter kCssPreserveUrlForbiddenFilters[] = {
   RewriteOptions::kCombineCss,
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kInlineCss,
+  RewriteOptions::kInlineGoogleFontCss,
   RewriteOptions::kInlineImportToLink,
   RewriteOptions::kLeftTrimUrls,
   RewriteOptions::kOutlineCss

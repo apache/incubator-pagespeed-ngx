@@ -68,7 +68,11 @@ class CssInlineFilter::Context : public InlineRewriteContext {
                           base_url_, text, element);
   }
 
-  virtual const char* id() const { return RewriteOptions::kCssInlineId; }
+  virtual ResourcePtr CreateResource(const char* url) {
+    return filter_->CreateResource(url);
+  }
+
+  virtual const char* id() const { return filter_->id_; }
 
  private:
   CssInlineFilter* filter_;
@@ -80,6 +84,7 @@ class CssInlineFilter::Context : public InlineRewriteContext {
 
 CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
+      id_(RewriteOptions::kCssInlineId),
       size_threshold_bytes_(driver->options()->css_inline_max_bytes()),
       css_tag_scanner_(driver_) {}
 
@@ -129,6 +134,10 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       }
     }
   }
+}
+
+ResourcePtr CssInlineFilter::CreateResource(const char* url) {
+  return CreateInputResource(url);
 }
 
 bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
