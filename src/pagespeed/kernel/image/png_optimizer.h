@@ -68,7 +68,7 @@ struct PngCompressParams {
   //   Z_HUFFMAN_ONLY
   //   Z_RLE
   //   Z_FIXED
-  //   Z_DEFAULT_COMPRESSION
+  //   Z_DEFAULT_STRATEGY
   int compression_strategy;
 };
 

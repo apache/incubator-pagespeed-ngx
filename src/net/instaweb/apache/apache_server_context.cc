@@ -208,13 +208,14 @@ ApacheRequestContext* ApacheServerContext::NewApacheRequestContext(
       request);
 }
 
-void ApacheServerContext::ReportNotFoundHelper(StringPiece error_message,
+void ApacheServerContext::ReportNotFoundHelper(MessageType message_type,
+                                               StringPiece error_message,
                                                request_rec* request,
                                                Variable* error_count) {
   error_count->Add(1);
   request->status = HttpStatus::kNotFound;
   ap_send_error_response(request, 0);
-  message_handler()->Message(kWarning, "%s %s: not found (404)",
+  message_handler()->Message(message_type, "%s %s: not found (404)",
                              (error_message.empty() ? "(null)" :
                               error_message.as_string().c_str()),
                              error_count->GetName().as_string().c_str());
