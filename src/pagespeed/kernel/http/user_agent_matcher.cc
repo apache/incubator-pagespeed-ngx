@@ -95,6 +95,12 @@ const char* kPanelSupportDesktopWhitelist[] = {
   // The following user agents are used only for internal testing
   "prefetch_link_script_tag",
 };
+// Note that these are combined with kPanelSupportDesktopWhitelist, which
+// imply defer_javascript support.
+const char* kDeferJSWhitelist[] = {
+  "*Googlebot*",
+  "*Mediapartners-Google*"
+};
 const char* kPanelSupportDesktopBlacklist[] = {
   "*Firefox/1.*",
   "*Firefox/2.*",
@@ -259,6 +265,11 @@ const Dimension kKnownScreenDimensions[] = {
 
 }  // namespace
 
+// Note that "blink" here does not mean the new Chrome rendering
+// engine.  It refers to a pre-existing internal name for the
+// technology behind partial HTML caching:
+// https://developers.google.com/speed/pagespeed/service/CacheHtml
+
 UserAgentMatcher::UserAgentMatcher()
     : chrome_version_pattern_(kChromeVersionPattern) {
   // Initialize FastWildcardGroup for image inlining whitelist & blacklist.
@@ -273,9 +284,18 @@ UserAgentMatcher::UserAgentMatcher()
   }
   for (int i = 0, n = arraysize(kPanelSupportDesktopWhitelist); i < n; ++i) {
     blink_desktop_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
+
+    // Explicitly allowed blink UAs should also allow defer_javascript.
+    defer_js_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kDeferJSWhitelist); i < n; ++i) {
+    defer_js_whitelist_.Allow(kDeferJSWhitelist[i]);
   }
   for (int i = 0, n = arraysize(kPanelSupportDesktopBlacklist); i < n; ++i) {
     blink_desktop_blacklist_.Allow(kPanelSupportDesktopBlacklist[i]);
+
+    // Explicitly disallowed blink UAs should also disable defer_javascript.
+    defer_js_whitelist_.Disallow(kPanelSupportDesktopBlacklist[i]);
   }
   for (int i = 0, n = arraysize(kPanelSupportMobileWhitelist); i < n; ++i) {
     blink_mobile_whitelist_.Allow(kPanelSupportMobileWhitelist[i]);
@@ -401,9 +421,7 @@ bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
   if (GetDeviceTypeForUA(user_agent) != kDesktop) {
     return allow_mobile && blink_mobile_whitelist_.Match(user_agent, false);
   }
-  return user_agent.empty() ||
-      (blink_desktop_whitelist_.Match(user_agent, false) &&
-       !blink_desktop_blacklist_.Match(user_agent, false));
+  return user_agent.empty() || defer_js_whitelist_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {

@@ -200,6 +200,71 @@ TEST_F(UserAgentMatcherTest, NotSupportsJsDeferAllowMobile) {
       kOperaMobi9, true));
 }
 
+// Googlebot for mobile generally includes the UA for the mobile device
+// being impersonated.
+#define GOOGLEBOT_MOBILE \
+  "(compatible; Googlebot-Mobile/2.1; +http://www.google.com/bot.html)"
+TEST_F(UserAgentMatcherTest, MobileBotSupportsJsDefer) {
+  // Reference: https://developers.google.com/webmasters/smartphone-sites/
+  // detecting-user-agents
+  const char kGoogleBotIphoneUA[] =
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) "
+      "AppleWebKit/536.26 (KHTML, like Gecko) Version/6.0 Mobile/10A5376e "
+      "Safari/8536.25 " GOOGLEBOT_MOBILE;
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGoogleBotIphoneUA, true));
+
+  const char kGoogleBotAndroidUA[] =
+      "Mozilla/5.0 (Linux; Android 4.3; Nexus 4 Build/JWR66Y) "
+      "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1666.0 Mobile "
+      "Safari/537.36 " GOOGLEBOT_MOBILE;
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGoogleBotAndroidUA, true));
+
+  // Feature-phones don't support JS Defer.
+  const char kSamsungFeatureBot[] =
+      "SAMSUNG-SGH-E250/1.0 Profile/MIDP-2.0 Configuration/CLDC-1.1 "
+      "UP.Browser/6.2.3.3.c.1.101 (GUI) MMP/2.0 " GOOGLEBOT_MOBILE;
+  const char kDoCoMoBot[] =
+      "DoCoMo/2.0 N905i(c100;TB;W24H16) " GOOGLEBOT_MOBILE;
+  EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(kSamsungFeatureBot, true));
+  EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(kDoCoMoBot, true));
+}
+
+// Googlebot for desktop generally does not includes a specific browser UA.
+#define GOOGLEBOT_DESKTOP \
+  "(compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+TEST_F(UserAgentMatcherTest, DesktopBotSupportsJsDefer) {
+  // https://support.google.com/webmasters/answer/1061943?hl=en
+  const char kGooglebotNormal[] =
+      "Mozilla/5.0 " GOOGLEBOT_DESKTOP;
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotNormal, true));
+
+  const char kGooglebotRare[] =
+      "Googlebot/2.1 (+http://www.google.com/bot.html)";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotRare, true));
+
+  const char kGooglebotNews[] = "Googlebot-News";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotNews, true));
+
+  const char kGooglebotImage[] = "Googlebot-Image/1.0";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotImage, true));
+
+  const char kGooglebotVideo[] = "Googlebot-Video/1.0";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotVideo, true));
+
+  const char kMediaPartners[] = "Mediapartners-Google";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kMediaPartners, true));
+
+  const char kGooglebotAdsBot[] = "Googlebot-AdsBot/1.0";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGooglebotAdsBot, true));
+
+  // This UA was extrapoloated from the snippet when google-searching for
+  // "what's my user agent" from Firefox.
+  const char kGoogleBotFirefoxUA[] =
+      "Mozilla/5.0 " GOOGLEBOT_DESKTOP " Mozilla/5.0 (Windows NT 6.1; WOW64; "
+      "rv:24.0) Gecko/20100101 Firefox/24.0";
+  EXPECT_TRUE(user_agent_matcher_->SupportsJsDefer(kGoogleBotFirefoxUA, true));
+}
+
 TEST_F(UserAgentMatcherTest, SupportsWebp) {
   EXPECT_TRUE(user_agent_matcher_->SupportsWebp(
       kTestingWebp));

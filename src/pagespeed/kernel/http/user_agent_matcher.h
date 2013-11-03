@@ -145,6 +145,7 @@ class UserAgentMatcher {
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup supports_lazyload_images_;
+  FastWildcardGroup defer_js_whitelist_;
   FastWildcardGroup blink_desktop_whitelist_;
   FastWildcardGroup blink_desktop_blacklist_;
   FastWildcardGroup blink_mobile_whitelist_;
