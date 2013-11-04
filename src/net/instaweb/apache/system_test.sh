@@ -368,8 +368,8 @@ fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
   '--header=X-PSA-Blocking-Rewrite:psatest'
 
 check run_wget_with_args $URL
-check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000     # re-encoded
-check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126   # resized
+check_file_size "$WGET_DIR/xBikeCrashIcn*" -lt 25000     # re-encoded
+check_file_size "$WGET_DIR/*256x192*Puzzle*" -lt 24126   # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?PageSpeedFilters=rewrite_images"
 
 IMG_URL=$(egrep -o 'http://[^"]*pagespeed.[^"]*.jpg' $FETCHED | head -n1)
@@ -422,7 +422,7 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimiz
 # progressive jpeg conversion turned on in this testcase, which makes the output
 # larger.  The threshold factor kJpegPixelToByteRatio in image_rewrite_filter.cc
 # is tuned to avoid that.
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
+check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 8157   # resized
 
 SPLIT_HTML_ATF=$TEST_ROOT"/split_html/split.html?x_split=atf"
 wget -O - $URL $SPLIT_HTML_ATF > $FETCHED
@@ -446,7 +446,7 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimiz
 # that image_rewrite_filter.cc decided it was a good idea to convert to
 # progressive jpeg, and in this case it's not.  See the not above on
 # kJpegPixelToByteRatio.
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7564   # resized
+check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 7564   # resized
 
 start_test quality of webp output images
 rm -rf $OUTDIR
@@ -456,7 +456,7 @@ REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
 URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
 check run_wget_with_args \
   --header 'X-PSA-Blocking-Rewrite: psatest' --user-agent=webp $URL
-check_file_size "$OUTDIR/*256x192*Puzzle*webp" -le 6516   # resized, webp'd
+check_file_size "$WGET_DIR/*256x192*Puzzle*webp" -le 6516   # resized, webp'd
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
 start_test respect vary user-agent
@@ -650,7 +650,7 @@ fetch_until $IMG_CUSTOM 'wc -c' 102902 "" -le
 start_test Headers are not destroyed by a flush event.
 FILE=php_withoutflush.php
 URL=$TEST_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 $WGET_DUMP $URL > $FETCHED
 if grep -q '<?php' $FETCHED; then
   echo "*** Skipped because PHP is not installed. If you'd like to enable this"
@@ -662,7 +662,7 @@ else
 
   FILE=php_withflush.php
   URL=$TEST_ROOT/$FILE
-  FETCHED=$OUTDIR/$FILE
+  FETCHED=$WGET_DIR/$FILE
   $WGET_DUMP $URL > $FETCHED
   check [ $(grep -c '^X-Mod-Pagespeed:'               $FETCHED) = 1 ]
   check [ $(grep -c '^X-My-PHP-Header: with_flush'    $FETCHED) = 1 ]
@@ -686,8 +686,8 @@ fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # With the proper hash, we'll get a long cache lifetime.
   SECONDARY_HOST="http://secondary.example.com/gstatic_images"
-  check ls $OUTDIR/*1.gif.pagespeed*
-  PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/*1.gif.pagespeed*)"
+  check ls $WGET_DIR/*1.gif.pagespeed*
+  PROXIED_IMAGE="$SECONDARY_HOST/$(basename $WGET_DIR/*1.gif.pagespeed*)"
   WGET_ARGS="--save-headers"
 
   start_test $PROXIED_IMAGE expecting one year cache.
@@ -764,16 +764,16 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # image URL query param, the image file (including headers) is 8341 bytes.
   # We check against 10000 here so this test isn't sensitive to
   # image-compression tweaks (we have enough of those elsewhere).
-  check_file_size "$OUTDIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
+  check_file_size "$WGET_DIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
 
   # The CSS file gets rewritten with embedded options, and will have an
   # embedded image in it as well.
-  check_file_size "$OUTDIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*" \
-      -lt 600
+  check_file_size \
+    "$WGET_DIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*" -lt 600
 
   # The JS file is rewritten but has no related options set, so it will
   # not get the embedded options between "pagespeed" and "jm".
-  check_file_size "$OUTDIR/rewrite_javascript.js.pagespeed.jm.*.js" -lt 500
+  check_file_size "$WGET_DIR/rewrite_javascript.js.pagespeed.jm.*.js" -lt 500
 
   # One flaw in the above test is that it short-circuits the decoding
   # of the query-params because when Apache responds to the recursive
@@ -785,17 +785,17 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # "finish" this test below after performing a cache flush, saving
   # the encoded image and expected size.
   EMBED_CONFIGURATION_IMAGE="http://embed_config_resources.example.com/images/"
-  EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep iq=)
+  EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $WGET_DIR | grep 256x192xPuz | grep iq=)
   EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
   EMBED_CONFIGURATION_IMAGE_LENGTH=$( \
-    extract_headers "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \
+    extract_headers "$WGET_DIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \
     scrape_content_length)
 
   # Grab the URL for the CSS file.
-  EMBED_CONFIGURATION_CSS_LEAF=$(ls $OUTDIR | \
+  EMBED_CONFIGURATION_CSS_LEAF=$(ls $WGET_DIR | \
       grep '\.pagespeed\..*+ii+.*+iq=.*\.cf\..*')
-  EMBED_CONFIGURATION_CSS_LENGTH=$(cat $OUTDIR/$EMBED_CONFIGURATION_CSS_LEAF | \
-      scrape_content_length)
+  EMBED_CONFIGURATION_CSS_LENGTH=$(\
+    cat $WGET_DIR/$EMBED_CONFIGURATION_CSS_LEAF | scrape_content_length)
   EMBED_CONFIGURATION_CSS_URL="http://embed_config_resources.example.com/styles"
   EMBED_CONFIGURATION_CSS_URL+="/$EMBED_CONFIGURATION_CSS_LEAF"
 
@@ -804,7 +804,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # it to a file for us (wget does not parse CSS) so we'll have to request it.
   EMBED_CONFIGURATION_CSS_IMAGE_URL=$(egrep -o \
     'http://.*iq=[0-9]*\.ic\..*\.jpg' \
-    $OUTDIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*)
+    $WGET_DIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*)
   # fetch that file and make sure it has the right cache-control
   CSS_IMAGE_HEADERS=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
       $EMBED_CONFIGURATION_CSS_IMAGE_URL | head -10)
@@ -858,7 +858,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME \
     fetch_until -save -recursive $URL \
     'fgrep -c cdn.pm.example.com/external/xPuzzle.jpg.pagespeed.ic' 1
-  check_file_size "${OUTDIR}/xPuzzle*" -lt 241260
+  check_file_size "$WGET_DIR/xPuzzle*" -lt 241260
 
   # Make sure that the file was only rewritten once.
   http_proxy=$SECONDARY_HOSTNAME \
@@ -1233,14 +1233,8 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   # Second IPRO request.
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
   # Wait for image rewrite to finish.
-  sleep 1
-  # TODO(sligocki): Replace sleep with some sort of reasonable check.
-  # Unfortunately bash has thwarted my every effort to compose a reaonable
-  # check. Both the below checks do not run:
-  #fetch_until $IPRO_STATS_URL \
-  #            'grep image_ongoing_rewrites | egrep -o "[0-9]"' 0
-  #fetch_until $IPRO_STATS_URL \
-  #            "sed -ne 's/^.*image_ongoing_rewrites: *\([0-9]*\).*$/\1/p'" 0
+  http_proxy=$SECONDARY_HOSTNAME fetch_until "$IPRO_STATS_URL" \
+    'get_stat image_ongoing_rewrites' 0
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.2
 
   # Resource is found in cache the second time.
@@ -1636,11 +1630,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
   '--header=X-PSA-Blocking-Rewrite:psatest'
   check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
-    $OUTDIR/image_resize_using_rendered_dimensions.html) = 1 ];
-  OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
-                 $OUTDIR/image_resize_using_rendered_dimensions.html)
+    $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
+  OPTIONS_HASH=$(\
+    awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+    $WGET_DIR/image_resize_using_rendered_dimensions.html)
   NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
-          $OUTDIR/image_resize_using_rendered_dimensions.html)
+          $WGET_DIR/image_resize_using_rendered_dimensions.html)
 
   # Send a beacon response using POST indicating that OptPuzzle.jpg is
   # critical and has rendered dimensions.
@@ -1666,13 +1661,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
   check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
-    $OUTDIR/rewrite_images.html) = 1 ];
+    $WGET_DIR/rewrite_images.html) = 1 ];
   # We need the options hash and nonce to send a critical image beacon, so
   # extract it from injected beacon JS.
-  OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
-                 $OUTDIR/rewrite_images.html)
+  OPTIONS_HASH=$(
+    awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+      $WGET_DIR/rewrite_images.html)
   NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
-          $OUTDIR/rewrite_images.html)
+          $WGET_DIR/rewrite_images.html)
   # Send a beacon response using POST indicating that Puzzle.jpg is a critical
   # image.
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
@@ -1695,11 +1691,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
   check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
-    "$OUTDIR/rewrite_images.html?id=4") = 1 ];
-  OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
-                 "$OUTDIR/rewrite_images.html?id=4")
+    "$WGET_DIR/rewrite_images.html?id=4") = 1 ];
+  OPTIONS_HASH=$(
+    awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+      "$WGET_DIR/rewrite_images.html?id=4")
   NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
-          "$OUTDIR/rewrite_images.html?id=4")
+          "$WGET_DIR/rewrite_images.html?id=4")
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
   BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
   BEACON_URL+="image_rewriting%2Frewrite_images.html%3Fid%3D4"

@@ -380,8 +380,8 @@ fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
 # Note: We cannot do this above because the intervening fetch_untils will
 # clean up $OUTDIR.
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
-check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000      # re-encoded
-check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126    # resized
+check_file_size "$WGET_DIR/xBikeCrashIcn*" -lt 25000      # re-encoded
+check_file_size "$WGET_DIR/*256x192*Puzzle*" -lt 24126    # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?PageSpeedFilters=rewrite_images"
 
 IMG_URL=$(egrep -o 'http://[^"]*pagespeed.[^"]*.jpg' $FETCHED | head -n1)
@@ -434,7 +434,7 @@ WGET_ARGS=""
 start_test rewrite_css,extend_cache extends cache of images in CSS.
 FILE=rewrite_css_images.html?PageSpeedFilters=rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 fetch_until $URL 'grep -c Cuppa.png.pagespeed.ce.' 1  # image cache extended
 fetch_until $URL 'grep -c rewrite_css_images.css.pagespeed.cf.' 1
 check run_wget_with_args $URL
@@ -443,7 +443,7 @@ start_test fallback_rewrite_css_urls works.
 FILE=fallback_rewrite_css_urls.html?\
 PageSpeedFilters=fallback_rewrite_css_urls,rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 fetch_until $URL 'grep -c Cuppa.png.pagespeed.ce.' 1  # image cache extended
 fetch_until -save $URL 'grep -c fallback_rewrite_css_urls.css.pagespeed.cf.' 1
 # Test this was fallback flow -> no minification.
@@ -453,7 +453,7 @@ check grep -q "body { background" $FETCH_FILE
 start_test rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style.
 FILE=rewrite_style_attributes.html?PageSpeedFilters=rewrite_images,rewrite_css,rewrite_style_attributes_with_url
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 fetch_until $URL 'grep -c BikeCrashIcn.png.pagespeed.ic.' 1
 check run_wget_with_args $URL
 
@@ -461,7 +461,7 @@ start_test rewrite_css,rewrite_images rewrites and inlines images in CSS.
 FILE='rewrite_css_images.html?PageSpeedFilters=rewrite_css,rewrite_images'
 FILE+='&ModPagespeedCssImageInlineMaxBytes=2048'
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 fetch_until $URL 'grep -c url.data:image/png;base64,' 1  # image inlined
 fetch_until $URL 'grep -c rewrite_css_images.css.pagespeed.cf.' 1
 check run_wget_with_args $URL
@@ -469,7 +469,7 @@ check run_wget_with_args $URL
 start_test inline_css,rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?PageSpeedFilters=inline_css,rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 echo $WGET_DUMP $URL
 fetch_until $URL \
   'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
@@ -477,15 +477,15 @@ fetch_until $URL \
 start_test rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?PageSpeedFilters=rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 fetch_until -save -recursive $URL 'grep -c css.pagespeed.cf' 1
 
 # Extract out the rewritten CSS file from the HTML saved by fetch_until
 # above (see -save and definition of fetch_until).  Fetch that CSS
 # file and look inside for the sprited image reference (ic.pagespeed.is...).
-CSS=$(grep stylesheet "$OUTDIR/$(basename $URL)" | cut -d\" -f 6)
+CSS=$(grep stylesheet "$WGET_DIR/$(basename $URL)" | cut -d\" -f 6)
 echo css is $CSS
-SPRITE_CSS_OUT="$OUTDIR/$(basename $CSS)"
+SPRITE_CSS_OUT="$WGET_DIR/$(basename $CSS)"
 echo css file = $SPRITE_CSS_OUT
 check [ $(grep -c "ic.pagespeed.is" "$SPRITE_CSS_OUT") -gt 0 ]
 
@@ -493,7 +493,7 @@ test_filter rewrite_javascript minifies JavaScript and saves bytes.
 # External scripts rewritten.
 fetch_until -save -recursive \
   $URL 'grep -c src=.*rewrite_javascript\.js\.pagespeed\.jm\.' 2
-check_not grep "removed" $OUTDIR/*.pagespeed.jm.*  # No comments should remain.
+check_not grep removed $WGET_DIR/*.pagespeed.jm.*  # No comments should remain.
 check_file_size $FETCH_FILE -lt 1560               # Net savings
 check grep -q preserved $FETCH_FILE                # Preserves certain comments.
 # Rewritten JS is cache-extended.
@@ -573,7 +573,7 @@ test_filter extend_cache with no-cache js origin
 URL="$REWRITTEN_TEST_ROOT/no_cache/hello.js.pagespeed.ce.0.js"
 echo run_wget_with_args $URL
 run_wget_with_args $URL
-check fgrep -q "'Hello'" $OUTDIR/hello.js.pagespeed.ce.0.js
+check fgrep -q "'Hello'" $WGET_DIR/hello.js.pagespeed.ce.0.js
 check fgrep -q "no-cache" $WGET_OUTPUT
 
 echo Test that we can rewrite Cache-Control: no-cache resources with
@@ -582,7 +582,7 @@ test_filter rewrite_javascript with no-cache js origin
 URL="$REWRITTEN_TEST_ROOT/no_cache/hello.js.pagespeed.jm.0.js"
 echo run_wget_with_args $URL
 run_wget_with_args $URL
-check fgrep -q "'Hello'" $OUTDIR/hello.js.pagespeed.jm.0.js
+check fgrep -q "'Hello'" $WGET_DIR/hello.js.pagespeed.jm.0.js
 check fgrep -q "no-cache" $WGET_OUTPUT
 
 start_test ?PageSpeed=noscript inserts canonical href link
@@ -604,7 +604,7 @@ check grep -q "ModPagespeed=noscript" $FETCHED
 test_filter defer_javascript,debug optimize mode
 FILE=defer_javascript.html?PageSpeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 check run_wget_with_args "$URL"
 check grep -q text/psajs $FETCHED
 check grep -q /js_defer_debug $FETCHED
@@ -666,7 +666,7 @@ check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
 test_filter lazyload_images,debug debug mode
 FILE=lazyload_images.html?PageSpeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 check run_wget_with_args "$URL"
 check grep -q pagespeed.lazyLoad $FETCHED
 check_not grep -q '/\*' $FETCHED
@@ -677,7 +677,7 @@ check grep -q "ModPagespeed=noscript" $FETCHED
 test_filter inline_preview_images optimize mode
 FILE=delay_images.html?PageSpeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 WGET_ARGS="${WGET_ARGS} --user-agent=iPhone"
 echo run_wget_with_args $URL
 fetch_until $URL 'grep -c pagespeed.delayImagesInit' 1
@@ -689,7 +689,7 @@ check run_wget_with_args $URL
 test_filter inline_preview_images,debug debug mode
 FILE=delay_images.html?PageSpeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 WGET_ARGS="${WGET_ARGS} --user-agent=iPhone"
 fetch_until $URL 'grep -c pagespeed.delayImagesInit' 3
 check run_wget_with_args $URL
