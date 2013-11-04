@@ -354,77 +354,8 @@ WGET_ARGS=""
 # TODO(jkarlin): Now that IPRO is in place for apache we should test that we
 # obey no-transform in that path.
 
-# TODO(sligocki): This test needs to be run before below tests.
-# Remove once below tests are moved to system_test.sh.
-test_filter rewrite_images [apache_test] inlines, compresses, and resizes.
-fetch_until $URL 'grep -c data:image/png' 1  # inlined
-fetch_until $URL 'grep -c .pagespeed.ic' 2   # two images optimized
-
-# Verify with a blocking fetch that pagespeed_no_transform worked and was
-# stripped.
-fetch_until $URL 'grep -c "images/disclosure_open_plus.png"' 1 \
-  '--header=X-PSA-Blocking-Rewrite:psatest'
-fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
-  '--header=X-PSA-Blocking-Rewrite:psatest'
-
-check run_wget_with_args $URL
-check_file_size "$WGET_DIR/xBikeCrashIcn*" -lt 25000     # re-encoded
-check_file_size "$WGET_DIR/*256x192*Puzzle*" -lt 24126   # resized
-URL=$EXAMPLE_ROOT"/rewrite_images.html?PageSpeedFilters=rewrite_images"
-
-IMG_URL=$(egrep -o 'http://[^"]*pagespeed.[^"]*.jpg' $FETCHED | head -n1)
-if [ -z "$IMG_URL" ]; then
-  # If PreserveUrlRelativity is on, we need to find the relative URL and
-  # absolutify it ourselves.
-  IMG_URL="$EXAMPLE_ROOT/"
-  IMG_URL+=$(grep -o '[^\"]*pagespeed.[^\"]*\.jpg' $FETCHED | head -n 1)
-fi
-
-start_test headers for rewritten image
-echo IMG_URL="$IMG_URL"
-IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-  $IMG_URL 2>&1)
-echo "IMG_HEADERS=\"$IMG_HEADERS\""
-check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
-# Make sure we have some valid headers.
-check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
-# Make sure the response was not gzipped.
-start_test Images are not gzipped.
-check_not_from "$IMG_HEADERS" fgrep -i 'Content-Encoding: gzip'
-# Make sure there is no vary-encoding
-start_test Vary is not set for images.
-check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
-# Make sure there is an etag
-start_test Etags is present.
-check_from "$IMG_HEADERS" fgrep -qi 'Etag: W/"0"'
-# Make sure an extra header is propagated from input resource to output
-# resource.  X-Extra-Header is added in debug.conf.template.
-start_test Extra header is present
-check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
-# Make sure there is a last-modified tag
-start_test Last-modified is present.
-check_from "$IMG_HEADERS" fgrep -qi 'Last-Modified'
-
-IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
-JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
-WEBP_QUALITY="PageSpeedImageWebpRecompressionQuality"
-start_test quality of jpeg output images with generic quality flag
-IMG_REWRITE=$TEST_ROOT"/image_rewriting/rewrite_images.html"
-REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
-URL=$REWRITE_URL"&"$IMAGES_QUALITY"=75"
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-# This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
-# size is 8157B, while on 64 it is 8155B. Initial investigation showed no
-# visible differences between the generated images.
-# TODO(jmaessen) Verify that this behavior is expected.
-#
-# Note that if this test fails with 8251 it means that you have managed to get
-# progressive jpeg conversion turned on in this testcase, which makes the output
-# larger.  The threshold factor kJpegPixelToByteRatio in image_rewrite_filter.cc
-# is tuned to avoid that.
-check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 8157   # resized
-
-SPLIT_HTML_ATF=$TEST_ROOT"/split_html/split.html?x_split=atf"
+start_test Split HTML
+SPLIT_HTML_ATF="$TEST_ROOT/split_html/split.html?x_split=atf"
 wget -O - $URL $SPLIT_HTML_ATF > $FETCHED
 check grep -q 'loadXMLDoc("1")' $FETCHED
 check grep -q '/mod_pagespeed_static/blink' $FETCHED
@@ -435,28 +366,6 @@ SPLIT_HTML_BTF=$TEST_ROOT"/split_html/split.html?x_split=atf"
 wget -O - $URL $SPLIT_HTML_BTF > $FETCHED
 check grep -q 'panel-id.0' $FETCHED
 check grep -q 'pagespeed_lazy_src' $FETCHED
-
-start_test quality of jpeg output images
-IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
-REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
-URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-#
-# If this this test fails because the image size is 7673 bytes it means
-# that image_rewrite_filter.cc decided it was a good idea to convert to
-# progressive jpeg, and in this case it's not.  See the not above on
-# kJpegPixelToByteRatio.
-check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 7564   # resized
-
-start_test quality of webp output images
-rm -rf $OUTDIR
-mkdir $OUTDIR
-IMG_REWRITE=$TEST_ROOT"/webp_rewriting/rewrite_images.html"
-REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
-URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
-check run_wget_with_args \
-  --header 'X-PSA-Blocking-Rewrite: psatest' --user-agent=webp $URL
-check_file_size "$WGET_DIR/*256x192*Puzzle*webp" -le 6516   # resized, webp'd
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
 start_test respect vary user-agent
@@ -1781,6 +1690,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     check [ $REJECTIONS -eq 1 ]
   fi
 
+  # TODO(sligocki): Following test only works with
+  # filter_spec_method=query_params. Fix to work with any method and get rid
+  # of this manual set.
+  filter_spec_method="query_params"
   # Test for MaxCombinedCssBytes. The html used in the test, 'combine_css.html',
   # has 4 CSS files in the following order.
   #   yellow.css :   36 bytes

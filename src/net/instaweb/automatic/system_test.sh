@@ -148,7 +148,7 @@ check [ $(fgrep -o '<script' $FETCHED | wc -l) -eq 2 ]
 start_test "We don't add_instrumentation if URL params tell us not to"
 FILE=add_instrumentation.html?PageSpeedFilters=
 URL=$EXAMPLE_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 check run_wget_with_args $URL
 check [ $(fgrep -o '<script' $FETCHED | wc -l) -eq 0 ]
 
@@ -365,7 +365,7 @@ test_filter rewrite_css minifies CSS and saves bytes.
 fetch_until -save $URL 'grep -c comment' 0
 check_file_size $FETCH_FILE -lt 680  # down from 689
 
-test_filter rewrite_images [system_test] inlines, compresses, and resizes.
+test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # Images inlined.
 fetch_until $URL 'grep -c .pagespeed.ic' 2  # Images rewritten.
 
@@ -408,14 +408,54 @@ check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
 # Make sure there is an etag
 start_test Etags is present.
 check_from "$IMG_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
-# TODO(sligocki): Allow setting arbitrary headers in static_server.
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
-#start_test Extra header is present
-#check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
+start_test Extra header is present
+check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
 # Make sure there is a last-modified tag
 start_test Last-modified is present.
 check_from "$IMG_HEADERS" fgrep -qi 'Last-Modified'
+
+IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
+JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
+WEBP_QUALITY="PageSpeedImageWebpRecompressionQuality"
+start_test quality of jpeg output images with generic quality flag
+IMG_REWRITE="$TEST_ROOT/image_rewriting/rewrite_images.html"
+REWRITE_URL="$IMG_REWRITE?PageSpeedFilters=rewrite_images"
+URL="$REWRITE_URL&$IMAGES_QUALITY=75"
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
+# This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
+# size is 8157B, while on 64 it is 8155B. Initial investigation showed no
+# visible differences between the generated images.
+# TODO(jmaessen) Verify that this behavior is expected.
+#
+# Note that if this test fails with 8251 it means that you have managed to get
+# progressive jpeg conversion turned on in this testcase, which makes the output
+# larger.  The threshold factor kJpegPixelToByteRatio in image_rewrite_filter.cc
+# is tuned to avoid that.
+check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 8157   # resized
+
+start_test quality of jpeg output images
+IMG_REWRITE="$TEST_ROOT/jpeg_rewriting/rewrite_images.html"
+REWRITE_URL="$IMG_REWRITE?PageSpeedFilters=rewrite_images"
+URL="$REWRITE_URL,recompress_jpeg&$IMAGES_QUALITY=85&$JPEG_QUALITY=70"
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
+#
+# If this this test fails because the image size is 7673 bytes it means
+# that image_rewrite_filter.cc decided it was a good idea to convert to
+# progressive jpeg, and in this case it's not.  See the not above on
+# kJpegPixelToByteRatio.
+check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 7564   # resized
+
+start_test quality of webp output images
+rm -rf $OUTDIR
+mkdir $OUTDIR
+IMG_REWRITE="$TEST_ROOT/webp_rewriting/rewrite_images.html"
+REWRITE_URL="$IMG_REWRITE?PageSpeedFilters=rewrite_images"
+URL="$REWRITE_URL,convert_jpeg_to_webp&$IMAGES_QUALITY=75&$WEBP_QUALITY=65"
+check run_wget_with_args \
+  --header 'X-PSA-Blocking-Rewrite: psatest' --user-agent=webp $URL
+check_file_size "$WGET_DIR/*256x192*Puzzle*webp" -le 6516   # resized, webp'd
 
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 start_test rewrite_images fails broken image
