@@ -61,6 +61,8 @@ class SystemCaches {
   static const char kMemcached[];
   static const char kShmCache[];
 
+  static const char kDefaultSharedMemoryPath[];
+
   enum StatFlags {
     kDefaultStatFlags = 0,
     kGlobalView = 1,
@@ -153,9 +155,15 @@ class SystemCaches {
   // (if it has one). NULL is returned if no cache is specified.
   CacheInterface* GetFilesystemMetadataCache(SystemRewriteOptions* config);
 
-  // Returns any shared memory metadata cache configured for the given
-  // configuration, or NULL.
-  CacheInterface* GetShmMetadataCache(SystemRewriteOptions* config);
+  // Returns any shared memory metadata cache configured for the given name, or
+  // NULL.
+  CacheInterface* LookupShmMetadataCache(const GoogleString& name);
+
+  // Returns the shared metadata cache explicitly configured for this config if
+  // it exists, otherwise return the default one, creating it if necessary.
+  // Returns NULL if shared memory isn't supported or if the default cache is
+  // disabled and this server context didn't explicitly configure its own.
+  CacheInterface* GetShmMetadataCacheOrDefault(SystemRewriteOptions* config);
 
   scoped_ptr<SlowWorker> slow_worker_;
 
@@ -205,6 +213,8 @@ class SystemCaches {
   MetadataShmCacheMap metadata_shm_caches_;
 
   MD5Hasher cache_hasher_;
+
+  bool default_shm_metadata_cache_creation_failed_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemCaches);
 };

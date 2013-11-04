@@ -41,8 +41,7 @@ class AbstractSharedMemSegment {
   // same segment.
   virtual volatile char* Base() = 0;
 
-  // This returns the number of bytes a mutex inside shared memory
-  // takes.
+  // Returns the number of bytes a mutex inside shared memory takes.
   virtual size_t SharedMutexSize() const = 0;
 
   // To use a mutex in shared memory, you first need to dedicate some
@@ -110,6 +109,11 @@ class AbstractSharedMem {
   // no longer any need for AttachToSegment to succeed.
   virtual void DestroySegment(const GoogleString& name,
                               MessageHandler* handler) = 0;
+
+  // Implementors such as NullSharedMem that don't actually support shared
+  // memory operations should return true.  All real implementations should
+  // leave this as false.
+  virtual bool IsDummy() { return false; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AbstractSharedMem);

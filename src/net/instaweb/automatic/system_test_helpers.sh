@@ -98,7 +98,7 @@ HOSTNAME=$1
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
 # TODO(sligocki): Should we be rewriting the statistics page by default?
 # Currently we are, so disable that so that it doesn't spoil our stats.
-STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics?PageSpeed=off
+STATISTICS_URL="http://$HOSTNAME/mod_pagespeed_statistics?PageSpeed=off"
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/W.bad.pagespeed.cf.hash.css
 MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
@@ -482,9 +482,13 @@ function test_resource_ext_corruption() {
   check_not_from "$OUT" fgrep "broken"
 }
 
+function scrape_pipe_stat {
+  egrep "^$1:? " | awk '{print $2}'
+}
+
 # Scrapes the specified statistic, returning the statistic value.
 function scrape_stat {
-  $WGET_DUMP $STATISTICS_URL | egrep "^$1:? " | awk '{print $2}'
+  $WGET_DUMP $STATISTICS_URL | scrape_pipe_stat "$1"
 }
 
 # Scrapes HTTP headers from stdin for Content-Length and returns the value.

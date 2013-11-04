@@ -203,6 +203,12 @@ class SystemRewriteOptions : public RewriteOptions {
   int64 ipro_max_concurrent_recordings() const {
     return ipro_max_concurrent_recordings_.value();
   }
+  int64 default_shared_memory_cache_kb() const {
+    return default_shared_memory_cache_kb_.value();
+  }
+  void set_default_shared_memory_cache_kb(int64 x) {
+    set_option(x, &default_shared_memory_cache_kb_);
+  }
 
   // If this is set to true, we'll turn on our fallback proxy-like behavior
   // on non-.pagespeed. URLs without changing the main fetcher from Serf
@@ -335,6 +341,7 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<int64> slurp_flush_limit_;
   Option<int64> ipro_max_response_bytes_;
   Option<int64> ipro_max_concurrent_recordings_;
+  Option<int64> default_shared_memory_cache_kb_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteOptions);
 };

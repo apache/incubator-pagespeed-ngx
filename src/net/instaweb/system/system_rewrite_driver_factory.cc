@@ -276,8 +276,6 @@ void SystemRewriteDriverFactory::PostConfig(
         server_contexts[i]->CreateLocalStatistics(*global_statistics, this);
       }
     }
-
-    // TODO(jefftk): Here we could set up default shm caches.
   }
 }
 

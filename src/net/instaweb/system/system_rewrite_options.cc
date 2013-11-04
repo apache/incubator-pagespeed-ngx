@@ -208,6 +208,14 @@ void SystemRewriteOptions::AddProperties() {
                     &SystemRewriteOptions::ipro_max_concurrent_recordings_,
                     "imcr", "IproMaxConcurrentRecordings", kProcessScope,
                     "Limit allowed number of IPRO recordings");
+  AddSystemProperty(1024 * 50,  /* 50 Megabytes */
+                    &SystemRewriteOptions::default_shared_memory_cache_kb_,
+                    "dsmc", "DefaultSharedMemoryCacheKB", kProcessScope,
+                    "Size of the default shared memory cache used by all "
+                    "virtual hosts that don't use "
+                    "CreateSharedMemoryMetadataCache. "
+                    "Set to 0 to turn off the default shared memory cache.");
+
   MergeSubclassProperties(system_properties_);
 
   // We allow a special instantiation of the options with a null thread system

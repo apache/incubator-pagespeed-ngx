@@ -68,6 +68,7 @@ namespace {
 
 const char kCachePath[] = "/mem/path/";
 const char kAltCachePath[] = "/mem/path_alt/";
+const char kAltCachePath2[] = "/mem/path_alt2/";
 
 class SystemServerContextNoProxyHtml : public SystemServerContext {
  public:
@@ -267,6 +268,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     options_->set_lru_cache_kb_per_process(0);
     options_->set_memcached_servers(MemCachedServerSpec());
     options_->set_memcached_threads(num_threads_specified);
+    options_->set_default_shared_memory_cache_kb(0);
     PrepareWithConfig(options_.get());
 
     scoped_ptr<ServerContext> server_context(
@@ -340,6 +342,7 @@ TEST_F(SystemCachesTest, BasicFileAndLruCache) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(100);
+  options_->set_default_shared_memory_cache_kb(0);
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -358,6 +361,7 @@ TEST_F(SystemCachesTest, BasicFileOnlyCache) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(0);
+  options_->set_default_shared_memory_cache_kb(0);
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -379,6 +383,7 @@ TEST_F(SystemCachesTest, UnusableShmAndLru) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(100);
+  options_->set_default_shared_memory_cache_kb(0);
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -476,6 +481,7 @@ TEST_F(SystemCachesTest, BasicMemCachedAndLru) {
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(100);
   options_->set_memcached_servers(MemCachedServerSpec());
+  options_->set_default_shared_memory_cache_kb(0);
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -598,6 +604,7 @@ TEST_F(SystemCachesTest, FileShare) {
   for (int i = 0; i < 3; ++i) {
     SystemRewriteOptions* config = options_->NewOptions();
     config->set_file_cache_path((i == 2) ? kCachePath : kAltCachePath);
+    config->set_default_shared_memory_cache_kb(0);
     system_caches_->RegisterConfig(config);
     configs.push_back(config);
   }
@@ -654,7 +661,7 @@ TEST_F(SystemCachesTest, ShmShare) {
   std::vector<SystemRewriteOptions*> configs;
   for (int i = 0; i < 3; ++i) {
     SystemRewriteOptions* config = options_->NewOptions();
-    config->set_file_cache_path((i== 2) ? kAltCachePath : kCachePath);
+    config->set_file_cache_path((i == 2) ? kAltCachePath : kCachePath);
     system_caches_->RegisterConfig(config);
     configs.push_back(config);
   }
@@ -681,6 +688,60 @@ TEST_F(SystemCachesTest, ShmShare) {
   STLDeleteElements(&servers);
 }
 
+TEST_F(SystemCachesTest, ShmDefault) {
+  // Unless a cache is explicitly defined or the default is disabled with
+  // set_default_shared_memory_cache_kb(0), use the default.  Unlike explicitly
+  // configured shared memory caches, default ones write through to an L2 (file
+  // or memcache).
+  //
+  // [0] and [1] share the default, [2] has one separately configured.  All
+  // three have different file cache paths.
+  GoogleString error_msg;
+  EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
+      kAltCachePath2, kUsableMetadataCacheSize, &error_msg));
+
+  std::vector<SystemRewriteOptions*> configs;
+  const char* kPaths[] = {kCachePath, kAltCachePath, kAltCachePath2};
+  for (int i = 0; i < 3; ++i) {
+    SystemRewriteOptions* config = options_->NewOptions();
+    config->set_file_cache_path(kPaths[i]);
+    system_caches_->RegisterConfig(config);
+    configs.push_back(config);
+  }
+
+  // No shm metadata cache was created for [0]'s kCachePath or [1]'s
+  // kAltCachePath, only [2]'s kAltCachePath2.  So [0] and [1] will share the
+  // default.
+
+  system_caches_->RootInit();
+  // pretend we fork here.
+  system_caches_->ChildInit();
+
+  std::vector<ServerContext*> servers;
+  for (int i = 0; i < 3; ++i) {
+    servers.push_back(SetupServerContext(configs[i]));
+  }
+  EXPECT_STREQ(WriteThrough(Stats("shm_cache", "SharedMemCache<64>"),
+                            Stats("file_cache", FileCacheName())),
+               servers[0]->metadata_cache()->Name());
+  EXPECT_STREQ(WriteThrough(Stats("shm_cache", "SharedMemCache<64>"),
+                            Stats("file_cache", FileCacheName())),
+               servers[1]->metadata_cache()->Name());
+  EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
+               servers[2]->metadata_cache()->Name());
+
+
+  // This is only about metadata cache.
+  TestPut(servers[0]->metadata_cache(), "b", "value");
+  TestGet(servers[0]->metadata_cache(), "b",
+          CacheInterface::kAvailable, "value");
+  TestGet(servers[1]->metadata_cache(), "b",
+          CacheInterface::kAvailable, "value");
+  TestGet(servers[2]->metadata_cache(), "b", CacheInterface::kNotFound, "");
+
+  STLDeleteElements(&servers);
+}
+
 TEST_F(SystemCachesTest, MemCachedShare) {
   if (MemCachedServerSpec().empty()) {
     return;
@@ -694,6 +755,7 @@ TEST_F(SystemCachesTest, MemCachedShare) {
     SystemRewriteOptions* config = options_->NewOptions();
     config->set_file_cache_path(kCachePath);
     config->set_memcached_servers(MemCachedServerSpec());
+    config->set_default_shared_memory_cache_kb(0);
     system_caches_->RegisterConfig(config);
     configs.push_back(config);
   }
@@ -739,6 +801,7 @@ TEST_F(SystemCachesTest, FileCacheSettings) {
   options_->set_file_cache_clean_inode_limit(50000);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(0);
+  options_->set_default_shared_memory_cache_kb(0);
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -764,6 +827,7 @@ TEST_F(SystemCachesTest, LruCacheSettings) {
   options_->set_file_cache_path(kCachePath);
   options_->set_lru_cache_kb_per_process(1024);
   options_->set_lru_cache_byte_limit(500);
+  options_->set_default_shared_memory_cache_kb(0);
   PrepareWithConfig(options_.get());
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));

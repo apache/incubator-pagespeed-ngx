@@ -51,6 +51,13 @@ ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
 
 # Turn on "KeepAlive" so we can test it in system_test.sh.
 KeepAlive On
+KeepAliveTimeout 60
+LogFormat "%v %X %P %h %l %u %t \"%r\" %>s %b" common
+
+# We want to test some vhosts without a shared memory cache configured, and if
+# the default shared memory metadata cache is enabled we can't do that.  So
+# disable it globally and enable it where we need it.
+ModPagespeedDefaultSharedMemoryCacheKB 0
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch" >
   ModPagespeedDisableFilters inline_images
@@ -663,12 +670,67 @@ ModPagespeedUsePerVHostStatistics on
   </Location>
 </VirtualHost>
 
-# Test host for shared memory cache.
+# Test host for explicit shared memory cache.
 ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8192
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName shmcache.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_with_shm"
+
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
+
+# Test hosts to cover all possible cache configurations.  L1 will be filecache
+# or memcache depending on the setting of MEMCACHED_TEST.  These four hosts are
+# for the four settings for the L2 cache.
+
+# 1. L2_d=LRU, L2_m=LRU
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName lrud-lrum.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_lrum"
+#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+
+  ModPagespeedLRUCacheKbPerProcess 1024
+  ModPagespeedLRUCacheByteLimit 2000
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
+ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_lrud_shmm" 8192
+# 2. L2_d=LRU, L2_m=SHM
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName lrud-shmm.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_shmm"
+#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+
+  ModPagespeedLRUCacheKbPerProcess 1024
+  ModPagespeedLRUCacheByteLimit 2000
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
+ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm" 8192
+# 3. L2_d=none, L2_m=SHM
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName noned-shmm.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
+#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
+# 4. L2_d=none, L2_m=none
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName noned-nonem.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_nonem"
+#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -1053,6 +1115,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssPreserveURLs off
+#ALL_DIRECTIVES ModPagespeedDefaultSharedMemoryCacheKB 1000
 #ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
 #ALL_DIRECTIVES ModPagespeedDisallow bar
 #ALL_DIRECTIVES ModPagespeedDomain http://example.com

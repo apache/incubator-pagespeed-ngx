@@ -46,6 +46,9 @@ class NullSharedMem : public AbstractSharedMem {
   virtual void DestroySegment(const GoogleString& name,
                               MessageHandler* handler);
 
+  // Does not actually support any operations.
+  virtual bool IsDummy() { return true; }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(NullSharedMem);
 };

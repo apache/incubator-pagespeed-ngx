@@ -46,12 +46,14 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/write_through_cache.h"
+#include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 
 namespace net_instaweb {
 
 const char SystemCaches::kMemcached[] = "memcached";
 const char SystemCaches::kShmCache[] = "shm_cache";
+const char SystemCaches::kDefaultSharedMemoryPath[] = "pagespeed_default_shm";
 
 SystemCaches::SystemCaches(
     RewriteDriverFactory* factory, AbstractSharedMem* shm_runtime,
@@ -61,7 +63,8 @@ SystemCaches::SystemCaches(
       thread_limit_(thread_limit),
       is_root_process_(true),
       was_shut_down_(false),
-      cache_hasher_(20) {
+      cache_hasher_(20),
+      default_shm_metadata_cache_creation_failed_(false) {
 }
 
 SystemCaches::~SystemCaches() {
@@ -249,9 +252,7 @@ NamedLockManager* SystemCaches::GetLockManager(SystemRewriteOptions* config) {
   return GetCache(config)->lock_manager();
 }
 
-CacheInterface* SystemCaches::GetShmMetadataCache(
-    SystemRewriteOptions* config) {
-  const GoogleString& name = config->file_cache_path();
+CacheInterface* SystemCaches::LookupShmMetadataCache(const GoogleString& name) {
   if (name.empty()) {
     return NULL;
   }
@@ -260,6 +261,41 @@ CacheInterface* SystemCaches::GetShmMetadataCache(
     return i->second->cache_to_use;
   }
   return NULL;
+}
+
+CacheInterface* SystemCaches::GetShmMetadataCacheOrDefault(
+    SystemRewriteOptions* config) {
+  CacheInterface* shm_cache = LookupShmMetadataCache(config->file_cache_path());
+  if (shm_cache != NULL) {
+    return shm_cache;  // Explicitly configured.
+  }
+  if (shared_mem_runtime_->IsDummy()) {
+    // We're on a system that doesn't actually support shared memory.
+    return NULL;
+  }
+  if (config->default_shared_memory_cache_kb() == 0) {
+    return NULL;  // User has disabled the default shm cache.
+  }
+  shm_cache = LookupShmMetadataCache(kDefaultSharedMemoryPath);
+  if (shm_cache != NULL) {
+    return shm_cache;  // Using the default shm cache, which already exists.
+  }
+  if (default_shm_metadata_cache_creation_failed_) {
+    return NULL;  // Already tried to create the default shm cache and failed.
+  }
+  // This config is for the first server context to need the default cache;
+  // create it.
+  GoogleString error_msg;
+  bool ok = CreateShmMetadataCache(kDefaultSharedMemoryPath,
+                                   config->default_shared_memory_cache_kb(),
+                                   &error_msg);
+  if (!ok) {
+    factory_->message_handler()->Message(
+        kWarning, "Default shared memory cache: %s", error_msg.c_str());
+    default_shm_metadata_cache_creation_failed_ = true;
+    return NULL;
+  }
+  return LookupShmMetadataCache(kDefaultSharedMemoryPath);
 }
 
 CacheInterface* SystemCaches::GetFilesystemMetadataCache(
@@ -287,7 +323,7 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   SystemCachePath* caches_for_path = GetCache(config);
   CacheInterface* lru_cache = caches_for_path->lru_cache();
   CacheInterface* file_cache = caches_for_path->file_cache();
-  CacheInterface* shm_metadata_cache = GetShmMetadataCache(config);
+  CacheInterface* shm_metadata_cache = GetShmMetadataCacheOrDefault(config);
   CacheInterface* memcached = GetMemcached(config);
   if (memcached != NULL) {
     // Note that a distinct FallbackCache gets created for every VirtualHost
@@ -314,12 +350,12 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   // factory, rather than having one per vhost.
   //
   // Note that a user can disable the LRU cache by setting its byte-count
-  // to 0.
+  // to 0, and in fact this is the default setting.
   CacheInterface* http_l2 = (memcached != NULL) ? memcached : file_cache;
   int64 max_content_length = config->max_cacheable_response_content_length();
   HTTPCache* http_cache = NULL;
   if (lru_cache == NULL) {
-    // No L1, and so backend is just the L2
+    // No L1, and so backend is just the L2.
     http_cache = new HTTPCache(http_l2, factory_->timer(),
                                factory_->hasher(), stats);
   } else {
@@ -339,14 +375,33 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   CacheInterface* metadata_l2 = NULL;
   size_t l1_size_limit = WriteThroughCache::kUnlimited;
   if (shm_metadata_cache != NULL) {
-    // Do we have both a local SHM cache and a memcached-backed cache? In that
-    // case, it makes sense to go L1/L2 with them. If not, just use the SHM
-    // cache and ignore the per-process LRU as it's basically strictly worse.
     if (memcached != NULL) {
+      // If we have both a local SHM cache and a memcached-backed cache we
+      // should go L1/L2 because there are likely to be other machines running
+      // memcached that would like to use our metadata.
       metadata_l1 = shm_metadata_cache;
       metadata_l2 = memcached;
     } else {
-      metadata_l2 = shm_metadata_cache;
+      // We can either write through to the file cache or not.  Not writing
+      // through is nice in that we can save a lot of disk writes, but if
+      // someone restarts the server they have to repeat all cached
+      // optimizations.  If someone has explicitly configured a shared memory
+      // cache, assume they've considered the tradeoffs and want to avoid the
+      // disk writes.  Otherwise, if they're just using a shared memory cache
+      // because it's on by default, assume having to reoptimize everything
+      // would be worse.
+      // TODO(jefftk): add support for checkpointing the state of the shm cache
+      // which would remove the need to write through to the file cache.
+      if (shm_metadata_cache ==
+          LookupShmMetadataCache(kDefaultSharedMemoryPath)) {
+        // They're running the SHM cache because it's the default.  Go L1/L2 to
+        // be conservative.
+        metadata_l1 = shm_metadata_cache;
+        metadata_l2 = file_cache;
+      } else {
+        // They've explicitly configured an SHM cache; ignore the file cache.
+        metadata_l2 = shm_metadata_cache;
+      }
     }
   } else {
     l1_size_limit = config->lru_cache_byte_limit();
@@ -390,6 +445,10 @@ void SystemCaches::RegisterConfig(SystemRewriteOptions* config) {
   // memcache_servers_ respectively.
   GetCache(config);
   GetMemcached(config);
+
+  // GetShmMetadataCacheOrDefault will create a default cache if one is needed
+  // and doesn't exist yet.
+  GetShmMetadataCacheOrDefault(config);
 }
 
 void SystemCaches::RootInit() {
