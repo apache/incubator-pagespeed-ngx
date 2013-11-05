@@ -1743,7 +1743,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::max_combined_js_bytes_, "xcj",
       kMaxCombinedJsBytes,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Maximum size allowed for the combined JavaScript resource.");
   AddBaseProperty(
       false, &RewriteOptions::enable_blink_html_change_detection_,
       "ebhcd", kEnableBlinkHtmlChangeDetection,

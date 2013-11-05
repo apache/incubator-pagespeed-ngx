@@ -1163,6 +1163,8 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedLogDir /tmp/log/
 #ALL_DIRECTIVES ModPagespeedLogRewriteTiming false
 #ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
+#ALL_DIRECTIVES ModPagespeedMaxCombinedCssBytes 100000
+#ALL_DIRECTIVES ModPagespeedMaxCombinedJsBytes 100000
 #ALL_DIRECTIVES ModPagespeedMapOriginDomain example.com localhost
 #ALL_DIRECTIVES ModPagespeedMapRewriteDomain example.com static.example.com
 #ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
