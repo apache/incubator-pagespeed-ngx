@@ -201,7 +201,7 @@ class WebpScanlineReader : public ScanlineReaderInterface {
   bool was_initialized_;
 
   // Buffer for holding the decoded pixels.
-  scoped_array<uint8_t> pixels_;
+  net_instaweb::scoped_array<uint8_t> pixels_;
 
   MessageHandler* message_handler_;
 

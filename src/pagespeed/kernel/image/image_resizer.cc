@@ -354,7 +354,7 @@ class ResizeRowArea : public ResizeRow {
  protected:
   int pixels_per_row_;
   float* output_buffer_;  // Not owned
-  scoped_array<ResizeTableEntry> table_;
+  net_instaweb::scoped_array<ResizeTableEntry> table_;
 };
 
 template<int num_channels>
@@ -428,8 +428,8 @@ class ResizeColArea : public ResizeCol {
   void ComputeOutput(const float* in_data, uint8_t* out_data);
 
  private:
-  scoped_array<ResizeTableEntry> table_;
-  scoped_array<float> buffer_;
+  net_instaweb::scoped_array<ResizeTableEntry> table_;
+  net_instaweb::scoped_array<float> buffer_;
   uint8_t* output_buffer_;  // Not owned
   int elements_per_row_;
   // elements_per_row_4_ is the largest multiple of 4 which is smaller than

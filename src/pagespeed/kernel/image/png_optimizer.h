@@ -335,8 +335,8 @@ class PngScanlineReaderRaw : public ScanlineReaderInterface {
   size_t bytes_per_row_;
   size_t row_;
   bool was_initialized_;
-  scoped_array<png_byte> image_buffer_;
-  scoped_array<png_bytep> row_pointers_;
+  net_instaweb::scoped_array<png_byte> image_buffer_;
+  net_instaweb::scoped_array<png_bytep> row_pointers_;
   ScopedPngStruct png_struct_;
   // png_input_ stores a pointer to the input image stream. It also keeps
   // tracking the length of data that libpng has read. It is initialized

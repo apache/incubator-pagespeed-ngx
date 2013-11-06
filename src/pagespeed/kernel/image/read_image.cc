@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/jpeg_reader.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
 namespace pagespeed {
