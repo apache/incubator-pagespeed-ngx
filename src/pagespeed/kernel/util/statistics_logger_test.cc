@@ -54,8 +54,8 @@ class StatisticsLoggerTest : public ::testing::Test {
   typedef StatisticsLogger::VarMap VarMap;
 
   StatisticsLoggerTest()
-      : timer_(MockTimer::kApr_5_2010_ms),
-        thread_system_(Platform::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         handler_(thread_system_->NewMutex()),
         file_system_(thread_system_.get(), &timer_),
         // Note: These unit tests don't need access to timestamp variable or
@@ -140,8 +140,8 @@ class StatisticsLoggerTest : public ::testing::Test {
                       message_handler);
   }
 
-  MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockTimer timer_;
   MockMessageHandler handler_;
   MemFileSystem file_system_;
   SimpleStats stats_;

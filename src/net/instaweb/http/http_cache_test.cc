@@ -99,10 +99,10 @@ class HTTPCacheTest : public testing::Test {
   }
 
   HTTPCacheTest()
-      : mock_timer_(ParseDate(kStartDate)),
+      : thread_system_(Platform::CreateThreadSystem()),
+        mock_timer_(thread_system_->NewMutex(), ParseDate(kStartDate)),
         lru_cache_(kMaxSize),
-        http_cache_(&lru_cache_, &mock_timer_, &mock_hasher_, simple_stats_),
-        thread_system_(Platform::CreateThreadSystem()) {}
+        http_cache_(&lru_cache_, &mock_timer_, &mock_hasher_, simple_stats_) {}
 
   void InitHeaders(ResponseHeaders* headers, const char* cache_control) {
     headers->Add("name", "value");
@@ -161,12 +161,12 @@ class HTTPCacheTest : public testing::Test {
         thread_system_.get()));
   }
 
+  scoped_ptr<ThreadSystem> thread_system_;
   MockTimer mock_timer_;
   MockHasher mock_hasher_;
   LRUCache lru_cache_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
-  scoped_ptr<ThreadSystem> thread_system_;
   static SimpleStats* simple_stats_;
 
  private:

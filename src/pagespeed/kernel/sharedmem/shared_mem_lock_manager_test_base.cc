@@ -41,8 +41,8 @@ SharedMemLockManagerTestBase::SharedMemLockManagerTestBase(
     SharedMemTestEnv* test_env)
     : test_env_(test_env),
       shmem_runtime_(test_env->CreateSharedMemRuntime()),
-      timer_(0),
       thread_system_(Platform::CreateThreadSystem()),
+      timer_(thread_system_->NewMutex(), 0),
       handler_(thread_system_->NewMutex()),
       scheduler_(thread_system_.get(), &timer_) {
 }

@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
@@ -36,7 +37,7 @@ class HttpDumpUrlAsyncWriterTest : public FetcherTest {
  protected:
   HttpDumpUrlAsyncWriterTest()
       : root_dir_(GTestTempDir() + "/http_dump_url_async_writer_test/"),
-        mock_timer_(0),
+        mock_timer_(new NullMutex(), 0),
         dump_fetcher_(root_dir_, counting_fetcher(), &file_system_,
                       &mock_timer_) {
   }

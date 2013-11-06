@@ -489,14 +489,6 @@ ProxyFetch::ProxyFetch(
     distributed_fetch_ = true;
   }
 
-  // Now that we've created the RewriteDriver, include the client_id generated
-  // from the original request headers, if any.
-  const char* client_id = async_fetch->request_headers()->Lookup1(
-      HttpAttributes::kXGooglePagespeedClientId);
-  if (client_id != NULL) {
-    driver_->set_client_id(client_id);
-  }
-
   DCHECK(driver_->request_headers() != NULL);
 
   // Set the user agent in the rewrite driver if it is not set already.

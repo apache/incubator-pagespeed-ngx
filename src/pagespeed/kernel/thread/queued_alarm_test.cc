@@ -53,7 +53,7 @@ class QueuedAlarmTest : public WorkerTestBase {
   }
 
   MockScheduler* SetupWithMockScheduler() {
-    MockTimer* timer = new MockTimer(0);
+    MockTimer* timer = new MockTimer(thread_system_->NewMutex(), 0);
     MockScheduler* scheduler = new MockScheduler(thread_system_.get(), timer);
     timer_.reset(timer);
     scheduler_.reset(scheduler);

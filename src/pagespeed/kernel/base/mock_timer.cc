@@ -20,7 +20,6 @@
 
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/function.h"
 
@@ -28,9 +27,9 @@ namespace net_instaweb {
 
 const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;
 
-MockTimer::MockTimer(int64 time_ms)
+MockTimer::MockTimer(AbstractMutex* mutex, int64 time_ms)
     : time_us_(1000 * time_ms),
-      mutex_(new NullMutex),
+      mutex_(mutex),
       next_delta_(0) {
 }
 

@@ -18,12 +18,13 @@
 
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
 class CountdownTimerTest : public testing::Test {
  protected:
-  CountdownTimerTest() : timer_(0) {}
+  CountdownTimerTest() : timer_(new NullMutex, 0) {}
 
   MockTimer timer_;
 };

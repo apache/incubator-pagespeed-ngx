@@ -57,7 +57,7 @@ class TestImageRewrite {
   TestImageRewrite(const char* file_name,
                    net_instaweb::Image::CompressionOptions* options) :
       handler_(new net_instaweb::NullMutex),
-      timer_(0),
+      timer_(new net_instaweb::NullMutex, 0),
       options_(options),
       file_name_(file_name) {
   }

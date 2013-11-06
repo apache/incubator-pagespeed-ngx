@@ -53,7 +53,7 @@ SharedMemCacheTestBase::SharedMemCacheTestBase(SharedMemTestEnv* env)
       shmem_runtime_(env->CreateSharedMemRuntime()),
       thread_system_(Platform::CreateThreadSystem()),
       handler_(thread_system_->NewMutex()),
-      timer_(0),
+      timer_(thread_system_->NewMutex(), 0),
       sanity_checks_enabled_(true) {
   cache_.reset(MakeCache());
   EXPECT_TRUE(cache_->Initialize());

@@ -52,7 +52,7 @@ class ImageTestBase : public testing::Test {
   typedef scoped_ptr<Image> ImagePtr;
 
   ImageTestBase() :
-    timer_(0),
+    timer_(new NullMutex, 0),
     message_handler_(new NullMutex) {
   }
 

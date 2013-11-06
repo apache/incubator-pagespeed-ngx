@@ -53,8 +53,8 @@ class PropertyCacheTest : public testing::Test {
  protected:
   PropertyCacheTest()
       : lru_cache_(kMaxCacheSize),
-        timer_(MockTimer::kApr_5_2010_ms),
         thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         cache_property_store_(
             "test/", &lru_cache_, &timer_, &stats_, thread_system_.get()),
         property_cache_(&cache_property_store_,
@@ -146,9 +146,9 @@ class PropertyCacheTest : public testing::Test {
   }
 
   LRUCache lru_cache_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   SimpleStats stats_;
-  scoped_ptr<ThreadSystem> thread_system_;
   CachePropertyStore cache_property_store_;
   PropertyCache property_cache_;
   const PropertyCache::Cohort* cohort_;
@@ -271,7 +271,7 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
 
   // Now imagine we are on a second server, which is trying to write
   // an older value into the same physical cache.  Make sure we don't let it.
-  MockTimer timer2(MockTimer::kApr_5_2010_ms - 100);
+  MockTimer timer2(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms - 100);
   CachePropertyStore cache_property_store2(
       "test/", &lru_cache_, &timer2, &stats_, thread_system_.get());
   PropertyCache property_cache2(&cache_property_store2,

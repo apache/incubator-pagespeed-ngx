@@ -11,6 +11,8 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
+
 namespace net_instaweb {
 
 class HttpResponseParserTest : public FetcherTest {
@@ -20,7 +22,7 @@ TEST_F(HttpResponseParserTest, TestFetcher) {
   GoogleString http_filename = TestFilename();
   GoogleString http, content;
   ResponseHeaders response_headers;
-  MockTimer timer(0);
+  MockTimer timer(new NullMutex, 0);
   StdioFileSystem file_system;
   ASSERT_TRUE(file_system.ReadFile(http_filename.c_str(), &http,
                                    &message_handler_));

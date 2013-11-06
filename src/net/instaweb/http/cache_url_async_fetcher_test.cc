@@ -211,7 +211,8 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
 
   CacheUrlAsyncFetcherTest()
       : lru_cache_(1000),
-        timer_(MockTimer::kApr_5_2010_ms),
+        thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         cache_url_("http://www.example.com/cacheable.html"),
         cache_css_url_("http://www.example.com/cacheable.css"),
         cache_https_html_url_("https://www.example.com/cacheable.html"),
@@ -233,7 +234,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         implicit_cache_ttl_ms_(500 * Timer::kSecondMs),
         min_cache_ttl_ms_(-1),
         cache_result_valid_(true),
-        thread_system_(Platform::CreateThreadSystem()),
         thread_synchronizer_(new ThreadSynchronizer(thread_system_.get())),
         mock_fetcher_(thread_synchronizer_.get()),
         counting_fetcher_(&mock_fetcher_),
@@ -577,6 +577,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   SimpleStats statistics_;
 
   LRUCache lru_cache_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   MockHasher mock_hasher_;
   scoped_ptr<HTTPCache> http_cache_;
@@ -615,7 +616,6 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
 
   bool cache_result_valid_;
 
-  scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
   DelayedMockUrlFetcher mock_fetcher_;
   CountingUrlAsyncFetcher counting_fetcher_;

@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
@@ -57,7 +58,7 @@ const size_t kHugeWriteSize = 2 * kTestValueSizeThreshold;
 class AprMemCacheTest : public CacheTestBase {
  protected:
   AprMemCacheTest()
-      : timer_(MockTimer::kApr_5_2010_ms),
+      : timer_(new NullMutex, MockTimer::kApr_5_2010_ms),
         lru_cache_(new LRUCache(kLRUCacheSize)) {
     AprMemCache::InitStats(&statistics_);
   }

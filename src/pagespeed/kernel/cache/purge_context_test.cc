@@ -74,8 +74,8 @@ class PurgeContextTest : public testing::Test {
 
  protected:
   PurgeContextTest()
-      : timer_(MockTimer::kApr_5_2010_ms),
-        thread_system_(Platform::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         message_handler_(thread_system_->NewMutex()),
         file_system_(thread_system_.get(), &timer_),
         scheduler_(thread_system_.get(), &timer_),
@@ -166,8 +166,8 @@ class PurgeContextTest : public testing::Test {
     purge_set2_ = purge_set;
   }
 
-  MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockTimer timer_;
   MockMessageHandler message_handler_;
   MemFileSystem file_system_;
   MockScheduler scheduler_;

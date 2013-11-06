@@ -403,7 +403,7 @@ function fetch_until() {
   echo " until \$($COMMAND) $OP $RESULT"
   echo "$WGET_HERE $REQUESTURL and checking with $COMMAND"
   while test -t; do
-    # Clean out OUTDIR so that wget doesn't create .1 files.
+    # Clean out WGET_DIR so that wget doesn't create .1 files.
     rm -rf $WGET_DIR
     mkdir -p $WGET_DIR
 

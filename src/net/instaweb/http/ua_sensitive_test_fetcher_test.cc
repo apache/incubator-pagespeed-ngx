@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -46,7 +47,7 @@ const char kRobotoSsl[] = "https://fonts.googleapis.com/css?family=Roboto";
 class UserAgentSensitiveTestFetcherTest : public ::testing::Test {
  protected:
   UserAgentSensitiveTestFetcherTest()
-      : timer_(MockTimer::kApr_5_2010_ms),
+      : timer_(new NullMutex, MockTimer::kApr_5_2010_ms),
         ua_sensitive_fetcher_(&mock_fetcher_) {
   }
 

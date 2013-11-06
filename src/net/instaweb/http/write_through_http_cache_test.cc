@@ -104,9 +104,9 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   }
 
   WriteThroughHTTPCacheTest()
-      : mock_timer_(ParseDate(kStartDate)),
+      : thread_system_(Platform::CreateThreadSystem()),
+        mock_timer_(thread_system_->NewMutex(), ParseDate(kStartDate)),
         cache1_(kMaxSize), cache2_(kMaxSize),
-        thread_system_(Platform::CreateThreadSystem()),
         key_("http://www.test.com/1"),
         key2_("http://www.test.com/2"),
         content_("content"), header_name_("name"),
@@ -178,6 +178,7 @@ class WriteThroughHTTPCacheTest : public testing::Test {
     simple_stats_.Clear();
   }
 
+  scoped_ptr<ThreadSystem> thread_system_;
   MockTimer mock_timer_;
   MockHasher mock_hasher_;
   LRUCache cache1_;
@@ -185,7 +186,6 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   scoped_ptr<WriteThroughHTTPCache> http_cache_;
   GoogleMessageHandler message_handler_;
   SimpleStats simple_stats_;
-  scoped_ptr<ThreadSystem> thread_system_;
 
   const GoogleString key_;
   const GoogleString key2_;

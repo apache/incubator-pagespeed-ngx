@@ -21,13 +21,13 @@
 
 #include <vector>                       // for vector
 
-#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class Function;
 
 class MockTimer : public Timer {
@@ -37,7 +37,8 @@ class MockTimer : public Timer {
   // A useful recent time-constant for testing.
   static const int64 kApr_5_2010_ms;
 
-  explicit MockTimer(int64 time_ms);
+  // Takes ownership of mutex.
+  MockTimer(AbstractMutex* mutex, int64 time_ms);
   virtual ~MockTimer();
 
   // Sets the time as in microseconds, calling any outstanding alarms
@@ -69,11 +70,6 @@ class MockTimer : public Timer {
   virtual int64 NowUs() const;
   virtual void SleepUs(int64 us) { AdvanceUs(us); }
   virtual void SleepMs(int64 ms) { AdvanceUs(1000 * ms); }
-
-  // By default, mutex_ is a NullMutex and so MockTimer is only suitable
-  // for single-threaded systems.  To use in a multi-threaded system, create
-  // a mutex for MockTimer to use.  This transfers ownership.
-  void set_mutex(AbstractMutex* mutex) { mutex_.reset(mutex); }
 
  private:
   typedef struct {

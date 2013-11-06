@@ -58,7 +58,8 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase()
 }
 
 void SharedMemStatisticsTestBase::SetUp() {
-  timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
+  timer_.reset(
+      new MockTimer(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms));
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
   stats_.reset(new SharedMemStatistics(
       kLogIntervalMs, kMaxLogfileSizeKb, kStatsLogFile, true, kPrefix,

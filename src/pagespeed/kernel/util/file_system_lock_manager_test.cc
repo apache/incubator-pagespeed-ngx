@@ -46,8 +46,8 @@ const int64 kWaitMs = 10000;
 class FileSystemLockManagerTest : public testing::Test {
  protected:
   FileSystemLockManagerTest()
-      : timer_(0),
-        thread_system_(Platform::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), 0),
         scheduler_(thread_system_.get(), &timer_),
         file_system_(thread_system_.get(), &timer_),
         manager_(&file_system_, GTestTempDir(), &scheduler_, &handler_) { }
@@ -75,8 +75,8 @@ class FileSystemLockManagerTest : public testing::Test {
     return &timer_;
   }
 
-  MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockTimer timer_;
   MockScheduler scheduler_;
   GoogleMessageHandler handler_;
   MemFileSystem file_system_;

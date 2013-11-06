@@ -185,7 +185,7 @@ NonceGenerator* TestRewriteDriverFactory::DefaultNonceGenerator() {
 
 Timer* TestRewriteDriverFactory::DefaultTimer() {
   DCHECK(mock_timer_ == NULL);
-  mock_timer_ = new MockTimer(kStartTimeMs);
+  mock_timer_ = new MockTimer(thread_system()->NewMutex(), kStartTimeMs);
   return mock_timer_;
 }
 

@@ -20,15 +20,15 @@
 
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/null_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
 namespace {
 
 TEST(RequestContext_TimingInfo, Noop) {
-  MockTimer timer(101);
+  MockTimer timer(new NullMutex, 101);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
   EXPECT_EQ(timer.NowMs(), timing_info.init_ts_ms());
@@ -42,7 +42,7 @@ TEST(RequestContext_TimingInfo, Noop) {
 }
 
 TEST(RequestContext_TimingInfo, StartTime) {
-  MockTimer timer(101);
+  MockTimer timer(new NullMutex, 101);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
 
@@ -52,7 +52,7 @@ TEST(RequestContext_TimingInfo, StartTime) {
 }
 
 TEST(RequestContext_TimingInfo, FetchTiming) {
-  MockTimer timer(100);
+  MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
   timing_info.RequestStarted();
@@ -83,7 +83,7 @@ TEST(RequestContext_TimingInfo, FetchTiming) {
 }
 
 TEST(RequestContext_TimingInfo, ProcessingTime) {
-  MockTimer timer(100);
+  MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
 
@@ -110,7 +110,7 @@ TEST(RequestContext_TimingInfo, ProcessingTime) {
 }
 
 TEST(RequestContext_TimingInfo, ProcessingTimeNoFetch) {
-  MockTimer timer(100);
+  MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
 
@@ -132,7 +132,7 @@ TEST(RequestContext_TimingInfo, ProcessingTimeNoFetch) {
 }
 
 TEST(RequestContext_TimingInfo, TimeToStartProcessing) {
-  MockTimer timer(100);
+  MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
 
@@ -150,7 +150,7 @@ TEST(RequestContext_TimingInfo, TimeToStartProcessing) {
 }
 
 TEST(RequestContext_TimingInfo, PcacheLookup) {
-  MockTimer timer(100);
+  MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
 
@@ -178,7 +178,7 @@ TEST(RequestContext_TimingInfo, PcacheLookup) {
 }
 
 TEST(RequestContext_TimingInfo, TimeToStartParse) {
-  MockTimer timer(100);
+  MockTimer timer(new NullMutex, 100);
   NullMutex mutex;
   RequestContext::TimingInfo timing_info(&timer, &mutex);
 

@@ -220,7 +220,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchWithEtagsTest) {
 }
 
 TEST_F(MockUrlFetcherTest, UpdateHeaderDates) {
-  MockTimer timer(MockTimer::kApr_5_2010_ms);
+  MockTimer timer(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms);
   fetcher_.set_timer(&timer);
   fetcher_.set_update_date_headers(true);
 

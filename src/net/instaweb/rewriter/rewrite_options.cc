@@ -589,6 +589,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
+  RewriteOptions::kExperimentSpdy,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kFixReflows,
   RewriteOptions::kSplitHtml,  // internal, enabled conditionally
@@ -688,6 +689,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ds", "Div Structure" },
   { RewriteOptions::kElideAttributes,
     "ea", "Elide Attributes" },
+  { RewriteOptions::kExperimentSpdy,
+    "xs", "SPDY Resources Experiment" },
   { RewriteOptions::kExplicitCloseTags,
     "xc", "Explicit Close Tags" },
   { RewriteOptions::kExtendCacheCss,

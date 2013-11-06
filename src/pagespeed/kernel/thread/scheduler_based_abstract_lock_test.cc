@@ -43,13 +43,13 @@ static const int kLongMs = 100;
 class SchedulerBasedAbstractLockTest : public testing::Test {
  protected:
   SchedulerBasedAbstractLockTest()
-      : timer_(0),
-        thread_system_(Platform::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), 0),
         scheduler_(thread_system_.get(), &timer_) {
   }
 
-  MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  MockTimer timer_;
   MockScheduler scheduler_;
 
  private:

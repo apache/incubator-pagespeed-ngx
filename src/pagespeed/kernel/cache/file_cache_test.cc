@@ -47,7 +47,7 @@ class FileCacheTest : public CacheTestBase {
   FileCacheTest()
       : thread_system_(Platform::CreateThreadSystem()),
         worker_("cleaner", thread_system_.get()),
-        mock_timer_(0),
+        mock_timer_(thread_system_->NewMutex(), 0),
         file_system_(thread_system_.get(), &mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
@@ -67,9 +67,7 @@ class FileCacheTest : public CacheTestBase {
         FileCache::kBytesFreedInCleanup);
 
     // TODO(jmarantz): consider using mock_thread_system if we want
-    // explicit control of time.  For now, just mutex-protect the
-    // MockTimer.
-    mock_timer_.set_mutex(thread_system_->NewMutex());
+    // explicit control of time.
     file_system_.set_advance_time_on_update(true, &mock_timer_);
   }
 

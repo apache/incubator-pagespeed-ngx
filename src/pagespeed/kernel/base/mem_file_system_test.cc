@@ -39,7 +39,7 @@ class MemFileSystemTest : public FileSystemTest {
  protected:
   MemFileSystemTest()
       : thread_system_(new NullThreadSystem),
-        timer_(0),
+        timer_(thread_system_->NewMutex(), 0),
         mem_file_system_(thread_system_.get(), &timer_) {
     mem_file_system_.set_advance_time_on_update(true, &timer_);
   }

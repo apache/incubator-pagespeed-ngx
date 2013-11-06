@@ -18,13 +18,14 @@
 
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
 class MockTimerTest : public testing::Test {
  protected:
-  MockTimerTest() : timer_(0) {}
+  MockTimerTest() : timer_(new NullMutex, 0) {}
   virtual void SampleCallback(GoogleString* str) {
     *str = str->empty() ? kCallbackCalledOnce : kCallbackCalledTwice;
   }

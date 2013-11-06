@@ -47,8 +47,8 @@ const char kUrl[] = "http://www.example.com/";
 class StatsMaker {
  public:
   StatsMaker()
-      : timer_(MockTimer::kApr_5_2010_ms),
-        threads_(Platform::CreateThreadSystem()),
+      : threads_(Platform::CreateThreadSystem()),
+        timer_(threads_->NewMutex(), MockTimer::kApr_5_2010_ms),
         fs_(threads_.get(), &timer_),
         mem_runtime_(new InProcessSharedMem(threads_.get())),
         stats_(new SharedMemStatistics(3000 /* log dump interval */,
@@ -67,8 +67,8 @@ class StatsMaker {
   Statistics* stats() { return stats_.get(); }
 
  protected:
-  MockTimer timer_;
   scoped_ptr<ThreadSystem> threads_;
+  MockTimer timer_;
   MemFileSystem fs_;
   GoogleMessageHandler message_handler_;
   scoped_ptr<InProcessSharedMem> mem_runtime_;
@@ -81,10 +81,10 @@ class StatsMaker {
 class UrlAsyncFetcherStatsTest : public testing::Test {
  protected:
   UrlAsyncFetcherStatsTest()
-      : timer_(MockTimer::kApr_5_2010_ms),
+      : thread_system_(Platform::CreateThreadSystem()),
+        timer_(thread_system_->NewMutex(), MockTimer::kApr_5_2010_ms),
         wait_fetcher_(&mock_fetcher_, new NullMutex),
-        stats_fetcher_("test", &wait_fetcher_, &timer_, stats_),
-        thread_system_(Platform::CreateThreadSystem()) {
+        stats_fetcher_("test", &wait_fetcher_, &timer_, stats_) {
     // We don't want delays unless we're testing timing stuff.
     wait_fetcher_.SetPassThroughMode(true);
   }
@@ -109,11 +109,11 @@ class UrlAsyncFetcherStatsTest : public testing::Test {
   static Statistics* stats_;
 
   GoogleMessageHandler message_handler_;
+  scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   MockUrlFetcher mock_fetcher_;
   WaitUrlAsyncFetcher wait_fetcher_;
   UrlAsyncFetcherStats stats_fetcher_;
-  scoped_ptr<ThreadSystem> thread_system_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlAsyncFetcherStatsTest);

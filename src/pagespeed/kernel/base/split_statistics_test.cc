@@ -44,7 +44,7 @@ class SplitStatisticsTest : public testing::Test {
  public:
   SplitStatisticsTest()
       : threads_(Platform::CreateThreadSystem()),
-        timer_(MockTimer::kApr_5_2010_ms),
+        timer_(threads_->NewMutex(), MockTimer::kApr_5_2010_ms),
         fs_(threads_.get(), &timer_),
         global_(MakeInMemory(&global_store_)),
         local_a_(MakeInMemory(&local_a_store_)),
