@@ -50,7 +50,6 @@ namespace image_compression {
 using net_instaweb::MessageHandler;
 
 class ScopedGifStruct;
-struct PaletteRGBA;
 
 // Reader for GIF-encoded data.
 class GifReader : public PngReaderInterface {
