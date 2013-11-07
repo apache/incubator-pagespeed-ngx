@@ -127,9 +127,6 @@ class ServerContext {
       const ContentType* content_type, StringPiece charset,
       ResponseHeaders* header) const;
 
-  // Changes the content type of a pre-initialized header.
-  void SetContentType(const ContentType* content_type, ResponseHeaders* header);
-
   void set_filename_prefix(const StringPiece& file_prefix);
   void set_statistics(Statistics* x) { statistics_ = x; }
   void set_rewrite_stats(RewriteStats* x) { rewrite_stats_ = x; }

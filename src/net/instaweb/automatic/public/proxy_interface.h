@@ -29,7 +29,6 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -45,7 +44,6 @@ class ServerContext;
 class RewriteOptions;
 class Statistics;
 class TimedVariable;
-class Timer;
 
 // TODO(sligocki): Rename as per style-guide.
 class ProxyInterface : public UrlAsyncFetcher {
@@ -99,14 +97,9 @@ class ProxyInterface : public UrlAsyncFetcher {
   void GetRewriteOptionsDone(RequestData* request_data,
                              RewriteOptions* query_options);
 
-  PropertyCache::CohortVector GetCohortList(bool requires_blink_cohort) const;
-
   // If the URL and port are for this server, don't proxy those (to avoid
   // infinite fetching loops). This might be the favicon or something...
   bool UrlAndPortMatchThisServer(const GoogleUrl& url);
-
-  UrlAsyncFetcher* fetcher_;              // thread-safe
-  Timer* timer_;                          // thread-safe
 
   // This server's hostname and port (to avoid making circular requests).
   // TODO(sligocki): This assumes we will only be called as one hostname,

@@ -64,18 +64,7 @@
 
 namespace {
 
-const char kPreloadScript[] = "function preload(x){"
-    "var obj=document.createElement('object');"
-    "obj.data=x;"
-    "obj.width=0;"
-    "obj.height=0;}";
-const char kScriptBlock[] =
-    "<script type=\"text/javascript\">(function(){%s})()</script>";
 const char kJavascriptInline[] = "<script type=\"text/javascript\">%s</script>";
-
-const char kFlushSubresourcesFilter[] = "FlushSubresourcesFilter";
-
-const char kPrefetchObjectTagHtml[] = "preload(%s);";
 
 const int kMaxParallelConnections = 6;
 

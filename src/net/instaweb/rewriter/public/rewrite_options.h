@@ -3003,10 +3003,6 @@ class RewriteOptions {
   static void InitFilterIdToEnumArray();
   static void InitOptionIdToPropertyArray();
   static void InitOptionNameToPropertyArray();
-  // If str match a cacheable family pattern then returns the
-  // PrioritizeVisibleContentFamily that it matches, else returns NULL.
-  const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
-      const StringPiece str) const;
 
   // Helper for converting the result of SetOptionFromName into
   // a status/message pair. The returned result may be adjusted from the passed

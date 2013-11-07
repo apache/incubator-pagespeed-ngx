@@ -22,7 +22,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_OUTPUT_RESOURCE_H_
 
-#include "base/logging.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -180,15 +179,6 @@ class OutputResource : public Resource {
   void set_cached_result(CachedResult* cached_result) {
     clear_cached_result();
     cached_result_ = cached_result;
-  }
-
-  // Transfers up ownership of any cached result and clears pointer to it.
-  CachedResult* ReleaseCachedResult() {
-    CHECK(cached_result_owned_);
-    CachedResult* ret = cached_result_;
-    cached_result_ = NULL;
-    cached_result_owned_ = false;
-    return ret;
   }
 
   OutputResourceKind kind() const { return kind_; }

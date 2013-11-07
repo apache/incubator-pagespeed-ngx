@@ -77,8 +77,6 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ServerContext* server_context,
                                Statistics* stats)
     : server_context_(server_context),
-      fetcher_(NULL),
-      timer_(NULL),
       hostname_(hostname.as_string()),
       port_(port),
       all_requests_(stats->GetTimedVariable(kTotalRequestCount)),

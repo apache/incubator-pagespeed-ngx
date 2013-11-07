@@ -35,7 +35,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
@@ -90,8 +89,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
 
   ProxyInterfaceTest()
       : start_time_ms_(0),
-        max_age_300_("max-age=300"),
-        request_start_time_ms_(-1) {
+        max_age_300_("max-age=300") {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -200,20 +198,6 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     return status_code;
   }
 
-  GoogleString GetDefaultUserAgentForDeviceType(
-      UserAgentMatcher::DeviceType device_type) {
-    switch (device_type) {
-      case UserAgentMatcher::kMobile:
-        return UserAgentMatcherTestBase::kAndroidICSUserAgent;
-      case UserAgentMatcher::kTablet:
-        return UserAgentMatcherTestBase::kIPadUserAgent;
-      case UserAgentMatcher::kDesktop:
-      case UserAgentMatcher::kEndOfDeviceType:
-      default:
-        return UserAgentMatcherTestBase::kChromeUserAgent;
-    }
-  }
-
   void DisableAjax() {
     RewriteOptions* options = server_context()->global_options();
     options->ClearSignatureForTesting();
@@ -288,7 +272,6 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
   GoogleString start_time_plus_300s_string_;
   GoogleString old_time_string_;
   const GoogleString max_age_300_;
-  int64 request_start_time_ms_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);

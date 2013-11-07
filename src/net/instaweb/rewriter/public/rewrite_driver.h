@@ -151,9 +151,6 @@ class RewriteDriver : public HtmlParse {
   static const char kSubresourcesPropertyName[];
   // Status codes of previous responses.
   static const char kStatusCodePropertyName[];
-  // Value of the kXPsaBlockingRewriteMode header which causes the blocking
-  // rewrite to wait for async events.
-  static const char kXPsaBlockingRewriteModeSlow[];
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
@@ -978,9 +975,6 @@ class RewriteDriver : public HtmlParse {
   void set_flush_early_render_info(
       FlushEarlyRenderInfo* flush_early_render_info);
 
-  void set_serve_blink_non_critical(bool x) { serve_blink_non_critical_ = x; }
-  bool serve_blink_non_critical() const { return serve_blink_non_critical_; }
-
   void set_is_blink_request(bool x) { is_blink_request_ = x; }
   bool is_blink_request() const { return is_blink_request_; }
 
@@ -1179,8 +1173,6 @@ class RewriteDriver : public HtmlParse {
   // a RewriteFilter, should override
   // RewriteFilter::UsesPropertyCacheDomCohort() to return true.
   void WriteDomCohortIntoPropertyCache();
-
-  void FinalizeFilterLogging();
 
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
   CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
@@ -1550,10 +1542,6 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
   scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info_;
 
-  // When non-cacheable panels are absent, non-critical content is already
-  // served in blink flow. This flag indicates whether to serve non-critical
-  // from panel_filter / blink_filter or not.
-  bool serve_blink_non_critical_;
   // Is this a blink request?
   bool is_blink_request_;
   bool can_rewrite_resources_;

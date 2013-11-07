@@ -413,14 +413,6 @@ void ServerContext::MergeNonCachingResponseHeaders(
   }
 }
 
-// TODO(jmarantz): consider moving this method to ResponseHeaders
-void ServerContext::SetContentType(const ContentType* content_type,
-                                     ResponseHeaders* header) {
-  CHECK(content_type != NULL);
-  header->Replace(HttpAttributes::kContentType, content_type->mime_type());
-  header->ComputeCaching();
-}
-
 void ServerContext::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
