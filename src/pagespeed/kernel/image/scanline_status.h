@@ -137,7 +137,7 @@ class ScanlineStatus {
   }
 
   const GoogleString ToString() const {
-    return GoogleString(SourceStr()) + ":" + TypeStr() + " " + details();
+    return GoogleString(SourceStr()) + "/" + TypeStr() + " " + details();
   }
 
  private:
@@ -158,7 +158,7 @@ class ScanlineStatus {
 // creating a ScanlineStatus with that error description. _LOGGER is
 // meant to be one of the PS_LOG* macros defined in message_handler.h.
 #define PS_LOGGED_STATUS(_LOGGER, _HANDLER, _TYPE, _SOURCE, ...)     \
-  (_LOGGER(_HANDLER, #_TYPE ":" #_SOURCE ": " __VA_ARGS__),          \
+  (_LOGGER(_HANDLER, #_SOURCE "/" #_TYPE " " __VA_ARGS__),          \
    ScanlineStatus::New(_TYPE, _SOURCE, __VA_ARGS__))
 
 }  // namespace image_compression
