@@ -58,7 +58,7 @@ class NgxBaseFetch : public AsyncFetch {
   NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
                NgxServerContext* server_context,
                const RequestContextPtr& request_ctx,
-               bool modify_caching_headers);
+               PreserveCachingHeaders preserve_caching_headers);
   virtual ~NgxBaseFetch();
 
   // Puts a chain in link_ptr if we have any output data buffered.  Returns
@@ -118,7 +118,7 @@ class NgxBaseFetch : public AsyncFetch {
   int references_;
   pthread_mutex_t mutex_;
   bool handle_error_;
-  bool modify_caching_headers_;
+  PreserveCachingHeaders preserve_caching_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };

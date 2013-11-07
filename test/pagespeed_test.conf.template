@@ -563,6 +563,58 @@ http {
     }
   }
 
+  # Test hosts to cover all possible cache configurations.  L1 will be filecache
+  # or memcache depending on the setting of MEMCACHED_TEST.  These four hosts
+  # are for the four settings for the L2 cache.
+
+  # 1. L2_d=LRU, L2_m=LRU
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name lrud-lrum.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_lrud_lrum";
+
+    pagespeed LRUCacheKbPerProcess 1024;
+    pagespeed LRUCacheByteLimit 2000;
+    pagespeed EnableFilters rewrite_images;
+    pagespeed CriticalImagesBeaconEnabled false;
+  }
+
+  # 2. L2_d=LRU, L2_m=SHM
+  pagespeed CreateSharedMemoryMetadataCache
+            "@@SECONDARY_CACHE@@_lrud_shmm" 8192;
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name lrud-shmm.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_lrud_shmm";
+
+    pagespeed LRUCacheKbPerProcess 1024;
+    pagespeed LRUCacheByteLimit 2000;
+    pagespeed EnableFilters rewrite_images;
+    pagespeed CriticalImagesBeaconEnabled false;
+  }
+
+  # 3. L2_d=none, L2_m=SHM
+  pagespeed CreateSharedMemoryMetadataCache
+            "@@SECONDARY_CACHE@@_noned_shmm" 8192;
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name noned-shmm.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_noned_shmm";
+
+    pagespeed EnableFilters rewrite_images;
+    pagespeed CriticalImagesBeaconEnabled false;
+  }
+
+  # 4. L2_d=none, L2_m=none
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name noned-nonem.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_noned_nonem";
+
+    pagespeed EnableFilters rewrite_images;
+    pagespeed CriticalImagesBeaconEnabled false;
+  }
+
   server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
@@ -708,6 +760,12 @@ http {
 
     location /mod_pagespeed_test/retain_cache_control/ {
       pagespeed ModifyCachingHeaders off;
+      add_header Cache-Control "private, max-age=3000";
+    }
+
+    location /mod_pagespeed_test/retain_cache_control_with_downstream_caching/ {
+      pagespeed ModifyCachingHeaders on;
+      pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:8020/";
       add_header Cache-Control "private, max-age=3000";
     }
 
