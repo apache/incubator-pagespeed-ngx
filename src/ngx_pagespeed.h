@@ -75,6 +75,12 @@ StringPiece str_to_string_piece(ngx_str_t s);
 // over.  Returns NULL if we can't get memory.
 char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
 
+enum PreserveCachingHeaders {
+  kPreserveAllCachingHeaders,  // Cache-Control, ETag, Last-Modified, etc
+  kPreserveOnlyCacheControl,   // Only Cache-Control.
+  kDontPreserveHeaders,
+};
+
 typedef struct {
   NgxBaseFetch* base_fetch;
 
@@ -86,7 +92,8 @@ typedef struct {
 
   bool write_pending;
   bool fetch_done;
-  bool modify_caching_headers;
+
+  PreserveCachingHeaders preserve_caching_headers;
 
   // for html rewrite
   ProxyFetch* proxy_fetch;
@@ -105,9 +112,10 @@ void copy_request_headers_from_ngx(const ngx_http_request_t* r,
 void copy_response_headers_from_ngx(const ngx_http_request_t* r,
                                     ResponseHeaders* headers);
 
-ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
-                                       const ResponseHeaders& pagespeed_headers,
-                                       bool modify_caching_headers);
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const ResponseHeaders& pagespeed_headers,
+    PreserveCachingHeaders preserve_caching_headers);
 
 }  // namespace net_instaweb
 

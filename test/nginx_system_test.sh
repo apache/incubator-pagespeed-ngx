@@ -487,99 +487,6 @@ wget -O - -S $URL $WGET_ARGS &> $FETCHED
 check grep -q 'Cache-Control:.*no-transform' $FETCHED
 WGET_ARGS=""
 
-test_filter rewrite_images inlines, compresses, and resizes.
-fetch_until $URL 'grep -c data:image/png' 1  # inlined
-fetch_until $URL 'grep -c .pagespeed.ic' 2   # two images optimized
-
-# Verify with a blocking fetch that pagespeed_no_transform worked and was
-# stripped.
-fetch_until $URL 'grep -c "images/disclosure_open_plus.png"' 1 \
-  '--header=X-PSA-Blocking-Rewrite:psatest'
-fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
-  '--header=X-PSA-Blocking-Rewrite:psatest'
-
-check run_wget_with_args $URL
-check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000     # re-encoded
-check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126   # resized
-URL=$EXAMPLE_ROOT"/rewrite_images.html?PageSpeedFilters=rewrite_images"
-
-IMG_URL=$(egrep -o 'http://[^"]*pagespeed.[^"]*.jpg' $FETCHED | head -n1)
-if [ -z "$IMG_URL" ]; then
-  # If PreserveUrlRelativity is on, we need to find the relative URL and
-  # absolutify it ourselves.
-  IMG_URL="$EXAMPLE_ROOT/"
-  IMG_URL+=$(grep -o '[^\"]*pagespeed.[^\"]*\.jpg' $FETCHED | head -n 1)
-fi
-
-start_test headers for rewritten image
-echo IMG_URL="$IMG_URL"
-IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
-  $IMG_URL 2>&1)
-echo "IMG_HEADERS=\"$IMG_HEADERS\""
-check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
-# Make sure we have some valid headers.
-check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
-# Make sure the response was not gzipped.
-start_test Images are not gzipped.
-check_not_from "$IMG_HEADERS" fgrep -i 'Content-Encoding: gzip'
-# Make sure there is no vary-encoding
-start_test Vary is not set for images.
-check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
-# Make sure there is an etag
-start_test Etags is present.
-check_from "$IMG_HEADERS" fgrep -qi 'Etag: W/"0"'
-# Make sure an extra header is propagated from input resource to output
-# resource.  X-Extra-Header is added in pagespeed_test.conf.template
-start_test Extra header is present
-check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
-# Make sure there is a last-modified tag
-start_test Last-modified is present.
-check_from "$IMG_HEADERS" fgrep -qi 'Last-Modified'
-
-IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
-JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
-WEBP_QUALITY="PageSpeedImageWebpRecompressionQuality"
-start_test quality of jpeg output images with generic quality flag
-IMG_REWRITE=$TEST_ROOT"/image_rewriting/rewrite_images.html"
-REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
-URL=$REWRITE_URL"&"$IMAGES_QUALITY"=75"
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2 # 2 images optimized
-# This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
-# size is 8157B, while on 64 it is 8155B. Initial investigation showed no
-# visible differences between the generated images.
-# TODO(jmaessen) Verify that this behavior is expected.
-#
-# Note that if this test fails with 8251 it means that you have managed to get
-# progressive jpeg conversion turned on in this testcase, which makes the output
-# larger.  The threshold factor kJpegPixelToByteRatio in image_rewrite_filter.cc
-# is tuned to avoid that.
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
-
-IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
-JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
-WEBP_QUALITY="PageSpeedImageWebpRecompressionQuality"
-
-start_test quality of jpeg output images
-IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
-REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
-URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2 # 2 images optimized
-#
-# If this this test fails because the image size is 7673 bytes it means
-# that image_rewrite_filter.cc decided it was a good idea to convert to
-# progressive jpeg, and in this case it's not.  See the not above on
-# kJpegPixelToByteRatio.
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7564   # resized
-
-start_test quality of webp output images
-rm -rf $OUTDIR
-mkdir $OUTDIR
-IMG_REWRITE=$TEST_ROOT"/webp_rewriting/rewrite_images.html"
-REWRITE_URL=$IMG_REWRITE"?PageSpeedFilters=rewrite_images"
-URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
-check run_wget_with_args --header 'X-PSA-Blocking-Rewrite: psatest' $URL
-check_file_size "$OUTDIR/*webp*" -le 1784   # resized, optimized to webp
-
 start_test respect vary user-agent
 WGET_ARGS=""
 URL="$SECONDARY_HOSTNAME/mod_pagespeed_test/vary/index.html"
@@ -599,12 +506,12 @@ URL=$TEST_ROOT/disable_no_transform/index.html?PageSpeedFilters=inline_css
 fetch_until -save -recursive $URL 'grep -c style' 2
 
 WGET_ARGS=""
-start_test PageSpeedShardDomain directive in location block
+start_test ShardDomain directive in location block
 fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
 check [ $(grep -ce href=\"http://shard1 $FETCH_FILE) = 2 ];
 check [ $(grep -ce href=\"http://shard2 $FETCH_FILE) = 2 ];
 
-start_test PageSpeedLoadFromFile
+start_test LoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?PageSpeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
 
@@ -618,6 +525,16 @@ fetch_until $URL 'fgrep -c web.example.ssp.css' 1
 # directly from the filesystem.
 fetch_until $URL 'fgrep -c file.exception.ssp.css' 1
 
+start_test statistics load
+
+OUT=$($WGET_DUMP $STATISTICS_URL)
+check_from "$OUT" grep 'VHost-Specific Statistics'
+
+start_test scrape stats works
+
+# This needs to be before reload, when we clear the stats.
+check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
+
 # Test that ngx_pagespeed keeps working after nginx gets a signal to reload the
 # configuration.  This is in the middle of tests so that significant work
 # happens both before and after.
@@ -629,7 +546,7 @@ check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 
-start_test PageSpeedLoadFromFileMatch
+start_test LoadFromFileMatch
 URL=$TEST_ROOT/load_from_file_match/index.html?PageSpeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
 
@@ -642,11 +559,18 @@ check_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1"
 check_not_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1, 1"
 check_from "$HTML_HEADERS" egrep -q 'Cache-Control: max-age=0, no-cache'
 
-start_test PageSpeedModifyCachingHeaders
+start_test ModifyCachingHeaders
 URL=$TEST_ROOT/retain_cache_control/index.html
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" grep -q "Cache-Control: private, max-age=3000"
 check_from "$OUT" grep -q "Last-Modified:"
+
+start_test ModifyCachingHeaders with DownstreamCaching enabled.
+URL=$TEST_ROOT/retain_cache_control_with_downstream_caching/index.html
+echo $WGET_DUMP -S $URL
+OUT=$($WGET_DUMP -S $URL)
+check_not_from "$OUT" grep -q "Last-Modified:"
+check_from "$OUT" grep -q "Cache-Control: private, max-age=3000"
 
 test_filter combine_javascript combines 2 JS files into 1.
 start_test combine_javascript with long URL still works
@@ -763,7 +687,7 @@ echo "    php-cgi -b 127.0.0.1:9000"
 # Always fetch the first file so we can check if PHP is enabled.
 FILE=php_withoutflush.php
 URL=$TEST_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 check $WGET_DUMP $URL -O $FETCHED
 check_not grep -q '<?php' $FETCHED
 
@@ -780,7 +704,7 @@ check [ $(grep -c '^X-My-PHP-Header: without_flush' $FETCHED) = 1 ]
 
 FILE=php_withflush.php
 URL=$TEST_ROOT/$FILE
-FETCHED=$OUTDIR/$FILE
+FETCHED=$WGET_DIR/$FILE
 $WGET_DUMP $URL > $FETCHED
 check [ $(grep -c '^X-Page-Speed:'               $FETCHED) = 1 ]
 check [ $(grep -c '^X-My-PHP-Header: with_flush'    $FETCHED) = 1 ]
@@ -820,7 +744,7 @@ fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
 #
 # With the proper hash, we'll get a long cache lifetime.
 SECONDARY_HOST="http://mpd.example.com/gstatic_images"
-PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/*1.gif.pagespeed*)"
+PROXIED_IMAGE="$SECONDARY_HOST/$(basename $WGET_DIR/*1.gif.pagespeed*)"
 WGET_ARGS="--save-headers"
 
 start_test $PROXIED_IMAGE expecting one year cache.
@@ -855,15 +779,6 @@ start_test server-side includes
 fetch_until -save $TEST_ROOT/ssi/ssi.shtml?PageSpeedFilters=combine_css \
     'grep -c \.pagespeed\.' 1
 check [ $(grep -ce $combine_css_filename $FETCH_FILE) = 1 ];
-
-start_test statistics load
-
-OUT=$($WGET_DUMP $STATISTICS_URL)
-check_from "$OUT" grep 'VHost-Specific Statistics'
-
-start_test scrape stats works
-
-check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 
 start_test Embed image configuration in rewritten image URL.
 
@@ -901,16 +816,16 @@ http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
 # image URL query param, the image file (including headers) is 8341 bytes.
 # We check against 10000 here so this test isn't sensitive to
 # image-compression tweaks (we have enough of those elsewhere).
-check_file_size "$OUTDIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
+check_file_size "$WGET_DIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
 
 # The CSS file gets rewritten with embedded options, and will have an
 # embedded image in it as well.
-check_file_size "$OUTDIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*" \
+check_file_size "$WGET_DIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*" \
     -lt 600
 
 # The JS file is rewritten but has no related options set, so it will
 # not get the embedded options between "pagespeed" and "jm".
-check_file_size "$OUTDIR/rewrite_javascript.js.pagespeed.jm.*.js" -lt 500
+check_file_size "$WGET_DIR/rewrite_javascript.js.pagespeed.jm.*.js" -lt 500
 
 # Count how many bytes there are of body, skipping the initial headers
 function body_size {
@@ -928,16 +843,16 @@ function body_size {
 # "finish" this test below after performing a cache flush, saving
 # the encoded image and expected size.
 EMBED_CONFIGURATION_IMAGE="http://embed-config-resources.example.com/images/"
-EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep iq=)
+EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $WGET_DIR | grep 256x192xPuz | grep iq=)
 EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
 EMBED_CONFIGURATION_IMAGE_LENGTH=$(
-  body_size "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL")
+  body_size "$WGET_DIR/$EMBED_CONFIGURATION_IMAGE_TAIL")
 
 # Grab the URL for the CSS file.
-EMBED_CONFIGURATION_CSS_LEAF=$(ls $OUTDIR | \
+EMBED_CONFIGURATION_CSS_LEAF=$(ls $WGET_DIR | \
     grep '\.pagespeed\..*+ii+.*+iq=.*\.cf\..*')
 EMBED_CONFIGURATION_CSS_LENGTH=$(
-  body_size $OUTDIR/$EMBED_CONFIGURATION_CSS_LEAF)
+  body_size $WGET_DIR/$EMBED_CONFIGURATION_CSS_LEAF)
 
 EMBED_CONFIGURATION_CSS_URL="http://embed-config-resources.example.com/styles"
 EMBED_CONFIGURATION_CSS_URL+="/$EMBED_CONFIGURATION_CSS_LEAF"
@@ -945,16 +860,16 @@ EMBED_CONFIGURATION_CSS_URL+="/$EMBED_CONFIGURATION_CSS_LEAF"
 # Grab the URL for that embedded image; it should *also* have the embedded
 # configuration options in it, though wget/recursive will not have pulled
 # it to a file for us (wget does not parse CSS) so we'll have to request it.
-EMBED_CONFIGURATION_CSS_IMAGE=$OUTDIR/*images.css.pagespeed.*+ii+*+iq=*.cf.*
+EMBED_CONFIGURATION_CSS_IMAGE=$WGET_DIR/*images.css.pagespeed.*+ii+*+iq=*.cf.*
 EMBED_CONFIGURATION_CSS_IMAGE_URL=$(egrep -o \
   'http://.*iq=[0-9]*\.ic\..*\.jpg' \
   $EMBED_CONFIGURATION_CSS_IMAGE)
 # fetch that file and make sure it has the right cache-control
 http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
-   $EMBED_CONFIGURATION_CSS_IMAGE_URL > "$OUTDIR/img"
-CSS_IMAGE_HEADERS=$(head -10 "$OUTDIR/img")
+   $EMBED_CONFIGURATION_CSS_IMAGE_URL > "$WGET_DIR/img"
+CSS_IMAGE_HEADERS=$(head -10 "$WGET_DIR/img")
 check_from "$CSS_IMAGE_HEADERS" fgrep -q "Cache-Control: max-age=31536000"
-EMBED_CONFIGURATION_CSS_IMAGE_LENGTH=$(body_size "$OUTDIR/img")
+EMBED_CONFIGURATION_CSS_IMAGE_LENGTH=$(body_size "$WGET_DIR/img")
 
 function embed_image_config_post_flush() {
   # Finish off the url-params-.pagespeed.-resource tests with a clear
@@ -1244,7 +1159,7 @@ check_from "$OUT" fgrep -q "404 Not Found"
 # so it will be >200k (optimized) rather than <20k (resized).
 # Use a blocking fetch to force all -allowed- rewriting to be done.
 RESIZED=$FORBIDDEN_IMAGES_ROOT/256x192xPuzzle.jpg.pagespeed.ic.8AB3ykr7Of.jpg
-HEADERS="$OUTDIR/headers.$$"
+HEADERS="$WGET_DIR/headers.$$"
 http_proxy=$SECONDARY_HOSTNAME $WGET -q --server-response -O /dev/null \
   --header 'X-PSA-Blocking-Rewrite: psatest' $RESIZED >& $HEADERS
 LENGTH=$(grep '^ *Content-Length:' $HEADERS | sed -e 's/.*://')
@@ -1261,9 +1176,9 @@ start_test Blocking rewrite enabled.
 # another request earlier.
 BLOCKING_REWRITE_URL="$TEST_ROOT/blocking_rewrite.html"
 BLOCKING_REWRITE_URL+="?PageSpeedFilters=rewrite_images"
-OUTFILE=$OUTDIR/blocking_rewrite.out.html
-OLDSTATS=$OUTDIR/blocking_rewrite_stats.old
-NEWSTATS=$OUTDIR/blocking_rewrite_stats.new
+OUTFILE=$WGET_DIR/blocking_rewrite.out.html
+OLDSTATS=$WGET_DIR/blocking_rewrite_stats.old
+NEWSTATS=$WGET_DIR/blocking_rewrite_stats.new
 $WGET_DUMP $STATISTICS_URL > $OLDSTATS
 check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
       $BLOCKING_REWRITE_URL -O $OUTFILE
@@ -1277,7 +1192,7 @@ check_stat $OLDSTATS $NEWSTATS cache_inserts 3
 
 start_test Blocking rewrite enabled using wrong key.
 URL="blocking.example.com/mod_pagespeed_test/blocking_rewrite_another.html"
-OUTFILE=$OUTDIR/blocking_rewrite.out.html
+OUTFILE=$WGET_DIR/blocking_rewrite.out.html
 http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP \
   --header 'X-PSA-Blocking-Rewrite: junk' \
   $URL > $OUTFILE
@@ -1329,11 +1244,201 @@ HEADER="--header=PageSpeedFilters:"
 HEADER="${HEADER}+remove_quotes,+remove_comments,+collapse_whitespace"
 test_forbid_all_disabled "" $HEADER
 
-# Test that we work fine with SHM metadata cache.
+# Test that we work fine with an explicitly configured SHM metadata cache.
 start_test Using SHM metadata cache
 HOST_NAME="http://shmcache.example.com"
 URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
 http_proxy=$SECONDARY_HOSTNAME fetch_until $URL 'grep -c .pagespeed.ic' 2
+
+# Fetch a test resource repeatedly from the target host and verify that the
+# statistics change as expected.
+#
+# $1: hostname
+# $2: 1 if an lru cache was explcitly configured for this vhost, 0 otherwise
+# $3: 1 if a shared memory metadata cache was, 0 otherwise
+function test_cache_stats {
+  TEST_NAME=$1
+  LRU_CONFIGURED=$2
+  SHM_CONFIGURED=$3
+
+  SHARED_MEMORY_METADATA=$SHM_CONFIGURED
+
+  # There's a global shared memory cache enabled by default, which means our
+  # testing vhosts will use it even if one wasn't explicitly configured.
+  SHARED_MEMORY_METADATA=1
+  TEST_NAME+="-defaultshm"
+
+  FILECACHE_DATA=1
+  FILECACHE_METADATA=1
+  MEMCACHED_DATA=0
+  MEMCACHED_METADATA=0
+  TEST_NAME+="-fc"
+
+  LRUCACHE_DATA=$LRU_CONFIGURED
+  LRUCACHE_METADATA=$LRU_CONFIGURED
+  if [ $SHARED_MEMORY_METADATA -eq 1 ]; then
+    # If both an LRU cache and an SHM cache are configured, we only use the SHM
+    # cache for metadata.
+    LRUCACHE_METADATA=0
+  fi
+
+  if [ $SHM_CONFIGURED -eq 1 ]; then
+    # When the shared memory cache is explicitly configured we don't write
+    # metadata through to the file cache.
+    FILECACHE_METADATA=0
+  fi
+
+  # For hits we have to know which cache is L1 and which is L2.  The shm and lru
+  # caches are always L1 if they're present, but if they're not the file or memc
+  # cache is effectively L1.
+  FILECACHE_DATA_L1=0
+  MEMCACHED_DATA_L1=0
+  FILECACHE_METADATA_L1=0
+  MEMCACHED_METADATA_L1=0
+  if [ $LRUCACHE_DATA -eq 0 ]; then
+    # No L1 data cache, so the memcache or filecache will serve data reads.
+    FILECACHE_DATA_L1=$FILECACHE_DATA
+    MEMCACHED_DATA_L1=$MEMCACHED_DATA
+  fi
+  if [ $SHARED_MEMORY_METADATA -eq 0 -a $LRUCACHE_METADATA -eq 0 ]; then
+    # No L1 metadata cache, so the memcache or filecache will serve meta reads.
+    FILECACHE_METADATA_L1=$FILECACHE_METADATA
+    MEMCACHED_METADATA_L1=$MEMCACHED_METADATA
+  fi
+
+  start_test "Cache configuration $TEST_NAME"
+
+  # We don't want this to be in cache on repeat runs.
+  CACHEBUSTER="$RANDOM$RANDOM"
+
+  IMAGE_PATH="http://$1.example.com/mod_pagespeed_example/styles/"
+  IMAGE_PATH+="A.blue.css,qcb=$CACHEBUSTER.pagespeed.cf.0.css"
+
+  GLOBAL_STATISTICS="ngx_pagespeed_global_statistics?PageSpeed=off"
+  GLOBAL_STATISTICS_URL="http://$1.example.com/$GLOBAL_STATISTICS"
+
+  OUTDIR_CSTH="$OUTDIR/$1"
+  mkdir -p "$OUTDIR_CSTH"
+  STATS_A="$OUTDIR_CSTH/$GLOBAL_STATISTICS"
+  STATS_B="$OUTDIR_CSTH/$GLOBAL_STATISTICS.1"
+  STATS_C="$OUTDIR_CSTH/$GLOBAL_STATISTICS.2"
+
+  # Curl has much deeper debugging output, but we don't want to add a dependency
+  # Use it if it exists, otherwise fall back to wget.
+  #
+  # These will be pipelined and served all from the same persistent connection
+  # to one process.  This is needed to test the per-process LRU cache.
+  #
+  # TODO(jefftk): The ipv4 restriction is because on one test system I was
+  # consistently seeing one instead of two data cache inserts on first load when
+  # using ipv6.
+  if type $CURL &> /dev/null ; then
+    echo "Using curl."
+    set -x
+    http_proxy=$SECONDARY_HOSTNAME $CURL -4 -v \
+      -o "$STATS_A" $GLOBAL_STATISTICS_URL \
+      -o /dev/null $IMAGE_PATH \
+      -o "$STATS_B" $GLOBAL_STATISTICS_URL \
+      -o /dev/null $IMAGE_PATH \
+      -o "$STATS_C" $GLOBAL_STATISTICS_URL
+    set +x
+  else
+    echo "Using wget."
+    set -x
+    http_proxy=$SECONDARY_HOSTNAME $WGET \
+      --header='Connection: Keep-Alive' \
+      --directory=$OUTDIR_CSTH \
+      --prefer-family=IPv4 \
+      $GLOBAL_STATISTICS_URL \
+      $IMAGE_PATH \
+      $GLOBAL_STATISTICS_URL \
+      $IMAGE_PATH \
+      $GLOBAL_STATISTICS_URL
+    set +x
+  fi
+
+  check [ -e $STATS_A ]
+  check [ -e $STATS_B ]
+  check [ -e $STATS_C ]
+
+  echo "  shm meta: $SHARED_MEMORY_METADATA"
+  echo "  lru data: $LRUCACHE_DATA"
+  echo "  lru meta: $LRUCACHE_METADATA"
+  echo "  file data: $FILECACHE_DATA"
+  echo "  file data is L1: $FILECACHE_DATA_L1"
+  echo "  file meta: $FILECACHE_METADATA"
+  echo "  file meta is L1: $FILECACHE_METADATA_L1"
+  echo "  memc data: $MEMCACHED_DATA"
+  echo "  memc data is L1: $MEMCACHED_DATA_L1"
+  echo "  memc meta: $MEMCACHED_METADATA"
+  echo "  memc meta is L1: $MEMCACHED_METADATA_L1"
+
+  # There should be no deletes from any cache.
+  ALL_CACHES="shm_cache lru_cache file_cache memcached"
+  for cachename in $ALL_CACHES; do
+    check_stat "$STATS_A" "$STATS_B" "${cachename}_deletes" 0
+    check_stat "$STATS_B" "$STATS_C" "${cachename}_deletes" 0
+  done
+
+  # We should miss in all caches on the first try, and insert when we miss:
+  #   requests:
+  #    - output resource: miss
+  #    - metadata entry: miss
+  #    - input resource: miss
+  #   inserts:
+  #    - input resource
+  #    - output resource under correct hash
+  #    - metadata entry
+  for cachename in $ALL_CACHES; do
+    check_stat "$STATS_A" "$STATS_B" "${cachename}_hits" 0
+  done
+  # Two misses for data, one for meta.
+  check_stat "$STATS_A" "$STATS_B" "shm_cache_misses" $SHARED_MEMORY_METADATA
+  check_stat "$STATS_A" "$STATS_B" "lru_cache_misses" \
+               $(($LRUCACHE_METADATA + 2*$LRUCACHE_DATA))
+  check_stat "$STATS_A" "$STATS_B" "file_cache_misses" \
+               $(($FILECACHE_METADATA + 2*$FILECACHE_DATA))
+  check_stat "$STATS_A" "$STATS_B" "memcached_misses" \
+               $(($MEMCACHED_METADATA + 2*$MEMCACHED_DATA))
+
+  # Two inserts for data, one for meta.
+  check_stat "$STATS_A" "$STATS_B" "shm_cache_inserts" $SHARED_MEMORY_METADATA
+  check_stat "$STATS_A" "$STATS_B" "lru_cache_inserts" \
+               $(($LRUCACHE_METADATA + 2*$LRUCACHE_DATA))
+  check_stat "$STATS_A" "$STATS_B" "file_cache_inserts" \
+               $(($FILECACHE_METADATA + 2*$FILECACHE_DATA))
+  check_stat "$STATS_A" "$STATS_B" "memcached_inserts" \
+               $(($MEMCACHED_METADATA + 2*$MEMCACHED_DATA))
+
+  # Second try.  We're requesting with a hash mismatch so the output resource
+  # will always miss.
+  #   requests:
+  #    - output resource: miss
+  #    - metadata entry: hit
+  #    - output resource under correct hash: hit
+  for cachename in $ALL_CACHES; do
+    check_stat "$STATS_B" "$STATS_C" "${cachename}_inserts" 0
+  done
+  # One hit for data, one hit for meta.
+  check_stat "$STATS_B" "$STATS_C" "shm_cache_hits" $SHARED_MEMORY_METADATA
+  check_stat "$STATS_B" "$STATS_C" "lru_cache_hits" \
+               $(($LRUCACHE_METADATA + $LRUCACHE_DATA))
+  check_stat "$STATS_B" "$STATS_C" "file_cache_hits" \
+               $(($FILECACHE_METADATA_L1 + $FILECACHE_DATA_L1))
+  check_stat "$STATS_B" "$STATS_C" "memcached_hits" \
+               $(($MEMCACHED_METADATA_L1 + $MEMCACHED_DATA_L1))
+
+  # One miss for data, none for meta.
+  check_stat "$STATS_B" "$STATS_C" "shm_cache_misses" 0
+  check_stat "$STATS_B" "$STATS_C" "lru_cache_misses" $LRUCACHE_DATA
+  check_stat "$STATS_B" "$STATS_C" "file_cache_misses" $FILECACHE_DATA
+  check_stat "$STATS_B" "$STATS_C" "memcached_misses" $MEMCACHED_DATA
+}
+
+test_cache_stats lrud-lrum 1 0  # lru=yes, shm=no
+test_cache_stats lrud-shmm 1 1  # lru=yes, shm=yes
+test_cache_stats noned-shmm 0 1 # lru=no, shm=yes
+test_cache_stats noned-nonem 0 0 # lru=no, shm=no
 
 # Test max_cacheable_response_content_length.  There are two Javascript files
 # in the html file.  The smaller Javascript file should be rewritten while
@@ -1608,11 +1713,11 @@ http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
 '--header=X-PSA-Blocking-Rewrite:psatest'
 check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
-  $OUTDIR/image_resize_using_rendered_dimensions.html) = 1 ];
+  $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
 OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
-               $OUTDIR/image_resize_using_rendered_dimensions.html)
+               $WGET_DIR/image_resize_using_rendered_dimensions.html)
 NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
-        $OUTDIR/image_resize_using_rendered_dimensions.html)
+        $WGET_DIR/image_resize_using_rendered_dimensions.html)
 
 # Send a beacon response using POST indicating that OptPuzzle.jpg is
 # critical and has rendered dimensions.
@@ -1638,15 +1743,15 @@ URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
 check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
-  $OUTDIR/rewrite_images.html) = 1 ];
+  $WGET_DIR/rewrite_images.html) = 1 ];
 # We need the options hash and nonce to send a critical image beacon, so extract
 # it from injected beacon JS.
 OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
-               $OUTDIR/rewrite_images.html)
+               $WGET_DIR/rewrite_images.html)
 NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
-        $OUTDIR/rewrite_images.html)
+        $WGET_DIR/rewrite_images.html)
 OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
-  $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
+  $WGET_DIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
 # Send a beacon response using POST indicating that Puzzle.jpg is a critical
 # image.
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
@@ -1672,11 +1777,11 @@ URL="$URL?id=4"
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
 check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
-    "$OUTDIR/rewrite_images.html?id=4") = 1 ];
+    "$WGET_DIR/rewrite_images.html?id=4") = 1 ];
 OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
-               "$OUTDIR/rewrite_images.html?id=4")
+               "$WGET_DIR/rewrite_images.html?id=4")
 NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
-       "$OUTDIR/rewrite_images.html?id=4")
+       "$WGET_DIR/rewrite_images.html?id=4")
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_URL+="image_rewriting%2Frewrite_images.html%3Fid%3D4"

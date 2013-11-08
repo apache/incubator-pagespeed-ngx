@@ -256,10 +256,12 @@ void copy_request_headers_from_ngx(const ngx_http_request_t* r,
   copy_headers_from_table(r->headers_in.headers, headers);
 }
 
+// PSOL produces caching headers that need some changes before we can send them
+// out.  Make those changes and populate r->headers_out from pagespeed_headers.
 ngx_int_t copy_response_headers_to_ngx(
     ngx_http_request_t* r,
     const ResponseHeaders& pagespeed_headers,
-    bool modify_caching_headers) {
+    PreserveCachingHeaders preserve_caching_headers) {
   ngx_http_headers_out_t* headers_out = &r->headers_out;
   headers_out->status = pagespeed_headers.status_code();
 
@@ -268,12 +270,12 @@ ngx_int_t copy_response_headers_to_ngx(
     const GoogleString& name_gs = pagespeed_headers.Name(i);
     const GoogleString& value_gs = pagespeed_headers.Value(i);
 
-    if (!modify_caching_headers) {
-      if ( StringCaseEqual(name_gs, "Cache-Control") ||
-           StringCaseEqual(name_gs, "ETag") ||
-           StringCaseEqual(name_gs, "Expires") ||
-           StringCaseEqual(name_gs, "Date") ||
-           StringCaseEqual(name_gs, "Last-Modified")) {
+    if (preserve_caching_headers != kDontPreserveHeaders) {
+      if (StringCaseEqual(name_gs, "ETag") ||
+          StringCaseEqual(name_gs, "Expires") ||
+          StringCaseEqual(name_gs, "Date") ||
+          StringCaseEqual(name_gs, "Last-Modified") ||
+          StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
       }
     }
@@ -1065,7 +1067,7 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
                  "ps fetch handler: %V", &r->uri);
 
   if (!r->header_sent) {
-    if (!ctx->modify_caching_headers) {
+    if (ctx->preserve_caching_headers != kDontPreserveHeaders) {
       ngx_table_elt_t* header;
       NgxListIterator it(&(r->headers_out.headers.part));
       while ((header = it.Next()) != NULL) {
@@ -1073,11 +1075,12 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
         // so we can send them unmodified in copy_response_headers_to_ngx().
         // This just sets the hash to 0 for all other headers. That way, we
         // avoid  some relatively complicated code to reconstruct these headers.
-        if (!(STR_CASE_EQ_LITERAL(header->key, "Cache-Control")
-              || STR_CASE_EQ_LITERAL(header->key, "Etag")
-              || STR_CASE_EQ_LITERAL(header->key, "Date")
-              || STR_CASE_EQ_LITERAL(header->key, "Last-Modified")
-              || STR_CASE_EQ_LITERAL(header->key, "Expires"))) {
+        if (!(STR_CASE_EQ_LITERAL(header->key, "Cache-Control") ||
+              (ctx->preserve_caching_headers == kPreserveAllCachingHeaders &&
+               (STR_CASE_EQ_LITERAL(header->key, "Etag") ||
+                STR_CASE_EQ_LITERAL(header->key, "Date") ||
+                STR_CASE_EQ_LITERAL(header->key, "Last-Modified") ||
+                STR_CASE_EQ_LITERAL(header->key, "Expires"))))) {
           header->hash = 0;
         }
       }
@@ -1510,7 +1513,7 @@ ngx_int_t ps_create_base_fetch(ps_request_ctx_t* ctx) {
   ctx->base_fetch = new NgxBaseFetch(
       r, file_descriptors[1], cfg_s->server_context,
       RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
-      ctx->modify_caching_headers);
+      ctx->preserve_caching_headers);
 
   return NGX_OK;
 }
@@ -1667,7 +1670,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   if (html_rewrite) {
     ps_release_base_fetch(ctx);
   } else {
-    // create reuqest ctx
+    // create request ctx
     CHECK(ctx == NULL);
     ctx = new ps_request_ctx_t();
 
@@ -1678,7 +1681,13 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx->in_place = false;
     ctx->pagespeed_connection = NULL;
     // See build_context_for_request() in mod_instaweb.cc
-    ctx->modify_caching_headers = options->modify_caching_headers();
+    if (!options->modify_caching_headers()) {
+      ctx->preserve_caching_headers = kPreserveAllCachingHeaders;
+    } else if (!options->downstream_cache_purge_location_prefix().empty()) {
+      ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
+    } else {
+      ctx->preserve_caching_headers = kDontPreserveHeaders;
+    }
     ctx->recorder = NULL;
 
     // Set up a cleanup handler on the request.
@@ -2275,7 +2284,7 @@ ngx_int_t send_out_headers_and_body(
     const ResponseHeaders& response_headers,
     const GoogleString& output) {
   ngx_int_t rc = copy_response_headers_to_ngx(
-      r, response_headers, true /* modify caching headers */);
+      r, response_headers, kDontPreserveHeaders);
 
   if (rc != NGX_OK) {
     return NGX_ERROR;
@@ -2623,14 +2632,15 @@ ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_int_t ps_html_rewrite_fix_headers_filter(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   if (r != r->main || ctx == NULL || !ctx->html_rewrite
-      || !ctx->modify_caching_headers) {
+      || ctx->preserve_caching_headers == kPreserveAllCachingHeaders) {
     return ngx_http_next_header_filter(r);
   }
-
-  // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
-  NgxCachingHeaders caching_headers(r);
-  ps_set_cache_control(r, string_piece_to_pool_string(
-      r->pool, caching_headers.GenerateDisabledCacheControl()));
+  if (ctx->preserve_caching_headers == kDontPreserveHeaders) {
+    // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
+    NgxCachingHeaders caching_headers(r);
+    ps_set_cache_control(r, string_piece_to_pool_string(
+        r->pool, caching_headers.GenerateDisabledCacheControl()));
+  }
 
   // Pagespeed html doesn't need etags: it should never be cached.
   ngx_http_clear_etag(r);
