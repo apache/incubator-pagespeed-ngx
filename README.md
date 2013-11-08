@@ -37,9 +37,9 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
 
    ```bash
    $ cd ~
-   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/release-1.7.30.1-beta.zip
-   $ unzip release-1.7.30.1-beta.zip # or unzip release-1.7.30.1-beta
-   $ cd ngx_pagespeed-release-1.7.30.1-beta/
+   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/v1.7.30.1-beta.zip
+   $ unzip v1.7.30.1-beta.zip # or unzip v1.7.30.1-beta
+   $ cd ngx_pagespeed-1.7.30.1-beta/
    $ wget https://dl.google.com/dl/page-speed/psol/1.7.30.1.tar.gz
    $ tar -xzvf 1.7.30.1.tar.gz # expands to psol/
    ```
@@ -51,7 +51,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ wget http://nginx.org/download/nginx-1.4.3.tar.gz
    $ tar -xvzf nginx-1.4.3.tar.gz
    $ cd nginx-1.4.3/
-   $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.7.30.1-beta
+   $ ./configure --add-module=$HOME/ngx_pagespeed-1.7.30.1-beta
    $ make
    $ sudo make install
    ```
