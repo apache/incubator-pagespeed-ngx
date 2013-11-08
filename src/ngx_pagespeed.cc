@@ -1109,10 +1109,6 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
 
     ctx->write_pending = (rc == NGX_AGAIN);
 
-    if (r->header_only) {
-      ctx->fetch_done = true;
-      return rc;
-    }
     ps_set_buffered(r, true);
   }
 
