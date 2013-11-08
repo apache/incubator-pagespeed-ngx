@@ -72,7 +72,7 @@ In your `nginx.conf`, add to the main or server block:
 
 ```nginx
 pagespeed on;
-pagespeed FileCachePath /var/ngx_pagespeed_cache;
+pagespeed FileCachePath /var/ngx_pagespeed_cache;  # Use tmpfs for best results.
 ```
 
 In every server block where pagespeed is enabled add:
