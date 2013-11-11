@@ -655,8 +655,14 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   // Advance the time so that cache is about to expire.
   timer_.AdvanceMs(ttl_ms_ - 3 * Timer::kMinuteMs);
   ClearStats();
-  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
-                   cache_body_, kBackendFetch, true);
+
+  // Make sure that if the request that triggers proactive fetching is a HEAD
+  // we don't mess stuff up.
+  RequestHeaders head_headers;
+  head_headers.CopyFrom(empty_request_headers_);
+  head_headers.set_method(RequestHeaders::kHead);
+  FetchAndValidate(cache_url_, head_headers, true, HttpStatus::kOK,
+                   "", kBackendFetch, false);
   // Fetch hits initial cache lookup ...
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
   EXPECT_EQ(1, http_cache_->cache_hits()->Get());
@@ -667,6 +673,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
 
   ClearStats();
+  // This one is a GET, so it should actually get the bits.
   FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // Fetch hits initial cache lookup ...

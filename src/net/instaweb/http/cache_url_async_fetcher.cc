@@ -444,6 +444,12 @@ class CacheFindCallback : public HTTPCache::Callback {
         async_op_hooks_);
     RequestHeaders* request_headers = fetch->request_headers();
     request_headers->CopyFrom(*base_fetch_->request_headers());
+    DCHECK(request_headers->method() == RequestHeaders::kGet ||
+           request_headers->method() == RequestHeaders::kHead);
+    // It's possible for us to trigger a background freshen on a HEAD.
+    // If so, actually send the GET request, since we don't want to be
+    // trying to cache a HEAD response.
+    request_headers->set_method(RequestHeaders::kGet);
     fetch->Start(fetcher_);
   }
 
