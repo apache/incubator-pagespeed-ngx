@@ -227,7 +227,8 @@ bool SharedMemCache<kBlockSize>::InitCache(bool parent) {
 
   if (segment_.get() == NULL) {
     handler_->Message(
-        kError, "SharedMemCache: can't create/attach segment %s of size %s",
+        kError, "SharedMemCache: can't %s segment %s of size %s",
+        parent ? "create" : "attach",
         filename_.c_str(), FormatSize(size).c_str());
     return false;
   }
@@ -247,8 +248,8 @@ bool SharedMemCache<kBlockSize>::InitCache(bool parent) {
 
     if (!ok) {
       handler_->Message(
-          kError, "SharedMemCache: can't create/attach sector %d of cache %s",
-          s, filename_.c_str());
+          kError, "SharedMemCache: can't %s sector %d of cache %s",
+          parent ? "create" : "attach", s, filename_.c_str());
       return false;
     }
     sectors_.push_back(sec.release());
