@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -65,6 +66,7 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 
 namespace net_instaweb {
 
@@ -675,6 +677,12 @@ TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedHeaders) {
                  &response_headers,
                  false  /* proxy_fetch_property_callback_collector_created */);
   EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
+}
+
+TEST_F(ProxyInterfaceTest, InvalidUrl) {
+  ExpectStringAsyncFetch fetch(false, rewrite_driver()->request_context());
+  proxy_interface_->Fetch("localhost:3141", message_handler(), &fetch);
+  EXPECT_TRUE(fetch.done());
 }
 
 TEST_F(ProxyInterfaceTest, PassThrough404) {
