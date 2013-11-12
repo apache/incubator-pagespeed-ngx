@@ -300,20 +300,40 @@ bool DomainLawyer::AddKnownDomain(const StringPiece& domain_name,
 
 GoogleString DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
   // Ensure that the following specifications are treated identically:
-  //     www.google.com
-  //     http://www.google.com
-  //     www.google.com/
-  //     http://www.google.com/
-  //     WWW.GOOGLE.COM/
-  // all come out the same.
+  //     www.google.com/abc
+  //     http://www.google.com/abc
+  //     www.google.com/abc
+  //     http://www.google.com/abc
+  //     WWW.GOOGLE.COM/abc
+  // all come out the same, but distinct from
+  //     www.google.com/Abc
+  // As the path component is case-sensitive.
+  //
+  // Example: domain-mapping domain-mapping
+  // http://musicasacra.lemon42.com/DE/evoscripts/musica_sacra/returnBinaryImage
+  // We need to case-fold only "musicasacra.lemon42.com" and not
+  // "returnBinaryImage" or "DE".
   GoogleString domain_name_str;
-  if (domain_name.find("://") == GoogleString::npos) {
+  static const char kSchemeDelim[] = "://";
+  stringpiece_ssize_type scheme_delim_start = domain_name.find(kSchemeDelim);
+  if (scheme_delim_start == StringPiece::npos) {
     domain_name_str = StrCat("http://", domain_name);
+    scheme_delim_start = 4;
   } else {
     domain_name.CopyToString(&domain_name_str);
   }
   EnsureEndsInSlash(&domain_name_str);
-  LowerString(&domain_name_str);
+
+  // Lower-case all characters in the string, up until the "/" that terminates
+  // the hostname.  We pass origin_start into the find() call to avoid tripping
+  // on the "/" in "http://".
+  GoogleString::size_type origin_start = scheme_delim_start +
+      STATIC_STRLEN(kSchemeDelim);
+  GoogleString::size_type pos = domain_name_str.find('/', origin_start);
+  DCHECK_NE(GoogleString::npos, pos);
+  for (char* p = &(domain_name_str[0]), *e = p + pos; p < e; ++p) {
+    *p = LowerChar(*p);
+  }
   return domain_name_str;
 }
 

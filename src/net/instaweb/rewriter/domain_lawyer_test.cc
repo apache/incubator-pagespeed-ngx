@@ -178,6 +178,15 @@ TEST_F(DomainLawyerTest, ExternalUpperCaseDomainDeclared) {
       &mapped_domain_name));
 }
 
+TEST_F(DomainLawyerTest, MixedCasePath) {
+  GoogleUrl context_gurl("http://origin.com/index.html");
+  ASSERT_TRUE(domain_lawyer_.AddDomain("EXAMPLE.com/HI/lo", &message_handler_));
+  GoogleUrl correct_case("http://example.com/HI/lo/file");
+  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(context_gurl, correct_case));
+  GoogleUrl wrong_case("http://example.com/hi/lo/file");
+  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(context_gurl, wrong_case));
+}
+
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
   StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
   ASSERT_TRUE(domain_lawyer_.AddDomain(kCdnPrefix + strlen("http://"),
