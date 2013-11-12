@@ -218,6 +218,8 @@ void NgxRewriteDriverFactory::LoggingInit(ngx_log_t* log) {
 void NgxRewriteDriverFactory::SetCircularBuffer(
     SharedCircularBuffer* buffer) {
   ngx_shared_circular_buffer_ = buffer;
+  ngx_message_handler_->set_buffer(buffer);
+  ngx_html_parse_message_handler_->set_buffer(buffer);
 }
 
 void NgxRewriteDriverFactory::SetServerContextMessageHandler(
