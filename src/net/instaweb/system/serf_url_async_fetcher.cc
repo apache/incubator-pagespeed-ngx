@@ -26,6 +26,7 @@
 #include <list>
 #include <vector>
 
+#include "apr.h"
 #include "apr_strings.h"
 #include "apr_pools.h"
 #include "apr_thread_proc.h"
@@ -827,7 +828,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   }
 
  private:
-  static void* SerfThreadFn(apr_thread_t* thread_id, void* context) {
+  static void* APR_THREAD_FUNC SerfThreadFn(apr_thread_t* thread_id,
+                                            void* context) {
     SerfThreadedFetcher* stc = static_cast<SerfThreadedFetcher*>(context);
     CHECK_EQ(thread_id, stc->thread_id_);
     stc->SerfThread();
