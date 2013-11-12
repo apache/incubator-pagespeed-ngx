@@ -60,7 +60,7 @@ const char kGaSnippetPrefix[] =
 const char kGaSnippetSuffix[] =
     "    ];\n"
     "    var pageTracker = {\n"
-    "      initData: function() {},\n"
+    "      _initData: function() {},\n"
     "    };\n"
     "    for (var i=pageTrackerMethodNames.length; i--;) {\n"
     "      var n = pageTrackerMethodNames[i];\n"
