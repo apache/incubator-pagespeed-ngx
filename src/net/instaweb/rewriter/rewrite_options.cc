@@ -990,10 +990,6 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
 
   InitializeOptions(properties_);
 
-  // We need to exclude this test-only option from signature, since we may need
-  // to change it in the middle of tests.
-  test_instant_fetch_rewrite_deadline_.DoNotUseForSignatureComputation();
-
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
 }
@@ -1933,6 +1929,10 @@ void RewriteOptions::AddProperties() {
   // Test-only, so no enum.
   AddRequestProperty(
       false, &RewriteOptions::test_instant_fetch_rewrite_deadline_, "tifrwd");
+  // We need to exclude this test-only option from signature, since we may need
+  // to change it in the middle of tests.
+  properties_->property(properties_->size() - 1)
+      ->set_do_not_use_for_signature_computation(true);
 
   //
   // Recently sriharis@ excluded a variety of options from
