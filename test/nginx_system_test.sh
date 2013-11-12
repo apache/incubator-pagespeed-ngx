@@ -2010,7 +2010,7 @@ check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
 # that we bail out of parsing and insert a script redirecting to
 # ?PageSpeed=off. This should also insert an entry into the property cache so
 # that the next time we fetch the file it will not be parsed at all.
-echo TEST: Handling of large files.
+start_test Handling of large files.
 # Add a timestamp to the URL to ensure it's not in the property cache.
 FILE="max_html_parse_size/large_file.html?value=$(date +%s)"
 URL=$TEST_ROOT/$FILE
@@ -2029,5 +2029,9 @@ check_from "$LARGE_OUT" grep -q window.location=".*&ModPagespeed=off"
 fetch_until -save $URL 'grep -c window.location=".*&ModPagespeed=off"' 0
 check_not fgrep -q pagespeed.ic $FETCH_FILE
 
+start_test messages load
+OUT=$($WGET_DUMP "$HOSTNAME/ngx_pagespeed_message")
+check_not_from "$OUT" grep "Writing to ngx_pagespeed_message failed."
+check_from "$OUT" grep -q "/mod_pagespeed_example"
 
 check_failures_and_exit

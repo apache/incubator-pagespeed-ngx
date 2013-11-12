@@ -649,6 +649,7 @@ http {
     #pagespeed MemcachedThreads 1;
 
     pagespeed on;
+    pagespeed MessageBufferSize 200000;
 
     #pagespeed CacheFlushPollIntervalSec 1;
 
@@ -664,9 +665,6 @@ http {
     # the value of BlockingRewriteKey below, the response will be fully
     # rewritten before being flushed to the client.
     pagespeed BlockingRewriteKey psatest;
-
-    # Disable parsing if the size of the HTML exceeds 50kB.
-    pagespeed MaxHtmlParseBytes 50000;
 
     add_header X-Extra-Header 1;
 
@@ -704,6 +702,10 @@ http {
       pagespeed ForbidAllDisabledFilters true;
       pagespeed DisableFilters remove_quotes,remove_comments;
       pagespeed DisableFilters collapse_whitespace;
+    }
+
+    location /mod_pagespeed_test/max_html_parse_size {
+      pagespeed MaxHtmlParseBytes 5000;
     }
 
     location ~ \.php$ {
