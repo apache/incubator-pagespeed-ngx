@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
-#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -52,42 +51,6 @@ const char kOriginalImageJsonWidthKey[] = "originalWidth";
 const char kOriginalImageJsonHeightKey[] = "originalHeight";
 const char kEmptyValuePlaceholder[] = "\n";
 
-void MigrateLegacyCriticalBeacons(
-    protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* beacons,
-    protobuf::RepeatedPtrField<GoogleString>* critical_images_field,
-    CriticalKeys* image_support) {
-  // Swap html_critical_images into html_support.
-  image_support->mutable_critical_keys()->Swap(critical_images_field);
-  // Now iterate through individual beacon results in the history and swap
-  // each into html_support->beacon_history().
-  for (int i = 0; i < beacons->size(); ++i) {
-    CriticalKeys::BeaconResponse* beacon_history =
-        image_support->add_beacon_history();
-    beacon_history->mutable_keys()->Swap(
-        beacons->Mutable(i)->mutable_critical_images());
-  }
-}
-
-// Move all information down into the support fields of the given
-// CriticalImages.
-void MigrateLegacyCriticalImages(CriticalImages* crit_images) {
-  // Migrate legacy data by first moving it into the corresponding CriticalKeys
-  // record; the legacy migration support for CriticalKeys migration will then
-  // set up support appropriately.
-  MigrateLegacyCriticalBeacons(
-      crit_images->mutable_html_critical_images_sets(),
-      crit_images->mutable_html_critical_images(),
-      crit_images->mutable_html_critical_image_support());
-  crit_images->clear_html_critical_images();
-  crit_images->clear_html_critical_images_sets();
-  MigrateLegacyCriticalBeacons(
-      crit_images->mutable_css_critical_images_sets(),
-      crit_images->mutable_css_critical_images(),
-      crit_images->mutable_css_critical_image_support());
-  crit_images->clear_css_critical_images();
-  crit_images->clear_css_critical_images_sets();
-}
-
 // Create CriticalImagesInfo object from the value of property_value.  NULL if
 // no value is found, or if the property value reflects that no results are
 // available.  Result is owned by caller.
@@ -100,9 +63,6 @@ CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
           property_value, &info->proto)) {
     return NULL;
   }
-  // The existence of kEmptyValuePlaceholder should mean that "no data" will be
-  // distinguished from "no critical images" by the above call.
-  MigrateLegacyCriticalImages(&info->proto);
   // Fill in map fields based on proto value so that image lookups are O(lg n).
   GetCriticalKeysFromProto(percent_seen_for_critical,
                            info->proto.html_critical_image_support(),
@@ -111,23 +71,6 @@ CriticalImagesInfo* CriticalImagesInfoFromPropertyValue(
                            info->proto.css_critical_image_support(),
                            &info->css_critical_images);
   return info.release();
-}
-
-void UpdateCriticalImagesSetInProto(
-    const StringSet& critical_images_set,
-    protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* set_field,
-    protobuf::RepeatedPtrField<GoogleString>* critical_images_field,
-    int max_set_size,
-    CriticalKeys* image_support) {
-  DCHECK_GT(max_set_size, 0);
-
-  DCHECK(set_field != NULL);
-  DCHECK(critical_images_field != NULL);
-  DCHECK(image_support != NULL);
-  MigrateLegacyCriticalBeacons(
-      set_field, critical_images_field, image_support);
-  UpdateCriticalKeys(false /* require_prior_support */,
-                     critical_images_set, max_set_size, image_support);
 }
 
 // Setup a map for RenderedImages and their dimensions.
@@ -417,24 +360,18 @@ bool CriticalImagesFinder::UpdateCriticalImages(
     CriticalImages* critical_images) {
   DCHECK(critical_images != NULL);
   if (html_critical_images != NULL) {
-    UpdateCriticalImagesSetInProto(
+    UpdateCriticalKeys(
+        false /* require_prior_support */,
         *html_critical_images,
-        critical_images->mutable_html_critical_images_sets(),
-        critical_images->mutable_html_critical_images(),
         support_interval,
         critical_images->mutable_html_critical_image_support());
-    critical_images->clear_html_critical_images_sets();
-    critical_images->clear_html_critical_images();
   }
   if (css_critical_images != NULL) {
-    UpdateCriticalImagesSetInProto(
+    UpdateCriticalKeys(
+        false /* require_prior_support */,
         *css_critical_images,
-        critical_images->mutable_css_critical_images_sets(),
-        critical_images->mutable_css_critical_images(),
         support_interval,
         critical_images->mutable_css_critical_image_support());
-    critical_images->clear_css_critical_images_sets();
-    critical_images->clear_css_critical_images();
   }
   // We updated if either StringSet* was set.
   return (html_critical_images != NULL || css_critical_images != NULL);

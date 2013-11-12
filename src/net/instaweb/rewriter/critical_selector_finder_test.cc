@@ -124,36 +124,15 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
     ASSERT_EQ(ExpectedBeaconStatus(), last_beacon_metadata_.status);
   }
 
-  // Set up legacy critical selectors value.  We have to do this by hand using
-  // the protos and direct pcache writes, since the new finder by design doesn't
-  // write legacy data.
-  void SetupLegacyCriticalSelectors(bool include_history) {
-    CriticalKeys legacy_selectors;
-    legacy_selectors.add_critical_keys("#bar");
-    legacy_selectors.add_critical_keys(".foo");
-    if (include_history) {
-      CriticalKeys::BeaconResponse* first_set =
-          legacy_selectors.add_beacon_history();
-      first_set->add_keys("#bar");
-      CriticalKeys::BeaconResponse* second_set =
-          legacy_selectors.add_beacon_history();
-      second_set->add_keys("#bar");
-      second_set->add_keys(".foo");
-    }
-    WriteCriticalSelectorSetToPropertyCache(legacy_selectors);
-  }
-
   CriticalKeys* RawCriticalSelectorSet(int expected_size) {
     WriteBackAndResetDriver();
     finder_->GetCriticalSelectors(rewrite_driver());
     CriticalKeys* selectors =
         &rewrite_driver()->critical_selector_info()->proto;
     if (selectors != NULL) {
-      EXPECT_EQ(0, selectors->critical_keys_size());
-      EXPECT_EQ(0, selectors->beacon_history_size());
-      if (selectors->key_evidence_size() != expected_size) {
-        EXPECT_EQ(expected_size, selectors->key_evidence_size());
-      }
+      EXPECT_EQ(expected_size, selectors->key_evidence_size());
+    } else {
+      EXPECT_EQ(expected_size, 0);
     }
     return selectors;
   }
@@ -302,46 +281,6 @@ TEST_F(CriticalSelectorFinderTest, StoreNonCandidate) {
   selectors.insert("#noncandidate");
   WriteCriticalSelectorsToPropertyCache(selectors);
   EXPECT_STREQ(".a", CriticalSelectorsString());
-}
-
-// Test migration of legacy critical selectors to support format during beacon
-// insertion.  This tests the case where only critical_selectors were set.
-TEST_F(CriticalSelectorFinderTest, LegacySelectorSetBeaconMigration) {
-  // First set up legacy pcache entry.
-  SetupLegacyCriticalSelectors(false /* include_history */);
-  Beacon();
-  CheckFooBarBeaconSupport(finder_->SupportInterval());
-}
-
-// Test migration of legacy critical selectors to support format during critical
-// selector return.  This tests the case where only critical_selectors were set.
-TEST_F(CriticalSelectorFinderTest, LegacySelectorSetMigration) {
-  SetupLegacyCriticalSelectors(false /* include_history */);
-  // Create a new critical selector set and add it.  The legacy data will have
-  // migrated, and we'll add support for ".foo".
-  Beacon();
-  StringSet selectors;
-  selectors.insert(".noncandidate");
-  selectors.insert(".foo");
-  WriteCriticalSelectorsToPropertyCache(selectors);
-  CheckFooBarBeaconSupport(2 * finder_->SupportInterval() - 1,
-                           finder_->SupportInterval() - 1);
-}
-
-// Test migration of legacy selector history to the new format (using support).
-// This tests the case where both critical_selectors and selector_set_history
-// were set.
-TEST_F(CriticalSelectorFinderTest, LegacySelectorSetHistoryMigration) {
-  SetupLegacyCriticalSelectors(true /* include_history */);
-  // Create a new critical selector set and add it.  The legacy data will have
-  // migrated, and we'll add support for ".foo".
-  Beacon();
-  StringSet selectors;
-  selectors.insert(".noncandidate");
-  selectors.insert(".foo");
-  WriteCriticalSelectorsToPropertyCache(selectors);
-  CheckFooBarBeaconSupport(2 * finder_->SupportInterval() - 1,
-                           2 * finder_->SupportInterval() - 2);
 }
 
 // Make sure we aggregate duplicate beacon results.

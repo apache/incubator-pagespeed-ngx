@@ -31,11 +31,6 @@ package net_instaweb;
 //
 // Next free id: 7
 message CriticalKeys {
-  // This is a legacy type used for aggregating multiple beacon responses.
-  message BeaconResponse {                     // legacy
-    repeated string keys = 1;
-  }
-
   // The KeyEvidence proto aggregates multiple beacons returns in a scalable
   // way; support is exponentially decayed over time.
   message KeyEvidence {
@@ -52,14 +47,7 @@ message CriticalKeys {
     optional string nonce = 2 [default = ""];
   }
 
-  // Legacy field that held an aggregate of multiple beacon responses.
-  repeated string critical_keys = 1;           // legacy
-
-  // Id 2 deleted, should not be reused.
-
-  // Legacy field for storing a history of the last N reported critical
-  // key sets from beacons.
-  repeated BeaconResponse beacon_history = 3;  // legacy
+  // Ids 1-3 deleted, should not be reused.
 
   optional int64 next_beacon_timestamp_ms = 4 [default = 0];
 

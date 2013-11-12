@@ -27,24 +27,12 @@ package net_instaweb;
 // This represents the list of all above-the-fold images. We aggregate critical
 // image information from multiple beacons, and so we store a history of
 // multiple critical image beacon responses to deal with noisy data.
+//
+// Next free id: 7
 message CriticalImages {
-  // The initial portion of this proto is legacy data.
+  // Ids 1-4 deleted, do not reuse.
 
-  // The set of images in the above-the-fold portion of the webpage. Duplicates
-  // should not be included.
-  message CriticalImageSet {                                // legacy
-    repeated string critical_images = 1;
-  }
-
-  // Keep the aggregated set of critical images. This should be recalculated and
-  // updated whenever a new set is added to *_critical_images_sets below.
-  repeated string html_critical_images = 1;                 // legacy
-  repeated string css_critical_images = 2;                  // legacy
-
-  repeated CriticalImageSet html_critical_images_sets = 3;  // legacy
-  repeated CriticalImageSet css_critical_images_sets = 4;   // legacy
-
-  // Non-legacy critical image information.
+  // Critical image information.
   optional CriticalKeys html_critical_image_support = 5;
   optional CriticalKeys css_critical_image_support = 6;
 }

@@ -102,10 +102,6 @@ TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySuccess) {
                          GetCriticalImagesUpdatedValue()->value().size());
   CriticalImages parsed_proto;
   parsed_proto.ParseFromZeroCopyStream(&input);
-  EXPECT_EQ(0, parsed_proto.html_critical_images_size());
-  EXPECT_EQ(0, parsed_proto.css_critical_images_size());
-  EXPECT_EQ(0, parsed_proto.html_critical_images_sets_size());
-  EXPECT_EQ(0, parsed_proto.css_critical_images_sets_size());
   ASSERT_TRUE(parsed_proto.has_html_critical_image_support());
   const CriticalKeys& html_support = parsed_proto.html_critical_image_support();
   EXPECT_EQ(1, html_support.key_evidence_size());
@@ -380,81 +376,6 @@ TEST_F(CriticalImagesFinderTest, TestRenderedImageExtractionFromPropertyCache) {
   EXPECT_TRUE(finder()->GetRenderedImageDimensions(rewrite_driver(), gurl,
                                                    &dimensions));
   EXPECT_EQ(std::make_pair(40, 54), dimensions);
-}
-
-TEST_F(CriticalImagesHistoryFinderTest, TestLegacyDataMigration) {
-  // Construct a legacy protobuf containing old critical image data, then make
-  // sure it gets migrated properly to the new format when new critical image
-  // data arrives.
-  CriticalImages critical_images;
-  critical_images.add_html_critical_images("imageA.jpg");
-  // Two sets of critical image beacon results with slightly different evidence.
-  CriticalImages::CriticalImageSet* html_beacon1 =
-      critical_images.add_html_critical_images_sets();
-  html_beacon1->add_critical_images("imageB.jpg");
-  html_beacon1->add_critical_images("imageA.jpg");
-  CriticalImages::CriticalImageSet* html_beacon2 =
-      critical_images.add_html_critical_images_sets();
-  html_beacon2->add_critical_images("imageA.jpg");
-  // Similarly, two critical CSS images and two slightly different critical CSS
-  // beacon results.
-  critical_images.add_css_critical_images("image1.jpg");
-  critical_images.add_css_critical_images("image2.jpg");
-  // Two sets of critical image beacon results with slightly different evidence.
-  CriticalImages::CriticalImageSet* css_beacon1 =
-      critical_images.add_css_critical_images_sets();
-  css_beacon1->add_critical_images("image2.jpg");
-  CriticalImages::CriticalImageSet* css_beacon2 =
-      critical_images.add_css_critical_images_sets();
-  css_beacon2->add_critical_images("image2.jpg");
-  css_beacon2->add_critical_images("image1.jpg");
-  // Write the constructed proto into the property cache.
-  PropertyCacheUpdateResult result =
-      UpdateInPropertyCache(critical_images, finder()->cohort(),
-                            CriticalImagesFinder::kCriticalImagesPropertyName,
-                            true, rewrite_driver()->property_page());
-  EXPECT_EQ(kPropertyCacheUpdateOk, result);
-  // Now examine the legacy data and make sure we get usable critical image
-  // information out.
-  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpg"));
-  EXPECT_FALSE(IsHtmlCriticalImage("imageB.jpg"));
-  EXPECT_FALSE(IsHtmlCriticalImage("imageC.jpg"));
-  // Note that image1 gets considered critical because it's in the global
-  // critical set.
-  EXPECT_TRUE(IsCssCriticalImage("image1.jpg"));
-  EXPECT_TRUE(IsCssCriticalImage("image2.jpg"));
-  EXPECT_FALSE(IsCssCriticalImage("image3.jpg"));
-  // Now perform some updates.
-  StringSet html_critical_images;
-  html_critical_images.insert("imageA.jpg");
-  html_critical_images.insert("imageB.jpg");
-  StringSet css_critical_images;
-  css_critical_images.insert("image2.jpg");
-  ResetDriver();
-  EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
-      &html_critical_images, &css_critical_images));
-  rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
-  ResetDriver();
-  // Make sure the updates are reflected in image criticality.
-  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpg"));
-  EXPECT_FALSE(IsHtmlCriticalImage("imageB.jpg"));
-  EXPECT_FALSE(IsHtmlCriticalImage("imageC.jpg"));
-  EXPECT_FALSE(IsCssCriticalImage("image1.jpg"));
-  EXPECT_TRUE(IsCssCriticalImage("image2.jpg"));
-  EXPECT_FALSE(IsCssCriticalImage("image3.jpg"));
-  // Two more updates to see that ImageB changes state.
-  for (int i = 0; i < 2; ++i) {
-    EXPECT_TRUE(UpdateCriticalImagesCacheEntry(
-        &html_critical_images, &css_critical_images));
-    rewrite_driver()->property_page()->WriteCohort(finder()->cohort());
-    ResetDriver();
-  }
-  EXPECT_TRUE(IsHtmlCriticalImage("imageA.jpg"));
-  EXPECT_TRUE(IsHtmlCriticalImage("imageB.jpg"));
-  EXPECT_FALSE(IsHtmlCriticalImage("imageC.jpg"));
-  EXPECT_FALSE(IsCssCriticalImage("image1.jpg"));
-  EXPECT_TRUE(IsCssCriticalImage("image2.jpg"));
-  EXPECT_FALSE(IsCssCriticalImage("image3.jpg"));
 }
 
 }  // namespace net_instaweb
