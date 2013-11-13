@@ -96,6 +96,11 @@ class DomainLawyerTest : public testing::Test {
     return domain_lawyer_.WillDomainChange(gurl);
   }
 
+  bool IsDomainAuthorized(const GoogleUrl& context_gurl, StringPiece url) {
+    GoogleUrl gurl(url);
+    return domain_lawyer_.IsDomainAuthorized(context_gurl, gurl);
+  }
+
   GoogleUrl orig_request_;
   GoogleUrl port_request_;
   GoogleUrl https_request_;
@@ -129,14 +134,12 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
   StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
 
   // Any domain is authorized with respect to an HTML from the same domain.
-  GoogleUrl orig_domain(orig_request_.Origin());
-  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(orig_request_, orig_domain));
+  EXPECT_TRUE(IsDomainAuthorized(orig_request_, orig_request_.Origin()));
 
   // But to pull in a resource from another domain, we must first authorize it.
-  GoogleUrl cdn_gurl(cdn_domain);
-  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(orig_request_, cdn_gurl));
+  EXPECT_FALSE(IsDomainAuthorized(orig_request_, cdn_domain));
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain, &message_handler_));
-  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(orig_request_, cdn_gurl));
+  EXPECT_TRUE(IsDomainAuthorized(orig_request_, cdn_domain));
   GoogleString mapped_domain_name;
   ASSERT_TRUE(MapRequest(
       orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
@@ -181,10 +184,36 @@ TEST_F(DomainLawyerTest, ExternalUpperCaseDomainDeclared) {
 TEST_F(DomainLawyerTest, MixedCasePath) {
   GoogleUrl context_gurl("http://origin.com/index.html");
   ASSERT_TRUE(domain_lawyer_.AddDomain("EXAMPLE.com/HI/lo", &message_handler_));
-  GoogleUrl correct_case("http://example.com/HI/lo/file");
-  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(context_gurl, correct_case));
-  GoogleUrl wrong_case("http://example.com/hi/lo/file");
-  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(context_gurl, wrong_case));
+  EXPECT_TRUE(IsDomainAuthorized(context_gurl,
+                                 "http://example.com/HI/lo/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl,
+                                  "http://example.com/hi/lo/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl,
+                                  "https://example.com/HI/lo/file"));
+}
+
+TEST_F(DomainLawyerTest, RedundantPortsOnDeclaration) {
+  GoogleUrl context_gurl("http://origin.com/index.html");
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://a.com:80", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddDomain("https://b.com:443", &message_handler_));
+  EXPECT_TRUE(IsDomainAuthorized(context_gurl, "http://a.com/file"));
+  EXPECT_TRUE(IsDomainAuthorized(context_gurl, "https://b.com/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "http://b.com/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "https://a.com/file"));
+}
+
+TEST_F(DomainLawyerTest, RedundantPortsOnTest) {
+  GoogleUrl context_gurl("http://origin.com/index.html");
+  ASSERT_TRUE(domain_lawyer_.AddDomain("http://a.com", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddDomain("https://b.com", &message_handler_));
+  EXPECT_TRUE(IsDomainAuthorized(context_gurl, "http://a.com:80/file"));
+  EXPECT_TRUE(IsDomainAuthorized(context_gurl, "https://b.com:443/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "http://a.com:443/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "http://b.com:443/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "http://b.com:80/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "https://a.com:443/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "https://a.com:80/file"));
+  EXPECT_FALSE(IsDomainAuthorized(context_gurl, "https://b.com:80/file"));
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
@@ -736,8 +765,7 @@ TEST_F(DomainLawyerTest, MapOriginDomain) {
   GoogleUrl gurl("http://origin.com:8080/index.html");
   EXPECT_FALSE(MapRequest(gurl, "http://localhost:8080/blue.css", &mapped));
   GoogleUrl page_url("http://origin.com:8080");
-  GoogleUrl candidate_url("http://localhost:8080");
-  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(page_url, candidate_url));
+  EXPECT_FALSE(IsDomainAuthorized(page_url, "http://localhost:8080"));
 
   // Of course, if we were to explicitly authorize then it would be ok.
   // First use a wildcard, which will not cover the ":8080", so the

@@ -329,11 +329,22 @@ GoogleString DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
   // on the "/" in "http://".
   GoogleString::size_type origin_start = scheme_delim_start +
       STATIC_STRLEN(kSchemeDelim);
-  GoogleString::size_type pos = domain_name_str.find('/', origin_start);
-  DCHECK_NE(GoogleString::npos, pos);
-  for (char* p = &(domain_name_str[0]), *e = p + pos; p < e; ++p) {
+  GoogleString::size_type slash = domain_name_str.find('/', origin_start);
+  DCHECK_NE(GoogleString::npos, slash);
+  for (char* p = &(domain_name_str[0]), *e = p + slash; p < e; ++p) {
     *p = LowerChar(*p);
   }
+
+  // For "https", any ":443" in the host is redundant; ditto for :80 and http.
+  StringPiece scheme(domain_name_str.data(), scheme_delim_start);
+  StringPiece origin(domain_name_str.data() + origin_start,
+                     slash - origin_start);
+  if ((scheme == "https") && origin.ends_with(":443")) {
+    domain_name_str.erase(slash - 4, 4);
+  } else if ((scheme == "http") && origin.ends_with(":80")) {
+    domain_name_str.erase(slash - 3, 3);
+  }
+
   return domain_name_str;
 }
 
