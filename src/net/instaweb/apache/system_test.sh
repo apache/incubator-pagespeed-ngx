@@ -1964,10 +1964,10 @@ fi
 
 WGET_ARGS=""
 start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
-URL="http://$HOSTNAME/modpagespeed_http/small_javascript.js"
+URL="http://$HOSTNAME/modpagespeed_http/not_really_a_font.woff"
 echo $WGET_DUMP $URL ....
 OUT1=$($WGET_DUMP $URL)
-check_from "$OUT1" egrep -q "hello world"
+check_from "$OUT1" egrep -q "This is not really font data"
 if [ $statistics_enabled = "1" ]; then
   OLDSTATS=$OUTDIR/proxy_fetch_stats.old
   NEWSTATS=$OUTDIR/proxy_fetch_stats.new
@@ -1976,7 +1976,7 @@ if [ $statistics_enabled = "1" ]; then
   $WGET_DUMP $STATISTICS_URL > $OLDSTATS
 fi
 OUT2=$($WGET_DUMP $URL)
-check_from "$OUT2" egrep -q "hello world"
+check_from "$OUT2" egrep -q "This is not really font data"
 if [ $statistics_enabled = "1" ]; then
   # TODO(jmarantz): experimental sleep to eliminate valgrind race. Fix properly.
   sleep 1
