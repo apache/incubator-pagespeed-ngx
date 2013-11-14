@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FAKE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FAKE_FILTER_H_
 
-
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -37,8 +37,9 @@ class RewriteDriver;
 struct ContentType;
 
 // A test filter that that appends ':id' to the input contents and counts the
-// number of rewrites it has performed. It also has the ability to simulate a
-// long rewrite to test exceeding the rewrite deadline.
+// number of rewrites it has performed. It will rewrite all tags of the category
+// provided in the constructor. It also has the ability to simulate a long
+// rewrite to test exceeding the rewrite deadline.
 class FakeFilter : public RewriteFilter {
  public:
   class Context : public SingleRewriteContext {
@@ -63,20 +64,22 @@ class FakeFilter : public RewriteFilter {
     FakeFilter* filter_;
   };
 
-  FakeFilter(const char* id, RewriteDriver* rewrite_driver)
+  FakeFilter(const char* id, RewriteDriver* rewrite_driver,
+             semantic_type::Category category)
       : RewriteFilter(rewrite_driver),
         id_(id),
         exceed_deadline_(false),
         enabled_(true),
         num_rewrites_(0),
         output_content_type_(NULL),
-        num_calls_to_encode_user_agent_(0) {}
+        num_calls_to_encode_user_agent_(0),
+        category_(category) {}
 
   virtual ~FakeFilter();
 
   virtual void StartDocumentImpl() {}
   virtual void EndElementImpl(HtmlElement* element) {}
-  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void StartElementImpl(HtmlElement* element);
   virtual RewriteContext* MakeRewriteContext() {
     return new FakeFilter::Context(this, driver_, NULL, NULL);
   }
@@ -110,6 +113,7 @@ class FakeFilter : public RewriteFilter {
   int num_rewrites_;
   const ContentType* output_content_type_;
   mutable int num_calls_to_encode_user_agent_;
+  semantic_type::Category category_;
 };
 
 }  // namespace net_instaweb

@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/fake_filter.h"
@@ -48,6 +47,8 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/timer.h"  // for Timer, etc
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 
@@ -66,7 +67,8 @@ class CreateFilterCallback
   virtual ~CreateFilterCallback() {}
 
   virtual HtmlFilter* Done(RewriteDriver* driver) {
-    FakeFilter* filter = new FakeFilter(id_.c_str(), driver);
+    FakeFilter* filter = new FakeFilter(id_.c_str(), driver,
+                                        semantic_type::kStylesheet);
     if (blocking_) {
       filter->set_exceed_deadline(true);
     }
@@ -424,12 +426,15 @@ TEST_F(DistributedRewriteContextTest, ReconstructDistributedTwoFilterBlocks) {
   // we use a fake CSS filter and combiner. We give the ingress task one of each
   // and a fake filter to the distributed task, which times out.
   FakeFilter* fake_css_filter =
-      new FakeFilter(RewriteOptions::kCssFilterId, rewrite_driver());
+      new FakeFilter(RewriteOptions::kCssFilterId, rewrite_driver(),
+                     semantic_type::kStylesheet);
   fake_css_filter->set_exceed_deadline(true);
   FakeFilter* fake_css_combiner =
-      new FakeFilter(RewriteOptions::kCssCombinerId, rewrite_driver());
+      new FakeFilter(RewriteOptions::kCssCombinerId, rewrite_driver(),
+                     semantic_type::kStylesheet);
   FakeFilter* other_fake_css_filter =
-      new FakeFilter(RewriteOptions::kCssFilterId, other_rewrite_driver());
+      new FakeFilter(RewriteOptions::kCssFilterId, other_rewrite_driver(),
+                     semantic_type::kStylesheet);
   other_fake_css_filter->set_exceed_deadline(true);
   rewrite_driver()->AppendRewriteFilter(fake_css_filter);
   rewrite_driver()->AppendRewriteFilter(fake_css_combiner);

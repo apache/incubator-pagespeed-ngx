@@ -487,7 +487,6 @@ bool RewriteTestBase::FetchResourceUrl(const StringPiece& url,
   }
   async_fetch.set_response_headers(response_headers);
   bool fetched = rewrite_driver_->FetchResource(url, &async_fetch);
-
   // Make sure we let the rewrite complete, and also wait for the driver to be
   // idle so we can reuse it safely.
   rewrite_driver_->WaitForShutDown();

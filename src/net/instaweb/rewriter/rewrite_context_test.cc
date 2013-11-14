@@ -38,6 +38,7 @@
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/fake_filter.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
@@ -65,6 +66,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
 
@@ -4528,6 +4530,202 @@ TEST_F(RewriteContextTest, DropFetchesAndRecover) {
   rewrite_driver()->WaitForCompletion();
   num_unrewritten_css = RewriteAndCountUnrewrittenCss("10.001_release", html);
   EXPECT_EQ(0, num_unrewritten_css);
+}
+
+TEST_F(RewriteContextTest, AbandonRedundantFetchInHTML) {
+  // Test that two nearly-simultaneous HTML requests which contain the same
+  // resource result in a single rewrite and fetch. We simulate this by
+  // rewriting on two RewriteDrivers with the same ServerContext. The first
+  // rewrite acquires the creation lock and then delays the rewrite. The second
+  // rewrite is not willing to delay the rewrite but abandons its rewrite
+  // attempt because it can't acquire the lock.
+
+  // Replace the other_rewrite_driver_ with one that's derived from the
+  // same ServerContext as the primary one, as that's a better test of
+  // shared locking and multiple rewrites on the same task.
+  RewriteOptions* new_options_ = other_options_->Clone();
+  delete other_rewrite_driver_;
+  other_rewrite_driver_ = MakeDriver(server_context_, new_options_);
+  InitResources();
+
+  // We use fake filters since they provide delayed rewriter functionality.
+  FakeFilter* fake1 =
+      new FakeFilter(TrimWhitespaceRewriter::kFilterId, rewrite_driver_,
+                     semantic_type::kStylesheet);
+  fake1->set_exceed_deadline(true);
+  rewrite_driver_->AppendRewriteFilter(fake1);
+  rewrite_driver_->AddFilters();
+  FakeFilter* fake2 =
+      new FakeFilter(TrimWhitespaceRewriter::kFilterId, other_rewrite_driver_,
+                     semantic_type::kStylesheet);
+  fake2->set_exceed_deadline(false);  // This is default, but being explicit.
+  other_rewrite_driver_->AppendRewriteFilter(fake2);
+  other_rewrite_driver_->AddFilters();
+
+  // Optimize the page once
+  const GoogleString encoded =
+      Encode("", TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+
+  // Optimize the same page again but with a driver that doesn't have a delayed
+  // rewriter.
+  SetActiveServer(kSecondary);
+  ValidateNoChanges("trimmable2", CssLinkHref("a.css"));
+
+  SetActiveServer(kPrimary);
+  EXPECT_EQ(0, fake1->num_rewrites());
+  EXPECT_EQ(0, fake2->num_rewrites());
+  // Note: The lru_cache is shared between the two drivers.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());   // meta twice and http once
+  EXPECT_EQ(1, lru_cache()->num_inserts());  // original resource
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Advance the time and make sure the rewrite does eventually complete.
+  ClearStats();
+  AdvanceTimeMs(1);  // The fake filter waits until just after the deadline.
+  EXPECT_EQ(1, fake1->num_rewrites());
+  EXPECT_EQ(0, fake2->num_rewrites());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // metadata and optimized
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // Make sure that we can fetch it.
+  ClearStats();
+  ValidateExpected("trimmable3", CssLinkHref("a.css"), CssLinkHref(encoded));
+  EXPECT_EQ(1, fake1->num_rewrites());  // ClearStats didn't clear this.
+  EXPECT_EQ(0, fake2->num_rewrites());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, WaitForRedundantRewriteInFetchAfterHtml) {
+  // Test that an HTML request with a resource followed by a reconstruction
+  // request for the same resource only rewrites and fetches once. We simulate
+  // this by rewriting on two RewriteDrivers with the same ServerContext. The
+  // first rewrite acquires the creation lock and then delays the rewrite. The
+  // second waits for the first to complete.
+
+  // Replace the other_rewrite_driver_ with one that's derived from the
+  // same ServerContext as the primary one, as that's a better test of
+  // shared locking and multiple rewrites on the same task.
+  RewriteOptions* new_options_ = other_options_->Clone();
+  delete other_rewrite_driver_;
+  other_rewrite_driver_ = MakeDriver(server_context_, new_options_);
+  InitResources();
+
+  // We use fake filters since they provide delayed rewriter functionality.
+  FakeFilter* fake1 =
+      new FakeFilter(TrimWhitespaceRewriter::kFilterId, rewrite_driver_,
+                     semantic_type::kStylesheet);
+  fake1->set_exceed_deadline(true);
+  rewrite_driver_->AppendRewriteFilter(fake1);
+  rewrite_driver_->AddFilters();
+  FakeFilter* fake2 =
+      new FakeFilter(TrimWhitespaceRewriter::kFilterId, other_rewrite_driver_,
+                     semantic_type::kStylesheet);
+  fake2->set_exceed_deadline(false);  // This is default, but being explicit.
+  other_rewrite_driver_->AppendRewriteFilter(fake2);
+  other_rewrite_driver_->AddFilters();
+
+  // Optimize the page once
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+  EXPECT_EQ(0, fake1->num_rewrites());
+  EXPECT_EQ(0, fake2->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Optimize the same resource as a .pagespeed. resource on a driver that
+  // doesn't have a delayed rewriter. It should wait for the first rewrite to
+  // finish and return the optimized result, but we should have only fetched and
+  // optimized once.
+  ClearStats();
+  SetActiveServer(kSecondary);
+  GoogleString content;
+  EXPECT_TRUE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                            "a.css", "css", &content));
+  EXPECT_EQ(StrCat(" a :", TrimWhitespaceRewriter::kFilterId), content);
+
+  SetActiveServer(kPrimary);
+  // The initial http cache lookup will fail.  Then the lock attempt will block.
+  // By the time the lock is released the metadata and retry at the http cache
+  // will succeed.
+  // Note: The lru_cache is shared between the two drivers.
+  EXPECT_EQ(2, lru_cache()->num_hits());     // meta and http of the fetch
+  EXPECT_EQ(1, lru_cache()->num_misses());   // http of the html request
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // meta and http of the fetch
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, fake1->num_rewrites());
+  EXPECT_EQ(0, fake2->num_rewrites());
+}
+
+TEST_F(RewriteContextTest, WaitForRedundantFetchInFetchAfterFetch) {
+  // Test that a .pagespeed. fetch for a resource followed by another
+  // .pagespeed. fetch for the same resource only rewrites and fetches from
+  // origin once. We simulate this by rewriting on two RewriteDrivers with the
+  // same ServerContext. The first fetch acquires the creation lock and then
+  // delays the rewrite. The second fetch1 waits for the first to complete.
+
+  // Replace the other_rewrite_driver_ with one that's derived from the
+  // same ServerContext as the primary one, as that's a better test of
+  // shared locking and multiple rewrites on the same task.
+  RewriteOptions* new_options_ = other_options_->Clone();
+  delete other_rewrite_driver_;
+  other_rewrite_driver_ = MakeDriver(server_context_, new_options_);
+  InitResources();
+
+  // We use fake filters since they provide delayed rewriter functionality.
+  FakeFilter* fake1 =
+      new FakeFilter(TrimWhitespaceRewriter::kFilterId, rewrite_driver_,
+                     semantic_type::kStylesheet);
+  fake1->set_exceed_deadline(true);
+  rewrite_driver_->AppendRewriteFilter(fake1);
+  rewrite_driver_->AddFilters();
+  FakeFilter* fake2 =
+      new FakeFilter(TrimWhitespaceRewriter::kFilterId, other_rewrite_driver_,
+                     semantic_type::kStylesheet);
+  fake2->set_exceed_deadline(false);  // This is default, but being explicit.
+  other_rewrite_driver_->AppendRewriteFilter(fake2);
+  other_rewrite_driver_->AddFilters();
+
+  // Do a .pagespeed. fetch but delay the rewrite until past the deadline.
+  GoogleString content1;
+  StringAsyncFetch async_fetch(rewrite_driver_->request_context(), &content1);
+  GoogleString url = Encode(kTestDomain, TrimWhitespaceRewriter::kFilterId, "0",
+                            "a.css", "css");
+  // Note that this is rewrite_driver_->FetchResource and not
+  // RewriteTestBase::FetchResource, therefore WaitForShutdown will not be
+  // called.
+  EXPECT_TRUE(rewrite_driver_->FetchResource(url, &async_fetch));
+
+  // Verify that the rewrite is still pending, so the lock should still be held.
+  EXPECT_EQ(0, fake1->num_rewrites());
+
+  // Fetch again on a driver that doesn't have a delayed rewriter. It should
+  // wait for the first rewrite to finish and return the optimized result, but
+  // we should have only fetched and optimized once.
+  SetActiveServer(kSecondary);
+  GoogleString content2;
+  EXPECT_TRUE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                            "a.css", "css", &content2));
+  EXPECT_EQ(StrCat(" a :", TrimWhitespaceRewriter::kFilterId), content2);
+
+  SetActiveServer(kPrimary);
+  // Let the first driver wrap up.
+  rewrite_driver_->WaitForShutDown();
+
+  // We have the stats for both rewrites here:
+  // Fetch 1: http, metadata, and original resource misses, one fetch, and three
+  // inserts.
+  // Fetch 2: http miss, lock, metadata hit, http hit and return.
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, fake1->num_rewrites());
+  EXPECT_EQ(0, fake2->num_rewrites());
 }
 
 }  // namespace net_instaweb

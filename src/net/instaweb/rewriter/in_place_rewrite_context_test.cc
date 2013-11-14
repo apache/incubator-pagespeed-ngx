@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/fake_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -199,11 +200,11 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         redirect_url_, redirect_headers, redirect_body_);
 
     img_filter_ = new FakeFilter(RewriteOptions::kImageCompressionId,
-                                 rewrite_driver());
+                                 rewrite_driver(), semantic_type::kImage);
     js_filter_ = new FakeFilter(RewriteOptions::kJavascriptMinId,
-                                rewrite_driver());
-    css_filter_ = new FakeFilter(RewriteOptions::kCssFilterId,
-                                 rewrite_driver());
+                                rewrite_driver(), semantic_type::kScript);
+    css_filter_ = new FakeFilter(RewriteOptions::kCssFilterId, rewrite_driver(),
+                                 semantic_type::kStylesheet);
 
     rewrite_driver()->AppendRewriteFilter(img_filter_);
     rewrite_driver()->AppendRewriteFilter(js_filter_);
@@ -341,8 +342,9 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
 
   void SetupDistributedTest(const StringPiece& distributed_filter) {
     SetupSharedCache();
-    other_img_filter_ = new FakeFilter(RewriteOptions::kImageCompressionId,
-                                      other_rewrite_driver());
+    other_img_filter_ =
+        new FakeFilter(RewriteOptions::kImageCompressionId,
+                       other_rewrite_driver(), semantic_type::kImage);
     other_rewrite_driver()->AppendRewriteFilter(other_img_filter_);
     options()->ClearSignatureForTesting();
     other_options()->ClearSignatureForTesting();

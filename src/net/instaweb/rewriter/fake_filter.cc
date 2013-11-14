@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
@@ -33,6 +34,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
@@ -42,8 +44,9 @@ FakeFilter::Context::~Context() {}
 void FakeFilter::Context::RewriteSingle(const ResourcePtr& input,
                                         const OutputResourcePtr& output) {
   if (filter_->exceed_deadline()) {
+    // Wake up 1us past the deadline.
     int64 wakeup_us = Driver()->scheduler()->timer()->NowUs() +
-                      (1000 * GetRewriteDeadlineAlarmMs());
+                      (Timer::kMsUs * GetRewriteDeadlineAlarmMs() + 1);
     Function* closure =
         MakeFunction(this, &Context::DoRewriteSingle, input, output);
     Driver()->scheduler()->AddAlarmAtUs(wakeup_us, closure);
@@ -90,6 +93,26 @@ GoogleString FakeFilter::Context::UserAgentCacheKey(
 }
 
 FakeFilter::~FakeFilter() {}
+
+void FakeFilter::StartElementImpl(HtmlElement* element) {
+  resource_tag_scanner::UrlCategoryVector attributes;
+  resource_tag_scanner::ScanElement(element, rewrite_options_, &attributes);
+  for (int i = 0, n = attributes.size(); i < n; ++i) {
+    if (attributes[i].category == category_) {
+      ResourcePtr input_resource(
+          CreateInputResource(attributes[i].url->DecodedValueOrNull()));
+      if (input_resource.get() == NULL) {
+        return;
+      }
+      ResourceSlotPtr slot(
+          driver_->GetSlot(input_resource, element, attributes[i].url));
+      Context* context =
+          new Context(this, driver_, NULL /* not nested */, NULL);
+      context->AddSlot(slot);
+      driver_->InitiateRewrite(context);
+    }
+  }
+}
 
 RewriteContext* FakeFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
