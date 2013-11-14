@@ -939,6 +939,7 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
 
       // We now have the final headers.  If they don't let us cache then we'll
       // abort even though we've already buffered up the whole resource.
+      AboutToBeDoneWithRecorder(request, recorder);
       recorder->DoneAndSetHeaders(&response_headers);  // Deletes recorder.
     }
   }

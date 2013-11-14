@@ -366,6 +366,13 @@ void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
   callback->Release();
 }
 
+static apr_status_t DeleteInPlaceRecorder(void* object) {
+  InPlaceResourceRecorder* recorded =
+      static_cast<InPlaceResourceRecorder*>(object);
+  delete recorded;
+  return APR_SUCCESS;
+}
+
 // Handle url with In Place Resource Optimization (IPRO) flow.
 bool handle_as_in_place(const RequestContextPtr& request_context,
                         GoogleUrl* stripped_gurl,
@@ -392,7 +399,8 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
     server_context->rewrite_stats()->ipro_served()->Add(1);
     handled = true;
   } else if (fetch.response_headers()->status_code() ==
-             CacheUrlAsyncFetcher::kNotInCacheStatus) {
+                 CacheUrlAsyncFetcher::kNotInCacheStatus
+             && !request->header_only) {
     server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
     // This URL was not found in cache (neither the input resource nor
     // a ResourceNotCacheable entry) so we need to get it into cache
@@ -413,6 +421,11 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
                          request, request->connection);
     ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
                          request, request->connection);
+    // Add a contingency cleanup path in case some module munches
+    // (or doesn't produce at all) an EOS bucket. If everything
+    // goes well, we will just remove it befoe cleaning up ourselves.
+    apr_pool_cleanup_register(
+        request->pool, recorder, DeleteInPlaceRecorder, apr_pool_cleanup_null);
   } else {
     server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
   }
@@ -1138,6 +1151,11 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
 
   // Keep core_map_to_storage from running and rejecting our long filenames.
   return OK;
+}
+
+void AboutToBeDoneWithRecorder(request_rec* request,
+                               InPlaceResourceRecorder* recorder) {
+  apr_pool_cleanup_kill(request->pool, recorder, DeleteInPlaceRecorder);
 }
 
 }  // namespace net_instaweb

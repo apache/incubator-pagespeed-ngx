@@ -29,6 +29,7 @@
 namespace net_instaweb {
 
 class ApacheServerContext;
+class InPlaceResourceRecorder;
 
 // Was this request made by mod_pagespeed itself? If so, we should not try to
 // handle it, just let Apache deal with it like normal.
@@ -53,6 +54,11 @@ apr_status_t save_url_in_note(request_rec *request,
 // 256 characters that appear to correspond to filename limitations.
 // To prevent that, we hook map_to_storage for our own purposes.
 apr_status_t instaweb_map_to_storage(request_rec* request);
+
+// This must be called on any InPlaceResourceRecorder allocated by
+// instaweb_handler before calling DoneAndSetHeaders() on it.
+void AboutToBeDoneWithRecorder(request_rec* request,
+                               InPlaceResourceRecorder* recorder);
 
 }  // namespace net_instaweb
 

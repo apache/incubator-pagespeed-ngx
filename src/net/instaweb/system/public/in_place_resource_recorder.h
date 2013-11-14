@@ -47,6 +47,10 @@ class InPlaceResourceRecorder : public Writer {
       int max_response_bytes, int max_concurrent_recordings, HTTPCache* cache,
       Statistics* statistics, MessageHandler* handler);
 
+  // Normally you should use DoneAndSetHeaders rather than deleting this
+  // directly.
+  virtual ~InPlaceResourceRecorder();
+
   static void InitStats(Statistics* statistics);
 
   // These take a handler for compatibility with the Writer API, but the handler
@@ -95,8 +99,6 @@ class InPlaceResourceRecorder : public Writer {
   bool limit_active_recordings() { return max_concurrent_recordings_ != 0; }
 
  private:
-  virtual ~InPlaceResourceRecorder();
-
   bool IsIproContentType(ResponseHeaders* response_headers);
 
   const GoogleString url_;
