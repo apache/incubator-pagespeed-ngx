@@ -47,6 +47,7 @@ class CacheInterface;
 class FileSystem;
 class Hasher;
 class MessageHandler;
+class RewriteOptions;
 class Statistics;
 class UrlAsyncFetcher;
 class Writer;
@@ -124,11 +125,12 @@ ServerContext* FileRewriter::NewServerContext() {
 StaticRewriter::StaticRewriter(int* argc, char*** argv)
     : gflags_((*argv)[0], argc, argv),
       file_rewriter_(&gflags_, true),
-      server_context_(file_rewriter_.CreateServerContext()) {
-  if (!gflags_.SetOptions(&file_rewriter_,
-                          server_context_->global_options())) {
+      server_context_(NULL) {
+  RewriteOptions* options = file_rewriter_.default_options();
+  if (!gflags_.SetOptions(&file_rewriter_, options)) {
     exit(1);
   }
+  server_context_ = file_rewriter_.CreateServerContext();
 }
 
 StaticRewriter::StaticRewriter()
