@@ -321,12 +321,19 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     RequestProperties* request_properties, RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
+
+  // See https://code.google.com/p/modpagespeed/issues/detail?id=627
+  // Evidently bots and other clients may not properly resolve the quoted
+  // URLs we send into noscript links, so remove any excess quoting we
+  // see around the value.
+  StringPiece trimmed_value(value);
+  TrimUrlQuotes(&trimmed_value);
   if (name == kModPagespeed || name == kPageSpeed) {
     RewriteOptions::EnabledEnum enabled;
-    if (RewriteOptions::ParseFromString(value, &enabled)) {
+    if (RewriteOptions::ParseFromString(trimmed_value, &enabled)) {
       options->set_enabled(enabled);
       status = kSuccess;
-    } else if (value == kNoscriptValue) {
+    } else if (trimmed_value == kNoscriptValue) {
       // Disable filters that depend on custom script execution.
       options->DisableFiltersRequiringScriptExecution();
       options->EnableFilter(RewriteOptions::kHandleNoscriptRedirect);
@@ -337,27 +344,28 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
       handler->Message(kWarning, "Invalid value for %s: %s "
                        "(should be on, off, unplugged, or noscript)",
                        name.as_string().c_str(),
-                       value.c_str());
+                       trimmed_value.as_string().c_str());
       status = kInvalid;
     }
   } else if (name == kModPagespeedFilters || name == kPageSpeedFilters) {
     // When using PageSpeedFilters query param, only the specified filters
     // should be enabled.
-    if (options->AdjustFiltersByCommaSeparatedList(value, handler)) {
+    if (options->AdjustFiltersByCommaSeparatedList(trimmed_value, handler)) {
       status = kSuccess;
     } else {
       status = kInvalid;
     }
   } else if (StringCaseEqual(name, HttpAttributes::kXPsaClientOptions)) {
     if (UpdateRewriteOptionsWithClientOptions(
-        value, request_properties, options)) {
+        trimmed_value, request_properties, options)) {
       status = kSuccess;
     }
     // We don't want to return kInvalid, which causes 405 (kMethodNotAllowed)
     // returned to client.
   } else if (StringCaseEqual(name, HttpAttributes::kCacheControl)) {
     StringPieceVector pairs;
-    SplitStringPieceToVector(value, ",", &pairs, true /* omit_empty_strings */);
+    SplitStringPieceToVector(trimmed_value, ",", &pairs,
+                             true /* omit_empty_strings */);
     for (int i = 0, n = pairs.size(); i < n; ++i) {
       if (pairs[i] == "no-transform") {
         // TODO(jmarantz): A .pagespeed resource should return un-optimized
@@ -380,13 +388,14 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     for (unsigned i = 0; i < arraysize(int64_query_params_); ++i) {
       if (name_suffix == int64_query_params_[i].name_) {
         int64 int_val;
-        if (StringToInt64(value, &int_val)) {
+        if (StringToInt64(trimmed_value, &int_val)) {
           RewriteOptionsInt64PMF method = int64_query_params_[i].method_;
           (options->*method)(int_val);
           status = kSuccess;
         } else {
           handler->Message(kWarning, "Invalid integer value for %s: %s",
-                           name_suffix.as_string().c_str(), value.c_str());
+                           name_suffix.as_string().c_str(),
+                           trimmed_value.as_string().c_str());
           status = kInvalid;
         }
         break;
@@ -576,7 +585,7 @@ bool RewriteQuery::SetEffectiveImageQualities(
 }
 
 bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
-    const GoogleString& client_options, RequestProperties* request_properties,
+    StringPiece client_options, RequestProperties* request_properties,
     RewriteOptions* options) {
   ProxyMode proxy_mode = kProxyModeDefault;
   DeviceProperties::ImageQualityPreference quality_preference =

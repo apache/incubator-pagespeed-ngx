@@ -653,19 +653,55 @@ TEST_F(RewriteQueryTest, NoChangesShouldNotModify) {
   // EXPECT_FALSE(options.modified());
 }
 
+TEST_F(RewriteQueryTest, NoQueryValue) {
+  RewriteOptions* options = ParseAndScan(kHtmlUrl, "ModPagespeed=", "");
+  EXPECT_TRUE(options == NULL);
+}
+
 TEST_F(RewriteQueryTest, NoscriptQueryParamEmptyValue) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl, "PageSpeed=noscript", "");
-  RewriteOptions::FilterVector filter_set;
-  options->GetEnabledFiltersRequiringScriptExecution(&filter_set);
-  EXPECT_TRUE(filter_set.empty());
+  RewriteOptions::FilterVector filter_vector;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
+  EXPECT_TRUE(filter_vector.empty());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
 TEST_F(RewriteQueryTest, NoscriptHeader) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl, "", "PageSpeed:noscript");
-  RewriteOptions::FilterVector filter_set;
-  options->GetEnabledFiltersRequiringScriptExecution(&filter_set);
-  EXPECT_TRUE(filter_set.empty());
+  RewriteOptions::FilterVector filter_vector;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
+  EXPECT_TRUE(filter_vector.empty());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
+}
+
+TEST_F(RewriteQueryTest, NoscriptWithTrailingQuoteQueryParamEmptyValue) {
+  RewriteOptions* options = ParseAndScan(kHtmlUrl,
+                                         "ModPagespeed=noscript'", "");
+  RewriteOptions::FilterVector filter_vector;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
+  EXPECT_TRUE(filter_vector.empty());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
+}
+
+TEST_F(RewriteQueryTest, NoscriptWithTrailingEscapedQuoteQueryParamEmptyValue) {
+  RewriteOptions* options = ParseAndScan(kHtmlUrl,
+                                         "ModPagespeed=noscript%5c%22", "");
+  ASSERT_TRUE(options != NULL);
+  RewriteOptions::FilterVector filter_vector;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
+  EXPECT_TRUE(filter_vector.empty());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
+}
+
+TEST_F(RewriteQueryTest, NoscripWithTrailingQuotetHeader) {
+  RewriteOptions* options = ParseAndScan(kHtmlUrl, "",
+                                         "ModPagespeed:noscript'");
+  RewriteOptions::FilterVector filter_vector;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
+  EXPECT_TRUE(filter_vector.empty());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 

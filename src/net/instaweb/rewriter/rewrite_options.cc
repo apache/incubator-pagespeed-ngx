@@ -2811,7 +2811,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
   if (it != all_options_.end()) {
     OptionBase* option = *it;
     if (StringCaseEqual(name, option->option_name())) {
-      if (!option->SetFromString(value.as_string())) {
+      if (!option->SetFromString(value)) {
         return kOptionValueInvalid;
       } else {
         return kOptionOk;
@@ -2853,7 +2853,7 @@ bool RewriteOptions::SetOptionFromNameAndLog(StringPiece name,
   }
 }
 
-bool RewriteOptions::ParseFromString(const GoogleString& value_string,
+bool RewriteOptions::ParseFromString(StringPiece value_string,
                                      bool* value) {
   // How are bools passed in the string?  I am assuming "true"/"false" or
   // "on"/"off".
@@ -2871,7 +2871,7 @@ bool RewriteOptions::ParseFromString(const GoogleString& value_string,
   return true;
 }
 
-bool RewriteOptions::ParseFromString(const GoogleString& value_string,
+bool RewriteOptions::ParseFromString(StringPiece value_string,
                                      EnabledEnum* value) {
   bool bool_value;
   if (ParseFromString(value_string, &bool_value)) {

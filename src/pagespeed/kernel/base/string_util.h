@@ -282,8 +282,13 @@ inline bool IsAsciiAlphaNumeric(char ch) {
 // any whitespace was trimmed.
 bool TrimWhitespace(StringPiece* str);
 
-// In-place removal of leading and trailing quote.
+// In-place removal of leading and trailing quote.  Removes whitespace as well.
 void TrimQuote(StringPiece* str);
+
+// In-place removal of multiple levels of leading and trailing quotes,
+// include url-escaped quotes, optionally backslashed.  Removes
+// whitespace as well.
+void TrimUrlQuotes(StringPiece* str);
 
 // Trims leading HTML whitespace.  Returns true if any whitespace was trimmed.
 bool TrimLeadingWhitespace(StringPiece* str);

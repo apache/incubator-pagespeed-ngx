@@ -163,7 +163,7 @@ class RewriteQuery {
 
   // Returns true if any option is explicitly set.
   static bool UpdateRewriteOptionsWithClientOptions(
-      const GoogleString& header_value, RequestProperties* request_properties,
+      StringPiece header_value, RequestProperties* request_properties,
       RewriteOptions* options);
 
   // Returns true if a valid ProxyMode parsed and returned.

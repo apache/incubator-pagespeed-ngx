@@ -507,8 +507,7 @@ class RewriteOptions {
     OptionBase() {}
     virtual ~OptionBase();
 
-    // TODO(jmarantz): Change the 'value_string' formal to a StringPiece.
-    virtual bool SetFromString(const GoogleString& value_string) = 0;
+    virtual bool SetFromString(StringPiece value_string) = 0;
     virtual void Merge(const OptionBase* src) = 0;
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
@@ -1109,26 +1108,22 @@ class RewriteOptions {
 
   // These static methods are used by Option<T>::SetFromString to set
   // Option<T>::value_ from a string representation of it.
-  static bool ParseFromString(const GoogleString& value_string, bool* value);
-  static bool ParseFromString(const GoogleString& value_string,
-                              EnabledEnum* value);
-  static bool ParseFromString(const GoogleString& value_string, int* value) {
+  static bool ParseFromString(StringPiece value_string, bool* value);
+  static bool ParseFromString(StringPiece value_string, EnabledEnum* value);
+  static bool ParseFromString(StringPiece value_string, int* value) {
     return StringToInt(value_string, value);
   }
-  static bool ParseFromString(const GoogleString& value_string, int64* value) {
+  static bool ParseFromString(StringPiece value_string, int64* value) {
     return StringToInt64(value_string, value);
   }
-  static bool ParseFromString(const GoogleString& value_string,
-                              GoogleString* value) {
-    *value = value_string;
+  static bool ParseFromString(StringPiece value_string, GoogleString* value) {
+    value_string.CopyToString(value);
     return true;
   }
-  static bool ParseFromString(const GoogleString& value_string,
-                              RewriteLevel* value) {
+  static bool ParseFromString(StringPiece value_string, RewriteLevel* value) {
     return ParseRewriteLevel(value_string, value);
   }
-  static bool ParseFromString(const GoogleString& value_string,
-                              BeaconUrl* value) {
+  static bool ParseFromString(StringPiece value_string, BeaconUrl* value) {
     return ParseBeaconUrl(value_string, value);
   }
 
@@ -2554,7 +2549,7 @@ class RewriteOptions {
     Option() {}
 
     // Sets value_ from value_string.
-    virtual bool SetFromString(const GoogleString& value_string) {
+    virtual bool SetFromString(StringPiece value_string) {
       T value;
       bool success = RewriteOptions::ParseFromString(value_string, &value);
       if (success) {

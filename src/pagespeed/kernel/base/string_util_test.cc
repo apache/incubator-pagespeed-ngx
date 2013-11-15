@@ -622,18 +622,35 @@ TEST_F(JoinCollectionTest, SingletonEmpty) {
 
 class TrimQuoteTest : public testing::Test {
  protected:
-  static void CheckTrimQuote(StringPiece in, StringPiece expected_out) {
-    TrimQuote(&in);
-    EXPECT_EQ(expected_out, in);
+  static StringPiece RemoveQuote(StringPiece str) {
+    TrimQuote(&str);
+    return str;
+  }
+  static StringPiece RemoveUrlQuotes(StringPiece str) {
+    TrimUrlQuotes(&str);
+    return str;
   }
 };
 
 TEST_F(TrimQuoteTest, TrimQuoteTestAll) {
-  CheckTrimQuote(" \"one\"", "one");
-  CheckTrimQuote(" \'one \"  ", "one");
-  CheckTrimQuote(" \"one \'", "one");
-  CheckTrimQuote(" \'one\'", "one");
-  CheckTrimQuote("\"one two\"", "one two");
+  EXPECT_STREQ("one", RemoveQuote(" \"one\""));
+  EXPECT_STREQ("one", RemoveQuote(" \'one \"  "));
+  EXPECT_STREQ("one", RemoveQuote(" \"one \'"));
+  EXPECT_STREQ("one", RemoveQuote(" \'one\'"));
+  EXPECT_STREQ("one two", RemoveQuote("\"one two\""));
+}
+
+TEST_F(TrimQuoteTest, TrimUrlQuoteTestAll) {
+  EXPECT_STREQ("one", RemoveUrlQuotes(" \"one\""));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" \'one \"  "));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" \"one \'"));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" \'one\'"));
+  EXPECT_STREQ("one two", RemoveUrlQuotes("\"one two\""));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" %27one%27"));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" %22one %22  "));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" %5c%27one %5c%27"));
+  EXPECT_STREQ("one", RemoveUrlQuotes(" %5c%22one%5c%22"));
+  EXPECT_STREQ("one two", RemoveUrlQuotes("%5C%27'one two'%5C%27"));
 }
 
 TEST(SplitStringPieceToIntegerVectorTest, SplitStringPieceToIntegerVector) {

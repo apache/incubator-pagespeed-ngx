@@ -555,6 +555,23 @@ bool TrimWhitespace(StringPiece* str) {
   return TrimLeadingWhitespace(str) | TrimTrailingWhitespace(str);
 }
 
+namespace {
+
+bool TrimCasePattern(StringPiece pattern, StringPiece* str) {
+  bool did_something = false;
+  if (StringCaseStartsWith(*str, pattern)) {
+    str->remove_prefix(pattern.size());
+    did_something = true;
+  }
+  if (StringCaseEndsWith(*str, pattern)) {
+    str->remove_suffix(pattern.size());
+    did_something = false;
+  }
+  return did_something;
+}
+
+}  // namespace
+
 void TrimQuote(StringPiece* str) {
   TrimWhitespace(str);
   if (str->starts_with("\"") || str->starts_with("'")) {
@@ -566,6 +583,24 @@ void TrimQuote(StringPiece* str) {
   TrimWhitespace(str);
 }
 
+void TrimUrlQuotes(StringPiece* str) {
+  TrimWhitespace(str);
+
+  bool cont = true;
+
+  // Unwrap a string with an arbitrary nesting of real and html-escaped
+  // quotes.  We do this one layer at a time, always removing backslashed
+  // quotes before removing un-backslashed quotes.
+  while (cont) {
+    cont = (TrimCasePattern("%5C%27", str) ||    // \"
+            TrimCasePattern("%5C%22", str) ||    // \'
+            TrimCasePattern("%27", str) ||       // "
+            TrimCasePattern("%22", str) ||       // '
+            TrimCasePattern("\"", str) ||
+            TrimCasePattern("'", str));
+  }
+  TrimWhitespace(str);
+}
 
 // TODO(jmarantz): This is a very slow implementation.  But strncasecmp
 // will fail test StringCaseTest.Locale.  If this shows up as a performance
