@@ -321,8 +321,8 @@ ApacheServerContext* InstawebContext::ServerContextFromServerRec(
 // url.  Therefore, if we have not yet stored the url, check to see if
 // there was a previous request in this chain, and use its url as the
 // original.
-const char* InstawebContext::MakeRequestUrl(const RewriteOptions& options,
-                                            request_rec* request) {
+const char* InstawebContext::MakeRequestUrl(
+    const RewriteOptions& global_options, request_rec* request) {
   const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
 
   if (url == NULL) {
@@ -376,7 +376,7 @@ const char* InstawebContext::MakeRequestUrl(const RewriteOptions& options,
     // For example, if Apache gives us the URL "http://www.example.com/"
     // and there is a header: "X-Forwarded-Proto: https", then we update
     // this base URL to "https://www.example.com/".
-    if (options.respect_x_forwarded_proto()) {
+    if (global_options.respect_x_forwarded_proto()) {
       const char* x_forwarded_proto =
           apr_table_get(request->headers_in, HttpAttributes::kXForwardedProto);
       if (x_forwarded_proto != NULL) {

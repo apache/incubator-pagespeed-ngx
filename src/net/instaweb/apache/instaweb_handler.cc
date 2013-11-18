@@ -843,9 +843,9 @@ apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
-  ApacheConfig* config = server_context->config();
+  ApacheConfig* global_config = server_context->config();
   // Escape ASAP if we're in unplugged mode.
-  if (config->unplugged()) {
+  if (global_config->unplugged()) {
     return DECLINED;
   }
 
@@ -863,18 +863,18 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (request_handler_str == kTempStatisticsGraphsHandler) {
     GoogleString output;
     StringWriter writer(&output);
-    StatisticsGraphsHandler(config, &writer, message_handler);
+    StatisticsGraphsHandler(global_config, &writer, message_handler);
     write_handler_response(output, request);
     ret = OK;
   } else if (request_handler_str == kConsoleHandler) {
     // Do a little dance to get correct options for this request.
     RequestHeaders headers;
     ApacheRequestToRequestHeaders(*request, &headers);
-    GoogleUrl gurl(InstawebContext::MakeRequestUrl(*config, request));
+    GoogleUrl gurl(InstawebContext::MakeRequestUrl(*global_config, request));
     scoped_ptr<ApacheConfig> custom_options(get_custom_options(
-        server_context, request, &gurl, &headers, config));
+        server_context, request, &gurl, &headers, global_config));
     ApacheConfig* options =
-        (custom_options.get() != NULL ? custom_options.get() : config);
+        (custom_options.get() != NULL ? custom_options.get() : global_config);
 
     GoogleString output;
     StringWriter writer(&output);
@@ -930,15 +930,14 @@ apr_status_t instaweb_handler(request_rec* request) {
     }
 
   } else {
-    const char* url = InstawebContext::MakeRequestUrl(*config, request);
+    const char* url = InstawebContext::MakeRequestUrl(*global_config, request);
     // Do not try to rewrite our own sub-request.
     if (url != NULL) {
       GoogleUrl gurl(url);
       if (!gurl.IsWebValid()) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                       "Ignoring invalid URL: %s", gurl.spec_c_str());
-      } else if (IsBeaconUrl(server_context->global_options()->beacon_url(),
-                             gurl)) {
+      } else if (IsBeaconUrl(global_config->beacon_url(), gurl)) {
         ret = instaweb_beacon_handler(request, server_context);
       // For the beacon accept any method; for all others only allow GETs.
       } else if (request->method_number != M_GET) {
@@ -958,7 +957,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     // Check for HTTP_NO_CONTENT here since that's the status used for a
     // successfully handled beacon.
     if (ret != OK && ret != HTTP_NO_CONTENT &&
-        (config->slurping_enabled() || config->test_proxy())) {
+        (global_config->slurping_enabled() || global_config->test_proxy())) {
       SlurpUrl(server_context, request);
       ret = OK;
     }

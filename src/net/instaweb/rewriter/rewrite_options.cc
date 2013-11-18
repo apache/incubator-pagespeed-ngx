@@ -1294,6 +1294,12 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       false, &RewriteOptions::respect_x_forwarded_proto_, "rxfp",
       kRespectXForwardedProto,
+      // Note: We mark this as kDirectoryScope because we mistakenly used to.
+      // It does not actually work in directory-scope and is documented to
+      // only work on server-scope.
+      // Note: We must check this option to get the proper URL, but the proper
+      // URL is needed to get directory-specific options, so allowing this in
+      // directory-scope would be a circular dependency.
       kDirectoryScope,
       "Whether to respect the X-Forwarded-Proto header.");
   AddBaseProperty(

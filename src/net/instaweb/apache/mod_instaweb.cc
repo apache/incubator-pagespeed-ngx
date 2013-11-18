@@ -504,7 +504,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // Determine the absolute URL for this request.
-  const char* absolute_url = InstawebContext::MakeRequestUrl(*options, request);
+  const char* absolute_url = InstawebContext::MakeRequestUrl(
+      *server_context->config(), request);
   apache_request->set_url(absolute_url);
 
   // The final URL.  This is same as absolute_url but with ModPagespeed* query

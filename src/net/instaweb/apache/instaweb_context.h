@@ -134,7 +134,7 @@ class InstawebContext {
   static ApacheServerContext* ServerContextFromServerRec(server_rec* server);
 
   // Returns a fetchable URI from a request, using the request pool.
-  static const char* MakeRequestUrl(const RewriteOptions& options,
+  static const char* MakeRequestUrl(const RewriteOptions& global_options,
                                     request_rec* request);
 
  private:
