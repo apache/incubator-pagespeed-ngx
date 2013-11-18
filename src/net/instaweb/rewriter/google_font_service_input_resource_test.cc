@@ -82,24 +82,24 @@ TEST_F(GoogleFontServiceInputResourceTest, Creation) {
 
   scoped_ptr<GoogleFontServiceInputResource> resource;
 
-  resource.reset(GoogleFontServiceInputResource::Make(
-      "efpeRO#@($@#K$!@($", rewrite_driver()));
+  GoogleUrl url1("efpeRO#@($@#K$!@($");
+  resource.reset(GoogleFontServiceInputResource::Make(url1, rewrite_driver()));
   EXPECT_TRUE(resource.get() == NULL);
 
-  resource.reset(GoogleFontServiceInputResource::Make(
-      "http://example.com/foo.css", rewrite_driver()));
+  GoogleUrl url2("http://example.com/foo.css");
+  resource.reset(GoogleFontServiceInputResource::Make(url2, rewrite_driver()));
   EXPECT_TRUE(resource.get() == NULL);
 
-  resource.reset(GoogleFontServiceInputResource::Make(
-      kRoboto, rewrite_driver()));
+  GoogleUrl url3(kRoboto);
+  resource.reset(GoogleFontServiceInputResource::Make(url3, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(kRoboto, resource->url());
   EXPECT_EQ(
       "gfnt://fonts.googleapis.com/css?family=Roboto&X-PS-UA=Chromezilla",
       resource->cache_key());
 
-  resource.reset(GoogleFontServiceInputResource::Make(
-      kRobotoSsl, rewrite_driver()));
+  GoogleUrl url4(kRobotoSsl);
+  resource.reset(GoogleFontServiceInputResource::Make(url4, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(kRobotoSsl, resource->url());
   EXPECT_EQ(
@@ -108,10 +108,11 @@ TEST_F(GoogleFontServiceInputResourceTest, Creation) {
 }
 
 TEST_F(GoogleFontServiceInputResourceTest, Load) {
+  GoogleUrl url(kRoboto);
   rewrite_driver()->SetUserAgent("Chromezilla");
 
   ResourcePtr resource(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   MockResourceCallback callback(resource,
                                 server_context()->thread_system());
@@ -125,7 +126,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
 
   // Make sure it's cached.
   ResourcePtr resource2(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource2.get() != NULL);
   MockResourceCallback callback2(resource2,
                                  server_context()->thread_system());
@@ -140,7 +141,7 @@ TEST_F(GoogleFontServiceInputResourceTest, Load) {
   // But that different UA gets different string.
   rewrite_driver()->SetUserAgent("Safieri");
   ResourcePtr resource3(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource3.get() != NULL);
   MockResourceCallback callback3(resource3,
                                  server_context()->thread_system());
@@ -171,7 +172,7 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
   rewrite_driver()->SetUserAgent(kIE7a);
 
   ResourcePtr resource(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   MockResourceCallback callback(resource,
                                 server_context()->thread_system());
@@ -190,7 +191,7 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
   rewrite_driver()->SetUserAgent(kIE7b);
 
   ResourcePtr resource2(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource2.get() != NULL);
   MockResourceCallback callback2(resource2,
                                  server_context()->thread_system());
@@ -204,11 +205,12 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
 }
 
 TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
+  GoogleUrl url(kRoboto);
   SetupWaitFetcher();
 
   rewrite_driver()->SetUserAgent("Chromezilla");
   ResourcePtr resource(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   MockResourceCallback callback(resource,
                                 server_context()->thread_system());
@@ -219,7 +221,7 @@ TEST_F(GoogleFontServiceInputResourceTest, LoadParallel) {
 
   rewrite_driver()->SetUserAgent("Safieri");
   ResourcePtr resource2(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource2.get() != NULL);
   MockResourceCallback callback2(resource2,
                                  server_context()->thread_system());
@@ -245,8 +247,9 @@ TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
   // Regression test --- don't crash when fetch fails.
   // Bug discovered by accident due to a bug in a test.
   rewrite_driver()->SetUserAgent("Huhzilla");
+  GoogleUrl url(kRoboto);
   ResourcePtr resource(
-      GoogleFontServiceInputResource::Make(kRoboto, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(url, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   MockResourceCallback callback(resource,
                                 server_context()->thread_system());
@@ -262,8 +265,9 @@ TEST_F(GoogleFontServiceInputResourceTest, FetchFailure) {
 TEST_F(GoogleFontServiceInputResourceTest, DontLoadNonCss) {
   rewrite_driver()->SetUserAgent("Chromezilla");
 
+  GoogleUrl non_css_url(kNonCss);
   ResourcePtr resource(
-      GoogleFontServiceInputResource::Make(kNonCss, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(non_css_url, rewrite_driver()));
   ASSERT_TRUE(resource.get() != NULL);
   MockResourceCallback callback(resource,
                                 server_context()->thread_system());
@@ -276,7 +280,7 @@ TEST_F(GoogleFontServiceInputResourceTest, DontLoadNonCss) {
 
   // Make sure we don't end up caching a success, either.
   ResourcePtr resource2(
-      GoogleFontServiceInputResource::Make(kNonCss, rewrite_driver()));
+      GoogleFontServiceInputResource::Make(non_css_url, rewrite_driver()));
   ASSERT_TRUE(resource2.get() != NULL);
   MockResourceCallback callback2(resource2,
                                  server_context()->thread_system());

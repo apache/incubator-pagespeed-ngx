@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -67,7 +66,6 @@ class CommonFilterTest : public RewriteTestBase {
 
   void ExpectUrl(const GoogleString& expected_url,
                  const GoogleUrl& actual_gurl) {
-    LOG(INFO) << actual_gurl.spec_c_str();
     EXPECT_EQ(expected_url, actual_gurl.Spec());
   }
 
@@ -150,6 +148,38 @@ TEST_F(CommonFilterTest, StoresCorrectBaseUrl) {
   ExpectUrl(base_url, filter_->base_url());
   driver->FinishParse();
   ExpectUrl(doc_url, driver->google_url());
+}
+
+TEST_F(CommonFilterTest, ResolveUrl) {
+  GoogleUrl out;
+
+  // Normal parse, no <base>
+  GoogleString doc_url = "http://www.example.com/";
+  RewriteDriver* driver = rewrite_driver();
+  driver->StartParse(doc_url);
+  filter_->ResolveUrl("a.css", &out);
+  ExpectUrl("http://www.example.com/a.css", out);
+  driver->FinishParse();
+
+  // Refs from base
+  driver->StartParse(doc_url);
+  driver->ParseText("<base href='https://www.example.org/' >");
+  driver->Flush();
+  filter_->ResolveUrl("a.css", &out);
+  ExpectUrl("https://www.example.org/a.css", out);
+  driver->FinishParse();
+
+  // Nasty case: refs before base.
+  driver->StartParse(doc_url);
+  driver->set_refs_before_base();
+  driver->Flush();
+  filter_->ResolveUrl("a.css", &out);
+  EXPECT_FALSE(out.IsAnyValid());
+  driver->ParseText("<base href='https://www.example.org/' >");
+  driver->Flush();
+  filter_->ResolveUrl("a.css", &out);
+  ExpectUrl("https://www.example.org/a.css", out);
+  driver->FinishParse();
 }
 
 TEST_F(CommonFilterTest, DetectsNoScriptCorrectly) {

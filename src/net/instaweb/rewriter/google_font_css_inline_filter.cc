@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -40,7 +41,9 @@ void GoogleFontCssInlineFilter::InitStats(Statistics* statistics) {
 }
 
 ResourcePtr GoogleFontCssInlineFilter::CreateResource(const char* url) {
-  ResourcePtr resource(GoogleFontServiceInputResource::Make(url, driver()));
+  GoogleUrl abs_url;
+  ResolveUrl(url, &abs_url);
+  ResourcePtr resource(GoogleFontServiceInputResource::Make(abs_url, driver()));
   if (resource.get() != NULL) {
     // Unfortunately some options prevent us from doing anything, since they
     // can make the HTML cached in a way unaware of font UA dependencies.

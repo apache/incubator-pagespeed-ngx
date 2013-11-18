@@ -106,6 +106,13 @@ TEST_F(GoogleFontCssInlineFilterTest, UsageRestrictions) {
                           "using downstream cache-->"));
 }
 
+TEST_F(GoogleFontCssInlineFilterTest, ProtocolRelative) {
+  rewrite_driver()->SetUserAgent("Chromezilla");
+  ValidateExpected("proto_rel",
+                   CssLinkHref("//fonts.googleapis.com/css?family=Roboto"),
+                   "<style>font_chromezilla</style>");
+}
+
 class GoogleFontCssInlineFilterSizeLimitTest
     : public GoogleFontCssInlineFilterTest {
  protected:

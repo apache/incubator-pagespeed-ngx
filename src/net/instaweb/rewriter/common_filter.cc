@@ -140,20 +140,23 @@ bool CommonFilter::BaseUrlIsValid() const {
   return seen_base_;
 }
 
-ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
-  ResourcePtr resource;
+void CommonFilter::ResolveUrl(StringPiece input_url, GoogleUrl* out_url) {
+  out_url->Clear();
   if (!input_url.empty()) {
     if (!BaseUrlIsValid()) {
-      const GoogleUrl resource_url(input_url);
-      if (resource_url.IsWebValid()) {
-        resource = driver_->CreateInputResource(resource_url);
-      }
+      out_url->Reset(input_url);
     } else if (base_url().IsWebValid()) {
-      const GoogleUrl resource_url(base_url(), input_url);
-      if (resource_url.IsWebValid()) {
-        resource = driver_->CreateInputResource(resource_url);
-      }
+      out_url->Reset(base_url(), input_url);
     }
+  }
+}
+
+ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
+  ResourcePtr resource;
+  GoogleUrl resource_url;
+  ResolveUrl(input_url, &resource_url);
+  if (resource_url.IsWebValid()) {
+    resource = driver_->CreateInputResource(resource_url);
   }
   return resource;
 }

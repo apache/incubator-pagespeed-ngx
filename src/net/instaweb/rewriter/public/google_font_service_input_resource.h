@@ -35,6 +35,7 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
@@ -43,7 +44,7 @@ class Statistics;
 class GoogleFontServiceInputResource : public CacheableResourceBase {
  public:
   // Returns NULL if not recognized as a valid font service URL.
-  static GoogleFontServiceInputResource* Make(const StringPiece& url,
+  static GoogleFontServiceInputResource* Make(const GoogleUrl& url,
                                               RewriteDriver* rewrite_driver);
   virtual ~GoogleFontServiceInputResource();
 

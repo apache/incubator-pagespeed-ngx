@@ -49,8 +49,7 @@ GoogleFontServiceInputResource::~GoogleFontServiceInputResource() {
 }
 
 GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
-    const StringPiece& url, RewriteDriver* rewrite_driver) {
-  GoogleUrl parsed_url(url);
+    const GoogleUrl& parsed_url, RewriteDriver* rewrite_driver) {
   if (!parsed_url.IsWebValid()) {
     return NULL;
   }
@@ -87,7 +86,8 @@ GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
   }
 
   return new GoogleFontServiceInputResource(
-      rewrite_driver, is_https, url, cache_key, rewrite_driver->user_agent());
+      rewrite_driver, is_https, parsed_url.Spec(), cache_key,
+      rewrite_driver->user_agent());
 }
 
 void GoogleFontServiceInputResource::InitStats(Statistics* stats) {
