@@ -133,10 +133,8 @@ VALGRIND_OPTIONS=""
 
 if $USE_VALGRIND; then
   DAEMON=off
-  MASTER_PROCESS=off
 else
   DAEMON=on
-  MASTER_PROCESS=on
 fi
 
 if [ "$NATIVE_FETCHER" = "on" ]; then
@@ -157,7 +155,6 @@ by nginx_system_test.sh; don't edit here."
 EOF
 cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@DAEMON@@#'"$DAEMON"'#' \
-  | sed 's#@@MASTER_PROCESS@@#'"$MASTER_PROCESS"'#' \
   | sed 's#@@TEST_TMP@@#'"$TEST_TMP/"'#' \
   | sed 's#@@PROXY_CACHE@@#'"$PROXY_CACHE/"'#' \
   | sed 's#@@TMP_PROXY_CACHE@@#'"$TMP_PROXY_CACHE/"'#' \
@@ -177,9 +174,15 @@ check_not_simple grep @@ $PAGESPEED_CONF
 
 # start nginx with new config
 if $USE_VALGRIND; then
-  echo "Run this command in another terminal and then press enter:"
-  echo "  valgrind --leak-check=full $NGINX_EXECUTABLE -c $PAGESPEED_CONF"
-  read
+  (valgrind -q --leak-check=full --gen-suppressions=all --show-possibly-lost=no \
+      --log-file=$TEST_TMP/valgrind.log --suppressions=valgrind.sup \
+      $NGINX_EXECUTABLE -c $PAGESPEED_CONF) & VALGRIND_PID=$!
+  trap "echo 'terminating valgrind!' && kill -s sigterm $VALGRIND_PID" EXIT
+  echo "Wait until nginx is ready to accept connections"
+  while ! curl -I "http://$PRIMARY_HOSTNAME/mod_pagespeed_example/" 2>/dev/null; do
+      sleep 0.1;
+  done
+  echo "Valgrind (pid:$VALGRIND_PID) is logging to $TEST_TMP/valgrind.log"
 else
   TRACE_FILE="$TEST_TMP/conf_loading_trace"
   $NGINX_EXECUTABLE -c $PAGESPEED_CONF >& "$TRACE_FILE"
@@ -199,6 +202,11 @@ fi
 if $RUN_TESTS; then
   echo "Starting tests"
 else
+  if $USE_VALGRIND; then
+    # Clear valgrind trap
+    trap - EXIT
+    echo "To end valgrind, run 'kill -s quit $VALGRIND_PID'"
+  fi
   echo "Not running tests; commence manual testing"
   exit 4
 fi
@@ -218,6 +226,17 @@ PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 PAGESPEED_EXPECTED_FAILURES="
 ~IPRO-optimized resources should have fixed size, not chunked.~
 "
+
+# Some tests are flakey under valgrind. For now, add them to the expected failures
+# when running under valgrind.
+if $USE_VALGRIND; then
+    PAGESPEED_EXPECTED_FAILURES+="
+~combine_css Maximum size of combined CSS.~
+~prioritize_critical_css~
+~IPRO flow uses cache as expected.~
+~IPRO flow doesn't copy uncacheable resources multiple times.~
+"
+fi
 
 # The existing system test takes its arguments as positional parameters, and
 # wants different ones than we want, so we need to reset our positional args.
@@ -2040,4 +2059,15 @@ curl -vv -m 2 http://$PRIMARY_HOSTNAME/foo.css.pagespeed.ce.0.css \
     -H 'If-Modified-Since: Z' http://$PRIMARY_HOSTNAME/foo
 check [ $? = "0" ]
 
+if $USE_VALGRIND; then
+    kill -s quit $VALGRIND_PID
+    wait
+    # Clear the previously set trap, we don't need it anymore.
+    trap - EXIT
+
+    start_test No Valgrind complaints.
+    check_not [ -s "$TEST_TMP/valgrind.log" ]
+fi
+
 check_failures_and_exit
+

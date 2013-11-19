@@ -1,0 +1,122 @@
+# Copyright 2013 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Author: oschaaf@we-amp.com (Otto van der Schaaf)
+
+
+# The first few suppressions can be found in other modules
+# and easily found when searched for, and seem false positives.
+{
+   <nginx false positive>
+   Memcheck:Param
+   socketcall.sendmsg(msg.msg_iov[i])
+   fun:__sendmsg_nocancel
+   fun:ngx_write_channel
+   fun:ngx_signal_worker_processes
+   fun:ngx_master_process_cycle
+   fun:main
+}
+{
+   <nginx false positive>
+   Memcheck:Param
+   socketcall.sendmsg(msg.msg_iov[i])
+   fun:__sendmsg_nocancel
+   fun:ngx_write_channel
+   fun:ngx_master_process_cycle
+   fun:main
+}
+{
+   <nginx false positive>
+   Memcheck:Param
+   socketcall.sendmsg(msg.msg_iov[i])
+   fun:__sendmsg_nocancel
+   fun:ngx_write_channel
+   fun:ngx_pass_open_channel
+   fun:ngx_start_cache_manager_processes
+   fun:ngx_master_process_cycle
+   fun:main
+}
+{
+   <nginx false positive>
+   Memcheck:Param
+   socketcall.sendmsg(msg.msg_iov[i])
+   fun:__sendmsg_nocancel
+   fun:ngx_write_channel
+   fun:ngx_pass_open_channel
+   fun:ngx_start_cache_manager_processes
+   fun:ngx_master_process_cycle
+   fun:main
+}
+{
+   <nginx false positive>
+   Memcheck:Leak
+   fun:malloc
+   fun:ngx_alloc
+   fun:ngx_event_process_init
+   fun:ngx_worker_process_init
+   fun:ngx_worker_process_cycle
+   fun:ngx_spawn_process
+   fun:ngx_start_worker_processes
+   fun:ngx_master_process_cycle
+   fun:main
+}
+{
+   <nginx false positive>
+   Memcheck:Param
+   socketcall.sendmsg(msg.msg_iov[i])
+   fun:__sendmsg_nocancel
+   fun:ngx_write_channel
+   fun:ngx_pass_open_channel
+   fun:ngx_start_worker_processes
+   fun:ngx_master_process_cycle
+   fun:main
+}
+
+# similar to http://trac.nginx.org/nginx/ticket/369
+{
+   <nginx false positive>
+   Memcheck:Param
+   pwrite64(buf)
+   obj:/lib/x86_64-linux-gnu/libpthread-2.15.so
+   fun:ngx_write_file
+   fun:ngx_write_chain_to_file
+   fun:ngx_write_chain_to_temp_file
+   fun:ngx_event_pipe_write_chain_to_temp_file
+   fun:ngx_event_pipe
+   fun:ngx_http_upstream_process_upstream
+   fun:ngx_http_upstream_process_header
+   fun:ngx_http_upstream_handler
+   fun:ngx_epoll_process_events
+   fun:ngx_process_events_and_timers
+   fun:ngx_worker_process_cycle
+}
+# Mentioned in https://github.com/pagespeed/ngx_pagespeed/issues/103
+# Assuming a false postives as the issue is closed.
+{
+   <nginx false positive>
+   Memcheck:Param
+   write(buf)
+   obj:/lib/x86_64-linux-gnu/libpthread-2.15.so
+   fun:ngx_log_error_core
+   fun:ngx_http_parse_complex_uri
+   fun:ngx_http_process_request_uri
+   fun:ngx_http_process_request_line
+   fun:ngx_http_wait_request_handler
+   fun:ngx_epoll_process_events
+   fun:ngx_process_events_and_timers
+   fun:ngx_worker_process_cycle
+   fun:ngx_spawn_process
+   fun:ngx_start_worker_processes
+   fun:ngx_master_process_cycle
+}

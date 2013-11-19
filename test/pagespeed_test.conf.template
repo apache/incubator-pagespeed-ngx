@@ -5,7 +5,7 @@
 worker_processes  1;
 
 daemon @@DAEMON@@;
-master_process @@MASTER_PROCESS@@;
+master_process on;
 
 error_log "@@ERROR_LOG@@" debug;
 pid "@@TEST_TMP@@/nginx.pid";
