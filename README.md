@@ -30,7 +30,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ sudo yum install gcc-c++ pcre-dev pcre-devel zlib-devel make
 
    # These are for Debian. Ubuntu will be similar.
-   $ sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev
+   $ sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev libssl-dev
    ```
 
 2. Download ngx_pagespeed:
@@ -51,7 +51,7 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
    $ wget http://nginx.org/download/nginx-1.4.1.tar.gz
    $ tar -xvzf nginx-1.4.1.tar.gz
    $ cd nginx-1.4.1/
-   $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.6.29.5-beta
+   $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.6.29.5-beta --with-http_ssl_module
    $ make
    $ sudo make install
    ```
