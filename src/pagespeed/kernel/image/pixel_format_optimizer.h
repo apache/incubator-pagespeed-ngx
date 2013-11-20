@@ -98,11 +98,11 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
   bool was_initialized_;
 
   // Buffer for storing decoded scanlines.
-  scoped_array<uint8_t> input_lines_;
+  net_instaweb::scoped_array<uint8_t> input_lines_;
   size_t input_row_;
 
   // Buffer for storing a single converted scanline.
-  scoped_array<uint8_t> output_line_;
+  net_instaweb::scoped_array<uint8_t> output_line_;
 
   MessageHandler* message_handler_;
 
