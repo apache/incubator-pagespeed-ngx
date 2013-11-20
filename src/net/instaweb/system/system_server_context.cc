@@ -61,7 +61,7 @@ SystemServerContext::SystemServerContext(
       html_rewrite_time_us_histogram_(NULL),
       local_statistics_(NULL),
       hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))) {
-  system_rewrite_options()->set_description(hostname_identifier_);
+  global_system_rewrite_options()->set_description(hostname_identifier_);
 }
 
 SystemServerContext::~SystemServerContext() {
@@ -73,7 +73,7 @@ SystemServerContext::~SystemServerContext() {
 // thus flushing the cache.
 void SystemServerContext::FlushCacheIfNecessary() {
   int64 cache_flush_poll_interval_sec =
-      system_rewrite_options()->cache_flush_poll_interval_sec();
+      global_system_rewrite_options()->cache_flush_poll_interval_sec();
   if (cache_flush_poll_interval_sec > 0) {
     int64 now_sec = timer()->NowMs() / Timer::kSecondMs;
     bool check_cache_file = false;
@@ -93,7 +93,7 @@ void SystemServerContext::FlushCacheIfNecessary() {
 
     if (check_cache_file) {
       GoogleString cache_flush_filename =
-          system_rewrite_options()->cache_flush_filename();
+          global_system_rewrite_options()->cache_flush_filename();
       if (cache_flush_filename.empty()) {
         cache_flush_filename = "cache.flush";
       }
@@ -101,9 +101,9 @@ void SystemServerContext::FlushCacheIfNecessary() {
         // Implementations must ensure the file cache path is an absolute path.
         // mod_pagespeed checks in mod_instaweb.cc:pagespeed_post_config while
         // ngx_pagespeed checks in ngx_pagespeed.cc:ps_merge_srv_conf.
-        DCHECK_EQ('/', system_rewrite_options()->file_cache_path()[0]);
+        DCHECK_EQ('/', global_system_rewrite_options()->file_cache_path()[0]);
         cache_flush_filename = StrCat(
-            system_rewrite_options()->file_cache_path(), "/",
+            global_system_rewrite_options()->file_cache_path(), "/",
             cache_flush_filename);
       }
       int64 cache_flush_timestamp_sec;
@@ -155,7 +155,7 @@ void SystemServerContext::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
   }
 }
 
-SystemRewriteOptions* SystemServerContext::system_rewrite_options() {
+SystemRewriteOptions* SystemServerContext::global_system_rewrite_options() {
   SystemRewriteOptions* out =
       dynamic_cast<SystemRewriteOptions*>(global_options());
   CHECK(out != NULL);
@@ -167,7 +167,8 @@ void SystemServerContext::CreateLocalStatistics(
     SystemRewriteDriverFactory* factory) {
   local_statistics_ =
       factory->AllocateAndInitSharedMemStatistics(
-          true /* local */, hostname_identifier(), *system_rewrite_options());
+          true /* local */, hostname_identifier(),
+          *global_system_rewrite_options());
   split_statistics_.reset(new SplitStatistics(
       factory->thread_system(), local_statistics_, global_statistics));
   // local_statistics_ was ::InitStat'd by AllocateAndInitSharedMemStatistics,
@@ -197,8 +198,9 @@ void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
   if (!initialized_ && !global_options()->unplugged()) {
     initialized_ = true;
     set_lock_manager(factory->caches()->GetLockManager(
-        system_rewrite_options()));
-    UrlAsyncFetcher* fetcher = factory->GetFetcher(system_rewrite_options());
+        global_system_rewrite_options()));
+    UrlAsyncFetcher* fetcher =
+        factory->GetFetcher(global_system_rewrite_options());
     set_default_system_fetcher(fetcher);
 
     if (split_statistics_.get() != NULL) {
@@ -217,7 +219,7 @@ void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
       // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
       // care of decompression rather than the original fetcher, so we get
       // correct numbers for bytes fetched.
-      bool fetch_with_gzip = system_rewrite_options()->fetch_with_gzip();
+      bool fetch_with_gzip = global_system_rewrite_options()->fetch_with_gzip();
       if (fetch_with_gzip) {
         fetcher->set_fetch_with_gzip(false);
       }
@@ -269,7 +271,7 @@ void SystemServerContext::ApplySessionFetchers(
   // to know the request hostname, which LoopbackRouteFetcher could potentially
   // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
   // always talk to the local machine anyway.
-  SystemRewriteOptions* options = system_rewrite_options();
+  SystemRewriteOptions* options = global_system_rewrite_options();
   if (!options->disable_loopback_routing() &&
       !options->slurping_enabled() &&
       !options->test_proxy()) {
@@ -291,7 +293,7 @@ void SystemServerContext::ApplySessionFetchers(
 }
 
 void SystemServerContext::CollapseConfigOverlaysAndComputeSignatures() {
-  ComputeSignature(system_rewrite_options());
+  ComputeSignature(global_system_rewrite_options());
 }
 
 }  // namespace net_instaweb

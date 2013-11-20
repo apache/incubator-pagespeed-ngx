@@ -259,7 +259,7 @@ const char* StatisticsHandler(
     if (print_normal_config) {
       writer->Write("Configuration:<br>", message_handler);
       HtmlKeywords::WritePre(
-          server_context->system_rewrite_options()->OptionsToString(),
+          server_context->global_system_rewrite_options()->OptionsToString(),
           writer, message_handler);
     }
 

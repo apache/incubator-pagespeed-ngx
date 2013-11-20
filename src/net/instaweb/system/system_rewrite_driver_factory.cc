@@ -194,7 +194,7 @@ void SystemRewriteDriverFactory::RootInit() {
            p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     SystemServerContext* server_context = *p;
-    caches_->RegisterConfig(server_context->system_rewrite_options());
+    caches_->RegisterConfig(server_context->global_system_rewrite_options());
   }
 
   caches_->RootInit();
@@ -249,7 +249,7 @@ void SystemRewriteDriverFactory::PostConfig(
   for (int i = 0, n = server_contexts.size(); i < n; ++i) {
     server_contexts[i]->CollapseConfigOverlaysAndComputeSignatures();
     SystemRewriteOptions* options =
-        server_contexts[i]->system_rewrite_options();
+        server_contexts[i]->global_system_rewrite_options();
     if (options->unplugged()) {
       continue;
     }

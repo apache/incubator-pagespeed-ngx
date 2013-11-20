@@ -57,7 +57,7 @@ class ApacheServerContext : public SystemServerContext {
   static void InitStats(Statistics* statistics);
 
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
-  ApacheConfig* config();
+  ApacheConfig* global_config();
   bool InitPath(const GoogleString& path);
 
   // These return configuration objects that hold settings from
@@ -90,8 +90,9 @@ class ApacheServerContext : public SystemServerContext {
   }
 
   // Returns special configuration that should be used for SPDY sessions
-  // instead of config(). Returns NULL if config() should be used instead.
-  ApacheConfig* SpdyConfig() { return spdy_specific_config_.get(); }
+  // instead of global_config(). Returns NULL if global_config() should be
+  // used instead.
+  ApacheConfig* SpdyGlobalConfig() { return spdy_specific_config_.get(); }
 
   // Pool to pass to NewRewriteDriverFromPool to get a RewriteDriver configured
   // with SPDY-specific options. May be NULL in case there is no spdy-specific

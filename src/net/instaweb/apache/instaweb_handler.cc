@@ -485,8 +485,8 @@ bool handle_as_resource(ApacheServerContext* server_context,
   RequestContextPtr request_context(apache_request_context);
   bool using_spdy = request_context->using_spdy();
   RewriteOptions* global_options = server_context->global_options();
-  if (using_spdy && (server_context->SpdyConfig() != NULL)) {
-    global_options = server_context->SpdyConfig();
+  if (using_spdy && (server_context->SpdyGlobalConfig() != NULL)) {
+    global_options = server_context->SpdyGlobalConfig();
   }
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
@@ -656,7 +656,7 @@ apr_status_t instaweb_statistics_handler(
   const char* error_message = StatisticsHandler(
       factory,
       server_context,
-      server_context->SpdyConfig(),
+      server_context->SpdyGlobalConfig(),
       is_global_request,
       request->args,  /* query params */
       &content_type,
@@ -843,7 +843,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
-  ApacheConfig* global_config = server_context->config();
+  ApacheConfig* global_config = server_context->global_config();
   // Escape ASAP if we're in unplugged mode.
   if (global_config->unplugged()) {
     return DECLINED;
@@ -1022,7 +1022,7 @@ apr_status_t save_url_hook(request_rec *request) {
 apr_status_t save_url_in_note(request_rec *request,
                               ApacheServerContext* server_context) {
   // Escape ASAP if we're in unplugged mode.
-  if (server_context->config()->unplugged()) {
+  if (server_context->global_config()->unplugged()) {
     return DECLINED;
   }
 
@@ -1085,7 +1085,7 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
 
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
-  if (server_context->config()->unplugged()) {
+  if (server_context->global_config()->unplugged()) {
     // If we're in unplugged mode then none of our hooks apply so escape ASAP.
     return DECLINED;
   }

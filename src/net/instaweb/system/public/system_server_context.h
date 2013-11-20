@@ -56,7 +56,7 @@ class SystemServerContext : public ServerContext {
   // restart.
   void FlushCacheIfNecessary();
 
-  SystemRewriteOptions* system_rewrite_options();
+  SystemRewriteOptions* global_system_rewrite_options();
   GoogleString hostname_identifier() { return hostname_identifier_; }
 
   static void InitStats(Statistics* statistics);
