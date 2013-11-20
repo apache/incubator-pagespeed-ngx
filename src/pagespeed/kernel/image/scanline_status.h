@@ -63,6 +63,7 @@ namespace image_compression {
     _X(SCANLINE_JPEGWRITER),                 \
     _X(SCANLINE_WEBPWRITER),                 \
     _X(SCANLINE_UTIL),                       \
+    _X(SCANLINE_PIXEL_FORMAT_OPTIMIZER),     \
                                              \
     _X(NUM_SCANLINE_SOURCE)
 

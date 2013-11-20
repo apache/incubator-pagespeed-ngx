@@ -162,6 +162,30 @@ void DecodeAndCompareImagesByPSNR(
   free(pixels2);
 }
 
+void CompareImageReaders(ScanlineReaderInterface* reader1,
+                         ScanlineReaderInterface* reader2) {
+  ASSERT_NE(reinterpret_cast<ScanlineReaderInterface*>(NULL), reader1);
+  ASSERT_NE(reinterpret_cast<ScanlineReaderInterface*>(NULL), reader2);
+  ASSERT_EQ(reader1->GetPixelFormat(), reader2->GetPixelFormat());
+  ASSERT_EQ(reader1->GetImageHeight(), reader2->GetImageHeight());
+  ASSERT_EQ(reader1->GetImageWidth(), reader2->GetImageWidth());
+  ASSERT_EQ(reader1->GetBytesPerScanline(), reader2->GetBytesPerScanline());
+
+  while (reader1->HasMoreScanLines() && reader2->HasMoreScanLines()) {
+    uint8_t* scanline1 = NULL;
+    uint8_t* scanline2 = NULL;
+    ASSERT_TRUE(reader1->ReadNextScanline(
+        reinterpret_cast<void**>(&scanline1)));
+    ASSERT_TRUE(reader2->ReadNextScanline(
+        reinterpret_cast<void**>(&scanline2)));
+    EXPECT_EQ(0, memcmp(scanline1, scanline2, reader1->GetBytesPerScanline()));
+  }
+
+  // Make sure both readers have exhausted all of the scanlines.
+  EXPECT_FALSE(reader1->HasMoreScanLines());
+  EXPECT_FALSE(reader2->HasMoreScanLines());
+}
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

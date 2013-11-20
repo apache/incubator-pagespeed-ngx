@@ -199,6 +199,10 @@ void DecodeAndCompareImagesByPSNR(
     double min_psnr,
     MessageHandler* message_handler);
 
+// Check whether the readers decode to exactly the same pixels.
+void CompareImageReaders(ScanlineReaderInterface* reader1,
+                         ScanlineReaderInterface* reader2);
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

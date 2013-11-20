@@ -393,6 +393,7 @@
         'kernel/image/jpeg_optimizer.cc',
         'kernel/image/jpeg_reader.cc',
         'kernel/image/jpeg_utils.cc',
+        'kernel/image/pixel_format_optimizer.cc',
         'kernel/image/png_optimizer.cc',
         'kernel/image/read_image.cc',
         'kernel/image/scanline_utils.cc',

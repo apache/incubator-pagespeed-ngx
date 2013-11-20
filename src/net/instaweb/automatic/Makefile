@@ -231,7 +231,10 @@ CXXFLAGS = -g
 
 $(OUTPUT_DIR)/pagespeed_automatic.a : $(LIBS)
 	@echo Merging libraries ...
-	@./merge_libraries.sh $@ $(LIBS)
+	@./merge_libraries.sh $@.dirty $(LIBS)
+	@echo Cleaning namespace
+	@./rename_c_symbols.sh $@.dirty $@
+	rm $@.dirty
 
 
 $(OUTPUT_DIR)/%.o : %.cc
