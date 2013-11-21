@@ -2034,4 +2034,10 @@ OUT=$($WGET_DUMP "$HOSTNAME/ngx_pagespeed_message")
 check_not_from "$OUT" grep "Writing to ngx_pagespeed_message failed."
 check_from "$OUT" grep -q "/mod_pagespeed_example"
 
+start_test Check keepalive after a 304 responses.
+# '-m 2' specifies that the whole operation is allowed to take 2 seconds max.
+curl -vv -m 2 http://$PRIMARY_HOSTNAME/foo.css.pagespeed.ce.0.css \
+    -H 'If-Modified-Since: Z' http://$PRIMARY_HOSTNAME/foo
+check [ $? = "0" ]
+
 check_failures_and_exit
