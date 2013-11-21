@@ -1264,13 +1264,6 @@ class RewriteOptions {
     set_option(x, &preserve_url_relativity_);
   }
 
-  bool use_image_scanline_api() const {
-    return use_image_scanline_api_.value();
-  }
-  void set_use_image_scanline_api(bool x) {
-    set_option(x, &use_image_scanline_api_);
-  }
-
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
   // its timestamp_ms > time_ms and url matches the url_pattern.  Else, return
   // true.
@@ -3502,8 +3495,6 @@ class RewriteOptions {
   // b. low-res image is not small enough compared to the full-res version.
   Option<int64> max_low_res_image_size_bytes_;
   Option<int> max_low_res_to_full_res_image_size_percentage_;
-
-  Option<bool> use_image_scanline_api_;
 
   // Be sure to update constructor when new fields are added so that they are
   // added to all_options_, which is used for Merge, and eventually, Compare.

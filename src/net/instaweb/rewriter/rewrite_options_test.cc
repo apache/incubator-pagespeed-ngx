@@ -790,7 +790,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kDistributedRewriteTimeoutMs);
   PassLookupOptionByName(RewriteOptions::kDomainRewriteHyperlinks);
   PassLookupOptionByName(RewriteOptions::kDomainShardCount);
-  PassLookupOptionByName(RewriteOptions::kUseImageScanlineApi);
   PassLookupOptionByName(RewriteOptions::kDownstreamCachePurgeMethod);
   PassLookupOptionByName(RewriteOptions::
                          kDownstreamCacheRewrittenPercentageThreshold);

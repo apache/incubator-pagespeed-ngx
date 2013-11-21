@@ -1925,13 +1925,6 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
 
-  AddBaseProperty(
-      true,
-      &RewriteOptions::use_image_scanline_api_, "uisa",
-      kUseImageScanlineApi,
-      kServerScope,
-      NULL);  // Temporary flag
-
   // Test-only, so no enum.
   AddRequestProperty(
       false, &RewriteOptions::test_instant_fetch_rewrite_deadline_, "tifrwd");
