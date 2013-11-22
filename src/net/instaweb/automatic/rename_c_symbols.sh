@@ -28,15 +28,33 @@ IN=$(readlink -f $1)
 OUT=$(readlink -f $2)
 
 # Get a list of defined non-C++ symbols that are global and not weak.
-# We also exclude AtomicOps_Internalx86CPUFeatures since it's used by some
-# Chromium headers.
 # _Z is used at start of C++-mangled symbol names.
 # Lower-cased letters indicate symbols local to the object file.
 # V and W denote weak symbols.
-SYMBOLS=$(mktemp)
+#
+# We exclude AtomicOps_Internalx86CPUFeatures since it's used by some
+# Chromium headers.
+# We also skip x86 PIC thunk functions: those use fancy link-once
+# features we can't detect easily.
+#
+ALL_SYMBOLS=$(mktemp)
 nm -o -P --defined-only $IN | grep -v " _Z" | egrep -v " [[:lower:]] " \
   | grep -v " V " | grep -v " W " | grep -v AtomicOps_Internalx86CPUFeatures \
-  | cut -d ' ' -f 2 > $SYMBOLS
+  | fgrep -v 86.get_pc_thunk > $ALL_SYMBOLS
+
+COMMON_SYMBOLS=$(mktemp)
+NON_COMMON_SYMBOLS=$(mktemp)
+# Separate out common symbols (marked by nm as " C "), since they are
+# permitted to have duplicates. Also drop the non-name fields now.
+grep " C " $ALL_SYMBOLS | cut -d ' ' -f 2 > $COMMON_SYMBOLS
+grep -v " C " $ALL_SYMBOLS | cut -d ' ' -f 2 > $NON_COMMON_SYMBOLS
+rm $ALL_SYMBOLS
+
+SYMBOLS=$(mktemp)
+sort -u  $COMMON_SYMBOLS > $SYMBOLS
+cat $NON_COMMON_SYMBOLS >> $SYMBOLS
+rm $COMMON_SYMBOLS
+rm $NON_COMMON_SYMBOLS
 
 # Generate a renaming map
 RENAME_MAP=$(mktemp)
