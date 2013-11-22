@@ -58,7 +58,6 @@ class AbstractMutex;
 class AbstractPropertyPage;
 class AddInstrumentationFilter;
 class AsyncFetch;
-class CommonFilter;
 class CriticalCssResult;
 class CriticalLineInfo;
 class DebugFilter;
@@ -841,9 +840,6 @@ class RewriteDriver : public HtmlParse {
       StringPiece property_name,
       StringPiece property_value);
 
-  void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
-  const GoogleString& client_id() const { return client_id_; }
-
   // Returns the property page which contains the cached properties associated
   // with the current URL.
   PropertyPage* property_page() const;
@@ -974,9 +970,6 @@ class RewriteDriver : public HtmlParse {
   // thread-safe. Call it only from the html parser thread.
   void set_flush_early_render_info(
       FlushEarlyRenderInfo* flush_early_render_info);
-
-  void set_is_blink_request(bool x) { is_blink_request_ = x; }
-  bool is_blink_request() const { return is_blink_request_; }
 
   // Determines whether we are currently in Debug mode; meaning that the
   // site owner or user has enabled filter kDebug.
@@ -1130,11 +1123,6 @@ class RewriteDriver : public HtmlParse {
   bool ShouldSkipParsing();
 
   friend class ScanFilter;
-
-  // Adds a CommonFilter into the HtmlParse filter-list, and into the
-  // Scan filter-list for initiating async resource fetches.   See
-  // ScanRequestUrl above.
-  void AddCommonFilter(CommonFilter* filter);
 
   // Registers RewriteFilter in the map, but does not put it in the
   // html parse filter chain.  This allows it to serve resource
@@ -1499,9 +1487,6 @@ class RewriteDriver : public HtmlParse {
 
   Writer* writer_;
 
-  // Stores a client identifier associated with this request, if any.
-  GoogleString client_id_;
-
   // Stores any cached properties associated with the current URL and fallback
   // URL (i.e. without query params).
   FallbackPropertyPage* fallback_property_page_;
@@ -1542,8 +1527,6 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
   scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info_;
 
-  // Is this a blink request?
-  bool is_blink_request_;
   bool can_rewrite_resources_;
   bool is_nested_;
 

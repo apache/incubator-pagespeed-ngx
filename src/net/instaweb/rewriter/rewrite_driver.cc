@@ -279,7 +279,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       num_flushed_early_pagespeed_resources_(0),
       num_bytes_in_(0),
       debug_filter_(NULL),
-      is_blink_request_(false),
       can_rewrite_resources_(true),
       is_nested_(false),
       request_context_(NULL),
@@ -414,7 +413,6 @@ void RewriteDriver::Clear() {
   base_was_set_ = false;
   refs_before_base_ = false;
   containing_charset_.clear();
-  client_id_.clear();
   fully_rewrite_on_flush_ = false;
   fast_blocking_rewrite_ = true;
   num_inline_preview_images_ = 0;
@@ -422,7 +420,6 @@ void RewriteDriver::Clear() {
   num_bytes_in_ = 0;
   flush_early_info_.reset(NULL);
   flush_early_render_info_.reset(NULL);
-  is_blink_request_ = false;
   can_rewrite_resources_ = true;
   is_nested_ = false;
   num_initiated_rewrites_ = 0;
@@ -2581,7 +2578,6 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
     AppendBool(&out, "using_spdy", using_spdy());
     AppendBool(&out, "owns_property_page", owns_property_page_);
     AppendBool(&out, "xhtml_mimetype_computed", xhtml_mimetype_computed_);
-    AppendBool(&out, "is_blink_request", is_blink_request_);
     AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
     AppendBool(&out, "is_nested", is_nested());
     StrAppend(&out, "ref counts:\n", ref_counts_.DebugStringMutexHeld());
