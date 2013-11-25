@@ -290,6 +290,12 @@ check_not_from "$OUT" egrep -q "pagespeed.ic"
 check_from "$OUT" egrep -q "X-Cache: MISS"
 fetch_until $STATISTICS_URL \
   'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
+
+while [ x"$(grep "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG)" == x"" ] ; do
+  echo "waiting for purge request to show up in access log"
+  sleep .2
+done
+
 check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
 # The 2nd request results in a cache miss (because of the previous purge),
