@@ -69,9 +69,8 @@ IN_OBJ_DIR=$(mktemp -d)
 OUT_OBJ_DIR=$(mktemp -d)
 cd $IN_OBJ_DIR
 ar xvf $IN
-for FILE in $(ls *.o); do
-  objcopy -v --redefine-syms $RENAME_MAP $FILE $OUT_OBJ_DIR/$FILE
-done
+ls -1 *.o | xargs -P4 -I %FILE \
+    objcopy -v --redefine-syms $RENAME_MAP %FILE $OUT_OBJ_DIR/%FILE
 
 rm $RENAME_MAP
 rm -rf $IN_OBJ_DIR
