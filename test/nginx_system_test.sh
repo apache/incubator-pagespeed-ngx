@@ -1833,12 +1833,10 @@ keepalive_test "keepalive-static.example.com"\
 test_filter combine_css Maximum size of combined CSS.
 QUERY_PARAM="PageSpeedMaxCombinedCssBytes=57"
 URL="$URL?$QUERY_PARAM"
-# Make sure that we have got the last CSS file and it is not combined.
-fetch_until -save $URL 'grep -c styles/bold.css\"' 1
-# Now check that the 1st and 2nd CSS files are combined, but the 3rd
-# one is not.
-check [ $(grep -c 'styles/yellow.css+blue.css.pagespeed.' \
-    $FETCH_UNTIL_OUTFILE) = 1 ]
+# We should get the first two files to be combined...
+fetch_until -save $URL 'grep -c styles/yellow.css+blue.css.pagespeed.' 1
+# ... but 3rd and 4th should be standalone
+check [ $(grep -c 'styles/bold.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 check [ $(grep -c 'styles/big.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 
 # Test to make sure we have a sane Connection Header.  See
