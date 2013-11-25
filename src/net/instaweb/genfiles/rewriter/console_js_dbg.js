@@ -335,6 +335,10 @@ goog.inherits = function(childCtor, parentCtor) {
   childCtor.superClass_ = parentCtor.prototype;
   childCtor.prototype = new tempCtor;
   childCtor.prototype.constructor = childCtor;
+  childCtor.base = function(me, methodName, var_args) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    return parentCtor.prototype[methodName].apply(me, args);
+  };
 };
 goog.base = function(me, opt_methodName, var_args) {
   var caller = arguments.callee.caller;
@@ -506,7 +510,7 @@ goog.string.newLineToBr = function(str, opt_xml) {
 };
 goog.string.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
   if (opt_isLikelyToContainHtmlChars) {
-    return str.replace(goog.string.amperRe_, "&amp;").replace(goog.string.ltRe_, "&lt;").replace(goog.string.gtRe_, "&gt;").replace(goog.string.quotRe_, "&quot;");
+    return str.replace(goog.string.amperRe_, "&amp;").replace(goog.string.ltRe_, "&lt;").replace(goog.string.gtRe_, "&gt;").replace(goog.string.quotRe_, "&quot;").replace(goog.string.singleQuoteRe_, "&#39;");
   }
   if (!goog.string.allRe_.test(str)) {
     return str;
@@ -515,13 +519,15 @@ goog.string.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
   -1 != str.indexOf("<") && (str = str.replace(goog.string.ltRe_, "&lt;"));
   -1 != str.indexOf(">") && (str = str.replace(goog.string.gtRe_, "&gt;"));
   -1 != str.indexOf('"') && (str = str.replace(goog.string.quotRe_, "&quot;"));
+  -1 != str.indexOf("'") && (str = str.replace(goog.string.singleQuoteRe_, "&#39;"));
   return str;
 };
 goog.string.amperRe_ = /&/g;
 goog.string.ltRe_ = /</g;
 goog.string.gtRe_ = />/g;
-goog.string.quotRe_ = /\"/g;
-goog.string.allRe_ = /[&<>\"]/;
+goog.string.quotRe_ = /"/g;
+goog.string.singleQuoteRe_ = /'/g;
+goog.string.allRe_ = /[&<>"']/;
 goog.string.unescapeEntities = function(str) {
   return goog.string.contains(str, "&") ? "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(str) : goog.string.unescapePureXmlEntities_(str) : str;
 };
