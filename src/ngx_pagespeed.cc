@@ -2159,7 +2159,8 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
-  if (status_code == CacheUrlAsyncFetcher::kNotInCacheStatus) {
+  if (status_code == CacheUrlAsyncFetcher::kNotInCacheStatus &&
+      !r->header_only) {
     server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
     server_context->message_handler()->Message(
         kInfo,
