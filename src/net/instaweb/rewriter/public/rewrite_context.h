@@ -538,7 +538,7 @@ class RewriteContext {
   bool ShouldDistributeRewrite() const;
 
   // Determines if this rewrite-context is acting on behalf of a distributed
-  // rewrite request from an HTML rewrite.
+  // rewrite request from an HTML rewrite. Verifies the distributed rewrite key.
   bool IsDistributedRewriteForHtml() const;
 
   // Dispatches the rewrite to another task with a distributed fetcher. Should

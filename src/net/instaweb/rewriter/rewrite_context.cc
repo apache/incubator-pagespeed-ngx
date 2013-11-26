@@ -794,9 +794,10 @@ class RewriteContext::DistributedRewriteFetch : public AsyncFetch {
 
   void DispatchForHTML() {
     DCHECK(fetcher_ != NULL);
-    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteForHtml, "");
     StringPiece distributed_key =
         rewrite_context_->Options()->distributed_rewrite_key();
+    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteForHtml,
+                           distributed_key);
     request_headers()->Add(HttpAttributes::kXPsaRequestMetadata,
                            distributed_key);
     // Note: We're defaulting to a kGet request. We don't always *have* to do a
@@ -1635,7 +1636,8 @@ bool RewriteContext::IsDistributedRewriteForHtml() const {
   const RequestHeaders* request_headers = Driver()->request_headers();
   DCHECK(request_headers != NULL);
   if (request_headers != NULL &&
-      request_headers->Has(HttpAttributes::kXPsaDistributedRewriteForHtml)) {
+      request_headers->HasValue(HttpAttributes::kXPsaDistributedRewriteForHtml,
+                                Options()->distributed_rewrite_key())) {
     return true;
   }
   return false;
@@ -1671,7 +1673,8 @@ bool RewriteContext::ShouldDistributeRewrite() const {
   // filter. For instance, if this is a distributed CSS request, we don't want
   // to redistribute the CSS rewrite but its nested image filters should be
   // allowed to be distributed.  The rewrite task of the nested filter will
-  // not redistribute it.
+  // not redistribute it. Note: We don't verify the distributed rewrite key
+  // because we want to be conservative about loop detection.
   if (request_headers != NULL && parent() == NULL) {
     if (request_headers->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
         request_headers->Has(HttpAttributes::kXPsaDistributedRewriteForHtml)) {

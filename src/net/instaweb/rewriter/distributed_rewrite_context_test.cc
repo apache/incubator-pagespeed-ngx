@@ -17,6 +17,8 @@
 // Author: jkarlin@google.com (Josh Karlin)
 
 // Unit-test the distributed pathways through the RewriteContext class.
+// In these tests the RewriteTestBase::other_* objects represent the task
+// that gets distributed to.
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
@@ -202,6 +204,37 @@ class DistributedRewriteContextTest : public RewriteContextTestBase {
   Variable* distributed_rewrite_successes_;
   Variable* distributed_metadata_failures_;
 };
+
+TEST_F(DistributedRewriteContextTest,
+       NoDistributedHtmlRewriteWithoutSettingKeyOnDistributedTask) {
+  SetupDistributedTest();
+  // Clear the distributed task's key. The end result should be unoptimized
+  // due to no metadata being returned since the key couldn't be validated.
+  other_options()->ClearSignatureForTesting();
+  other_options()->set_distributed_rewrite_key("");
+  other_server_context()->ComputeSignature(other_options());
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+}
+
+TEST_F(DistributedRewriteContextTest,
+       NoDistributedHtmlRewriteWithDifferentKeyOnDistributedTask) {
+  SetupDistributedTest();
+  // Set a different distributed task key from the ingress task. The end result
+  // should be unoptimized due to no metadata being returned since the key
+  // couldn't be validated.
+  other_options()->ClearSignatureForTesting();
+  other_options()->set_distributed_rewrite_key("wrong key");
+  other_server_context()->ComputeSignature(other_options());
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  // But the optimization should have happened on the distributed task and
+  // should be cached.
+  EXPECT_EQ(
+      3, lru_cache()->num_inserts());  // metadata, resource, optimized resource
+  EXPECT_EQ(1, other_trim_filter_->num_rewrites());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+}
 
 // Copy of the RewriteContextTest.TrimRewrittenOptimizable test modified for
 // distributed rewrites.

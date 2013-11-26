@@ -483,7 +483,9 @@ ProxyFetch::ProxyFetch(
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
 
-  // Was this proxy_fetch created on behalf of a distributed rewrite?
+  // Was this proxy_fetch created on behalf of a distributed rewrite? Note: We
+  // don't verify the distributed rewrite key because we want to be conservative
+  // about when we apply rewriting.
   if (request_headers()->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
       request_headers()->Has(HttpAttributes::kXPsaDistributedRewriteForHtml)) {
     distributed_fetch_ = true;

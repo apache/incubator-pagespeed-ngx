@@ -1803,12 +1803,12 @@ class DistributedFetchResourceFetch : public SharedAsyncFetch {
   }
 
   void DispatchFetch() {
-    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteFetch, "");
+    StringPiece distributed_key = driver_->options()->distributed_rewrite_key();
+    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteFetch,
+                           distributed_key);
     // Nested driver fetches are not supposed to use deadlines, so block the
     // distributed rewrite.
     if (driver_->is_nested()) {
-      StringPiece distributed_key =
-          driver_->options()->distributed_rewrite_key();
       request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteBlock,
                              distributed_key);
     }
@@ -1860,7 +1860,9 @@ bool RewriteDriver::ShouldDistributeFetch(const StringPiece& filter_id) {
     return false;
   }
 
-  // Don't redistribute an already distributed rewrite.
+  // Don't redistribute an already distributed rewrite. Note: We don't verify
+  // the distributed rewrite key because we want to be conservative about loop
+  // detection.
   DCHECK(request_headers() != NULL);
   if (request_headers() != NULL) {
     if (request_headers()->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
