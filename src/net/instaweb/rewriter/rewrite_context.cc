@@ -3016,6 +3016,7 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
       std::min(min_cache_expiry_time_ms - headers->date_ms(),
                ResponseHeaders::kDefaultImplicitCacheTtlMs),
       ",private");
+  headers->RemoveAll(HttpAttributes::kEtag);
   headers->ComputeCaching();
 }
 

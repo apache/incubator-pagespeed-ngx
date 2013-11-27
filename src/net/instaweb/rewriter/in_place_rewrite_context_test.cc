@@ -1485,8 +1485,10 @@ TEST_F(InPlaceRewriteContextTest, NonCacheableUrlRewriting) {
   // The ttl is just a value in proto, actual cacheable values will be checked
   // below.
   FetchAndCheckResponse(nocache_js_url_, StrCat(cache_body_, ":", "jm"),
-                        true /* success */, Timer::kYearMs /* ttl (ms) */,
-                        etag_, timer()->NowMs());
+                        true /* success */,
+                        Timer::kYearMs /* ttl (ms) */,
+                        NULL /* etag */,
+                        timer()->NowMs());
 
   // Shouldn't be cacheable at all.
   EXPECT_FALSE(response_headers_.IsBrowserCacheable());
@@ -1523,7 +1525,9 @@ TEST_F(InPlaceRewriteContextTest, PrivateCacheableUrlRewriting) {
   // The ttl is just a value in proto, actual cacheable values will be checked
   // below.
   FetchAndCheckResponse(private_cache_js_url_, StrCat(cache_body_, ":", "jm"),
-                        true /* success */, 1000 /* ttl (s) */, etag_,
+                        true /* success */,
+                        1000 /* ttl (s) */,
+                        NULL /* etag */,
                         timer()->NowMs());
   // Should be cacheable.
   EXPECT_TRUE(response_headers_.IsBrowserCacheable());

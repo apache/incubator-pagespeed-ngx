@@ -439,21 +439,20 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
                                           "no-store");
     }
   }
-  if (browser_cacheable) {
-    if (proxy_cacheable) {
-      return;
+  DCHECK(! (proxy_cacheable && !browser_cacheable)) <<
+      "You can't have a proxy-cacheable result that is not browser-cacheable";
+  if (!proxy_cacheable) {
+    const char* directives = NULL;
+    if (browser_cacheable) {
+      directives = ",private";
     } else {
-      headers->SetDateAndCaching(headers->date_ms(), max_age,
-                                 ",private" /*cache_control_suffix*/);
+      max_age = 0;
+      directives = no_store ? ",no-cache,no-store" : ",no-cache";
     }
-  } else {
-    GoogleString directives = ",no-cache";
-    if (no_store) {
-      directives += ",no-store";
-    }
-    headers->SetDateAndCaching(headers->date_ms(), 0 /*ttl*/, directives);
+    headers->SetDateAndCaching(headers->date_ms(), max_age, directives);
+    headers->RemoveAll(HttpAttributes::kEtag);
+    headers->ComputeCaching();
   }
-  headers->ComputeCaching();
 }
 
 void ServerContext::AddOriginalContentLengthHeader(

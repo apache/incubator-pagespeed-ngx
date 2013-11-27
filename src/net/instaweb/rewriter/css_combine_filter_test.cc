@@ -1872,7 +1872,6 @@ TEST_F(CssCombineMaxSizeTest, ReconstructedResourceExpectedHeadersNoStore) {
       "HTTP/1.1 200 OK\r\n"
       "in_all_3: abc\r\n"
       "Content-Type: text/css\r\n"
-      "Etag: W/\"0\"\r\n"  // TODO(jmarantz): is this etag right?
       "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
