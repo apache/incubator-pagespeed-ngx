@@ -89,6 +89,11 @@ class PixelFormatOptimizer : public ScanlineReaderInterface {
   virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
                                               size_t buffer_length);
 
+  // Returns whether the image is potentially optimizable.
+  bool IsOptimizable() {
+    return !was_initialized_ || strip_alpha_;
+  }
+
  private:
   ScanlineReaderInterface* reader_;
   size_t bytes_per_row_;
