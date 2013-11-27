@@ -1655,7 +1655,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   // parameters.  Keep url_string in sync with url.
   url.Spec().CopyToString(&url_string);
 
-  if (options->respect_x_forwarded_proto()) {
+  if (cfg_s->server_context->global_options()->respect_x_forwarded_proto()) {
     bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
     if (modified_url) {
       url.Reset(url_string);
