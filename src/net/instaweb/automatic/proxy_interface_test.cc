@@ -600,7 +600,7 @@ TEST_F(ProxyInterfaceTest, RewriteUrlsEarly) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "test.com", "pagespeed.test.com/test.com", &handler);
+      "test.com", "pagespeed.test.com/test.com", "", &handler);
   custom_options->set_rewrite_request_urls_early(true);
   SetRewriteOptions(custom_options.get());
   FetchFromProxy("http://pagespeed.test.com/test.com/index.html", true,
@@ -621,7 +621,7 @@ TEST_F(ProxyInterfaceTest, RewriteUrlsEarlyUsingReferer) {
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "test.com", "pagespeed.test.com/test.com", &handler);
+      "test.com", "pagespeed.test.com/test.com", "", &handler);
   custom_options->set_rewrite_request_urls_early(true);
   SetRewriteOptions(custom_options.get());
   request_headers.Replace(HttpAttributes::kReferer,

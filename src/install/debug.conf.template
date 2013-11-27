@@ -1055,6 +1055,29 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeed off
 </VirtualHost>
 
+# For testing with a custom origin header.  In this VirtualHost,
+# /mod_pagespeed_test is included in our DocumentRoot and thus does
+# not need to be in any resource URL paths.  This helps us verify that
+# we are looping back to the corect VirtualHost -- if we hit the wrong
+# one it will not work.  Also we don't have a VirtualHost for
+# sharedcdn.example.com, so the default Host header used for
+# origin-mapping won't work either.  Instead, we want origin-fetches
+# to go back to this VirtualHost so we rely on the new third optional
+# argument to MapOriginDomain.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName customhostheader.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_test"
+  ModPagespeed on
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedMapOriginDomain localhost:@@APACHE_SECONDARY_PORT@@/bug781 \
+                              sharedcdn.example.com/test \
+                              customhostheader.example.com
+  ModPagespeedJpegRecompressionQuality 50
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
 # Help tests detect whether mod_spdy is loaded. Only sees it if it's loaded
 # before us, unfortunately, but we can at least make it so during our own
 # testing.

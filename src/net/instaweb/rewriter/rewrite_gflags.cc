@@ -516,12 +516,35 @@ namespace net_instaweb {
 
 namespace {
 
-#define CALL_MEMBER_FN(object, var) (object->*(var))
+bool DomainMapRewriteDomain(DomainLawyer* lawyer,
+                            const StringPiece& to_domain,
+                            const StringPiece& from,
+                            MessageHandler* handler) {
+  return lawyer->AddRewriteDomainMapping(to_domain, from, handler);
+}
+
+bool DomainMapOriginDomain(DomainLawyer* lawyer,
+                           const StringPiece& to_domain,
+                           const StringPiece& from,
+                           MessageHandler* handler) {
+  // Note that we don't currently have a syntax to specify a Host header
+  // from flags.  This can be created as the need arises.
+  return lawyer->AddOriginDomainMapping(to_domain, from, "" /* host_header */,
+                                        handler);
+}
+
+bool DomainAddShard(DomainLawyer* lawyer,
+                            const StringPiece& to_domain,
+                            const StringPiece& from,
+                            MessageHandler* handler) {
+  return lawyer->AddShard(to_domain, from, handler);
+}
 
 bool AddDomainMap(const StringPiece& flag_value, DomainLawyer* lawyer,
-                  bool (DomainLawyer::*fn)(const StringPiece& to_domain,
-                                           const StringPiece& from,
-                                           MessageHandler* handler),
+                  bool (*fn)(DomainLawyer* lawyer,
+                             const StringPiece& to_domain,
+                             const StringPiece& from,
+                             MessageHandler* handler),
                   MessageHandler* message_handler) {
   bool ret = true;
   StringPieceVector maps;
@@ -536,8 +559,7 @@ bool AddDomainMap(const StringPiece& flag_value, DomainLawyer* lawyer,
                                maps[i].as_string().c_str());
       ret = false;
     } else {
-      ret &= CALL_MEMBER_FN(lawyer, fn)(name_values[0], name_values[1],
-                                        message_handler);
+      ret &= (*fn)(lawyer, name_values[0], name_values[1], message_handler);
     }
   }
   return ret;
@@ -966,19 +988,19 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("rewrite_domain_map")) {
     ret &= AddDomainMap(FLAGS_rewrite_domain_map,
                         options->WriteableDomainLawyer(),
-                        &DomainLawyer::AddRewriteDomainMapping, handler);
+                        DomainMapRewriteDomain, handler);
   }
 
   if (WasExplicitlySet("shard_domain_map")) {
     ret &= AddDomainMap(FLAGS_shard_domain_map,
                         options->WriteableDomainLawyer(),
-                        &DomainLawyer::AddShard, handler);
+                        DomainAddShard, handler);
   }
 
   if (WasExplicitlySet("origin_domain_map")) {
     ret &= AddDomainMap(FLAGS_origin_domain_map,
                         options->WriteableDomainLawyer(),
-                        &DomainLawyer::AddOriginDomainMapping, handler);
+                        DomainMapOriginDomain, handler);
   }
   if (WasExplicitlySet("enable_extended_instrumentation")) {
     options->set_enable_extended_instrumentation(

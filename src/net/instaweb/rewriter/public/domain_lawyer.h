@@ -125,12 +125,15 @@ class DomainLawyer {
   // mapping done.  You must compare 'in' to 'out' to determine if
   // mapping was done.
   //
+  // "*host_header is set to the Host header to use when fetching the resource
+  // from *out".
+  //
   // *is_proxy is set to true if the origin-domain was established via
   // AddProxyDomainMapping.
   bool MapOrigin(const StringPiece& in, GoogleString* out,
-                 bool* is_proxy) const;
+                 GoogleString* host_header, bool* is_proxy) const;
   bool MapOriginUrl(const GoogleUrl& gurl, GoogleString* out,
-                    bool* is_proxy) const;
+                    GoogleString* host_header, bool* is_proxy) const;
 
   // The methods below this comment are intended only to be run only
   // at configuration time.
@@ -181,8 +184,13 @@ class DomainLawyer {
   // It is invalid to use the same origin_domain in AddProxyDomainMapping
   // and as the to_domain of AddOriginDomainMapping.  The latter requires
   // a Host: request-header on fetches, whereas the former will not get one.
+  //
+  // If host_header is empty, then MapOrigin will return a host_header
+  // matching the passed-in URL.  If host_header is non-empty, it will
+  // be returned from MapOrigin as specified.
   bool AddOriginDomainMapping(const StringPiece& to_domain,
                               const StringPiece& comma_separated_from_domains,
+                              const StringPiece& host_header,
                               MessageHandler* handler);
 
   // Adds a mapping to enable proxying & optimizing resources hosted
@@ -307,6 +315,7 @@ class DomainLawyer {
   bool MapDomainHelper(
       const StringPiece& to_domain_name,
       const StringPiece& comma_separated_from_domains,
+      const StringPiece& host_header,
       SetDomainFn set_domain_fn,
       bool allow_wildcards,
       bool allow_map_to_https,

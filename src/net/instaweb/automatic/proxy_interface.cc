@@ -265,10 +265,12 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     const UrlNamer* url_namer = server_context_->url_namer();
     StringPiece referer(async_fetch->request_headers()->Lookup1(
         HttpAttributes::kReferer));
-    if (url_namer->ResolveToOriginUrl(*options, referer, request_url)) {
+    GoogleString host_header;
+    if (url_namer->ResolveToOriginUrl(*options, referer, &host_header,
+                                      request_url)) {
       // Update the headers accordingly if the request url changes.
       async_fetch->request_headers()->Replace(
-          HttpAttributes::kHost, request_url->Origin());
+          HttpAttributes::kHost, host_header);
       request_url->Spec().CopyToString(&url_string);
     }
   }

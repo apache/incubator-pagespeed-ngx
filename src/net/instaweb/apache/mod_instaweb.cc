@@ -1899,8 +1899,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedCustomFetchHeader,
         "custom_header_name custom_header_value"),
-  APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
-        "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_DIR_OPTION23(kModPagespeedMapOriginDomain,
+        "to_domain from_domain[,from_domain]* [host_header]"),
   APACHE_CONFIG_DIR_OPTION23(kModPagespeedMapProxyDomain,
         "proxy_domain origin_domain [to_domain]"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,

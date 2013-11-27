@@ -160,11 +160,12 @@ class StrippingFetch : public StringAsyncFetch {
     // sharded domains, we apply mapping origin domain here.  Simply map all
     // the shards back into the origin domain in pagespeed.conf.
     GoogleString origin_url;
+    GoogleString host_header;
     bool is_proxy = false;
-    if (lawyer_->MapOrigin(url_, &origin_url, &is_proxy)) {
+    if (lawyer_->MapOrigin(url_, &origin_url, &host_header, &is_proxy)) {
       url_ = origin_url;
       GoogleUrl gurl(url_);
-      request_headers()->Replace(HttpAttributes::kHost, gurl.Host());
+      request_headers()->Replace(HttpAttributes::kHost, host_header);
     }
 
     fetcher_->Fetch(url_, message_handler_, this);

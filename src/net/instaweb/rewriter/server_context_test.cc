@@ -571,7 +571,7 @@ TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
 
 TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
   EXPECT_TRUE(options()->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "www.busy.com", "example.com", message_handler()));
+      "www.busy.com", "example.com", "", message_handler()));
   options()->EnableFilter(RewriteOptions::kRewriteJavascript);
   rewrite_driver()->AddFilters();
 
@@ -592,7 +592,7 @@ TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
 // fetching the URL.
 TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
   ASSERT_TRUE(options()->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "localhost", kTestDomain, message_handler()));
+      "localhost", kTestDomain, "", message_handler()));
   EXPECT_TRUE(options()->WriteableDomainLawyer()->AddRewriteDomainMapping(
       "cdn.com", kTestDomain, message_handler()));
 

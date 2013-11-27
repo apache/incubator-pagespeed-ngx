@@ -448,7 +448,9 @@ bool handle_as_proxy(ApacheServerContext* server_context,
   // resource optimization) is off.
   bool is_proxy = false;
   GoogleString mapped_url;
-  if (options->domain_lawyer()->MapOriginUrl(*gurl, &mapped_url, &is_proxy) &&
+  GoogleString host_header;
+  if (options->domain_lawyer()->MapOriginUrl(*gurl, &mapped_url, &host_header,
+                                             &is_proxy) &&
       is_proxy) {
     RewriteDriver* driver = ResourceFetch::GetDriver(
         *gurl, custom_options->release(), server_context, request_context);

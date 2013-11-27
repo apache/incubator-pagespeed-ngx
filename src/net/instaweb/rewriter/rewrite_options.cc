@@ -2751,7 +2751,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName2(
       result = RewriteOptions::kOptionValueInvalid;
     }
   } else if (StringCaseEqual(name, kMapOriginDomain)) {
-    WriteableDomainLawyer()->AddOriginDomainMapping(arg1, arg2, handler);
+    WriteableDomainLawyer()->AddOriginDomainMapping(arg1, arg2, "", handler);
   } else if (StringCaseEqual(name, kMapProxyDomain)) {
     WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, "", handler);
   } else if (StringCaseEqual(name, kMapRewriteDomain)) {
@@ -2794,6 +2794,8 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName3(
       *msg = StrCat("Format is size md5 url; bad md5 ", arg2, " or URL ", arg3);
       result = RewriteOptions::kOptionValueInvalid;
     }
+  } else if (StringCaseEqual(name, kMapOriginDomain)) {
+    WriteableDomainLawyer()->AddOriginDomainMapping(arg1, arg2, arg3, handler);
   } else if (StringCaseEqual(name, kMapProxyDomain)) {
     WriteableDomainLawyer()->AddProxyDomainMapping(arg1, arg2, arg3, handler);
   } else {

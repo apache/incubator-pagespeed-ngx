@@ -2152,8 +2152,10 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       // the URL to what will ultimately be fetched to see if that will be
       // http, in which case the fetcher will be able to handle it.
       GoogleString mapped_url;
+      GoogleString host_header;
       bool is_proxy = false;
-      options()->domain_lawyer()->MapOriginUrl(url, &mapped_url, &is_proxy);
+      options()->domain_lawyer()->MapOriginUrl(url, &mapped_url,
+                                               &host_header, &is_proxy);
       GoogleUrl mapped_gurl(mapped_url);
       if (mapped_gurl.SchemeIs("http") ||
           (mapped_gurl.SchemeIs("https") &&

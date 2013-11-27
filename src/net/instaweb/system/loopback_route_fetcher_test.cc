@@ -100,7 +100,7 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
 
   // Now make somehost.com known, as well as somehost.cdn.com
   options_.WriteableDomainLawyer()->AddOriginDomainMapping(
-      "somehost.cdn.com", "somehost.com", &handler_);
+      "somehost.cdn.com", "somehost.com", "", &handler_);
 
   ExpectStringAsyncFetch dest2(
       true, RequestContext::NewTestRequestContext(thread_system_.get()));

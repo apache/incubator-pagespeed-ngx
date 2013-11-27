@@ -69,17 +69,22 @@ class DomainLawyerTest : public testing::Test {
   bool MapOrigin(const StringPiece& in, GoogleString* out) {
     bool is_proxy = true;
     out->clear();
-    return domain_lawyer_.MapOrigin(in, out, &is_proxy) && !is_proxy;
+    GoogleString host_header;
+    return domain_lawyer_.MapOrigin(in, out, &host_header,
+                                    &is_proxy) && !is_proxy;
   }
 
   bool MapProxy(const StringPiece& in, GoogleString* out) {
     bool is_proxy = false;
     out->clear();
-    return domain_lawyer_.MapOrigin(in, out, &is_proxy) && is_proxy;
+    GoogleString host_header;
+    return domain_lawyer_.MapOrigin(in, out, &host_header, &is_proxy) &&
+      is_proxy;
   }
 
   bool AddOriginDomainMapping(const StringPiece& dest, const StringPiece& src) {
-    return domain_lawyer_.AddOriginDomainMapping(dest, src, &message_handler_);
+    return domain_lawyer_.AddOriginDomainMapping(dest, src, "",
+                                                 &message_handler_);
   }
 
   bool AddRewriteDomainMapping(const StringPiece& dest,
@@ -365,6 +370,33 @@ TEST_F(DomainLawyerTest, AddTwoProtocolDomainMapping) {
   ASSERT_TRUE(MapOrigin(
       "https://www.nytimes.com/index.html", &mapped));
   EXPECT_STREQ("https://ref.nytimes.com/index.html", mapped);
+}
+
+TEST_F(DomainLawyerTest, MapOriginExplicitHost) {
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping("origin", "*domain", "host",
+                                                    &message_handler_));
+  bool is_proxy = true;
+  GoogleString out;
+  GoogleString host;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin("http://www.domain/foo.css",
+                                       &out, &host, &is_proxy));
+  EXPECT_STREQ("http://origin/foo.css", out);
+  EXPECT_STREQ("host", host);
+  EXPECT_FALSE(is_proxy);
+}
+
+TEST_F(DomainLawyerTest, MapOriginWithoutExplicitHost) {
+  ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping("origin", "*domain",
+                                                    "" /* host_header */,
+                                                    &message_handler_));
+  bool is_proxy = true;
+  GoogleString out;
+  GoogleString host;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin("http://www.domain/foo.css",
+                                       &out, &host, &is_proxy));
+  EXPECT_STREQ("http://origin/foo.css", out);
+  EXPECT_STREQ("www.domain", host);
+  EXPECT_FALSE(is_proxy);
 }
 
 TEST_F(DomainLawyerTest, RewriteHttpsAcrossHosts) {
@@ -692,6 +724,15 @@ TEST_F(DomainLawyerTest, OriginWithPath) {
   EXPECT_STREQ("http://origin.com/subdir/styles/main.css", origin_url);
 }
 
+TEST_F(DomainLawyerTest, OriginWithPathOnSource) {
+  ASSERT_TRUE(AddOriginDomainMapping(
+      "http://origin.com/subdir/", "http://external.com/path"));
+  GoogleString origin_url;
+  ASSERT_TRUE(MapOrigin("http://external.com/path/styles/main.css",
+                        &origin_url));
+  EXPECT_STREQ("http://origin.com/subdir/styles/main.css", origin_url);
+}
+
 TEST_F(DomainLawyerTest, OriginAndExternWithPaths) {
   ASSERT_TRUE(AddOriginDomainMapping(
       "http://origin.com/subdir/", "http://external.com/static/"));
@@ -971,13 +1012,13 @@ TEST_F(DomainLawyerTest, Merge) {
   ASSERT_TRUE(merged.AddRewriteDomainMapping(
       "http://cdn2.com", "http://www.o2.com", &message_handler_));
   ASSERT_TRUE(merged.AddOriginDomainMapping(
-      "http://localhost:8080", "http://o2.com:8080", &message_handler_));
+      "http://localhost:8080", "http://o2.com:8080", "", &message_handler_));
 
   // Here's a different mapping for the same source.
   ASSERT_TRUE(merged.AddOriginDomainMapping(
-      "http://dest3/", "http://common_src1", &message_handler_));
+      "http://dest3/", "http://common_src1", "", &message_handler_));
   ASSERT_TRUE(domain_lawyer_.AddOriginDomainMapping(
-      "http://dest4/", "http://common_src3", &message_handler_));
+      "http://dest4/", "http://common_src3", "", &message_handler_));
 
   merged.Merge(domain_lawyer_);
 
@@ -997,29 +1038,39 @@ TEST_F(DomainLawyerTest, Merge) {
   EXPECT_STREQ("http://cdn2.com/", mapped);
 
   bool is_proxy = true;
+  GoogleString host_header;
   ASSERT_TRUE(merged.MapOrigin("http://o1.com:8080/a/b/c?d=f", &mapped,
-                               &is_proxy));
+                               &host_header, &is_proxy));
+  EXPECT_STREQ("o1.com:8080", host_header);
+  host_header.clear();
   EXPECT_FALSE(is_proxy);
   EXPECT_STREQ("http://localhost:8080/a/b/c?d=f", mapped);
   ASSERT_TRUE(merged.MapOrigin("http://o2.com:8080/a/b/c?d=f", &mapped,
-                               &is_proxy));
+                               &host_header, &is_proxy));
+  EXPECT_STREQ("o2.com:8080", host_header);
   EXPECT_FALSE(is_proxy);
   EXPECT_STREQ("http://localhost:8080/a/b/c?d=f", mapped);
 
   // The conflict will be silently resolved to prefer the mapping from
   // the domain that got merged, which is domain_laywer_1, overriding
   // what was previously in the target.
-  ASSERT_TRUE(merged.MapOrigin("http://common_src1", &mapped, &is_proxy));
+  ASSERT_TRUE(merged.MapOrigin("http://common_src1", &mapped, &host_header,
+                               &is_proxy));
   EXPECT_STREQ("http://dest1/", mapped);
+  EXPECT_STREQ("common_src1", host_header);
   EXPECT_FALSE(is_proxy);
 
   // Now check the domains that were added.
-  ASSERT_TRUE(merged.MapOrigin("http://common_src2", &mapped, &is_proxy));
+  ASSERT_TRUE(merged.MapOrigin("http://common_src2", &mapped, &host_header,
+                               &is_proxy));
   EXPECT_STREQ("http://dest2/", mapped);
+  EXPECT_STREQ("common_src2", host_header);
   EXPECT_FALSE(is_proxy);
 
-  ASSERT_TRUE(merged.MapOrigin("http://common_src3", &mapped, &is_proxy));
+  ASSERT_TRUE(merged.MapOrigin("http://common_src3", &mapped, &host_header,
+                               &is_proxy));
   EXPECT_STREQ("http://dest4/", mapped);
+  EXPECT_STREQ("common_src3", host_header);
   EXPECT_FALSE(is_proxy);
 
   GoogleString shard;
@@ -1041,9 +1092,10 @@ TEST_F(DomainLawyerTest, Merge) {
   mapped.clear();
   is_proxy = false;
   EXPECT_TRUE(merged.MapOrigin("http://proxy.com/origin/x", &mapped,
-                               &is_proxy));
+                               &host_header, &is_proxy));
   EXPECT_TRUE(is_proxy);
   EXPECT_STREQ("http://origin.com/x", mapped);
+  EXPECT_STREQ("proxy.com", host_header);
 }
 
 TEST_F(DomainLawyerTest, AddMappingFailures) {
@@ -1078,7 +1130,7 @@ TEST_F(DomainLawyerTest, AddMappingFailures) {
   // Sharding.
   EXPECT_TRUE(AddRewriteDomainMapping("foo.com", "bar*.com"));
   EXPECT_TRUE(domain_lawyer_.AddOriginDomainMapping("foo.com", "bar*.com",
-                                                    &message_handler_));
+                                                    "", &message_handler_));
   EXPECT_FALSE(AddShard("foo.com", "bar*.com"));
 
   EXPECT_TRUE(AddShard("foo.com", "bar1.com,bar2.com"));
@@ -1340,9 +1392,9 @@ TEST_F(DomainLawyerTest, WildcardOrder) {
   // come after "abc*.com".
   DomainLawyer second_lawyer, merged_lawyer;
   ASSERT_TRUE(second_lawyer.AddOriginDomainMapping("host3", "*abc*.com",
-                                                   &message_handler_));
+                                                   "", &message_handler_));
   ASSERT_TRUE(second_lawyer.AddOriginDomainMapping(
-      "host1", "abc*.com", &message_handler_));  // duplicate entry.
+      "host1", "abc*.com", "", &message_handler_));  // duplicate entry.
   merged_lawyer.Merge(domain_lawyer_);
   merged_lawyer.Merge(second_lawyer);
   EXPECT_EQ(3, merged_lawyer.num_wildcarded_domains());
@@ -1351,22 +1403,26 @@ TEST_F(DomainLawyerTest, WildcardOrder) {
   // iterating over a std::set will yield the "*" first, as '*' is ascii
   // 42 and 'a' is ascii 97, and the domain-map is over GoogleString.
   bool is_proxy = true;
-  ASSERT_TRUE(merged_lawyer.MapOrigin("http://abc.com/x", &mapped, &is_proxy));
+  GoogleString host_header;
+  ASSERT_TRUE(merged_lawyer.MapOrigin("http://abc.com/x", &mapped,
+                                      &host_header, &is_proxy));
   EXPECT_STREQ("http://host1/x", mapped);
   EXPECT_FALSE(is_proxy);
   is_proxy = true;
-  ASSERT_TRUE(merged_lawyer.MapOrigin("http://xyz.com/x", &mapped, &is_proxy));
+  ASSERT_TRUE(merged_lawyer.MapOrigin("http://xyz.com/x", &mapped,
+                                      &host_header, &is_proxy));
   EXPECT_STREQ("http://host2/x", mapped);
   EXPECT_FALSE(is_proxy);
   is_proxy = true;
-  ASSERT_TRUE(merged_lawyer.MapOrigin("http://xabc.com/x", &mapped, &is_proxy));
+  ASSERT_TRUE(merged_lawyer.MapOrigin("http://xabc.com/x", &mapped,
+                                      &host_header, &is_proxy));
   EXPECT_STREQ("http://host3/x", mapped);
   EXPECT_FALSE(is_proxy);
 }
 
 TEST_F(DomainLawyerTest, ComputeSignatureTest) {
   DomainLawyer first_lawyer, second_lawyer;
-  ASSERT_TRUE(first_lawyer.AddOriginDomainMapping("host1", "*abc*.com",
+  ASSERT_TRUE(first_lawyer.AddOriginDomainMapping("host1", "*abc*.com", "",
                                                   &message_handler_));
 
   ASSERT_TRUE(second_lawyer.AddRewriteDomainMapping("cdn.com",
@@ -1387,7 +1443,7 @@ TEST_F(DomainLawyerTest, ComputeSignatureTest) {
 TEST_F(DomainLawyerTest, ToStringTest) {
   DomainLawyer first_lawyer, second_lawyer;
   EXPECT_TRUE(first_lawyer.AddDomain("static.example.com", &message_handler_));
-  EXPECT_TRUE(first_lawyer.AddOriginDomainMapping("host1", "*abc*.com",
+  EXPECT_TRUE(first_lawyer.AddOriginDomainMapping("host1", "*abc*.com", "",
                                                   &message_handler_));
   EXPECT_STREQ(
       "http://*abc*.com/ Auth OriginDomain:http://host1/\n"
@@ -1416,7 +1472,7 @@ TEST_F(DomainLawyerTest, IsOriginKnownTest) {
   lawyer.AddDomain("a.com:42", &message_handler_);
   lawyer.AddDomain("https://a.com:43", &message_handler_);
   lawyer.AddRewriteDomainMapping("b.com", "c.com", &message_handler_);
-  lawyer.AddOriginDomainMapping("e.com", "d.com", &message_handler_);
+  lawyer.AddOriginDomainMapping("e.com", "d.com", "", &message_handler_);
   lawyer.AddShard("f.com", "s1.f.com,s2.f.com", &message_handler_);
 
   GoogleUrl z_com("http://z.com");
@@ -1461,31 +1517,33 @@ TEST_F(DomainLawyerTest, IsOriginKnownTest) {
 
 TEST_F(DomainLawyerTest, NoAbsoluteUrlPath) {
   DomainLawyer lawyer;
-  lawyer.AddOriginDomainMapping("b.com", "a.com", &message_handler_);
+  lawyer.AddOriginDomainMapping("b.com", "a.com", "", &message_handler_);
 
   GoogleUrl foo("http://a.com/foo");
   GoogleString out;
+  GoogleString host_header;
   bool is_proxy = true;
-  EXPECT_TRUE(lawyer.MapOriginUrl(foo, &out, &is_proxy));
+  EXPECT_TRUE(lawyer.MapOriginUrl(foo, &out, &host_header, &is_proxy));
   EXPECT_STREQ("http://b.com/foo", out);
   EXPECT_FALSE(is_proxy);
 
   // Make sure we don't resolve the path: data:image/jpeg as an absolute URL.
   GoogleUrl data("http://a.com/data:image/jpeg");
   out.clear();
-  EXPECT_TRUE(lawyer.MapOriginUrl(data, &out, &is_proxy));
+  EXPECT_TRUE(lawyer.MapOriginUrl(data, &out, &host_header, &is_proxy));
   EXPECT_STREQ("http://b.com/data:image/jpeg", out);
   EXPECT_FALSE(is_proxy);
 }
 
 TEST_F(DomainLawyerTest, AboutBlank) {
   DomainLawyer lawyer;
-  lawyer.AddOriginDomainMapping("b.com", "a.com", &message_handler_);
+  lawyer.AddOriginDomainMapping("b.com", "a.com", "", &message_handler_);
 
   GoogleUrl foo("about:blank");
   GoogleString out;
+  GoogleString host_header;
   bool is_proxy = true;
-  EXPECT_FALSE(lawyer.MapOriginUrl(foo, &out, &is_proxy));
+  EXPECT_FALSE(lawyer.MapOriginUrl(foo, &out, &host_header, &is_proxy));
 }
 
 }  // namespace net_instaweb

@@ -1114,7 +1114,7 @@ bool RewriteTestBase::AddOriginDomainMapping(StringPiece to_domain,
                                              StringPiece from_domain) {
   bool frozen = options_->ClearSignatureForTesting();
   bool ret = options_->WriteableDomainLawyer()->AddOriginDomainMapping(
-      to_domain, from_domain, message_handler());
+      to_domain, from_domain, "", message_handler());
   if (frozen) {
     server_context()->ComputeSignature(options_);
   }

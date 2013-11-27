@@ -88,8 +88,12 @@ class UrlNamer {
 
   // Resolve the given url to origin url based on the rewrite options
   // and referer information. Returns true if the url is updated.
+  //
+  // "*host_header is set to the Host header to use when fetching the resource
+  // from *request_url.  This is set properly whether or not true is returned.
   virtual bool ResolveToOriginUrl(const RewriteOptions& options,
                                   const StringPiece& referer_url_str,
+                                  GoogleString* host_header,
                                   GoogleUrl* request_url) const;
   const GoogleString& get_proxy_domain() {
     return proxy_domain_;
