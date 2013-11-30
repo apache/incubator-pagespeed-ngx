@@ -1,4 +1,4 @@
-(function(){var pagespeedutils = {sendBeacon:function(beaconUrl, htmlUrl, data) {
+(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlUrl, data) {
   var httpRequest;
   if (window.XMLHttpRequest) {
     httpRequest = new XMLHttpRequest;
@@ -96,7 +96,7 @@ pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
   if (0 != this.btfNodes_.length) {
     for (var data = "oh=" + this.optionsHash_ + "&n=" + this.nonce_, data = data + ("&xp=" + encodeURIComponent(this.btfNodes_[0])), i = 1;i < this.btfNodes_.length;++i) {
       var tmp = "," + encodeURIComponent(this.btfNodes_[i]);
-      if (131072 < data.length + tmp.length) {
+      if (data.length + tmp.length > pagespeedutils.MAX_POST_SIZE) {
         break;
       }
       data += tmp;

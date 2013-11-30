@@ -1435,10 +1435,8 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "URL for beacon callback injected by add_instrumentation.");
 
-  // TODO(jmarantz): igrigorik suggests that 'onload' should be the
-  // default in mobile.
-  //
-  // For mobile, the recommendation is that you prefetch all the
+  // lazyload_images_after_onload_ is especially important for mobile,
+  // where the recommendation is that you prefetch all the
   // necessary assets (burst your data), and then shutoff the radio to
   // preserve battery. Further, if the radio has been idle, and then
   // you scroll, then you'll have to incur the RRC upgrade cost, which
@@ -1451,10 +1449,9 @@ void RewriteOptions::AddProperties() {
   // in radio consuming power for 10s+.  So you incur unnecessary
   // latency, burn battery, etc.
   //
-  // http://developer.android.com/training/efficient-downloads
-  // /efficient-network-access.html#PrefetchData
+  // http://developer.android.com/training/efficient-downloads/efficient-network-access.html#PrefetchData
   AddBaseProperty(
-      false, &RewriteOptions::lazyload_images_after_onload_, "llio",
+      true, &RewriteOptions::lazyload_images_after_onload_, "llio",
       kLazyloadImagesAfterOnload,
       kDirectoryScope,
       "Wait until page onload before loading lazy images");

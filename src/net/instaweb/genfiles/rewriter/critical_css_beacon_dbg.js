@@ -1,4 +1,4 @@
-(function(){var pagespeedutils = {sendBeacon:function(beaconUrl, htmlUrl, data) {
+(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlUrl, data) {
   var httpRequest;
   if (window.XMLHttpRequest) {
     httpRequest = new XMLHttpRequest;
@@ -65,7 +65,7 @@ pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce, s
 pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
   for (var data = "oh=" + this.optionsHash_ + "&n=" + this.nonce_, data = data + "&cs=", i = 0;i < this.criticalSelectors_.length;++i) {
     var tmp = 0 < i ? "," : "", tmp = tmp + encodeURIComponent(this.criticalSelectors_[i]);
-    if (131072 < data.length + tmp.length) {
+    if (data.length + tmp.length > pagespeedutils.MAX_POST_SIZE) {
       break;
     }
     data += tmp;

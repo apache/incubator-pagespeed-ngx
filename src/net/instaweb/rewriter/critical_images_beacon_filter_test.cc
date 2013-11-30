@@ -63,7 +63,7 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     https_mode_ = false;
     // Setup the property cache. The DetermineEnable logic for the
-    // CriticalIMagesBeaconFinder will only inject the beacon if the property
+    // CriticalImagesBeaconFinder will only inject the beacon if the property
     // cache is enabled, since beaconed results are intended to be stored in the
     // pcache.
     PropertyCache* pcache = page_property_cache();
@@ -128,7 +128,7 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
   void VerifyNoInjection() {
     EXPECT_EQ(0, statistics()->GetVariable(
         CriticalImagesBeaconFilter::kCriticalImagesBeaconAddedCount)->Get());
-    EXPECT_TRUE(output_buffer_.find("criticalImagesBeaconInit") ==
+    EXPECT_TRUE(output_buffer_.find("pagespeed.CriticalImages.Run") ==
                 GoogleString::npos);
   }
 
@@ -163,7 +163,7 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     GoogleString options_signature_hash =
         rewrite_driver()->server_context()->hasher()->Hash(
             rewrite_driver()->options()->signature());
-    GoogleString str = "pagespeed.criticalImagesBeaconInit(";
+    GoogleString str = "pagespeed.CriticalImages.Run(";
     StrAppend(&str, "'", beacon_url, "',");
     StrAppend(&str, "'", url, "',");
     StrAppend(&str, "'", options_signature_hash, "',");

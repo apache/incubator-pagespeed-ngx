@@ -76,12 +76,6 @@ pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash,
  * @private
  */
 pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
-  // Define the maximum size of a POST that the server will accept. We shouldn't
-  // send more data than this.
-  // TODO(jud): Factor out this const so that it matches kMaxPostSizeBytes, and
-  // set to a smaller size based on typical critical CSS beacon sizes.
-  /** @const */ var MAX_DATA_LEN = 131072;
-
   var data = 'oh=' + this.optionsHash_ + '&n=' + this.nonce_;
   data += '&cs=';
   for (var i = 0; i < this.criticalSelectors_.length; ++i) {
@@ -90,7 +84,7 @@ pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
     // TODO(jud): Don't truncate the critical selectors list if we exceed
     // MAX_DATA_LEN. Either send a signal back that we exceeded the limit, or
     // send multiple beacons back with all the data.
-    if ((data.length + tmp.length) > MAX_DATA_LEN) {
+    if ((data.length + tmp.length) > pagespeedutils.MAX_POST_SIZE) {
       break;
     }
     data += tmp;

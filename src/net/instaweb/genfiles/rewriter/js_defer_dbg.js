@@ -1,4 +1,4 @@
-(function(){var pagespeedutils = {sendBeacon:function(beaconUrl, htmlUrl, data) {
+(function(){var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlUrl, data) {
   var httpRequest;
   if (window.XMLHttpRequest) {
     httpRequest = new XMLHttpRequest;

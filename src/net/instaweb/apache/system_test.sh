@@ -1746,12 +1746,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
   '--header=X-PSA-Blocking-Rewrite:psatest'
-  check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+  check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
     $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
   OPTIONS_HASH=$(\
-    awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+    awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
     $WGET_DIR/image_resize_using_rendered_dimensions.html)
-  NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+  NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
           $WGET_DIR/image_resize_using_rendered_dimensions.html)
 
   # Send a beacon response using POST indicating that OptPuzzle.jpg is
@@ -1777,14 +1777,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # lazyloaded by default.
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-  check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+  check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
     $WGET_DIR/rewrite_images.html) = 1 ];
   # We need the options hash and nonce to send a critical image beacon, so
   # extract it from injected beacon JS.
   OPTIONS_HASH=$(
-    awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+    awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
       $WGET_DIR/rewrite_images.html)
-  NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+  NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
           $WGET_DIR/rewrite_images.html)
   # Send a beacon response using POST indicating that Puzzle.jpg is a critical
   # image.
@@ -1807,12 +1807,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="$URL?id=4"
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-  check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+  check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
     "$WGET_DIR/rewrite_images.html?id=4") = 1 ];
   OPTIONS_HASH=$(
-    awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+    awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
       "$WGET_DIR/rewrite_images.html?id=4")
-  NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+  NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
           "$WGET_DIR/rewrite_images.html?id=4")
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
   BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
