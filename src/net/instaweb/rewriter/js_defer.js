@@ -104,7 +104,7 @@ deferJsNs.DeferJs = function() {
    * @type {!Object}
    * @private
    */
-  this.eventListernersMap_ = {};
+  this.eventListenersMap_ = {};
 
   /**
    * Valid Mime types for Javascript.
@@ -126,6 +126,16 @@ deferJsNs.DeferJs = function() {
        'text/livescript',
        'text/x-ecmascript',
        'text/x-javascript'];
+
+  /**
+   * We override certain builtin browser functions, such as document.write.
+   * After OnLoad, however, these should go back to behaving as they originally
+   * did.  This flag deals with the case where client JS code in turn overrides
+   * our overridden implementations.
+   * @type boolean
+   * @private
+   */
+  this.overrideDefaultImplementation_ = true;
 
   /**
    * Original document.getElementById handler.
@@ -773,23 +783,10 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
     }
   }
 
-  document.getElementById = this.origGetElementById_;
-
-  if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
-    document.getElementsByTagName = this.origGetElementsByTagName_;
-  }
-
-  document.createElement = this.origCreateElement_;
-
-  document.open = this.origDocOpen_;
-  document.close = this.origDocClose_;
-  document.write = this.origDocWrite_;
-  document.writeln = this.origDocWriteln_;
+  this.overrideDefaultImplementation_ = false;
 
   if (this.lastIncrementalRun_) {
     this.state_ = deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD;
-
-    this.restoreAddEventListeners();
 
     if (this.isLowPriorityDeferJs()) {
       var me = this;
@@ -1063,25 +1060,41 @@ deferJsNs.DeferJs.prototype.setUp = function() {
   document.write = function(x) {
     me.writeHtml(x);
   };
-  document.open = function() {};
-  document.close = function() {};
+  document.open = function() {
+    if (!me.overrideDefaultImplementation_) {
+      me.origDocOpen_.call(document);
+    }
+  };
+  document.close = function() {
+    if (!me.overrideDefaultImplementation_) {
+      me.origDocClose_.call(document);
+    }
+  };
 
   document.getElementById = function(str) {
     me.handlePendingDocumentWrites();
     var node = me.origGetElementById_.call(document, str);
-    return node == null ||
-        node.hasAttribute(me.psaNotProcessed_) ? null : node;
+    return (node == null ||
+            node.hasAttribute(me.psaNotProcessed_)) ? null : node;
   };
 
   if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {
     // TODO(ksimbili): Support IE8
+    // TODO(jmaessen): More to the point, this only sort of works even on modern
+    // browsers; origGetElementsByTagName returns a live list that changes to
+    // reflect DOM changes and querySelectorAll does not (and is known to be
+    // massively slower on many browsers as a result).  We might be able to get
+    // around this using delegates a la document.readyState, but it'll be hard.
     document.getElementsByTagName = function(tagName) {
-      try {
-      return document.querySelectorAll(
-          tagName + ':not([' + me.psaNotProcessed_ + '])');
-      } catch (err) {
-        return me.origGetElementsByTagName_.call(document, tagName);
+      if (me.overrideDefaultImplementation_) {
+        try {
+          return document.querySelectorAll(
+              tagName + ':not([' + me.psaNotProcessed_ + '])');
+        } catch (err) {
+          // Fall through and emulate original behavior
+        }
       }
+      return me.origGetElementsByTagName_.call(document, tagName);
     };
   }
 
@@ -1089,7 +1102,8 @@ deferJsNs.DeferJs.prototype.setUp = function() {
   // Attaching onload & onerror function if script node is created.
   document.createElement = function(str) {
     var elem = me.origCreateElement_.call(document, str);
-    if (str.toLowerCase() == 'script') {
+    if (me.overrideDefaultImplementation_ &&
+        str.toLowerCase() == 'script') {
       me.dynamicInsertedScript_.push(elem);
       me.dynamicInsertedScriptCount_++;
       var onload = function() {
@@ -1122,7 +1136,6 @@ deferJsNs.DeferJs.prototype.execute = function() {
     count = this.getNumScriptsWithNoOnload(this.noDeferAsyncScripts_);
   }
   if (this.noDeferAsyncScriptsCount_ == count) {
-    document.createElement = this.origCreateElement_;
     this.run();
   }
 };
@@ -1312,8 +1325,12 @@ deferJsNs.DeferJs.prototype.handlePendingDocumentWrites = function() {
  * @param {string} html Html to be written before current context elem.
  */
 deferJsNs.DeferJs.prototype.writeHtml = function(html) {
-  this.log('dw: ' + html);
-  this.documentWriteHtml_ += html;
+  if (this.overrideDefaultImplementation_) {
+    this.log('dw: ' + html);
+    this.documentWriteHtml_ += html;
+  } else {
+    this.origDocWrite_.call(document, html);
+  }
 };
 
 /**
@@ -1368,7 +1385,7 @@ deferJsNs.DeferJs.prototype['addAfterDeferRunFunctions'] =
 deferJsNs.DeferJs.prototype.fireEvent = function(evt) {
   this.eventState_ = evt;
   this.log('Firing Event: ' + evt);
-  var eventListeners = this.eventListernersMap_[evt] || [];
+  var eventListeners = this.eventListenersMap_[evt] || [];
   for (var i = 0; i < eventListeners.length; ++i) {
     this.exec(eventListeners[i]);
   }
@@ -1396,35 +1413,22 @@ deferJsNs.DeferJs.prototype.overrideAddEventListeners = function() {
   // override AddEventListeners.
   if (window.addEventListener) {
     document.addEventListener = function(eventName, func, capture) {
-      psaAddEventListener(document, eventName, func, capture,
-                          me.origDocAddEventListener_);
+      psaAddEventListener(document, eventName, func,
+                          me.origDocAddEventListener_, capture);
     };
     window.addEventListener = function(eventName, func, capture) {
-      psaAddEventListener(window, eventName, func, capture,
-                          me.origWindowAddEventListener_);
+      psaAddEventListener(window, eventName, func,
+                          me.origWindowAddEventListener_, capture);
     };
   } else if (window.attachEvent) {
     document.attachEvent = function(eventName, func) {
-      psaAddEventListener(document, eventName, func, undefined,
+      psaAddEventListener(document, eventName, func,
                           me.origDocAttachEvent_);
     };
     window.attachEvent = function(eventName, func) {
-      psaAddEventListener(window, eventName, func, undefined,
+      psaAddEventListener(window, eventName, func,
                           me.origWindowAttachEvent_);
     };
-  }
-};
-
-/**
- * Restore native event registration functions on window and document.
- */
-deferJsNs.DeferJs.prototype.restoreAddEventListeners = function() {
-  if (window.addEventListener) {
-    document.addEventListener = this.origDocAddEventListener_;
-    window.addEventListener = this.origWindowAddEventListener_;
-  } else if (window.attachEvent) {
-    document.attachEvent = this.origDocAttachEvent_;
-    window.attachEvent = this.origWindowAttachEvent_;
   }
 };
 
@@ -1434,15 +1438,27 @@ deferJsNs.DeferJs.prototype.restoreAddEventListeners = function() {
  * event.
  * @param {!string} eventName Name of the event.
  * @param {(Function|EventListener|function())} func Event handler.
- * @param {boolean} opt_capture Capture event.
  * @param {Function} opt_originalAddEventListener Original Add event Listener
- * funciton.
+ * function.
+ * @param {boolean} opt_capture Capture event.
  */
-var psaAddEventListener = function(elem, eventName, func, opt_capture,
-                                   opt_originalAddEventListener) {
+var psaAddEventListener = function(elem, eventName, func,
+                                   opt_originalAddEventListener, opt_capture) {
   var deferJs = pagespeed['deferJs'];
-  if (deferJs.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
-    return;
+  if (deferJs.state_ >= deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD) {
+    // At this point we ought to revert to the original event listener
+    // behavior.
+    if (opt_originalAddEventListener) {
+      opt_originalAddEventListener.call(elem, eventName, func, opt_capture);
+      return;
+    }
+    // Unless there wasn't an event listener provided, in which case we are
+    // calling psaAddEventListener internally and should check whether we have
+    // work to do and fall through if so.  (Note that if we return
+    // unconditionally here we miss event registrations and break pages.)
+    if (deferJs.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
+      return;
+    }
   }
   var deferJsEvent;
   var deferJsEventName;
@@ -1486,10 +1502,10 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
     customEvent['currentTarget'] = elem;
     func.call(elem, customEvent);
   };
-  if (!deferJs.eventListernersMap_[deferJsEvent]) {
-    deferJs.eventListernersMap_[deferJsEvent] = [];
+  if (!deferJs.eventListenersMap_[deferJsEvent]) {
+    deferJs.eventListenersMap_[deferJsEvent] = [];
   }
-  deferJs.eventListernersMap_[deferJsEvent].push(
+  deferJs.eventListenersMap_[deferJsEvent].push(
       eventListenerClosure);
 };
 
@@ -1620,7 +1636,8 @@ deferJsNs.DeferJs.prototype.noDeferCreateElementOverride = function() {
   var me = this;
   document.createElement = function(str) {
     var elem = me.origCreateElement_.call(document, str);
-    if (str.toLowerCase() == 'script') {
+    if (me.overrideDefaultImplementation_ &&
+        str.toLowerCase() == 'script') {
       me.noDeferAsyncScripts_.push(elem);
       me.noDeferAsyncScriptsCount_++;
       var onload = function() {
