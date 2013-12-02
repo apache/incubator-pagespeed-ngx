@@ -791,6 +791,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kDomainRewriteHyperlinks);
   PassLookupOptionByName(RewriteOptions::kDomainShardCount);
   PassLookupOptionByName(RewriteOptions::kDownstreamCachePurgeMethod);
+  PassLookupOptionByName(RewriteOptions::kDownstreamCacheRebeaconingKey);
   PassLookupOptionByName(RewriteOptions::
                          kDownstreamCacheRewrittenPercentageThreshold);
   PassLookupOptionByName(RewriteOptions::kEnableAggressiveRewritersForMobile);

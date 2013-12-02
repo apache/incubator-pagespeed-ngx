@@ -103,6 +103,18 @@
     # send you traffic, then the site receiving the traffic will not
     # know how to serve the rewritten content.
 
+    # If you use downstream caches such as varnish or proxy_cache for caching
+    # HTML, you can configure pagespeed to work with these caches correctly
+    # using the following directives. Note that the values for
+    # ModPagespeedDownstreamCachePurgeLocationPrefix and
+    # ModPagespeedDownstreamCacheRebeaconingKey are deliberately left empty here
+    # in order to force the webmaster to choose appropriate value for these.
+    #
+    # ModPagespeedDownstreamCachePurgeLocationPrefix
+    # ModPagespeedDownstreamCachePurgeMethod PURGE
+    # ModPagespeedDownstreamCacheRewrittenPercentageThreshold 95
+    # ModPagespeedDownstreamCacheRebeaconingKey
+
     # Other defaults (cache sizes and thresholds):
     #
     # ModPagespeedFileCacheSizeKb          102400

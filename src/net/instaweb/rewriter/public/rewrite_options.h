@@ -221,6 +221,7 @@ class RewriteOptions {
   static const char kDomainRewriteHyperlinks[];
   static const char kDomainShardCount[];
   static const char kDownstreamCachePurgeMethod[];
+  static const char kDownstreamCacheRebeaconingKey[];
   static const char kDownstreamCacheRewrittenPercentageThreshold[];
   static const char kEnableAggressiveRewritersForMobile[];
   static const char kEnableBlinkHtmlChangeDetection[];
@@ -1726,6 +1727,16 @@ class RewriteOptions {
   }
   void set_downstream_cache_purge_location_prefix(const StringPiece& p) {
     set_option(p.as_string(), &downstream_cache_purge_location_prefix_);
+  }
+  bool downstream_cache_integration_enabled() const {
+    return !downstream_cache_purge_location_prefix().empty();
+  }
+
+  void set_downstream_cache_rebeaconing_key(const StringPiece& p) {
+      set_option(p.as_string(), &downstream_cache_rebeaconing_key_);
+  }
+  const GoogleString& downstream_cache_rebeaconing_key() const {
+    return downstream_cache_rebeaconing_key_.value();
   }
 
   void set_downstream_cache_rewritten_percentage_threshold(int64 x) {
@@ -3347,6 +3358,10 @@ class RewriteOptions {
 
   // The host:port/path prefix to be used for purging the cached responses.
   Option<GoogleString> downstream_cache_purge_location_prefix_;
+
+  // The webmaster-provided key used to authenticate rebeaconing requests from
+  // downstream caches.
+  Option<GoogleString> downstream_cache_rebeaconing_key_;
 
   // Threshold for amount of rewriting finished before the response was served
   // out (expressed as a percentage) and simultaneously stored in the downstream

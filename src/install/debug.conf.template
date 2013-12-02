@@ -654,6 +654,28 @@ ModPagespeedUsePerVHostStatistics on
   </Location>
 </VirtualHost>
 
+# Setup a vhost with the critical image beacon and lazyload filter enabled to
+# make sure that downstream caches and rebeaconing interact correctly.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName downstreamcacherebeacon.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters lazyload_images
+  ModPagespeedCriticalImagesBeaconEnabled true
+
+  # Enable the downstream caching feature and specify a rebeaconing key.
+  ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020"
+  ModPagespeedDownstreamCacheRebeaconingKey random_rebeaconing_key
+
+  # add_instrumentation tests beacon handling with no handler specified, while
+  # here we test it with a handler (that should do nothing).
+  <Location /mod_pagespeed_beacon>
+    SetHandler mod_pagespeed_beacon
+  </Location>
+</VirtualHost>
+
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName renderedimagebeacon.example.com
 

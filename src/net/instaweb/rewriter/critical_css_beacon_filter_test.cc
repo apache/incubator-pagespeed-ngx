@@ -87,6 +87,7 @@ class CriticalCssBeaconFilterTestBase : public RewriteTestBase {
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     factory()->set_use_beacon_results_in_filters(true);
     rewrite_driver()->set_property_page(NewMockPage(kTestDomain));
+    SetDummyRequestHeaders();
     // Set up pcache for page.
     const PropertyCache::Cohort* cohort =
         SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);

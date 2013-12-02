@@ -108,6 +108,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     rewrite_driver()->set_property_page(page_);
     pcache_->Read(page_);
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
+    SetDummyRequestHeaders();
   }
 
   void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {

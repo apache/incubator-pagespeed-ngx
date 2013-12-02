@@ -155,6 +155,15 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // on the main rewrite driver.
   void SetBaseUrlForFetch(const StringPiece& url);
 
+  // Setup dummy empty RequestHeaders object for the driver.
+  void SetDummyRequestHeaders();
+
+  // Enable downstream caching feature and set up the downstream cache
+  // rebeaconing key.
+  void SetDownstreamCacheDirectives(
+    StringPiece downstream_cache_location,
+    StringPiece rebeaconing_key);
+
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
   // Returns the main factory Timer*, which can be used for calling NowUs and

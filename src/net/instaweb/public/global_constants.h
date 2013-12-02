@@ -59,6 +59,14 @@ const char kPsaPurgeRequest[] = "X-PSA-Purge-Request";
 // the cache's fragmentation logic.
 const char kPsaCapabilityList[] = "PS-CapabilityList";
 
+// Header used to indicate that this page should be instrumented for beaconing
+// back information for critical css or image filters. When
+// beacon-dependent-optimizations and downstream caching are both enabled on a
+// server, the caching layer should be configured to send a certain percentage
+// of the traffic to the backend server with this header specified, so that
+// beacon data can be obtained.
+const char kPsaShouldBeacon[] = "PS-ShouldBeacon";
+
 // Noscript element that redirects to PageSpeed=noscript.  This is applied
 // when a filter that inserts custom javascript is enabled.
 const char kNoScriptRedirectFormatter[] =

@@ -82,6 +82,7 @@
 #include "pagespeed/kernel/base/base64_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 
@@ -108,7 +109,6 @@ class TestRewriteOptionsManager : public RewriteOptionsManager {
 }  // namespace
 
 class MessageHandler;
-class RequestHeaders;
 
 const char RewriteTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
 
@@ -246,6 +246,21 @@ void RewriteTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
 
 void RewriteTestBase::SetBaseUrlForFetch(const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(url);
+}
+
+void RewriteTestBase::SetDummyRequestHeaders() {
+  RequestHeaders request_headers;
+  rewrite_driver()->SetRequestHeaders(request_headers);
+}
+
+void RewriteTestBase::SetDownstreamCacheDirectives(
+    StringPiece downstream_cache_location,
+    StringPiece rebeaconing_key) {
+  options_->ClearSignatureForTesting();
+  options_->set_downstream_cache_purge_location_prefix(
+      downstream_cache_location);
+  options_->set_downstream_cache_rebeaconing_key(rebeaconing_key);
+  options_->ComputeSignature();
 }
 
 ResourcePtr RewriteTestBase::CreateResource(const StringPiece& base,

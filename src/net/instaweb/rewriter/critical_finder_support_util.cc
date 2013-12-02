@@ -24,8 +24,12 @@
 #include <utility>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -319,14 +323,40 @@ void WriteCriticalKeysToPropertyCache(
   }
 }
 
-void PrepareForBeaconInsertion(
+bool DoesHeaderRequestBeaconing(
+    bool downstream_cache_integration_enabled,
+    StringPiece downstream_cache_rebeaconing_key,
+    const RequestHeaders* req_headers,
+    MessageHandler* message_handler) {
+  if (!downstream_cache_integration_enabled) {
+    // Headers that force rebeaconing are only allowed to come from downstream
+    // caches.
+    return false;
+  }
+  if (downstream_cache_rebeaconing_key.empty()) {
+    message_handler->Message(kWarning, "You seem to have downstream caching "
+        "configured on your server. DownstreamCacheRebeaconingKey should also "
+        "be set for this to work correctly");
+    return false;
+  }
+  StringPiece beacon_header_value = req_headers->Lookup1(kPsaShouldBeacon);
+  return beacon_header_value != NULL &&
+      beacon_header_value == downstream_cache_rebeaconing_key;
+}
+
+void PrepareForBeaconInsertionHelper(
     const StringSet& keys, CriticalKeys* proto, int support_interval,
-    NonceGenerator* nonce_generator, Timer* timer,
+    NonceGenerator* nonce_generator, RewriteDriver* driver,
     BeaconMetadata* result) {
   result->status = kDoNotBeacon;
   bool changed = false;
-  int64 now_ms = timer->NowMs();
-  if (now_ms >= proto->next_beacon_timestamp_ms()) {
+  int64 now_ms = driver->timer()->NowMs();
+  if (DoesHeaderRequestBeaconing(
+          driver->options()->downstream_cache_integration_enabled(),
+          driver->options()->downstream_cache_rebeaconing_key(),
+          driver->request_headers(),
+          driver->message_handler()) ||
+      now_ms >= proto->next_beacon_timestamp_ms()) {
     // TODO(jmaessen): Add noise to inter-beacon interval.  How?
     // Currently first visit to page after next_beacon_timestamp_ms will beacon.
     proto->set_next_beacon_timestamp_ms(now_ms + kMinBeaconIntervalMs);
@@ -357,6 +387,9 @@ void PrepareForBeaconInsertion(
   }
   if (changed) {
     AddNonceToCriticalSelectors(now_ms, nonce_generator, proto, &result->nonce);
+    // TODO(anupama): Whenever we decide to beacon (with or without nonce), we
+    // should serve out no-cache Cache-Control headers if downstream caching is
+    // enabled.
     result->status = kBeaconWithNonce;
   }
 }

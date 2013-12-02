@@ -167,8 +167,8 @@ BeaconMetadata CriticalSelectorFinder::PrepareForBeaconInsertion(
   // Avoid memory copy by capturing computed_nonce using RVA and swapping the
   // two strings.
   CriticalKeys& proto = driver->critical_selector_info()->proto;
-  net_instaweb::PrepareForBeaconInsertion(
-      selectors, &proto, SupportInterval(), nonce_generator_, driver->timer(),
+  net_instaweb::PrepareForBeaconInsertionHelper(
+      selectors, &proto, SupportInterval(), nonce_generator_, driver,
       &result);
   if (result.status != kDoNotBeacon) {
     DCHECK(cohort_ != NULL);

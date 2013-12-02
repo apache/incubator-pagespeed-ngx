@@ -91,6 +91,8 @@ const char RewriteOptions::kDomainRewriteHyperlinks[] =
 const char RewriteOptions::kDomainShardCount[] = "DomainShardCount";
 const char RewriteOptions::kDownstreamCachePurgeMethod[] =
     "DownstreamCachePurgeMethod";
+const char RewriteOptions::kDownstreamCacheRebeaconingKey[] =
+    "DownstreamCacheRebeaconingKey";
 const char RewriteOptions::kDownstreamCacheRewrittenPercentageThreshold[] =
     "DownstreamCacheRewrittenPercentageThreshold";
 const char RewriteOptions::kEnableAggressiveRewritersForMobile[] =
@@ -1807,6 +1809,12 @@ void RewriteOptions::AddProperties() {
       kDownstreamCachePurgeMethod,
       kDirectoryScope,
       "Method to be used for purging responses from the downstream cache");
+  AddBaseProperty(
+      "", &RewriteOptions::downstream_cache_rebeaconing_key_, "dcrk",
+      kDownstreamCacheRebeaconingKey, kDirectoryScope,
+      "The key used to authenticate rebeaconing requests from downstream "
+      "caches. The value specified for this key in the pagespeed server "
+      "config should be used in the caching layer configuration also.");
   AddBaseProperty(
       kDefaultDownstreamCacheRewrittenPercentageThreshold,
       &RewriteOptions::downstream_cache_rewritten_percentage_threshold_,

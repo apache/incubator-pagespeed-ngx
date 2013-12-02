@@ -1767,6 +1767,54 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     fetch_until -save -recursive $URL \
     'fgrep -c 150x100xOptPuzzle.jpg.pagespeed.ic.' 1
 
+  # TODO(anupama): Currently, the below tests for downstream caching and
+  # rebeaconing interaction will pass incorrectly depending on whether the
+  # time interval between the wgets is either < or > 5s (kMinBeaconIntervalMs)
+  # Check to see if there is a better way to test this.
+
+  # Verify that downstream caches and rebeaconing interact correctly for images.
+  WGET_ARGS=""
+  start_test lazyload_images,rewrite_images with critical images beacon
+  HOST_NAME="http://downstreamcacherebeacon.example.com"
+  URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
+  # There are 3 images on rewrite_images.html. Check that they are all
+  # lazyloaded by default.
+  http_proxy=$SECONDARY_HOSTNAME\
+    fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+  check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
+    $WGET_DIR/rewrite_images.html) = 1 ];
+  # An immediately issued wget does not result in instrumentation if the
+  # correct PS-ShouldBeacon header is not present.
+  OUT1=$(http_proxy=$SECONDARY_HOSTNAME\
+            $WGET_DUMP $WGET_ARGS\
+            --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
+  # An immediately issued wget results in instrumentation if the PS-ShouldBeacon
+  # header has the correct key.
+  OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
+            $WGET_DUMP $WGET_ARGS\
+            --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
+  check_not_from "$OUT1" egrep -q "pagespeed\.CriticalImages\.Run"
+  check_from "$OUT2" egrep -q "pagespeed\.CriticalImages\.Run"
+
+  # Verify that downstream caches and rebeaconing interact correctly for css.
+  test_filter prioritize_critical_css
+  URL="$HOST_NAME/mod_pagespeed_example/prioritize_critical_css.html"
+  # Once candidate selectors are ready, we get an instrumented page.
+  http_proxy=$SECONDARY_HOSTNAME\
+      fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+  # An immediately issued wget does not result in instrumentation if the
+  # correct PS-ShouldBeacon header is not present.
+  OUT1=$(http_proxy=$SECONDARY_HOSTNAME\
+            $WGET_DUMP $WGET_ARGS\
+            --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
+  # An immediately issued wget results in instrumentation if the PS-ShouldBeacon
+  # header has the correct key.
+  OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
+             $WGET_DUMP $WGET_ARGS\
+             --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
+  check_not_from "$OUT1" egrep -q "pagespeed.criticalCssBeaconInit"
+  check_from "$OUT2" egrep -q "pagespeed.criticalCssBeaconInit"
+
   # Verify that we can send a critical image beacon and that lazyload_images
   # does not try to lazyload the critical images.
   WGET_ARGS=""
