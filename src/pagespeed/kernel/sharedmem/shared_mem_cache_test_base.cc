@@ -18,6 +18,8 @@
 
 #include <unistd.h>
 #include <cstddef>                     // for size_t
+#include <map>
+#include <utility>
 
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/shared_string.h"
@@ -25,6 +27,7 @@
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_cache.h"
+#include "pagespeed/kernel/sharedmem/shared_mem_cache_snapshot.pb.h"
 #include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
@@ -82,6 +85,12 @@ SharedMemCacheTestBase::MakeCache() {
 void SharedMemCacheTestBase::TearDown() {
   cache_->GlobalCleanup(shmem_runtime_.get(), kSegment, &handler_);
   CacheTestBase::TearDown();
+}
+
+void SharedMemCacheTestBase::ResetCache() {
+  cache_->GlobalCleanup(shmem_runtime_.get(), kSegment, &handler_);
+  cache_.reset(MakeCache());
+  EXPECT_TRUE(cache_->Initialize());
 }
 
 bool SharedMemCacheTestBase::CreateChild(TestMethod method) {
@@ -278,6 +287,93 @@ void SharedMemCacheTestBase::TestEvict() {
   }
 
   small_cache->GlobalCleanup(shmem_runtime_.get(), kAltSegment, &handler_);
+}
+
+void SharedMemCacheTestBase::CheckDumpsEqual(
+    const SharedMemCacheDump& a, const SharedMemCacheDump& b,
+    const char* test_label) {
+  ASSERT_EQ(a.entry_size(), b.entry_size()) << test_label;
+
+  for (int i = 0; i < a.entry_size(); ++i) {
+    EXPECT_EQ(a.entry(i).value(), b.entry(i).value()) << test_label;
+    EXPECT_EQ(a.entry(i).raw_key(), b.entry(i).raw_key()) << test_label;
+    EXPECT_EQ(a.entry(i).last_use_timestamp_ms(),
+              b.entry(i).last_use_timestamp_ms()) << test_label;
+  }
+}
+
+void SharedMemCacheTestBase::TestSnapshot() {
+  const int kEntries = 10;
+  // Put in 10 values: key0 ... key9 set to val0 ... val9, each with timestamp
+  // corresponding to their number.
+  for (int i = 0; i < kEntries; ++i) {
+    CheckPut(StrCat("key", IntegerToString(i)),
+             StrCat("val", IntegerToString(i)));
+    timer_.AdvanceMs(1);
+  }
+
+  SharedMemCacheDump dump;
+  for (int i = 0; i < kSectors; ++i) {
+    Cache()->AddSectorToSnapshot(i, &dump);
+  }
+
+  // Make sure we can still access the cache. Also move the time forward, so we
+  // can check timestamps are using old values after restoring the snapshot.
+  for (int i = 0; i < kEntries; ++i) {
+    CheckGet(StrCat("key", IntegerToString(i)),
+             StrCat("val", IntegerToString(i)));
+    timer_.AdvanceMs(1);
+  }
+
+  // Now check the dump contents. We can't inspect the keys directly, but
+  // we can at least check values and timestamps.
+  std::map<GoogleString, int64> value_to_timestamp;
+  EXPECT_EQ(kEntries, dump.entry_size());
+  for (int i = 0; i < dump.entry_size(); ++i) {
+    const SharedMemCacheDumpEntry& entry = dump.entry(i);
+    value_to_timestamp[entry.value()] = entry.last_use_timestamp_ms();
+  }
+
+  // Make sure size is right (e.g. no dupes).
+  EXPECT_EQ(static_cast<size_t>(kEntries), value_to_timestamp.size());
+
+  // Now see that the correspondence is right.
+  for (std::map<GoogleString, int64>::iterator i = value_to_timestamp.begin();
+       i != value_to_timestamp.end(); ++i) {
+    EXPECT_EQ(i->first, StrCat("val", Integer64ToString(i->second)));
+  }
+
+  // Now round-trip to new object via string serialization
+  GoogleString encoded_dump;
+  Cache()->MarshalSnapshot(dump, &encoded_dump);
+  SharedMemCacheDump decoded_dump;
+  Cache()->DemarshalSnapshot(encoded_dump, &decoded_dump);
+
+  CheckDumpsEqual(dump, decoded_dump, "dump vs decoded_dump");
+
+  // Now make a new cache, which should initially be empty.
+  ResetCache();
+  for (int i = 0; i < kEntries; ++i) {
+    CheckNotFound(StrCat("key", IntegerToString(i)).c_str());
+  }
+
+  // Restore it from decoded_dump
+  Cache()->RestoreSnapshot(decoded_dump);
+
+  // Save yet another dump. This is basically the best we can do to make sure
+  // that the timestamps got restored properly.
+  SharedMemCacheDump roundtrip_dump;
+  for (int i = 0; i < kSectors; ++i) {
+    Cache()->AddSectorToSnapshot(i, &roundtrip_dump);
+  }
+
+  CheckDumpsEqual(dump, roundtrip_dump, "dump vs. roundtrip_dump");
+
+  // Check to make sure all values are OK.
+  for (int i = 0; i < kEntries; ++i) {
+    CheckGet(StrCat("key", IntegerToString(i)),
+             StrCat("val", IntegerToString(i)));
+  }
 }
 
 void SharedMemCacheTestBase::CheckDelete(const char* key) {

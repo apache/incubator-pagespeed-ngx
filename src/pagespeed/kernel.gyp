@@ -173,6 +173,7 @@
       ],
       'dependencies': [
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
+        'pagespeed_sharedmem',
         'util',
       ],
     },
@@ -281,11 +282,6 @@
         '<(instaweb_root)',
         '<(DEPTH)',
       ],
-      'all_dependent_settings': {
-        'include_dirs': [
-          '<(DEPTH)/third_party/protobuf/src',
-        ],
-      },
     },
     {
       'target_name': 'pagespeed_http_gperf',
@@ -435,6 +431,19 @@
       ],
     },
     {
+      'target_name': 'pagespeed_sharedmem_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/kernel/sharedmem',
+      },
+      'sources': [
+        'kernel/sharedmem/shared_mem_cache_snapshot.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/shared_mem_cache_snapshot.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'pagespeed_sharedmem',
       'type': '<(library)',
       'sources': [
@@ -448,6 +457,7 @@
       ],
       'dependencies': [
         'pagespeed_base',
+        'pagespeed_sharedmem_pb',
       ],
       'include_dirs': [
         '<(DEPTH)',
