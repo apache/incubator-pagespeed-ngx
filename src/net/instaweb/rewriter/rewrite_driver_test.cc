@@ -1371,6 +1371,21 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
   ClearStats();
 }
 
+TEST_F(InPlaceTest, InPlaceCssDebug) {
+  // Regression test: ipro + debug would crash when a debug message was
+  // produced.
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kFlattenCssImports);
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  GoogleString url = "http://example.com/foo.css";
+  SetResponseWithDefaultHeaders(url, kContentTypeCss,
+                                "@import \"weird://foo\"; .a { color: red; }",
+                                100);
+
+  EXPECT_TRUE(TryFetchInPlaceResource(url, true /* proxy_mode */));
+}
+
 TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
   AddFilter(RewriteOptions::kRewriteCss);
 

@@ -240,6 +240,8 @@ void CssFilter::Context::Render() {
     return;
   }
 
+  DCHECK(has_parent() || (rewrite_element_ != NULL));
+
   const CachedResult& result = *output_partition(0);
   if (result.optimizable()) {
     // Note: We take care of rewriting external resource URLs in the normal
@@ -263,6 +265,7 @@ void CssFilter::Context::Render() {
     // for each one (iff the original element hasn't been flushed yet).
     if (result.debug_message_size() > 0 &&
         driver_->DebugMode() &&
+        rewrite_element_ != NULL /* not in IPRO */ &&
         driver_->IsRewritable(rewrite_element_)) {
       HtmlNode* preceding_node = rewrite_element_;
       for (int i = 0; i < result.debug_message_size(); ++i) {
