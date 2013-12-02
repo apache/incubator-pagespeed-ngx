@@ -204,6 +204,9 @@ class DomainLawyer::Domain {
     if (rewrite_domain_ != NULL) {
       StrAppend(&signature, "R:", rewrite_domain_->name(), "_");
     }
+    if (!host_header_.empty()) {
+      StrAppend(&signature, "H:", host_header_, "|");
+    }
     if (origin_domain_ != NULL) {
       StrAppend(&signature,
                 origin_domain_->is_proxy_ ? "P:" : "O:",
@@ -243,6 +246,10 @@ class DomainLawyer::Domain {
         StrAppend(&output, (i == 0 ? "" : ", "), shards_[i]->name());
       }
       StrAppend(&output, "}");
+    }
+
+    if (!host_header_.empty()) {
+      StrAppend(&output, " HostHeader:", host_header_);
     }
 
     return output;
