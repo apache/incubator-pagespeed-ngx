@@ -260,21 +260,23 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
   // Lookup the map for the fetch info associated with the given host. Note that
   // it would have been nice to avoid acquiring the mutex for user-facing
   // requests, but we need to lookup the fetch info in order to update the
-  // number of outgoing requests.
-  {
-    ScopedMutex lock(mutex_.get());
-    HostFetchInfoMap::iterator iter = fetch_info_map_.find(host);
-    if (iter != fetch_info_map_.end()) {
-      fetch_info_ptr = *iter->second;
-    } else {
-      // Insert a new entry if there wasn't one already.
-      HostFetchInfoPtr* new_fetch_info_ptr = new HostFetchInfoPtr(
-          new HostFetchInfo(host, per_host_outgoing_request_threshold_,
-                            per_host_queued_request_threshold_,
-                            thread_system_->NewMutex()));
-      fetch_info_ptr = *new_fetch_info_ptr;
-      fetch_info_map_[host] = new_fetch_info_ptr;
-    }
+  // number of outgoing requests. The mutex must also be held until we update
+  // the pending request counts, since otherwise we may race against deletion
+  // of the map entry and HostFetchInfo in a call to DeleteFetchInfoIfPossible
+  // from a completion of a queued fetch.
+  mutex_->Lock();
+
+  HostFetchInfoMap::iterator iter = fetch_info_map_.find(host);
+  if (iter != fetch_info_map_.end()) {
+    fetch_info_ptr = *iter->second;
+  } else {
+    // Insert a new entry if there wasn't one already.
+    HostFetchInfoPtr* new_fetch_info_ptr = new HostFetchInfoPtr(
+        new HostFetchInfo(host, per_host_outgoing_request_threshold_,
+                          per_host_queued_request_threshold_,
+                          thread_system_->NewMutex()));
+    fetch_info_ptr = *new_fetch_info_ptr;
+    fetch_info_map_[host] = new_fetch_info_ptr;
   }
 
   if (!fetch->IsBackgroundFetch() ||
@@ -285,11 +287,13 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
       // Increment the count if the request is not a background fetch.
       fetch_info_ptr->increment_num_outbound_fetches();
     }
+    mutex_->Unlock();
     CustomFetch* wrapper_fetch = new CustomFetch(fetch_info_ptr, fetch, this);
     return fetcher->Fetch(url, message_handler, wrapper_fetch);
   } else if (current_global_fetch_queue_size_->Get() < max_global_queue_size_ &&
              fetch_info_ptr->EnqueueFetchIfWithinThreshold(
                  url, fetcher, message_handler, fetch)) {
+    mutex_->Unlock();
     // If the number of globally queued up fetches is within the threshold and
     // the number of queued requests for this host is less than the threshold,
     // push it to the back of the per-host queue.
@@ -297,6 +301,8 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
     queued_fetch_count_->IncBy(1);
     return;
   }
+
+  mutex_->Unlock();
 
   dropped_fetch_count_->IncBy(1);
   message_handler->Message(kInfo, "Dropping request for %s", url.c_str());
