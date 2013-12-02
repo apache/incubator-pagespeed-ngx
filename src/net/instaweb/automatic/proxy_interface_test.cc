@@ -588,49 +588,6 @@ TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedUrls) {
   EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
 }
 
-TEST_F(ProxyInterfaceTest, RewriteUrlsEarly) {
-  GoogleString text;
-  ResponseHeaders response_headers;
-  response_headers.SetStatusAndReason(HttpStatus::kOK);
-  NullMessageHandler handler;
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "index.html"),
-                                response_headers,
-                                "<html></html>");
-  scoped_ptr<RewriteOptions> custom_options(
-      server_context()->global_options()->Clone());
-  custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "test.com", "pagespeed.test.com/test.com", "", &handler);
-  custom_options->set_rewrite_request_urls_early(true);
-  SetRewriteOptions(custom_options.get());
-  FetchFromProxy("http://pagespeed.test.com/test.com/index.html", true,
-                 &text, &response_headers);
-  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
-  EXPECT_EQ("<html></html>", text);
-}
-
-TEST_F(ProxyInterfaceTest, RewriteUrlsEarlyUsingReferer) {
-  GoogleString text;
-  ResponseHeaders response_headers;
-  RequestHeaders request_headers;
-  response_headers.SetStatusAndReason(HttpStatus::kOK);
-  NullMessageHandler handler;
-  mock_url_fetcher_.SetResponse(StrCat(kTestDomain, "index.html"),
-                                response_headers,
-                                "<html></html>");
-  scoped_ptr<RewriteOptions> custom_options(
-      server_context()->global_options()->Clone());
-  custom_options->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "test.com", "pagespeed.test.com/test.com", "", &handler);
-  custom_options->set_rewrite_request_urls_early(true);
-  SetRewriteOptions(custom_options.get());
-  request_headers.Replace(HttpAttributes::kReferer,
-                          "http://pagespeed.test.com/test.com/");
-  FetchFromProxy("http://pagespeed.test.com/index.html", request_headers, true,
-                 &text, &response_headers);
-  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
-  EXPECT_EQ("<html></html>", text);
-}
-
 TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedHeaders) {
   GoogleString text;
   RequestHeaders request_headers;

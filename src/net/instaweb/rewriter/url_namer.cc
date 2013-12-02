@@ -77,47 +77,4 @@ bool UrlNamer::IsAuthorized(const GoogleUrl& request_url,
   return lawyer->IsDomainAuthorized(invalid_request, request_url);
 }
 
-bool UrlNamer::ResolveToOriginUrl(const RewriteOptions& options,
-                                  const StringPiece& referer_url_str,
-                                  GoogleString* host_header,
-                                  GoogleUrl* url) const {
-  if (!url->IsWebValid() || IsProxyEncoded(*url)) {
-    return false;
-  }
-
-  const DomainLawyer* domain_lawyer = options.domain_lawyer();
-  GoogleString referer_origin_url;
-  GoogleString origin_url_str;
-  bool is_proxy = false;
-  // Resolve request url to origin url.
-  if (domain_lawyer->MapOriginUrl(*url, &origin_url_str, host_header,
-                                  &is_proxy) &&
-      url->Spec() != origin_url_str) {
-    GoogleUrl temp_url(origin_url_str);
-    url->Swap(&temp_url);
-    return true;
-  } else {
-    // Find the origin url for the referer.
-    GoogleUrl referer_url(referer_url_str);
-    GoogleString referer_host_header;
-    if (domain_lawyer->MapOriginUrl(
-            referer_url, &referer_origin_url, &referer_host_header,
-            &is_proxy) &&
-        referer_url_str != referer_origin_url) {
-      // Referer has a origin url, resolve the request path w.r.t
-      // to origin domain of the referer. This is needed as we are
-      // rewriting request urls early, js generated urls might break otherwise.
-      GoogleUrl temp_url(referer_origin_url);
-      GoogleUrl final_url(temp_url,
-          StrCat(url->PathAndLeaf(), url->AllAfterQuery()));
-      if (final_url.IsWebValid()) {
-        *host_header = referer_host_header;
-        url->Swap(&final_url);
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 }  // namespace net_instaweb

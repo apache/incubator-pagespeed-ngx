@@ -890,7 +890,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kRewriteDeadlineMs);
   PassLookupOptionByName(RewriteOptions::kRewriteLevel);
   PassLookupOptionByName(RewriteOptions::kRewriteRandomDropPercentage);
-  PassLookupOptionByName(RewriteOptions::kRewriteRequestUrlsEarly);
   PassLookupOptionByName(RewriteOptions::kRewriteUncacheableResources);
   PassLookupOptionByName(RewriteOptions::kRunningExperiment);
   PassLookupOptionByName(RewriteOptions::kServeGhostClickBusterWithSplitHtml);

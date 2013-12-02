@@ -312,7 +312,6 @@ class RewriteOptions {
   static const char kRewriteDeadlineMs[];
   static const char kRewriteLevel[];
   static const char kRewriteRandomDropPercentage[];
-  static const char kRewriteRequestUrlsEarly[];
   static const char kRewriteUncacheableResources[];
   static const char kRunningExperiment[];
   static const char kServeGhostClickBusterWithSplitHtml[];
@@ -1699,13 +1698,6 @@ class RewriteOptions {
   }
   void set_js_preserve_urls(bool x) {
     set_option(x, &js_preserve_urls_);
-  }
-
-  bool rewrite_request_urls_early() const {
-    return rewrite_request_urls_early_.value();
-  }
-  void set_rewrite_request_urls_early(bool x) {
-    set_option(x, &rewrite_request_urls_early_);
   }
 
   void set_metadata_cache_staleness_threshold_ms(int64 x) {
@@ -3095,10 +3087,6 @@ class RewriteOptions {
   Option<bool> css_preserve_urls_;
   Option<bool> js_preserve_urls_;
   Option<bool> image_preserve_urls_;
-
-  // Option to rewrite the request to origin url before we start processing
-  // the request.
-  Option<bool> rewrite_request_urls_early_;
 
   Option<int64> image_inline_max_bytes_;
   Option<int64> js_inline_max_bytes_;

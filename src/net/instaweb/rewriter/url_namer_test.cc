@@ -26,8 +26,8 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/null_message_handler.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -58,81 +58,6 @@ TEST_F(UrlNamerTest, UrlNamerEncoding) {
   EXPECT_EQ(Encode(kRewriteDomain, "cf", "0", "file.css", "css"),
             url_namer.Encode(options(), *resource.get(), UrlNamer::kUnsharded))
       << "without sharding";
-}
-
-TEST_F(UrlNamerTest, ResolveToOriginUrlWithoutReferer) {
-  UrlNamer url_namer;
-  // There is no origin mappings so nothings will get updated.
-  GoogleUrl url("http://www1.test.com/index.html");
-  StringPiece referer;
-  GoogleString host_header;
-  EXPECT_FALSE(url_namer.ResolveToOriginUrl(*options(), referer,
-                                            &host_header, &url));
-  EXPECT_STREQ("www1.test.com", host_header);
-
-  NullMessageHandler handler;
-  options()->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "www.test.com", "www1.test.com/www.test.com", "" /* host_header */,
-      &handler);
-
-  EXPECT_FALSE(url_namer.ResolveToOriginUrl(*options(), referer,
-                                            &host_header, &url));
-  EXPECT_STREQ("www1.test.com", host_header);
-  host_header.clear();
-
-  url.Reset("http://www1.test.com/www.test.com/index.html");
-  EXPECT_TRUE(url_namer.ResolveToOriginUrl(*options(), referer,
-                                           &host_header, &url));
-  EXPECT_EQ("http://www.test.com/index.html", url.Spec());
-  EXPECT_STREQ("www1.test.com", host_header);
-  host_header.clear();
-
-  url.Reset("http://www1.test.com/img/index.html");
-  EXPECT_FALSE(url_namer.ResolveToOriginUrl(*options(), referer, &host_header,
-                                            &url));
-  EXPECT_STREQ("www1.test.com", host_header);
-}
-
-TEST_F(UrlNamerTest, ResolveToOriginUrl) {
-  UrlNamer url_namer;
-  // There is no origin mappings so nothings will get updated.
-  GoogleUrl url("http://www1.test.com/index.html");
-  StringPiece referer;
-  GoogleString host_header;
-  referer = "http://www1.test.com/www.test.com/img/";
-  EXPECT_FALSE(url_namer.ResolveToOriginUrl(*options(), referer, &host_header,
-                                            &url));
-  EXPECT_STREQ("www1.test.com", host_header);
-  host_header.clear();
-
-  NullMessageHandler handler;
-  options()->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "www.test.com", "www1.test.com/www.test.com", "" /* host_header */,
-      &handler);
-
-  EXPECT_TRUE(url_namer.ResolveToOriginUrl(*options(), referer, &host_header,
-                                           &url));
-  EXPECT_EQ("http://www.test.com/index.html", url.Spec());
-  EXPECT_STREQ("www1.test.com", host_header);
-  host_header.clear();
-
-  // There is not origin rule for "www1.test.com/m.test.com", so referer is
-  // used for determining origin domain.
-  url.Reset("http://www1.test.com/m.test.com/index.html");
-  EXPECT_TRUE(url_namer.ResolveToOriginUrl(*options(), referer,
-                                           &host_header, &url));
-  EXPECT_EQ("http://www.test.com/m.test.com/index.html", url.Spec());
-  EXPECT_STREQ("www1.test.com", host_header);
-  host_header.clear();
-
-  // If request url has origin rule, then referer origin rule is ignored.
-  options()->WriteableDomainLawyer()->AddOriginDomainMapping(
-      "m.test.com", "www1.test.com/m.test.com", "" /* host_header */, &handler);
-  url.Reset("http://www1.test.com/m.test.com/index.html");
-  EXPECT_TRUE(url_namer.ResolveToOriginUrl(*options(), referer,
-                                           &host_header, &url));
-  EXPECT_EQ("http://m.test.com/index.html", url.Spec());
-  EXPECT_STREQ("www1.test.com", host_header);
 }
 
 }  // namespace net_instaweb

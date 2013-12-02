@@ -38,7 +38,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -259,20 +258,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
   if (ServerContext::ScanSplitHtmlRequest(
       async_fetch->request_context(), options, &url_string)) {
     request_url->Reset(url_string);
-  }
-
-  if (options != NULL && options->rewrite_request_urls_early()) {
-    const UrlNamer* url_namer = server_context_->url_namer();
-    StringPiece referer(async_fetch->request_headers()->Lookup1(
-        HttpAttributes::kReferer));
-    GoogleString host_header;
-    if (url_namer->ResolveToOriginUrl(*options, referer, &host_header,
-                                      request_url)) {
-      // Update the headers accordingly if the request url changes.
-      async_fetch->request_headers()->Replace(
-          HttpAttributes::kHost, host_header);
-      request_url->Spec().CopyToString(&url_string);
-    }
   }
 
   // Update request_headers.
