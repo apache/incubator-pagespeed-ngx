@@ -69,6 +69,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 
@@ -1296,8 +1297,9 @@ bool ps_set_experiment_state_and_cookie(ngx_http_request_t* r,
   bool need_cookie = cfg_s->server_context->experiment_matcher()->
       ClassifyIntoExperiment(*request_headers, options);
   if (need_cookie && host.length() > 0) {
-    int64 time_now_us = apr_time_now();
-    int64 expiration_time_ms = (time_now_us/1000 +
+    PosixTimer timer;
+    int64 time_now_ms = timer.NowMs();
+    int64 expiration_time_ms = (time_now_ms +
                                 options->experiment_cookie_duration_ms());
 
     // TODO(jefftk): refactor SetExperimentCookie to expose the value we want to
@@ -1653,7 +1655,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   // parameters.  Keep url_string in sync with url.
   url.Spec().CopyToString(&url_string);
 
-  if (options->respect_x_forwarded_proto()) {
+  if (cfg_s->server_context->global_options()->respect_x_forwarded_proto()) {
     bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
     if (modified_url) {
       url.Reset(url_string);
