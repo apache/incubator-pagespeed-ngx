@@ -1935,7 +1935,24 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
                                          bool proxy_mode,
                                          AsyncFetch* async_fetch) {
   CHECK(gurl.IsWebValid()) << "Invalid URL " << gurl.spec_c_str();
-  fetch_url_ = gurl.Spec().as_string();
+  const char* user_agent =
+      async_fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
+  if (user_agent != NULL) {
+    // Only set the user agent if we haven't already done
+    // so. Otherwise we trigger a race condition in
+    // FlushEarlyFlowTest.DontInsertLazyloadJsIfMobile where it will
+    // crash about 10% of the time in a debug build, probably due to
+    // calling FetchInPlaceResource twice on a driver.
+    //
+    // TODO(jmarantz): fix the FlushEarlyFlow to not call FetchInPlaceResource
+    // twice on the same driver, which seems risky.
+    if (user_agent_.empty()) {
+      SetUserAgent(user_agent);
+    } else {
+      DCHECK_EQ(user_agent_, user_agent);
+    }
+  }
+  gurl.Spec().CopyToString(&fetch_url_);
   StringPiece base = gurl.AllExceptLeaf();
   ResourceNamer namer;
   OutputResourcePtr output_resource(new OutputResource(

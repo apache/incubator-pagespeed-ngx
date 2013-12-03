@@ -2020,6 +2020,25 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   URL="http://customhostheader.example.com/map_origin_host_header.html"
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
       "grep -c data:image/png;base64" 1
+
+  # Optimize in-place images for browser.
+  start_test in-place optimize for browser, no UA specified.
+  URL="http://ipro_for_browser.example.com/images/Puzzle.jpg"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save $URL 'grep -c W/\"PSA-aj-' \
+       1 --save-headers
+  check_from "$(extract_headers $FETCH_UNTIL_OUTFILE | grep Content-Type:)" \
+    fgrep -q image/jpeg
+  check_from "$(extract_headers $FETCH_UNTIL_OUTFILE | grep Vary:)" \
+    fgrep -q User-Agent
+
+  start_test in-place optimize for browser, with webp UA specified.
+  URL="http://ipro_for_browser.example.com/images/Puzzle.jpg"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save $URL 'grep -c W/\"PSA-aj-' \
+       1 "--save-headers --user-agent webp"
+  check_from "$(extract_headers $FETCH_UNTIL_OUTFILE | grep Content-Type:)" \
+    fgrep -q image/webp
+  check_from "$(extract_headers $FETCH_UNTIL_OUTFILE | grep Vary:)" \
+    fgrep -q User-Agent
 fi
 
 WGET_ARGS=""

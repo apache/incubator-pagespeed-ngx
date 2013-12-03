@@ -1062,6 +1062,15 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
       "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ipro_for_browser.example.com
+  ModPagespeedEnableFilters rewrite_images,convert_jpeg_to_webp
+  ModPagespeedEnableFilters in_place_optimize_for_browser
+  ModPagespeedInPlaceResourceOptimization on
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_ipro_for_browser"
+</VirtualHost>
+
 # For testing Modpagespeed unplugged.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName mpsunplugged.example.com
