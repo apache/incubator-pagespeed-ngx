@@ -151,10 +151,10 @@ const char RewriteOptions::kImageRecompressionQuality[] =
 const char RewriteOptions::kImageResolutionLimitBytes[] =
     "ImageResolutionLimitBytes";
 const char RewriteOptions::kImageWebpRecompressionQuality[] =
-    "ImageWebpRecompressionQuality";
+    "WebpRecompressionQuality";
 const char RewriteOptions::kImageWebpRecompressionQualityForSmallScreens[] =
-    "ImageWebpRecompressionQualityForSmallScreens";
-const char RewriteOptions::kImageWebpTimeoutMs[] = "ImageWebpTimeoutMs";
+    "WebpRecompressionQualityForSmallScreens";
+const char RewriteOptions::kImageWebpTimeoutMs[] = "WebpTimeoutMs";
 const char RewriteOptions::kImplicitCacheTtlMs[] = "ImplicitCacheTtlMs";
 const char RewriteOptions::kInPlaceResourceOptimization[] =
     "InPlaceResourceOptimization";
@@ -858,6 +858,30 @@ void StripBeaconUrlQueryParam(GoogleString* url,
   url_split[0].CopyToString(url_no_query_param);
 }
 
+// Maps the deprecated options to the new names.
+struct DeprecatedOptionMap {
+  static bool LessThan(
+      const DeprecatedOptionMap& option_map,
+      StringPiece arg) {
+    return StringCaseCompare(option_map.deprecated_option_name, arg) < 0;
+  }
+
+  const char* deprecated_option_name;
+  const char* new_option_name;
+};
+
+const DeprecatedOptionMap kDeprecatedOptionNameData[] = {
+  {"ImageWebpRecompressionQuality",
+      "WebpRecompressionQuality"},
+  {"ImageWebpRecompressionQualityForSmallScreens",
+      "WebpRecompressionQualityForSmallScreens"}
+};
+
+std::vector<DeprecatedOptionMap> kDeprecatedOptionNameList(
+    kDeprecatedOptionNameData,
+    kDeprecatedOptionNameData + arraysize(kDeprecatedOptionNameData)
+);
+
 }  // namespace
 
 const char* RewriteOptions::FilterName(Filter filter) {
@@ -1550,7 +1574,7 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Set quality parameter for recompressing webp images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
-      "ImageWebpRecompressionQuality.");
+      "WebpRecompressionQuality.");
   AddBaseProperty(
       kDefaultImageWebpTimeoutMs,
       &RewriteOptions::image_webp_timeout_ms_, "wt",
@@ -2599,7 +2623,8 @@ const RewriteOptions::PropertyBase* RewriteOptions::LookupOptionByName(
   }
   PropertyNameMap::iterator
       end = option_name_to_property_map_->end(),
-      pos = option_name_to_property_map_->find(option_name);
+      pos = option_name_to_property_map_->find(
+          GetEffectiveOptionName(option_name));
   return (pos == end ? NULL : pos->second);
 }
 
@@ -2813,14 +2838,29 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName3(
   return result;
 }
 
+StringPiece RewriteOptions::GetEffectiveOptionName(StringPiece name) {
+  StringPiece effective_name = name;
+  std::vector<DeprecatedOptionMap>::iterator id =
+       std::lower_bound(kDeprecatedOptionNameList.begin(),
+                        kDeprecatedOptionNameList.end(),
+                        name,
+                        DeprecatedOptionMap::LessThan);
+  if (id != kDeprecatedOptionNameList.end() &&
+      StringCaseEqual(name, id->deprecated_option_name)) {
+    effective_name = id->new_option_name;
+  }
+  return effective_name;
+}
+
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value) {
+  StringPiece effective_name = GetEffectiveOptionName(name);
   OptionBaseVector::iterator it = std::lower_bound(
-      all_options_.begin(), all_options_.end(), name,
+      all_options_.begin(), all_options_.end(), effective_name,
       RewriteOptions::OptionNameLessThanArg);
   if (it != all_options_.end()) {
     OptionBase* option = *it;
-    if (StringCaseEqual(name, option->option_name())) {
+    if (StringCaseEqual(effective_name, option->option_name())) {
       if (!option->SetFromString(value)) {
         return kOptionValueInvalid;
       } else {

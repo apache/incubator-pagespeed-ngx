@@ -181,10 +181,14 @@ const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
 const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
 
-// The following two are deprecated due to spelling
+// The following are deprecated due to spelling
 const char kModPagespeedImgInlineMaxBytes[] = "ModPagespeedImgInlineMaxBytes";
 const char kModPagespeedImgMaxRewritesAtOnce[] =
     "ModPagespeedImgMaxRewritesAtOnce";
+const char kModPagespeedImageWebpRecompressionQuality[] =
+    "ModPagespeedImageWebpRecompressionQuality";
+const char kModPagespeedImageWebpRecompressionQualityForSmallScreens[] =
+    "ModPagespeedImageWebpRecompressionQualityForSmallScreens";
 
 // The following three are deprecated because we didn't finish the feature.
 const char kModPagespeedCollectRefererStatistics[] =
@@ -1860,6 +1864,11 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Deprecated.  Does nothing."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingFile,
         "Deprecated.  Does nothing."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImageWebpRecompressionQuality,
+        "Deprecated.  Use ModPagespeedWebpRecompressionQuality"),
+  APACHE_CONFIG_DIR_OPTION(
+        kModPagespeedImageWebpRecompressionQualityForSmallScreens,
+        "Deprecated.  Use ModPagespeedWebpRecompressionQualityForSmallScreens"),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)

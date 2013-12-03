@@ -167,7 +167,7 @@ ModPagespeedEnableFilters add_instrumentation
 
 # Set Webp Quality
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/image_rewriting" >
-    ModPagespeedImageWebpRecompressionQuality 65
+    ModPagespeedWebpRecompressionQuality 65
 </Directory>
 
 # Enable split_html
@@ -1188,6 +1188,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImageResolutionLimitBytes 10000000
 #ALL_DIRECTIVES ModPagespeedImagePreserveURLs false
 #ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
+#ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQualityForSmallScreens 85
 #ALL_DIRECTIVES ModPagespeedImplicitCacheTtlMs 60000
 #ALL_DIRECTIVES ModPagespeedInPlaceResourceOptimization on
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
@@ -1252,3 +1253,5 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"
+#ALL_DIRECTIVES ModPagespeedWebpRecompressionQuality 85
+#ALL_DIRECTIVES ModPagespeedWebpRecompressionQualityForSmallScreens 85

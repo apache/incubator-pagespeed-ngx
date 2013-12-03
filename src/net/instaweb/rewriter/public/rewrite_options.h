@@ -3069,6 +3069,10 @@ class RewriteOptions {
     return strcmp(e1->filter_id, e2->filter_id) < 0;
   }
 
+  // Return the effective option name. If the name is deprecated, the new name
+  // will be returned; otherwise the name will be returned as is.
+  static StringPiece GetEffectiveOptionName(StringPiece name);
+
   bool modified_;
   bool frozen_;
   FilterSet enabled_filters_;

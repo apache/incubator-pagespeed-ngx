@@ -1960,4 +1960,34 @@ TEST_F(RewriteOptionsTest, AccessAcrossThreads) {
 #endif
 }
 
+TEST_F(RewriteOptionsTest, ParseAndSetDeprecatedOptionFromName1) {
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  // 'ImageWebpRecompressionQuality' is replaced by 'WebpRecompressionQuality'.
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName1("ImageWebpRecompressionQuality",
+                                                "12", &msg, &handler));
+  EXPECT_EQ(12, options_.image_webp_recompress_quality());
+
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName1("WebpRecompressionQuality",
+                                                "23", &msg, &handler));
+  EXPECT_EQ(23, options_.image_webp_recompress_quality());
+
+  // 'ImageWebpRecompressionQualityForSmallScreens' is replaced by
+  // 'WebpRecompressionQualityForSmallScreens'.
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName1(
+                "ImageWebpRecompressionQualityForSmallScreens",
+                "34", &msg, &handler));
+  EXPECT_EQ(34, options_.image_webp_recompress_quality_for_small_screens());
+
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName1(
+                "WebpRecompressionQualityForSmallScreens",
+                "45", &msg, &handler));
+  EXPECT_EQ(45, options_.image_webp_recompress_quality_for_small_screens());
+}
+
 }  // namespace net_instaweb
