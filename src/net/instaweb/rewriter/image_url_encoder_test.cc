@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "testing/base/public/gunit.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 namespace {
@@ -65,6 +66,11 @@ class ImageUrlEncoderTest : public ::testing::Test {
     ImageDim dim;
     EXPECT_FALSE(DecodeUrlAndDimensions(url, &dim, &origin_url));
     EXPECT_FALSE(ImageUrlEncoder::HasValidDimension(dim));
+  }
+
+  bool IsPagespeedWebp(StringPiece url) {
+    GoogleUrl gurl(url);
+    return ImageUrlEncoder::IsWebpRewrittenUrl(gurl);
   }
 
   ImageUrlEncoder encoder_;
@@ -546,6 +552,19 @@ TEST_F(ImageUrlEncoderTest, TruncatedAfterFirstDim) {
 TEST_F(ImageUrlEncoderTest, TruncatedBeforeSep) {
   const char kTruncatedUrl[] = "12500";
   ExpectBadDim(kTruncatedUrl);
+}
+
+TEST_F(ImageUrlEncoderTest, WebpDetection) {
+  EXPECT_TRUE(IsPagespeedWebp("http://example.com/xa.jpg.pagespeed.ic.0.webp"));
+  EXPECT_TRUE(IsPagespeedWebp(
+      "http://example.com/17x33a.jpg.pagespeed.ic.0.webp"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/xa.jpg.XXXXXXXX.ic.0.webp"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/foo.webp"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/foo.jpg"));
+  EXPECT_FALSE(IsPagespeedWebp(
+      "http://example.com/xa.jpg.pagespeed.ic.0.jpeg"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/x.jpg.pagespeed.cd.0.jpeg"));
+  EXPECT_FALSE(IsPagespeedWebp("http://example.com/x.jpg.pagespeed.ce.0.webp"));
 }
 
 }  // namespace net_instaweb

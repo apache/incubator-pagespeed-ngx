@@ -26,6 +26,8 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
+
+class GoogleUrl;
 class RequestProperties;
 class RewriteDriver;
 class MessageHandler;
@@ -89,6 +91,9 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   // resource context is modified and can be NULL, hence we pass as a pointer.
   static void SetWebpAndMobileUserAgent(const RewriteDriver& driver,
                                         ResourceContext* context);
+
+  // Determines whether the given URL is a pagespeed-rewritten webp URL.
+  static bool IsWebpRewrittenUrl(const GoogleUrl& gurl);
 
   // Flag whether this device has a small screen, which determines what
   // Jpeg/WebP quality to use.

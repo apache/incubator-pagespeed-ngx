@@ -896,6 +896,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kServeGhostClickBusterWithSplitHtml);
   PassLookupOptionByName(RewriteOptions::kServeSplitHtmlInTwoChunks);
   PassLookupOptionByName(RewriteOptions::kServeStaleIfFetchError);
+  PassLookupOptionByName(RewriteOptions::kServeWebpToAnyAgent);
   PassLookupOptionByName(RewriteOptions::kServeXhrAccessControlHeaders);
   PassLookupOptionByName(RewriteOptions::
                          kServeStaleWhileRevalidateThresholdSec);

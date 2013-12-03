@@ -206,7 +206,7 @@ const char ImageRewriteFilter::kImageOngoingRewrites[] =
     "image_ongoing_rewrites";
 const char ImageRewriteFilter::kImageResizedUsingRenderedDimensions[] =
     "image_resized_using_rendered_dimensions";
-const char kImageWebpRewrites[] = "image_webp_rewrites";
+const char ImageRewriteFilter::kImageWebpRewrites[] = "image_webp_rewrites";
 const char ImageRewriteFilter::kInlinableImageUrlsPropertyName[] =
     "ImageRewriter-inlinable-urls";
 const char ImageRewriteFilter::kImageRewriteLatencyOkMs[] =

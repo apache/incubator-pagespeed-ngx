@@ -303,6 +303,8 @@ const char RewriteOptions::kMemcachedThreads[] = "MemcachedThreads";
 const char RewriteOptions::kMemcachedTimeoutUs[] = "MemcachedTimeoutUs";
 const char RewriteOptions::kRateLimitBackgroundFetches[] =
     "RateLimitBackgroundFetches";
+const char RewriteOptions::kServeWebpToAnyAgent[] =
+    "ServeRewrittenWebpUrlsToAnyAgent";
 const char RewriteOptions::kSlurpDirectory[] = "SlurpDirectory";
 const char RewriteOptions::kSlurpFlushLimit[] = "SlurpFlushLimit";
 const char RewriteOptions::kSlurpReadOnly[] = "SlurpReadOnly";
@@ -1920,6 +1922,14 @@ void RewriteOptions::AddProperties() {
       kMaxLowResToHighResImageSizePercentage,
       kDirectoryScope,
       NULL);  // TODO(bharathbhushan): write help & doc for mod_pagespeed.
+
+  AddBaseProperty(
+      true,
+      &RewriteOptions::serve_rewritten_webp_urls_to_any_agent_,
+      "swaa",
+      kServeWebpToAnyAgent,
+      kDirectoryScope,
+      "Serve rewritten .webp images to any user-agent");
 
   // Test-only, so no enum.
   AddRequestProperty(

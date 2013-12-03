@@ -374,6 +374,7 @@ class RewriteOptions {
   static const char kMemcachedThreads[];
   static const char kMemcachedTimeoutUs[];
   static const char kRateLimitBackgroundFetches[];
+  static const char kServeWebpToAnyAgent[];
   static const char kSlurpDirectory[];
   static const char kSlurpFlushLimit[];
   static const char kSlurpReadOnly[];
@@ -2192,6 +2193,13 @@ class RewriteOptions {
     return max_low_res_to_full_res_image_size_percentage_.value();
   }
 
+  void set_serve_rewritten_webp_urls_to_any_agent(bool x) {
+    set_option(x, &serve_rewritten_webp_urls_to_any_agent_);
+  }
+  bool serve_rewritten_webp_urls_to_any_agent() const {
+    return serve_rewritten_webp_urls_to_any_agent_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -3253,6 +3261,8 @@ class RewriteOptions {
   // won't have effect, if onload beacon is sent before unload event is
   // trigggered.
   Option<bool> report_unload_time_;
+
+  Option<bool> serve_rewritten_webp_urls_to_any_agent_;
 
   // Flush more resources if origin is slow to respond.
   Option<bool> flush_more_resources_early_if_time_permits_;

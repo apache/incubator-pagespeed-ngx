@@ -68,6 +68,7 @@ class ImageRewriteFilter : public RewriteFilter {
   static const char kImageRewritesDroppedServerWriteFail[];
   static const char kImageRewritesSquashingForMobileScreen[];
   static const char kImageRewrites[];
+  static const char kImageWebpRewrites[];
   static const char kImageWebpFromGifFailureMs[];
   static const char kImageWebpFromGifSuccessMs[];
   static const char kImageWebpFromGifTimeouts[];

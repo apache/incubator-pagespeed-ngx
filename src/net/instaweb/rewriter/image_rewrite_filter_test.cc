@@ -871,6 +871,18 @@ class ImageRewriteTest : public RewriteTestBase {
     return RequestContextPtr(test_request_context_);
   }
 
+  // Fetches a URL for the given user-agent, returning success-status,
+  // and modifying content and response if successful.  Statistics are
+  // cleared on each call.
+  bool FetchWebp(StringPiece url, StringPiece user_agent,
+                 GoogleString* content, ResponseHeaders* response) {
+    content->clear();
+    response->Clear();
+    ClearStats();
+    rewrite_driver()->SetUserAgent(user_agent);
+    return FetchResourceUrl(url, content, response);
+  }
+
  private:
   LoggingInfo logging_info_;
   TestRequestContextPtr test_request_context_;
@@ -2982,6 +2994,108 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   ASSERT_EQ(golden_content.size(), remote_content.size());
   EXPECT_EQ(golden_content, remote_content);  // don't bother if sizes differ...
   */
+}
+
+TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
+  // First rewrite an HTML file with an image for a webp-compatible browser,
+  // and collect the image URL.
+  UseMd5Hasher();
+  AddRecompressImageFilters();
+  options()->set_serve_rewritten_webp_urls_to_any_agent(true);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  GoogleString img_src;
+  rewrite_driver()->SetUserAgent("webp");
+  Variable* webp_rewrite_count = statistics()->GetVariable(
+      ImageRewriteFilter::kImageWebpRewrites);
+  RewriteImageFromHtml("img", kContentTypeWebp, &img_src);
+  EXPECT_EQ(1, webp_rewrite_count->Get());
+  GoogleUrl webp_gurl(html_gurl(), img_src);
+
+  // Serve this image from cache. No further rewrites should be needed, since
+  // the image was optimized when serving HTML.
+  GoogleString golden_content, content;
+  ResponseHeaders response;
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "webp", &golden_content, &response));
+  EXPECT_STREQ("image/webp", response.Lookup1(HttpAttributes::kContentType));
+  EXPECT_TRUE(response.IsProxyCacheable());
+  EXPECT_EQ(0, webp_rewrite_count->Get());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+
+  // Now clear the cache and fetch the resource again.  We will need to
+  // reconstruct the image but we'll get the same result.
+  lru_cache()->Clear();
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "webp", &content, &response));
+  const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
+  EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType));
+  EXPECT_TRUE(response.IsProxyCacheable());
+  EXPECT_EQ(1, webp_rewrite_count->Get());  // We had to reconstruct.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_TRUE(content == golden_content);
+
+  // Do the same test again, but don't clear the cache.
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "webp", &content, &response));
+  EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType));
+  EXPECT_TRUE(response.IsProxyCacheable());
+  EXPECT_EQ(0, webp_rewrite_count->Get());  // No need to reconstruct...
+  EXPECT_EQ(1, lru_cache()->num_hits());    // ...picked it up from cache.
+  EXPECT_TRUE(content == golden_content);
+
+  // Now set the user-agent to something that does not support webp,
+  // and we should still reconstruct the webp when asked for it, since
+  // we have called options()->set_serve_rewritten_webp_urls_to_any_agent(true)
+  // above.
+  lru_cache()->Clear();
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "null", &content, &response));
+  EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType));
+  EXPECT_TRUE(response.IsProxyCacheable());
+  EXPECT_EQ(1, webp_rewrite_count->Get());  // We had to reconstruct.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_TRUE(content == golden_content);
+
+  // Now turn off 'serve_rewritten_webp_urls_to_any_agent', and
+  // we will serve the original jpeg instead, privately cached.
+  options()->ClearSignatureForTesting();
+  options()->set_serve_rewritten_webp_urls_to_any_agent(false);
+  server_context()->ComputeSignature(options());
+
+  // Note that if don't clear the cache here, we'll suffer from
+  // https://code.google.com/p/modpagespeed/issues/detail?id=846 and
+  // will deliver a .pagespeed.webp to a UA that can't handle it, so
+  // I'm commenting out this test.
+  // TODO(jmarantz): fix Issue 846 and uncomment this test.  Until then,
+  // we cannot recommend turning ServeWebpToAnyAgent off.
+  // EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "null", &content, &response));
+  // const StringPiece kJpegMimeType = kContentTypeJpeg.mime_type();
+  // EXPECT_STREQ(kJpegMimeType, response.Lookup1(
+  //     HttpAttributes::kContentType));
+  // EXPECT_FALSE(response.IsProxyCacheable());
+  // EXPECT_TRUE(response.IsBrowserCacheable());
+  // EXPECT_EQ(0, webp_rewrite_count->Get());  // Reconstruction not attempted.
+  // EXPECT_EQ(0, lru_cache()->num_hits());
+  // EXPECT_FALSE(content == golden_content);
+  // EXPECT_GT(content.size(), golden_content.size());
+
+  // All works fine anyway we if we clear the cache first.
+  lru_cache()->Clear();
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "null", &content, &response));
+  const StringPiece kJpegMimeType = kContentTypeJpeg.mime_type();
+  EXPECT_STREQ(kJpegMimeType, response.Lookup1(HttpAttributes::kContentType));
+  EXPECT_FALSE(response.IsProxyCacheable());
+  EXPECT_TRUE(response.IsBrowserCacheable());
+  EXPECT_EQ(0, webp_rewrite_count->Get());  // Reconstruction not attempted.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_FALSE(content == golden_content);
+  EXPECT_GT(content.size(), golden_content.size());
+
+  // But if any webp-enabled client asks for the resource, it will poison
+  // the cache going forward.  Not good.  This will need to be regolded when
+  // Issue 846 is resolved.
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "webp", &content, &response));
+  EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType));
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "none", &content, &response));
+  EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType))
+      << "expected failure";
+  // TODO(jmarantz): chnage this into a positive testcase.
 }
 
 // If we drop a rewrite because of load, make sure it returns the original URL.
