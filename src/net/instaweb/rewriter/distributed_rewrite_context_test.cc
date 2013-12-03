@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
+#include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/fake_filter.h"
@@ -1133,6 +1134,57 @@ TEST_F(DistributedRewriteContextTest, GracefullyHandleURLTooLong) {
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, other_trim_filter_->num_rewrites());
   EXPECT_EQ(0, distributed_metadata_failures_->Get());
+}
+
+// The distributed task should recognize if a distributed task can be rate
+// controlled.
+TEST_F(DistributedRewriteContextTest, QueueFetchOnDistributedHtmlTask) {
+  SetupDistributedTest();
+
+  // Tack on a rate controlling fetcher which does not allow queueing of any
+  // fetches on the distributed task. A distribution of a background rewrite
+  // should be dropped by the rate controller since it can't queue.
+  other_rewrite_driver_->SetSessionFetcher(new RateControllingUrlAsyncFetcher(
+      other_rewrite_driver_->async_fetcher(),
+      0,  // max fetch global queue size
+      0,  // fetches per host outgoing queueing threshold
+      0,  // fetches per host queued request threshold
+      other_server_context_->thread_system(),
+      other_server_context_->statistics()));
+
+  ValidateNoChanges("trimmable", CssLinkHref("a.css"));
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(0, other_factory_->counting_url_async_fetcher()->fetch_count());
+}
+
+// The distributed task should recognize that a distributed fetch cannot be rate
+// controlled.
+TEST_F(DistributedRewriteContextTest, QueueFetchOnDistributedFetchTask) {
+  SetupDistributedTest();
+
+  // Tack on a rate controlling fetcher which does not allow queueing of any
+  // fetches on the distributed task. A distribution of a fetch request should
+  // bypass rate controlling.
+  other_rewrite_driver_->SetSessionFetcher(new RateControllingUrlAsyncFetcher(
+      other_rewrite_driver_->async_fetcher(),
+      0,  // max fetch global queue size
+      0,  // fetches per host outgoing queueing threshold
+      0,  // fetches per host queued request threshold
+      other_server_context_->thread_system(),
+      other_server_context_->statistics()));
+
+  GoogleString encoded_url = Encode(
+      kTestDomain, TrimWhitespaceRewriter::kFilterId, "0", "a.css", "css");
+
+  GoogleString content;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  EXPECT_TRUE(FetchResourceUrl(encoded_url, &request_headers, &content,
+                               &response_headers));
+  // Content should be optimized.
+  EXPECT_EQ("a", content);
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(1, other_factory_->counting_url_async_fetcher()->fetch_count());
 }
 
 }  // namespace net_instaweb

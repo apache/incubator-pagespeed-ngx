@@ -148,6 +148,12 @@ class RateController::HostFetchInfo
   // Returns the host associated with this HostFetchInfo object.
   const GoogleString& host() { return host_; }
 
+  bool AnyInFlightOrQueuedFetches() const {
+    ScopedMutex lock(mutex_.get());
+    DCHECK_GE(num_outbound_fetches_, 0);
+    return num_outbound_fetches_ > 0 || !fetch_queue_.empty();
+  }
+
  private:
   GoogleString host_;
   int num_outbound_fetches_;
@@ -220,9 +226,9 @@ RateController::RateController(
       per_host_queued_request_threshold_(per_host_queued_request_threshold),
       thread_system_(thread_system),
       mutex_(thread_system->NewMutex()) {
-  CHECK_GT(max_global_queue_size, 0);
-  CHECK_GT(per_host_outgoing_request_threshold, 0);
-  CHECK_GT(per_host_queued_request_threshold, 0);
+  CHECK_GE(max_global_queue_size, 0);
+  CHECK_GE(per_host_outgoing_request_threshold, 0);
+  CHECK_GE(per_host_queued_request_threshold, 0);
   CHECK_GE(max_global_queue_size, per_host_queued_request_threshold);
   queued_fetch_count_ = statistics->GetTimedVariable(kQueuedFetchCount);
   dropped_fetch_count_ = statistics->GetTimedVariable(kDroppedFetchCount);
@@ -308,6 +314,7 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
   message_handler->Message(kInfo, "Dropping request for %s", url.c_str());
   fetch->response_headers()->Add(HttpAttributes::kXPsaLoadShed, "1");
   fetch->Done(false);
+  DeleteFetchInfoIfPossible(fetch_info_ptr);
   return;
 }
 
@@ -322,8 +329,7 @@ void RateController::InitStats(Statistics* statistics) {
 void RateController::DeleteFetchInfoIfPossible(
     const HostFetchInfoPtr& fetch_info) {
   ScopedMutex lock(mutex_.get());
-  DCHECK_GE(fetch_info->num_outbound_fetches(), 0);
-  if (fetch_info->num_outbound_fetches() > 0) {
+  if (fetch_info->AnyInFlightOrQueuedFetches()) {
     return;
   }
 

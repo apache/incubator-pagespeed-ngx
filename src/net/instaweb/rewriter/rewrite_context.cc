@@ -1634,7 +1634,6 @@ void RewriteContext::OutputCacheMiss() {
 
 bool RewriteContext::IsDistributedRewriteForHtml() const {
   const RequestHeaders* request_headers = Driver()->request_headers();
-  DCHECK(request_headers != NULL);
   if (request_headers != NULL &&
       request_headers->HasValue(HttpAttributes::kXPsaDistributedRewriteForHtml,
                                 Options()->distributed_rewrite_key())) {
@@ -2765,7 +2764,9 @@ bool RewriteContext::PrepareFetch(
          is_valid = false;
          break;
       }
-      resource->set_is_background_fetch(false);
+      if (!IsDistributedRewriteForHtml()) {
+        resource->set_is_background_fetch(false);
+      }
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
     }
