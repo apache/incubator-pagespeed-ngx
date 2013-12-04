@@ -376,7 +376,7 @@ void CssSummarizerBase::RenderDone() {
     if (!canceled_summaries_.empty()) {
       outstanding_rewrites_ -= canceled_summaries_.size();
       if (outstanding_rewrites_ == 0) {
-        should_report_all_done = true;
+        should_report_all_done = saw_end_of_document_;
       }
     }
     canceled_summaries_.clear();

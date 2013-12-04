@@ -354,6 +354,34 @@ TEST_F(CssSummarizerBaseWithCombinerFilterTest, Interaction) {
             output_buffer_);
 }
 
+TEST_F(CssSummarizerBaseWithCombinerFilterTest, InteractionWithFlush) {
+  // Make sure that SummariesDone is called once only, at the actual end of the
+  // document, and not for every flush window.
+  SetResponseWithDefaultHeaders("a2.css", kContentTypeCss,
+                                 "span { display: inline; }", 100);
+  GoogleString combined_url = Encode("", "cc", "0",
+                                     MultiUrl("a.css", "a2.css"), "css");
+  GoogleString css = StrCat(CssLinkHref("a.css"), CssLinkHref("a2.css"));
+
+  SetupWriter();
+  html_parse()->StartParse(StrCat(kTestDomain, "example.html"));
+  html_parse()->ParseText(css);
+  html_parse()->Flush();
+  html_parse()->ParseText(css);
+  html_parse()->FinishParse();
+
+  // Should only see the comment once, since SummariesDone is supposed to be
+  // called only at document end.
+  EXPECT_EQ(StrCat(CssLinkHref(combined_url), CssLinkHref(combined_url),
+                   StrCat("<!--",
+                          "OK/div{displa/rel=stylesheet|",
+                          "SlotRemoved//rel=stylesheet|",
+                          "OK/div{displa/rel=stylesheet|",
+                          "SlotRemoved//rel=stylesheet|",
+                          "-->")),
+            output_buffer_);
+}
+
 TEST_F(CssSummarizerBaseWithCombinerFilterTest, BaseAcrossPaths) {
   // Make sure base is updated if a previous filter moves a resource across
   // directories.
