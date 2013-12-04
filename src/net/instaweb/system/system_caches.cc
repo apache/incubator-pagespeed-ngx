@@ -242,6 +242,12 @@ bool SystemCaches::CreateShmMetadataCache(
       result.first->second = cache_info;
       return true;
     }
+  } else if (name == kDefaultSharedMemoryPath) {
+    // If the default shared memory cache already exists, and we try to create
+    // it again, that's not a problem.  This happens because when we check if
+    // the cache exists yet we look at MetadataShmCacheInfo->cache_to_use which
+    // isn't actually set until RootInit().
+    return true;
   } else {
     *error_msg = StrCat("Cache named ", name, " already exists.");
     return false;
