@@ -104,6 +104,18 @@ class ScanlineStreamInput {
   MessageHandler* message_handler_;
 };
 
+// Expand pixel format for a scanline and change its offset in the memory.
+// Supported expansions:
+//   - GRAY_8    -> RGB_888
+//   - RGB_888   -> RGB_888
+//   - GRAY_8    -> RGBA_8888
+//   - RGB_888   -> RGBA_8888
+//   - RGBA_8888 -> RGBA_8888
+bool ExpandPixelFormat(size_t num_pixels, PixelFormat src_format,
+                       int src_offset, const uint8_t* src_data,
+                       PixelFormat dst_format, int dst_offset,
+                       uint8_t* dst_data, MessageHandler* handler);
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

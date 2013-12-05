@@ -203,6 +203,19 @@ void DecodeAndCompareImagesByPSNR(
 void CompareImageReaders(ScanlineReaderInterface* reader1,
                          ScanlineReaderInterface* reader2);
 
+// Check whether the images have the same content in the specified regions.
+// Here "same content" means that the image regions "look" the same. It
+// does not matter how the image is encoded or stored. As an example,
+// a grayscale image encoded in GRAY_8 format looks the same as the same
+// image encoded in RGB_888 format. As another example, all FULLY
+// transparent pixels look the same no matter what value the other color
+// channels (e.g., R, G, or B) may have.
+void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
+                         int bytes_per_row1, int col1, int row1,
+                         const uint8_t* image2, PixelFormat format2,
+                         int bytes_per_row2, int col2, int row2,
+                         int num_cols, int num_rows, MessageHandler* handler);
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

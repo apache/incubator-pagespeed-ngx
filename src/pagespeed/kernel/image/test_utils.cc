@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
@@ -40,6 +41,8 @@ namespace pagespeed {
 namespace {
 
 const double kMaxPSNR = 99.0;
+const int kIndexAlpha = 3;
+const uint8_t kAlphaTransparent = 0;
 
 // Definition of Peak-Signal-to-Noise-Ratio (PSNR):
 // http://en.wikipedia.org/wiki/Peak_signal-to-noise_ratio
@@ -184,6 +187,59 @@ void CompareImageReaders(ScanlineReaderInterface* reader1,
   // Make sure both readers have exhausted all of the scanlines.
   EXPECT_FALSE(reader1->HasMoreScanLines());
   EXPECT_FALSE(reader2->HasMoreScanLines());
+}
+
+void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
+                         int bytes_per_row1, int col1, int row1,
+                         const uint8_t* image2, PixelFormat format2,
+                         int bytes_per_row2, int col2, int row2,
+                         int num_cols, int num_rows, MessageHandler* handler) {
+  ASSERT_TRUE(format1 != UNSUPPORTED && format2 != UNSUPPORTED);
+  const int num_channels1 =
+    GetNumChannelsFromPixelFormat(format1, handler);
+  const int num_channels2 =
+    GetNumChannelsFromPixelFormat(format2, handler);
+
+  PixelFormat format;
+  int num_channels;
+  if (num_channels1 >= num_channels2) {
+    format = format1;
+    num_channels = num_channels1;
+  } else {
+    format = format2;
+    num_channels = num_channels2;
+  }
+  int bytes_per_line = num_cols * num_channels;
+
+  net_instaweb::scoped_array<uint8_t> line1(new uint8_t[bytes_per_line]);
+  net_instaweb::scoped_array<uint8_t> line2(new uint8_t[bytes_per_line]);
+  ASSERT_TRUE(line1 != NULL && line2 != NULL);
+
+  image1 += row1 * bytes_per_row1;
+  image2 += row2 * bytes_per_row2;
+  for (int row = 0; row < num_rows; ++row) {
+    ASSERT_TRUE(ExpandPixelFormat(num_cols, format1, col1, image1, format, 0,
+                                  line1.get(), handler));
+    ASSERT_TRUE(ExpandPixelFormat(num_cols, format2, col2, image2, format, 0,
+                                  line2.get(), handler));
+    if (format != RGBA_8888) {
+      EXPECT_EQ(0, memcmp(line1.get(), line2.get(), bytes_per_line));
+    } else {
+      uint8_t* pixel1 = line1.get();
+      uint8_t* pixel2 = line2.get();
+      for (int col = 0; col < num_cols; ++col) {
+        if (pixel1[kIndexAlpha] != kAlphaTransparent ||
+            pixel2[kIndexAlpha] != kAlphaTransparent) {
+          EXPECT_EQ(0, memcmp(pixel1, pixel2, num_channels));
+        }
+        pixel1 += num_channels;
+        pixel2 += num_channels;
+      }
+    }
+
+    image1 += bytes_per_row1;
+    image2 += bytes_per_row2;
+  }
 }
 
 }  // namespace image_compression

@@ -61,18 +61,27 @@ extern "C" {
 
 using pagespeed::image_compression::CreateScanlineReader;
 using pagespeed::image_compression::CreateScanlineWriter;
+using pagespeed::image_compression::GifReader;
+using pagespeed::image_compression::GRAY_8;
 using pagespeed::image_compression::ImageConverter;
 using pagespeed::image_compression::ImageFormat;
 using pagespeed::image_compression::JpegCompressionOptions;
 using pagespeed::image_compression::JpegScanlineWriter;
 using pagespeed::image_compression::JpegUtils;
+using pagespeed::image_compression::OptimizeJpegWithOptions;
 using pagespeed::image_compression::PixelFormat;
 using pagespeed::image_compression::PngCompressParams;
 using pagespeed::image_compression::PngOptimizer;
+using pagespeed::image_compression::PngReader;
+using pagespeed::image_compression::PngReaderInterface;
 using pagespeed::image_compression::PngScanlineWriter;
+using pagespeed::image_compression::RETAIN;
+using pagespeed::image_compression::RGB_888;
+using pagespeed::image_compression::RGBA_8888;
 using pagespeed::image_compression::ScanlineReaderInterface;
 using pagespeed::image_compression::ScanlineResizer;
 using pagespeed::image_compression::ScanlineWriterInterface;
+using pagespeed::image_compression::WebpConfiguration;
 
 namespace net_instaweb {
 
@@ -105,6 +114,7 @@ namespace {
 
 const char kGifString[] = "gif";
 const char kPngString[] = "png";
+const uint8 kAlphaOpaque = 255;
 
 // To estimate the number of bytes from the number of pixels, we divide
 // by a magic ratio.  The 'correct' ratio is of course dependent on the
@@ -309,10 +319,10 @@ ScanlineWriterInterface* CreateUncompressedPngWriter(
     size_t width, size_t height, GoogleString* output,
     MessageHandler* handler, bool use_transparent_for_blank_image) {
   PngCompressParams config(PNG_FILTER_NONE, Z_NO_COMPRESSION);
-  pagespeed::image_compression::PixelFormat pixel_format =
+  PixelFormat pixel_format =
       use_transparent_for_blank_image ?
-      pagespeed::image_compression::RGBA_8888 :
-      pagespeed::image_compression::RGB_888;
+      RGBA_8888 :
+      RGB_888;
   return CreateScanlineWriter(
       pagespeed::image_compression::IMAGE_PNG,
       pixel_format, width, height, &config, output, handler);
@@ -359,7 +369,7 @@ class ImageImpl : public Image {
 
   bool ComputeOutputContentsFromPngReader(
       const GoogleString& string_for_image,
-      const pagespeed::image_compression::PngReaderInterface* png_reader,
+      const PngReaderInterface* png_reader,
       bool fall_back_to_png,
       const char* dbg_input_format,
       ConversionVariables::VariableType var_type);
@@ -381,13 +391,13 @@ class ImageImpl : public Image {
 
   // Optimizes the png image_data, readable via png_reader.
   bool OptimizePng(
-      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const PngReaderInterface& png_reader,
       const GoogleString& image_data);
 
   // Converts image_data, readable via png_reader, to a jpeg if
   // possible or a png if not, using the settings in options_.
   bool OptimizePngOrConvertToJpeg(
-      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const PngReaderInterface& png_reader,
       const GoogleString& image_data);
 
   // Converts image_data, readable via png_reader, to a webp using the
@@ -396,7 +406,7 @@ class ImageImpl : public Image {
   // some reason, this will fall back to WebP lossy, unless
   // options_->preserve_lossless is set.
   bool ConvertPngToWebp(
-      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const PngReaderInterface& png_reader,
       const GoogleString& image_data,
       ConversionVariables::VariableType var_type);
 
@@ -530,8 +540,7 @@ bool ImageImpl::GenerateBlankImage() {
 
   // Create a transparent scanline.
   const size_t bytes_per_scanline = dims_.width() *
-      GetNumChannelsFromPixelFormat(pagespeed::image_compression::RGBA_8888,
-                                    handler_);
+      GetNumChannelsFromPixelFormat(RGBA_8888, handler_);
   scoped_array<unsigned char> scanline(new unsigned char[bytes_per_scanline]);
   memset(scanline.get(), 0, bytes_per_scanline);
 
@@ -877,8 +886,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
     return false;
   }
 
-  if (image_reader->GetPixelFormat() ==
-      pagespeed::image_compression::RGBA_8888) {
+  if (image_reader->GetPixelFormat() == RGBA_8888) {
     return false;
   }
 
@@ -1017,7 +1025,7 @@ bool ImageImpl::ComputeOutputContents() {
       // args rather than const string&.  We would save lots of string-copying
       // if we made that change.
       GoogleString string_for_image(contents.data(), contents.size());
-      scoped_ptr<pagespeed::image_compression::PngReaderInterface> png_reader;
+      scoped_ptr<PngReaderInterface> png_reader;
       switch (image_type()) {
         case IMAGE_UNKNOWN:
           break;
@@ -1050,15 +1058,14 @@ bool ImageImpl::ComputeOutputContents() {
                      (resized || options_->recompress_jpeg)) {
             JpegCompressionOptions jpeg_options;
             ConvertToJpegOptions(*options_.get(), &jpeg_options);
-            ok = pagespeed::image_compression::OptimizeJpegWithOptions(
-                string_for_image, &output_contents_, jpeg_options, handler_);
+            ok = OptimizeJpegWithOptions(string_for_image, &output_contents_,
+                                         jpeg_options, handler_);
             VLOG(1) << "Image conversion: " << ok
                     << " jpeg->jpeg for " << url_.c_str();
           }
           break;
         case IMAGE_PNG:
-          png_reader.reset(
-              new pagespeed::image_compression::PngReader(handler_));
+          png_reader.reset(new PngReader(handler_));
           ok = ComputeOutputContentsFromPngReader(
               string_for_image,
               png_reader.get(),
@@ -1070,11 +1077,9 @@ bool ImageImpl::ComputeOutputContents() {
           if (resized) {
             // If the GIF image has been resized, it has already been
             // converted to a PNG image.
-            png_reader.reset(
-                new pagespeed::image_compression::PngReader(handler_));
+            png_reader.reset(new PngReader(handler_));
           } else if (options_->convert_gif_to_png || low_quality_enabled_) {
-            png_reader.reset(
-                new pagespeed::image_compression::GifReader(handler_));
+            png_reader.reset(new GifReader(handler_));
           }
           if (png_reader.get() != NULL) {
             ok = ComputeOutputContentsFromPngReader(
@@ -1114,7 +1119,7 @@ inline bool ImageImpl::ConvertJpegToWebp(
 
 inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     const GoogleString& string_for_image,
-    const pagespeed::image_compression::PngReaderInterface* png_reader,
+    const PngReaderInterface* png_reader,
     bool fall_back_to_png,
     const char* dbg_input_format,
     ConversionVariables::VariableType var_type) {
@@ -1160,7 +1165,7 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
 }
 
 bool ImageImpl::ConvertPngToWebp(
-      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const PngReaderInterface& png_reader,
       const GoogleString& input_image,
       ConversionVariables::VariableType var_type) {
   bool ok = false;
@@ -1170,7 +1175,7 @@ bool ImageImpl::ConvertPngToWebp(
         url_, timer_, handler_,
         options_->webp_conversion_timeout_ms,
         &output_contents_);
-    pagespeed::image_compression::WebpConfiguration webp_config;
+    WebpConfiguration webp_config;
     webp_config.quality = options_->webp_quality;
 
     // Quality/speed trade-off (0=fast, 6=slower-better).
@@ -1234,7 +1239,7 @@ bool ImageImpl::ConvertPngToWebp(
 }
 
 bool ImageImpl::OptimizePng(
-    const pagespeed::image_compression::PngReaderInterface& png_reader,
+    const PngReaderInterface& png_reader,
     const GoogleString& image_data) {
   bool ok = MayConvert() &&
       PngOptimizer::OptimizePngBestCompression(png_reader,
@@ -1248,7 +1253,7 @@ bool ImageImpl::OptimizePng(
 }
 
 bool ImageImpl::OptimizePngOrConvertToJpeg(
-    const pagespeed::image_compression::PngReaderInterface& png_reader,
+    const PngReaderInterface& png_reader,
     const GoogleString& image_data) {
   bool is_png;
   JpegCompressionOptions jpeg_options;
@@ -1290,8 +1295,7 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
       }
 
       if (options.retain_color_sampling) {
-        jpeg_options->lossy_options.color_sampling =
-            pagespeed::image_compression::RETAIN;
+        jpeg_options->lossy_options.color_sampling = RETAIN;
       }
     }
   }
@@ -1347,17 +1351,18 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
     return false;
   }
 
-  // Get the size of the original canvas image.
+  // Get the size and pixel format of the original canvas image.
   const size_t canvas_width = canvas_reader->GetImageWidth();
   const size_t canvas_height = canvas_reader->GetImageHeight();
+  const PixelFormat canvas_pixel_format = canvas_reader->GetPixelFormat();
 
   // Initialize a reader for reading the image which will be sprited.
   ImageImpl* impl = static_cast<ImageImpl*>(image);
   scoped_ptr<ScanlineReaderInterface> image_reader(CreateScanlineReader(
       ImageTypeToImageFormat(impl->image_type()),
-      impl->original_contents().data(),
-      impl->original_contents().length(),
-      handler_));
+                             impl->original_contents().data(),
+                             impl->original_contents().length(),
+                             handler_));
   if (image_reader == NULL) {
     LOG(ERROR) << "Cannot open the image which will be sprited.";
     return false;
@@ -1366,19 +1371,31 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
   // Get the size of the image which will be sprited.
   const size_t image_width = image_reader->GetImageWidth();
   const size_t image_height = image_reader->GetImageHeight();
-  const pagespeed::image_compression::PixelFormat image_pixel_format =
-      image_reader->GetPixelFormat();
+  const PixelFormat image_pixel_format = image_reader->GetPixelFormat();
 
   if (x + image_width > canvas_width || y + image_height > canvas_height) {
     LOG(ERROR) << "The new image cannot fit into the canvas.";
     return false;
   }
 
+  bool has_alpha = false;
+  PixelFormat output_pixel_format = RGB_888;
+  if (image_pixel_format == RGBA_8888 ||
+      canvas_pixel_format == RGBA_8888) {
+    has_alpha = true;
+    output_pixel_format = RGBA_8888;
+  }
+
+  const size_t bytes_per_pixel =
+      GetNumChannelsFromPixelFormat(output_pixel_format, handler_);
+  const size_t bytes_per_scanline = canvas_width * bytes_per_pixel;
+  scoped_array<uint8> scanline(new uint8[bytes_per_scanline]);
+
   // Create a writer for writing the new canvas image.
   GoogleString canvas_image;
   scoped_ptr<ScanlineWriterInterface> canvas_writer(
       CreateUncompressedPngWriter(canvas_width, canvas_height,
-                                    &canvas_image, handler_, false));
+                                  &canvas_image, handler_, has_alpha));
   if (canvas_writer == NULL) {
     LOG(ERROR) << "Failed to create canvas writer.";
     return false;
@@ -1387,8 +1404,6 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
   // Overlay the new image onto the canvas image.
   for (int row = 0; row < static_cast<int>(canvas_height); ++row) {
     uint8* canvas_line = NULL;
-    uint8* image_line = NULL;
-
     if (!canvas_reader->ReadNextScanline(
         reinterpret_cast<void**>(&canvas_line))) {
       LOG(ERROR) << "Failed to read canvas image.";
@@ -1396,54 +1411,30 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
     }
 
     if (row >= y && row < y + static_cast<int>(image_height)) {
+      uint8* image_line = NULL;
       if (!image_reader->ReadNextScanline(
           reinterpret_cast<void**>(&image_line))) {
         LOG(ERROR) << "Failed to read the image which will be sprited.";
         return false;
       }
 
-      uint8* canvas_ptr = canvas_line + 3 * x;
-      uint8* image_ptr = image_line;
+      // Set the entire scanline to white. This operation has no effect
+      // on the webpage; it just gives a clean background to the
+      // sprite image.
+      memset(scanline.get(), kAlphaOpaque, x * bytes_per_pixel);
+      memset(scanline.get() + (x + image_width) * bytes_per_pixel,
+             kAlphaOpaque,
+             (canvas_width - image_width - x) * bytes_per_pixel);
 
-      switch (image_pixel_format) {
-        case pagespeed::image_compression::GRAY_8:
-          for (size_t i = 0; i < image_width; ++i) {
-            canvas_ptr[0] = image_ptr[0];
-            canvas_ptr[1] = image_ptr[0];
-            canvas_ptr[2] = image_ptr[0];
-            canvas_ptr += 3;
-            ++image_ptr;
-          }
-          break;
-
-        case pagespeed::image_compression::RGB_888:
-          for (size_t i = 0; i < image_width; ++i) {
-            canvas_ptr[0] = image_ptr[0];
-            canvas_ptr[1] = image_ptr[1];
-            canvas_ptr[2] = image_ptr[2];
-            canvas_ptr += 3;
-            image_ptr += 3;
-          }
-          break;
-
-        case pagespeed::image_compression::RGBA_8888:
-          for (size_t i = 0; i < image_width; ++i) {
-            canvas_ptr[0] = image_ptr[0];
-            canvas_ptr[1] = image_ptr[1];
-            canvas_ptr[2] = image_ptr[2];
-            canvas_ptr += 3;
-            image_ptr += 4;
-          }
-          break;
-
-        default:
-          LOG(DFATAL) << "Unsupported image format.";
-          return false;
-      }
+      ExpandPixelFormat(image_width, image_pixel_format, 0, image_line,
+                        output_pixel_format, x, scanline.get(), handler_);
+    } else {
+      ExpandPixelFormat(canvas_width, canvas_pixel_format, 0, canvas_line,
+                        output_pixel_format, 0, scanline.get(), handler_);
     }
 
     if (!canvas_writer->WriteNextScanline(
-        reinterpret_cast<void*>(canvas_line))) {
+        reinterpret_cast<void*>(scanline.get()))) {
       LOG(ERROR) << "Failed to write canvas image.";
       return false;
     }

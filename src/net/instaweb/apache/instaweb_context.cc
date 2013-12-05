@@ -38,6 +38,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
@@ -354,17 +355,13 @@ const char* InstawebContext::MakeRequestUrl(
       url = apr_table_get(main->notes, kPagespeedOriginalUrl);
     }
 
-    /*
-     * In some contexts we are seeing relative URLs passed
-     * into request->unparsed_uri.  But when using mod_slurp, the rewritten
-     * HTML contains complete URLs, so this construction yields the host:port
-     * prefix twice.
-     *
-     * TODO(jmarantz): Figure out how to do this correctly at all times.
-     */
+    // ap_construct_url() only works when request->unparsed_uri is relative.
+    // But sometimes (with mod_proxy/slurping) we see request->unparsed_uri
+    // as an absolute URL. So we check if request->unparsed_uri is already
+    // an absolute URL first. If so, use it as-is, otherwise ap_construct_url().
     if (url == NULL) {
-      if ((strncmp(request->unparsed_uri, "http://", 7) == 0) ||
-          (strncmp(request->unparsed_uri, "https://", 8) == 0)) {
+      GoogleUrl gurl(request->unparsed_uri);
+      if (gurl.IsAnyValid()) {
         url = apr_pstrdup(request->pool, request->unparsed_uri);
       } else {
         url = ap_construct_url(request->pool, request->unparsed_uri, request);

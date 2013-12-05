@@ -22,6 +22,12 @@
 
 namespace pagespeed {
 
+namespace {
+
+const uint8_t kAlphaOpaque = 255;
+
+}  // namespace
+
 namespace image_compression {
 
 size_t GetNumChannelsFromPixelFormat(PixelFormat format,
@@ -41,6 +47,76 @@ size_t GetNumChannelsFromPixelFormat(PixelFormat format,
       PS_LOG_DFATAL(handler, "Invalid pixel format.");
   }
   return num_channels;
+}
+
+bool ExpandPixelFormat(size_t num_pixels, PixelFormat src_format,
+                       int src_offset, const uint8_t* src_data,
+                       PixelFormat dst_format, int dst_offset,
+                       uint8_t* dst_data, MessageHandler* handler) {
+  const int src_num_channels =
+    GetNumChannelsFromPixelFormat(src_format, handler);
+  const int dst_num_channels =
+    GetNumChannelsFromPixelFormat(dst_format, handler);
+  const int rgb_num_channels =
+    GetNumChannelsFromPixelFormat(RGB_888, handler);
+  const int opaque_channel = rgb_num_channels;
+  src_data += src_offset * src_num_channels;
+  dst_data += dst_offset * dst_num_channels;
+
+  bool is_ok = true;
+  switch (dst_format) {
+    case RGB_888:
+      switch (src_format) {
+        case GRAY_8:
+          for (size_t i = 0; i < num_pixels; ++i) {
+            memset(dst_data, *src_data, dst_num_channels);
+            ++src_data;
+            dst_data += dst_num_channels;
+          }
+          break;
+        case RGB_888:
+          memcpy(dst_data, src_data, num_pixels * src_num_channels);
+          break;
+        default:
+          is_ok = false;
+          PS_LOG_DFATAL(handler, "Unsupported pixel format conversion.");
+          break;
+      }
+      break;
+
+    case RGBA_8888:
+      switch (src_format) {
+        case GRAY_8:
+          for (size_t i = 0; i < num_pixels; ++i) {
+            memset(dst_data, *src_data, rgb_num_channels);
+            dst_data[opaque_channel] = kAlphaOpaque;
+            ++src_data;
+            dst_data += dst_num_channels;
+          }
+          break;
+        case RGB_888:
+          for (size_t i = 0; i < num_pixels; ++i) {
+            memcpy(dst_data, src_data, src_num_channels);
+            dst_data[opaque_channel] = kAlphaOpaque;
+            src_data += src_num_channels;
+            dst_data += dst_num_channels;
+          }
+          break;
+        case RGBA_8888:
+          memcpy(dst_data, src_data, num_pixels * src_num_channels);
+          break;
+        default:
+          is_ok = false;
+          PS_LOG_DFATAL(handler, "Unsupported pixel format conversion.");
+          break;
+      }
+      break;
+    default:
+      is_ok = false;
+      PS_LOG_DFATAL(handler, "Unsupported pixel format conversion.");
+      break;
+  }
+  return is_ok;
 }
 
 }  // namespace image_compression

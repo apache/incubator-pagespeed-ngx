@@ -20,6 +20,7 @@
 #include "net/instaweb/rewriter/public/image.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -42,6 +43,8 @@
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/image/jpeg_optimizer_test_helper.h"
 #include "pagespeed/kernel/image/jpeg_utils.h"
+#include "pagespeed/kernel/image/read_image.h"
+#include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
 using pagespeed_testing::image_compression::GetColorProfileMarker;
@@ -55,6 +58,7 @@ using pagespeed::image_compression::kMessagePatternPixelFormat;
 using pagespeed::image_compression::kMessagePatternStats;
 using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
 using pagespeed::image_compression::kMessagePatternWritingToWebp;
+using pagespeed::image_compression::PixelFormat;
 
 namespace net_instaweb {
 namespace {
@@ -1161,6 +1165,68 @@ TEST_F(ImageTest, DrawImage) {
   EXPECT_GT(canvas->output_size(), image2->output_size());
   EXPECT_GT(image1->input_size() + image2->input_size(),
             canvas->output_size());
+}
+
+// Make sure that the image produced by 'DrawImage()' is accurate for every
+// pixel.
+TEST_F(ImageTest, DrawImageDetails) {
+  GoogleString buf1, buf2;
+  uint8_t* image1_pixels = NULL;
+  uint8_t* image2_pixels = NULL;
+  uint8_t* canvas_pixels = NULL;
+  PixelFormat image1_format, image2_format, canvas_format;
+  size_t image1_width, image2_width, canvas_width;
+  size_t image1_height, image2_height, canvas_height;
+  size_t image1_stride, image2_stride, canvas_stride;
+  Image::CompressionOptions* image1_options = new Image::CompressionOptions();
+  Image::CompressionOptions* image2_options = new Image::CompressionOptions();
+  Image::CompressionOptions* canvas_options = new Image::CompressionOptions();
+  canvas_options->recompress_png = true;
+
+  // 'kIronChef' is an RGB GIF image while 'kCuppaTransparent' is a grayscale
+  // transparent PNG image.
+  ImagePtr image1(ReadFromFileWithOptions(kIronChef, &buf1, image1_options));
+  ImagePtr image2(ReadFromFileWithOptions(kCuppaTransparent, &buf2,
+                                          image2_options));
+
+  ASSERT_TRUE(ReadImage(pagespeed::image_compression::IMAGE_GIF,
+                        buf1.data(), buf1.length(),
+                        reinterpret_cast<void**>(&image1_pixels),
+                        &image1_format, &image1_width, &image1_height,
+                        &image1_stride, &message_handler_));
+
+  ASSERT_TRUE(ReadImage(pagespeed::image_compression::IMAGE_PNG,
+                        buf2.data(), buf2.length(),
+                        reinterpret_cast<void**>(&image2_pixels),
+                        &image2_format, &image2_width, &image2_height,
+                        &image2_stride, &message_handler_));
+
+  int width = std::max(image1_width, image2_width);
+  int height = image1_height + image2_height;
+  ImagePtr canvas(BlankImageWithOptions(width, height, IMAGE_PNG,
+                                        GTestTempDir(), &timer_,
+                                        &message_handler_, canvas_options));
+  EXPECT_TRUE(canvas->DrawImage(image1.get(), 0, 0));
+  EXPECT_TRUE(canvas->DrawImage(image2.get(), 0, image1_height));
+
+  ASSERT_TRUE(ReadImage(pagespeed::image_compression::IMAGE_PNG,
+                        canvas->Contents().data(), canvas->Contents().length(),
+                        reinterpret_cast<void**>(&canvas_pixels),
+                        &canvas_format, &canvas_width, &canvas_height,
+                        &canvas_stride, &message_handler_));
+
+  CompareImageRegions(image1_pixels, image1_format, image1_stride, 0, 0,
+                      canvas_pixels, canvas_format, canvas_stride, 0, 0,
+                      image1_width, image1_height, &message_handler_);
+
+  CompareImageRegions(image2_pixels, image2_format, image2_stride, 0, 0,
+                      canvas_pixels, canvas_format, canvas_stride,
+                      0, image1_height, image2_width, image2_height,
+                      &message_handler_);
+
+  free(image1_pixels);
+  free(image2_pixels);
+  free(canvas_pixels);
 }
 
 TEST_F(ImageTest, BlankTransparentImage) {
