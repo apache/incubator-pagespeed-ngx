@@ -43,6 +43,9 @@ class CssTagScanner {
     virtual ~Transformer();
 
     enum TransformStatus { kSuccess, kNoChange, kFailure };
+    // Note: out is NOT necessarily set if kNoChange is returned.
+    // TODO(sligocki): Standardize this behavior, perhaps by simplifying
+    // interface to Transform(GoogleString* str).
     virtual TransformStatus Transform(const StringPiece& in,
                                       GoogleString* out) = 0;
   };

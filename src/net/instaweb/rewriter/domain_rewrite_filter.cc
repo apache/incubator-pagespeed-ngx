@@ -122,6 +122,7 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const RewriteDriver* driver,
     bool apply_sharding, GoogleString* rewritten_url) const {
   if (url_to_rewrite.empty()) {
+    rewritten_url->clear();
     return kDomainUnchanged;
   }
 
@@ -131,6 +132,7 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   }
 
   if (!orig_url.IsWebValid()) {
+    url_to_rewrite.CopyToString(rewritten_url);
     return kDomainUnchanged;
   }
 
