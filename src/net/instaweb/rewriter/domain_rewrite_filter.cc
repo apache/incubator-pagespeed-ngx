@@ -87,8 +87,17 @@ void DomainRewriteFilter::UpdateLocationHeader(const GoogleUrl& base_url,
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
+  if (!BaseUrlIsValid()) {
+    // The base URL is used to rewrite the attribute URL, which is all this
+    // method does; if it isn't valid we can't so there's no point in going on.
+    return;
+  }
   resource_tag_scanner::UrlCategoryVector attributes;
   resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  bool element_is_embed_or_frame_or_iframe = (
+      element->keyword() == HtmlName::kEmbed ||
+      element->keyword() == HtmlName::kFrame ||
+      element->keyword() == HtmlName::kIframe);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     // Disable domain_rewrite for non-image, non-script, non-stylesheet urls
     // unless ModPagespeedDomainRewriteHyperlinks is on
@@ -99,17 +108,18 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
       continue;
     }
     StringPiece val(attributes[i].url->DecodedValueOrNull());
+    if (val.empty()) {
+      // We don't rewrite empty URLs so bail early in that case.
+      continue;
+    }
     GoogleString rewritten_val;
     // Don't shard hyperlinks, prefetch, embeds, frames, or iframes.
     bool apply_sharding = (
+        !element_is_embed_or_frame_or_iframe &&
         attributes[i].category != semantic_type::kHyperlink &&
-        attributes[i].category != semantic_type::kPrefetch &&
-        element->keyword() != HtmlName::kEmbed &&
-        element->keyword() != HtmlName::kFrame &&
-        element->keyword() != HtmlName::kIframe);
-    if (!val.empty() && BaseUrlIsValid() &&
-        (Rewrite(val, driver_->base_url(), driver_,
-                 apply_sharding, &rewritten_val) == kRewroteDomain)) {
+        attributes[i].category != semantic_type::kPrefetch);
+    if (Rewrite(val, driver_->base_url(), driver_,
+                apply_sharding, &rewritten_val) == kRewroteDomain) {
       attributes[i].url->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
