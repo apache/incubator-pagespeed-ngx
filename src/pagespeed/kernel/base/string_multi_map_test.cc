@@ -184,4 +184,29 @@ TEST_F(StringMultiMapTest, TestRemoveFromSortedArray) {
   EXPECT_FALSE(string_map_.Has("d"));
 }
 
+class StringMultiMapStartEmptyTest : public StringMultiMapTest {
+ protected:
+  virtual void SetUp() {
+    // Purposefully doesn't call the base
+  }
+};
+
+TEST_F(StringMultiMapStartEmptyTest, TestAddEmpty) {
+  // Make sure we produce an empty string the same way
+  // key storage creation would, which results in a stored and non-stored
+  // key having the same address.
+  StringPiece empty;
+  GoogleString empty_string;
+  empty.CopyToString(&empty_string);
+  string_map_.Add(empty_string, "100");
+  string_map_.Add(empty_string, "200");
+  ASSERT_EQ(1, string_map_.num_names());
+  ASSERT_EQ(2, string_map_.num_values());
+  ConstStringStarVector v;
+  EXPECT_TRUE(string_map_.Lookup(empty_string, &v));
+  ASSERT_EQ(2, v.size());
+  EXPECT_STREQ("100", *v[0]);
+  EXPECT_STREQ("200", *v[1]);
+}
+
 }  // namespace net_instaweb

@@ -240,13 +240,11 @@ template<class StringCompare> class StringMultiMap {
         : key_(src.key_) {
       // Note that a copy-construction does occur in Add, but only of
       // the lookup_entry, which will not have a saved key.
-      DCHECK(!src.IsKeySaved());
       DCHECK(src.values_.empty());
     }
 
     SetEntry& operator=(const SetEntry& src) {
       if (&src != this) {
-        DCHECK(!src.IsKeySaved());
         DCHECK(src.values_.empty());
         key_ = src.key_;
       }
@@ -254,17 +252,11 @@ template<class StringCompare> class StringMultiMap {
     }
 
     void set_key(StringPiece key) {
-      DCHECK(!IsKeySaved());
       key_ = key;
     }
 
     void AddValue(const GoogleString* value) {
-      DCHECK(IsKeySaved());
       values_.push_back(value);
-    }
-
-    bool IsKeySaved() const {
-      return key_storage_.data() == key_.data();
     }
 
     // During lookups, key will point to the passed-in StringPiece.
