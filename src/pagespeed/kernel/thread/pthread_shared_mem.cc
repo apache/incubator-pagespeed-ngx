@@ -162,16 +162,21 @@ AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
   // Create the memory
   int fd = open("/dev/zero", O_RDWR);
   if (fd == -1) {
-    handler->Message(kError, "Unable to create SHM segment %s, errno=%d.",
-                     prefixed_name.c_str(), errno);
+    handler->Message(
+        kError, "Unable to create SHM segment %s, open of /dev/zero failed "
+        "with errno=%d.", prefixed_name.c_str(), errno);
     return NULL;
   }
 
   // map it
   char* base = reinterpret_cast<char*>(
                    mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+  int mmap_errno = errno;
   CheckedClose(fd, handler);
   if (base == MAP_FAILED) {
+    handler->Message(
+        kError, "Unable to create SHM segment %s, mmap failed with errno=%d.",
+        prefixed_name.c_str(), mmap_errno);
     return NULL;
   }
 
