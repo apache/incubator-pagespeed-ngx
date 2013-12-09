@@ -401,7 +401,7 @@ bool Scheduler::NoPendingAlarms() {
 }
 
 SchedulerBlockingFunction::SchedulerBlockingFunction(Scheduler* scheduler)
-    : scheduler_(scheduler), success_(false) {
+    : scheduler_(scheduler), success_(false), done_(false) {
   set_delete_after_callback(false);
 }
 
@@ -413,18 +413,17 @@ void SchedulerBlockingFunction::Run() {
 }
 
 void SchedulerBlockingFunction::Cancel() {
-  // Save a copy of the scheduler_ field since it may be dead when we need it.
-  Scheduler* scheduler = scheduler_;
-  done_.set_value(true);
-  // At this point *this should be considered dead, since the allocating thread
-  // runs Block() and can now complete its loop and return control to the caller
-  // who will pop *this from the stack.
-  scheduler->Wakeup();
+  ScopedMutex lock(scheduler_->mutex());
+  done_ = true;
+  scheduler_->Wakeup();
+  // When this block exits, *this should be considered dead, since the
+  // allocating thread runs Block() and would be able to complete its loop and
+  // return control to the caller who will pop *this from the stack.
 }
 
 bool SchedulerBlockingFunction::Block() {
   ScopedMutex lock(scheduler_->mutex());
-  while (!done_.value()) {
+  while (!done_) {
     scheduler_->ProcessAlarmsOrWaitUs(10 * Timer::kSecondUs);
   }
   return success_;

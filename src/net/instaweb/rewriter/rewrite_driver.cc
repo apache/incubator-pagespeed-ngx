@@ -535,9 +535,13 @@ void RewriteDriver::TryCheckForCompletion(
         MakeFunction(this, &RewriteDriver::TryCheckForCompletion,
                      wait_mode, end_time_ms, done));
   } else {
-    // Done.
+    // Done. Note that we may get deleted by our callback, so we have to
+    // make sure to save the mutex pointer.
+    AbstractMutex* mutex = rewrite_mutex();
     waiting_ = kNoWait;
+    mutex->Unlock();
     done->CallRun();
+    mutex->Lock();
   }
 }
 

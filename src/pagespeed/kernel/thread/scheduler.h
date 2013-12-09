@@ -19,7 +19,6 @@
 
 #include <set>
 
-#include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/function.h"
@@ -198,7 +197,7 @@ class SchedulerBlockingFunction : public Function {
  private:
   Scheduler* scheduler_;
   bool success_;
-  AtomicBool done_;
+  bool done_;  // protected by scheduler_->mutex()
   DISALLOW_COPY_AND_ASSIGN(SchedulerBlockingFunction);
 };
 

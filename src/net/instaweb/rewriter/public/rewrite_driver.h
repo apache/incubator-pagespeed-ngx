@@ -448,7 +448,8 @@ class RewriteDriver : public HtmlParse {
   virtual void FinishParse();
 
   // As above, but asynchronous. Note that the RewriteDriver may already be
-  // deleted at the point the callback is invoked.
+  // deleted at the point the callback is invoked. The scheduler lock will
+  // not be held when the callback is run.
   void FinishParseAsync(Function* callback);
 
   // Report error message with description of context's location
@@ -781,7 +782,7 @@ class RewriteDriver : public HtmlParse {
 
   // Initiates an asynchronous Flush.  done->Run() will be called when
   // the flush is complete.  Further calls to ParseText should be deferred until
-  // the callback is called.
+  // the callback is called. Scheduler mutex is not held while done is called.
   void FlushAsync(Function* done);
 
   // Queues up a task to run on the (high-priority) rewrite thread.
@@ -1058,14 +1059,16 @@ class RewriteDriver : public HtmlParse {
 
   // Checks whether outstanding rewrites are completed in a satisfactory
   // fashion with respect to given wait_mode and timeout, and invokes
-  // done->Run() when either finished or timed out.
-  // Assumes rewrite_mutex held.
+  // done->Run() (with rewrite_mutex released) when either finished or timed
+  // out. Assumes rewrite_mutex held. May relinquish it temporarily to invoke
+  // done.
   void CheckForCompletionAsync(WaitMode wait_mode, int64 timeout_ms,
                                Function* done);
 
   // A single check attempt for the above. Will either invoke callback
-  // or ask scheduler to check again.
-  // Assumes rewrite_mutex held.
+  // (with rewrite_mutex released) or ask scheduler to check again.
+  // Assumes rewrite_mutex held. May relinquish it temporarily to invoke
+  // done.
   void TryCheckForCompletion(WaitMode wait_mode, int64 end_time_ms,
                              Function* done);
 
