@@ -71,6 +71,10 @@ TEST_F(ImageOomTest, BlankImageTooLarge) {
     return;
   }
 
+#ifndef NDEBUG
+  return;
+#endif
+
   Image::CompressionOptions* options = new Image::CompressionOptions();
   // Make sure creating gigantic image fails cleanly.
   ImagePtr giant(BlankImageWithOptions(10000000, 10000, IMAGE_PNG,
@@ -83,6 +87,10 @@ TEST_F(ImageOomTest, BlankImageNotTooLarge) {
   if (RunningOnValgrind()) {
     return;
   }
+
+#ifndef NDEBUG
+  return;
+#endif
 
   Image::CompressionOptions* options = new Image::CompressionOptions();
   ImagePtr not_too_large(BlankImageWithOptions(100000, 10000, IMAGE_PNG,
