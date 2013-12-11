@@ -26,6 +26,7 @@
 
 #include "base/stringprintf.h"
 #include "strings/ascii_ctype.h"
+#include "strings/case.h"
 #include "strings/escaping.h"
 
 typedef struct RgbValue {
@@ -188,31 +189,34 @@ static const RgbValue known_color_values[] = {
 /*195 yellowgreen */{154, 205,  50},
 };
 
-// here the entiry table is hardcoded into the function
+// here the entire table is hardcoded into the function
 // mainly because of consideration of efficiency
-static const RgbValue * GetKnownColorValue(const char *colorstr) {
+static const RgbValue * GetKnownColorValue(StringPiece colorstr) {
+  if (colorstr.size() <= 2) {
+    return NULL;
+  }
   switch (ascii_tolower(colorstr[0])) {
   case 'a':
     switch (ascii_tolower(colorstr[1])) {
     case 'l':
-      if (!strcasecmp("aliceblue", colorstr)) {
+      if (CaseEqual("aliceblue", colorstr)) {
         return &known_color_values[0];
       }
       return NULL;
     case 'n':
-      if (!strcasecmp("antiquewhite", colorstr)) {
+      if (CaseEqual("antiquewhite", colorstr)) {
         return &known_color_values[1];
       }
       return NULL;
     case 'q':
-      if (!strcasecmp("aqua", colorstr)) {
+      if (CaseEqual("aqua", colorstr)) {
         return &known_color_values[2];
-      } else if (!strcasecmp("aquamarine", colorstr)) {
+      } else if (CaseEqual("aquamarine", colorstr)) {
         return &known_color_values[3];
       }
       return NULL;
     case 'z':
-      if (!strcasecmp("azure", colorstr)) {
+      if (CaseEqual("azure", colorstr)) {
         return &known_color_values[4];
       }
       return NULL;
@@ -221,33 +225,33 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'b':
     switch (ascii_tolower(colorstr[1])) {
     case 'e':
-      if (!strcasecmp("beige", colorstr)) {
+      if (CaseEqual("beige", colorstr)) {
         return &known_color_values[5];
       }
       return NULL;
     case 'i':
-      if (!strcasecmp("bisque", colorstr)) {
+      if (CaseEqual("bisque", colorstr)) {
         return &known_color_values[6];
       }
       return NULL;
     case 'l':
-      if (!strcasecmp("black", colorstr)) {
+      if (CaseEqual("black", colorstr)) {
         return &known_color_values[7];
-      } else if (!strcasecmp("blanchedalmond", colorstr)) {
+      } else if (CaseEqual("blanchedalmond", colorstr)) {
         return &known_color_values[8];
-      } else if (!strcasecmp("blue", colorstr)) {
+      } else if (CaseEqual("blue", colorstr)) {
         return &known_color_values[9];
-      } else if (!strcasecmp("blueviolet", colorstr)) {
+      } else if (CaseEqual("blueviolet", colorstr)) {
         return &known_color_values[10];
       }
       return NULL;
     case 'r':
-      if (!strcasecmp("brown", colorstr)) {
+      if (CaseEqual("brown", colorstr)) {
         return &known_color_values[11];
       }
       return NULL;
     case 'u':
-      if (!strcasecmp("burlywood", colorstr)) {
+      if (CaseEqual("burlywood", colorstr)) {
         return &known_color_values[12];
       }
       return NULL;
@@ -256,33 +260,33 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'c':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("cadetblue", colorstr)) {
+      if (CaseEqual("cadetblue", colorstr)) {
         return &known_color_values[13];
       }
       return NULL;
     case 'h':
-      if (!strcasecmp("chartreuse", colorstr)) {
+      if (CaseEqual("chartreuse", colorstr)) {
         return &known_color_values[14];
-      } else if (!strcasecmp("chocolate", colorstr)) {
+      } else if (CaseEqual("chocolate", colorstr)) {
         return &known_color_values[15];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("coral", colorstr)) {
+      if (CaseEqual("coral", colorstr)) {
         return &known_color_values[16];
-      } else if (!strcasecmp("cornflowerblue", colorstr)) {
+      } else if (CaseEqual("cornflowerblue", colorstr)) {
         return &known_color_values[17];
-      } else if (!strcasecmp("cornsilk", colorstr)) {
+      } else if (CaseEqual("cornsilk", colorstr)) {
         return &known_color_values[18];
       }
       return NULL;
     case 'r':
-      if (!strcasecmp("crimson", colorstr)) {
+      if (CaseEqual("crimson", colorstr)) {
         return &known_color_values[19];
       }
       return NULL;
     case 'y':
-      if (!strcasecmp("cyan", colorstr)) {
+      if (CaseEqual("cyan", colorstr)) {
         return &known_color_values[20];
       }
       return NULL;
@@ -292,62 +296,62 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'd':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("darkblue", colorstr)) {
+      if (CaseEqual("darkblue", colorstr)) {
         return &known_color_values[21];
-      } else if (!strcasecmp("darkcyan", colorstr)) {
+      } else if (CaseEqual("darkcyan", colorstr)) {
         return &known_color_values[22];
-      } else if (!strcasecmp("darkgoldenrod", colorstr)) {
+      } else if (CaseEqual("darkgoldenrod", colorstr)) {
         return &known_color_values[23];
-      } else if (!strcasecmp("darkgray", colorstr)) {
+      } else if (CaseEqual("darkgray", colorstr)) {
         return &known_color_values[24];
-      } else if (!strcasecmp("darkgreen", colorstr)) {
+      } else if (CaseEqual("darkgreen", colorstr)) {
         return &known_color_values[25];
-      } else if (!strcasecmp("darkgrey", colorstr)) {
+      } else if (CaseEqual("darkgrey", colorstr)) {
         return &known_color_values[26];
-      } else if (!strcasecmp("darkkhaki", colorstr)) {
+      } else if (CaseEqual("darkkhaki", colorstr)) {
         return &known_color_values[27];
-      } else if (!strcasecmp("darkmagenta", colorstr)) {
+      } else if (CaseEqual("darkmagenta", colorstr)) {
         return &known_color_values[28];
-      } else if (!strcasecmp("darkolivegreen", colorstr)) {
+      } else if (CaseEqual("darkolivegreen", colorstr)) {
         return &known_color_values[29];
-      } else if (!strcasecmp("darkorange", colorstr)) {
+      } else if (CaseEqual("darkorange", colorstr)) {
         return &known_color_values[30];
-      } else if (!strcasecmp("darkorchid", colorstr)) {
+      } else if (CaseEqual("darkorchid", colorstr)) {
         return &known_color_values[31];
-      } else if (!strcasecmp("darkred", colorstr)) {
+      } else if (CaseEqual("darkred", colorstr)) {
         return &known_color_values[32];
-      } else if (!strcasecmp("darksalmon", colorstr)) {
+      } else if (CaseEqual("darksalmon", colorstr)) {
         return &known_color_values[33];
-      } else if (!strcasecmp("darkseagreen", colorstr)) {
+      } else if (CaseEqual("darkseagreen", colorstr)) {
         return &known_color_values[34];
-      } else if (!strcasecmp("darkslateblue", colorstr)) {
+      } else if (CaseEqual("darkslateblue", colorstr)) {
         return &known_color_values[35];
-      } else if (!strcasecmp("darkslategray", colorstr)) {
+      } else if (CaseEqual("darkslategray", colorstr)) {
         return &known_color_values[36];
-      } else if (!strcasecmp("darkslategrey", colorstr)) {
+      } else if (CaseEqual("darkslategrey", colorstr)) {
         return &known_color_values[37];
-      } else if (!strcasecmp("darkturquoise", colorstr)) {
+      } else if (CaseEqual("darkturquoise", colorstr)) {
         return &known_color_values[38];
-      } else if (!strcasecmp("darkviolet", colorstr)) {
+      } else if (CaseEqual("darkviolet", colorstr)) {
         return &known_color_values[39];
       }
       return NULL;
     case 'e':
-      if (!strcasecmp("deeppink", colorstr)) {
+      if (CaseEqual("deeppink", colorstr)) {
         return &known_color_values[40];
-      } else if (!strcasecmp("deepskyblue", colorstr)) {
+      } else if (CaseEqual("deepskyblue", colorstr)) {
         return &known_color_values[41];
       }
       return NULL;
     case 'i':
-      if (!strcasecmp("dimgray", colorstr)) {
+      if (CaseEqual("dimgray", colorstr)) {
         return &known_color_values[42];
-      } else if (!strcasecmp("dimgrey", colorstr)) {
+      } else if (CaseEqual("dimgrey", colorstr)) {
         return &known_color_values[43];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("dodgerblue", colorstr)) {
+      if (CaseEqual("dodgerblue", colorstr)) {
         return &known_color_values[44];
       }
       return NULL;
@@ -356,22 +360,22 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'f':
     switch (ascii_tolower(colorstr[1])) {
     case 'i':
-      if (!strcasecmp("firebrick", colorstr)) {
+      if (CaseEqual("firebrick", colorstr)) {
         return &known_color_values[45];
       }
       return NULL;
     case 'l':
-      if (!strcasecmp("floralwhite", colorstr)) {
+      if (CaseEqual("floralwhite", colorstr)) {
         return &known_color_values[46];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("forestgreen", colorstr)) {
+      if (CaseEqual("forestgreen", colorstr)) {
         return &known_color_values[47];
       }
       return NULL;
     case 'u':
-      if (!strcasecmp("fuchsia", colorstr)) {
+      if (CaseEqual("fuchsia", colorstr)) {
         return &known_color_values[48];
       }
       return NULL;
@@ -380,108 +384,108 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'g':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("gainsboro", colorstr)) {
+      if (CaseEqual("gainsboro", colorstr)) {
         return &known_color_values[49];
       }
       return NULL;
     case 'h':
-      if (!strcasecmp("ghostwhite", colorstr)) {
+      if (CaseEqual("ghostwhite", colorstr)) {
         return &known_color_values[50];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("gold", colorstr)) {
+      if (CaseEqual("gold", colorstr)) {
         return &known_color_values[51];
-      } else if (!strcasecmp("goldenrod", colorstr)) {
+      } else if (CaseEqual("goldenrod", colorstr)) {
         return &known_color_values[52];
       }
       return NULL;
     case 'r':
-      if (!strcasecmp("gray", colorstr)) {
+      if (CaseEqual("gray", colorstr)) {
         return &known_color_values[53];
-      } else if (!strcasecmp("green", colorstr)) {
+      } else if (CaseEqual("green", colorstr)) {
         return &known_color_values[54];
-      } else if (!strcasecmp("grey", colorstr)) {
+      } else if (CaseEqual("grey", colorstr)) {
         return &known_color_values[55];
-      } else if (!strcasecmp("greenyellow", colorstr)) {
+      } else if (CaseEqual("greenyellow", colorstr)) {
         return &known_color_values[56];
       }
       return NULL;
     }
     return NULL;
   case 'h':
-    if (!strcasecmp("honeydew", colorstr)) {
+    if (CaseEqual("honeydew", colorstr)) {
       return &known_color_values[57];
-    } else if (!strcasecmp("hotpink", colorstr)) {
+    } else if (CaseEqual("hotpink", colorstr)) {
       return &known_color_values[58];
     }
     return NULL;
   case 'i':
-    if (!strcasecmp("indianred", colorstr)) {
+    if (CaseEqual("indianred", colorstr)) {
       return &known_color_values[59];
-    } else if (!strcasecmp("indigo", colorstr)) {
+    } else if (CaseEqual("indigo", colorstr)) {
       return &known_color_values[60];
-    } else if (!strcasecmp("ivory", colorstr)) {
+    } else if (CaseEqual("ivory", colorstr)) {
       return &known_color_values[61];
     }
     return NULL;
   case 'k':
-    if (!strcasecmp("khaki", colorstr)) {
+    if (CaseEqual("khaki", colorstr)) {
       return &known_color_values[62];
     }
     return NULL;
   case 'l':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("lavender", colorstr)) {
+      if (CaseEqual("lavender", colorstr)) {
         return &known_color_values[63];
-      } else if (!strcasecmp("lavenderblush", colorstr)) {
+      } else if (CaseEqual("lavenderblush", colorstr)) {
         return &known_color_values[64];
-      } else if (!strcasecmp("lawngreen", colorstr)) {
+      } else if (CaseEqual("lawngreen", colorstr)) {
         return &known_color_values[65];
       }
       return NULL;
     case 'e':
-      if (!strcasecmp("lemonchiffon", colorstr)) {
+      if (CaseEqual("lemonchiffon", colorstr)) {
         return &known_color_values[66];
       }
       return NULL;
     case 'i':
-      if (!strcasecmp("lightblue", colorstr)) {
+      if (CaseEqual("lightblue", colorstr)) {
         return &known_color_values[67];
-      } else if (!strcasecmp("lightcoral", colorstr)) {
+      } else if (CaseEqual("lightcoral", colorstr)) {
         return &known_color_values[68];
-      } else if (!strcasecmp("lightcyan", colorstr)) {
+      } else if (CaseEqual("lightcyan", colorstr)) {
         return &known_color_values[69];
-      } else if (!strcasecmp("lightgoldenrodyellow", colorstr)) {
+      } else if (CaseEqual("lightgoldenrodyellow", colorstr)) {
         return &known_color_values[70];
-      } else if (!strcasecmp("lightgray", colorstr)) {
+      } else if (CaseEqual("lightgray", colorstr)) {
         return &known_color_values[71];
-      } else if (!strcasecmp("lightgreen", colorstr)) {
+      } else if (CaseEqual("lightgreen", colorstr)) {
         return &known_color_values[72];
-      } else if (!strcasecmp("lightgrey", colorstr)) {
+      } else if (CaseEqual("lightgrey", colorstr)) {
         return &known_color_values[73];
-      } else if (!strcasecmp("lightpink", colorstr)) {
+      } else if (CaseEqual("lightpink", colorstr)) {
         return &known_color_values[74];
-      } else if (!strcasecmp("lightsalmon", colorstr)) {
+      } else if (CaseEqual("lightsalmon", colorstr)) {
         return &known_color_values[75];
-      } else if (!strcasecmp("lightseagreen", colorstr)) {
+      } else if (CaseEqual("lightseagreen", colorstr)) {
         return &known_color_values[76];
-      } else if (!strcasecmp("lightskyblue", colorstr)) {
+      } else if (CaseEqual("lightskyblue", colorstr)) {
         return &known_color_values[77];
-      } else if (!strcasecmp("lightslategray", colorstr)) {
+      } else if (CaseEqual("lightslategray", colorstr)) {
         return &known_color_values[78];
-      } else if (!strcasecmp("lightslategrey", colorstr)) {
+      } else if (CaseEqual("lightslategrey", colorstr)) {
         return &known_color_values[79];
-      } else if (!strcasecmp("lightsteelblue", colorstr)) {
+      } else if (CaseEqual("lightsteelblue", colorstr)) {
         return &known_color_values[80];
-      } else if (!strcasecmp("lightyellow", colorstr)) {
+      } else if (CaseEqual("lightyellow", colorstr)) {
         return &known_color_values[81];
-      } else if (!strcasecmp("lime", colorstr)) {
+      } else if (CaseEqual("lime", colorstr)) {
         return &known_color_values[82];
-      } else if (!strcasecmp("limegreen", colorstr)) {
+      } else if (CaseEqual("limegreen", colorstr)) {
         return &known_color_values[83];
-      } else if (!strcasecmp("linen", colorstr)) {
+      } else if (CaseEqual("linen", colorstr)) {
         return &known_color_values[84];
       }
       return NULL;
@@ -490,73 +494,73 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'm':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("magenta", colorstr)) {
+      if (CaseEqual("magenta", colorstr)) {
         return &known_color_values[85];
-      } else if (!strcasecmp("maroon", colorstr)) {
+      } else if (CaseEqual("maroon", colorstr)) {
         return &known_color_values[86];
       }
       return NULL;
     case 'e':
-      if (!strcasecmp("mediumaquamarine", colorstr)) {
+      if (CaseEqual("mediumaquamarine", colorstr)) {
         return &known_color_values[87];
-      } else if (!strcasecmp("mediumblue", colorstr)) {
+      } else if (CaseEqual("mediumblue", colorstr)) {
         return &known_color_values[88];
-      } else if (!strcasecmp("mediumorchid", colorstr)) {
+      } else if (CaseEqual("mediumorchid", colorstr)) {
         return &known_color_values[89];
-      } else if (!strcasecmp("mediumpurple", colorstr)) {
+      } else if (CaseEqual("mediumpurple", colorstr)) {
         return &known_color_values[90];
-      } else if (!strcasecmp("mediumseagreen", colorstr)) {
+      } else if (CaseEqual("mediumseagreen", colorstr)) {
         return &known_color_values[91];
-      } else if (!strcasecmp("mediumslateblue", colorstr)) {
+      } else if (CaseEqual("mediumslateblue", colorstr)) {
         return &known_color_values[92];
-      } else if (!strcasecmp("mediumspringgreen", colorstr)) {
+      } else if (CaseEqual("mediumspringgreen", colorstr)) {
         return &known_color_values[93];
-      } else if (!strcasecmp("mediumturquoise", colorstr)) {
+      } else if (CaseEqual("mediumturquoise", colorstr)) {
         return &known_color_values[94];
-      } else if (!strcasecmp("mediumvioletred", colorstr)) {
+      } else if (CaseEqual("mediumvioletred", colorstr)) {
         return &known_color_values[95];
       }
       return NULL;
     case 'i':
-      if (!strcasecmp("midnightblue", colorstr)) {
+      if (CaseEqual("midnightblue", colorstr)) {
         return &known_color_values[96];
-      } else if (!strcasecmp("mintcream", colorstr)) {
+      } else if (CaseEqual("mintcream", colorstr)) {
         return &known_color_values[97];
-      } else if (!strcasecmp("mistyrose", colorstr)) {
+      } else if (CaseEqual("mistyrose", colorstr)) {
         return &known_color_values[98];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("moccasin", colorstr)) {
+      if (CaseEqual("moccasin", colorstr)) {
         return &known_color_values[99];
       }
       return NULL;
     }
     return NULL;
   case 'n':
-    if (!strcasecmp("navajowhite", colorstr)) {
+    if (CaseEqual("navajowhite", colorstr)) {
       return &known_color_values[100];
-    } else if (!strcasecmp("navy", colorstr)) {
+    } else if (CaseEqual("navy", colorstr)) {
       return &known_color_values[101];
     }
     return NULL;
   case 'o':
     switch (ascii_tolower(colorstr[1])) {
     case 'l':
-      if (!strcasecmp("oldlace", colorstr)) {
+      if (CaseEqual("oldlace", colorstr)) {
         return &known_color_values[102];
-      } else if (!strcasecmp("olive", colorstr)) {
+      } else if (CaseEqual("olive", colorstr)) {
         return &known_color_values[103];
-      } else if (!strcasecmp("olivedrab", colorstr)) {
+      } else if (CaseEqual("olivedrab", colorstr)) {
         return &known_color_values[104];
       }
       return NULL;
     case 'r':
-      if (!strcasecmp("orange", colorstr)) {
+      if (CaseEqual("orange", colorstr)) {
         return &known_color_values[105];
-      } else if (!strcasecmp("orangered", colorstr)) {
+      } else if (CaseEqual("orangered", colorstr)) {
         return &known_color_values[106];
-      } else if (!strcasecmp("orchid", colorstr)) {
+      } else if (CaseEqual("orchid", colorstr)) {
         return &known_color_values[107];
       }
       return NULL;
@@ -565,107 +569,107 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 'p':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("palegoldenrod", colorstr)) {
+      if (CaseEqual("palegoldenrod", colorstr)) {
         return &known_color_values[108];
-      } else if (!strcasecmp("palegreen", colorstr)) {
+      } else if (CaseEqual("palegreen", colorstr)) {
         return &known_color_values[109];
-      } else if (!strcasecmp("paleturquoise", colorstr)) {
+      } else if (CaseEqual("paleturquoise", colorstr)) {
         return &known_color_values[110];
-      } else if (!strcasecmp("palevioletred", colorstr)) {
+      } else if (CaseEqual("palevioletred", colorstr)) {
         return &known_color_values[111];
-      } else if (!strcasecmp("papayawhip", colorstr)) {
+      } else if (CaseEqual("papayawhip", colorstr)) {
         return &known_color_values[112];
       }
       return NULL;
     case 'e':
-      if (!strcasecmp("peachpuff", colorstr)) {
+      if (CaseEqual("peachpuff", colorstr)) {
         return &known_color_values[113];
-      } else if (!strcasecmp("peru", colorstr)) {
+      } else if (CaseEqual("peru", colorstr)) {
         return &known_color_values[114];
       }
       return NULL;
     case 'i':
-      if (!strcasecmp("pink", colorstr)) {
+      if (CaseEqual("pink", colorstr)) {
         return &known_color_values[115];
       }
       return NULL;
     case 'l':
-      if (!strcasecmp("plum", colorstr)) {
+      if (CaseEqual("plum", colorstr)) {
         return &known_color_values[116];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("powderblue", colorstr)) {
+      if (CaseEqual("powderblue", colorstr)) {
         return &known_color_values[117];
       }
       return NULL;
     case 'u':
-      if (!strcasecmp("purple", colorstr)) {
+      if (CaseEqual("purple", colorstr)) {
         return &known_color_values[118];
       }
       return NULL;
     }
     return NULL;
   case 'r':
-    if (!strcasecmp("red", colorstr)) {
+    if (CaseEqual("red", colorstr)) {
       return &known_color_values[119];
-    } else if (!strcasecmp("rosybrown", colorstr)) {
+    } else if (CaseEqual("rosybrown", colorstr)) {
       return &known_color_values[120];
-    } else if (!strcasecmp("royalblue", colorstr)) {
+    } else if (CaseEqual("royalblue", colorstr)) {
       return &known_color_values[121];
     }
     return NULL;
   case 's':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("saddlebrown", colorstr)) {
+      if (CaseEqual("saddlebrown", colorstr)) {
         return &known_color_values[122];
-      } else if (!strcasecmp("salmon", colorstr)) {
+      } else if (CaseEqual("salmon", colorstr)) {
         return &known_color_values[123];
-      } else if (!strcasecmp("sandybrown", colorstr)) {
+      } else if (CaseEqual("sandybrown", colorstr)) {
         return &known_color_values[124];
       }
       return NULL;
     case 'e':
-      if (!strcasecmp("seagreen", colorstr)) {
+      if (CaseEqual("seagreen", colorstr)) {
         return &known_color_values[125];
-      } else if (!strcasecmp("seashell", colorstr)) {
+      } else if (CaseEqual("seashell", colorstr)) {
         return &known_color_values[126];
       }
       return NULL;
     case 'i':
-      if (!strcasecmp("sienna", colorstr)) {
+      if (CaseEqual("sienna", colorstr)) {
         return &known_color_values[127];
-      } else if (!strcasecmp("silver", colorstr)) {
+      } else if (CaseEqual("silver", colorstr)) {
         return &known_color_values[128];
       }
       return NULL;
     case 'k':
-      if (!strcasecmp("skyblue", colorstr)) {
+      if (CaseEqual("skyblue", colorstr)) {
         return &known_color_values[129];
       }
       return NULL;
     case 'l':
-      if (!strcasecmp("slateblue", colorstr)) {
+      if (CaseEqual("slateblue", colorstr)) {
         return &known_color_values[130];
-      } else if (!strcasecmp("slategray", colorstr)) {
+      } else if (CaseEqual("slategray", colorstr)) {
         return &known_color_values[131];
-      } else if (!strcasecmp("slategrey", colorstr)) {
+      } else if (CaseEqual("slategrey", colorstr)) {
         return &known_color_values[132];
       }
       return NULL;
     case 'n':
-      if (!strcasecmp("snow", colorstr)) {
+      if (CaseEqual("snow", colorstr)) {
         return &known_color_values[133];
       }
       return NULL;
     case 'p':
-      if (!strcasecmp("springgreen", colorstr)) {
+      if (CaseEqual("springgreen", colorstr)) {
         return &known_color_values[134];
       }
       return NULL;
     case 't':
-      if (!strcasecmp("steelblue", colorstr)) {
+      if (CaseEqual("steelblue", colorstr)) {
         return &known_color_values[135];
       }
       return NULL;
@@ -674,50 +678,50 @@ static const RgbValue * GetKnownColorValue(const char *colorstr) {
   case 't':
     switch (ascii_tolower(colorstr[1])) {
     case 'a':
-      if (!strcasecmp("tan", colorstr)) {
+      if (CaseEqual("tan", colorstr)) {
         return &known_color_values[136];
       }
       return NULL;
     case 'e':
-      if (!strcasecmp("teal", colorstr)) {
+      if (CaseEqual("teal", colorstr)) {
         return &known_color_values[137];
       }
       return NULL;
     case 'h':
-      if (!strcasecmp("thistle", colorstr)) {
+      if (CaseEqual("thistle", colorstr)) {
         return &known_color_values[138];
       }
       return NULL;
     case 'o':
-      if (!strcasecmp("tomato", colorstr)) {
+      if (CaseEqual("tomato", colorstr)) {
         return &known_color_values[139];
       }
       return NULL;
     case 'u':
-      if (!strcasecmp("turquoise", colorstr)) {
+      if (CaseEqual("turquoise", colorstr)) {
         return &known_color_values[140];
       }
       return NULL;
     }
     return NULL;
   case 'v':
-    if (!strcasecmp("violet", colorstr)) {
+    if (CaseEqual("violet", colorstr)) {
       return &known_color_values[141];
     }
     return NULL;
   case 'w':
-    if (!strcasecmp("wheat", colorstr)) {
+    if (CaseEqual("wheat", colorstr)) {
       return &known_color_values[142];
-    } else if (!strcasecmp("white", colorstr)) {
+    } else if (CaseEqual("white", colorstr)) {
       return &known_color_values[143];
-    } else if (!strcasecmp("whitesmoke", colorstr)) {
+    } else if (CaseEqual("whitesmoke", colorstr)) {
       return &known_color_values[144];
     }
     return NULL;
   case 'y':
-    if (!strcasecmp("yellow", colorstr)) {
+    if (CaseEqual("yellow", colorstr)) {
       return &known_color_values[145];
-    } else if (!strcasecmp("yellowgreen", colorstr)) {
+    } else if (CaseEqual("yellowgreen", colorstr)) {
       return &known_color_values[146];
     }
     return NULL;
@@ -730,15 +734,15 @@ const unsigned char HtmlColor::kGoodColorValue;
 const unsigned char HtmlColor::kBadColorName;
 const unsigned char HtmlColor::kBadColorHex;
 
-static inline int TwoXDigitsToNum(const char *xstr) {
+static inline int TwoXDigitsToNum(StringPiece xstr) {
   return (
       strings::hex_digit_to_int(
           xstr[0])*16 + strings::hex_digit_to_int(xstr[1]));
 }
 
-void HtmlColor::SetValueFromHexStr(const char *hexstr) {
-  int hexstr_len = strlen(hexstr);
-  const char* finalstr = hexstr;
+void HtmlColor::SetValueFromHexStr(StringPiece hexstr) {
+  int hexstr_len = hexstr.size();
+  const char* finalstr = hexstr.data();
   char hexbuf[7];
 
   if (hexstr_len == 3) {
@@ -770,22 +774,22 @@ void HtmlColor::SetValueFromHexStr(const char *hexstr) {
   is_bad_value_ = kGoodColorValue;
 }
 
-HtmlColor::HtmlColor(const string& str) {
-  SetValueFromStr(str.c_str());
+HtmlColor::HtmlColor(StringPiece str) {
+  SetValueFromStr(str);
 }
 
-HtmlColor::HtmlColor(const char *str, int colorstrlen) {
-  string tmp(str, colorstrlen);
-  SetValueFromStr(tmp.c_str());
+HtmlColor::HtmlColor(const char* str, int colorstrlen) {
+  SetValueFromStr(StringPiece(str, colorstrlen));
 }
 
-void HtmlColor::SetValueFromStr(const char* colorstr) {
-  if (colorstr[0] == '#') {
+void HtmlColor::SetValueFromStr(StringPiece colorstr) {
+  if (colorstr.size() > 0 && colorstr[0] == '#') {
     // rgb value
-    SetValueFromHexStr(colorstr + 1);
+    colorstr.remove_prefix(1);
+    SetValueFromHexStr(colorstr);
   } else {
     SetValueFromName(colorstr);
-    if (!IsDefined() && strlen(colorstr) == 6) {
+    if (!IsDefined() && colorstr.size() == 6) {
       SetValueFromHexStr(colorstr);
       if (!IsDefined())
         SetBadNameValue();
@@ -793,7 +797,7 @@ void HtmlColor::SetValueFromStr(const char* colorstr) {
   }
 }
 
-void HtmlColor::SetValueFromName(const char* str) {
+void HtmlColor::SetValueFromName(StringPiece str) {
   const RgbValue *p_rgb = GetKnownColorValue(str);
   if (p_rgb) {
     r_ = p_rgb->r_;
@@ -953,16 +957,16 @@ string HtmlColor::ToString() const {
 //
 // == HtmlColorUtils ==
 //
-string HtmlColorUtils::MaybeConvertToCssShorthand(const char* orig_color) {
+string HtmlColorUtils::MaybeConvertToCssShorthand(StringPiece orig_color) {
   HtmlColor color(orig_color);
   if ( !color.IsDefined() )
-    return orig_color;
+    return orig_color.ToString();
 
   string shorthand = MaybeConvertToCssShorthand(color);
-  if (shorthand.size() < strlen(orig_color)) {
+  if (shorthand.size() < orig_color.size()) {
     return shorthand;
   } else {
-    return orig_color;
+    return orig_color.ToString();
   }
 }
 
