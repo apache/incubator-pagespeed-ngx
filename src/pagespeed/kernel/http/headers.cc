@@ -217,9 +217,10 @@ bool IsCommaSeparatedField(const StringPiece& name) {
   // that are not safe to comma-split is at
   // http://src.chromium.org/viewvc/chrome/trunk/src/net/http/http_util.cc
   // (search for IsNonCoalescingHeader)
-  if (StringCaseEqual(name, HttpAttributes::kVary) ||
+  if (StringCaseEqual(name, HttpAttributes::kAccept) ||
       StringCaseEqual(name, HttpAttributes::kCacheControl) ||
-      StringCaseEqual(name, HttpAttributes::kContentEncoding)) {
+      StringCaseEqual(name, HttpAttributes::kContentEncoding) ||
+      StringCaseEqual(name, HttpAttributes::kVary)) {
     return true;
   } else {
     return false;

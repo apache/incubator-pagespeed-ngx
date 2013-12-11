@@ -30,6 +30,7 @@ namespace net_instaweb {
 // TODO(jmarantz): Proactively change all the occurrences of the static strings
 // to use these shared constants.
 struct HttpAttributes {
+  static const char kAccept[];
   static const char kAcceptEncoding[];
   static const char kAccessControlAllowOrigin[];
   static const char kAccessControlAllowCredentials[];

@@ -20,7 +20,9 @@
 
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http.pb.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
@@ -91,6 +93,59 @@ TEST_F(RequestHeadersTest, CopyFromProto) {
   EXPECT_STREQ("2", request_headers_.Value(0));
   // Default in proto.
   EXPECT_EQ(RequestHeaders::kGet, request_headers_.method());
+}
+
+TEST_F(RequestHeadersTest, AcceptWebp) {
+  const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
+  EXPECT_FALSE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                         kWebpMimeType));
+  request_headers_.Add(HttpAttributes::kAccept, "x, image/webp, y");
+  EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                         kWebpMimeType));
+  RequestHeaders keep;
+  keep.Add(HttpAttributes::kAccept, "image/webp");
+  keep.Add(HttpAttributes::kAccept, "y");
+  EXPECT_TRUE(request_headers_.RemoveIfNotIn(keep));
+  EXPECT_STREQ("image/webp, y", request_headers_.Value(0));
+
+  request_headers_.Clear();
+  EXPECT_FALSE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                         kWebpMimeType));
+  request_headers_.Add(HttpAttributes::kAccept, "a");
+  request_headers_.Add(HttpAttributes::kAccept, "image/webp");
+  request_headers_.Add(HttpAttributes::kAccept, "b");
+  EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                        kWebpMimeType));
+  // Add extra copy of image/webp.
+  request_headers_.Add(HttpAttributes::kAccept, "image/webp");
+  EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                        kWebpMimeType));
+  // remove just one of the two copies of the value.
+  request_headers_.Remove(HttpAttributes::kAccept, "image/webp");
+  EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                        kWebpMimeType));
+  // remove the last copy.
+  request_headers_.Remove(HttpAttributes::kAccept, "image/webp");
+  EXPECT_FALSE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                        kWebpMimeType));
+
+  request_headers_.Clear();
+  request_headers_.Add(HttpAttributes::kAccept,
+                       "application/xhtml+xml,application/xml;q=0.9,"
+                       "image/webp,*/*;q=0.8");
+  EXPECT_TRUE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                        kWebpMimeType));
+
+  // We do not currently handle arbitrary modifiers after image/webp.
+  // If this becomes an issue in the future then this test should be
+  // flipped to an EXPECT_TRUE once the handling is added.
+  request_headers_.Clear();
+  request_headers_.Add(HttpAttributes::kAccept,
+                       "application/xhtml+xml,application/xml;q=0.9,"
+                       "image/webp;q=0.9,"
+                       "*/*;q=0.8");
+  EXPECT_FALSE(request_headers_.HasValue(HttpAttributes::kAccept,
+                                         kWebpMimeType));
 }
 
 }  // namespace net_instaweb
