@@ -1321,7 +1321,7 @@ class InPlaceTest : public RewriteTestBase {
     // Make sure we let the rewrite complete, and also wait for the driver to be
     // idle so we can reuse it safely.
     rewrite_driver_->WaitForShutDown();
-    rewrite_driver_->Clear();
+    ClearRewriteDriver();  // makes sure to re-create the request context.
 
     EXPECT_TRUE(async_fetch.done());
     return async_fetch.done() && async_fetch.success();
@@ -1344,6 +1344,9 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
   GoogleString url = "http://example.com/foo.css";
   SetResponseWithDefaultHeaders(url, kContentTypeCss,
                                 ".a { color: red; }", 100);
+  GoogleString html_url = "http://example.com/foo.html";
+  SetResponseWithDefaultHeaders(html_url, kContentTypeHtml,
+                                "<b>Bold!</b>", 100);
 
   // This will fail because cache is empty and we are not allowing HTTP fetch.
   EXPECT_FALSE(TryFetchInPlaceResource(url, false /* proxy_mode */));
@@ -1369,6 +1372,15 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   ClearStats();
+
+  // In proxy mode, we should successfully pass through HTML.
+  EXPECT_TRUE(TryFetchInPlaceResource(html_url, true /* proxy_mode */));
+
+  // In non-proxy mode producing HTML should fail; it's expected the origin
+  // server would produce things we aren't optimizing through its usual
+  // code paths. Note that this needs to happen after the previous call so that
+  // we get the resource into cache.
+  EXPECT_FALSE(TryFetchInPlaceResource(html_url, false /* proxy_mode */));
 }
 
 TEST_F(InPlaceTest, InPlaceCssDebug) {

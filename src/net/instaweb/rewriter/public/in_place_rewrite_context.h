@@ -167,7 +167,8 @@ class InPlaceRewriteContext : public SingleRewriteContext {
 // underlying writer, response headers and callback.
 class RecordingFetch : public SharedAsyncFetch {
  public:
-  RecordingFetch(AsyncFetch* async_fetch,
+  RecordingFetch(bool proxy_mode,
+                 AsyncFetch* async_fetch,
                  const ResourcePtr& resource,
                  InPlaceRewriteContext* context,
                  MessageHandler* handler);
@@ -193,6 +194,7 @@ class RecordingFetch : public SharedAsyncFetch {
   // content but not stream it.
   bool ShouldStream() const;
 
+  bool proxy_mode_;
   MessageHandler* handler_;
   ResourcePtr resource_;
   InPlaceRewriteContext* context_;

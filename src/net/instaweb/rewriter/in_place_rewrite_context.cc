@@ -72,11 +72,13 @@ void InPlaceRewriteResourceSlot::Render() {
   // Do nothing.
 }
 
-RecordingFetch::RecordingFetch(AsyncFetch* async_fetch,
+RecordingFetch::RecordingFetch(bool proxy_mode,
+                               AsyncFetch* async_fetch,
                                const ResourcePtr& resource,
                                InPlaceRewriteContext* context,
                                MessageHandler* handler)
     : SharedAsyncFetch(async_fetch),
+      proxy_mode_(proxy_mode),
       handler_(handler),
       resource_(resource),
       context_(context),
@@ -104,7 +106,30 @@ void RecordingFetch::HandleHeadersComplete() {
     }
   } else {
     FreeDriver();
-    SharedAsyncFetch::HandleHeadersComplete();
+    if (proxy_mode_) {
+      SharedAsyncFetch::HandleHeadersComplete();
+    } else {
+      // If we are the origin, we do not have to pass through bytes
+      // if we aren't rewriting --- the caller is expected to fall back to
+      // the server's native method if FetchInPlaceResource fails.
+      //
+      // It turns out that passing through HTML bytes in particular can
+      // lead to deadlock with MPS + memcached due to blocking property cache
+      // lookups getting invoked in a call chain off cache hits, which wedges
+      // the CacheBatcher thread. So, to avoid this we get out of the way
+      // of things we don't rewrite here, which includes HTML.
+      //
+      // Note that since that can lead to the fetch we are chained to being
+      // deleted, we have to detach the header objects from the parent
+      // fetch, since the CacheUrlAsyncFetcher will still be trying to write
+      // to us.
+      streaming_ = false;
+      set_request_headers(NULL);
+      set_response_headers(NULL);
+      set_extra_response_headers(NULL);
+      response_headers()->set_status_code(HttpStatus::kNotFound);
+      SharedAsyncFetch::HandleDone(false);
+    }
   }
 }
 
@@ -537,8 +562,9 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
     ResourcePtr resource(slot(0)->resource());
     // If we get here, the resource must not have been rewritten.
     is_rewritten_ = false;
-    RecordingFetch* fetch = new RecordingFetch(async_fetch(), resource, this,
-                                               fetch_message_handler());
+    RecordingFetch* fetch =
+        new RecordingFetch(proxy_mode_, async_fetch(), resource, this,
+                           fetch_message_handler());
     if (resource->UseHttpCache()) {
       if (proxy_mode_) {
         cache_fetcher_.reset(driver_->CreateCacheFetcher());
