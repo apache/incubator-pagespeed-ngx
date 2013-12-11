@@ -1738,11 +1738,11 @@ URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/image_resize_using_rendered_d
 http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
 '--header=X-PSA-Blocking-Rewrite:psatest'
-check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
   $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
-OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+OPTIONS_HASH=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
                $WGET_DIR/image_resize_using_rendered_dimensions.html)
-NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
         $WGET_DIR/image_resize_using_rendered_dimensions.html)
 
 # Send a beacon response using POST indicating that OptPuzzle.jpg is
@@ -1758,6 +1758,54 @@ http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL \
   'fgrep -c 150x100xOptPuzzle.jpg.pagespeed.ic.' 1
 
+# TODO(anupama): Currently, the below tests for downstream caching and
+# rebeaconing interaction will pass incorrectly depending on whether the
+# time interval between the wgets is either < or > 5s (kMinBeaconIntervalMs)
+# Check to see if there is a better way to test this.
+
+# Verify that downstream caches and rebeaconing interact correctly for images.
+WGET_ARGS=""
+start_test lazyload_images,rewrite_images with critical images beacon
+HOST_NAME="http://downstreamcacherebeacon.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
+# There are 3 images on rewrite_images.html. Check that they are all
+# lazyloaded by default.
+http_proxy=$SECONDARY_HOSTNAME\
+  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
+  $WGET_DIR/rewrite_images.html) = 1 ];
+# An immediately issued wget does not result in instrumentation if the
+# correct PS-ShouldBeacon header is not present.
+OUT1=$(http_proxy=$SECONDARY_HOSTNAME\
+          $WGET_DUMP $WGET_ARGS\
+          --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
+# An immediately issued wget results in instrumentation if the PS-ShouldBeacon
+# header has the correct key.
+OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
+          $WGET_DUMP $WGET_ARGS\
+          --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
+check_not_from "$OUT1" egrep -q "pagespeed\.CriticalImages\.Run"
+check_from "$OUT2" egrep -q "pagespeed\.CriticalImages\.Run"
+
+# Verify that downstream caches and rebeaconing interact correctly for css.
+test_filter prioritize_critical_css
+URL="$HOST_NAME/mod_pagespeed_example/prioritize_critical_css.html"
+# Once candidate selectors are ready, we get an instrumented page.
+http_proxy=$SECONDARY_HOSTNAME\
+    fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+# An immediately issued wget does not result in instrumentation if the
+# correct PS-ShouldBeacon header is not present.
+OUT1=$(http_proxy=$SECONDARY_HOSTNAME\
+          $WGET_DUMP $WGET_ARGS\
+          --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
+# An immediately issued wget results in instrumentation if the PS-ShouldBeacon
+# header has the correct key.
+OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
+           $WGET_DUMP $WGET_ARGS\
+           --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
+check_not_from "$OUT1" egrep -q "pagespeed.criticalCssBeaconInit"
+check_from "$OUT2" egrep -q "pagespeed.criticalCssBeaconInit"
+
 # Verify that we can send a critical image beacon and that lazyload_images
 # does not try to lazyload the critical images.
 WGET_ARGS=""
@@ -1768,15 +1816,15 @@ URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
 # lazyloaded by default.
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
   $WGET_DIR/rewrite_images.html) = 1 ];
 # We need the options hash and nonce to send a critical image beacon, so extract
 # it from injected beacon JS.
-OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+OPTIONS_HASH=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
                $WGET_DIR/rewrite_images.html)
-NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
         $WGET_DIR/rewrite_images.html)
-OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
+OPTIONS_HASH=$(grep "^pagespeed\.CriticalImages\.Run" \
   $WGET_DIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
 # Send a beacon response using POST indicating that Puzzle.jpg is a critical
 # image.
@@ -1802,11 +1850,11 @@ http_proxy=$SECONDARY_HOSTNAME \
 URL="$URL?id=4"
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
     "$WGET_DIR/rewrite_images.html?id=4") = 1 ];
-OPTIONS_HASH=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-3)}' \
+OPTIONS_HASH=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
                "$WGET_DIR/rewrite_images.html?id=4")
-NONCE=$(awk -F\' '/^pagespeed\.criticalImagesBeaconInit/ {print $(NF-1)}' \
+NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
        "$WGET_DIR/rewrite_images.html?id=4")
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
@@ -1888,6 +1936,18 @@ URL="$HOSTNAME/mod_pagespeed_example/defer_javascript.html?PageSpeed=on&PageSpee
 OUT=$($WGET_DUMP $URL)
 HASH=$(echo $OUT \
   | grep --only-matching "/js_defer\\.*\([^.]\)*.js" | cut -d '.' -f 2)
+
+# Test a scenario where a multi-domain installation is using a
+# single CDN for all hosts, and uses a subdirectory in the CDN to
+# distinguish hosts.  Some of the resources may already be mapped to
+# the CDN in the origin HTML, but we want to fetch them directly
+# from localhost.  If we do this successfully (see the MapOriginDomain
+# command in customhostheader.example.com in pagespeed conf), we will
+# inline a small image.
+start_test shared CDN short-circuit back to origin via host-header override
+URL="http://customhostheader.example.com/map_origin_host_header.html"
+http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+    "grep -c data:image/png;base64" 1
 
 JS_URL="$HOSTNAME/ngx_pagespeed_static/js_defer.$HASH.js"
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
