@@ -165,38 +165,6 @@ deps = {
   "src/third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
-  "src/third_party/libpagespeed/src/build":
-    (Var("libpagespeed_trunk") + "/src/build" +
-     Var("libpagespeed_revision")),
-
-  "src/third_party/libpagespeed/src/build/internal":
-    Var("chromium_trunk") + "/src/build/internal@" +
-    Var("chromium_revision_num"),
-
-  "src/third_party/libpagespeed/src/pagespeed/core":
-    (Var("libpagespeed_trunk") + "/src/pagespeed/core" +
-     Var("libpagespeed_revision")),
-
-  "src/third_party/libpagespeed/src/pagespeed/image_compression":
-    (Var("libpagespeed_trunk") + "/src/pagespeed/image_compression" +
-     Var("libpagespeed_revision")),
-
-  "src/third_party/libpagespeed/src/pagespeed/js":
-    (Var("libpagespeed_trunk") + "/src/pagespeed/js" +
-     Var("libpagespeed_revision")),
-
-  "src/third_party/libpagespeed/src/pagespeed/l10n":
-    (Var("libpagespeed_trunk") + "/src/pagespeed/l10n" +
-     Var("libpagespeed_revision")),
-
-  "src/third_party/libpagespeed/src/pagespeed/proto":
-    (Var("libpagespeed_trunk") + "/src/pagespeed/proto" +
-     Var("libpagespeed_revision")),
-
-  "src/third_party/libpagespeed/src/third_party":
-    (Var("libpagespeed_trunk") + "/src/third_party" +
-     Var("libpagespeed_revision")),
-
   "src/third_party/protobuf": From(Var("libpagespeed_deps_root")),
 
   # Json cpp.
@@ -227,9 +195,6 @@ deps = {
   "src/tools/gyp": From(Var("chromium_deps_root")),
 
   "src/third_party/modp_b64": From(Var("libpagespeed_deps_root")),
-
-  "src/third_party/domain_registry_provider/src":
-    From(Var("libpagespeed_deps_root")),
 
   # RE2.
   "src/third_party/re2/src":

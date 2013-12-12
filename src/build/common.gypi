@@ -15,7 +15,7 @@
 {
   'variables': {
     # This should normally be passed in by gclient's hooks
-    'chromium_revision%': 90205,
+    'chromium_revision%': 161115,
 
     # Make sure we link statically so everything gets linked into a
     # single shared object.
@@ -64,7 +64,7 @@
   'includes': [
     # Import base Chromium build system, and pagespeed customizations of it.
     '../third_party/chromium/src/build/common.gypi',
-    '../third_party/libpagespeed/src/build/pagespeed_overrides.gypi',
+    'pagespeed_overrides.gypi',
   ],
   'target_defaults': {
     'conditions': [

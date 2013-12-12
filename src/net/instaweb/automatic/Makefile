@@ -133,8 +133,6 @@ BASE_LIBS = \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/css_parser/libcss_parser.a \
   third_party/css_parser/libutf.a \
-  third_party/domain_registry_provider/src/domain_registry/libassert_lib.a \
-  third_party/domain_registry_provider/src/domain_registry/libdomain_registry_lib.a \
   third_party/gflags/libgflags.a \
   third_party/giflib/libdgiflib.a \
   third_party/giflib/libgiflib_core.a \
@@ -144,10 +142,6 @@ BASE_LIBS = \
   third_party/libjpeg_turbo/libjpeg.a \
   third_party/libjpeg_turbo/src/libjpeg_turbo.a \
   third_party/openssl/libopenssl.a \
-  third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
-  third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
-  third_party/libpagespeed/src/pagespeed/proto/libpagespeed_resource_pb.a \
-  third_party/libpagespeed/src/pagespeed/proto/libtimeline_pb.a \
   third_party/libpng/libpng.a \
   third_party/libwebp/libwebp_dec.a \
   third_party/libwebp/libwebp_dsp.a \

@@ -791,7 +791,6 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_sharedmem',
         '<(DEPTH)/pagespeed/kernel.gyp:util',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
@@ -875,7 +874,6 @@
       'dependencies': [
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'sources': [
         'http/counting_url_async_fetcher.cc',
