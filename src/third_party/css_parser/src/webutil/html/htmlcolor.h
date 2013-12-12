@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <string>
 #include "string_using.h"
-#include "strings/stringpiece.h"
 
 class HtmlColor {
  private:
@@ -71,8 +70,8 @@ class HtmlColor {
 
   // These methods also accept a CSS shorthand string "#xyz" for convenience.
   // "#xyz" is expanded to "#xxyyzz" before processing.
-  explicit HtmlColor(StringPiece colorstr);
-  explicit HtmlColor(const char* colorstr, int colorstrlen);
+  explicit HtmlColor(const string& colorstr);
+  explicit HtmlColor(const char *colorstr, int colorstrlen);
   explicit HtmlColor(unsigned char r, unsigned char g, unsigned char b);
 
   bool IsDefined() const {
@@ -121,12 +120,12 @@ class HtmlColor {
   string ToString() const;
 
   // hexstr is in form of "xxxxxx"
-  void SetValueFromHexStr(StringPiece hexstr);
+  void SetValueFromHexStr(const char *hexstr);
 
   // either a color name or a hex string "#xxxxxx"
   // This method also accepts a CSS shorthand string "#xyz" for convenience.
   // "#xyz" is expanded to "#xxyyzz" before processing.
-  void SetValueFromStr(StringPiece str);
+  void SetValueFromStr(const char* str);
 
   // Set the html color object from rgb values
   void SetValueFromRGB(unsigned char r, unsigned char g,
@@ -136,7 +135,7 @@ class HtmlColor {
   // module or SVG 1.0, which is supported by all major browsers. A reference
   // can be found at:
   //   http://www.w3.org/TR/css3-color/#svg-color
-  void SetValueFromName(StringPiece str);
+  void SetValueFromName(const char* str);
 
   int r() const { return static_cast<int>(r_); }
   int g() const { return static_cast<int>(g_); }
@@ -153,7 +152,7 @@ class HtmlColorUtils {
   // For all other colors, the six hex-digit representation is shortest.
   // Example: "lightgoldenrodyellow" returns "#FAFAD2"
   static string MaybeConvertToCssShorthand(const HtmlColor& color);
-  static string MaybeConvertToCssShorthand(StringPiece orig);
+  static string MaybeConvertToCssShorthand(const char* orig);
 };
 
 #endif  // WEBUTIL_HTML_HTMLCOLOR_H_
