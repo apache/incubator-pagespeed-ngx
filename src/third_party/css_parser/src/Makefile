@@ -108,3 +108,6 @@ prepare_files:
 	  cat apache-license.txt original/$$f > $$f; \
 	done
 	rm -rf original/
+	patch -p0 -i *.diff
+	rm *.diff
+	find . -name '*.orig' -delete
