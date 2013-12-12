@@ -123,6 +123,7 @@ BASE_LIBS = \
   pagespeed/libpagespeed_image_processing.a \
   pagespeed/libpagespeed_javascript_gperf.a \
   pagespeed/libpagespeed_sharedmem.a \
+  pagespeed/libpagespeed_sharedmem_pb.a \
   pagespeed/libpagespeed_thread.a \
   pagespeed/libpthread_system.a \
   pagespeed/libutil.a \
