@@ -347,6 +347,10 @@ class HtmlElement : public HtmlNode {
          const HtmlEventListIterator& end);
     ~Data();
 
+    // Max value for the line numbers below.  Since they are 24-bits,
+    // comparing against -1 does not work properly.
+    static const unsigned kMaxLineNumber = 0x00ffffff;
+
     // Pack four fields into 64 bits using bitfields.  Warning: this
     // stuff is quite sensitive to details, so make sure to look at
     // object sizes before changing!  Interleaving the 24-bit and

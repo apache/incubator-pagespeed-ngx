@@ -65,9 +65,9 @@ void HtmlElement::MarkAsDead(const HtmlEventListIterator& end) {
 void HtmlElement::SynthesizeEvents(const HtmlEventListIterator& iter,
                                    HtmlEventList* queue) {
   // We use -1 as a bogus line number, since these events are synthetic.
-  HtmlEvent* start_tag = new HtmlStartElementEvent(this, -1);
+  HtmlEvent* start_tag = new HtmlStartElementEvent(this, Data::kMaxLineNumber);
   set_begin(queue->insert(iter, start_tag));
-  HtmlEvent* end_tag = new HtmlEndElementEvent(this, -1);
+  HtmlEvent* end_tag = new HtmlEndElementEvent(this, Data::kMaxLineNumber);
   set_end(queue->insert(iter, end_tag));
 }
 
@@ -124,13 +124,14 @@ void HtmlElement::ToString(GoogleString* buf) const {
     case BRIEF_CLOSE:      *buf += "/>"; break;
     case UNCLOSED:         *buf += "> (unclosed)"; break;
   }
-  if ((data_->begin_line_number_ != -1) || (data_->end_line_number_ != -1)) {
+  if ((data_->begin_line_number_ != Data::kMaxLineNumber) ||
+      (data_->end_line_number_ != Data::kMaxLineNumber)) {
     *buf += " ";
-    if (data_->begin_line_number_ != -1) {
+    if (data_->begin_line_number_ != Data::kMaxLineNumber) {
       *buf += IntegerToString(data_->begin_line_number_);
     }
     *buf += "...";
-    if (data_->end_line_number_ != -1) {
+    if (data_->end_line_number_ != Data::kMaxLineNumber) {
       *buf += IntegerToString(data_->end_line_number_);
     }
   }

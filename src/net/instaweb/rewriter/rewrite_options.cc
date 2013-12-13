@@ -1363,7 +1363,7 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);
   AddBaseProperty(
-      true,
+      0,
       &RewriteOptions::serve_stale_while_revalidate_threshold_sec_,
       "sswrt",
       kServeStaleWhileRevalidateThresholdSec,
