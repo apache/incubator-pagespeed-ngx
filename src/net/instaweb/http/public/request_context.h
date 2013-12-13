@@ -59,7 +59,7 @@ class RequestContext : public RefCounted<RequestContext> {
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
   // |timer| will be passed to the TimingInfo, which will *not* take ownership.
   // Passing NULL for |timer| is allowed.
-  explicit RequestContext(AbstractMutex* logging_mutex, Timer* timer);
+  RequestContext(AbstractMutex* logging_mutex, Timer* timer);
 
   // TODO(marq): Move this test context factory to a test-specific file.
   //             Makes a request context for running tests.
@@ -117,6 +117,11 @@ class RequestContext : public RefCounted<RequestContext> {
   // Determines whether this request is using the SPDY protocol.
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
+
+  // Indicates whether the request-headers tell us that a browser can
+  // render webp images.
+  void set_accepts_webp(bool x) { accepts_webp_ = x; }
+  bool accepts_webp() const { return accepts_webp_; }
 
   // Indicates the type of split html request.
   SplitRequestType split_request_type() const {
@@ -347,6 +352,8 @@ class RequestContext : public RefCounted<RequestContext> {
   StringSet session_authorized_fetch_origins_;
 
   bool using_spdy_;
+  bool accepts_webp_;
+
   SplitRequestType split_request_type_;;
   int64 request_id_;
 

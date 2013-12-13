@@ -1237,6 +1237,10 @@ class RewriteDriver : public HtmlParse {
   // The charset of the containing HTML page.
   GoogleString containing_charset_;
 
+  // Copies properties from the request headers to the request context,
+  // if both are non-null.
+  void PopulateRequestContext();
+
   bool filters_added_;
   bool externally_managed_;
 
@@ -1566,6 +1570,15 @@ class OptionsAwareHTTPCacheCallback : public HTTPCache::Callback {
   virtual bool IsCacheValid(const GoogleString& key,
                             const ResponseHeaders& headers);
   virtual int64 OverrideCacheTtlMs(const GoogleString& key);
+
+  // Validates the specified response for the URL, request, given the specified
+  // options.  This is for checking if cache response can still be used, not for
+  // determining whether an entry should be written to an HTTP cache.
+  static bool IsCacheValid(const GoogleString& key,
+                           const RewriteOptions& rewrite_options,
+                           const RequestContextPtr& request_ctx,
+                           const ResponseHeaders& headers);
+
  protected:
   // Sub-classes need to ensure that rewrite_options remains valid till
   // Callback::Done finishes.

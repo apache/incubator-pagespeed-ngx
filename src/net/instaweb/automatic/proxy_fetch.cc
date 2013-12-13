@@ -948,8 +948,8 @@ void ProxyFetch::HandleDone(bool success) {
 }
 
 bool ProxyFetch::IsCachedResultValid(const ResponseHeaders& headers) {
-  return (headers.has_date_ms() &&
-          Options()->IsUrlCacheValid(url_, headers.date_ms()));
+  return OptionsAwareHTTPCacheCallback::IsCacheValid(
+      url_, *Options(), request_context(), headers);
 }
 
 void ProxyFetch::FlushDone() {

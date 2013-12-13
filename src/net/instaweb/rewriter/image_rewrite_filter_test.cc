@@ -2997,6 +2997,9 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
 }
 
 TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
+  const StringPiece kJpegMimeType = kContentTypeJpeg.mime_type();
+  const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
+
   // First rewrite an HTML file with an image for a webp-compatible browser,
   // and collect the image URL.
   UseMd5Hasher();
@@ -3025,7 +3028,6 @@ TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
   // reconstruct the image but we'll get the same result.
   lru_cache()->Clear();
   EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "webp", &content, &response));
-  const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
   EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType));
   EXPECT_TRUE(response.IsProxyCacheable());
   EXPECT_EQ(1, webp_rewrite_count->Get());  // We had to reconstruct.
@@ -3058,27 +3060,21 @@ TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
   options()->set_serve_rewritten_webp_urls_to_any_agent(false);
   server_context()->ComputeSignature(options());
 
-  // Note that if don't clear the cache here, we'll suffer from
-  // https://code.google.com/p/modpagespeed/issues/detail?id=846 and
-  // will deliver a .pagespeed.webp to a UA that can't handle it, so
-  // I'm commenting out this test.
-  // TODO(jmarantz): fix Issue 846 and uncomment this test.  Until then,
-  // we cannot recommend turning ServeWebpToAnyAgent off.
-  // EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "null", &content, &response));
-  // const StringPiece kJpegMimeType = kContentTypeJpeg.mime_type();
-  // EXPECT_STREQ(kJpegMimeType, response.Lookup1(
-  //     HttpAttributes::kContentType));
-  // EXPECT_FALSE(response.IsProxyCacheable());
-  // EXPECT_TRUE(response.IsBrowserCacheable());
-  // EXPECT_EQ(0, webp_rewrite_count->Get());  // Reconstruction not attempted.
-  // EXPECT_EQ(0, lru_cache()->num_hits());
-  // EXPECT_FALSE(content == golden_content);
-  // EXPECT_GT(content.size(), golden_content.size());
+  // Don't clear the cache here, proving Issue 846 is fixed.
+  ClearStats();
+  EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "null", &content, &response));
+  EXPECT_STREQ(kJpegMimeType, response.Lookup1(
+      HttpAttributes::kContentType));
+  EXPECT_FALSE(response.IsProxyCacheable());
+  EXPECT_TRUE(response.IsBrowserCacheable());
+  EXPECT_EQ(0, webp_rewrite_count->Get());  // Reconstruction not attempted.
+  EXPECT_EQ(2, lru_cache()->num_hits());    // Hits, but result is invalid.
+  EXPECT_FALSE(content == golden_content);
+  EXPECT_GT(content.size(), golden_content.size());
 
   // All works fine anyway we if we clear the cache first.
   lru_cache()->Clear();
   EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "null", &content, &response));
-  const StringPiece kJpegMimeType = kContentTypeJpeg.mime_type();
   EXPECT_STREQ(kJpegMimeType, response.Lookup1(HttpAttributes::kContentType));
   EXPECT_FALSE(response.IsProxyCacheable());
   EXPECT_TRUE(response.IsBrowserCacheable());
@@ -3087,15 +3083,14 @@ TEST_F(ImageRewriteTest, ServeWebpFromColdCache) {
   EXPECT_FALSE(content == golden_content);
   EXPECT_GT(content.size(), golden_content.size());
 
-  // But if any webp-enabled client asks for the resource, it will poison
-  // the cache going forward.  Not good.  This will need to be regolded when
-  // Issue 846 is resolved.
+  // But if any webp-enabled client asks for the resource, we will serve
+  // the webp to them.
   EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "webp", &content, &response));
   EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType));
+
+  // And we will continue to serve jpeg to other browsers.
   EXPECT_TRUE(FetchWebp(webp_gurl.Spec(), "none", &content, &response));
-  EXPECT_STREQ(kWebpMimeType, response.Lookup1(HttpAttributes::kContentType))
-      << "expected failure";
-  // TODO(jmarantz): chnage this into a positive testcase.
+  EXPECT_STREQ(kJpegMimeType, response.Lookup1(HttpAttributes::kContentType));
 }
 
 // If we drop a rewrite because of load, make sure it returns the original URL.

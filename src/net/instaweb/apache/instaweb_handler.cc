@@ -196,9 +196,8 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
   bool status_ok() const { return status_ok_; }
 
   virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
-    const RewriteOptions* options = driver_->options();
-    return (headers.has_date_ms() &&
-            options->IsUrlCacheValid(mapped_url_, headers.date_ms()));
+    return OptionsAwareHTTPCacheCallback::IsCacheValid(
+        mapped_url_, *driver_->options(), request_context(), headers);
   }
 
  private:

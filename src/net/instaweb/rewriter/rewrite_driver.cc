@@ -291,6 +291,14 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
   early_pre_render_filters_.push_back(&scan_filter_);
 }
 
+void RewriteDriver::PopulateRequestContext() {
+  if ((request_context_.get() != NULL) &&
+      (request_headers_ != NULL)) {
+    request_context_->set_accepts_webp(request_headers_->HasValue(
+        HttpAttributes::kAccept, kContentTypeWebp.mime_type()));
+  }
+}
+
 void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   DCHECK(request_headers_.get() == NULL);
   RequestHeaders* new_request_headers = new RequestHeaders();
@@ -298,6 +306,7 @@ void RewriteDriver::SetRequestHeaders(const RequestHeaders& headers) {
   new_request_headers->PopulateLazyCaches();
   request_headers_.reset(new_request_headers);
   request_properties_->ParseRequestHeaders(*request_headers_.get());
+  PopulateRequestContext();
 }
 
 void RewriteDriver::set_request_context(const RequestContextPtr& x) {
@@ -323,6 +332,7 @@ void RewriteDriver::set_request_context(const RequestContextPtr& x) {
         options()->allow_logging_urls_in_log_record());
     request_context_->log_record()->SetLogUrlIndices(
         options()->log_url_indices());
+    PopulateRequestContext();
   }
 }
 
@@ -1657,6 +1667,17 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     http_cache->Find(canonical_url_, handler_, this);
   }
 
+  bool IsCacheValid(const GoogleString& key, const ResponseHeaders& headers) {
+    // If the user cares, don't try to send a rewritten .pagespeed. webp
+    // resources to a browser that can't handle it.
+    if (!driver_->options()->serve_rewritten_webp_urls_to_any_agent() &&
+        (headers.DetermineContentType() == &kContentTypeWebp) &&
+        !async_fetch_->request_context()->accepts_webp()) {
+      return false;
+    }
+    return OptionsAwareHTTPCacheCallback::IsCacheValid(key, headers);
+  }
+
   virtual void Done(HTTPCache::FindResult find_result) {
     StringPiece content;
     ResponseHeaders* response_headers = async_fetch_->response_headers();
@@ -2962,7 +2983,23 @@ OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
 
 bool OptionsAwareHTTPCacheCallback::IsCacheValid(
     const GoogleString& key, const ResponseHeaders& headers) {
-  return rewrite_options_->IsUrlCacheValid(key, headers.date_ms());
+  return IsCacheValid(key, *rewrite_options_, request_context(), headers);
+}
+
+// static
+bool OptionsAwareHTTPCacheCallback::IsCacheValid(
+    const GoogleString& url,
+    const RewriteOptions& rewrite_options,
+    const RequestContextPtr& request_ctx,
+    const ResponseHeaders& headers) {
+  if ((headers.DetermineContentType() == &kContentTypeWebp) &&
+      !request_ctx->accepts_webp() &&
+      headers.HasValue(HttpAttributes::kVary, HttpAttributes::kAccept)) {
+    return false;
+  }
+
+  return (headers.has_date_ms() &&
+          rewrite_options.IsUrlCacheValid(url, headers.date_ms()));
 }
 
 int64 OptionsAwareHTTPCacheCallback::OverrideCacheTtlMs(

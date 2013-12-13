@@ -91,7 +91,8 @@ class FakeFetch : public AsyncFetch {
   bool success() { return success_; }
 
   bool IsCachedResultValid(const ResponseHeaders& headers) {
-    return options_->IsUrlCacheValid(url_, headers.date_ms());
+    return OptionsAwareHTTPCacheCallback::IsCacheValid(
+        url_, *options_, request_context(), headers);
   }
 
  private:

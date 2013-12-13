@@ -55,6 +55,8 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 
 namespace net_instaweb {
 
@@ -1698,6 +1700,61 @@ TEST_F(RewriteDriverTest, PendingAsyncEventsTest) {
   TestPendingEventsDriverCleanup(false, true);
   TestPendingEventsDriverCleanup(true, false);
   TestPendingEventsDriverCleanup(true, true);
+}
+
+TEST_F(RewriteDriverTest, ValidateCacheResponseRewrittenWebp) {
+  const StringPiece kWebpMimeType = kContentTypeWebp.mime_type();
+  RequestContextPtr request_context(new RequestContext(new NullMutex, timer()));
+  options()->ClearSignatureForTesting();
+  ResponseHeaders response_headers;
+  response_headers.Add(HttpAttributes::kContentType, kWebpMimeType);
+  response_headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms,
+                                     300 * Timer::kSecondMs, "");
+  response_headers.ComputeCaching();
+  const char kOriginUrl[] = "foo.webp";
+
+  // No vary:accept, accepts_webp false.  Note that we ignore the lack of
+  // browser capability to display webp and send it anyway.
+  request_context->set_accepts_webp(false);
+  options()->set_serve_rewritten_webp_urls_to_any_agent(true);
+  EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+  options()->set_serve_rewritten_webp_urls_to_any_agent(false);
+  EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+
+  // no vary:accept, accepts_webp true.
+  request_context->set_accepts_webp(true);
+  options()->set_serve_rewritten_webp_urls_to_any_agent(true);
+  EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+  options()->set_serve_rewritten_webp_urls_to_any_agent(false);
+  EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+
+
+  // Now add a Vary: Accept and we'll start paying attention to the
+  // browser capabilities.
+  response_headers.Add(HttpAttributes::kVary, HttpAttributes::kAccept);
+  response_headers.ComputeCaching();
+  request_context->set_accepts_webp(false);
+
+  // vary:accept, accepts_webp false.
+  options()->set_serve_rewritten_webp_urls_to_any_agent(true);
+  EXPECT_FALSE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+  options()->set_serve_rewritten_webp_urls_to_any_agent(false);
+  EXPECT_FALSE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+
+  // vary:accept, accepts_webp true.
+  request_context->set_accepts_webp(true);
+  options()->set_serve_rewritten_webp_urls_to_any_agent(true);
+  EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
+  options()->set_serve_rewritten_webp_urls_to_any_agent(false);
+  EXPECT_TRUE(OptionsAwareHTTPCacheCallback::IsCacheValid(
+      kOriginUrl, *options(), request_context, response_headers));
 }
 
 // Test classes created for using a managed rewrite driver, so that downstream

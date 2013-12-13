@@ -1268,6 +1268,10 @@ class RewriteOptions {
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
   // its timestamp_ms > time_ms and url matches the url_pattern.  Else, return
   // true.
+  //
+  // In most contexts where you'd call this you should consider instead
+  // calling OptionsAwareHTTPCacheCallback::IsCacheValid instead, which takes
+  // into account request-headers.
   bool IsUrlCacheValid(StringPiece url, int64 time_ms) const;
 
   // Returns true if PurgeCacheUrl has been called on url with a timestamp
