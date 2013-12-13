@@ -201,6 +201,21 @@ http {
   }
 
   server {
+    # Setup a vhost with the critical image beacon and lazyload filter enabled
+    # to make sure that downstream caches and rebeaconing interact correctly.
+    listen @@SECONDARY_PORT@@;
+    server_name downstreamcacherebeacon.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters lazyload_images;
+    pagespeed CriticalImagesBeaconEnabled true;
+    # Enable the downstream caching feature and specify a rebeaconing key.
+    pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
+    pagespeed DownstreamCacheRebeaconingKey random_rebeaconing_key;
+  }
+
+  server {
     listen @@SECONDARY_PORT@@;
     server_name renderedimagebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
@@ -208,6 +223,29 @@ http {
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters resize_rendered_image_dimensions;
     pagespeed CriticalImagesBeaconEnabled true;
+  }
+
+  server {
+    # For testing with a custom origin header.  In this VirtualHost,
+    # /mod_pagespeed_test is included in our DocumentRoot and thus does
+    # not need to be in any resource URL paths.  This helps us verify that
+    # we are looping back to the corect VirtualHost -- if we hit the wrong
+    # one it will not work.  Also we don't have a VirtualHost for
+    # sharedcdn.example.com, so the default Host header used for
+    # origin-mapping won't work either.  Instead, we want origin-fetches
+    # to go back to this VirtualHost so we rely on the new third optional
+    # argument to MapOriginDomain.
+    listen @@SECONDARY_PORT@@;
+    server_name customhostheader.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@_test";
+    root "@@SERVER_ROOT@@/mod_pagespeed_test";
+    
+    pagespeed on;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+    pagespeed MapOriginDomain localhost:@@SECONDARY_PORT@@/bug781 sharedcdn.example.com/test customhostheader.example.com;
+    pagespeed JpegRecompressionQuality 50;
+    pagespeed CriticalImagesBeaconEnabled false;
   }
 
   server {

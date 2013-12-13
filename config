@@ -191,6 +191,7 @@ if [ $ngx_found = yes ]; then
     sed "s/$HTTP_GZIP_FILTER_MODULE/ngx_pagespeed_etag_filter $HTTP_GZIP_FILTER_MODULE/")
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
+  echo "List of modules (in reverse order of applicability): "$HTTP_FILTER_MODULES
 else
   cat << END
 $0: error: module ngx_pagespeed requires the pagespeed optimization library
