@@ -665,10 +665,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # We use a regex matching "gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73" rather than
   # spelling it out to avoid test regolds when we add image filter IDs.
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
-      http://embed_config_html.example.com/embed_config.html \
+      http://embed-config-html.example.com/embed_config.html \
       'grep -c \.pagespeed\.' 3
 
-  # with the default rewriters in vhost embed_config_resources.example.com
+  # with the default rewriters in vhost embed-config-resources.example.com
   # the image will be >200k.  But by enabling resizing & compression 73
   # as specified in the HTML domain, and transmitting that configuration via
   # image URL query param, the image file (including headers) is 8341 bytes.
@@ -694,7 +694,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # not be resized.  To make sure the decoding path works, we'll
   # "finish" this test below after performing a cache flush, saving
   # the encoded image and expected size.
-  EMBED_CONFIGURATION_IMAGE="http://embed_config_resources.example.com/images/"
+  EMBED_CONFIGURATION_IMAGE="http://embed-config-resources.example.com/images/"
   EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $WGET_DIR | grep 256x192xPuz | grep iq=)
   EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
   EMBED_CONFIGURATION_IMAGE_LENGTH=$( \
@@ -706,7 +706,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
       grep '\.pagespeed\..*+ii+.*+iq=.*\.cf\..*')
   EMBED_CONFIGURATION_CSS_LENGTH=$(\
     cat $WGET_DIR/$EMBED_CONFIGURATION_CSS_LEAF | scrape_content_length)
-  EMBED_CONFIGURATION_CSS_URL="http://embed_config_resources.example.com/styles"
+  EMBED_CONFIGURATION_CSS_URL="http://embed-config-resources.example.com/styles"
   EMBED_CONFIGURATION_CSS_URL+="/$EMBED_CONFIGURATION_CSS_LEAF"
 
   # Grab the URL for that embedded image; it should *also* have the embedded
@@ -1645,7 +1645,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # in the html file.  The smaller Javascript file should be rewritten while
   # the larger one shouldn't.
   start_test Maximum length of cacheable response content.
-  HOST_NAME="http://max_cacheable_content_length.example.com"
+  HOST_NAME="http://max-cacheable-content-length.example.com"
   DIR_NAME="mod_pagespeed_test/max_cacheable_content_length"
   HTML_NAME="test_max_cacheable_content_length.html"
   URL=$HOST_NAME/$DIR_NAME/$HTML_NAME
@@ -1666,7 +1666,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # one <img> URL, one <form> URL, and one <a> url, all referencing
   # src.example.com.  Only the <img> url should be rewritten.
   start_test ModPagespeedRewriteHyperlinks off directive
-  HOST_NAME="http://domain_hyperlinks_off.example.com"
+  HOST_NAME="http://domain-hyperlinks-off.example.com"
   RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
       $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
   MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
@@ -1677,7 +1677,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # one <img> URL, one <form> URL, and one <a> url, all referencing
   # src.example.com.  They should all be rewritten to dst.example.com.
   start_test ModPagespeedRewriteHyperlinks on directive
-  HOST_NAME="http://domain_hyperlinks_on.example.com"
+  HOST_NAME="http://domain-hyperlinks-on.example.com"
   RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
       $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
   MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
@@ -1691,7 +1691,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # hardcoded rules, the span.src and hr.imgsrc should be rewritten because of
   # ModPagespeedUrlValuedAttribute directives, and the hr.src should be left
   # unmodified.  The rewritten ones should all be rewritten to dst.example.com.
-  HOST_NAME="http://url_attribute.example.com"
+  HOST_NAME="http://url-attribute.example.com"
   TEST="$HOST_NAME/mod_pagespeed_test"
   REWRITE_DOMAINS="$TEST/rewrite_domains.html"
   UVA_EXTEND_CACHE="$TEST/url_valued_attribute_extend_cache.html"
@@ -1732,7 +1732,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # This test checks that the ModPagespeedClientDomainRewrite directive
   # can turn on.
   start_test ModPagespeedClientDomainRewrite on directive
-  HOST_NAME="http://client_domain_rewrite.example.com"
+  HOST_NAME="http://client-domain-rewrite.example.com"
   RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
       $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
   MATCHES=$(echo "$RESPONSE_OUT" | grep -c pagespeed\.clientDomainRewriterInit)
@@ -1914,7 +1914,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   if [ -n "$APACHE_LOG" ]; then
     start_test Encoded absolute urls are not respected
-    HOST_NAME="http://absolute_urls.example.com"
+    HOST_NAME="http://absolute-urls.example.com"
 
     # Monitor the Apache log; tail -F will catch log rotations.
     ABSOLUTE_URLS_LOG_PATH=/tmp/instaweb_apache_absolute_urls_log.$$
@@ -2023,7 +2023,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   # Optimize in-place images for browser.
   start_test in-place optimize for browser, no UA specified.
-  URL="http://ipro_for_browser.example.com/images/Puzzle.jpg"
+  URL="http://ipro-for-browser.example.com/images/Puzzle.jpg"
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save $URL 'grep -c W/\"PSA-aj-' \
        1 --save-headers
   check_from "$(extract_headers $FETCH_UNTIL_OUTFILE | grep Content-Type:)" \
@@ -2032,7 +2032,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     fgrep -q User-Agent
 
   start_test in-place optimize for browser, with webp UA specified.
-  URL="http://ipro_for_browser.example.com/images/Puzzle.jpg"
+  URL="http://ipro-for-browser.example.com/images/Puzzle.jpg"
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save $URL 'grep -c W/\"PSA-aj-' \
        1 "--save-headers --user-agent webp"
   check_from "$(extract_headers $FETCH_UNTIL_OUTFILE | grep Content-Type:)" \

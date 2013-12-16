@@ -441,11 +441,11 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 </VirtualHost>
 
 # Sets up a logical home-page server on
-# max_cacheable_content_length.example.com.  This server is only used to test
+# max-cacheable-content-length.example.com.  This server is only used to test
 # ModPagespeedMaxCacheableContentLength, i.e.,
 # max_cacheable_response_content_length.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName max_cacheable_content_length.example.com
+  ServerName max-cacheable-content-length.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedBlockingRewriteKey psatest
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
@@ -464,7 +464,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName domain_hyperlinks_on.example.com
+  ServerName domain-hyperlinks-on.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
@@ -478,7 +478,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName domain_hyperlinks_off.example.com
+  ServerName domain-hyperlinks-off.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
@@ -492,7 +492,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName client_domain_rewrite.example.com
+  ServerName client-domain-rewrite.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 
@@ -500,14 +500,14 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   # rewrite_domains.html don't actually exist.
   ModPagespeedRewriteLevel PassThrough
 
-  ModPagespeedMapRewriteDomain http://client_domain_rewrite.example.com \
+  ModPagespeedMapRewriteDomain http://client-domain-rewrite.example.com \
       http://@@APACHE_DOMAIN@@
   ModPagespeedClientDomainRewrite true
   ModPagespeedEnableFilters rewrite_domains
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName url_attribute.example.com
+  ServerName url-attribute.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
@@ -532,7 +532,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName absolute_urls.example.com
+  ServerName absolute-urls.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
@@ -1033,7 +1033,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #
 # Note that we test with two distinct caches.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName embed_config_html.example.com
+  ServerName embed-config-html.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
@@ -1041,14 +1041,14 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeedAddOptionsToUrls on
   ModPagespeedJpegRecompressionQuality 73
   ModPagespeedDisableFilters inline_css,extend_cache,inline_javascript
-  ModPagespeedDomain embed_config_resources.example.com
+  ModPagespeedDomain embed-config-resources.example.com
 
-  ModPagespeedLoadFromFile "http://embed_config_resources.example.com/" \
+  ModPagespeedLoadFromFile "http://embed-config-resources.example.com/" \
       "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName embed_config_resources.example.com
+  ServerName embed-config-resources.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
@@ -1056,14 +1056,14 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeedAddOptionsToUrls on
   # Note that we do not set the jpeg quality here, but take
   # it from image URL query parameters that we synthesize in
-  # from embed_config_html.example.com.
+  # from embed-config-html.example.com.
 
-  ModPagespeedLoadFromFile "http://embed_config_resources.example.com/" \
+  ModPagespeedLoadFromFile "http://embed-config-resources.example.com/" \
       "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName ipro_for_browser.example.com
+  ServerName ipro-for-browser.example.com
   ModPagespeedEnableFilters rewrite_images,convert_jpeg_to_webp
   ModPagespeedEnableFilters in_place_optimize_for_browser
   ModPagespeedInPlaceResourceOptimization on

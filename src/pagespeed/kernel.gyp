@@ -276,7 +276,6 @@
         'pagespeed_http_gperf',
         'pagespeed_http_pb',
         'util',
-#        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
       ],
       'include_dirs': [
         '<(instaweb_root)',
