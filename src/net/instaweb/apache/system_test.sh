@@ -1766,7 +1766,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   BEACON_URL="$HOST_NAME/mod_pagespeed_beacon"
   BEACON_URL+="?url=http%3A%2F%2Frenderedimagebeacon.example.com%2Fmod_pagespeed_test%2F"
   BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
-  BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
+  BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22rw%22%3A150%2C%22rh%22%3A100%2C%22ow%22%3A256%2C%22oh%22%3A192%7D%7D"
   OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
     $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"

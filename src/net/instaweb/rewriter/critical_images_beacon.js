@@ -16,6 +16,7 @@
 
 goog.provide('pagespeed.CriticalImages');
 
+goog.require('goog.array');
 goog.require('goog.dom.TagName');
 goog.require('pagespeedutils');
 
@@ -120,26 +121,34 @@ pagespeed.CriticalImages.Beacon_.prototype.isCritical_ = function(element) {
  * @private
  */
 pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
-  // List of tags whose elements we will check to see if they are critical.
+  // Generate a list of the elements that can be considered critical.
   var tags = [goog.dom.TagName.IMG, goog.dom.TagName.INPUT];
+  var elemsToCheck = [];
+  for (var i = 0; i < tags.length; ++i) {
+    elemsToCheck = elemsToCheck.concat(
+        goog.array.toArray(document.getElementsByTagName(tags[i])));
+  }
+
+  // Return early if there aren't any items to check.
+  if (elemsToCheck.length == 0) { return; }
+
+  // Verify that the browser supports all the features we need, and bail out if
+  // it doesn't.
+  // TODO(jud): Remove the check for getBoundingClientRect, either by making
+  // elLocation_ work correctly if it isn't defined, or updating the user agent
+  // whitelist to exclude UAs that don't support it correctly.
+  if (!elemsToCheck[0].getBoundingClientRect) { return; }
 
   var criticalImgs = [];
   // Use an object to store the keys for criticalImgs so that we get a unique
   // list of them.
   var criticalImgsKeys = {};
 
-  for (var i = 0; i < tags.length; ++i) {
-    var elements = document.getElementsByTagName(tags[i]);
-    for (var j = 0, element; element = elements[j]; ++j) {
-      var key = element.getAttribute('pagespeed_url_hash');
-      // TODO(jud): Remove the check for getBoundingClientRect below, either by
-      // making elLocation_ work correctly if it isn't defined, or updating the
-      // user agent whitelist to exclude UAs that don't support it correctly.
-      if (key && element.getBoundingClientRect && this.isCritical_(element) &&
-          !(key in criticalImgsKeys)) {
-        criticalImgs.push(key);
-        criticalImgsKeys[key] = true;
-      }
+  for (var i = 0, element; element = elemsToCheck[i]; ++i) {
+    var key = element.getAttribute('pagespeed_url_hash');
+    if (key && !(key in criticalImgsKeys) && this.isCritical_(element)) {
+      criticalImgs.push(key);
+      criticalImgsKeys[key] = true;
     }
   }
   var data = 'oh=' + this.optionsHash_;
@@ -179,39 +188,43 @@ pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
 
 
 /**
- * Retrieves the rendered width and height of images.
- * @return {{
- *     renderedWidth: (number|undefined),
- *     renderedHeight: (number|undefined),
- *     originalWidth: (number|undefined),
- *     originalHeight: (number|undefined)
- * }}
- *
+ * Retrieves the rendered width and height of images. The returned object uses
+ * abbreviated key names (rw = rendered width, oh = original height, etc.) to
+ * keep the data sent back in the beacon compact.
+ * @return {!Object.<string, {
+ *     rw: number,
+ *     rh: number,
+ *     ow: number,
+ *     oh: number}>} Object mapping an image's pagespeed_url_hash to its
+ *     original and rendered widths and heights.
  */
 pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
   var renderedImageDimensions = {};
-  // TODO(poojatandon): Get elements for 'input' tag with type="image".
+  // TODO(poojatandon): Get elements for 'input' tag with type="image". This
+  // currently doesn't work because input tags don't support naturalWidth and
+  // naturalHeight.
   var images = document.getElementsByTagName(goog.dom.TagName.IMG);
-  for (var i = 0, img; img = images[i]; ++i) {
+  if (images.length == 0) { return {}; }
+
+  // naturalWidth and naturalHeight is defined for all browsers except in IE
+  // versions 8 and before (non HTML5 support).
+  var img = images[0];
+  if (!('naturalWidth' in img) || !('naturalHeight' in img)) { return {}; }
+
+  for (var i = 0; img = images[i]; ++i) {
     var key = img.getAttribute('pagespeed_url_hash');
-    // naturalWidth and naturalHeight is defined for all browsers except in IE
-    // versions 8 and before (non HTML5 support).
-    // We bail out in case of other browsers or if hash is undefined.
-    if (!('naturalWidth' in img) || !('naturalHeight' in img) ||
-        typeof key == 'undefined') {
-      return renderedImageDimensions;
-    }
-    if ((typeof(renderedImageDimensions[img.src]) == 'undefined' &&
+    if (!key) { continue; }
+    if ((!(key in renderedImageDimensions) &&
              img.width > 0 && img.height > 0 &&
              img.naturalWidth > 0 && img.naturalHeight > 0) ||
-        (typeof(renderedImageDimensions[img.src]) != 'undefined' &&
-             img.width >= renderedImageDimensions[img.src].renderedWidth &&
-             img.height >= renderedImageDimensions[img.src].renderedHeight)) {
+        ((key in renderedImageDimensions) &&
+             img.width >= renderedImageDimensions[img.src].rw &&
+             img.height >= renderedImageDimensions[img.src].rh)) {
       renderedImageDimensions[key] = {
-        'renderedWidth' : img.width,
-        'renderedHeight' : img.height,
-        'originalWidth' : img.naturalWidth,
-        'originalHeight' : img.naturalHeight
+        'rw' : img.width,
+        'rh' : img.height,
+        'ow' : img.naturalWidth,
+        'oh' : img.naturalHeight
       };
     }
   }

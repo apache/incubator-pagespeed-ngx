@@ -1239,8 +1239,7 @@ TEST_F(BeaconTest, HandleBeaconRenderedDimensionsofImages) {
   images->set_rendered_width(40);
   images->set_rendered_height(50);
   GoogleString json_map_rendered_dimensions = StrCat(
-      "{\"", hash1, "\":{\"renderedWidth\":40,",
-      "\"renderedHeight\":50,\"originalWidth\":160,\"originalHeight\":200}}");
+      "{\"", hash1, "\":{\"rw\":40,", "\"rh\":50,\"ow\":160,\"oh\":200}}");
   InsertImageBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   TestBeacon(NULL, NULL, &json_map_rendered_dimensions,
               UserAgentMatcherTestBase::kChromeUserAgent);

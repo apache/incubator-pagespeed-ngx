@@ -45,10 +45,10 @@ namespace net_instaweb {
 
 namespace {
 
-const char kRenderedImageJsonWidthKey[] = "renderedWidth";
-const char kRenderedImageJsonHeightKey[] = "renderedHeight";
-const char kOriginalImageJsonWidthKey[] = "originalWidth";
-const char kOriginalImageJsonHeightKey[] = "originalHeight";
+const char kRenderedImageJsonWidthKey[] = "rw";
+const char kRenderedImageJsonHeightKey[] = "rh";
+const char kOriginalImageJsonWidthKey[] = "ow";
+const char kOriginalImageJsonHeightKey[] = "oh";
 const char kEmptyValuePlaceholder[] = "\n";
 
 // Create CriticalImagesInfo object from the value of property_value.  NULL if

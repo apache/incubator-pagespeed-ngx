@@ -253,7 +253,7 @@ goog.bindJs_ = function(fn, selfObj, var_args) {
   };
 };
 goog.bind = function(fn, selfObj, var_args) {
-  goog.bind = Function.prototype.bind && -1 != Function.prototype.bind.toString().indexOf("native code") ? goog.bindNative_ : goog.bindJs_;
+  Function.prototype.bind && -1 != Function.prototype.bind.toString().indexOf("native code") ? goog.bind = goog.bindNative_ : goog.bind = goog.bindJs_;
   return goog.bind.apply(null, arguments);
 };
 goog.partial = function(fn, var_args) {
@@ -382,7 +382,838 @@ goog.MODIFY_FUNCTION_PROTOTYPES && (Function.prototype.bind = Function.prototype
 }, Function.prototype.mixin = function(source) {
   goog.mixin(this.prototype, source);
 });
+goog.debug = {};
+goog.debug.Error = function(opt_msg) {
+  Error.captureStackTrace ? Error.captureStackTrace(this, goog.debug.Error) : this.stack = Error().stack || "";
+  opt_msg && (this.message = String(opt_msg));
+};
+goog.inherits(goog.debug.Error, Error);
+goog.debug.Error.prototype.name = "CustomError";
 goog.dom = {};
+goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
+goog.string = {};
+goog.string.Unicode = {NBSP:"\u00a0"};
+goog.string.startsWith = function(str, prefix) {
+  return 0 == str.lastIndexOf(prefix, 0);
+};
+goog.string.endsWith = function(str, suffix) {
+  var l = str.length - suffix.length;
+  return 0 <= l && str.indexOf(suffix, l) == l;
+};
+goog.string.caseInsensitiveStartsWith = function(str, prefix) {
+  return 0 == goog.string.caseInsensitiveCompare(prefix, str.substr(0, prefix.length));
+};
+goog.string.caseInsensitiveEndsWith = function(str, suffix) {
+  return 0 == goog.string.caseInsensitiveCompare(suffix, str.substr(str.length - suffix.length, suffix.length));
+};
+goog.string.caseInsensitiveEquals = function(str1, str2) {
+  return str1.toLowerCase() == str2.toLowerCase();
+};
+goog.string.subs = function(str, var_args) {
+  for (var splitParts = str.split("%s"), returnString = "", subsArguments = Array.prototype.slice.call(arguments, 1);subsArguments.length && 1 < splitParts.length;) {
+    returnString += splitParts.shift() + subsArguments.shift();
+  }
+  return returnString + splitParts.join("%s");
+};
+goog.string.collapseWhitespace = function(str) {
+  return str.replace(/[\s\xa0]+/g, " ").replace(/^\s+|\s+$/g, "");
+};
+goog.string.isEmpty = function(str) {
+  return/^[\s\xa0]*$/.test(str);
+};
+goog.string.isEmptySafe = function(str) {
+  return goog.string.isEmpty(goog.string.makeSafe(str));
+};
+goog.string.isBreakingWhitespace = function(str) {
+  return!/[^\t\n\r ]/.test(str);
+};
+goog.string.isAlpha = function(str) {
+  return!/[^a-zA-Z]/.test(str);
+};
+goog.string.isNumeric = function(str) {
+  return!/[^0-9]/.test(str);
+};
+goog.string.isAlphaNumeric = function(str) {
+  return!/[^a-zA-Z0-9]/.test(str);
+};
+goog.string.isSpace = function(ch) {
+  return " " == ch;
+};
+goog.string.isUnicodeChar = function(ch) {
+  return 1 == ch.length && " " <= ch && "~" >= ch || "\u0080" <= ch && "\ufffd" >= ch;
+};
+goog.string.stripNewlines = function(str) {
+  return str.replace(/(\r\n|\r|\n)+/g, " ");
+};
+goog.string.canonicalizeNewlines = function(str) {
+  return str.replace(/(\r\n|\r|\n)/g, "\n");
+};
+goog.string.normalizeWhitespace = function(str) {
+  return str.replace(/\xa0|\s/g, " ");
+};
+goog.string.normalizeSpaces = function(str) {
+  return str.replace(/\xa0|[ \t]+/g, " ");
+};
+goog.string.collapseBreakingSpaces = function(str) {
+  return str.replace(/[\t\r\n ]+/g, " ").replace(/^[\t\r\n ]+|[\t\r\n ]+$/g, "");
+};
+goog.string.trim = function(str) {
+  return str.replace(/^[\s\xa0]+|[\s\xa0]+$/g, "");
+};
+goog.string.trimLeft = function(str) {
+  return str.replace(/^[\s\xa0]+/, "");
+};
+goog.string.trimRight = function(str) {
+  return str.replace(/[\s\xa0]+$/, "");
+};
+goog.string.caseInsensitiveCompare = function(str1, str2) {
+  var test1 = String(str1).toLowerCase(), test2 = String(str2).toLowerCase();
+  return test1 < test2 ? -1 : test1 == test2 ? 0 : 1;
+};
+goog.string.numerateCompareRegExp_ = /(\.\d+)|(\d+)|(\D+)/g;
+goog.string.numerateCompare = function(str1, str2) {
+  if (str1 == str2) {
+    return 0;
+  }
+  if (!str1) {
+    return-1;
+  }
+  if (!str2) {
+    return 1;
+  }
+  for (var tokens1 = str1.toLowerCase().match(goog.string.numerateCompareRegExp_), tokens2 = str2.toLowerCase().match(goog.string.numerateCompareRegExp_), count = Math.min(tokens1.length, tokens2.length), i = 0;i < count;i++) {
+    var a = tokens1[i], b = tokens2[i];
+    if (a != b) {
+      var num1 = parseInt(a, 10);
+      if (!isNaN(num1)) {
+        var num2 = parseInt(b, 10);
+        if (!isNaN(num2) && num1 - num2) {
+          return num1 - num2;
+        }
+      }
+      return a < b ? -1 : 1;
+    }
+  }
+  return tokens1.length != tokens2.length ? tokens1.length - tokens2.length : str1 < str2 ? -1 : 1;
+};
+goog.string.urlEncode = function(str) {
+  return encodeURIComponent(String(str));
+};
+goog.string.urlDecode = function(str) {
+  return decodeURIComponent(str.replace(/\+/g, " "));
+};
+goog.string.newLineToBr = function(str, opt_xml) {
+  return str.replace(/(\r\n|\r|\n)/g, opt_xml ? "<br />" : "<br>");
+};
+goog.string.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
+  if (opt_isLikelyToContainHtmlChars) {
+    return str.replace(goog.string.amperRe_, "&amp;").replace(goog.string.ltRe_, "&lt;").replace(goog.string.gtRe_, "&gt;").replace(goog.string.quotRe_, "&quot;").replace(goog.string.singleQuoteRe_, "&#39;");
+  }
+  if (!goog.string.allRe_.test(str)) {
+    return str;
+  }
+  -1 != str.indexOf("&") && (str = str.replace(goog.string.amperRe_, "&amp;"));
+  -1 != str.indexOf("<") && (str = str.replace(goog.string.ltRe_, "&lt;"));
+  -1 != str.indexOf(">") && (str = str.replace(goog.string.gtRe_, "&gt;"));
+  -1 != str.indexOf('"') && (str = str.replace(goog.string.quotRe_, "&quot;"));
+  -1 != str.indexOf("'") && (str = str.replace(goog.string.singleQuoteRe_, "&#39;"));
+  return str;
+};
+goog.string.amperRe_ = /&/g;
+goog.string.ltRe_ = /</g;
+goog.string.gtRe_ = />/g;
+goog.string.quotRe_ = /"/g;
+goog.string.singleQuoteRe_ = /'/g;
+goog.string.allRe_ = /[&<>"']/;
+goog.string.unescapeEntities = function(str) {
+  return goog.string.contains(str, "&") ? "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(str) : goog.string.unescapePureXmlEntities_(str) : str;
+};
+goog.string.unescapeEntitiesWithDocument = function(str, document) {
+  return goog.string.contains(str, "&") ? goog.string.unescapeEntitiesUsingDom_(str, document) : str;
+};
+goog.string.unescapeEntitiesUsingDom_ = function(str, opt_document) {
+  var seen = {"&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"'}, div;
+  div = opt_document ? opt_document.createElement("div") : document.createElement("div");
+  return str.replace(goog.string.HTML_ENTITY_PATTERN_, function(s, entity) {
+    var value = seen[s];
+    if (value) {
+      return value;
+    }
+    if ("#" == entity.charAt(0)) {
+      var n = Number("0" + entity.substr(1));
+      isNaN(n) || (value = String.fromCharCode(n));
+    }
+    value || (div.innerHTML = s + " ", value = div.firstChild.nodeValue.slice(0, -1));
+    return seen[s] = value;
+  });
+};
+goog.string.unescapePureXmlEntities_ = function(str) {
+  return str.replace(/&([^;]+);/g, function(s, entity) {
+    switch(entity) {
+      case "amp":
+        return "&";
+      case "lt":
+        return "<";
+      case "gt":
+        return ">";
+      case "quot":
+        return'"';
+      default:
+        if ("#" == entity.charAt(0)) {
+          var n = Number("0" + entity.substr(1));
+          if (!isNaN(n)) {
+            return String.fromCharCode(n);
+          }
+        }
+        return s;
+    }
+  });
+};
+goog.string.HTML_ENTITY_PATTERN_ = /&([^;\s<&]+);?/g;
+goog.string.whitespaceEscape = function(str, opt_xml) {
+  return goog.string.newLineToBr(str.replace(/  /g, " &#160;"), opt_xml);
+};
+goog.string.stripQuotes = function(str, quoteChars) {
+  for (var length = quoteChars.length, i = 0;i < length;i++) {
+    var quoteChar = 1 == length ? quoteChars : quoteChars.charAt(i);
+    if (str.charAt(0) == quoteChar && str.charAt(str.length - 1) == quoteChar) {
+      return str.substring(1, str.length - 1);
+    }
+  }
+  return str;
+};
+goog.string.truncate = function(str, chars, opt_protectEscapedCharacters) {
+  opt_protectEscapedCharacters && (str = goog.string.unescapeEntities(str));
+  str.length > chars && (str = str.substring(0, chars - 3) + "...");
+  opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
+  return str;
+};
+goog.string.truncateMiddle = function(str, chars, opt_protectEscapedCharacters, opt_trailingChars) {
+  opt_protectEscapedCharacters && (str = goog.string.unescapeEntities(str));
+  if (opt_trailingChars && str.length > chars) {
+    opt_trailingChars > chars && (opt_trailingChars = chars);
+    var endPoint = str.length - opt_trailingChars, startPoint = chars - opt_trailingChars;
+    str = str.substring(0, startPoint) + "..." + str.substring(endPoint);
+  } else {
+    if (str.length > chars) {
+      var half = Math.floor(chars / 2), endPos = str.length - half, half = half + chars % 2;
+      str = str.substring(0, half) + "..." + str.substring(endPos);
+    }
+  }
+  opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
+  return str;
+};
+goog.string.specialEscapeChars_ = {"\x00":"\\0", "\b":"\\b", "\f":"\\f", "\n":"\\n", "\r":"\\r", "\t":"\\t", "\x0B":"\\x0B", '"':'\\"', "\\":"\\\\"};
+goog.string.jsEscapeCache_ = {"'":"\\'"};
+goog.string.quote = function(s) {
+  s = String(s);
+  if (s.quote) {
+    return s.quote();
+  }
+  for (var sb = ['"'], i = 0;i < s.length;i++) {
+    var ch = s.charAt(i), cc = ch.charCodeAt(0);
+    sb[i + 1] = goog.string.specialEscapeChars_[ch] || (31 < cc && 127 > cc ? ch : goog.string.escapeChar(ch));
+  }
+  sb.push('"');
+  return sb.join("");
+};
+goog.string.escapeString = function(str) {
+  for (var sb = [], i = 0;i < str.length;i++) {
+    sb[i] = goog.string.escapeChar(str.charAt(i));
+  }
+  return sb.join("");
+};
+goog.string.escapeChar = function(c) {
+  if (c in goog.string.jsEscapeCache_) {
+    return goog.string.jsEscapeCache_[c];
+  }
+  if (c in goog.string.specialEscapeChars_) {
+    return goog.string.jsEscapeCache_[c] = goog.string.specialEscapeChars_[c];
+  }
+  var rv = c, cc = c.charCodeAt(0);
+  if (31 < cc && 127 > cc) {
+    rv = c;
+  } else {
+    if (256 > cc) {
+      if (rv = "\\x", 16 > cc || 256 < cc) {
+        rv += "0";
+      }
+    } else {
+      rv = "\\u", 4096 > cc && (rv += "0");
+    }
+    rv += cc.toString(16).toUpperCase();
+  }
+  return goog.string.jsEscapeCache_[c] = rv;
+};
+goog.string.toMap = function(s) {
+  for (var rv = {}, i = 0;i < s.length;i++) {
+    rv[s.charAt(i)] = !0;
+  }
+  return rv;
+};
+goog.string.contains = function(s, ss) {
+  return-1 != s.indexOf(ss);
+};
+goog.string.countOf = function(s, ss) {
+  return s && ss ? s.split(ss).length - 1 : 0;
+};
+goog.string.removeAt = function(s, index, stringLength) {
+  var resultStr = s;
+  0 <= index && index < s.length && 0 < stringLength && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
+  return resultStr;
+};
+goog.string.remove = function(s, ss) {
+  var re = RegExp(goog.string.regExpEscape(ss), "");
+  return s.replace(re, "");
+};
+goog.string.removeAll = function(s, ss) {
+  var re = RegExp(goog.string.regExpEscape(ss), "g");
+  return s.replace(re, "");
+};
+goog.string.regExpEscape = function(s) {
+  return String(s).replace(/([-()\[\]{}+?*.$\^|,:#<!\\])/g, "\\$1").replace(/\x08/g, "\\x08");
+};
+goog.string.repeat = function(string, length) {
+  return Array(length + 1).join(string);
+};
+goog.string.padNumber = function(num, length, opt_precision) {
+  var s = goog.isDef(opt_precision) ? num.toFixed(opt_precision) : String(num), index = s.indexOf(".");
+  -1 == index && (index = s.length);
+  return goog.string.repeat("0", Math.max(0, length - index)) + s;
+};
+goog.string.makeSafe = function(obj) {
+  return null == obj ? "" : String(obj);
+};
+goog.string.buildString = function(var_args) {
+  return Array.prototype.join.call(arguments, "");
+};
+goog.string.getRandomString = function() {
+  var x = 2147483648;
+  return Math.floor(Math.random() * x).toString(36) + Math.abs(Math.floor(Math.random() * x) ^ goog.now()).toString(36);
+};
+goog.string.compareVersions = function(version1, version2) {
+  for (var order = 0, v1Subs = goog.string.trim(String(version1)).split("."), v2Subs = goog.string.trim(String(version2)).split("."), subCount = Math.max(v1Subs.length, v2Subs.length), subIdx = 0;0 == order && subIdx < subCount;subIdx++) {
+    var v1Sub = v1Subs[subIdx] || "", v2Sub = v2Subs[subIdx] || "", v1CompParser = RegExp("(\\d*)(\\D*)", "g"), v2CompParser = RegExp("(\\d*)(\\D*)", "g");
+    do {
+      var v1Comp = v1CompParser.exec(v1Sub) || ["", "", ""], v2Comp = v2CompParser.exec(v2Sub) || ["", "", ""];
+      if (0 == v1Comp[0].length && 0 == v2Comp[0].length) {
+        break;
+      }
+      var v1CompNum = 0 == v1Comp[1].length ? 0 : parseInt(v1Comp[1], 10), v2CompNum = 0 == v2Comp[1].length ? 0 : parseInt(v2Comp[1], 10), order = goog.string.compareElements_(v1CompNum, v2CompNum) || goog.string.compareElements_(0 == v1Comp[2].length, 0 == v2Comp[2].length) || goog.string.compareElements_(v1Comp[2], v2Comp[2]);
+    } while (0 == order);
+  }
+  return order;
+};
+goog.string.compareElements_ = function(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+};
+goog.string.HASHCODE_MAX_ = 4294967296;
+goog.string.hashCode = function(str) {
+  for (var result = 0, i = 0;i < str.length;++i) {
+    result = 31 * result + str.charCodeAt(i), result %= goog.string.HASHCODE_MAX_;
+  }
+  return result;
+};
+goog.string.uniqueStringCounter_ = 2147483648 * Math.random() | 0;
+goog.string.createUniqueString = function() {
+  return "goog_" + goog.string.uniqueStringCounter_++;
+};
+goog.string.toNumber = function(str) {
+  var num = Number(str);
+  return 0 == num && goog.string.isEmpty(str) ? NaN : num;
+};
+goog.string.isLowerCamelCase = function(str) {
+  return/^[a-z]+([A-Z][a-z]*)*$/.test(str);
+};
+goog.string.isUpperCamelCase = function(str) {
+  return/^([A-Z][a-z]*)+$/.test(str);
+};
+goog.string.toCamelCase = function(str) {
+  return String(str).replace(/\-([a-z])/g, function(all, match) {
+    return match.toUpperCase();
+  });
+};
+goog.string.toSelectorCase = function(str) {
+  return String(str).replace(/([A-Z])/g, "-$1").toLowerCase();
+};
+goog.string.toTitleCase = function(str, opt_delimiters) {
+  var delimiters = goog.isString(opt_delimiters) ? goog.string.regExpEscape(opt_delimiters) : "\\s", delimiters = delimiters ? "|[" + delimiters + "]+" : "", regexp = RegExp("(^" + delimiters + ")([a-z])", "g");
+  return str.replace(regexp, function(all, p1, p2) {
+    return p1 + p2.toUpperCase();
+  });
+};
+goog.string.parseInt = function(value) {
+  isFinite(value) && (value = String(value));
+  return goog.isString(value) ? /^\s*-?0x/i.test(value) ? parseInt(value, 16) : parseInt(value, 10) : NaN;
+};
+goog.string.splitLimit = function(str, separator, limit) {
+  for (var parts = str.split(separator), returnVal = [];0 < limit && parts.length;) {
+    returnVal.push(parts.shift()), limit--;
+  }
+  parts.length && returnVal.push(parts.join(separator));
+  return returnVal;
+};
+goog.asserts = {};
+goog.asserts.ENABLE_ASSERTS = goog.DEBUG;
+goog.asserts.AssertionError = function(messagePattern, messageArgs) {
+  messageArgs.unshift(messagePattern);
+  goog.debug.Error.call(this, goog.string.subs.apply(null, messageArgs));
+  messageArgs.shift();
+};
+goog.inherits(goog.asserts.AssertionError, goog.debug.Error);
+goog.asserts.AssertionError.prototype.name = "AssertionError";
+goog.asserts.doAssertFailure_ = function(defaultMessage, defaultArgs, givenMessage, givenArgs) {
+  var message = "Assertion failed";
+  if (givenMessage) {
+    var message = message + (": " + givenMessage), args = givenArgs
+  } else {
+    defaultMessage && (message += ": " + defaultMessage, args = defaultArgs);
+  }
+  throw new goog.asserts.AssertionError("" + message, args || []);
+};
+goog.asserts.assert = function(condition, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !condition && goog.asserts.doAssertFailure_("", null, opt_message, Array.prototype.slice.call(arguments, 2));
+  return condition;
+};
+goog.asserts.fail = function(opt_message, var_args) {
+  if (goog.asserts.ENABLE_ASSERTS) {
+    throw new goog.asserts.AssertionError("Failure" + (opt_message ? ": " + opt_message : ""), Array.prototype.slice.call(arguments, 1));
+  }
+};
+goog.asserts.assertNumber = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !goog.isNumber(value) && goog.asserts.doAssertFailure_("Expected number but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertString = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !goog.isString(value) && goog.asserts.doAssertFailure_("Expected string but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertFunction = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !goog.isFunction(value) && goog.asserts.doAssertFailure_("Expected function but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertObject = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !goog.isObject(value) && goog.asserts.doAssertFailure_("Expected object but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertArray = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !goog.isArray(value) && goog.asserts.doAssertFailure_("Expected array but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertBoolean = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && !goog.isBoolean(value) && goog.asserts.doAssertFailure_("Expected boolean but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertElement = function(value, opt_message, var_args) {
+  !goog.asserts.ENABLE_ASSERTS || goog.isObject(value) && value.nodeType == goog.dom.NodeType.ELEMENT || goog.asserts.doAssertFailure_("Expected Element but got %s: %s.", [goog.typeOf(value), value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
+};
+goog.asserts.assertInstanceof = function(value, type, opt_message, var_args) {
+  !goog.asserts.ENABLE_ASSERTS || value instanceof type || goog.asserts.doAssertFailure_("instanceof check failed.", null, opt_message, Array.prototype.slice.call(arguments, 3));
+  return value;
+};
+goog.asserts.assertObjectPrototypeIsIntact = function() {
+  for (var key in Object.prototype) {
+    goog.asserts.fail(key + " should not be enumerable in Object.prototype.");
+  }
+};
+goog.array = {};
+goog.NATIVE_ARRAY_PROTOTYPES = goog.TRUSTED_SITE;
+goog.array.peek = function(array) {
+  return array[array.length - 1];
+};
+goog.array.ARRAY_PROTOTYPE_ = Array.prototype;
+goog.array.indexOf = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.indexOf ? function(arr, obj, opt_fromIndex) {
+  goog.asserts.assert(null != arr.length);
+  return goog.array.ARRAY_PROTOTYPE_.indexOf.call(arr, obj, opt_fromIndex);
+} : function(arr, obj, opt_fromIndex) {
+  var fromIndex = null == opt_fromIndex ? 0 : 0 > opt_fromIndex ? Math.max(0, arr.length + opt_fromIndex) : opt_fromIndex;
+  if (goog.isString(arr)) {
+    return goog.isString(obj) && 1 == obj.length ? arr.indexOf(obj, fromIndex) : -1;
+  }
+  for (var i = fromIndex;i < arr.length;i++) {
+    if (i in arr && arr[i] === obj) {
+      return i;
+    }
+  }
+  return-1;
+};
+goog.array.lastIndexOf = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.lastIndexOf ? function(arr, obj, opt_fromIndex) {
+  goog.asserts.assert(null != arr.length);
+  var fromIndex = null == opt_fromIndex ? arr.length - 1 : opt_fromIndex;
+  return goog.array.ARRAY_PROTOTYPE_.lastIndexOf.call(arr, obj, fromIndex);
+} : function(arr, obj, opt_fromIndex) {
+  var fromIndex = null == opt_fromIndex ? arr.length - 1 : opt_fromIndex;
+  0 > fromIndex && (fromIndex = Math.max(0, arr.length + fromIndex));
+  if (goog.isString(arr)) {
+    return goog.isString(obj) && 1 == obj.length ? arr.lastIndexOf(obj, fromIndex) : -1;
+  }
+  for (var i = fromIndex;0 <= i;i--) {
+    if (i in arr && arr[i] === obj) {
+      return i;
+    }
+  }
+  return-1;
+};
+goog.array.forEach = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.forEach ? function(arr, f, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  goog.array.ARRAY_PROTOTYPE_.forEach.call(arr, f, opt_obj);
+} : function(arr, f, opt_obj) {
+  for (var l = arr.length, arr2 = goog.isString(arr) ? arr.split("") : arr, i = 0;i < l;i++) {
+    i in arr2 && f.call(opt_obj, arr2[i], i, arr);
+  }
+};
+goog.array.forEachRight = function(arr, f, opt_obj) {
+  for (var l = arr.length, arr2 = goog.isString(arr) ? arr.split("") : arr, i = l - 1;0 <= i;--i) {
+    i in arr2 && f.call(opt_obj, arr2[i], i, arr);
+  }
+};
+goog.array.filter = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.filter ? function(arr, f, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  return goog.array.ARRAY_PROTOTYPE_.filter.call(arr, f, opt_obj);
+} : function(arr, f, opt_obj) {
+  for (var l = arr.length, res = [], resLength = 0, arr2 = goog.isString(arr) ? arr.split("") : arr, i = 0;i < l;i++) {
+    if (i in arr2) {
+      var val = arr2[i];
+      f.call(opt_obj, val, i, arr) && (res[resLength++] = val);
+    }
+  }
+  return res;
+};
+goog.array.map = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.map ? function(arr, f, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  return goog.array.ARRAY_PROTOTYPE_.map.call(arr, f, opt_obj);
+} : function(arr, f, opt_obj) {
+  for (var l = arr.length, res = Array(l), arr2 = goog.isString(arr) ? arr.split("") : arr, i = 0;i < l;i++) {
+    i in arr2 && (res[i] = f.call(opt_obj, arr2[i], i, arr));
+  }
+  return res;
+};
+goog.array.reduce = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.reduce ? function(arr, f, val, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  opt_obj && (f = goog.bind(f, opt_obj));
+  return goog.array.ARRAY_PROTOTYPE_.reduce.call(arr, f, val);
+} : function(arr, f, val$$0, opt_obj) {
+  var rval = val$$0;
+  goog.array.forEach(arr, function(val, index) {
+    rval = f.call(opt_obj, rval, val, index, arr);
+  });
+  return rval;
+};
+goog.array.reduceRight = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.reduceRight ? function(arr, f, val, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  opt_obj && (f = goog.bind(f, opt_obj));
+  return goog.array.ARRAY_PROTOTYPE_.reduceRight.call(arr, f, val);
+} : function(arr, f, val$$0, opt_obj) {
+  var rval = val$$0;
+  goog.array.forEachRight(arr, function(val, index) {
+    rval = f.call(opt_obj, rval, val, index, arr);
+  });
+  return rval;
+};
+goog.array.some = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.some ? function(arr, f, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  return goog.array.ARRAY_PROTOTYPE_.some.call(arr, f, opt_obj);
+} : function(arr, f, opt_obj) {
+  for (var l = arr.length, arr2 = goog.isString(arr) ? arr.split("") : arr, i = 0;i < l;i++) {
+    if (i in arr2 && f.call(opt_obj, arr2[i], i, arr)) {
+      return!0;
+    }
+  }
+  return!1;
+};
+goog.array.every = goog.NATIVE_ARRAY_PROTOTYPES && goog.array.ARRAY_PROTOTYPE_.every ? function(arr, f, opt_obj) {
+  goog.asserts.assert(null != arr.length);
+  return goog.array.ARRAY_PROTOTYPE_.every.call(arr, f, opt_obj);
+} : function(arr, f, opt_obj) {
+  for (var l = arr.length, arr2 = goog.isString(arr) ? arr.split("") : arr, i = 0;i < l;i++) {
+    if (i in arr2 && !f.call(opt_obj, arr2[i], i, arr)) {
+      return!1;
+    }
+  }
+  return!0;
+};
+goog.array.count = function(arr$$0, f, opt_obj) {
+  var count = 0;
+  goog.array.forEach(arr$$0, function(element, index, arr) {
+    f.call(opt_obj, element, index, arr) && ++count;
+  }, opt_obj);
+  return count;
+};
+goog.array.find = function(arr, f, opt_obj) {
+  var i = goog.array.findIndex(arr, f, opt_obj);
+  return 0 > i ? null : goog.isString(arr) ? arr.charAt(i) : arr[i];
+};
+goog.array.findIndex = function(arr, f, opt_obj) {
+  for (var l = arr.length, arr2 = goog.isString(arr) ? arr.split("") : arr, i = 0;i < l;i++) {
+    if (i in arr2 && f.call(opt_obj, arr2[i], i, arr)) {
+      return i;
+    }
+  }
+  return-1;
+};
+goog.array.findRight = function(arr, f, opt_obj) {
+  var i = goog.array.findIndexRight(arr, f, opt_obj);
+  return 0 > i ? null : goog.isString(arr) ? arr.charAt(i) : arr[i];
+};
+goog.array.findIndexRight = function(arr, f, opt_obj) {
+  for (var l = arr.length, arr2 = goog.isString(arr) ? arr.split("") : arr, i = l - 1;0 <= i;i--) {
+    if (i in arr2 && f.call(opt_obj, arr2[i], i, arr)) {
+      return i;
+    }
+  }
+  return-1;
+};
+goog.array.contains = function(arr, obj) {
+  return 0 <= goog.array.indexOf(arr, obj);
+};
+goog.array.isEmpty = function(arr) {
+  return 0 == arr.length;
+};
+goog.array.clear = function(arr) {
+  if (!goog.isArray(arr)) {
+    for (var i = arr.length - 1;0 <= i;i--) {
+      delete arr[i];
+    }
+  }
+  arr.length = 0;
+};
+goog.array.insert = function(arr, obj) {
+  goog.array.contains(arr, obj) || arr.push(obj);
+};
+goog.array.insertAt = function(arr, obj, opt_i) {
+  goog.array.splice(arr, opt_i, 0, obj);
+};
+goog.array.insertArrayAt = function(arr, elementsToAdd, opt_i) {
+  goog.partial(goog.array.splice, arr, opt_i, 0).apply(null, elementsToAdd);
+};
+goog.array.insertBefore = function(arr, obj, opt_obj2) {
+  var i;
+  2 == arguments.length || 0 > (i = goog.array.indexOf(arr, opt_obj2)) ? arr.push(obj) : goog.array.insertAt(arr, obj, i);
+};
+goog.array.remove = function(arr, obj) {
+  var i = goog.array.indexOf(arr, obj), rv;
+  (rv = 0 <= i) && goog.array.removeAt(arr, i);
+  return rv;
+};
+goog.array.removeAt = function(arr, i) {
+  goog.asserts.assert(null != arr.length);
+  return 1 == goog.array.ARRAY_PROTOTYPE_.splice.call(arr, i, 1).length;
+};
+goog.array.removeIf = function(arr, f, opt_obj) {
+  var i = goog.array.findIndex(arr, f, opt_obj);
+  return 0 <= i ? (goog.array.removeAt(arr, i), !0) : !1;
+};
+goog.array.concat = function(var_args) {
+  return goog.array.ARRAY_PROTOTYPE_.concat.apply(goog.array.ARRAY_PROTOTYPE_, arguments);
+};
+goog.array.toArray = function(object) {
+  var length = object.length;
+  if (0 < length) {
+    for (var rv = Array(length), i = 0;i < length;i++) {
+      rv[i] = object[i];
+    }
+    return rv;
+  }
+  return[];
+};
+goog.array.clone = goog.array.toArray;
+goog.array.extend = function(arr1, var_args) {
+  for (var i = 1;i < arguments.length;i++) {
+    var arr2 = arguments[i], isArrayLike;
+    if (goog.isArray(arr2) || (isArrayLike = goog.isArrayLike(arr2)) && Object.prototype.hasOwnProperty.call(arr2, "callee")) {
+      arr1.push.apply(arr1, arr2);
+    } else {
+      if (isArrayLike) {
+        for (var len1 = arr1.length, len2 = arr2.length, j = 0;j < len2;j++) {
+          arr1[len1 + j] = arr2[j];
+        }
+      } else {
+        arr1.push(arr2);
+      }
+    }
+  }
+};
+goog.array.splice = function(arr, index, howMany, var_args) {
+  goog.asserts.assert(null != arr.length);
+  return goog.array.ARRAY_PROTOTYPE_.splice.apply(arr, goog.array.slice(arguments, 1));
+};
+goog.array.slice = function(arr, start, opt_end) {
+  goog.asserts.assert(null != arr.length);
+  return 2 >= arguments.length ? goog.array.ARRAY_PROTOTYPE_.slice.call(arr, start) : goog.array.ARRAY_PROTOTYPE_.slice.call(arr, start, opt_end);
+};
+goog.array.removeDuplicates = function(arr, opt_rv, opt_hashFn) {
+  for (var returnArray = opt_rv || arr, defaultHashFn = function() {
+    return goog.isObject(current) ? "o" + goog.getUid(current) : (typeof current).charAt(0) + current;
+  }, hashFn = opt_hashFn || defaultHashFn, seen = {}, cursorInsert = 0, cursorRead = 0;cursorRead < arr.length;) {
+    var current = arr[cursorRead++], key = hashFn(current);
+    Object.prototype.hasOwnProperty.call(seen, key) || (seen[key] = !0, returnArray[cursorInsert++] = current);
+  }
+  returnArray.length = cursorInsert;
+};
+goog.array.binarySearch = function(arr, target, opt_compareFn) {
+  return goog.array.binarySearch_(arr, opt_compareFn || goog.array.defaultCompare, !1, target);
+};
+goog.array.binarySelect = function(arr, evaluator, opt_obj) {
+  return goog.array.binarySearch_(arr, evaluator, !0, void 0, opt_obj);
+};
+goog.array.binarySearch_ = function(arr, compareFn, isEvaluator, opt_target, opt_selfObj) {
+  for (var left = 0, right = arr.length, found;left < right;) {
+    var middle = left + right >> 1, compareResult;
+    compareResult = isEvaluator ? compareFn.call(opt_selfObj, arr[middle], middle, arr) : compareFn(opt_target, arr[middle]);
+    0 < compareResult ? left = middle + 1 : (right = middle, found = !compareResult);
+  }
+  return found ? left : ~left;
+};
+goog.array.sort = function(arr, opt_compareFn) {
+  goog.asserts.assert(null != arr.length);
+  goog.array.ARRAY_PROTOTYPE_.sort.call(arr, opt_compareFn || goog.array.defaultCompare);
+};
+goog.array.stableSort = function(arr, opt_compareFn) {
+  function stableCompareFn(obj1, obj2) {
+    return valueCompareFn(obj1.value, obj2.value) || obj1.index - obj2.index;
+  }
+  for (var i = 0;i < arr.length;i++) {
+    arr[i] = {index:i, value:arr[i]};
+  }
+  var valueCompareFn = opt_compareFn || goog.array.defaultCompare;
+  goog.array.sort(arr, stableCompareFn);
+  for (i = 0;i < arr.length;i++) {
+    arr[i] = arr[i].value;
+  }
+};
+goog.array.sortObjectsByKey = function(arr, key, opt_compareFn) {
+  var compare = opt_compareFn || goog.array.defaultCompare;
+  goog.array.sort(arr, function(a, b) {
+    return compare(a[key], b[key]);
+  });
+};
+goog.array.isSorted = function(arr, opt_compareFn, opt_strict) {
+  for (var compare = opt_compareFn || goog.array.defaultCompare, i = 1;i < arr.length;i++) {
+    var compareResult = compare(arr[i - 1], arr[i]);
+    if (0 < compareResult || 0 == compareResult && opt_strict) {
+      return!1;
+    }
+  }
+  return!0;
+};
+goog.array.equals = function(arr1, arr2, opt_equalsFn) {
+  if (!goog.isArrayLike(arr1) || !goog.isArrayLike(arr2) || arr1.length != arr2.length) {
+    return!1;
+  }
+  for (var l = arr1.length, equalsFn = opt_equalsFn || goog.array.defaultCompareEquality, i = 0;i < l;i++) {
+    if (!equalsFn(arr1[i], arr2[i])) {
+      return!1;
+    }
+  }
+  return!0;
+};
+goog.array.compare = function(arr1, arr2, opt_equalsFn) {
+  return goog.array.equals(arr1, arr2, opt_equalsFn);
+};
+goog.array.compare3 = function(arr1, arr2, opt_compareFn) {
+  for (var compare = opt_compareFn || goog.array.defaultCompare, l = Math.min(arr1.length, arr2.length), i = 0;i < l;i++) {
+    var result = compare(arr1[i], arr2[i]);
+    if (0 != result) {
+      return result;
+    }
+  }
+  return goog.array.defaultCompare(arr1.length, arr2.length);
+};
+goog.array.defaultCompare = function(a, b) {
+  return a > b ? 1 : a < b ? -1 : 0;
+};
+goog.array.defaultCompareEquality = function(a, b) {
+  return a === b;
+};
+goog.array.binaryInsert = function(array, value, opt_compareFn) {
+  var index = goog.array.binarySearch(array, value, opt_compareFn);
+  return 0 > index ? (goog.array.insertAt(array, value, -(index + 1)), !0) : !1;
+};
+goog.array.binaryRemove = function(array, value, opt_compareFn) {
+  var index = goog.array.binarySearch(array, value, opt_compareFn);
+  return 0 <= index ? goog.array.removeAt(array, index) : !1;
+};
+goog.array.bucket = function(array, sorter, opt_obj) {
+  for (var buckets = {}, i = 0;i < array.length;i++) {
+    var value = array[i], key = sorter.call(opt_obj, value, i, array);
+    if (goog.isDef(key)) {
+      var bucket = buckets[key] || (buckets[key] = []);
+      bucket.push(value);
+    }
+  }
+  return buckets;
+};
+goog.array.toObject = function(arr, keyFunc, opt_obj) {
+  var ret = {};
+  goog.array.forEach(arr, function(element, index) {
+    ret[keyFunc.call(opt_obj, element, index, arr)] = element;
+  });
+  return ret;
+};
+goog.array.range = function(startOrEnd, opt_end, opt_step) {
+  var array = [], start = 0, end = startOrEnd, step = opt_step || 1;
+  void 0 !== opt_end && (start = startOrEnd, end = opt_end);
+  if (0 > step * (end - start)) {
+    return[];
+  }
+  if (0 < step) {
+    for (var i = start;i < end;i += step) {
+      array.push(i);
+    }
+  } else {
+    for (i = start;i > end;i += step) {
+      array.push(i);
+    }
+  }
+  return array;
+};
+goog.array.repeat = function(value, n) {
+  for (var array = [], i = 0;i < n;i++) {
+    array[i] = value;
+  }
+  return array;
+};
+goog.array.flatten = function(var_args) {
+  for (var result = [], i = 0;i < arguments.length;i++) {
+    var element = arguments[i];
+    goog.isArray(element) ? result.push.apply(result, goog.array.flatten.apply(null, element)) : result.push(element);
+  }
+  return result;
+};
+goog.array.rotate = function(array, n) {
+  goog.asserts.assert(null != array.length);
+  array.length && (n %= array.length, 0 < n ? goog.array.ARRAY_PROTOTYPE_.unshift.apply(array, array.splice(-n, n)) : 0 > n && goog.array.ARRAY_PROTOTYPE_.push.apply(array, array.splice(0, -n)));
+  return array;
+};
+goog.array.moveItem = function(arr, fromIndex, toIndex) {
+  goog.asserts.assert(0 <= fromIndex && fromIndex < arr.length);
+  goog.asserts.assert(0 <= toIndex && toIndex < arr.length);
+  var removedItems = goog.array.ARRAY_PROTOTYPE_.splice.call(arr, fromIndex, 1);
+  goog.array.ARRAY_PROTOTYPE_.splice.call(arr, toIndex, 0, removedItems[0]);
+};
+goog.array.zip = function(var_args) {
+  if (!arguments.length) {
+    return[];
+  }
+  for (var result = [], i = 0;;i++) {
+    for (var value = [], j = 0;j < arguments.length;j++) {
+      var arr = arguments[j];
+      if (i >= arr.length) {
+        return result;
+      }
+      value.push(arr[i]);
+    }
+    result.push(value);
+  }
+};
+goog.array.shuffle = function(arr, opt_randFn) {
+  for (var randFn = opt_randFn || Math.random, i = arr.length - 1;0 < i;i--) {
+    var j = Math.floor(randFn() * (i + 1)), tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+};
 goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", ARTICLE:"ARTICLE", ASIDE:"ASIDE", AUDIO:"AUDIO", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDI:"BDI", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", COMMAND:"COMMAND", DATA:"DATA", DATALIST:"DATALIST", DD:"DD", DEL:"DEL", DETAILS:"DETAILS", DFN:"DFN", 
 DIALOG:"DIALOG", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", EMBED:"EMBED", FIELDSET:"FIELDSET", FIGCAPTION:"FIGCAPTION", FIGURE:"FIGURE", FONT:"FONT", FOOTER:"FOOTER", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HEADER:"HEADER", HGROUP:"HGROUP", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", KEYGEN:"KEYGEN", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", 
 MAP:"MAP", MARK:"MARK", MATH:"MATH", MENU:"MENU", META:"META", METER:"METER", NAV:"NAV", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", OUTPUT:"OUTPUT", P:"P", PARAM:"PARAM", PRE:"PRE", PROGRESS:"PROGRESS", Q:"Q", RP:"RP", RT:"RT", RUBY:"RUBY", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SECTION:"SECTION", SELECT:"SELECT", SMALL:"SMALL", SOURCE:"SOURCE", SPAN:"SPAN", STRIKE:"STRIKE", STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUMMARY:"SUMMARY", 
@@ -465,34 +1296,40 @@ pagespeed.CriticalImages.Beacon_.prototype.isCritical_ = function(element) {
   return elLocation.top <= this.windowSize_.height && elLocation.left <= this.windowSize_.width;
 };
 pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
-  for (var tags = [goog.dom.TagName.IMG, goog.dom.TagName.INPUT], criticalImgs = [], criticalImgsKeys = {}, i = 0;i < tags.length;++i) {
-    for (var elements = document.getElementsByTagName(tags[i]), j = 0, element;element = elements[j];++j) {
+  for (var tags = [goog.dom.TagName.IMG, goog.dom.TagName.INPUT], elemsToCheck = [], i = 0;i < tags.length;++i) {
+    elemsToCheck = elemsToCheck.concat(goog.array.toArray(document.getElementsByTagName(tags[i])));
+  }
+  if (0 != elemsToCheck.length && elemsToCheck[0].getBoundingClientRect) {
+    for (var criticalImgs = [], criticalImgsKeys = {}, i = 0, element;element = elemsToCheck[i];++i) {
       var key = element.getAttribute("pagespeed_url_hash");
-      key && element.getBoundingClientRect && this.isCritical_(element) && !(key in criticalImgsKeys) && (criticalImgs.push(key), criticalImgsKeys[key] = !0);
+      !key || key in criticalImgsKeys || !this.isCritical_(element) || (criticalImgs.push(key), criticalImgsKeys[key] = !0);
     }
-  }
-  var data = "oh=" + this.optionsHash_;
-  this.nonce_ && (data += "&n=" + this.nonce_);
-  var isDataAvailable = 0 != criticalImgs.length;
-  if (isDataAvailable) {
-    for (data += "&ci=" + encodeURIComponent(criticalImgs[0]), i = 1;i < criticalImgs.length;++i) {
-      var tmp = "," + encodeURIComponent(criticalImgs[i]);
-      data.length + tmp.length <= pagespeedutils.MAX_POST_SIZE && (data += tmp);
+    var data = "oh=" + this.optionsHash_;
+    this.nonce_ && (data += "&n=" + this.nonce_);
+    var isDataAvailable = 0 != criticalImgs.length;
+    if (isDataAvailable) {
+      for (data += "&ci=" + encodeURIComponent(criticalImgs[0]), i = 1;i < criticalImgs.length;++i) {
+        var tmp = "," + encodeURIComponent(criticalImgs[i]);
+        data.length + tmp.length <= pagespeedutils.MAX_POST_SIZE && (data += tmp);
+      }
     }
+    this.checkRenderedImageSizes_ && (tmp = "&rd=" + encodeURIComponent(JSON.stringify(this.getImageRenderedMap())), data.length + tmp.length <= pagespeedutils.MAX_POST_SIZE && (data += tmp), isDataAvailable = !0);
+    pagespeed.CriticalImages.beaconData_ = data;
+    isDataAvailable && pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data);
   }
-  this.checkRenderedImageSizes_ && (tmp = "&rd=" + encodeURIComponent(JSON.stringify(this.getImageRenderedMap())), data.length + tmp.length <= pagespeedutils.MAX_POST_SIZE && (data += tmp), isDataAvailable = !0);
-  pagespeed.CriticalImages.beaconData_ = data;
-  isDataAvailable && pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, data);
 };
 pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
-  for (var renderedImageDimensions = {}, images = document.getElementsByTagName(goog.dom.TagName.IMG), i = 0, img;img = images[i];++i) {
+  var renderedImageDimensions = {}, images = document.getElementsByTagName(goog.dom.TagName.IMG);
+  if (0 == images.length) {
+    return{};
+  }
+  var img = images[0];
+  if (!("naturalWidth" in img && "naturalHeight" in img)) {
+    return{};
+  }
+  for (var i = 0;img = images[i];++i) {
     var key = img.getAttribute("pagespeed_url_hash");
-    if (!("naturalWidth" in img && "naturalHeight" in img && "undefined" != typeof key)) {
-      break;
-    }
-    if ("undefined" == typeof renderedImageDimensions[img.src] && 0 < img.width && 0 < img.height && 0 < img.naturalWidth && 0 < img.naturalHeight || "undefined" != typeof renderedImageDimensions[img.src] && img.width >= renderedImageDimensions[img.src].renderedWidth && img.height >= renderedImageDimensions[img.src].renderedHeight) {
-      renderedImageDimensions[key] = {renderedWidth:img.width, renderedHeight:img.height, originalWidth:img.naturalWidth, originalHeight:img.naturalHeight};
-    }
+    key && (!(key in renderedImageDimensions) && 0 < img.width && 0 < img.height && 0 < img.naturalWidth && 0 < img.naturalHeight || key in renderedImageDimensions && img.width >= renderedImageDimensions[img.src].rw && img.height >= renderedImageDimensions[img.src].rh) && (renderedImageDimensions[key] = {rw:img.width, rh:img.height, ow:img.naturalWidth, oh:img.naturalHeight});
   }
   return renderedImageDimensions;
 };
