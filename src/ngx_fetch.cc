@@ -24,6 +24,10 @@
 //  - The read handler parses the response. Add the response to the buffer at
 //    last.
 
+extern "C" {
+#include <nginx.h>
+}
+
 #include "ngx_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
@@ -164,7 +168,11 @@ namespace net_instaweb {
       resolver_ctx_->data = this;
       resolver_ctx_->name.data = url_.host.data;
       resolver_ctx_->name.len = url_.host.len;
+
+#if (nginx_version < 1005008)
       resolver_ctx_->type = NGX_RESOLVE_A;
+#endif
+
       resolver_ctx_->handler = NgxFetchResolveDone;
       resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
@@ -299,9 +307,20 @@ namespace net_instaweb {
       return;
     }
     ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
+
+#if (nginx_version < 1005008)
+    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
+#else
+
+    struct sockaddr_in *sin;
+    sin = reinterpret_cast<struct sockaddr_in *>(
+        resolver_ctx->addrs[0].sockaddr);
+    fetch->sin_.sin_family = sin->sin_family;
+    fetch->sin_.sin_addr.s_addr = sin->sin_addr.s_addr;
+#endif
+
     fetch->sin_.sin_family = AF_INET;
     fetch->sin_.sin_port = htons(fetch->url_.port);
-    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
 
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 
