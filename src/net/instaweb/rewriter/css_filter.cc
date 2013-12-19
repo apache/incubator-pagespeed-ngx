@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
@@ -696,11 +697,21 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
 
 GoogleString CssFilter::Context::UserAgentCacheKey(
     const ResourceContext* resource_context) const {
+  GoogleString key;
   if (resource_context != NULL) {
     // CSS cache-key is sensitive to whether the UA supports webp or not.
-    return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
+    key = ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
   }
-  return "";
+  // The cache key we get from the image codec is not sufficient, as
+  // it does not produce different results if CSS image inlining is
+  // on, but of course the css rewriter does.
+  if ((Options()->CssImageInlineMaxBytes() != 0) &&
+      Driver()->request_properties()->SupportsImageInlining()) {
+    StrAppend(&key, "I");
+  } else {
+    StrAppend(&key, "A");
+  }
+  return key;
 }
 
 GoogleString CssFilter::Context::CacheKeySuffix() const {

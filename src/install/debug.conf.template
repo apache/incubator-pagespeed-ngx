@@ -1102,9 +1102,10 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeed on
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_images
-  ModPagespeedMapOriginDomain localhost:@@APACHE_SECONDARY_PORT@@/bug781 \
-                              sharedcdn.example.com/test \
-                              customhostheader.example.com
+  ModPagespeedMapOriginDomain \
+      localhost:@@APACHE_SECONDARY_PORT@@/customhostheader \
+      sharedcdn.example.com/test \
+      customhostheader.example.com
   ModPagespeedJpegRecompressionQuality 50
   ModPagespeedCriticalImagesBeaconEnabled false
 </VirtualHost>

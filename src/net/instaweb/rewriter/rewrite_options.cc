@@ -572,6 +572,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kDebug,
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
+  RewriteOptions::kDelayImages,  // AKA inline_preview_images
   RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLazyloadImages,

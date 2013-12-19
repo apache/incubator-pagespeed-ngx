@@ -1471,9 +1471,10 @@ void RewriteContext::SetPartitionKey() {
     url_keys.push_back("");
     GoogleString encoding;
     encoder()->Encode(url_keys, resource_context_.get(), &encoding);
-    StrAppend(&suffix, encoding, "@",
-              UserAgentCacheKey(resource_context_.get()), "_",
-              CacheKeySuffix());
+    GoogleString tmp = StrCat(encoding, "@",
+                              UserAgentCacheKey(resource_context_.get()), "_",
+                              suffix);
+    suffix.swap(tmp);
 
     url_key = slot(0)->resource()->cache_key();
     // TODO(morlovich): What this is really trying to ask is whether the
