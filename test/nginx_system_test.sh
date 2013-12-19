@@ -272,54 +272,61 @@ function run_post_cache_flush() {
 # nginx-specific system tests
 
 # Tests related to rewritten response (downstream) caching.
-CACHABLE_HTML_LOC="${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
-TMP_LOG_LINE="proxy_cache.example.com GET /purge/mod_pagespeed_test/cachable_rewritten_"
-PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
 
-# Number of downstream cache purges should be 0 here.
-CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
-check_from "$CURRENT_STATS" egrep -q \
-  "downstream_cache_purge_attempts:[[:space:]]*0"
+if [ "$NATIVE_FETCHER" = "on" ]; then
+  echo "Native fetcher doesn't support PURGE requests and so we can't use or"
+  echo "test downstream caching."
+else
+  CACHABLE_HTML_LOC="${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
+  TMP_LOG_LINE="proxy_cache.example.com GET /purge/mod_pagespeed_test/cachable_rewritten_"
+  PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
 
-# The 1st request results in a cache miss, non-rewritten response
-# produced by pagespeed code and a subsequent purge request.
-start_test Check for case where rewritten cache should get purged.
-WGET_ARGS="--header=Host:proxy_cache.example.com"
-OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
-check_not_from "$OUT" egrep -q "pagespeed.ic"
-check_from "$OUT" egrep -q "X-Cache: MISS"
-fetch_until $STATISTICS_URL \
-  'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
+  # Number of downstream cache purges should be 0 here.
+  CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
+  check_from "$CURRENT_STATS" egrep -q \
+    "downstream_cache_purge_attempts:[[:space:]]*0"
 
-while [ x"$(grep "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG)" == x"" ] ; do
-  echo "waiting for purge request to show up in access log"
-  sleep .2
-done
+  # The 1st request results in a cache miss, non-rewritten response
+  # produced by pagespeed code and a subsequent purge request.
+  start_test Check for case where rewritten cache should get purged.
+  WGET_ARGS="--header=Host:proxy_cache.example.com"
+  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
+  check_not_from "$OUT" egrep -q "pagespeed.ic"
+  check_from "$OUT" egrep -q "X-Cache: MISS"
+  fetch_until $STATISTICS_URL \
+    'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
 
-check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+  while [ x"$(grep "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG)" == x"" ] ; do
+    echo "waiting for purge request to show up in access log"
+    sleep .2
+  done
 
-# The 2nd request results in a cache miss (because of the previous purge),
-# rewritten response produced by pagespeed code and no new purge requests.
-start_test Check for case where rewritten cache should not get purged.
-BLOCKING_WGET_ARGS=$WGET_ARGS" --header=X-PSA-Blocking-Rewrite:psatest"
-OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
-check_from "$OUT" egrep -q "pagespeed.ic"
-check_from "$OUT" egrep -q "X-Cache: MISS"
-CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
-check_from "$CURRENT_STATS" egrep -q \
-  "downstream_cache_purge_attempts:[[:space:]]*1"
-check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+  check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
-# The 3rd request results in a cache hit (because the previous response is
-# now present in cache), rewritten response served out from cache and not
-# by pagespeed code and no new purge requests.
-start_test Check for case where there is a rewritten cache hit.
-OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
-check_from "$OUT" egrep -q "pagespeed.ic"
-check_from "$OUT" egrep -q "X-Cache: HIT"
-fetch_until $STATISTICS_URL \
-  'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
-check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+  # The 2nd request results in a cache miss (because of the previous purge),
+  # rewritten response produced by pagespeed code and no new purge requests.
+  start_test Check for case where rewritten cache should not get purged.
+  BLOCKING_WGET_ARGS=$WGET_ARGS" --header=X-PSA-Blocking-Rewrite:psatest"
+  OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS \
+        $CACHABLE_HTML_LOC/downstream_caching.html)
+  check_from "$OUT" egrep -q "pagespeed.ic"
+  check_from "$OUT" egrep -q "X-Cache: MISS"
+  CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
+  check_from "$CURRENT_STATS" egrep -q \
+    "downstream_cache_purge_attempts:[[:space:]]*1"
+  check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+
+  # The 3rd request results in a cache hit (because the previous response is
+  # now present in cache), rewritten response served out from cache and not
+  # by pagespeed code and no new purge requests.
+  start_test Check for case where there is a rewritten cache hit.
+  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
+  check_from "$OUT" egrep -q "pagespeed.ic"
+  check_from "$OUT" egrep -q "X-Cache: HIT"
+  fetch_until $STATISTICS_URL \
+    'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
+  check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+fi
 
 start_test Check for correct default X-Page-Speed header format.
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
