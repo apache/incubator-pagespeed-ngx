@@ -37,6 +37,7 @@
       'type': '<(library)',
       'sources': [
         'kernel/base/abstract_mutex.cc',
+        'kernel/base/annotated_message_handler.cc',
         'kernel/base/atom.cc',
         'kernel/base/debug.cc',
         'kernel/base/file_message_handler.cc',
@@ -150,6 +151,7 @@
       'sources': [
         'kernel/base/file_system_test_base.cc',
         'kernel/base/gtest.cc',
+        'kernel/base/message_handler_test_base.cc',
         'kernel/http/user_agent_matcher_test_base.cc',
         'kernel/sharedmem/shared_circular_buffer_test_base.cc',
         'kernel/sharedmem/shared_dynamic_string_map_test_base.cc',

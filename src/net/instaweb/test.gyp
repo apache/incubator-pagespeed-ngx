@@ -216,6 +216,7 @@
         'util/property_store_test.cc',
         'util/two_level_property_store_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/arena_test.cc',
+        '<(DEPTH)/pagespeed/kernel/base/annotated_message_handler_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/base64_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/callback_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/charset_util_test.cc',
