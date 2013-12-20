@@ -23,15 +23,14 @@
 
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/cache_html_flow.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/proxy_interface.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -41,7 +40,6 @@
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
-#include "net/instaweb/rewriter/public/critical_selector_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -49,6 +47,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -60,6 +59,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -1769,13 +1769,13 @@ TEST_F(CacheHtmlPrioritizeCriticalCssTest, CacheHtmlWithCriticalSelectors) {
   GoogleString full_styles_html = StrCat(
       "<noscript class=\"psa_add_styles\">",
       // URLs are encoded because CSS rewrite is enabled with selectors filter.
-      CssLinkEncodedHref("a.css"),
-      CssLinkEncodedHref("b.css?x=1&y=2"),
+      CssLinkEncodedHref("a.css"), CssLinkEncodedHref("b.css?x=1&y=2"),
       "</noscript>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      CriticalSelectorFilter::kAddStylesFunction,
-      CriticalSelectorFilter::kAddStylesInvocation,
-      "</script>");
+      rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kCriticalCssLoaderJs,
+          rewrite_driver()->options()),
+      "pagespeed.CriticalCssLoader.Run();</script>");
   ValidateCacheHtml(
       "critical_selector", InputHtml(), ExpectedHtml(full_styles_html));
 }

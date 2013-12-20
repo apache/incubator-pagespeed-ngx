@@ -49,6 +49,8 @@ extern const char* JS_console_js;
 extern const char* JS_console_js_opt;
 extern const char* JS_critical_css_beacon;
 extern const char* JS_critical_css_beacon_opt;
+extern const char* JS_critical_css_loader;
+extern const char* JS_critical_css_loader_opt;
 extern const char* JS_critical_images_beacon;
 extern const char* JS_critical_images_beacon_opt;
 extern const char* JS_dedup_inlined_images;
@@ -166,6 +168,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
   assets_[kConsoleJs]->file_name = "console_js";
   assets_[kCriticalCssBeaconJs]->file_name = "critical_css_beacon";
+  assets_[kCriticalCssLoaderJs]->file_name = "critical_css_loader";
   assets_[kCriticalImagesBeaconJs]->file_name = "critical_images_beacon";
   assets_[kDedupInlinedImagesJs]->file_name = "dedup_inlined_images";
   assets_[kDeferIframe]->file_name = "defer_iframe";
@@ -187,6 +190,7 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_client_domain_rewriter_opt;
   assets_[kConsoleJs]->js_optimized = JS_console_js_opt;
   assets_[kCriticalCssBeaconJs]->js_optimized = JS_critical_css_beacon_opt;
+  assets_[kCriticalCssLoaderJs]->js_optimized = JS_critical_css_loader_opt;
   assets_[kCriticalImagesBeaconJs]->js_optimized =
       JS_critical_images_beacon_opt;
   assets_[kDedupInlinedImagesJs]->js_optimized = JS_dedup_inlined_images_opt;
@@ -209,6 +213,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
   assets_[kConsoleJs]->js_debug = JS_console_js;
   assets_[kCriticalCssBeaconJs]->js_debug = JS_critical_css_beacon;
+  assets_[kCriticalCssLoaderJs]->js_debug = JS_critical_css_loader;
   assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
   assets_[kDedupInlinedImagesJs]->js_debug = JS_dedup_inlined_images;
   assets_[kDeferIframe]->js_debug = JS_defer_iframe;

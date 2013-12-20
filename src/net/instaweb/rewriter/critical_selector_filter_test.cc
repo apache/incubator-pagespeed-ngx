@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -130,10 +131,12 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
   }
 
   GoogleString JsLoader() {
-    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-                  CriticalSelectorFilter::kAddStylesFunction,
-                  CriticalSelectorFilter::kAddStylesInvocation,
-                  "</script>");
+    return StrCat(
+        "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+        rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
+            StaticAssetManager::kCriticalCssLoaderJs,
+            rewrite_driver()->options()),
+        "pagespeed.CriticalCssLoader.Run();</script>");
   }
 
   GoogleString LoadRestOfCss(StringPiece orig_css) {

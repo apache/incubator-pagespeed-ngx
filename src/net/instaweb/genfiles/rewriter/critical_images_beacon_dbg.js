@@ -1269,6 +1269,8 @@ var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlU
   return pagespeedutils.positionInViewport(position, windowSize);
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width;
+}, getRequestAnimationFrame:function() {
+  return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
 var pagespeed = {CriticalImages:{}};
 pagespeed.CriticalImages.Beacon_ = function(beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce) {

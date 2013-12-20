@@ -69,45 +69,6 @@ template<typename VectorType> void Compact(VectorType* cl) {
 
 }  // namespace
 
-// Function and invocation are separate so we can suppress the invocation when
-// running tests while still being able to manually invoke it from the JS
-// console if desired.
-// See ModPagespeedTestOnlyCriticalSelectorFilterDontApplyOriginalCss.
-const char CriticalSelectorFilter::kAddStylesFunction[] =
-    "window['pagespeed'] = window['pagespeed'] || {};"
-    "window['pagespeed']['stylesAdded'] = false;"
-    "var addAllStyles = function() {"
-    "  if (window['pagespeed']['stylesAdded']) return;"
-    "  window['pagespeed']['stylesAdded'] = true;"
-    "  var n = document.getElementsByTagName(\"noscript\");"
-    // Note that this uses separate loops to walk the noscript NodeList and
-    // to modify the DOM as modifying the DOM while walking a collection risks
-    // turning the walk quadratic.
-    "  var r = [];"
-    "  for (var i = 0; i < n.length; ++i) {"
-    "    var e = n[i];"
-    "    if (e.className == \"psa_add_styles\") {"
-    "      r.push(e);"
-    "    }"
-    "  }"
-    "  for (var i = 0; i < r.length; ++i) {"
-    "    var e = r[i];"
-    "    var div = document.createElement(\"div\");"
-    "    div.innerHTML = e.textContent;"
-    "    document.body.appendChild(div);"
-    "  }"
-    "};";
-
-const char CriticalSelectorFilter::kAddStylesInvocation[] =
-    "if (window.addEventListener) {"
-    "  document.addEventListener(\"DOMContentLoaded\", addAllStyles, false);"
-    "  window.addEventListener(\"load\", addAllStyles, false);"
-    "} else if (window.attachEvent) {"
-    "  window.attachEvent(\"onload\", addAllStyles);"
-    "} else {"
-    "  window.onload = addAllStyles;"
-    "}";
-
 // When flush early filter is enabled, critical css rules are flushed early
 // as innerHTML of a script element. When the CSS element appears in the
 // document, find the previously flushed style data and copy it to the style
@@ -447,14 +408,15 @@ void CriticalSelectorFilter::RenderDone() {
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     InsertNodeAtBodyEnd(script);
-    if (driver_->options()
-        ->test_only_prioritize_critical_css_dont_apply_original_css()) {
-      driver_->server_context()->static_asset_manager()->AddJsToElement(
-          kAddStylesFunction, script, driver_);
-    } else {
-      driver_->server_context()->static_asset_manager()->AddJsToElement(
-          StrCat(kAddStylesFunction, kAddStylesInvocation), script, driver_);
+    GoogleString js =
+        driver_->server_context()->static_asset_manager()->GetAsset(
+            StaticAssetManager::kCriticalCssLoaderJs, driver_->options());
+    if (!driver_->options()
+             ->test_only_prioritize_critical_css_dont_apply_original_css()) {
+      StrAppend(&js, "pagespeed.CriticalCssLoader.Run();");
     }
+    driver_->server_context()->static_asset_manager()->AddJsToElement(
+        js, script, driver_);
   }
 
   STLDeleteElements(&css_elements_);

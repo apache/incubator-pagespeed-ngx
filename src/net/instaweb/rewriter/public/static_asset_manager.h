@@ -51,6 +51,7 @@ class StaticAssetManager {
     kConsoleCss,
     kConsoleJs,
     kCriticalCssBeaconJs,
+    kCriticalCssLoaderJs,
     kCriticalImagesBeaconJs,
     kDedupInlinedImagesJs,
     kDeferIframe,

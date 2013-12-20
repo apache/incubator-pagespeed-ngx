@@ -49,6 +49,8 @@
   return pagespeedutils.positionInViewport(position, windowSize);
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width;
+}, getRequestAnimationFrame:function() {
+  return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || null;
 }};
 pagespeedutils.CriticalXPaths = function(viewportWidth, viewportHeight) {
   this.windowSize_ = {height:viewportHeight, width:viewportWidth};

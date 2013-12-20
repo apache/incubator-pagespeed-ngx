@@ -1825,14 +1825,14 @@ TEST_F(FlushEarlyPrioritizeCriticalCssTest,
   EXPECT_TRUE(finder->IsCriticalSelector(rewrite_driver(), "*"));
 
   GoogleString full_styles_html = StrCat(
-      "<noscript class=\"psa_add_styles\">",
-      CssLinkEncodedHref("a.css"),
+      "<noscript class=\"psa_add_styles\">", CssLinkEncodedHref("a.css"),
       CssLinkEncodedHref("b.css?x=1&y=2"),
       "</noscript>"
       "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
-      CriticalSelectorFilter::kAddStylesFunction,
-      CriticalSelectorFilter::kAddStylesInvocation,
-      "</script>");
+      rewrite_driver()->server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kCriticalCssLoaderJs,
+          rewrite_driver()->options()),
+      "pagespeed.CriticalCssLoader.Run();</script>");
   ValidateFlushEarly(
       "critical_selector", InputHtml(), ExpectedHtml(full_styles_html));
 }
