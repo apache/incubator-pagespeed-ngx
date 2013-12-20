@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
 
 #include <cstddef>
+#include <memory>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -239,22 +240,21 @@ void CssSummarizerBase::Context::RewriteSingle(
 
 bool CssSummarizerBase::Context::Partition(OutputPartitions* partitions,
                                            OutputResourceVector* outputs) {
-  bool ok;
-  if (!rewrite_inline_) {
-    ok = SingleRewriteContext::Partition(partitions, outputs);
-    ok = ok && (partitions->partition_size() != 0);
-  } else {
-    // In the case where we're rewriting inline CSS, we don't want an output
-    // resource but still want a non-trivial partition.
-    // We use kOmitInputHash here as this is for inline content.
-    CachedResult* partition = partitions->add_partition();
-    slot(0)->resource()->AddInputInfoToPartition(
-        Resource::kOmitInputHash, 0, partition);
-    outputs->push_back(OutputResourcePtr(NULL));
-    ok = true;
+  if (num_slots() != 1) {
+    return false;
   }
-
-  return ok;
+  ResourcePtr resource(slot(0)->resource());
+  if (!rewrite_inline_ && !resource->IsSafeToRewrite(rewrite_uncacheable())) {
+    // TODO(anupama): Shouldn't we check the closing style tag portion of
+    // ShouldInline(resource) here?
+    return false;
+  }
+  // We don't want an output resource but still want a non-trivial partition.
+  // We use kOmitInputHash here as this is for content that will be inlined.
+  CachedResult* partition = partitions->add_partition();
+  resource->AddInputInfoToPartition(Resource::kOmitInputHash, 0, partition);
+  outputs->push_back(OutputResourcePtr(NULL));
+  return true;
 }
 
 GoogleString CssSummarizerBase::Context::CacheKeySuffix() const {
