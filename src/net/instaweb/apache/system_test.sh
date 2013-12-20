@@ -468,6 +468,25 @@ PageSpeedFilters=combine_javascript"
 fetch_until $URL 'grep -c src=' 1
 
 test_filter inline_javascript inlines a small JS file
+start_test no inlining of unauthorized resources
+URL="$TEST_ROOT/dont_allow_unauthorized/inline_javascript.html?\
+PageSpeedFilters=inline_javascript"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
+check egrep -q 'script[[:space:]]src=' $OUTFILE
+
+start_test inline_unauthorized_resources allows inlining
+URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
+PageSpeedFilters=inline_javascript"
+fetch_until $URL 'grep -c script[[:space:]]src=' 0
+
+# inline_unauthorized_resources does not allow rewriting.
+URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
+PageSpeedFilters=rewrite_javascript"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
+check egrep -q 'script[[:space:]]src=' $OUTFILE
+
 start_test aris disables js inlining for introspective js and only i-js
 URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/?\
 PageSpeedFilters=inline_javascript"

@@ -85,6 +85,14 @@ class Resource : public RefCounted<Resource> {
   // up-to-date and cacheable by a proxy like us.
   virtual bool IsValidAndCacheable() const;
 
+  // Whether the domain on which the resource is present is explicitly
+  // authorized or not. Unauthorized resources can be created for the purpose
+  // of inlining content into the HTML.
+  bool is_authorized_domain() { return is_authorized_domain_; }
+  void set_is_authorized_domain(bool is_authorized) {
+    is_authorized_domain_ = is_authorized;
+  }
+
   // Answers question: Are we allowed to rewrite the contents now?
   // Checks if valid and cacheable and if it has a no-transform header.
   // rewrite_uncacheable is used to answer question whether the resource can be
@@ -303,6 +311,7 @@ class Resource : public RefCounted<Resource> {
   bool enable_cache_purge_;
   bool proactive_resource_freshening_;
   bool disable_rewrite_on_no_transform_;
+  bool is_authorized_domain_;
 
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };

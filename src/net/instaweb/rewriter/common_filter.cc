@@ -156,7 +156,8 @@ ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
   GoogleUrl resource_url;
   ResolveUrl(input_url, &resource_url);
   if (resource_url.IsWebValid()) {
-    resource = driver_->CreateInputResource(resource_url);
+    resource = driver_->CreateInputResource(resource_url,
+                                            AllowUnauthorizedDomain());
   }
   return resource;
 }

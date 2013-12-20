@@ -1128,6 +1128,86 @@ TEST_F(RewriteDriverTest, RejectDataResourceGracefully) {
   EXPECT_TRUE(resource.get() == NULL);
 }
 
+// Test that when inline_unauthorized_resources is set to false (the default
+// case), no resources are created for unauthorized resources, but authorized
+// ones are created with the right cache-key.
+TEST_F(RewriteDriverTest, NoCreateInputResourceUnauthorized) {
+  MockRewriteContext context(rewrite_driver());
+  // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+  // Test that an unauthorized resource is not allowed to be created.
+  GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url));
+  EXPECT_TRUE(resource.get() == NULL);
+
+  // Test that an authorized resource is created with the right cache key even
+  // if the filter allows unauthorized domains.
+  GoogleUrl authorized_url("http://example.com/a.js");
+  ResourcePtr resource2(rewrite_driver()->CreateInputResource(authorized_url,
+                                                              true));
+  EXPECT_TRUE(resource2.get() != NULL);
+  EXPECT_STREQ(authorized_url.spec_c_str(), resource2->url());
+  EXPECT_STREQ(authorized_url.spec_c_str(), resource2->cache_key());
+}
+
+// Test that when inline_unauthorized_resources is set to true, resources
+// are created for unauthorized resources with the correctly prefixed keys, and
+// the authorized resources continue to get created with the right cache-keys.
+TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
+  options()->set_inline_unauthorized_resources(true);
+
+  MockRewriteContext context(rewrite_driver());
+  // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+  // Test that an unauthorized resource is created with the right cache key.
+  GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url,
+                                                             true));
+  EXPECT_TRUE(resource.get() != NULL);
+  EXPECT_STREQ(unauthorized_url.spec_c_str(), resource->url());
+  EXPECT_STREQ("unauth://unauthorized.domain.com/a.js", resource->cache_key());
+
+  // Test that an authorized resource continues to be created with the right
+  // cache key.
+  GoogleUrl authorized_url("http://example.com/a.js");
+  ResourcePtr resource2(rewrite_driver()->CreateInputResource(authorized_url,
+                                                              true));
+  EXPECT_TRUE(resource2.get() != NULL);
+  EXPECT_STREQ(authorized_url.spec_c_str(), resource2->url());
+  EXPECT_STREQ(authorized_url.spec_c_str(), resource2->cache_key());
+
+  // Test that an unauthorized resource is not created if
+  // allow_unauthorized_domain is false.
+  ResourcePtr resource3(rewrite_driver()->CreateInputResource(unauthorized_url,
+                                                             false));
+  EXPECT_TRUE(resource3.get() == NULL);
+
+  // Test that an unauthorized resource is not created with the default
+  // CreateInputResource call.
+  ResourcePtr resource4(
+      rewrite_driver()->CreateInputResource(unauthorized_url));
+  EXPECT_TRUE(resource4.get() == NULL);
+}
+
+// Test that when inline_unauthorized_resources is set to true, unauthorized
+// resources continue to be not created when they match a disallowed pattern.
+TEST_F(RewriteDriverTest, CreateInputResourceUnauthorizedWithDisallow) {
+  options()->set_inline_unauthorized_resources(true);
+  options()->Disallow("http://unauthorized.domain.com/*");
+
+  MockRewriteContext context(rewrite_driver());
+  // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+  // Test that an unauthorized resource is not created when it is disallowed.
+  GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url,
+                                                             true));
+  EXPECT_TRUE(resource.get() == NULL);
+}
+
 class ResponseHeadersCheckingFilter : public EmptyHtmlFilter {
  public:
   explicit ResponseHeadersCheckingFilter(RewriteDriver* driver)

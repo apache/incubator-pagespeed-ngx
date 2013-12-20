@@ -44,6 +44,10 @@ class JsInlineFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual const char* Name() const { return "InlineJs"; }
+  // Inlining javascript from unauthorized domains onto HTML is considered
+  // safe because it does not cause any new content to be executed compared
+  // to the unoptimized page.
+  virtual bool AllowUnauthorizedDomain() { return true; }
 
  private:
   class Context;

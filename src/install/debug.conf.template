@@ -103,6 +103,12 @@ ModPagespeedDefaultSharedMemoryCacheKB 0
   ModPagespeedEnableFilters extend_cache
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/unauthorized" >
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters inline_javascript,rewrite_javascript
+  ModPagespeedInlineUnauthorizedResourcesExperimental true
+</Directory>
+
 # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
 ModPagespeedEnableFilters add_instrumentation
 

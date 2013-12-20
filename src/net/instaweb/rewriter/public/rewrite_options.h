@@ -262,6 +262,7 @@ class RewriteOptions {
   static const char kImplicitCacheTtlMs[];
   static const char kIncreaseSpeedTracking[];
   static const char kInlineOnlyCriticalImages[];
+  static const char kInlineUnauthorizedResourcesExperimental[];
   static const char kInPlacePreemptiveRewriteCss[];
   static const char kInPlacePreemptiveRewriteCssImages[];
   static const char kInPlacePreemptiveRewriteImages[];
@@ -1599,6 +1600,13 @@ class RewriteOptions {
   }
   bool inline_only_critical_images() const {
     return inline_only_critical_images_.value();
+  }
+
+  void set_inline_unauthorized_resources(bool x) {
+    set_option(x, &inline_unauthorized_resources_);
+  }
+  bool inline_unauthorized_resources() const {
+    return inline_unauthorized_resources_.value();
   }
 
   void set_critical_images_beacon_enabled(bool x) {
@@ -3245,6 +3253,10 @@ class RewriteOptions {
   // people may want to inline all images (both critical and non-critical). If
   // set to false, all images will be inlined within the html.
   Option<bool> inline_only_critical_images_;
+  // By default, resources from unauthorized domains are not rewritten or
+  // inlined. Using this option, unauthorized resources become available for
+  // inlining into the HTML only.
+  Option<bool> inline_unauthorized_resources_;
   // Indicates whether image rewriting filters should insert the critical images
   // beacon code.
   Option<bool> critical_images_beacon_enabled_;

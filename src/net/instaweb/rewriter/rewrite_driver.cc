@@ -2100,15 +2100,24 @@ void RewriteDriver::DetachedFetchComplete() {
 }
 
 bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
-                                  const GoogleUrl& input_url) const {
-  bool ret = false;
+                                  const GoogleUrl& input_url,
+                                  bool allow_unauthorized_domain,
+                                  bool* is_authorized_domain) const {
+  *is_authorized_domain = false;
   if (domain_url.IsWebValid()) {
     if (options()->IsAllowed(input_url.Spec())) {
-      ret = options()->domain_lawyer()->IsDomainAuthorized(
+      *is_authorized_domain = options()->domain_lawyer()->IsDomainAuthorized(
           domain_url, input_url);
+      if (options()->inline_unauthorized_resources() &&
+          !*is_authorized_domain && allow_unauthorized_domain) {
+        // We decide that this URL can be rewritten (true) but
+        // is_authorized_domain will be retained as false to allow creation of
+        // the Resource object in the correct cache key space.
+        return true;
+      }
     }
   }
-  return ret;
+  return *is_authorized_domain;
 }
 
 bool RewriteDriver::MatchesBaseUrl(const GoogleUrl& input_url) const {
@@ -2118,8 +2127,14 @@ bool RewriteDriver::MatchesBaseUrl(const GoogleUrl& input_url) const {
 }
 
 ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
+  return CreateInputResource(input_url, false);
+}
+
+ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url,
+                                               bool allow_unauthorized_domain) {
   ResourcePtr resource;
   bool may_rewrite = false;
+  bool is_authorized_domain = false;
   if (input_url.SchemeIs("data")) {
     // Skip and silently ignore; don't log a failure.
     // For the moment we assume data: urls are small enough to not be worth
@@ -2127,7 +2142,9 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
     // to have bit-rotted since it was disabled.
     return resource;
   } else if (decoded_base_url_.IsAnyValid()) {
-    may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
+    may_rewrite = MayRewriteUrl(decoded_base_url_, input_url,
+                                allow_unauthorized_domain,
+                                &is_authorized_domain);
     // In the case where we are proxying and we have resources that have been
     // rewritten multiple times, input_url will still have the encoded domain,
     // and we can rewrite that, so test again but against the encoded base url.
@@ -2136,7 +2153,9 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
       GoogleString decoded_input;
       if (namer->Decode(input_url, NULL, &decoded_input)) {
         GoogleUrl decoded_url(decoded_input);
-        may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url);
+        may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url,
+                                    allow_unauthorized_domain,
+                                    &is_authorized_domain);
       }
     }
   } else {
@@ -2147,7 +2166,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   }
   RewriteStats* stats = server_context_->rewrite_stats();
   if (may_rewrite) {
-    resource = CreateInputResourceUnchecked(input_url);
+    resource = CreateInputResourceUnchecked(input_url, is_authorized_domain);
     stats->resource_url_domain_acceptances()->Add(1);
   } else {
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
@@ -2168,10 +2187,12 @@ ResourcePtr RewriteDriver::CreateInputResourceAbsoluteUnchecked(
                                url.spec_c_str());
     return ResourcePtr();
   }
-  return CreateInputResourceUnchecked(url);
+  return CreateInputResourceUnchecked(url, true);
 }
 
-ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
+ResourcePtr RewriteDriver::CreateInputResourceUnchecked(
+    const GoogleUrl& url,
+    bool is_authorized_domain) {
   StringPiece url_string = url.Spec();
   ResourcePtr resource;
 
@@ -2202,7 +2223,8 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       if (mapped_gurl.SchemeIs("http") ||
           (mapped_gurl.SchemeIs("https") &&
            url_async_fetcher_->SupportsHttps())) {
-        resource.reset(new UrlInputResource(this, type, url_string));
+        resource.reset(new UrlInputResource(this, type, url_string,
+                                            is_authorized_domain));
       } else {
         message_handler()->Message(
             kInfo, "Cannot fetch url '%s': as %s is not supported",
@@ -2749,6 +2771,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
           filter_id, name, kind));
     }
   }
+  CHECK(input_resource->is_authorized_domain());
   return result;
 }
 

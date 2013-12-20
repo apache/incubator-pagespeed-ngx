@@ -184,6 +184,16 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
                        true);
 }
 
+TEST_F(JsInlineFilterTest, DoInlineJavascriptDifferentDomain) {
+  options()->set_inline_unauthorized_resources(true);
+  SetHtmlMimetype();
+  TestInlineJavascript("http://www.example.net/index.html",
+                       "http://scripts.example.org/script2.js",
+                       "",
+                       "function id(x) { return x; }\n",
+                       true);
+}
+
 TEST_F(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
   // Different domains:
   TestInlineJavascript("http://www.example.net/index.html",

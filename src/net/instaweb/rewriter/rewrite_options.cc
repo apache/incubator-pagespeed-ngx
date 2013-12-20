@@ -173,6 +173,8 @@ const char RewriteOptions::kInPlaceRewriteDeadlineMs[] =
 const char RewriteOptions::kIncreaseSpeedTracking[] = "IncreaseSpeedTracking";
 const char RewriteOptions::kInlineOnlyCriticalImages[] =
     "InlineOnlyCriticalImages";
+const char RewriteOptions::kInlineUnauthorizedResourcesExperimental[] =
+    "InlineUnauthorizedResourcesExperimental";
 const char RewriteOptions::kJsInlineMaxBytes[] = "JsInlineMaxBytes";
 const char RewriteOptions::kJsOutlineMinBytes[] = "JsOutlineMinBytes";
 const char RewriteOptions::kJsPreserveURLs[] = "JsPreserveURLs";
@@ -1499,6 +1501,14 @@ void RewriteOptions::AddProperties() {
       kInlineOnlyCriticalImages,
       kDirectoryScope,
       NULL);  // TODO(jmarantz): implement for mod_pagespeed.
+  AddBaseProperty(
+      false, &RewriteOptions::inline_unauthorized_resources_, "iur",
+      kInlineUnauthorizedResourcesExperimental,
+      kDirectoryScope,
+      // TODO(anupama): Update this help text once the option is ready.
+      "Experimental option for inlining unauthorized js and css resources. Do "
+      "not enable this option on your servers yet. This option name may change "
+      "in the future.");
   AddBaseProperty(
       false, &RewriteOptions::domain_rewrite_hyperlinks_, "drh",
       kDomainRewriteHyperlinks,

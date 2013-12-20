@@ -21,12 +21,15 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/cacheable_resource_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"  // for GoogleString
 
 namespace net_instaweb {
 struct ContentType;
+class RequestHeaders;
 class RewriteDriver;
 class Statistics;
 
@@ -42,7 +45,19 @@ class UrlInputResource : public CacheableResourceBase {
   friend class UrlInputResourceTest;
   UrlInputResource(RewriteDriver* rewrite_driver,
                    const ContentType* type,
-                   const StringPiece& url);
+                   const StringPiece& url,
+                   bool is_authorized_domain);
+
+  virtual void PrepareRequest(const RequestContextPtr& request_context,
+                              RequestHeaders* headers);
+
+  // If the resource is from a domain that is not explicitly authorized,
+  // the domain for the resource is stored in origin_ by the constructor
+  // so that when PrepareRequest is eventually called, this domain can be
+  // temporarily authorized for fetching purposes. Note that this is done
+  // to support inlining of unauthorized resources into the HTML, which is
+  // considered to be a safe action.
+  GoogleString origin_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlInputResource);
 };

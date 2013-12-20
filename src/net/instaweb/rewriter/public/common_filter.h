@@ -134,6 +134,11 @@ class CommonFilter : public EmptyHtmlFilter {
   // This class logs using Name(); subclasses may do otherwise.
   virtual void LogFilterModifiedContent();
 
+  // Returns true if this filter allows domains not authorized by any pagespeed
+  // directive to be optimized. Filters that end up inlining content onto the
+  // HTML are almost the only ones that can safely do this.
+  virtual bool AllowUnauthorizedDomain() { return false; }
+
  protected:
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change

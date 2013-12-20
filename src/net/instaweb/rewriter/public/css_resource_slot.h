@@ -50,7 +50,7 @@ class CssResourceSlot : public ResourceSlot {
   size_t value_index() const { return value_index_; }
   UrlRelativity url_relativity() const { return url_relativity_; }
 
-  virtual void DirectSetUrl(const StringPiece& url);
+  virtual bool DirectSetUrl(const StringPiece& url);
   virtual bool CanDirectSetUrl() { return true; }
 
  protected:

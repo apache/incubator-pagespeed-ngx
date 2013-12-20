@@ -1206,9 +1206,10 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     DCHECK(!options->cache_small_images_unrewritten())
         << "Modifying a URL slot despite "
         << "image_inlining_identify_and_cache_without_rewriting set.";
-    slot->DirectSetUrl(data_url);
-    image_inline_count_->Add(1);
-    return true;
+    if (slot->DirectSetUrl(data_url)) {
+      image_inline_count_->Add(1);
+      return true;
+    }
   } else if (cached->optimizable()) {
     image_rewrite_uses_->Add(1);
   }

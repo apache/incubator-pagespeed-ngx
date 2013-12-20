@@ -838,6 +838,8 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kImplicitCacheTtlMs);
   PassLookupOptionByName(RewriteOptions::kIncreaseSpeedTracking);
   PassLookupOptionByName(RewriteOptions::kInlineOnlyCriticalImages);
+  PassLookupOptionByName(
+      RewriteOptions::kInlineUnauthorizedResourcesExperimental);
   PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCss);
   PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCssImages);
   PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteImages);
@@ -845,7 +847,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kInPlaceResourceOptimization);
   PassLookupOptionByName(RewriteOptions::kInPlaceRewriteDeadlineMs);
   PassLookupOptionByName(RewriteOptions::kInPlaceWaitForOptimized);
-  PassLookupOptionByName(RewriteOptions::kInlineOnlyCriticalImages);
   PassLookupOptionByName(RewriteOptions::kJsInlineMaxBytes);
   PassLookupOptionByName(RewriteOptions::kJsOutlineMinBytes);
   PassLookupOptionByName(RewriteOptions::kJsPreserveURLs);

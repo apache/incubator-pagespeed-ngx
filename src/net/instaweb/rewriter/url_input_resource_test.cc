@@ -42,11 +42,17 @@ class UrlInputResourceTest : public RewriteTestBase {
   void CheckResourceFetchHasReferer(const GoogleString& url,
                                     const GoogleString& base_url,
                                     bool is_background_fetch,
+                                    bool is_authorized_domain,
+                                    const GoogleString& expected_cache_key,
+                                    const GoogleString& expected_auth_domain,
                                     const GoogleString& expected_referer) {
     PrepareResourceFetch(url);
     SetBaseUrlForFetch(base_url);
     ResourcePtr resource(
-        new UrlInputResource(rewrite_driver(), &kContentTypeJpeg, url));
+        new UrlInputResource(rewrite_driver(), &kContentTypeJpeg, url,
+                             is_authorized_domain));
+    EXPECT_STREQ(url, resource->url());
+    EXPECT_STREQ(expected_cache_key, resource->cache_key());
     RequestContextPtr request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
     resource->set_is_background_fetch(is_background_fetch);
@@ -57,6 +63,10 @@ class UrlInputResourceTest : public RewriteTestBase {
     ASSERT_TRUE(cb.done());
     ASSERT_TRUE(cb.success());
     EXPECT_STREQ(expected_referer, mock_url_fetcher()->last_referer());
+    if (!is_authorized_domain) {
+      EXPECT_TRUE(request_context->IsSessionAuthorizedFetchOrigin(
+                      expected_auth_domain));
+    }
   }
 
   void PrepareResourceFetch(const GoogleString& resource_url) {
@@ -72,7 +82,8 @@ class UrlInputResourceTest : public RewriteTestBase {
 // same.
 TEST_F(UrlInputResourceTest, TestBackgroundFetchRefererSameDomain) {
   GoogleString url = StrCat(kTestDomain, "1.jpg");
-  CheckResourceFetchHasReferer(url, kTestDomain, true, kTestDomain);
+  CheckResourceFetchHasReferer(url, kTestDomain, true, true, url, "",
+                               kTestDomain);
 }
 
 // Test of referer (BackgroundFetch): When the resource fetching request header
@@ -80,7 +91,27 @@ TEST_F(UrlInputResourceTest, TestBackgroundFetchRefererSameDomain) {
 // different.
 TEST_F(UrlInputResourceTest, TestBackgroundFetchRefererDifferentDomain) {
   GoogleString url = "http://other.com/1.jpg";
-  CheckResourceFetchHasReferer(url, kTestDomain, true, kTestDomain);
+  CheckResourceFetchHasReferer(url, kTestDomain, true, true, url, "",
+                               kTestDomain);
+}
+
+// Test whether unauthorized resource is created correctly with http protocol.
+TEST_F(UrlInputResourceTest, TestUnauthorizedDifferentDomainHttp) {
+  GoogleString url = "http://other.com/1.jpg";
+  CheckResourceFetchHasReferer(url, kTestDomain, true, false,
+                               "unauth://other.com/1.jpg",
+                               "http://other.com", kTestDomain);
+  // TODO(anupama): Check that a relative URL is not allowed ever.
+  // TODO(anupama): Check that a URL that does not start with http://
+  // or https:// will be handled correctly.
+}
+
+// Test whether unauthorized resource is created correctly with https protocol.
+TEST_F(UrlInputResourceTest, TestUnauthorizedDifferentDomainHttps) {
+  GoogleString url = "https://other.com/1.jpg";
+  CheckResourceFetchHasReferer(url, kTestDomain, true, false,
+                               "unauths://other.com/1.jpg",
+                               "https://other.com", kTestDomain);
 }
 
 // Test of referer (NonBackgroundFetch): When the resource fetching request
@@ -91,7 +122,7 @@ TEST_F(UrlInputResourceTest, TestNonBackgroundFetchWithRefererMissing) {
   GoogleString url = "http://other.com/1.jpg";
   RequestHeaders headers;
   rewrite_driver()->SetRequestHeaders(headers);
-  CheckResourceFetchHasReferer(url, kTestDomain, false, "");
+  CheckResourceFetchHasReferer(url, kTestDomain, false, true, url, "",  "");
 }
 
 // Test of referer (NonBackgroundFetch): When the resource fetching request
@@ -102,7 +133,8 @@ TEST_F(UrlInputResourceTest, TestNonBackgroundFetchWithReferer) {
   RequestHeaders headers;
   headers.Add(HttpAttributes::kReferer, kTestDomain);
   rewrite_driver()->SetRequestHeaders(headers);
-  CheckResourceFetchHasReferer(url, kTestDomain, false, kTestDomain);
+  CheckResourceFetchHasReferer(url, kTestDomain, false, true, url, "",
+                               kTestDomain);
 }
 
 }  // namespace net_instaweb

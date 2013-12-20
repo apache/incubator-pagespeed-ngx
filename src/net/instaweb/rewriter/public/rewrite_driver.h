@@ -536,6 +536,15 @@ class RewriteDriver : public HtmlParse {
   // context of this page.
   ResourcePtr CreateInputResource(const GoogleUrl& input_url);
 
+  // Creates an input resource paying attention to whether or not resources from
+  // unauthorized domains are to be allowed or not. Returns NULL if the input
+  // resource url isn't valid, or can't legally be rewritten in the context of
+  // this page (which could mean that it was a resource from an unauthorized
+  // domain being processed by a filter that does not allow unauthorized
+  // resources).
+  ResourcePtr CreateInputResource(const GoogleUrl& input_url,
+                                  bool allow_unauthorized_domain);
+
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
   // page context.
@@ -549,10 +558,15 @@ class RewriteDriver : public HtmlParse {
   bool MatchesBaseUrl(const GoogleUrl& input_url) const;
 
   // Checks to see if we can write the input_url resource in the
-  // domain_url taking into account domain authorization and
-  // wildcard allow/disallow from RewriteOptions.
+  // domain_url taking into account domain authorization,
+  // wildcard allow/disallow from RewriteOptions and allow_unauthorized_domain
+  // (a field that is dictated by the filter processing the URL).
+  // After the function is executed, is_authorized_domain will indicate whether
+  // input_url was found to belong to an authorized domain or not.
   bool MayRewriteUrl(const GoogleUrl& domain_url,
-                     const GoogleUrl& input_url) const;
+                     const GoogleUrl& input_url,
+                     bool allow_unauthorized_domain,
+                     bool* is_authorized_domain) const;
 
   // Returns the appropriate base gurl to be used for resolving hrefs
   // in the document.  Note that HtmlParse::google_url() is the URL
@@ -1140,8 +1154,11 @@ class RewriteDriver : public HtmlParse {
 
   // Internal low-level helper for resource creation.
   // Use only when permission checking has been done explicitly on the
-  // caller side.
-  ResourcePtr CreateInputResourceUnchecked(const GoogleUrl& gurl);
+  // caller side. is_authorized_domain is passed along to Resource object
+  // creation, in order to decide whether to keep the resource in the usual
+  // key space or a separate one meant for unauthorized resources only.
+  ResourcePtr CreateInputResourceUnchecked(const GoogleUrl& gurl,
+                                           bool is_authorized_domain);
 
   void AddPreRenderFilters();
   void AddPostRenderFilters();
