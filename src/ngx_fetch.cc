@@ -352,7 +352,13 @@ namespace net_instaweb {
     bool have_host = false;
     GoogleString port;
 
-    size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.0\r\n") - 1;
+    const char* method = request_headers->method_string();
+    size_t method_len = strlen(method);
+
+    size = (method_len +
+            1 /* for the space */ +
+            url_.uri.len +
+            sizeof(" HTTP/1.0\r\n") - 1);
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
       // if no explicit host header is given in the request headers,
@@ -380,7 +386,8 @@ namespace net_instaweb {
       return NGX_ERROR;
     }
 
-    out_->last = ngx_cpymem(out_->last, "GET ", 4);
+    out_->last = ngx_cpymem(out_->last, method, method_len);
+    out_->last = ngx_cpymem(out_->last, " ", 1);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
     out_->last = ngx_cpymem(out_->last, " HTTP/1.0\r\n", 11);
 
