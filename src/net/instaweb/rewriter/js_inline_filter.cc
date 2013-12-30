@@ -27,7 +27,9 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -98,17 +100,10 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
 }
 
 bool JsInlineFilter::ShouldInline(const ResourcePtr& resource) const {
-  StringPiece contents(resource->contents());
+  // Don't inline if it's too big or looks like it's trying to get at its own
+  // url.
 
-  // Only inline if it's small enough, and if it doesn't contain
-  // "</script" anywhere.  If we inline an external script containing
-  // "</script>" and a few variations like </script    > or even
-  // </script foo >, the <script> tag will be ended early.
-  // See http://code.google.com/p/modpagespeed/issues/detail?id=106
-  // TODO(mdsteele): We should consider rewriting "</script>" to
-  //   "<\/script>" instead of just bailing.  But we can't blindly search
-  //   and replace because that would break legal (if contrived) code such
-  //   as "if(x</script>/){...}", which is comparing x to a regex literal.
+  StringPiece contents(resource->contents());
   if (contents.size() > size_threshold_bytes_) {
     return false;
   }
@@ -118,13 +113,76 @@ bool JsInlineFilter::ShouldInline(const ResourcePtr& resource) const {
     return false;
   }
 
-  size_t possible_end_script_pos = FindIgnoreCase(contents, "</script");
-  return (possible_end_script_pos == StringPiece::npos);
+  return true;
 }
 
 void JsInlineFilter::RenderInline(
     const ResourcePtr& resource, const StringPiece& contents,
     HtmlElement* element) {
+  // If it contains '</script' we need to escape.  The standard way to do this
+  // is to replace </script with <\/script, but escaping / with \ is only valid
+  // inside strings, and the following is legal javascript:
+  //
+  //   pathological.js:
+  //     if(2</script>/) {
+  //       alert("foo");
+  //     } else {
+  //       alert("bar");
+  //     }
+  //
+  // This checks whether 2 is less than the regexp "/script>/".  While I would
+  // be fine just abandoning this as too unlikely to worry about, we can
+  // actually support this by encoding 's' as \x73 and using <\x73cript instead.
+  // The html parser won't read that as </script> but the js parser will.
+  //
+  // Unfortunately escaping </script> can expose a different bug where browsers
+  // treat <script> specially inside inline scripts after <!--.  So if we
+  // currently have:
+  //
+  //   nested.js:
+  //     <!--
+  //     document.write("<script>...</script>");
+  //
+  // and we inline it as:
+  //
+  //   <script><!--
+  //     document.write("<script>...</\x73cript>");
+  //   </script>
+  //
+  // then the browser will treat the </script> tag as closing the <script>
+  // that's inside the document.write, and will continue parsing the rest of the
+  // document as javascript.  We were already open to this bug with code that
+  // included <script> without </script> but that's probably less common.  So we
+  // should escape <script> too.
+  //
+  // Because there are legitimate uses of "<script" where it's part of an
+  // identifier we can't use the shorter \xNN notation but need \uNNNN notation
+  // instead.  I don't know why they decided \uNNNN would be good for both
+  // strings and identifiers but \xNN would be good only for strings, but that's
+  // the way it is.  For clarity (and gzip?) we'll just use \uNNNN everywhere.
+  GoogleString contents_for_escaping;
+  StringPiece escaped_contents;
+  // First quickly scan to see if there's anything we need to fix.
+  if (static_cast<size_t>(
+          FindIgnoreCase(contents, "<script")) != StringPiece::npos ||
+      static_cast<size_t>(
+          FindIgnoreCase(contents, "</script")) != StringPiece::npos) {
+    contents.CopyToString(&contents_for_escaping);
+
+    // To keep the case of the original 'script' text we need to run twice, once
+    // for 's' and once for 'S'.
+    RE2::GlobalReplace(&contents_for_escaping,
+                       "<(/?)s([cC][rR][iI][pP][tT])",
+                       "<\\1\\\\u0073\\2");
+    RE2::GlobalReplace(&contents_for_escaping,
+                       "<(/?)S([cC][rR][iI][pP][tT])",
+                       "<\\1\\\\u0053\\2");
+
+    escaped_contents = contents_for_escaping;
+  } else {
+    escaped_contents = contents;
+  }
+
   // If we're in XHTML, we should wrap the script in a <!CDATA[...]]>
   // block to ensure that we don't break well-formedness.  Since XHTML is
   // sometimes interpreted as HTML (which will ignore CDATA delimiters),
@@ -135,11 +193,11 @@ void JsInlineFilter::RenderInline(
     // CDATA sections cannot be nested because they end with the first
     // occurrence of "]]>", so if the script contains that string
     // anywhere (and we're in XHTML) we can't inline.
-    // TODO(mdsteele): Again, we should consider escaping somehow.
-    if (contents.find("]]>") == StringPiece::npos) {
+    // TODO(mdsteele): We should consider escaping somehow.
+    if (escaped_contents.find("]]>") == StringPiece::npos) {
       HtmlCharactersNode* node =
           driver_->NewCharactersNode(element, "//<![CDATA[\n");
-      node->Append(contents);
+      node->Append(escaped_contents);
       node->Append("\n//]]>");
       driver_->AppendChild(element, node);
       element->DeleteAttribute(HtmlName::kSrc);
@@ -148,7 +206,7 @@ void JsInlineFilter::RenderInline(
     // If we're not in XHTML, we can simply paste in the external script
     // verbatim.
     driver_->AppendChild(
-        element, driver_->NewCharactersNode(element, contents));
+        element, driver_->NewCharactersNode(element, escaped_contents));
     element->DeleteAttribute(HtmlName::kSrc);
   }
 }

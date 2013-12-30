@@ -223,47 +223,6 @@ TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
                        false);
 }
 
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
-  // External script contains "</script>":
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       "function close() { return '</script>'; }\n",
-                       false);
-}
-
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag2) {
-  // HTML parsers will also accept junk like
-  // </script  fofo  > as closing the script. (Spaces in the beginning do
-  // cause it to be missed, hower).
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       "function close() { return '</script foo >'; }\n",
-                       false);
-}
-
-TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag3) {
-  // HTML is case insensitive, so make sure we recognize </ScrIpt> as potential
-  // closing tag, too.
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       "function close() { return '</ScrIpt >'; }\n",
-                       false);
-}
-
-TEST_F(JsInlineFilterTest, ConservativeNonInlineCloseScript) {
-  // We conservatively don't inline some things which contain things that
-  // look a lot like </script> but aren't. This is safe, but it would be
-  // better if we inlined it.
-  TestInlineJavascript("http://www.example.com/index.html",
-                       "http://www.example.com/script.js",
-                       "",
-                       "function close() { return '</scripty>'; }\n",
-                       false);
-}
-
 TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascriptByDefault) {
   // If it's unsafe to rename, because it contains fragile introspection like
   // $("script"), we have to leave it at the original url and not inline it.
@@ -388,6 +347,45 @@ TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
       "var answer = 42; // const is non-standard",  // out-of-line body
       "",  // No inline body out,
       false);  // Not inlining
+}
+
+TEST_F(JsInlineFilterTest, ScriptWithScriptTags) {
+  SetHtmlMimetype();
+  AddFilter(RewriteOptions::kInlineJavascript);
+
+  ResponseHeaders default_js_header;
+  SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header);
+  GoogleString js_url = StrCat(kTestDomain, "a.js");
+  SetFetchResponse(js_url,
+                   default_js_header,
+                   "alert('<script></script>');"
+                   "alert('<sCrIpT></ScRiPt>');"
+                   "alert('</SCRIPT foo>');"
+                   "alert('<Script</sCRIPT');"
+                   "alert('</scr>');");
+
+  // a.js now contains a script that needs escaping to inline.
+
+  ValidateExpectedUrl(
+      StrCat(kTestDomain, "inline_with_close_script.html"),
+
+      // Input, with js referenced externally.
+      StringPrintf(
+          "<head>\n"
+          "  <script src='%s'></script>\n"
+          "</head>\n"
+          "<body>Hello, world!</body>\n",
+          js_url.c_str()),
+
+      // Expected output, with js inlined and escaped.
+      "<head>\n"
+      "  <script>alert('<\\u0073cript></\\u0073cript>');"
+      "alert('<\\u0073CrIpT></\\u0053cRiPt>');"
+      "alert('</\\u0053CRIPT foo>');"
+      "alert('<\\u0053cript</\\u0073CRIPT');"
+      "alert('</scr>');</script>\n"
+      "</head>\n"
+      "<body>Hello, world!</body>\n");
 }
 
 TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
