@@ -470,10 +470,14 @@ fetch_until $URL 'grep -c src=' 1
 test_filter inline_javascript inlines a small JS file
 start_test no inlining of unauthorized resources
 URL="$TEST_ROOT/dont_allow_unauthorized/inline_javascript.html?\
-PageSpeedFilters=inline_javascript"
+PageSpeedFilters=inline_javascript,debug"
 OUTFILE=$OUTDIR/blocking_rewrite.out.html
 $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
 check egrep -q 'script[[:space:]]src=' $OUTFILE
+EXPECTED_COMMENT_LINE="<!--InlineJs: Cannot create resource: either its \
+domain is unauthorized and InlineUnauthorizedResources is not enabled, \
+or it cannot be fetched (check the server logs)-->"
+check grep -q "$EXPECTED_COMMENT_LINE" $OUTFILE
 
 start_test inline_unauthorized_resources allows inlining
 URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\

@@ -47,6 +47,9 @@ class ServerContext;
 // accessed via a convenience method here for historical reasons.
 class CommonFilter : public EmptyHtmlFilter {
  public:
+  // Debug message to be inserted when resource creation fails.
+  static const char kCreateResourceFailedDebugMsg[];
+
   explicit CommonFilter(RewriteDriver* driver);
   virtual ~CommonFilter();
 

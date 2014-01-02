@@ -405,8 +405,7 @@ void CssSummarizerBase::ReportSummariesDone() {
           StrAppend(&comment, "Unrecoverable CSS parse error\n");
           break;
         case kSummaryResourceCreationFailed:
-          StrAppend(&comment, "Cannot create resource; is it authorized and "
-                              "is URL well-formed?\n");
+          StrAppend(&comment, kCreateResourceFailedDebugMsg, "\n");
           break;
         case kSummaryInputUnavailable:
           StrAppend(&comment,

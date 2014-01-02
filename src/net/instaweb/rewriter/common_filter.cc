@@ -33,6 +33,11 @@
 
 namespace net_instaweb {
 
+const char CommonFilter::kCreateResourceFailedDebugMsg[] =
+    "Cannot create resource: either its domain is unauthorized and "
+    "InlineUnauthorizedResources is not enabled, or it cannot be fetched "
+    "(check the server logs)";
+
 CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
       server_context_(driver->server_context()),

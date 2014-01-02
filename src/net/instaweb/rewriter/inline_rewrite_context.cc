@@ -53,6 +53,12 @@ bool InlineRewriteContext::StartInlining() {
     driver->InitiateRewrite(this);
     return true;
   } else {
+    // Add a debug message indicating that this is an unauthorized resource
+    // that could not be created.
+    if (driver->DebugMode()) {
+      driver->InsertComment(StrCat(
+          filter_->Name(), ": ", CommonFilter::kCreateResourceFailedDebugMsg));
+    }
     delete this;
     return false;
   }
