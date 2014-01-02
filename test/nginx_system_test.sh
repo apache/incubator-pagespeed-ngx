@@ -621,6 +621,25 @@ URL+="PageSpeedFilters=combine_javascript"
 fetch_until $URL 'grep -c src=' 1
 
 test_filter inline_javascript inlines a small JS file
+start_test no inlining of unauthorized resources
+URL="$TEST_ROOT/dont_allow_unauthorized/inline_javascript.html?\
+PageSpeedFilters=inline_javascript"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
+check egrep -q 'script[[:space:]]src=' $OUTFILE
+
+start_test inline_unauthorized_resources allows inlining
+URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
+PageSpeedFilters=inline_javascript"
+fetch_until $URL 'grep -c script[[:space:]]src=' 0
+
+# inline_unauthorized_resources does not allow rewriting.
+URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
+PageSpeedFilters=rewrite_javascript"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
+check egrep -q 'script[[:space:]]src=' $OUTFILE
+
 start_test aris disables js inlining for introspective js and only i-js
 URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
 URL+="?PageSpeedFilters=inline_javascript"
@@ -1757,7 +1776,7 @@ NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_URL+="?url=http%3A%2F%2Frenderedimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
-BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22renderedWidth%22%3A150%2C%22renderedHeight%22%3A100%2C%22originalWidth%22%3A256%2C%22originalHeight%22%3A192%7D%7D"
+BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22rw%22%3A150%2C%22rh%22%3A100%2C%22ow%22%3A256%2C%22oh%22%3A192%7D%7D"
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
   $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
 check_from "$OUT" egrep -q "HTTP/1[.]. 204"

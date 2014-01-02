@@ -798,6 +798,12 @@ http {
       pagespeed EnableFilters extend_cache;
     }
 
+    location /mod_pagespeed_test/unauthorized/ {
+      pagespeed RewriteLevel PassThrough;
+      pagespeed EnableFilters inline_javascript,rewrite_javascript;
+      pagespeed InlineUnauthorizedResourcesExperimental true;
+    }
+
     location /mod_pagespeed_test/retain_cache_control/ {
       pagespeed ModifyCachingHeaders off;
       add_header Cache-Control "private, max-age=3000";
