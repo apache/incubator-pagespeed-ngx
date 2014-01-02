@@ -115,6 +115,7 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
 
  private:
   static void TimeoutHandler(ngx_event_t* tev);
+  bool ParseUrl();
   friend class NgxFetch;
 
   NgxFetchPool active_fetches_;

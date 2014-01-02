@@ -106,6 +106,36 @@ namespace net_instaweb {
     }
   }
 
+  // TODO(tcpper): maybe we should reform NgxFetch and NgxUrlAsyncFetcher to use the same ParseUrl
+  bool NgxUrlAsyncFetcher::ParseUrl() {
+    size_t scheme_offset;
+    u_short port;
+    if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
+                                     const_cast<char*>("http://")), 7) == 0) {
+      scheme_offset = 7;
+      port = 80;
+    } else if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
+                                    const_cast<char*>("https://")), 8) == 0) {
+      scheme_offset = 8;
+      port = 443;
+    } else {
+      scheme_offset = 0;
+      port = 80;
+    }
+
+    url_.url.data += scheme_offset;
+    url_.url.len -= scheme_offset;
+    url_.default_port = port;
+    // See: http://lxr.evanmiller.org/http/source/core/ngx_inet.c#L875
+    url_.no_resolve = 0;
+    url_.uri_part = 1;
+
+    if (ngx_parse_url(pool_, &url_) == NGX_OK) {
+      return true;
+    }
+    return false;
+  }
+
   // If there are still active requests, cancel them.
   void NgxUrlAsyncFetcher::CancelActiveFetches() {
     // TODO(oschaaf): this seems tricky, this may end up calling
@@ -173,7 +203,7 @@ namespace net_instaweb {
 
     // TODO(oschaaf): shouldn't we do this earlier? Do we need to clean
     // up when parsing the url failed?
-    if (ngx_parse_url(pool_, &url_) != NGX_OK) {
+    if (!ParseUrl()) {
       ngx_log_error(NGX_LOG_ERR, log_, 0,
           "NgxUrlAsyncFetcher::Init parse proxy[%V] failed", &url_.url);
       return false;
@@ -192,7 +222,7 @@ namespace net_instaweb {
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
     async_fetch = EnableInflation(async_fetch, NULL);
-    NgxFetch* fetch = new NgxFetch(url, async_fetch,
+    NgxFetch* fetch = new NgxFetch(url_/*proxy*/, url, async_fetch,
           message_handler, fetch_timeout_, log_);
     ScopedMutex lock(mutex_);
     pending_fetches_.Add(fetch);

@@ -56,12 +56,14 @@ extern "C" {
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  NgxFetch::NgxFetch(const GoogleString& url,
+  NgxFetch::NgxFetch(ngx_url_t proxy_url,
+                     const GoogleString& url,
                      AsyncFetch* async_fetch,
                      MessageHandler* message_handler,
                      ngx_msec_t timeout_ms,
                      ngx_log_t* log)
-      : str_url_(url),
+      : proxy_url_(proxy_url),
+        str_url_(url),
         fetcher_(NULL),
         async_fetch_(async_fetch),
         parser_(async_fetch->response_headers()),
@@ -142,19 +144,26 @@ namespace net_instaweb {
     // The host is either a domain name or an IP address.  First check
     // if it's a valid IP address and only if that fails fall back to
     // using the DNS resolver.
-    GoogleString s_ipaddress(reinterpret_cast<char*>(url_.host.data),
-                             url_.host.len);
+
+    // Maybe we have a Proxy
+    ngx_url_t tmp_url = url_;
+    if (0 != proxy_url_.url.len) {
+      tmp_url = proxy_url_;
+    }
+
+    GoogleString s_ipaddress(reinterpret_cast<char*>(tmp_url.host.data),
+                             tmp_url.host.len);
     ngx_memzero(&sin_, sizeof(sin_));
     sin_.sin_family = AF_INET;
-    sin_.sin_port = htons(url_.port);
+    sin_.sin_port = htons(tmp_url.port);
     sin_.sin_addr.s_addr = inet_addr(s_ipaddress.c_str());
 
     if (sin_.sin_addr.s_addr == INADDR_NONE) {
       // inet_addr returned INADDR_NONE, which means the hostname
       // isn't a valid IP address.  Check DNS.
       ngx_resolver_ctx_t temp;
-      temp.name.data = url_.host.data;
-      temp.name.len = url_.host.len;
+      temp.name.data = tmp_url.host.data;
+      temp.name.len = tmp_url.host.len;
       resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
       if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
         // TODO(oschaaf): this spams the log, but is useful in the fetcher's
@@ -166,8 +175,8 @@ namespace net_instaweb {
       }
 
       resolver_ctx_->data = this;
-      resolver_ctx_->name.data = url_.host.data;
-      resolver_ctx_->name.len = url_.host.len;
+      resolver_ctx_->name.data = tmp_url.host.data;
+      resolver_ctx_->name.len = tmp_url.host.len;
 
 #if (nginx_version < 1005008)
       resolver_ctx_->type = NGX_RESOLVE_A;
@@ -187,6 +196,7 @@ namespace net_instaweb {
         return false;
       }
     }
+
     return true;
   }
 
@@ -321,6 +331,13 @@ namespace net_instaweb {
 
     fetch->sin_.sin_family = AF_INET;
     fetch->sin_.sin_port = htons(fetch->url_.port);
+
+    // Maybe we have Proxy
+    if (0 != fetch->proxy_url_.url.len) {
+      fetch->sin_.sin_port = htons(fetch->proxy_url_.port);
+    }
+
+    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
 
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 

@@ -44,7 +44,8 @@ typedef bool (*response_handler_pt)(ngx_connection_t* c);
 class NgxUrlAsyncFetcher;
 class NgxFetch : public PoolElement<NgxFetch> {
  public:
-  NgxFetch(const GoogleString& url,
+  NgxFetch(ngx_url_t proxy,
+           const GoogleString& url,
            AsyncFetch* async_fetch,
            MessageHandler* message_handler,
            ngx_msec_t timeout_ms,
@@ -115,6 +116,7 @@ class NgxFetch : public PoolElement<NgxFetch> {
   void FixUserAgent();
   void FixHost();
 
+  ngx_url_t proxy_url_;
   const GoogleString str_url_;
   ngx_url_t url_;
   NgxUrlAsyncFetcher* fetcher_;
