@@ -337,8 +337,6 @@ namespace net_instaweb {
       fetch->sin_.sin_port = htons(fetch->proxy_url_.port);
     }
 
-    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
-
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 
     fetch->message_handler()->Message(
