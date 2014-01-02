@@ -24,6 +24,10 @@
 //  - The read handler parses the response. Add the response to the buffer at
 //    last.
 
+extern "C" {
+#include <nginx.h>
+}
+
 #include "ngx_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
@@ -164,7 +168,11 @@ namespace net_instaweb {
       resolver_ctx_->data = this;
       resolver_ctx_->name.data = url_.host.data;
       resolver_ctx_->name.len = url_.host.len;
+
+#if (nginx_version < 1005008)
       resolver_ctx_->type = NGX_RESOLVE_A;
+#endif
+
       resolver_ctx_->handler = NgxFetchResolveDone;
       resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
@@ -299,9 +307,20 @@ namespace net_instaweb {
       return;
     }
     ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
+
+#if (nginx_version < 1005008)
+    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
+#else
+
+    struct sockaddr_in *sin;
+    sin = reinterpret_cast<struct sockaddr_in *>(
+        resolver_ctx->addrs[0].sockaddr);
+    fetch->sin_.sin_family = sin->sin_family;
+    fetch->sin_.sin_addr.s_addr = sin->sin_addr.s_addr;
+#endif
+
     fetch->sin_.sin_family = AF_INET;
     fetch->sin_.sin_port = htons(fetch->url_.port);
-    fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
 
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 
@@ -333,7 +352,13 @@ namespace net_instaweb {
     bool have_host = false;
     GoogleString port;
 
-    size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.0\r\n") - 1;
+    const char* method = request_headers->method_string();
+    size_t method_len = strlen(method);
+
+    size = (method_len +
+            1 /* for the space */ +
+            url_.uri.len +
+            sizeof(" HTTP/1.0\r\n") - 1);
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
       // if no explicit host header is given in the request headers,
@@ -361,7 +386,8 @@ namespace net_instaweb {
       return NGX_ERROR;
     }
 
-    out_->last = ngx_cpymem(out_->last, "GET ", 4);
+    out_->last = ngx_cpymem(out_->last, method, method_len);
+    out_->last = ngx_cpymem(out_->last, " ", 1);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
     out_->last = ngx_cpymem(out_->last, " HTTP/1.0\r\n", 11);
 
