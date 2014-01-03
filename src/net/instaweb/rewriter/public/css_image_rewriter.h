@@ -77,7 +77,7 @@ class CssImageRewriter {
                    RewriteContext* parent);
 
  private:
-  void RewriteImport(RewriteContext* parent,
+  bool RewriteImport(RewriteContext* parent,
                      CssHierarchy* hierarchy);
 
   void RewriteImage(int64 image_inline_max_bytes,

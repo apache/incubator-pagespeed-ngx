@@ -36,9 +36,11 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "util/utf8/public/unicodetext.h"
+#include "pagespeed/kernel/base/string_util.h"  // for StrCat
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"
 #include "webutil/css/value.h"
+
 
 namespace net_instaweb {
 
@@ -75,18 +77,19 @@ bool CssImageRewriter::RewritesEnabled(
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
-void CssImageRewriter::RewriteImport(
+bool CssImageRewriter::RewriteImport(
     RewriteContext* parent,
     CssHierarchy* hierarchy) {
   GoogleUrl import_url(hierarchy->url());
   ResourcePtr resource = driver_->CreateInputResource(import_url);
   if (resource.get() == NULL) {
-    return;
+    return false;
   }
 
   parent->AddNestedContext(
       filter_->MakeNestedFlatteningContextInNewSlot(
           resource, driver_->UrlLine(), root_context_, parent, hierarchy));
+  return true;
 }
 
 void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
@@ -153,7 +156,12 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
       for (int i = 0, n = hierarchy->children().size(); i < n; ++i) {
         CssHierarchy* child = hierarchy->children()[i];
         if (child->NeedsRewriting()) {
-          RewriteImport(parent, child);
+          if (!RewriteImport(parent, child)) {
+            hierarchy->set_flattening_succeeded(false);
+            hierarchy->AddFlatteningFailureReason(
+                StrCat("Cannot import ", child->url_for_humans(),
+                       ": is it on an unauthorized domain?"));
+          }
         }
       }
     }

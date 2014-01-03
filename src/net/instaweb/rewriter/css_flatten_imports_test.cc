@@ -452,6 +452,40 @@ TEST_F(CssFlattenImportsTest, Flatten404) {
                              kExpectSuccess | kNoClearFetcher);
 }
 
+TEST_F(CssFlattenImportsTest, DontFlattenWithUnauthorizedCSS) {
+  // Turn on debug to get the flattening failure reason in an HTML comment.
+  const char kFailureReason[] = "<!--Flattening failed: Cannot import "
+                                "http://unauth.com/assets/styles.css: "
+                                "is it on an unauthorized domain?-->";
+  TurnOnDebug(kFailureReason);
+  SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
+                                kSimpleCss, 100);
+  const char kUnauthorizedImportCss[] =
+      "@import url(http://unauth.com/assets/styles.css);\n"
+      "@import url(http://test.com/simple.css);\n"
+      "a { color:red }";
+  const char kRewrittenUnauthorizedImportCss[] =
+      "@import url(http://unauth.com/assets/styles.css) ;"
+      "@import url(http://test.com/simple.css) ;"
+      "a{color:red}";
+  ValidateRewriteExternalCss("dont_flatten_unauthorized_css_import",
+      kUnauthorizedImportCss, kRewrittenUnauthorizedImportCss,
+      kExpectSuccess | kNoClearFetcher);
+
+  const char kAuthorizedTopLevelCss[] =
+      "@import url(auth_parent_with_unauth_child_import.css);"
+      "b { color: blue }";
+  const char kRewrittenAuthorizedTopLevelCss[] =
+      "@import url(auth_parent_with_unauth_child_import.css) ;"
+      "b{color:#00f}";
+  SetResponseWithDefaultHeaders("auth_parent_with_unauth_child_import.css",
+                                kContentTypeCss,
+                                kUnauthorizedImportCss, 100);
+  ValidateRewriteExternalCss("dont_flatten_nested_unauthorized_css_import",
+      kAuthorizedTopLevelCss, kRewrittenAuthorizedTopLevelCss,
+      kExpectSuccess | kNoClearFetcher);
+}
+
 TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   // Turn on debug to get the flattening failure reason in an HTML comment.
   const char kFailureReason[] = "<!--Flattening failed: Cannot parse the CSS "
