@@ -115,14 +115,14 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
 
  private:
   static void TimeoutHandler(ngx_event_t* tev);
-  bool ParseUrl();
+  static bool ParseUrl(ngx_url_t* url, ngx_pool_t* pool);
   friend class NgxFetch;
 
   NgxFetchPool active_fetches_;
   // Add the pending task to this list
   NgxFetchPool pending_fetches_;
   NgxFetchPool completed_fetches_;
-  ngx_url_t url_;
+  ngx_url_t proxy_;
 
   int fetchers_count_;
   bool shutdown_;

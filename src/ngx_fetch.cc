@@ -273,32 +273,8 @@ namespace net_instaweb {
       return false;
     }
     str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
-    size_t scheme_offset;
-    u_short port;
-    if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
-                                     const_cast<char*>("http://")), 7) == 0) {
-      scheme_offset = 7;
-      port = 80;
-    } else if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
-                                    const_cast<char*>("https://")), 8) == 0) {
-      scheme_offset = 8;
-      port = 443;
-    } else {
-      scheme_offset = 0;
-      port = 80;
-    }
 
-    url_.url.data += scheme_offset;
-    url_.url.len -= scheme_offset;
-    url_.default_port = port;
-    // See: http://lxr.evanmiller.org/http/source/core/ngx_inet.c#L875
-    url_.no_resolve = 0;
-    url_.uri_part = 1;
-
-    if (ngx_parse_url(pool_, &url_) == NGX_OK) {
-      return true;
-    }
-    return false;
+    return NgxUrlAsyncFetcher::ParseUrl(&url_, pool_);
   }
 
   // Issue a request after the resolver is done
