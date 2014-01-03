@@ -59,6 +59,13 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   virtual const char* Name() const { return "CriticalSelectorFilter"; }
   virtual const char* id() const { return "cl"; }
 
+  // This filter needs access to all critical selectors (even those from
+  // unauthorized domains) in order to inline them into HTML.
+  // Inlining css from unauthorized domains into HTML is considered
+  // safe because it does not cause any new content to be executed compared
+  // to the unoptimized page.
+  virtual bool AllowUnauthorizedDomain() const { return true; }
+
  protected:
   // Overrides of CssSummarizerBase summary API. These help us compute
   // the critical portions of the various fragments in the page, and to

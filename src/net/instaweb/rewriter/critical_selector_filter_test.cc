@@ -99,6 +99,10 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
                                   "@media screen,print { * { margin: 0px; } }",
                                   100);
+    SetResponseWithDefaultHeaders("http://unauthorized.com/unauth.css",
+                                  kContentTypeCss,
+                                  "div { background-color: blue }"
+                                  "random { color: white }", 100);
   }
 
   void ResetDriver() {
@@ -176,6 +180,63 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
 
   GoogleString critical_css =
       "<style>*{display:none}</style>"  // from the inline
+      "<style>div,*::first-letter{display:block}</style>"  // from a.css
+      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+
+  ValidateExpected(
+      "basic", html,
+      StrCat("<head>", critical_css, "</head>",
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
+}
+
+TEST_F(CriticalSelectorFilterTest, UnauthorizedCss) {
+  GoogleString css = StrCat(
+      "<style>*,p {display: none; } span {display: inline; }</style>",
+      CssLinkHref("http://unauthorized.com/unauth.css"),
+      CssLinkHref("a.css"),
+      CssLinkHref("b.css"));
+
+  GoogleString critical_css =
+      "<style>*{display:none}</style>"  // from the inline
+      "<link rel=stylesheet href=http://unauthorized.com/unauth.css>"
+      "<style>div,*::first-letter{display:block}</style>"  // from a.css
+      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+
+  ValidateExpected(
+      "basic", html,
+      StrCat("<head>", critical_css, "</head>",
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
+}
+
+TEST_F(CriticalSelectorFilterTest, AllowUnauthorizedCss) {
+  options()->ClearSignatureForTesting();
+  options()->set_inline_unauthorized_resources(true);
+  options()->ComputeSignature();
+  GoogleString css = StrCat(
+      "<style>*,p {display: none; } span {display: inline; }</style>",
+      CssLinkHref("http://unauthorized.com/unauth.css"),
+      CssLinkHref("a.css"),
+      CssLinkHref("b.css"));
+
+  GoogleString critical_css =
+      "<style>*{display:none}</style>"  // from the inline
+      "<style>div{background-color:#00f}</style>"  // from unauth.css
       "<style>div,*::first-letter{display:block}</style>"  // from a.css
       "<style>@media screen{*{margin:0px}}</style>";  // from b.css
 

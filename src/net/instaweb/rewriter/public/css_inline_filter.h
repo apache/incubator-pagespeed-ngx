@@ -45,6 +45,10 @@ class CssInlineFilter : public CommonFilter {
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "InlineCss"; }
+  // Inlining css from unauthorized domains into HTML is considered
+  // safe because it does not cause any new content to be executed compared
+  // to the unoptimized page.
+  virtual bool AllowUnauthorizedDomain() const { return true; }
 
  protected:
   // Changes filter id code (which shows up in cache keys and

@@ -103,12 +103,6 @@ ModPagespeedDefaultSharedMemoryCacheKB 0
   ModPagespeedEnableFilters extend_cache
 </Directory>
 
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/unauthorized" >
-  ModPagespeedRewriteLevel PassThrough
-  ModPagespeedEnableFilters inline_javascript,rewrite_javascript
-  ModPagespeedInlineUnauthorizedResourcesExperimental true
-</Directory>
-
 # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
 ModPagespeedEnableFilters add_instrumentation
 
@@ -444,6 +438,15 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedForbidFilters rewrite_css,resize_images
   # ... and disable but not forbid this one (to ensure we retain its URL).
   ModPagespeedDisableFilters inline_css
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName unauthorizedresources.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedInlineUnauthorizedResourcesExperimental true
+  ModPagespeedCssInlineMaxBytes 1000000
 </VirtualHost>
 
 # Sets up a logical home-page server on

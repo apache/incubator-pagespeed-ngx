@@ -140,7 +140,7 @@ class CommonFilter : public EmptyHtmlFilter {
   // Returns true if this filter allows domains not authorized by any pagespeed
   // directive to be optimized. Filters that end up inlining content onto the
   // HTML are almost the only ones that can safely do this.
-  virtual bool AllowUnauthorizedDomain() { return false; }
+  virtual bool AllowUnauthorizedDomain() const { return false; }
 
  protected:
   // Overload these implementer methods:

@@ -84,6 +84,15 @@ TEST_F(CssInlineImportToLinkFilterTest, CssPreserveURLOff) {
   ValidateStyleToLink("<style>@import url(assets/styles.css);</style>", kLink);
 }
 
+TEST_F(CssInlineImportToLinkFilterTest, AlwaysAllowUnauthorizedDomain) {
+  options()->EnableFilter(RewriteOptions::kInlineImportToLink);
+  options()->set_css_preserve_urls(false);
+  rewrite_driver()->AddFilters();
+  ValidateStyleToLink(
+      "<style>@import url(http://unauth.com/assets/styles.css);</style>",
+      "<link rel=\"stylesheet\" href=\"http://unauth.com/assets/styles.css\">");
+}
+
 // Tests for converting styles to links.
 TEST_F(CssInlineImportToLinkFilterTest, ConvertGoodStyle) {
   AddFilter(RewriteOptions::kInlineImportToLink);

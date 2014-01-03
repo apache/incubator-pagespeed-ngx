@@ -453,7 +453,7 @@ void CssSummarizerBase::StartExternalRewrite(
     // TODO(morlovich): Stat?
     if (DebugMode()) {
       driver_->InsertComment(StrCat(
-          Name(), ": unable to create resource; is it authorized?"));
+          Name(), ": ", kCreateResourceFailedDebugMsg));
     }
     return;
   }

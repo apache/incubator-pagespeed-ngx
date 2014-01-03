@@ -61,6 +61,12 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   virtual const char* Name() const { return "CriticalCssBeacon"; }
   virtual const char* id() const { return "cb"; }
 
+  // This filter needs access to all critical selectors (even those from
+  // unauthorized domains) in order to let the clients use them while
+  // detecting critical selectors that can be subsequently beaconed back
+  // to the server and eventually inlined into the HTML.
+  virtual bool AllowUnauthorizedDomain() const { return true; }
+
  protected:
   virtual bool MustSummarize(HtmlElement* element) const;
   virtual void Summarize(Css::Stylesheet* stylesheet,
