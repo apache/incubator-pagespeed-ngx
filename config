@@ -208,7 +208,8 @@ if [ $ngx_found = yes ]; then
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END
-$0: error: module ngx_pagespeed requires the pagespeed optimization library
+$0: error: module ngx_pagespeed requires the pagespeed optimization library.
+Look in obj/autoconf.err for more details.
 END
   exit 1
 fi
