@@ -163,10 +163,8 @@ void JsInlineFilter::RenderInline(
   GoogleString contents_for_escaping;
   StringPiece escaped_contents;
   // First quickly scan to see if there's anything we need to fix.
-  if (static_cast<size_t>(
-          FindIgnoreCase(contents, "<script")) != StringPiece::npos ||
-      static_cast<size_t>(
-          FindIgnoreCase(contents, "</script")) != StringPiece::npos) {
+  if (FindIgnoreCase(contents, "<script") != StringPiece::npos ||
+      FindIgnoreCase(contents, "</script") != StringPiece::npos) {
     contents.CopyToString(&contents_for_escaping);
 
     // To keep the case of the original 'script' text we need to run twice, once

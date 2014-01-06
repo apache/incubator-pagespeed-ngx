@@ -49,9 +49,9 @@ Yahoo!
 bool BotChecker::Lookup(const StringPiece& user_agent) {
   // Check if the user agent is empty, or contains bot / crawl / spider.
   if (user_agent.empty() ||
-      FindIgnoreCase(user_agent, "bot") != -1 ||
-      FindIgnoreCase(user_agent, "crawl") != -1 ||
-      FindIgnoreCase(user_agent, "spider") != -1) {
+      FindIgnoreCase(user_agent, "bot") != StringPiece::npos ||
+      FindIgnoreCase(user_agent, "crawl") != StringPiece::npos ||
+      FindIgnoreCase(user_agent, "spider") != StringPiece::npos) {
     return true;
   }
   // check whether the whole string is in database

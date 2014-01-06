@@ -148,8 +148,8 @@ bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
   if (resource->contents().size() > size_threshold_bytes_) {
     return false;
   }
-  size_t possible_end_style_pos = FindIgnoreCase(resource->contents(),
-                                                 "</style");
+  stringpiece_ssize_type possible_end_style_pos =
+      FindIgnoreCase(resource->contents(), "</style");
   if (possible_end_style_pos != StringPiece::npos) {
     return false;
   }

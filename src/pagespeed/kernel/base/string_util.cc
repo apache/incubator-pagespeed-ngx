@@ -511,8 +511,9 @@ int CountSubstring(const StringPiece& text, const StringPiece& substring) {
   return number_of_occurrences;
 }
 
-int FindIgnoreCase(StringPiece haystack, StringPiece needle) {
-  int pos = 0;
+stringpiece_ssize_type FindIgnoreCase(
+    StringPiece haystack, StringPiece needle) {
+  stringpiece_ssize_type pos = 0;
   while (haystack.size() >= needle.size()) {
     if (StringCaseStartsWith(haystack, needle)) {
       return pos;
@@ -520,7 +521,7 @@ int FindIgnoreCase(StringPiece haystack, StringPiece needle) {
     ++pos;
     haystack.remove_prefix(1);
   }
-  return static_cast<int>(StringPiece::npos);
+  return StringPiece::npos;
 }
 
 
