@@ -37,21 +37,21 @@ recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_p
 
    ```bash
    $ cd ~
-   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/release-1.7.30.1-beta.zip
-   $ unzip release-1.7.30.1-beta.zip # or unzip release-1.7.30.1-beta
-   $ cd ngx_pagespeed-release-1.7.30.1-beta/
-   $ wget https://dl.google.com/dl/page-speed/psol/1.7.30.1.tar.gz
-   $ tar -xzvf 1.7.30.1.tar.gz # expands to psol/
+   $ wget https://github.com/pagespeed/ngx_pagespeed/archive/v1.7.30.2-beta.zip
+   $ unzip v1.7.30.2-beta.zip # or unzip v1.7.30.2-beta
+   $ cd ngx_pagespeed-1.7.30.2-beta/
+   $ wget https://dl.google.com/dl/page-speed/psol/1.7.30.2.tar.gz
+   $ tar -xzvf 1.7.30.2.tar.gz # expands to psol/
    ```
 
 3. Download and build nginx:
 
    ```bash
    $ # check http://nginx.org/en/download.html for the latest version
-   $ wget http://nginx.org/download/nginx-1.4.3.tar.gz
-   $ tar -xvzf nginx-1.4.3.tar.gz
-   $ cd nginx-1.4.3/
-   $ ./configure --add-module=$HOME/ngx_pagespeed-release-1.7.30.1-beta
+   $ wget http://nginx.org/download/nginx-1.4.4.tar.gz
+   $ tar -xvzf nginx-1.4.4.tar.gz
+   $ cd nginx-1.4.4/
+   $ ./configure --add-module=$HOME/ngx_pagespeed-1.7.30.2-beta
    $ make
    $ sudo make install
    ```
@@ -94,7 +94,7 @@ To confirm that the module is loaded, fetch a page and check that you see the
 
 ```bash
 $ curl -I 'http://localhost:8050/some_page/' | grep X-Page-Speed
-X-Page-Speed: 1.7.30.1-...
+X-Page-Speed: 1.7.30.2-...
 ```
 
 Looking at the source of a few pages you should see various changes, such as
