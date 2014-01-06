@@ -23,11 +23,11 @@ void CssUrlExtractor::ExtractUrl(const StringPiece& in_text,
 }
 
 CssTagScanner::Transformer::TransformStatus CssUrlExtractor::Transform(
-    const StringPiece& in, GoogleString* out) {
-  if (!in.empty()) {
+    GoogleString* str) {
+  if (!str->empty()) {
     // Push the Url into the output vector
     GoogleString* url = StringVectorAdd(out_urls_);
-    in.CopyToString(url);
+    *url = *str;
   }
   return kNoChange;
 }

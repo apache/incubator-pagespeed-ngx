@@ -67,8 +67,8 @@ class DummyTransformer : public CssTagScanner::Transformer {
   DummyTransformer() {}
   virtual ~DummyTransformer() {}
 
-  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out) {
-    *out = StrCat("Dummy:", in);
+  virtual TransformStatus Transform(GoogleString* str) {
+    *str = StrCat("Dummy:", *str);
     return kSuccess;
   }
 

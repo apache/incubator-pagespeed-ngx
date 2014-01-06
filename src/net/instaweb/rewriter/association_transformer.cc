@@ -31,33 +31,28 @@ AssociationTransformer::~AssociationTransformer() {
 }
 
 CssTagScanner::Transformer::TransformStatus AssociationTransformer::Transform(
-    const StringPiece& in, GoogleString* out) {
+    GoogleString* str) {
   TransformStatus ret = kNoChange;
 
   // Note: we do not mess with empty URLs at all.
-  if (!in.empty()) {
-    GoogleUrl in_url(*base_url_, in);
-    if (!in_url.IsWebOrDataValid()) {
+  if (!str->empty()) {
+    GoogleUrl url(*base_url_, *str);
+    if (!url.IsWebOrDataValid()) {
       handler_->Message(kInfo, "Invalid URL in CSS %s expands to %s",
-                        in.as_string().c_str(), in_url.spec_c_str());
+                        str->c_str(), url.spec_c_str());
       ret = kFailure;
     } else {
       // Apply association.
-      GoogleString in_string;
-      in_url.Spec().CopyToString(&in_string);
-      StringStringMap::const_iterator it = map_.find(in_string);
+      GoogleString url_string;
+      url.Spec().CopyToString(&url_string);
+      StringStringMap::const_iterator it = map_.find(url_string);
       if (it != map_.end()) {
-        UrlRelativity url_relativity = GoogleUrl::FindRelativity(in);
-        *out = ResourceSlot::RelativizeOrPassthrough(
+        UrlRelativity url_relativity = GoogleUrl::FindRelativity(*str);
+        *str = ResourceSlot::RelativizeOrPassthrough(
             options_, it->second, url_relativity, *base_url_);
         ret = kSuccess;
-      } else {
-        if (backup_transformer_ != NULL) {
-          ret = backup_transformer_->Transform(in, out);
-        } else {
-          // If backup_transformer_ is not set, just copy in->out directly.
-          in.CopyToString(out);
-        }
+      } else if (backup_transformer_ != NULL) {
+        ret = backup_transformer_->Transform(str);
       }
     }
   }

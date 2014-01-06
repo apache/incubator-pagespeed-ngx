@@ -320,8 +320,7 @@ bool CssTagScanner::TransformUrls(
     if (have_url != kNone) {
       // See if we actually have to do something. If the transformer
       // wants to leave the URL alone, we will just pass the bytes through.
-      GoogleString transformed;
-      switch (transformer->Transform(url, &transformed)) {
+      switch (transformer->Transform(&url)) {
         case Transformer::kSuccess: {
           // Write out the buffered up part of input.
           ok = ok && WriteRange(out_begin, out_end, writer, handler);
@@ -335,7 +334,7 @@ bool CssTagScanner::TransformUrls(
           if (is_quoted) {
             ok = ok && writer->Write(StringPiece(&quote, 1), handler);
           }
-          ok = ok && writer->Write(Css::EscapeUrl(transformed), handler);
+          ok = ok && writer->Write(Css::EscapeUrl(url), handler);
           if (have_term_quote) {
             ok = ok && writer->Write(StringPiece(&quote, 1), handler);
           }
@@ -433,23 +432,35 @@ RewriteDomainTransformer::~RewriteDomainTransformer() {
 }
 
 CssTagScanner::Transformer::TransformStatus RewriteDomainTransformer::Transform(
-    const StringPiece& in, GoogleString* out) {
-  GoogleString rewritten;
-  if (domain_rewriter_->Rewrite(in, *old_base_url_, driver_,
+    GoogleString* str) {
+  GoogleString rewritten;  // Result of rewriting domain.
+  GoogleString out;        // Result after trimming.
+  if (domain_rewriter_->Rewrite(*str, *old_base_url_, driver_,
                                 true /* apply_sharding */,
                                 &rewritten)
       == DomainRewriteFilter::kFail) {
     return kFailure;
   }
+  // Note: Even if Rewrite() returned kDomainUnchanged, it will still absolutify
+  // the URL into rewritten. We may return kSuccess if that URL does not get
+  // re-trimmed to the original string.
+
   // Note: Because of complications with sharding, we cannot trim
   // sharded resources against the final sharded domain of the CSS file.
   // Specifically, that final domain depends upon the precise text of that
   // we are altering here.
   if (!trim_urls_ ||
-      !url_trim_filter_->Trim(*new_base_url_, rewritten, out, handler_)) {
-    out->swap(rewritten);
+      !url_trim_filter_->Trim(*new_base_url_, rewritten, &out, handler_)) {
+    // If we couldn't trim rewritten -> out, just copy it (swap is optimization)
+    out.swap(rewritten);
   }
-  return (*out == in) ? kNoChange : kSuccess;
+
+  if (out == *str) {
+    return kNoChange;
+  } else {
+    str->swap(out);
+    return kSuccess;
+  }
 }
 
 }  // namespace net_instaweb

@@ -108,10 +108,10 @@ class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
       : base_url_(base_url) {}
   virtual ~SimpleAbsolutifyTransformer() {}
 
-  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out) {
-    GoogleUrl abs(*base_url_, in);
+  virtual TransformStatus Transform(GoogleString* str) {
+    GoogleUrl abs(*base_url_, *str);
     if (abs.IsWebValid()) {
-      abs.Spec().CopyToString(out);
+      abs.Spec().CopyToString(str);
       return kSuccess;
     } else {
       return kNoChange;

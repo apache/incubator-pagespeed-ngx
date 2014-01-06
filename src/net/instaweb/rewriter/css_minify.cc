@@ -150,14 +150,12 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
             Css::Value* value = values->at(value_index);
             if (value->GetLexicalUnitType() == Css::Value::URI) {
               result = true;
-              GoogleString in = UnicodeTextToUTF8(value->GetStringValue());
-              GoogleString out;
-              if (transformer.Transform(in, &out) ==
+              GoogleString url = UnicodeTextToUTF8(value->GetStringValue());
+              if (transformer.Transform(&url) ==
                   CssTagScanner::Transformer::kSuccess) {
                 delete (*values)[value_index];
                 (*values)[value_index] =
-                    new Css::Value(Css::Value::URI,
-                                   UTF8ToUnicodeText(out.data(), out.size()));
+                    new Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
               }
             }
           }

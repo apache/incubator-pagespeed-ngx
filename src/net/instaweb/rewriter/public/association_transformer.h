@@ -66,7 +66,7 @@ class AssociationTransformer : public CssTagScanner::Transformer {
   // with this AssociationTransformer which will call Transform() on all URLs.
   // Transform will lookup all (absolutified) URLs in map_ and rewrite them
   // if present (otherwise it will pass them to the backup_transformer_).
-  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out);
+  virtual TransformStatus Transform(GoogleString* str);
 
  private:
   // Mapping of input URLs to output URLs.

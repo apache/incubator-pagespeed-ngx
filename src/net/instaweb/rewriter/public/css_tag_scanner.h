@@ -43,11 +43,13 @@ class CssTagScanner {
     virtual ~Transformer();
 
     enum TransformStatus { kSuccess, kNoChange, kFailure };
-    // Note: out is NOT necessarily set if kNoChange is returned.
-    // TODO(sligocki): Standardize this behavior, perhaps by simplifying
-    // interface to Transform(GoogleString* str).
-    virtual TransformStatus Transform(const StringPiece& in,
-                                      GoogleString* out) = 0;
+    // Transforms str in-place.
+    // If kSuccess -> transformation succeeded and str may have changed
+    // (Generally implementers should only return kSuccess if str changed, but
+    // this is merely an optimization. Functionally it doesn't matter).
+    // If kNoChange -> transformation succeeded and str was unchanged.
+    // If kFailure -> transformation failed. str is undefined, do not use.
+    virtual TransformStatus Transform(GoogleString* str) = 0;
   };
 
   static const char kStylesheet[];
@@ -111,7 +113,7 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
                            RewriteDriver* driver);
   virtual ~RewriteDomainTransformer();
 
-  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out);
+  virtual TransformStatus Transform(GoogleString* str);
 
   void set_trim_urls(bool x) { trim_urls_ = x; }
 
