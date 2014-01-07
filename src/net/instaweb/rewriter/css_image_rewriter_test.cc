@@ -72,8 +72,10 @@ class CssImageRewriterTest : public CssRewriteTestBase {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options()->EnableFilter(RewriteOptions::kExtendCacheImages);
-    options()->EnableFilter(RewriteOptions::kFallbackRewriteCssUrls);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kExtendCacheImages);
+    options()->SoftEnableFilterForTesting(
+        RewriteOptions::kFallbackRewriteCssUrls);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteCss);
     CssRewriteTestBase::SetUp();
   }
 
@@ -192,8 +194,8 @@ TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
 
 TEST_F(CssImageRewriterTest, RewriteCssImagesVerifyQuality) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
-  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressJpeg);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteCss);
   options()->set_image_max_rewrites_at_once(1);
   options()->set_always_rewrite_css(true);
   options()->set_image_jpeg_recompress_quality(85);
@@ -337,7 +339,7 @@ TEST_F(CssImageRewriterTest, InlinePaths) {
   // during development of async + inline case which caused us to do
   // null rewrites from cache.
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kLeftTrimUrls);
   server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("dir/foo.png", kContentTypePng,
                                 kDummyContent, 100);
@@ -369,7 +371,7 @@ TEST_F(CssImageRewriterTest, InlinePaths) {
 TEST_F(CssImageRewriterTest, RewriteCached) {
   // Make sure we produce the same output from cache.
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kLeftTrimUrls);
   server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("dir/foo.png", kContentTypePng,
                                 kDummyContent, 100);
@@ -420,7 +422,7 @@ TEST_F(CssImageRewriterTest, CacheInlineParseFailures) {
 
 TEST_F(CssImageRewriterTest, RecompressImages) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
   server_context()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);
@@ -440,7 +442,7 @@ TEST_F(CssImageRewriterTest, RecompressImages) {
 
 TEST_F(CssImageRewriterTest, CssImagePreserveUrls) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
   options()->set_image_preserve_urls(true);
   server_context()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
@@ -470,7 +472,7 @@ TEST_F(CssImageRewriterTest, CssImagePreserveUrls) {
 
 TEST_F(CssImageRewriterTest, CssImagePreserveUrlsNoPreemptiveRewrite) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
   options()->set_image_preserve_urls(true);
   options()->set_in_place_preemptive_rewrite_css_images(false);
   server_context()->ComputeSignature(options());
@@ -665,7 +667,8 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
   SetResponseWithDefaultHeaders("baz.png", kContentTypePng, kDummyContent, 100);
 
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+  options()->SoftEnableFilterForTesting(
+      RewriteOptions::kRewriteStyleAttributes);
   server_context()->ComputeSignature(options());
 
   ValidateExpected("cache_extend_images_simple",
@@ -796,7 +799,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesFallback) {
 
 TEST_F(CssImageRewriterTest, RecompressImagesFallback) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
   server_context()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);
@@ -816,7 +819,7 @@ TEST_F(CssImageRewriterTest, RecompressImagesFallback) {
 // Make sure we don't break import URLs or other non-image URLs.
 TEST_F(CssImageRewriterTest, FallbackImportsAndUnknownContentType) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRecompressPng);
   server_context()->ComputeSignature(options());
 
   AddFileToMockFetcher(StrCat(kTestDomain, "image.png"), kBikePngFile,

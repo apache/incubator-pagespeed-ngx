@@ -149,7 +149,7 @@ class JsCombineFilterTest : public RewriteTestBase {
     SimulateJsResource(kIntrospectiveUrl1, kIntrospectiveText1);
     SimulateJsResource(kIntrospectiveUrl2, kIntrospectiveText2);
 
-    options()->EnableFilter(RewriteOptions::kCombineJavascript);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kCombineJavascript);
     SetUpExtraFilters();
     rewrite_driver()->AddFilters();
 
@@ -301,13 +301,13 @@ class JsCombineFilterTest : public RewriteTestBase {
 
 class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
   virtual void SetUpExtraFilters() {
-    options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
   }
 };
 
 // Test for basic operation, including escaping and fetch reconstruction.
 TEST_F(JsCombineFilterTest, CombineJs) {
-  TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
+  TestCombineJs(MultiUrl(kJsUrl1, kJsUrl2), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
 }
 
@@ -336,11 +336,11 @@ TEST_F(JsCombineFilterTest, CombineJsUnhealthy) {
 // .pagespeed. resources are requested even if cache is unhealthy.
 TEST_F(JsCombineFilterTest, ServeFilesUnhealthy) {
   lru_cache()->set_is_healthy(false);
-  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript, "var a;", 100);
-  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript, "var b;", 100);
+  SetResponseWithDefaultHeaders(kJsUrl1, kContentTypeJavascript, "var a;", 100);
+  SetResponseWithDefaultHeaders(kJsUrl2, kContentTypeJavascript, "var b;", 100);
   GoogleString content;
   const GoogleString combined_url = Encode(
-      kTestDomain, "jc", "0", MultiUrl("a.js", "b.js"), "js");
+      kTestDomain, "jc", "0", MultiUrl(kJsUrl1, kJsUrl2), "js");
   ASSERT_TRUE(FetchResourceUrl(combined_url, &content));
   const char kCombinedContent[] =
       "var mod_pagespeed_KecOGCIjKt = \"var a;\";\n"
@@ -350,7 +350,7 @@ TEST_F(JsCombineFilterTest, ServeFilesUnhealthy) {
 
 class JsCombineAndCacheExtendFilterTest : public JsCombineFilterTest {
   virtual void SetUpExtraFilters() {
-    options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kExtendCacheScripts);
   }
 };
 
@@ -358,10 +358,10 @@ TEST_F(JsCombineAndCacheExtendFilterTest, CombineJsNoExtraCacheExtension) {
   // Make sure we don't end up trying to cache extend things
   // the combiner removed. We need to custom-set resources here to give them
   // shorter TTL than the fixture would.
-  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript, kJsText1, 100);
-  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript, kJsText2, 100);
+  SetResponseWithDefaultHeaders(kJsUrl1, kContentTypeJavascript, kJsText1, 100);
+  SetResponseWithDefaultHeaders(kJsUrl2, kContentTypeJavascript, kJsText2, 100);
 
-  TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
+  TestCombineJs(MultiUrl(kJsUrl1, kJsUrl2), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
   EXPECT_EQ(0,
             rewrite_driver()->statistics()->GetVariable(
@@ -374,7 +374,7 @@ TEST_F(JsCombineFilterTest, CombineJsAvoidRewritingIntrospectiveJavascripOn) {
   options()->ClearSignatureForTesting();
   options()->set_avoid_renaming_introspective_javascript(true);
   server_context()->ComputeSignature(options());
-  TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
+  TestCombineJs(MultiUrl(kJsUrl1, kJsUrl2), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
 }
 
@@ -387,6 +387,25 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
                 test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
                 test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
                 true, kTestDomain);
+}
+
+// Even with inline_unauthorized_resources set to true, we should not combine
+// unauthorized and authorized resources. Also, we should not allow fetching
+// of component minified unauthorized resources even if they were created.
+TEST_F(JsFilterAndCombineFilterTest, TestCrossDomainRejectUnauthEnabled) {
+  options()->ClearSignatureForTesting();
+  options()->set_inline_unauthorized_resources(true);
+  server_context()->ComputeSignature(options());
+  ValidateExpected("xd",
+                   StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
+                          "<script src=", kJsUrl2, "></script>"),
+                   StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
+                          "<script src=",
+                          Encode("", "jm", "Y1kknPfzVs", kJsUrl2, "js"),
+                          ">",
+                          "</script>"));
+  GoogleString contents;
+  ASSERT_FALSE(FetchResourceUrl(StrCat(other_domain_, kJsUrl1), &contents));
 }
 
 // Issue 308: ModPagespeedShardDomain disables combine_js.  Actually
@@ -629,11 +648,11 @@ TEST_F(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
                    StrCat("<script src=", kJsUrl1, "></script>",
                           "<script src=", kJsUrl2, ">TEXT HERE</script>"),
                    StrCat("<script src=",
-                          Encode("", "jm", "FUEwDOA7jh", "a.js", "js"),
+                          Encode("", "jm", "FUEwDOA7jh", kJsUrl1, "js"),
                           ">",
                           "</script>",
                           "<script src=",
-                          Encode("", "jm", "Y1kknPfzVs", "b.js", "js"),
+                          Encode("", "jm", "Y1kknPfzVs", kJsUrl2, "js"),
                           ">",
                           "TEXT HERE</script>"));
 }
@@ -771,6 +790,25 @@ TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
                      "<script src=", other_domain_, kJsUrl2, "></script>"));
 }
 
+// Make sure we check for cross-domain rejections even when
+// inline_unauthorized_resources is set to true.
+TEST_F(JsCombineFilterTest, TestCrossDomainRejectUnauthEnabled) {
+  options()->ClearSignatureForTesting();
+  options()->set_inline_unauthorized_resources(true);
+  server_context()->ComputeSignature(options());
+  ValidateNoChanges("xd",
+                    StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
+                           "<script src=", kJsUrl2, "></script>"));
+
+  ValidateNoChanges(
+      "xd.2", StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
+                     "<script src=", other_domain_, kJsUrl2, "></script>"));
+
+  ValidateNoChanges(
+      "xd.3", StrCat("<script src=", kJsUrl1, "></script>",
+                     "<script src=", other_domain_, kJsUrl2, "></script>"));
+}
+
 // Validate that we can recover a combination after a cross-domain rejection
 TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
   ASSERT_TRUE(AddDomain(other_domain_));
@@ -840,11 +878,11 @@ TEST_F(JsCombineFilterTest, PartlyInvalidFetchCache) {
   // Note: arguably this shouldn't get cached at all; but it certainly
   // should not result in an inappropriate result.
   SetFetchResponse404("404.js");
-  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript, "var a;", 100);
-  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript, "var b;", 100);
+  SetResponseWithDefaultHeaders(kJsUrl1, kContentTypeJavascript, "var a;", 100);
+  SetResponseWithDefaultHeaders(kJsUrl2, kContentTypeJavascript, "var b;", 100);
   EXPECT_FALSE(
       TryFetchResource(
-          Encode(kTestDomain, "jc", "0", MultiUrl("a.js", "b.js", "404.js"),
+          Encode(kTestDomain, "jc", "0", MultiUrl(kJsUrl1, kJsUrl2, "404.js"),
                  "js")));
   ValidateNoChanges("partly_invalid",
                     StrCat("<script src=a.js></script>",
@@ -908,10 +946,10 @@ TEST_F(JsCombineFilterTest, CharsetDetermination) {
 
 TEST_F(JsCombineFilterTest, AllDifferentCharsets) {
   GoogleString html_url = StrCat(kTestDomain, "bom.html");
-  GoogleString a_js_url = "a.js";
-  GoogleString b_js_url = "b.js";
-  GoogleString c_js_url = "c.js";
-  GoogleString d_js_url = "d.js";
+  GoogleString a_js_url = kJsUrl1;
+  GoogleString b_js_url = kJsUrl2;
+  GoogleString c_js_url = kJsUrl3;
+  GoogleString d_js_url = kJsUrl4;
   const char a_js_body[] = "var a;";
   const char b_js_body[] = "var b;";
   const char c_js_body[] = "var c;";
@@ -944,10 +982,10 @@ TEST_F(JsCombineFilterTest, AllDifferentCharsets) {
 
   // This should leave the same 4 original scripts.
   EXPECT_EQ(4, scripts.size());
-  EXPECT_EQ("a.js", scripts[0].url);
-  EXPECT_EQ("b.js", scripts[1].url);
-  EXPECT_EQ("c.js", scripts[2].url);
-  EXPECT_EQ("d.js", scripts[3].url);
+  EXPECT_EQ(kJsUrl1, scripts[0].url);
+  EXPECT_EQ(kJsUrl2, scripts[1].url);
+  EXPECT_EQ(kJsUrl3, scripts[2].url);
+  EXPECT_EQ(kJsUrl4, scripts[3].url);
 }
 
 TEST_F(JsCombineFilterTest, BomMismatch) {

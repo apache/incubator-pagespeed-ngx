@@ -40,7 +40,7 @@ class CssOutlineFilterTest : public RewriteTestBase {
   virtual void SetUp() {
     RewriteTestBase::SetUp();
     options()->set_css_outline_min_bytes(0);
-    options()->EnableFilter(RewriteOptions::kOutlineCss);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineCss);
     rewrite_driver()->AddFilters();
   }
 

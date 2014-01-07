@@ -39,7 +39,7 @@ class JsOutlineFilterTest : public RewriteTestBase {
   // that NoOutlineScript can call another AddFilter function first.
   void SetupOutliner() {
     options()->set_js_outline_min_bytes(0);
-    options()->EnableFilter(RewriteOptions::kOutlineJavascript);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
     rewrite_driver()->AddFilters();
   }
 
@@ -123,7 +123,7 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   GoogleString file_prefix = GTestTempDir() + "/no_outline";
   GoogleString url_prefix = "http://mysite/no_outline";
 
-  options()->EnableFilter(RewriteOptions::kOutlineCss);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineCss);
   SetupOutliner();
 
   static const char html_input[] =
@@ -146,7 +146,7 @@ TEST_F(JsOutlineFilterTest, UrlNotTooLong) {
 
 TEST_F(JsOutlineFilterTest, JsPreserveURL) {
   options()->set_js_outline_min_bytes(0);
-  options()->EnableFilter(RewriteOptions::kOutlineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
   options()->set_js_preserve_urls(true);
   rewrite_driver()->AddFilters();
   OutlineScript("url_not_too_long", false);
@@ -154,7 +154,7 @@ TEST_F(JsOutlineFilterTest, JsPreserveURL) {
 
 TEST_F(JsOutlineFilterTest, JsPreserveURLOff) {
   options()->set_js_outline_min_bytes(0);
-  options()->EnableFilter(RewriteOptions::kOutlineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kOutlineJavascript);
   options()->set_js_preserve_urls(false);
   rewrite_driver()->AddFilters();
   OutlineScript("url_not_too_long", true);

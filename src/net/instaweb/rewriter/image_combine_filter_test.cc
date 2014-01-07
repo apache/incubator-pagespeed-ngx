@@ -143,13 +143,6 @@ class CssImageCombineTestCustomOptions : public CssImageCombineTest {
   virtual void SetUp() {}
 };
 
-TEST_F(CssImageCombineTestCustomOptions, ImageCombinedPreserveURLsOn) {
-  // Make sure that we don't combine when preserve urls is on.
-  options()->set_image_preserve_urls(true);
-  CssImageCombineTest::SetUp();
-  TestSpriting("0px 0px", "0px -70px", false);
-}
-
 TEST_F(CssImageCombineTest, SpritesMultiple) {
   GoogleString before, after, sprite;
   // With the same image present 3 times, there should be no sprite.

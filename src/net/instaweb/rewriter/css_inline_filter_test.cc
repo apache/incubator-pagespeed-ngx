@@ -139,16 +139,6 @@ class CssInlineFilterTestCustomOptions : public CssInlineFilterTest {
   virtual void SetUp() {}
 };
 
-TEST_F(CssInlineFilterTestCustomOptions, InlineCssPreserveURLSOn) {
-  // Make sure that we don't inline when preserve urls is on.
-  options()->set_css_preserve_urls(true);
-  CssInlineFilterTest::SetUp();
-  const GoogleString css = "BODY { color: red; }\n";
-  TestInlineCss("http://www.example.com/index.html",
-                "http://www.example.com/styles.css",
-                "", css, false, css);
-}
-
 TEST_F(CssInlineFilterTest, InlineCssUnhealthy) {
   lru_cache()->set_is_healthy(false);
   const GoogleString css = "BODY { color: red; }\n";

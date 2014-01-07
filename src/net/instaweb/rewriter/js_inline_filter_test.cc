@@ -82,7 +82,8 @@ class JsInlineFilterTest : public RewriteTestBase {
                                    const GoogleString& js_expected_inline_body,
                                    bool expect_inline) {
     if (!filters_added_) {
-      AddFilter(RewriteOptions::kInlineJavascript);
+      options()->SoftEnableFilterForTesting(RewriteOptions::kInlineJavascript);
+      rewrite_driver()->AddFilters();
       filters_added_ = true;
     }
 
@@ -282,8 +283,8 @@ TEST_F(JsInlineFilterTest, CachedWithSuccesors) {
   // the source attribute which the inliner deleted while using
   // cached filter results.
   SetHtmlMimetype();
-  options()->EnableFilter(RewriteOptions::kInlineJavascript);
-  options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kInlineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kExtendCacheScripts);
   rewrite_driver()->AddFilters();
 
   const char kJsUrl[] = "script.js";
@@ -303,8 +304,8 @@ TEST_F(JsInlineFilterTest, CachedWithPredecessors) {
   // (Current state is not to inline after combining due to the
   //  <script> element with src= being new).
   SetHtmlMimetype();
-  options()->EnableFilter(RewriteOptions::kInlineJavascript);
-  options()->EnableFilter(RewriteOptions::kCombineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kInlineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kCombineJavascript);
   rewrite_driver()->AddFilters();
 
   const char kJsUrl[] = "script.js";
@@ -334,7 +335,7 @@ TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
   // There was a bug in async mode where we would accidentally prevent
   // minification results from rendering when inlining was not to be done.
   SetHtmlMimetype();
-  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
   options()->set_js_inline_max_bytes(4);
 
   TestInlineJavascriptGeneral(
@@ -390,7 +391,7 @@ TEST_F(JsInlineFilterTest, ScriptWithScriptTags) {
 
 TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
   SetHtmlMimetype();
-  options()->EnableFilter(RewriteOptions::kInlineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kInlineJavascript);
   rewrite_driver()->AddFilters();
   SetupWriter();
 
@@ -408,7 +409,7 @@ TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
 
 TEST_F(JsInlineFilterTest, NoFlushSplittingScriptTag) {
   SetHtmlMimetype();
-  options()->EnableFilter(RewriteOptions::kInlineJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kInlineJavascript);
   rewrite_driver()->AddFilters();
   SetupWriter();
 

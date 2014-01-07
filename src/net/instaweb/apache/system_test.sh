@@ -646,6 +646,32 @@ echo Rewrite HTML with reference to a proxyable image
 fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
     'grep -c 1.gif.pagespeed' 1
 
+start_test OptimizeForBandwidth
+# We use blocking-rewrite tests because we want to make sure we don't
+# get rewritten URLs when we don't want them.
+function test_optimize_for_bandwidth() {
+  OUT=$($WGET -q -O - --header=X-PSA-Blocking-Rewrite:psatest \
+    $TEST_ROOT/optimize_for_bandwidth/$1)
+  check_from "$OUT" grep -q "$2"
+  if [ "$#" -ge 3 ]; then
+    check_from "$OUT" grep -q "$3"
+  fi
+}
+test_optimize_for_bandwidth rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
+  '<link rel="stylesheet" type="text/css" href="yellow.css">'
+test_optimize_for_bandwidth inline_css/rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
+  '<style>.yellow{background-color:#ff0}</style>'
+test_optimize_for_bandwidth css_urls/rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
+  '<link rel="stylesheet" type="text/css" href="A.yellow.css.pagespeed'
+test_optimize_for_bandwidth image_urls/rewrite_image.html \
+  '<img src=\"xarrow.png.pagespeed.'
+test_optimize_for_bandwidth core_filters/rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(xarrow.png.pagespeed.' \
+  '<style>.yellow{background-color:#ff0}</style>'
+
 # To make sure that we can reconstruct the proxied content by going back
 # to the origin, we must avoid hitting the output cache.
 # Note that cache-flushing does not affect the cache of rewritten resources;

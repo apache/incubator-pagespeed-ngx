@@ -68,13 +68,6 @@ class CssInlineImportToLinkFilterTest : public RewriteTestBase {
   }
 };
 
-TEST_F(CssInlineImportToLinkFilterTest, CssPreserveURL) {
-  options()->EnableFilter(RewriteOptions::kInlineImportToLink);
-  options()->set_css_preserve_urls(true);
-  rewrite_driver()->AddFilters();
-  ValidateStyleUnchanged("<style>@import url(assets/styles.css);</style>");
-}
-
 TEST_F(CssInlineImportToLinkFilterTest, CssPreserveURLOff) {
   options()->EnableFilter(RewriteOptions::kInlineImportToLink);
   options()->set_css_preserve_urls(false);

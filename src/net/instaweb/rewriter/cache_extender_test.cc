@@ -92,6 +92,10 @@ class CacheExtenderTest : public RewriteTestBase {
 
   void InitTest(int64 ttl) {
     options()->EnableExtendCacheFilters();
+    InitTestWithoutFilters(ttl);
+  }
+
+  void InitTestWithoutFilters(int64 ttl) {
     rewrite_driver()->AddFilters();
     SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, ttl);
     SetResponseWithDefaultHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
@@ -187,6 +191,23 @@ class CacheExtenderTest : public RewriteTestBase {
     EXPECT_EQ(GoogleString(kJsData), content);
   }
 
+  void VerifyUnauthorizedResourcesNotExtended() {
+    SetResponseWithDefaultHeaders("http://unauth.example.com/unauth.js",
+                                  kContentTypeJavascript, kJsData,
+                                  kShortTtlSec);
+    SetResponseWithDefaultHeaders("http://unauth.example.com/unauth.css",
+                                  kContentTypeCss, kCssData, kShortTtlSec);
+    const char kJsReference[] =
+        "<script src='http://unauth.example.com/unauth.js'></script>";
+    const char kCssReference[] =
+        "<link rel=stylesheet href='http://unauth.example.com/unauth.css'>";
+    ValidateNoChanges("dont_extend_unauth_js",
+                      StrCat(kJsReference, kCssReference));
+    EXPECT_EQ(0, num_cache_extended_->Get())
+        << "Number of cache extended resources is wrong";
+    EXPECT_STREQ("", AppliedRewriterStringFromLog());
+  }
+
   Variable* num_cache_extended_;
   const GoogleString kCssData;
   const GoogleString kCssPath;
@@ -216,6 +237,9 @@ class CacheExtenderTestPreserveURLs : public CacheExtenderTest {
   // This function should only be called once, as it sets the filters
   // and options.
   void TestExtend(bool img_extend, bool css_extend, bool js_extend) {
+    options()->SoftEnableFilterForTesting(RewriteOptions::kExtendCacheCss);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kExtendCacheImages);
+    options()->SoftEnableFilterForTesting(RewriteOptions::kExtendCacheScripts);
     if (!img_extend) {
       options()->set_image_preserve_urls(true);
     }
@@ -226,7 +250,7 @@ class CacheExtenderTestPreserveURLs : public CacheExtenderTest {
       options()->set_js_preserve_urls(true);
     }
     CacheExtenderTest::SetUp();
-    InitTest(kShortTtlSec);
+    InitTestWithoutFilters(kShortTtlSec);
 
     GoogleString expected_img_html = "b.jpg";
     GoogleString expected_css_html = kCssFile;
@@ -270,6 +294,19 @@ TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveAllURLsOn) {
   TestExtend(false,   // img_extend
              false,   // css_extend
              false);  // js_extend
+}
+
+TEST_F(CacheExtenderTest, DoNotExtendUnauthorizedResources) {
+  InitTest(kShortTtlSec);
+  VerifyUnauthorizedResourcesNotExtended();
+}
+
+TEST_F(CacheExtenderTest, DoNotExtendUnauthorizedResourcesWithUnauthEnabled) {
+  InitTest(kShortTtlSec);
+  options()->ClearSignatureForTesting();
+  options()->set_inline_unauthorized_resources(true);
+  server_context()->ComputeSignature(options());
+  VerifyUnauthorizedResourcesNotExtended();
 }
 
 TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascriptByDefault) {

@@ -86,7 +86,15 @@ class RewriteOptions {
   // If you add or remove anything from this list, you must also update the
   // kFilterVectorStaticInitializer array in rewrite_options.cc.  If you add
   // an image-related filter or a css-related filter, you must add it to the
-  // kRelatedFilters array in image_rewrite_filter.cc and/or css_filter.cc.
+  // kRelatedFilters array in image_rewrite_filter.cc and/or css_filter.cc
+  //
+  // Each filter added here should go into at least one of the filter-arrays
+  // in rewrite_options.cc, even if it's just kDangerousFilterSet.
+  //
+  // Filters that can improve bandwidth but have basically zero risk
+  // of breaking pages should be added to
+  // kOptimizeForBandwidthFilterSet.  Filters with relatively low risk
+  // should be added to kCoreFilterSet.
   enum Filter {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
@@ -533,6 +541,11 @@ class RewriteOptions {
     // explicitly enable the kCoreFilters level by calling
     // SetRewriteLevel(kCoreFilters).
     kPassThrough,
+
+    // Enable filters that make resources smaller, but carry no risk
+    // of site breakage.  Turning this on implies inplace resource
+    // optimization and preserve-URLs.
+    kOptimizeForBandwidth,
 
     // Enable the core set of filters. These filters are considered
     // generally safe for most sites, though even safe filters can
@@ -1032,6 +1045,7 @@ class RewriteOptions {
   // of disabled filters by removing it from disabled & forbidden filter lists.
   void ForceEnableFilter(Filter filter);
   void DisableFilter(Filter filter);
+  void DisableIfNotExplictlyEnabled(Filter filter);
   void ForbidFilter(Filter filter);
   void EnableFilters(const FilterSet& filter_set);
   void DisableFilters(const FilterSet& filter_set);
@@ -1039,6 +1053,25 @@ class RewriteOptions {
   // Clear all explicitly enabled and disabled filters. Some filters may still
   // be enabled by the rewrite level and HtmlWriterFilter will be enabled.
   void ClearFilters();
+
+  // Induces a filter to be considered enabled by turning on the AllFilters
+  // level and disabling the filters that are not wanted.  This is used for
+  // testing the desired behavior of PreserveUrls, which is to disable inlining
+  // and combining when the level is CoreFilters, but allow explictly enabled
+  // combiners and inliners to work.
+  //
+  // Beware: this mode of enabling filters is difficult to manage
+  // across multiple levels of test inheritance.  In particular, once
+  // SoftEnableFilterForTesting is called, EnableFilter will no longer
+  // work due to the explicit disables.  It does work to call
+  // SoftEnableFilterForTesting multiple times to enable several
+  // filters, and it also works to call EnableFilter first.  ForceEnable
+  // also works.
+  //
+  // It is only necessary to call this in tests with PreserveUrls.
+  //
+  // Caveat emptor.
+  void SoftEnableFilterForTesting(Filter filter);
 
   // Enables extend_cache_css, extend_cache_images, and extend_cache_scripts.
   // Does not enable extend_cache_pdfs.
@@ -1435,7 +1468,7 @@ class RewriteOptions {
   }
 
   bool in_place_rewriting_enabled() const {
-    return in_place_rewriting_enabled_.value();
+    return CheckBandwidthOption(in_place_rewriting_enabled_);
   }
 
   void set_in_place_wait_for_optimized(bool x) {
@@ -1458,28 +1491,28 @@ class RewriteOptions {
     set_option(x, &in_place_preemptive_rewrite_css_);
   }
   bool in_place_preemptive_rewrite_css() const {
-    return in_place_preemptive_rewrite_css_.value();
+    return CheckBandwidthOption(in_place_preemptive_rewrite_css_);
   }
 
   void set_in_place_preemptive_rewrite_css_images(bool x) {
     set_option(x, &in_place_preemptive_rewrite_css_images_);
   }
   bool in_place_preemptive_rewrite_css_images() const {
-    return in_place_preemptive_rewrite_css_images_.value();
+    return CheckBandwidthOption(in_place_preemptive_rewrite_css_images_);
   }
 
   void set_in_place_preemptive_rewrite_images(bool x) {
     set_option(x, &in_place_preemptive_rewrite_images_);
   }
   bool in_place_preemptive_rewrite_images() const {
-    return in_place_preemptive_rewrite_images_.value();
+    return CheckBandwidthOption(in_place_preemptive_rewrite_images_);
   }
 
   void set_in_place_preemptive_rewrite_javascript(bool x) {
     set_option(x, &in_place_preemptive_rewrite_javascript_);
   }
   bool in_place_preemptive_rewrite_javascript() const {
-    return in_place_preemptive_rewrite_javascript_.value();
+    return CheckBandwidthOption(in_place_preemptive_rewrite_javascript_);
   }
 
   void set_combine_across_paths(bool x) {
@@ -1694,21 +1727,21 @@ class RewriteOptions {
   }
 
   bool css_preserve_urls() const {
-    return css_preserve_urls_.value();
+    return CheckBandwidthOption(css_preserve_urls_);
   }
   void set_css_preserve_urls(bool x) {
     set_option(x, &css_preserve_urls_);
   }
 
   bool image_preserve_urls() const {
-    return image_preserve_urls_.value();
+    return CheckBandwidthOption(image_preserve_urls_);
   }
   void set_image_preserve_urls(bool x) {
     set_option(x, &image_preserve_urls_);
   }
 
   bool js_preserve_urls() const {
-    return js_preserve_urls_.value();
+    return CheckBandwidthOption(js_preserve_urls_);
   }
   void set_js_preserve_urls(bool x) {
     set_option(x, &js_preserve_urls_);
@@ -2684,8 +2717,8 @@ class RewriteOptions {
   // list for fast merging and setting-by-option-name.
   static void MergeSubclassProperties(Properties* properties);
 
-  // Forbid filters that PreserveUrls is incompatible with.
-  void ForbidFiltersForPreserveUrl();
+  // Disable filters that PreserveUrls is incompatible with.
+  void DisableFiltersForPreserveUrl();
 
   // Populates all_options_, based on the passed-in index, which
   // should correspond to the property index calculated after
@@ -3084,6 +3117,15 @@ class RewriteOptions {
   // Return the effective option name. If the name is deprecated, the new name
   // will be returned; otherwise the name will be returned as is.
   static StringPiece GetEffectiveOptionName(StringPiece name);
+
+  // In OptimizeForBandwidth mode, this sets up certain default filters
+  // and options, which take effect only if not explicitly overridden.
+  bool CheckBandwidthOption(const Option<bool>& option) const {
+    if (option.was_set() || (level() != kOptimizeForBandwidth)) {
+      return option.value();
+    }
+    return true;
+  }
 
   bool modified_;
   bool frozen_;

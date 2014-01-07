@@ -567,6 +567,35 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kStripImageMetaData,             // rewrite_images
 };
 
+// The bandwidth-reduction filters exclude any filter that may modify
+// URLs (combine, cache-extend, inline, outline).  Note also that turning
+// on this level enables "preserve" mode which has the effect of
+// making combine_css et al turn itself off.
+//
+// Note that RewriteOptions::kConvertPngToJpeg is not present.  It does
+// improve average bandwidth savings by 1% on our suite of tests but it
+// comes with aesthetic risk (stipple-patterns converted to lossy jpeg)
+// so we'll leave it off for now.
+//
+// TODO(huibao): make better data-driven decisions on which images can
+// be converted to a lossy format and put kConvertPngToJpeg back in.
+//
+// TODO(huibao): experiment with doing webp conversions (lossy & lossless)
+// by default for images of bounded size.
+const RewriteOptions::Filter kOptimizeForBandwidthFilterSet[] = {
+  RewriteOptions::kConvertGifToPng,                // rewrite_images
+  RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
+  RewriteOptions::kInPlaceOptimizeForBrowser,
+  RewriteOptions::kJpegSubsampling,                // rewrite_images
+  RewriteOptions::kRecompressJpeg,                 // rewrite_images
+  RewriteOptions::kRecompressPng,                  // rewrite_images
+  RewriteOptions::kRecompressWebp,                 // rewrite_images
+  RewriteOptions::kRewriteCss,
+  RewriteOptions::kRewriteJavascript,
+  RewriteOptions::kStripImageColorProfile,         // rewrite_images
+  RewriteOptions::kStripImageMetaData,             // rewrite_images
+};
+
 // Note: all Core filters are Test filters as well.  For maintainability,
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
@@ -802,7 +831,7 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ss", "Strip Scripts" },
 };
 
-const RewriteOptions::Filter kImagePreserveUrlForbiddenFilters[] = {
+const RewriteOptions::Filter kImagePreserveUrlDisabledFilters[] = {
     // TODO(jkarlin): Remove kResizeImages from the forbid list and allow image
     // squashing prefetching in HTML path (but don't allow resizing based on
     // HTML attributes).
@@ -810,10 +839,12 @@ const RewriteOptions::Filter kImagePreserveUrlForbiddenFilters[] = {
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kInlineImages,
   RewriteOptions::kLazyloadImages,
+  RewriteOptions::kResizeImages,
+  RewriteOptions::kResizeToRenderedImageDimensions,
   RewriteOptions::kSpriteImages
 };
 
-const RewriteOptions::Filter kJsPreserveUrlForbiddenFilters[] = {
+const RewriteOptions::Filter kJsPreserveUrlDisabledFilters[] = {
   RewriteOptions::kCanonicalizeJavascriptLibraries,
   RewriteOptions::kCombineJavascript,
   RewriteOptions::kDeferJavascript,
@@ -822,7 +853,7 @@ const RewriteOptions::Filter kJsPreserveUrlForbiddenFilters[] = {
   RewriteOptions::kOutlineJavascript
 };
 
-const RewriteOptions::Filter kCssPreserveUrlForbiddenFilters[] = {
+const RewriteOptions::Filter kCssPreserveUrlDisabledFilters[] = {
   RewriteOptions::kCombineCss,
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kInlineCss,
@@ -920,6 +951,9 @@ bool RewriteOptions::ParseRewriteLevel(
       ret = true;
     } else if (StringCaseEqual(in, "PassThrough")) {
       *out = kPassThrough;
+      ret = true;
+    } else if (StringCaseEqual(in, "OptimizeForBandwidth")) {
+      *out = kOptimizeForBandwidth;
       ret = true;
     } else if (StringCaseEqual(in, "TestingCoreFilters")) {
       *out = kTestingCoreFilters;
@@ -2359,6 +2393,33 @@ void RewriteOptions::EnableFilter(Filter filter) {
   modified_ |= enabled_filters_.Insert(filter);
 }
 
+void RewriteOptions::SoftEnableFilterForTesting(Filter filter) {
+  // If we're already in 'all filters mode', then just enable the specified
+  // filter.
+  if (level_.value() == RewriteOptions::kAllFilters) {
+    disabled_filters_.Erase(filter);
+    forbidden_filters_.Erase(filter);
+  } else {
+    // Keep track of any filters that were enabled already.
+    RewriteOptions::FilterSet already_enabled;
+    already_enabled.Insert(filter);
+    for (int i = 0; i < RewriteOptions::kEndOfFilters; ++i) {
+      RewriteOptions::Filter filter = static_cast<RewriteOptions::Filter>(i);
+      if (Enabled(filter)) {
+        already_enabled.Insert(filter);
+      }
+    }
+
+    SetRewriteLevel(RewriteOptions::kAllFilters);
+    for (int i = 0; i < RewriteOptions::kEndOfFilters; ++i) {
+      RewriteOptions::Filter filter = static_cast<RewriteOptions::Filter>(i);
+      if (!already_enabled.IsSet(filter)) {
+        DisableFilter(filter);
+      }
+    }
+  }
+}
+
 void RewriteOptions::ForceEnableFilter(Filter filter) {
   DCHECK(!frozen_);
 
@@ -2965,6 +3026,12 @@ bool RewriteOptions::Enabled(Filter filter) const {
         return true;
       }
       break;
+    case kOptimizeForBandwidth:
+      if (IsInSet(kOptimizeForBandwidthFilterSet,
+                  arraysize(kOptimizeForBandwidthFilterSet), filter)) {
+        return true;
+      }
+      break;
     case kAllFilters:
       if (!IsInSet(kDangerousFilterSet, arraysize(kDangerousFilterSet),
                    filter)) {
@@ -3273,6 +3340,7 @@ GoogleString RewriteOptions::OptionSignature(RewriteLevel level,
   switch (level) {
     case kPassThrough: return "p";
     case kCoreFilters: return "c";
+    case kOptimizeForBandwidth: return "b";
     case kTestingCoreFilters: return "t";
     case kAllFilters: return "a";
   }
@@ -3284,30 +3352,42 @@ GoogleString RewriteOptions::OptionSignature(const BeaconUrl& beacon_url,
   return hasher->Hash(ToString(beacon_url));
 }
 
-void RewriteOptions::ForbidFiltersForPreserveUrl() {
+void RewriteOptions::DisableIfNotExplictlyEnabled(Filter filter) {
+  if (!enabled_filters_.IsSet(filter)) {
+    disabled_filters_.Insert(filter);
+  }
+}
+
+void RewriteOptions::DisableFiltersForPreserveUrl() {
+  // TODO(jmarantz): consider removing this function, and instead
+  // putting this logic into RewriteOption::Enabled().  That will have
+  // more predictable behavior during tests.  The current implementation
+  // explicitly disables filters the first time signatures are calculated,
+  // and once disabled they cannot be re-enabled in the same level, but
+  // only by merging down.
   if (image_preserve_urls()) {
-    for (int i = 0, n = arraysize(kImagePreserveUrlForbiddenFilters); i < n;
+    for (int i = 0, n = arraysize(kImagePreserveUrlDisabledFilters); i < n;
          ++i) {
-      ForbidFilter(kImagePreserveUrlForbiddenFilters[i]);
+      DisableIfNotExplictlyEnabled(kImagePreserveUrlDisabledFilters[i]);
     }
   }
   if (js_preserve_urls()) {
-    for (int i = 0, n = arraysize(kJsPreserveUrlForbiddenFilters); i < n;
+    for (int i = 0, n = arraysize(kJsPreserveUrlDisabledFilters); i < n;
          ++i) {
-      ForbidFilter(kJsPreserveUrlForbiddenFilters[i]);
+      DisableIfNotExplictlyEnabled(kJsPreserveUrlDisabledFilters[i]);
     }
   }
   if (css_preserve_urls()) {
-    for (int i = 0, n = arraysize(kCssPreserveUrlForbiddenFilters); i < n;
+    for (int i = 0, n = arraysize(kCssPreserveUrlDisabledFilters); i < n;
          ++i) {
-      ForbidFilter(kCssPreserveUrlForbiddenFilters[i]);
+      DisableIfNotExplictlyEnabled(kCssPreserveUrlDisabledFilters[i]);
     }
   }
 }
 
 void RewriteOptions::ResolveConflicts() {
   DCHECK(!frozen_);
-  ForbidFiltersForPreserveUrl();
+  DisableFiltersForPreserveUrl();
 }
 
 void RewriteOptions::Freeze() {
@@ -3413,6 +3493,7 @@ bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
 GoogleString RewriteOptions::ToString(RewriteLevel level) {
   switch (level) {
     case kPassThrough: return "Pass Through";
+    case kOptimizeForBandwidth: return "Optimize For Bandwidth";
     case kCoreFilters: return "Core Filters";
     case kTestingCoreFilters: return "Testing Core Filters";
     case kAllFilters: return "All Filters";

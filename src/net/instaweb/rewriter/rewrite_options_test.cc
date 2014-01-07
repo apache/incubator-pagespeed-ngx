@@ -1991,4 +1991,183 @@ TEST_F(RewriteOptionsTest, ParseAndSetDeprecatedOptionFromName1) {
   EXPECT_EQ(45, options_.image_webp_recompress_quality_for_small_screens());
 }
 
+TEST_F(RewriteOptionsTest, BandwidthMode) {
+  options_.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
+  EXPECT_TRUE(options_.in_place_rewriting_enabled());
+  EXPECT_TRUE(options_.css_preserve_urls());
+  EXPECT_TRUE(options_.image_preserve_urls());
+  EXPECT_TRUE(options_.js_preserve_urls());
+
+  // Now override a bandwidth-option.  Let's say it's OK to mutate
+  // CSS urls.
+  options_.set_css_preserve_urls(false);
+  EXPECT_FALSE(options_.css_preserve_urls());
+
+  // JS and Image URLs must still be preserved.
+  EXPECT_TRUE(options_.image_preserve_urls());
+  EXPECT_TRUE(options_.js_preserve_urls());
+
+  // Now merge with an options-set with Core enabled many of these answers
+  // change.
+  RewriteOptions core(&thread_system_);
+  core.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.Merge(core);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
+  EXPECT_FALSE(options_.in_place_rewriting_enabled());
+  EXPECT_FALSE(options_.css_preserve_urls());
+  EXPECT_FALSE(options_.image_preserve_urls());
+  EXPECT_FALSE(options_.js_preserve_urls());
+
+  // Finally, merge in another option-set that is bandwidth-only.  We'll
+  // revert back to the bandwidth-behavior, but we will inherit the override
+  // for CSS preservation we made.
+  RewriteOptions bandwidth(&thread_system_);
+  bandwidth.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
+  options_.Merge(bandwidth);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
+  EXPECT_TRUE(options_.in_place_rewriting_enabled());
+  EXPECT_FALSE(options_.css_preserve_urls());
+  EXPECT_TRUE(options_.image_preserve_urls());
+  EXPECT_TRUE(options_.js_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, BandwidthOverride) {
+  options_.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
+  options_.EnableFilter(RewriteOptions::kCombineCss);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
+
+  // Now test it the other way around.  This behaves in a somewhat
+  // surprising way -- once we've computed the signature after
+  // optimizing for bandwidth you can't go back and re-enable a filter
+  // because computing the signature disables the filters that are
+  // not url-preserving, and you can't enable a filter once it is
+  // disabled at the same level.  This can be fixed by moving the
+  // preserve-url filter selection semantics into RewriteOptions::Enabled()
+  // and avoid using mutation to implement that semantics.
+  RewriteOptions other_way(&thread_system_);
+  other_way.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
+  other_way.ComputeSignature();
+  EXPECT_FALSE(other_way.Enabled(RewriteOptions::kCombineCss));
+  other_way.ClearSignatureForTesting();
+  other_way.EnableFilter(RewriteOptions::kCombineCss);  // won't work
+  other_way.ComputeSignature();
+  EXPECT_FALSE(  // We want this to be EXPECT_TRUE.
+      other_way.Enabled(RewriteOptions::kCombineCss));
+}
+
+TEST_F(RewriteOptionsTest, PreserveOverridesCoreCss) {
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_css_preserve_urls(true);
+  options_.ComputeSignature();
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineGoogleFontCss));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineImportToLink));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kOutlineCss));
+}
+
+TEST_F(RewriteOptionsTest, ExplicitCssFiltersOverridePreserve) {
+  options_.set_css_preserve_urls(true);
+  options_.ClearSignatureForTesting();
+  options_.EnableFilter(RewriteOptions::kCombineCss);
+  options_.EnableFilter(RewriteOptions::kExtendCacheCss);
+  options_.EnableFilter(RewriteOptions::kInlineCss);
+  options_.EnableFilter(RewriteOptions::kInlineGoogleFontCss);
+  options_.EnableFilter(RewriteOptions::kInlineImportToLink);
+  options_.EnableFilter(RewriteOptions::kLeftTrimUrls);
+  options_.EnableFilter(RewriteOptions::kOutlineCss);
+  options_.ComputeSignature();
+
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineGoogleFontCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineImportToLink));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kOutlineCss));
+}
+
+TEST_F(RewriteOptionsTest, PreserveOverridesCoreImages) {
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_image_preserve_urls(true);
+  options_.ComputeSignature();
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDelayImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kLazyloadImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kResizeImages));
+  EXPECT_FALSE(options_.Enabled(
+      RewriteOptions::kResizeToRenderedImageDimensions));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
+}
+
+TEST_F(RewriteOptionsTest, ExplicitImageFiltersOverridePreserve) {
+  options_.set_image_preserve_urls(true);
+  options_.EnableFilter(RewriteOptions::kDelayImages);
+  options_.EnableFilter(RewriteOptions::kExtendCacheImages);
+  options_.EnableFilter(RewriteOptions::kInlineImages);
+  options_.EnableFilter(RewriteOptions::kLazyloadImages);
+  options_.EnableFilter(RewriteOptions::kResizeImages);
+  options_.EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
+  options_.EnableFilter(RewriteOptions::kSpriteImages);
+  options_.ComputeSignature();
+
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDelayImages));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheImages));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineImages));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kLazyloadImages));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kResizeImages));
+  EXPECT_TRUE(options_.Enabled(
+      RewriteOptions::kResizeToRenderedImageDimensions));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
+}
+
+TEST_F(RewriteOptionsTest, PreserveOverridesCoreJavaScript) {
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_js_preserve_urls(true);
+  options_.ComputeSignature();
+  EXPECT_FALSE(options_.Enabled(
+      RewriteOptions::kCanonicalizeJavascriptLibraries));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheScripts));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kOutlineJavascript));
+}
+
+TEST_F(RewriteOptionsTest, ExplicitJavaScriptFiltersOverridesPreserve) {
+  options_.EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  options_.EnableFilter(RewriteOptions::kCombineJavascript);
+  options_.EnableFilter(RewriteOptions::kDeferJavascript);
+  options_.EnableFilter(RewriteOptions::kExtendCacheScripts);
+  options_.EnableFilter(RewriteOptions::kInlineJavascript);
+  options_.EnableFilter(RewriteOptions::kOutlineJavascript);
+  options_.set_js_preserve_urls(true);
+  options_.ComputeSignature();
+
+  EXPECT_TRUE(options_.Enabled(
+      RewriteOptions::kCanonicalizeJavascriptLibraries));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheScripts));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kOutlineJavascript));
+}
+
 }  // namespace net_instaweb

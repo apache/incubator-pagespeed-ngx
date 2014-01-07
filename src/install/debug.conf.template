@@ -285,10 +285,24 @@ Header append 'X-Extra-Header' '1'
   Header append 'Cache-Control' 'no-store'
 </Directory>
 
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/bug781" >
-  ModPagespeedCssImageInlineMaxBytes 3000
-  ModPagespeedEnableFilters convert_png_to_jpeg
-  ModPagespeedJpegRecompressionQuality 50
+# Build a configuration hierarchy where at the root we have turned on
+# OptimizeForBandwidth, and in various subdirectories we override settings
+# to make them more aggressive.
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/optimize_for_bandwidth" >
+  ModPagespeedRewriteLevel OptimizeForBandwidth
+  ModPagespeedDisableFilters add_instrumentation
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/optimize_for_bandwidth/inline_css" >
+  ModPagespeedEnableFilters inline_css
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/optimize_for_bandwidth/css_urls" >
+  ModPagespeedCssPreserveURLs off
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/optimize_for_bandwidth/image_urls" >
+  ModPagespeedImagePreserveURLs off
+</Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/optimize_for_bandwidth/core_filters" >
+  ModPagespeedRewriteLevel CoreFilters
 </Directory>
 
 # However we should not allow user-specified cache-control on
@@ -857,6 +871,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
 #COVERAGE   ModPagespeedCompressMetadataCache true
 #COVERAGE   ModPagespeedRewriteLevel AllFilters
+#IPRO_PRESERVE_COVERAGE   ModPagespeedRewriteLevel OptimizeForBandwidth
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters add_instrumentation
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters local_storage_cache,debug
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters lazyload_images

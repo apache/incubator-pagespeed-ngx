@@ -81,7 +81,8 @@ TEST_F(JsDeferDisabledFilterTest, JsDeferPreserveURLsOn) {
   // Make sure that we don't defer when preserve urls is on.
   options()->set_js_preserve_urls(true);
   options()->set_support_noscript_enabled(false);
-  AddFilter(RewriteOptions::kDeferJavascript);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kDeferJavascript);
+  rewrite_driver()->AddFilters();
   GoogleString before = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"

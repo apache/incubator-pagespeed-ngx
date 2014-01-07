@@ -312,7 +312,8 @@ TEST_F(LazyloadImagesFilterTest, LazyloadImagesPreserveURLsOn) {
   // This is a modification of the NoHeadTag test.
   options()->set_image_preserve_urls(true);
   options()->set_support_noscript_enabled(false);
-  AddFilter(RewriteOptions::kLazyloadImages);
+  options()->SoftEnableFilterForTesting(RewriteOptions::kLazyloadImages);
+  rewrite_driver()->AddFilters();
 
   ValidateNoChanges("lazyload_images",
       "<body>"

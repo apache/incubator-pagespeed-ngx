@@ -488,6 +488,26 @@ class CssCombineFilterTest : public RewriteTestBase {
                   MultiUrl("a.css", "b.css", "c.css"), "css");
   }
 
+  void VerifyCrossUnmappedDomainNotRewritten() {
+    CssLink::Vector css_in, css_out;
+    AddDomain("a.com");
+    AddDomain("b.com");
+    bool supply_mock = false;
+    const char kUrl1[] = "http://a.com/1.css";
+    const char kUrl2[] = "http://b.com/2.css";
+    css_in.Add(kUrl1, kYellow, "", supply_mock);
+    css_in.Add(kUrl2, kBlue, "", supply_mock);
+    ResponseHeaders default_css_header;
+    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(kUrl1, default_css_header, kYellow);
+    SetFetchResponse(kUrl2, default_css_header, kBlue);
+    BarrierTestHelper("combine_css_with_style", css_in, &css_out);
+    EXPECT_EQ(2, css_out.size());
+    GoogleString actual_combination;
+    EXPECT_STREQ(kUrl1, css_out[0]->url_);
+    EXPECT_STREQ(kUrl2, css_out[1]->url_);
+  }
+
   Variable* css_combine_opportunities_;
   Variable* css_file_count_reduction_;
 
@@ -535,14 +555,6 @@ class CssCombineFilterCustomOptions : public CssCombineFilterTest {
   // CssCombineFilterTest::SetUp();
   virtual void SetUp() {}
 };
-
-TEST_F(CssCombineFilterCustomOptions, CssPreserveURLs) {
-  options()->set_css_preserve_urls(true);
-  CssCombineFilterTest::SetUp();
-  SetHtmlMimetype();
-  CombineCssWithNames("combine_css_no_hash", "", "", false, "a.css", "b.css",
-                      false);
-}
 
 // Tests Issue 600 in which CSS files in a MapProxyDomain were not combined with
 // local files but they should have been after mapping into the same domain.
@@ -1376,23 +1388,16 @@ TEST_F(CssCombineFilterTest, CrossMappedDomain) {
 // Verifies that we cannot do the same cross-domain combo when we lack
 // the domain mapping.
 TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
-  CssLink::Vector css_in, css_out;
-  AddDomain("a.com");
-  AddDomain("b.com");
-  bool supply_mock = false;
-  const char kUrl1[] = "http://a.com/1.css";
-  const char kUrl2[] = "http://b.com/2.css";
-  css_in.Add(kUrl1, kYellow, "", supply_mock);
-  css_in.Add(kUrl2, kBlue, "", supply_mock);
-  ResponseHeaders default_css_header;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-  SetFetchResponse(kUrl1, default_css_header, kYellow);
-  SetFetchResponse(kUrl2, default_css_header, kBlue);
-  BarrierTestHelper("combine_css_with_style", css_in, &css_out);
-  EXPECT_EQ(2, css_out.size());
-  GoogleString actual_combination;
-  EXPECT_EQ(kUrl1, css_out[0]->url_);
-  EXPECT_EQ(kUrl2, css_out[1]->url_);
+  VerifyCrossUnmappedDomainNotRewritten();
+}
+
+// Verifies that we cannot do the same cross-domain combo when we lack
+// the domain mapping even if inline_unauthorized_resources is enabled.
+TEST_F(CssCombineFilterTest, CrossUnmappedDomainWithUnauthEnabled) {
+  options()->ClearSignatureForTesting();
+  options()->set_inline_unauthorized_resources(true);
+  server_context()->ComputeSignature(options());
+  VerifyCrossUnmappedDomainNotRewritten();
 }
 
 // Make sure bad requests do not corrupt our extension.
