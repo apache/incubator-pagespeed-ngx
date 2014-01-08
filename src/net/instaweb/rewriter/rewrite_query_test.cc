@@ -896,8 +896,43 @@ TEST_F(RewriteQueryTest, CacheControlNoTransform) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl, in_query, &request_headers,
                                          &response_headers, &out_query,
                                          &out_req_string, &out_resp_string);
+  ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->enabled());
   EXPECT_TRUE(request_headers.Lookup1(HttpAttributes::kCacheControl) != NULL);
+}
+
+TEST_F(RewriteQueryTest, CacheControlPrivateNoTransformResponse) {
+  RequestHeaders request_headers;
+
+  ResponseHeaders response_headers;
+  response_headers.Replace(HttpAttributes::kCacheControl,
+                           "private, no-transform");
+  GoogleString in_query, out_query, out_req_string, out_resp_string;
+
+  RewriteOptions* options = ParseAndScan(kHtmlUrl, in_query, &request_headers,
+                                         &response_headers, &out_query,
+                                         &out_req_string, &out_resp_string);
+  ASSERT_TRUE(options != NULL);
+  EXPECT_FALSE(options->enabled());
+
+  // Check that we don't strip either of the cache-control values.
+  EXPECT_TRUE(response_headers.HasValue(HttpAttributes::kCacheControl,
+                                        "private"));
+  EXPECT_TRUE(response_headers.HasValue(HttpAttributes::kCacheControl,
+                                        "no-transform"));
+}
+
+TEST_F(RewriteQueryTest, NoCustomOptionsWithCacheControlPrivate) {
+  RequestHeaders request_headers;
+
+  ResponseHeaders response_headers;
+  response_headers.Replace(HttpAttributes::kCacheControl, "private");
+  GoogleString in_query, out_query, out_req_string, out_resp_string;
+
+  RewriteOptions* options = ParseAndScan(kHtmlUrl, in_query, &request_headers,
+                                         &response_headers, &out_query,
+                                         &out_req_string, &out_resp_string);
+  EXPECT_TRUE(options == NULL);
 }
 
 }  // namespace net_instaweb

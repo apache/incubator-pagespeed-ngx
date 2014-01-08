@@ -309,8 +309,12 @@ bool RewriteQuery::MayHaveCustomOptions(
     return true;
   }
   if (req_headers != NULL &&
-      (req_headers->Lookup1(HttpAttributes::kXPsaClientOptions) != NULL ||
-       req_headers->Lookup1(HttpAttributes::kCacheControl) != NULL)) {
+      (req_headers->Has(HttpAttributes::kXPsaClientOptions) ||
+       req_headers->HasValue(HttpAttributes::kCacheControl, "no-transform"))) {
+    return true;
+  }
+  if ((resp_headers != NULL) && resp_headers->HasValue(
+          HttpAttributes::kCacheControl, "no-transform")) {
     return true;
   }
   return false;
@@ -367,6 +371,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     SplitStringPieceToVector(trimmed_value, ",", &pairs,
                              true /* omit_empty_strings */);
     for (int i = 0, n = pairs.size(); i < n; ++i) {
+      TrimWhitespace(&pairs[i]);
       if (pairs[i] == "no-transform") {
         // TODO(jmarantz): A .pagespeed resource should return un-optimized
         // content with "Cache-Control: no-transform".
