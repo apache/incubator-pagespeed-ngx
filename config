@@ -27,8 +27,8 @@ if [ "$mod_pagespeed_dir" = "unset" ] ; then
     echo "   You need to separately download the pagespeed library:"
     echo ""
     echo "     $ cd /path/to/ngx_pagespeed"
-    echo "     $ wget https://dl.google.com/dl/page-speed/psol/1.7.30.1.tar.gz"
-    echo "     $ tar -xzvf 1.7.30.1.tar.gz # expands to psol/"
+    echo "     $ wget https://dl.google.com/dl/page-speed/psol/1.7.30.2.tar.gz"
+    echo "     $ tar -xzvf 1.7.30.2.tar.gz # expands to psol/"
     echo ""
     echo "   Or see the installation instructions:"
     echo "     https://github.com/pagespeed/ngx_pagespeed#how-to-build"
@@ -194,7 +194,8 @@ if [ $ngx_found = yes ]; then
   echo "List of modules (in reverse order of applicability): "$HTTP_FILTER_MODULES
 else
   cat << END
-$0: error: module ngx_pagespeed requires the pagespeed optimization library
+$0: error: module ngx_pagespeed requires the pagespeed optimization library.
+Look in obj/autoconf.err for more details.
 END
   exit 1
 fi
