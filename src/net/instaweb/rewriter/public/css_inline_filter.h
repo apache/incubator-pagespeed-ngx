@@ -34,10 +34,14 @@ class CachedResult;
 class GoogleUrl;
 class HtmlElement;
 class RewriteDriver;
+class Statistics;
+class Variable;
 
 // Inline small CSS files.
 class CssInlineFilter : public CommonFilter {
  public:
+  static const char kNumCssInlined[];
+
   explicit CssInlineFilter(RewriteDriver* driver);
   virtual ~CssInlineFilter();
 
@@ -49,6 +53,8 @@ class CssInlineFilter : public CommonFilter {
   // safe because it does not cause any new content to be executed compared
   // to the unoptimized page.
   virtual bool AllowUnauthorizedDomain() const { return true; }
+
+  static void InitStats(Statistics* statistics);
 
  protected:
   // Changes filter id code (which shows up in cache keys and
@@ -74,6 +80,8 @@ class CssInlineFilter : public CommonFilter {
 
   GoogleString domain_;
   CssTagScanner css_tag_scanner_;
+
+  Variable* num_css_inlined_;
 
   DISALLOW_COPY_AND_ASSIGN(CssInlineFilter);
 };

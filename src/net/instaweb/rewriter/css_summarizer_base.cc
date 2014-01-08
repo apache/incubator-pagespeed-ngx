@@ -42,6 +42,7 @@
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -261,14 +262,29 @@ GoogleString CssSummarizerBase::Context::CacheKeySuffix() const {
   return filter_->CacheKeySuffix();
 }
 
+const char CssSummarizerBase::kNumCssUsedForCriticalCssComputation[] =
+    "num_css_used_for_critical_css_computation";
+const char CssSummarizerBase::kNumCssNotUsedForCriticalCssComputation[] =
+    "num_css_not_used_for_critical_css_computation";
+
 CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
     : RewriteFilter(driver),
       progress_lock_(driver->server_context()->thread_system()->NewMutex()) {
+  Statistics* stats = server_context_->statistics();
+  num_css_used_for_critical_css_computation_ =
+      stats->GetVariable(kNumCssUsedForCriticalCssComputation);
+  num_css_not_used_for_critical_css_computation_ =
+      stats->GetVariable(kNumCssNotUsedForCriticalCssComputation);
   Clear();
 }
 
 CssSummarizerBase::~CssSummarizerBase() {
   Clear();
+}
+
+void CssSummarizerBase::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kNumCssUsedForCriticalCssComputation);
+  statistics->AddVariable(kNumCssNotUsedForCriticalCssComputation);
 }
 
 GoogleString CssSummarizerBase::CacheKeySuffix() const {
@@ -419,7 +435,13 @@ void CssSummarizerBase::ReportSummariesDone() {
     }
     InsertNodeAtBodyEnd(driver()->NewCommentNode(NULL, comment));
   }
-
+  for (int i = 0, n = summaries_.size(); i < n; ++i) {
+    if (summaries_[i].state == kSummaryOk) {
+      num_css_used_for_critical_css_computation_->Add(1);
+    } else {
+      num_css_not_used_for_critical_css_computation_->Add(1);
+    }
+  }
   SummariesDone();
 }
 

@@ -1977,6 +1977,20 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Except for the occurrence in html, the gsc-completion-selected string
   # should not occur anywhere else, i.e. in the selector list.
   check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 1 ]
+  # From the css file containing an unauthorized @import line,
+  # a) no selectors from the unauthorized @ import (e.g .maia-display) should
+  #    appear in the selector list.
+  check_not fgrep -q "maia-display" $FETCH_FILE
+  # b) no selectors from the authorized @ import (e.g .red) should
+  #    appear in the selector list because it won't be flattened.
+  check_not fgrep -q "interesting_color" $FETCH_FILE
+  # c) selectors that don't depend on flattening should appear in the selector
+  #    list.
+  check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
+  EXPECTED_IMPORT_FAILURE_LINE="<!--Flattening failed: Cannot import "
+  EXPECTED_IMPORT_FAILURE_LINE+="http://www.google.com/css/maia.css: is it on "
+  EXPECTED_IMPORT_FAILURE_LINE+="an unauthorized domain?-->"
+  check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
   EXPECTED_COMMENT_LINE="<!--CriticalCssBeacon: Cannot create resource: either "
   EXPECTED_COMMENT_LINE+="its domain is unauthorized and "
   EXPECTED_COMMENT_LINE+="InlineUnauthorizedResources is not enabled, or it "
@@ -1986,12 +2000,23 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test inline_unauthorized_resources allows unauthorized css selectors
   HOST_NAME="http://unauthorizedresources.example.com"
   URL="$HOST_NAME/mod_pagespeed_test/unauthorized/prioritize_critical_css.html"
-  URL+="?PageSpeedFilters=prioritize_critical_css"
+  URL+="?PageSpeedFilters=prioritize_critical_css,debug"
   http_proxy=$SECONDARY_HOSTNAME \
-     fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+     fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 3
   # gsc-completion-selected strng should occur once in the html and once in the
   # selector list.
   check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 2 ]
+  # From the css file containing an unauthorized @import line,
+  # a) no selectors from the unauthorized @ import (e.g .maia-display) should
+  #    appear in the selector list.
+  check_not fgrep -q "maia-display" $FETCH_FILE
+  # b) no selectors from the authorized @ import (e.g .red) should
+  #    appear in the selector list because it won't be flattened.
+  check_not fgrep -q "interesting_color" $FETCH_FILE
+  # c) selectors that don't depend on flattening should appear in the selector
+  #    list.
+  check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
+  check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
 
   # Test critical CSS beacon injection, beacon return, and computation.  This
   # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.

@@ -26,12 +26,16 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
+
+const char JsInlineFilter::kNumJsInlined[] = "num_js_inlined";
 
 class JsInlineFilter::Context : public InlineRewriteContext {
  public:
@@ -60,9 +64,16 @@ JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       size_threshold_bytes_(driver->options()->js_inline_max_bytes()),
       script_tag_scanner_(driver_),
-      should_inline_(false) {}
+      should_inline_(false) {
+  Statistics* stats = server_context_->statistics();
+  num_js_inlined_ = stats->GetVariable(kNumJsInlined);
+}
 
 JsInlineFilter::~JsInlineFilter() {}
+
+void JsInlineFilter::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kNumJsInlined);
+}
 
 void JsInlineFilter::StartDocumentImpl() {
   should_inline_ = false;
@@ -207,6 +218,7 @@ void JsInlineFilter::RenderInline(
         element, driver_->NewCharactersNode(element, escaped_contents));
     element->DeleteAttribute(HtmlName::kSrc);
   }
+  num_js_inlined_->Add(1);
 }
 
 void JsInlineFilter::Characters(HtmlCharactersNode* characters) {

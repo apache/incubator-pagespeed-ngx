@@ -41,6 +41,8 @@ class AbstractMutex;
 class HtmlCharactersNode;
 class RewriteContext;
 class RewriteDriver;
+class Statistics;
+class Variable;
 
 // This class helps implement filters that try to compute some properties of
 // all the screen-affecting CSS in the page. They are expected to override
@@ -48,8 +50,13 @@ class RewriteDriver;
 // can lookup summaries via NumStyles/GetSummaryForStyle.
 class CssSummarizerBase : public RewriteFilter {
  public:
+  static const char kNumCssUsedForCriticalCssComputation[];
+  static const char kNumCssNotUsedForCriticalCssComputation[];
+
   explicit CssSummarizerBase(RewriteDriver* driver);
   virtual ~CssSummarizerBase();
+
+  static void InitStats(Statistics* statistics);
 
  protected:
   enum SummaryState {
@@ -249,6 +256,9 @@ class CssSummarizerBase : public RewriteFilter {
   std::vector<int> canceled_summaries_;  // guarded by progress_lock_
 
   HtmlElement* style_element_;  // The element we are in, or NULL.
+
+  Variable* num_css_used_for_critical_css_computation_;
+  Variable* num_css_not_used_for_critical_css_computation_;
 
   DISALLOW_COPY_AND_ASSIGN(CssSummarizerBase);
 };

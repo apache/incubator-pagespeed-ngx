@@ -21,6 +21,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -31,9 +32,9 @@
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -282,6 +283,8 @@ TEST_F(CssInlineFilterTest, DoInlineCssDifferentDomain) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://unauth.com/styles.css",
                 "", css, true, css);
+  EXPECT_EQ(1,
+            statistics()->GetVariable(CssInlineFilter::kNumCssInlined)->Get());
 }
 
 TEST_F(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
@@ -289,6 +292,8 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://unauth.com/styles.css",
                 "", "BODY { color: red; }\n", false, "");
+  EXPECT_EQ(0,
+            statistics()->GetVariable(CssInlineFilter::kNumCssInlined)->Get());
 }
 
 TEST_F(CssInlineFilterTest, CorrectlyInlineCssWithImports) {

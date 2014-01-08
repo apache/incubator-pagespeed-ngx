@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
+#include "net/instaweb/rewriter/public/css_summarizer_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -40,6 +41,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -222,6 +224,10 @@ TEST_F(CriticalSelectorFilterTest, UnauthorizedCss) {
              "<body><div>Stuff</div>",
              LoadRestOfCss(css), "</body>"));
   ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
+  EXPECT_EQ(3, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssUsedForCriticalCssComputation)->Get());
+  EXPECT_EQ(1, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssNotUsedForCriticalCssComputation)->Get());
 }
 
 TEST_F(CriticalSelectorFilterTest, AllowUnauthorizedCss) {
@@ -252,6 +258,10 @@ TEST_F(CriticalSelectorFilterTest, AllowUnauthorizedCss) {
              "<body><div>Stuff</div>",
              LoadRestOfCss(css), "</body>"));
   ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
+  EXPECT_EQ(4, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssUsedForCriticalCssComputation)->Get());
+  EXPECT_EQ(0, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssNotUsedForCriticalCssComputation)->Get());
 }
 
 TEST_F(CriticalSelectorFilterTest, StylesInBody) {

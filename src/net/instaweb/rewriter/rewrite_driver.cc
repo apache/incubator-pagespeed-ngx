@@ -69,6 +69,7 @@
 #include "net/instaweb/rewriter/public/css_inline_import_to_link_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
+#include "net/instaweb/rewriter/public/css_summarizer_base.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
@@ -813,8 +814,10 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   CriticalImagesBeaconFilter::InitStats(statistics);
   CssCombineFilter::InitStats(statistics);
   CssFilter::InitStats(statistics);
+  CssInlineFilter::InitStats(statistics);
   CssInlineImportToLinkFilter::InitStats(statistics);
   CssMoveToHeadFilter::InitStats(statistics);
+  CssSummarizerBase::InitStats(statistics);
   DedupInlinedImagesFilter::InitStats(statistics);
   DomainRewriteFilter::InitStats(statistics);
   GoogleAnalyticsFilter::InitStats(statistics);
@@ -825,6 +828,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   InsertGAFilter::InitStats(statistics);
   JavascriptFilter::InitStats(statistics);
   JsCombineFilter::InitStats(statistics);
+  JsInlineFilter::InitStats(statistics);
   LocalStorageCacheFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
   SplitHtmlBeaconFilter::InitStats(statistics);

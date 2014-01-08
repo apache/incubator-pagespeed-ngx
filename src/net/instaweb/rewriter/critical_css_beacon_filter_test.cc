@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
+#include "net/instaweb/rewriter/public/css_summarizer_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -34,6 +35,7 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/statistics.h"
 
 namespace net_instaweb {
 
@@ -224,6 +226,10 @@ TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
   GoogleString css = StrCat(CssLinkHref(kUnauthDomainUrl), kInlineStyle);
   ValidateExpectedUrl(
       kTestDomain, InputHtml(css), BeaconHtml(css, kSelectorsInline));
+  EXPECT_EQ(1, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssUsedForCriticalCssComputation)->Get());
+  EXPECT_EQ(1, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssNotUsedForCriticalCssComputation)->Get());
 }
 
 TEST_F(CriticalCssBeaconFilterTest, AllowUnauthorized) {
@@ -234,6 +240,10 @@ TEST_F(CriticalCssBeaconFilterTest, AllowUnauthorized) {
   ValidateExpectedUrl(
       kTestDomain, InputHtml(css),
       BeaconHtml(css, kSelectorsInlineWithUnauthSelectors));
+  EXPECT_EQ(2, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssUsedForCriticalCssComputation)->Get());
+  EXPECT_EQ(0, statistics()->GetVariable(
+      CssSummarizerBase::kNumCssNotUsedForCriticalCssComputation)->Get());
 }
 
 TEST_F(CriticalCssBeaconFilterTest, Missing) {
