@@ -66,10 +66,10 @@ namespace net_instaweb {
       mutex_(NULL) {
     resolver_timeout_ = resolver_timeout;
     fetch_timeout_ = fetch_timeout;
-    ngx_memzero(&url_, sizeof(url_));
+    ngx_memzero(&proxy_, sizeof(proxy_));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = reinterpret_cast<u_char*>(const_cast<char*>(proxy));
-      url_.url.len = ngx_strlen(proxy);
+      proxy_.url.data = reinterpret_cast<u_char*>(const_cast<char*>(proxy));
+      proxy_.url.len = ngx_strlen(proxy);
     }
     mutex_ = thread_system_->NewMutex();
     log_ = log;
@@ -104,6 +104,36 @@ namespace net_instaweb {
       delete mutex_;
       mutex_ = NULL;
     }
+  }
+
+
+  bool NgxUrlAsyncFetcher::ParseUrl(ngx_url_t* url, ngx_pool_t* pool) {
+    size_t scheme_offset;
+    u_short port;
+    if (ngx_strncasecmp(url->url.data, reinterpret_cast<u_char*>(
+                                     const_cast<char*>("http://")), 7) == 0) {
+      scheme_offset = 7;
+      port = 80;
+    } else if (ngx_strncasecmp(url->url.data, reinterpret_cast<u_char*>(
+                                    const_cast<char*>("https://")), 8) == 0) {
+      scheme_offset = 8;
+      port = 443;
+    } else {
+      scheme_offset = 0;
+      port = 80;
+    }
+
+    url->url.data += scheme_offset;
+    url->url.len -= scheme_offset;
+    url->default_port = port;
+    // See: http://lxr.evanmiller.org/http/source/core/ngx_inet.c#L875
+    url->no_resolve = 0;
+    url->uri_part = 1;
+
+    if (ngx_parse_url(pool, url) == NGX_OK) {
+      return true;
+    }
+    return false;
   }
 
   // If there are still active requests, cancel them.
@@ -167,15 +197,15 @@ namespace net_instaweb {
     command_connection_->read->handler = CommandHandler;
     ngx_add_event(command_connection_->read, NGX_READ_EVENT, 0);
 
-    if (url_.url.len == 0) {
+    if (proxy_.url.len == 0) {
       return true;
     }
 
     // TODO(oschaaf): shouldn't we do this earlier? Do we need to clean
     // up when parsing the url failed?
-    if (ngx_parse_url(pool_, &url_) != NGX_OK) {
+    if (!ParseUrl(&proxy_, pool_)) {
       ngx_log_error(NGX_LOG_ERR, log_, 0,
-          "NgxUrlAsyncFetcher::Init parse proxy[%V] failed", &url_.url);
+          "NgxUrlAsyncFetcher::Init parse proxy[%V] failed", &proxy_.url);
       return false;
     }
     return true;
