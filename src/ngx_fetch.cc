@@ -142,19 +142,26 @@ namespace net_instaweb {
     // The host is either a domain name or an IP address.  First check
     // if it's a valid IP address and only if that fails fall back to
     // using the DNS resolver.
-    GoogleString s_ipaddress(reinterpret_cast<char*>(url_.host.data),
-                             url_.host.len);
+
+    // Maybe we have a Proxy
+    ngx_url_t* tmp_url = &url_;
+    if (0 != fetcher_->proxy_.url.len) {
+      tmp_url = &fetcher_->proxy_;
+    }
+
+    GoogleString s_ipaddress(reinterpret_cast<char*>(tmp_url->host.data),
+                             tmp_url->host.len);
     ngx_memzero(&sin_, sizeof(sin_));
     sin_.sin_family = AF_INET;
-    sin_.sin_port = htons(url_.port);
+    sin_.sin_port = htons(tmp_url->port);
     sin_.sin_addr.s_addr = inet_addr(s_ipaddress.c_str());
 
     if (sin_.sin_addr.s_addr == INADDR_NONE) {
       // inet_addr returned INADDR_NONE, which means the hostname
       // isn't a valid IP address.  Check DNS.
       ngx_resolver_ctx_t temp;
-      temp.name.data = url_.host.data;
-      temp.name.len = url_.host.len;
+      temp.name.data = tmp_url->host.data;
+      temp.name.len = tmp_url->host.len;
       resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
       if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
         // TODO(oschaaf): this spams the log, but is useful in the fetcher's
@@ -166,8 +173,8 @@ namespace net_instaweb {
       }
 
       resolver_ctx_->data = this;
-      resolver_ctx_->name.data = url_.host.data;
-      resolver_ctx_->name.len = url_.host.len;
+      resolver_ctx_->name.data = tmp_url->host.data;
+      resolver_ctx_->name.len = tmp_url->host.len;
 
 #if (nginx_version < 1005008)
       resolver_ctx_->type = NGX_RESOLVE_A;
@@ -187,6 +194,7 @@ namespace net_instaweb {
         return false;
       }
     }
+
     return true;
   }
 
@@ -263,37 +271,14 @@ namespace net_instaweb {
       return false;
     }
     str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
-    size_t scheme_offset;
-    u_short port;
-    if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
-                                     const_cast<char*>("http://")), 7) == 0) {
-      scheme_offset = 7;
-      port = 80;
-    } else if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
-                                    const_cast<char*>("https://")), 8) == 0) {
-      scheme_offset = 8;
-      port = 443;
-    } else {
-      scheme_offset = 0;
-      port = 80;
-    }
 
-    url_.url.data += scheme_offset;
-    url_.url.len -= scheme_offset;
-    url_.default_port = port;
-    // See: http://lxr.evanmiller.org/http/source/core/ngx_inet.c#L875
-    url_.no_resolve = 0;
-    url_.uri_part = 1;
-
-    if (ngx_parse_url(pool_, &url_) == NGX_OK) {
-      return true;
-    }
-    return false;
+    return NgxUrlAsyncFetcher::ParseUrl(&url_, pool_);
   }
 
   // Issue a request after the resolver is done
   void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
+    NgxUrlAsyncFetcher* fetcher = fetch->fetcher_;
     if (resolver_ctx->state != NGX_OK) {
       if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
         ngx_del_timer(fetch->timeout_event());
@@ -321,6 +306,11 @@ namespace net_instaweb {
 
     fetch->sin_.sin_family = AF_INET;
     fetch->sin_.sin_port = htons(fetch->url_.port);
+
+    // Maybe we have Proxy
+    if (0 != fetcher->proxy_.url.len) {
+      fetch->sin_.sin_port = htons(fetcher->proxy_.port);
+    }
 
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 
