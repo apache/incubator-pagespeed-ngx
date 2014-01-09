@@ -70,6 +70,7 @@ class UrlInputResourceTest : public RewriteTestBase {
   }
 
   void PrepareResourceFetch(const GoogleString& resource_url) {
+    mock_url_fetcher()->set_verify_pagespeed_header_off(true);
     ResponseHeaders response_headers;
     DefaultResponseHeaders(kContentTypeJpeg, 100, &response_headers);
     SetFetchResponse(AbsolutifyUrl(resource_url), response_headers, "payload");

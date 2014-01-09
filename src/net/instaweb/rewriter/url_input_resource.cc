@@ -20,8 +20,10 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 
 #include "base/logging.h"               // for COMPACT_GOOGLE_LOG_FATAL, etc
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/google_url.h"
 
@@ -88,6 +90,10 @@ void UrlInputResource::PrepareRequest(
   if (!is_authorized_domain() && !origin_.empty()) {
     request_context->AddSessionAuthorizedFetchOrigin(origin_);
   }
+
+  // Do not allow in-place resource optimizations at origin to
+  // execute when fetching the resource on behalf of a rewriter.
+  headers->Add(RewriteQuery::kPageSpeed, "off");
 }
 
 }  // namespace net_instaweb
