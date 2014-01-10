@@ -268,6 +268,20 @@ else
   PURGING_COVERAGE_TEST_SED_PATTERN=^\#PURGING_COVERAGE.*\n
 endif
 
+ifeq ($(IUR_COVERAGE_TEST),1)
+  # remove prefix
+  IUR_COVERAGE_TEST_SED_PATTERN=^\#IUR_COVERAGE
+  # remove whole explicit domain authorization line
+  DOMAIN_AUTH_SED_PATTERN=^\#DOMAIN_AUTH_COVERAGE.*\n
+else
+  # remove whole line
+  IUR_COVERAGE_TEST_SED_PATTERN=^\#IUR_COVERAGE.*\n
+  ifeq ($(COVERAGE_TRACE_TEST),1)
+    # remove prefix for explicit domain authorization line
+    DOMAIN_AUTH_SED_PATTERN=^\#DOMAIN_AUTH_COVERAGE
+  endif
+endif
+
 ifeq ($(SPELING_TEST),1)
   # remove prefix
   SPELING_TEST_SED_PATTERN=^\#SPELING
@@ -377,6 +391,8 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(IPRO_PRESERVE_COVERAGE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(MEMCACHE_COVERAGE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PURGING_COVERAGE_TEST_SED_PATTERN)@@" \
+	    -e "s@$(IUR_COVERAGE_TEST_SED_PATTERN)@@" \
+	    -e "s@$(DOMAIN_AUTH_SED_PATTERN)@@" \
 	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(EXPERIMENT_GA_TEST_SED_PATTERN)@@" \
@@ -494,6 +510,7 @@ apache_install_conf :
 	    $(OPT_IPRO_PRESERVE_COVERAGE_TEST) \
 	    $(OPT_MEMCACHE_COVERAGE_TEST) \
 	    $(OPT_PURGING_COVERAGE_TEST) \
+	    $(OPT_IUR_COVERAGE_TEST) \
 	    $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) \
 	    $(OPT_STRESS_TEST) \
@@ -514,6 +531,7 @@ apache_install_conf :
 	    $(OPT_IPRO_PRESERVE_COVERAGE_TEST) \
 	    $(OPT_MEMCACHE_COVERAGE_TEST) \
 	    $(OPT_PURGING_COVERAGE_TEST) \
+	    $(OPT_IUR_COVERAGE_TEST) \
 	    $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) \
 	    $(OPT_STRESS_TEST) \
