@@ -225,6 +225,35 @@ http {
     pagespeed CriticalImagesBeaconEnabled true;
   }
 
+
+  # Build a configuration hierarchy where at the root we have turned on
+  # OptimizeForBandwidth, and in various subdirectories we override settings
+  # to make them more aggressive.
+  #
+  # In Apache we can do this all with Directory blocks, but to get the same
+  # inheretence in Nginx we need to have location blocks inside a server block.
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name optimizeforbandwidth.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel OptimizeForBandwidth;
+    pagespeed DisableFilters add_instrumentation;
+
+    location /mod_pagespeed_test/optimize_for_bandwidth/inline_css {
+      pagespeed EnableFilters inline_css;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/css_urls {
+      pagespeed CssPreserveURLs off;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/image_urls {
+      pagespeed ImagePreserveURLs off;
+    }
+    location /mod_pagespeed_test/optimize_for_bandwidth/core_filters {
+      pagespeed RewriteLevel CoreFilters;
+    }
+  }
+
   server {
     # For testing with a custom origin header.  In this VirtualHost,
     # /mod_pagespeed_test is included in our DocumentRoot and thus does
@@ -243,7 +272,8 @@ http {
     pagespeed on;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
-    pagespeed MapOriginDomain localhost:@@SECONDARY_PORT@@/bug781 sharedcdn.example.com/test customhostheader.example.com;
+    pagespeed MapOriginDomain localhost:@@SECONDARY_PORT@@/customhostheader
+              sharedcdn.example.com/test customhostheader.example.com;
     pagespeed JpegRecompressionQuality 50;
     pagespeed CriticalImagesBeaconEnabled false;
   }
@@ -264,6 +294,16 @@ http {
     pagespeed ForbidFilters rewrite_css,resize_images;
     # ... and disable but not forbid this one (to ensure we retain its URL).
     pagespeed DisableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name unauthorizedresources.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed InlineUnauthorizedResourcesExperimental true;
+    pagespeed CssInlineMaxBytes 1000000;
   }
 
   server {
@@ -796,12 +836,6 @@ http {
       pagespeed ShardDomain "localhost:@@PRIMARY_PORT@@" shard1,shard2;
       pagespeed RewriteLevel PassThrough;
       pagespeed EnableFilters extend_cache;
-    }
-
-    location /mod_pagespeed_test/unauthorized/ {
-      pagespeed RewriteLevel PassThrough;
-      pagespeed EnableFilters inline_javascript,rewrite_javascript;
-      pagespeed InlineUnauthorizedResourcesExperimental true;
     }
 
     location /mod_pagespeed_test/retain_cache_control/ {
