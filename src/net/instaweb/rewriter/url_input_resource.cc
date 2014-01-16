@@ -37,7 +37,7 @@ namespace {
 //    protocol prefix, if is_authorized_domain is false.
 GoogleString GetCacheKey(const StringPiece& url, bool is_authorized_domain) {
   GoogleUrl gurl(url);
-  DCHECK(gurl.IsWebValid());
+  DCHECK(gurl.IsWebValid()) << ": Invalid URL found in " << url;
   if (!is_authorized_domain) {
     GoogleString url_prefix = "unauth://";
     if (gurl.SchemeIs("https")) {
@@ -63,10 +63,13 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
   set_is_authorized_domain(is_authorized_domain);
   if (!is_authorized_domain) {
     GoogleUrl tmp_url(url);
-    if (tmp_url.IsWebValid()) {
+    if (tmp_url.IsWebValid() &&
+        tmp_url.IntPort() == url_parse::PORT_UNSPECIFIED) {
+      // Note: Port 80 and 443 are considered as "unspecified" ports for http
+      // and https respectively, so we will allow URLs that carry the
+      // expected port numbers wrt the protocols.
       // Store away the domain so that it can be authorized in PrepareRequest
       // before the actual Fetch is issued.
-      // TODO(anupama): What should we do if the URL turns out to be invalid?
       tmp_url.Origin().CopyToString(&origin_);
     }
   }

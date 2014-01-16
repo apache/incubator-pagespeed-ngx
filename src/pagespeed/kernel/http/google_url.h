@@ -29,8 +29,10 @@
 
 #if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 193439
 #  include "third_party/chromium/src/url/gurl.h"
+#  include "third_party/chromium/src/url/url_parse.h"
 #else
 #  include "googleurl/src/gurl.h"
+#  include "googleurl/src/url_parse.h"
 #endif  // defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 193439
 
 namespace net_instaweb {
