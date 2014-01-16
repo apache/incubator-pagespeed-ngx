@@ -504,15 +504,24 @@ char* ps_init_dir(const StringPiece& directive,
     return NULL;  // We're not root, so we're staying whoever we are.
   }
 
+  // chown if owner differs from nginx worker user.
   ngx_core_conf_t* ccf =
       (ngx_core_conf_t*)(ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
   CHECK(ccf != NULL);
-
-  if (chown(gs_path.c_str(), ccf->user, ccf->group) != 0) {
+  struct stat gs_stat;
+  if (stat(gs_path.c_str(), &gs_stat) != 0) {
     return string_piece_to_pool_string(
         cf->pool, net_instaweb::StrCat(
-            directive, " ", path, " unable to set permissions"));
+            directive, " ", path, " stat() failed"));
   }
+  if (gs_stat.st_uid != ccf->user) {
+    if (chown(gs_path.c_str(), ccf->user, ccf->group) != 0) {
+      return string_piece_to_pool_string(
+          cf->pool, net_instaweb::StrCat(
+              directive, " ", path, " unable to set permissions"));
+    }
+  }
+
   return NULL;
 }
 
@@ -2128,6 +2137,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
+        RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
         url,
         request_headers,
         options->respect_vary(),
@@ -2192,7 +2202,9 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     // Unlike in Apache we get the final response headers before we get the
     // content.  This means we can consider them earlier and abort the
     // request if need be without buffering everything.
-    recorder->ConsiderResponseHeaders(ctx->ipro_response_headers);
+    recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kPreliminaryHeaders,
+        ctx->ipro_response_headers);
   }
 
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
