@@ -2868,7 +2868,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_OK;
   }
 
-  // Init APR. Not that the symbol is renamed.
+  // Init APR. Note that the symbol is renamed.
   pagespeed_ol_apr_initialize();
 
   // ChildInit() will initialise all ServerContexts, which we need to
