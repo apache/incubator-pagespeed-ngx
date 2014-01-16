@@ -70,7 +70,7 @@ namespace net_instaweb {
         fetch_start_ms_(0),
         fetch_end_ms_(0),
         done_(false),
-        content_length_(0) {
+        content_length_(-1) {
             ngx_memzero(&url_, sizeof(url_));
             log_ = log;
             pool_ = NULL;
