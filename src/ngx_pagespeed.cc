@@ -36,8 +36,6 @@
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
 
-#include "apr_time.h"
-
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -89,6 +87,10 @@ extern ngx_module_t ngx_pagespeed;
 
 // Needed for SystemRewriteDriverFactory to use shared memory.
 #define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
+
+extern "C" {
+  void pagespeed_ol_apr_initialize(void);
+}
 
 namespace net_instaweb {
 
@@ -2865,6 +2867,9 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   if (cfg_m->driver_factory == NULL) {
     return NGX_OK;
   }
+
+  // Init APR. Not that the symbol is renamed.
+  pagespeed_ol_apr_initialize();
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
