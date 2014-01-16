@@ -151,6 +151,10 @@ ResourcePtr CssInlineFilter::CreateResource(const char* url) {
   return CreateInputResource(url);
 }
 
+bool CssInlineFilter::HasClosingStyleTag(StringPiece contents) {
+  return FindIgnoreCase(contents, "</style") != StringPiece::npos;
+}
+
 bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
                                    const StringPiece& attrs_charset) const {
   // If the contents are bigger than our threshold or the contents contain
@@ -159,9 +163,7 @@ bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
   if (resource->contents().size() > size_threshold_bytes_) {
     return false;
   }
-  stringpiece_ssize_type possible_end_style_pos =
-      FindIgnoreCase(resource->contents(), "</style");
-  if (possible_end_style_pos != StringPiece::npos) {
+  if (HasClosingStyleTag(resource->contents())) {
     return false;
   }
 

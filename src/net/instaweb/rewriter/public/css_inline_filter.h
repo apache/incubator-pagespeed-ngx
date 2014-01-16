@@ -55,6 +55,7 @@ class CssInlineFilter : public CommonFilter {
   virtual bool AllowUnauthorizedDomain() const { return true; }
 
   static void InitStats(Statistics* statistics);
+  static bool HasClosingStyleTag(StringPiece contents);
 
  protected:
   // Changes filter id code (which shows up in cache keys and

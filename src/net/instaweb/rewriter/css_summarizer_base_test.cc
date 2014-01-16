@@ -37,8 +37,10 @@ namespace net_instaweb {
 namespace {
 
 const char kExpectedResult[] =
-    "OK/*{display:|OK/div{displa/rel=stylesheet|ParseError//rel=stylesheet|"
-    "FetchError//rel=stylesheet|ResourceError/|";
+    "OK/*{display:|OK/div{displa/rel=stylesheet|ParseOrCloseStyleTagError//"
+    "rel=stylesheet|ParseOrCloseStyleTagError//rel=stylesheet|"
+    "ParseOrCloseStyleTagError//rel=stylesheet|FetchError//rel=stylesheet|"
+    "ResourceError/|";
 
 // Extracts first 10 characters of minified form of every stylesheet.
 class MinifyExcerptFilter : public CssSummarizerBase {
@@ -72,7 +74,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
       case kSummaryStillPending:
         return "Pending";
       case kSummaryCssParseError:
-        return "ParseError";
+        return "ParseOrCloseStyleTagError";
       case kSummaryResourceCreationFailed:
         return "ResourceError";
       case kSummaryInputUnavailable:
@@ -170,6 +172,8 @@ class CssSummarizerBaseTest : public RewriteTestBase {
                      "<style>* {display: none; }</style>",
                      CssLinkHref("a.css"),  // ok
                      CssLinkHref("b.css"),  // parse error
+                     CssLinkHref("c.css"),  // parse error due to bad URL
+                     CssLinkHref("close_style_tag.css"),  // closing style tag
                      CssLinkHref("404.css"),  // fetch error
                      CssLinkHref("http://evil.com/d.css"))) { }
   virtual ~CssSummarizerBaseTest() { }
@@ -189,6 +193,14 @@ class CssSummarizerBaseTest : public RewriteTestBase {
     // Parse error.
     SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
                                   "div { ", 100);
+    SetResponseWithDefaultHeaders(
+        "c.css", kContentTypeCss,
+        ".z{background-image:url(\"</style>\");", 100);
+
+    // Contents that include a closing style tag.
+    SetResponseWithDefaultHeaders("close_style_tag.css",
+                                  kContentTypeCss,
+                                  ".x </style> {color: white }", 100);
 
     // Permit testing a 404.
     SetFetchFailOnUnexpected(false);
@@ -233,17 +245,22 @@ class CssSummarizerBaseTest : public RewriteTestBase {
 
   void VerifyUnauthNotRendered() {
     FullTest("will_not_render", "", "");
-    EXPECT_STREQ(StrCat("<html>\n",
-                        "<style>* {display: none; }</style>",
-                        CssLinkHref("a.css"),
-                        StrCat("<!--WillNotRender:2 --- ParseError-->",
-                               CssLinkHref("b.css")),
-                        StrCat("<!--WillNotRender:3 --- FetchError-->",
-                               CssLinkHref("404.css")),
-                        StrCat("<!--WillNotRender:4 --- ResourceError-->",
-                               CssLinkHref("http://evil.com/d.css")),
-                        StrCat("<!--", kExpectedResult, "-->")),
-                 output_buffer_);
+    EXPECT_STREQ(
+        StrCat("<html>\n",
+               "<style>* {display: none; }</style>",
+               CssLinkHref("a.css"),
+               StrCat("<!--WillNotRender:2 --- ParseOrCloseStyleTagError-->",
+                       CssLinkHref("b.css")),
+               StrCat("<!--WillNotRender:3 --- ParseOrCloseStyleTagError-->",
+                       CssLinkHref("c.css")),
+               StrCat("<!--WillNotRender:4 --- ParseOrCloseStyleTagError-->",
+                       CssLinkHref("close_style_tag.css")),
+               StrCat("<!--WillNotRender:5 --- FetchError-->",
+                       CssLinkHref("404.css")),
+               StrCat("<!--WillNotRender:6 --- ResourceError-->",
+                       CssLinkHref("http://evil.com/d.css")),
+               StrCat("<!--", kExpectedResult, "-->")),
+        output_buffer_);
   }
 
   MinifyExcerptFilter* filter_;  // owned by the driver;

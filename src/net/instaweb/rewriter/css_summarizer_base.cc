@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -233,6 +234,9 @@ void CssSummarizerBase::Context::RewriteSingle(
   } else {
     filter_->Summarize(stylesheet.get(), result->mutable_inlined_data());
   }
+  if (CssInlineFilter::HasClosingStyleTag(result->inlined_data())) {
+    result->clear_inlined_data();
+  }
 
   // We never produce output --- just write to the CachedResult; so we
   // technically fail.
@@ -418,7 +422,8 @@ void CssSummarizerBase::ReportSummariesDone() {
           StrAppend(&comment, "Computation still pending\n");
           break;
         case kSummaryCssParseError:
-          StrAppend(&comment, "Unrecoverable CSS parse error\n");
+          StrAppend(&comment, "Unrecoverable CSS parse error or resource "
+                              "contains closing style tag\n");
           break;
         case kSummaryResourceCreationFailed:
           StrAppend(&comment, kCreateResourceFailedDebugMsg, "\n");
