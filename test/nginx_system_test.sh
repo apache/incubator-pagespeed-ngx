@@ -622,23 +622,57 @@ fetch_until $URL 'grep -c src=' 1
 
 test_filter inline_javascript inlines a small JS file
 start_test no inlining of unauthorized resources
-URL="$TEST_ROOT/dont_allow_unauthorized/inline_javascript.html?\
-PageSpeedFilters=inline_javascript"
+URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
+PageSpeedFilters=inline_javascript,debug"
 OUTFILE=$OUTDIR/blocking_rewrite.out.html
 $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
 check egrep -q 'script[[:space:]]src=' $OUTFILE
+EXPECTED_COMMENT_LINE="<!--InlineJs: Cannot create resource: either its \
+domain is unauthorized and InlineUnauthorizedResources is not enabled, \
+or it cannot be fetched (check the server logs)-->"
+check grep -q "$EXPECTED_COMMENT_LINE" $OUTFILE
 
 start_test inline_unauthorized_resources allows inlining
-URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
-PageSpeedFilters=inline_javascript"
-fetch_until $URL 'grep -c script[[:space:]]src=' 0
+HOST_NAME="http://unauthorizedresources.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/unauthorized/"
+URL+="inline_unauthorized_javascript.html?PageSpeedFilters=inline_javascript"
+http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until $URL 'grep -c script[[:space:]]src=' 0
 
-# inline_unauthorized_resources does not allow rewriting.
-URL="$TEST_ROOT/unauthorized/inline_unauthorized_javascript.html?\
-PageSpeedFilters=rewrite_javascript"
+start_test inline_unauthorized_resources does not allow rewriting
+URL="$HOST_NAME/mod_pagespeed_test/unauthorized/"
+URL+="inline_unauthorized_javascript.html?PageSpeedFilters=rewrite_javascript"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
+check egrep -q 'script[[:space:]]src=' $OUTFILE
+
+test_filter inline_css inlines a small CSS file
+start_test no inlining of unauthorized resources.
+URL="$TEST_ROOT/unauthorized/inline_css.html?\
+PageSpeedFilters=inline_css,debug"
 OUTFILE=$OUTDIR/blocking_rewrite.out.html
 $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
-check egrep -q 'script[[:space:]]src=' $OUTFILE
+check egrep -q 'link[[:space:]]rel=' $OUTFILE
+EXPECTED_COMMENT_LINE="<!--InlineCss: Cannot create resource: either its \
+domain is unauthorized and InlineUnauthorizedResources is not enabled, \
+or it cannot be fetched (check the server logs)-->"
+check grep -q "$EXPECTED_COMMENT_LINE" $OUTFILE
+
+start_test inline_unauthorized_resources allows inlining
+HOST_NAME="http://unauthorizedresources.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/unauthorized/"
+URL+="inline_css.html?PageSpeedFilters=inline_css"
+http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until $URL 'grep -c link[[:space:]]rel=' 0
+
+start_test inline_unauthorized_resources does not allow rewriting
+URL="$HOST_NAME/mod_pagespeed_test/unauthorized/"
+URL+="inline_css.html?PageSpeedFilters=rewrite_css"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $OUTFILE
+check egrep -q 'link[[:space:]]rel=' $OUTFILE
 
 start_test aris disables js inlining for introspective js and only i-js
 URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
@@ -786,6 +820,34 @@ URL=$EXAMPLE_ROOT/proxy_external_resource.html
 echo Rewrite HTML with reference to a proxyable image.
 fetch_until -save -recursive $URL?PageSpeedFilters=-inline_images \
     'grep -c 1.gif.pagespeed' 1
+
+start_test OptimizeForBandwidth
+# We use blocking-rewrite tests because we want to make sure we don't
+# get rewritten URLs when we don't want them.
+function test_optimize_for_bandwidth() {
+  SECONDARY_HOST="optimizeforbandwidth.example.com"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME \
+        $WGET -q -O - --header=X-PSA-Blocking-Rewrite:psatest \
+        $SECONDARY_HOST/mod_pagespeed_test/optimize_for_bandwidth/$1)
+  check_from "$OUT" grep -q "$2"
+  if [ "$#" -ge 3 ]; then
+    check_from "$OUT" grep -q "$3"
+  fi
+}
+test_optimize_for_bandwidth rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
+  '<link rel="stylesheet" type="text/css" href="yellow.css">'
+test_optimize_for_bandwidth inline_css/rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
+  '<style>.yellow{background-color:#ff0}</style>'
+test_optimize_for_bandwidth css_urls/rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
+  '<link rel="stylesheet" type="text/css" href="A.yellow.css.pagespeed'
+test_optimize_for_bandwidth image_urls/rewrite_image.html \
+  '<img src=\"xarrow.png.pagespeed.'
+test_optimize_for_bandwidth core_filters/rewrite_css.html \
+  '.blue{foreground-color:blue}body{background:url(xarrow.png.pagespeed.' \
+  '<style>.yellow{background-color:#ff0}</style>'
 
 # To make sure that we can reconstruct the proxied content by going back
 # to the origin, we must avoid hitting the output cache.
@@ -1895,6 +1957,93 @@ check_from "$OUT" egrep -q "HTTP/1[.]. 204"
 # Now only BikeCrashIcn.png should be lazyloaded.
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
+
+test_filter prioritize_critical_css
+
+start_test no critical selectors chosen from unauthorized resources
+URL="$TEST_ROOT/unauthorized/prioritize_critical_css.html"
+URL+="?PageSpeedFilters=prioritize_critical_css,debug"
+fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 3
+# Except for the occurrence in html, the gsc-completion-selected string
+# should not occur anywhere else, i.e. in the selector list.
+check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 1 ]
+# From the css file containing an unauthorized @import line,
+# a) no selectors from the unauthorized @ import (e.g .maia-display) should
+#    appear in the selector list.
+check_not fgrep -q "maia-display" $FETCH_FILE
+# b) no selectors from the authorized @ import (e.g .red) should
+#    appear in the selector list because it won't be flattened.
+check_not fgrep -q "interesting_color" $FETCH_FILE
+# c) selectors that don't depend on flattening should appear in the selector
+#    list.
+check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
+EXPECTED_IMPORT_FAILURE_LINE="<!--Flattening failed: Cannot import "
+EXPECTED_IMPORT_FAILURE_LINE+="http://www.google.com/css/maia.css: is it on "
+EXPECTED_IMPORT_FAILURE_LINE+="an unauthorized domain?-->"
+check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
+EXPECTED_COMMENT_LINE="<!--CriticalCssBeacon: Cannot create resource: either "
+EXPECTED_COMMENT_LINE+="its domain is unauthorized and "
+EXPECTED_COMMENT_LINE+="InlineUnauthorizedResources is not enabled, or it "
+EXPECTED_COMMENT_LINE+="cannot be fetched (check the server logs)-->"
+check grep -q "$EXPECTED_COMMENT_LINE" $FETCH_FILE
+
+start_test inline_unauthorized_resources allows unauthorized css selectors
+HOST_NAME="http://unauthorizedresources.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/unauthorized/prioritize_critical_css.html"
+URL+="?PageSpeedFilters=prioritize_critical_css,debug"
+http_proxy=$SECONDARY_HOSTNAME \
+   fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 3
+# gsc-completion-selected strng should occur once in the html and once in the
+# selector list.
+check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 2 ]
+# From the css file containing an unauthorized @import line,
+# a) no selectors from the unauthorized @ import (e.g .maia-display) should
+#    appear in the selector list.
+check_not fgrep -q "maia-display" $FETCH_FILE
+# b) no selectors from the authorized @ import (e.g .red) should
+#    appear in the selector list because it won't be flattened.
+check_not fgrep -q "interesting_color" $FETCH_FILE
+# c) selectors that don't depend on flattening should appear in the selector
+#    list.
+check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
+check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
+
+# Test critical CSS beacon injection, beacon return, and computation.  This
+# requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
+# NOTE: must occur after cache flush, which is why it's in this embedded
+# block.  The flush removes pre-existing beacon results from the pcache.
+test_filter prioritize_critical_css
+fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
+CALL_PAT=".*criticalCssBeaconInit("
+SKIP_ARG="[^,]*,"
+CAPTURE_ARG="'\([^']*\)'.*"
+BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+ESCAPED_URL=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+OPTIONS_HASH=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+NONCE=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
+  $FETCH_FILE)
+BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
+BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
+run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
+# Now make sure we see the correct critical css rules.
+fetch_until $URL \
+  'grep -c <style>[.]blue{[^}]*}</style>' 1
+fetch_until $URL \
+  'grep -c <style>[.]big{[^}]*}</style>' 1
+fetch_until $URL \
+  'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
+fetch_until -save $URL \
+  'grep -c <style>[.]foo{[^}]*}</style>' 1
+# The last one should also have the other 3, too.
+check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
+  $FETCH_UNTIL_OUTFILE` = 1 ]
+
 
 start_test keepalive with html rewriting
 keepalive_test "keepalive-html.example.com"\

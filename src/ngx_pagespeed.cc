@@ -2395,8 +2395,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
 
   char* cache_control_s = string_piece_to_pool_string(r->pool, cache_control);
   if (cache_control_s != NULL) {
-    if (FindIgnoreCase(cache_control, "private") ==
-        static_cast<int>(StringPiece::npos)) {
+    if (FindIgnoreCase(cache_control, "private") == StringPiece::npos) {
       response_headers.Add(HttpAttributes::kEtag, "W/\"0\"");
     }
   }
