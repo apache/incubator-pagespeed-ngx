@@ -21,21 +21,21 @@
 #include "base/logging.h"
 #include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
+#include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
+#include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
@@ -393,9 +393,8 @@ CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
 
 CriticalLineInfoFinder* RewriteDriverFactory::DefaultCriticalLineInfoFinder(
     ServerContext* server_context) {
-  // TODO(jud): Return a BeaconCriticalLineInfoFinder for split_html beacon
-  // support when that class exists.
-  return new CriticalLineInfoFinder(server_context->beacon_cohort());
+  return new BeaconCriticalLineInfoFinder(server_context->beacon_cohort(),
+                                          nonce_generator());
 }
 
 UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {

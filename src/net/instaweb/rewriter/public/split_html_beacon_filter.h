@@ -54,7 +54,8 @@ class SplitHtmlBeaconFilter : public CommonFilter {
   // Returns true if this filter is going to inject a beacon for this request.
   // Filters that need to be disabled when beaconing runs (such as SplitHtml)
   // should set_is_enabled(false) in their DetermineEnabled calls if this
-  // returns true.
+  // returns true. This should be called before the filter runs,
+  // since running the filter can change the result due to pcache updates.
   static bool ShouldApply(RewriteDriver* driver);
 
  private:

@@ -56,9 +56,9 @@ namespace net_instaweb {
 class AbstractLogRecord;
 class AbstractMutex;
 class AbstractPropertyPage;
-class AddInstrumentationFilter;
 class AsyncFetch;
 class CriticalCssResult;
+class CriticalKeys;
 class CriticalLineInfo;
 class DebugFilter;
 class DomStatsFilter;
@@ -410,10 +410,6 @@ class RewriteDriver : public HtmlParse {
 
   ServerContext* server_context() const { return server_context_; }
   Statistics* statistics() const;
-
-  AddInstrumentationFilter* add_instrumentation_filter() {
-    return add_instrumentation_filter_;
-  }
 
   // Takes ownership of 'options'.
   void set_custom_options(RewriteOptions* options) {
@@ -878,6 +874,9 @@ class RewriteDriver : public HtmlParse {
   // Inserts the critical images present on the requested html page. It takes
   // the ownership of critical_line_info.
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
+
+  CriticalKeys* beacon_critical_line_info() const;
+  void set_beacon_critical_line_info(CriticalKeys* beacon_critical_line_info);
 
   const SplitHtmlConfig* split_html_config();
 
@@ -1469,7 +1468,6 @@ class RewriteDriver : public HtmlParse {
   // SetSessionFetcher.
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
 
-  AddInstrumentationFilter* add_instrumentation_filter_;
   DomStatsFilter* dom_stats_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
 
@@ -1522,6 +1520,7 @@ class RewriteDriver : public HtmlParse {
   UserAgentMatcher::DeviceType device_type_;
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
+  scoped_ptr<CriticalKeys> beacon_critical_line_info_;
 
   scoped_ptr<SplitHtmlConfig> split_html_config_;
 

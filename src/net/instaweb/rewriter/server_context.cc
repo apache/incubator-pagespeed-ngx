@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
+#include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -176,9 +177,12 @@ class BeaconPropertyCallback : public PropertyPage {
               server_context_->message_handler(), server_context_->timer());
     }
 
-    // TODO(jud): Add a call to
-    // BeaconCriticalLineInfoFinder::WriteXPathsToPropertyCacheFromBeacon when
-    // that class exists.
+    if (xpaths_set_ != NULL) {
+      BeaconCriticalLineInfoFinder::WriteXPathsToPropertyCacheFromBeacon(
+          *xpaths_set_, nonce_, server_context_->page_property_cache(),
+          server_context_->beacon_cohort(), this,
+          server_context_->message_handler(), server_context_->timer());
+    }
 
     WriteCohort(server_context_->beacon_cohort());
     delete this;
@@ -439,7 +443,7 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
                                           "no-store");
     }
   }
-  DCHECK(! (proxy_cacheable && !browser_cacheable)) <<
+  DCHECK(!(proxy_cacheable && !browser_cacheable)) <<
       "You can't have a proxy-cacheable result that is not browser-cacheable";
   if (!proxy_cacheable) {
     const char* directives = NULL;

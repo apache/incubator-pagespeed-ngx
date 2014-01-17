@@ -22,6 +22,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_LINE_INFO_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_LINE_INFO_FINDER_H_
 
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 
@@ -44,12 +45,26 @@ class CriticalLineInfoFinder {
   const PropertyCache::Cohort* cohort() const { return cohort_; }
 
   // Populates the critical line information in the driver and return it.
-  const CriticalLineInfo* GetCriticalLine(RewriteDriver* driver);
+  virtual const CriticalLineInfo* GetCriticalLine(RewriteDriver* driver);
+
+  // Check property cache state and prepare to insert beacon. Returns the
+  // metadata with result.status == kDoNotBeacon if no beaconing should occur,
+  // and result.nonce contains the nonce if required (default implementation
+  // always beacons without a nonce).
+  virtual BeaconMetadata PrepareForBeaconInsertion(RewriteDriver* driver) {
+    BeaconMetadata result;
+    result.status = kBeaconNoNonce;
+    return result;
+  }
+
+ protected:
+  // Updates the critical line information in the driver.
+  virtual void UpdateInDriver(RewriteDriver* driver);
 
  private:
+  virtual int SupportInterval() const { return 1; }
+
   const PropertyCache::Cohort* cohort_;
-  // Updates the critical line information in the driver.
-  void UpdateInDriver(RewriteDriver* driver);
 
   DISALLOW_COPY_AND_ASSIGN(CriticalLineInfoFinder);
 };

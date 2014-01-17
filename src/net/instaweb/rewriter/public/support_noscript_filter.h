@@ -36,7 +36,8 @@ class SupportNoscriptFilter : public EmptyHtmlFilter {
   explicit SupportNoscriptFilter(RewriteDriver* rewrite_driver);
   virtual ~SupportNoscriptFilter();
 
-  virtual void StartDocument();
+  virtual void DetermineEnabled();
+
   virtual void StartElement(HtmlElement* element);
   virtual const char* Name() const { return "SupportNoscript"; }
 

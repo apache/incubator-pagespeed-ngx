@@ -18,9 +18,16 @@
 
 #include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
 
+#include <algorithm>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/rewriter/critical_keys.pb.h"
+#include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
+#include "net/instaweb/rewriter/public/critical_finder_support_util.h"
+#include "net/instaweb/rewriter/public/critical_line_info_finder.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -33,6 +40,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
@@ -56,20 +65,48 @@ void SplitHtmlBeaconFilter::InitStats(Statistics* statistics) {
 }
 
 bool SplitHtmlBeaconFilter::ShouldApply(RewriteDriver* driver) {
-  // TODO(jud): Default to not enabled and check if we have split HTML beacon
-  // results in the property cache alreay to determine if we need to beacon once
-  // the CriticalLineInfoFinder class exists.
-
   // Do not instrument if the x_split query param was set to request either the
   // above or below the fold content.
   bool is_split_request = driver->request_context()->split_request_type() !=
                           RequestContext::SPLIT_FULL;
-  return (!is_split_request &&
-          driver->server_context()->factory()->UseBeaconResultsInFilters() &&
-          driver->options()->Enabled(RewriteOptions::kSplitHtml));
+  if (is_split_request ||
+      !driver->server_context()->factory()->UseBeaconResultsInFilters() ||
+      !driver->options()->Enabled(RewriteOptions::kSplitHtml)) {
+    return false;
+  }
+
+  const CriticalLineInfoFinder* finder =
+      driver->server_context()->critical_line_info_finder();
+
+  // Check if we have critical line info in the pcache, and only beacon if it
+  // is missing or expired.
+  // TODO(jud): We need a smarter reinstrumentation strategy here than just
+  // waiting for the pcache to expire. To start, we need to collect an adequate
+  // number of samples in the beginning until we reach a steady state, and then
+  // back off our sampling rate. Then, we should detect when the page changes
+  // substantially and increase beaconing rate again until we've collected
+  // enough samples on the updated page. We also should detect the case where we
+  // aren't receiving beacons correctly for whatever reason, and stop
+  // instrumenting, since this beacon is more computationally expensive than say
+  // the critical image beacon.
+  int64 expiration_time_ms = std::min(
+      driver->options()->finder_properties_cache_expiration_time_ms(),
+      driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
+  PropertyCacheDecodeResult result;
+  scoped_ptr<CriticalKeys> critical_keys(DecodeFromPropertyCache<CriticalKeys>(
+      driver, finder->cohort(),
+      BeaconCriticalLineInfoFinder::kBeaconCriticalLineInfoPropertyName,
+      expiration_time_ms, &result));
+  return result != kPropertyCacheDecodeOk;
 }
 
 void SplitHtmlBeaconFilter::EndDocument() {
+  BeaconMetadata beacon_metadata = driver_->server_context()
+                                       ->critical_line_info_finder()
+                                       ->PrepareForBeaconInsertion(driver_);
+  if (beacon_metadata.status == kDoNotBeacon) {
+    return;
+  }
   StaticAssetManager* static_asset_manager =
       driver_->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
@@ -85,14 +122,11 @@ void SplitHtmlBeaconFilter::EndDocument() {
   GoogleString options_signature_hash = driver_->server_context()->hasher()
       ->Hash(driver_->options()->signature());
 
-  // TODO(jud): Add a call to CriticalLineInfoFinder::PrepareForBeaconInsertion
-  // to get the nonce when that class has been created.
-  GoogleString nonce;
   StrAppend(&js, "\npagespeed.splitHtmlBeaconInit(");
   StrAppend(&js, "'", *beacon_url, "', ");
   StrAppend(&js, "'", html_url, "', ");
   StrAppend(&js, "'", options_signature_hash, "', ");
-  StrAppend(&js, "'", nonce, "');");
+  StrAppend(&js, "'", beacon_metadata.nonce, "');");
 
   HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script);

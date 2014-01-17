@@ -48,6 +48,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
+#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
@@ -261,7 +262,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       default_url_async_fetcher_(url_async_fetcher),
       url_async_fetcher_(default_url_async_fetcher_),
       distributed_async_fetcher_(NULL),
-      add_instrumentation_filter_(NULL),
       dom_stats_filter_(NULL),
       scan_filter_(this),
       controlling_pool_(NULL),
@@ -444,6 +444,7 @@ void RewriteDriver::Clear() {
   critical_css_result_.reset(NULL);
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
+  beacon_critical_line_info_.reset(NULL);
   critical_selector_info_.reset(NULL);
 
   if (owns_property_page_) {
@@ -1194,8 +1195,7 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
     // Inject javascript to instrument loading-time. This should run before
     // defer js so that its onload handler can fire before JS starts executing.
-    add_instrumentation_filter_ = new AddInstrumentationFilter(this);
-    AddOwnedPostRenderFilter(add_instrumentation_filter_);
+    AddOwnedPostRenderFilter(new AddInstrumentationFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kSplitHtml)) {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
@@ -3273,6 +3273,15 @@ const CriticalLineInfo* RewriteDriver::critical_line_info() const {
 void RewriteDriver::set_critical_line_info(
     CriticalLineInfo* critical_line_info) {
   critical_line_info_.reset(critical_line_info);
+}
+
+CriticalKeys* RewriteDriver::beacon_critical_line_info() const {
+  return beacon_critical_line_info_.get();
+}
+
+void RewriteDriver::set_beacon_critical_line_info(
+    CriticalKeys* beacon_critical_line_info) {
+  beacon_critical_line_info_.reset(beacon_critical_line_info);
 }
 
 // The split html config is lazily constructed on first access. Since the

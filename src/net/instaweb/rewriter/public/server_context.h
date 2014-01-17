@@ -281,6 +281,7 @@ class ServerContext {
     return critical_line_info_finder_.get();
   }
 
+  // Takes ownership of the passed in finder.
   void set_critical_line_info_finder(CriticalLineInfoFinder* finder);
 
   // Whether or not dumps of rewritten resources should be stored to
