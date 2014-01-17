@@ -17,8 +17,7 @@
   if (!httpRequest) {
     return!1;
   }
-  var query_param_char = -1 == beaconUrl.indexOf("?") ? "?" : "&", url = beaconUrl + query_param_char + "url=" + encodeURIComponent(htmlUrl);
-  httpRequest.open("POST", url);
+  httpRequest.open("POST", beaconUrl + (-1 == beaconUrl.indexOf("?") ? "?" : "&") + "url=" + encodeURIComponent(htmlUrl));
   httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   httpRequest.send(data);
   return!0;
@@ -42,11 +41,9 @@
   }
   return{top:top, left:left};
 }, getWindowSize:function() {
-  var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-  return{height:height, width:width};
+  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(element, windowSize) {
-  var position = pagespeedutils.getPosition(element);
-  return pagespeedutils.positionInViewport(position, windowSize);
+  return pagespeedutils.positionInViewport(pagespeedutils.getPosition(element), windowSize);
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width;
 }, getRequestAnimationFrame:function() {
@@ -63,8 +60,7 @@ pagespeed.LocalStorageCache.prototype.hasExpired = function(obj) {
 };
 pagespeed.LocalStorageCache.prototype.hasExpired = pagespeed.LocalStorageCache.prototype.hasExpired;
 pagespeed.LocalStorageCache.prototype.getData = function(obj) {
-  var pos1 = obj.indexOf(" "), pos2 = obj.indexOf(" ", pos1 + 1);
-  return obj.substring(pos2 + 1);
+  return obj.substring(obj.indexOf(" ", obj.indexOf(" ") + 1) + 1);
 };
 pagespeed.LocalStorageCache.prototype.getData = pagespeed.LocalStorageCache.prototype.getData;
 pagespeed.LocalStorageCache.prototype.replaceLastScript = function(newElement) {
@@ -127,8 +123,7 @@ pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
             }
           }
         }
-        var pos2 = obj.indexOf(" ", pos1 + 1), hash = obj.substring(pos1 + 1, pos2);
-        goodUns.push(hash);
+        goodUns.push(obj.substring(pos1 + 1, obj.indexOf(" ", pos1 + 1)));
       }
     }
     var expires = "";

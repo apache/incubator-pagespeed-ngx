@@ -17,8 +17,7 @@
   if (!httpRequest) {
     return!1;
   }
-  var query_param_char = -1 == beaconUrl.indexOf("?") ? "?" : "&", url = beaconUrl + query_param_char + "url=" + encodeURIComponent(htmlUrl);
-  httpRequest.open("POST", url);
+  httpRequest.open("POST", beaconUrl + (-1 == beaconUrl.indexOf("?") ? "?" : "&") + "url=" + encodeURIComponent(htmlUrl));
   httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   httpRequest.send(data);
   return!0;
@@ -42,11 +41,9 @@
   }
   return{top:top, left:left};
 }, getWindowSize:function() {
-  var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-  return{height:height, width:width};
+  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(element, windowSize) {
-  var position = pagespeedutils.getPosition(element);
-  return pagespeedutils.positionInViewport(position, windowSize);
+  return pagespeedutils.positionInViewport(pagespeedutils.getPosition(element), windowSize);
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width;
 }, getRequestAnimationFrame:function() {
@@ -83,7 +80,7 @@ pagespeed.SplitHtmlBeacon = function(beaconUrl, htmlUrl, optionsHash, nonce) {
 };
 pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(node) {
   for (var allChildrenBtf = !0, btfChildren = [], currChild = node.firstChild;null != currChild;currChild = currChild.nextSibling) {
-    currChild.nodeType === node.ELEMENT_NODE && "SCRIPT" != currChild.tagName && "NOSCRIPT" != currChild.tagName && "STYLE" != currChild.tagName && "LINK" != currChild.tagName && (this.walkDom_(currChild) ? btfChildren.push(currChild) : allChildrenBtf = !1);
+    currChild.nodeType === Node.ELEMENT_NODE && "SCRIPT" != currChild.tagName && "NOSCRIPT" != currChild.tagName && "STYLE" != currChild.tagName && "LINK" != currChild.tagName && (this.walkDom_(currChild) ? btfChildren.push(currChild) : allChildrenBtf = !1);
   }
   if (allChildrenBtf && !pagespeedutils.inViewport(node, this.windowSize_)) {
     return!0;
@@ -107,10 +104,10 @@ pagespeed.SplitHtmlBeacon.prototype.checkSplitHtml_ = function() {
   }
 };
 pagespeed.splitHtmlBeaconInit = function(beaconUrl, htmlUrl, optionsHash, nonce) {
-  var temp = new pagespeed.SplitHtmlBeacon(beaconUrl, htmlUrl, optionsHash, nonce), beaconOnload = function() {
+  var temp = new pagespeed.SplitHtmlBeacon(beaconUrl, htmlUrl, optionsHash, nonce);
+  pagespeedutils.addHandler(window, "load", function() {
     temp.checkSplitHtml_();
-  };
-  pagespeedutils.addHandler(window, "load", beaconOnload);
+  });
 };
 pagespeed.splitHtmlBeaconInit = pagespeed.splitHtmlBeaconInit;
 })();

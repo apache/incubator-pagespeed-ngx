@@ -8,8 +8,7 @@ goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
   }
 };
 goog.define = function(name, defaultValue) {
-  var value = defaultValue;
-  goog.exportPath_(name, value);
+  goog.exportPath_(name, defaultValue);
 };
 goog.DEBUG = !0;
 goog.LOCALE = "en";
@@ -80,7 +79,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
     goog.basePath = goog.global.CLOSURE_BASE_PATH;
   } else {
     if (goog.inHtmlDocument_()) {
-      for (var doc = goog.global.document, scripts = doc.getElementsByTagName("script"), i = scripts.length - 1;0 <= i;--i) {
+      for (var scripts = goog.global.document.getElementsByTagName("script"), i = scripts.length - 1;0 <= i;--i) {
         var src = scripts[i].src, qmark = src.lastIndexOf("?"), l = -1 == qmark ? src.length : qmark;
         if ("base.js" == src.substr(l - 7, 7)) {
           goog.basePath = src.substr(0, l - 7);
@@ -96,8 +95,7 @@ goog.DEPENDENCIES_ENABLED && (goog.included_ = {}, goog.dependencies_ = {pathToN
   if (goog.inHtmlDocument_()) {
     var doc = goog.global.document;
     if ("complete" == doc.readyState) {
-      var isDeps = /\bdeps.js$/.test(src);
-      if (isDeps) {
+      if (/\bdeps.js$/.test(src)) {
         return!1;
       }
       throw Error('Cannot write "' + src + '" after document load');
@@ -336,8 +334,7 @@ goog.inherits = function(childCtor, parentCtor) {
   childCtor.prototype = new tempCtor;
   childCtor.prototype.constructor = childCtor;
   childCtor.base = function(me, methodName, var_args) {
-    var args = Array.prototype.slice.call(arguments, 2);
-    return parentCtor.prototype[methodName].apply(me, args);
+    return parentCtor.prototype[methodName].apply(me, Array.prototype.slice.call(arguments, 2));
   };
 };
 goog.base = function(me, opt_methodName, var_args) {
@@ -401,8 +398,7 @@ var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlU
   if (!httpRequest) {
     return!1;
   }
-  var query_param_char = -1 == beaconUrl.indexOf("?") ? "?" : "&", url = beaconUrl + query_param_char + "url=" + encodeURIComponent(htmlUrl);
-  httpRequest.open("POST", url);
+  httpRequest.open("POST", beaconUrl + (-1 == beaconUrl.indexOf("?") ? "?" : "&") + "url=" + encodeURIComponent(htmlUrl));
   httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   httpRequest.send(data);
   return!0;
@@ -426,11 +422,9 @@ var pagespeedutils = {MAX_POST_SIZE:131072, sendBeacon:function(beaconUrl, htmlU
   }
   return{top:top, left:left};
 }, getWindowSize:function() {
-  var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-  return{height:height, width:width};
+  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(element, windowSize) {
-  var position = pagespeedutils.getPosition(element);
-  return pagespeedutils.positionInViewport(position, windowSize);
+  return pagespeedutils.positionInViewport(pagespeedutils.getPosition(element), windowSize);
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width;
 }, getRequestAnimationFrame:function() {
@@ -450,10 +444,12 @@ pagespeed.CriticalCssLoader.addAllStyles = function() {
     }
   }
 };
+goog.exportSymbol("pagespeed.CriticalCssLoader.addAllStyles", pagespeed.CriticalCssLoader.addAllStyles);
 pagespeed.CriticalCssLoader.Run = function() {
   var raf = pagespeedutils.getRequestAnimationFrame();
   raf ? raf(function() {
     window.setTimeout(pagespeed.CriticalCssLoader.addAllStyles, 0);
   }) : pagespeedutils.addHandler(window, "load", pagespeed.CriticalCssLoader.addAllStyles);
 };
+goog.exportSymbol("pagespeed.CriticalCssLoader.Run", pagespeed.CriticalCssLoader.Run);
 })();

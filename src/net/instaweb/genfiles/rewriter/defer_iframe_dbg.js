@@ -13,8 +13,7 @@ pagespeed.DeferIframe.prototype.convertToIframe = function() {
 };
 pagespeed.DeferIframe.prototype.convertToIframe = pagespeed.DeferIframe.prototype.convertToIframe;
 pagespeed.deferIframeInit = function() {
-  var deferIframe = new pagespeed.DeferIframe;
-  pagespeed.deferIframe = deferIframe;
+  pagespeed.deferIframe = new pagespeed.DeferIframe;
 };
 pagespeed.deferIframeInit = pagespeed.deferIframeInit;
 })();

@@ -14,8 +14,7 @@ pagespeed.DedupInlinedImages.prototype.inlineImg = function(img_id, script_id) {
 };
 pagespeed.DedupInlinedImages.prototype.inlineImg = pagespeed.DedupInlinedImages.prototype.inlineImg;
 pagespeed.dedupInlinedImagesInit = function() {
-  var dedupInlinedImages = new pagespeed.DedupInlinedImages;
-  pagespeed.dedupInlinedImages = dedupInlinedImages;
+  pagespeed.dedupInlinedImages = new pagespeed.DedupInlinedImages;
 };
 pagespeed.dedupInlinedImagesInit = pagespeed.dedupInlinedImagesInit;
 })();

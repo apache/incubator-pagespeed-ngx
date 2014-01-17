@@ -8,7 +8,7 @@ pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, extraParams, htm
 };
 pagespeed.beaconUrl = "";
 pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
-  var url = this.beaconUrlPrefix_, oldStartTime = window.mod_pagespeed_start, currentTime = Number(new Date), traditionalPLT = currentTime - oldStartTime, url = url + (-1 == url.indexOf("?") ? "?" : "&"), url = url + "ets=", url = url + ("load" == this.event_ ? "load:" : "unload:"), url = url + traditionalPLT;
+  var url = this.beaconUrlPrefix_, oldStartTime = window.mod_pagespeed_start, traditionalPLT = Number(new Date) - oldStartTime, url = url + (-1 == url.indexOf("?") ? "?" : "&"), url = url + "ets=" + ("load" == this.event_ ? "load:" : "unload:"), url = url + traditionalPLT;
   if ("beforeunload" != this.event_ || !window.mod_pagespeed_loaded) {
     url += "&r" + this.event_ + "=";
     if (window.performance) {

@@ -1835,9 +1835,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test resize_rendered_image_dimensions with critical images beacon
   HOST_NAME="http://renderedimagebeacon.example.com"
   URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/image_resize_using_rendered_dimensions.html"
-  http_proxy=$SECONDARY_HOSTNAME\
-    fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
-  '--header=X-PSA-Blocking-Rewrite:psatest'
+  http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 2 \
+    '--header=X-PSA-Blocking-Rewrite:psatest'
   check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
     $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
   OPTIONS_HASH=$(\

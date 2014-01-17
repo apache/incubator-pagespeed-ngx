@@ -138,7 +138,8 @@ pagespeed.LocalStorageCache.prototype['inlineImg'] =
  * any elements are saved, which later triggers regeneration of the cookie.
  * @param {string} tagName Tag Name of elements to process.
  * @param {boolean} isHashInKey True iff the hash is part of the lookup key.
- * @param {function ({Element})} dataFunc Function to get an element's data.
+ * @param {(function ({Element})|function ({Image}))} dataFunc Function to get
+ *     an element's data.
  * @private
  */
 pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,

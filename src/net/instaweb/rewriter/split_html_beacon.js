@@ -71,7 +71,7 @@ pagespeed.SplitHtmlBeacon.prototype.walkDom_ = function(node) {
   var btfChildren = [];
   for (var currChild = node.firstChild; currChild != null;
        currChild = currChild.nextSibling) {
-    if (currChild.nodeType !== node.ELEMENT_NODE ||
+    if (currChild.nodeType !== Node.ELEMENT_NODE ||
         currChild.tagName == 'SCRIPT' ||
         currChild.tagName == 'NOSCRIPT' ||
         currChild.tagName == 'STYLE' ||

@@ -17,8 +17,7 @@
   if (!httpRequest) {
     return!1;
   }
-  var query_param_char = -1 == beaconUrl.indexOf("?") ? "?" : "&", url = beaconUrl + query_param_char + "url=" + encodeURIComponent(htmlUrl);
-  httpRequest.open("POST", url);
+  httpRequest.open("POST", beaconUrl + (-1 == beaconUrl.indexOf("?") ? "?" : "&") + "url=" + encodeURIComponent(htmlUrl));
   httpRequest.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
   httpRequest.send(data);
   return!0;
@@ -42,11 +41,9 @@
   }
   return{top:top, left:left};
 }, getWindowSize:function() {
-  var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-  return{height:height, width:width};
+  return{height:window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight, width:window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth};
 }, inViewport:function(element, windowSize) {
-  var position = pagespeedutils.getPosition(element);
-  return pagespeedutils.positionInViewport(position, windowSize);
+  return pagespeedutils.positionInViewport(pagespeedutils.getPosition(element), windowSize);
 }, positionInViewport:function(pos, windowSize) {
   return pos.top < windowSize.height && pos.left < windowSize.width;
 }, getRequestAnimationFrame:function() {
@@ -86,14 +83,14 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function(callback) {
 };
 pagespeed.criticalCssBeaconInit = function(beaconUrl, htmlUrl, optionsHash, nonce, selectors) {
   if (document.querySelector && Function.prototype.bind) {
-    var temp = new pagespeed.CriticalCssBeacon(beaconUrl, htmlUrl, optionsHash, nonce, selectors), beacon_onload = function() {
+    var temp = new pagespeed.CriticalCssBeacon(beaconUrl, htmlUrl, optionsHash, nonce, selectors);
+    pagespeedutils.addHandler(window, "load", function() {
       window.setTimeout(function() {
         temp.checkCssSelectors_(function() {
           temp.sendBeacon_();
         });
       }, 0);
-    };
-    pagespeedutils.addHandler(window, "load", beacon_onload);
+    });
   }
 };
 pagespeed.criticalCssBeaconInit = pagespeed.criticalCssBeaconInit;
