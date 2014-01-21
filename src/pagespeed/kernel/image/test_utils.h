@@ -216,6 +216,18 @@ void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
                          int bytes_per_row2, int col2, int row2,
                          int num_cols, int num_rows, MessageHandler* handler);
 
+// Return a synthesized image, each channel with the following pattern:
+//   1st row: seed_value, seed_value + delta_x, seed_value + 2 * delta_x, ...
+//   2nd row: 1st row + delta_y
+//   3rd row: 2nd row + delta_y
+//   ...
+// Values will be wrapped around if they are greater than 255.
+// Arguments "seed_value", "delta_x", and "delta_y" must have at least
+// "num_channels" elements.
+void SynthesizeImage(int width, int height, int bytes_per_line,
+                     int num_channels, const uint8_t* seed_value,
+                     const int* delta_x, const int* delta_y, uint8_t* image);
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

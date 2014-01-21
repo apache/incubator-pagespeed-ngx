@@ -290,6 +290,7 @@
         '<(DEPTH)/pagespeed/kernel/http/user_agent_normalizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/gif_reader_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_converter_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/image_analysis_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/image_resizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/jpeg_reader_test.cc',

@@ -242,6 +242,35 @@ void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
   }
 }
 
+void SynthesizeImage(int width, int height, int bytes_per_line,
+                     int num_channels, const uint8_t* seed_value,
+                     const int* delta_x, const int* delta_y, uint8_t* image) {
+  ASSERT_TRUE(image != NULL);
+  ASSERT_GT(width, 0);
+  ASSERT_GT(height, 0);
+  ASSERT_GE(bytes_per_line, width);
+
+  net_instaweb::scoped_array<uint8_t> current_value(new uint8_t[num_channels]);
+  memcpy(current_value.get(), seed_value,
+         num_channels * sizeof(seed_value[0]));
+
+  for (int y = 0; y < height; ++y) {
+    uint8_t* pixel = image + y * bytes_per_line;
+    for (int x = 0; x < width; ++x) {
+      for (int ch = 0; ch < num_channels; ++ch) {
+        pixel[ch] = current_value[ch];
+        current_value[ch] += delta_x[ch];
+      }
+      pixel += num_channels;
+    }
+    // Compute the value for the first pixel in the next line. The next line
+    // has values increased from those of the current line by delta_y.
+    for (int ch = 0; ch < num_channels; ++ch) {
+      current_value[ch] = image[y * bytes_per_line + ch] + delta_y[ch];
+    }
+  }
+}
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

@@ -385,6 +385,7 @@
       ],
       'sources': [
         'kernel/image/gif_reader.cc',
+        'kernel/image/image_analysis.cc',
         'kernel/image/image_converter.cc',
         'kernel/image/image_resizer.cc',
         'kernel/image/jpeg_optimizer.cc',
