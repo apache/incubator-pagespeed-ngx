@@ -517,7 +517,11 @@ class RewriteOptions {
     OptionBase() {}
     virtual ~OptionBase();
 
-    virtual bool SetFromString(StringPiece value_string) = 0;
+    // Returns if parsing was successful. error_detail will be appended to
+    // to an error message if this returns false. Implementors are not
+    // required to set *error_detail; its the callers responsibility to do so.
+    virtual bool SetFromString(StringPiece value_string,
+                               GoogleString* error_detail) = 0;
     virtual void Merge(const OptionBase* src) = 0;
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
@@ -1101,6 +1105,10 @@ class RewriteOptions {
   OptionSettingResult SetOptionFromName(
       StringPiece name, StringPiece value, GoogleString* msg);
 
+  // Like above, but doesn't bother formatting the error message.
+  OptionSettingResult SetOptionFromName(
+      StringPiece name, StringPiece value);
+
   // Advanced option parsing, that can understand non-scalar values
   // (unlike SetOptionFromName), and which is extensible by platforms.
   // Returns whether succeeded or the kind of failure, and writes the
@@ -1116,12 +1124,6 @@ class RewriteOptions {
   virtual OptionSettingResult ParseAndSetOptionFromName3(
       StringPiece name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
       GoogleString* msg, MessageHandler* handler);
-
-  // Given an option's name and a scalar value (cf. ParseAndSetOptionFromNameX),
-  // set the option to the parsed value. The scalar types supported are those
-  // for which we have a ParseFromString method below - currently supports
-  // bool, EnabledEnum, int, int64, GoogleString, RewriteLevel, and BeaconUrl.
-  OptionSettingResult SetOptionFromName(StringPiece name, StringPiece value);
 
   // Returns the id and value of the specified option-enum in *id and *value.
   // Sets *was_set to true if this option has been altered from the default.
@@ -1794,7 +1796,8 @@ class RewriteOptions {
 
   const BeaconUrl& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const GoogleString& beacon_url) {
-    beacon_url_.SetFromString(beacon_url);
+    GoogleString ignored_error_detail;
+    beacon_url_.SetFromString(beacon_url, &ignored_error_detail);
   }
 
   // Return false in a subclass if you want to disallow all URL trimming in CSS.
@@ -2598,7 +2601,8 @@ class RewriteOptions {
     Option() {}
 
     // Sets value_ from value_string.
-    virtual bool SetFromString(StringPiece value_string) {
+    virtual bool SetFromString(StringPiece value_string,
+                               GoogleString* error_detail) {
       T value;
       bool success = RewriteOptions::ParseFromString(value_string, &value);
       if (success) {
@@ -3048,12 +3052,17 @@ class RewriteOptions {
   static void InitOptionIdToPropertyArray();
   static void InitOptionNameToPropertyArray();
 
-  // Helper for converting the result of SetOptionFromName into
+  // Helper for converting the result of SetOptionFromNameInternal into
   // a status/message pair. The returned result may be adjusted from the passed
   // in one (in particular when option_name is kNullOption).
   OptionSettingResult FormatSetOptionMessage(
       OptionSettingResult result, StringPiece name, StringPiece value,
-      GoogleString* msg);
+      StringPiece error_detail, GoogleString* msg);
+
+  // Backend to SetOptionFromName that doesn't do full message formatting.
+  // *error_detail may not be always set.
+  OptionSettingResult SetOptionFromNameInternal(
+      StringPiece name, StringPiece value, GoogleString* error_detail);
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().

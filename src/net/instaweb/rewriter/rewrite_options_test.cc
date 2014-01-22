@@ -1023,7 +1023,7 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName1) {
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
             options_.ParseAndSetOptionFromName1("JsInlineMaxBytes", "one",
                                                 &msg, &handler));
-  EXPECT_EQ("Cannot set option JsInlineMaxBytes to one.", msg);
+  EXPECT_EQ("Cannot set option JsInlineMaxBytes to one. ", msg);
 
   // Complex, valid value.
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kDebug));

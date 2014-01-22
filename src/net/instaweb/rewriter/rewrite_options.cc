@@ -2725,16 +2725,21 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value, GoogleString* msg) {
-  OptionSettingResult result = kOptionNameUnknown;
-  if (IsValidOptionName(name)) {
-    result = SetOptionFromName(name, value);
-  }
-  return FormatSetOptionMessage(result, name, value, msg);
+  GoogleString error_detail;
+  OptionSettingResult result =
+      SetOptionFromNameInternal(name, value, &error_detail);
+  return FormatSetOptionMessage(result, name, value, error_detail, msg);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
+    StringPiece name, StringPiece value) {
+  GoogleString error_detail;
+  return SetOptionFromNameInternal(name, value, &error_detail);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
     OptionSettingResult result, StringPiece name, StringPiece value,
-    GoogleString* msg) {
+    StringPiece error_detail, GoogleString* msg) {
   if (!IsValidOptionName(name)) {
     // Not a mapped option.
     SStringPrintf(msg, "Option %s not mapped.", name.as_string().c_str());
@@ -2745,8 +2750,9 @@ RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
       SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
       break;
     case kOptionValueInvalid:
-      SStringPrintf(msg, "Cannot set option %s to %s.",
-                    name.as_string().c_str(), value.as_string().c_str());
+      SStringPrintf(msg, "Cannot set option %s to %s. %s",
+                    name.as_string().c_str(), value.as_string().c_str(),
+                    error_detail.as_string().c_str());
       break;
     default:
       break;
@@ -2757,9 +2763,11 @@ RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
 RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
     StringPiece name, StringPiece arg,
     GoogleString* msg, MessageHandler* handler) {
-  OptionSettingResult result = SetOptionFromName(name, arg);
+  GoogleString error_detail;
+  OptionSettingResult result = SetOptionFromNameInternal(name, arg,
+                                                         &error_detail);
   if (result != RewriteOptions::kOptionNameUnknown) {
-    return FormatSetOptionMessage(result, name, arg, msg);
+    return FormatSetOptionMessage(result, name, arg, error_detail, msg);
   }
 
   // Assume all goes well; if not, set result accordingly.
@@ -2924,8 +2932,11 @@ StringPiece RewriteOptions::GetEffectiveOptionName(StringPiece name) {
   return effective_name;
 }
 
-RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
-    StringPiece name, StringPiece value) {
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromNameInternal(
+    StringPiece name, StringPiece value, GoogleString* error_detail) {
+  if (!IsValidOptionName(name)) {
+    return kOptionNameUnknown;
+  }
   StringPiece effective_name = GetEffectiveOptionName(name);
   OptionBaseVector::iterator it = std::lower_bound(
       all_options_.begin(), all_options_.end(), effective_name,
@@ -2933,7 +2944,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
   if (it != all_options_.end()) {
     OptionBase* option = *it;
     if (StringCaseEqual(effective_name, option->option_name())) {
-      if (!option->SetFromString(value)) {
+      if (!option->SetFromString(value, error_detail)) {
         return kOptionValueInvalid;
       } else {
         return kOptionOk;

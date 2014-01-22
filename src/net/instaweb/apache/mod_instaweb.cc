@@ -54,7 +54,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
-#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_server_context.h"
@@ -134,7 +133,6 @@ const char kModPagespeedDomain[] = "ModPagespeedDomain";
 const char kModPagespeedDownstreamCachePurgeLocationPrefix[] =
     "ModPagespeedDownstreamCachePurgeLocationPrefix";
 const char kModPagespeedEnableFilters[] = "ModPagespeedEnableFilters";
-const char kModPagespeedFetchHttps[] = "ModPagespeedFetchHttps";
 const char kModPagespeedFetchProxy[] = "ModPagespeedFetchProxy";
 const char kModPagespeedFetcherTimeoutMs[] = "ModPagespeedFetcherTimeOutMs";
 const char kModPagespeedFileCachePath[] = "ModPagespeedFileCachePath";
@@ -1499,16 +1497,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseOption<RewriteOptions::EnabledEnum>(
         static_cast<RewriteOptions*>(config), cmd, &RewriteOptions::set_enabled,
         arg);
-  } else if (StringCaseEqual(directive, kModPagespeedFetchHttps)) {
-    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
-    if (ret == NULL) {
-      GoogleString error_message;
-      if (!factory->SetHttpsOptions(arg, &error_message)) {
-        ret = apr_pstrcat(cmd->pool, "Invalid argument '", arg, "' to ",
-                          cmd->directive->directive, ": ",
-                          error_message.c_str(), NULL);
-      }
-    }
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
@@ -1874,9 +1862,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   // (Not in <Directory> blocks.)
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
-  APACHE_CONFIG_OPTION(kModPagespeedFetchHttps,
-        "Controls direct fetching of HTTPS resources.  Value is "
-        "comma-separated list of keywords: " SERF_HTTPS_KEYWORDS),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),

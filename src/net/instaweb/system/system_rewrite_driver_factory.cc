@@ -358,7 +358,7 @@ GoogleString SystemRewriteDriverFactory::GetFetcherKey(
       }
     }
     StrAppend(&key,
-              "\nhttps: ", https_options_,
+              "\nhttps: ", config->https_options(),
               "\ncert_dir: ", config->ssl_cert_directory(),
               "\ncert_file: ", config->ssl_cert_file());
   }
@@ -417,7 +417,7 @@ UrlAsyncFetcher* SystemRewriteDriverFactory::AllocateFetcher(
   serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
   serf->set_fetch_with_gzip(config->fetch_with_gzip());
   serf->set_track_original_content_length(track_original_content_length_);
-  serf->SetHttpsOptions(https_options_);
+  serf->SetHttpsOptions(config->https_options());
   serf->SetSslCertificatesDir(config->ssl_cert_directory());
   serf->SetSslCertificatesFile(config->ssl_cert_file());
   return serf;
@@ -434,12 +434,6 @@ UrlAsyncFetcher* SystemRewriteDriverFactory::GetBaseFetcher(
     iter->second = AllocateFetcher(config);
   }
   return iter->second;
-}
-
-bool SystemRewriteDriverFactory::SetHttpsOptions(StringPiece directive,
-                                                 GoogleString* error_message) {
-  directive.CopyToString(&https_options_);
-  return SerfUrlAsyncFetcher::ValidateHttpsOptions(directive, error_message);
 }
 
 UrlAsyncFetcher* SystemRewriteDriverFactory::DefaultAsyncUrlFetcher() {

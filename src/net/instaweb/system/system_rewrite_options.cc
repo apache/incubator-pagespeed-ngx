@@ -17,6 +17,7 @@
 #include "net/instaweb/system/public/system_rewrite_options.h"
 
 #include "base/logging.h"
+#include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -27,6 +28,8 @@ class ThreadSystem;
 namespace {
 
 const int64 kDefaultCacheFlushIntervalSec = 5;
+
+const char kFetchHttps[] = "FetchHttps";
 
 }  // namespace
 
@@ -159,6 +162,10 @@ void SystemRewriteOptions::AddProperties() {
                     "cc", RewriteOptions::kCompressMetadataCache,
                     "Whether to compress cache entries before writing them to "
                     "memory or disk.");
+  AddSystemProperty("disable", &SystemRewriteOptions::https_options_, "fhs",
+                    kFetchHttps, "Controls direct fetching of HTTPS resources."
+                    "  Value is comma-separated list of keywords: "
+                    SERF_HTTPS_KEYWORDS);
   AddSystemProperty("", &SystemRewriteOptions::ssl_cert_directory_, "assld",
                     RewriteOptions::kSslCertDirectory,
                     "Directory to find SSL certificates.");
@@ -252,6 +259,15 @@ SystemRewriteOptions* SystemRewriteOptions::DynamicCast(
   SystemRewriteOptions* config = dynamic_cast<SystemRewriteOptions*>(instance);
   DCHECK(config != NULL);
   return config;
+}
+
+bool SystemRewriteOptions::HttpsOptions::SetFromString(
+    StringPiece value, GoogleString* error_detail) {
+  bool success = SerfUrlAsyncFetcher::ValidateHttpsOptions(value, error_detail);
+  if (success) {
+    set(value.as_string());
+  }
+  return success;
 }
 
 }  // namespace net_instaweb
