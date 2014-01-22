@@ -25,40 +25,33 @@
 namespace net_instaweb {
 
 /*
-common url format
-
-  http://www.foo.bar/z1234/b_c.d?e=f&g=h
-
-this suggests we should have short encodings for  a-zA-Z0-9.:/?&
+The intent of this class to encode arbitrary URLs into one 'segment'
+of a new URL. We escape many special chars like /\?&% to make sure that
+this encoded version is only one segment.
 
 We would like the above URL to be reasonably legible if possible.
 However it's also nice if it's short.
 
-One annoyance is that we are using '.' to delimit the 4 fields of an
-instaweb-generated URL.  That can probably be changed to use ^, which
-is a legal URL but is rarely used in URLs.  This would enable us to
-leave . alone.  But that's probably a moderately painful change
-involving a fair amount of regolding.
+Common URL format is:
 
-In the meantime we can replace . with ^ in this encoder so the they
-don't change size.  So the transform table is:
+  http://www.foo.bar/z1234/b_c.d?e=f&g=h
 
-a-zA-Z0-9_=+-&? unchanged
-http://         ,h
+this suggests we should have short encodings for  a-zA-Z0-9./?&
+
+The transform table is:
+
+a-zA-Z0-9_=+-. unchanged
+^               ,u
 %               ,P
 /               ,_
 \               ,-
-,               ,
+,               ,,
 ?               ,q
 &               ,a
+http://         ,h
+.pagespeed.     ,M
 
-everything else ,XX  where xx are hex digits using capital latters
-
-
-The intent of this class to to help encode arbitrary URLs (really, any
-stream of 8-byte characters, but optimized for URLs) so that it can be
-used in one 'segment' of a new URL.  This means we will not output
-. or / but will instead escape those.
+everything else ,XX  where XX are hex digits using capital letters.
 */
 
 namespace UrlEscaper {

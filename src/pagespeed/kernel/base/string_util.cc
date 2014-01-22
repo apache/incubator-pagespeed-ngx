@@ -589,7 +589,7 @@ void TrimUrlQuotes(StringPiece* str) {
 
   bool cont = true;
 
-  // Unwrap a string with an arbitrary nesting of real and html-escaped
+  // Unwrap a string with an arbitrary nesting of real and URL percent-encoded
   // quotes.  We do this one layer at a time, always removing backslashed
   // quotes before removing un-backslashed quotes.
   while (cont) {
