@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "apr_pools.h"
+#include "apr_uri.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -44,6 +45,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace {
 
@@ -351,6 +353,11 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                          const GoogleString& content_start) {
     int index = AddTestUrl(url, content_start);
     StartFetches(index, index);
+    ExpectHttpsSucceeds(index);
+  }
+
+  // Verifies that an added & started fetch at index succeeds.
+  void ExpectHttpsSucceeds(int index) {
     ASSERT_EQ(WaitTillDone(index, index, kMaxMs), 1);
     ASSERT_TRUE(fetches_[index]->IsDone());
     ASSERT_FALSE(content_starts_[index].empty());
@@ -597,6 +604,37 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsForGoogleCom) {
   TestHttpsSucceeds("https://www.google.com/intl/en/about/", "<!DOCTYPE html>");
 }
 
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHost) {
+  // Make sure if the Host: header is set, we match SNI to it.
+  // To do this, we need to have an alternative hostname for
+  // our test domain. We cheat a little, and just append a dot, since
+  // for a fully-qualified domain DNS will ignore it.
+  GoogleUrl original_url(https_favicon_url_);
+  GoogleUrl alt_url(StrCat("https://", original_url.Host(), ".",
+                           original_url.PathAndLeaf()));
+
+  serf_url_async_fetcher_->SetHttpsOptions("enable,allow_self_signed");
+  int index = AddTestUrl(alt_url.Spec().as_string(), favicon_head_);
+  request_headers(index)->Add(HttpAttributes::kHost, original_url.Host());
+  StartFetches(index, index);
+  ExpectHttpsSucceeds(index);
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHostPort) {
+  // Similar to above, but just throw in an explicit port number;
+  // if it doesn't get properly dropped from the SNI Apache will
+  // 400 it.
+  serf_url_async_fetcher_->SetHttpsOptions("enable,allow_self_signed");
+  GoogleUrl original_url(https_favicon_url_);
+  GoogleString with_port = StrCat(original_url.Origin(), ":443",
+                                  original_url.PathAndLeaf());
+  int index = AddTestUrl(with_port, favicon_head_);
+  request_headers(index)->Add(HttpAttributes::kHost,
+                              StrCat(original_url.Host(), ":443"));
+  StartFetches(index, index);
+  ExpectHttpsSucceeds(index);
+}
+
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForGoogleComWithBogusCertDir) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   serf_url_async_fetcher_->SetSslCertificatesDir(GTestTempDir());
@@ -660,6 +698,47 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
   int64 ocl_value;
   EXPECT_TRUE(StringToInt64(ocl_header, &ocl_value));
   EXPECT_EQ(bytes_count, ocl_value);
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHostConstruction) {
+  apr_uri_t uri1;
+  EXPECT_EQ(APR_SUCCESS,
+            apr_uri_parse(pool_, "http://www.example.com/example.css", &uri1));
+  EXPECT_STREQ("www.example.com",
+               SerfUrlAsyncFetcher::ExtractHostHeader(uri1, pool_));
+
+  apr_uri_t uri2;
+  EXPECT_EQ(APR_SUCCESS,
+            apr_uri_parse(pool_,
+                          "http://me:password@www.example.com/example.css",
+                          &uri2));
+  EXPECT_STREQ("www.example.com",
+               SerfUrlAsyncFetcher::ExtractHostHeader(uri2, pool_));
+
+  apr_uri_t uri3;
+  EXPECT_EQ(APR_SUCCESS,
+            apr_uri_parse(pool_,
+                          "http://me:password@www.example.com:42/example.css",
+                          &uri3));
+  EXPECT_STREQ("www.example.com:42",
+               SerfUrlAsyncFetcher::ExtractHostHeader(uri3, pool_));
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestPortRemoval) {
+  // Tests our little helper for removing port numbers, which is needed to
+  // compute SNI headers from Host: headers.
+  EXPECT_EQ(
+      "www.example.com",
+      SerfUrlAsyncFetcher::RemovePortFromHostHeader("www.example.com"));
+  EXPECT_EQ(
+      "www.example.com",
+      SerfUrlAsyncFetcher::RemovePortFromHostHeader("www.example.com:80"));
+  EXPECT_EQ(
+      "[::1]",
+      SerfUrlAsyncFetcher::RemovePortFromHostHeader("[::1]"));
+  EXPECT_EQ(
+      "[::1]",
+      SerfUrlAsyncFetcher::RemovePortFromHostHeader("[::1]:80"));
 }
 
 }  // namespace net_instaweb

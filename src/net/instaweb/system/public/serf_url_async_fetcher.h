@@ -23,6 +23,7 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -43,6 +44,7 @@
 #endif
 
 struct apr_pool_t;
+struct apr_uri_t;
 struct serf_context_t;
 
 namespace net_instaweb {
@@ -237,6 +239,16 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
 
  private:
   friend class SerfFetch;  // To access stats variables below.
+
+  // Note: returned string memory substring of memory in the pool.
+  static const char* ExtractHostHeader(const apr_uri_t& uri,
+                                       apr_pool_t* pool);
+  FRIEND_TEST(SerfUrlAsyncFetcherTest, TestHostConstruction);
+
+  // Transforms Host: header into SNI host name by dropping the port.
+  // Exposed for testability
+  static GoogleString RemovePortFromHostHeader(const GoogleString& in);
+  FRIEND_TEST(SerfUrlAsyncFetcherTest, TestPortRemoval);
 
   static bool ParseHttpsOptions(StringPiece directive, uint32* options,
                                 GoogleString* error_message);
