@@ -352,6 +352,7 @@
         'kernel/util/input_file_nonce_generator.cc',
         'kernel/util/nonce_generator.cc',
         'kernel/util/simple_random.cc',
+        'kernel/util/source_map.cc',
         'kernel/util/statistics_logger.cc',
         'kernel/util/statistics_work_bound.cc',
         'kernel/util/url_escaper.cc',

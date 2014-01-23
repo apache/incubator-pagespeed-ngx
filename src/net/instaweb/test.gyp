@@ -321,6 +321,7 @@
         '<(DEPTH)/pagespeed/kernel/util/nonce_generator_test_base.cc',
         '<(DEPTH)/pagespeed/kernel/util/re2_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/simple_stats_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/source_map_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/statistics_logger_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/statistics_work_bound_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/url_escaper_test.cc',
