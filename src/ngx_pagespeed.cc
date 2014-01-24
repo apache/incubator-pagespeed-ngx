@@ -244,6 +244,13 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
   headers->Add(HttpAttributes::kContentType,
                str_to_string_piece(r->headers_out.content_type));
 
+  // When we don't have a date header, invent one.
+  const char* date = headers->Lookup1(HttpAttributes::kDate);
+  
+  if (date == NULL) {
+    headers->SetDate(ngx_current_msec);
+  }
+  
   // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
   headers->ComputeCaching();
 }

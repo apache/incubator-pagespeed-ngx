@@ -2073,6 +2073,14 @@ curl -vv -m 2 http://$PRIMARY_HOSTNAME/foo.css.pagespeed.ce.0.css \
     -H 'If-Modified-Since: Z' http://$PRIMARY_HOSTNAME/foo
 check [ $? = "0" ]
 
+start_test Date response header set
+OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
+check_not_from "$OUT" egrep -q '^Date: Thu, 01 Jan 1970 00:00:00 GMT'
+
+OUT=$($WGET_DUMP --header=Host:date.example.com \
+    http://$SECONDARY_HOSTNAME/mod_pagespeed_example/combine_css.html)
+check_from "$OUT" egrep -q '^Date: Fri, 16 Oct 2009 23:05:07 GMT'
+
 if $USE_VALGRIND; then
     kill -s quit $VALGRIND_PID
     wait

@@ -616,6 +616,13 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name date.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
