@@ -442,6 +442,10 @@ class HtmlParse {
   void BeginFinishParse();
   void EndFinishParse();
 
+  // Clears any cached state we have while this object is laying
+  // around for recycling.
+  void Clear();
+
   // Returns the number of events on the event queue.
   size_t GetEventQueueSize();
 

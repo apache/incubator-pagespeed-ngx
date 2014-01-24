@@ -381,6 +381,8 @@ RewriteDriver* RewriteDriver::Clone() {
 }
 
 void RewriteDriver::Clear() {
+  HtmlParse::Clear();
+
   // If this was a fetch, fetch_rewrites_ may still hold a reference to a
   // RewriteContext.
   STLDeleteElements(&fetch_rewrites_);
