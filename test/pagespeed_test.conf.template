@@ -141,6 +141,7 @@ http {
     listen @@SECONDARY_PORT@@;
     server_name experiment.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed InPlaceResourceOptimization off;
 
     pagespeed RunExperiment on;
     pagespeed AnalyticsID "123-45-6734";
@@ -691,6 +692,13 @@ http {
 
     pagespeed EnableFilters rewrite_images;
     pagespeed CriticalImagesBeaconEnabled false;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name date.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
   }
 
   server {
