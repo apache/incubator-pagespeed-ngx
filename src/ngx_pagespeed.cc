@@ -1341,7 +1341,8 @@ bool ps_determine_options(ngx_http_request_t* r,
                           RequestHeaders* request_headers,
                           ResponseHeaders* response_headers,
                           RewriteOptions** options,
-                          GoogleUrl* url) {
+                          GoogleUrl* url,
+                          bool html_rewrite) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   ps_loc_conf_t* cfg_l = ps_get_loc_config(r);
 
@@ -1379,7 +1380,7 @@ bool ps_determine_options(ngx_http_request_t* r,
   if (request_options != NULL) {
     (*options)->Merge(*request_options);
     delete request_options;
-  } else if ((*options)->running_experiment()) {
+  } else if ((*options)->running_experiment() && html_rewrite) {
     bool ok = ps_set_experiment_state_and_cookie(
         r, request_headers, *options, url->Host());
     if (!ok) {
@@ -1634,7 +1635,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
   RewriteOptions* options = NULL;
 
   if (!ps_determine_options(r, request_headers.get(), response_headers.get(),
-                            &options, &url)) {
+                            &options, &url, html_rewrite)) {
     return NGX_ERROR;
   }
 

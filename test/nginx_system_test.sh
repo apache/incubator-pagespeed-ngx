@@ -1568,6 +1568,8 @@ EXP_EXAMPLE="http://experiment.example.com/mod_pagespeed_example"
 EXP_EXTEND_CACHE="$EXP_EXAMPLE/extend_cache.html"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $EXP_EXTEND_CACHE)
 check_from "$OUT" fgrep "PageSpeedExperiment="
+MATCHES=$(echo "$OUT" | grep -c "PageSpeedExperiment=")
+check [ $MATCHES -eq 1 ]
 
 start_test PageSpeedFilters query param should disable experiments.
 URL="$EXP_EXTEND_CACHE?PageSpeed=on&PageSpeedFilters=rewrite_css"

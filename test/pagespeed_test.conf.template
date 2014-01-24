@@ -141,6 +141,7 @@ http {
     listen @@SECONDARY_PORT@@;
     server_name experiment.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed InPlaceResourceOptimization off;
 
     pagespeed RunExperiment on;
     pagespeed AnalyticsID "123-45-6734";
