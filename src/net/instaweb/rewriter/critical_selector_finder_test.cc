@@ -18,8 +18,6 @@
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
@@ -126,9 +124,29 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
   void Beacon() {
     WriteBackAndResetDriver();
     factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    VerifyBeaconStatus(ExpectedBeaconStatus());
+  }
+
+  // Verify that no beacon injection occurs.
+  void VerifyNoBeaconing() {
+    VerifyBeaconStatus(kDoNotBeacon);
+  }
+
+  // Verify that beacon injection occurs.
+  void VerifyBeaconing() {
+    VerifyBeaconStatus(kBeaconWithNonce);
+  }
+
+  // Helper method used for verifying beacon injection status.
+  void VerifyBeaconStatus(BeaconStatus status) {
     last_beacon_metadata_ =
         finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-    ASSERT_EQ(ExpectedBeaconStatus(), last_beacon_metadata_.status);
+    EXPECT_EQ(status, last_beacon_metadata_.status);
+    if (status == kBeaconWithNonce) {
+      EXPECT_STREQ(ExpectedNonce(), last_beacon_metadata_.nonce);
+    } else {
+      EXPECT_TRUE(last_beacon_metadata_.nonce.empty());
+    }
   }
 
   CriticalKeys* RawCriticalSelectorSet(int expected_size) {
@@ -370,62 +388,70 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // Write a dummy value to the property cache.
   WriteToPropertyCache();
 
-  // Beacon injection should happen when downstream caching is enabled.
+  // If downstream caching is disabled, any beaconing key configuration and/or
+  // presence of PS-ShouldBeacon header should be ignored. In such situations,
+  // unless the reinstrumentation time interval is exceeded, beacon injection
+  // should not happen.
   ResetDriver();
-  SetDownstreamCacheDirectives("", "random_rebeaconing_key");
-  RequestHeaders request_headers_with_correct_key;
-  request_headers_with_correct_key.Add(kPsaShouldBeacon,
-                                       "random_rebeaconing_key");
-  rewrite_driver()->SetRequestHeaders(request_headers_with_correct_key);
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs / 2);
-  BeaconMetadata tmp_metadata =
-      finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-  EXPECT_EQ(kDoNotBeacon, tmp_metadata.status);
-  EXPECT_TRUE(tmp_metadata.nonce.empty());
+  SetDownstreamCacheDirectives("", kConfiguredBeaconingKey);
+  SetShouldBeaconHeader(kConfiguredBeaconingKey);
+  VerifyNoBeaconing();
+  // Advance the timer past the beacon interval.
+  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs + 1);
+  // When the reinstrumentation time interval is exceeded, beacon injection
+  // should happen as usual.
+  ResetDriver();
+  SetDownstreamCacheDirectives("", kConfiguredBeaconingKey);
+  SetShouldBeaconHeader(kConfiguredBeaconingKey);
+  VerifyBeaconing();
 
-  // Force beaconing so that the timer gets reset.
-  Beacon();
-
-  // Beacon injection should not happen when rebeaconing key is empty.
+  // Beacon injection should not happen when rebeaconing key is not configured.
   ResetDriver();
   SetDownstreamCacheDirectives("localhost:80", "");
-  rewrite_driver()->SetRequestHeaders(request_headers_with_correct_key);
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs / 2);
-  tmp_metadata =
-      finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-  EXPECT_EQ(kDoNotBeacon, tmp_metadata.status);
-  EXPECT_TRUE(tmp_metadata.nonce.empty());
+  SetShouldBeaconHeader(kConfiguredBeaconingKey);
+  VerifyNoBeaconing();
 
-  // Force beaconing so that the timer gets reset.
-  Beacon();
+  // Beacon injection should not happen when the PS-ShouldBeacon header is
+  // absent and both downstream caching and the associated rebeaconing key
+  // are configured.
+  ResetDriver();
+  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetDummyRequestHeaders();
+  VerifyNoBeaconing();
 
   // Beacon injection should not happen when the PS-ShouldBeacon header is
   // incorrect.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", "random_rebeaconing_key");
-  RequestHeaders request_headers_with_wrong_key;
-  request_headers_with_wrong_key.Add(kPsaShouldBeacon, "wrong_rebeaconing_key");
-  rewrite_driver()->SetRequestHeaders(request_headers_with_wrong_key);
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs / 2);
-  tmp_metadata =
-      finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-  EXPECT_EQ(kDoNotBeacon, tmp_metadata.status);
-  EXPECT_TRUE(tmp_metadata.nonce.empty());
-
-  // Force beaconing so that the timer gets reset.
-  Beacon();
+  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetShouldBeaconHeader(kWrongBeaconingKey);
+  VerifyNoBeaconing();
 
   // Beacon injection happens when the PS-ShouldBeacon header is present even
   // when the pcache value has not expired and the reinstrumentation time
   // interval has not been exceeded.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", "random_rebeaconing_key");
-  rewrite_driver()->SetRequestHeaders(request_headers_with_correct_key);
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs / 2);
-  tmp_metadata =
-      finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
-  EXPECT_EQ(kBeaconWithNonce, tmp_metadata.status);
-  EXPECT_FALSE(tmp_metadata.nonce.empty());
+  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetShouldBeaconHeader(kConfiguredBeaconingKey);
+  VerifyBeaconing();
+
+  // Advance the timer past the beacon interval.
+  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs + 1);
+  // Beacon injection should happen after reinstrumentation time interval has
+  // passed when downstream caching is enabled but rebeaconing key is not
+  // configured.
+  ResetDriver();
+  SetDownstreamCacheDirectives("localhost:80", "");
+  SetShouldBeaconHeader(kConfiguredBeaconingKey);
+  VerifyBeaconing();
+
+  // Advance the timer past the beacon interval.
+  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs + 1);
+  // Beacon injection should not happen when the PS-ShouldBeacon header is
+  // incorrect even if the reinstrumentation time interval has been exceeded.
+  ResetDriver();
+  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetShouldBeaconHeader(kWrongBeaconingKey);
+  VerifyNoBeaconing();
 }
 
 // If ShouldReplacePriorResult returns true, then a beacon result

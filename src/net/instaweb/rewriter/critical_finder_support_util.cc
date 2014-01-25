@@ -323,27 +323,6 @@ void WriteCriticalKeysToPropertyCache(
   }
 }
 
-bool DoesHeaderRequestBeaconing(
-    bool downstream_cache_integration_enabled,
-    StringPiece downstream_cache_rebeaconing_key,
-    const RequestHeaders* req_headers,
-    MessageHandler* message_handler) {
-  if (!downstream_cache_integration_enabled) {
-    // Headers that force rebeaconing are only allowed to come from downstream
-    // caches.
-    return false;
-  }
-  if (downstream_cache_rebeaconing_key.empty()) {
-    message_handler->Message(kWarning, "You seem to have downstream caching "
-        "configured on your server. DownstreamCacheRebeaconingKey should also "
-        "be set for this to work correctly");
-    return false;
-  }
-  StringPiece beacon_header_value = req_headers->Lookup1(kPsaShouldBeacon);
-  return beacon_header_value != NULL &&
-      beacon_header_value == downstream_cache_rebeaconing_key;
-}
-
 void PrepareForBeaconInsertionHelper(
     const StringSet& keys, CriticalKeys* proto, int support_interval,
     NonceGenerator* nonce_generator, RewriteDriver* driver,
@@ -351,45 +330,64 @@ void PrepareForBeaconInsertionHelper(
   result->status = kDoNotBeacon;
   bool changed = false;
   int64 now_ms = driver->timer()->NowMs();
-  if (DoesHeaderRequestBeaconing(
-          driver->options()->downstream_cache_integration_enabled(),
-          driver->options()->downstream_cache_rebeaconing_key(),
-          driver->request_headers(),
-          driver->message_handler()) ||
-      now_ms >= proto->next_beacon_timestamp_ms()) {
-    // TODO(jmaessen): Add noise to inter-beacon interval.  How?
-    // Currently first visit to page after next_beacon_timestamp_ms will beacon.
-    proto->set_next_beacon_timestamp_ms(now_ms + kMinBeaconIntervalMs);
-    changed = true;  // Timestamp definitely changed.
-  }
-  if (!keys.empty()) {
-    // Check to see if candidate keys are already known to pcache.  Insert
-    // previously-unknown candidates with a support of 0, to indicate that
-    // beacon results for those keys will be considered valid.  Other keys
-    // returned in a beacon result will simply be ignored, avoiding DoSing the
-    // pcache.  New candidate keys cause us to re-beacon.
-    SupportMap support_map =
-        ConvertCriticalKeysProtoToSupportMap(*proto, support_interval);
-    bool support_map_changed = false;
-    for (StringSet::const_iterator i = keys.begin(), end = keys.end();
-         i != end; ++i) {
-      if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
-        support_map_changed = true;
+  if (driver->options()->IsDownstreamCacheIntegrationEnabled() &&
+      driver->options()->IsDownstreamCacheRebeaconingKeyConfigured()) {
+    // When downstream cache integration is enabled, and there is a rebeaconing
+    // key already specified in the config, we should only rebeacon when there
+    // is a matching key in the beacon requesting header.
+    if (driver->options()->MatchesDownstreamCacheRebeaconingKey(
+            driver->request_headers()->Lookup1(kPsaShouldBeacon))) {
+      changed = true;  // We need to re-beacon.
+    }
+  } else {
+    if (now_ms >= proto->next_beacon_timestamp_ms()) {
+      // TODO(jmaessen): Add noise to inter-beacon interval.  How?
+      // Currently first visit to page after next_beacon_timestamp_ms will
+      // beacon.
+      proto->set_next_beacon_timestamp_ms(now_ms + kMinBeaconIntervalMs);
+      changed = true;  // Timestamp definitely changed.
+      if (driver->options()->IsDownstreamCacheIntegrationEnabled()) {
+        // We can only get here if downstream cache integration was enabled, but
+        // no downstream cache rebeaconing key was specified. So, put out a
+        // warning message. Note that we do not put out this message on a per
+        // request basis, because it will clutter up the logs. Instead we do it
+        // only once every beaconing interval.
+        // TODO(anupama): Update documentation URL to point to the specific
+        // section once added.
+        driver->message_handler()->Message(kWarning, "You seem to have "
+        "downstream caching configured on your server. "
+        "DownstreamCacheRebeaconingKey should also be set for this to work "
+        "correctly. Refer to "
+        "https://developers.google.com/speed/pagespeed/module/downstream-caching"
+        "for more details.");
       }
     }
-    if (support_map_changed) {
-      // Update the proto value with the new set of keys. Note that we are not
-      // changing the calculated set of critical keys, so we don't need to
-      // update the state in the RewriteDriver.
-      WriteSupportMapToCriticalKeysProto(support_map, proto);
-      changed = true;
+    if (!keys.empty()) {
+      // Check to see if candidate keys are already known to pcache.  Insert
+      // previously-unknown candidates with a support of 0, to indicate that
+      // beacon results for those keys will be considered valid.  Other keys
+      // returned in a beacon result will simply be ignored, avoiding DoSing the
+      // pcache.  New candidate keys cause us to re-beacon.
+      SupportMap support_map =
+          ConvertCriticalKeysProtoToSupportMap(*proto, support_interval);
+      bool support_map_changed = false;
+      for (StringSet::const_iterator i = keys.begin(), end = keys.end();
+           i != end; ++i) {
+        if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
+          support_map_changed = true;
+        }
+      }
+      if (support_map_changed) {
+        // Update the proto value with the new set of keys. Note that we are not
+        // changing the calculated set of critical keys, so we don't need to
+        // update the state in the RewriteDriver.
+        WriteSupportMapToCriticalKeysProto(support_map, proto);
+        changed = true;
+      }
     }
   }
   if (changed) {
     AddNonceToCriticalSelectors(now_ms, nonce_generator, proto, &result->nonce);
-    // TODO(anupama): Whenever we decide to beacon (with or without nonce), we
-    // should serve out no-cache Cache-Control headers if downstream caching is
-    // enabled.
     result->status = kBeaconWithNonce;
   }
 }

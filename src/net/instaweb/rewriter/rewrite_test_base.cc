@@ -39,6 +39,7 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
@@ -111,6 +112,9 @@ class TestRewriteOptionsManager : public RewriteOptionsManager {
 class MessageHandler;
 
 const char RewriteTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
+const char RewriteTestBase::kConfiguredBeaconingKey[] =
+    "configured_beaconing_key";
+const char RewriteTestBase::kWrongBeaconingKey[] = "wrong_beaconing_key";
 
 RewriteTestBase::RewriteTestBase()
     : test_distributed_fetcher_(this),
@@ -261,6 +265,12 @@ void RewriteTestBase::SetDownstreamCacheDirectives(
       downstream_cache_location);
   options_->set_downstream_cache_rebeaconing_key(rebeaconing_key);
   options_->ComputeSignature();
+}
+
+void RewriteTestBase::SetShouldBeaconHeader(StringPiece rebeaconing_key) {
+  RequestHeaders request_headers;
+  request_headers.Add(kPsaShouldBeacon, rebeaconing_key);
+  rewrite_driver()->SetRequestHeaders(request_headers);
 }
 
 ResourcePtr RewriteTestBase::CreateResource(const StringPiece& base,

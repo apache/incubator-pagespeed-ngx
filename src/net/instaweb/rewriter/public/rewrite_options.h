@@ -1776,7 +1776,7 @@ class RewriteOptions {
   void set_downstream_cache_purge_location_prefix(const StringPiece& p) {
     set_option(p.as_string(), &downstream_cache_purge_location_prefix_);
   }
-  bool downstream_cache_integration_enabled() const {
+  bool IsDownstreamCacheIntegrationEnabled() const {
     return !downstream_cache_purge_location_prefix().empty();
   }
 
@@ -1785,6 +1785,17 @@ class RewriteOptions {
   }
   const GoogleString& downstream_cache_rebeaconing_key() const {
     return downstream_cache_rebeaconing_key_.value();
+  }
+  bool IsDownstreamCacheRebeaconingKeyConfigured() const {
+    return !downstream_cache_rebeaconing_key().empty();
+  }
+  // Return true only if downstream cache rebeaconing key is configured and
+  // the key argument matches the configured key.
+  bool MatchesDownstreamCacheRebeaconingKey(StringPiece key) const {
+    if (!IsDownstreamCacheRebeaconingKeyConfigured()) {
+      return false;
+    }
+    return StringCaseEqual(key, downstream_cache_rebeaconing_key());
   }
 
   void set_downstream_cache_rewritten_percentage_threshold(int64 x) {

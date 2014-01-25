@@ -771,18 +771,26 @@ apr_status_t instaweb_out_filter(ap_filter_t* filter, apr_bucket_brigade* bb) {
   return return_code;
 }
 
-// This is called when mod_pagespeed rewrites HTML.  At this time we do
-// not want rewritten HTML to be cached, though we may relax that policy
-// with some pagespeed.conf settings in the future.
-//
-// This function removes any expires or cache-control settings added
-// by the user's .conf files, and puts in headers to disable caching.
+// This is called when mod_pagespeed rewrites HTML, so that headers related to
+// caching maybe updated correctly.
 //
 // We expect this to run after mod_headers and mod_expires, triggered
 // by the call to ap_add_output_filter(kModPagespeedFixHeadersName...)
 // in build_context_for_request.
+// This method is not called if users set "ModifyCachingHeaders off".
 //
-// NOTE: This is disabled if users set "ModifyCachingHeaders false".
+// This function removes any Expires, Last-Modified or Etag settings added
+// by the user's .conf files.
+//
+// This function also replaces the Cache-Control header with a no-cache value
+// if one of the following conditions are met:
+// 1) Downstream caching integration is disabled.
+// 2) Downstream caching is enabled, downstream cache beaconing key is
+//    configured, and the value of the PS-ShouldBeacon header on the request
+//    matches the configured beaconing key.
+// It retains the original Cache-Control header in all other cases, which
+// correspond to downstream caching integration being enabled and the page
+// being served not being instrumented for beaconing.
 apr_status_t instaweb_fix_headers_filter(
     ap_filter_t* filter, apr_bucket_brigade* bb) {
   request_rec* request = filter->r;
@@ -812,8 +820,20 @@ apr_status_t instaweb_fix_headers_filter(
 
   scoped_ptr<RewriteOptions> custom_options;
   const RewriteOptions* options = get_request_options(request, &custom_options);
-  if (options->downstream_cache_purge_location_prefix().empty()) {
+  if (!options->IsDownstreamCacheIntegrationEnabled()) {
+    // Downstream cache integration is not enabled. Disable original
+    // Cache-Control headers.
     DisableCacheControlHeader(request);
+  } else {
+    // Downstream cache integration is enabled. If a rebeaconing key has been
+    // configured and there is a ShouldBeacon header with the correct key,
+    // disable original Cache-Control headers so that the instrumented page is
+    // served out with no-cache.
+    const char* should_beacon = apr_table_get(request->headers_in,
+                                              kPsaShouldBeacon);
+    if (options->MatchesDownstreamCacheRebeaconingKey(should_beacon)) {
+      DisableCacheControlHeader(request);
+    }
   }
 
   // TODO(sligocki): Why remove ourselves? Is it to assure that this filter

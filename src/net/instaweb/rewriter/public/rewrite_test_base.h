@@ -87,6 +87,11 @@ class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
 class RewriteTestBase : public RewriteOptionsTestBase {
  public:
   static const char kTestData[];    // Testdata directory.
+
+  // Beaconing key values used when downstream caching is enabled.
+  static const char kConfiguredBeaconingKey[];
+  static const char kWrongBeaconingKey[];
+
   // Specifies which server should be "active" in that rewrites and fetches
   // will use it. The data members affected are those returned by:
   // - factory() / other_factory()
@@ -163,6 +168,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void SetDownstreamCacheDirectives(
     StringPiece downstream_cache_location,
     StringPiece rebeaconing_key);
+
+  // Set ShouldBeacon request header to the specified value.
+  void SetShouldBeaconHeader(StringPiece rebeaconing_key);
 
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
