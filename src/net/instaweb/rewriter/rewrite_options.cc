@@ -3298,12 +3298,12 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
       src.javascript_library_identification_);
 
   file_load_policy_.Merge(src.file_load_policy_);
-  allow_resources_.AppendFrom(src.allow_resources_);
-  retain_comments_.AppendFrom(src.retain_comments_);
-  lazyload_enabled_classes_.AppendFrom(src.lazyload_enabled_classes_);
-  blocking_rewrite_referer_urls_.AppendFrom(
+  allow_resources_.MergeOrShare(src.allow_resources_);
+  retain_comments_.MergeOrShare(src.retain_comments_);
+  lazyload_enabled_classes_.MergeOrShare(src.lazyload_enabled_classes_);
+  blocking_rewrite_referer_urls_.MergeOrShare(
       src.blocking_rewrite_referer_urls_);
-  override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
+  override_caching_wildcard_.MergeOrShare(src.override_caching_wildcard_);
 
   // Merge url_cache_invalidation_entries_ so that increasing order of timestamp
   // is preserved (assuming this.url_cache_invalidation_entries_ and
@@ -3500,11 +3500,11 @@ void RewriteOptions::ComputeSignature() {
     StrAppend(&signature_, "_");
   }
   StrAppend(&signature_, domain_lawyer_->Signature(), "_");
-  StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
-  StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
-  StrAppend(&signature_, "LDC:", lazyload_enabled_classes_.Signature(), "_");
+  StrAppend(&signature_, "AR:", allow_resources_->Signature(), "_");
+  StrAppend(&signature_, "RC:", retain_comments_->Signature(), "_");
+  StrAppend(&signature_, "LDC:", lazyload_enabled_classes_->Signature(), "_");
   StrAppend(&signature_, "BRRU:",
-            blocking_rewrite_referer_urls_.Signature(), "_");
+            blocking_rewrite_referer_urls_->Signature(), "_");
   StrAppend(&signature_, "UCI:");
   for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
     const UrlCacheInvalidationEntry& entry =
@@ -3520,7 +3520,7 @@ void RewriteOptions::ComputeSignature() {
 
   // rejected_request_map_ is not added to rewrite options signature as this
   // should not affect rewriting and metadata or property cache lookups.
-  StrAppend(&signature_, "OC:", override_caching_wildcard_.Signature(), "_");
+  StrAppend(&signature_, "OC:", override_caching_wildcard_->Signature(), "_");
   frozen_ = true;
 
   // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
@@ -3627,7 +3627,7 @@ GoogleString RewriteOptions::OptionsToString() const {
     }
   }
   GoogleString override_caching_wildcard_string(
-      override_caching_wildcard_.Signature());
+      override_caching_wildcard_->Signature());
   if (!override_caching_wildcard_string.empty()) {
     StrAppend(&output, "\nOverride caching wildcards\n",
               override_caching_wildcard_string);

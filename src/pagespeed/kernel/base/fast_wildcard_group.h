@@ -95,7 +95,16 @@ class FastWildcardGroup {
  public:
   FastWildcardGroup()
       : rolling_hash_length_(kUncompiled) { }
+  FastWildcardGroup(const FastWildcardGroup& src)
+      : rolling_hash_length_(kUncompiled) {
+    CopyFrom(src);
+  }
+
   ~FastWildcardGroup();
+  FastWildcardGroup& operator=(const FastWildcardGroup& other) {
+    CopyFrom(other);
+    return *this;
+  }
 
   // Determines whether a string is allowed by the wildcard group.  If none of
   // the wildcards in the group matches, allow_by_default is returned.
@@ -112,10 +121,14 @@ class FastWildcardGroup {
   void CopyFrom(const FastWildcardGroup& src);
   void AppendFrom(const FastWildcardGroup& src);
 
+  // Alias for use of CopyOnWrite
+  void Merge(const FastWildcardGroup& src) { AppendFrom(src); }
+
   GoogleString Signature() const;
 
   // Return the number of configured wildcards.
   int num_wildcards() const { return wildcards_.size(); }
+  bool empty() const { return wildcards_.empty(); }
 
  private:
   // Special values for rolling hash size.
@@ -141,7 +154,7 @@ class FastWildcardGroup {
   mutable std::vector<int> pattern_hash_index_;  // hash table
   mutable AtomicInt32 rolling_hash_length_;
 
-  DISALLOW_COPY_AND_ASSIGN(FastWildcardGroup);
+  // This is copyable, since we want to use this with CopyOnWrite<>
 };
 
 }  // namespace net_instaweb

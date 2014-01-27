@@ -2033,15 +2033,15 @@ class RewriteOptions {
   void EnableBlockingRewriteForRefererUrlPattern(
       const StringPiece& url_pattern) {
     Modify();
-    blocking_rewrite_referer_urls_.Allow(url_pattern);
+    blocking_rewrite_referer_urls_.MakeWriteable()->Allow(url_pattern);
   }
 
   bool IsBlockingRewriteEnabledForReferer(const StringPiece& url) const {
-    return blocking_rewrite_referer_urls_.Match(url, false);
+    return blocking_rewrite_referer_urls_->Match(url, false);
   }
 
   bool IsBlockingRewriteRefererUrlPatternPresent() const {
-    return blocking_rewrite_referer_urls_.num_wildcards() > 0;
+    return blocking_rewrite_referer_urls_->num_wildcards() > 0;
   }
 
   bool rewrite_uncacheable_resources() const {
@@ -2281,14 +2281,14 @@ class RewriteOptions {
   // previous Disallow wildcards.
   void Allow(const StringPiece& wildcard_pattern) {
     Modify();
-    allow_resources_.Allow(wildcard_pattern);
+    allow_resources_.MakeWriteable()->Allow(wildcard_pattern);
   }
 
   // Registers a wildcard pattern for to be disallowed, potentially overriding
   // previous Allow wildcards.
   void Disallow(const StringPiece& wildcard_pattern) {
     Modify();
-    allow_resources_.Disallow(wildcard_pattern);
+    allow_resources_.MakeWriteable()->Disallow(wildcard_pattern);
   }
 
   // Blacklist of javascript files that don't like their names changed.
@@ -2331,31 +2331,31 @@ class RewriteOptions {
   // Determines, based on the sequence of Allow/Disallow calls above, whether
   // a url is allowed.
   bool IsAllowed(const StringPiece& url) const {
-    return allow_resources_.Match(url, true);
+    return allow_resources_->Match(url, true);
   }
 
   // Adds a new comment wildcard pattern to be retained.
   void RetainComment(const StringPiece& comment) {
     Modify();
-    retain_comments_.Allow(comment);
+    retain_comments_.MakeWriteable()->Allow(comment);
   }
 
   // If enabled, the 'remove_comments' filter will remove all HTML comments.
   // As discussed in Issue 237, some comments have semantic value and must
   // be retained.
   bool IsRetainedComment(const StringPiece& comment) const {
-    return retain_comments_.Match(comment, false);
+    return retain_comments_->Match(comment, false);
   }
 
   // Adds a new class name for which lazyload should be disabled.
   void DisableLazyloadForClassName(const StringPiece& class_name) {
     Modify();
-    lazyload_enabled_classes_.Disallow(class_name);
+    lazyload_enabled_classes_.MakeWriteable()->Disallow(class_name);
   }
 
   // Checks if lazyload images is enabled for the specified class.
   bool IsLazyloadEnabledForClassName(const StringPiece& class_name) const {
-    return lazyload_enabled_classes_.Match(class_name, true);
+    return lazyload_enabled_classes_->Match(class_name, true);
   }
 
   void set_override_caching_ttl_ms(int64 x) {
@@ -2369,12 +2369,12 @@ class RewriteOptions {
   // override_caching_ttl_ms().
   void AddOverrideCacheTtl(const StringPiece& wildcard) {
     Modify();
-    override_caching_wildcard_.Allow(wildcard);
+    override_caching_wildcard_.MakeWriteable()->Allow(wildcard);
   }
 
   // Is the cache TTL overridden for the given url?
   bool IsCacheTtlOverridden(const StringPiece& url) const {
-    return override_caching_wildcard_.Match(url, false);
+    return override_caching_wildcard_->Match(url, false);
   }
 
   void AddRejectedUrlWildcard(const GoogleString& wildcard) {
@@ -3582,7 +3582,7 @@ class RewriteOptions {
   // for any urls if this value is negative. The same TTL value is used for all
   // urls that match override_caching_wildcard_.
   Option<int64> override_caching_ttl_ms_;
-  FastWildcardGroup override_caching_wildcard_;
+  CopyOnWrite<FastWildcardGroup> override_caching_wildcard_;
 
   // The minimum milliseconds of cache TTL for all resources that are
   // explicitly cacheable. This overrides the max-age even when it is set on
@@ -3652,12 +3652,12 @@ class RewriteOptions {
   CopyOnWrite<DomainLawyer> domain_lawyer_;
   FileLoadPolicy file_load_policy_;
 
-  FastWildcardGroup allow_resources_;
-  FastWildcardGroup retain_comments_;
-  FastWildcardGroup lazyload_enabled_classes_;
+  CopyOnWrite<FastWildcardGroup> allow_resources_;
+  CopyOnWrite<FastWildcardGroup> retain_comments_;
+  CopyOnWrite<FastWildcardGroup> lazyload_enabled_classes_;
   // When certain url patterns are in the referer we want to do a blocking
   // rewrite.
-  FastWildcardGroup blocking_rewrite_referer_urls_;
+  CopyOnWrite<FastWildcardGroup> blocking_rewrite_referer_urls_;
 
   // Using StringPiece here is safe since all entries in this map have static
   // strings as the key.
