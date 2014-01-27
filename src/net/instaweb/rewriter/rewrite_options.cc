@@ -1276,7 +1276,7 @@ void RewriteOptions::AddProperties() {
       false, &RewriteOptions::in_place_wait_for_optimized_, "ipwo",
       kInPlaceWaitForOptimized,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Wait for optimizations to complete");  // TODO(jmarantz): Add doc.
   AddBaseProperty(
       kDefaultRewriteDeadlineMs,
       &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",

@@ -60,6 +60,7 @@ class ImageRewriteFilter : public RewriteFilter {
   static const char kImageResizedUsingRenderedDimensions[];
   static const char kImageRewriteLatencyFailedMs[];
   static const char kImageRewriteLatencyOkMs[];
+  static const char kImageRewriteLatencyTotalMs[];
   static const char kImageRewritesDroppedDecodeFailure[];
   static const char kImageRewritesDroppedDueToLoad[];
   static const char kImageRewritesDroppedMIMETypeUnknown[];
@@ -296,6 +297,8 @@ class ImageRewriteFilter : public RewriteFilter {
   // # of images rewritten into WebP format.
   Variable* image_webp_rewrites_;
 
+  // # total number of milliseconds spent rewriting images since server start
+  Variable* image_rewrite_latency_total_ms_;
   // Delay in microseconds of successful image rewrites.
   Histogram* image_rewrite_latency_ok_ms_;
   // Delay in microseconds of failed image rewrites.

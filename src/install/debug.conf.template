@@ -861,6 +861,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #COVERAGE   ModPagespeedTestProxy on
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
 #IPRO_PRESERVE_COVERAGE ModPagespeedInPlaceResourceOptimization on
+#IPRO_PRESERVE_COVERAGE ModPagespeedInPlaceWaitForOptimized on
 #IPRO_PRESERVE_COVERAGE ModPagespeedCssPreserveURLs on
 #IPRO_PRESERVE_COVERAGE ModPagespeedImagePreserveURLs on
 #IPRO_PRESERVE_COVERAGE ModPagespeedJsPreserveURLS on
@@ -879,6 +880,17 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters dedup_inlined_images
 #IPRO_PRESERVE_COVERAGE   ModPagespeedDisableFilters convert_jpeg_to_webp
 #IPRO_PRESERVE_COVERAGE   ModPagespeedInPlaceRewriteDeadlineMs 1000
+#IPRO_PRESERVE_COVERAGE
+#IPRO_PRESERVE_COVERAGE   # We turn preemptive rewriting off for bandwidth
+#IPRO_PRESERVE_COVERAGE   # tests driven by recursive wget, where the image
+#IPRO_PRESERVE_COVERAGE   # requests will come too quickly to allow any
+#IPRO_PRESERVE_COVERAGE   # image rewrites to finish.  Leaving preemptive
+#IPRO_PRESERVE_COVERAGE   # rewrites enabled causes redundant image rewrites
+#IPRO_PRESERVE_COVERAGE   # to occur.
+#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteImages off
+#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteCss off
+#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteCssImages off
+#IPRO_PRESERVE_COVERAGE   ModPagespeedInPlacePreemptiveRewriteJavascript off
 #COVERAGE
 #COVERAGE   # flush_subsresources doesn't work in MPS but disables
 #COVERAGE   # combine_css and combine_javascript, so we don't want to

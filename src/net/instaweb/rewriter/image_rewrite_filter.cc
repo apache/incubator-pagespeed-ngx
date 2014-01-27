@@ -19,6 +19,8 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
 #include <limits.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <algorithm>                    // for min
 #include <memory>
@@ -213,6 +215,8 @@ const char ImageRewriteFilter::kImageRewriteLatencyOkMs[] =
     "image_rewrite_latency_ok_ms";
 const char ImageRewriteFilter::kImageRewriteLatencyFailedMs[] =
     "image_rewrite_latency_failed_ms";
+const char ImageRewriteFilter::kImageRewriteLatencyTotalMs[] =
+    "image_rewrite_latency_total_ms";
 
 const char ImageRewriteFilter::kImageWebpFromGifTimeouts[] =
     "image_webp_conversion_gif_timeouts";
@@ -467,6 +471,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   image_rewrite_uses_ = stats->GetVariable(kImageRewriteUses);
   image_inline_count_ = stats->GetVariable(kImageInline);
   image_webp_rewrites_ = stats->GetVariable(kImageWebpRewrites);
+  image_rewrite_latency_total_ms_ =
+      stats->GetVariable(kImageRewriteLatencyTotalMs);
 
   webp_conversion_variables_.Get(
       Image::ConversionVariables::FROM_GIF)->timeout_count =
@@ -556,6 +562,7 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageRewriteUses);
   statistics->AddVariable(kImageInline);
   statistics->AddVariable(kImageWebpRewrites);
+  statistics->AddVariable(kImageRewriteLatencyTotalMs);
   // We want image_ongoing_rewrites to be global even if we do per-vhost
   // stats, as it's used for a StatisticsWorkBound.
   statistics->AddGlobalVariable(kImageOngoingRewrites);
@@ -760,6 +767,23 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
   return false;
 }
 
+namespace {
+
+int64 GetCurrentCpuTimeMs(Timer* timer) {
+  // See http://linux.die.net/man/2/getrusage -- RUSAGE_THREAD is supported
+  // on Linux since Linux 2.6.26, so fall back to wall-clock time.
+#ifdef RUSAGE_THREAD
+  struct rusage start_rusage;
+  if (getrusage(RUSAGE_THREAD, &start_rusage) == 0) {
+    return ((start_rusage.ru_utime.tv_sec * 1000) +
+            (start_rusage.ru_utime.tv_usec / 1000));
+  }
+#endif
+  return timer->NowMs();
+}
+
+}  // namespace
+
 RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       Context* rewrite_context, const ResourcePtr& input_resource,
       const OutputResourcePtr& result) {
@@ -835,8 +859,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   }
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
-    int64 rewrite_time_start_ms = server_context_->timer()->NowMs();
-
+    Timer* timer = server_context_->timer();
+    int64 rewrite_time_start_ms = GetCurrentCpuTimeMs(timer);
     CachedResult* cached = result->EnsureCachedResultCreated();
     is_resized = ResizeImageIfNecessary(
         rewrite_context, input_resource->url(),
@@ -980,12 +1004,12 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         image_options->use_transparent_for_blank_image = true;
         low_image.reset(BlankImageWithOptions(image_width, image_height,
             IMAGE_PNG, server_context_->filename_prefix(),
-            driver_->timer(), message_handler, image_options));
+            timer, message_handler, image_options));
         low_image->EnsureLoaded(true);
       } else {
         low_image.reset(NewImage(image->Contents(), input_resource->url(),
             server_context_->filename_prefix(), image_options,
-            driver_->timer(), message_handler));
+            timer, message_handler));
       }
       low_image->SetTransformToLowRes();
       if (ShouldInlinePreview(low_image->Contents().size(),
@@ -1001,14 +1025,17 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       }
     }
     work_bound_->WorkComplete();
+    int64 latency_ms = GetCurrentCpuTimeMs(timer) - rewrite_time_start_ms;
     if (rewrite_result == kRewriteOk) {
-      image_rewrite_latency_ok_ms_->Add(
-          server_context_->timer()->NowMs() - rewrite_time_start_ms);
+      image_rewrite_latency_ok_ms_->Add(latency_ms);
     } else {
-      image_rewrite_latency_failed_ms_->Add(
-          server_context_->timer()->NowMs() - rewrite_time_start_ms);
+      image_rewrite_latency_failed_ms_->Add(latency_ms);
     }
 
+    // We track the total latency (including failed & OK) in its own
+    // variable so it can be easily scraped with wget.  The ok/failed
+    // versions above are histograms and thus harder to scrape.
+    image_rewrite_latency_total_ms_->Add(latency_ms);
   } else {
     image_rewrites_dropped_due_to_load_->IncBy(1);
     GoogleString msg(StringPrintf("%s: Too busy to rewrite image.",
