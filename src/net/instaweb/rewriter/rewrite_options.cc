@@ -585,6 +585,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 const RewriteOptions::Filter kOptimizeForBandwidthFilterSet[] = {
   RewriteOptions::kConvertGifToPng,                // rewrite_images
   RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
+  RewriteOptions::kConvertJpegToWebp,              // rewrite_images
   RewriteOptions::kInPlaceOptimizeForBrowser,
   RewriteOptions::kJpegSubsampling,                // rewrite_images
   RewriteOptions::kRecompressJpeg,                 // rewrite_images
@@ -1024,6 +1025,12 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
   CheckFilterSetOrdering(kTestFilterSet, arraysize(kTestFilterSet));
   CheckFilterSetOrdering(kDangerousFilterSet, arraysize(kDangerousFilterSet));
+  CheckFilterSetOrdering(kImagePreserveUrlDisabledFilters,
+                         arraysize(kImagePreserveUrlDisabledFilters));
+  CheckFilterSetOrdering(kJsPreserveUrlDisabledFilters,
+                         arraysize(kJsPreserveUrlDisabledFilters));
+  CheckFilterSetOrdering(kCssPreserveUrlDisabledFilters,
+                         arraysize(kCssPreserveUrlDisabledFilters));
 
   // Ensure that all filters have unique IDs.
   StringSet id_set;
@@ -3020,12 +3027,43 @@ bool RewriteOptions::ParseFromString(StringPiece value_string,
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {
+  // Enforce a hierarchy of configuration precedence:
+  // a. Explicit forbid is permanent all the way down the hierarchy and
+  //    cannot be overridden
+  // b. "lower level" configs (vhost, query-params, subdirectories) override
+  //    higher level -- this takes place in Merge.
+  // c. explicit filter setting overrides preserve
+  // d. preserve overrides rewrite-level
+  //
+  // TODO(jmarantz): add doc explaining this.
+
+  // Explicitly disabled filters always lose, independent of level & preserve.
   if (disabled_filters_.IsSet(filter) || forbidden_filters_.IsSet(filter)) {
     return false;
   }
+
+  // Explicitly enabled filters always win, independent of preserve.
   if (enabled_filters_.IsSet(filter)) {
     return true;
   }
+
+  if (css_preserve_urls() && IsInSet(kCssPreserveUrlDisabledFilters,
+                                     arraysize(kCssPreserveUrlDisabledFilters),
+                                     filter)) {
+    return false;
+  }
+  if (js_preserve_urls() && IsInSet(kJsPreserveUrlDisabledFilters,
+                                    arraysize(kJsPreserveUrlDisabledFilters),
+                                    filter)) {
+    return false;
+  }
+  if (image_preserve_urls() && IsInSet(
+          kImagePreserveUrlDisabledFilters,
+          arraysize(kImagePreserveUrlDisabledFilters),
+          filter)) {
+    return false;
+  }
+
   switch (level_.value()) {
     case kTestingCoreFilters:
       if (IsInSet(kTestFilterSet, arraysize(kTestFilterSet), filter)) {
@@ -3165,6 +3203,15 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK_EQ(initialized_options_, src.initialized_options_);
   DCHECK_EQ(initialized_options_, all_options_.size());
 
+  // In the case of conflicts between extend_cache and preserve, remember
+  // which one should win before we merge the individual options and filters.
+  MergeOverride override_css = ComputeMergeOverride(
+      kExtendCacheCss, src.css_preserve_urls_, css_preserve_urls_, src);
+  MergeOverride override_images = ComputeMergeOverride(
+      kExtendCacheImages, src.image_preserve_urls_, image_preserve_urls_, src);
+  MergeOverride override_scripts = ComputeMergeOverride(
+      kExtendCacheScripts, src.js_preserve_urls_, js_preserve_urls_, src);
+
   // If this.forbid_all_disabled_filters() is true
   // but src.forbid_all_disabled_filters() is false,
   // the default merging logic will set it false in the result, but we need
@@ -3297,6 +3344,11 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     set_forbid_all_disabled_filters(new_forbid_all_disabled);
   }
 
+  ApplyMergeOverride(override_css, kExtendCacheCss, &css_preserve_urls_);
+  ApplyMergeOverride(override_images, kExtendCacheImages,
+                     &image_preserve_urls_);
+  ApplyMergeOverride(override_scripts, kExtendCacheScripts, &js_preserve_urls_);
+
   if (modify) {
     Modify();
   }
@@ -3369,36 +3421,37 @@ void RewriteOptions::DisableIfNotExplictlyEnabled(Filter filter) {
   }
 }
 
-void RewriteOptions::DisableFiltersForPreserveUrl() {
-  // TODO(jmarantz): consider removing this function, and instead
-  // putting this logic into RewriteOption::Enabled().  That will have
-  // more predictable behavior during tests.  The current implementation
-  // explicitly disables filters the first time signatures are calculated,
-  // and once disabled they cannot be re-enabled in the same level, but
-  // only by merging down.
-  if (image_preserve_urls()) {
-    for (int i = 0, n = arraysize(kImagePreserveUrlDisabledFilters); i < n;
-         ++i) {
-      DisableIfNotExplictlyEnabled(kImagePreserveUrlDisabledFilters[i]);
-    }
+RewriteOptions::MergeOverride RewriteOptions::ComputeMergeOverride(
+    Filter filter, const Option<bool>& src_preserve_option,
+    const Option<bool>& preserve_option, const RewriteOptions& src) {
+
+  // Note: the order of the if and else-if matter. if both this and
+  // src have filter enabled and preserve_options set, then the filter
+  // would actually be disabled.
+  if (Enabled(filter) && src_preserve_option.value()) {
+    return kDisablePreserve;
+  } else if (src.Enabled(filter) && preserve_option.value()) {
+    return kDisableFilter;
   }
-  if (js_preserve_urls()) {
-    for (int i = 0, n = arraysize(kJsPreserveUrlDisabledFilters); i < n;
-         ++i) {
-      DisableIfNotExplictlyEnabled(kJsPreserveUrlDisabledFilters[i]);
-    }
-  }
-  if (css_preserve_urls()) {
-    for (int i = 0, n = arraysize(kCssPreserveUrlDisabledFilters); i < n;
-         ++i) {
-      DisableIfNotExplictlyEnabled(kCssPreserveUrlDisabledFilters[i]);
-    }
-  }
+  return kNoAction;
 }
 
-void RewriteOptions::ResolveConflicts() {
-  DCHECK(!frozen_);
-  DisableFiltersForPreserveUrl();
+void RewriteOptions::ApplyMergeOverride(MergeOverride merge_override,
+                                        Filter filter,
+                                        Option<bool>* preserve_option) {
+  switch (merge_override) {
+    case kNoAction:
+      break;
+    case kDisablePreserve:
+      if (preserve_option->was_set()) {
+        preserve_option->set(false);
+      }
+      break;
+    case kDisableFilter:
+      enabled_filters_.Erase(filter);
+      disabled_filters_.Insert(filter);
+      break;
+  }
 }
 
 void RewriteOptions::Freeze() {
@@ -3412,7 +3465,6 @@ void RewriteOptions::ComputeSignature() {
   if (frozen_) {
     return;
   }
-  ResolveConflicts();
 #ifndef NDEBUG
   if (!options_uniqueness_checked_) {
     options_uniqueness_checked_ = true;

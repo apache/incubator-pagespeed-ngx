@@ -720,7 +720,8 @@ class RewriteOptions {
    protected:
     // Merges a spec into this. This follows the same semantics as
     // RewriteOptions. Specifically, filter/options list get unioned, and
-    // vars get overwritten, except ID.
+    // vars get overwritten, except ID.  In the event of a conflict, e.g.
+    // preserve vs extend_cache, *this will take precedence.
     void Merge(const ExperimentSpec& spec);
 
    private:
@@ -2732,9 +2733,6 @@ class RewriteOptions {
   // list for fast merging and setting-by-option-name.
   static void MergeSubclassProperties(Properties* properties);
 
-  // Disable filters that PreserveUrls is incompatible with.
-  void DisableFiltersForPreserveUrl();
-
   // Populates all_options_, based on the passed-in index, which
   // should correspond to the property index calculated after
   // sorting all_properties_.  This enables us to sort the all_properties_
@@ -2788,6 +2786,12 @@ class RewriteOptions {
 
  private:
   struct OptionIdCompare;
+
+  // Enum type used to record what action must be taken to resolve conflicts
+  // between "preserve URLs" and "extend cache" directives at different levels
+  // of the merge.  The lower priority wins.  These must be calculated before
+  // option/filter merging, and then performed after option/filter merging.
+  enum MergeOverride { kNoAction, kDisablePreserve, kDisableFilter };
 
   // The base class for a Property.  This class contains fields of
   // Properties that are independent of type.
@@ -3055,9 +3059,6 @@ class RewriteOptions {
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
-  // Fix any option conflicts (e.g., if two options are mutually exclusive, then
-  // disable one.)
-  void ResolveConflicts();
   // Initialize the Filter id to enum reverse array used for fast lookups.
   static void InitFilterIdToEnumArray();
   static void InitOptionIdToPropertyArray();
@@ -3146,6 +3147,24 @@ class RewriteOptions {
     }
     return true;
   }
+
+  // Helps resolve the conflict between explicit extend_cache filters and
+  // preserve settings, but does not perform the action itself.  This is so
+  // that the standard option-merging and filter-merging that works over
+  // all filters can function.  This function is called prior to merging
+  // options and filters.  The resulting value is then passed to
+  // ApplyMergeOverride, which must be run after the filter/option merging.
+  MergeOverride ComputeMergeOverride(
+      Filter filter,
+      const Option<bool>& src_preserve_option,
+      const Option<bool>& preserve_option,
+      const RewriteOptions& src);
+
+  // Applies the results of ComputeMergeOverride.
+  void ApplyMergeOverride(
+      MergeOverride merge_override,
+      Filter filter,
+      Option<bool>* preserve_option);
 
   bool modified_;
   bool frozen_;

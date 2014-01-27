@@ -1228,21 +1228,18 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOnSoftEnable) {
   EXPECT_EQ(100, image_dim.height());
 }
 
-TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOnExplicit) {
-  // Make sure that the image URLs get rewritten if we are explicitly enabling
-  // filters.
-  options()->EnableFilter(RewriteOptions::kRecompressPng);
+TEST_F(ImageRewriteTest, ImageRewritePreserveURLsExplicitResizeOn) {
+  // Explicitly enabling resize_images is a strong signal from the user that
+  // it's OK to rename image URLs, so go ahead and do it in the image rewriter.
   options()->EnableFilter(RewriteOptions::kResizeImages);
-  options()->set_image_preserve_urls(true);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_preserve_urls(true);  // Explicit filters override.
   rewrite_driver()->AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     " width=10 height=10",  // initial_dims,
                     " width=10 height=10",  // final_dims,
-                    true,    // expect_rewritten: explicitly enabling filters
-                             // overrides image_preserve_urls.
+                    true,    // expect_rewritten: explicit cache_extend_images
                     false);  // expect_inline
-  // The URL wasn't changed but the image should have been compressed and cached
-  // anyway (prefetching for IPRO).
   ClearStats();
   GoogleString out_png_url(Encode(kTestDomain, "ic", "0", kBikePngFile, "png"));
   GlobalReplaceSubstring(StrCat("x", kBikePngFile),
@@ -1257,7 +1254,7 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOnExplicit) {
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
 
-  // Make sure that we did the resize resize to 10x10 from 100x100.
+  // Make sure that we did the resize to 10x10 from 100x100.
   scoped_ptr<Image> image(
       NewImage(out_png, out_png_url, server_context_->filename_prefix(),
                new Image::CompressionOptions(),

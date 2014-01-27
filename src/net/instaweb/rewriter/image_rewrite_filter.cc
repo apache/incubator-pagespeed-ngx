@@ -1187,23 +1187,10 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                    is_resized_using_rendered_dimensions);
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
-    // Consider a hosting provider that turns on "optimize for
-    // bandwidth" mode, and then a site enables resize_images
-    // explicitly.  That should override the image-url-preservation
-    // default that was set at root.  Note that explicitly turning on
-    // RecompressImages doesn't mean we'll want to override
-    // image_preserve_urls rewrite URLs here, since we can still get
-    // the benefit of recompression via IPRO.  But we make an
-    // exception for inlining and image-resizing directives since
-    // those can only be done via url-rewriting.
-    //
-    // TODO(jmarantz): Implement a policy that a user explicitly enabling
-    // RewriteOptions::kExtendCacheImages tells us to allow rewriting image
-    // URLs directly from the image rewrite filter, otherwise we can
-    // wind up cache-extending the unoptimized images.  Arguably if a user
-    // explicitly enables dedup_inlined_images then that's also a signal they
-    // are willing to let image URLs change, but I'm less worried about that
-    // filter because it won't wind up cache-extending unoptimized images.
+
+    // Note that in RewriteOptions::Merge we turn off image_preserve_urls
+    // when merging into a configuration that has explicitly
+    // enabled cache_extend_images.
     if (options->image_preserve_urls() &&
         !options->Enabled(RewriteOptions::kResizeImages) &&
         !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&

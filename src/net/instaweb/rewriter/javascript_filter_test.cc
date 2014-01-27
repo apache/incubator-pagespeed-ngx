@@ -298,19 +298,89 @@ TEST_F(JavascriptFilterTest, JsPreserveURLsOnTest) {
   EXPECT_EQ(kJsMinData, out_js);
 }
 
-TEST_F(JavascriptFilterTest, JsPreserveURLsNoPreemptiveRewriteTest) {
+TEST_F(JavascriptFilterTest, JsPreserveOverridingExtend) {
   // Make sure that when in conservative mode the URL stays the same.
   RegisterLibrary();
+
+  scoped_ptr<RewriteOptions> global_options(options()->NewOptions());
+  global_options->EnableFilter(RewriteOptions::kExtendCacheCss);
+
   options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
   options()->SoftEnableFilterForTesting(
       RewriteOptions::kCanonicalizeJavascriptLibraries);
   options()->set_js_preserve_urls(true);
+  options()->Merge(*global_options);
+
+  rewrite_driver()->AddFilters();
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  InitTest(100);
+
+  // Make sure the URL doesn't change.
+  ValidateExpected("js_urls_preserved",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kOrigJsName));
+
+  // We should have preemptively optimized the JS even though we didn't render
+  // the URL.
+  ClearStats();
+  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kOrigJsName, "js");
+  GoogleString out_js;
+  EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // Was the JS minified?
+  EXPECT_EQ(kJsMinData, out_js);
+}
+
+TEST_F(JavascriptFilterTest, JsExtendOverridingPreserve) {
+  // Make sure that when in conservative mode the URL stays the same.
+  RegisterLibrary();
+
+  scoped_ptr<RewriteOptions> global_options(options()->NewOptions());
+  global_options->set_js_preserve_urls(true);
+  global_options->EnableFilter(RewriteOptions::kRewriteJavascript);
+
+  options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
+  options()->Merge(*global_options);
+  rewrite_driver()->AddFilters();
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  InitTest(100);
+
+  // Make sure the URL is updated.
+  ValidateExpected("js_extend_overrides_preserve",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(
+                       Encode("", "jm", "0", kRewrittenJsName, "js").c_str()));
+
+  ClearStats();
+  GoogleString out_js;
+  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kRewrittenJsName,
+                                   "js");
+  EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // Was the JS minified?
+  EXPECT_EQ(kJsMinData, out_js);
+}
+
+TEST_F(JavascriptFilterTest, JsPreserveURLsNoPreemptiveRewriteTest) {
+  // Make sure that when in conservative mode the URL stays the same.
+  RegisterLibrary();
+  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+  options()->set_js_preserve_urls(true);
   options()->set_in_place_preemptive_rewrite_javascript(false);
   rewrite_driver()->AddFilters();
   EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
-  // Verify that preserve had a chance to forbid some filters.
-  EXPECT_FALSE(options()->Enabled(
-      RewriteOptions::kCanonicalizeJavascriptLibraries));
   InitTest(100);
   // Make sure the URL doesn't change.
   ValidateExpected("js_urls_preserved_no_preemptive",

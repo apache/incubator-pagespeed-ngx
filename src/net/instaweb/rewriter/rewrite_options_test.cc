@@ -1995,6 +1995,7 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   options_.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kConvertJpegToWebp));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
@@ -2002,6 +2003,13 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   EXPECT_TRUE(options_.css_preserve_urls());
   EXPECT_TRUE(options_.image_preserve_urls());
   EXPECT_TRUE(options_.js_preserve_urls());
+
+  // We use preemptive rewrites so that there's a chance that a first or
+  // second view will yield optimized resources.
+  EXPECT_TRUE(options_.in_place_preemptive_rewrite_css());
+  EXPECT_TRUE(options_.in_place_preemptive_rewrite_css_images());
+  EXPECT_TRUE(options_.in_place_preemptive_rewrite_images());
+  EXPECT_TRUE(options_.in_place_preemptive_rewrite_javascript());
 
   // Now override a bandwidth-option.  Let's say it's OK to mutate
   // CSS urls.
@@ -2050,23 +2058,15 @@ TEST_F(RewriteOptionsTest, BandwidthOverride) {
   options_.EnableFilter(RewriteOptions::kCombineCss);
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
 
-  // Now test it the other way around.  This behaves in a somewhat
-  // surprising way -- once we've computed the signature after
-  // optimizing for bandwidth you can't go back and re-enable a filter
-  // because computing the signature disables the filters that are
-  // not url-preserving, and you can't enable a filter once it is
-  // disabled at the same level.  This can be fixed by moving the
-  // preserve-url filter selection semantics into RewriteOptions::Enabled()
-  // and avoid using mutation to implement that semantics.
+  // Now test it the other way around.
   RewriteOptions other_way(&thread_system_);
   other_way.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
   other_way.ComputeSignature();
   EXPECT_FALSE(other_way.Enabled(RewriteOptions::kCombineCss));
   other_way.ClearSignatureForTesting();
-  other_way.EnableFilter(RewriteOptions::kCombineCss);  // won't work
+  other_way.EnableFilter(RewriteOptions::kCombineCss);
   other_way.ComputeSignature();
-  EXPECT_FALSE(  // We want this to be EXPECT_TRUE.
-      other_way.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(other_way.Enabled(RewriteOptions::kCombineCss));
 }
 
 TEST_F(RewriteOptionsTest, PreserveOverridesCoreCss) {
@@ -2168,6 +2168,90 @@ TEST_F(RewriteOptionsTest, ExplicitJavaScriptFiltersOverridesPreserve) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheScripts));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineJavascript));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kOutlineJavascript));
+}
+
+TEST_F(RewriteOptionsTest, ExtendCacheScriptsOverridesPreserve) {
+  RewriteOptions global_options(&thread_system_);
+  global_options.set_js_preserve_urls(true);
+  global_options.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  global_options.ComputeSignature();
+  EXPECT_FALSE(global_options.Enabled(RewriteOptions::kInlineJavascript));
+
+  options_.EnableFilter(RewriteOptions::kExtendCacheScripts);
+  options_.Merge(global_options);
+  options_.ComputeSignature();
+
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineJavascript));
+  EXPECT_FALSE(options_.js_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, ExtendCacheImagesOverridesPreserve) {
+  RewriteOptions global_options(&thread_system_);
+  global_options.set_image_preserve_urls(true);
+  global_options.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  global_options.ComputeSignature();
+  EXPECT_FALSE(global_options.Enabled(RewriteOptions::kInlineImages));
+
+  options_.EnableFilter(RewriteOptions::kExtendCacheImages);
+  options_.Merge(global_options);
+  options_.ComputeSignature();
+
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineImages));
+  EXPECT_FALSE(options_.image_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, ExtendCacheStylesOverridesPreserve) {
+  RewriteOptions global_options(&thread_system_);
+  global_options.set_css_preserve_urls(true);
+  global_options.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  global_options.ComputeSignature();
+  EXPECT_FALSE(global_options.Enabled(RewriteOptions::kInlineCss));
+
+  options_.EnableFilter(RewriteOptions::kExtendCacheCss);
+  options_.Merge(global_options);
+  options_.ComputeSignature();
+
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineCss));
+  EXPECT_FALSE(options_.css_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersScripts) {
+  RewriteOptions global_options(&thread_system_);
+  global_options.EnableFilter(RewriteOptions::kExtendCacheScripts);
+  global_options.ComputeSignature();
+
+  options_.set_js_preserve_urls(true);
+  options_.Merge(global_options);
+  options_.ComputeSignature();
+
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheScripts));
+  EXPECT_TRUE(options_.js_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersImages) {
+  RewriteOptions global_options(&thread_system_);
+  global_options.EnableFilter(RewriteOptions::kExtendCacheImages);
+  global_options.ComputeSignature();
+
+  options_.set_image_preserve_urls(true);
+  options_.Merge(global_options);
+  options_.ComputeSignature();
+
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheImages));
+  EXPECT_TRUE(options_.image_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersStyles) {
+  RewriteOptions global_options(&thread_system_);
+  global_options.EnableFilter(RewriteOptions::kExtendCacheCss);
+  global_options.ComputeSignature();
+
+  options_.set_css_preserve_urls(true);
+  options_.Merge(global_options);
+  options_.ComputeSignature();
+
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_TRUE(options_.css_preserve_urls());
 }
 
 }  // namespace net_instaweb
