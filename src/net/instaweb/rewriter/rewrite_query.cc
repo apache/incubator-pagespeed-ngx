@@ -337,7 +337,8 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     if (RewriteOptions::ParseFromString(trimmed_value, &enabled)) {
       options->set_enabled(enabled);
       status = kSuccess;
-    } else if (trimmed_value == kNoscriptValue) {
+    } else if (trimmed_value.starts_with(kNoscriptValue)) {
+      // We use starts_with("noscript") to help resolve Issue 874.
       // Disable filters that depend on custom script execution.
       options->DisableFiltersRequiringScriptExecution();
       options->EnableFilter(RewriteOptions::kHandleNoscriptRedirect);

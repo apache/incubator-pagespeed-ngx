@@ -1109,9 +1109,6 @@ goog.array.equals = function(arr1, arr2, opt_equalsFn) {
   }
   return!0;
 };
-goog.array.compare = function(arr1, arr2, opt_equalsFn) {
-  return goog.array.equals(arr1, arr2, opt_equalsFn);
-};
 goog.array.compare3 = function(arr1, arr2, opt_compareFn) {
   for (var compare = opt_compareFn || goog.array.defaultCompare, l = Math.min(arr1.length, arr2.length), i = 0;i < l;i++) {
     var result = compare(arr1[i], arr2[i]);

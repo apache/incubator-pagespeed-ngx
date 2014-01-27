@@ -660,6 +660,7 @@ TEST_F(RewriteQueryTest, NoQueryValue) {
 
 TEST_F(RewriteQueryTest, NoscriptQueryParamEmptyValue) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl, "PageSpeed=noscript", "");
+  ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
@@ -668,6 +669,7 @@ TEST_F(RewriteQueryTest, NoscriptQueryParamEmptyValue) {
 
 TEST_F(RewriteQueryTest, NoscriptHeader) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl, "", "PageSpeed:noscript");
+  ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
@@ -677,6 +679,7 @@ TEST_F(RewriteQueryTest, NoscriptHeader) {
 TEST_F(RewriteQueryTest, NoscriptWithTrailingQuoteQueryParamEmptyValue) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl,
                                          "ModPagespeed=noscript'", "");
+  ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
@@ -698,6 +701,18 @@ TEST_F(RewriteQueryTest, NoscriptWithTrailingEscapedQuoteQueryParamEmptyValue) {
 TEST_F(RewriteQueryTest, NoscripWithTrailingQuotetHeader) {
   RewriteOptions* options = ParseAndScan(kHtmlUrl, "",
                                          "ModPagespeed:noscript'");
+  ASSERT_TRUE(options != NULL);
+  RewriteOptions::FilterVector filter_vector;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
+  EXPECT_TRUE(filter_vector.empty());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCachePartialHtml));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
+}
+
+TEST_F(RewriteQueryTest, NoscripWithTrailingQuestionMarkHeader) {
+  RewriteOptions* options = ParseAndScan(kHtmlUrl, "",
+                                         "ModPagespeed:noscript?");
+  ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
   EXPECT_TRUE(filter_vector.empty());
