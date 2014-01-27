@@ -481,13 +481,13 @@ RewriteQuery::Status RewriteQuery::ParseResourceOption(
                              kResourceOptionValueSeparator, &name_value, true);
     switch (name_value.size()) {
       case 1: {
-        RewriteOptions::Filter filter =
+        RewriteOptions::Filter filter_enum =
             RewriteOptions::LookupFilterById(name_value[0]);
-        if ((filter == RewriteOptions::kEndOfFilters) ||
-            !std::binary_search(filters, filters + num_filters, filter)) {
+        if ((filter_enum == RewriteOptions::kEndOfFilters) ||
+            !std::binary_search(filters, filters + num_filters, filter_enum)) {
           status = kInvalid;
         } else {
-          options->EnableFilter(filter);
+          options->EnableFilter(filter_enum);
           status = kSuccess;
         }
         break;
