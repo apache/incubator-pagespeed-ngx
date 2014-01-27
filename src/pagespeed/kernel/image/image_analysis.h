@@ -58,6 +58,23 @@ bool SimpleGradient(const uint8_t* image, int width, int height,
 void Histogram(const uint8_t* image, int width, int height, int bytes_per_line,
                int x0, int y0, float* hist);
 
+// Return the photographic metric. Photos will have large metric values, while
+// computer generated graphics, especially those consists of only a few colors
+// or slowly changing colors will have small values. Graphics usually
+// have tall and sharp peaks in their gradient histogram, so the mean width
+// of histogram peaks will be small. On the other hand, photos have flat peaks
+// in their gradient histogram so the mean width of peaks will be larger.
+// Metric can have values between 1 and 256, and the recommended threshold for
+// separating graphics and photo is around 7.5.
+float PhotoMetric(const uint8_t* image, int width, int height,
+                  int bytes_per_line, PixelFormat pixel_format, float threshold,
+                  MessageHandler* handler);
+
+// Return the average width of all the peaks in the histogram. A peak is a
+// maximum set of contiguous bins such that all of them are greater than or
+// equal to (max(hist) * threshold).
+float AveragePeakWidth(const float* hist, float threshold);
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

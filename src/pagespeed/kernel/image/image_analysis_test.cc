@@ -16,6 +16,9 @@
 
 // Author: Huibao Lin
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdlib>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -23,6 +26,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/image_analysis.h"
+#include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
@@ -33,11 +37,35 @@ using net_instaweb::MockMessageHandler;
 using net_instaweb::NullMutex;
 using pagespeed::image_compression::GRAY_8;
 using pagespeed::image_compression::Histogram;
+using pagespeed::image_compression::IMAGE_JPEG;
+using pagespeed::image_compression::kJpegTestDir;
 using pagespeed::image_compression::kNumColorHistogramBins;
 using pagespeed::image_compression::PixelFormat;
+using pagespeed::image_compression::ReadImage;
+using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
 using pagespeed::image_compression::SynthesizeImage;
+
+struct ImageInfo {
+  const char* file_name;
+  bool is_photo;
+};
+
+const ImageInfo kJpegImages[] = {
+  {"quality100", false},
+  {"sjpeg1", false},
+  {"sjpeg6", false},
+  {"app_segments", false},
+  {"sjpeg3", true},
+  {"sjpeg4", true},
+  {"already_optimized", true},
+  {"test444", true}
+};
+const size_t kJpegImageCount = arraysize(kJpegImages);
+// In kJpegImages[], the images at position kJpegImageFirstPhotoIdx and later
+// are photos.
+const size_t kJpegImageFirstPhotoIdx = 4;
 
 class ImageAnalysisTest : public testing::Test {
  public:
@@ -174,13 +202,14 @@ TEST_F(ImageAnalysisTest, HistogramOfBlankImage) {
   SynthesizeImage(width, height, bytes_per_line, num_channels, seed_value,
                   delta_x, delta_y, image.get());
 
-  // Ground truth. All of the pixels have value of 123, so only one bin
-  // has non-zero value (which is 1).
-  expected_hist_[seed_value[0]] = 1.0f;
-
   float hist[kNumColorHistogramBins];
   const int x0 = 1;
   const int y0 = 2;
+
+  // Ground truth. All of the pixels have value of 123, so only one bin
+  // has non-zero value (which is 1).
+  expected_hist_[seed_value[0]] = (width - x0) * (height - y0);
+
   Histogram(image.get(), width-x0, height-y0, bytes_per_line, x0, y0, hist);
   EXPECT_EQ(0, memcmp(expected_hist_, hist,
                       kNumColorHistogramBins * sizeof(hist[0])));
@@ -203,13 +232,57 @@ TEST_F(ImageAnalysisTest, HistogramOfIncreasingPixelValues) {
   // Generate ground truth. The pixels have contiguous values, so
   // the histogram has a flat region.
   for (int i = seed_value[0]; i < seed_value[0] + width * height; ++i) {
-    expected_hist_[i] = 1.0f / (width * height);
+    expected_hist_[i] = 1.0f;
   }
 
   float hist[kNumColorHistogramBins];
   Histogram(image.get(), width, height, bytes_per_line, 0, 0, hist);
   EXPECT_EQ(0, memcmp(expected_hist_, hist,
                       kNumColorHistogramBins * sizeof(hist[0])));
+}
+
+TEST_F(ImageAnalysisTest, PhotoMetric) {
+  // Threshold for suppressing weak histogram bins. At average each bin is
+  // expected to be 1/256. We will test that with different thresholds
+  // we can still separate graphics from photos.
+  const float thresholds[] = {
+    0.5f / 256.0f,
+    1.0f / 256.0f,
+    5.0f / 256.0f,
+    10.0f / 256.0f,
+  };
+
+  float metric[kJpegImageCount];
+  for (size_t i = 0; i < arraysize(thresholds); ++i) {
+    float thr = thresholds[i];
+    for (size_t j = 0; j < kJpegImageCount; ++j) {
+      GoogleString image_string;
+      ASSERT_TRUE(ReadTestFile(kJpegTestDir, kJpegImages[j].file_name, "jpg",
+                               &image_string));
+
+      size_t width, height, bytes_per_line;
+      uint8_t* image;
+      PixelFormat pixel_format;
+      ASSERT_TRUE(ReadImage(IMAGE_JPEG, image_string.data(),
+                            image_string.length(),
+                            reinterpret_cast<void**>(&image), &pixel_format,
+                            &width, &height, &bytes_per_line,
+                            &message_handler_));
+
+      metric[j] = PhotoMetric(image, width, height, bytes_per_line,
+                              pixel_format, thr, &message_handler_);
+      free(image);
+    }
+
+    // Verify that the metrics for all graphics are smaller than those
+    // for photos.
+    float max_graphics_metric =
+        *std::max_element(metric, metric + kJpegImageFirstPhotoIdx);
+    float min_photo_metric =
+        *std::min_element(metric + kJpegImageFirstPhotoIdx,
+                          metric + kJpegImageCount);
+    EXPECT_LT(max_graphics_metric, min_photo_metric);
+  }
 }
 
 }  // namespace

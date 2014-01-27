@@ -21,6 +21,8 @@ goog.setTestOnly = function(opt_message) {
     throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + opt_message ? ": " + opt_message : ".");
   }
 };
+goog.forwardDeclare = function() {
+};
 goog.getObjectByName = function(name, opt_obj) {
   for (var parts = name.split("."), cur = opt_obj || goog.global, part;part = parts.shift();) {
     if (goog.isDefAndNotNull(cur[part])) {

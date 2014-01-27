@@ -115,10 +115,53 @@ void Histogram(const uint8_t* image, int width, int height, int bytes_per_line,
     }
   }
 
-  const float norm = 1.0f / static_cast<float>(height * width);
   for (int i = 0; i < kNumColorHistogramBins; ++i) {
-    hist[i] = static_cast<float>(hist_int[i]) * norm;
+    hist[i] = static_cast<float>(hist_int[i]);
   }
+}
+
+float MeanPeakWidth(const float* hist, float threshold) {
+  float max_hist = *std::max_element(hist, hist + kNumColorHistogramBins);
+  float threshold_hist = threshold * max_hist;
+
+  int num_peaks = 0;
+  int length_peaks = 0;
+  int i = 0;
+  while (i < kNumColorHistogramBins) {
+    // Skip all bins which are smaller than the threshold.
+    for (; i < kNumColorHistogramBins && hist[i] < threshold_hist; ++i) {
+    }
+    // Now we have a bin which meets the threshold, or we have finished
+    // all of the bins.
+    int first_significant_bin = i;
+    for (; i < kNumColorHistogramBins && hist[i] >= threshold_hist; ++i) {
+    }
+    // Now we have gone through a peak or we have run out of bins. In the first
+    // case, we will record the string.
+    if (i > first_significant_bin) {
+      ++num_peaks;
+      length_peaks += (i - first_significant_bin);
+    }
+  }
+
+  return (static_cast<float>(length_peaks) / num_peaks);
+}
+
+float PhotoMetric(const uint8_t* image, int width, int height,
+                  int bytes_per_line, PixelFormat pixel_format,
+                  float threshold, MessageHandler* handler) {
+  const float KMinMetric = 0;
+  net_instaweb::scoped_array<uint8_t> gradient(new uint8_t[width * height]);
+  if (!SimpleGradient(image, width, height, bytes_per_line, pixel_format,
+                      handler, gradient.get())) {
+    // Conservatively assume that the image is computer generated graphics if we
+    // cannot compute its gradient.
+    return KMinMetric;
+  }
+
+  float hist[kNumColorHistogramBins];
+  Histogram(gradient.get(), width-2, height-2, width, 1, 1, hist);
+  return MeanPeakWidth(hist, threshold);
 }
 
 }  // namespace image_compression
