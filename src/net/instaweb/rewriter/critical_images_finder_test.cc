@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 

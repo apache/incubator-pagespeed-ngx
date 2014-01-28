@@ -509,8 +509,8 @@ const int RewriteOptions::kDefaultDomainShardCount = 0;
 const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
     Timer::kMinuteMs;
 
-// By default, reinstrument every 6 hours.
-const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 6 * 60 * 60;
+// By default, reinstrument every minute.
+const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 60;
 
 // By default, all images are inline-previewed irrespective of size.
 const int64 RewriteOptions::kDefaultMaxLowResImageSizeBytes = -1;
@@ -1326,12 +1326,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Stops the prioritize_critical_css filter from invoking its JavaScript "
       "that applies all the 'hidden' CSS at onload. Intended for testing.");
-  AddBaseProperty(
-      kDefaultBeaconReinstrumentTimeSec,
-      &RewriteOptions::beacon_reinstrument_time_sec_, "brts",
-      kBeaconReinstrumentTimeSec,
-      kDirectoryScope,
-      "How often (in seconds) to reinstrument pages with beacons.");
+  AddBaseProperty(kDefaultBeaconReinstrumentTimeSec,
+                  &RewriteOptions::beacon_reinstrument_time_sec_, "brts",
+                  kBeaconReinstrumentTimeSec, kDirectoryScope,
+                  "How often (in seconds) to reinstrument pages with beacons. "
+                  "This is used for both critical image beaconing, and for the "
+                  "prioritize_critical_css filter.");
   AddBaseProperty(
       false, &RewriteOptions::log_background_rewrites_, "lbr",
       kLogBackgroundRewrite,

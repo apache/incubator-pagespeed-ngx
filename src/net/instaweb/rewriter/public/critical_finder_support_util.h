@@ -43,8 +43,9 @@
 
 namespace net_instaweb {
 
-// Default rebeaconing time.
-const int64 kMinBeaconIntervalMs = 5 * Timer::kSecondMs;
+// The amount of time after generating a nonce that we will accept it as valid.
+// This keeps an attacker from accumulating large numbers of valid nonces to
+// send many beacon responses at once.
 const int64 kBeaconTimeoutIntervalMs = Timer::kMinuteMs;
 
 class CriticalKeys;

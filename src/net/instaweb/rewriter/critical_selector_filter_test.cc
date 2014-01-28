@@ -42,6 +42,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
@@ -119,7 +120,8 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
   }
 
   void WriteCriticalSelectorsToPropertyCache(const StringSet& selectors) {
-    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
     last_beacon_metadata_ =
         server_context()->critical_selector_finder()->
             PrepareForBeaconInsertion(candidates_, rewrite_driver());

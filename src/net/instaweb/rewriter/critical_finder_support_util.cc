@@ -344,7 +344,9 @@ void PrepareForBeaconInsertionHelper(
       // TODO(jmaessen): Add noise to inter-beacon interval.  How?
       // Currently first visit to page after next_beacon_timestamp_ms will
       // beacon.
-      proto->set_next_beacon_timestamp_ms(now_ms + kMinBeaconIntervalMs);
+      proto->set_next_beacon_timestamp_ms(
+          now_ms +
+          driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
       changed = true;  // Timestamp definitely changed.
       if (driver->options()->IsDownstreamCacheIntegrationEnabled()) {
         // We can only get here if downstream cache integration was enabled, but

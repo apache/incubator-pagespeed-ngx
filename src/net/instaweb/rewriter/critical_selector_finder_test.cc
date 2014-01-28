@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
 
@@ -123,7 +124,8 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
   // Simulate beacon insertion, with candidates_.
   void Beacon() {
     WriteBackAndResetDriver();
-    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
     VerifyBeaconStatus(ExpectedBeaconStatus());
   }
 
@@ -250,6 +252,10 @@ TEST_F(CriticalSelectorFinderTest, StoreMultiple) {
 // Make sure beacon results can arrive out of order (so long as the nonce
 // doesn't time out).
 TEST_F(CriticalSelectorFinderTest, OutOfOrder) {
+  // Make sure that the rebeaconing time is less than the time a nonce is valid,
+  // so that we can test having multiple outstanding nonces.
+  options()->set_beacon_reinstrument_time_sec(kBeaconTimeoutIntervalMs /
+                                              Timer::kSecondMs / 2);
   Beacon();
   GoogleString initial_nonce(last_beacon_metadata_.nonce);
   // A second beacon occurs and the result comes back first.
@@ -281,7 +287,8 @@ TEST_F(CriticalSelectorFinderTest, NonceTimeout) {
   // Make sure that beacons time out after kBeaconTimeoutIntervalMs.
   Beacon();
   GoogleString initial_nonce(last_beacon_metadata_.nonce);
-  // kMinBeaconIntervalMs passes (in mock time) before the next call completes:
+  // beacon_reinstrument_time_sec() passes (in mock time) before the next call
+  // completes:
   Beacon();
   factory()->mock_timer()->AdvanceMs(kBeaconTimeoutIntervalMs);
   StringSet selectors;
@@ -374,12 +381,13 @@ TEST_F(CriticalSelectorFinderTest, DontRebeaconBeforeTimeout) {
   Beacon();
   // Now simulate a beacon insertion attempt without timing out.
   WriteBackAndResetDriver();
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs / 2);
+  factory()->mock_timer()->AdvanceMs(options()->beacon_reinstrument_time_sec() *
+                                     Timer::kSecondMs / 2);
   BeaconMetadata last_beacon_metadata =
       finder_->PrepareForBeaconInsertion(candidates_, rewrite_driver());
   EXPECT_EQ(kDoNotBeacon, last_beacon_metadata.status);
   // But we'll re-beacon if some more time passes.
-  Beacon();  // kMinBeaconIntervalMs passes in Beacon() call.
+  Beacon();  // beacon_reinstrument_time_sec() passes in Beacon() call.
 }
 
 TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
@@ -397,7 +405,8 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   SetShouldBeaconHeader(kConfiguredBeaconingKey);
   VerifyNoBeaconing();
   // Advance the timer past the beacon interval.
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs + 1);
+  factory()->mock_timer()->AdvanceMs(options()->beacon_reinstrument_time_sec() *
+                                     Timer::kSecondMs + 1);
   // When the reinstrumentation time interval is exceeded, beacon injection
   // should happen as usual.
   ResetDriver();
@@ -435,7 +444,8 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   VerifyBeaconing();
 
   // Advance the timer past the beacon interval.
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs + 1);
+  factory()->mock_timer()->AdvanceMs(
+      options()->beacon_reinstrument_time_sec() * Timer::kSecondMs + 1);
   // Beacon injection should happen after reinstrumentation time interval has
   // passed when downstream caching is enabled but rebeaconing key is not
   // configured.
@@ -445,7 +455,8 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   VerifyBeaconing();
 
   // Advance the timer past the beacon interval.
-  factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs + 1);
+  factory()->mock_timer()->AdvanceMs(
+      options()->beacon_reinstrument_time_sec() * Timer::kSecondMs + 1);
   // Beacon injection should not happen when the PS-ShouldBeacon header is
   // incorrect even if the reinstrumentation time interval has been exceeded.
   ResetDriver();

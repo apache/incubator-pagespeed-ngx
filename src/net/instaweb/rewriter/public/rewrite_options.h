@@ -1652,7 +1652,7 @@ class RewriteOptions {
     return critical_images_beacon_enabled_.value();
   }
 
-  void set_beacon_reinstrument_beacon_time_sec(int x) {
+  void set_beacon_reinstrument_time_sec(int x) {
     set_option(x, &beacon_reinstrument_time_sec_);
   }
   int beacon_reinstrument_time_sec() const {

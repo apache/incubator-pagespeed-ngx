@@ -1131,7 +1131,8 @@ class BeaconTest : public ServerContextTest {
   void InsertCssBeacon(StringPiece user_agent) {
     // Simulate effects on pcache of CSS beacon insertion.
     rewrite_driver()->set_property_page(MockPageForUA(user_agent));
-    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
     last_beacon_metadata_ =
         server_context()->critical_selector_finder()->
             PrepareForBeaconInsertion(candidates_, rewrite_driver());
@@ -1144,7 +1145,8 @@ class BeaconTest : public ServerContextTest {
   void InsertImageBeacon(StringPiece user_agent) {
     // Simulate effects on pcache of image beacon insertion.
     rewrite_driver()->set_property_page(MockPageForUA(user_agent));
-    factory()->mock_timer()->AdvanceMs(kMinBeaconIntervalMs);
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
     last_beacon_metadata_ =
         server_context()->critical_images_finder()->
             PrepareForBeaconInsertion(rewrite_driver());
