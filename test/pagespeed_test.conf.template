@@ -202,18 +202,20 @@ http {
   }
 
   server {
-    # Setup a vhost with the critical image beacon and lazyload filter enabled
-    # to make sure that downstream caches and rebeaconing interact correctly.
+    # Setup a vhost with the critical image beacon enabled to make sure that
+    # downstream caches and rebeaconing interact correctly.
     listen @@SECONDARY_PORT@@;
     server_name downstreamcacherebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed RewriteLevel PassThrough;
-    pagespeed EnableFilters lazyload_images;
     pagespeed CriticalImagesBeaconEnabled true;
     # Enable the downstream caching feature and specify a rebeaconing key.
     pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
     pagespeed DownstreamCacheRebeaconingKey random_rebeaconing_key;
+    location ~ .*[.]html {
+      add_header Cache-Control "private, max-age=3000";
+    }
   }
 
   server {

@@ -398,7 +398,6 @@ check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
 
 # And also with bad request headers.
 OUT=$(wget -O - --header=PageSpeedFilters:bogus $EXAMPLE_ROOT)
-echo $OUT
 check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
 
 # Test that loopback route fetcher works with vhosts not listening on
@@ -1826,8 +1825,8 @@ start_test resize_rendered_image_dimensions with critical images beacon
 HOST_NAME="http://renderedimagebeacon.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/image_resize_using_rendered_dimensions.html"
 http_proxy=$SECONDARY_HOSTNAME\
-    fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 1 \
-'--header=X-PSA-Blocking-Rewrite:psatest'
+    fetch_until -save -recursive $URL 'fgrep -c "pagespeed_url_hash"' 2 \
+    '--header=X-PSA-Blocking-Rewrite:psatest'
 check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
   $WGET_DIR/image_resize_using_rendered_dimensions.html) = 1 ];
 OPTIONS_HASH=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
@@ -1842,59 +1841,61 @@ BEACON_URL+="?url=http%3A%2F%2Frenderedimagebeacon.example.com%2Fmod_pagespeed_t
 BEACON_URL+="image_rewriting%2Fimage_resize_using_rendered_dimensions.html"
 BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=1344500982&rd=%7B%221344500982%22%3A%7B%22rw%22%3A150%2C%22rh%22%3A100%2C%22ow%22%3A256%2C%22oh%22%3A192%7D%7D"
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
-  $WGET_DUMP --post-data "$BEACON_DATA" "$BEACON_URL")
+  $WGET_DUMP --no-http-keep-alive --post-data "$BEACON_DATA" "$BEACON_URL")
 check_from "$OUT" egrep -q "HTTP/1[.]. 204"
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL \
   'fgrep -c 150x100xOptPuzzle.jpg.pagespeed.ic.' 1
 
-# TODO(anupama): Currently, the below tests for downstream caching and
-# rebeaconing interaction will pass incorrectly depending on whether the
-# time interval between the wgets is either < or > 5s (kMinBeaconIntervalMs)
-# Check to see if there is a better way to test this.
-
 # Verify that downstream caches and rebeaconing interact correctly for images.
-WGET_ARGS=""
-start_test lazyload_images,rewrite_images with critical images beacon
+start_test lazyload_images,rewrite_images with downstream cache rebeaconing
 HOST_NAME="http://downstreamcacherebeacon.example.com"
-URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
-# There are 3 images on rewrite_images.html. Check that they are all
-# lazyloaded by default.
-http_proxy=$SECONDARY_HOSTNAME\
-  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
-  $WGET_DIR/rewrite_images.html) = 1 ];
-# An immediately issued wget does not result in instrumentation if the
-# correct PS-ShouldBeacon header is not present.
-OUT1=$(http_proxy=$SECONDARY_HOSTNAME\
-          $WGET_DUMP $WGET_ARGS\
-          --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
-# An immediately issued wget results in instrumentation if the PS-ShouldBeacon
-# header has the correct key.
+URL="$HOST_NAME/mod_pagespeed_test/downstream_caching.html"
+URL+="?PageSpeedFilters=lazyload_images"
+# 1. Even with blocking rewrite, we don't get an instrumented page when the
+# PS-ShouldBeacon header is missing.
+OUT1=$(http_proxy=$SECONDARY_HOSTNAME \
+          $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL)
+check_not_from "$OUT1" egrep -q 'pagespeed\.CriticalImages\.Run'
+check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
+# 2. We get an instrumented page if the correct key is present.
 OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
           $WGET_DUMP $WGET_ARGS\
           --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
-check_not_from "$OUT1" egrep -q "pagespeed\.CriticalImages\.Run"
 check_from "$OUT2" egrep -q "pagespeed\.CriticalImages\.Run"
-
-# Verify that downstream caches and rebeaconing interact correctly for css.
-test_filter prioritize_critical_css
-URL="$HOST_NAME/mod_pagespeed_example/prioritize_critical_css.html"
-# Once candidate selectors are ready, we get an instrumented page.
-http_proxy=$SECONDARY_HOSTNAME\
-    fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
-# An immediately issued wget does not result in instrumentation if the
-# correct PS-ShouldBeacon header is not present.
-OUT1=$(http_proxy=$SECONDARY_HOSTNAME\
+check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
+# 3. We do not get an instrumented page if the wrong key is present.
+OUT3=$(http_proxy=$SECONDARY_HOSTNAME\
           $WGET_DUMP $WGET_ARGS\
           --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
-# An immediately issued wget results in instrumentation if the PS-ShouldBeacon
-# header has the correct key.
+check_not_from "$OUT3" egrep -q "pagespeed\.CriticalImages\.Run"
+check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
+
+# Verify that downstream caches and rebeaconing interact correctly for css.
+test_filter prioritize_critical_css with rebeaconing
+HOST_NAME="http://downstreamcacherebeacon.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/downstream_caching.html"
+URL+="?PageSpeedFilters=prioritize_critical_css"
+# 1. Even with blocking rewrite, we don't get an instrumented page when the
+# PS-ShouldBeacon header is missing.
+OUT1=$(http_proxy=$SECONDARY_HOSTNAME \
+          $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL)
+check_not_from "$OUT1" egrep -q 'pagespeed\.criticalCssBeaconInit'
+check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
+# 2. We get an instrumented page if the correct key is present.
 OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
-           $WGET_DUMP $WGET_ARGS\
-           --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
-check_not_from "$OUT1" egrep -q "pagespeed.criticalCssBeaconInit"
-check_from "$OUT2" egrep -q "pagespeed.criticalCssBeaconInit"
+          $WGET_DUMP $WGET_ARGS\
+          --header 'X-PSA-Blocking-Rewrite: psatest'\
+          --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
+check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
+check_from "$OUT2" egrep -q "pagespeed\.criticalCssBeaconInit"
+# 3. We do not get an instrumented page if the wrong key is present.
+WGET_ARGS="--header=\"PS-ShouldBeacon: wrong_rebeaconing_key\""
+OUT3=$(http_proxy=$SECONDARY_HOSTNAME\
+          $WGET_DUMP $WGET_ARGS $URL)
+check_not_from "$OUT3" egrep -q "pagespeed\.criticalCssBeaconInit"
+check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
+
 
 # Verify that we can send a critical image beacon and that lazyload_images
 # does not try to lazyload the critical images.
@@ -1926,7 +1927,6 @@ BEACON_DATA="oh=$OPTIONS_HASH&n=$NONCE&ci=2932493096"
 OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
   wget -q --save-headers -O - --no-http-keep-alive \
   --post-data "$BEACON_DATA" "$BEACON_URL")
-echo $OUT
 check_from "$OUT" egrep -q "HTTP/1[.]. 204"
 # Now only 2 of the images should be lazyloaded, Cuppa.png should not be.
 http_proxy=$SECONDARY_HOSTNAME \
@@ -2030,7 +2030,7 @@ NONCE=$( \
   $FETCH_FILE)
 BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
 BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
-run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
+run_wget_with_args --no-http-keep-alive --post-data "$BEACON_DATA" "$BEACON_URL"
 # Now make sure we see the correct critical css rules.
 fetch_until $URL \
   'grep -c <style>[.]blue{[^}]*}</style>' 1
