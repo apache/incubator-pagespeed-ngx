@@ -1981,7 +1981,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # a) no selectors from the unauthorized @ import (e.g .maia-display) should
   #    appear in the selector list.
   check_not fgrep -q "maia-display" $FETCH_FILE
-  # b) no selectors from the authorized @ import (e.g .red) should
+  # b) no selectors from the authorized @ import (e.g .interesting_color) should
   #    appear in the selector list because it won't be flattened.
   check_not fgrep -q "interesting_color" $FETCH_FILE
   # c) selectors that don't depend on flattening should appear in the selector
@@ -2001,11 +2001,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   HOST_NAME="http://unauthorizedresources.example.com"
   URL="$HOST_NAME/mod_pagespeed_test/unauthorized/prioritize_critical_css.html"
   URL+="?PageSpeedFilters=prioritize_critical_css,debug"
-  http_proxy=$SECONDARY_HOSTNAME \
-     fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 3
-  # gsc-completion-selected strng should occur once in the html and once in the
+  # gsc-completion-selected string should occur once in the html and once in the
   # selector list.
-  check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 2 ]
+  http_proxy=$SECONDARY_HOSTNAME \
+     fetch_until -save $URL 'fgrep -c gsc-completion-selected' 2
+  # Verify that this page had beaconing javascript on it.
+  check [ $(fgrep -c "pagespeed.criticalCssBeaconInit" $FETCH_FILE) -eq 3 ]
   # From the css file containing an unauthorized @import line,
   # a) no selectors from the unauthorized @ import (e.g .maia-display) should
   #    appear in the selector list.
