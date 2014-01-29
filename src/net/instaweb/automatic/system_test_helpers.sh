@@ -364,6 +364,12 @@ function fetch_until() {
     shift
   fi
 
+  gzip=""
+  if [ $1 = "-gzip" ]; then
+    gzip="--header=Accept-Encoding:gzip"
+    shift
+  fi
+
   recursive=0
   if [ $1 = "-recursive" ]; then
     recursive=1
@@ -373,7 +379,7 @@ function fetch_until() {
   REQUESTURL=$1
   COMMAND=$2
   RESULT=$3
-  FETCH_UNTIL_WGET_ARGS="$WGET_ARGS ${4:-}"
+  FETCH_UNTIL_WGET_ARGS="$gzip $WGET_ARGS ${4:-}"
   OP=${5:-=}  # Default to =
 
   if [ $recursive -eq 1 ]; then

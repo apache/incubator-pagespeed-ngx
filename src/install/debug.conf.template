@@ -183,16 +183,6 @@ ModPagespeedEnableFilters add_instrumentation
 # our tests.
 ModPagespeedEnableCachePurge on
 
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cachable_rewritten_html" >
-    ModPagespeedRewriteDeadlinePerFlushMs 1
-    # Assume that Varnish (or any other downstream cache) is running at
-    # localhost:8020.
-    ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020"
-    ModPagespeedDownstreamCachePurgeMethod "PURGE"
-    ModPagespeedRewriteLevel PassThrough
-    ModPagespeedEnableFilters collapse_whitespace,extend_cache,recompress_images
-</Directory>
-
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/disable_no_transform" >
   ModPagespeedDisableRewriteOnNoTransform off
   <IfModule headers_module>
@@ -677,8 +667,9 @@ ModPagespeedUsePerVHostStatistics on
   </Location>
 </VirtualHost>
 
-# Setup a vhost with the critical image beacon enabled to make sure that
-# downstream caches and rebeaconing interact correctly.
+# The downstreamcacherebeacon vhost setup in the below section is used in
+# apache system tests to make sure that downstream caching and rebeaconing
+# interact correctly.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName downstreamcacherebeacon.example.com
 
@@ -689,15 +680,29 @@ ModPagespeedUsePerVHostStatistics on
 
   # Enable the downstream caching feature and specify a rebeaconing key.
   ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020"
+  ModPagespeedDownstreamCachePurgeMethod "PURGE"
   ModPagespeedDownstreamCacheRebeaconingKey random_rebeaconing_key
 
   Header set Cache-Control "private, max-age=3000"
-  # add_instrumentation tests beacon handling with no handler specified, while
-  # here we test it with a handler (that should do nothing).
-  <Location /mod_pagespeed_beacon>
-    SetHandler mod_pagespeed_beacon
-  </Location>
 </VirtualHost>
+
+# The cachable_rewritten_html path is configured for testing from within
+# apache_downstream_caching_test.sh since that cannot work with a Vhost for
+# the mod_pagespeed part of the test.
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cachable_rewritten_html" >
+  ModPagespeedRewriteDeadlinePerFlushMs 1
+
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedCriticalImagesBeaconEnabled true
+  ModPagespeedEnableFilters collapse_whitespace,extend_cache,recompress_images
+
+  # Assume that Varnish (or any other downstream cache) is running at
+  # localhost:8020.
+  # Enable the downstream caching feature and specify a rebeaconing key.
+  ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020"
+  ModPagespeedDownstreamCachePurgeMethod "PURGE"
+  ModPagespeedDownstreamCacheRebeaconingKey random_rebeaconing_key
+</Directory>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName renderedimagebeacon.example.com

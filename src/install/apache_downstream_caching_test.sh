@@ -1,6 +1,19 @@
 #!/bin/bash
 #
-# Copyright 2010 Google Inc. All Rights Reserved.
+# Copyright 2013 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 # Author: anupama@google.com (Anupama Dutta)
 #
 # Runs all Apache-specific downstream caching tests.
@@ -12,7 +25,7 @@
 # 2) MUST_BACKUP_DEFAULT_VCL should be set to 1 or 0 depending on
 # whether we want the existing default.vcl to be backed up and restored
 # before and after the test or it can be overwritten by the updated
-# sample_conf.vcl. By default, it is assumed to have the value 1.
+# debug_conf.vcl. By default, it is assumed to have the value 1.
 
 this_dir="$( dirname "${BASH_SOURCE[0]}" )"
 INSTAWEB_CODE_DIR="$this_dir/../net/instaweb"
@@ -23,8 +36,8 @@ source "$INSTAWEB_CODE_DIR/automatic/system_test_helpers.sh" || exit 1
 
 DEFAULT_VCL="/etc/varnish/default.vcl"
 BACKUP_DEFAULT_VCL=$TEMPDIR"/default.vcl.bak"
-SAMPLE_CONF_VCL="$this_dir/sample_conf.vcl"
-TMP_SAMPLE_CONF_VCL=$TEMPDIR"/sample_conf.vcl"
+DEBUG_CONF_VCL="$this_dir/debug_conf.vcl"
+TMP_DEBUG_CONF_VCL=$TEMPDIR"/debug_conf.vcl"
 
 # Environment variables.
 # MUST_BACKUP_DEFAULT_VCL is 1 by default because we would not like to overwrite
@@ -38,16 +51,48 @@ print_varnish_setup_instructions() {
   echo "*** run successfully."
   echo "*** 1) sudo apt-get install varnish"
   echo "*** 2) sudo tee -a /etc/default/varnish <<EOF"
-  echo "  DAEMON_OPTS=\"-a :80 \ "
+  echo "  DAEMON_OPTS=\"-a :8020 \ "
   echo "        -T localhost:6082 \ "
   echo "        -f /etc/varnish/default.vcl \ "
   echo "        -S /etc/varnish/secret \ "
   echo "        -s file,/var/lib/varnish/\$INSTANCE/varnish_storage.bin,1G\" "
   echo "EOF"
-  echo "*** 3) sudo cp $SAMPLE_CONF_VCL $DEFAULT_VCL"
+  echo "*** 3) sudo cp $DEBUG_CONF_VCL $DEFAULT_VCL"
   echo "*** 4) sudo service varnish restart"
-  echo "*** 5) export VARNISH_SERVER=\"localhost:80\""
+  echo "*** 5) export VARNISH_SERVER=\"localhost:8020\""
   echo "*** 6) Rerun apache_downstream_caching_tests.sh"
+}
+
+OUT_CONTENTS_FILE="$OUTDIR/gzipped.html"
+OUT_HEADERS_FILE="$OUTDIR/headers.html"
+GZIP_WGET_ARGS="-q -S --header=Accept-Encoding:gzip -o $OUT_HEADERS_FILE -O - "
+
+# Helper method that does a wget and verifies that the rewriting status matches
+# the $1 argument that is passed to this method.
+check_rewriting_status() {
+  $WGET $WGET_ARGS $CACHABLE_HTML_LOC > $OUT_CONTENTS_FILE
+  if $1; then
+    check zgrep -q "pagespeed.ic" $OUT_CONTENTS_FILE
+  else
+    check_not zgrep -q "pagespeed.ic" $OUT_CONTENTS_FILE
+  fi
+  # Reset WGET_ARGS.
+  WGET_ARGS=""
+}
+
+# Helper method that obtains a gzipped response and verifies that rewriting
+# has happened. Also takes an extra parameter that identifies extra headers
+# to be added during wget.
+check_for_rewriting() {
+  WGET_ARGS="$GZIP_WGET_ARGS $1"
+  check_rewriting_status true
+}
+
+# Helper method that obtains a gzipped response and verifies that no rewriting
+# has happened.
+check_for_no_rewriting() {
+  WGET_ARGS="$GZIP_WGET_ARGS"
+  check_rewriting_status false
 }
 
 # Helper method to check that a variable in the statistics file has the expected
@@ -88,16 +133,16 @@ else
     exit 1
   fi
   # Check whether the default.vcl being used by varnish is different from
-  # sample_conf.vcl.
+  # debug_conf.vcl.
   # a) If there are no differences, we assume that varnish has been restarted
-  # after sample_conf.vcl contents were copied over to default.vcl and continue
+  # after debug_conf.vcl contents were copied over to default.vcl and continue
   # with the tests.
-  cp -f $SAMPLE_CONF_VCL $TMP_SAMPLE_CONF_VCL
-  if ! cmp -s $DEFAULT_VCL $TMP_SAMPLE_CONF_VCL; then
+  cp -f $DEBUG_CONF_VCL $TMP_DEBUG_CONF_VCL
+  if ! cmp -s $DEFAULT_VCL $TMP_DEBUG_CONF_VCL; then
     # Copy over the permissions and ownership attributes for $DEFAULT_VCL onto
-    # $TMP_SAMPLE_CONF_VCL.
-    sudo chmod --reference=$DEFAULT_VCL $TMP_SAMPLE_CONF_VCL
-    sudo chown --reference=$DEFAULT_VCL $TMP_SAMPLE_CONF_VCL
+    # $TMP_DEBUG_CONF_VCL.
+    sudo chmod --reference=$DEFAULT_VCL $TMP_DEBUG_CONF_VCL
+    sudo chown --reference=$DEFAULT_VCL $TMP_DEBUG_CONF_VCL
     if [ "$MUST_BACKUP_DEFAULT_VCL" = "1" ]; then
       # b) If there are differences, and MUST_BACKUP_DEFAULT_VCL is set to true,
       # we backup the default vcl.
@@ -106,16 +151,16 @@ else
     else
       # c) If there are differences, and MUST_BACKUP_DEFAULT_VCL is set to
       # false, we assume that the user would like to permanently copy over
-      # sample_conf.vcl into default.vcl for continuous testing purposes.
+      # debug_conf.vcl into default.vcl for continuous testing purposes.
       echo "*** Overwriting /etc/varnish/default.vcl with the latest version"
-      echo "*** of sample_conf.vcl and restarting varnish."
+      echo "*** of debug_conf.vcl and restarting varnish."
       echo "*** You only need to do this once for every update to"
-      echo "*** sample_conf.vcl, which should not be very frequent."
+      echo "*** debug_conf.vcl, which should not be very frequent."
     fi
-    sudo cp -fp $TMP_SAMPLE_CONF_VCL $DEFAULT_VCL
-    # Restart varnish after putting in the new conf file.
-    sudo service varnish restart
+    sudo cp -fp $TMP_DEBUG_CONF_VCL $DEFAULT_VCL
   fi
+  # Restart varnish to clear its cache.
+  sudo service varnish restart
 fi
 
 CACHABLE_HTML_LOC="$CACHABLE_HTML_HOST_PORT/mod_pagespeed_test"
@@ -134,27 +179,50 @@ check_num_successful_downstream_cache_purges 0
 # Output should not be rewritten and 1 successful purge should have
 # occurred here.
 start_test Check for case where rewritten cache should get purged.
-OUT=$($WGET_DUMP $CACHABLE_HTML_LOC)
-check_not_from "$OUT" egrep -q "pagespeed.ic"
+check_for_no_rewriting
+# Fetch until the purge happens.
 fetch_until $STATS_URL "grep -c $ATTEMPTS_VAR:[[:space:]]*1" 1
 if [ $have_varnish_downstream_cache = "1" ]; then
   CURRENT_STATS=$($WGET_DUMP $STATS_URL)
   check_num_successful_downstream_cache_purges 1
-  check_from "$OUT" egrep -q "X-Cache: MISS"
-fi
+  check egrep -q "X-Cache: MISS" $OUT_HEADERS_FILE
+  fi
 
 # Output should be fully rewritten here.
 start_test Check for case where rewritten cache should not get purged.
-WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
-echo $CACHABLE_HTML_LOC
-OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC)
-check_from "$OUT" egrep -q "pagespeed.ic"
+check_for_rewriting "--header=X-PSA-Blocking-Rewrite:psatest"
 # Number of downstream cache purges should still be 1.
 CURRENT_STATS=$($WGET_DUMP $STATS_URL)
 check_num_downstream_cache_purge_attempts 1
 if [ $have_varnish_downstream_cache = "1" ]; then
   check_num_successful_downstream_cache_purges 1
-  check_from "$OUT" egrep -q "X-Cache: MISS"
+  check egrep -q "X-Cache: MISS" $OUT_HEADERS_FILE
+fi
+
+# Output should be fully rewritten here and we should have a HIT.
+start_test Check for case when there should be a varnish cache hit.
+check_for_rewriting ""
+# Number of downstream cache purges should still be 1.
+CURRENT_STATS=$($WGET_DUMP $STATS_URL)
+check_num_downstream_cache_purge_attempts 1
+if [ $have_varnish_downstream_cache = "1" ]; then
+  check_num_successful_downstream_cache_purges 1
+  check egrep -q "X-Cache: HIT" $OUT_HEADERS_FILE
+fi
+
+if [ $have_varnish_downstream_cache = "1" ]; then
+  # Enable one of the beaconing dependent filters and verify interaction
+  # between beaconing and downstream caching logic, by verifying that
+  # whenever beaconing code is present in the rewritten page, the
+  # output is also marked as a cache-miss, indicating that the instrumentation
+  # was done by the backend.
+  start_test Check whether beaconing is accompanied by a MISS always.
+  WGET_ARGS="-S"
+  CACHABLE_HTML_LOC+="?ModPagespeedFilters=lazyload_images"
+  fetch_until -gzip $CACHABLE_HTML_LOC \
+      "zgrep -c \"pagespeed\.CriticalImages\.Run\"" 1
+  check fgrep -q 'X-Cache: MISS' $WGET_OUTPUT
+  check fgrep -q 'Cache-Control: no-cache, max-age=0' $WGET_OUTPUT
 fi
 
 

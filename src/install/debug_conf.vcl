@@ -14,6 +14,8 @@
   4) sudo service varnish restart
 */
 
+import std;
+
 # Block 1: Define upstream server's host and port.
 backend default {
   # Location of PageSpeed server.
@@ -87,6 +89,12 @@ sub vcl_hit {
   if (req.request == "PURGE") {
     purge;
     error 200 "Purged.";
+  } else {
+    # Send 5% of the HITs to the backend for instrumentation.
+    if (std.random(0, 100) <= 5) {
+      set req.http.PS-ShouldBeacon = req.http.ps_should_beacon_key_value;
+      return (pass);
+    }
   }
 }
 
@@ -96,6 +104,12 @@ sub vcl_miss {
   if (req.request == "PURGE") {
      purge;
      error 200 "Purged.";
+  } else {
+    # Send 25% of the MISSes to the backend for instrumentation.
+    if (std.random(0, 100) <= 25) {
+      set req.http.PS-ShouldBeacon = req.http.ps_should_beacon_key_value;
+      return (pass);
+    }
   }
 }
 
@@ -103,6 +117,21 @@ sub vcl_miss {
 # generating the User-Agent based key for hashing into the cache.
 sub vcl_recv {
   call generate_user_agent_based_key;
+
+  # We want to support beaconing filters, i.e., one or more of inline_images,
+  # lazyload_images, inline_preview_images or prioritize_critical_css are
+  # enabled. We define a placeholder constant called ps_should_beacon_key_value
+  # so that some percentages of hits and misses can be sent to the backend
+  # with this value used for the PS-ShouldBeacon header to force beaconing.
+  # This value should match the value of the DownstreamCacheRebeaconingKey
+  # pagespeed directive used by your backend server.
+  # WARNING: Do not use "random_rebeaconing_key" for your configuration, but
+  # instead change it to something specific to your site, to keep it secure.
+  set req.http.ps_should_beacon_key_value = "random_rebeaconing_key";
+  # Incoming PS-ShouldBeacon headers should not be allowed since this will allow
+  # external entities to force the server to instrument pages.
+  remove req.http.PS-ShouldBeacon;
+
   # Block 3d: Verify the ACL for an incoming purge request and handle it.
   if (req.request == "PURGE") {
     if (!client.ip ~ purge) {
