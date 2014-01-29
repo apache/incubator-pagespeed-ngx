@@ -207,6 +207,7 @@ http {
     listen @@SECONDARY_PORT@@;
     server_name downstreamcacherebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed BlockingRewriteKey psatest;
 
     pagespeed RewriteLevel PassThrough;
     pagespeed CriticalImagesBeaconEnabled true;
@@ -240,6 +241,7 @@ http {
     server_name optimizeforbandwidth.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
+    pagespeed BlockingRewriteKey psatest;
     pagespeed RewriteLevel OptimizeForBandwidth;
     pagespeed DisableFilters add_instrumentation;
 
@@ -275,7 +277,8 @@ http {
     pagespeed on;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
-    pagespeed MapOriginDomain localhost:@@SECONDARY_PORT@@/customhostheader
+    # Don't use localhost, as ngx_pagespeed's native fetcher cannot resolve it
+    pagespeed MapOriginDomain 127.0.0.1:@@SECONDARY_PORT@@/customhostheader
               sharedcdn.example.com/test customhostheader.example.com;
     pagespeed JpegRecompressionQuality 50;
     pagespeed CriticalImagesBeaconEnabled false;

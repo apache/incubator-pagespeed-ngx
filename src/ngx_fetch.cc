@@ -70,7 +70,7 @@ namespace net_instaweb {
         fetch_start_ms_(0),
         fetch_end_ms_(0),
         done_(false),
-        content_length_(0) {
+        content_length_(-1) {
             ngx_memzero(&url_, sizeof(url_));
             log_ = log;
             pool_ = NULL;
@@ -485,8 +485,9 @@ namespace net_instaweb {
 
       if (n == 0) {
         // connection is closed prematurely by remote server,
-        // or the content-length was 0
-        fetch->CallbackDone(fetch->content_length_ == 0);
+        // or the content-length was 0, or no cl was known
+        fetch->CallbackDone(fetch->content_length_ == 0
+                            || fetch->content_length_ == -2);
         return;
       } else if (n > 0) {
         fetch->in_->pos = fetch->in_->start;
@@ -553,9 +554,10 @@ namespace net_instaweb {
     if (n > size) {
       return false;
     } else if (fetch->parser_.headers_complete()) {
-      int64 content_length = -1;
+      int64 content_length = -2;
       fetch->async_fetch_->response_headers()->FindContentLength(
           &content_length);
+
       fetch->content_length_ = content_length;
       if (fetch->fetcher_->track_original_content_length()) {
         fetch->async_fetch_->response_headers()->SetOriginalContentLength(
@@ -581,8 +583,9 @@ namespace net_instaweb {
     fetch->bytes_received_add(static_cast<int64>(size));
     if (fetch->async_fetch_->Write(StringPiece(data, size),
         fetch->message_handler())) {
-      fetch->content_length_ -= size;
-      if (fetch->content_length_ <= 0) {
+      if (fetch->content_length_ > 0)
+        fetch->content_length_ -= size;
+      if (fetch->content_length_ == 0) {
         fetch->done_ = true;
       }
       return true;
