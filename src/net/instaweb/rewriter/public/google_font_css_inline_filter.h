@@ -27,11 +27,13 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class RewriteDriver;
 class Statistics;
 
 class GoogleFontCssInlineFilter : public CssInlineFilter {
  public:
+  // Note: this also registers our resource url claimant with the driver.
   explicit GoogleFontCssInlineFilter(RewriteDriver* driver);
   virtual ~GoogleFontCssInlineFilter();
 
@@ -44,6 +46,7 @@ class GoogleFontCssInlineFilter : public CssInlineFilter {
 
  private:
   void ResetAndExplainReason(const char* reason, ResourcePtr* resource);
+  void CheckIfFontServiceUrl(const GoogleUrl& url, bool* result);
 
   DISALLOW_COPY_AND_ASSIGN(GoogleFontCssInlineFilter);
 };

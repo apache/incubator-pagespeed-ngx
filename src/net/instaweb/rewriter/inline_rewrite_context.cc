@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -46,7 +47,11 @@ InlineRewriteContext::~InlineRewriteContext() {
 
 bool InlineRewriteContext::StartInlining() {
   RewriteDriver* driver = filter_->driver();
-  ResourcePtr input_resource(CreateResource(src_->DecodedValueOrNull()));
+  ResourcePtr input_resource;
+  const char* url = src_->DecodedValueOrNull();
+  if (url != NULL) {
+    input_resource.reset(CreateResource(url));
+  }
   if (input_resource.get() != NULL) {
     ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
     AddSlot(slot);
@@ -56,8 +61,19 @@ bool InlineRewriteContext::StartInlining() {
     // Add a debug message indicating that this is an unauthorized resource
     // that could not be created.
     if (driver->DebugMode()) {
-      driver->InsertComment(StrCat(
-          filter_->Name(), ": ", CommonFilter::kCreateResourceFailedDebugMsg));
+      // Do not add it though if it's a special URL, since it's not helpful
+      // in that case.
+      bool claimed_elsewhere = false;
+      if (url != NULL) {
+        GoogleUrl gurl(url);
+        claimed_elsewhere = driver->IsResourceUrlClaimed(gurl);
+      }
+
+      if (!claimed_elsewhere) {
+        driver->InsertComment(
+            StrCat(filter_->Name(), ": ",
+                   CommonFilter::kCreateResourceFailedDebugMsg));
+      }
     }
     delete this;
     return false;

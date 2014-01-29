@@ -297,6 +297,15 @@ class RewriteDriver : public HtmlParse {
   // pre-render chain.
   void PrependRewriteFilter(RewriteFilter* filter);
 
+  // Tells RewriteDriver that a certain portion of URL namespace should not
+  // be handled via usual (HTTP proxy semantics) means. It's up to
+  // the filters to actually arrange for that to do something.
+  // Takes ownership of the claimant object. Note that it's important for the
+  // claims to be disjoint, since the RewriteContext framework needs to
+  // be able to assign compatible Resource objects for same URLs/slots among
+  // all filters that deal with them.
+  void AddResourceUrlClaimant(ResourceUrlClaimant* claimant);
+
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.
   //
@@ -546,6 +555,11 @@ class RewriteDriver : public HtmlParse {
   // page context.
   ResourcePtr CreateInputResourceAbsoluteUnchecked(
       const StringPiece& absolute_url);
+
+  // Returns true if some ResourceUrlClaimant has staked a claim on given URL.
+  // If this returns true, CreateInputResource will fail, but it's probably
+  // not worth logging any debug filter hints about that.
+  bool IsResourceUrlClaimed(const GoogleUrl& url) const;
 
   // Checks to see if the input_url has the same origin as and the base url, to
   // make sure we're not fetching from another server. Does not consult the
@@ -1497,6 +1511,9 @@ class RewriteDriver : public HtmlParse {
   FilterList early_pre_render_filters_;
   // The second chain of filters called before waiting for Rewrites to complete.
   FilterList pre_render_filters_;
+
+  // Owned by us.
+  std::vector<ResourceUrlClaimant*> resource_claimants_;
 
   // A container of filters to delete when RewriteDriver is deleted.  This
   // can include pre_render_filters as well as those added to the post-render

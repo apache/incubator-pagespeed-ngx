@@ -47,8 +47,10 @@ class GoogleFontServiceInputResource : public CacheableResourceBase {
   static GoogleFontServiceInputResource* Make(const GoogleUrl& url,
                                               RewriteDriver* rewrite_driver);
   virtual ~GoogleFontServiceInputResource();
-
   static void InitStats(Statistics* stats);
+
+  // Returns true if the URL looks like one from font service.
+  static bool IsFontServiceUrl(const GoogleUrl& url);
 
  protected:
   // Overrides of CacheableResourceBase API.

@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
@@ -31,6 +32,9 @@ namespace net_instaweb {
 GoogleFontCssInlineFilter::GoogleFontCssInlineFilter(RewriteDriver* driver)
     : CssInlineFilter(driver) {
   set_id(RewriteOptions::kGoogleFontCssInlineId);
+  driver->AddResourceUrlClaimant(
+      NewPermanentCallback(
+          this, &GoogleFontCssInlineFilter::CheckIfFontServiceUrl));
 }
 
 GoogleFontCssInlineFilter::~GoogleFontCssInlineFilter() {
@@ -72,6 +76,11 @@ void GoogleFontCssInlineFilter::ResetAndExplainReason(
     // near font links, and not anything else.
     driver()->InsertComment(reason);
   }
+}
+
+void GoogleFontCssInlineFilter::CheckIfFontServiceUrl(
+    const GoogleUrl& url, bool* result) {
+  *result = GoogleFontServiceInputResource::IsFontServiceUrl(url);
 }
 
 }  // namespace net_instaweb

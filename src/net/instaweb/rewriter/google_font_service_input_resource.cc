@@ -33,6 +33,12 @@
 
 namespace net_instaweb {
 
+namespace {
+
+const char kFontApiHost[] = "fonts.googleapis.com";
+
+}  // namespace
+
 GoogleFontServiceInputResource::GoogleFontServiceInputResource(
     RewriteDriver* rewrite_driver,
     bool is_https,
@@ -48,13 +54,13 @@ GoogleFontServiceInputResource::GoogleFontServiceInputResource(
 GoogleFontServiceInputResource::~GoogleFontServiceInputResource() {
 }
 
+bool GoogleFontServiceInputResource::IsFontServiceUrl(const GoogleUrl& url) {
+  return url.IsWebValid() && url.Host() == kFontApiHost;
+}
+
 GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
     const GoogleUrl& parsed_url, RewriteDriver* rewrite_driver) {
-  if (!parsed_url.IsWebValid()) {
-    return NULL;
-  }
-
-  if (parsed_url.Host() != "fonts.googleapis.com") {
+  if (!IsFontServiceUrl(parsed_url)) {
     return NULL;
   }
 

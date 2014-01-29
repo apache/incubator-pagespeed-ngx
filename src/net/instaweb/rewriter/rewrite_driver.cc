@@ -358,6 +358,7 @@ RewriteDriver::~RewriteDriver() {
   }
   Clear();
   STLDeleteElements(&filters_to_delete_);
+  STLDeleteElements(&resource_claimants_);
 }
 
 RewriteDriver* RewriteDriver::Clone() {
@@ -1327,6 +1328,11 @@ void RewriteDriver::PrependRewriteFilter(RewriteFilter* filter) {
   pre_render_filters_.push_front(filter);
 }
 
+void RewriteDriver::AddResourceUrlClaimant(ResourceUrlClaimant* claimant) {
+  CHECK(claimant != NULL);
+  resource_claimants_.push_back(claimant);
+}
+
 void RewriteDriver::EnableRewriteFilter(const char* id) {
   RewriteFilter* filter = resource_filter_map_[id];
   CHECK(filter != NULL);
@@ -2202,6 +2208,10 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(
   StringPiece url_string = url.Spec();
   ResourcePtr resource;
 
+  if (IsResourceUrlClaimed(url)) {
+    return resource;
+  }
+
   if (url.SchemeIs("data")) {
     resource = DataUrlInputResource::Make(url_string, server_context_);
     if (resource.get() == NULL) {
@@ -2246,6 +2256,17 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(
                                url.spec_c_str());
   }
   return resource;
+}
+
+bool RewriteDriver::IsResourceUrlClaimed(const GoogleUrl& url) const {
+  for (int i = 0, n = resource_claimants_.size(); i < n; ++i) {
+    bool claims = false;
+    resource_claimants_[i]->Run(url, &claims);
+    if (claims) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,

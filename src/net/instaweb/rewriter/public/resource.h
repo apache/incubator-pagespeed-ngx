@@ -37,11 +37,13 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
 
 class CachedResult;
 struct ContentType;
+class GoogleUrl;
 class InputInfo;
 class MessageHandler;
 class Resource;
@@ -315,6 +317,12 @@ class Resource : public RefCounted<Resource> {
 
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };
+
+// Sometimes some portions of URL space need to be handled differently
+// by dedicated resource subclasses. ResourceProvider callbacks are used
+// to teach RewriteDriver about these, so it knows not to build regular
+// UrlInputResource objects.
+typedef Callback2<const GoogleUrl&, bool*> ResourceUrlClaimant;
 
 }  // namespace net_instaweb
 

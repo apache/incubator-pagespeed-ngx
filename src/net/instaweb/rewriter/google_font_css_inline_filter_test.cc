@@ -20,13 +20,14 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/ua_sensitive_test_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
@@ -35,15 +36,14 @@ namespace {
 
 const char kRoboto[] = "http://fonts.googleapis.com/css?family=Roboto";
 
-class GoogleFontCssInlineFilterTest : public RewriteTestBase {
+class GoogleFontCssInlineFilterTestBase : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    SetUpForFontFilterTest();
   }
 
-  void SetUpForFontFilterTest() {
-    AddFilter(RewriteOptions::kInlineGoogleFontCss);
+  void SetUpForFontFilterTest(RewriteOptions::Filter filter_to_enable) {
+    AddFilter(filter_to_enable);
 
     // We want to enable debug after AddFilters, since we don't want the
     // standard debug filter output, just that from the font filter.
@@ -71,6 +71,14 @@ class GoogleFontCssInlineFilterTest : public RewriteTestBase {
   }
 };
 
+class GoogleFontCssInlineFilterTest : public GoogleFontCssInlineFilterTestBase {
+ protected:
+  virtual void SetUp() {
+    GoogleFontCssInlineFilterTestBase::SetUp();
+    SetUpForFontFilterTest(RewriteOptions::kInlineGoogleFontCss);
+  }
+};
+
 TEST_F(GoogleFontCssInlineFilterTest, BasicOperation) {
   rewrite_driver()->SetUserAgent("Chromezilla");
   ValidateExpected("simple",
@@ -93,9 +101,6 @@ TEST_F(GoogleFontCssInlineFilterTest, UsageRestrictions) {
   ValidateExpected("incompat1",
                    CssLinkHref(kRoboto),
                    StrCat(CssLinkHref(kRoboto),
-                          "<!--InlineGoogleFontCss: ",
-                          CommonFilter::kCreateResourceFailedDebugMsg,
-                          "-->",
                           "<!--Cannot inline font loader CSS when "
                           "ModifyCachingHeaders is off-->"));
 
@@ -106,9 +111,6 @@ TEST_F(GoogleFontCssInlineFilterTest, UsageRestrictions) {
   ValidateExpected("incompat2",
                    CssLinkHref(kRoboto),
                    StrCat(CssLinkHref(kRoboto),
-                          "<!--InlineGoogleFontCss: ",
-                          CommonFilter::kCreateResourceFailedDebugMsg,
-                          "-->",
                           "<!--Cannot inline font loader CSS when "
                           "using downstream cache-->"));
 }
@@ -121,15 +123,15 @@ TEST_F(GoogleFontCssInlineFilterTest, ProtocolRelative) {
 }
 
 class GoogleFontCssInlineFilterSizeLimitTest
-    : public GoogleFontCssInlineFilterTest {
+    : public GoogleFontCssInlineFilterTestBase {
  protected:
   virtual void SetUp() {
-    RewriteTestBase::SetUp();  // skipped base on purpose
+    GoogleFontCssInlineFilterTestBase::SetUp();
     // GoogleFontCssInlineFilter honors css_inline_max_bytes.
     // Set a threshold at font_safieri, which should prevent longer
     // font_chromezilla from inlining.
     options()->set_css_inline_max_bytes(STATIC_STRLEN("font_safieri"));
-    SetUpForFontFilterTest();
+    SetUpForFontFilterTest(RewriteOptions::kInlineGoogleFontCss);
   }
 };
 
@@ -150,7 +152,7 @@ class GoogleFontCssInlineFilterAndImportTest
     RewriteTestBase::SetUp();  // skipped base on purpose
     options()->EnableFilter(
         RewriteOptions::RewriteOptions::kInlineImportToLink);
-    SetUpForFontFilterTest();
+    SetUpForFontFilterTest(RewriteOptions::kInlineGoogleFontCss);
   }
 };
 
@@ -167,6 +169,45 @@ TEST_F(GoogleFontCssInlineFilterAndImportTest, ViaInlineImport) {
                    StringPrintf("<style>@import \"%s\";</style>", kRoboto),
                    "<style>font_safieri</style>");
 }
+
+class GoogleFontCssInlineFilterAndWidePermissionsTest
+    : public GoogleFontCssInlineFilterTestBase {
+  virtual void SetUp() {
+    GoogleFontCssInlineFilterTestBase::SetUp();
+    // Check that we don't rely solely on authorization to properly
+    // dispatch the URL to us.
+    options()->WriteableDomainLawyer()->AddDomain("*", message_handler());
+    options()->EnableFilter(RewriteOptions::kInlineCss);
+    SetUpForFontFilterTest(RewriteOptions::kInlineGoogleFontCss);
+  }
+};
+
+TEST_F(GoogleFontCssInlineFilterAndWidePermissionsTest, WithWideAuthorization) {
+  rewrite_driver()->SetUserAgent("Chromezilla");
+  ValidateExpected("with_domain_*",
+                   CssLinkHref(kRoboto),
+                   "<style>font_chromezilla</style>");
+}
+
+// Negative test for the above, with font filter off, to make sure
+// it's not inline_css doing stuff.
+class NoGoogleFontCssInlineFilterAndWidePermissionsTest
+    : public GoogleFontCssInlineFilterTestBase {
+  virtual void SetUp() {
+    GoogleFontCssInlineFilterTestBase::SetUp();
+    // Check that we don't rely solely on authorization to properly
+    // dispatch the URL to us.
+    options()->WriteableDomainLawyer()->AddDomain("*", message_handler());
+    SetUpForFontFilterTest(RewriteOptions::kInlineCss);
+  }
+};
+
+TEST_F(NoGoogleFontCssInlineFilterAndWidePermissionsTest,
+       WithWideAuthorization) {
+  rewrite_driver()->SetUserAgent("Chromezilla");
+  ValidateNoChanges("with_domain_*_without_font_filter", CssLinkHref(kRoboto));
+}
+
 
 }  // namespace
 
