@@ -120,3 +120,46 @@
    fun:ngx_start_worker_processes
    fun:ngx_master_process_cycle
 }
+
+# Extra suppresions for testing in release mode:
+
+{
+   <re2 uninitialised value in optimized code>
+   Memcheck:Cond
+   fun:_ZN3re24Prog8OptimizeEv
+   ...
+}
+{
+   <re2 uninitialised value in optimized code>
+   Memcheck:Value8
+   fun:_ZN3re24Prog8OptimizeEv
+   ...
+}
+
+{
+   <re2 uninitialised value in optimized code>
+   Memcheck:Cond
+   fun:_ZN3re2L4AddQEPNS_9SparseSetEi
+   ...
+}
+
+{
+   <re2 uninitialised value in optimized code>
+   Memcheck:Value8
+   fun:_ZN3re2L4AddQEPNS_9SparseSetEi
+   ...
+}
+
+{
+   <re2 uninitialized value in optimized code>
+   Memcheck:Value8
+   fun:_ZN3re23DFA10AddToQueueEPNS0_5WorkqEij
+   ...
+}
+
+{
+   <re2 uninitialized value in optimized code>
+   Memcheck:Cond
+   fun:_ZN3re23DFA10AddToQueueEPNS0_5WorkqEij
+   ...
+}

@@ -32,6 +32,7 @@ http {
   pagespeed InPlaceResourceOptimization on;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
   pagespeed PreserveUrlRelativity on;
+  pagespeed BlockingRewriteKey psatest;
 
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
   # With this option enabled, the inline image system test will currently fail.
@@ -53,7 +54,6 @@ http {
     server_name max-cacheable-content-length.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
-    pagespeed BlockingRewriteKey psatest;
 
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_javascript;
@@ -275,7 +275,8 @@ http {
     pagespeed on;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
-    pagespeed MapOriginDomain localhost:@@SECONDARY_PORT@@/customhostheader
+    # Don't use localhost, as ngx_pagespeed's native fetcher cannot resolve it
+    pagespeed MapOriginDomain 127.0.0.1:@@SECONDARY_PORT@@/customhostheader
               sharedcdn.example.com/test customhostheader.example.com;
     pagespeed JpegRecompressionQuality 50;
     pagespeed CriticalImagesBeaconEnabled false;
@@ -288,7 +289,6 @@ http {
     server_name forbidden.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
-    pagespeed BlockingRewriteKey psatest;
 
     # Start with all core filters enabled ...
     pagespeed RewriteLevel CoreFilters;
@@ -572,7 +572,6 @@ http {
     server_name blocking.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
-    pagespeed BlockingRewriteKey psatest;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
   }
@@ -748,11 +747,6 @@ http {
 
     pagespeed Library 43 1o978_K0_LNE5_ystNklf
     http://www.modpagespeed.com/rewrite_javascript.js;
-
-    # If X-PSA-Blocking-Rewrite request header is present and its value matches
-    # the value of BlockingRewriteKey below, the response will be fully
-    # rewritten before being flushed to the client.
-    pagespeed BlockingRewriteKey psatest;
 
     add_header X-Extra-Header 1;
 
