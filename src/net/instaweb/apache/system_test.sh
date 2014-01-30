@@ -1883,14 +1883,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT1" egrep -q 'pagespeed\.CriticalImages\.Run'
   check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
   # 2. We get an instrumented page if the correct key is present.
-  OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
-            $WGET_DUMP $WGET_ARGS\
+  OUT2=$(http_proxy=$SECONDARY_HOSTNAME \
+            $WGET_DUMP $WGET_ARGS \
             --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
   check_from "$OUT2" egrep -q "pagespeed\.CriticalImages\.Run"
   check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
   # 3. We do not get an instrumented page if the wrong key is present.
-  OUT3=$(http_proxy=$SECONDARY_HOSTNAME\
-            $WGET_DUMP $WGET_ARGS\
+  OUT3=$(http_proxy=$SECONDARY_HOSTNAME \
+            $WGET_DUMP $WGET_ARGS \
             --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
   check_not_from "$OUT3" egrep -q "pagespeed\.CriticalImages\.Run"
   check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
@@ -1907,15 +1907,18 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$OUT1" egrep -q 'pagespeed\.criticalCssBeaconInit'
   check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
   # 2. We get an instrumented page if the correct key is present.
-  OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
-            $WGET_DUMP $WGET_ARGS\
+  OUT2=$(http_proxy=$SECONDARY_HOSTNAME \
+            $WGET_DUMP $WGET_ARGS \
+            --header 'X-PSA-Blocking-Rewrite: psatest' \
             --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
   check_from "$OUT2" egrep -q "pagespeed\.criticalCssBeaconInit"
   check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
   # 3. We do not get an instrumented page if the wrong key is present.
   WGET_ARGS="--header=\"PS-ShouldBeacon: wrong_rebeaconing_key\""
-  OUT3=$(http_proxy=$SECONDARY_HOSTNAME\
-            $WGET_DUMP $WGET_ARGS $URL)
+  OUT3=$(http_proxy=$SECONDARY_HOSTNAME \
+            $WGET_DUMP $WGET_ARGS \
+            --header 'X-PSA-Blocking-Rewrite: psatest' \
+            $URL)
   check_not_from "$OUT3" egrep -q "pagespeed\.criticalCssBeaconInit"
   check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
 
