@@ -48,6 +48,8 @@ class RequestProperties {
 
   bool SupportsImageInlining() const;
   bool SupportsLazyloadImages() const;
+  bool SupportsCriticalCss() const;
+  bool SupportsCriticalCssBeacon() const;
   bool SupportsCriticalImagesBeacon() const;
   bool SupportsJsDefer(bool enable_mobile) const;
   bool SupportsWebp() const;

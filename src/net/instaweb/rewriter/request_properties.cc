@@ -16,8 +16,8 @@
 
 #include <vector>
 
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/downstream_caching_directives.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -69,6 +69,17 @@ bool RequestProperties::SupportsLazyloadImages() const {
         kFalse;
   }
   return (supports_lazyload_images_ == kTrue);
+}
+
+bool RequestProperties::SupportsCriticalCss() const {
+  return device_properties_->SupportsCriticalCss();
+}
+
+bool RequestProperties::SupportsCriticalCssBeacon() const {
+  // For bots, we don't allow instrumentation, but we do allow bots to use
+  // previous instrumentation results collected by non-bots to enable the
+  // prioritize_critical_css rewriter.
+  return SupportsCriticalCss() && !IsBot();
 }
 
 bool RequestProperties::SupportsCriticalImagesBeacon() const {

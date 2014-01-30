@@ -35,6 +35,7 @@ class DeviceProperties {
   void set_user_agent(const StringPiece& user_agent_string);
   bool SupportsImageInlining() const;
   bool SupportsLazyloadImages() const;
+  bool SupportsCriticalCss() const;
   bool SupportsCriticalImagesBeacon() const;
   bool SupportsJsDefer(bool enable_mobile) const;
   bool SupportsWebp() const;
@@ -86,6 +87,7 @@ class DeviceProperties {
   GoogleString user_agent_;
   UserAgentMatcher* ua_matcher_;
 
+  mutable LazyBool supports_critical_css_;
   mutable LazyBool supports_image_inlining_;
   mutable LazyBool supports_js_defer_;
   mutable LazyBool supports_lazyload_images_;

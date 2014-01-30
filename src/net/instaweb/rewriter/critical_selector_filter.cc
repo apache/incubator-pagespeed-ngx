@@ -31,12 +31,12 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -427,22 +427,17 @@ void CriticalSelectorFilter::DetermineEnabled() {
   // in the property cache. Unfortunately, we also cannot run safely in case of
   // IE, since we do not understand IE conditional comments well enough to
   // replicate their behavior in the load-everything section.
-  // TODO(morlovich): IE10 in strict mode disables the conditional comments
-  // feature; but the strict mode is determined by combination of doctype and
-  // X-UA-Compatible, which can come in both meta and header flavors. Once we
-  // have a good way of detecting this case, we can enable us for strict IE10.
-  // Note: the UA logic should be the same in CriticalCssBeaconFilter.
   const StringSet& critical_selectors = driver_->server_context()
       ->critical_selector_finder()->GetCriticalSelectors(driver_);
-  bool is_ie = driver_->user_agent_matcher()->IsIe(driver_->user_agent());
-  bool can_run = !is_ie && !critical_selectors.empty();
+  bool ua_supports_critical_css =
+      driver_->request_properties()->SupportsCriticalCss();
+  bool can_run = ua_supports_critical_css && !critical_selectors.empty();
   driver_->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
-      (can_run ?
-       RewriterHtmlApplication::ACTIVE :
-       (is_ie ?
-        RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED :
-        RewriterHtmlApplication::PROPERTY_CACHE_MISS)));
+      (can_run ? RewriterHtmlApplication::ACTIVE
+               : (ua_supports_critical_css
+                      ? RewriterHtmlApplication::PROPERTY_CACHE_MISS
+                      : RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED)));
   set_is_enabled(can_run);
 }
 

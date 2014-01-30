@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -93,6 +94,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 
   void ResetDriver() {
     rewrite_driver()->Clear();
+    rewrite_driver()->SetUserAgent(
+        UserAgentMatcherTestBase::kChrome18UserAgent);
     rewrite_driver()->set_request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
     MockPropertyPage* page = NewMockPage(kRequestUrl);
@@ -292,6 +295,13 @@ TEST_F(CriticalImagesBeaconFilterTest, BeaconReinstrumentationWithHeader) {
 TEST_F(CriticalImagesBeaconFilterTest, UnsupportedUserAgent) {
   // Test that the filter is not applied for unsupported user agents.
   rewrite_driver()->SetUserAgent("Firefox/1.0");
+  RunInjection();
+  VerifyNoInjection(0);
+}
+
+TEST_F(CriticalImagesBeaconFilterTest, Googlebot) {
+  // Verify that the filter is not applied for bots.
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   RunInjection();
   VerifyNoInjection(0);
 }

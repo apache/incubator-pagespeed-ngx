@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -65,6 +66,9 @@ void SplitHtmlBeaconFilter::InitStats(Statistics* statistics) {
 }
 
 bool SplitHtmlBeaconFilter::ShouldApply(RewriteDriver* driver) {
+  if (driver->request_properties()->IsBot()) {
+    return false;
+  }
   // Do not instrument if the x_split query param was set to request either the
   // above or below the fold content.
   bool is_split_request = driver->request_context()->split_request_type() !=

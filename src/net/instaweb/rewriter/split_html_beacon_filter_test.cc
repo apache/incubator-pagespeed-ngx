@@ -21,6 +21,7 @@
 #include <algorithm>
 
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -69,6 +70,8 @@ class SplitHtmlBeaconFilterTest : public RewriteTestBase {
 
   void ResetDriver() {
     rewrite_driver()->Clear();
+    rewrite_driver()->SetUserAgent(
+        UserAgentMatcherTestBase::kChrome18UserAgent);
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     rewrite_driver()->set_request_context(
         RequestContext::NewTestRequestContext(factory()->thread_system()));
@@ -141,6 +144,11 @@ TEST_F(SplitHtmlBeaconFilterTest, DontRebeaconBeforeTimeout) {
   factory()->mock_timer()->AdvanceMs(expiration_time_ms / 2 + 1);
   ResetDriver();
   ValidateBeacon();
+}
+
+TEST_F(SplitHtmlBeaconFilterTest, DisabledForBots) {
+  rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
+  ValidateNoBeacon();
 }
 
 }  // namespace net_instaweb
