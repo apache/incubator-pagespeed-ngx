@@ -90,31 +90,32 @@ JavascriptCodeBlock::JavascriptCodeBlock(
     const StringPiece& message_id, MessageHandler* handler)
     : config_(config),
       message_id_(message_id.data(), message_id.size()),
-      handler_(handler),
       original_code_(original_code.data(), original_code.size()),
       rewritten_(false),
-      output_code_(original_code_) { }
+      successfully_rewritten_(false),
+      handler_(handler) {
+}
 
 JavascriptCodeBlock::~JavascriptCodeBlock() { }
 
 StringPiece JavascriptCodeBlock::ComputeJavascriptLibrary() const {
-  // We always RewriteIfNecessary just to provide a degree of
-  // predictability to the rewrite flow.
   // TODO(jmaessen): when we compute minified version and find
   // a match, consider adding the un-minified hash to the library
   // identifier, and then using that to speed up identification
   // in future (at the cost of a double lookup for a miss).  Also
   // consider pruning candidate JS that is simply too small to match
   // a registered library.
-  RewriteIfNecessary();
-  const JavascriptLibraryIdentification* library_identification =
-      config_->library_identification();
-  if (library_identification == NULL) {
-    return StringPiece(NULL);
-  }
-  StringPiece result = library_identification->Find(rewritten_code_);
-  if (!result.empty()) {
-    config_->libraries_identified()->Add(1);
+  DCHECK(rewritten_);
+  StringPiece result;
+  if (rewritten_) {
+    const JavascriptLibraryIdentification* library_identification =
+        config_->library_identification();
+    if (library_identification != NULL) {
+      result = library_identification->Find(rewritten_code_);
+      if (!result.empty()) {
+        config_->libraries_identified()->Add(1);
+      }
+    }
   }
   return result;
 }
@@ -133,37 +134,59 @@ bool JavascriptCodeBlock::UnsafeToRename(const StringPiece& script) {
            != StringPiece::npos;
 }
 
-void JavascriptCodeBlock::Rewrite() const {
-  // We minify for two reasons: because the user wants minified js code (in
-  // which case output_code_ should point to the minified code when we're done),
-  // or because we're trying to identify a javascript library.  Bail if we're
-  // not doing one of these things.
-  if (!config_->minify() && (config_->library_identification() == NULL)) {
-    return;
+bool JavascriptCodeBlock::Rewrite() {
+  DCHECK(!rewritten_);
+  if (rewritten_) {
+    return successfully_rewritten_;
   }
-  if (!pagespeed::js::MinifyJs(original_code_, &rewritten_code_)) {
+
+  rewritten_ = true;
+  successfully_rewritten_ = false;
+  // We minify for two reasons: because the user wants minified js code (in
+  // which case output_code_ should point to the minified code when we're
+  // done), or because we're trying to identify a javascript library.
+  // Bail if we're not doing one of these things.
+  if (!config_->minify() && (config_->library_identification() == NULL)) {
+    return successfully_rewritten_;
+  }
+
+  if (pagespeed::js::MinifyJs(original_code_, &rewritten_code_)) {
+    // Minification succeeded. The fact that it succeeded doesn't imply that
+    // it actually saved anything; we increment num_reducing_uses when there
+    // were actual savings.
+    config_->blocks_minified()->Add(1);
+    if (config_->minify() && rewritten_code_.size() < original_code_.size()) {
+      // Minification will actually be used.
+      successfully_rewritten_ = true;
+      config_->num_reducing_uses()->Add(1);
+      config_->total_original_bytes()->Add(original_code_.size());
+      // Note: This unsigned arithmetic is guaranteed not to underflow because
+      // of the if statement above.
+      config_->total_bytes_saved()->Add(
+          original_code_.size() - rewritten_code_.size());
+    }
+  } else {  // Minification failed.
     handler_->Message(kInfo, "%s: Javascript minification failed.  "
                       "Preserving old code.", message_id_.c_str());
+    // Note: Although we set rewritten_code_, we do not consider this a
+    // successful rewrite and thus will not minify. This is only used for
+    // canonical library identification.
     TrimWhitespace(original_code_, &rewritten_code_);
     // Update stats.
     config_->minification_failures()->Add(1);
-    return;
   }
-  // Minification succeeded.  Update stats based on whether
-  // minified code will be served back to the user or is just being
-  // used for library identification.
-  // The fact that it succeeded doesn't imply that it actually saved anything;
-  // we increment num_reducing_uses when there were actual savings.
-  config_->blocks_minified()->Add(1);
-  if (config_->minify()) {
-    config_->total_original_bytes()->Add(original_code_.size());
-    const size_t savings = original_code_.size() - rewritten_code_.size();
-    if (savings > 0) {
-      config_->num_reducing_uses()->Add(1);
-    }
-    config_->total_bytes_saved()->Add(savings);
-    output_code_ = rewritten_code_;
-  }
+  return successfully_rewritten_;
+}
+
+void JavascriptCodeBlock::SwapRewrittenString(GoogleString* other) {
+  DCHECK(rewritten_);
+  DCHECK(successfully_rewritten_);
+
+  other->swap(rewritten_code_);
+
+  rewritten_code_.clear();
+  rewritten_ = false;
+  successfully_rewritten_ = false;
 }
 
 }  // namespace net_instaweb

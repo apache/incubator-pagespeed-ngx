@@ -98,6 +98,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     MessageHandler* message_handler = server_context->message_handler();
     JavascriptCodeBlock code_block(
         input->contents(), config_, input->url(), message_handler);
+    code_block.Rewrite();
     // Check whether this code should, for various reasons, not be rewritten.
     if (PossiblyRewriteToLibrary(code_block, server_context, output)) {
       // Code was a library, so we will use the canonical url rather than create
@@ -110,7 +111,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       config_->minification_disabled()->Add(1);
       return kRewriteFailed;
     }
-    if (!code_block.ProfitableToRewrite()) {
+    if (!code_block.successfully_rewritten()) {
       // Optimization happened but wasn't useful; the base class will remember
       // this for later so we don't attempt to rewrite twice.
       message_handler->Message(
@@ -120,7 +121,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     }
     // Code block was optimized, so write out the new version.
     if (!WriteExternalScriptTo(
-            input, code_block.Rewritten(), server_context, output)) {
+            input, code_block.rewritten_code(), server_context, output)) {
       config_->failed_to_write()->Add(1);
       return kRewriteFailed;
     }
@@ -131,7 +132,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     // don't need the special control flow (and url_relocatable field in
     // cached_result and its treatment in rewrite_context).
     if (Options()->avoid_renaming_introspective_javascript() &&
-        JavascriptCodeBlock::UnsafeToRename(code_block.Rewritten())) {
+        JavascriptCodeBlock::UnsafeToRename(code_block.rewritten_code())) {
       CachedResult* result = output->EnsureCachedResultCreated();
       result->set_url_relocatable(false);
       message_handler->Message(
@@ -302,28 +303,30 @@ void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
   // First buffer up script data and minify it.
   GoogleString* script = body_node->mutable_contents();
   MessageHandler* message_handler = driver_->message_handler();
-  const JavascriptCodeBlock code_block(
+  JavascriptCodeBlock code_block(
       *script, config_.get(), driver_->UrlLine(), message_handler);
+  code_block.Rewrite();
   StringPiece library_url = code_block.ComputeJavascriptLibrary();
   if (!library_url.empty()) {
     // TODO(jmaessen): outline and use canonical url.
     driver_->InfoHere("Script is inlined version of %s",
                       library_url.as_string().c_str());
   }
-  if (code_block.ProfitableToRewrite()) {
+  if (code_block.successfully_rewritten()) {
     // Replace the old script string with the new, minified one.
-    GoogleString* rewritten_script = code_block.RewrittenString();
     if ((driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
         (script->find("<![CDATA[") != StringPiece::npos) &&
-        !StringPiece(*rewritten_script).starts_with(
+        !code_block.rewritten_code().starts_with(
             "<![CDATA")) {  // See Issue 542.
       // Minifier strips leading and trailing CDATA comments from scripts.
       // Restore them if necessary and safe according to the original script.
       script->clear();
-      StrAppend(script, "//<![CDATA[\n", *rewritten_script, "\n//]]>");
+      StrAppend(script, "//<![CDATA[\n", code_block.rewritten_code(),
+                "\n//]]>");
     } else {
       // Swap in the minified code to replace the original code.
-      script->swap(*rewritten_script);
+      code_block.SwapRewrittenString(script);
+      // Note: code_block and rewritten_script are INVALID after this point.
     }
     config_->num_uses()->Add(1);
     driver_->log_record()->SetRewriterLoggingStatus(

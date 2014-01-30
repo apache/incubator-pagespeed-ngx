@@ -176,8 +176,9 @@ class JsCodeBlockTest : public testing::Test {
 
   void SimpleRewriteTest() {
     scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
-    EXPECT_TRUE(block->ProfitableToRewrite());
-    EXPECT_EQ(kAfterCompilation, block->Rewritten());
+    EXPECT_TRUE(block->Rewrite());
+    EXPECT_TRUE(block->successfully_rewritten());
+    EXPECT_EQ(kAfterCompilation, block->rewritten_code());
     ExpectStats(1, 0,
                 STATIC_STRLEN(kBeforeCompilation) -
                 STATIC_STRLEN(kAfterCompilation),
@@ -219,24 +220,21 @@ TEST_F(JsCodeBlockTest, UnsafeToRename) {
 
 TEST_F(JsCodeBlockTest, NoRewrite) {
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kAfterCompilation));
-  EXPECT_FALSE(block->ProfitableToRewrite());
-  EXPECT_EQ(kAfterCompilation, block->Rewritten());
-  // Note: We do record this as a successful minification.
-  // Just with 0 bytes saved.
-  ExpectStats(1, 0, 0, STATIC_STRLEN(kAfterCompilation), 0);
+  EXPECT_FALSE(block->Rewrite());
+  // Note: Minifier succeeded, but no minification was applied and thus
+  // no bytes saved (nor original bytes marked).
+  ExpectStats(1, 0, 0, 0, 0);
 }
 
 TEST_F(JsCodeBlockTest, TruncatedComment) {
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kTruncatedComment));
-  EXPECT_FALSE(block->ProfitableToRewrite());
-  EXPECT_EQ(kTruncatedComment, block->Rewritten());
+  EXPECT_FALSE(block->Rewrite());
   ExpectStats(0, 1, 0, 0, 0);
 }
 
 TEST_F(JsCodeBlockTest, TruncatedString) {
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kTruncatedString));
-  EXPECT_FALSE(block->ProfitableToRewrite());
-  EXPECT_EQ(kTruncatedString, block->Rewritten());
+  EXPECT_FALSE(block->Rewrite());
   ExpectStats(0, 1, 0, 0, 0);
 }
 
@@ -245,8 +243,7 @@ TEST_F(JsCodeBlockTest, NoMinification) {
   DisableLibraryIdentification();
   EXPECT_FALSE(config_->minify());
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
-  EXPECT_FALSE(block->ProfitableToRewrite());
-  EXPECT_EQ(kBeforeCompilation, block->Rewritten());
+  EXPECT_FALSE(block->Rewrite());
   ExpectStats(0, 0, 0, 0, 0);
 }
 
@@ -256,8 +253,8 @@ TEST_F(JsCodeBlockTest, DealWithSgmlComment) {
   static const char kOriginal[] = "  <!--  \nvar x = 1;\n  //-->  ";
   static const char kExpected[] = "var x=1;";
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kOriginal));
-  EXPECT_TRUE(block->ProfitableToRewrite());
-  EXPECT_EQ(kExpected, block->Rewritten());
+  EXPECT_TRUE(block->Rewrite());
+  EXPECT_EQ(kExpected, block->rewritten_code());
   ExpectStats(1, 0,
               STATIC_STRLEN(kOriginal) - STATIC_STRLEN(kExpected),
               STATIC_STRLEN(kOriginal), 1);
@@ -266,6 +263,7 @@ TEST_F(JsCodeBlockTest, DealWithSgmlComment) {
 TEST_F(JsCodeBlockTest, IdentifyUnminified) {
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
+  block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
@@ -274,6 +272,7 @@ TEST_F(JsCodeBlockTest, IdentifyMerged) {
   RegisterLibrariesIn(&other_libraries);
   libraries_.Merge(other_libraries);
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
+  block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
@@ -283,12 +282,14 @@ TEST_F(JsCodeBlockTest, IdentifyMergedDuplicate) {
   RegisterLibrariesIn(&other_libraries);
   libraries_.Merge(other_libraries);
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
+  block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
 TEST_F(JsCodeBlockTest, IdentifyMinified) {
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kAfterCompilation));
+  block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
@@ -296,9 +297,9 @@ TEST_F(JsCodeBlockTest, IdentifyNoMinification) {
   DisableMinification();
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
+  block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
-  EXPECT_FALSE(block->ProfitableToRewrite());
-  EXPECT_EQ(kBeforeCompilation, block->Rewritten());
+  EXPECT_FALSE(block->successfully_rewritten());
   ExpectStats(1, 0, 0, 0, 0);
 }
 
@@ -306,6 +307,7 @@ TEST_F(JsCodeBlockTest, IdentifyNoMatch) {
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(
       TestBlock(kJsWithGetElementsByTagNameScript));
+  block->Rewrite();
   EXPECT_EQ("", block->ComputeJavascriptLibrary());
 }
 

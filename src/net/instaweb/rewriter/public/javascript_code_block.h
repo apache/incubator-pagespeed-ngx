@@ -133,38 +133,42 @@ class JavascriptCodeBlock {
 
   virtual ~JavascriptCodeBlock();
 
-  // Determines whether the javascript is brittle and will likely
-  // break if we alter its URL.
-  static bool UnsafeToRename(const StringPiece& script);
+  // Attempt to rewrite the file. Returns true if we should use the
+  // rewritten version. Must be called before successfully_rewritten(),
+  // rewritten_code() and ComputeJavascriptLibrary().
+  bool Rewrite();
 
-  // Rewrites the javascript code and returns whether that
-  // successfully made it smaller.
-  bool ProfitableToRewrite() const {
-    RewriteIfNecessary();
-    return (output_code_.size() < original_code_.size());
+  // Should we use the rewritten version?
+  // PRECONDITION: Rewrite() must have been called first.
+  bool successfully_rewritten() const {
+    DCHECK(rewritten_);
+    return successfully_rewritten_;
   }
-
-  // Returns the current (maximally-rewritten) contents of the
-  // code block.
-  const StringPiece Rewritten() const {
-    RewriteIfNecessary();
-    return output_code_;
-  }
-
-  // Returns the rewritten contents as a mutable GoogleString* suitable for
-  // swap() (but owned by the code block).  This should only be used if
-  // ProfitableToRewrite() holds.
-  GoogleString* RewrittenString() const {
-    RewriteIfNecessary();
-    DCHECK(rewritten_code_.size() < original_code_.size());
-    return &rewritten_code_;
+  // PRECONDITION: Rewrite() must have been called first and
+  // successfully_rewritten() must be true.
+  StringPiece rewritten_code() const {
+    DCHECK(rewritten_);
+    DCHECK(successfully_rewritten_);
+    return rewritten_code_;
   }
 
   // Is the current block a JS library that can be redirected to a canonical
   // URL?  If so, return that canonical URL (storage owned by the underlying
   // config object passed in at construction), otherwise return an empty
   // StringPiece.
+  //
+  // PRECONDITION: Rewrite() must have been called first.
   StringPiece ComputeJavascriptLibrary() const;
+
+  // Swaps rewritten_code_ into *other. Afterward the JavascriptCodeBlock will
+  // be cleared and unusable.
+  // PRECONDITION: Rewrite() must have been called first and
+  // successfully_rewritten() must be true.
+  void SwapRewrittenString(GoogleString* other);
+
+  // Determines whether the javascript is brittle and will likely
+  // break if we alter its URL.
+  static bool UnsafeToRename(const StringPiece& script);
 
   // Converts a regular string to what can be used in Javascript directly. Note
   // that output also contains starting and ending quotes, to facilitate
@@ -189,36 +193,20 @@ class JavascriptCodeBlock {
   }
 
   // Get message id passed in at creation time, for external diagnostics.
-  const GoogleString& message_id() const {
-    return message_id_;
-  }
-
- protected:
-  // Note that Rewrite must mutate lazily-initialized mutable state only.
-  void Rewrite() const;
-
-  JavascriptRewriteConfig* config_;
-  const GoogleString message_id_;  // ID to stick at begining of message.
-  MessageHandler* handler_;
-  const GoogleString original_code_;
+  const GoogleString& message_id() const { return message_id_; }
 
  private:
-  void RewriteIfNecessary() const {
-    if (!rewritten_) {
-      Rewrite();
-      rewritten_ = true;
-    }
-  }
+  JavascriptRewriteConfig* config_;
+  const GoogleString message_id_;  // ID to stick at begining of message.
+  const GoogleString original_code_;
+  GoogleString rewritten_code_;
 
-  // All of the subsequent fields are lazily initialized / mutated, with
-  // rewritten_ used as the flag indicating whether they're valid or not.
-  mutable bool rewritten_;
+  // Used to make sure we don't rewrite twice and that results aren't looked at
+  // before produced.
+  bool rewritten_;
+  bool successfully_rewritten_;
 
-  // Note that output_code_ points to either original_code_ or
-  // to rewritten_code_ depending upon the results of processing
-  // (ie it's an indirection to locally-owned data).
-  mutable StringPiece output_code_;
-  mutable GoogleString rewritten_code_;
+  MessageHandler* handler_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };
