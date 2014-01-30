@@ -833,6 +833,7 @@ function test_optimize_for_bandwidth() {
     check_from "$OUT" grep -q "$3"
   fi
 }
+
 test_optimize_for_bandwidth rewrite_css.html \
   '.blue{foreground-color:blue}body{background:url(arrow.png)}' \
   '<link rel="stylesheet" type="text/css" href="yellow.css">'
@@ -2106,7 +2107,7 @@ CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
 check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
 check_from "$CONNECTION" fgrep -qi "Keep-Alive"
 
-test_filter ngx_pagespeed_static defer js served with correct headers.
+start_test ngx_pagespeed_static defer js served with correct headers.
 # First, determine which hash js_defer is served with. We need a correct hash
 # to get it served up with an Etag, which is one of the things we want to test.
 URL="$HOSTNAME/mod_pagespeed_example/defer_javascript.html?PageSpeed=on&PageSpeedFilters=defer_javascript"
@@ -2310,6 +2311,10 @@ OUT=$($WGET_DUMP --header=Host:date.example.com \
 check_from "$OUT" egrep -q '^Date: Fri, 16 Oct 2009 23:05:07 GMT'
 
 if $USE_VALGRIND; then
+    # It is possible that there are still ProxyFetches outstanding
+    # at this point in time. Give them a few extra seconds to allow
+    # them to finish, so they will not generate valgrind complaints
+    sleep 3
     kill -s quit $VALGRIND_PID
     wait
     # Clear the previously set trap, we don't need it anymore.

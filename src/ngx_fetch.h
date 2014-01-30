@@ -121,12 +121,13 @@ class NgxFetch : public PoolElement<NgxFetch> {
   AsyncFetch* async_fetch_;
   ResponseHeadersParser parser_;
   MessageHandler* message_handler_;
-  size_t bytes_received_;
+  int64 bytes_received_;
   int64 fetch_start_ms_;
   int64 fetch_end_ms_;
   int64 timeout_ms_;
   bool done_;
   int64 content_length_;
+  bool content_length_known_;
 
   struct sockaddr_in sin_;
   ngx_log_t* log_;
