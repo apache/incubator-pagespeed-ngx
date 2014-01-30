@@ -872,6 +872,21 @@ void CheckFilterSetOrdering(const RewriteOptions::Filter* filters, int num) {
 }
 #endif
 
+// Table of properties for each filter to make it faster to check whether the
+// a filter is a member of a rewrite level or needs to be disabled when a
+// configuration is set to preserve resource URLs.  The table is initialized
+// once in RewriteOptions::Initialize.
+struct FilterProperties {
+  uint8 level_core : 1;
+  uint8 level_optimize_for_bandwidth : 1;
+  uint8 level_test : 1;
+  uint8 level_dangerous : 1;
+  uint8 preserve_image_urls : 1;
+  uint8 preserve_js_urls : 1;
+  uint8 preserve_css_urls : 1;
+};
+FilterProperties filter_properties[RewriteOptions::kEndOfFilters];
+
 bool IsInSet(const RewriteOptions::Filter* filters, int num,
              RewriteOptions::Filter filter) {
   const RewriteOptions::Filter* end = filters + num;
@@ -2146,6 +2161,30 @@ bool RewriteOptions::Initialize() {
     all_properties_->Merge(properties_);
     InitOptionIdToPropertyArray();
     InitOptionNameToPropertyArray();
+
+    for (int f = 0; f < static_cast<int>(RewriteOptions::kEndOfFilters); ++f) {
+      RewriteOptions::Filter filter = static_cast<RewriteOptions::Filter>(f);
+      FilterProperties* property = &filter_properties[f];
+      property->level_core =
+          IsInSet(kCoreFilterSet, arraysize(kCoreFilterSet), filter);
+      property->level_optimize_for_bandwidth =
+          IsInSet(kOptimizeForBandwidthFilterSet,
+                  arraysize(kOptimizeForBandwidthFilterSet), filter);
+      property->level_test =
+          IsInSet(kTestFilterSet, arraysize(kTestFilterSet), filter);
+      property->level_dangerous =
+          IsInSet(kDangerousFilterSet, arraysize(kDangerousFilterSet), filter);
+      property->preserve_js_urls =
+          IsInSet(kJsPreserveUrlDisabledFilters,
+                  arraysize(kJsPreserveUrlDisabledFilters), filter);
+      property->preserve_css_urls =
+          IsInSet(kCssPreserveUrlDisabledFilters,
+                  arraysize(kCssPreserveUrlDisabledFilters), filter);
+      property->preserve_image_urls =
+          IsInSet(kImagePreserveUrlDisabledFilters,
+                  arraysize(kImagePreserveUrlDisabledFilters), filter);
+    }
+
     return true;
   }
   return false;
@@ -3047,43 +3086,35 @@ bool RewriteOptions::Enabled(Filter filter) const {
     return true;
   }
 
-  if (css_preserve_urls() && IsInSet(kCssPreserveUrlDisabledFilters,
-                                     arraysize(kCssPreserveUrlDisabledFilters),
-                                     filter)) {
+  FilterProperties properties = filter_properties[filter];
+  if (css_preserve_urls() && properties.preserve_css_urls) {
     return false;
   }
-  if (js_preserve_urls() && IsInSet(kJsPreserveUrlDisabledFilters,
-                                    arraysize(kJsPreserveUrlDisabledFilters),
-                                    filter)) {
+  if (js_preserve_urls() && properties.preserve_js_urls) {
     return false;
   }
-  if (image_preserve_urls() && IsInSet(
-          kImagePreserveUrlDisabledFilters,
-          arraysize(kImagePreserveUrlDisabledFilters),
-          filter)) {
+  if (image_preserve_urls() && properties.preserve_image_urls) {
     return false;
   }
 
   switch (level_.value()) {
     case kTestingCoreFilters:
-      if (IsInSet(kTestFilterSet, arraysize(kTestFilterSet), filter)) {
+      if (properties.level_test) {
         return true;
       }
       FALLTHROUGH_INTENDED;
     case kCoreFilters:
-      if (IsInSet(kCoreFilterSet, arraysize(kCoreFilterSet), filter)) {
+      if (properties.level_core) {
         return true;
       }
       break;
     case kOptimizeForBandwidth:
-      if (IsInSet(kOptimizeForBandwidthFilterSet,
-                  arraysize(kOptimizeForBandwidthFilterSet), filter)) {
+      if (properties.level_optimize_for_bandwidth) {
         return true;
       }
       break;
     case kAllFilters:
-      if (!IsInSet(kDangerousFilterSet, arraysize(kDangerousFilterSet),
-                   filter)) {
+      if (!properties.level_dangerous) {
         return true;
       }
       break;
