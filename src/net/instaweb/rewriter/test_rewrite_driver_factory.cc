@@ -110,10 +110,9 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
       mock_message_handler_(NULL),
       mock_html_message_handler_(NULL),
       use_beacon_results_in_filters_(false),
+      use_test_url_namer_(false),
       add_platform_specific_decoding_passes_(true) {
   set_filename_prefix(StrCat(temp_dir, "/"));
-  use_test_url_namer_ = (getenv(kUrlNamerScheme) != NULL &&
-                         strcmp(getenv(kUrlNamerScheme), "test") == 0);
 }
 
 TestRewriteDriverFactory::~TestRewriteDriverFactory() {

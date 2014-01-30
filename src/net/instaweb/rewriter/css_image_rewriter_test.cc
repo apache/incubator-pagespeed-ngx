@@ -16,6 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -381,16 +382,11 @@ TEST_F(CssImageRewriterTest, RewriteCached) {
       "  background-image: url(http://test.com/dir/foo.png);\n"
       "}\n";
 
-  GoogleString kBaseDomain;
-  // If using the TestUrlNamer, the rewritten URL won't be relative so
-  // set things up so that we check for the correct URL below.
-  if (factory()->use_test_url_namer()) {
-    kBaseDomain = kTestDomain;
-  }
+  CHECK(!factory()->use_test_url_namer());
 
   const GoogleString kCssAfter = StrCat(
       "body{background-image:url(",
-      Encode(StrCat(kBaseDomain, "dir/"), "ce", "0", "foo.png", "png"),
+      Encode("dir/", "ce", "0", "foo.png", "png"),
       ")}");
   ValidateRewriteInlineCss("nosubdir",
                            kCssBefore, kCssAfter,

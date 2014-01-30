@@ -37,7 +37,6 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -379,13 +378,10 @@ TEST_F(JsCombineFilterTest, CombineJsAvoidRewritingIntrospectiveJavascripOn) {
 }
 
 TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
-  // These hashes depend on the URL, which is different when using the
-  // test url namer, so handle the difference.
-  bool test_url_namer = factory()->use_test_url_namer();
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
-                test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
-                test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+                "FA3Pqioukh",  // combined hash
+                "S$0tgbTH0O",  // hash of a.js,Mjm.FUEwDOA7jh.js
+                "ose8Vzgyj9",  // hash of b.js,Mjm.Y1kknPfzVs.js
                 true, kTestDomain);
 }
 
@@ -516,11 +512,10 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
   lru_cache()->Delete(out_url2);
 
   // Now try to get a combination.
-  bool test_url_namer = factory()->use_test_url_namer();
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
-                test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
-                test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+                "FA3Pqioukh",
+                "S$0tgbTH0O",
+                "ose8Vzgyj9",
                 true /*minified*/, kTestDomain);
 }
 
@@ -563,11 +558,10 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCachedWithDeadline) {
   //
   // TODO(morlovich): Consider unwinding .pagespeed. resource names in
   //                  JsCombineFilter's VarName?
-  bool test_url_namer = factory()->use_test_url_namer();
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
-                test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
-                test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+                "FA3Pqioukh",
+                "S$0tgbTH0O",
+                "ose8Vzgyj9",
                 true, kTestDomain);
 }
 
