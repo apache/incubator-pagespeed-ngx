@@ -18,10 +18,19 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_keywords.h"
+#include "pagespeed/kernel/js/js_tokenizer.h"
 
 using pagespeed::JsKeywords;
 
+namespace pagespeed {
+
+namespace js {
+
 namespace {
+
+// TODO(mdsteele): Once we're confident in the new minifier, delete the
+//   contents of this "legacy" namespace and just use the new implementation.
+namespace legacy {
 
 // Javascript's grammar has the appalling property that it cannot be lexed
 // without also being parsed, due to its semicolon insertion rules and the
@@ -138,7 +147,7 @@ class StringConsumer {
     output_->push_back(character);
   }
   void append(const StringPiece& str) {
-    output_->append(str.data(), str.size());
+    str.AppendToString(output_);
   }
   GoogleString* output_;
 };
@@ -184,16 +193,10 @@ class Minifier {
   // warnings.
   int input_size() const { return input_.size(); }
 
-  // Represents what kind of whitespace we've seen since the last token:
-  //   NO_WHITESPACE means that there is no whitespace between the tokens.
-  //   SPACE means there's been at least one space/tab, but no linebreaks.
-  //   LINEBREAK means there's been at least one linebreak.
-  enum Whitespace { NO_WHITESPACE, SPACE, LINEBREAK };
-
   const StringPiece input_;
   int index_;
   OutputConsumer output_;
-  Whitespace whitespace_;  // whitespace since the previous token
+  JsWhitespace whitespace_;  // whitespace since the previous token
   int prev_token_;
   bool error_;
   bool collapse_string_;
@@ -205,7 +208,7 @@ Minifier<OutputConsumer>::Minifier(const StringPiece& input,
   : input_(input),
     index_(0),
     output_(output),
-    whitespace_(NO_WHITESPACE),
+    whitespace_(kNoWhitespace),
     prev_token_(kStartToken),
     error_(false),
     collapse_string_(false) {}
@@ -225,11 +228,11 @@ void Minifier<OutputConsumer>::ChangeToken(int next_token) {
   // insert a linebreak here to avoid running afoul of semicolon insertion
   // (that is, the code may be relying on semicolon insertion here, and
   // removing the linebreak would break it).
-  if (whitespace_ == LINEBREAK &&
+  if (whitespace_ == kLinebreak &&
       !CanSuppressLinebreak(prev_token_, next_token)) {
     output_.push_back('\n');
   }
-  whitespace_ = NO_WHITESPACE;
+  whitespace_ = kNoWhitespace;
   prev_token_ = next_token;
 }
 
@@ -238,16 +241,16 @@ void Minifier<OutputConsumer>::ChangeToken(int next_token) {
 template<typename OutputConsumer>
 void Minifier<OutputConsumer>::InsertSpaceIfNeeded() {
   switch (whitespace_) {
-    case SPACE:
+    case kSpace:
       output_.push_back(' ');
       break;
-    case LINEBREAK:
+    case kLinebreak:
       output_.push_back('\n');
       break;
     default:
       break;
   }
-  whitespace_ = NO_WHITESPACE;
+  whitespace_ = kNoWhitespace;
 }
 
 template<typename OutputConsumer>
@@ -267,8 +270,8 @@ void Minifier<OutputConsumer>::ConsumeBlockComment() {
       if (may_be_ccc && input_[index_ - 3] == '@') {
         ChangeToken(kCCCommentToken);
         output_.append(input_.substr(begin, index_ - begin));
-      } else if (whitespace_ == NO_WHITESPACE) {
-        whitespace_ = SPACE;
+      } else if (whitespace_ == kNoWhitespace) {
+        whitespace_ = kSpace;
       }
       return;
     }
@@ -284,7 +287,7 @@ void Minifier<OutputConsumer>::ConsumeLineComment() {
          input_[index_] != '\r') {
     ++index_;
   }
-  whitespace_ = LINEBREAK;
+  whitespace_ = kLinebreak;
 }
 
 // Consume a keyword, name, or number.
@@ -385,15 +388,15 @@ template<typename OutputConsumer>
 void Minifier<OutputConsumer>::Minify() {
   while (index_ < input_size() && !error_) {
     const char ch = input_[index_];
-    // Track whitespace since the previous token.  NO_WHITESPACE means no
-    // whitespace; LINEBREAK means there's been at least one linebreak; SPACE
+    // Track whitespace since the previous token.  kNoWhitespace means no
+    // whitespace; kLinebreak means there's been at least one linebreak; kSpace
     // means there's been spaces/tabs, but no linebreaks.
     if (ch == '\n' || ch == '\r') {
-      whitespace_ = LINEBREAK;
+      whitespace_ = kLinebreak;
       ++index_;
     } else if (ch == ' ' || ch == '\t') {
-      if (whitespace_ == NO_WHITESPACE) {
-        whitespace_ = SPACE;
+      if (whitespace_ == kNoWhitespace) {
+        whitespace_ = kSpace;
       }
       ++index_;
     } else if (ch == '\'' || ch == '"') {
@@ -433,7 +436,7 @@ void Minifier<OutputConsumer>::Minify() {
       // efficient because input_ is a StringPiece, not a string.
       ConsumeLineComment();
     } else if (ch == '-' &&
-               (whitespace_ == LINEBREAK || prev_token_ == kStartToken) &&
+               (whitespace_ == kLinebreak || prev_token_ == kStartToken) &&
                input_.substr(index_).starts_with("-->")) {
       // Treat --> as a line comment if it's at the start of a line.
       ConsumeLineComment();
@@ -498,12 +501,6 @@ OutputConsumer* Minifier<OutputConsumer>::GetOutput() {
   return NULL;
 }
 
-}  // namespace
-
-namespace pagespeed {
-
-namespace js {
-
 bool MinifyJs(const StringPiece& input, GoogleString* out) {
   Minifier<StringConsumer> minifier(input, out);
   return (minifier.GetOutput() != NULL);
@@ -538,6 +535,168 @@ bool GetMinifiedStringCollapsedJsSize(const StringPiece& input,
   } else {
     return false;
   }
+}
+
+}  // namespace legacy
+
+bool IsNameNumberOrKeyword(JsKeywords::Type type) {
+  switch (type) {
+    case JsKeywords::kComment:
+    case JsKeywords::kWhitespace:
+    case JsKeywords::kLineSeparator:
+    case JsKeywords::kSemiInsert:
+    case JsKeywords::kRegex:
+    case JsKeywords::kStringLiteral:
+    case JsKeywords::kOperator:
+    case JsKeywords::kEndOfInput:
+    case JsKeywords::kError:
+      return false;
+    default:
+      return true;
+  }
+}
+
+}  // namespace
+
+JsMinifyingTokenizer::JsMinifyingTokenizer(
+    const JsTokenizerPatterns& patterns, StringPiece input)
+    : tokenizer_(patterns, input), whitespace_(kNoWhitespace),
+      prev_type_(JsKeywords::kEndOfInput), prev_token_(),
+      next_type_(JsKeywords::kEndOfInput), next_token_() {}
+
+JsMinifyingTokenizer::~JsMinifyingTokenizer() {}
+
+JsKeywords::Type JsMinifyingTokenizer::NextToken(StringPiece* token_out) {
+  if (next_type_ != JsKeywords::kEndOfInput) {
+    prev_type_ = next_type_;
+    prev_token_ = next_token_;
+    *token_out = next_token_;
+    next_type_ = JsKeywords::kEndOfInput;
+    next_token_.clear();
+    return prev_type_;
+  }
+  while (true) {
+    StringPiece token;
+    const JsKeywords::Type type = tokenizer_.NextToken(&token);
+    if (type == JsKeywords::kWhitespace) {
+      if (whitespace_ == kNoWhitespace) {
+        whitespace_ = kSpace;
+      }
+    } else if (type == JsKeywords::kLineSeparator) {
+      whitespace_ = kLinebreak;
+    } else if (type == JsKeywords::kSemiInsert) {
+      whitespace_ = kNoWhitespace;
+      prev_type_ = type;
+      prev_token_ = "\n";
+      *token_out = prev_token_;
+      return type;
+    } else if (type == JsKeywords::kComment) {
+      // Emit comments that look like they might be IE conditional compilation
+      // comments; treat all other comments as whitespace.
+      // TODO(mdsteele): We should retain copyrights by default, and/or retain
+      //   all comments matching a user-specified pattern.  It might also be
+      //   nice to make retaining of IE conditional compilation comments
+      //   optional, so we can turn it off for non-IE browsers.
+      if (token.size() >= 6 && token.starts_with("/*@") &&
+          token.ends_with("@*/")) {
+        *token_out = token;
+        return type;
+      } else if (whitespace_ == kNoWhitespace) {
+        whitespace_ = kSpace;
+      }
+    } else {
+      const JsWhitespace whitespace = whitespace_;
+      whitespace_ = kNoWhitespace;
+      if (whitespace != kNoWhitespace &&
+          WhitespaceNeededBefore(type, token)) {
+        next_type_ = type;
+        next_token_ = token;
+        if (whitespace == kLinebreak) {
+          *token_out = "\n";
+          return JsKeywords::kLineSeparator;
+        } else {
+          *token_out = " ";
+          return JsKeywords::kWhitespace;
+        }
+      }
+      prev_type_ = type;
+      prev_token_ = token;
+      *token_out = token;
+      return type;
+    }
+  }
+}
+
+bool JsMinifyingTokenizer::WhitespaceNeededBefore(
+    JsKeywords::Type type, StringPiece token) {
+  // Whitespace is needed 1) to separate words and numbers, 2) to prevent from
+  // glomming a period onto the end of numeric literal that will absorb it as a
+  // decimal point, and 3) to prevent us from joining operators together to
+  // form line comments or other operators.
+  if (IsNameNumberOrKeyword(type)) {
+    return (IsNameNumberOrKeyword(prev_type_) ||
+            prev_type_ == JsKeywords::kRegex);
+  } else if (token == ".") {
+    // To avoid merging tokens, we can't append a period to the end of a number
+    // literal that...
+    return (prev_type_ == JsKeywords::kNumber &&
+            // ...doesn't already have a decimal point or exponent, and...
+            prev_token_.find_first_of(".eE") == StringPiece::npos &&
+            // ...either doesn't start with a zero digit, or...
+            (!prev_token_.starts_with("0") ||
+             // ...does start with a zero digit, but is neither hex nor octal.
+             (prev_token_.find_first_of("xX") == StringPiece::npos &&
+              prev_token_.find_first_of("89") != StringPiece::npos)));
+  } else if (prev_token_.ends_with("/")) {
+    return token.starts_with("/");
+  } else if (prev_token_.ends_with("+")) {
+    return token.starts_with("+");
+  } else if (prev_token_.ends_with("<")) {
+    return token.starts_with("!");
+  } else if (prev_token_.ends_with("!") ||
+             prev_token_.ends_with("-")) {
+    return token.starts_with("-");
+  }
+  return false;
+}
+
+bool MinifyUtf8Js(const JsTokenizerPatterns& patterns,
+                  StringPiece input, GoogleString* output) {
+  JsMinifyingTokenizer tokenizer(patterns, input);
+  while (true) {
+    StringPiece token;
+    switch (tokenizer.NextToken(&token)) {
+      case JsKeywords::kEndOfInput:
+        DCHECK(token.empty());
+        DCHECK(!tokenizer.has_error());
+        return true;
+      case JsKeywords::kError:
+        DCHECK(tokenizer.has_error());
+        token.AppendToString(output);
+        return false;
+      default:
+        token.AppendToString(output);
+        break;
+    }
+  }
+}
+
+bool MinifyJs(const StringPiece& input, GoogleString* out) {
+  return legacy::MinifyJs(input, out);
+}
+
+bool GetMinifiedJsSize(const StringPiece& input, int* minimized_size) {
+  return legacy::GetMinifiedJsSize(input, minimized_size);
+}
+
+bool MinifyJsAndCollapseStrings(const StringPiece& input,
+                               GoogleString* out) {
+  return legacy::MinifyJsAndCollapseStrings(input, out);
+}
+
+bool GetMinifiedStringCollapsedJsSize(const StringPiece& input,
+                                      int* minimized_size) {
+  return legacy::GetMinifiedStringCollapsedJsSize(input, minimized_size);
 }
 
 }  // namespace js

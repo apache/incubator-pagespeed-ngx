@@ -323,7 +323,23 @@
       ],
       'dependencies': [
         'pagespeed_base_core',
+        'js_tokenizer',
         'pagespeed_javascript_gperf',
+      ],
+    },
+    {
+      'target_name': 'js_tokenizer',
+      'type': '<(library)',
+      'sources': [
+        'kernel/js/js_tokenizer.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'pagespeed_base_core',
+        'pagespeed_javascript_gperf',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
     },
     {

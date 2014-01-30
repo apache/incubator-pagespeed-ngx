@@ -1080,9 +1080,7 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_javascript_gperf',
         '<(DEPTH)/base/base.gyp:base',
       ],
-      'sources': [
-        'js/js_lexer.cc',
-      ],
+      'sources': [],
       'include_dirs': [
         '<(instaweb_root)',
         '<(DEPTH)',

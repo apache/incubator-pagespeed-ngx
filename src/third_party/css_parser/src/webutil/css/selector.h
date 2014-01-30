@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "strings/stringpiece.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/string.h"

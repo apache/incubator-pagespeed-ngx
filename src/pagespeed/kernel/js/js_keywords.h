@@ -28,8 +28,6 @@ namespace net_instaweb {
 
 namespace pagespeed {
 
-class JsMinifyTest;
-
 class JsKeywords {
  public:
   enum Type {
@@ -90,15 +88,17 @@ class JsKeywords {
     kNotAKeyword,
 
     // Other types of lexical tokens; returned by lexer, but not gperf.
-    kComment,
-    kWhitespace,
-    kLineSeparator,
-    kRegex,
-    kStringLiteral,
-    kNumber,
-    kOperator,
-    kIdentifier,
-    kEndOfInput
+    kComment,        // A block or line comment (not including the linebreak).
+    kWhitespace,     // Whitespace not containing any linebreaks.
+    kLineSeparator,  // Whitespace with linebreaks, but no semicolon insertion.
+    kSemiInsert,     // Whitespace that triggers semicolon insertion.
+    kRegex,          // A regex literal, such as /foo/i or /a+b*/
+    kStringLiteral,  // A string literal, such as 'foo' or "bar"
+    kNumber,         // A numeric literal, such as 3.5 or 017 or .2e+10
+    kOperator,       // An operator or symbol, such as && or <<= or (
+    kIdentifier,     // An identifier (variable name, label, etc).
+    kEndOfInput,     // End of input was reached without errors.
+    kError           // A syntax error occurred.
   };
 
   static bool IsAKeyword(Type type) { return type < kNotAKeyword; }

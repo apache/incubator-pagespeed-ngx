@@ -14,12 +14,14 @@
 
 #include "pagespeed/kernel/js/js_minify.h"
 
+#include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_keywords.h"
 
-namespace pagespeed {
+namespace {
 
 // This sample code comes from Douglas Crockford's jsmin example.
 const char* kBeforeCompilation =
@@ -58,7 +60,7 @@ const char* kBeforeCompilation =
     "    is.gecko = true;\n"
     "}\n";
 
-const char* kAfterCompilation =
+const char* kAfterCompilationOld =
     "var is={ie:navigator.appName=='Microsoft Internet Explorer',"
     "java:navigator.javaEnabled(),ns:navigator.appName=='Netscape',"
     "ua:navigator.userAgent.toLowerCase(),version:parseFloat("
@@ -68,10 +70,21 @@ const char* kAfterCompilation =
     "is.ie=is.ns=false;is.opera=true;}\n"
     "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
 
+const char* kAfterCompilationNew =
+    "var is={ie:navigator.appName=='Microsoft Internet Explorer',"
+    "java:navigator.javaEnabled(),ns:navigator.appName=='Netscape',"
+    "ua:navigator.userAgent.toLowerCase(),version:parseFloat("
+    "navigator.appVersion.substr(21))||parseFloat(navigator.appVersion)"
+    ",win:navigator.platform=='Win32'}\n"
+    "is.mac=is.ua.indexOf('mac')>=0;if(is.ua.indexOf('opera')>=0){"
+    "is.ie=is.ns=false;is.opera=true;}"
+    "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
+
+const char kTestRootDir[] = "/pagespeed/kernel/js/testdata/third_party/";
+
 class JsMinifyTest : public testing::Test {
  protected:
-  void CheckMinification(const StringPiece& before,
-                         const StringPiece& after) {
+  void CheckOldMinification(StringPiece before, StringPiece after) {
     GoogleString output;
     EXPECT_TRUE(pagespeed::js::MinifyJs(before, &output));
     EXPECT_EQ(after, output);
@@ -81,23 +94,72 @@ class JsMinifyTest : public testing::Test {
     EXPECT_EQ(static_cast<int>(after.size()), output_size);
   }
 
-  void CheckError(const StringPiece& input) {
+  void CheckNewMinification(StringPiece before, StringPiece after) {
+    GoogleString output;
+    EXPECT_TRUE(pagespeed::js::MinifyUtf8Js(patterns_, before, &output));
+    EXPECT_EQ(after, output);
+  }
+
+  void CheckMinification(StringPiece before, StringPiece after) {
+    CheckOldMinification(before, after);
+    CheckNewMinification(before, after);
+  }
+
+  void CheckOldError(StringPiece input) {
     GoogleString output;
     EXPECT_FALSE(pagespeed::js::MinifyJs(input, &output));
-    EXPECT_TRUE(output.empty());
 
     int output_size = -1;
     EXPECT_FALSE(pagespeed::js::GetMinifiedJsSize(input, &output_size));
     EXPECT_EQ(-1, output_size);
   }
+
+  void CheckNewError(StringPiece input) {
+    GoogleString output;
+    EXPECT_FALSE(pagespeed::js::MinifyUtf8Js(patterns_, input, &output));
+  }
+
+  void CheckError(StringPiece input) {
+    CheckOldError(input);
+    CheckNewError(input);
+  }
+
+  void CheckFileMinification(StringPiece before_filename,
+                             StringPiece after_filename) {
+    net_instaweb::StdioFileSystem file_system;
+    net_instaweb::GoogleMessageHandler message_handler;
+    GoogleString original;
+    {
+      const GoogleString filepath = net_instaweb::StrCat(
+          net_instaweb::GTestSrcDir(), kTestRootDir, before_filename);
+      ASSERT_TRUE(file_system.ReadFile(
+          filepath.c_str(), &original, &message_handler));
+    }
+    GoogleString expected;
+    {
+      const GoogleString filepath = net_instaweb::StrCat(
+          net_instaweb::GTestSrcDir(), kTestRootDir, after_filename);
+      ASSERT_TRUE(file_system.ReadFile(
+          filepath.c_str(), &expected, &message_handler));
+    }
+    GoogleString actual;
+    EXPECT_TRUE(pagespeed::js::MinifyUtf8Js(patterns_, original, &actual));
+    EXPECT_STREQ(expected, actual);
+  }
+
+ private:
+  pagespeed::js::JsTokenizerPatterns patterns_;
 };
 
 TEST_F(JsMinifyTest, Basic) {
-  CheckMinification(kBeforeCompilation, kAfterCompilation);
+  // Our new minifier is slightly better at removing linebreaks than our old
+  // minifier, so they get slightly different results for this test.
+  CheckOldMinification(kBeforeCompilation, kAfterCompilationOld);
+  CheckNewMinification(kBeforeCompilation, kAfterCompilationNew);
 }
 
 TEST_F(JsMinifyTest, AlreadyMinified) {
-  CheckMinification(kAfterCompilation, kAfterCompilation);
+  CheckMinification(kAfterCompilationNew, kAfterCompilationNew);
 }
 
 TEST_F(JsMinifyTest, ErrorUnclosedComment) {
@@ -117,7 +179,7 @@ TEST_F(JsMinifyTest, ErrorRegexNewline) {
 }
 
 TEST_F(JsMinifyTest, SignedCharDoesntSignExtend) {
-  const unsigned char input[] = { 0xff, 0x00 };
+  const unsigned char input[] = { 0xe0, 0xb2, 0xa0, 0x00 };
   const char* input_nosign = reinterpret_cast<const char*>(input);
   CheckMinification(input_nosign, input_nosign);
 }
@@ -149,7 +211,9 @@ TEST_F(JsMinifyTest, CarriageReturnEndsLineComment) {
 
 // See http://code.google.com/p/page-speed/issues/detail?id=198
 TEST_F(JsMinifyTest, LeaveIEConditionalCompilationComments) {
-  CheckMinification(
+  // Our new minifier is slightly better at removing linebreaks than our old
+  // minifier, so they get slightly different results for this test.
+  CheckOldMinification(
       "/*@cc_on\n"
       "  /*@if (@_win32)\n"
       "    document.write('IE');\n"
@@ -162,6 +226,19 @@ TEST_F(JsMinifyTest, LeaveIEConditionalCompilationComments) {
       "    document.write('IE');\n"
       "  @else @*/\n"
       "document.write('other');/*@end\n"
+      "@*/");
+  CheckNewMinification(
+      "/*@cc_on\n"
+      "  /*@if (@_win32)\n"
+      "    document.write('IE');\n"
+      "  @else @*/\n"
+      "    document.write('other');\n"
+      "  /*@end\n"
+      "@*/",
+      "/*@cc_on\n"
+      "  /*@if (@_win32)\n"
+      "    document.write('IE');\n"
+      "  @else @*/document.write('other');/*@end\n"
       "@*/");
 }
 
@@ -237,11 +314,43 @@ TEST_F(JsMinifyTest, DoNotCreateSgmlLineComment2) {
   CheckMinification("if (x < !--y) { x = 0; }\n", "if(x< !--y){x=0;}");
 }
 
+TEST_F(JsMinifyTest, DoNotJoinDecimalIntegerAndDot) {
+  // 34 .toString() is legal code, but 34.toString() isn't, because the . in
+  // the second example gets parsed as part of the literal (decimal point).  So
+  // we need to leave a space in there.  Our old minifier gets this wrong, but
+  // the new minifier should handle it correctly.
+  CheckNewMinification("0192  . toString()", "0192 .toString()");
+}
+
+TEST_F(JsMinifyTest, DoJoinHexOctalIntegerAndDot) {
+  // On the other hand, hex and octal literals can't have decimal points, so we
+  // don't need the space here.
+  CheckMinification("0x3e2  . toString() + 0172  . toString()",
+                    "0x3e2.toString()+0172.toString()");
+}
+
+TEST_F(JsMinifyTest, DoJoinDecimalFractionAndDot) {
+  // Also, if the decimal literal can't take another decimal point, then we can
+  // safely remove the space.
+  CheckMinification("3.5 . toString() + 3e2 . toString()",
+                    "3.5.toString()+3e2.toString()");
+}
+
 TEST_F(JsMinifyTest, TrickyRegexLiteral) {
   // The first assignment is two divisions; the second assignment is a regex
   // literal.  JSMin gets this wrong (it removes whitespace from the regex).
   CheckMinification("var x = a[0] / b /i;\n var y = a[0] + / b /i;",
                     "var x=a[0]/b/i;var y=a[0]+/ b /i;");
+}
+
+TEST_F(JsMinifyTest, ObjectLiteralRegexLiteral) {
+  // On the first line, this looks like it should be an object literal divided
+  // by x divided by i, but nope, that's a block with a labelled expression
+  // statement, followed by a regex literal.  The second line, on the other
+  // hand, _is_ an object literal, followed by division.  Our old minifier gets
+  // the second one wrong, but the new minifier should handle it correctly.
+  CheckMinification("{foo: 123} / x /i;", "{foo:123}/ x /i;");
+  CheckNewMinification("x={foo: 1} / x /i;", "x={foo:1}/x/i;");
 }
 
 // See http://code.google.com/p/modpagespeed/issues/detail?id=327
@@ -288,14 +397,30 @@ TEST_F(JsMinifyTest, KeywordPrecedesRegex) {
   // If it thinks it's a division then it will treat the "/    /" as a regex
   // and not remove the comment.  Do the same for all such keywords.
   // Example, "typeof /./    /* hi there */;" ->  "typeof/./;"
-  for (JsKeywords::Iterator iter; !iter.AtEnd(); iter.Next()) {
-    if (JsKeywords::CanKeywordPrecedeRegEx(iter.name())) {
+  for (pagespeed::JsKeywords::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    if (pagespeed::JsKeywords::CanKeywordPrecedeRegEx(iter.name())) {
       GoogleString input =
           net_instaweb::StrCat(iter.name(), " /./   /* hi there */;");
       GoogleString expected = net_instaweb::StrCat(iter.name(), "/./;");
       CheckMinification(input, expected);
     }
   }
+}
+
+TEST_F(JsMinifyTest, LoopRegex) {
+  // Make sure we understand that a slash after "while (...)" or "for (...)" is
+  // a regex, not division.  Our old minifier gets this wrong, but the new
+  // minifier should handle it correctly.
+  CheckNewMinification("while (0) /\\//.exec('');",
+                       "while(0)/\\//.exec('');");
+  CheckNewMinification("for (x in y) / z /.exec(x);",
+                       "for(x in y)/ z /.exec(x);");
+}
+
+TEST_F(JsMinifyTest, LabelRegex) {
+  // Make sure we understand that a slash after a label is a regex, not
+  // division.
+  CheckMinification("{ foo: / x /.exec(''); }", "{foo:/ x /.exec('');}");
 }
 
 const char kCrashTestString[] =
@@ -319,10 +444,14 @@ TEST_F(JsMinifyTest, DoNotCrash) {
 
 TEST_F(JsMinifyTest, SemicolonInsertionIncrement) {
   CheckMinification("a\n++b\nc++\nd", "a\n++b\nc++\nd");
+  // A trickier case that only the new minifier gets right:
+  CheckNewMinification("a\n++\nb\nc++\nd", "a\n++b\nc++\nd");
 }
 
 TEST_F(JsMinifyTest, SemicolonInsertionDecrement) {
   CheckMinification("a\n--b\nc--\nd", "a\n--b\nc--\nd");
+  // A trickier case that only the new minifier gets right:
+  CheckNewMinification("a\n--\nb\nc--\nd", "a\n--b\nc--\nd");
 }
 
 TEST_F(JsMinifyTest, SemicolonInsertionAddition) {
@@ -350,6 +479,10 @@ TEST_F(JsMinifyTest, SemicolonInsertionRegex) {
   // No semicolon will be inserted, so the linebreak and spaces can be removed
   // (this is two divisions, not a regex).
   CheckMinification("i=0\n/ [a-z] /g.exec(s)", "i=0/[a-z]/g.exec(s)");
+}
+
+TEST_F(JsMinifyTest, SemicolonInsertionComment) {
+  CheckMinification("a=b\n /*hello*/ c=d\n", "a=b\nc=d");
 }
 
 TEST_F(JsMinifyTest, SemicolonInsertionWhileStmt) {
@@ -383,6 +516,11 @@ TEST_F(JsMinifyTest, SemicolonInsertionContinueStmt) {
   CheckMinification("continue\nlabel;", "continue\nlabel;");
 }
 
+TEST_F(JsMinifyTest, SemicolonInsertionDebuggerStmt) {
+  // A semicolon _will_ be inserted, so the linebreak _cannot_ be removed.
+  CheckMinification("debugger\nfoo;", "debugger\nfoo;");
+}
+
 const char kCollapsingStringTestString[] =
     "var x = 'asd \\' lse'\n"
     "var y /*comment*/ = /re'gex/\n"
@@ -407,4 +545,16 @@ TEST_F(JsMinifyTest, CollapsingStringTest) {
     ASSERT_EQ(static_cast<int>(strlen(kCollapsedTestString)), size);
 }
 
-}  // namespace pagespeed
+TEST_F(JsMinifyTest, MinifyAngular) {
+  CheckFileMinification("angular.original", "angular.minified");
+}
+
+TEST_F(JsMinifyTest, MinifyJQuery) {
+  CheckFileMinification("jquery.original", "jquery.minified");
+}
+
+TEST_F(JsMinifyTest, MinifyPrototype) {
+  CheckFileMinification("prototype.original", "prototype.minified");
+}
+
+}  // namespace
