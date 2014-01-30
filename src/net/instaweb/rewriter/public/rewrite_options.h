@@ -1479,7 +1479,8 @@ class RewriteOptions {
   }
 
   bool in_place_wait_for_optimized() const {
-    return in_place_wait_for_optimized_.value();
+    return (in_place_wait_for_optimized_.value() ||
+            (in_place_rewrite_deadline_ms() < 0));
   }
 
   void set_in_place_rewrite_deadline_ms(int x) {

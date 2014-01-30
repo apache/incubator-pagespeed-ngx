@@ -150,6 +150,17 @@ ModPagespeedEnableFilters add_instrumentation
     Header always set X-TestHeader "hello"
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/wait/" >
+    ModPagespeedInPlaceWaitForOptimized on
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/deadline/" >
+    ModPagespeedInPlaceRewriteDeadlineMs -1
+</Directory>
+
+ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/instant/" \
+                         "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/"
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >
     # Files in this directory should be served uncacheable.
     Header set Cache-control "no-cache"
