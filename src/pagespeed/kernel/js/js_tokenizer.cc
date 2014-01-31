@@ -279,9 +279,9 @@ const char* const kLineContinuationRegex =
 
 }  // namespace
 
-JsTokenizer::JsTokenizer(const JsTokenizerPatterns& patterns,
+JsTokenizer::JsTokenizer(const JsTokenizerPatterns* patterns,
                          StringPiece input)
-    : patterns_(&patterns), input_(input),
+    : patterns_(patterns), input_(input),
       start_of_line_(true), error_(false) {
   parse_stack_.push_back(kStartOfInput);
 }

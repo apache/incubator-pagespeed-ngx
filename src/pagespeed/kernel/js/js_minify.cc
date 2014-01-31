@@ -559,7 +559,7 @@ bool IsNameNumberOrKeyword(JsKeywords::Type type) {
 }  // namespace
 
 JsMinifyingTokenizer::JsMinifyingTokenizer(
-    const JsTokenizerPatterns& patterns, StringPiece input)
+    const JsTokenizerPatterns* patterns, StringPiece input)
     : tokenizer_(patterns, input), whitespace_(kNoWhitespace),
       prev_type_(JsKeywords::kEndOfInput), prev_token_(),
       next_type_(JsKeywords::kEndOfInput), next_token_() {}
@@ -660,7 +660,7 @@ bool JsMinifyingTokenizer::WhitespaceNeededBefore(
   return false;
 }
 
-bool MinifyUtf8Js(const JsTokenizerPatterns& patterns,
+bool MinifyUtf8Js(const JsTokenizerPatterns* patterns,
                   StringPiece input, GoogleString* output) {
   JsMinifyingTokenizer tokenizer(patterns, input);
   while (true) {

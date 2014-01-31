@@ -41,7 +41,7 @@ class JsMinifyingTokenizer {
  public:
   // Creates a tokenizer that will tokenize the given input string (which must
   // outlive the JsMinifyingTokenizer object).
-  JsMinifyingTokenizer(const JsTokenizerPatterns& patterns, StringPiece input);
+  JsMinifyingTokenizer(const JsTokenizerPatterns* patterns, StringPiece input);
 
   ~JsMinifyingTokenizer();
 
@@ -73,7 +73,7 @@ class JsMinifyingTokenizer {
 // still be fully populated from the input; the portion of the input up to the
 // parse error will be minified, and the remainder will be passed through
 // unmodified.
-bool MinifyUtf8Js(const JsTokenizerPatterns& patterns,
+bool MinifyUtf8Js(const JsTokenizerPatterns* patterns,
                   StringPiece input, GoogleString* output);
 
 ///////////////////////////////////////////////////////////////////////////////

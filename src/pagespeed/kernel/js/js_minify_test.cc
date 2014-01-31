@@ -96,7 +96,7 @@ class JsMinifyTest : public testing::Test {
 
   void CheckNewMinification(StringPiece before, StringPiece after) {
     GoogleString output;
-    EXPECT_TRUE(pagespeed::js::MinifyUtf8Js(patterns_, before, &output));
+    EXPECT_TRUE(pagespeed::js::MinifyUtf8Js(&patterns_, before, &output));
     EXPECT_EQ(after, output);
   }
 
@@ -116,7 +116,7 @@ class JsMinifyTest : public testing::Test {
 
   void CheckNewError(StringPiece input) {
     GoogleString output;
-    EXPECT_FALSE(pagespeed::js::MinifyUtf8Js(patterns_, input, &output));
+    EXPECT_FALSE(pagespeed::js::MinifyUtf8Js(&patterns_, input, &output));
   }
 
   void CheckError(StringPiece input) {
@@ -143,7 +143,7 @@ class JsMinifyTest : public testing::Test {
           filepath.c_str(), &expected, &message_handler));
     }
     GoogleString actual;
-    EXPECT_TRUE(pagespeed::js::MinifyUtf8Js(patterns_, original, &actual));
+    EXPECT_TRUE(pagespeed::js::MinifyUtf8Js(&patterns_, original, &actual));
     EXPECT_STREQ(expected, actual);
   }
 

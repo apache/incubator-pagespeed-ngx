@@ -34,7 +34,7 @@ const char kTestRootDir[] = "/pagespeed/kernel/js/testdata/third_party/";
 class JsTokenizerTest : public testing::Test {
  protected:
   void BeginTokenizing(StringPiece input) {
-    tokenizer_.reset(new JsTokenizer(patterns_, input));
+    tokenizer_.reset(new JsTokenizer(&patterns_, input));
   }
 
   void ExpectParseStack(StringPiece expected_parse_stack) {
@@ -85,7 +85,7 @@ class JsTokenizerTest : public testing::Test {
     GoogleString output;
     {
       output.reserve(original.size());
-      JsTokenizer tokenizer(patterns_, original);
+      JsTokenizer tokenizer(&patterns_, original);
       StringPiece token;
       while (tokenizer.NextToken(&token) !=
              JsKeywords::kEndOfInput) {

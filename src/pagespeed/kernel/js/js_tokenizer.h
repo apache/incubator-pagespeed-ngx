@@ -57,7 +57,7 @@ class JsTokenizer {
  public:
   // Creates a tokenizer that will tokenize the given UTF8-encoded input string
   // (which must outlive the JsTokenizer object).
-  JsTokenizer(const JsTokenizerPatterns& patterns, StringPiece input);
+  JsTokenizer(const JsTokenizerPatterns* patterns, StringPiece input);
 
   ~JsTokenizer();
 
