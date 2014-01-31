@@ -1687,12 +1687,25 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx->in_place = false;
     ctx->pagespeed_connection = NULL;
     // See build_context_for_request() in mod_instaweb.cc
+    // TODO(jefftk): Is this the right place to be modifying caching headers for
+    // html fetches?  Or should that be done later, in the headers flow for
+    // filter mode, rather than here in resource fetch mode?
     if (!options->modify_caching_headers()) {
       ctx->preserve_caching_headers = kPreserveAllCachingHeaders;
-    } else if (!options->downstream_cache_purge_location_prefix().empty()) {
-      ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
-    } else {
+    } else if (!options->IsDownstreamCacheIntegrationEnabled()) {
+      // Downstream cache integration is not enabled. Disable original
+      // Cache-Control headers.
       ctx->preserve_caching_headers = kDontPreserveHeaders;
+    } else {
+      ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
+      // Downstream cache integration is enabled. If a rebeaconing key has been
+      // configured and there is a ShouldBeacon header with the correct key,
+      // disable original Cache-Control headers so that the instrumented page is
+      // served out with no-cache.
+      StringPiece should_beacon(request_headers->Lookup1(kPsaShouldBeacon));
+      if (options->MatchesDownstreamCacheRebeaconingKey(should_beacon)) {
+        ctx->preserve_caching_headers = kDontPreserveHeaders;
+      }
     }
     ctx->recorder = NULL;
 
