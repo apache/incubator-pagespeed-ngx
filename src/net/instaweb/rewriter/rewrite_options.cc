@@ -1067,6 +1067,7 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
   // potentially add this much more latency.
   if (RunningOnValgrind()) {
     set_rewrite_deadline_ms(kValgrindWaitForRewriteMs);
+    set_in_place_rewrite_deadline_ms(kValgrindWaitForRewriteMs);
     modified_ = false;
 #ifndef NDEBUG
     last_thread_id_.reset();
