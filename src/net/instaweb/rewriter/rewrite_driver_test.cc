@@ -203,6 +203,19 @@ TEST_F(RewriteDriverTest, NoChanges) {
                     "</form></body>");
 }
 
+TEST_F(RewriteDriverTest, CloneMarksNested) {
+  RewriteDriver* clone1 = rewrite_driver()->Clone();
+  EXPECT_TRUE(clone1->is_nested());
+  clone1->Cleanup();
+
+  RewriteDriver* parent2 =
+      server_context()->NewRewriteDriver(CreateRequestContext());
+  RewriteDriver* clone2 = parent2->Clone();
+  EXPECT_TRUE(clone2->is_nested());
+  clone2->Cleanup();
+  parent2->Cleanup();
+}
+
 TEST_F(RewriteDriverTest, TestLegacyUrl) {
   rewrite_driver()->AddFilters();
   EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig"))

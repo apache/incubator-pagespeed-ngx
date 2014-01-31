@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
@@ -45,6 +46,8 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/thread/queued_worker_pool.h"
 
 namespace net_instaweb {
 
@@ -375,6 +378,59 @@ TEST_F(JsCombineFilterTest, CombineJsAvoidRewritingIntrospectiveJavascripOn) {
   server_context()->ComputeSignature(options());
   TestCombineJs(MultiUrl(kJsUrl1, kJsUrl2), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
+}
+
+TEST_F(JsFilterAndCombineFilterTest, ReconstructNoTimeout) {
+  // Nested fetch should not timeout on reconstruction.
+  GoogleString rel_url =
+      Encode("", "jc", "FA3Pqioukh",
+             MultiUrl("a.js.pagespeed.jm.FUEwDOA7jh.js",
+                      "b.js.pagespeed.jm.Y1kknPfzVs.js"), "js");
+  GoogleString url = StrCat(kTestDomain, rel_url);
+  const char kVar1[] = "mod_pagespeed_S$0tgbTH0O";
+  const char kVar2[] = "mod_pagespeed_ose8Vzgyj9";
+
+  // First rewrite the page, to see what the evals look like.
+  ValidateExpected("no_timeout",
+                   StrCat("<script src=", kJsUrl1, "></script>",
+                          "<script src=", kJsUrl2, "></script>"),
+                   StrCat("<script src=\"", rel_url, "\"></script>",
+                          "<script>eval(", kVar1, ");</script>",
+                          "<script>eval(", kVar2, ");</script>"));
+
+  // Clear cache..
+  lru_cache()->Clear();
+
+  server_context()->global_options()->ClearSignatureForTesting();
+  server_context()->global_options()
+      ->set_test_instant_fetch_rewrite_deadline(true);
+  server_context()->ComputeSignature(server_context()->global_options());
+
+  StringAsyncFetch async_fetch(rewrite_driver_->request_context());
+
+  // Note that here we specifically use a pool'ed rewrite driver, since
+  // the bug we were testing for only occurred with them.
+  RewriteDriver* driver =
+      server_context()->NewRewriteDriver(CreateRequestContext());
+
+  WorkerTestBase::SyncPoint unblock_rewrite(server_context()->thread_system());
+
+  // Wedge the actual rewrite queue to force the timeout to trigger.
+  driver->low_priority_rewrite_worker()->Add(
+      new WorkerTestBase::WaitRunFunction(&unblock_rewrite));
+
+  driver->FetchResource(url, &async_fetch);
+  unblock_rewrite.Notify();
+  AdvanceTimeMs(50);
+
+  driver->WaitForShutDown();
+  driver->Cleanup();
+
+  // Make sure we have the right hashes!
+  EXPECT_NE(GoogleString::npos,
+            async_fetch.buffer().find(kVar1));
+  EXPECT_NE(GoogleString::npos,
+            async_fetch.buffer().find(kVar2));
 }
 
 TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {

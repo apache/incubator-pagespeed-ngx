@@ -374,10 +374,10 @@ RewriteDriver* RewriteDriver::Clone() {
     options_copy->ComputeSignature();
     result =
         server_context_->NewCustomRewriteDriver(options_copy, request_context_);
-    result->is_nested_ = true;
   } else {
     result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
+  result->is_nested_ = true;
   return result;
 }
 
