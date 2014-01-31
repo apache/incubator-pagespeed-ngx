@@ -141,6 +141,12 @@ class Scheduler {
   virtual void RegisterWorker(QueuedWorkerPool::Sequence* w);
   virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w);
 
+  // Run any alarms that have reached their deadline.  Requires that we hold
+  // mutex_ before calling.  Returns the time of the next deadline, or 0 if no
+  // further deadlines loom.  Sets *ran_alarms if non-NULL and any alarms were
+  // run, otherwise leaves it untouched.
+  int64 RunAlarms(bool* ran_alarms);
+
  protected:
   // Internal method to await a wakeup event.  Block until wakeup_time_us (an
   // absolute time since the epoch), or until something interesting (such as a
@@ -158,7 +164,6 @@ class Scheduler {
 
   typedef std::set<Alarm*, CompareAlarms> AlarmSet;
 
-  int64 RunAlarms(bool* ran_alarms);
   void AddAlarmMutexHeldUs(int64 wakeup_time_us, Alarm* alarm);
   void CancelWaiting(Alarm* alarm);
   bool NoPendingAlarms();

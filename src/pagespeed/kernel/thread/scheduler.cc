@@ -336,10 +336,6 @@ bool Scheduler::CancelAlarm(Alarm* alarm) {
   }
 }
 
-// Run any alarms that have reached their deadline.  Requires that we hold
-// mutex_ before calling.  Returns the time of the next deadline, or 0 if no
-// further deadlines loom.  Sets *ran_alarms if non-NULL and any alarms were
-// run, otherwise leaves it untouched.
 int64 Scheduler::RunAlarms(bool* ran_alarms) {
   while (!outstanding_alarms_.empty()) {
     mutex_->DCheckLocked();
