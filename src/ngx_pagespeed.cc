@@ -88,10 +88,6 @@ extern ngx_module_t ngx_pagespeed;
 // Needed for SystemRewriteDriverFactory to use shared memory.
 #define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
 
-extern "C" {
-  void pagespeed_ol_apr_initialize(void);
-}
-
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
@@ -249,11 +245,11 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
 
   // When we don't have a date header, invent one.
   const char* date = headers->Lookup1(HttpAttributes::kDate);
-  
+
   if (date == NULL) {
     headers->SetDate(ngx_current_msec);
   }
-  
+
   // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
   headers->ComputeCaching();
 }
@@ -2868,8 +2864,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_OK;
   }
 
-  // Init APR. Note that the symbol is renamed.
-  pagespeed_ol_apr_initialize();
+  SystemRewriteDriverFactory::InitApr();
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
