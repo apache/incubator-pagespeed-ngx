@@ -354,13 +354,11 @@ void PrepareForBeaconInsertionHelper(
         // warning message. Note that we do not put out this message on a per
         // request basis, because it will clutter up the logs. Instead we do it
         // only once every beaconing interval.
-        // TODO(anupama): Update documentation URL to point to the specific
-        // section once added.
         driver->message_handler()->Message(kWarning, "You seem to have "
         "downstream caching configured on your server. "
         "DownstreamCacheRebeaconingKey should also be set for this to work "
         "correctly. Refer to "
-        "https://developers.google.com/speed/pagespeed/module/downstream-caching"
+        "https://developers.google.com/speed/pagespeed/module/downstream-caching#beaconing"
         "for more details.");
       }
     }
