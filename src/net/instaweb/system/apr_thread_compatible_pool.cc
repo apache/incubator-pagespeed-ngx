@@ -20,6 +20,7 @@
 #include <cstddef>
 
 #include "apr_pools.h"
+#include "apr_thread_mutex.h"
 
 #include "base/logging.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -50,6 +51,10 @@ apr_pool_t* AprCreateThreadCompatiblePool(apr_pool_t* parent_pool) {
     CHECK(pool != NULL) << "apr_pool_create_ex failed: " << buf;
   }
   apr_allocator_owner_set(allocator, pool);
+  apr_thread_mutex_t* mutex;
+  CHECK(apr_thread_mutex_create(&mutex, APR_THREAD_MUTEX_DEFAULT, pool) ==
+        APR_SUCCESS);
+  apr_allocator_mutex_set(allocator, mutex);
   return pool;
 }
 

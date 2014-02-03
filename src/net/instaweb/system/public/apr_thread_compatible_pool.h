@@ -39,6 +39,13 @@ namespace net_instaweb {
 //
 // Note: the above is all about the release version of the pool code, the
 // checking one has some additional locking!
+//
+// WARNING: you must not call apr_pool_clear on the returned pool.  The
+// returned pool can be used to create sub-pools that can be accessed
+// in distinct threads, due to a mutex injected into the allocator.
+// However, if you call apr_pool_clear on the returned pool, the allocator's
+// mutex will be freed and the pointer to it will be dangling.  Subsequent
+// allocations are likely to crash.
 apr_pool_t* AprCreateThreadCompatiblePool(apr_pool_t* parent_pool);
 
 }  // namespace net_instaweb
