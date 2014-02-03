@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -336,6 +337,13 @@ class JsCombineFilter::Context : public RewriteContext {
   virtual const char* id() const { return filter_->id(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
+  virtual GoogleString CacheKeySuffix() const {
+    // This is reimplemented because of a change to how VarName computation
+    // works, in order to force consistent recomputation to new name for
+    // people upgrading.
+    return "v2";
+  }
+
  private:
   // If we can combine, put the result into outputs and then reset
   // the context (and the combiner) so we start with a fresh slate
@@ -383,7 +391,7 @@ class JsCombineFilter::Context : public RewriteContext {
     HtmlElement* element = Driver()->NewElement(NULL, HtmlName::kScript);
     Driver()->InsertNodeBeforeNode(original, element);
     GoogleString var_name = filter_->VarName(
-        FindServerContext(), html_slot->resource()->url());
+        Driver(), FindServerContext(), html_slot->resource()->url());
     HtmlNode* script_code = Driver()->NewCharactersNode(
         element, StrCat("eval(", var_name, ");"));
     Driver()->AppendChild(element, script_code);
@@ -408,7 +416,8 @@ bool JsCombineFilter::JsCombiner::WritePiece(
   // We write out code of each script into a variable.
   writer->Write(StrCat("var ",
                        JsCombineFilter::VarName(
-                           filter_->server_context(), input->url()),
+                           rewrite_driver_, filter_->server_context(),
+                           input->url()),
                        " = "),
                 handler);
 
@@ -556,13 +565,26 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   context_->AddElement(element, src);
 }
 
-GoogleString JsCombineFilter::VarName(const ServerContext* server_context,
+GoogleString JsCombineFilter::VarName(const RewriteDriver* rewrite_driver,
+                                      const ServerContext* server_context,
                                       const GoogleString& url) {
+  GoogleString decoded_url = url;
+  // If we have a .pagespeed. URL, we want to unwrap it, in order to drop
+  // the hash of the input, so we don't end up with inconsistent variable
+  // names when the file is being updated.
+  GoogleUrl gurl(url);
+  StringVector decoded_urls;
+  if (gurl.IsWebValid() &&
+      rewrite_driver->DecodeUrl(gurl, &decoded_urls) &&
+      decoded_urls.size() == 1) {
+    decoded_url = decoded_urls[0];
+  }
+
   // We hash the non-host portion of URL to keep it consistent when sharding.
   // This is safe since we never include URLs from different hosts in a single
   // combination.
   GoogleString url_hash =
-      JavascriptCodeBlock::JsUrlHash(url, server_context->hasher());
+      JavascriptCodeBlock::JsUrlHash(decoded_url, server_context->hasher());
 
   return StrCat("mod_pagespeed_", url_hash);
 }
