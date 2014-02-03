@@ -42,11 +42,14 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/handlers.h"
@@ -55,8 +58,6 @@
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_thread_system.h"
-#include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -70,8 +71,8 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
-#include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/html/html_keywords.h"
+#include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -438,12 +439,22 @@ enum Response {
 };
 }  // namespace RequestRouting
 
+char* ps_main_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
+// TODO(jud): Verify that all the offsets should be NGX_HTTP_SRV_CONF_OFFSET and
+// not NGX_HTTP_LOC_CONF_OFFSET or NGX_HTTP_MAIN_CONF_OFFSET.
 ngx_command_t ps_commands[] = {
   { ngx_string("pagespeed"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1|
+    NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
+    ps_main_configure,
+    NGX_HTTP_SRV_CONF_OFFSET,
+    0,
+    NULL },
+  { ngx_string("pagespeed"),
+    NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_srv_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
@@ -468,80 +479,6 @@ void ps_ignore_sigpipe() {
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
   sigaction(SIGPIPE, &act, NULL);
-}
-
-namespace PsConfigure {
-enum OptionLevel {
-  kServer,
-  kLocation,
-};
-}  // namespace PsConfigure
-
-// These options are copied from mod_instaweb.cc, where
-// APACHE_CONFIG_OPTIONX indicates that they can not be set at the
-// directory/location level. They are not alphabetized on purpose,
-// but rather left in the same order as in mod_instaweb.cc in case
-// we end up needing te compare.
-// TODO(oschaaf): this duplication is a short term solution.
-const char* const global_only_options[] = {
-  "BlockingRewriteKey",
-  "CacheFlushFilename",
-  "CacheFlushPollIntervalSec",
-  "DangerPermitFetchFromUnknownHosts",
-  "CriticalImagesBeaconEnabled",
-  "ExperimentalFetchFromModSpdy",
-  "FetcherTimeoutMs",
-  "FetchHttps",
-  "FetchWithGzip",
-  "FileCacheCleanIntervalMs",
-  "FileCacheInodeLimit",
-  "FileCachePath",
-  "FileCacheSizeKb",
-  "ForceCaching",
-  "ImageMaxRewritesAtOnce",
-  "ImgMaxRewritesAtOnce",
-  "InheritVHostConfig",
-  "InstallCrashHandler",
-  "LRUCacheByteLimit",
-  "LRUCacheKbPerProcess",
-  "MaxCacheableContentLength",
-  "MemcachedServers",
-  "MemcachedThreads",
-  "MemcachedTimeoutUs",
-  "MessageBufferSize",
-  "NumRewriteThreads",
-  "NumExpensiveRewriteThreads",
-  "RateLimitBackgroundFetches",
-  "ReportUnloadTime",
-  "RespectXForwardedProto",
-  "SharedMemoryLocks",
-  "SlurpDirectory",
-  "SlurpFlushLimit",
-  "SlurpReadOnly",
-  "SupportNoScriptEnabled",
-  "StatisticsLoggingChartsCSS",
-  "StatisticsLoggingChartsJS",
-  "TestProxy",
-  "TestProxySlurp",
-  "TrackOriginalContentLength",
-  "UsePerVHostStatistics",
-  "XHeaderValue",
-  "LoadFromFile",
-  "LoadFromFileMatch",
-  "LoadFromFileRule",
-  "LoadFromFileRuleMatch",
-  "UseNativeFetcher"
-};
-
-bool ps_is_global_only_option(const StringPiece& option_name) {
-  ngx_uint_t i;
-  ngx_uint_t size = sizeof(global_only_options) / sizeof(char*);
-  for (i = 0; i < size; i++) {
-    if (StringCaseEqual(global_only_options[i], option_name)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 char* ps_init_dir(const StringPiece& directive,
@@ -587,7 +524,7 @@ char* ps_init_dir(const StringPiece& directive,
 char* ps_configure(ngx_conf_t* cf,
                    NgxRewriteOptions** options,
                    MessageHandler* handler,
-                   PsConfigure::OptionLevel option_level) {
+                   net_instaweb::RewriteOptions::OptionScope option_scope) {
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
@@ -600,19 +537,6 @@ char* ps_configure(ngx_conf_t* cf,
   ngx_uint_t i;
   for (i = 0 ; i < n_args ; i++) {
     args[i] = str_to_string_piece(value[i+1]);
-  }
-
-  if (StringCaseEqual("UseNativeFetcher", args[0])) {
-    if (option_level != PsConfigure::kServer) {
-      return const_cast<char*>(
-          "UseNativeFetcher can only be set in the http{} block.");
-    }
-  }
-  if (option_level == PsConfigure::kLocation && n_args > 1) {
-    if (ps_is_global_only_option(args[0])) {
-      return string_piece_to_pool_string(cf->pool, StrCat(
-          "\"", args[0], "\" cannot be set at location scope"));
-    }
   }
 
   // Some options require the worker process to be able to read and write to
@@ -637,25 +561,33 @@ char* ps_configure(ngx_conf_t* cf,
         cfg_m->driver_factory->thread_system());
   }
   const char* status = (*options)->ParseAndSetOptions(
-      args, n_args, cf->pool, handler, cfg_m->driver_factory);
+      args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
+}
+
+char* ps_main_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+  ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
+      ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+  return ps_configure(cf, &cfg_s->options, cfg_s->handler,
+                      net_instaweb::RewriteOptions::kProcessScopeStrict);
 }
 
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
   return ps_configure(cf, &cfg_s->options, cfg_s->handler,
-                      PsConfigure::kServer);
+                      net_instaweb::RewriteOptions::kServerScope);
 }
 
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
       ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
-  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
-                      PsConfigure::kLocation);
+  return ps_configure(
+      cf, &cfg_l->options, cfg_l->handler,
+      net_instaweb::RewriteOptions::kDirectoryScope);
 }
 
 void ps_cleanup_loc_conf(void* data) {

@@ -57,7 +57,7 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // pool is a memory pool for allocating error strings.
   const char* ParseAndSetOptions(
       StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
-      NgxRewriteDriverFactory* driver_factory);
+      NgxRewriteDriverFactory* driver_factory, OptionScope scope);
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
@@ -115,6 +115,9 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
   // ignoring case.
   bool IsDirective(StringPiece config_directive, StringPiece compare_directive);
+
+  // Returns a given option's scope.
+  RewriteOptions::OptionScope GetOptionScope(StringPiece option_name);
 
   // TODO(jefftk): support fetch proxy in server and location blocks.
 

@@ -37,6 +37,39 @@ namespace net_instaweb {
 
 namespace {
 
+// These options are copied from mod_instaweb.cc, where APACHE_CONFIG_OPTIONX
+// indicates that they can not be set at the directory/location level. They set
+// options in the RewriteDriverFactory, so they do not appear in RewriteOptions.
+// They are not alphabetized on purpose, but rather left in the same order as in
+// mod_instaweb.cc in case we end up needing to compare.
+// TODO(oschaaf): this duplication is a short term solution.
+const char* const server_only_options[] = {
+  "FetcherTimeoutMs",
+  "FetchProxy",
+  "ForceCaching",
+  "GeneratedFilePrefix",
+  "ImgMaxRewritesAtOnce",
+  "InheritVHostConfig",
+  "InstallCrashHandler",
+  "MessageBufferSize",
+  "NumRewriteThreads",
+  "NumExpensiveRewriteThreads",
+  "TrackOriginalContentLength",
+  "UsePerVHostStatistics",  // TODO(anupama): What to do about "No longer used"
+  "BlockingRewriteRefererUrls",
+  "CreateSharedMemoryMetadataCache",
+  "LoadFromFile",
+  "LoadFromFileMatch",
+  "LoadFromFileRule",
+  "LoadFromFileRuleMatch",
+  "UseNativeFetcher"
+};
+
+// Options that can only be used in the main (http) option scope.
+const char* const main_only_options[] = {
+  "UseNativeFetcher"
+};
+
 const char kNgxPagespeedStatisticsHandlerPath[] = "/ngx_pagespeed_statistics";
 
 }  // namespace
@@ -94,6 +127,39 @@ bool NgxRewriteOptions::IsDirective(StringPiece config_directive,
   return StringCaseEqual(config_directive, compare_directive);
 }
 
+RewriteOptions::OptionScope NgxRewriteOptions::GetOptionScope(
+    StringPiece option_name) {
+  ngx_uint_t i;
+  ngx_uint_t size = sizeof(main_only_options) / sizeof(char*);
+  for (i = 0; i < size; i++) {
+    if (StringCaseEqual(main_only_options[i], option_name)) {
+      return kProcessScopeStrict;
+    }
+  }
+
+  size = sizeof(server_only_options) / sizeof(char*);
+  for (i = 0; i < size; i++) {
+    if (StringCaseEqual(server_only_options[i], option_name)) {
+      return kServerScope;
+    }
+  }
+
+  // This could be made more efficient if RewriteOptions provided a map allowing
+  // access of options by their name. It's not too much of a worry at present
+  // since this is just during initialization.
+  for (OptionBaseVector::const_iterator it = all_options().begin();
+       it != all_options().end(); ++it) {
+    RewriteOptions::OptionBase* option = *it;
+    if (option->option_name() == option_name) {
+      // We treat kProcessScope as kProcessScopeStrict, failing to start if an
+      // option is out of place.
+      return option->scope() == kProcessScope ? kProcessScopeStrict
+                                              : option->scope();
+    }
+  }
+  return kDirectoryScope;
+}
+
 RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
     StringPiece directive, GoogleString* msg, MessageHandler* handler) {
   if (IsDirective(directive, "on")) {
@@ -147,7 +213,8 @@ RewriteOptions::OptionSettingResult ParseAndSetOptionHelper(
 // Very similar to apache/mod_instaweb::ParseDirective.
 const char* NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
-    NgxRewriteDriverFactory* driver_factory) {
+    NgxRewriteDriverFactory* driver_factory,
+    RewriteOptions::OptionScope scope) {
   CHECK_GE(n_args, 1);
 
   StringPiece directive = args[0];
@@ -156,6 +223,16 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
   StringPiece mod_pagespeed("ModPagespeed");
   if (StringCaseStartsWith(directive, mod_pagespeed)) {
     directive.remove_prefix(mod_pagespeed.size());
+  }
+
+  if (GetOptionScope(directive) > scope) {
+    GoogleString msg =
+        StrCat("\"", directive, "\" cannot be set at this scope.");
+    char* s = string_piece_to_pool_string(pool, msg);
+    if (s == NULL) {
+      return "failed to allocate memory";
+    }
+    return s;
   }
 
   GoogleString msg;

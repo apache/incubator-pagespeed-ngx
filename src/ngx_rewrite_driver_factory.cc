@@ -82,7 +82,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       log_(NULL),
       resolver_timeout_(NGX_CONF_UNSET_MSEC),
       use_native_fetcher_(false),
-      ngx_shared_circular_buffer_(NULL) {
+      ngx_shared_circular_buffer_(NULL),
+      hostname_(hostname.as_string()),
+      port_(port) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
@@ -175,6 +177,12 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext(
   NgxServerContext* server_context = new NgxServerContext(this, hostname, port);
   uninitialized_server_contexts_.insert(server_context);
   return server_context;
+}
+
+ServerContext* NgxRewriteDriverFactory::NewDecodingServerContext() {
+  ServerContext* sc = new NgxServerContext(this, hostname_, port_);
+  InitStubDecodingServerContext(sc);
+  return sc;
 }
 
 ServerContext* NgxRewriteDriverFactory::NewServerContext() {
