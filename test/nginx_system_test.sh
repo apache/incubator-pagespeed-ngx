@@ -200,6 +200,37 @@ else
   fi
 fi
 
+# Helper methods used by downstream caching tests.
+
+# Helper method that does a wget and verifies that the rewriting status matches
+# the $1 argument that is passed to this method.
+check_rewriting_status() {
+  $WGET $WGET_ARGS $CACHABLE_HTML_LOC > $OUT_CONTENTS_FILE
+  if $1; then
+    check zgrep -q "pagespeed.ic" $OUT_CONTENTS_FILE
+  else
+    check_not zgrep -q "pagespeed.ic" $OUT_CONTENTS_FILE
+  fi
+  # Reset WGET_ARGS.
+  WGET_ARGS=""
+}
+
+# Helper method that obtains a gzipped response and verifies that rewriting
+# has happened. Also takes an extra parameter that identifies extra headers
+# to be added during wget.
+check_for_rewriting() {
+  WGET_ARGS="$GZIP_WGET_ARGS $1"
+  check_rewriting_status true
+}
+
+# Helper method that obtains a gzipped response and verifies that no rewriting
+# has happened. Also takes an extra parameter that identifies extra headers
+# to be added during wget.
+check_for_no_rewriting() {
+  WGET_ARGS="$GZIP_WGET_ARGS $1"
+  check_rewriting_status false
+}
+
 if $RUN_TESTS; then
   echo "Starting tests"
 else
@@ -236,6 +267,7 @@ if $USE_VALGRIND; then
 ~prioritize_critical_css~
 ~IPRO flow uses cache as expected.~
 ~IPRO flow doesn't copy uncacheable resources multiple times.~
+~inline_unauthorized_resources allows unauthorized css selectors~
 "
 fi
 
@@ -277,9 +309,14 @@ if [ "$NATIVE_FETCHER" = "on" ]; then
   echo "Native fetcher doesn't support PURGE requests and so we can't use or"
   echo "test downstream caching."
 else
-  CACHABLE_HTML_LOC="${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
+  CACHABLE_HTML_LOC="http://${SECONDARY_HOSTNAME}/mod_pagespeed_test/cachable_rewritten_html"
+  CACHABLE_HTML_LOC+="/downstream_caching.html"
   TMP_LOG_LINE="proxy_cache.example.com GET /purge/mod_pagespeed_test/cachable_rewritten_"
   PURGE_REQUEST_IN_ACCESS_LOG=$TMP_LOG_LINE"html/downstream_caching.html.*(200)"
+
+  OUT_CONTENTS_FILE="$OUTDIR/gzipped.html"
+  OUT_HEADERS_FILE="$OUTDIR/headers.html"
+  GZIP_WGET_ARGS="-q -S --header=Accept-Encoding:gzip -o $OUT_HEADERS_FILE -O - "
 
   # Number of downstream cache purges should be 0 here.
   CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
@@ -288,11 +325,11 @@ else
 
   # The 1st request results in a cache miss, non-rewritten response
   # produced by pagespeed code and a subsequent purge request.
+  # Because of the random bypassing of the cache (required for beaconing
+  # integration), this request could result in a BYPASS as well.
   start_test Check for case where rewritten cache should get purged.
-  WGET_ARGS="--header=Host:proxy_cache.example.com"
-  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
-  check_not_from "$OUT" egrep -q "pagespeed.ic"
-  check_from "$OUT" egrep -q "X-Cache: MISS"
+  check_for_no_rewriting "--header=Host:proxy_cache.example.com"
+  check egrep -q "X-Cache: MISS|BYPASS" $OUT_HEADERS_FILE
   fetch_until $STATISTICS_URL \
     'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
 
@@ -305,12 +342,12 @@ else
 
   # The 2nd request results in a cache miss (because of the previous purge),
   # rewritten response produced by pagespeed code and no new purge requests.
+  # Because of the random bypassing of the cache (required for beaconing
+  # integration), this request could result in a BYPASS as well.
   start_test Check for case where rewritten cache should not get purged.
-  BLOCKING_WGET_ARGS=$WGET_ARGS" --header=X-PSA-Blocking-Rewrite:psatest"
-  OUT=$($WGET_DUMP $BLOCKING_WGET_ARGS \
-        $CACHABLE_HTML_LOC/downstream_caching.html)
-  check_from "$OUT" egrep -q "pagespeed.ic"
-  check_from "$OUT" egrep -q "X-Cache: MISS"
+  check_for_rewriting "--header=Host:proxy_cache.example.com \
+                      --header=X-PSA-Blocking-Rewrite:psatest"
+  check egrep -q "X-Cache: MISS|BYPASS" $OUT_HEADERS_FILE
   CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
   check_from "$CURRENT_STATS" egrep -q \
     "downstream_cache_purge_attempts:[[:space:]]*1"
@@ -320,12 +357,25 @@ else
   # now present in cache), rewritten response served out from cache and not
   # by pagespeed code and no new purge requests.
   start_test Check for case where there is a rewritten cache hit.
-  OUT=$($WGET_DUMP $WGET_ARGS $CACHABLE_HTML_LOC/downstream_caching.html)
-  check_from "$OUT" egrep -q "pagespeed.ic"
-  check_from "$OUT" egrep -q "X-Cache: HIT"
+  check_for_rewriting "--header=Host:proxy_cache.example.com"
+  check egrep -q "X-Cache: HIT" $OUT_HEADERS_FILE
   fetch_until $STATISTICS_URL \
     'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
   check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
+
+  # Enable one of the beaconing dependent filters and verify interaction
+  # between beaconing and downstream caching logic, by verifying that
+  # whenever beaconing code is present in the rewritten page, the
+  # output is also marked as a cache-miss, indicating that the instrumentation
+  # was done by the backend.
+  start_test Check whether beaconing is accompanied by a BYPASS always.
+  WGET_ARGS="-S --header=Host:proxy_cache.example.com"
+  CACHABLE_HTML_LOC+="?PageSpeedFilters=lazyload_images"
+  fetch_until -gzip $CACHABLE_HTML_LOC \
+      "zgrep -c \"pagespeed\.CriticalImages\.Run\"" 1
+  check egrep -q 'X-Cache: BYPASS' $WGET_OUTPUT
+  check fgrep -q 'Cache-Control: no-cache, max-age=0' $WGET_OUTPUT
+
 fi
 
 start_test Check for correct default X-Page-Speed header format.
@@ -530,6 +580,18 @@ OUT=$($FETCH_CMD)
 sleep .1
 OUT=$($FETCH_CMD)
 check_not_from "$OUT" fgrep "<style>"
+
+# Tests that we get instant ipro rewrites with LoadFromFile and
+# InPlaceWaitForOptimized get us first-pass rewrites.
+start_test instant ipro with InPlaceWaitForOptimized and LoadFromFile
+echo $WGET_DUMP $TEST_ROOT/ipro/instant/wait/purple.css
+OUT=$($WGET_DUMP $TEST_ROOT/ipro/instant/wait/purple.css)
+check_from "$OUT" fgrep -q 'body{background:#9370db}'
+
+start_test instant ipro with ModPagespeedInPlaceRewriteDeadline and LoadFromFile
+echo $WGET_DUMP $TEST_ROOT/ipro/instant/deadline/purple.css
+OUT=$($WGET_DUMP $TEST_ROOT/ipro/instant/deadline/purple.css)
+check_from "$OUT" fgrep -q 'body{background:#9370db}'
 
 # If DisableRewriteOnNoTransform is turned off, verify that the rewriting
 # applies even if Cache-control: no-transform is set.
@@ -1773,8 +1835,8 @@ check_from "$RESOURCE_HEADERS"  egrep -q 'Cache-Control: max-age=31536000'
 
 # Test critical CSS beacon injection, beacon return, and computation.  This
 # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
-# NOTE: must occur after cache flush on a repeat run.  All repeat runs now
-# run the cache flush test.
+# NOTE: must occur after cache flush, which is why it's in this embedded
+# block.  The flush removes pre-existing beacon results from the pcache.
 test_filter prioritize_critical_css
 fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
 check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
@@ -1782,7 +1844,8 @@ CALL_PAT=".*criticalCssBeaconInit("
 SKIP_ARG="[^,]*,"
 CAPTURE_ARG="'\([^']*\)'.*"
 BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-ESCAPED_URL=$(sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+ESCAPED_URL=$( \
+  sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
 OPTIONS_HASH=$( \
   sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
 NONCE=$( \
@@ -1805,7 +1868,6 @@ fetch_until $URL \
   'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
 fetch_until -save $URL \
   'grep -c <style>[.]foo{[^}]*}</style>' 1
-
 # The last one should also have the other 3, too.
 check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
 check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
@@ -1860,14 +1922,16 @@ OUT1=$(http_proxy=$SECONDARY_HOSTNAME \
 check_not_from "$OUT1" egrep -q 'pagespeed\.CriticalImages\.Run'
 check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
 # 2. We get an instrumented page if the correct key is present.
-OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
-          $WGET_DUMP $WGET_ARGS\
+OUT2=$(http_proxy=$SECONDARY_HOSTNAME \
+          $WGET_DUMP $WGET_ARGS \
+          --header="X-PSA-Blocking-Rewrite: psatest" \
           --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
 check_from "$OUT2" egrep -q "pagespeed\.CriticalImages\.Run"
 check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
 # 3. We do not get an instrumented page if the wrong key is present.
-OUT3=$(http_proxy=$SECONDARY_HOSTNAME\
-          $WGET_DUMP $WGET_ARGS\
+OUT3=$(http_proxy=$SECONDARY_HOSTNAME \
+          $WGET_DUMP $WGET_ARGS \
+          --header="X-PSA-Blocking-Rewrite: psatest" \
           --header="PS-ShouldBeacon: wrong_rebeaconing_key" $URL)
 check_not_from "$OUT3" egrep -q "pagespeed\.CriticalImages\.Run"
 check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
@@ -1884,15 +1948,15 @@ OUT1=$(http_proxy=$SECONDARY_HOSTNAME \
 check_not_from "$OUT1" egrep -q 'pagespeed\.criticalCssBeaconInit'
 check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
 # 2. We get an instrumented page if the correct key is present.
-OUT2=$(http_proxy=$SECONDARY_HOSTNAME\
-          $WGET_DUMP $WGET_ARGS\
+OUT2=$(http_proxy=$SECONDARY_HOSTNAME \
+          $WGET_DUMP $WGET_ARGS \
           --header 'X-PSA-Blocking-Rewrite: psatest'\
           --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
 check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
 check_from "$OUT2" egrep -q "pagespeed\.criticalCssBeaconInit"
 # 3. We do not get an instrumented page if the wrong key is present.
 WGET_ARGS="--header=\"PS-ShouldBeacon: wrong_rebeaconing_key\""
-OUT3=$(http_proxy=$SECONDARY_HOSTNAME\
+OUT3=$(http_proxy=$SECONDARY_HOSTNAME \
           $WGET_DUMP $WGET_ARGS $URL)
 check_not_from "$OUT3" egrep -q "pagespeed\.criticalCssBeaconInit"
 check_from "$OUT3" grep -q "Cache-Control: private, max-age=3000"
@@ -1961,7 +2025,7 @@ check_from "$OUT" egrep -q "HTTP/1[.]. 204"
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 1
 
-test_filter prioritize_critical_css
+test_filter prioritize_critical_css with unauthorized resources
 
 start_test no critical selectors chosen from unauthorized resources
 URL="$TEST_ROOT/unauthorized/prioritize_critical_css.html"
@@ -1974,7 +2038,7 @@ check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 1 ]
 # a) no selectors from the unauthorized @ import (e.g .maia-display) should
 #    appear in the selector list.
 check_not fgrep -q "maia-display" $FETCH_FILE
-# b) no selectors from the authorized @ import (e.g .red) should
+# b) no selectors from the authorized @ import (e.g .interesting_color) should
 #    appear in the selector list because it won't be flattened.
 check_not fgrep -q "interesting_color" $FETCH_FILE
 # c) selectors that don't depend on flattening should appear in the selector
@@ -1994,11 +2058,12 @@ start_test inline_unauthorized_resources allows unauthorized css selectors
 HOST_NAME="http://unauthorizedresources.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/unauthorized/prioritize_critical_css.html"
 URL+="?PageSpeedFilters=prioritize_critical_css,debug"
-http_proxy=$SECONDARY_HOSTNAME \
-   fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 3
-# gsc-completion-selected strng should occur once in the html and once in the
+# gsc-completion-selected string should occur once in the html and once in the
 # selector list.
-check [ $(fgrep -c "gsc-completion-selected" $FETCH_FILE) -eq 2 ]
+http_proxy=$SECONDARY_HOSTNAME \
+   fetch_until -save $URL 'fgrep -c gsc-completion-selected' 2
+# Verify that this page had beaconing javascript on it.
+check [ $(fgrep -c "pagespeed.criticalCssBeaconInit" $FETCH_FILE) -eq 3 ]
 # From the css file containing an unauthorized @import line,
 # a) no selectors from the unauthorized @ import (e.g .maia-display) should
 #    appear in the selector list.
@@ -2010,42 +2075,6 @@ check_not fgrep -q "interesting_color" $FETCH_FILE
 #    list.
 check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
 check grep -q "$EXPECTED_IMPORT_FAILURE_LINE" $FETCH_FILE
-
-# Test critical CSS beacon injection, beacon return, and computation.  This
-# requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
-# NOTE: must occur after cache flush, which is why it's in this embedded
-# block.  The flush removes pre-existing beacon results from the pcache.
-test_filter prioritize_critical_css
-fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
-check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
-CALL_PAT=".*criticalCssBeaconInit("
-SKIP_ARG="[^,]*,"
-CAPTURE_ARG="'\([^']*\)'.*"
-BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-ESCAPED_URL=$( \
-  sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-OPTIONS_HASH=$( \
-  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-NONCE=$( \
-  sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
-  $FETCH_FILE)
-BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
-BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
-run_wget_with_args --no-http-keep-alive --post-data "$BEACON_DATA" "$BEACON_URL"
-# Now make sure we see the correct critical css rules.
-fetch_until $URL \
-  'grep -c <style>[.]blue{[^}]*}</style>' 1
-fetch_until $URL \
-  'grep -c <style>[.]big{[^}]*}</style>' 1
-fetch_until $URL \
-  'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
-fetch_until -save $URL \
-  'grep -c <style>[.]foo{[^}]*}</style>' 1
-# The last one should also have the other 3, too.
-check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
-check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
-check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
-  $FETCH_UNTIL_OUTFILE` = 1 ]
 
 
 start_test keepalive with html rewriting
@@ -2084,7 +2113,7 @@ keepalive_test "keepalive-static.example.com"\
 # are combined.
 test_filter combine_css Maximum size of combined CSS.
 QUERY_PARAM="PageSpeedMaxCombinedCssBytes=57"
-URL="$URL?$QUERY_PARAM"
+URL="$URL&$QUERY_PARAM"
 # We should get the first two files to be combined...
 fetch_until -save $URL 'grep -c styles/yellow.css+blue.css.pagespeed.' 1
 # ... but 3rd and 4th should be standalone
@@ -2314,7 +2343,7 @@ if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
     # at this point in time. Give them a few extra seconds to allow
     # them to finish, so they will not generate valgrind complaints
-    sleep 3
+    sleep 30
     kill -s quit $VALGRIND_PID
     wait
     # Clear the previously set trap, we don't need it anymore.

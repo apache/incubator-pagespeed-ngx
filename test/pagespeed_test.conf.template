@@ -28,6 +28,17 @@ http {
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
   root "@@SERVER_ROOT@@";
+
+  # Block 5a: Decide on Cache-Control header value to use for outgoing
+  # response.
+  # Map new_cache_control_header_val to "no-cache, max-age=0" if the
+  # content is html and use the original Cache-Control header value
+  # in all other cases.
+  map $upstream_http_content_type $new_cache_control_header_val {
+    default $upstream_http_cache_control;
+    "~*text/html" "no-cache, max-age=0";
+  }
+
   pagespeed UsePerVHostStatistics on;
   pagespeed InPlaceResourceOptimization on;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
@@ -64,6 +75,7 @@ http {
   @@RESOLVER@@
 
   server {
+    # Block 1:  Basic port, server_name definitions.
     # This server represents the external caching layer server which
     # receives user requests and proxies them to the upstream server
     # running on the PRIMARY_PORT when the response is not available in
@@ -72,58 +84,110 @@ http {
     server_name proxy_cache.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
+    # Disable PageSpeed on this server.
     pagespeed off;
 
-    set $ua_dependent_ps_capability_list "";
-    set $bypass_cache 1;
+    # Block 2: Define prefix for proxy_cache_key based on the UserAgent.
+
+    # Define placeholder PS-CapabilityList header values for large and small
+    # screens with no UA dependent optimizations. Note that these placeholder
+    # values should not contain any of ll, ii, dj, jw or ws, since these
+    # codes will end up representing optimizations to be supported for the
+    # request.
+    set $default_ps_capability_list_for_large_screens "LargeScreen.SkipUADependentOptimizations";
+    set $default_ps_capability_list_for_small_screens "TinyScreen.SkipUADependentOptimizations";
+
+    # As a fallback, the PS-CapabilityList header that is sent to the upstream
+    # PageSpeed server should be for a large screen device with no browser
+    # specific optimizations.
+    set $ps_capability_list $default_ps_capability_list_for_large_screens;
+
+    # Cache-fragment 1: Desktop User-Agents that support lazyload_images (ll),
+    # inline_images (ii) and defer_javascript (dj).
+    # Note: Wget is added for testing purposes only.
     if ($http_user_agent ~* "Chrome/|Firefox/|MSIE |Safari|Wget") {
-      # User Agents that support lazyload-images (ll), inline-images (ii) and
-      # defer-javascript (dj).
-      set $ua_dependent_ps_capability_list "ll,ii,dj:";
-      set $bypass_cache 0;
+      set $ps_capability_list "ll,ii,dj:";
     }
+    # Cache-fragment 2: Desktop User-Agents that support lazyload_images (ll),
+    # inline_images (ii), defer_javascript (dj), webp (jw) and lossless_webp
+    # (ws).
     if ($http_user_agent ~*
         "Chrome/[2][3-9]+\.|Chrome/[[3-9][0-9]+\.|Chrome/[0-9]{3,}\.") {
-      # User Agents that support lazyload-images (ll), inline-images (ii),
-      # defer-javascript (dj), webp (jw) and webp-lossless (ws).
-      set $ua_dependent_ps_capability_list "ll,ii,dj,jw,ws:";
-      set $bypass_cache 0;
+      set $ps_capability_list "ll,ii,dj,jw,ws:";
+    }
+    # Cache-fragment 3: This fragment contains (a) Desktop User-Agents that
+    # match fragments 1 or 2 but should not because they represent older
+    # versions of certain browsers or bots and (b) Tablet User-Agents that
+    # correspond to large screens. These will only get optimizations that work
+    # on all browsers and use image compression qualities applicable to large
+    # screens. Note that even Tablets that are capable of supporting inline or
+    # webp images, e.g. Android 4.1.2, will not get these advanced
+    # optimizations.
+    if ($http_user_agent ~* "Firefox/[1-2]\.|MSIE [5-8]\.|bot|Yahoo!|Ruby|RPT-HTTPClient|(Google \(\+https\:\/\/developers\.google\.com\/\+\/web\/snippet\/\))|Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
+      set $ps_capability_list $default_ps_capability_list_for_large_screens;
+    }
+    # Cache-fragment 4: Mobiles and small screen Tablets will use image compression
+    # qualities applicable to small screens, but all other optimizations will be
+    # those that work on all browsers.
+    if ($http_user_agent ~* "Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo|Galaxy Nexus|GT-I9300|GT-N7100|HTC One|Nexus [4|7|S]|Xoom|XT907") {
+      set $ps_capability_list $default_ps_capability_list_for_small_screens;
     }
 
-    # All User Agents that represent
-    # 1) mobiles
-    # 2) tablets
-    # 3) desktop browsers that do not have defer-javascript capability at a minimum
-    # are made to go to the pagespeed server directly bypassing the proxy_cache.
-    if ($http_user_agent ~* "Firefox/[1-2]\.|MSIE [5-8]\.") {
-      set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
+    # Block 3a: Bypass the cache for .pagespeed. resource. PageSpeed has its own
+    # cache for these, and these could bloat up the caching layer.
+    if ($uri ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+") {
+      set $bypass_cache "1";
     }
-    if ($http_user_agent ~* "Mozilla.*Android.*Mobile*|iPhone|BlackBerry|Opera Mobi|Opera Mini|SymbianOS|UP.Browser|J-PHONE|Profile/MIDP|portalmmm|DoCoMo|Obigo") {
-      # These are Mobile User Agents. We don't cache responses for these.
-      set $ua_dependent_ps_capability_list "";
-      set $bypass_cache 1;
-    }
-    if ($http_user_agent ~* "Android|iPad|TouchPad|Silk-Accelerated|Kindle Fire") {
-      # These are Tablet User Agents. We don't cache responses for these.
-      set $ua_dependent_ps_capability_list "";
+
+    set_random $rand 0 100;
+    set $should_beacon_header_val "";
+    if ($rand ~* "^[0-4]$") {
+      set $should_beacon_header_val "random_rebeaconing_key";
       set $bypass_cache 1;
     }
 
+    # Block 3b: Only cache responses to clients that support gzip.  Most clients
+    # do, and the cache holds much more if it stores gzipped responses.
+    if ($http_accept_encoding !~* gzip) {
+      set $bypass_cache "1";
+    }
+
+    # Block 4: Location block for purge requests.
     location ~ /purge(/.*) {
-      allow all;
-      proxy_cache_purge htmlcache $ua_dependent_ps_capability_list$1$is_args$args;
+      allow 127.0.0.1;
+      deny all;
+      proxy_cache_purge htmlcache $ps_capability_list$1$is_args$args;
     }
 
+    # Block 6: Location block with proxy_cache directives.
     location /mod_pagespeed_test/cachable_rewritten_html/ {
+      # 1: Upstream PageSpeed server is running at localhost:8050.
       proxy_pass http://localhost:@@PRIMARY_PORT@@;
-      proxy_set_header Host $host;
-      proxy_cache_valid 200 30s;
+      # 2: Use htmlcache as the zone for caching.
       proxy_cache htmlcache;
-      proxy_ignore_headers Cache-Control;
-      add_header X-Cache $upstream_cache_status;
-      proxy_cache_key $ua_dependent_ps_capability_list$uri$is_args$args;
+      # 3: Bypass requests that correspond to .pagespeed. resources
+      # or clients that do not support gzip etc.
       proxy_cache_bypass $bypass_cache;
+      # 4: Use the redefined proxy_cache_key and make sure the /purge/
+      # block uses the same key.
+      proxy_cache_key $ps_capability_list$uri$is_args$args;
+      # 5: Forward Host header to upstream server.
+      proxy_set_header Host $host;
+      # 6: Set the PS-CapabilityList header for PageSpeed server to respect.
+      proxy_set_header PS-CapabilityList $ps_capability_list;
+      add_header PS-CapabilityList $ps_capability_list;
+      # 7: Add a header for identifying cache hits/misses/expires. This is
+      # for debugging purposes only and can be commented out in production.
+      add_header X-Cache $upstream_cache_status;
+
+      # Block 5b: Override Cache-Control headers as needed.
+      # Hide the upstream cache control header.
+      proxy_hide_header Cache-Control;
+      # Add the inferred Cache-Control header.
+      add_header Cache-Control $new_cache_control_header_val;
+
+      proxy_set_header PS-ShouldBeacon $should_beacon_header_val;
+      proxy_hide_header PS-ShouldBeacon;
     }
   }
 
@@ -716,11 +780,14 @@ http {
       # in the proxy_cache layer.
       pagespeed DownstreamCachePurgeMethod "GET";
       pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
+      pagespeed DownstreamCacheRebeaconingKey "random_rebeaconing_key";
       # We use a very small deadline here to force the rewriting to not complete
       # in the very first attempt.
       pagespeed RewriteDeadlinePerFlushMs 1;
       pagespeed RewriteLevel PassThrough;
-      pagespeed EnableFilters collapse_whitespace,extend_cache,recompress_images,convert_jpeg_to_webp,defer_javascript;
+      pagespeed EnableFilters collapse_whitespace,extend_cache,recompress_images;
+      pagespeed CriticalImagesBeaconEnabled true;
+      add_header Cache-Control "public, max-age=100";
     }
 
     location /mod_pagespeed_test/disable_no_transform/index.html {
@@ -864,6 +931,20 @@ http {
     location /mod_pagespeed_test/ipro/test_image_dont_reuse.png {
       expires 5m;
     }
+
+    location /mod_pagespeed_test/ipro/instant/wait/ {
+      pagespeed InPlaceWaitForOptimized on;
+      # TODO: Valgrind runs pass only if the below line is uncommented.
+      #pagespeed InPlaceRewriteDeadlineMs 1000;
+    }
+
+    location /mod_pagespeed_test/ipro/instant/deadline/ {
+      pagespeed InPlaceRewriteDeadlineMs -1;
+    }
+
+    pagespeed LoadFromFile
+        "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/instant/"
+        "@@SERVER_ROOT@@/mod_pagespeed_test/ipro/instant/";
 
     pagespeed EnableFilters remove_comments;
 
