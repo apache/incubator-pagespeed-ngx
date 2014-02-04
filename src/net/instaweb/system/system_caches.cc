@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/system/public/apr_mem_cache.h"
@@ -39,6 +40,7 @@
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"
@@ -51,7 +53,8 @@
 
 namespace net_instaweb {
 
-const char SystemCaches::kMemcached[] = "memcached";
+const char SystemCaches::kMemcachedAsync[] = "memcached_async";
+const char SystemCaches::kMemcachedBlocking[] = "memcached_blocking";
 const char SystemCaches::kShmCache[] = "shm_cache";
 const char SystemCaches::kDefaultSharedMemoryPath[] = "pagespeed_default_shm";
 
@@ -100,13 +103,13 @@ void SystemCaches::ShutDown(MessageHandler* message_handler) {
   if (is_root_process_) {
     // Cleanup per-path shm resources.
     for (PathCacheMap::iterator p = path_cache_map_.begin(),
-         e = path_cache_map_.end(); p != e; ++p) {
+             e = path_cache_map_.end(); p != e; ++p) {
       p->second->GlobalCleanup(message_handler);
     }
 
     // And all the SHM caches.
     for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
-         e = metadata_shm_caches_.end(); p != e; ++p) {
+             e = metadata_shm_caches_.end(); p != e; ++p) {
       if (p->second->cache_backend != NULL && p->second->initialized) {
         MetadataShmCache::GlobalCleanup(shared_mem_runtime_, p->second->segment,
                                         message_handler);
@@ -137,66 +140,78 @@ AprMemCache* SystemCaches::NewAprMemCache(const GoogleString& spec) {
   return mem_cache;
 }
 
-CacheInterface* SystemCaches::GetMemcached(SystemRewriteOptions* config) {
-  CacheInterface* memcached = NULL;
-
+SystemCaches::MemcachedInterfaces SystemCaches::GetMemcached(
+    SystemRewriteOptions* config) {
   // Find a memcache that matches the current spec, or create a new one
   // if needed. Note that this means that two different VirtualHost's will
   // share a memcached if their specs are the same but will create their own
   // if the specs are different.
-  if (!config->memcached_servers().empty()) {
-    const GoogleString& server_spec = config->memcached_servers();
-    std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
-        MemcachedMap::value_type(server_spec, memcached));
-    if (result.second) {
-      AprMemCache* mem_cache = NewAprMemCache(server_spec);
-      if (config->has_memcached_timeout_us()) {
-        mem_cache->set_timeout_us(config->memcached_timeout_us());
-      }
-      memcache_servers_.push_back(mem_cache);
-
-      int num_threads = config->memcached_threads();
-      if (num_threads != 0) {
-        if (num_threads != 1) {
-          factory_->message_handler()->Message(
-              kWarning, "ModPagespeedMemcachedThreads support for >1 thread "
-              "is not supported yet; changing to 1 thread (was %d)",
-              num_threads);
-          num_threads = 1;
-        }
-
-        if (memcached_pool_.get() == NULL) {
-          // Note -- we will use the first value of ModPagespeedMemCacheThreads
-          // that we see in a VirtualHost, ignoring later ones.
-          memcached_pool_.reset(
-              new QueuedWorkerPool(num_threads, "memcached",
-                                   factory_->thread_system()));
-        }
-        memcached = new AsyncCache(mem_cache, memcached_pool_.get());
-        factory_->TakeOwnership(memcached);
-      } else {
-        memcached = mem_cache;
-      }
-
-      // Put the batcher above the stats so that the stats sees the MultiGets
-      // and can show us the histogram of how they are sized.
-#if CACHE_STATISTICS
-      memcached = new CacheStats(kMemcached, memcached,
-                                 factory_->timer(), factory_->statistics());
-      factory_->TakeOwnership(memcached);
-#endif
-      CacheBatcher* batcher = new CacheBatcher(
-          memcached, factory_->thread_system()->NewMutex(),
-          factory_->statistics());
-      factory_->TakeOwnership(batcher);
-      if (num_threads != 0) {
-        batcher->set_max_parallel_lookups(num_threads);
-      }
-      memcached = batcher;
-      result.first->second = memcached;
-    } else {
-      memcached = result.first->second;
+  if (config->memcached_servers().empty()) {
+    return MemcachedInterfaces();
+  }
+  const GoogleString& server_spec = config->memcached_servers();
+  std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
+      MemcachedMap::value_type(server_spec, MemcachedInterfaces()));
+  MemcachedInterfaces& memcached = result.first->second;
+  if (result.second) {
+    AprMemCache* mem_cache = NewAprMemCache(server_spec);
+    if (config->has_memcached_timeout_us()) {
+      mem_cache->set_timeout_us(config->memcached_timeout_us());
     }
+    memcache_servers_.push_back(mem_cache);
+
+    int num_threads = config->memcached_threads();
+    if (num_threads != 0) {
+      if (num_threads != 1) {
+        factory_->message_handler()->Message(
+            kWarning, "ModPagespeedMemcachedThreads support for >1 thread "
+            "is not supported yet; changing to 1 thread (was %d)",
+            num_threads);
+        num_threads = 1;
+      }
+
+      if (memcached_pool_.get() == NULL) {
+        // Note -- we will use the first value of ModPagespeedMemCacheThreads
+        // that we see in a VirtualHost, ignoring later ones.
+        memcached_pool_.reset(
+            new QueuedWorkerPool(num_threads, "memcached",
+                                 factory_->thread_system()));
+      }
+      memcached.async = new AsyncCache(mem_cache, memcached_pool_.get());
+      factory_->TakeOwnership(memcached.async);
+    } else {
+      memcached.async = mem_cache;
+    }
+
+    // Put the batcher above the stats so that the stats sees the MultiGets
+    // and can show us the histogram of how they are sized.
+#if CACHE_STATISTICS
+    memcached.async = new CacheStats(kMemcachedAsync,
+                                     memcached.async,
+                                     factory_->timer(),
+                                     factory_->statistics());
+    factory_->TakeOwnership(memcached.async);
+#endif
+
+    CacheBatcher* batcher = new CacheBatcher(
+        memcached.async, factory_->thread_system()->NewMutex(),
+        factory_->statistics());
+    factory_->TakeOwnership(batcher);
+    if (num_threads != 0) {
+      batcher->set_max_parallel_lookups(num_threads);
+    }
+    memcached.async = batcher;
+
+    // Populate the blocking memcached interface, giving it its own
+    // statistics wrapper.
+#if CACHE_STATISTICS
+    memcached.blocking = new CacheStats(kMemcachedBlocking, mem_cache,
+                                        factory_->timer(),
+                                        factory_->statistics());
+    factory_->TakeOwnership(memcached.blocking);
+#else
+    memcached.blocking = mem_cache;
+#endif
   }
   return memcached;
 }
@@ -304,25 +319,21 @@ CacheInterface* SystemCaches::GetShmMetadataCacheOrDefault(
   return LookupShmMetadataCache(kDefaultSharedMemoryPath);
 }
 
-CacheInterface* SystemCaches::GetFilesystemMetadataCache(
-    SystemRewriteOptions* config) {
-  // Reuse the memcached server(s) for the filesystem metadata cache. We need
-  // to search for our config's entry in the vector of servers (not the more
-  // obvious map) because the map's entries are wrapped in an AsyncCache, and
-  // the filesystem metadata cache requires a blocking cache (like memcached).
-  // Note that if we have a server spec we *know* it's in the searched vector.
-  DCHECK_EQ(config->memcached_servers().empty(), memcache_servers_.empty());
-  const GoogleString& server_spec = config->memcached_servers();
-  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
-    if (server_spec == memcache_servers_[i]->server_spec()) {
-      return memcache_servers_[i];
-    }
-  }
+void SystemCaches::SetupPcacheCohorts(ServerContext* server_context,
+                                      bool enable_property_cache) {
+  server_context->set_enable_property_cache(enable_property_cache);
+  PropertyCache* pcache = server_context->page_property_cache();
 
-  return NULL;
+  const PropertyCache::Cohort* cohort =
+      server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache);
+  server_context->set_beacon_cohort(cohort);
+
+  cohort = server_context->AddCohort(RewriteDriver::kDomCohort, pcache);
+  server_context->set_dom_cohort(cohort);
 }
 
-void SystemCaches::SetupCaches(ServerContext* server_context) {
+void SystemCaches::SetupCaches(ServerContext* server_context,
+                               bool enable_property_cache) {
   SystemRewriteOptions* config = dynamic_cast<SystemRewriteOptions*>(
       server_context->global_options());
   DCHECK(config != NULL);
@@ -330,8 +341,14 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   CacheInterface* lru_cache = caches_for_path->lru_cache();
   CacheInterface* file_cache = caches_for_path->file_cache();
   CacheInterface* shm_metadata_cache = GetShmMetadataCacheOrDefault(config);
-  CacheInterface* memcached = GetMemcached(config);
-  if (memcached != NULL) {
+  MemcachedInterfaces memcached = GetMemcached(config);
+  CacheInterface* property_store_cache = NULL;
+  CacheInterface* http_l2 = file_cache;
+  Statistics* stats = server_context->statistics();
+
+  if (memcached.async != NULL) {
+    CHECK(memcached.blocking != NULL);
+
     // Note that a distinct FallbackCache gets created for every VirtualHost
     // that employs memcached, even if the memcached and file-cache
     // specifications are identical.  This does no harm, because there
@@ -339,17 +356,23 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
     // FallbackCache* objects would require making a map using the
     // memcache & file-cache specs as a key, so it's simpler to make a new
     // small FallbackCache object for each VirtualHost.
-    memcached = new FallbackCache(memcached, file_cache,
-                                  AprMemCache::kValueSizeThreshold,
-                                  factory_->message_handler());
-    server_context->DeleteCacheOnDestruction(memcached);
-  }
+    memcached.async = new FallbackCache(memcached.async, file_cache,
+                                        AprMemCache::kValueSizeThreshold,
+                                        factory_->message_handler());
+    http_l2 = memcached.async;
+    server_context->DeleteCacheOnDestruction(memcached.async);
 
-  if (memcached != NULL) {
+    memcached.blocking = new FallbackCache(memcached.blocking, file_cache,
+                                           AprMemCache::kValueSizeThreshold,
+                                           factory_->message_handler());
+    server_context->DeleteCacheOnDestruction(memcached.blocking);
+
+    // Use the blocking version of our memcached server for the
+    // filesystem metadata cache AND the property store cache.
     server_context->set_filesystem_metadata_cache(
-        GetFilesystemMetadataCache(config));
+        memcached.blocking);
+    property_store_cache = memcached.blocking;
   }
-  Statistics* stats = server_context->statistics();
 
   // Figure out our L1/L2 hierarchy for http cache.
   // TODO(jmarantz): consider moving ownership of the LRU cache into the
@@ -357,7 +380,6 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   //
   // Note that a user can disable the LRU cache by setting its byte-count
   // to 0, and in fact this is the default setting.
-  CacheInterface* http_l2 = (memcached != NULL) ? memcached : file_cache;
   int64 max_content_length = config->max_cacheable_response_content_length();
   HTTPCache* http_cache = NULL;
   if (lru_cache == NULL) {
@@ -381,12 +403,12 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   CacheInterface* metadata_l2 = NULL;
   size_t l1_size_limit = WriteThroughCache::kUnlimited;
   if (shm_metadata_cache != NULL) {
-    if (memcached != NULL) {
+    if (memcached.async != NULL) {
       // If we have both a local SHM cache and a memcached-backed cache we
       // should go L1/L2 because there are likely to be other machines running
       // memcached that would like to use our metadata.
       metadata_l1 = shm_metadata_cache;
-      metadata_l2 = memcached;
+      metadata_l2 = memcached.async;
     } else {
       // We can either write through to the file cache or not.  Not writing
       // through is nice in that we can save a lot of disk writes, but if
@@ -407,12 +429,16 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
       } else {
         // They've explicitly configured an SHM cache; ignore the file cache.
         metadata_l2 = shm_metadata_cache;
+
+        // TODO(jmarantz): do we really want to use the shm-cache as a
+        // pcache?  The potential for inconsistent data across a
+        // multi-server setup seems like it could give confusing results.
       }
     }
   } else {
     l1_size_limit = config->lru_cache_byte_limit();
     metadata_l1 = lru_cache;  // may be NULL
-    metadata_l2 = http_l2;  // memcached or file.
+    metadata_l2 = http_l2;  // memcached.async or file.
   }
 
   CacheInterface* metadata_cache;
@@ -431,19 +457,20 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
   // even without this flag, but we should do it differently, storing
   // only the content compressed and putting in content-encoding:gzip
   // so that mod_gzip doesn't have to recompress on every request.
-  CacheInterface* property_store_cache = NULL;
+  if (property_store_cache == NULL) {
+    property_store_cache = metadata_l2;
+  }
   if (config->compress_metadata_cache()) {
     metadata_cache = new CompressedCache(metadata_cache, stats);
     server_context->DeleteCacheOnDestruction(metadata_cache);
-    CacheInterface* compressed_l2 = new CompressedCache(metadata_l2, stats);
-    server_context->DeleteCacheOnDestruction(compressed_l2);
-    property_store_cache = compressed_l2;
-  } else {
-    property_store_cache = metadata_l2;
+    property_store_cache = new CompressedCache(property_store_cache, stats);
+    server_context->DeleteCacheOnDestruction(property_store_cache);
   }
+  DCHECK(property_store_cache->IsBlocking());
   server_context->MakePagePropertyCache(
       server_context->CreatePropertyStore(property_store_cache));
   server_context->set_metadata_cache(metadata_cache);
+  SetupPcacheCohorts(server_context, enable_property_cache);
 }
 
 void SystemCaches::RegisterConfig(SystemRewriteOptions* config) {
@@ -525,13 +552,14 @@ void SystemCaches::StopCacheActivity() {
     return;
   }
 
-  // Iterate through the map of CacheInterface* objects constructed for
-  // the memcached.  Note that these are not typically AprMemCache* objects,
-  // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
-  // and AprMemCache*, all of which must be stopped.
+  // Iterate through the map of CacheInterface* objects constructed
+  // for the async memcached.  Note that these are not typically
+  // AprMemCache* objects, but instead are a hierarchy of CacheStats*,
+  // CacheBatcher*, AsyncCache*, and AprMemCache*, all of which must
+  // be stopped.
   for (MemcachedMap::iterator p = memcached_map_.begin(),
            e = memcached_map_.end(); p != e; ++p) {
-    CacheInterface* cache = p->second;
+    CacheInterface* cache = p->second.async;
     cache->ShutDown();
   }
 
@@ -544,7 +572,8 @@ void SystemCaches::InitStats(Statistics* statistics) {
   CacheStats::InitStats(SystemCachePath::kFileCache, statistics);
   CacheStats::InitStats(SystemCachePath::kLruCache, statistics);
   CacheStats::InitStats(kShmCache, statistics);
-  CacheStats::InitStats(kMemcached, statistics);
+  CacheStats::InitStats(kMemcachedAsync, statistics);
+  CacheStats::InitStats(kMemcachedBlocking, statistics);
   CompressedCache::InitStats(statistics);
 }
 
@@ -553,7 +582,7 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
   // all the declared caches.
   if (flags & kGlobalView) {
     for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
-            e = metadata_shm_caches_.end(); p != e; ++p) {
+             e = metadata_shm_caches_.end(); p != e; ++p) {
       MetadataShmCacheInfo* cache_info = p->second;
       if (cache_info->cache_backend != NULL) {
         StrAppend(out, "Shared memory metadata cache '", p->first,

@@ -278,4 +278,24 @@ void CachePropertyStore::AddCohortWithCache(
   insertions.first->second = cache_stats;
 }
 
+GoogleString CachePropertyStore::Name() const {
+  GoogleString out;
+  for (CohortCacheMap::const_iterator p = cohort_cache_map_.begin(),
+           e = cohort_cache_map_.end(); p != e; ++p) {
+    StrAppend(&out,
+              out.empty() ? "" : "\n",
+              p->first, ":", p->second->Name());
+  }
+  return out;
+}
+
+GoogleString CachePropertyStore::FormatName2(StringPiece cohort_name1,
+                                             StringPiece cohort_cache1,
+                                             StringPiece cohort_name2,
+                                             StringPiece cohort_cache2) {
+  return StrCat(cohort_name1, ":", cohort_cache1,
+                "\n",
+                cohort_name2, ":", cohort_cache2);
+}
+
 }  // namespace net_instaweb

@@ -80,6 +80,13 @@ class PropertyStore {
   bool enable_get_cancellation() { return enable_get_cancellation_; }
   void set_enable_get_cancellation(bool x) { enable_get_cancellation_ = x; }
 
+  // The name of this PropertyStore -- used for logging and debugging.
+  //
+  // It is strongly recommended that you provide a static GoogleString
+  // FormatName(...) method for use in formatting the Name() return,
+  // and in testing, e.g. in net/instaweb/system/system_caches_test.cc.
+  virtual GoogleString Name() const = 0;
+
  private:
   bool enable_get_cancellation_;
   DISALLOW_COPY_AND_ASSIGN(PropertyStore);

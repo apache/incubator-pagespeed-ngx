@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -382,6 +383,12 @@ void TwoLevelPropertyStore::Put(
   if (done != NULL) {
     done->Run(true);
   }
+}
+
+GoogleString TwoLevelPropertyStore::Name() const {
+  return StrCat(
+      "1:", primary_property_store_->Name(),
+      ",2:", secondary_property_store_->Name());
 }
 
 }  // namespace net_instaweb

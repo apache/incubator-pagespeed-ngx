@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
@@ -176,16 +175,7 @@ NonceGenerator* SystemRewriteDriverFactory::DefaultNonceGenerator() {
 }
 
 void SystemRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  caches_->SetupCaches(server_context);
-  server_context->set_enable_property_cache(enable_property_cache());
-  PropertyCache* pcache = server_context->page_property_cache();
-
-  const PropertyCache::Cohort* cohort =
-      server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache);
-  server_context->set_beacon_cohort(cohort);
-
-  cohort = server_context->AddCohort(RewriteDriver::kDomCohort, pcache);
-  server_context->set_dom_cohort(cohort);
+  caches_->SetupCaches(server_context, enable_property_cache());
 }
 
 void SystemRewriteDriverFactory::ParentOrChildInit() {

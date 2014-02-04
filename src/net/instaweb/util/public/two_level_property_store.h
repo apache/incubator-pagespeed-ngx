@@ -62,6 +62,8 @@ class TwoLevelPropertyStore : public PropertyStore {
       const PropertyCacheValues* values,
       BoolCallback* done);
 
+  virtual GoogleString Name() const;
+
  private:
   PropertyStore* primary_property_store_;
   PropertyStore* secondary_property_store_;

@@ -95,6 +95,13 @@ class CachePropertyStore : public PropertyStore {
   // Returns default cache backend associated with CachePropertyStore.
   const CacheInterface* cache_backend() { return default_cache_; }
 
+  virtual GoogleString Name() const;
+
+  static GoogleString FormatName2(StringPiece cohort_name1,
+                                  StringPiece cohort_cache1,
+                                  StringPiece cohort_name2,
+                                  StringPiece cohort_cache2);
+
  private:
   GoogleString cache_key_prefix_;
   typedef std::map<GoogleString, CacheInterface*> CohortCacheMap;

@@ -22,14 +22,10 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/thread_system.h"
 
 // The httpd header must be after the
 // apache_rewrite_driver_factory.h. Otherwise, the compiler will
@@ -58,28 +54,6 @@ apr_status_t apache_cleanup(void* object) {
   delete resolved;
   return APR_SUCCESS;
 }
-
-// Tracks a single property-cache lookup.
-class PropertyCallback : public PropertyPage {
- public:
-  PropertyCallback(const StringPiece& url,
-                   const StringPiece& options_signature_hash,
-                   UserAgentMatcher::DeviceType device_type,
-                   RewriteDriver* driver,
-                   ThreadSystem* thread_system);
-
-  virtual void Done(bool success);
-
-  void BlockUntilDone();
-
- private:
-  RewriteDriver* driver_;
-  GoogleString url_;
-  bool done_;
-  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
-  scoped_ptr<ThreadSystem::Condvar> condvar_;
-  DISALLOW_COPY_AND_ASSIGN(PropertyCallback);
-};
 
 // Context for an HTML rewrite.
 //
@@ -139,10 +113,7 @@ class InstawebContext {
 
  private:
   void ComputeContentEncoding(request_rec* request);
-
-  // Start a new property cache lookup. The caller is responsible for cleaning
-  // up the returned PropertyCallback*.
-  PropertyCallback* InitiatePropertyCacheLookup();
+  void BlockingPropertyCacheLookup();
   void ProcessBytes(const char* input, int size);
 
   // Checks to see if there was an experiment cookie sent with the request.

@@ -31,14 +31,14 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/http/google_url.h"
+
 #include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
@@ -49,11 +49,16 @@ namespace net_instaweb {
 // absolute url.
 const int kRequestChainLimit = 5;
 
-PropertyCallback::PropertyCallback(const StringPiece& url,
-                                   const StringPiece& options_signature_hash,
-                                   UserAgentMatcher::DeviceType device_type,
-                                   RewriteDriver* driver,
-                                   ThreadSystem* thread_system)
+namespace {
+
+// Tracks a single property-cache lookup.
+class PropertyCallback : public PropertyPage {
+ public:
+  PropertyCallback(const StringPiece& url,
+                   const StringPiece& options_signature_hash,
+                   UserAgentMatcher::DeviceType device_type,
+                   RewriteDriver* driver,
+                   ThreadSystem* thread_system)
     : PropertyPage(PropertyPage::kPropertyCachePage,
                    url,
                    options_signature_hash,
@@ -61,31 +66,24 @@ PropertyCallback::PropertyCallback(const StringPiece& url,
                    driver->request_context(),
                    thread_system->NewMutex(),
                    driver->server_context()->page_property_cache()),
-  driver_(driver),
-  done_(false),
-  mutex_(thread_system->NewMutex()),
-  condvar_(mutex_->NewCondvar()) {
-}
-
-void PropertyCallback::Done(bool success) {
-  ScopedMutex lock(mutex_.get());
-  driver_->set_property_page(this);
-  done_ = true;
-  condvar_->Signal();
-}
-
-void PropertyCallback::BlockUntilDone() {
-  int iters = 0;
-  ScopedMutex lock(mutex_.get());
-  while (!done_) {
-    condvar_->TimedWait(Timer::kSecondMs);
-    if (!done_) {
-      driver_->message_handler()->Message(
-          kError, "Waiting for property cache fetch to complete. "
-          "Elapsed time: %ds", ++iters);
-    }
+      driver_(driver) {
   }
-}
+
+  bool done() const { return done_.value(); }
+
+ protected:
+  virtual void Done(bool success) {
+    driver_->set_property_page(this);
+    done_.set_value(true);
+  }
+
+ private:
+  RewriteDriver* driver_;
+  AtomicBool done_;
+  DISALLOW_COPY_AND_ASSIGN(PropertyCallback);
+};
+
+}  // namespace
 
 InstawebContext::InstawebContext(request_rec* request,
                                  RequestHeaders* request_headers,
@@ -133,13 +131,7 @@ InstawebContext::InstawebContext(request_rec* request,
                                          HttpAttributes::kUserAgent);
   rewrite_driver_->SetUserAgent(user_agent);
 
-  // Begin the property cache lookup. This should be as early as possible since
-  // it may be asynchronous (in the case of memcached).
-  // TODO(jud): It would be ideal to move this even earlier. As early as, say,
-  // save_url_hook. However, there is no request specific context to save the
-  // result in at that point.
-  PropertyCallback* property_callback(InitiatePropertyCacheLookup());
-
+  BlockingPropertyCacheLookup();
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 
   ComputeContentEncoding(request);
@@ -169,11 +161,6 @@ InstawebContext::InstawebContext(request_rec* request,
   // TODO(lsong): Bypass the string buffer, write data directly to the next
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);
-
-  // Wait until property cache lookup is complete
-  if (property_callback != NULL) {
-    property_callback->BlockUntilDone();
-  }
 }
 
 InstawebContext::~InstawebContext() {
@@ -288,7 +275,7 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
   }
 }
 
-PropertyCallback* InstawebContext::InitiatePropertyCacheLookup() {
+void InstawebContext::BlockingPropertyCacheLookup() {
   PropertyCallback* property_callback = NULL;
   if (server_context_->page_property_cache()->enabled()) {
     const UserAgentMatcher* user_agent_matcher =
@@ -305,8 +292,8 @@ PropertyCallback* InstawebContext::InitiatePropertyCacheLookup() {
         rewrite_driver_,
         server_context_->thread_system());
     server_context_->page_property_cache()->Read(property_callback);
+    DCHECK(property_callback->done());
   }
-  return property_callback;
 }
 
 ApacheServerContext* InstawebContext::ServerContextFromServerRec(
