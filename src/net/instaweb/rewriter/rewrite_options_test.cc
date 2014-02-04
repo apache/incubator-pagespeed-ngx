@@ -197,10 +197,9 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
 
 TEST_F(RewriteOptionsTest, CompoundFlag) {
   FilterSet s;
-  // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
-  // rewrite_images.
   s.Insert(RewriteOptions::kConvertGifToPng);
   s.Insert(RewriteOptions::kConvertJpegToProgressive);
+  s.Insert(RewriteOptions::kConvertJpegToWebp);
   s.Insert(RewriteOptions::kConvertPngToJpeg);
   s.Insert(RewriteOptions::kInlineImages);
   s.Insert(RewriteOptions::kJpegSubsampling);
@@ -225,6 +224,7 @@ TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
   FilterSet s;
   s.Insert(RewriteOptions::kConvertGifToPng);
   s.Insert(RewriteOptions::kConvertJpegToProgressive);
+  s.Insert(RewriteOptions::kConvertJpegToWebp);
   s.Insert(RewriteOptions::kJpegSubsampling);
   s.Insert(RewriteOptions::kRecompressJpeg);
   s.Insert(RewriteOptions::kRecompressPng);
@@ -1503,13 +1503,13 @@ TEST_F(RewriteOptionsTest, ExperimentPrintTest) {
                                          &handler));
   options_.SetExperimentState(-7);
   // This should be the core filters.
-  EXPECT_EQ("ah,cc,jc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
+  EXPECT_EQ("ah,cc,jc,gp,jp,jw,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
             "ri,cf,jm,cu,cp,md,css:2048,im:3072,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetExperimentState(1);
-  EXPECT_EQ("Experiment: 1; ah,ai,ca,cc,jc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
-            "il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,"
+  EXPECT_EQ("Experiment: 1; ah,ai,ca,cc,jc,gp,jp,jw,mc,pj,ec,ei,es,fc,if,hw,ci,"
+            "ii,il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,"
             "css:2048,im:3072,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());

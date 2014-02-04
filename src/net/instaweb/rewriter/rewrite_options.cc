@@ -544,6 +544,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kCombineJavascript,
   RewriteOptions::kConvertGifToPng,                // rewrite_images
   RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
+  RewriteOptions::kConvertJpegToWebp,              // rewrite_images
   RewriteOptions::kConvertMetaTags,
   RewriteOptions::kConvertPngToJpeg,               // rewrite_images
   RewriteOptions::kExtendCacheCss,                 // extend_cache
@@ -2625,6 +2626,7 @@ bool RewriteOptions::AddByNameToFilterSet(
       // Every filter here needs to be listed in kCoreFilterSet as well.
       set->Insert(kConvertGifToPng);
       set->Insert(kConvertJpegToProgressive);
+      set->Insert(kConvertJpegToWebp);
       set->Insert(kConvertPngToJpeg);
       set->Insert(kInlineImages);
       set->Insert(kJpegSubsampling);
@@ -2638,6 +2640,7 @@ bool RewriteOptions::AddByNameToFilterSet(
       // Every filter here needs to be listed under "rewrite_images" as well.
       set->Insert(kConvertGifToPng);
       set->Insert(kConvertJpegToProgressive);
+      set->Insert(kConvertJpegToWebp);
       set->Insert(kJpegSubsampling);
       set->Insert(kRecompressJpeg);
       set->Insert(kRecompressPng);
