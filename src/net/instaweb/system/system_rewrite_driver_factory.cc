@@ -16,10 +16,12 @@
 
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 
+#include <cstdlib>
 #include <map>
 #include <set>
 #include <utility>  // for pair
 
+#include "apr_general.h"
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
@@ -93,6 +95,11 @@ SystemRewriteDriverFactory::SystemRewriteDriverFactory(
 
 SystemRewriteDriverFactory::~SystemRewriteDriverFactory() {
   shared_mem_statistics_.reset(NULL);
+}
+
+void SystemRewriteDriverFactory::InitApr() {
+  apr_initialize();
+  atexit(apr_terminate);
 }
 
 // Initializes global statistics object if needed, using factory to

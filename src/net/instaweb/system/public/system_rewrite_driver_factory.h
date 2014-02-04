@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-
 #include "net/instaweb/util/public/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
@@ -61,6 +60,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
                              AbstractSharedMem* shared_mem_runtime,
                              StringPiece hostname, int port);
   virtual ~SystemRewriteDriverFactory();
+
+  // If the server using this isn't using APR natively, call this to initialize
+  // the APR library.
+  static void InitApr();
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
