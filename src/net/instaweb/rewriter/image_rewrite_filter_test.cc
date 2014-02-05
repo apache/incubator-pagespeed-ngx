@@ -86,13 +86,14 @@ using pagespeed::image_compression::kMessagePatternWritingToWebp;
 namespace {
 
 // Filenames of resource files.
-const char kBikePngFile[] = "BikeCrashIcn.png";
-const char kChefGifFile[] = "IronChef2.gif";
-const char kCuppaOPngFile[] = "CuppaO.png";
-const char kCuppaTPngFile[] = "CuppaT.png";
-const char kLargePngFile[] = "Large.png";
-const char kPuzzleJpgFile[] = "Puzzle.jpg";
-const char kSmallDataFile[] = "small-data.png";
+const char kBikePngFile[] = "BikeCrashIcn.png";  // photo; no alpha
+const char kChefGifFile[] = "IronChef2.gif";     // photo; no alpha
+const char kCuppaOPngFile[] = "CuppaO.png";      // graphic; no alpha
+const char kCuppaTPngFile[] = "CuppaT.png";      // graphic; alpha
+const char kLargePngFile[] = "Large.png";        // blank image; gray scale
+const char kPuzzleJpgFile[] = "Puzzle.jpg";      // photo; no alpha
+const char kRedbrushAlphaPngFile[] = "RedbrushAlpha-0.5.png";  // photo; alpha
+const char kSmallDataFile[] = "small-data.png";   // not an image
 
 const char kChefDims[] = " width=\"192\" height=\"256\"";
 
@@ -1067,18 +1068,19 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->set_allow_logging_urls_in_log_record(true);
   options()->set_image_recompress_quality(85);
   options()->set_log_background_rewrites(true);
   rewrite_driver()->AddFilters();
   rewrite_driver()->SetUserAgent("webp-la");
 
-  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
-                    "", " width=\"100\" height=\"100\"", true, false);
+  TestSingleRewrite(kRedbrushAlphaPngFile, kContentTypePng, kContentTypeWebp,
+                    "", " width=\"512\" height=\"480\"", true, false);
   TestConversionVariables(0, 0, 0,   // gif
                           0, 1, 0,   // png
                           0, 0, 0,   // jpg
-                          true);
+                          false);
 
   // Imge is recompressed but not resized.
   rewrite_driver()->Clear();
@@ -1090,15 +1092,40 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
       "", /* URL */
       IMAGE_PNG, /* original_type */
       IMAGE_WEBP_LOSSLESS_OR_ALPHA, /* optimized_type */
-      26548, /* original_size */
+      115870, /* original_size */
       kIgnoreSize, /* optimized_size */
       true, /* is_recompressed */
       false, /* is_resized */
-      100, /* original width */
-      100, /* original height */
+      512, /* original width */
+      480, /* original height */
       false, /* is_resized_using_rendered_dimensions */
       -1, /* resized_width */
       -1 /* resized_height */);
+}
+
+// The settings are the same as "PngToWebpWithWebpLaUaAndFlag" except
+// WebP lossless user agent. So conversion falls back to PNG.
+TEST_F(ImageRewriteTest, PngFallbackToPngLackOfWebpLaUa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_allow_logging_urls_in_log_record(true);
+  options()->set_image_recompress_quality(85);
+  options()->set_log_background_rewrites(true);
+  rewrite_driver()->AddFilters();
+
+  TestSingleRewrite(kRedbrushAlphaPngFile, kContentTypePng, kContentTypePng,
+                    "", " width=\"512\" height=\"480\"", true, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          false);
 }
 
 TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlagTimesOut) {

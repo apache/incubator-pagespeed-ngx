@@ -27,15 +27,16 @@
 namespace net_instaweb {
 
 const char ImageTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
+const char ImageTestBase::kAppSegments[] = "AppSegments.jpg";
+const char ImageTestBase::kBikeCrash[] = "BikeCrashIcn.png";
+const char ImageTestBase::kCradle[] = "CradleAnimation.gif";
 const char ImageTestBase::kCuppa[] = "Cuppa.png";
 const char ImageTestBase::kCuppaTransparent[] = "CuppaT.png";
-const char ImageTestBase::kBikeCrash[] = "BikeCrashIcn.png";
 const char ImageTestBase::kIronChef[] = "IronChef2.gif";
-const char ImageTestBase::kCradle[] = "CradleAnimation.gif";
-const char ImageTestBase::kPuzzle[] = "Puzzle.jpg";
 const char ImageTestBase::kLarge[] = "Large.png";
+const char ImageTestBase::kPuzzle[] = "Puzzle.jpg";
 const char ImageTestBase::kScenery[] = "Scenery.webp";
-const char ImageTestBase::kAppSegments[] = "AppSegments.jpg";
+const char ImageTestBase::kTransparent[] = "transparent.gif";
 
 // From: http://libpng.org/pub/png/png-RedbrushAlpha.html
 const char ImageTestBase::kRedbrush[] = "RedbrushAlpha-0.5.png";

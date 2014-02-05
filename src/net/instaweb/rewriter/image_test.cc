@@ -540,18 +540,18 @@ TEST_F(ImageTest, PngToWebpLaTest) {
   ConversionVarChecker conversion_var_checker(options_.get());
   options_->webp_quality = 75;
   CheckImageFromFile(
-      kBikeCrash, IMAGE_PNG, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      kCuppa, IMAGE_PNG, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
-      100, 100,
-      26548, true);
+      65, 70,
+      1763, true);
   conversion_var_checker.Test(0, 0, 0,   // gif
                               0, 1, 0,   // png
                               0, 0, 0,   // jpeg
                               true);
 }
 
-TEST_F(ImageTest, PngAlphaToWebpFailToPngTest) {
+TEST_F(ImageTest, PngAlphaFailToWebpLossyTest) {
   // FYI: This test will also probably take very long to run under Valgrind.
   if (RunningOnValgrind()) {
     return;
@@ -570,21 +570,25 @@ TEST_F(ImageTest, PngAlphaToWebpFailToPngTest) {
   ImagePtr image(ReadFromFileWithOptions(kCuppaTransparent, &buffer, options));
   image->output_size();
   EXPECT_EQ(ContentType::kPng, image->content_type()->type());
-  EXPECT_EQ(2, options->conversions_attempted);
+
+  // "kCuppaTransparent" is a graphic. It should be compressed losslessly,
+  // but the configuration only allows lossy compression, so no compression
+  // will be attempted.
+  EXPECT_EQ(0, options->conversions_attempted);
   conversion_var_checker.Test(0, 0, 0,   // gif
-                              0, 0, 1,   // png
+                              0, 0, 0,   // png
                               0, 0, 0,   // jpeg
                               true);
 }
 
-TEST_F(ImageTest, PngAlphaToWebpTest) {
+TEST_F(ImageTest, PngAlphaToWebpLaTest) {
   // FYI: This test will also probably take very long to run under Valgrind.
   if (RunningOnValgrind()) {
     return;
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = Image::WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -610,7 +614,7 @@ TEST_F(ImageTest, PngAlphaToWebpTestFailsBecauseTooManyTries) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = Image::WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -623,36 +627,10 @@ TEST_F(ImageTest, PngAlphaToWebpTestFailsBecauseTooManyTries) {
   image->output_size();
   EXPECT_EQ(ContentType::kPng, image->content_type()->type());
   EXPECT_EQ(2, options->conversions_attempted);
+  // There were already enough (2) attempts, so we shouldn't try any
+  // more conversions.
   conversion_var_checker.Test(0, 0, 0,   // gif
-                              0, 0, 1,   // png
-                              0, 0, 0,   // jpeg
-                              false);
-}
-
-// This tests that we compress the alpha channel on the webp. If we
-// don't on this image, it becomes larger than the original.
-TEST_F(ImageTest, PngLargeAlphaToWebpTest) {
-  // FYI: This test will also probably take very long to run under Valgrind.
-  if (RunningOnValgrind()) {
-    return;
-  }
-  Image::CompressionOptions* options = new Image::CompressionOptions;
-  ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSY;
-  options->allow_webp_alpha = true;
-  options->convert_png_to_jpeg = true;
-  options->convert_jpeg_to_webp = true;
-  options->webp_quality = 75;
-  options->jpeg_quality = 85;
-  EXPECT_EQ(0, options->conversions_attempted);
-
-  GoogleString buffer;
-  ImagePtr image(ReadFromFileWithOptions(kRedbrush, &buffer, options));
-  EXPECT_GT(image->input_size(), image->output_size());
-  EXPECT_EQ(ContentType::kWebp, image->content_type()->type());
-  EXPECT_EQ(1, options->conversions_attempted);
-  conversion_var_checker.Test(0, 0, 0,   // gif
-                              0, 1, 0,   // png
+                              0, 0, 0,   // png
                               0, 0, 0,   // jpeg
                               false);
 }
@@ -695,7 +673,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = Image::WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -735,7 +713,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpDoesNotTimeOutTest) {
   }
   Image::CompressionOptions* options = new Image::CompressionOptions;
   ConversionVarChecker conversion_var_checker(options);
-  options->preferred_webp = Image::WEBP_LOSSY;
+  options->preferred_webp = Image::WEBP_LOSSLESS;
   options->allow_webp_alpha = true;
   options->convert_png_to_jpeg = true;
   options->convert_jpeg_to_webp = true;
@@ -858,15 +836,15 @@ TEST_F(ImageTest, GifToWebpLaTest) {
   ConversionVarChecker conversion_var_checker(options_.get());
   options_->webp_quality = 75;
   CheckImageFromFile(
-      kIronChef, IMAGE_GIF, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      kTransparent, IMAGE_GIF, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
-      192, 256,
-      24941, true);
+      320, 320,
+      55800, true);
   conversion_var_checker.Test(0, 1, 0,   // gif
                               0, 0, 0,   // png
                               0, 0, 0,   // jpeg
-                              true);
+                              false);
 }
 
 TEST_F(ImageTest, AnimationTest) {

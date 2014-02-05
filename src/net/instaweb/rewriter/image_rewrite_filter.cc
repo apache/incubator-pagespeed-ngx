@@ -343,6 +343,8 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
+// TODO(huibao): Move the logic for determining output format to a centralized
+// method which should consider all relevant factors.
 void SetWebpCompressionOptions(
     const ResourceContext& resource_context,
     const RewriteOptions& options,

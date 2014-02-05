@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/annotated_message_handler.h"
 #include "pagespeed/kernel/image/gif_reader.h"
+#include "pagespeed/kernel/image/image_analysis.h"
 #include "pagespeed/kernel/image/image_converter.h"
 #include "pagespeed/kernel/image/image_resizer.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
@@ -60,12 +61,14 @@ extern "C" {
 #endif
 }
 
+using pagespeed::image_compression::AnalyzeImage;
 using pagespeed::image_compression::CreateScanlineReader;
 using pagespeed::image_compression::CreateScanlineWriter;
 using pagespeed::image_compression::GifReader;
 using pagespeed::image_compression::GRAY_8;
 using pagespeed::image_compression::ImageConverter;
 using pagespeed::image_compression::ImageFormat;
+using pagespeed::image_compression::ImageFormatToString;
 using pagespeed::image_compression::JpegCompressionOptions;
 using pagespeed::image_compression::JpegScanlineWriter;
 using pagespeed::image_compression::JpegUtils;
@@ -372,6 +375,7 @@ class ImageImpl : public Image {
       const PngReaderInterface* png_reader,
       bool fall_back_to_png,
       const char* dbg_input_format,
+      ImageType input_type,
       ConversionVariables::VariableType var_type);
 
   // Helper methods
@@ -401,13 +405,14 @@ class ImageImpl : public Image {
       const GoogleString& image_data);
 
   // Converts image_data, readable via png_reader, to a webp using the
-  // settings in options_, if allowed by those settings. If the
-  // settings specify a WebP lossless conversion and that fails for
-  // some reason, this will fall back to WebP lossy, unless
-  // options_->preserve_lossless is set.
+  // settings in options_, if allowed by those settings. The alpha channel
+  // is always losslessly compressed, while the color may be lossily or
+  // or losslessly compressed, depending on 'compress_color_losslessly'.
   bool ConvertPngToWebp(
       const PngReaderInterface& png_reader,
       const GoogleString& image_data,
+      bool compress_color_losslessly,
+      bool has_transparency,
       ConversionVariables::VariableType var_type);
 
   // Convert the JPEG in original_jpeg to WebP format in
@@ -1068,15 +1073,18 @@ bool ImageImpl::ComputeOutputContents() {
           ok = ComputeOutputContentsFromPngReader(
               string_for_image,
               png_reader.get(),
-              (resized || options_->recompress_png),
+              (resized || options_->recompress_png) /* fall_back_to_png */,
               kPngString,
+              IMAGE_PNG,
               Image::ConversionVariables::FROM_PNG);
           break;
         case IMAGE_GIF:
+          ImageType current_image_type = IMAGE_GIF;
           if (resized) {
             // If the GIF image has been resized, it has already been
             // converted to a PNG image.
             png_reader.reset(new PngReader(handler_.get()));
+            current_image_type = IMAGE_PNG;
           } else if (options_->convert_gif_to_png || low_quality_enabled_) {
             png_reader.reset(new GifReader(handler_.get()));
           }
@@ -1084,8 +1092,9 @@ bool ImageImpl::ComputeOutputContents() {
             ok = ComputeOutputContentsFromPngReader(
                 string_for_image,
                 png_reader.get(),
-                true /* fall_back_to_png */,
+                options_->convert_gif_to_png /* fall_back_to_png */,
                 kGifString,
+                current_image_type,
                 Image::ConversionVariables::FROM_GIF);
           }
           break;
@@ -1121,119 +1130,164 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     const PngReaderInterface* png_reader,
     bool fall_back_to_png,
     const char* dbg_input_format,
+    ImageType input_type,
     ConversionVariables::VariableType var_type) {
+  // Don't try to optimize empty images, it just messes things up.
+  if (dims_.width() <= 0 || dims_.height() <= 0) {
+    return false;
+  }
+
   bool ok = false;
-  // If the user specifies --convert_to_webp_lossless and does not
-  // specify --convert_png_to_jpeg, we will fall back directly to PNG
-  // if WebP lossless fails; in other words, we do only lossless
-  // conversions.
-  options_->preserve_lossless =
-      (options_->preferred_webp == Image::WEBP_LOSSLESS) &&
-      (!options_->convert_png_to_jpeg);
-  if ((options_->preserve_lossless ||
-       options_->convert_png_to_jpeg ||
-       low_quality_enabled_) &&
-      (dims_.width() != 0) && (dims_.height() != 0)) {
-    // Don't try to optimize empty images, it just messes things up.
-    if (options_->preserve_lossless ||
-        options_->convert_jpeg_to_webp) {
-      ok = ConvertPngToWebp(*png_reader, string_for_image,
-                            var_type);
-      VLOG(1) << "Image conversion: " << ok
-              << " " << dbg_input_format
-              << "->webp for " << url_.c_str();
+  bool has_transparency, is_photo, compress_color_losslessly;
+  ImageType output_type = IMAGE_UNKNOWN;
+
+  AnalyzeImage(ImageTypeToImageFormat(input_type),
+               string_for_image.data(), string_for_image.length(),
+               handler_.get(), &has_transparency, &is_photo);
+
+  if (is_photo && options_->convert_png_to_jpeg &&
+      (input_type == IMAGE_PNG ||
+       (input_type == IMAGE_GIF && options_->convert_gif_to_png))) {
+    // Can be converted to lossy format.
+    if (!has_transparency) {
+      // No alpha; can be converted to WebP lossy or JPEG.
+      if (options_->preferred_webp != Image::WEBP_NONE &&
+          options_->convert_jpeg_to_webp &&
+          options_->webp_quality > 0) {
+        compress_color_losslessly = false;
+        output_type = IMAGE_WEBP;
+      } else if (options_->jpeg_quality > 0) {
+        output_type = IMAGE_JPEG;
+      }
+    } else {
+      // Has alpha; can be converted to WebP alpha.
+      if (options_->allow_webp_alpha &&
+          options_->convert_jpeg_to_webp &&
+          options_->webp_quality > 0) {
+        compress_color_losslessly = false;
+        output_type = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+      }
     }
-    if (!ok &&
-        !options_->preserve_lossless &&
-        options_->jpeg_quality > 0) {
-      ok = OptimizePngOrConvertToJpeg(*png_reader,
-                                      string_for_image);
-      VLOG(1) << "Image conversion: " << ok
-              << " " << dbg_input_format
-              << "->jpeg/png for " << url_.c_str();
-      return ok;  // Don't repeat, below, this failing PNG optimization.
+  } else {
+    // Must be converted to lossless format.
+    if (options_->preferred_webp == Image::WEBP_LOSSLESS) {
+      compress_color_losslessly = true;
+      output_type = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
     }
   }
+
+  if (output_type == IMAGE_WEBP ||
+      output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
+    ok = MayConvert() &&
+        ConvertPngToWebp(*png_reader, string_for_image,
+                         compress_color_losslessly, has_transparency, var_type);
+    // TODO(huibao): Re-evaluate why we need to try a different format, if the
+    // conversion to WebP failed.
+    if (!ok) {
+      // If the conversion to WebP failed, we will try converting the image to
+      // jpeg or png.
+      if (output_type == IMAGE_WEBP) {
+        output_type = IMAGE_JPEG;
+      } else {
+        fall_back_to_png = true;
+      }
+    }
+  }
+
+  if (output_type == IMAGE_JPEG) {
+    JpegCompressionOptions jpeg_options;
+    ConvertToJpegOptions(*options_.get(), &jpeg_options);
+    ok = MayConvert() &&
+        ImageConverter::ConvertPngToJpeg(*png_reader, string_for_image,
+                                         jpeg_options, &output_contents_,
+                                         handler_.get());
+  }
+
   if (!ok && fall_back_to_png) {
-    ok = OptimizePng(*png_reader, string_for_image);
-    VLOG(1) << "Image conversion: " << ok
-            << " " << dbg_input_format
-            << "->png for " << url_.c_str();
+    ok = MayConvert() &&
+        PngOptimizer::OptimizePngBestCompression(*png_reader, string_for_image,
+                                                  &output_contents_,
+                                                  handler_.get());
+    output_type = IMAGE_PNG;
   }
+
+  if (ok) {
+    image_type_ = output_type;
+  } else {
+    image_type_ = input_type;
+  }
+
+  VLOG(1) << "Image conversion: " << ok
+          << " " << dbg_input_format
+          << "->" << ImageFormatToString(ImageTypeToImageFormat(image_type_))
+          << " for " << url_.c_str();
+
   return ok;
 }
 
 bool ImageImpl::ConvertPngToWebp(
       const PngReaderInterface& png_reader,
       const GoogleString& input_image,
+      bool compress_color_losslessly,
+      bool has_transparency,
       ConversionVariables::VariableType var_type) {
-  bool ok = false;
-  if ((options_->preferred_webp != Image::WEBP_NONE) &&
-      (options_->webp_quality > 0)) {
-    ConversionTimeoutHandler timeout_handler(
-        url_, timer_, handler_.get(),
-        options_->webp_conversion_timeout_ms,
-        &output_contents_);
-    WebpConfiguration webp_config;
-    webp_config.quality = options_->webp_quality;
+  ConversionTimeoutHandler timeout_handler(
+      url_, timer_, handler_.get(),
+      options_->webp_conversion_timeout_ms,
+      &output_contents_);
+  WebpConfiguration webp_config;
 
-    // Quality/speed trade-off (0=fast, 6=slower-better).
-    // This is the default value in libpagespeed. We should evaluate
-    // whether this is the optimal value, and consider making it
-    // tunable.
-    webp_config.method = 3;
-    webp_config.progress_hook = ConversionTimeoutHandler::Continue;
-    webp_config.user_data = &timeout_handler;
+  // Quality/speed trade-off (0=fast, 6=slower-better).
+  // This is the default value in libpagespeed. We should evaluate
+  // whether this is the optimal value, and consider making it
+  // tunable.
+  webp_config.method = 3;
+  webp_config.quality = options_->webp_quality;
+  webp_config.progress_hook = ConversionTimeoutHandler::Continue;
+  webp_config.user_data = &timeout_handler;
 
-    bool is_opaque = false;
-
-    if (options_->preferred_webp == Image::WEBP_LOSSLESS) {
-      // Note that webp_config.alpha_quality and
-      // webp_config.alpha_compression are only meaningful in the
-      // lossy compression case.
-      webp_config.lossless = true;
-      ok = MayConvert() &&
-          ImageConverter::ConvertPngToWebp(
-          png_reader, input_image, webp_config,
-          &output_contents_, &is_opaque, handler_.get());
-      if (ok) {
-        image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
-      }
+  ImageType target_image_type = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+  if (compress_color_losslessly) {
+    // Note that webp_config.alpha_quality and
+    // webp_config.alpha_compression are only meaningful in the
+    // lossy compression case.
+    webp_config.lossless = true;
+  } else {
+    webp_config.lossless = false;
+    if (has_transparency) {
+      webp_config.alpha_quality = 100;
+      webp_config.alpha_compression = 1;
+    } else {
+      webp_config.alpha_quality = 0;
+      webp_config.alpha_compression = 0;
+      image_type_ = IMAGE_WEBP;
     }
-
-    if (!ok &&
-        !options_->preserve_lossless &&
-        timeout_handler.HaveTimeLeft()) {
-      // We failed or did not attempt lossless conversion, we have
-      // time left, and lossy conversion is allowed, so try it.
-      webp_config.lossless = false;
-      webp_config.alpha_quality = (options_->allow_webp_alpha ? 100 : 0);
-      webp_config.alpha_compression = 1;  // compressed with WebP lossless
-      ok = MayConvert() &&
-          ImageConverter::ConvertPngToWebp(
-          png_reader, input_image, webp_config,
-          &output_contents_, &is_opaque, handler_.get());
-      if (ok) {
-        if (is_opaque) {
-          image_type_ = IMAGE_WEBP;
-        } else if (options_->allow_webp_alpha) {
-          image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
-        } else {
-          ok = false;
-        }
-      }
-    }
-    timeout_handler.RegisterStatus(ok,
-                                   var_type,
-                                   options_->webp_conversion_variables);
-    // Note that if !ok, is_opaque may not have been set correctly.
-    timeout_handler.RegisterStatus(
-        ok,
-        (is_opaque ?
-         Image::ConversionVariables::OPAQUE :
-         Image::ConversionVariables::NONOPAQUE),
-        options_->webp_conversion_variables);
   }
+
+  // TODO(huibao): Remove "is_opaque" from the returned arguments in
+  // ConvertPngToWebp() and PngScanlineReader::InitializeRead().
+  // The technique they use can only detect some of the opaque images.
+  // PixelFormatOptimizer has a more expensive, but comprehensive solution.
+  bool not_used;
+  bool ok = ImageConverter::ConvertPngToWebp(
+      png_reader, input_image, webp_config,
+      &output_contents_, &not_used, handler_.get());
+
+  if (ok) {
+    image_type_ = target_image_type;
+  }
+
+  timeout_handler.RegisterStatus(ok,
+                                 var_type,
+                                 options_->webp_conversion_variables);
+
+  timeout_handler.RegisterStatus(
+      ok,
+      (has_transparency ?
+       Image::ConversionVariables::NONOPAQUE :
+       Image::ConversionVariables::OPAQUE),
+      options_->webp_conversion_variables);
+
   return ok;
 }
 
@@ -1377,11 +1431,11 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
     return false;
   }
 
-  bool has_alpha = false;
+  bool has_transparency = false;
   PixelFormat output_pixel_format = RGB_888;
   if (image_pixel_format == RGBA_8888 ||
       canvas_pixel_format == RGBA_8888) {
-    has_alpha = true;
+    has_transparency = true;
     output_pixel_format = RGBA_8888;
   }
 
@@ -1394,7 +1448,8 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
   GoogleString canvas_image;
   scoped_ptr<ScanlineWriterInterface> canvas_writer(
       CreateUncompressedPngWriter(canvas_width, canvas_height,
-                                  &canvas_image, handler_.get(), has_alpha));
+                                  &canvas_image, handler_.get(),
+                                  has_transparency));
   if (canvas_writer == NULL) {
     PS_LOG_ERROR(handler_, "Failed to create canvas writer.");
     return false;

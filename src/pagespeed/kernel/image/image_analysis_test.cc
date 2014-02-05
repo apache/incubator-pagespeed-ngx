@@ -37,7 +37,9 @@ using net_instaweb::MockMessageHandler;
 using net_instaweb::NullMutex;
 using pagespeed::image_compression::GRAY_8;
 using pagespeed::image_compression::Histogram;
+using pagespeed::image_compression::IMAGE_GIF;
 using pagespeed::image_compression::IMAGE_JPEG;
+using pagespeed::image_compression::kGifTestDir;
 using pagespeed::image_compression::kJpegTestDir;
 using pagespeed::image_compression::kNumColorHistogramBins;
 using pagespeed::image_compression::PixelFormat;
@@ -50,22 +52,28 @@ using pagespeed::image_compression::SynthesizeImage;
 struct ImageInfo {
   const char* file_name;
   bool is_photo;
+  bool has_transparency;
 };
 
 const ImageInfo kJpegImages[] = {
-  {"quality100", false},
-  {"sjpeg1", false},
-  {"sjpeg6", false},
-  {"app_segments", false},
-  {"sjpeg3", true},
-  {"sjpeg4", true},
-  {"already_optimized", true},
-  {"test444", true}
+  {"quality100", false, false},
+  {"sjpeg1", false, false},
+  {"sjpeg6", false, false},
+  {"sjpeg3", true, false},
+  {"sjpeg4", true, false},
+  {"already_optimized", true, false},
+  {"test444", true, false}
 };
 const size_t kJpegImageCount = arraysize(kJpegImages);
 // In kJpegImages[], the images at position kJpegImageFirstPhotoIdx and later
 // are photos.
-const size_t kJpegImageFirstPhotoIdx = 4;
+const size_t kJpegImageFirstPhotoIdx = 3;
+
+const ImageInfo kGifImages[] = {
+  {"transparent", false, true},
+  {"interlaced", true, false},
+};
+const size_t kGifImageCount = arraysize(kGifImages);
 
 class ImageAnalysisTest : public testing::Test {
  public:
@@ -95,7 +103,7 @@ class ImageAnalysisTest : public testing::Test {
 
     // Compute gradient.
     net_instaweb::scoped_array<uint8_t> gradient(new uint8_t[width * height]);
-    ASSERT_TRUE(SimpleGradient(image.get(), width, height, bytes_per_line,
+    ASSERT_TRUE(SobelGradient(image.get(), width, height, bytes_per_line,
                                pixel_format, &message_handler_,
                                gradient.get()));
 
@@ -174,11 +182,11 @@ TEST_F(ImageAnalysisTest, GradientOfFluctuatingPixelValues) {
   const PixelFormat pixel_format[] = {RGB_888, RGBA_8888};
 
   const uint8_t expected_gradient[] = {
-      0,   0,   0,   0,   0, 0,
-      0,  24,  78,  78,  24, 0,
-      0,  78,  78, 110,  24, 0,
-      0, 147,  24,  24, 110, 0,
-      0,   0,   0,   0,   0, 0};
+      0,   0,   0,   0,   0,   0,
+      0,  14,  69,  56,  14,   0,
+      0,  70,  69,  47,  54,   0,
+      0, 104,  20,  47,  89,   0,
+      0,   0,   0,   0,   0,   0};
 
   // Test the gradient computed for two pixel formats: RGB_888 and RGBA_8888.
   // Since the alpha channel is ignored, both formats have the same gradient.
@@ -242,14 +250,14 @@ TEST_F(ImageAnalysisTest, HistogramOfIncreasingPixelValues) {
 }
 
 TEST_F(ImageAnalysisTest, PhotoMetric) {
-  // Threshold for suppressing weak histogram bins. At average each bin is
-  // expected to be 1/256. We will test that with different thresholds
-  // we can still separate graphics from photos.
+  // Threshold for suppressing weak histogram bins. We adopt the value of
+  // 0.01. Here we test that the the metric works well for thresholds
+  // around it.
   const float thresholds[] = {
-    0.5f / 256.0f,
-    1.0f / 256.0f,
-    5.0f / 256.0f,
-    10.0f / 256.0f,
+    0.005f,
+    0.01f,
+    0.02f,
+    0.03f,
   };
 
   float metric[kJpegImageCount];
@@ -282,6 +290,20 @@ TEST_F(ImageAnalysisTest, PhotoMetric) {
         *std::min_element(metric + kJpegImageFirstPhotoIdx,
                           metric + kJpegImageCount);
     EXPECT_LT(max_graphics_metric, min_photo_metric);
+  }
+}
+
+TEST_F(ImageAnalysisTest, PhotoTransparency) {
+  for (size_t i = 0; i < kGifImageCount; ++i) {
+    GoogleString image_string;
+    ASSERT_TRUE(ReadTestFile(kGifTestDir, kGifImages[i].file_name, "gif",
+                             &image_string));
+
+    bool has_transparency, is_photo;
+    AnalyzeImage(IMAGE_GIF, image_string.data(), image_string.length(),
+                 &message_handler_, &has_transparency, &is_photo);
+    EXPECT_EQ(kGifImages[i].has_transparency, has_transparency);
+    EXPECT_EQ(kGifImages[i].is_photo, is_photo);
   }
 }
 
