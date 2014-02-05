@@ -205,6 +205,8 @@ class RewriteDriverFactory {
   // the resulting driver for reconstructing a .pagespeed. resource, not for
   // transforming HTML.  Therefore, implementations should add any
   // platform-specific rewriter whose id might appear in a .pagespeed. URL.
+  // This should be done independent of RewriteOptions, since we only store
+  // a single decoding driver globally to save memory.
   virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);
 
   // Provides an optional hook for customizing the RewriteDriver object
@@ -331,6 +333,17 @@ class RewriteDriverFactory {
   // overridden per Factory as it has at least one pure virtual method.
   virtual ServerContext* NewServerContext() = 0;
 
+  // Create a new ServerContext used for decoding only. Unlike NewServerContext,
+  // the resulting ServerContext should not be fresh, but should have some of
+  // its platform dependencies injected --- but just enough for decoding URLs,
+  // and not full operation. At the time of writing it needs the timer,
+  // url namer, hasher, message handler, and stats; expensive stuff like
+  // cache backends is not needed, however.
+  //
+  // You may find InitStubDecodingServerContext() useful for doing that, as it
+  // will inject all of these from what's available in 'this'.
+  virtual ServerContext* NewDecodingServerContext() = 0;
+
   virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
 
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
@@ -400,6 +413,13 @@ class RewriteDriverFactory {
   virtual void InitStaticAssetManager(
       StaticAssetManager* static_asset_manager) {}
 
+  // Sets up enough of platform dependencies in 'context' to be able to use
+  // it for decoding URLs, based on this object's values and some stubs.
+  void InitStubDecodingServerContext(ServerContext* context);
+
+  // For use in tests.
+  void RebuildDecodingDriverForTests(ServerContext* server_context);
+
  private:
   // Creates a StaticAssetManager instance. Default implementation creates an
   // instance that disables serving of filter javascript via gstatic
@@ -408,6 +428,8 @@ class RewriteDriverFactory {
 
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
+
+  void InitDecodingDriver(ServerContext* server_context);
 
   scoped_ptr<MessageHandler> html_parse_message_handler_;
   scoped_ptr<MessageHandler> message_handler_;
@@ -445,6 +467,16 @@ class RewriteDriverFactory {
   // Stores options with hard-coded defaults and adjustments from
   // the core system, subclasses, and command-line.
   scoped_ptr<RewriteOptions> default_options_;
+
+  // Keep around a RewriteDriver just for decoding resource URLs, using
+  // the default options.  This is possible because the id->RewriteFilter
+  // table is fully constructed independent of the options; we however
+  // still inject options into some of the Decode methods since we also
+  // need to honor things like forbids. We also have a special
+  // ServerContext just for it, to avoid connecting it to any particular
+  // pre-existing one.
+  scoped_ptr<ServerContext> decoding_server_context_;
+  scoped_ptr<RewriteDriver> decoding_driver_;
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;

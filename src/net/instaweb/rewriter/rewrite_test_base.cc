@@ -1029,6 +1029,8 @@ void RewriteTestBase::SetupSharedCache() {
       new HTTPCache(factory_->delay_cache(), factory_->timer(),
                     factory_->hasher(), factory_->statistics()));
   other_server_context_->set_metadata_cache(factory_->delay_cache());
+  // Also make sure to share the timer.
+  other_server_context_->set_timer(server_context_->timer());
 }
 
 void RewriteTestBase::CheckFetchFromHttpCache(

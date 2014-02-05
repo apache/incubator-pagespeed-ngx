@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
@@ -485,6 +486,7 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
 
   server_context->ComputeSignature(server_context->global_options());
   server_context->set_scheduler(scheduler());
+  server_context->set_timer(timer());
   if (server_context->statistics() == NULL) {
     server_context->set_statistics(statistics());
   }
@@ -525,12 +527,56 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_critical_line_info_finder(
       DefaultCriticalLineInfoFinder(server_context));
   server_context->set_hostname(hostname_);
-  server_context->InitWorkersAndDecodingDriver();
+  server_context->InitWorkers();
+  InitDecodingDriver(server_context);
   server_contexts_.insert(server_context);
 
   // Make sure that all lazy state gets initialized, even if we don't copy it to
   // ServerContext
   user_agent_normalizers();
+}
+
+void RewriteDriverFactory::RebuildDecodingDriverForTests(
+    ServerContext* server_context) {
+  decoding_driver_.reset(NULL);
+  InitDecodingDriver(server_context);
+}
+
+void RewriteDriverFactory::InitDecodingDriver(ServerContext* server_context) {
+  if (decoding_driver_.get() == NULL) {
+    decoding_server_context_.reset(NewDecodingServerContext());
+    decoding_driver_.reset(
+        decoding_server_context_->NewUnmanagedRewriteDriver(
+            NULL, default_options_->Clone(), RequestContextPtr(NULL)));
+    decoding_driver_->set_externally_managed(true);
+
+    // Apply platform configuration mutation for consistency's sake.
+    ApplyPlatformSpecificConfiguration(decoding_driver_.get());
+    // Inserts platform-specific rewriters into the resource_filter_map_, so
+    // that the decoding process can recognize those rewriter ids.
+    AddPlatformSpecificDecodingPasses(decoding_driver_.get());
+    // This call is for backwards compatibility.  When adding new platform
+    // specific rewriters to implementations of RewriteDriverFactory, please
+    // do not rely on this call to include them in the decoding process.
+    // Instead, add them to your implementation of
+    // AddPlatformSpecificDecodingPasses.
+    AddPlatformSpecificRewritePasses(decoding_driver_.get());
+    decoding_server_context_->set_decoding_driver(decoding_driver_.get());
+  }
+  server_context->set_decoding_driver(decoding_driver_.get());
+}
+
+void RewriteDriverFactory::InitStubDecodingServerContext(ServerContext* sc) {
+  sc->set_timer(timer());
+  sc->set_url_namer(url_namer());
+  sc->set_hasher(hasher());
+  sc->set_message_handler(message_handler());
+  NullStatistics* null_stats = new NullStatistics();
+  TakeOwnership(null_stats);
+  InitStats(null_stats);
+  sc->set_statistics(null_stats);
+  sc->set_hasher(hasher());
+  sc->InitWorkers();
 }
 
 void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(
@@ -667,6 +713,16 @@ void RewriteDriverFactory::ShutDown() {
       worker_pool->ShutDown();
     }
   }
+
+  // Make sure we destroy the decoding driver here, before any of the
+  // server contexts get destroyed, since it's tied to one. Also clear
+  // all of the references to it.
+  for (ServerContextSet::iterator p = server_contexts_.begin();
+       p != server_contexts_.end(); ++p) {
+    ServerContext* server_context = *p;
+    server_context->set_decoding_driver(NULL);
+  }
+  decoding_driver_.reset(NULL);
 }
 
 void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {

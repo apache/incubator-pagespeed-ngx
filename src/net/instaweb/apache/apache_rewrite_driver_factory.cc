@@ -281,6 +281,12 @@ ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheServerContext(
   return server_context;
 }
 
+ServerContext* ApacheRewriteDriverFactory::NewDecodingServerContext() {
+  ServerContext* sc = new ApacheServerContext(this, server_rec_, version_);
+  InitStubDecodingServerContext(sc);
+  return sc;
+}
+
 bool ApacheRewriteDriverFactory::PoolDestroyed(
     ApacheServerContext* server_context) {
   if (uninitialized_server_contexts_.erase(server_context) == 1) {

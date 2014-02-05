@@ -181,7 +181,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   if (allow_related_options && namer.Decode(request_url->LeafSansQuery()) &&
       namer.has_options()) {
     const RewriteFilter* rewrite_filter =
-        server_context->decoding_driver()->FindFilter(namer.id());
+        server_context->FindFilterForDecoding(namer.id());
     if (rewrite_filter != NULL) {
       options->reset(factory->NewRewriteOptionsForQuery());
       status = ParseResourceOption(namer.options(), options->get(),

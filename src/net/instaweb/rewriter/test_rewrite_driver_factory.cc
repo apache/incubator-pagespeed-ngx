@@ -266,6 +266,12 @@ ServerContext* TestRewriteDriverFactory::NewServerContext() {
   return new TestServerContext(this);
 }
 
+ServerContext* TestRewriteDriverFactory::NewDecodingServerContext() {
+  ServerContext* sc = NewServerContext();
+  InitStubDecodingServerContext(sc);
+  return sc;
+}
+
 void TestRewriteDriverFactory::AddPlatformSpecificDecodingPasses(
     RewriteDriver* driver) {
   if (add_platform_specific_decoding_passes_) {

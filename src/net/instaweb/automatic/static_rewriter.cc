@@ -122,6 +122,12 @@ ServerContext* FileRewriter::NewServerContext() {
   return new FileServerContext(this);
 }
 
+ServerContext* FileRewriter::NewDecodingServerContext() {
+  ServerContext* sc = NewServerContext();
+  InitStubDecodingServerContext(sc);
+  return sc;
+}
+
 StaticRewriter::StaticRewriter(int* argc, char*** argv)
     : gflags_((*argv)[0], argc, argv),
       file_rewriter_(&gflags_, true),

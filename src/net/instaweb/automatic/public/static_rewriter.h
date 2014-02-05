@@ -54,6 +54,7 @@ class FileRewriter : public RewriteDriverFactory {
   virtual void SetupCaches(ServerContext* server_context);
   virtual Statistics* statistics();
   virtual ServerContext* NewServerContext();
+  virtual ServerContext* NewDecodingServerContext();
   virtual bool UseBeaconResultsInFilters() const { return false; }
 
  private:

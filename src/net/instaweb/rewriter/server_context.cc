@@ -262,6 +262,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       lock_hasher_(RewriteOptions::kHashBytes),
       contents_hasher_(21),
       statistics_(NULL),
+      timer_(NULL),
       filesystem_metadata_cache_(NULL),
       metadata_cache_(NULL),
       store_outputs_in_file_system_(false),
@@ -278,6 +279,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       shutdown_drivers_called_(false),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system_->NewMutex()),
+      decoding_driver_(NULL),
       html_workers_(NULL),
       rewrite_workers_(NULL),
       low_priority_rewrite_workers_(NULL),
@@ -331,29 +333,15 @@ ServerContext::~ServerContext() {
   STLDeleteElements(&active_rewrite_drivers_);
   available_rewrite_drivers_.reset();
   STLDeleteElements(&additional_driver_pools_);
-  decoding_driver_.reset(NULL);
 }
 
 // TODO(gee): These methods are out of order with respect to the .h #tech-debt
-void ServerContext::InitWorkersAndDecodingDriver() {
+void ServerContext::InitWorkers() {
   html_workers_ = factory_->WorkerPool(RewriteDriverFactory::kHtmlWorkers);
   rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kRewriteWorkers);
   low_priority_rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
-  decoding_driver_.reset(NewUnmanagedRewriteDriver(
-      NULL, global_options()->Clone(), RequestContextPtr(NULL)));
-  decoding_driver_->set_externally_managed(true);
-  // Apply platform configuration mutation for consistency's sake.
-  factory_->ApplyPlatformSpecificConfiguration(decoding_driver_.get());
-  // Inserts platform-specific rewriters into the resource_filter_map_, so that
-  // the decoding process can recognize those rewriter ids.
-  factory_->AddPlatformSpecificDecodingPasses(decoding_driver_.get());
-  // This call is for backwards compatibility.  When adding new platform
-  // specific rewriters to implementations of RewriteDriverFactory, please
-  // do not rely on this call to include them in the decoding process.  Instead,
-  // add them to your implementation of AddPlatformSpecificDecodingPasses.
-  factory_->AddPlatformSpecificRewritePasses(decoding_driver_.get());
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
@@ -375,7 +363,7 @@ void ServerContext::SetDefaultLongCacheHeadersWithCharset(
     header->Add(HttpAttributes::kContentType, header_val);
   }
 
-  int64 now_ms = http_cache_->timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   header->SetDateAndCaching(now_ms, kGeneratedMaxAgeMs);
 
   // While PageSpeed claims the "Vary" header is needed to avoid proxy cache
@@ -489,7 +477,20 @@ bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
   OutputResourceKind kind;
   RewriteFilter* filter;
   return decoding_driver_->DecodeOutputResourceName(
-      url, &namer, &kind, &filter);
+      url, global_options(), url_namer(), &namer, &kind, &filter);
+}
+
+const RewriteFilter* ServerContext::FindFilterForDecoding(
+    const StringPiece& id) const {
+  return decoding_driver_->FindFilter(id);
+}
+
+bool ServerContext::DecodeUrlGivenOptions(const GoogleUrl& url,
+                                          const RewriteOptions* options,
+                                          const UrlNamer* url_namer,
+                                          StringVector* decoded_urls) const {
+  return decoding_driver_->DecodeUrlGivenOptions(url, options, url_namer,
+                                                 decoded_urls);
 }
 
 NamedLock* ServerContext::MakeCreationLock(const GoogleString& name) {

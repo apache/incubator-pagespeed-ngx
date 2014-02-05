@@ -86,6 +86,7 @@ class SplitHtmlConfig;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
+class UrlNamer;
 class Writer;
 
 // This extends class HtmlParse (which should renamed HtmlContext) by providing
@@ -387,7 +388,11 @@ class RewriteDriver : public HtmlParse {
   // As above, but does not actually create a resource object,
   // and instead outputs the decoded information into the various out
   // parameters. Returns whether decoding successful or not.
+  // Uses options_to_use rather than this->options() to determine which
+  // drivers are forbidden from applying, etc.
   bool DecodeOutputResourceName(const GoogleUrl& url,
+                                const RewriteOptions* options_to_use,
+                                const UrlNamer* url_namer,
                                 ResourceNamer* name_out,
                                 OutputResourceKind* kind_out,
                                 RewriteFilter** filter_out) const;
@@ -395,6 +400,13 @@ class RewriteDriver : public HtmlParse {
   // Decodes the incoming pagespeed url to original url(s).
   bool DecodeUrl(const GoogleUrl& url,
                  StringVector* decoded_urls) const;
+
+  // As above, but lets one specify the options and URL namer to use.
+  // Meant for use with the decoding_driver.
+  bool DecodeUrlGivenOptions(const GoogleUrl& url,
+                             const RewriteOptions* options,
+                             const UrlNamer* url_namer,
+                             StringVector* decoded_urls) const;
 
   FileSystem* file_system() { return file_system_; }
   UrlAsyncFetcher* async_fetcher() { return url_async_fetcher_; }
@@ -1178,6 +1190,8 @@ class RewriteDriver : public HtmlParse {
 
   // Helper function to decode the pagespeed url.
   bool DecodeOutputResourceNameHelper(const GoogleUrl& url,
+                                      const RewriteOptions* options_to_use,
+                                      const UrlNamer* url_namer,
                                       ResourceNamer* name_out,
                                       OutputResourceKind* kind_out,
                                       RewriteFilter** filter_out,

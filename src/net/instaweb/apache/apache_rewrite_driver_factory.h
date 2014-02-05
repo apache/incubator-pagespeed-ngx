@@ -173,6 +173,8 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Initializes the StaticAssetManager.
   virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
+  virtual ServerContext* NewDecodingServerContext();
+
  private:
   // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
   // with sensible values if they are not explicitly set.

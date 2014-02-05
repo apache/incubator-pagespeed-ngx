@@ -1425,6 +1425,8 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCacheOnlyFetcher() {
 
 bool RewriteDriver::DecodeOutputResourceNameHelper(
     const GoogleUrl& gurl,
+    const RewriteOptions* options_to_use,
+    const UrlNamer* url_namer,
     ResourceNamer* namer_out,
     OutputResourceKind* kind_out,
     RewriteFilter** filter_out,
@@ -1433,7 +1435,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // In forward proxy in preserve-URLs mode we want to fetch .pagespeed.
   // resource, i.e. do not decode and and do not fetch original (especially
   // that encoded one will never be cached internally).
-  if (options() != NULL && options()->oblivious_pagespeed_urls()) {
+  if (options_to_use != NULL && options_to_use->oblivious_pagespeed_urls()) {
     return false;
   }
 
@@ -1455,7 +1457,6 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
     return false;
   }
 
-  UrlNamer* url_namer = server_context()->url_namer();
   GoogleString decoded_url;
   // If we are running in proxy mode we need to ignore URLs where the leaf is
   // encoded but the URL as a whole isn't proxy encoded, since that can happen
@@ -1538,7 +1539,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   }
 
   // Check if the id string's filter is forbidden and reject the URL if so.
-  if (options()->Forbidden(id_str)) {
+  if (options_to_use->Forbidden(id_str)) {
     message_handler()->Message(kInfo,
                                "Decoding of resource name %s failed because "
                                " filter_id %s is forbidden.",
@@ -1549,24 +1550,37 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   return true;
 }
 
-bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
-                                             ResourceNamer* namer_out,
-                                             OutputResourceKind* kind_out,
-                                             RewriteFilter** filter_out) const {
+bool RewriteDriver::DecodeOutputResourceName(
+    const GoogleUrl& gurl,
+    const RewriteOptions* options_to_use,
+    const UrlNamer* url_namer,
+    ResourceNamer* namer_out,
+    OutputResourceKind* kind_out,
+    RewriteFilter** filter_out) const {
   StringVector urls;
   GoogleString url_base;
   return DecodeOutputResourceNameHelper(
-      gurl, namer_out, kind_out, filter_out, &url_base, &urls);
+      gurl, options_to_use, url_namer, namer_out, kind_out,
+      filter_out, &url_base, &urls);
 }
 
 bool RewriteDriver::DecodeUrl(const GoogleUrl& url,
                               StringVector* decoded_urls) const {
+  return DecodeUrlGivenOptions(url, options(),
+                               server_context()->url_namer(), decoded_urls);
+}
+
+bool RewriteDriver::DecodeUrlGivenOptions(
+    const GoogleUrl& url,
+    const RewriteOptions* options,
+    const UrlNamer* url_namer,
+    StringVector* decoded_urls) const {
   ResourceNamer namer;
   OutputResourceKind kind;
   RewriteFilter* filter = NULL;
   GoogleString url_base;
   bool is_decoded =  DecodeOutputResourceNameHelper(
-      url, &namer, &kind, &filter, &url_base, decoded_urls);
+      url, options, url_namer, &namer, &kind, &filter, &url_base, decoded_urls);
   if (is_decoded) {
     GoogleUrl gurl_base(url_base);
     for (int i = 0, n = decoded_urls->size(); i < n; ++i) {
@@ -1582,7 +1596,8 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
     RewriteFilter** filter) const {
   ResourceNamer namer;
   OutputResourceKind kind;
-  if (!DecodeOutputResourceName(gurl, &namer, &kind, filter)) {
+  if (!DecodeOutputResourceName(gurl, options(), server_context()->url_namer(),
+                                &namer, &kind, filter)) {
     return OutputResourcePtr();
   }
 

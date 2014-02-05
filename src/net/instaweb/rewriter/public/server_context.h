@@ -67,6 +67,7 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
 class RewriteDriverPool;
+class RewriteFilter;
 class RewriteOptions;
 class RewriteOptionsManager;
 class RewriteStats;
@@ -157,6 +158,16 @@ class ServerContext {
   // Is this URL a ref to a Pagespeed resource?
   bool IsPagespeedResource(const GoogleUrl& url);
 
+  // Returns a filter to be used for decoding URLs & options for given
+  // filter id. This should not be used for actual fetches.
+  const RewriteFilter* FindFilterForDecoding(const StringPiece& id) const;
+
+  // See RewriteDriver::DecodeUrl.
+  bool DecodeUrlGivenOptions(const GoogleUrl& url,
+                             const RewriteOptions* options,
+                             const UrlNamer* url_namer,
+                             StringVector* decoded_urls) const;
+
   void ComputeSignature(RewriteOptions* rewrite_options) const;
 
   // TODO(jmarantz): check thread safety in Apache.
@@ -196,7 +207,10 @@ class ServerContext {
     return default_distributed_fetcher_;
   }
 
-  Timer* timer() const { return http_cache_->timer(); }
+  Timer* timer() const { return timer_; }
+
+  // Note: doesn't take ownership.
+  void set_timer(Timer* timer) { timer_ = timer; }
 
   HTTPCache* http_cache() const { return http_cache_.get(); }
   void set_http_cache(HTTPCache* x) { http_cache_.reset(x); }
@@ -514,9 +528,8 @@ class ServerContext {
   size_t num_active_rewrite_drivers();
 
   // A ServerContext may be created in one phase, and later populated
-  // with all its dependencies.  This populates the worker threads and
-  // a RewriteDriver used just for quickly decoding (but not serving) URLs.
-  void InitWorkersAndDecodingDriver();
+  // with all its dependencies.  This populates the worker threads.
+  void InitWorkers();
 
   // Returns whether or not this attribute can be merged into headers
   // without additional considerations.
@@ -564,10 +577,6 @@ class ServerContext {
   virtual void ApplySessionFetchers(const RequestContextPtr& req,
                                     RewriteDriver* driver);
 
-  const RewriteDriver* decoding_driver() const {
-    return decoding_driver_.get();
-  }
-
   // Determines whether in this server, it makes sense to proxy HTML
   // from external sources.  If we're acting as a reverse proxy that
   // talks to the backend over HTTP, it makes sense to set this to
@@ -588,6 +597,10 @@ class ServerContext {
   void DeleteCacheOnDestruction(CacheInterface* cache);
 
   void set_cache_property_store(CachePropertyStore* p);
+
+  // Set the RewriteDriver that will be used to decode .pagespeed. URLs.
+  // Does not take ownership.
+  void set_decoding_driver(RewriteDriver* rd) { decoding_driver_ = rd; }
 
   // Creates CachePropertyStore object which will be used by PagePropertyCache.
   virtual PropertyStore* CreatePropertyStore(CacheInterface* cache_backend);
@@ -657,6 +670,7 @@ class ServerContext {
 
   Statistics* statistics_;
 
+  Timer* timer_;
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
   CacheInterface* filesystem_metadata_cache_;
@@ -708,21 +722,14 @@ class ServerContext {
 
   scoped_ptr<AbstractMutex> rewrite_drivers_mutex_;
 
-  // Note: this must be before decoding_driver_ since it's needed to init it.
   // All access, even internal to the class, should be via options() so
   // subclasses can override.
   scoped_ptr<RewriteOptions> base_class_options_;
 
-  // Keep around a RewriteDriver just for decoding resource URLs, using
-  // the default options.  This is possible because the id->RewriteFilter
-  // table is fully constructed independent of the options.
-  //
-  // TODO(jmarantz): If domain-sharding or domain-rewriting is
-  // specified in a Directory scope or .htaccess file, the decoding
-  // driver will not see them.  This is blocks effective
-  // implementation of these features in environments where all
-  // configuration must be done by .htaccess.
-  scoped_ptr<RewriteDriver> decoding_driver_;
+  // This is owned by the RewriteDriverFactory. We use it for just for decoding
+  // resource URLs, using the default options.  This is possible because the
+  // id->RewriteFilter table is fully constructed independent of the options.
+  RewriteDriver* decoding_driver_;
 
   QueuedWorkerPool* html_workers_;  // Owned by the factory
   QueuedWorkerPool* rewrite_workers_;  // Owned by the factory

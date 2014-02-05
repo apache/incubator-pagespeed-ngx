@@ -339,8 +339,8 @@ class ServerContextTest : public RewriteTestBase {
     SetDefaultLongCacheHeaders(&kContentTypeCss, headers);
   }
 
-  RewriteDriver* decoding_driver() {
-    return server_context()->decoding_driver_.get();
+  const RewriteDriver* decoding_driver() {
+    return server_context()->decoding_driver_;
   }
 
   RewriteOptions* GetCustomOptions(const StringPiece& url,
@@ -767,7 +767,7 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersDecoding) {
   CreateMockRewriterCallback callback;
   factory()->AddCreateRewriterCallback(&callback);
   factory()->set_add_platform_specific_decoding_passes(true);
-  server_context()->InitWorkersAndDecodingDriver();
+  factory()->RebuildDecodingDriverForTests(server_context());
   // TODO(sligocki): Do we still want to expose decoding_driver() for
   // platform-specific rewriters? Or should we just use IsPagespeedResource()
   // in these tests?
@@ -791,7 +791,7 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersImplicitDecoding) {
   CreateMockRewriterCallback callback;
   factory()->AddCreateRewriterCallback(&callback);
   factory()->set_add_platform_specific_decoding_passes(false);
-  server_context()->InitWorkersAndDecodingDriver();
+  factory()->RebuildDecodingDriverForTests(server_context());
   OutputResourcePtr good_output(
       decoding_driver()->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(good_output.get() != NULL);
