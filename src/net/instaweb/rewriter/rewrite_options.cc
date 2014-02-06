@@ -509,8 +509,10 @@ const int RewriteOptions::kDefaultDomainShardCount = 0;
 const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
     Timer::kMinuteMs;
 
-// By default, reinstrument every minute.
-const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 60;
+// By default, rebeacon every 5 seconds in high frequency mode. This will be
+// multiplied by kLowFreqBeaconMult in critical_finder_support_util.h to
+// determine the low frequency rebeacon time.
+const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 5;
 
 // By default, all images are inline-previewed irrespective of size.
 const int64 RewriteOptions::kDefaultMaxLowResImageSizeBytes = -1;

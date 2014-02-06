@@ -124,6 +124,8 @@ void ClearInvalidNonces(const int64 now_ms, CriticalKeys* critical_keys) {
     } else if ((entry->timestamp_ms() + kBeaconTimeoutIntervalMs) < now_ms) {
       entry->clear_timestamp_ms();
       entry->clear_nonce();
+      critical_keys->set_nonces_recently_expired(
+          critical_keys->nonces_recently_expired() + 1);
     } else {
       found_valid_nonce = true;
     }
@@ -227,9 +229,8 @@ void UpdateCriticalKeys(bool require_prior_support,
   } else if (support_map.empty()) {
     maximum_support = 0;
   } else {
-    maximum_support =
-        std::max_element(support_map.begin(), support_map.end(),
-                         LessBySupportMapValue)->second;
+    maximum_support = std::max_element(support_map.begin(), support_map.end(),
+                                       LessBySupportMapValue)->second;
   }
   SaturatingAddTo(support_value, &maximum_support);
   critical_keys->set_maximum_possible_support(maximum_support);
@@ -252,6 +253,9 @@ void UpdateCriticalKeys(bool require_prior_support,
       SaturatingAddTo(support_value, &support_map[*s]);
     }
   }
+  critical_keys->set_valid_beacons_received(
+      critical_keys->valid_beacons_received() + 1);
+  critical_keys->set_nonces_recently_expired(0);
   WriteSupportMapToCriticalKeysProto(support_map, critical_keys);
 }
 
@@ -341,12 +345,6 @@ void PrepareForBeaconInsertionHelper(
     }
   } else {
     if (now_ms >= proto->next_beacon_timestamp_ms()) {
-      // TODO(jmaessen): Add noise to inter-beacon interval.  How?
-      // Currently first visit to page after next_beacon_timestamp_ms will
-      // beacon.
-      proto->set_next_beacon_timestamp_ms(
-          now_ms +
-          driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
       changed = true;  // Timestamp definitely changed.
       if (driver->options()->IsDownstreamCacheIntegrationEnabled()) {
         // We can only get here if downstream cache integration was enabled, but
@@ -378,6 +376,9 @@ void PrepareForBeaconInsertionHelper(
         }
       }
       if (support_map_changed) {
+        // The candidate keys changed, so we need to go into high frequency
+        // beaconing mode. Reset the number of beacons received to signal this.
+        proto->set_valid_beacons_received(0);
         // Update the proto value with the new set of keys. Note that we are not
         // changing the calculated set of critical keys, so we don't need to
         // update the state in the RewriteDriver.
@@ -387,6 +388,22 @@ void PrepareForBeaconInsertionHelper(
     }
   }
   if (changed) {
+    // We need to rebeacon so update the timestamp for the next time to
+    // rebeacon. If we are using candidate key detection, then check how many
+    // valid beacons we have received since the last time the candidate keys
+    // changed to determine if we are doing high frequency vs low frequency
+    // beaconing.
+    // TODO(jmaessen): Add noise to inter-beacon interval.  How? Currently first
+    // visit to page after next_beacon_timestamp_ms will beacon.
+    int64 beacon_reinstrument_time_ms =
+        driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs;
+    if ((proto->nonces_recently_expired() > kNonceExpirationLimit) ||
+        (!keys.empty() &&
+         (proto->valid_beacons_received() >= kHighFreqBeaconCount))) {
+      beacon_reinstrument_time_ms *= kLowFreqBeaconMult;
+    }
+    proto->set_next_beacon_timestamp_ms(now_ms + beacon_reinstrument_time_ms);
+
     AddNonceToCriticalSelectors(now_ms, nonce_generator, proto, &result->nonce);
     result->status = kBeaconWithNonce;
   }

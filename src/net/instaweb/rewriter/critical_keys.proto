@@ -29,13 +29,13 @@ package net_instaweb;
 // to expire. This proto also has some legacy fields for a previous
 // implementation that stored a history of beacon responses.
 //
-// Next free id: 7
+// Next free id: 10
 message CriticalKeys {
   // The KeyEvidence proto aggregates multiple beacons returns in a scalable
   // way; support is exponentially decayed over time.
   message KeyEvidence {
-    optional string key = 1 [default = ""];
-    optional int32 support = 2 [default = 0];
+    optional string key = 1;
+    optional int32 support = 2;
   }
 
   // The PendingNonce proto describes the nonce of a beacon request that is
@@ -43,13 +43,13 @@ message CriticalKeys {
   // might be cleared but left in place within the containing CriticalKeys when
   // they expire or the corresponding beacon result arrives.
   message PendingNonce {
-    optional int64 timestamp_ms = 1 [default = 0];
-    optional string nonce = 2 [default = ""];
+    optional int64 timestamp_ms = 1;
+    optional string nonce = 2;
   }
 
   // Ids 1-3 deleted, should not be reused.
 
-  optional int64 next_beacon_timestamp_ms = 4 [default = 0];
+  optional int64 next_beacon_timestamp_ms = 4;
 
   // This represents a serialized key/value map mapping keys to support for
   // their criticality. Support is added by beacon results, but decays
@@ -67,4 +67,17 @@ message CriticalKeys {
   // result arrives, and will converge to k^2 over time.  The default value
   // ensures that support = 0 will be considered unsupported.
   optional int32 maximum_possible_support = 7 [default = 1];
+
+  // Keep track of the number of valid beacons received. This can be used to
+  // track how frequently beaconing needs to happen. When the number of beacons
+  // received is low, use that as a signal to beacon more frequently. This
+  // should also be reset when a new set of candidate keys is received to
+  // retrigger beaconing.
+  optional int64 valid_beacons_received = 8;
+
+  // Count how many nonces have expired since the last valid beacon was
+  // received. This can be used to disable or rate limit beaconing if it seems
+  // that beacons are not being received by the server due to a
+  // misconfiguration.
+  optional int64 nonces_recently_expired = 9;
 }

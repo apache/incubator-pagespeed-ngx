@@ -48,6 +48,22 @@ namespace net_instaweb {
 // send many beacon responses at once.
 const int64 kBeaconTimeoutIntervalMs = Timer::kMinuteMs;
 
+// The number of valid beacons received that will switch from high frequency to
+// low frequency beaconing.
+const int64 kHighFreqBeaconCount = 3;
+
+// The multiplier to apply to RewriteOptions::beacon_reinstrument_time_sec() to
+// determine the low frequency beaconing interval. For example, the default
+// value rebeaconing value is 5 seconds, so we will rebeacon every 5 seconds in
+// high frequency mode, and every 500 seconds (~8 minutes) in low frequency
+// mode.
+const int64 kLowFreqBeaconMult = 100;
+
+// The limit on the number of nonces that can expire before we stop trying to do
+// high frequency beaconing. This is a signal that beacons are not configured
+// correctly and so we drop into low frequency beaconing mode.
+const int64 kNonceExpirationLimit = 5;
+
 class CriticalKeys;
 class MessageHandler;
 class NonceGenerator;
@@ -107,13 +123,18 @@ void WriteCriticalKeysToPropertyCache(
     MessageHandler* message_handler, Timer* timer);
 
 // Given a set of candidate critical keys, decide whether beaconing should take
-// place.  We should *always* beacon if there's new critical key data.
-// Otherwise re-beaconing is based on a time and request interval.  Sets status
-// and nonce appropriately in *result (nonce will be empty if no nonce is
-// required).  If candidate keys are not required, keys may be empty (but new
-// candidate detection will not occur).  If result->status != kDontBeacon,
-// caller should write proto back to the property cache using
-// UpdateInPropertyCache.
+// place.  We should *always* beacon if there's new critical key data. Otherwise
+// re-beaconing is based on a time and request interval, and 2 modes of
+// beaconing frequency are supported. At first, beaconing occurs at a
+// high frequency until we have collected kHighFreqBeaconCount beacons; after
+// that, we transition into low frequency beaconing mode, where beaconing occurs
+// less often. We also track the number of expired nonces since the last valid
+// beacon was received to see if beaconing is set up correctly, and if it looks
+// like it isn't, only do low frequency beaconing. Sets status and nonce
+// appropriately in *result (nonce will be empty if no nonce is required).  If
+// candidate keys are not required, keys may be empty (but new candidate
+// detection will not occur).  If result->status != kDontBeacon, caller should
+// write proto back to the property cache using UpdateInPropertyCache.
 void PrepareForBeaconInsertionHelper(
     const StringSet& keys, CriticalKeys* proto, int support_interval,
     NonceGenerator* nonce_generator, RewriteDriver* driver,

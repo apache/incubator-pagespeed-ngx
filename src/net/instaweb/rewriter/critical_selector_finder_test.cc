@@ -238,6 +238,12 @@ TEST_F(CriticalSelectorFinderTest, StoreMultiple) {
     Beacon();
     WriteCriticalSelectorsToPropertyCache(selectors);
     EXPECT_STREQ(".a,.b", CriticalSelectorsString());
+    // We are sending enough beacons with the same selector set here that we
+    // will enter low frequency beaconing mode, so advance time more to ensure
+    // rebeaconing actually occurs.
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs *
+        kLowFreqBeaconMult);
   }
 
   // We send one more beacon response, which should kick .a out of the critical
@@ -365,6 +371,12 @@ TEST_F(CriticalSelectorFinderTest, EvidenceOverflow) {
     Beacon();
     WriteCriticalSelectorsToPropertyCache(new_selectors);
     EXPECT_STREQ(".a", CriticalSelectorsString());
+    // We are sending enough beacons with the same selector set here that we
+    // will enter low frequency beaconing mode, so advance time more to ensure
+    // rebeaconing actually occurs.
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs *
+        kLowFreqBeaconMult);
   }
 }
 

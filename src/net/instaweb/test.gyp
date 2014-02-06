@@ -105,6 +105,7 @@
         'rewriter/critical_css_beacon_filter_test.cc',
         'rewriter/critical_css_filter_test.cc',
         'rewriter/critical_css_finder_test.cc',
+        'rewriter/critical_finder_support_util_test.cc',
         'rewriter/critical_images_beacon_filter_test.cc',
         'rewriter/critical_images_finder_test.cc',
         'rewriter/critical_images_finder_test_base.cc',

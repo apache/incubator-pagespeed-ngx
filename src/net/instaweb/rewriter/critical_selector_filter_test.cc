@@ -471,6 +471,12 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
   for (int i = 0; i < finder->SupportInterval(); ++i) {
     WriteCriticalSelectorsToPropertyCache(selectors);
+    // We are sending enough beacons with the same selector set here that we
+    // will enter low frequency beaconing mode, so advance time more to ensure
+    // rebeaconing actually occurs.
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs *
+        kLowFreqBeaconMult);
   }
   ResetDriver();
   ValidateExpected("with_span", StrCat(css, "<span>Foo</span>"),
