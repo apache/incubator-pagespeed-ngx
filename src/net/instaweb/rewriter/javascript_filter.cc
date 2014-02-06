@@ -295,7 +295,9 @@ void JavascriptFilter::InitializeConfig() {
       new JavascriptRewriteConfig(
           driver_->server_context()->statistics(),
           driver_->options()->Enabled(RewriteOptions::kRewriteJavascript),
-          driver_->options()->javascript_library_identification()));
+          driver_->options()->use_experimental_js_minifier(),
+          driver_->options()->javascript_library_identification(),
+          driver_->server_context()->js_tokenizer_patterns()));
 }
 
 void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {

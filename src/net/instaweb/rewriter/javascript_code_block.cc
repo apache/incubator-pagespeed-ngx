@@ -21,12 +21,14 @@
 
 #include <cstddef>
 
-#include "net/instaweb/js/public/js_minify.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/js/js_minify.h"
+
+namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 
 namespace net_instaweb {
 
@@ -54,10 +56,13 @@ const char JavascriptRewriteConfig::kJSFailedToWrite[] =
     "javascript_failed_to_write";
 
 JavascriptRewriteConfig::JavascriptRewriteConfig(
-    Statistics* stats, bool minify,
-    const JavascriptLibraryIdentification* identification)
+    Statistics* stats, bool minify, bool use_experimental_minifier,
+    const JavascriptLibraryIdentification* identification,
+    const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns)
     : minify_(minify),
+      use_experimental_minifier_(use_experimental_minifier),
       library_identification_(identification),
+      js_tokenizer_patterns_(js_tokenizer_patterns),
       blocks_minified_(stats->GetVariable(kBlocksMinified)),
       libraries_identified_(stats->GetVariable(kLibrariesIdentified)),
       minification_failures_(stats->GetVariable(kMinificationFailures)),
@@ -150,7 +155,7 @@ bool JavascriptCodeBlock::Rewrite() {
     return successfully_rewritten_;
   }
 
-  if (pagespeed::js::MinifyJs(original_code_, &rewritten_code_)) {
+  if (MinifyJs(original_code_, &rewritten_code_)) {
     // Minification succeeded. The fact that it succeeded doesn't imply that
     // it actually saved anything; we increment num_reducing_uses when there
     // were actual savings.
@@ -187,6 +192,15 @@ void JavascriptCodeBlock::SwapRewrittenString(GoogleString* other) {
   rewritten_code_.clear();
   rewritten_ = false;
   successfully_rewritten_ = false;
+}
+
+bool JavascriptCodeBlock::MinifyJs(StringPiece input, GoogleString* output) {
+  if (config_->use_experimental_minifier()) {
+    return pagespeed::js::MinifyUtf8Js(config_->js_tokenizer_patterns(),
+                                       input, output);
+  } else {
+    return pagespeed::js::MinifyJs(input, output);
+  }
 }
 
 }  // namespace net_instaweb

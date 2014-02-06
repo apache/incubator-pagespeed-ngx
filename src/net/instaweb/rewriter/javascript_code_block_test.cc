@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/js/js_tokenizer.h"
 
 namespace net_instaweb {
 
@@ -96,14 +97,24 @@ const char kTruncatedString[] =
     "var is = {\n"
     "    ie:      navigator.appName == 'Microsoft Internet Explo";
 
-const char kAfterCompilation[] =
+const char kAfterCompilationOld[] =
     "var is={ie:navigator.appName=='Microsoft Internet Explorer',"
     "java:navigator.javaEnabled(),ns:navigator.appName=='Netscape',"
     "ua:navigator.userAgent.toLowerCase(),version:parseFloat("
     "navigator.appVersion.substr(21))||parseFloat(navigator.appVersion)"
     ",win:navigator.platform=='Win32'}\n"
     "is.mac=is.ua.indexOf('mac')>=0;if(is.ua.indexOf('opera')>=0){"
-    "is.ie=is.ns=false;is.opera=true;}\n"
+    "is.ie=is.ns=false;is.opera=true;}\n"  // Note trailing \n
+    "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
+
+const char kAfterCompilationNew[] =
+    "var is={ie:navigator.appName=='Microsoft Internet Explorer',"
+    "java:navigator.javaEnabled(),ns:navigator.appName=='Netscape',"
+    "ua:navigator.userAgent.toLowerCase(),version:parseFloat("
+    "navigator.appVersion.substr(21))||parseFloat(navigator.appVersion)"
+    ",win:navigator.platform=='Win32'}\n"
+    "is.mac=is.ua.indexOf('mac')>=0;if(is.ua.indexOf('opera')>=0){"
+    "is.ie=is.ns=false;is.opera=true;}"  // Note lack of trailing \n
     "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
 
 const char kJsWithGetElementsByTagNameScript[] =
@@ -123,15 +134,21 @@ const char kBogusLibraryMD5[] = "ltVVzzYxo0";
 const char kBogusLibraryUrl[] =
     "//www.example.com/js/bogus_library.js";
 
-class JsCodeBlockTest : public testing::Test {
+class JsCodeBlockTest : public ::testing::Test,
+                        public ::testing::WithParamInterface<bool> {
  protected:
-  JsCodeBlockTest() {
+  JsCodeBlockTest()
+      : use_experimental_minifier_(GetParam()),
+        after_compilation_(use_experimental_minifier_ ? kAfterCompilationNew
+                                                      : kAfterCompilationOld) {
     JavascriptRewriteConfig::InitStats(&stats_);
-    config_.reset(new JavascriptRewriteConfig(&stats_, true, &libraries_));
+    config_.reset(new JavascriptRewriteConfig(
+        &stats_, true, use_experimental_minifier_, &libraries_,
+        &js_tokenizer_patterns_));
     // Register a bogus library with a made-up md5 and plausible canonical url
     // that doesn't occur in our tests, but has the same size as our canonical
     // test case.
-    EXPECT_TRUE(libraries_.RegisterLibrary(STATIC_STRLEN(kAfterCompilation),
+    EXPECT_TRUE(libraries_.RegisterLibrary(strlen(after_compilation_),
                                            kBogusLibraryMD5, kBogusLibraryUrl));
   }
 
@@ -148,19 +165,22 @@ class JsCodeBlockTest : public testing::Test {
   }
 
   void DisableMinification() {
-    config_.reset(new JavascriptRewriteConfig(&stats_, false, &libraries_));
+    config_.reset(new JavascriptRewriteConfig(
+        &stats_, false, use_experimental_minifier_, &libraries_,
+        &js_tokenizer_patterns_));
   }
 
   // Must be called after DisableMinification if we call both.
   void DisableLibraryIdentification() {
-    config_.reset(
-        new JavascriptRewriteConfig(&stats_, config_->minify(), NULL));
+    config_.reset(new JavascriptRewriteConfig(
+        &stats_, config_->minify(), use_experimental_minifier_, NULL,
+        &js_tokenizer_patterns_));
   }
 
   void RegisterLibrariesIn(JavascriptLibraryIdentification* libs) {
     MD5Hasher md5(JavascriptLibraryIdentification::kNumHashChars);
-    GoogleString after_md5 = md5.Hash(kAfterCompilation);
-    EXPECT_TRUE(libs->RegisterLibrary(STATIC_STRLEN(kAfterCompilation),
+    GoogleString after_md5 = md5.Hash(after_compilation_);
+    EXPECT_TRUE(libs->RegisterLibrary(strlen(after_compilation_),
                                       after_md5, kLibraryUrl));
     EXPECT_EQ(JavascriptLibraryIdentification::kNumHashChars,
               after_md5.size());
@@ -178,38 +198,42 @@ class JsCodeBlockTest : public testing::Test {
     scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
     EXPECT_TRUE(block->Rewrite());
     EXPECT_TRUE(block->successfully_rewritten());
-    EXPECT_EQ(kAfterCompilation, block->rewritten_code());
+    EXPECT_EQ(after_compilation_, block->rewritten_code());
     ExpectStats(1, 0,
                 STATIC_STRLEN(kBeforeCompilation) -
-                STATIC_STRLEN(kAfterCompilation),
+                strlen(after_compilation_),
                 STATIC_STRLEN(kBeforeCompilation), 1);
   }
 
   GoogleMessageHandler handler_;
   SimpleStats stats_;
   JavascriptLibraryIdentification libraries_;
+  const pagespeed::js::JsTokenizerPatterns js_tokenizer_patterns_;
   scoped_ptr<JavascriptRewriteConfig> config_;
+
+  const bool use_experimental_minifier_;
+  const char* after_compilation_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(JsCodeBlockTest);
 };
 
-TEST_F(JsCodeBlockTest, Config) {
+TEST_P(JsCodeBlockTest, Config) {
   EXPECT_TRUE(config_->minify());
   ExpectStats(0, 0, 0, 0, 0);
 }
 
-TEST_F(JsCodeBlockTest, Rewrite) {
+TEST_P(JsCodeBlockTest, Rewrite) {
   SimpleRewriteTest();
 }
 
-TEST_F(JsCodeBlockTest, RewriteNoIdentification) {
+TEST_P(JsCodeBlockTest, RewriteNoIdentification) {
   // Make sure library identification setting doesn't change minification.
   DisableLibraryIdentification();
   SimpleRewriteTest();
 }
 
-TEST_F(JsCodeBlockTest, UnsafeToRename) {
+TEST_P(JsCodeBlockTest, UnsafeToRename) {
   EXPECT_TRUE(JavascriptCodeBlock::UnsafeToRename(
       kJsWithGetElementsByTagNameScript));
   EXPECT_TRUE(JavascriptCodeBlock::UnsafeToRename(
@@ -218,27 +242,27 @@ TEST_F(JsCodeBlockTest, UnsafeToRename) {
       kBeforeCompilation));
 }
 
-TEST_F(JsCodeBlockTest, NoRewrite) {
-  scoped_ptr<JavascriptCodeBlock> block(TestBlock(kAfterCompilation));
+TEST_P(JsCodeBlockTest, NoRewrite) {
+  scoped_ptr<JavascriptCodeBlock> block(TestBlock(after_compilation_));
   EXPECT_FALSE(block->Rewrite());
   // Note: Minifier succeeded, but no minification was applied and thus
   // no bytes saved (nor original bytes marked).
   ExpectStats(1, 0, 0, 0, 0);
 }
 
-TEST_F(JsCodeBlockTest, TruncatedComment) {
+TEST_P(JsCodeBlockTest, TruncatedComment) {
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kTruncatedComment));
   EXPECT_FALSE(block->Rewrite());
   ExpectStats(0, 1, 0, 0, 0);
 }
 
-TEST_F(JsCodeBlockTest, TruncatedString) {
+TEST_P(JsCodeBlockTest, TruncatedString) {
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kTruncatedString));
   EXPECT_FALSE(block->Rewrite());
   ExpectStats(0, 1, 0, 0, 0);
 }
 
-TEST_F(JsCodeBlockTest, NoMinification) {
+TEST_P(JsCodeBlockTest, NoMinification) {
   DisableMinification();
   DisableLibraryIdentification();
   EXPECT_FALSE(config_->minify());
@@ -247,7 +271,7 @@ TEST_F(JsCodeBlockTest, NoMinification) {
   ExpectStats(0, 0, 0, 0, 0);
 }
 
-TEST_F(JsCodeBlockTest, DealWithSgmlComment) {
+TEST_P(JsCodeBlockTest, DealWithSgmlComment) {
   // Based on actual code seen in the wild; the surprising part is this works at
   // all (due to xhtml in the source document)!
   static const char kOriginal[] = "  <!--  \nvar x = 1;\n  //-->  ";
@@ -260,14 +284,14 @@ TEST_F(JsCodeBlockTest, DealWithSgmlComment) {
               STATIC_STRLEN(kOriginal), 1);
 }
 
-TEST_F(JsCodeBlockTest, IdentifyUnminified) {
+TEST_P(JsCodeBlockTest, IdentifyUnminified) {
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
   block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
-TEST_F(JsCodeBlockTest, IdentifyMerged) {
+TEST_P(JsCodeBlockTest, IdentifyMerged) {
   JavascriptLibraryIdentification other_libraries;
   RegisterLibrariesIn(&other_libraries);
   libraries_.Merge(other_libraries);
@@ -276,7 +300,7 @@ TEST_F(JsCodeBlockTest, IdentifyMerged) {
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
-TEST_F(JsCodeBlockTest, IdentifyMergedDuplicate) {
+TEST_P(JsCodeBlockTest, IdentifyMergedDuplicate) {
   RegisterLibraries();
   JavascriptLibraryIdentification other_libraries;
   RegisterLibrariesIn(&other_libraries);
@@ -286,14 +310,14 @@ TEST_F(JsCodeBlockTest, IdentifyMergedDuplicate) {
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
-TEST_F(JsCodeBlockTest, IdentifyMinified) {
+TEST_P(JsCodeBlockTest, IdentifyMinified) {
   RegisterLibraries();
-  scoped_ptr<JavascriptCodeBlock> block(TestBlock(kAfterCompilation));
+  scoped_ptr<JavascriptCodeBlock> block(TestBlock(after_compilation_));
   block->Rewrite();
   EXPECT_EQ(kLibraryUrl, block->ComputeJavascriptLibrary());
 }
 
-TEST_F(JsCodeBlockTest, IdentifyNoMinification) {
+TEST_P(JsCodeBlockTest, IdentifyNoMinification) {
   DisableMinification();
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(TestBlock(kBeforeCompilation));
@@ -303,7 +327,7 @@ TEST_F(JsCodeBlockTest, IdentifyNoMinification) {
   ExpectStats(1, 0, 0, 0, 0);
 }
 
-TEST_F(JsCodeBlockTest, IdentifyNoMatch) {
+TEST_P(JsCodeBlockTest, IdentifyNoMatch) {
   RegisterLibraries();
   scoped_ptr<JavascriptCodeBlock> block(
       TestBlock(kJsWithGetElementsByTagNameScript));
@@ -311,20 +335,20 @@ TEST_F(JsCodeBlockTest, IdentifyNoMatch) {
   EXPECT_EQ("", block->ComputeJavascriptLibrary());
 }
 
-TEST_F(JsCodeBlockTest, LibrarySignature) {
+TEST_P(JsCodeBlockTest, LibrarySignature) {
   RegisterLibraries();
   GoogleString signature;
   libraries_.AppendSignature(&signature);
   MD5Hasher md5(JavascriptLibraryIdentification::kNumHashChars);
-  GoogleString after_md5 = md5.Hash(kAfterCompilation);
+  GoogleString after_md5 = md5.Hash(after_compilation_);
   GoogleString expected_signature =
-      StrCat("S:", Integer64ToString(STATIC_STRLEN(kAfterCompilation)),
+      StrCat("S:", Integer64ToString(strlen(after_compilation_)),
              "_H:", after_md5, "_J:", kLibraryUrl,
              StrCat("_H:", kBogusLibraryMD5, "_J:", kBogusLibraryUrl));
   EXPECT_EQ(expected_signature, signature);
 }
 
-TEST_F(JsCodeBlockTest, BogusLibraryRegistration) {
+TEST_P(JsCodeBlockTest, BogusLibraryRegistration) {
   RegisterLibraries();
   // Try to register a library with a bad md5 string
   EXPECT_FALSE(libraries_.RegisterLibrary(73, "@$%@^#&#$^!%@#$",
@@ -345,6 +369,10 @@ TEST_F(JsCodeBlockTest, BogusLibraryRegistration) {
   EXPECT_FALSE(libraries_.RegisterLibrary(234, kBogusLibraryMD5,
                                           "data:text/plain,Hello-world"));
 }
+
+// We test with use_experimental_minifier == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(JsCodeBlockTestInstance, JsCodeBlockTest,
+                        ::testing::Bool());
 
 }  // namespace
 

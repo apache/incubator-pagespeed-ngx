@@ -40,6 +40,8 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/util/simple_random.h"
 
+namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
+
 namespace net_instaweb {
 
 class AbstractMutex;
@@ -625,6 +627,10 @@ class ServerContext {
   // Returns NULL if non-CachePropertyStore is used.
   const CacheInterface* pcache_cache_backend();
 
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns() const {
+    return js_tokenizer_patterns_;
+  }
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.
@@ -755,6 +761,8 @@ class ServerContext {
   // A simple (and always seeded with the same default!) random number
   // generator.  Do not use for security purposes.
   SimpleRandom simple_random_;
+  // Owned by RewriteDriverFactory.
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns_;
 
   scoped_ptr<CachePropertyStore> cache_property_store_;
 

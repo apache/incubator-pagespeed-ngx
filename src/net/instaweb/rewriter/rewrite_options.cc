@@ -253,6 +253,8 @@ const char
     "TestOnlyPrioritizeCriticalCssDontApplyOriginalCss";
 const char RewriteOptions::kUseBlankImageForInlinePreview[] =
     "UseBlankImageForInlinePreview";
+const char RewriteOptions::kUseExperimentalJsMinifier[] =
+    "UseExperimentalJsMinifier";
 const char RewriteOptions::kUseFallbackPropertyCacheValues[] =
     "UseFallbackPropertyCacheValues";
 const char RewriteOptions::kUseImageScanlineApi[] = "UseImageScanlineApi";
@@ -260,6 +262,7 @@ const char RewriteOptions::kUseSmartDiffInBlink[] = "UseSmartDiffInBlink";
 const char RewriteOptions::kXModPagespeedHeaderValue[] =
     "XHeaderValue";
 const char RewriteOptions::kXPsaBlockingRewrite[] = "BlockingRewriteKey";
+
 const char RewriteOptions::kAllow[] = "Allow";
 const char RewriteOptions::kBlockingRewriteRefererUrls[] =
     "BlockingRewriteRefererUrls";
@@ -1831,6 +1834,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "If set to true, addition instrumentation js is added to that page that "
       "the beacon can collect more information.");
+  AddBaseProperty(
+      false, &RewriteOptions::use_experimental_js_minifier_, "uejsm",
+      kUseExperimentalJsMinifier,
+      kDirectoryScope,
+      "If set to true, uses the new JsTokenizer-based minifier. This option "
+      "will be removed when that minifier has matured.");
   AddBaseProperty(
       kDefaultMaxCombinedCssBytes,
       &RewriteOptions::max_combined_css_bytes_, "xcc",

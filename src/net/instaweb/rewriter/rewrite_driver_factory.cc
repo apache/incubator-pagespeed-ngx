@@ -61,6 +61,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/http/user_agent_normalizer.h"
+#include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
@@ -75,7 +76,8 @@ const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
 
 class Statistics;
 
-RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system) {
+RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
+    : js_tokenizer_patterns_(new pagespeed::js::JsTokenizerPatterns) {
 #ifdef NDEBUG
   // For release binaries, use the thread-system directly.
   thread_system_.reset(thread_system);

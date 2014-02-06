@@ -332,6 +332,7 @@ class RewriteOptions {
   static const char kSupportNoScriptEnabled[];
   static const char kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss[];
   static const char kUseBlankImageForInlinePreview[];
+  static const char kUseExperimentalJsMinifier[];
   static const char kUseFallbackPropertyCacheValues[];
   static const char kUseImageScanlineApi[];
   static const char kUseSelectorsForCriticalCss[];
@@ -2171,6 +2172,13 @@ class RewriteOptions {
     set_option(x, &enable_extended_instrumentation_);
   }
 
+  bool use_experimental_js_minifier() const {
+    return use_experimental_js_minifier_.value();
+  }
+  void set_use_experimental_js_minifier(bool x) {
+    set_option(x, &use_experimental_js_minifier_);
+  }
+
   void set_max_combined_css_bytes(int64 x) {
     set_option(x, &max_combined_css_bytes_);
   }
@@ -3593,6 +3601,8 @@ class RewriteOptions {
   // If this set to true, we add additional instrumentation code to page that
   // reports more information in the beacon.
   Option<bool> enable_extended_instrumentation_;
+
+  Option<bool> use_experimental_js_minifier_;
 
   // Maximum size allowed for the combined CSS resource.
   // Negative value will bypass the size check.

@@ -287,7 +287,8 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       thread_synchronizer_(new ThreadSynchronizer(thread_system_)),
       experiment_matcher_(factory_->NewExperimentMatcher()),
       usage_data_reporter_(factory_->usage_data_reporter()),
-      simple_random_(thread_system_->NewMutex()) {
+      simple_random_(thread_system_->NewMutex()),
+      js_tokenizer_patterns_(factory_->js_tokenizer_patterns()) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
 #ifndef NDEBUG

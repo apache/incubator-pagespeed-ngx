@@ -306,6 +306,10 @@ Header append 'X-Extra-Header' '1'
   ModPagespeedRewriteLevel CoreFilters
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/experimental_js_minifier" >
+  ModPagespeedUseExperimentalJsMinifier on
+</Directory>
+
 # However we should not allow user-specified cache-control on
 # rewritten HTML or resources.  This setting helps us make
 # sure that we strip any user-specified cache-control when
@@ -1314,6 +1318,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
+#ALL_DIRECTIVES ModPagespeedUseExperimentalJsMinifier on
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"
 #ALL_DIRECTIVES ModPagespeedWebpRecompressionQuality 85

@@ -29,6 +29,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
+
 namespace net_instaweb {
 
 class JavascriptLibraryIdentification;
@@ -42,16 +44,23 @@ class Variable;
 class JavascriptRewriteConfig {
  public:
   JavascriptRewriteConfig(
-      Statistics* statistics, bool minify,
-      const JavascriptLibraryIdentification* identification);
+      Statistics* statistics, bool minify, bool use_experimental_minifier,
+      const JavascriptLibraryIdentification* identification,
+      const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns);
 
   static void InitStats(Statistics* statistics);
 
-  // Whether to minify javascript output (using jsminify).
-  // true by default.
+  // Whether to minify javascript output.
   bool minify() const { return minify_; }
+  // Whether to use the new JsTokenizer-based minifier.
+  // TODO(sligocki): Once that minifier has been around for a while, we
+  // should deprecate this option.
+  bool use_experimental_minifier() const { return use_experimental_minifier_; }
   const JavascriptLibraryIdentification* library_identification() const {
     return library_identification_;
+  }
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns() const {
+    return js_tokenizer_patterns_;
   }
 
   Variable* blocks_minified() { return blocks_minified_; }
@@ -82,8 +91,10 @@ class JavascriptRewriteConfig {
 
  private:
   bool minify_;
+  bool use_experimental_minifier_;
   // Library identifier.  NULL if library identification should be skipped.
   const JavascriptLibraryIdentification* library_identification_;
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns_;
 
   // Statistics
   // # of JS blocks (JS files and <script> blocks) successfully minified:
@@ -196,6 +207,9 @@ class JavascriptCodeBlock {
   const GoogleString& message_id() const { return message_id_; }
 
  private:
+  // Temporary wrapper around calling new or old version of JS minifier.
+  bool MinifyJs(StringPiece input, GoogleString* output);
+
   JavascriptRewriteConfig* config_;
   const GoogleString message_id_;  // ID to stick at begining of message.
   const GoogleString original_code_;

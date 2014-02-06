@@ -29,6 +29,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
+
 namespace net_instaweb {
 
 class AbstractMutex;
@@ -161,6 +163,9 @@ class RewriteDriverFactory {
   QueuedWorkerPool* WorkerPool(WorkerPoolCategory pool);
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns() const {
+    return js_tokenizer_patterns_.get();
+  }
   const std::vector<const UserAgentNormalizer*>& user_agent_normalizers();
 
   // Computes URL fetchers using the base fetcher, and optionally,
@@ -452,6 +457,8 @@ class RewriteDriverFactory {
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;
   scoped_ptr<UsageDataReporter> usage_data_reporter_;
+  // RE2 patterns needed for JsTokenizer.
+  scoped_ptr<pagespeed::js::JsTokenizerPatterns> js_tokenizer_patterns_;
 
   GoogleString filename_prefix_;
   GoogleString slurp_directory_;

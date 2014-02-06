@@ -761,12 +761,13 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   tested_names.insert(name)
 
   // Generic options that are registered by name by AddProperty().
-  PassLookupOptionByName(RewriteOptions::kAddOptionsToUrls);
   PassLookupOptionByName(RewriteOptions::kAccessControlAllowOrigins);
+  PassLookupOptionByName(RewriteOptions::kAddOptionsToUrls);
   PassLookupOptionByName(RewriteOptions::kAllowLoggingUrlsInLogRecord);
   PassLookupOptionByName(RewriteOptions::kAlwaysRewriteCss);
   PassLookupOptionByName(RewriteOptions::kAnalyticsID);
   PassLookupOptionByName(RewriteOptions::kAvoidRenamingIntrospectiveJavascript);
+  PassLookupOptionByName(RewriteOptions::kAwaitPcacheLookup);
   PassLookupOptionByName(RewriteOptions::kBeaconReinstrumentTimeSec);
   PassLookupOptionByName(RewriteOptions::kBeaconUrl);
   PassLookupOptionByName(RewriteOptions::kBlinkMaxHtmlSizeRewritable);
@@ -905,8 +906,8 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::
                          kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss);
   PassLookupOptionByName(RewriteOptions::kUseBlankImageForInlinePreview);
+  PassLookupOptionByName(RewriteOptions::kUseExperimentalJsMinifier);
   PassLookupOptionByName(RewriteOptions::kUseFallbackPropertyCacheValues);
-  PassLookupOptionByName(RewriteOptions::kAwaitPcacheLookup);
   PassLookupOptionByName(RewriteOptions::kUseSelectorsForCriticalCss);
   PassLookupOptionByName(RewriteOptions::kUseSmartDiffInBlink);
   PassLookupOptionByName(RewriteOptions::kXModPagespeedHeaderValue);

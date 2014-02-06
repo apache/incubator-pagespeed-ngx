@@ -539,6 +539,20 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check egrep -q 'link[[:space:]]rel=' $OUTFILE
 fi
 
+WGET_ARGS=""
+start_test UseExperimentalJsMinifier
+URL="$TEST_ROOT/experimental_js_minifier/index.html"
+URL+="?PageSpeedFilters=rewrite_javascript"
+# External scripts rewritten.
+fetch_until -save -recursive \
+  $URL 'grep -c src=.*rewrite_javascript\.js\.pagespeed\.jm\.' 2
+check_not grep removed $WGET_DIR/*.pagespeed.jm.*  # No comments should remain.
+check_file_size $FETCH_FILE -lt 1560               # Net savings
+check grep -q preserved $FETCH_FILE                # Preserves certain comments.
+# Rewritten JS is cache-extended.
+check grep -qi "Cache-control: max-age=31536000" $WGET_OUTPUT
+check grep -qi "Expires:" $WGET_OUTPUT
+
 start_test aris disables js inlining for introspective js and only i-js
 URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/?\
 PageSpeedFilters=inline_javascript"

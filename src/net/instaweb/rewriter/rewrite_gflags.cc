@@ -389,6 +389,10 @@ DEFINE_bool(enable_extended_instrumentation, false,
             "If set to true, additional instrumentation js added to that "
             "page that adds more information to the beacon.");
 
+DEFINE_bool(use_experimental_js_minifier, false,
+            "If set to true, uses the new JsTokenizer-based minifier. "
+            "This option will be removed when that minifier has matured.");
+
 DEFINE_string(blocking_rewrite_key,
               RewriteOptions::kDefaultBlockingRewriteKey,
               "Enables rewrites to finish before the response is sent to "
@@ -1005,6 +1009,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_extended_instrumentation")) {
     options->set_enable_extended_instrumentation(
         FLAGS_enable_extended_instrumentation);
+  }
+  if (WasExplicitlySet("use_experimental_js_minifier")) {
+    options->set_use_experimental_js_minifier(
+        FLAGS_use_experimental_js_minifier);
   }
   if (WasExplicitlySet("enable_cache_purge")) {
     options->set_enable_cache_purge(FLAGS_enable_cache_purge);
