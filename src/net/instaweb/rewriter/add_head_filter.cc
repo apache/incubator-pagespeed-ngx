@@ -41,45 +41,42 @@ void AddHeadFilter::StartDocument() {
 
 void AddHeadFilter::StartElement(HtmlElement* element) {
   if (!found_head_) {
-    if (element->keyword() == HtmlName::kBody) {
+    if (element->keyword() == HtmlName::kHead) {
+      found_head_ = true;
+      head_element_ = element;
+    } else if (element->keyword() != HtmlName::kHtml) {
+      // Add head before first non-head non-html element (if no head found yet).
       head_element_ = html_parse_->NewElement(
           element->parent(), HtmlName::kHead);
       html_parse_->InsertNodeBeforeNode(element, head_element_);
       found_head_ = true;
-    } else if (element->keyword() == HtmlName::kHead) {
-      found_head_ = true;
-      head_element_ = element;
     }
   }
 }
 
 void AddHeadFilter::EndElement(HtmlElement* element) {
-  // Detect elements that are children of a subsequent head.  Move them
-  // into the first head if possible.
-  if (combine_multiple_heads_ && found_head_ && (head_element_ != NULL) &&
-      html_parse_->IsRewritable(head_element_)) {
-    if ((element->keyword() == HtmlName::kHead) && (element != head_element_)) {
-      // There should be no elements left in the subsequent head, so
-      // remove it.
-      bool moved = html_parse_->MoveCurrentInto(head_element_);
-      CHECK(moved) << "failed to move new head under old head";
-      bool deleted = html_parse_->DeleteSavingChildren(element);
-      CHECK(deleted) << "failed to delete extra head";
+  if (combine_multiple_heads_ &&
+      (element->keyword() == HtmlName::kHead) && (element != head_element_) &&
+      (head_element_ != NULL) && html_parse_->IsRewritable(head_element_)) {
+    // Combine heads
+    if (!(html_parse_->MoveCurrentInto(head_element_) &&
+          html_parse_->DeleteSavingChildren(element))) {
+      LOG(DFATAL) << "Failed to move or delete head in " << html_parse_->url();
     }
   }
 }
 
 void AddHeadFilter::Flush() {
+  // Cannot combine heads across flush, so we NULL the pointer.
   head_element_ = NULL;
 }
 
 void AddHeadFilter::EndDocument() {
   if (!found_head_) {
-    // In order to insert a <head> in a docucument that lacks one, we
-    // must first find the body.  If we get through the whole doc without
-    // finding a <head> or a <body> then this filter will have failed to
-    // add a head.
-    html_parse_->InfoHere("Reached end of document without finding <body>");
+    // Degenerate case: page contains no elements (or only <html> elements).
+    head_element_ = html_parse_->NewElement(NULL, HtmlName::kHead);
+    html_parse_->InsertNodeBeforeCurrent(head_element_);
+    found_head_ = true;
   }
 }
 

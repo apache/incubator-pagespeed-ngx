@@ -963,14 +963,14 @@ void RewriteDriver::AddPreRenderFilters() {
 
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
       rewrite_options->Enabled(RewriteOptions::kAddHead) ||
-      flush_subresources_enabled ||
-      rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
-      rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
-      rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
-      rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
       rewrite_options->Enabled(RewriteOptions::kAddInstrumentation) ||
+      rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
       rewrite_options->Enabled(RewriteOptions::kDeterministicJs) ||
-      rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect)) {
+      rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect) ||
+      rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
+      rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
+      rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
+      flush_subresources_enabled) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddOwnedEarlyPreRenderFilter(new AddHeadFilter(

@@ -26,9 +26,8 @@ namespace net_instaweb {
 class HtmlElement;
 class HtmlParse;
 
-// Adds a 'head' element before the 'body', if none was found
-// during parsing.  This enables downstream filters to assume
-// that there will be a head.
+// Guarantees there is a head element in HTML. This enables downstream
+// filters to assume that there will be a head.
 class AddHeadFilter : public EmptyHtmlFilter {
  public:
   explicit AddHeadFilter(HtmlParse* parser, bool combine_multiple_heads);

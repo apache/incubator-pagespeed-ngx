@@ -132,8 +132,7 @@ void AddInstrumentationFilter::EndDocument() {
   // We relied on the existence of a <head> element.  This should have been
   // assured by add_head_filter.
   if (!found_head_) {
-    LOG(WARNING) << "Reached end of document without finding <head>."
-                    "  Please turn on the add_head filter.";
+    LOG(WARNING) << "No <head> found for URL " << driver_->url();
     return;
   }
   GoogleString js = GetScriptJs(kLoadTag);

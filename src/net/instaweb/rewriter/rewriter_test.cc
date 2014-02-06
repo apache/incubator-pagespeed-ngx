@@ -33,22 +33,45 @@ namespace net_instaweb {
 
 namespace {
 
-class RewriterTest : public RewriteTestBase {};
+class RewriterTest : public RewriteTestBase {
+  // We want to be able to edit the exact HTML (not have tags added).
+  virtual bool AddHtmlTags() const { return false; }
+};
 
 TEST_F(RewriterTest, AddHead) {
   AddFilter(RewriteOptions::kAddHead);
+  // Note: Head is added before <body>, but inside <html>.
   ValidateExpected("add_head",
-      "<body><p>text</p></body>",
-      "<head/><body><p>text</p></body>");
+      "<html><body><p>text</p></body></html>",
+      "<html><head/><body><p>text</p></body></html>");
 }
 
 TEST_F(RewriterTest, AddHeadNoBody) {
-  // Test for proper diagnostic (regression test for Issue 134)
   AddFilter(RewriteOptions::kAddHead);
-  ValidateExpected("add_head_no_body",
-      "<p>text</p>",
-      "<p>text</p>");
+  // Note: Still adds a <head/> element even though there's no body.
+  ValidateExpected("add_head_no_body", "<p>text</p>", "<head/><p>text</p>");
+  // We don't report errors (regression test for Issue 134)
   EXPECT_EQ(0, message_handler_.SeriousMessages());
+}
+
+TEST_F(RewriterTest, AddHeadEmpty) {
+  AddFilter(RewriteOptions::kAddHead);
+  // Add head even if there are no elements.
+  ValidateExpected("add_head_empty", "", "<head/>");
+}
+
+TEST_F(RewriterTest, DontAddExtraHead) {
+  AddFilter(RewriteOptions::kAddHead);
+  // Add head even if there are no elements.
+  ValidateNoChanges("dont_add_extra_head", "<head/>");
+}
+
+TEST_F(RewriterTest, AddDuplicateHead) {
+  AddFilter(RewriteOptions::kAddHead);
+  // Add head before first non-head non-html element. We do not look ahead to
+  // see if there's a head later (combine_heads can fix that up).
+  ValidateExpected("add_duplicate_head",
+                   "<p>text</p><head/>", "<head/><p>text</p><head/>");
 }
 
 TEST_F(RewriterTest, MergeHead) {

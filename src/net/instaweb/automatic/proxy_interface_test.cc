@@ -410,7 +410,7 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
   set_headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   set_headers.SetStatusAndReason(HttpStatus::kOK);
 
-  set_text = "<html></html>";
+  set_text = "<html><head/></html>";
 
   mock_url_fetcher_.SetResponse(url, set_headers, set_text);
   FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
@@ -2002,6 +2002,8 @@ TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
   options->ClearSignatureForTesting();
   options->set_flush_buffer_limit_bytes(8);  // 2 self-closing tags ("<p/>")
   options->set_flush_html(true);
+  options->DisableFilter(RewriteOptions::kAddHead);
+  rewrite_driver()->AddFilters();
   server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
@@ -2849,6 +2851,11 @@ TEST_F(ProxyInterfaceTest, NoStore) {
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheFilter) {
+  RewriteOptions* options = server_context()->global_options();
+  options->ClearSignatureForTesting();
+  options->DisableFilter(RewriteOptions::kAddHead);
+  server_context()->ComputeSignature(options);
+
   CreateFilterCallback create_filter_callback;
   factory()->AddCreateFilterCallback(&create_filter_callback);
   EnableDomCohortWritesWithDnsPrefetch();
@@ -3303,6 +3310,7 @@ TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
   options->ClearSignatureForTesting();
   options->EnableExtendCacheFilters();
   options->set_max_html_parse_bytes(60);
+  options->DisableFilter(RewriteOptions::kAddHead);
   server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"), kContentTypeJpeg,
