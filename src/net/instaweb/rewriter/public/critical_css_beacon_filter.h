@@ -67,6 +67,9 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   // to the server and eventually inlined into the HTML.
   virtual bool AllowUnauthorizedDomain() const { return true; }
 
+  // Selectors are inlined into javascript.
+  virtual bool IntendedForInlining() const { return true; }
+
  protected:
   virtual bool MustSummarize(HtmlElement* element) const;
   virtual void Summarize(Css::Stylesheet* stylesheet,

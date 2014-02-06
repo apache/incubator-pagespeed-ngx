@@ -127,6 +127,18 @@ class RewriteDriver : public HtmlParse {
     kIsNotXhtml
   };
 
+  // See CreateInputResource.
+  enum InlineAuthorizationPolicy {
+    kInlineUnauthorizedResources,
+    kInlineOnlyAuthorizedResources
+  };
+
+  // See CreateInputResource.
+  enum IntendedFor {
+    kIntendedForInlining,
+    kIntendedForGeneral
+  };
+
   // A list of HTTP request headers.  These are the headers which
   // should be passed through from the client request into the
   // ResponseHeaders request_headers sent to the rewrite driver.
@@ -550,17 +562,27 @@ class RewriteDriver : public HtmlParse {
 
   // Creates an input resource based on input_url.  Returns NULL if
   // the input resource url isn't valid, or can't legally be rewritten in the
-  // context of this page.
+  // context of this page.  Assumes resources from unauthorized domains may not
+  // be rewritten and the resource is not intended exclusively for inlining.
   ResourcePtr CreateInputResource(const GoogleUrl& input_url);
 
-  // Creates an input resource paying attention to whether or not resources from
-  // unauthorized domains are to be allowed or not. Returns NULL if the input
-  // resource url isn't valid, or can't legally be rewritten in the context of
-  // this page (which could mean that it was a resource from an unauthorized
-  // domain being processed by a filter that does not allow unauthorized
-  // resources).
-  ResourcePtr CreateInputResource(const GoogleUrl& input_url,
-                                  bool allow_unauthorized_domain);
+  // Creates an input resource.  Returns NULL if the input resource url isn't
+  // valid, or can't legally be rewritten in the context of this page (which
+  // could mean that it was a resource from an unauthorized domain being
+  // processed by a filter that does not allow unauthorized resources).
+  //
+  // There are two options, and if you don't care about them you should just
+  // call CreateInputResource(input_url) to use its defaults:
+  // * If resources from unauthorized domains may be inlined, set
+  //   inline_authorization_policy to kInlineUnauthorizedResources, otherwise
+  //   set it to kInlineOnlyAuthorizedResources.
+  // * If this resource will be inlined after fetching, then set intended_for to
+  //   kIntendedForInlining, otherwise use kIntendedForGeneral.  This is to
+  //   support AllowWhenInlining.
+  ResourcePtr CreateInputResource(
+      const GoogleUrl& input_url,
+      InlineAuthorizationPolicy inline_authorization_policy,
+      IntendedFor intended_for);
 
   // Creates an input resource from the given absolute url.  Requires that the
   // provided url has been checked, and can legally be rewritten in the current
@@ -579,15 +601,15 @@ class RewriteDriver : public HtmlParse {
   // Precondition: input_url.IsWebValid()
   bool MatchesBaseUrl(const GoogleUrl& input_url) const;
 
-  // Checks to see if we can write the input_url resource in the
-  // domain_url taking into account domain authorization,
-  // wildcard allow/disallow from RewriteOptions and allow_unauthorized_domain
-  // (a field that is dictated by the filter processing the URL).
-  // After the function is executed, is_authorized_domain will indicate whether
-  // input_url was found to belong to an authorized domain or not.
+  // Checks to see if we can write the input_url resource in the domain_url
+  // taking into account domain authorization, wildcard allow/disallow from
+  // RewriteOptions, and the intended use of the url's resource.  After the
+  // function is executed, is_authorized_domain will indicate whether input_url
+  // was found to belong to an authorized domain or not.
   bool MayRewriteUrl(const GoogleUrl& domain_url,
                      const GoogleUrl& input_url,
-                     bool allow_unauthorized_domain,
+                     InlineAuthorizationPolicy inline_authorization_policy,
+                     IntendedFor intended_for,
                      bool* is_authorized_domain) const;
 
   // Returns the appropriate base gurl to be used for resolving hrefs

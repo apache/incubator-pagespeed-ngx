@@ -252,6 +252,31 @@ TEST_F(JsInlineFilterTest, DoInlineIntrospectiveJavascript) {
                        true);  // expect inlining
 }
 
+TEST_F(JsInlineFilterTest, DontInlineDisallowed) {
+  SetHtmlMimetype();
+
+  options()->Disallow("*script.js*");
+
+  // The script is disallowed; can't be inlined.
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function close() { return 'inline!'; }\n",
+                       false);  // expect no inlining
+}
+
+TEST_F(JsInlineFilterTest, DoInlineDisallowedIfAllowedWhenInlining) {
+  SetHtmlMimetype();
+  options()->AllowOnlyWhenInlining("*script.js*");
+
+  // The script is allowed when inlining.
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function close() { return 'inline!'; }\n",
+                       true);  // expect inlining
+}
+
 TEST_F(JsInlineFilterTest, DoInlineJavascriptXhtml) {
   // Simple case:
   TestInlineJavascriptXhtml("http://www.example.com/index.html",

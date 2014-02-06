@@ -142,6 +142,11 @@ class CommonFilter : public EmptyHtmlFilter {
   // HTML are almost the only ones that can safely do this.
   virtual bool AllowUnauthorizedDomain() const { return false; }
 
+  // Returns true if the filter intends to inline the resource it fetches.  This
+  // is to support AllowWhenInlining.  Unlike AllowUnauthorizedDomain() this
+  // doesn't have security implications and is just used for performance tuning.
+  virtual bool IntendedForInlining() const { return false; }
+
  protected:
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change

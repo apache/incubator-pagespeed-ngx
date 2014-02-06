@@ -2292,6 +2292,26 @@ class RewriteOptions {
     allow_resources_.MakeWriteable()->Disallow(wildcard_pattern);
   }
 
+  // Like Allow().  See IsAllowedWhenInlining().
+  void AllowWhenInlining(const StringPiece& wildcard_pattern) {
+    Modify();
+    allow_when_inlining_resources_.MakeWriteable()->Allow(wildcard_pattern);
+  }
+
+  // Helper function to Disallow something except when inlining.  Useful for
+  // resources that you expect to be on good CDNs but may still be worth
+  // inlining if small enough.
+  void AllowOnlyWhenInlining(const StringPiece& wildcard_pattern) {
+    Disallow(wildcard_pattern);
+    AllowWhenInlining(wildcard_pattern);
+  }
+
+  // Like Disallow().  See IsAllowedWhenInlining().
+  void DisallowWhenInlining(const StringPiece& wildcard_pattern) {
+    Modify();
+    allow_when_inlining_resources_.MakeWriteable()->Disallow(wildcard_pattern);
+  }
+
   // Blacklist of javascript files that don't like their names changed.
   // This should be called for root options to set defaults.
   // TODO(sligocki): Rename to allow for more general initialization.
@@ -2332,7 +2352,19 @@ class RewriteOptions {
   // Determines, based on the sequence of Allow/Disallow calls above, whether
   // a url is allowed.
   bool IsAllowed(const StringPiece& url) const {
-    return allow_resources_->Match(url, true);
+    return allow_resources_->Match(url, true /* default allow */);
+  }
+
+  // Call this when:
+  //
+  //  1. IsAllowed() returns false and
+  //  2. The url is for a resource we're planning to inline if successful.
+  //
+  // If it returns true, it's ok to fetch, rewrite, and inline this resource as
+  // if IsAllowed() had returned true.
+  bool IsAllowedWhenInlining(const StringPiece& url) const {
+    return allow_when_inlining_resources_->Match(
+        url, false /* default disallow */);
   }
 
   // Adds a new comment wildcard pattern to be retained.
@@ -3654,8 +3686,10 @@ class RewriteOptions {
   FileLoadPolicy file_load_policy_;
 
   CopyOnWrite<FastWildcardGroup> allow_resources_;
+  CopyOnWrite<FastWildcardGroup> allow_when_inlining_resources_;
   CopyOnWrite<FastWildcardGroup> retain_comments_;
   CopyOnWrite<FastWildcardGroup> lazyload_enabled_classes_;
+
   // When certain url patterns are in the referer we want to do a blocking
   // rewrite.
   CopyOnWrite<FastWildcardGroup> blocking_rewrite_referer_urls_;

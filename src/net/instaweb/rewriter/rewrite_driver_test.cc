@@ -1157,8 +1157,10 @@ TEST_F(RewriteDriverTest, NoCreateInputResourceUnauthorized) {
   // Test that an authorized resource is created with the right cache key even
   // if the filter allows unauthorized domains.
   GoogleUrl authorized_url("http://example.com/a.js");
-  ResourcePtr resource2(rewrite_driver()->CreateInputResource(authorized_url,
-                                                              true));
+  ResourcePtr resource2(rewrite_driver()->CreateInputResource(
+      authorized_url,
+      RewriteDriver::kInlineUnauthorizedResources,
+      RewriteDriver::kIntendedForGeneral));
   EXPECT_TRUE(resource2.get() != NULL);
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->url());
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->cache_key());
@@ -1176,8 +1178,10 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
 
   // Test that an unauthorized resource is created with the right cache key.
   GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
-  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url,
-                                                             true));
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(
+      unauthorized_url,
+      RewriteDriver::kInlineUnauthorizedResources,
+      RewriteDriver::kIntendedForGeneral));
   EXPECT_TRUE(resource.get() != NULL);
   EXPECT_STREQ(unauthorized_url.spec_c_str(), resource->url());
   EXPECT_STREQ("unauth://unauthorized.domain.com/a.js", resource->cache_key());
@@ -1185,16 +1189,20 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
   // Test that an authorized resource continues to be created with the right
   // cache key.
   GoogleUrl authorized_url("http://example.com/a.js");
-  ResourcePtr resource2(rewrite_driver()->CreateInputResource(authorized_url,
-                                                              true));
+  ResourcePtr resource2(rewrite_driver()->CreateInputResource(
+      authorized_url,
+      RewriteDriver::kInlineUnauthorizedResources,
+      RewriteDriver::kIntendedForGeneral));
   EXPECT_TRUE(resource2.get() != NULL);
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->url());
   EXPECT_STREQ(authorized_url.spec_c_str(), resource2->cache_key());
 
   // Test that an unauthorized resource is not created if
   // allow_unauthorized_domain is false.
-  ResourcePtr resource3(rewrite_driver()->CreateInputResource(unauthorized_url,
-                                                             false));
+  ResourcePtr resource3(rewrite_driver()->CreateInputResource(
+      unauthorized_url,
+      RewriteDriver::kInlineOnlyAuthorizedResources,
+      RewriteDriver::kIntendedForGeneral));
   EXPECT_TRUE(resource3.get() == NULL);
 
   // Test that an unauthorized resource is not created with the default
@@ -1216,8 +1224,46 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorizedWithDisallow) {
 
   // Test that an unauthorized resource is not created when it is disallowed.
   GoogleUrl unauthorized_url("http://unauthorized.domain.com/a.js");
-  ResourcePtr resource(rewrite_driver()->CreateInputResource(unauthorized_url,
-                                                             true));
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(
+      unauthorized_url,
+      RewriteDriver::kInlineUnauthorizedResources,
+      RewriteDriver::kIntendedForGeneral));
+  EXPECT_TRUE(resource.get() == NULL);
+}
+
+// Test AllowWhenInlining overrides Disallow when inlining.
+TEST_F(RewriteDriverTest, AllowWhenInliningOverridesDisallow) {
+  options()->AllowOnlyWhenInlining("*a.js*");
+
+  MockRewriteContext context(rewrite_driver());
+  // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+  // This resource would normally not be created because it is disallowed,
+  // except that we explicitly allowed it with AllowWhenInlining.
+  GoogleUrl js_url("http://example.com/a.js");
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(
+      js_url,
+      RewriteDriver::kInlineUnauthorizedResources,
+      RewriteDriver::kIntendedForInlining));
+  EXPECT_FALSE(resource.get() == NULL);
+}
+
+// Test AllowWhenInlining fails to overrides Disallow when not inlining.
+TEST_F(RewriteDriverTest, AllowWhenInliningDoesntOverrideDisallow) {
+  options()->AllowOnlyWhenInlining("*a.js*");
+
+  MockRewriteContext context(rewrite_driver());
+  // Call StartParseUrl so that the base_url gets set to a non-empty string.
+  ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+  // This resource would normally not be created because it is disallowed, and
+  // AllowWhenInlining doesn't apply because we're not inlining.
+  GoogleUrl js_url("http://example.com/a.js");
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(
+      js_url,
+      RewriteDriver::kInlineUnauthorizedResources,
+      RewriteDriver::kIntendedForGeneral));
   EXPECT_TRUE(resource.get() == NULL);
 }
 

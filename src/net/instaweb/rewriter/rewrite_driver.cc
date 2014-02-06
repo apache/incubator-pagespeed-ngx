@@ -2126,17 +2126,22 @@ void RewriteDriver::DetachedFetchComplete() {
   DropReference(kRefFetchBackground);
 }
 
-bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
-                                  const GoogleUrl& input_url,
-                                  bool allow_unauthorized_domain,
-                                  bool* is_authorized_domain) const {
+bool RewriteDriver::MayRewriteUrl(
+    const GoogleUrl& domain_url,
+    const GoogleUrl& input_url,
+    InlineAuthorizationPolicy inline_authorization_policy,
+    IntendedFor intended_for,
+    bool* is_authorized_domain) const {
   *is_authorized_domain = false;
   if (domain_url.IsWebValid()) {
-    if (options()->IsAllowed(input_url.Spec())) {
+    if (options()->IsAllowed(input_url.Spec()) ||
+        (intended_for == kIntendedForInlining &&
+         options()->IsAllowedWhenInlining(input_url.Spec()))) {
       *is_authorized_domain = options()->domain_lawyer()->IsDomainAuthorized(
           domain_url, input_url);
       if (options()->inline_unauthorized_resources() &&
-          !*is_authorized_domain && allow_unauthorized_domain) {
+          !*is_authorized_domain &&
+          inline_authorization_policy == kInlineUnauthorizedResources) {
         // We decide that this URL can be rewritten (true) but
         // is_authorized_domain will be retained as false to allow creation of
         // the Resource object in the correct cache key space.
@@ -2154,11 +2159,14 @@ bool RewriteDriver::MatchesBaseUrl(const GoogleUrl& input_url) const {
 }
 
 ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
-  return CreateInputResource(input_url, false);
+  return CreateInputResource(
+      input_url, kInlineOnlyAuthorizedResources, kIntendedForGeneral);
 }
 
-ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url,
-                                               bool allow_unauthorized_domain) {
+ResourcePtr RewriteDriver::CreateInputResource(
+    const GoogleUrl& input_url,
+    InlineAuthorizationPolicy inline_authorization_policy,
+    IntendedFor intended_for) {
   ResourcePtr resource;
   bool may_rewrite = false;
   bool is_authorized_domain = false;
@@ -2170,7 +2178,8 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url,
     return resource;
   } else if (decoded_base_url_.IsAnyValid()) {
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url,
-                                allow_unauthorized_domain,
+                                inline_authorization_policy,
+                                intended_for,
                                 &is_authorized_domain);
     // In the case where we are proxying and we have resources that have been
     // rewritten multiple times, input_url will still have the encoded domain,
@@ -2181,7 +2190,8 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url,
       if (namer->Decode(input_url, NULL, &decoded_input)) {
         GoogleUrl decoded_url(decoded_input);
         may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url,
-                                    allow_unauthorized_domain,
+                                    inline_authorization_policy,
+                                    intended_for,
                                     &is_authorized_domain);
       }
     }

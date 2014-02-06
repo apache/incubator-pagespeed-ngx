@@ -66,6 +66,9 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // to the unoptimized page.
   virtual bool AllowUnauthorizedDomain() const { return true; }
 
+  // Selectors are inlined into the html.
+  virtual bool IntendedForInlining() const { return true; }
+
  protected:
   // Overrides of CssSummarizerBase summary API. These help us compute
   // the critical portions of the various fragments in the page, and to

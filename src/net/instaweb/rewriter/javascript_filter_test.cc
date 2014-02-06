@@ -64,6 +64,7 @@ const char kJsData[] =
 const char kJsMinData[] = "alert('hello, world!')";
 const char kFilterId[] = "jm";
 const char kOrigJsName[] = "hello.js";
+const char kOrigJsNameRegexp[] = "*hello.js*";
 const char kUnauthorizedJs[] = "http://other.domain.com/hello.js";
 const char kRewrittenJsName[] = "hello.js";
 const char kLibraryUrl[] = "https://www.example.com/hello/1.0/hello.js";
@@ -198,6 +199,30 @@ TEST_F(JavascriptFilterTest, DontRewriteUnauthorizedDomainWithUnauthOptionSet) {
   options()->set_inline_unauthorized_resources(true);
   server_context()->ComputeSignature(options());
   ValidateNoChanges("dont_rewrite", GenerateHtml(kUnauthorizedJs));
+}
+
+TEST_F(JavascriptFilterTest, DontRewriteDisallowedScripts) {
+  SetResponseWithDefaultHeaders(
+      "a.js", kContentTypeJavascript, "document.write('a');", 100);
+  options()->Disallow("*a.js*");
+  options()->EnableFilter(RewriteOptions::kInlineJavascript);
+  SetHtmlMimetype();
+  InitFiltersAndTest(100);
+  ValidateExpected("inline javascript disallowed",
+                   StringPrintf(kHtmlFormat, "a.js"),
+                   StringPrintf(kHtmlFormat, "a.js"));
+}
+
+TEST_F(JavascriptFilterTest, DoInlineAllowedForInliningScripts) {
+  SetResponseWithDefaultHeaders(
+      "a.js", kContentTypeJavascript, "document.write('a');", 100);
+  options()->AllowOnlyWhenInlining("*a.js*");
+  options()->EnableFilter(RewriteOptions::kInlineJavascript);
+  SetHtmlMimetype();
+  InitFiltersAndTest(100);
+  ValidateExpected("inline javascript allowed for inlining",
+                   StringPrintf(kHtmlFormat, "a.js"),
+                   StringPrintf(kInlineJs, "document.write('a');"));
 }
 
 TEST_F(JavascriptFilterTest, RewriteButExceedLogThreshold) {
@@ -416,6 +441,38 @@ TEST_F(JavascriptFilterTest, IdentifyLibraryNoMinification) {
 
   EXPECT_EQ(1, libraries_identified_->Get());
   EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(0, total_bytes_saved_->Get());
+}
+
+TEST_F(JavascriptFilterTest, DisallowedUrlsNotCheckedForCanonicalization) {
+  RegisterLibrary();
+  options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  options()->Disallow(kOrigJsNameRegexp);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  ValidateExpected("no_library_identification",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kOrigJsName));
+
+  EXPECT_EQ(0, libraries_identified_->Get());
+  EXPECT_EQ(0, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(0, total_bytes_saved_->Get());
+}
+
+TEST_F(JavascriptFilterTest, AllowWhenInliningUrlsStillNotChecked) {
+  RegisterLibrary();
+  options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  options()->AllowOnlyWhenInlining(kOrigJsNameRegexp);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  ValidateExpected("no_library_identification",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kOrigJsName));
+
+  EXPECT_EQ(0, libraries_identified_->Get());
+  EXPECT_EQ(0, blocks_minified_->Get());
   EXPECT_EQ(0, minification_failures_->Get());
   EXPECT_EQ(0, total_bytes_saved_->Get());
 }

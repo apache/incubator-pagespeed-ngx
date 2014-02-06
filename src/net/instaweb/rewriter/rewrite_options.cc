@@ -2373,18 +2373,9 @@ void RewriteOptions::DisallowResourcesForProxy() {
   Disallow("*://l.yimg.com/*");
   Disallow("*store.yahoo.net/*");
 
-  // Breaks some sites.
-  Disallow("*connect.facebook.net/*");
   // Changing the url breaks the simpleviewer flash-based slideshow gallery due
   // to cross domain policy violations.
   Disallow("*simpleviewer.js*");
-
-  // The following options are not really troublesome, but we want to disallow
-  // them anyway.
-
-  // The following url pattern shows up often, but under too many different
-  // unique urls:
-  // Disallow("*//stats.wordpress.com/e-*");
 
   // Disable resources that are already being shared across multiple sites and
   // have strong CDN support (ie they are already cheap to fetch and are also
@@ -2392,18 +2383,22 @@ void RewriteOptions::DisallowResourcesForProxy() {
   // We keep these patterns as specific as possible while avoiding internal
   // wildcards.  Note that all of these urls have query parameters in long-tail
   // requests.
+  // Do allow these to be inlined; if they're small enough it can be better to
+  // inline them then fetch them from cache, and they're not always in cache.
   // TODO(jmaessen): Consider setting up the blacklist by domain name and using
   // regexps only after a match has been found.  Alternatively, since we're
   // setting up a binary choice here, consider using RE2 to make the yes/no
   // decision.
-  Disallow("*//ajax.googleapis.com/ajax/libs/*.js*");
-  Disallow("*//pagead2.googlesyndication.com/pagead/show_ads.js*");
-  Disallow("*//partner.googleadservices.com/gampad/google_service.js*");
-  Disallow("*//platform.twitter.com/widgets.js*");
-  Disallow("*//s7.addthis.com/js/250/addthis_widget.js*");
-  Disallow("*//www.google.com/coop/cse/brand*");
-  Disallow("*//www.google-analytics.com/urchin.js*");
-  Disallow("*//www.googleadservices.com/pagead/conversion.js*");
+  AllowOnlyWhenInlining("*//ajax.googleapis.com/ajax/libs/*.js*");
+  AllowOnlyWhenInlining("*//pagead2.googlesyndication.com/pagead/show_ads.js*");
+  AllowOnlyWhenInlining(
+      "*//partner.googleadservices.com/gampad/google_service.js*");
+  AllowOnlyWhenInlining("*//platform.twitter.com/widgets.js*");
+  AllowOnlyWhenInlining("*//s7.addthis.com/js/250/addthis_widget.js*");
+  AllowOnlyWhenInlining("*//www.google.com/coop/cse/brand*");
+  AllowOnlyWhenInlining("*//www.google-analytics.com/urchin.js*");
+  AllowOnlyWhenInlining("*//www.googleadservices.com/pagead/conversion.js*");
+  AllowOnlyWhenInlining("*connect.facebook.net/*");
 }
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
@@ -3334,6 +3329,8 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
 
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.MergeOrShare(src.allow_resources_);
+  allow_when_inlining_resources_.MergeOrShare(
+      src.allow_when_inlining_resources_);
   retain_comments_.MergeOrShare(src.retain_comments_);
   lazyload_enabled_classes_.MergeOrShare(src.lazyload_enabled_classes_);
   blocking_rewrite_referer_urls_.MergeOrShare(
@@ -3536,6 +3533,8 @@ void RewriteOptions::ComputeSignature() {
   }
   StrAppend(&signature_, domain_lawyer_->Signature(), "_");
   StrAppend(&signature_, "AR:", allow_resources_->Signature(), "_");
+  StrAppend(&signature_, "AWIR:",
+            allow_when_inlining_resources_->Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_->Signature(), "_");
   StrAppend(&signature_, "LDC:", lazyload_enabled_classes_->Signature(), "_");
   StrAppend(&signature_, "BRRU:",

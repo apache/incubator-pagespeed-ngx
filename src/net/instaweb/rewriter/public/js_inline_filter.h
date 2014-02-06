@@ -51,6 +51,7 @@ class JsInlineFilter : public CommonFilter {
   // safe because it does not cause any new content to be executed compared
   // to the unoptimized page.
   virtual bool AllowUnauthorizedDomain() const { return true; }
+  virtual bool IntendedForInlining() const { return true; }
 
   static void InitStats(Statistics* statistics);
 
