@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/enum_set.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -1165,6 +1166,8 @@ class RewriteOptions {
   static bool ParseFromString(StringPiece value_string, BeaconUrl* value) {
     return ParseBeaconUrl(value_string, value);
   }
+  static bool ParseFromString(StringPiece value_string,
+                              protobuf::MessageLite* proto);
 
   // TODO(jmarantz): consider setting flags in the set_ methods so that
   // first's explicit settings can override default values from second.
@@ -3134,6 +3137,9 @@ class RewriteOptions {
                                       const Hasher* hasher);
   static GoogleString OptionSignature(const BeaconUrl& beacon_url,
                                       const Hasher* hasher);
+  static GoogleString OptionSignature(
+      const protobuf::MessageLite& proto,
+      const Hasher* hasher);
 
   // These static methods enable us to generate strings for all
   // instantiated option-types from Option<T>::Signature().
@@ -3151,6 +3157,7 @@ class RewriteOptions {
   }
   static GoogleString ToString(RewriteLevel x);
   static GoogleString ToString(const BeaconUrl& beacon_url);
+  static GoogleString ToString(const protobuf::MessageLite& proto);
 
   // Returns true if p1's option_name is less than p2's. Used to order
   // all_properties_ and all_options_.

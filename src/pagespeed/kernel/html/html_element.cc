@@ -82,6 +82,17 @@ bool HtmlElement::DeleteAttribute(HtmlName::Keyword keyword) {
   return false;
 }
 
+bool HtmlElement::DeleteAttribute(StringPiece name) {
+  AttributeList* attrs = mutable_attributes();
+  for (AttributeIterator iter(attrs->begin()); iter != attrs->end(); ++iter) {
+    if (iter->name_str() == name) {
+      attrs->Erase(&iter);
+      return true;
+    }
+  }
+  return false;
+}
+
 const HtmlElement::Attribute* HtmlElement::FindAttribute(
     HtmlName::Keyword keyword) const {
   const Attribute* ret = NULL;
@@ -95,6 +106,18 @@ const HtmlElement::Attribute* HtmlElement::FindAttribute(
     }
   }
   return ret;
+}
+
+const HtmlElement::Attribute* HtmlElement::FindAttribute(
+    StringPiece name) const {
+  for (AttributeConstIterator iter = attributes().begin();
+       iter != attributes().end(); ++iter) {
+    const Attribute* attribute = iter.Get();
+    if (iter->name_str() == name) {
+      return attribute;
+    }
+  }
+  return NULL;
 }
 
 void HtmlElement::ToString(GoogleString* buf) const {

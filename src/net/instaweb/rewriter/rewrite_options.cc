@@ -3075,6 +3075,13 @@ bool RewriteOptions::ParseFromString(StringPiece value_string,
   return true;
 }
 
+// static
+bool RewriteOptions::ParseFromString(
+    StringPiece value_string,
+    protobuf::MessageLite* proto) {
+  return proto->ParseFromString(value_string.as_string());
+}
+
 bool RewriteOptions::Enabled(Filter filter) const {
   // Enforce a hierarchy of configuration precedence:
   // a. Explicit forbid is permanent all the way down the hierarchy and
@@ -3458,6 +3465,13 @@ GoogleString RewriteOptions::OptionSignature(const BeaconUrl& beacon_url,
   return hasher->Hash(ToString(beacon_url));
 }
 
+// static
+GoogleString RewriteOptions::OptionSignature(
+    const protobuf::MessageLite& proto,
+    const Hasher* hasher) {
+  return hasher->Hash(ToString(proto));
+}
+
 void RewriteOptions::DisableIfNotExplictlyEnabled(Filter filter) {
   if (!enabled_filters_.IsSet(filter)) {
     disabled_filters_.Insert(filter);
@@ -3615,6 +3629,11 @@ GoogleString RewriteOptions::ToString(const BeaconUrl& beacon_url) {
     StrAppend(&result, " ", beacon_url.https);
   }
   return result;
+}
+
+// static
+GoogleString RewriteOptions::ToString(const protobuf::MessageLite& proto) {
+  return proto.SerializeAsString();
 }
 
 GoogleString RewriteOptions::FilterSetToString(

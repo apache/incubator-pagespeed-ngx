@@ -800,6 +800,7 @@
       ],
       'dependencies': [
         '<(DEPTH)/pagespeed/kernel.gyp:util',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
       'includes': [
         'gperf.gypi',
@@ -930,6 +931,7 @@
         'instaweb_rewriter_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
         'config/rewrite_options_manager.cc',
