@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
@@ -234,7 +235,7 @@ TEST_F(CriticalSelectorFilterTest, UnauthorizedCss) {
 
 TEST_F(CriticalSelectorFilterTest, AllowUnauthorizedCss) {
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
   options()->ComputeSignature();
   GoogleString css = StrCat(
       "<style>*,p {display: none; } span {display: inline; }</style>",

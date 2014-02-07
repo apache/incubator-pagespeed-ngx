@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -299,7 +300,7 @@ TEST_F(CssSummarizerBaseTest, WillNotRenderSummary) {
 TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWithUnauthEnabled) {
   filter_->set_will_not_render_summaries_in_place(true);
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
   server_context()->ComputeSignature(options());
   VerifyUnauthNotRendered();
 }

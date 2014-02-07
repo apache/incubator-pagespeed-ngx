@@ -19,7 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_BEACON_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_BEACON_FILTER_H_
 
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -35,7 +38,6 @@ namespace net_instaweb {
 
 struct BeaconMetadata;
 class HtmlElement;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -65,7 +67,13 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   // unauthorized domains) in order to let the clients use them while
   // detecting critical selectors that can be subsequently beaconed back
   // to the server and eventually inlined into the HTML.
-  virtual bool AllowUnauthorizedDomain() const { return true; }
+  virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
+      const {
+    return driver_->options()->HasInlineUnauthorizedResourceType(
+               semantic_type::kStylesheet) ?
+           RewriteDriver::kInlineUnauthorizedResources :
+           RewriteDriver::kInlineOnlyAuthorizedResources;
+  }
 
   // Selectors are inlined into javascript.
   virtual bool IntendedForInlining() const { return true; }

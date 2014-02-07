@@ -140,7 +140,8 @@ class CommonFilter : public EmptyHtmlFilter {
   // Returns true if this filter allows domains not authorized by any pagespeed
   // directive to be optimized. Filters that end up inlining content onto the
   // HTML are almost the only ones that can safely do this.
-  virtual bool AllowUnauthorizedDomain() const { return false; }
+  virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
+      const { return RewriteDriver::kInlineOnlyAuthorizedResources; }
 
   // Returns true if the filter intends to inline the resource it fetches.  This
   // is to support AllowWhenInlining.  Unlike AllowUnauthorizedDomain() this

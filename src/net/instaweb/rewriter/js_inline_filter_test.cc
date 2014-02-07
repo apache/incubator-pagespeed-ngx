@@ -19,6 +19,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -188,7 +189,7 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
 }
 
 TEST_F(JsInlineFilterTest, DoInlineJavascriptDifferentDomain) {
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   SetHtmlMimetype();
   TestInlineJavascript("http://www.example.net/index.html",
                        "http://scripts.example.org/script2.js",

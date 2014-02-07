@@ -20,6 +20,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -279,7 +280,7 @@ TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
 
 TEST_F(CssInlineFilterTest, DoInlineCssDifferentDomain) {
   const GoogleString css = "BODY { color: red; }\n";
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
   TestInlineCss("http://www.example.com/index.html",
                 "http://unauth.com/styles.css",
                 "", css, true, css);

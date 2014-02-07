@@ -27,7 +27,10 @@
 
 #include <vector>
 
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -42,7 +45,6 @@ namespace net_instaweb {
 
 class HtmlCharactersNode;
 class HtmlElement;
-class RewriteDriver;
 
 class CriticalSelectorFilter : public CssSummarizerBase {
  public:
@@ -64,7 +66,13 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // Inlining css from unauthorized domains into HTML is considered
   // safe because it does not cause any new content to be executed compared
   // to the unoptimized page.
-  virtual bool AllowUnauthorizedDomain() const { return true; }
+  virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
+      const {
+    return driver_->options()->HasInlineUnauthorizedResourceType(
+               semantic_type::kStylesheet) ?
+           RewriteDriver::kInlineUnauthorizedResources :
+           RewriteDriver::kInlineOnlyAuthorizedResources;
+  }
 
   // Selectors are inlined into the html.
   virtual bool IntendedForInlining() const { return true; }

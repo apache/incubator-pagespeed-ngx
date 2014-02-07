@@ -45,6 +45,8 @@ namespace net_instaweb {
 // Option names.
 // TODO(matterbury): Evaluate these filters to check which ones aren't global,
 // rather are (say) Apache specific, and move them out.
+// TODO(jmarantz): Use consistent naming from semantic_type.h for all option
+// names that reference css/styles/js/scripts etc. such as CssPreserveUrls.
 const char RewriteOptions::kAddOptionsToUrls[] = "AddOptionsToUrls";
 const char RewriteOptions::kAccessControlAllowOrigins[] =
     "AccessControlAllowOrigins";
@@ -173,8 +175,6 @@ const char RewriteOptions::kInPlaceRewriteDeadlineMs[] =
 const char RewriteOptions::kIncreaseSpeedTracking[] = "IncreaseSpeedTracking";
 const char RewriteOptions::kInlineOnlyCriticalImages[] =
     "InlineOnlyCriticalImages";
-const char RewriteOptions::kInlineUnauthorizedResourcesExperimental[] =
-    "InlineUnauthorizedResourcesExperimental";
 const char RewriteOptions::kJsInlineMaxBytes[] = "JsInlineMaxBytes";
 const char RewriteOptions::kJsOutlineMinBytes[] = "JsOutlineMinBytes";
 const char RewriteOptions::kJsPreserveURLs[] = "JsPreserveURLs";
@@ -276,6 +276,8 @@ const char RewriteOptions::kEnableFilters[] = "EnableFilters";
 const char RewriteOptions::kExperimentVariable[] = "ExperimentVariable";
 const char RewriteOptions::kExperimentSpec[] = "ExperimentSpec";
 const char RewriteOptions::kForbidFilters[] = "ForbidFilters";
+const char RewriteOptions::kInlineResourcesWithoutExplicitAuthorization[] =
+    "InlineResourcesWithoutExplicitAuthorization";
 const char RewriteOptions::kRetainComment[] = "RetainComment";
 const char RewriteOptions::kCustomFetchHeader[] = "CustomFetchHeader";
 const char RewriteOptions::kLoadFromFile[] = "LoadFromFile";
@@ -988,6 +990,30 @@ bool RewriteOptions::ParseRewriteLevel(
   return ret;
 }
 
+bool RewriteOptions::ParseInlineUnauthorizedResourceType(
+    const StringPiece& in,
+    ResourceCategorySet* out) {
+  // Examples:
+  // InlineResourcesWithoutExplicitAuthorization Script,Stylesheet
+  // InlineResourcesWithoutExplicitAuthorization Stylesheet
+  // InlineResourcesWithoutExplicitAuthorization off
+  StringPieceVector resource_types;
+  SplitStringPieceToVector(in, ",", &resource_types, true);
+  for (int i = 0, n = resource_types.size(); i < n; ++i) {
+    StringPiece resource_type = resource_types[i];
+    semantic_type::Category category;
+    if (StringCaseEqual(resource_type, "off")) {
+      out->clear();
+    } else if (!semantic_type::ParseCategory(resource_type, &category)) {
+      // Invalid resource category.
+      return false;
+    } else {
+      out->insert(category);
+    }
+  }
+  return true;
+}
+
 bool RewriteOptions::ParseBeaconUrl(const StringPiece& in, BeaconUrl* out) {
   StringPieceVector urls;
   SplitStringPieceToVector(in, " ", &urls, true);
@@ -1565,13 +1591,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): implement for mod_pagespeed.
   AddBaseProperty(
-      false, &RewriteOptions::inline_unauthorized_resources_, "iur",
-      kInlineUnauthorizedResourcesExperimental,
+      ResourceCategorySet(),
+      &RewriteOptions::inline_unauthorized_resource_types_, "irwea",
+      kInlineResourcesWithoutExplicitAuthorization,
       kDirectoryScope,
-      // TODO(anupama): Update this help text once the option is ready.
-      "Experimental option for inlining unauthorized js and css resources. Do "
-      "not enable this option on your servers yet. This option name may change "
-      "in the future.");
+      "Specifies the resource types that can be inlined into HTML even if "
+      "they do not belong to explicitly authorized domains.");
   AddBaseProperty(
       false, &RewriteOptions::domain_rewrite_hyperlinks_, "drh",
       kDomainRewriteHyperlinks,
@@ -3448,6 +3473,11 @@ GoogleString RewriteOptions::OptionSignature(const GoogleString& x,
   return hasher->Hash(x);
 }
 
+GoogleString RewriteOptions::OptionSignature(ResourceCategorySet x,
+                                             const Hasher* hasher) {
+  return hasher->Hash(ToString(x));
+}
+
 GoogleString RewriteOptions::OptionSignature(RewriteLevel level,
                                              const Hasher* hasher) {
   switch (level) {
@@ -3610,6 +3640,16 @@ bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
   // url_cache_invalidation_map_ and other stuff that we exclude for
   // the RewriteOptions::signature.
   return (url_cache_invalidation_map_ == that.url_cache_invalidation_map_);
+}
+
+GoogleString RewriteOptions::ToString(const ResourceCategorySet &x) {
+  GoogleString result = "InlineUnauth:";
+  for (ResourceCategorySet::const_iterator entry = x.begin();
+       entry != x.end();
+       ++entry) {
+    result += semantic_type::GetCategoryString(*entry) + ",";
+  }
+  return result;
 }
 
 GoogleString RewriteOptions::ToString(RewriteLevel level) {
@@ -3991,6 +4031,26 @@ void RewriteOptions::ExperimentSpec::Initialize(const StringPiece& spec,
       }
     }
   }
+}
+
+void RewriteOptions::AddInlineUnauthorizedResourceType(
+    semantic_type::Category category) {
+  inline_unauthorized_resource_types_.mutable_value().insert(category);
+}
+
+bool RewriteOptions::HasInlineUnauthorizedResourceType(
+    semantic_type::Category category) const {
+  return inline_unauthorized_resource_types_.value().find(category) !=
+         inline_unauthorized_resource_types_.value().end();
+}
+
+void RewriteOptions::ClearInlineUnauthorizedResourceTypes() {
+  inline_unauthorized_resource_types_.mutable_value().clear();
+}
+
+void RewriteOptions::set_inline_unauthorized_resource_types(
+    ResourceCategorySet x) {
+  set_option(x, &inline_unauthorized_resource_types_);
 }
 
 void RewriteOptions::AddUrlValuedAttribute(

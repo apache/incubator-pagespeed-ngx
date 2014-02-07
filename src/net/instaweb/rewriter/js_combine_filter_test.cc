@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -481,7 +482,7 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
 // of component minified unauthorized resources even if they were created.
 TEST_F(JsFilterAndCombineFilterTest, TestCrossDomainRejectUnauthEnabled) {
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   server_context()->ComputeSignature(options());
   ValidateExpected("xd",
                    StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
@@ -876,7 +877,7 @@ TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
 // inline_unauthorized_resources is set to true.
 TEST_F(JsCombineFilterTest, TestCrossDomainRejectUnauthEnabled) {
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   server_context()->ComputeSignature(options());
   ValidateNoChanges("xd",
                     StrCat("<script src=", other_domain_, kJsUrl1, "></script>",

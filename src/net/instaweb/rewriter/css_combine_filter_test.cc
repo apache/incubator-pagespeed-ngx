@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -1395,7 +1396,7 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
 // the domain mapping even if inline_unauthorized_resources is enabled.
 TEST_F(CssCombineFilterTest, CrossUnmappedDomainWithUnauthEnabled) {
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
   server_context()->ComputeSignature(options());
   VerifyCrossUnmappedDomainNotRewritten();
 }

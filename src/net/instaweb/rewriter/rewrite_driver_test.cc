@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -1170,7 +1171,7 @@ TEST_F(RewriteDriverTest, NoCreateInputResourceUnauthorized) {
 // are created for unauthorized resources with the correctly prefixed keys, and
 // the authorized resources continue to get created with the right cache-keys.
 TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
 
   MockRewriteContext context(rewrite_driver());
   // Call StartParseUrl so that the base_url gets set to a non-empty string.
@@ -1215,7 +1216,7 @@ TEST_F(RewriteDriverTest, CreateInputResourceUnauthorized) {
 // Test that when inline_unauthorized_resources is set to true, unauthorized
 // resources continue to be not created when they match a disallowed pattern.
 TEST_F(RewriteDriverTest, CreateInputResourceUnauthorizedWithDisallow) {
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   options()->Disallow("http://unauthorized.domain.com/*");
 
   MockRewriteContext context(rewrite_driver());

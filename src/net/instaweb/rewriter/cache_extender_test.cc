@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -304,7 +305,8 @@ TEST_F(CacheExtenderTest, DoNotExtendUnauthorizedResources) {
 TEST_F(CacheExtenderTest, DoNotExtendUnauthorizedResourcesWithUnauthEnabled) {
   InitTest(kShortTtlSec);
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   server_context()->ComputeSignature(options());
   VerifyUnauthorizedResourcesNotExtended();
 }

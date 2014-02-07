@@ -2139,8 +2139,7 @@ bool RewriteDriver::MayRewriteUrl(
          options()->IsAllowedWhenInlining(input_url.Spec()))) {
       *is_authorized_domain = options()->domain_lawyer()->IsDomainAuthorized(
           domain_url, input_url);
-      if (options()->inline_unauthorized_resources() &&
-          !*is_authorized_domain &&
+      if (!*is_authorized_domain &&
           inline_authorization_policy == kInlineUnauthorizedResources) {
         // We decide that this URL can be rewritten (true) but
         // is_authorized_domain will be retained as false to allow creation of

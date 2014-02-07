@@ -163,9 +163,7 @@ ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
   if (resource_url.IsWebValid()) {
     resource = driver_->CreateInputResource(
         resource_url,
-        AllowUnauthorizedDomain() ?
-            RewriteDriver::kInlineUnauthorizedResources :
-            RewriteDriver::kInlineOnlyAuthorizedResources,
+        AllowUnauthorizedDomain(),
         IntendedForInlining() ?
             RewriteDriver::kIntendedForInlining :
             RewriteDriver::kIntendedForGeneral);

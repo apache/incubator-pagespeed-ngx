@@ -271,7 +271,6 @@ class RewriteOptions {
   static const char kImplicitCacheTtlMs[];
   static const char kIncreaseSpeedTracking[];
   static const char kInlineOnlyCriticalImages[];
-  static const char kInlineUnauthorizedResourcesExperimental[];
   static const char kInPlacePreemptiveRewriteCss[];
   static const char kInPlacePreemptiveRewriteCssImages[];
   static const char kInPlacePreemptiveRewriteImages[];
@@ -352,6 +351,7 @@ class RewriteOptions {
   static const char kExperimentVariable[];
   static const char kExperimentSpec[];
   static const char kForbidFilters[];
+  static const char kInlineResourcesWithoutExplicitAuthorization[];
   static const char kRetainComment[];
   // 2-argument ones:
   static const char kCustomFetchHeader[];
@@ -830,6 +830,12 @@ class RewriteOptions {
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
+  typedef std::set<semantic_type::Category> ResourceCategorySet;
+
+  static bool ParseInlineUnauthorizedResourceType(
+      const StringPiece& in,
+      ResourceCategorySet* resource_types);
+
   // Parse a beacon url, or a pair of beacon urls (http https) separated by a
   // space.  If only an http url is given, the https url is derived from it
   // by simply substituting the protocol.
@@ -974,6 +980,12 @@ class RewriteOptions {
       return url_valued_attributes_->size();
     }
   }
+
+  void AddInlineUnauthorizedResourceType(semantic_type::Category category);
+  bool HasInlineUnauthorizedResourceType(
+      semantic_type::Category category) const;
+  void ClearInlineUnauthorizedResourceTypes();
+  void set_inline_unauthorized_resource_types(ResourceCategorySet x);
 
   // Store size, md5 hash and canonical url for library recognition.
   bool RegisterLibrary(
@@ -1162,6 +1174,10 @@ class RewriteOptions {
   }
   static bool ParseFromString(StringPiece value_string, RewriteLevel* value) {
     return ParseRewriteLevel(value_string, value);
+  }
+  static bool ParseFromString(StringPiece value_string,
+                              ResourceCategorySet* value) {
+    return ParseInlineUnauthorizedResourceType(value_string, value);
   }
   static bool ParseFromString(StringPiece value_string, BeaconUrl* value) {
     return ParseBeaconUrl(value_string, value);
@@ -1641,13 +1657,6 @@ class RewriteOptions {
   }
   bool inline_only_critical_images() const {
     return inline_only_critical_images_.value();
-  }
-
-  void set_inline_unauthorized_resources(bool x) {
-    set_option(x, &inline_unauthorized_resources_);
-  }
-  bool inline_unauthorized_resources() const {
-    return inline_unauthorized_resources_.value();
   }
 
   void set_critical_images_beacon_enabled(bool x) {
@@ -2582,6 +2591,7 @@ class RewriteOptions {
     }
 
     const T& value() const { return value_; }
+    T& mutable_value() { was_set_ = true; return value_; }
 
     // The signature of the Merge implementation must match the base-class.  The
     // caller is responsible for ensuring that only the same typed Options are
@@ -2698,7 +2708,7 @@ class RewriteOptions {
 
     // Merges src_base into this by taking the maximum of the two values.
     //
-    // We expect ot have exclusive access to 'this' and don't need to lock it,
+    // We expect to have exclusive access to 'this' and don't need to lock it,
     // but we use locked access to src_base->value().
     virtual void Merge(const OptionBase* src_base);
 
@@ -3135,6 +3145,8 @@ class RewriteOptions {
                                       const Hasher* hasher);
   static GoogleString OptionSignature(RewriteLevel x,
                                       const Hasher* hasher);
+  static GoogleString OptionSignature(ResourceCategorySet x,
+                                      const Hasher* hasher);
   static GoogleString OptionSignature(const BeaconUrl& beacon_url,
                                       const Hasher* hasher);
   static GoogleString OptionSignature(
@@ -3156,6 +3168,7 @@ class RewriteOptions {
     return x;
   }
   static GoogleString ToString(RewriteLevel x);
+  static GoogleString ToString(const ResourceCategorySet &x);
   static GoogleString ToString(const BeaconUrl& beacon_url);
   static GoogleString ToString(const protobuf::MessageLite& proto);
 
@@ -3382,10 +3395,6 @@ class RewriteOptions {
   // people may want to inline all images (both critical and non-critical). If
   // set to false, all images will be inlined within the html.
   Option<bool> inline_only_critical_images_;
-  // By default, resources from unauthorized domains are not rewritten or
-  // inlined. Using this option, unauthorized resources become available for
-  // inlining into the HTML only.
-  Option<bool> inline_unauthorized_resources_;
   // Indicates whether image rewriting filters should insert the critical images
   // beacon code.
   Option<bool> critical_images_beacon_enabled_;
@@ -3695,6 +3704,8 @@ class RewriteOptions {
   // If this is non-NULL it tells us additional attributes that should be
   // interpreted as containing urls.
   scoped_ptr<std::vector<ElementAttributeCategory> > url_valued_attributes_;
+
+  Option<ResourceCategorySet> inline_unauthorized_resource_types_;
 
   CopyOnWrite<JavascriptLibraryIdentification>
       javascript_library_identification_;

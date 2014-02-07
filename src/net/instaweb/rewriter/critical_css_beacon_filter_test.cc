@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher_test_base.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
@@ -241,7 +242,7 @@ TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
 
 TEST_F(CriticalCssBeaconFilterTest, AllowUnauthorized) {
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kStylesheet);
   options()->ComputeSignature();
   GoogleString css = StrCat(CssLinkHref(kUnauthDomainUrl), kInlineStyle);
   ValidateExpectedUrl(

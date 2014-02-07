@@ -32,6 +32,11 @@ ModPagespeedBlockingRewriteKey psatest
 # enable image beaconing explicitly.
 ModPagespeedCriticalImagesBeaconEnabled false
 
+# By default, resources will not be used for inlining without explicit
+# authorization. Supported values are off or a comma-separated list of strings
+# from {Script,Stylesheet}.
+ModPagespeedInlineResourcesWithoutExplicitAuthorization off
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/max_html_parse_size" >
   ModPagespeedMaxHtmlParseBytes 5000
 </Directory>
@@ -464,7 +469,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
   ModPagespeedRewriteLevel PassThrough
-  ModPagespeedInlineUnauthorizedResourcesExperimental true
+  ModPagespeedInlineResourcesWithoutExplicitAuthorization Script,Stylesheet
   ModPagespeedCssInlineMaxBytes 1000000
 </VirtualHost>
 

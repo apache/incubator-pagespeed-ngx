@@ -21,9 +21,12 @@
 
 #include <cstddef>
 
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -33,7 +36,6 @@ namespace net_instaweb {
 class CachedResult;
 class GoogleUrl;
 class HtmlElement;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -52,7 +54,13 @@ class CssInlineFilter : public CommonFilter {
   // Inlining css from unauthorized domains into HTML is considered
   // safe because it does not cause any new content to be executed compared
   // to the unoptimized page.
-  virtual bool AllowUnauthorizedDomain() const { return true; }
+  virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
+      const {
+    return driver_->options()->HasInlineUnauthorizedResourceType(
+               semantic_type::kStylesheet) ?
+           RewriteDriver::kInlineUnauthorizedResources :
+           RewriteDriver::kInlineOnlyAuthorizedResources;
+  }
   virtual bool IntendedForInlining() const { return true; }
 
   static void InitStats(Statistics* statistics);

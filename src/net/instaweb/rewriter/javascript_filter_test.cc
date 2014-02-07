@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -198,7 +199,7 @@ TEST_P(JavascriptFilterTest, DontRewriteUnauthorizedDomain) {
 TEST_P(JavascriptFilterTest, DontRewriteUnauthorizedDomainWithUnauthOptionSet) {
   InitFiltersAndTest(100);
   options()->ClearSignatureForTesting();
-  options()->set_inline_unauthorized_resources(true);
+  options()->AddInlineUnauthorizedResourceType(semantic_type::kScript);
   server_context()->ComputeSignature(options());
   ValidateNoChanges("dont_rewrite", GenerateHtml(kUnauthorizedJs));
 }

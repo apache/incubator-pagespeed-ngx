@@ -94,6 +94,48 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
     }
   }
 
+  // Helper method that is used to verify different kinds of merges between
+  // InlineResourcesWithoutExplicitAuthorization values for global and local
+  // options.
+  void VerifyInlineUnauthorizedResourceTypeMerges(
+      StringPiece global_option_val,
+      StringPiece local_option_val,
+      bool expect_script,
+      bool expect_stylesheet) {
+    RewriteOptions new_options(&thread_system_);
+    // Initialize global options.
+    RewriteOptions global_options(&thread_system_);
+    if (!global_option_val.empty()) {
+      RewriteOptions::ResourceCategorySet x;
+      ASSERT_TRUE(RewriteOptions::ParseInlineUnauthorizedResourceType(
+                      global_option_val, &x));
+      global_options.set_inline_unauthorized_resource_types(x);
+    }
+    // Initialize local options.
+    RewriteOptions local_options(&thread_system_);
+    if (!local_option_val.empty()) {
+      RewriteOptions::ResourceCategorySet x;
+      ASSERT_TRUE(RewriteOptions::ParseInlineUnauthorizedResourceType(
+                      local_option_val, &x));
+      local_options.set_inline_unauthorized_resource_types(x);
+    }
+
+    // Merge the options.
+    new_options.Merge(global_options);
+    new_options.Merge(local_options);
+
+    // Check what resource types have been authorized.
+    EXPECT_EQ(
+        expect_script,
+        new_options.HasInlineUnauthorizedResourceType(semantic_type::kScript))
+        << "Global: " << global_option_val << ", local: " << local_option_val;
+    EXPECT_EQ(
+        expect_stylesheet,
+        new_options.HasInlineUnauthorizedResourceType(
+            semantic_type::kStylesheet))
+        << "Global: " << global_option_val << ", local: " << local_option_val;
+  }
+
   void TestSetOptionFromName(bool test_log_variant);
 
   NullThreadSystem thread_system_;
@@ -840,7 +882,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kIncreaseSpeedTracking);
   PassLookupOptionByName(RewriteOptions::kInlineOnlyCriticalImages);
   PassLookupOptionByName(
-      RewriteOptions::kInlineUnauthorizedResourcesExperimental);
+      RewriteOptions::kInlineResourcesWithoutExplicitAuthorization);
   PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCss);
   PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteCssImages);
   PassLookupOptionByName(RewriteOptions::kInPlacePreemptiveRewriteImages);
@@ -2253,6 +2295,34 @@ TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersStyles) {
 
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
   EXPECT_TRUE(options_.css_preserve_urls());
+}
+
+TEST_F(RewriteOptionsTest, MergeInlineResourcesWithoutExplicitAuthorization) {
+  // Different variations of "off" and no-value in global and local options.
+  VerifyInlineUnauthorizedResourceTypeMerges("off", "", false, false);
+  VerifyInlineUnauthorizedResourceTypeMerges("off", "off", false, false);
+  VerifyInlineUnauthorizedResourceTypeMerges("", "off", false, false);
+  VerifyInlineUnauthorizedResourceTypeMerges("", "", false, false);
+
+  // Local has "script", and global has effective "off".
+  VerifyInlineUnauthorizedResourceTypeMerges("off", "script", true, false);
+  VerifyInlineUnauthorizedResourceTypeMerges("", "script", true, false);
+
+  // Local has no-value and global has "script".
+  VerifyInlineUnauthorizedResourceTypeMerges("script", "", true, false);
+
+  // Local has "off" and global has "script".
+  VerifyInlineUnauthorizedResourceTypeMerges("script", "off", false, false);
+
+  // Merging of script, stylesheet.
+  VerifyInlineUnauthorizedResourceTypeMerges(
+      "script", "stylesheet", false, true);
+  VerifyInlineUnauthorizedResourceTypeMerges(
+      "script", "script,stylesheet", true, true);
+  VerifyInlineUnauthorizedResourceTypeMerges(
+      "script,stylesheet", "stylesheet", false, true);
+  VerifyInlineUnauthorizedResourceTypeMerges(
+      "script,stylesheet", "", true, true);
 }
 
 }  // namespace net_instaweb

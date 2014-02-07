@@ -23,6 +23,18 @@
 namespace net_instaweb {
 namespace semantic_type {
 
+GoogleString GetCategoryString(Category category) {
+  switch (category) {
+    case kScript: return "Script";
+    case kImage: return "Image";
+    case kStylesheet: return "Stylesheet";
+    case kOtherResource: return "OtherResource";
+    case kHyperlink: return "Hyperlink";
+    case kPrefetch: return "Prefetch";
+    default: return "Unknown";
+  }
+}
+
 bool ParseCategory(const StringPiece& category_str, Category* category) {
   if (StringCaseEqual("Script", category_str)) {
     *category = kScript;
