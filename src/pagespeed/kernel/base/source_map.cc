@@ -14,7 +14,7 @@
 //
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "pagespeed/kernel/util/source_map.h"
+#include "pagespeed/kernel/base/source_map.h"
 
 
 #include "base/logging.h"
