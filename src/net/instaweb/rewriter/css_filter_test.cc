@@ -291,11 +291,13 @@ TEST_F(CssFilterTestCustomOptions, CssPreserveUrlsOverridingExtend) {
   scoped_ptr<RewriteOptions> global_options(options()->NewOptions());
   global_options->EnableFilter(RewriteOptions::kExtendCacheCss);
 
-  options()->EnableFilter(RewriteOptions::kRewriteCss);
-  options()->SoftEnableFilterForTesting(RewriteOptions::kInlineCss);
-  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteCss);
-  options()->set_css_preserve_urls(true);  // This will win over ExtendCache.
+  scoped_ptr<RewriteOptions> vhost_options(options()->NewOptions());
+  vhost_options->EnableFilter(RewriteOptions::kRewriteCss);
+  vhost_options->SoftEnableFilterForTesting(RewriteOptions::kInlineCss);
+  vhost_options->SoftEnableFilterForTesting(RewriteOptions::kRewriteCss);
+  vhost_options->set_css_preserve_urls(true);  // This will win over ExtendCache
   options()->Merge(*global_options);
+  options()->Merge(*vhost_options);
 
   CssFilterTest::SetUp();
   // Verify that preserve had a chance to forbid some filters.
@@ -328,8 +330,10 @@ TEST_F(CssFilterTestCustomOptions, CssPreserveUrlsWithMergedCacheExtend) {
 
   // Because we set extend_cache at a "lower level", it takes priority
   // over preserve_css_urls and enables URL-rewriting for CSS.
-  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  scoped_ptr<RewriteOptions> vhost_options(options()->NewOptions());
+  vhost_options->EnableFilter(RewriteOptions::kExtendCacheCss);
   options()->Merge(*global_options);
+  options()->Merge(*vhost_options);
 
   CssFilterTest::SetUp();
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);

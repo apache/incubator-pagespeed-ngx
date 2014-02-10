@@ -3515,9 +3515,9 @@ RewriteOptions::MergeOverride RewriteOptions::ComputeMergeOverride(
   // Note: the order of the if and else-if matter. if both this and
   // src have filter enabled and preserve_options set, then the filter
   // would actually be disabled.
-  if (Enabled(filter) && src_preserve_option.value()) {
+  if (src.Enabled(filter) && preserve_option.value()) {
     return kDisablePreserve;
-  } else if (src.Enabled(filter) && preserve_option.value()) {
+  } else if (Enabled(filter) && src_preserve_option.value()) {
     return kDisableFilter;
   }
   return kNoAction;

@@ -696,11 +696,13 @@ void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,
         "Put it in the path";
   }
 
-  ResourceContext context;
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*rewrite_driver(), &context);
+  // Note: This uses an empty context, so no custom parameters like image
+  // dimensions can be passed in.
+  ResourceContext dummy_context;
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*rewrite_driver(), &dummy_context);
   const UrlSegmentEncoder* encoder = FindEncoder(id);
   GoogleString encoded_name;
-  encoder->Encode(name_vector, &context, &encoded_name);
+  encoder->Encode(name_vector, &dummy_context, &encoded_name);
   namer->set_name(encoded_name);
   namer->set_ext(ext);
 }
@@ -708,7 +710,6 @@ void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,
 const UrlSegmentEncoder* RewriteTestBase::FindEncoder(
     const StringPiece& id) const {
   RewriteFilter* filter = rewrite_driver_->FindFilter(id);
-  ResourceContext context;
   return (filter == NULL) ? &default_encoder_ : filter->encoder();
 }
 

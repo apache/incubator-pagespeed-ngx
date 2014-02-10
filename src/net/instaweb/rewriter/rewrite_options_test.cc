@@ -2035,55 +2035,60 @@ TEST_F(RewriteOptionsTest, ParseAndSetDeprecatedOptionFromName1) {
 }
 
 TEST_F(RewriteOptionsTest, BandwidthMode) {
-  options_.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
-  EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kConvertJpegToWebp));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
-  EXPECT_TRUE(options_.in_place_rewriting_enabled());
-  EXPECT_TRUE(options_.css_preserve_urls());
-  EXPECT_TRUE(options_.image_preserve_urls());
-  EXPECT_TRUE(options_.js_preserve_urls());
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
+  EXPECT_FALSE(vhost_options.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(vhost_options.Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(vhost_options.Enabled(RewriteOptions::kConvertJpegToWebp));
+  EXPECT_TRUE(vhost_options.Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(vhost_options.Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(vhost_options.Enabled(
+      RewriteOptions::kInPlaceOptimizeForBrowser));
+  EXPECT_TRUE(vhost_options.in_place_rewriting_enabled());
+  EXPECT_TRUE(vhost_options.css_preserve_urls());
+  EXPECT_TRUE(vhost_options.image_preserve_urls());
+  EXPECT_TRUE(vhost_options.js_preserve_urls());
 
   // We use preemptive rewrites so that there's a chance that a first or
   // second view will yield optimized resources.
-  EXPECT_TRUE(options_.in_place_preemptive_rewrite_css());
-  EXPECT_TRUE(options_.in_place_preemptive_rewrite_css_images());
-  EXPECT_TRUE(options_.in_place_preemptive_rewrite_images());
-  EXPECT_TRUE(options_.in_place_preemptive_rewrite_javascript());
+  EXPECT_TRUE(vhost_options.in_place_preemptive_rewrite_css());
+  EXPECT_TRUE(vhost_options.in_place_preemptive_rewrite_css_images());
+  EXPECT_TRUE(vhost_options.in_place_preemptive_rewrite_images());
+  EXPECT_TRUE(vhost_options.in_place_preemptive_rewrite_javascript());
 
   // Now override a bandwidth-option.  Let's say it's OK to mutate
   // CSS urls.
-  options_.set_css_preserve_urls(false);
-  EXPECT_FALSE(options_.css_preserve_urls());
+  vhost_options.set_css_preserve_urls(false);
+  EXPECT_FALSE(vhost_options.css_preserve_urls());
 
   // JS and Image URLs must still be preserved.
-  EXPECT_TRUE(options_.image_preserve_urls());
-  EXPECT_TRUE(options_.js_preserve_urls());
+  EXPECT_TRUE(vhost_options.image_preserve_urls());
+  EXPECT_TRUE(vhost_options.js_preserve_urls());
 
   // Now merge with an options-set with Core enabled many of these answers
   // change.
-  RewriteOptions core(&thread_system_);
+  RewriteOptions core(&thread_system_), vhost_core(&thread_system_);
   core.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options_.Merge(core);
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteJavascript));
-  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
-  EXPECT_FALSE(options_.in_place_rewriting_enabled());
-  EXPECT_FALSE(options_.css_preserve_urls());
-  EXPECT_FALSE(options_.image_preserve_urls());
-  EXPECT_FALSE(options_.js_preserve_urls());
+
+  vhost_core.Merge(vhost_options);
+  vhost_core.Merge(core);
+
+  EXPECT_TRUE(vhost_core.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(vhost_core.Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(vhost_core.Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(vhost_core.Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_FALSE(vhost_core.Enabled(RewriteOptions::kInPlaceOptimizeForBrowser));
+  EXPECT_FALSE(vhost_core.in_place_rewriting_enabled());
+  EXPECT_FALSE(vhost_core.css_preserve_urls());
+  EXPECT_FALSE(vhost_core.image_preserve_urls());
+  EXPECT_FALSE(vhost_core.js_preserve_urls());
 
   // Finally, merge in another option-set that is bandwidth-only.  We'll
   // revert back to the bandwidth-behavior, but we will inherit the override
   // for CSS preservation we made.
   RewriteOptions bandwidth(&thread_system_);
   bandwidth.SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
-  options_.Merge(bandwidth);
+  MergeOptions(vhost_core, bandwidth);
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRecompressJpeg));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
@@ -2220,8 +2225,9 @@ TEST_F(RewriteOptionsTest, ExtendCacheScriptsOverridesPreserve) {
   global_options.ComputeSignature();
   EXPECT_FALSE(global_options.Enabled(RewriteOptions::kInlineJavascript));
 
-  options_.EnableFilter(RewriteOptions::kExtendCacheScripts);
-  options_.Merge(global_options);
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.EnableFilter(RewriteOptions::kExtendCacheScripts);
+  MergeOptions(global_options, vhost_options);
   options_.ComputeSignature();
 
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineJavascript));
@@ -2235,8 +2241,9 @@ TEST_F(RewriteOptionsTest, ExtendCacheImagesOverridesPreserve) {
   global_options.ComputeSignature();
   EXPECT_FALSE(global_options.Enabled(RewriteOptions::kInlineImages));
 
-  options_.EnableFilter(RewriteOptions::kExtendCacheImages);
-  options_.Merge(global_options);
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.EnableFilter(RewriteOptions::kExtendCacheImages);
+  MergeOptions(global_options, vhost_options);
   options_.ComputeSignature();
 
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineImages));
@@ -2250,8 +2257,9 @@ TEST_F(RewriteOptionsTest, ExtendCacheStylesOverridesPreserve) {
   global_options.ComputeSignature();
   EXPECT_FALSE(global_options.Enabled(RewriteOptions::kInlineCss));
 
-  options_.EnableFilter(RewriteOptions::kExtendCacheCss);
-  options_.Merge(global_options);
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.EnableFilter(RewriteOptions::kExtendCacheCss);
+  MergeOptions(global_options, vhost_options);
   options_.ComputeSignature();
 
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineCss));
@@ -2263,8 +2271,9 @@ TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersScripts) {
   global_options.EnableFilter(RewriteOptions::kExtendCacheScripts);
   global_options.ComputeSignature();
 
-  options_.set_js_preserve_urls(true);
-  options_.Merge(global_options);
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.set_js_preserve_urls(true);
+  MergeOptions(global_options, vhost_options);
   options_.ComputeSignature();
 
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheScripts));
@@ -2276,8 +2285,9 @@ TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersImages) {
   global_options.EnableFilter(RewriteOptions::kExtendCacheImages);
   global_options.ComputeSignature();
 
-  options_.set_image_preserve_urls(true);
-  options_.Merge(global_options);
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.set_image_preserve_urls(true);
+  MergeOptions(global_options, vhost_options);
   options_.ComputeSignature();
 
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheImages));
@@ -2289,8 +2299,9 @@ TEST_F(RewriteOptionsTest, PreserveOverridesExplicitFiltersStyles) {
   global_options.EnableFilter(RewriteOptions::kExtendCacheCss);
   global_options.ComputeSignature();
 
-  options_.set_css_preserve_urls(true);
-  options_.Merge(global_options);
+  RewriteOptions vhost_options(&thread_system_);
+  vhost_options.set_css_preserve_urls(true);
+  MergeOptions(global_options, vhost_options);
   options_.ComputeSignature();
 
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));

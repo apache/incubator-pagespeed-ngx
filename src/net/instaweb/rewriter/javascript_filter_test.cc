@@ -333,11 +333,13 @@ TEST_P(JavascriptFilterTest, JsPreserveOverridingExtend) {
   scoped_ptr<RewriteOptions> global_options(options()->NewOptions());
   global_options->EnableFilter(RewriteOptions::kExtendCacheCss);
 
-  options()->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
-  options()->SoftEnableFilterForTesting(
+  scoped_ptr<RewriteOptions> vhost_options(options()->NewOptions());
+  vhost_options->SoftEnableFilterForTesting(RewriteOptions::kRewriteJavascript);
+  vhost_options->SoftEnableFilterForTesting(
       RewriteOptions::kCanonicalizeJavascriptLibraries);
-  options()->set_js_preserve_urls(true);
+  vhost_options->set_js_preserve_urls(true);
   options()->Merge(*global_options);
+  options()->Merge(*vhost_options);
 
   rewrite_driver()->AddFilters();
   EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
@@ -373,8 +375,10 @@ TEST_P(JavascriptFilterTest, JsExtendOverridingPreserve) {
   global_options->set_js_preserve_urls(true);
   global_options->EnableFilter(RewriteOptions::kRewriteJavascript);
 
-  options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
+  scoped_ptr<RewriteOptions> vhost_options(options()->NewOptions());
+  vhost_options->EnableFilter(RewriteOptions::kExtendCacheScripts);
   options()->Merge(*global_options);
+  options()->Merge(*vhost_options);
   rewrite_driver()->AddFilters();
   EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
   InitTest(100);
