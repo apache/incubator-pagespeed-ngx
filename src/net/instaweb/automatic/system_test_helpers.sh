@@ -393,8 +393,9 @@ function fetch_until() {
 
   # TIMEOUT is how long to keep trying, in seconds.
   if is_expected_failure ; then
-    # For tests that we expect to fail, don't wait hoping for the right result.
-    TIMEOUT=0
+    # For tests that we expect to fail, don't wait long hoping for the right
+    # result.
+    TIMEOUT=10
   else
     # This is longer than PageSpeed should normally ever take to rewrite
     # resources, but if it's running under Valgrind it might occasionally take a
