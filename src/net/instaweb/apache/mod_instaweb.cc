@@ -2116,6 +2116,7 @@ void ApacheProcessContext::InstallCommands() {
       cmd->cmd_data = NULL;
       switch (option->scope()) {
         case RewriteOptions::kDirectoryScope:
+        case RewriteOptions::kQueryScope:
           cmd->req_override = OR_ALL;
           break;
         case RewriteOptions::kServerScope:

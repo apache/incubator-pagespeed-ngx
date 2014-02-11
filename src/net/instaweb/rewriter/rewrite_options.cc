@@ -1160,19 +1160,19 @@ void RewriteOptions::AddProperties() {
       kDefaultCssFlattenMaxBytes,
       &RewriteOptions::css_flatten_max_bytes_, "cf",
       kCssFlattenMaxBytes,
-      kDirectoryScope,
+      kQueryScope,
       "Number of bytes below which stylesheets will be flattened.");
   AddBaseProperty(
       kDefaultCssImageInlineMaxBytes,
       &RewriteOptions::css_image_inline_max_bytes_,
       "cii", kCssImageInlineMaxBytes,
-      kDirectoryScope,
+      kQueryScope,
       "Number of bytes below which CSS images will be inlined.");
   AddBaseProperty(
       kDefaultCssInlineMaxBytes,
       &RewriteOptions::css_inline_max_bytes_, "ci",
       kCssInlineMaxBytes,
-      kDirectoryScope,
+      kQueryScope,
       "Number of bytes below which stylesheets will be inlined.");
   AddBaseProperty(
       kDefaultCssOutlineMinBytes,
@@ -1185,13 +1185,13 @@ void RewriteOptions::AddProperties() {
       kDefaultImageInlineMaxBytes,
       &RewriteOptions::image_inline_max_bytes_, "ii",
       kImageInlineMaxBytes,
-      kDirectoryScope,
+      kQueryScope,
       "Number of bytes below which images will be inlined.");
   AddBaseProperty(
       kDefaultJsInlineMaxBytes,
       &RewriteOptions::js_inline_max_bytes_, "ji",
       kJsInlineMaxBytes,
-      kDirectoryScope,
+      kQueryScope,
       "Number of bytes below which javascript will be inlined.");
   AddBaseProperty(
       kDefaultJsOutlineMinBytes,
@@ -1533,7 +1533,7 @@ void RewriteOptions::AddProperties() {
   AddBaseProperty(
       kDefaultDomainShardCount, &RewriteOptions::domain_shard_count_,
       "dsc", kDomainShardCount,
-      kDirectoryScope,
+      kQueryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       true, &RewriteOptions::modify_caching_headers_, "mch",
@@ -1612,7 +1612,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageJpegRecompressQuality,
       &RewriteOptions::image_jpeg_recompress_quality_, "iq",
       kImageJpegRecompressionQuality,
-      kDirectoryScope,
+      kQueryScope,
       "Set quality parameter for recompressing jpeg images [-1,100], "
       "100 is lossless, -1 uses ImageRecompressionQuality");
   // Use kDefaultImageJpegRecompressQuality as default.
@@ -1620,7 +1620,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageJpegRecompressQualityForSmallScreens,
       &RewriteOptions::image_jpeg_recompress_quality_for_small_screens_, "iqss",
       kImageJpegRecompressionQualityForSmallScreens,
-      kDirectoryScope,
+      kQueryScope,
       "Set quality parameter for recompressing jpeg images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
       "ImageJpegRecompressionQuality.");
@@ -1628,7 +1628,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageRecompressQuality,
       &RewriteOptions::image_recompress_quality_, "irq",
       kImageRecompressionQuality,
-      kDirectoryScope,
+      kQueryScope,
       "Set quality parameter for recompressing images [-1,100], "
       "100 refers to best quality, -1 disables lossy compression. "
       "JpegRecompressionQuality and WebpRecompressionQuality override "
@@ -1662,7 +1662,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageWebpRecompressQuality,
       &RewriteOptions::image_webp_recompress_quality_, "iw",
       kImageWebpRecompressionQuality,
-      kDirectoryScope,
+      kQueryScope,
       "Set quality parameter for recompressing webp images [-1,100], "
       "100 refers to best quality, -1 uses ImageRecompressionQuality.");
   // Use kDefaultImageWebpRecompressQuality as default.
@@ -1670,7 +1670,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageWebpRecompressQualityForSmallScreens,
       &RewriteOptions::image_webp_recompress_quality_for_small_screens_, "iwss",
       kImageWebpRecompressionQualityForSmallScreens,
-      kDirectoryScope,
+      kQueryScope,
       "Set quality parameter for recompressing webp images for small "
       "screens. [-1,100], 100 refers to best quality, -1 falls back to "
       "WebpRecompressionQuality.");
@@ -1869,7 +1869,7 @@ void RewriteOptions::AddProperties() {
       kDefaultMaxCombinedCssBytes,
       &RewriteOptions::max_combined_css_bytes_, "xcc",
       kMaxCombinedCssBytes,
-      kDirectoryScope,
+      kQueryScope,
       "Maximum size allowed for the combined CSS resource.");
   AddBaseProperty(
       kDefaultMaxCombinedJsBytes,
@@ -2808,14 +2808,23 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value, GoogleString* msg) {
   GoogleString error_detail;
   OptionSettingResult result =
-      SetOptionFromNameInternal(name, value, &error_detail);
+      SetOptionFromNameInternal(name, value, false /* from_query */,
+                                &error_detail);
   return FormatSetOptionMessage(result, name, value, error_detail, msg);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     StringPiece name, StringPiece value) {
   GoogleString error_detail;
-  return SetOptionFromNameInternal(name, value, &error_detail);
+  return SetOptionFromNameInternal(name, value, false /* from_query */,
+                                   &error_detail);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromQuery(
+    StringPiece name, StringPiece value) {
+  GoogleString error_detail;
+  return SetOptionFromNameInternal(name, value, true /* from_query */,
+                                   &error_detail);
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
@@ -2845,8 +2854,8 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
     StringPiece name, StringPiece arg,
     GoogleString* msg, MessageHandler* handler) {
   GoogleString error_detail;
-  OptionSettingResult result = SetOptionFromNameInternal(name, arg,
-                                                         &error_detail);
+  OptionSettingResult result = SetOptionFromNameInternal(
+      name, arg, false /* from_query */, &error_detail);
   if (result != RewriteOptions::kOptionNameUnknown) {
     return FormatSetOptionMessage(result, name, arg, error_detail, msg);
   }
@@ -3014,7 +3023,8 @@ StringPiece RewriteOptions::GetEffectiveOptionName(StringPiece name) {
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromNameInternal(
-    StringPiece name, StringPiece value, GoogleString* error_detail) {
+    StringPiece name, StringPiece value, bool from_query,
+    GoogleString* error_detail) {
   if (!IsValidOptionName(name)) {
     return kOptionNameUnknown;
   }
@@ -3025,7 +3035,11 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromNameInternal(
   if (it != all_options_.end()) {
     OptionBase* option = *it;
     if (StringCaseEqual(effective_name, option->option_name())) {
-      if (!option->SetFromString(value, error_detail)) {
+      if (from_query && (option->scope() != kQueryScope)) {
+        StrAppend(error_detail, "Option ", name,
+                  " cannot be set from a query param.");
+        return kOptionNameUnknown;
+      } else if (!option->SetFromString(value, error_detail)) {
         return kOptionValueInvalid;
       } else {
         return kOptionOk;

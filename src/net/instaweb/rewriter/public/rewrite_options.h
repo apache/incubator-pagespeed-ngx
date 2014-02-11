@@ -451,7 +451,11 @@ class RewriteOptions {
   // for example, kDirectoryScope indicates it can be changed via .htaccess
   // files, which is the only way that sites using shared hosting can change
   // settings.
+  //
+  // The options are ordered from most permissive to least permissive.
   enum OptionScope {
+    kQueryScope,      // customized at query (query-param, request headers,
+                      // response headers)
     kDirectoryScope,  // customized at directory level (.htaccess, <Directory>)
     kServerScope,     // customized at server level (e.g. VirtualHost)
     kProcessScope,    // customized at process level only (command-line flags)
@@ -1123,6 +1127,11 @@ class RewriteOptions {
   // Like above, but doesn't bother formatting the error message.
   OptionSettingResult SetOptionFromName(
       StringPiece name, StringPiece value);
+
+  // Same as SetOptionFromName, but only works with options that are valid
+  // to use as query parameters, returning kOptionNameUnknown for properties
+  // where the scope() is not kQueryScope.
+  OptionSettingResult SetOptionFromQuery(StringPiece name, StringPiece value);
 
   // Advanced option parsing, that can understand non-scalar values
   // (unlike SetOptionFromName), and which is extensible by platforms.
@@ -3128,7 +3137,8 @@ class RewriteOptions {
   // Backend to SetOptionFromName that doesn't do full message formatting.
   // *error_detail may not be always set.
   OptionSettingResult SetOptionFromNameInternal(
-      StringPiece name, StringPiece value, GoogleString* error_detail);
+      StringPiece name, StringPiece value, bool from_query,
+      GoogleString* error_detail);
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().

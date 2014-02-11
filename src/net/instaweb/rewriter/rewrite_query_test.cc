@@ -720,12 +720,13 @@ TEST_F(RewriteQueryTest, NoscripWithTrailingQuestionMarkHeader) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
-TEST_F(RewriteQueryTest, PreserveUrlsForPagespeedResources) {
-  const char kQuery[] = "PageSpeedJpegRecompressionQuality=85";
+TEST_F(RewriteQueryTest, JpegRecompressionQuality) {
+  const char kQuery[] = "PageSpeedJpegRecompressionQuality=73";
   GoogleString query, req;
   RewriteOptions* options = ParseAndScan(image_url_, kQuery, "", &query, &req);
   EXPECT_TRUE(options != NULL);
   EXPECT_STREQ("", query);
+  EXPECT_EQ(73, options->image_jpeg_recompress_quality());
 }
 
 TEST_F(RewriteQueryTest, GenerateEmptyResourceOption) {
