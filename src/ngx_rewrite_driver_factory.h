@@ -71,6 +71,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Initializes the StaticAssetManager.
   virtual void InitStaticAssetManager(
       StaticAssetManager* static_asset_manager);
+  virtual ServerContext* NewDecodingServerContext();
   bool InitNgxUrlAsyncFetchers();
   // Check resolver configured or not.
   bool CheckResolver();
@@ -80,7 +81,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // platform-independent statistics.
   static void InitStats(Statistics* statistics);
   NgxServerContext* MakeNgxServerContext(StringPiece hostname, int port);
-  ServerContext* NewServerContext();
+  virtual ServerContext* NewServerContext();
 
   // Starts pagespeed threads if they've not been started already.  Must be
   // called after the caller has finished any forking it intends to do.
@@ -168,6 +169,9 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Owned by the superclass.
   // TODO(jefftk): merge the nginx and apache ways of doing this.
   SharedCircularBuffer* ngx_shared_circular_buffer_;
+
+  GoogleString hostname_;
+  int port_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
