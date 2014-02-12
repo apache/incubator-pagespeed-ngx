@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/categorized_refcount.h"
 
 namespace net_instaweb {
@@ -78,7 +79,6 @@ class RequestProperties;
 class RequestTrace;
 class ResourceContext;
 class ResourceNamer;
-class ResponseHeaders;
 class RewriteContext;
 class RewriteDriverPool;
 class RewriteFilter;
@@ -1639,6 +1639,7 @@ class OptionsAwareHTTPCacheCallback : public HTTPCache::Callback {
   virtual bool IsCacheValid(const GoogleString& key,
                             const ResponseHeaders& headers);
   virtual int64 OverrideCacheTtlMs(const GoogleString& key);
+  virtual ResponseHeaders::VaryOption RespectVaryOnResources() const;
 
   // Validates the specified response for the URL, request, given the specified
   // options.  This is for checking if cache response can still be used, not for

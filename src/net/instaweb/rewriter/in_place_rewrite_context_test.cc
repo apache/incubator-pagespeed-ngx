@@ -258,7 +258,10 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     mock_url_fetcher()->SetResponse(url, response_headers, body);
     if (write_to_cache) {
       response_headers.ComputeCaching();
-      http_cache()->Put(url, &response_headers, body, message_handler());
+      http_cache()->Put(
+          url, request_headers_.GetProperties(),
+          ResponseHeaders::GetVaryOption(options()->respect_vary()),
+          &response_headers, body, message_handler());
     }
   }
 

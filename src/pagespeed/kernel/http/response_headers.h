@@ -24,11 +24,11 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/headers.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 
 class HttpResponseHeaders;
-class RequestHeaders;
 class MessageHandler;
 class Writer;
 
@@ -45,6 +45,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // option. This will be set to the correct default value after conclusive
   // experiments.
   static const int64 kDefaultMinCacheTtlMs = -1;
+
+  enum VaryOption { kRespectVaryOnResources, kIgnoreVaryOnResources };
+  enum ValidatorOption { kHasValidator, kNoValidator };
 
   ResponseHeaders();
   virtual ~ResponseHeaders();
@@ -97,7 +100,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // accessors before ComputeCaching is called.
   void ComputeCaching();
 
-
   // Returns true if these response headers indicate the response is
   // publicly cacheable if it was fetched w/o special authorization
   // headers.
@@ -105,14 +107,26 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // See also RequiresProxyRevalidation(), which must be used to
   // determine whether stale content can be re-used by a proxy.
   //
-  // Generally you want to use IsProxyCacheableGivenRequest() instead which will
-  // also take the request headers into account, unless you know the request
-  // was synthesized with known headers which do not include authorization.
-  bool IsProxyCacheable() const;
+  // The difference between HTML and non-HTML is tolerance for Vary:Cookie.
+  // In HTML we are willing to cache cookieless responses and serve them
+  // to other cookieless requests, but this requires the requests to
+  // be validated.  Callers can indicate their ability to validate requests
+  // by passing kHasRequestValidator for has_request_validator.
+  bool IsProxyCacheable(RequestHeaders::Properties properties,
+                        VaryOption respect_vary_on_resources,
+                        ValidatorOption has_request_validator) const;
 
-  // Returns true if these response header indicate the response is cacheable
-  // if it was fetched with given 'request_headers'.
-  bool IsProxyCacheableGivenRequest(const RequestHeaders& req_headers) const;
+  static VaryOption GetVaryOption(bool respect_vary) {
+    return respect_vary ? kRespectVaryOnResources : kIgnoreVaryOnResources;
+  }
+
+  // The zero-arg version of IsProxyCacheable gives a pessimistic answer,
+  // assuming the request has cookies, there is no validator, and we
+  // respect Vary.
+  bool IsProxyCacheable() const {
+    return IsProxyCacheable(
+        RequestHeaders::Properties(), kRespectVaryOnResources, kNoValidator);
+  }
 
   // Returns true if the response is privately cacheable.
   //
@@ -129,13 +143,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // in any Cache-Control setting.  These must be checked to see whether
   // it's OK to serve stale content while freshening in the background.
   bool RequiresProxyRevalidation() const;
-
-  // Returns whether or not we can proxy cache these headers if we take into
-  // account the Vary: headers. Note that we consider Vary: Cookie as cacheable
-  // if request_has_cookie is false.
-  //
-  // TODO(sligocki): Rename to IsVaryCacheable().
-  bool VaryCacheable(bool request_has_cookie) const;
 
   // Note(sligocki): I think CacheExpirationTimeMs will return 0 if !IsCacheable
   // TODO(sligocki): Look through callsites and make sure this is being

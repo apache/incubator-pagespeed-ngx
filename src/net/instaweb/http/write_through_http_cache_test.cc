@@ -38,6 +38,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace {
 // Set the cache size large enough so nothing gets evicted during this test.
@@ -83,6 +84,10 @@ class FakeHttpCacheCallback : public HTTPCache::Callback {
         first_cache_fresh_ : second_cache_fresh_;
     first_call_cache_fresh_ = false;
     return result;
+  }
+
+  virtual ResponseHeaders::VaryOption RespectVaryOnResources() const {
+    return ResponseHeaders::kRespectVaryOnResources;
   }
 
   bool called_;
@@ -178,6 +183,13 @@ class WriteThroughHTTPCacheTest : public testing::Test {
     simple_stats_.Clear();
   }
 
+  void Put(const GoogleString& key, ResponseHeaders* headers,
+           const StringPiece& content, MessageHandler* handler) {
+    http_cache_->Put(key, RequestHeaders::Properties(),
+                     ResponseHeaders::kRespectVaryOnResources,
+                     headers, content, handler);
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   MockTimer mock_timer_;
   MockHasher mock_hasher_;
@@ -206,7 +218,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   ClearStats();
   ResponseHeaders headers_in;
   InitHeaders(&headers_in, "max-age=300");
-  http_cache_->Put(key_, &headers_in, content_, &message_handler_);
+  Put(key_, &headers_in, content_, &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
@@ -311,7 +323,9 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
                           &simple_stats_);
   // Force caching so that the stale response is inserted.
   temp_l1_cache.set_force_caching(true);
-  temp_l1_cache.Put(key_, &headers_in, "new", &message_handler_);
+  temp_l1_cache.Put(key_, RequestHeaders::Properties(),
+                    ResponseHeaders::kRespectVaryOnResources,
+                    &headers_in, "new", &message_handler_);
   ClearStats();
   FakeHttpCacheCallback callback2(thread_system_.get());
   http_cache_->Find(key_, &message_handler_, &callback2);
@@ -372,7 +386,7 @@ TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
   InitHeaders(&headers_in, "max-age=300");
 
   // This one will fit. (The key is 21 bytes and the HTTPValue is 139 bytes).
-  http_cache_->Put(key_, &headers_in, "Name", &message_handler_);
+  Put(key_, &headers_in, "Name", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
@@ -386,7 +400,7 @@ TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
   EXPECT_EQ(1, cache2_.num_inserts());
   EXPECT_EQ(0, cache2_.num_deletes());
   // This one will not. (The key is 21 bytes and the HTTPValue is 150 bytes).
-  http_cache_->Put(key2_, &headers_in, "TooBigForCache1", &message_handler_);
+  Put(key2_, &headers_in, "TooBigForCache1", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
@@ -411,7 +425,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGetForHttps) {
   // Disable caching of html on https.
   http_cache_->set_disable_html_caching_on_https(true);
   // The html response does not get cached.
-  http_cache_->Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
+  Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   HTTPValue value;
@@ -423,7 +437,7 @@ TEST_F(WriteThroughHTTPCacheTest, PutGetForHttps) {
   meta_data_in.Replace(HttpAttributes::kContentType,
                        kContentTypeCss.mime_type());
   meta_data_in.ComputeCaching();
-  http_cache_->Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
+  Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   found = Find(kHttpsUrl, &value, &meta_data_out, &message_handler_);
@@ -490,7 +504,7 @@ TEST_F(WriteThroughHTTPCacheTest, Uncacheable) {
   ClearStats();
   ResponseHeaders headers_in, headers_out;
   InitHeaders(&headers_in, NULL);
-  http_cache_->Put(key_, &headers_in, content_, &message_handler_);
+  Put(key_, &headers_in, content_, &message_handler_);
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       key_, &value, &headers_out, &message_handler_);
@@ -502,7 +516,7 @@ TEST_F(WriteThroughHTTPCacheTest, UncacheablePrivate) {
   ClearStats();
   ResponseHeaders headers_in, headers_out;
   InitHeaders(&headers_in, "private, max-age=300");
-  http_cache_->Put(key_, &headers_in, content_, &message_handler_);
+  Put(key_, &headers_in, content_, &message_handler_);
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       key_, &value, &headers_out, &message_handler_);
@@ -515,7 +529,7 @@ TEST_F(WriteThroughHTTPCacheTest, CacheInvalidation) {
   ClearStats();
   ResponseHeaders meta_data_in;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_->Put(key_, &meta_data_in, content_, &message_handler_);
+  Put(key_, &meta_data_in, content_, &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
@@ -622,7 +636,7 @@ TEST_F(WriteThroughHTTPCacheTest, CacheFreshness) {
   ClearStats();
   ResponseHeaders meta_data_in;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_->Put(key_, &meta_data_in, content_, &message_handler_);
+  Put(key_, &meta_data_in, content_, &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));

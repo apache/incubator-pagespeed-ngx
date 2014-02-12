@@ -378,9 +378,11 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
                         const GoogleString& original_url,
                         RewriteOptions* custom_options,
                         ApacheServerContext* server_context,
-                        RequestHeaders* owned_headers,
                         request_rec* request) {
-  scoped_ptr<RequestHeaders> request_headers(owned_headers);
+  RequestHeaders request_headers;
+  // We need to see if the origin request has cookies, so get the unfiltered
+  // headers directly from the request_rec.
+  ApacheRequestToRequestHeaders(*request, &request_headers);
   bool handled = false;
 
   RewriteDriver* driver = ResourceFetch::GetDriver(
@@ -410,7 +412,7 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
     // InPlaceResourceRecorder as we want any ?ModPagespeed query-params to
     // be stripped from the cache key before we store the result in HTTPCache.
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
-        stripped_gurl->Spec(), request_headers.release(),
+        stripped_gurl->Spec(), request_headers,
         options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),
@@ -527,7 +529,7 @@ bool handle_as_resource(ApacheServerContext* server_context,
              options->IsAllowed(url)) {
     handled = handle_as_in_place(request_context, gurl, url,
                                  custom_options.release(), server_context,
-                                 request_headers.release(), request);
+                                 request);
   }
 
   return handled;

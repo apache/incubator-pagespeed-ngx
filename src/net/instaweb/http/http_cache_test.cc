@@ -85,6 +85,11 @@ class HTTPCacheTest : public testing::Test {
       return override_cache_ttl_ms_;
     }
 
+    // Detailed Vary handling is tested in ResponseHeadersTest.
+    virtual ResponseHeaders::VaryOption RespectVaryOnResources() const {
+      return ResponseHeaders::kRespectVaryOnResources;
+    }
+
     bool called_;
     HTTPCache::FindResult result_;
     bool cache_valid_;
@@ -161,6 +166,13 @@ class HTTPCacheTest : public testing::Test {
         thread_system_.get()));
   }
 
+  void Put(const GoogleString& key, ResponseHeaders* headers,
+           const StringPiece& content, MessageHandler* handler) {
+    http_cache_.Put(key, RequestHeaders::Properties(),
+                    ResponseHeaders::kRespectVaryOnResources,
+                    headers, content, handler);
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   MockTimer mock_timer_;
   MockHasher mock_hasher_;
@@ -181,7 +193,7 @@ TEST_F(HTTPCacheTest, PutGet) {
 
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   HTTPValue value;
@@ -249,7 +261,7 @@ TEST_F(HTTPCacheTest, PutGetForInvalidUrl) {
                        kContentTypeHtml.mime_type());
   meta_data_in.ComputeCaching();
   // The response for the invalid url does not get cached.
-  http_cache_.Put("blah", &meta_data_in, "content", &message_handler_);
+  Put("blah", &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   HTTPValue value;
@@ -268,7 +280,7 @@ TEST_F(HTTPCacheTest, PutGetForHttps) {
   // Disable caching of html on https.
   http_cache_.set_disable_html_caching_on_https(true);
   // The html response does not get cached.
-  http_cache_.Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
+  Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   HTTPValue value;
@@ -280,7 +292,7 @@ TEST_F(HTTPCacheTest, PutGetForHttps) {
   meta_data_in.Replace(HttpAttributes::kContentType,
                        kContentTypeCss.mime_type());
   meta_data_in.ComputeCaching();
-  http_cache_.Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
+  Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   found = Find(kHttpsUrl, &value, &meta_data_out, &message_handler_);
@@ -300,7 +312,7 @@ TEST_F(HTTPCacheTest, EtagsAddedIfAbsent) {
   simple_stats_->Clear();
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
 
@@ -327,7 +339,7 @@ TEST_F(HTTPCacheTest, EtagsNotAddedIfPresent) {
   ResponseHeaders meta_data_in, meta_data_out;
   meta_data_in.Add(HttpAttributes::kEtag, "Etag!");
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
 
@@ -354,7 +366,7 @@ TEST_F(HTTPCacheTest, CookiesNotCached) {
   meta_data_in.Add(HttpAttributes::kSetCookie, "cookies!");
   meta_data_in.Add(HttpAttributes::kSetCookie2, "more cookies!");
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   HTTPValue value;
@@ -488,7 +500,7 @@ TEST_F(HTTPCacheTest, IgnoreFailurePuts) {
 
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl3, &meta_data_in, "content", &message_handler_);
+  Put(kUrl3, &meta_data_in, "content", &message_handler_);
 
   HTTPValue value_out;
   EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
@@ -502,7 +514,7 @@ TEST_F(HTTPCacheTest, IgnoreFailurePuts) {
 TEST_F(HTTPCacheTest, Uncacheable) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, NULL);
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       kUrl, &value, &meta_data_out, &message_handler_);
@@ -513,7 +525,7 @@ TEST_F(HTTPCacheTest, Uncacheable) {
 TEST_F(HTTPCacheTest, UncacheablePrivate) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "private, max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       kUrl, &value, &meta_data_out, &message_handler_);
@@ -525,7 +537,7 @@ TEST_F(HTTPCacheTest, UncacheablePrivate) {
 TEST_F(HTTPCacheTest, CacheInvalidation) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
+  Put(kUrl, &meta_data_in, "content", &message_handler_);
   HTTPValue value;
   // Check with cache valid.
   EXPECT_EQ(HTTPCache::kFound,
@@ -539,7 +551,7 @@ TEST_F(HTTPCacheTest, IsFresh) {
   const char kDataIn[] = "content";
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, kDataIn, &message_handler_);
+  Put(kUrl, &meta_data_in, kDataIn, &message_handler_);
   HTTPValue value;
   scoped_ptr<Callback> callback(NewCallback());
   callback->fresh_ = true;
@@ -574,7 +586,7 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   const char kDataIn[] = "content";
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
-  http_cache_.Put(kUrl, &meta_data_in, kDataIn, &message_handler_);
+  Put(kUrl, &meta_data_in, kDataIn, &message_handler_);
   HTTPValue value;
   scoped_ptr<Callback> callback(NewCallback());
   callback->override_cache_ttl_ms_ = 400 * 1000;
@@ -611,7 +623,7 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   value.Clear();
   meta_data_in.Clear();
   InitHeaders(&meta_data_in, "private");
-  http_cache_.Put(kUrl, &meta_data_in, kDataIn, &message_handler_);
+  Put(kUrl, &meta_data_in, kDataIn, &message_handler_);
   callback->override_cache_ttl_ms_ = 400 * 1000;
   EXPECT_EQ(HTTPCache::kFound,
             FindWithCallback(kUrl, &value, &meta_data_out, &message_handler_,

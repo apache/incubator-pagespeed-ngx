@@ -65,6 +65,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 
@@ -130,6 +131,11 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
 
     void Block() {
       sync_.Wait();
+    }
+
+    // RespectVary not relevant in this context.
+    virtual ResponseHeaders::VaryOption RespectVaryOnResources() const {
+      return ResponseHeaders::kRespectVaryOnResources;
     }
 
    protected:
@@ -229,7 +235,9 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   void TestHttpPut(HTTPCache* cache, StringPiece key, StringPiece value) {
     ResponseHeaders headers;
     SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
-    cache->Put(key.as_string(), &headers, value, factory()->message_handler());
+    cache->Put(key.as_string(), RequestHeaders::Properties(),
+               ResponseHeaders::kRespectVaryOnResources, &headers, value,
+               factory()->message_handler());
   }
 
   void TestHttpGet(HTTPCache* cache, StringPiece key,

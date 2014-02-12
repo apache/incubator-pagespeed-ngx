@@ -66,6 +66,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 
 namespace net_instaweb {
@@ -250,6 +251,35 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   ClearStats();
   EXPECT_EQ(0, fetch_successes_->Get());  // no more fetches.
   EXPECT_EQ(0, fetch_failures_->Get());
+}
+
+TEST_F(RewriteContextTest, TrimOnTheFlyWithVaryCookie) {
+  InitTrimFilters(kOnTheFlyResource);
+  ResponseHeaders response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &response_headers);
+  response_headers.Add(HttpAttributes::kVary, HttpAttributes::kCookie);
+  SetFetchResponse(AbsolutifyUrl("a.css"), response_headers, " a ");
+
+  // We cannot rewrite resources with Vary:Cookie in the response,
+  // even if there was no cookie in the request.  It is conceivable to
+  // implement a policy where Vary:Cookie is tolerated in the response
+  // as long as there are no cookies in the request.  We would have to
+  // ensure that we emitted the Vary:Cookie when serving the response
+  // for the benefit of any other proxy caches.  The real challenge is
+  // that the original domain of the resources might not be the same
+  // as the domain of the HTML, so when serving HTML we would not know
+  // whether the client had clear cookies for the resource fetch.  So
+  // we could only do that if we knew the mapped resource domain was
+  // cookieless, or the domain was the same as the HTML domain.
+  //
+  // Since the number of resources this affects on the internet is
+  // very small -- less than 1% we will not be trying to tackle If we
+  // do, this test will have to change to ValidateExpected against
+  // CssLinkHref(Encode("", "tw", "0", "a.css", "css"), and we'd have
+  // to also test that we didn't do the rewrite when there were
+  // cookies on the HTML request.
+  GoogleString input_html = CssLinkHref("a.css");
+  ValidateNoChanges("vary_cookie", input_html);
 }
 
 TEST_F(RewriteContextTest, UnhealthyCacheNoHtmlRewrites) {
@@ -3402,8 +3432,10 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
       "http://test.com/test.css", -1, "etag", response_headers, kDataIn);
   HTTPCache* l2_only_cache = new HTTPCache(&l2_cache, timer(), hasher(),
                                            statistics());
-  l2_only_cache->Put(AbsolutifyUrl(kPath), &response_headers, kDataIn,
-                     message_handler());
+  l2_only_cache->Put(
+      AbsolutifyUrl(kPath), RequestHeaders::Properties(),
+      ResponseHeaders::GetVaryOption(options()->respect_vary()),
+      &response_headers, kDataIn, message_handler());
   delete l2_only_cache;
 
   ClearStats();

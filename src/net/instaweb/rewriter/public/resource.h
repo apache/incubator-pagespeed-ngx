@@ -281,6 +281,8 @@ class Resource : public RefCounted<Resource> {
                                AsyncCallback* callback) = 0;
 
   void set_enable_cache_purge(bool x) { enable_cache_purge_ = x; }
+  ResponseHeaders::VaryOption respect_vary() const { return respect_vary_; }
+  void set_respect_vary(ResponseHeaders::VaryOption x) { respect_vary_ = x; }
   void set_proactive_resource_freshening(bool x) {
     proactive_resource_freshening_ = x;
   }
@@ -314,6 +316,7 @@ class Resource : public RefCounted<Resource> {
   bool proactive_resource_freshening_;
   bool disable_rewrite_on_no_transform_;
   bool is_authorized_domain_;
+  ResponseHeaders::VaryOption respect_vary_;
 
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };

@@ -150,6 +150,30 @@ class ResponseHeadersTest : public testing::Test {
     return response_headers_.cache_fields_dirty_;
   }
 
+  bool IsProxyCacheable(const RequestHeaders& request_headers,
+                        ResponseHeaders::VaryOption respect_vary) {
+    return response_headers_.IsProxyCacheable(request_headers.GetProperties(),
+                                              respect_vary,
+                                              ResponseHeaders::kNoValidator);
+  }
+
+  bool IsProxyCacheable(const RequestHeaders& request_headers) {
+    return response_headers_.IsProxyCacheable(
+        request_headers.GetProperties(),
+        ResponseHeaders::kRespectVaryOnResources,
+        ResponseHeaders::kNoValidator);
+  }
+
+  bool IsVaryCacheable(bool has_cookie, bool has_cookie2,
+                       ResponseHeaders::VaryOption respect_vary,
+                       ResponseHeaders::ValidatorOption has_validator) {
+    RequestHeaders::Properties properties;
+    properties.has_cookie = has_cookie;
+    // TODO(jmarantz): add properties.has_cookie2 = has_cookie2;
+    return response_headers_.IsProxyCacheable(
+        properties, respect_vary, has_validator);
+  }
+
   template<class Proto>
   void RemoveIfNotInOverrideWrapper(const Headers<Proto>& keep,
                                     Headers<Proto>* headers) {
@@ -297,8 +321,8 @@ TEST_F(ResponseHeadersTest, TestCachingPublic) {
 
   EXPECT_TRUE(response_headers_.IsBrowserCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
-  EXPECT_TRUE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
-  EXPECT_TRUE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
+  EXPECT_TRUE(IsProxyCacheable(with_auth_));
+  EXPECT_TRUE(IsProxyCacheable(without_auth_));
   EXPECT_EQ(300 * 1000,
             response_headers_.CacheExpirationTimeMs() -
             response_headers_.date_ms());
@@ -312,8 +336,8 @@ TEST_F(ResponseHeadersTest, TestCachingPartialReply) {
 
   EXPECT_FALSE(response_headers_.IsBrowserCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
-  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
+  EXPECT_FALSE(IsProxyCacheable(with_auth_));
+  EXPECT_FALSE(IsProxyCacheable(without_auth_));
 }
 
 // Private caching
@@ -323,8 +347,8 @@ TEST_F(ResponseHeadersTest, TestCachingPrivate) {
                       "Cache-control: private, max-age=10\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsBrowserCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
-  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
+  EXPECT_FALSE(IsProxyCacheable(with_auth_));
+  EXPECT_FALSE(IsProxyCacheable(without_auth_));
   EXPECT_EQ(10 * 1000,
             response_headers_.CacheExpirationTimeMs() -
             response_headers_.date_ms());
@@ -337,8 +361,8 @@ TEST_F(ResponseHeadersTest, TestCachingDefault) {
                       "Cache-control: max-age=100\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsBrowserCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
-  EXPECT_TRUE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
+  EXPECT_FALSE(IsProxyCacheable(with_auth_));
+  EXPECT_TRUE(IsProxyCacheable(without_auth_));
   EXPECT_EQ(100 * 1000,
             response_headers_.CacheExpirationTimeMs() -
             response_headers_.date_ms());
@@ -952,18 +976,87 @@ TEST_F(ResponseHeadersTest, TestCachingVaryStar) {
                       "Cache-control: public, max-age=300\r\n"
                       "Vary: *\r\n\r\n\r\n"));
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.VaryCacheable(true));
-  EXPECT_FALSE(response_headers_.VaryCacheable(false));
+  EXPECT_FALSE(response_headers_.IsProxyCacheable(
+      RequestHeaders::Properties(),
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(response_headers_.IsProxyCacheable(
+      RequestHeaders::Properties(),
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kNoValidator));
 }
 
-TEST_F(ResponseHeadersTest, TestCachingVaryCookie) {
+TEST_F(ResponseHeadersTest, TestCachingVaryCookieNonHtml) {
   ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
                       "Cache-control: public, max-age=300\r\n"
                       "Vary: Cookie\r\n\r\n\r\n"));
-  EXPECT_TRUE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.VaryCacheable(true));
-  EXPECT_TRUE(response_headers_.VaryCacheable(false));
+  // Verify that all 16 combinations of having cookies, cookie2, respecting
+  // and ignoring vary, and claiming a validator, result in this pattern
+  // being uncacheable.
+  for (int has_cookie = 0; has_cookie < 2; ++has_cookie) {
+    for (int has_cookie2 = 0; has_cookie2 < 2; ++has_cookie2) {
+      for (int vary = 0; vary < 2; ++vary) {
+        for (int validator = 0; validator < 2; ++validator) {
+          EXPECT_FALSE(IsVaryCacheable(
+              has_cookie != 0,
+              has_cookie2 != 0,
+              ResponseHeaders::GetVaryOption(vary != 0),
+              (validator != 0) ? ResponseHeaders::kHasValidator
+              : ResponseHeaders::kNoValidator));
+        }
+      }
+    }
+  }
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryCookieHtml) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Vary: Cookie\r\n\r\n\r\n"));
+  EXPECT_FALSE(IsVaryCacheable(
+      true,   // has_cookie
+      false,  // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_TRUE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      true,   // has_cookie
+      false,  // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_TRUE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kHasValidator));
+
+  EXPECT_FALSE(IsVaryCacheable(
+      true,   // has_cookie
+      false,  // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      true,   // has_cookie
+      false,  // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kNoValidator));
 }
 
 TEST_F(ResponseHeadersTest, TestCachingVaryCookieUserAgent) {
@@ -971,9 +1064,16 @@ TEST_F(ResponseHeadersTest, TestCachingVaryCookieUserAgent) {
                       "Date: ", start_time_string_, "\r\n"
                       "Cache-control: public, max-age=300\r\n"
                       "Vary: Cookie,User-Agent\r\n\r\n\r\n"));
-  EXPECT_TRUE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.VaryCacheable(true));
-  EXPECT_FALSE(response_headers_.VaryCacheable(false));
+  EXPECT_FALSE(IsVaryCacheable(
+      true,   // has_cookie
+      false,  // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
 }
 
 TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncoding) {
@@ -982,18 +1082,51 @@ TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncoding) {
                       "Cache-control: public, max-age=300\r\n"
                       "Vary: Accept-Encoding\r\n\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
-  EXPECT_TRUE(response_headers_.VaryCacheable(true));
-  EXPECT_TRUE(response_headers_.VaryCacheable(false));
+  EXPECT_TRUE(IsVaryCacheable(
+      true,    // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_TRUE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
 }
 
-TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncodingCookie) {
+TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncodingCookieNonHtml) {
   ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
                       "Cache-control: public, max-age=300\r\n"
                       "Vary: Accept-Encoding,Cookie\r\n\r\n\r\n"));
-  EXPECT_TRUE(response_headers_.IsProxyCacheable());
-  EXPECT_FALSE(response_headers_.VaryCacheable(true));
-  EXPECT_TRUE(response_headers_.VaryCacheable(false));
+  EXPECT_FALSE(IsVaryCacheable(
+      true,    // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncodingCookieHtml) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Vary: Accept-Encoding,Cookie\r\n\r\n\r\n"));
+  EXPECT_FALSE(IsVaryCacheable(
+      true,    // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_TRUE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
 }
 
 TEST_F(ResponseHeadersTest, TestSetDateAndCaching) {

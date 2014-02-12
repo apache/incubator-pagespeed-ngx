@@ -383,25 +383,51 @@ bool ResponseHeaders::RequiresProxyRevalidation() const {
   return proto_->requires_proxy_revalidation();
 }
 
-bool ResponseHeaders::IsProxyCacheable() const {
+bool ResponseHeaders::IsProxyCacheable(
+    RequestHeaders::Properties req_properties,
+    VaryOption respect_vary,
+    ValidatorOption has_request_validator) const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before IsProxyCacheable()";
-  return proto_->proxy_cacheable();
-}
 
-bool ResponseHeaders::IsProxyCacheableGivenRequest(
-    const RequestHeaders& req_headers) const {
-  if (!IsProxyCacheable()) {
+  if (!proto_->proxy_cacheable()) {
     return false;
   }
 
-  if (req_headers.Has(HttpAttributes::kAuthorization)) {
-    // For something requested with authorization to be cacheable, it must
-    // either  be something that goes through revalidation (which we currently
-    // do not do) or something that has a Cache-Control: public.
-    // See RFC2616, 14.8
-    // (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.8)
-    return HasValue(HttpAttributes::kCacheControl, "public");
+  // For something requested with authorization to be cacheable, it must
+  // either  be something that goes through revalidation (which we currently
+  // do not do) or something that has a Cache-Control: public.
+  // See RFC2616, 14.8
+  // (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.8)
+  if (req_properties.has_authorization &&
+      !HasValue(HttpAttributes::kCacheControl, "public")) {
+    return false;
+  }
+
+  ConstStringStarVector values;
+  Lookup(HttpAttributes::kVary, &values);
+  bool is_html_like = IsHtmlLike();
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    StringPiece val(*values[i]);
+    if (!val.empty() &&
+        !StringCaseEqual(HttpAttributes::kAcceptEncoding, val)) {
+      if (StringCaseEqual(HttpAttributes::kCookie, val)) {
+        // We check Vary:Cookie independent of whether RespectVary is specified.
+        // For HTML, we are OK caching and re-serving content served with
+        // Vary:Cookie, as long as there is no cookie in the header.  However
+        // for resources we elect not to do this due to the possibility of us
+        // not seeing the original cookie after domain-mapping.
+        if (req_properties.has_cookie || !is_html_like ||
+            (has_request_validator == kNoValidator)) {
+          return false;
+        }
+        // TODO(jmarantz): add/test handling for Cookie2 for completeness.
+      } else if ((respect_vary == kRespectVaryOnResources) || is_html_like) {
+        // We never cache HTML with other Vary headers, and we don't
+        // do so for resources either if respect_vary is set.
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -453,35 +479,6 @@ void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
   StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
   RemoveFromHeaders(&names_to_sanitize[0], names_to_sanitize.size(), headers);
-}
-
-bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {
-  if (IsProxyCacheable()) {
-    if (force_cache_ttl_ms_ > 0) {
-      // If we've been asked to force cache a request, then we always consider
-      // it as VaryCacheable.
-      return true;
-    }
-
-    ConstStringStarVector values;
-    Lookup(HttpAttributes::kVary, &values);
-    bool vary_cacheable = true;
-    for (int i = 0, n = values.size(); i < n; ++i) {
-      StringPiece val(*values[i]);
-      if (val.empty() ||
-          StringCaseEqual(HttpAttributes::kAcceptEncoding, val) ||
-          (!request_has_cookie &&
-           StringCaseEqual(HttpAttributes::kCookie, val))) {
-        // If the request doesn't have cookies set, we consider Vary: Cookie as
-        // cacheable.
-        continue;
-      }
-      vary_cacheable = false;
-      break;
-    }
-    return vary_cacheable;
-  }
-  return false;
 }
 
 namespace {

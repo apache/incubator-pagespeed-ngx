@@ -221,7 +221,14 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
       if (resource_->IsValidAndCacheableImpl(*headers)) {
         HTTPValue* value = http_value();
         value->SetHeaders(headers);
-        http_cache()->Put(resource_->cache_key(), value, message_handler_);
+
+        // Note that we could potentially store Vary:Cookie responses
+        // here, as we will have fetched the resource without cookies.
+        // But we must be careful in the mod_pagespeed ipro flow,
+        // where we must avoid storing any resource obtained with a
+        // Cookie.  For now we don't implement this.
+        http_cache()->Put(resource_->cache_key(), RequestHeaders::Properties(),
+                          resource_->respect_vary(), value, message_handler_);
         return true;
       } else {
         http_cache()->RememberNotCacheable(
@@ -352,7 +359,8 @@ class CacheableResourceBase::LoadFetchCallback
                           resource),
         resource_(resource),
         callback_(callback),
-        http_value_writer_(http_value(), http_cache()) {
+        http_value_writer_(http_value(), http_cache()),
+        respect_vary_(resource->respect_vary()) {
     set_response_headers(&resource_->response_headers_);
     response_headers()->set_implicit_cache_ttl_ms(
         resource->rewrite_options()->implicit_cache_ttl_ms());
@@ -375,7 +383,9 @@ class CacheableResourceBase::LoadFetchCallback
       } else if (status_code >= 400 && status_code < 500) {
         resource_->set_fetch_response_status(Resource::kFetchStatus4xxError);
       } else if (status_code == HttpStatus::kOK &&
-                 !headers->IsProxyCacheable()) {
+                 !headers->IsProxyCacheable(RequestHeaders::Properties(),
+                                            respect_vary_,
+                                            ResponseHeaders::kNoValidator)) {
         resource_->set_fetch_response_status(Resource::kFetchStatusUncacheable);
       } else {
         resource_->set_fetch_response_status(Resource::kFetchStatusOther);
@@ -415,6 +425,7 @@ class CacheableResourceBase::LoadFetchCallback
   CacheableResourceBase* resource_;
   Resource::AsyncCallback* callback_;
   HTTPValueWriter http_value_writer_;
+  ResponseHeaders::VaryOption respect_vary_;
 
   DISALLOW_COPY_AND_ASSIGN(LoadFetchCallback);
 };
@@ -621,6 +632,8 @@ CacheableResourceBase::CacheableResourceBase(
       cache_key_(cache_key.data(), cache_key.size()),
       rewrite_driver_(rewrite_driver) {
   set_enable_cache_purge(rewrite_options()->enable_cache_purge());
+  set_respect_vary(ResponseHeaders::GetVaryOption(
+      rewrite_options()->respect_vary()));
   set_proactive_resource_freshening(
       rewrite_options()->proactive_resource_freshening());
 
@@ -649,19 +662,17 @@ bool CacheableResourceBase::IsValidAndCacheableImpl(
     return false;
   }
 
-  bool cacheable = true;
-  if (rewrite_options()->respect_vary()) {
-    // Conservatively assume that the request has cookies, since the site may
-    // want to serve different content based on the cookie. If we consider the
-    // response to be cacheable here, we will serve the optimized version
-    // without contacting the origin which would be against the webmaster's
-    // intent. We also don't have cookies available at lookup time, so we
-    // cannot try to use this response only when the request doesn't have a
-    // cookie.
-    cacheable = headers.VaryCacheable(true);
-  } else {
-    cacheable = headers.IsProxyCacheable();
-  }
+  // Conservatively assume that the request has cookies, since the site may
+  // want to serve different content based on the cookie. If we consider the
+  // response to be cacheable here, we will serve the optimized version
+  // without contacting the origin which would be against the webmaster's
+  // intent. We also don't have cookies available at lookup time, so we
+  // cannot try to use this response only when the request doesn't have a
+  // cookie.
+  RequestHeaders::Properties req_properties;
+  bool cacheable = headers.IsProxyCacheable(req_properties, respect_vary(),
+                                            ResponseHeaders::kNoValidator);
+
   // If we are setting a TTL for HTML, we cannot rewrite any resource
   // with a shorter TTL.
   cacheable &= (headers.cache_ttl_ms() >=
@@ -671,8 +682,7 @@ bool CacheableResourceBase::IsValidAndCacheableImpl(
     return false;
   }
 
-  // NULL is OK here since we make the request_headers ourselves.
-  return !http_cache()->IsAlreadyExpired(NULL, headers);
+  return !http_cache()->IsExpired(headers);
 }
 
 void CacheableResourceBase::InitStats(StringPiece stat_prefix,

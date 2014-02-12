@@ -43,7 +43,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -1732,8 +1731,10 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         response_headers->CopyFrom(*output_resource_->response_headers());
         ServerContext* server_context = driver_->server_context();
         HTTPCache* http_cache = server_context->http_cache();
-        http_cache->Put(canonical_url_, response_headers,
-                        content, handler_);
+        http_cache->Put(canonical_url_, RequestHeaders::Properties(),
+                        (ResponseHeaders::GetVaryOption(
+                            driver_->options()->respect_vary())),
+                        response_headers, content, handler_);
         async_fetch_->Done(async_fetch_->Write(content, handler_));
         driver_->FetchComplete();
       } else {
@@ -3051,13 +3052,26 @@ void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
     const RewriteOptions* rewrite_options, const RequestContextPtr& request_ctx)
-    : HTTPCache::Callback(request_ctx), rewrite_options_(rewrite_options) {}
+    : HTTPCache::Callback(request_ctx, RequestHeaders::Properties()),
+      rewrite_options_(rewrite_options) {
+  // We initialize the callback with a blank RequestHeaders::Properties,
+  // rather than extracing the actual request properties from
+  // request_ctx->request_headers().  This is because, with our domain
+  // mapping, we don't know for sure whether cookies should apply
+  // to Vary:Cacheable resources.  So we pessimistically assume there
+  // are cookies by initializing a blank one.
+}
 
 OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
 
 bool OptionsAwareHTTPCacheCallback::IsCacheValid(
     const GoogleString& key, const ResponseHeaders& headers) {
   return IsCacheValid(key, *rewrite_options_, request_context(), headers);
+}
+
+ResponseHeaders::VaryOption
+OptionsAwareHTTPCacheCallback::RespectVaryOnResources() const {
+  return ResponseHeaders::GetVaryOption(rewrite_options_->respect_vary());
 }
 
 // static
@@ -3389,7 +3403,9 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
         (http_cache->force_caching() || meta_data->IsProxyCacheable())) {
       // This URL should already be mapped to the canonical rewrite domain,
       // But we should store its unsharded form in the cache.
-      http_cache->Put(output->HttpCacheKey(), &output->value_, handler);
+      http_cache->Put(output->HttpCacheKey(), RequestHeaders::Properties(),
+                      ResponseHeaders::GetVaryOption(options()->respect_vary()),
+                      &output->value_, handler);
     }
 
     // If we're asked to, also save a debug dump

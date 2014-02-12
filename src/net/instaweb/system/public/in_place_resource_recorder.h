@@ -19,18 +19,17 @@
 
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/atomic_int32.h"
+#include "pagespeed/kernel/http/request_headers.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
 class HTTPCache;
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
 class Statistics;
 class Variable;
 
@@ -39,11 +38,11 @@ class Variable;
 // (IPRO) flow to get resources into the cache.
 class InPlaceResourceRecorder : public Writer {
  public:
-  // Takes ownership of request_headers, but not cache nor handler.
+  // Does not take ownership of request_headers, cache nor handler.
   // Like other callbacks, InPlaceResourceRecorder is self-owned and will
   // delete itself when DoneAndSetHeaders() is called.
   InPlaceResourceRecorder(
-      StringPiece url, RequestHeaders* request_headers, bool respect_vary,
+      StringPiece url, const RequestHeaders& request_headers, bool respect_vary,
       int max_response_bytes, int max_concurrent_recordings, HTTPCache* cache,
       Statistics* statistics, MessageHandler* handler);
 
@@ -102,8 +101,8 @@ class InPlaceResourceRecorder : public Writer {
   bool IsIproContentType(ResponseHeaders* response_headers);
 
   const GoogleString url_;
-  const scoped_ptr<RequestHeaders> request_headers_;
-  const bool respect_vary_;
+  const RequestHeaders::Properties request_properties_;
+  const ResponseHeaders::VaryOption respect_vary_;
   const unsigned int max_response_bytes_;
   const int max_concurrent_recordings_;
 

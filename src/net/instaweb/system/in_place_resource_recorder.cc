@@ -19,9 +19,6 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -43,11 +40,12 @@ const char kNumDroppedDueToSize[] = "ipro_recorder_dropped_due_to_size";
 AtomicInt32 InPlaceResourceRecorder::active_recordings_(0);
 
 InPlaceResourceRecorder::InPlaceResourceRecorder(
-    StringPiece url, RequestHeaders* request_headers, bool respect_vary,
+    StringPiece url, const RequestHeaders& request_headers, bool respect_vary,
     int max_response_bytes, int max_concurrent_recordings,
     HTTPCache* cache, Statistics* stats, MessageHandler* handler)
-    : url_(url.data(), url.size()), request_headers_(request_headers),
-      respect_vary_(respect_vary),
+    : url_(url.data(), url.size()),
+      request_properties_(request_headers.GetProperties()),
+      respect_vary_(ResponseHeaders::GetVaryOption(respect_vary)),
       max_response_bytes_(max_response_bytes),
       max_concurrent_recordings_(max_concurrent_recordings),
       cache_(cache), handler_(handler),
@@ -120,13 +118,9 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
     failure_ = true;
     return;
   }
-  bool is_cacheable =
-      response_headers->IsProxyCacheableGivenRequest(*request_headers_);
-  // TODO(jefftk): could IsProxyCacheableGivenRequest handle the cookie check?
-  if (is_cacheable && respect_vary_) {
-    is_cacheable = response_headers->VaryCacheable(
-        request_headers_->Has(HttpAttributes::kCookie));
-  }
+  bool is_cacheable = response_headers->IsProxyCacheable(
+      request_properties_, respect_vary_,
+      ResponseHeaders::kNoValidator);
   if (!is_cacheable) {
     cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
     num_not_cacheable_->Add(1);
@@ -165,7 +159,8 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
       num_failed_->Add(1);
     } else {
       resource_value_.SetHeaders(response_headers);
-      cache_->Put(url_, &resource_value_, handler_);
+      cache_->Put(url_, request_properties_, respect_vary_, &resource_value_,
+                  handler_);
       // TODO(sligocki): Start IPRO rewrite.
       num_inserted_into_cache_->Add(1);
     }

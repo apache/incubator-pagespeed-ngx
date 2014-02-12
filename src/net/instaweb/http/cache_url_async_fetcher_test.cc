@@ -78,8 +78,11 @@ class MockFetch : public AsyncFetch {
   virtual ~MockFetch() {}
 
   virtual void HandleHeadersComplete() {
-    // Make sure that we've called response_headers()->ComputeCaching() before
-    // this and that this call succeeds.
+    // Make sure that we've called
+    // response_headers()->ComputeCaching() before this and that this
+    // call succeeds.  We don't care about the return value in this
+    // context, we are just trying to ensure that the caching is not
+    // dirty when this is called.
     response_headers()->IsProxyCacheable();
   }
 
@@ -203,6 +206,13 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
       // For unit testing, we are simply stubbing IsFresh.
       return fresh_;
     }
+
+    // The detailed Vary testing is handled in response_headers_test.cc and
+    // is not needed here.
+    virtual ResponseHeaders::VaryOption RespectVaryOnResources() const {
+      return ResponseHeaders::kRespectVaryOnResources;
+    }
+
     bool called_;
     HTTPCache::FindResult result_;
     bool cache_valid_;
@@ -1502,35 +1512,31 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForNonHtml) {
   ExpectCache(vary_url_, vary_body_);
   lru_cache_.Clear();
 
-  // Respect Vary is disabled. Vary: Cookie is cached. Note that the request has
-  // no cookies.
+  // Respect Vary is disabled, but we still respect Vary: Cookie for
+  // non-html, whether or not the request has cookies.
   mutable_vary_headers_.Replace(HttpAttributes::kVary, "Cookie");
   mock_fetcher_.SetResponse(vary_url_, mutable_vary_headers_, vary_body_);
-  ExpectCache(vary_url_, vary_body_);
+  ExpectNoCache(vary_url_, vary_body_);
   lru_cache_.Clear();
 
-  // Respect Vary is enabled. Vary: Cookie is cached. Note that the request has
-  // no cookies.
+  // Respect Vary is enabled. Vary: Cookie is not cached.
   cache_fetcher_->set_respect_vary(true);
-  ExpectCache(vary_url_, vary_body_);
+  ExpectNoCache(vary_url_, vary_body_);
 
   // Without clearing the cache send a request with cookies in the request. This
-  // is not served from cahce.
+  // is not served from cache.
+  ExpectNoCache(vary_url_, vary_body_);
+  lru_cache_.Clear();
+
+  // Respect Vary is enabled. Vary: Cookie is not cached.
   ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
                                   request_headers_with_cookies);
   lru_cache_.Clear();
 
-  // Respect Vary is enabled. Vary: Cookie is not cached since the request
-  // has cookies set.
-  ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
-                                  request_headers_with_cookies);
-  lru_cache_.Clear();
-
-  // Respect Vary is disabled. Vary: Cookie is cached even though the request
-  // has cookies set.
+  // Respect Vary is disabled, but Vary: Cookie is still not cached.
   cache_fetcher_->set_respect_vary(false);
-  ExpectCacheWithRequestHeaders(vary_url_, vary_body_,
-                                request_headers_with_cookies);
+  ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
+                                  request_headers_with_cookies);
 
   // Without clearing the cache, change respect vary to true. We should not
   // fetch the response that was inserted into the cache above.
@@ -1586,7 +1592,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForHtml) {
   ExpectCache(vary_url_, vary_body_);
 
   // Without clearing the cache send a request with cookies in the request. This
-  // is not served from cahce.
+  // is not served from cache.
   ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
                                   request_headers_with_cookies);
   lru_cache_.Clear();
@@ -1752,8 +1758,9 @@ TEST_F(CacheUrlAsyncFetcherTest, NotInCachePost) {
   // Put result in cache.
   ResponseHeaders headers;
   DefaultResponseHeaders(kContentTypeCss, 100, &headers);
-  http_cache_->Put(cache_url_, &headers, ".a { color: red; }", &handler_);
-
+  http_cache_->Put(cache_url_, fetch.request_headers()->GetProperties(),
+                   ResponseHeaders::kRespectVaryOnResources,
+                   &headers, ".a { color: red; }", &handler_);
   fetcher.Fetch(cache_url_, &handler_, &fetch);
   EXPECT_TRUE(fetch.done());
   EXPECT_FALSE(fetch.success());

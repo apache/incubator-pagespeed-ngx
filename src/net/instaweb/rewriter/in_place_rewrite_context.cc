@@ -236,7 +236,7 @@ bool RecordingFetch::CanInPlaceRewrite() {
   }
 
   // Note that this only checks the length, not the caching headers; the
-  // latter are checked in IsAlreadyExpired.
+  // latter are checked in IsProxyCacheable.
   if (!cache_value_writer_.CheckCanCacheElseClear(response_headers())) {
     return false;
   }
@@ -245,7 +245,11 @@ bool RecordingFetch::CanInPlaceRewrite() {
       type->IsImage()) {
     RewriteDriver* driver = context_->driver_;
     HTTPCache* const cache = driver->server_context()->http_cache();
-    if (!cache->IsAlreadyExpired(request_headers(), *response_headers())) {
+    if (response_headers()->IsProxyCacheable(
+            request_headers()->GetProperties(),
+            ResponseHeaders::GetVaryOption(driver->options()->respect_vary()),
+            ResponseHeaders::kNoValidator) &&
+        !cache->IsExpired(*response_headers())) {
       return true;
     } else if (context_->rewrite_uncacheable()) {
       in_place_uncacheable_rewrites_->Add(1);

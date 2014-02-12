@@ -413,7 +413,20 @@ void ServerContext::set_filename_prefix(const StringPiece& file_prefix) {
 void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
                                            ResponseHeaders* headers) {
   headers->ComputeCaching();
-  bool proxy_cacheable = headers->IsProxyCacheable();
+
+  // We always turn off respect_vary in this context, as this is being
+  // used to clean up the headers of a generated resource, to which we
+  // may have applied vary:user-agent if (for example) we are transcoding
+  // to webp during in-place resource optimization.
+  //
+  // TODO(jmarantz): Add a suite of tests to ensure that we are preserving
+  // Vary headers from inputs to output, or converting them to
+  // cache-control:private if needed.
+  bool proxy_cacheable = headers->IsProxyCacheable(
+      RequestHeaders::Properties(),
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kHasValidator);
+
   bool browser_cacheable = headers->IsBrowserCacheable();
   bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
                                     "no-store");
@@ -426,7 +439,11 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
       if (input_headers->cache_ttl_ms() < max_age) {
         max_age = input_headers->cache_ttl_ms();
       }
-      proxy_cacheable &= input_headers->IsProxyCacheable();
+      bool resource_cacheable = input_headers->IsProxyCacheable(
+          RequestHeaders::Properties(),
+          ResponseHeaders::kIgnoreVaryOnResources,
+          ResponseHeaders::kHasValidator);
+      proxy_cacheable &= resource_cacheable;
       browser_cacheable &= input_headers->IsBrowserCacheable();
       no_store |= input_headers->HasValue(HttpAttributes::kCacheControl,
                                           "no-store");

@@ -87,6 +87,7 @@ OutputResource::OutputResource(ServerContext* server_context,
   CHECK(EndsInSlash(resolved_base)) <<
       "resolved_base must end in a slash, was: " << resolved_base;
   set_enable_cache_purge(options->enable_cache_purge());
+  set_respect_vary(ResponseHeaders::GetVaryOption(options->respect_vary()));
   set_proactive_resource_freshening(options->proactive_resource_freshening());
 }
 

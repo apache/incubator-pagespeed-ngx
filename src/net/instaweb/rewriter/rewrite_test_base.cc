@@ -541,8 +541,9 @@ void RewriteTestBase::TestServeFiles(
   ResponseHeaders headers;
   server_context_->SetDefaultLongCacheHeaders(content_type, &headers);
   HTTPCache* http_cache = server_context_->http_cache();
-  http_cache->Put(expected_rewritten_path, &headers,
-                  rewritten_content, message_handler());
+  http_cache->Put(expected_rewritten_path, RequestHeaders::Properties(),
+                  ResponseHeaders::GetVaryOption(options()->respect_vary()),
+                  &headers, rewritten_content, message_handler());
   EXPECT_EQ(0U, lru_cache()->num_hits());
   EXPECT_TRUE(FetchResource(kTestDomain, filter_id,
                             rewritten_name, rewritten_ext, &content));
@@ -959,7 +960,7 @@ class DeferredResourceCallback : public Resource::AsyncCallback {
 class HttpCallback : public HTTPCache::Callback {
  public:
   explicit HttpCallback(const RequestContextPtr& request_context)
-      : HTTPCache::Callback(request_context),
+      : HTTPCache::Callback(request_context, RequestHeaders::Properties()),
         done_(false),
         result_(HTTPCache::kNotFound) {}
   virtual ~HttpCallback() {}
@@ -971,6 +972,10 @@ class HttpCallback : public HTTPCache::Callback {
     done_ = true;
     result_ = find_result;
   }
+  virtual ResponseHeaders::VaryOption RespectVaryOnResources() const {
+    return ResponseHeaders::kRespectVaryOnResources;
+  }
+
   bool done() const { return done_; }
   HTTPCache::FindResult result() { return result_; }
 
@@ -1044,7 +1049,10 @@ void RewriteTestBase::CheckFetchFromHttpCache(
   EXPECT_TRUE(FetchResourceUrl(url, &contents, &response)) << url;
   EXPECT_STREQ(expected_contents, contents);
   EXPECT_EQ(expected_expiration_ms, response.CacheExpirationTimeMs());
-  EXPECT_TRUE(response.IsProxyCacheable());
+  EXPECT_TRUE(response.IsProxyCacheable(
+      RequestHeaders::Properties(),
+      ResponseHeaders::GetVaryOption(options()->respect_vary()),
+      ResponseHeaders::kNoValidator));
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());

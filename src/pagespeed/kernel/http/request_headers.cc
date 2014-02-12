@@ -167,4 +167,11 @@ bool RequestHeaders::IsXmlHttpRequest() const {
   return false;
 }
 
+RequestHeaders::Properties RequestHeaders::GetProperties() const {
+  Properties properties;
+  properties.has_cookie = Has(HttpAttributes::kCookie);
+  properties.has_authorization = Has(HttpAttributes::kAuthorization);
+  return properties;
+}
+
 }  // namespace net_instaweb
