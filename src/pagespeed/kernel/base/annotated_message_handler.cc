@@ -20,7 +20,6 @@
 
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -39,7 +38,8 @@ AnnotatedMessageHandler::~AnnotatedMessageHandler() {
 
 void AnnotatedMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                            va_list args) {
-  message_handler_->MessageVImpl(type, StrCat(annotation_, msg).c_str(), args);
+  message_handler_->Message(type, "%s%s", annotation_.c_str(),
+                            Format(msg, args).c_str());
 }
 
 void AnnotatedMessageHandler::FileMessageVImpl(MessageType type,
@@ -47,9 +47,9 @@ void AnnotatedMessageHandler::FileMessageVImpl(MessageType type,
                                                int line,
                                                const char* msg,
                                                va_list args) {
-  message_handler_->FileMessageVImpl(type, filename, line,
-                                     StrCat(annotation_, msg).c_str(),
-                                     args);
+  message_handler_->FileMessage(type, filename, line, "%s%s",
+                                annotation_.c_str(),
+                                Format(msg, args).c_str());
 }
 
 }  // namespace net_instaweb

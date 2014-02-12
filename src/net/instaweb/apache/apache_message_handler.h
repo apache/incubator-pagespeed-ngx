@@ -66,7 +66,6 @@ class ApacheMessageHandler : public MessageHandler {
 
  private:
   int GetApacheLogLevel(MessageType type);
-  GoogleString Format(const char* msg, va_list args);
 
   const server_rec* server_rec_;
   const GoogleString version_;

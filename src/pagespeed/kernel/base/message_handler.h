@@ -22,6 +22,7 @@
 #include <cstdarg>
 
 #include "pagespeed/kernel/base/printf_format.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
@@ -96,6 +97,9 @@ class MessageHandler {
                             va_list args) = 0;
   virtual void FileMessageVImpl(MessageType type, const char* filename,
                                 int line, const char* msg, va_list args) = 0;
+
+ protected:
+  GoogleString Format(const char* msg, va_list args);
 
  private:
   // The minimum message type to log at. Any messages below this level

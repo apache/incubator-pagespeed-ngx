@@ -36,6 +36,7 @@ namespace {
   const char kMessage4[] = "Message No. 4.";
   const char kSeparator[] = ": ";
   const char kURLInfo[] = "http://www.example.com/index.html: ";
+  const char kURLPercentS[] = "http://www.example.com/%s.html: ";
 
 class AnnotatedMessageHandlerTest : public testing::Test {
  protected:
@@ -70,7 +71,6 @@ class AnnotatedMessageHandlerTest : public testing::Test {
   TestMessageHandler test_handler_;
 };
 
-
 TEST_F(AnnotatedMessageHandlerTest, WithAnnotation) {
   AnnotatedMessageHandler annotated_handler_(kURLInfo, &test_handler_);
   annotated_handler_.Info(kFileName, kLineNumber, kMessage1);
@@ -79,10 +79,10 @@ TEST_F(AnnotatedMessageHandlerTest, WithAnnotation) {
   annotated_handler_.Message(kError, kMessage4);
 
   ASSERT_EQ(4, num_messages());
-  EXPECT_EQ(FileMessage(kInfo, kURLInfo, kMessage1), message(0));
-  EXPECT_EQ(FileMessage(kError, kURLInfo, kMessage2), message(1));
-  EXPECT_EQ(FileMessage(kFatal, kURLInfo, kMessage3), message(2));
-  EXPECT_EQ(Message(kError, kURLInfo, kMessage4), message(3));
+  EXPECT_STREQ(FileMessage(kInfo, kURLInfo, kMessage1), message(0));
+  EXPECT_STREQ(FileMessage(kError, kURLInfo, kMessage2), message(1));
+  EXPECT_STREQ(FileMessage(kFatal, kURLInfo, kMessage3), message(2));
+  EXPECT_STREQ(Message(kError, kURLInfo, kMessage4), message(3));
 }
 
 TEST_F(AnnotatedMessageHandlerTest, WithoutAnnotation) {
@@ -93,10 +93,26 @@ TEST_F(AnnotatedMessageHandlerTest, WithoutAnnotation) {
   annotated_handler_.Message(kInfo, kMessage4);
 
   ASSERT_EQ(4, num_messages());
-  EXPECT_EQ(FileMessage(kInfo, kEmptyString, kMessage1), message(0));
-  EXPECT_EQ(FileMessage(kError, kEmptyString, kMessage2), message(1));
-  EXPECT_EQ(Message(kFatal, kEmptyString, kMessage3), message(2));
-  EXPECT_EQ(Message(kInfo, kEmptyString, kMessage4), message(3));
+  EXPECT_STREQ(FileMessage(kInfo, kEmptyString, kMessage1), message(0));
+  EXPECT_STREQ(FileMessage(kError, kEmptyString, kMessage2), message(1));
+  EXPECT_STREQ(Message(kFatal, kEmptyString, kMessage3), message(2));
+  EXPECT_STREQ(Message(kInfo, kEmptyString, kMessage4), message(3));
+}
+
+// Make sure that the message handler will not crash when there is "%s"
+// in the URL, and will still produce correct messages.
+TEST_F(AnnotatedMessageHandlerTest, URLHasPercentS) {
+  AnnotatedMessageHandler annotated_handler_(kURLPercentS, &test_handler_);
+  annotated_handler_.Info(kFileName, kLineNumber, kMessage1);
+  annotated_handler_.Error(kFileName, kLineNumber, kMessage2);
+  annotated_handler_.FatalError(kFileName, kLineNumber, kMessage3);
+  annotated_handler_.Message(kError, kMessage4);
+
+  ASSERT_EQ(4, num_messages());
+  EXPECT_STREQ(FileMessage(kInfo, kURLPercentS, kMessage1), message(0));
+  EXPECT_STREQ(FileMessage(kError, kURLPercentS, kMessage2), message(1));
+  EXPECT_STREQ(FileMessage(kFatal, kURLPercentS, kMessage3), message(2));
+  EXPECT_STREQ(Message(kError, kURLPercentS, kMessage4), message(3));
 }
 
 }  // namespace
