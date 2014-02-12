@@ -220,8 +220,7 @@ class JsCombineFilterTest : public RewriteTestBase {
     EXPECT_TRUE(info.url.empty());
     EXPECT_EQ(
         StrCat("eval(",
-               JsCombineFilter::VarName(rewrite_driver(), server_context(),
-                                        abs_url),
+               JsCombineFilter::VarName(server_context(), abs_url),
                ");"),
         info.text_content);
   }
@@ -385,12 +384,12 @@ TEST_F(JsCombineFilterTest, CombineJsAvoidRewritingIntrospectiveJavascripOn) {
 TEST_F(JsFilterAndCombineFilterTest, ReconstructNoTimeout) {
   // Nested fetch should not timeout on reconstruction.
   GoogleString rel_url =
-      Encode("", "jc", "HrCUtQsDp_",
+      Encode("", "jc", "FA3Pqioukh",
              MultiUrl("a.js.pagespeed.jm.FUEwDOA7jh.js",
                       "b.js.pagespeed.jm.Y1kknPfzVs.js"), "js");
   GoogleString url = StrCat(kTestDomain, rel_url);
-  const char kVar1[] = "mod_pagespeed_KecOGCIjKt";
-  const char kVar2[] = "mod_pagespeed_dzsx6RqvJJ";
+  const char kVar1[] = "mod_pagespeed_S$0tgbTH0O";
+  const char kVar2[] = "mod_pagespeed_ose8Vzgyj9";
 
   // First rewrite the page, to see what the evals look like.
   ValidateExpected("no_timeout",
@@ -435,45 +434,11 @@ TEST_F(JsFilterAndCombineFilterTest, ReconstructNoTimeout) {
             async_fetch.buffer().find(kVar2));
 }
 
-TEST_F(JsFilterAndCombineFilterTest, ReconstructChanged) {
-  // Make sure that if one of the files changes, the variable hashes
-  // remain stable.
-  GoogleString rel_url =
-      Encode("", "jc", "HrCUtQsDp_",
-             MultiUrl("a.js.pagespeed.jm.FUEwDOA7jh.js",
-                      "b.js.pagespeed.jm.Y1kknPfzVs.js"), "js");
-  GoogleString url = StrCat(kTestDomain, rel_url);
-  const char kVar1[] = "mod_pagespeed_KecOGCIjKt";
-  const char kVar2[] = "mod_pagespeed_dzsx6RqvJJ";
-
-  // First rewrite the page, to see what the evals look like.
-  ValidateExpected("reconstruct_changed",
-                   StrCat("<script src=", kJsUrl1, "></script>",
-                          "<script src=", kJsUrl2, "></script>"),
-                   StrCat("<script src=\"", rel_url, "\"></script>",
-                          "<script>eval(", kVar1, ");</script>",
-                          "<script>eval(", kVar2, ");</script>"));
-
-  // Clear cache..
-  lru_cache()->Clear();
-
-  // Change contents of script 1.
-  SimulateJsResource(kJsUrl1, StrCat("var v = 42;", kJsText1));
-
-  // Now just fetch it.
-  GoogleString combination_src;
-  EXPECT_TRUE(FetchResourceUrl(url, &combination_src));
-
-  // Make sure we have the right variable names, same as in HTML.
-  EXPECT_NE(GoogleString::npos, combination_src.find(kVar1));
-  EXPECT_NE(GoogleString::npos, combination_src.find(kVar2));
-}
-
 TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "HrCUtQsDp_",  // combined hash
-                "KecOGCIjKt",  // hash of a.js
-                "dzsx6RqvJJ",  // hash of b.js
+                "FA3Pqioukh",  // combined hash
+                "S$0tgbTH0O",  // hash of a.js,Mjm.FUEwDOA7jh.js
+                "ose8Vzgyj9",  // hash of b.js,Mjm.Y1kknPfzVs.js
                 true, kTestDomain);
 }
 
@@ -510,7 +475,7 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
   SimulateJsResourceOnDomain("http://b.com/", kJsUrl2, kJsText2);
 
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "HrCUtQsDp_", "KecOGCIjKt", "dzsx6RqvJJ", true,
+                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true,
                 "http://b.com/");
 }
 
@@ -605,9 +570,9 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
 
   // Now try to get a combination.
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "HrCUtQsDp_",
-                "KecOGCIjKt",
-                "dzsx6RqvJJ",
+                "FA3Pqioukh",
+                "S$0tgbTH0O",
+                "ose8Vzgyj9",
                 true /*minified*/, kTestDomain);
 }
 
@@ -647,10 +612,13 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCachedWithDeadline) {
   // Besides deadlines for nested drivers in HTML, this also covers them
   // triggering in nested rewrites for fetch, which can cause correctness
   // troubles by messing with resource names.
+  //
+  // TODO(morlovich): Consider unwinding .pagespeed. resource names in
+  //                  JsCombineFilter's VarName?
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "HrCUtQsDp_",
-                "KecOGCIjKt",
-                "dzsx6RqvJJ",
+                "FA3Pqioukh",
+                "S$0tgbTH0O",
+                "ose8Vzgyj9",
                 true, kTestDomain);
 }
 

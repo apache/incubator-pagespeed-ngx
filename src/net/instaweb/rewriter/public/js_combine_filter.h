@@ -101,8 +101,7 @@ class JsCombineFilter : public RewriteFilter {
                                 HtmlElement::Attribute* src);
 
   // Returns JS variable name where code for given URL should be stored.
-  static GoogleString VarName(const RewriteDriver* rewrite_driver,
-                              const ServerContext* server_context,
+  static GoogleString VarName(const ServerContext* server_context,
                               const GoogleString& url);
 
   void NextCombination();
