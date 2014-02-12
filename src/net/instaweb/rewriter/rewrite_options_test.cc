@@ -1656,6 +1656,24 @@ TEST_F(RewriteOptionsTest, ExperimentMergeTest) {
   EXPECT_EQ(125L, options_.css_inline_max_bytes());
 }
 
+TEST_F(RewriteOptionsTest, ExperimentOptionLifetimeTest) {
+  NullMessageHandler handler;
+  // This allocates a character array on the stack and initializes it with the
+  // specified string including a null terminator.  The size of the array is
+  // taken from the length of the string.  The array is ours to modify.
+  char str_spec[] = ("id=1;percentage=15;"
+                     "enable=defer_javascript;"
+                     "options=CssInlineMaxBytes=100");
+  EXPECT_TRUE(options_.AddExperimentSpec(str_spec, &handler));
+  // ExperimentSpec must not keep any references into str_spec because it's
+  // not guaranteed to stick around or stay constant.  We modify str_spec to
+  // make sure ExperimentSpec hasn't kept a reference.
+  str_spec[sizeof(str_spec) - 2] = '9';
+  options_.SetExperimentState(1);
+  // If ExperimentSpec just kept pointers into str_spec then we'll get 109 here.
+  EXPECT_EQ(100L, options_.css_inline_max_bytes());
+}
+
 TEST_F(RewriteOptionsTest, SetOptionsFromName) {
   RewriteOptions::OptionSet option_set;
   option_set.insert(RewriteOptions::OptionStringPair(

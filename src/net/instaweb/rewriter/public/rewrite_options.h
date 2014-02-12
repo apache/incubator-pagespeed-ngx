@@ -511,7 +511,7 @@ class RewriteOptions {
 
   // Convenience name for (name,value) pairs of options (typically filter
   // parameters), as well as sets of those pairs.
-  typedef std::pair<StringPiece, StringPiece> OptionStringPair;
+  typedef std::pair<GoogleString, GoogleString> OptionStringPair;
   typedef std::set<OptionStringPair> OptionSet;
 
   typedef std::vector<PropertyBase*> PropertyVector;

@@ -2721,8 +2721,8 @@ bool RewriteOptions::AddCommaSeparatedListToOptionSet(
     SplitStringPieceToVector(option_vector[i], "=", &single_option_and_value,
                              true);
     if (single_option_and_value.size() == 2) {
-      set->insert(OptionStringPair(single_option_and_value[0],
-                                   single_option_and_value[1]));
+      set->insert(OptionStringPair(single_option_and_value[0].as_string(),
+                                   single_option_and_value[1].as_string()));
     } else {
       ret = false;
     }
