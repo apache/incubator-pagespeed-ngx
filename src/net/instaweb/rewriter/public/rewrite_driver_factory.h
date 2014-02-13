@@ -164,7 +164,7 @@ class RewriteDriverFactory {
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
   const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns() const {
-    return js_tokenizer_patterns_.get();
+    return js_tokenizer_patterns_;
   }
   const std::vector<const UserAgentNormalizer*>& user_agent_normalizers();
 
@@ -458,7 +458,7 @@ class RewriteDriverFactory {
   scoped_ptr<Scheduler> scheduler_;
   scoped_ptr<UsageDataReporter> usage_data_reporter_;
   // RE2 patterns needed for JsTokenizer.
-  scoped_ptr<pagespeed::js::JsTokenizerPatterns> js_tokenizer_patterns_;
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns_;
 
   GoogleString filename_prefix_;
   GoogleString slurp_directory_;

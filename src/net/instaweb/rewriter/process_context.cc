@@ -14,10 +14,15 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/rewriter/public/process_context.h"
+
+#include <cstddef>
+
+#include "base/logging.h"
 #include "googleurl/src/url_util.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/util/public/gflags.h"
+#include "pagespeed/kernel/js/js_tokenizer.h"
 
 #include "third_party/protobuf/src/google/protobuf/stubs/common.h"
 using namespace google;  // NOLINT
@@ -26,10 +31,22 @@ using namespace google;  // NOLINT
 // data from various libraries.  This must be called both from unit-tests
 // and from the Apache module, so that valgrind can be run on both of them.
 
+namespace {
+
+pagespeed::js::JsTokenizerPatterns* tokenizer_patterns = NULL;
+
+}  // namespace
+
 namespace net_instaweb {
 
 ProcessContext::ProcessContext() {
   HtmlKeywords::Init();
+  if (tokenizer_patterns != NULL) {
+    LOG(DFATAL) << "tokenizer_patterns == NULL.  Double construct "
+        "of ProcessContext?";
+  } else {
+    tokenizer_patterns = new pagespeed::js::JsTokenizerPatterns;
+  }
 
   // googleurl/src/url_util.cc lazily initializes its
   // "standard_schemes" table in a thread-unsafe way and so it must be
@@ -54,6 +71,25 @@ ProcessContext::~ProcessContext() {
 
   url_util::Shutdown();
   HtmlKeywords::ShutDown();
+  if (tokenizer_patterns == NULL) {
+    LOG(DFATAL) << "tokenizer_patterns == NULL.  Double destruct "
+        "of ProcessContext?";
+  } else {
+    delete tokenizer_patterns;
+    tokenizer_patterns = NULL;
+  }
+}
+
+const pagespeed::js::JsTokenizerPatterns*
+ProcessContext::js_tokenizer_patterns() {
+  // Lazy-initialize tokenizer_patterns if ProcessContext was not
+  // instantiated, to support binaries that don't pre-instantiate
+  // ProcessContext.  Note that the patterns memory will not be freed
+  // in that case.
+  if (tokenizer_patterns == NULL) {
+    tokenizer_patterns = new pagespeed::js::JsTokenizerPatterns;
+  }
+  return tokenizer_patterns;
 }
 
 }  // namespace net_instaweb

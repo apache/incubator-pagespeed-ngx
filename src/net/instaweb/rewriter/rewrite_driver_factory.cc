@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
+#include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -61,7 +62,6 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/http/user_agent_normalizer.h"
-#include "pagespeed/kernel/js/js_tokenizer.h"
 #include "pagespeed/kernel/util/nonce_generator.h"
 
 namespace net_instaweb {
@@ -77,7 +77,7 @@ const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
 class Statistics;
 
 RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
-    : js_tokenizer_patterns_(new pagespeed::js::JsTokenizerPatterns) {
+    : js_tokenizer_patterns_(ProcessContext::js_tokenizer_patterns()) {
 #ifdef NDEBUG
   // For release binaries, use the thread-system directly.
   thread_system_.reset(thread_system);
