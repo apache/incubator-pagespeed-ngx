@@ -16,7 +16,7 @@
 AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
 # Do testing using memcached in lieu of the file cache.
-#MEMCACHED ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
 # When testing memcached in system tests, let's make sure we are really
 # hitting it and not servicing the lookups in-memory.  Note that we will
@@ -392,7 +392,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 
   # This is the same memcached instance as the root configuration,
   # but with a different file-cache path.
-#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
   ModPagespeedCacheFlushFilename cache.flush
   # If you uncomment this, the test will fail, proving we can disable
@@ -761,7 +761,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   ServerName lrud-lrum.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_lrum"
-#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
   ModPagespeedLRUCacheKbPerProcess 1024
   ModPagespeedLRUCacheByteLimit 2000
@@ -775,7 +775,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_lrud_shmm" 
   ServerName lrud-shmm.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_shmm"
-#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
   ModPagespeedLRUCacheKbPerProcess 1024
   ModPagespeedLRUCacheByteLimit 2000
@@ -789,7 +789,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ServerName noned-shmm.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
-#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -800,7 +800,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ServerName noned-nonem.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_nonem"
-#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -891,7 +891,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #IPRO_PRESERVE_COVERAGE ModPagespeedImagePreserveURLs on
 #IPRO_PRESERVE_COVERAGE ModPagespeedJsPreserveURLS on
 #COVERAGE
-#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
+#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 #PURGING_COVERAGE    ModPagespeedEnableCachePurge on
 #PURGING_COVERAGE    ModPagespeedCompressMetadataCache on
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
@@ -1288,7 +1288,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
 #ALL_DIRECTIVES ModPagespeedMaxInlinedPreviewImagesIndex 80
 #ALL_DIRECTIVES ModPagespeedMaxSegmentLength 100
-#ALL_DIRECTIVES ModPagespeedMemcachedServers localhost:6765
+#ALL_DIRECTIVES ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 #ALL_DIRECTIVES ModPagespeedMemcachedThreads 1
 #ALL_DIRECTIVES ModPagespeedMessageBufferSize 100
 #ALL_DIRECTIVES ModPagespeedMinImageSizeLowResolutionBytes 2000

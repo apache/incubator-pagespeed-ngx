@@ -186,28 +186,29 @@ speling_test_prepare :
 	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
-apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
-    apache_debug_restart
-	# Note: We run apache/system_test.sh twice inside
-	# run_program_with_memcached.sh. That is why we have \; below.
-	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh -multi \
-	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER) \; \
-	    env \
-	    CACHE_FLUSH_TEST=on \
-	    MEMCACHED_ENABLED=on \
-	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	    APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	    $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
-	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+apache_debug_memcached_test :
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	# run_program_with_memcached.sh exports $MEMCACHED_PORT which is
+	# needed by apache_install_conf so pagespeed.conf gets the
+	# right ModPagespeedMemcachedServers setup.  MEMCACHED_PORT will
+	# be different on each run, which makes it easier for people to
+	# run system-tests and unit-tests in parallel with one another.
+	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh \
+		$(MAKE) apache_debug_memcached_test_run
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 	@echo PASS
 
-memcached_test_prepare :
-	$(eval OPT_MEMCACHED_TEST="MEMCACHED_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
+apache_debug_memcached_test_run : apache_install_conf apache_debug_restart
+	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	env \
+	    CACHE_FLUSH_TEST=on \
+	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	    APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
+	    OPT_MEMCACHED_TEST="MEMCACHED_TEST=1" \
+	        $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
+	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # This test checks that when ModPagespeedFetchWithGzip is enabled we
 # fetch resources from origin with the gzip flag.  Note that big.css

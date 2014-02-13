@@ -29,7 +29,6 @@ PSA_JS_LIBRARY_URL_PREFIX="mod_pagespeed_static"
 
 CACHE_FLUSH_TEST=${CACHE_FLUSH_TEST:-off}
 NO_VHOST_MERGE=${NO_VHOST_MERGE:-off}
-MEMCACHED_ENABLED=${MEMCACHED_ENABLED:-off}
 SUDO=${SUDO:-}
 SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
 # TODO(jkarlin): Should we just use a vhost instead?  If so, remember to update
