@@ -368,7 +368,7 @@ ScanlineStatus WebpScanlineReader::InitializeWithStatus(
   if (WebPGetFeatures(reinterpret_cast<const uint8_t*>(image_buffer),
                       buffer_length, &features)
         != VP8_STATUS_OK) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                             SCANLINE_STATUS_PARSE_ERROR,
                             SCANLINE_WEBPREADER, "WebPGetFeatures()");
   }
@@ -397,10 +397,11 @@ ScanlineStatus WebpScanlineReader::InitializeWithStatus(
 ScanlineStatus WebpScanlineReader::ReadNextScanlineWithStatus(
     void** out_scanline_bytes) {
   if (!was_initialized_ || !HasMoreScanLines()) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_WEBPREADER,
-                            "not initialized or no more scanlines.");
+                            "The reader was not initialized or the image does "
+                            "not have any more scanlines.");
   }
 
   // The first time ReadNextScanline() is called, we decode the entire image.
@@ -408,10 +409,10 @@ ScanlineStatus WebpScanlineReader::ReadNextScanlineWithStatus(
     pixels_.reset(new uint8_t[bytes_per_row_ * height_]);
     if (pixels_ == NULL) {
       Reset();
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                               SCANLINE_STATUS_MEMORY_ERROR,
                               SCANLINE_WEBPREADER,
-                              "new uint8_t[]");
+                              "Failed to allocate memory.");
     }
 
      WebPDecoderConfig config;
@@ -439,10 +440,10 @@ ScanlineStatus WebpScanlineReader::ReadNextScanlineWithStatus(
 
      if (!decode_ok) {
        Reset();
-       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+       return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                                SCANLINE_STATUS_INTERNAL_ERROR,
                                SCANLINE_WEBPREADER,
-                               "WebPDecode()");
+                               "Failed to decode the WebP image.");
      }
   }
 

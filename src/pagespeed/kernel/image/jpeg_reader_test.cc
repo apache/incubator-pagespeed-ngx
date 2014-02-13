@@ -121,7 +121,18 @@ TEST(JpegReaderTest, PartialRead) {
   while (reader4.HasMoreScanLines()) {
     ASSERT_TRUE(reader4.ReadNextScanline(&scanline));
   }
-  ASSERT_FALSE(reader4.ReadNextScanline(&scanline));
+
+  // After depleting the scanlines, any further call to
+  // ReadNextScanline leads to death in debugging mode, or a
+  // false in release mode.
+#ifdef NDEBUG
+  EXPECT_FALSE(reader4.ReadNextScanline(&scanline));
+#else
+  EXPECT_DEATH(reader4.ReadNextScanline(&scanline),
+               "The reader was not initialized or does not "
+               "have any more scanlines.");
+#endif
+
   ASSERT_TRUE(reader4.Initialize(image2.c_str(), image2.length()));
   ASSERT_TRUE(reader4.ReadNextScanline(&scanline));
 }

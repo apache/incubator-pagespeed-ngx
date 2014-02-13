@@ -627,7 +627,7 @@ void ImageImpl::FindJpegSize() {
   if (!ImageUrlEncoder::HasValidDimensions(dims_) ||
       (dims_.height() <= 0) || (dims_.width() <= 0)) {
     dims_.Clear();
-    PS_LOG_WARN(handler_, "Couldn't find jpeg dimensions (data truncated?).");
+    PS_LOG_INFO(handler_, "Couldn't find jpeg dimensions (data truncated?).");
   }
 }
 
@@ -649,7 +649,7 @@ void ImageImpl::FindPngSize() {
     dims_.set_height(PngIntAtPosition(
         buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize));
   } else {
-    PS_LOG_WARN(handler_, "Couldn't find png dimensions "
+    PS_LOG_INFO(handler_, "Couldn't find png dimensions "
                 "(data truncated or IHDR missing).");
   }
 }
@@ -667,7 +667,7 @@ void ImageImpl::FindGifSize() {
     dims_.set_height(GifIntAtPosition(
         buf, ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize));
   } else {
-    PS_LOG_WARN(handler_, "Couldn't find gif dimensions (data truncated)");
+    PS_LOG_INFO(handler_, "Couldn't find gif dimensions (data truncated)");
   }
 }
 
@@ -679,7 +679,7 @@ void ImageImpl::FindWebpSize() {
     dims_.set_width(width);
     dims_.set_height(height);
   } else {
-    PS_LOG_WARN(handler_, "Couldn't find webp dimensions ");
+    PS_LOG_INFO(handler_, "Couldn't find webp dimensions ");
   }
 }
 
@@ -886,7 +886,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
                            original_contents_.length(),
                            handler_.get()));
   if (image_reader == NULL) {
-    PS_LOG_ERROR(handler_, "Cannot open the image to resize.");
+    PS_LOG_INFO(handler_, "Cannot open the image to resize.");
     return false;
   }
 
@@ -1053,7 +1053,7 @@ bool ImageImpl::ComputeOutputContents() {
             VLOG(1) << "Image conversion: " << ok
                     << " jpeg->webp for " << url_.c_str();
             if (!ok) {
-              PS_LOG_WARN(handler_, "Failed to create webp!");
+              PS_LOG_INFO(handler_, "Failed to create webp!");
             }
           }
           if (ok) {
@@ -1417,7 +1417,7 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
                              impl->original_contents().length(),
                              handler_.get()));
   if (image_reader == NULL) {
-    PS_LOG_ERROR(handler_, "Cannot open the image which will be sprited.");
+    PS_LOG_INFO(handler_, "Cannot open the image which will be sprited.");
     return false;
   }
 
@@ -1427,7 +1427,7 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
   const PixelFormat image_pixel_format = image_reader->GetPixelFormat();
 
   if (x + image_width > canvas_width || y + image_height > canvas_height) {
-    PS_LOG_ERROR(handler_, "The new image cannot fit into the canvas.");
+    PS_LOG_INFO(handler_, "The new image cannot fit into the canvas.");
     return false;
   }
 
@@ -1468,7 +1468,7 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
       uint8* image_line = NULL;
       if (!image_reader->ReadNextScanline(
           reinterpret_cast<void**>(&image_line))) {
-        PS_LOG_ERROR(handler_,
+        PS_LOG_INFO(handler_,
                      "Failed to read the image which will be sprited.");
         return false;
       }

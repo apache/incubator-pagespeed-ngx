@@ -350,7 +350,18 @@ TEST_F(GifScanlineReaderRawTest, ReInitializeAfterLastRow) {
   while (reader_.HasMoreScanLines()) {
     EXPECT_TRUE(reader_.ReadNextScanline(&scanline_));
   }
+
+  // After depleting the scanlines, any further call to
+  // ReadNextScanline leads to death in debugging mode, or a
+  // false in release mode.
+#ifdef NDEBUG
   EXPECT_FALSE(reader_.ReadNextScanline(&scanline_));
+#else
+  EXPECT_DEATH(reader_.ReadNextScanline(&scanline_),
+               "The GIF image was not initialized or does not "
+               "have more scanlines.");
+#endif
+
   ASSERT_TRUE(Initialize(kInterlacedImage));
   EXPECT_TRUE(reader_.ReadNextScanline(&scanline_));
 }

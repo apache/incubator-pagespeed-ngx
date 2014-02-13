@@ -1116,7 +1116,17 @@ TEST_F(PngScanlineReaderRawTest, PartialRead) {
   while (reader3.HasMoreScanLines()) {
     ASSERT_TRUE(reader3.ReadNextScanline(reinterpret_cast<void**>(&buffer)));
   }
+
+  // After depleting the scanlines, any further call to
+  // ReadNextScanline leads to death in debugging mode, or a
+  // false in release mode.
+#ifdef NDEBUG
   ASSERT_FALSE(reader3.ReadNextScanline(reinterpret_cast<void**>(&buffer)));
+#else
+  ASSERT_DEATH(reader3.ReadNextScanline(reinterpret_cast<void**>(&buffer)),
+               "The reader was not initialized or the image does not have any "
+               "more scanlines.");
+#endif
 }
 
 TEST_F(PngScanlineReaderRawTest, ReadAfterReset) {

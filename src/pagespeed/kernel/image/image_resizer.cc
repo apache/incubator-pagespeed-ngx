@@ -666,7 +666,7 @@ ScanlineStatus ScanlineResizer::InitializeWithStatus(
 ScanlineStatus ScanlineResizer::ReadNextScanlineWithStatus(
     void** out_scanline_bytes) {
   if (reader_ == NULL || !HasMoreScanLines()) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_RESIZER,
                             "null reader or no more scanlines");
@@ -677,7 +677,7 @@ ScanlineStatus ScanlineResizer::ReadNextScanlineWithStatus(
   resizer_y_->InitializeResize();
   while (resizer_y_->NeedMoreScanlines()) {
     if (!reader_->HasMoreScanLines()) {
-      return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                               SCANLINE_STATUS_INTERNAL_ERROR,
                               SCANLINE_RESIZER,
                               "HasMoreScanLines()");
@@ -685,7 +685,7 @@ ScanlineStatus ScanlineResizer::ReadNextScanlineWithStatus(
     void* in_scanline_bytes = NULL;
     if (!reader_->ReadNextScanline(&in_scanline_bytes)) {
       Reset();
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                               SCANLINE_STATUS_INTERNAL_ERROR,
                               SCANLINE_RESIZER,
                               "ReadNextScanline()");

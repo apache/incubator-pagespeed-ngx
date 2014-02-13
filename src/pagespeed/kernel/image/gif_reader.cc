@@ -633,7 +633,7 @@ class ScopedGifStruct {
 #endif
 
     if (gif_file_ == NULL) {
-      PS_LOG_ERROR(message_handler_, "Failed to open GIF file.");
+      PS_LOG_INFO(message_handler_, "Failed to open GIF file.");
       return false;
     }
     return true;
@@ -990,7 +990,7 @@ ScanlineStatus GifScanlineReaderRaw::DecodeProgressiveGif() {
 ScanlineStatus GifScanlineReaderRaw::ReadNextScanlineWithStatus(
     void** out_scanline_bytes) {
   if (!was_initialized_ || !HasMoreScanLines()) {
-    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_GIFREADERRAW,
                             "The GIF image was not initialized or does not "

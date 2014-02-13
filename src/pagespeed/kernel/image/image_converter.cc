@@ -135,7 +135,7 @@ bool ImageConverter::ConvertPngToJpeg(
 
   // Configure png reader error handlers.
   if (setjmp(*png_reader.GetJmpBuf())) {
-    PS_LOG_DFATAL(handler, "png_jmpbuf not set locally: risk of memory leaks");
+    PS_LOG_INFO(handler, "libpng failed to decode the PNG image.");
     return false;
   }
 
@@ -225,7 +225,7 @@ bool ImageConverter::ConvertPngToWebp(
   out->clear();
 
   if (*webp_writer != NULL) {
-    PS_LOG_INFO(handler, "Expected *webp_writer == NULL");
+    PS_LOG_DFATAL(handler, "Expected *webp_writer == NULL");
     return false;
   }
 
@@ -247,7 +247,7 @@ bool ImageConverter::ConvertPngToWebp(
 
   // Configure png reader error handlers.
   if (setjmp(*png_reader.GetJmpBuf())) {
-    PS_LOG_DFATAL(handler, "png_jmpbuf not set locally: risk of memory leaks");
+    PS_LOG_INFO(handler, "libpng failed to decoded the PNG image.");
     return false;
   }
   if (!png_reader.InitializeRead(png_struct_reader, in, is_opaque)) {

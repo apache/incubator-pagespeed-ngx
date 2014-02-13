@@ -70,10 +70,10 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
       reader->GetPixelFormat() == UNSUPPORTED ||
       reader->GetImageWidth() == 0 ||
       reader->GetImageHeight() == 0) {
-    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                             SCANLINE_STATUS_UNINITIALIZED,
                             SCANLINE_PIXEL_FORMAT_OPTIMIZER,
-                            "Invalid image reader.");
+                            "Invalid input image.");
   }
 
   Reset();
@@ -103,7 +103,7 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
     void* in_scanline = NULL;
     if (!reader_->ReadNextScanline(&in_scanline)) {
       Reset();
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                               SCANLINE_STATUS_INTERNAL_ERROR,
                               SCANLINE_PIXEL_FORMAT_OPTIMIZER,
                               "Failed to read a scanline.");
@@ -142,7 +142,7 @@ ScanlineStatus PixelFormatOptimizer::Initialize(
 ScanlineStatus PixelFormatOptimizer::ReadNextScanlineWithStatus(
     void** out_scanline_bytes) {
   if (!was_initialized_ || !HasMoreScanLines()) {
-    return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_PIXEL_FORMAT_OPTIMIZER,
                             "Uninitialized or no more scanlines");
@@ -179,7 +179,7 @@ ScanlineStatus PixelFormatOptimizer::ReadNextScanlineWithStatus(
     } else {
       if (!reader_->ReadNextScanline(out_scanline_bytes)) {
         Reset();
-        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
                                 SCANLINE_STATUS_INTERNAL_ERROR,
                                 SCANLINE_PIXEL_FORMAT_OPTIMIZER,
                                 "Failed to read a scanline.");
