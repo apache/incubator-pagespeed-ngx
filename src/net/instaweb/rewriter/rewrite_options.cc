@@ -3750,7 +3750,71 @@ GoogleString RewriteOptions::OptionsToString() const {
     StrAppend(&output, "\nOverride caching wildcards\n",
               override_caching_wildcard_string);
   }
+
+  for (int i = 0, n = experiment_specs_.size(); i < n; ++i) {
+    RewriteOptions::ExperimentSpec* spec = experiment_specs_[i];
+    StrAppend(&output, "Experiment ", spec->ToString(), "\n");
+  }
+
   return output;
+}
+
+GoogleString RewriteOptions::ExperimentSpec::ToString() const {
+  GoogleString out;
+  StrAppend(&out, "id=", IntegerToString(id_));
+  if (ga_variable_slot_ != kDefaultExperimentSlot) {
+    StrAppend(&out, "slot=", IntegerToString(ga_variable_slot_));
+  }
+  if (!ga_id_.empty()) {
+    StrAppend(&out, ";ga=", ga_id_);
+  }
+  StrAppend(&out, ";percent=", IntegerToString(percent_));
+  if (rewrite_level_ != kPassThrough) {
+    StrAppend(&out, ";level=", RewriteOptions::ToString(rewrite_level_));
+  }
+
+  if (css_inline_max_bytes_ != kDefaultCssInlineMaxBytes) {
+    StrAppend(&out, ";inline_css=",
+              IntegerToString(css_inline_max_bytes_));
+  }
+  if (js_inline_max_bytes_ != kDefaultJsInlineMaxBytes) {
+    StrAppend(&out, ";inline_js=",
+              IntegerToString(js_inline_max_bytes_));
+  }
+  if (image_inline_max_bytes_ != kDefaultImageInlineMaxBytes) {
+    StrAppend(&out, ";inline_image=",
+              IntegerToString(image_inline_max_bytes_));
+  }
+  if (use_default_) {
+    StrAppend(&out, ";default");
+  }
+
+  const char* sep = ";enabled=";
+  for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
+    Filter filter = static_cast<Filter>(i);
+    if (enabled_filters_.IsSet(filter)) {
+      StrAppend(&out, sep, FilterName(filter));
+      sep = ",";
+    }
+  }
+
+  sep = ";disabled=";
+  for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
+    Filter filter = static_cast<Filter>(i);
+    if (disabled_filters_.IsSet(filter)) {
+      StrAppend(&out, sep, FilterName(filter));
+      sep = ",";
+    }
+  }
+
+  sep = ";options=";
+  for (RewriteOptions::OptionSet::const_iterator p = filter_options_.begin(),
+           e = filter_options_.end(); p != e; ++p) {
+    StrAppend(&out, sep, p->first, "=", p->second);
+    sep = ",";
+  }
+
+  return out;
 }
 
 GoogleString RewriteOptions::ToExperimentString() const {

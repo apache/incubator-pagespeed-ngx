@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
+#include <memory>
+
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
@@ -134,6 +136,15 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
         new_options.HasInlineUnauthorizedResourceType(
             semantic_type::kStylesheet))
         << "Global: " << global_option_val << ", local: " << local_option_val;
+  }
+
+  // Adds an experiment spec to the options.  We take the spec as a
+  // const char* and make a scoped GoogleString specifically to reproduce
+  // a bug with lifetime of the experiment option names.
+  bool AddExperimentSpec(const char* spec) {
+    NullMessageHandler handler;
+    GoogleString spec_string(spec);
+    return options_.AddExperimentSpec(spec_string, &handler);
   }
 
   void TestSetOptionFromName(bool test_log_variant);
@@ -1598,33 +1609,67 @@ TEST_F(RewriteOptionsTest, ExperimentOptionsTest) {
 
   // Default for this is 2048.
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
+  EXPECT_TRUE(AddExperimentSpec(
       "id=1;percent=15;enable=defer_javascript;"
-      "options=CssInlineMaxBytes=1024", &handler));
+      "options=CssInlineMaxBytes=1024"));
   options_.SetExperimentState(1);
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
-      "id=2;percent=15;enable=resize_images;options=BogusOption=35", &handler));
-  EXPECT_TRUE(options_.AddExperimentSpec(
-      "id=3;percent=15;enable=defer_javascript", &handler));
+  EXPECT_TRUE(AddExperimentSpec(
+      "id=2;percent=15;enable=resize_images;options=BogusOption=35"));
+  EXPECT_TRUE(AddExperimentSpec(
+      "id=3;percent=15;enable=defer_javascript"));
   options_.SetExperimentState(3);
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
+  EXPECT_TRUE(AddExperimentSpec(
       "id=4;percent=15;enable=defer_javascript;"
-      "options=CssInlineMaxBytes=Cabbage", &handler));
+      "options=CssInlineMaxBytes=Cabbage"));
   options_.SetExperimentState(4);
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
+  EXPECT_TRUE(AddExperimentSpec(
       "id=5;percent=15;enable=defer_javascript;"
-      "options=Potato=Carrot,5=10,6==9,CssInlineMaxBytes=1024", &handler));
+      "options=Potato=Carrot,5=10,6==9,CssInlineMaxBytes=1024"));
   options_.SetExperimentState(5);
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
+  EXPECT_TRUE(AddExperimentSpec(
       "id=6;percent=15;enable=defer_javascript;"
       "options=JsOutlineMinBytes=4096,JpegRecompresssionQuality=50,"
-      "CssInlineMaxBytes=100,JsInlineMaxBytes=123", &handler));
+      "CssInlineMaxBytes=100,JsInlineMaxBytes=123"));
   options_.SetExperimentState(6);
   EXPECT_EQ(100L, options_.css_inline_max_bytes());
+
+  // Just compare the experiments, not the rest of the OptionsToString output.
+  GoogleString options_string = options_.OptionsToString();
+  StringPieceVector lines;
+  StringPieceVector experiments;;
+  SplitStringPieceToVector(options_string, "\n", &lines, true);
+  for (int i = 0, n = lines.size(); i < n; ++i) {
+    if (lines[i].starts_with("Experiment ")) {
+      experiments.push_back(lines[i]);
+    }
+  }
+  EXPECT_STREQ("Experiment id=1;percent=15;enabled=Defer Javascript;"
+               "options=CssInlineMaxBytes=1024",
+               experiments[0]);
+  EXPECT_STREQ("Experiment id=2;percent=15;enabled=Resize Images;"
+               "options=BogusOption=35",
+               experiments[1]);
+  EXPECT_STREQ("Experiment id=3;percent=15;enabled=Defer Javascript",
+               experiments[2]);
+  EXPECT_STREQ("Experiment id=4;percent=15;enabled=Defer Javascript;"
+               "options=CssInlineMaxBytes=Cabbage",
+               experiments[3]);
+  EXPECT_STREQ("Experiment id=5;percent=15;enabled=Defer Javascript;"
+               "options=5=10,"
+               "6=9,"
+               "CssInlineMaxBytes=1024,"
+               "Potato=Carrot",
+               experiments[4]);
+  EXPECT_STREQ("Experiment id=6;percent=15;enabled=Defer Javascript;"
+               "options=CssInlineMaxBytes=100,"
+               "JpegRecompresssionQuality=50,"
+               "JsInlineMaxBytes=123,"
+               "JsOutlineMinBytes=4096",
+               experiments[5]);
 }
 
 TEST_F(RewriteOptionsTest, ExperimentMergeTest) {

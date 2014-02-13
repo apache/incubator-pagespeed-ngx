@@ -722,6 +722,7 @@ class RewriteOptions {
     int64 js_inline_max_bytes() const { return js_inline_max_bytes_; }
     int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
     bool use_default() const { return use_default_; }
+    GoogleString ToString() const;
 
    protected:
     // Merges a spec into this. This follows the same semantics as
