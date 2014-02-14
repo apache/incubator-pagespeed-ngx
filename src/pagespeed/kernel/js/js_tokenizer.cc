@@ -1078,7 +1078,7 @@ bool JsTokenizer::TryInsertLinebreakSemicolon() {
 JsTokenizerPatterns::JsTokenizerPatterns()
     : identifier_pattern(kIdentifierRegex),
       line_comment_pattern(kLineCommentRegex),
-      numeric_literal_pattern(kNumericLiteralPosixRegex, RE2::POSIX),
+      numeric_literal_pattern(kNumericLiteralPosixRegex, re2::posix_syntax),
       operator_pattern(kOperatorRegex),
       regex_literal_pattern(kRegexLiteralRegex),
       string_literal_pattern(kStringLiteralRegex),

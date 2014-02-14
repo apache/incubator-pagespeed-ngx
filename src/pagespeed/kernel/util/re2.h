@@ -25,6 +25,10 @@
 
 using re2::RE2;
 
+namespace re2 {
+const RE2::CannedOptions posix_syntax = RE2::POSIX_SYNTAX;
+}  // namespace re2
+
 typedef re2::StringPiece Re2StringPiece;
 // Converts a Google StringPiece into an RE2 StringPiece.  These are of course
 // the same basic thing but are declared in distinct namespaces and as far as
