@@ -115,7 +115,6 @@ void CriticalSelectorFinder::UpdateCriticalSelectorInfoInDriver(
   // environment carefully enough.  Figuring that out based on test failures
   // alone will drive you nuts and take hours out of your life, thus DCHECKs.
   DCHECK(driver != NULL);
-  DCHECK(driver->property_page() != NULL);
   DCHECK(cohort_ != NULL);
   scoped_ptr<CriticalKeys> critical_keys(DecodeFromPropertyCache<CriticalKeys>(
       driver, cohort_, kCriticalSelectorsPropertyName,
