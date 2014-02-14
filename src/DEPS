@@ -57,9 +57,6 @@ vars = {
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
   "google_sparsehash_revision": "@head",
 
-  "re2_src": "http://re2-svn.googlecode.com/svn/trunk/",
-  "re2_revision": "@2",
-
   # Comment this out to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
   #
@@ -201,7 +198,7 @@ deps = {
 
   # RE2.
   "src/third_party/re2/src":
-    Var("re2_src") + "/src/re2" + Var("re2_revision"),
+    Var("chromium_trunk") + "/src/third_party/re2@" + Var("chromium_revision_num"),
 
   # Comment to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
