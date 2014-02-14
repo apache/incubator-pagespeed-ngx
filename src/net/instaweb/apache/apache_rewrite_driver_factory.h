@@ -37,6 +37,7 @@ class ApacheMessageHandler;
 class ApacheServerContext;
 class MessageHandler;
 class ModSpdyFetchController;
+class ProcessContext;
 class QueuedWorkerPool;
 class ServerContext;
 class SharedCircularBuffer;
@@ -52,7 +53,8 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // resources) needed by some filters.
   static const char kStaticAssetPrefix[];
 
-  ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
+  ApacheRewriteDriverFactory(const ProcessContext& process_context,
+                             server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
 
   // Give access to apache_message_handler_ for the cases we need

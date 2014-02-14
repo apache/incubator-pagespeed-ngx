@@ -61,6 +61,7 @@ class Hasher;
 class HtmlFilter;
 class MessageHandler;
 class NonceGenerator;
+class ProcessContext;
 class RewriteFilter;
 class Scheduler;
 class Statistics;
@@ -95,9 +96,11 @@ const int TestRewriteDriverFactory::kFetchesPerHostQueuedRequestThreshold;
 const char TestRewriteDriverFactory::kUrlNamerScheme[] = "URL_NAMER_SCHEME";
 
 TestRewriteDriverFactory::TestRewriteDriverFactory(
-    const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher,
+    const ProcessContext& process_context,
+    const StringPiece& temp_dir,
+    MockUrlFetcher* mock_fetcher,
     TestDistributedFetcher* test_distributed_fetcher)
-    : RewriteDriverFactory(Platform::CreateThreadSystem()),
+    : RewriteDriverFactory(process_context, Platform::CreateThreadSystem()),
       mock_timer_(NULL),
       mock_scheduler_(NULL),
       delay_cache_(NULL),

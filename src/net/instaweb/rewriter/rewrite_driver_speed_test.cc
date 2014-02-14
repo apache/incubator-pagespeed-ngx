@@ -27,6 +27,7 @@
 
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -36,11 +37,13 @@
 using net_instaweb::RequestContext;
 
 static void BM_RewriteDriverConstruction(int iters) {
+  net_instaweb::ProcessContext process_context;
   net_instaweb::MockUrlFetcher fetcher;
   net_instaweb::RewriteDriverFactory::Initialize();
   // We're passing NULL here so it will break if you use the test distributed
   // fetcher.
-  net_instaweb::TestRewriteDriverFactory factory("/tmp", &fetcher, NULL);
+  net_instaweb::TestRewriteDriverFactory factory(
+      process_context, "/tmp", &fetcher, NULL);
   net_instaweb::RewriteDriverFactory::InitStats(factory.statistics());
   net_instaweb::ServerContext* server_context = factory.CreateServerContext();
   for (int i = 0; i < iters; ++i) {

@@ -38,7 +38,7 @@ class MessageHandler;
 int main(int argc, char** argv) {
   net_instaweb::ProcessContext process_context;
   net_instaweb::RewriteDriverFactory::Initialize();
-  net_instaweb::StaticRewriter static_rewriter(&argc, &argv);
+  net_instaweb::StaticRewriter static_rewriter(process_context, &argc, &argv);
 
   // Having stripped all the flags, there should be exactly 3
   // arguments remaining:

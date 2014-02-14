@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -101,7 +102,8 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
                              TestDistributedFetcher* distributed_fetcher,
                              bool use_write_through_cache,
                              int cache_size)
-      : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
+      : TestRewriteDriverFactory(RewriteTestBase::process_context(),
+                                 GTestTempDir(), url_fetcher,
                                  distributed_fetcher),
         owned_cache1_(new LRUCache(cache_size)),
         owned_cache2_(new LRUCache(cache_size)),
@@ -115,7 +117,8 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
                              TestDistributedFetcher* distributed_fetcher,
                              bool use_write_through_cache,
                              LRUCache* cache1, LRUCache* cache2)
-      : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
+      : TestRewriteDriverFactory(RewriteTestBase::process_context(),
+                                 GTestTempDir(), url_fetcher,
                                  distributed_fetcher),
         cache1_(cache1),
         cache2_(cache2),

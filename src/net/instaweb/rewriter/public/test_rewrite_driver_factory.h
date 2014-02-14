@@ -47,6 +47,7 @@ class MockTimer;
 class MockTimeCache;
 class MockUrlFetcher;
 class NonceGenerator;
+class ProcessContext;
 class RateControllingUrlAsyncFetcher;
 class ServerContext;
 class RewriteDriver;
@@ -105,7 +106,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
     DISALLOW_COPY_AND_ASSIGN(PlatformSpecificConfigurationCallback);
   };
 
-  TestRewriteDriverFactory(const StringPiece& temp_dir,
+  TestRewriteDriverFactory(const ProcessContext& process_context,
+                           const StringPiece& temp_dir,
                            MockUrlFetcher* mock_fetcher,
                            TestDistributedFetcher* test_distributed_fetcher);
   virtual ~TestRewriteDriverFactory();

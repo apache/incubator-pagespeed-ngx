@@ -58,6 +58,7 @@
 namespace net_instaweb {
 
 class NonceGenerator;
+class ProcessContext;
 
 namespace {
 
@@ -66,10 +67,11 @@ const char kShutdownCount[] = "child_shutdown_count";
 }  // namespace
 
 SystemRewriteDriverFactory::SystemRewriteDriverFactory(
+    const ProcessContext& process_context,
     SystemThreadSystem* thread_system,
     AbstractSharedMem* shared_mem_runtime, /* may be null */
     StringPiece hostname, int port)
-    : RewriteDriverFactory(thread_system),
+    : RewriteDriverFactory(process_context, thread_system),
       statistics_frozen_(false),
       is_root_process_(true),
       hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))),

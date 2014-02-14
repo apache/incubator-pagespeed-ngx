@@ -39,8 +39,8 @@ class CustomRewriteTestBase : public RewriteTestBase {
     explicit CustomTestRewriteDriverFactory(
         MockUrlFetcher* url_fetcher,
         TestDistributedFetcher* distributed_fetcher)
-        : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
-                                   distributed_fetcher) {
+        : TestRewriteDriverFactory(process_context(), GTestTempDir(),
+                                   url_fetcher, distributed_fetcher) {
       InitializeDefaultOptions();
     }
 
@@ -61,12 +61,6 @@ class CustomRewriteTestBase : public RewriteTestBase {
   virtual TestRewriteDriverFactory* MakeTestFactory() {
     return new CustomTestRewriteDriverFactory(&mock_url_fetcher_,
                                               &test_distributed_fetcher_);
-  }
-
-  static void SetUpTestCase() {
-  }
-
-  static void TearDownTestCase() {
   }
 
   OptionsClass* NewOptions() {

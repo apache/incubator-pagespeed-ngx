@@ -76,8 +76,9 @@ const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
 
 class Statistics;
 
-RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
-    : js_tokenizer_patterns_(ProcessContext::js_tokenizer_patterns()) {
+RewriteDriverFactory::RewriteDriverFactory(
+    const ProcessContext& process_context, ThreadSystem* thread_system)
+    : js_tokenizer_patterns_(process_context.js_tokenizer_patterns()) {
 #ifdef NDEBUG
   // For release binaries, use the thread-system directly.
   thread_system_.reset(thread_system);

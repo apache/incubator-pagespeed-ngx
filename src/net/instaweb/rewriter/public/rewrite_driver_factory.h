@@ -47,6 +47,7 @@ class Hasher;
 class MessageHandler;
 class NamedLockManager;
 class NonceGenerator;
+class ProcessContext;
 class PropertyCache;
 class QueuedWorkerPool;
 class ServerContext;
@@ -83,7 +84,8 @@ class RewriteDriverFactory {
   };
 
   // Takes ownership of thread_system.
-  explicit RewriteDriverFactory(ThreadSystem* thread_system);
+  RewriteDriverFactory(const ProcessContext& process_context,
+                       ThreadSystem* thread_system);
 
   // Initializes default options we want to hard-code into the
   // base-class to get consistency across deployments.  Subclasses

@@ -30,6 +30,7 @@ namespace net_instaweb {
 class FileSystem;
 class Hasher;
 class MessageHandler;
+class ProcessContext;
 class ServerContext;
 class Statistics;
 class UrlAsyncFetcher;
@@ -43,7 +44,8 @@ class Writer;
 // passed as a command-line parameter or via stdin.
 class FileRewriter : public RewriteDriverFactory {
  public:
-  FileRewriter(const RewriteGflags* gflags,
+  FileRewriter(const ProcessContext& process_context,
+               const RewriteGflags* gflags,
                bool echo_errors_to_stdout);
   virtual ~FileRewriter();
   virtual Hasher* NewHasher();
@@ -69,8 +71,9 @@ class FileRewriter : public RewriteDriverFactory {
 // interface to rewrite some HTML text.
 class StaticRewriter {
  public:
-  StaticRewriter(int* argc, char*** argv);
-  StaticRewriter();
+  StaticRewriter(const ProcessContext& process_context,
+                 int* argc, char*** argv);
+  explicit StaticRewriter(const ProcessContext& process_context);
   ~StaticRewriter();
 
   bool ParseText(const StringPiece& text,

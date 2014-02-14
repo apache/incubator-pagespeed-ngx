@@ -47,6 +47,7 @@ class CacheInterface;
 class FileSystem;
 class Hasher;
 class MessageHandler;
+class ProcessContext;
 class RewriteOptions;
 class Statistics;
 class UrlAsyncFetcher;
@@ -68,9 +69,10 @@ class FileServerContext : public ServerContext {
 
 }  // namespace
 
-FileRewriter::FileRewriter(const net_instaweb::RewriteGflags* gflags,
+FileRewriter::FileRewriter(const ProcessContext& process_context,
+                           const net_instaweb::RewriteGflags* gflags,
                            bool echo_errors_to_stdout)
-    : RewriteDriverFactory(Platform::CreateThreadSystem()),
+    : RewriteDriverFactory(process_context, Platform::CreateThreadSystem()),
       gflags_(gflags),
       echo_errors_to_stdout_(echo_errors_to_stdout) {
   net_instaweb::RewriteDriverFactory::InitStats(&simple_stats_);
@@ -128,9 +130,10 @@ ServerContext* FileRewriter::NewDecodingServerContext() {
   return sc;
 }
 
-StaticRewriter::StaticRewriter(int* argc, char*** argv)
+StaticRewriter::StaticRewriter(const ProcessContext& process_context, int* argc,
+                               char*** argv)
     : gflags_((*argv)[0], argc, argv),
-      file_rewriter_(&gflags_, true),
+      file_rewriter_(process_context, &gflags_, true),
       server_context_(NULL) {
   RewriteOptions* options = file_rewriter_.default_options();
   if (!gflags_.SetOptions(&file_rewriter_, options)) {
@@ -139,8 +142,8 @@ StaticRewriter::StaticRewriter(int* argc, char*** argv)
   server_context_ = file_rewriter_.CreateServerContext();
 }
 
-StaticRewriter::StaticRewriter()
-    : file_rewriter_(&gflags_, false),
+StaticRewriter::StaticRewriter(const ProcessContext& process_context)
+    : file_rewriter_(process_context, &gflags_, false),
       server_context_(file_rewriter_.CreateServerContext()) {
   if (!gflags_.SetOptions(&file_rewriter_,
                           server_context_->global_options())) {

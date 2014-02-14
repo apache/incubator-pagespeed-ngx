@@ -34,6 +34,7 @@ class FileSystem;
 class Hasher;
 class NamedLockManager;
 class NonceGenerator;
+class ProcessContext;
 class ServerContext;
 class SharedCircularBuffer;
 class SharedMemStatistics;
@@ -56,7 +57,8 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // runtime if one is passed in.  Implementors who don't want to support shared
   // memory at all should set PAGESPEED_SUPPORT_POSIX_SHARED_MEM to false and
   // pass in NULL, and the factory will use a NullSharedMem.
-  SystemRewriteDriverFactory(SystemThreadSystem* thread_system,
+  SystemRewriteDriverFactory(const ProcessContext& process_context,
+                             SystemThreadSystem* thread_system,
                              AbstractSharedMem* shared_mem_runtime,
                              StringPiece hostname, int port);
   virtual ~SystemRewriteDriverFactory();

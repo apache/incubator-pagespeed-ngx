@@ -322,7 +322,7 @@ class ApacheProcessContext {
     // Apache.
     if (factory_.get() == NULL) {
       factory_.reset(new ApacheRewriteDriverFactory(
-          server, kModPagespeedVersion));
+          process_context_, server, kModPagespeedVersion));
     }
     return factory_.get();
   }

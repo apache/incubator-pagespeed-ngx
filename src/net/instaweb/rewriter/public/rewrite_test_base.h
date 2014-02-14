@@ -68,6 +68,7 @@ class LRUCache;
 class MessageHandler;
 class MockLogRecord;
 class MockScheduler;
+class ProcessContext;
 class RequestHeaders;
 class ResourceNamer;
 class RewriteFilter;
@@ -650,6 +651,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // avoid flushing the entire metadata cache and instead match each
   // metadata Input against the invalidation-set.
   void EnableCachePurge();
+
+  // Returns a process context needed for any tests to instantiate factories
+  // explicitly.
+  static const ProcessContext& process_context();
 
  protected:
   void Init();

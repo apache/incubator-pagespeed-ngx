@@ -17,6 +17,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_PROCESS_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_PROCESS_CONTEXT_H_
 
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } };
 
 namespace net_instaweb {
@@ -42,7 +45,14 @@ class ProcessContext {
   // JsTokenizerPatterns requires compiles multiple regular
   // expressions on construction, and this takes a significant amount
   // of time in debug builds.
-  static const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns();
+  const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns() const {
+    return js_tokenizer_patterns_.get();
+  }
+
+ private:
+  scoped_ptr<pagespeed::js::JsTokenizerPatterns> js_tokenizer_patterns_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProcessContext);
 };
 
 }  // namespace net_instaweb

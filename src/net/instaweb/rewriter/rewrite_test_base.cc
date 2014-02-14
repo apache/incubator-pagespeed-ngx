@@ -89,6 +89,19 @@ namespace net_instaweb {
 
 namespace {
 
+// Logging at the INFO level slows down tests, adds to the noise, and
+// adds considerably to the speed variability.
+class RewriteTestBaseProcessContext : public ProcessContext {
+ public:
+  RewriteTestBaseProcessContext() {
+    logging::SetMinLogLevel(logging::LOG_WARNING);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RewriteTestBaseProcessContext);
+};
+RewriteTestBaseProcessContext rewrite_test_base_process_context;
+
 class TestRewriteOptionsManager : public RewriteOptionsManager {
  public:
   TestRewriteOptionsManager()
@@ -119,12 +132,15 @@ const char RewriteTestBase::kWrongBeaconingKey[] = "wrong_beaconing_key";
 RewriteTestBase::RewriteTestBase()
     : test_distributed_fetcher_(this),
       statistics_(new SimpleStats()),
-      factory_(new TestRewriteDriverFactory(GTestTempDir(),
+      factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
+                                            GTestTempDir(),
                                             &mock_url_fetcher_,
                                             &test_distributed_fetcher_)),
-      other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
-                                                  &mock_url_fetcher_,
-                                                  &test_distributed_fetcher_)),
+      other_factory_(new TestRewriteDriverFactory(
+          rewrite_test_base_process_context,
+          GTestTempDir(),
+          &mock_url_fetcher_,
+          &test_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()),
@@ -137,12 +153,15 @@ RewriteTestBase::RewriteTestBase()
 RewriteTestBase::RewriteTestBase(Statistics* statistics)
     : test_distributed_fetcher_(this),
       statistics_(statistics),
-      factory_(new TestRewriteDriverFactory(GTestTempDir(),
+      factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
+                                            GTestTempDir(),
                                             &mock_url_fetcher_,
                                             &test_distributed_fetcher_)),
-      other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
-                                                  &mock_url_fetcher_,
-                                                  &test_distributed_fetcher_)),
+      other_factory_(new TestRewriteDriverFactory(
+          rewrite_test_base_process_context,
+          GTestTempDir(),
+          &mock_url_fetcher_,
+          &test_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()),
@@ -336,7 +355,8 @@ void RewriteTestBase::ServeResourceFromManyContextsWithUA(
 }
 
 TestRewriteDriverFactory* RewriteTestBase::MakeTestFactory() {
-  return new TestRewriteDriverFactory(GTestTempDir(), &mock_url_fetcher_,
+  return new TestRewriteDriverFactory(rewrite_test_base_process_context,
+                                      GTestTempDir(), &mock_url_fetcher_,
                                       &test_distributed_fetcher_);
 }
 
@@ -1242,17 +1262,8 @@ GoogleString RewriteTestBase::ExpectedNonce() {
   return result;
 }
 
-// Logging at the INFO level slows down tests, adds to the noise, and
-// adds considerably to the speed variability.
-class RewriteTestBaseProcessContext {
- public:
-  RewriteTestBaseProcessContext() {
-    logging::SetMinLogLevel(logging::LOG_WARNING);
-  }
-
- private:
-  ProcessContext process_context_;
-};
-RewriteTestBaseProcessContext rewrite_test_base_process_context;
+const ProcessContext& RewriteTestBase::process_context() {
+  return rewrite_test_base_process_context;
+}
 
 }  // namespace net_instaweb
