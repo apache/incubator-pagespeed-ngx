@@ -833,7 +833,9 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
       if ((property_cache_callback_ != NULL) && started_parse_) {
         // Connect the ProxyFetch in the PropertyCacheCallbackCollector.  This
         // ensures that we will not start executing HTML filters until
-        // property cache lookups are complete.
+        // property cache lookups are complete --- we will keep collecting
+        // things into our queue below, but ScheduleQueueExecutionIfNeeded will
+        // wait until lookup completed before scheduling the actual parse.
         property_cache_callback_->ConnectProxyFetch(this);
       }
 
