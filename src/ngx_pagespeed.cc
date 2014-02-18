@@ -570,15 +570,24 @@ char* ps_init_dir(const StringPiece& directive,
     return NULL;  // We're not root, so we're staying whoever we are.
   }
 
+  // chown if owner differs from nginx worker user.
   ngx_core_conf_t* ccf =
       (ngx_core_conf_t*)(ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
   CHECK(ccf != NULL);
-
-  if (chown(gs_path.c_str(), ccf->user, ccf->group) != 0) {
+  struct stat gs_stat;
+  if (stat(gs_path.c_str(), &gs_stat) != 0) {
     return string_piece_to_pool_string(
         cf->pool, net_instaweb::StrCat(
-            directive, " ", path, " unable to set permissions"));
+            directive, " ", path, " stat() failed"));
   }
+  if (gs_stat.st_uid != ccf->user) {
+    if (chown(gs_path.c_str(), ccf->user, ccf->group) != 0) {
+      return string_piece_to_pool_string(
+          cf->pool, net_instaweb::StrCat(
+              directive, " ", path, " unable to set permissions"));
+    }
+  }
+
   return NULL;
 }
 
