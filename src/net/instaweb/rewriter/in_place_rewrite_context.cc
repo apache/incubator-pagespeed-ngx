@@ -377,6 +377,7 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
     if (ShouldAddVaryUserAgent()) {
       headers->Replace(HttpAttributes::kVary, HttpAttributes::kUserAgent);
     }
+    headers->set_implicit_cache_ttl_ms(Options()->implicit_cache_ttl_ms());
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
     int64 date_ms = kint64max;
@@ -394,9 +395,26 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
       expire_at_ms = now_ms + headers->implicit_cache_ttl_ms();
     } else if (stale_rewrite()) {
       // If we are serving a stale rewrite, set the cache ttl to the minimum of
-      // kDefaultImplicitCacheTtlMs and the original ttl.
-      expire_at_ms = now_ms + std::min(
-          ResponseHeaders::kDefaultImplicitCacheTtlMs, expire_at_ms - date_ms);
+      // the implicit cache TTL and the original ttl.
+      // TODO(matterbury): Consider a better way to handle stale resources.
+      // Let's say that we get some requests over time for a resource:
+      // 1. At 00:00:00 we get a request and the resource has a TTL of 10:00.
+      //    We will return it with a max-age of 600 (10 minutes).
+      // 2. At 00:09:00 we get a request for the same resource.
+      //    We will return it with a max-age of 60 (1 minute) because of the
+      //    'expire_at_ms - now_ms' below as we don't trigger either condition
+      //    that changes expire_at_ms.
+      // 3. At 00:11:00 we get a request for the same resource.
+      //    It is now stale because its max age has expired but it's still
+      //    within the options()->metadata_cache_staleness_threshold_ms(), or
+      //    so we shall assume.
+      // In this case, we need to pick a reasonable max age. One possibility is
+      // "however much of the cache_staleness_threshold is left", but what do
+      // we do if that's none?
+      // Currently we set it as the lesser of our implicit cache TTL and the
+      // original resource's TTL since that seems to be a reasonable value.
+      expire_at_ms = now_ms + std::min(headers->implicit_cache_ttl_ms(),
+                                       expire_at_ms - date_ms);
     }
     headers->SetDateAndCaching(now_ms, expire_at_ms - now_ms);
   }

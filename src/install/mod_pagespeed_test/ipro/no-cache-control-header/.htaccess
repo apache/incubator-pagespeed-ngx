@@ -1,0 +1,2 @@
+Header unset Cache-Control
+ModPagespeedImplicitCacheTtlMs 333000

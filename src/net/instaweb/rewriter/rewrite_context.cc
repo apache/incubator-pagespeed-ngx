@@ -2991,10 +2991,9 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   }
 
   // In the case of a resource fetch with hash mismatch, we will not have
-  // inputs.  So fix headers based on metadata.  We do not consider
-  // FILE_BASED inputs here.  Hence if all inputs are FILED_BASED then the TTL
-  // wil be min of headers->cache_ttl_ms() and
-  // ResponseHeaders::kDefaultImplicitCacheTtlMs.
+  // inputs, so fix headers based on the metadata. As we do not consider
+  // FILE_BASED inputs here, if all inputs are FILE_BASED, the TTL will be the
+  // minimum of headers->cache_ttl_ms() and headers->implicit_cache_ttl_ms().
   int64 min_cache_expiry_time_ms = headers->cache_ttl_ms() + headers->date_ms();
   for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
     const CachedResult& partition = partitions_->partition(i);
@@ -3016,7 +3015,7 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   headers->SetDateAndCaching(
       headers->date_ms(),
       std::min(min_cache_expiry_time_ms - headers->date_ms(),
-               ResponseHeaders::kDefaultImplicitCacheTtlMs),
+               headers->implicit_cache_ttl_ms()),
       ",private");
   headers->RemoveAll(HttpAttributes::kEtag);
   headers->ComputeCaching();

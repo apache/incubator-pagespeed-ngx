@@ -43,8 +43,9 @@ class InPlaceResourceRecorder : public Writer {
   // delete itself when DoneAndSetHeaders() is called.
   InPlaceResourceRecorder(
       StringPiece url, const RequestHeaders& request_headers, bool respect_vary,
-      int max_response_bytes, int max_concurrent_recordings, HTTPCache* cache,
-      Statistics* statistics, MessageHandler* handler);
+      int max_response_bytes, int max_concurrent_recordings,
+      int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* statistics,
+      MessageHandler* handler);
 
   // Normally you should use DoneAndSetHeaders rather than deleting this
   // directly.
@@ -97,6 +98,8 @@ class InPlaceResourceRecorder : public Writer {
   bool failed() { return failure_; }
   bool limit_active_recordings() { return max_concurrent_recordings_ != 0; }
 
+  int64 implicit_cache_ttl_ms() { return implicit_cache_ttl_ms_; }
+
  private:
   bool IsIproContentType(ResponseHeaders* response_headers);
 
@@ -105,6 +108,7 @@ class InPlaceResourceRecorder : public Writer {
   const ResponseHeaders::VaryOption respect_vary_;
   const unsigned int max_response_bytes_;
   const int max_concurrent_recordings_;
+  const int64 implicit_cache_ttl_ms_;
 
   HTTPValue resource_value_;
 

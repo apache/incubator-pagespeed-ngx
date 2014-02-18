@@ -945,6 +945,8 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
        bucket = APR_BUCKET_NEXT(bucket)) {
     if (APR_BUCKET_IS_EOS(bucket)) {
       ResponseHeaders response_headers;
+      response_headers.set_implicit_cache_ttl_ms(
+          recorder->implicit_cache_ttl_ms());
 
       // Note: Since we're post-AP_FTYPE_PROTOCOL the error headers and regular
       // headers have already been merged in Apache, so no need to gather

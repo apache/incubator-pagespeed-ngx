@@ -1332,6 +1332,38 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   check_stat $STATS.2 $STATS.3 image_rewrites 0
   check_stat $STATS.2 $STATS.3 image_ongoing_rewrites 0
 
+  # Check that IPRO served resources that don't specify a cache control
+  # value are given the TTL specified by the ImplicitCacheTtlMs directive.
+  start_test "IPRO respects ImplicitCacheTtlMs."
+  HTML_URL=$IPRO_ROOT/no-cache-control-header/ipro.html
+  RESOURCE_URL=$IPRO_ROOT/no-cache-control-header/test_image_dont_reuse.png
+  RESOURCE_HEADERS=$OUTDIR/resource_headers
+  OUTFILE=$OUTDIR/ipro_resource_output
+
+  # Fetch the HTML to initiate rewriting and caching of the image.
+  http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $HTML_URL -O $OUTFILE
+
+  # First IPRO resource request after a short wait: it will have the full TTL.
+  sleep 2
+  http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
+  RESOURCE_MAX_AGE=$( \
+    extract_headers $OUTFILE | \
+    grep 'Cache-Control:' | tr -d '\r' | \
+    sed -e 's/^ *Cache-Control: *//' | sed -e 's/^.*max-age=\([0-9]*\).*$/\1/')
+  check test -n "$RESOURCE_MAX_AGE"
+  check test $RESOURCE_MAX_AGE -eq 333
+
+  # Second IPRO resource request after a short wait: the TTL will be reduced.
+  sleep 2
+  http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
+  RESOURCE_MAX_AGE=$( \
+    extract_headers $OUTFILE | \
+    grep 'Cache-Control:' | tr -d '\r' | \
+    sed -e 's/^ *Cache-Control: *//' | sed -e 's/^.*max-age=\([0-9]*\).*$/\1/')
+  check test -n "$RESOURCE_MAX_AGE"
+  check test $RESOURCE_MAX_AGE -lt 333
+  check test $RESOURCE_MAX_AGE -gt 300
+
   # Run all the tests that want to have cache-flush as part of the flow.
   run_post_cache_flush
 fi

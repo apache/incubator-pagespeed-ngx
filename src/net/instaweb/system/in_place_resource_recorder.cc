@@ -42,12 +42,14 @@ AtomicInt32 InPlaceResourceRecorder::active_recordings_(0);
 InPlaceResourceRecorder::InPlaceResourceRecorder(
     StringPiece url, const RequestHeaders& request_headers, bool respect_vary,
     int max_response_bytes, int max_concurrent_recordings,
-    HTTPCache* cache, Statistics* stats, MessageHandler* handler)
+    int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* stats,
+    MessageHandler* handler)
     : url_(url.data(), url.size()),
       request_properties_(request_headers.GetProperties()),
       respect_vary_(ResponseHeaders::GetVaryOption(respect_vary)),
       max_response_bytes_(max_response_bytes),
       max_concurrent_recordings_(max_concurrent_recordings),
+      implicit_cache_ttl_ms_(implicit_cache_ttl_ms),
       cache_(cache), handler_(handler),
       num_resources_(stats->GetVariable(kNumResources)),
       num_inserted_into_cache_(stats->GetVariable(kNumInsertedIntoCache)),

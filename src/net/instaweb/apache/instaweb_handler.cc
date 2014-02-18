@@ -412,12 +412,15 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
     // InPlaceResourceRecorder as we want any ?ModPagespeed query-params to
     // be stripped from the cache key before we store the result in HTTPCache.
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
-        stripped_gurl->Spec(), request_headers,
+        stripped_gurl->Spec(),
+        request_headers,
         options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),
+        options->implicit_cache_ttl_ms(),
         server_context->http_cache(),
-        server_context->statistics(), server_context->message_handler());
+        server_context->statistics(),
+        server_context->message_handler());
     ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
                          request, request->connection);
     ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,

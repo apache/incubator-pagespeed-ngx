@@ -1345,8 +1345,11 @@ TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
 TEST_F(InPlaceRewriteContextTest, CacheableJsUrlModifiedImplicitCacheTtl) {
   Init();
   response_headers_.set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
-  FetchAndCheckResponse(cache_js_no_max_age_url_, cache_body_, true,
-                        500 * Timer::kSecondMs, NULL, start_time_ms());
+  FetchAndCheckResponse(cache_js_no_max_age_url_, cache_body_,
+                        /* expected_success= */ true,
+                        /* expected_ttl= */ 500 * Timer::kSecondMs,
+                        /* etag= */ NULL,
+                        /* date_ms= */ start_time_ms());
 }
 
 TEST_F(InPlaceRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
