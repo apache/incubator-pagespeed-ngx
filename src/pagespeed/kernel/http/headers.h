@@ -51,6 +51,12 @@ template<class Proto> class Headers {
 
   // Lookup attributes with provided name. Attribute values are stored in
   // values. Returns true iff there were any attributes with provided name.
+  // Attributes that normally appear as a comma-separated header list
+  // (Cache-Control, Accept, etc.) will yield multiple entries in *values.
+  // Multiple occurrences of a header (Cookie, etc.) will also yield multiple
+  // entries in *values.  In most cases (but not Cookies) the semantics are
+  // equivalent either way.  See:
+  //   http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-26#section-3.2.2
   //
   // Note that Lookup, though declared const, is NOT thread-safe.  This
   // is because it lazily generates a map.
@@ -61,8 +67,9 @@ template<class Proto> class Headers {
   // be done in a separate CL from the one I'm typing into now.
   bool Lookup(const StringPiece& name, ConstStringStarVector* values) const;
 
-  // Looks up a single attribute value.  Returns NULL if the attribute is
-  // not found, or if more than one attribute is found.
+  // Looks up a single attribute value.  Returns NULL if the attribute is not
+  // found, or if more than one attribute is found (either multiple
+  // comma-separated entries, or multiple copies of the header).
   const char* Lookup1(const StringPiece& name) const;
 
   // Does there exist a header with given name.
@@ -83,7 +90,10 @@ template<class Proto> class Headers {
   // details.
   void RemoveCookie(const StringPiece& cookie_name);
 
-  // Adds a new header, even if a header with the 'name' exists already.
+  // Adds a new header, even if a header with the 'name' exists already.  Note
+  // that this does *not* add a new entry to a comma-separated list for headers
+  // that are ordinarily represented that way, but that the semantics will be
+  // the same.
   void Add(const StringPiece& name, const StringPiece& value);
 
   // Remove headers by name and value. Return true if anything was removed.
