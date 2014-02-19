@@ -66,10 +66,15 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
       AbstractPropertyPage* page,
       Timer* timer);
 
+  virtual bool ShouldBeacon(RewriteDriver* driver);
   // Check beacon interval and nonce state, and return appropriate
   // BeaconMetadata; result.status indicates whether beaconing should occur, and
   // result.nonce contains the nonce (if required).
   virtual BeaconMetadata PrepareForBeaconInsertion(RewriteDriver* driver);
+
+  virtual void UpdateCandidateImagesForBeaconing(const StringSet& images,
+                                                 RewriteDriver* driver,
+                                                 bool beaconing);
 
  private:
   virtual GoogleString GetKeyForUrl(const GoogleString& url);

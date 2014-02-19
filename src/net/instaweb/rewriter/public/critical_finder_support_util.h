@@ -108,6 +108,8 @@ void UpdateCriticalKeys(bool require_prior_support,
                         const StringSet& new_set, int support_value,
                         CriticalKeys* critical_keys);
 
+bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver);
+
 // Update the property cache with a new set of keys. This will update the
 // support value for the new keys. If require_prior_support is set, any keys
 // that are not already present in the property cache will be ignored (to
@@ -135,10 +137,19 @@ void WriteCriticalKeysToPropertyCache(
 // candidate keys are not required, keys may be empty (but new candidate
 // detection will not occur).  If result->status != kDontBeacon, caller should
 // write proto back to the property cache using UpdateInPropertyCache.
-void PrepareForBeaconInsertionHelper(
-    const StringSet& keys, CriticalKeys* proto, int support_interval,
-    NonceGenerator* nonce_generator, RewriteDriver* driver,
-    BeaconMetadata* result);
+void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
+                                     NonceGenerator* nonce_generator,
+                                     RewriteDriver* driver,
+                                     bool using_candidate_key_detection,
+                                     BeaconMetadata* result);
+
+// Update the candidate key set in proto. If new candidate keys are detected,
+// they are inserted into proto with a support value of 0, and true is returned.
+// Otherwise returns false. If clear_rebeacon_timestamp is set, the rebeacon
+// timestamp field in the proto is cleared to force rebeaconing on the next
+// request.
+bool UpdateCandidateKeys(const StringSet& keys, CriticalKeys* proto,
+                         bool clear_rebeacon_timestamp);
 
 }  // namespace net_instaweb
 

@@ -20,18 +20,21 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/critical_keys.pb.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/timer.h"
+
+using ::testing::Eq;
 
 namespace net_instaweb {
 
@@ -96,6 +99,17 @@ class BeaconCriticalImagesFinderTest : public CriticalImagesFinderTestBase {
     VerifyBeaconStatus(kBeaconWithNonce);
   }
 
+  // Same as Beacon(), but advances time by the low frequency beacon interval.
+  // Useful in cases where a lot of beacons with the same critical image set are
+  // being sent.
+  void BeaconLowFrequency() {
+    WriteBackAndResetDriver();
+    factory()->mock_timer()->AdvanceMs(
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs *
+        kLowFreqBeaconMult);
+    VerifyBeaconStatus(kBeaconWithNonce);
+  }
+
   // Verify that no beacon injection occurs.
   void VerifyNoBeaconing() {
     VerifyBeaconStatus(kDoNotBeacon);
@@ -108,6 +122,9 @@ class BeaconCriticalImagesFinderTest : public CriticalImagesFinderTestBase {
 
   // Helper method used for verifying beacon injection status.
   void VerifyBeaconStatus(BeaconStatus status) {
+    bool status_is_beacon_with_nonce = (status == kBeaconWithNonce);
+    EXPECT_THAT(finder_->ShouldBeacon(rewrite_driver()),
+                Eq(status_is_beacon_with_nonce));
     last_beacon_metadata_ =
         finder_->PrepareForBeaconInsertion(rewrite_driver());
     EXPECT_EQ(status, last_beacon_metadata_.status);
@@ -222,7 +239,7 @@ TEST_F(BeaconCriticalImagesFinderTest, StoreMultiple) {
   css_images_.clear();
   css_images_.insert("a.jpg");
   for (int i = 0; i < finder_->SupportInterval() - 1; ++i) {
-    Beacon();
+    BeaconLowFrequency();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(&html_images_, &css_images_));
     EXPECT_STREQ("x.jpg;a.jpg", CriticalImagesString());
   }
@@ -233,7 +250,7 @@ TEST_F(BeaconCriticalImagesFinderTest, StoreMultiple) {
   css_images_.clear();
   html_images_.insert("y.png");
   for (int i = 0; i < 2; ++i) {
-    Beacon();
+    BeaconLowFrequency();
     EXPECT_TRUE(UpdateCriticalImagesCacheEntry(&html_images_, &css_images_));
   }
   EXPECT_STREQ("x.jpg;", CriticalImagesString());
@@ -387,6 +404,53 @@ TEST_F(BeaconCriticalImagesFinderTest, RebeaconBeforeTimeoutWithHeader) {
   SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
   SetShouldBeaconHeader(kWrongBeaconingKey);
   VerifyNoBeaconing();
+}
+
+// Verify that sending enough beacons with the same critical image set puts us
+// into low frequency beaconing mode.
+TEST_F(BeaconCriticalImagesFinderTest, LowFrequencyBeaconing) {
+  StringSet html_critical_images_set;
+  html_critical_images_set.insert("x.jpg");
+  finder_->UpdateCandidateImagesForBeaconing(
+      html_critical_images_set, rewrite_driver(), false /* beaconing */);
+  // Send enough beacons to put us into low frequency beaconing mode.
+  for (int i = 0; i <= kHighFreqBeaconCount; ++i) {
+    Beacon();
+    BeaconCriticalImagesFinder::UpdateCriticalImagesCacheEntry(
+        &html_critical_images_set, NULL, NULL, last_beacon_metadata_.nonce,
+        server_context()->beacon_cohort(), rewrite_driver()->property_page(),
+        factory()->mock_timer());
+    CriticalKeys* html_critical_images =
+        GetCriticalImages()->mutable_html_critical_image_support();
+    EXPECT_THAT(html_critical_images->valid_beacons_received(), Eq(i + 1));
+  }
+
+  // Now we are in low frequency beaconing mode, so advancing by the high
+  // frequency beaconing amount should not trigger beaconing.
+  factory()->mock_timer()->AdvanceMs(options()->beacon_reinstrument_time_sec() *
+                                     Timer::kSecondMs);
+  EXPECT_FALSE(finder_->ShouldBeacon(rewrite_driver()));
+  // But advancing by the low frequency amount should.
+  factory()->mock_timer()->AdvanceMs(options()->beacon_reinstrument_time_sec() *
+                                     Timer::kSecondMs * kLowFreqBeaconMult);
+  Beacon();
+  factory()->mock_timer()->AdvanceMs(options()->beacon_reinstrument_time_sec() *
+                                     Timer::kSecondMs);
+  VerifyNoBeaconing();
+
+  // Now verify that updating the candidate images works correctly. If we are
+  // beaconing, then the next beacon timestamp does not get updated.
+  html_critical_images_set.insert("y.jpg");
+  finder_->UpdateCandidateImagesForBeaconing(
+      html_critical_images_set, rewrite_driver(), true /* beaconing */);
+  VerifyNoBeaconing();
+
+  // Verify that setting the beaconing flag to false when inserting a new
+  // candidate key does trigger beaconing on the next request.
+  html_critical_images_set.insert("z.jpg");
+  finder_->UpdateCandidateImagesForBeaconing(
+      html_critical_images_set, rewrite_driver(), false /* beaconing */);
+  Beacon();
 }
 
 }  // namespace

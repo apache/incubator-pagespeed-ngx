@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 
-#include <algorithm>
-
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -32,12 +30,9 @@
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -55,63 +50,34 @@ CriticalImagesBeaconFilter::CriticalImagesBeaconFilter(RewriteDriver* driver)
 
 CriticalImagesBeaconFilter::~CriticalImagesBeaconFilter() {}
 
-bool CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(
-    RewriteDriver* driver) {
-  if (!driver->request_properties()->SupportsCriticalImagesBeacon() ||
-      !driver->options()->Enabled(
-          RewriteOptions::kResizeToRenderedImageDimensions)) {
+bool CriticalImagesBeaconFilter::ShouldApply(RewriteDriver* driver) {
+  // Default to not enabled.
+  if (!driver->request_properties()->SupportsCriticalImagesBeacon()) {
     return false;
   }
-
-  // Instrument if we don't have any rendered image dimensions information or if
-  // the pcache entry has expired.
-  // TODO(poojatandon): These checks should be moved to property_cache_util, or
-  // to CriticalImagesFinder.
-  const PropertyCache* page_property_cache =
-      driver->server_context()->page_property_cache();
-  PropertyPage* page = driver->property_page();
-  const PropertyCache::Cohort* cohort =
-      driver->server_context()->critical_images_finder()->cohort();
-
-  if (!page_property_cache->enabled() || (page == NULL) || (cohort == NULL)) {
-    return false;
-  }
-
-  const PropertyValue* property_value = page->GetProperty(
-      cohort, CriticalImagesFinder::kRenderedImageDimensionsProperty);
-  if (!property_value->has_value()) {
-    return true;
-  }
-
-  int64 cache_ttl_ms =
-      driver->options()->finder_properties_cache_expiration_time_ms();
-  int64 reinstrument_time =
-      driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs;
-  int64 expiration_time = std::min(cache_ttl_ms, reinstrument_time);
-  if (page_property_cache->IsExpired(property_value, expiration_time)) {
-    return true;
-  }
-  return false;
+  CriticalImagesFinder* finder =
+      driver->server_context()->critical_images_finder();
+  return finder->ShouldBeacon(driver);
 }
 
 void CriticalImagesBeaconFilter::DetermineEnabled() {
+  // We need the filter to be enabled to track the candidate images on the page,
+  // even if we aren't actually inserting the beacon JS.
+  set_is_enabled(true);
   // Make sure we don't have stray unused beacon metadata from a previous
   // document.  This has caught bugs in tests / during code modification where
   // the whole filter chain isn't run and cleaned up properly.
   DCHECK_EQ(kDoNotBeacon, beacon_metadata_.status);
   DCHECK(beacon_metadata_.nonce.empty());
+  DCHECK(!insert_beacon_js_);
 
-  // Default to not enabled.
-  bool enabled = false;
   if (driver_->request_properties()->SupportsCriticalImagesBeacon()) {
     // Check whether we need to beacon, and store the nonce we get.
     CriticalImagesFinder* finder =
         driver_->server_context()->critical_images_finder();
     beacon_metadata_ = finder->PrepareForBeaconInsertion(driver_);
-    enabled = (beacon_metadata_.status != kDoNotBeacon);
+    insert_beacon_js_ = (beacon_metadata_.status != kDoNotBeacon);
   }
-  set_is_enabled(enabled);
-  return;
 }
 
 void CriticalImagesBeaconFilter::InitStats(Statistics* statistics) {
@@ -119,6 +85,14 @@ void CriticalImagesBeaconFilter::InitStats(Statistics* statistics) {
 }
 
 void CriticalImagesBeaconFilter::EndDocument() {
+  CriticalImagesFinder* finder =
+      driver_->server_context()->critical_images_finder();
+  finder->UpdateCandidateImagesForBeaconing(image_url_hashes_, driver_,
+                                            insert_beacon_js_);
+  if (!insert_beacon_js_) {
+    Clear();
+    return;
+  }
   StaticAssetManager* static_asset_manager =
       driver_->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
@@ -139,9 +113,9 @@ void CriticalImagesBeaconFilter::EndDocument() {
             "\npagespeed.CriticalImages.Run('",
             *beacon_url, "','", html_url, "','",
             options_signature_hash, "',");
-  StrAppend(&js,
-            BoolToString(IncludeRenderedImagesInBeacon(driver_)), ",'",
-            beacon_metadata_.nonce, "');");
+  StrAppend(&js, BoolToString(driver_->options()->Enabled(
+                     RewriteOptions::kResizeToRenderedImageDimensions)),
+            ",'", beacon_metadata_.nonce, "');");
   Clear();
   HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
   driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
@@ -153,24 +127,33 @@ void CriticalImagesBeaconFilter::EndDocument() {
 void CriticalImagesBeaconFilter::Clear() {
   beacon_metadata_.status = kDoNotBeacon;
   beacon_metadata_.nonce.clear();
+  image_url_hashes_.clear();
+  insert_beacon_js_ = false;
 }
 
 void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
+  if (element->keyword() != HtmlName::kImg &&
+      element->keyword() != HtmlName::kInput) {
+    return;
+  }
+  // TODO(jud): Verify this logic works correctly with input tags, then remove
+  // the check for img tag here.
   if (element->keyword() == HtmlName::kImg && driver_->IsRewritable(element)) {
     // Add a pagespeed_url_hash attribute to the image with the hash of the
     // original URL. This is what the beacon will send back as the identifier
     // for critical images.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
-    if (src != NULL && src->DecodedValueOrNull() != NULL &&
-        (element->keyword() == HtmlName::kImg ||
-         element->keyword() == HtmlName::kInput)) {
+    if (src != NULL && src->DecodedValueOrNull() != NULL) {
       StringPiece url(src->DecodedValueOrNull());
       GoogleUrl gurl(driver_->base_url(), url);
       if (gurl.IsAnyValid()) {
         unsigned int hash_val = HashString<CasePreserve, unsigned int>(
             gurl.spec_c_str(), strlen(gurl.spec_c_str()));
         GoogleString hash_str = UintToString(hash_val);
-        driver_->AddAttribute(element, HtmlName::kPagespeedUrlHash, hash_str);
+        image_url_hashes_.insert(hash_str);
+        if (insert_beacon_js_) {
+          driver_->AddAttribute(element, HtmlName::kPagespeedUrlHash, hash_str);
+        }
       }
     }
   }
