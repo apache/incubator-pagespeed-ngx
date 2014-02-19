@@ -210,6 +210,21 @@ RewriteOptions::OptionSettingResult ParseAndSetOptionHelper(
   return RewriteOptions::kOptionOk;
 }
 
+namespace {
+
+const char* ps_error_string_for_option(
+    ngx_pool_t* pool, StringPiece directive, StringPiece warning) {
+  GoogleString msg =
+      StrCat("\"", directive, "\" ", warning);
+  char* s = string_piece_to_pool_string(pool, msg);
+  if (s == NULL) {
+    return "failed to allocate memory";
+  }
+  return s;
+}
+
+}  // namespace
+
 // Very similar to apache/mod_instaweb::ParseDirective.
 const char* NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
@@ -226,13 +241,8 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
   }
 
   if (GetOptionScope(directive) > scope) {
-    GoogleString msg =
-        StrCat("\"", directive, "\" cannot be set at this scope.");
-    char* s = string_piece_to_pool_string(pool, msg);
-    if (s == NULL) {
-      return "failed to allocate memory";
-    }
-    return s;
+    return ps_error_string_for_option(
+        pool, directive, "cannot be set at this scope.");
   }
 
   GoogleString msg;
@@ -304,25 +314,22 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
     result = ParseAndSetOptionFromName3(
         directive, args[1], args[2], args[3], &msg, handler);
   } else {
-    return "unknown option";
+    return ps_error_string_for_option(
+        pool, directive, "not recognized or too many arguments");
   }
 
   switch (result) {
     case RewriteOptions::kOptionOk:
       return NGX_CONF_OK;
     case RewriteOptions::kOptionNameUnknown:
-      return "unknown option";
+      return ps_error_string_for_option(
+          pool, directive, "not recognized or too many arguments");
     case RewriteOptions::kOptionValueInvalid: {
-      GoogleString full_directive = "\"";
+      GoogleString full_directive;
       for (int i = 0 ; i < n_args ; i++) {
         StrAppend(&full_directive, i == 0 ? "" : " ", args[i]);
       }
-      StrAppend(&full_directive, "\": ", msg);
-      char* s = string_piece_to_pool_string(pool, full_directive);
-      if (s == NULL) {
-        return "failed to allocate memory";
-      }
-      return s;
+      return ps_error_string_for_option(pool, full_directive, msg);
     }
   }
 
