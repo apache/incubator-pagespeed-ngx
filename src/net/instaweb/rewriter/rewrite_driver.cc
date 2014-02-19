@@ -294,8 +294,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 void RewriteDriver::PopulateRequestContext() {
   if ((request_context_.get() != NULL) &&
       (request_headers_ != NULL)) {
-    request_context_->set_accepts_webp(request_headers_->HasValue(
-        HttpAttributes::kAccept, kContentTypeWebp.mime_type()));
+    request_context_->set_accepts_webp(
+        request_properties_->SupportsWebpRewrittenUrls());
   }
 }
 
@@ -779,7 +779,8 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   callback->CallRun();
 }
 
-const char* RewriteDriver::kPassThroughRequestAttributes[7] = {
+const char* RewriteDriver::kPassThroughRequestAttributes[8] = {
+  HttpAttributes::kAccept,
   HttpAttributes::kIfModifiedSince,
   HttpAttributes::kReferer,
   HttpAttributes::kUserAgent,
@@ -3047,7 +3048,7 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
 void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
   user_agent_string.CopyToString(&user_agent_);
   ClearRequestProperties();
-  request_properties_->set_user_agent(user_agent_string);
+  request_properties_->SetUserAgent(user_agent_string);
 }
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(

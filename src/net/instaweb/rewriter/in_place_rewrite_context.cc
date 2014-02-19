@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -369,14 +370,14 @@ void InPlaceRewriteContext::FetchTryFallback(const GoogleString& url,
 }
 
 void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
+  // TODO(jmaessen): This is being called twice (and passing the conditional
+  // both times) for every IPRO request in testing.  Why is that?
   if (is_rewritten_) {
     if (!rewritten_hash_.empty()) {
       headers->Replace(HttpAttributes::kEtag, HTTPCache::FormatEtag(StrCat(
                                                   id(), "-", rewritten_hash_)));
     }
-    if (ShouldAddVaryUserAgent()) {
-      headers->Replace(HttpAttributes::kVary, HttpAttributes::kUserAgent);
-    }
+    AddVaryIfRequired(headers);
     headers->set_implicit_cache_ttl_ms(Options()->implicit_cache_ttl_ms());
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
@@ -625,16 +626,44 @@ bool InPlaceRewriteContext::InPlaceOptimizeForBrowserEnabled() const {
        Options()->Enabled(RewriteOptions::kSquashImagesForMobileScreen));
 }
 
-bool InPlaceRewriteContext::ShouldAddVaryUserAgent() const {
+// TODO(jmaessen): Sharpen this up.  Mark CSS vary:User-Agent because it doesn't
+// see the Accept:image/webp header; we can skip this if all its images will be
+// IPRO'd.  We don't need to mark non-webp-eligible images, which may require
+// some fiddly options checking.  We need to treat webp lossless differently, so
+// we can't just look at the extension and content type; right now we just
+// disable lossless.
+void InPlaceRewriteContext::AddVaryIfRequired(ResponseHeaders* headers) const {
   if (!InPlaceOptimizeForBrowserEnabled() || num_output_partitions() != 1) {
-    return false;
+    // No browser-dependent rewrites => no need for vary
+    return;
   }
-  const CachedResult* result = output_partition(0);
-  // We trust the extension at this point as we put it there.
-  const ContentType* type = NameExtensionToContentType(result->url());
+  const ContentType* type = headers->DetermineContentType();
   // Returns true if we may return different rewritten content based
   // on the user agent.
-  return type->IsImage() || type->IsCss();
+  if (!type->IsImage() && !type->IsCss()) {
+    // No browser-dependent content types involved => no need for vary
+    return;
+  }
+  // TODO(jmaessen): Handle IE.  This requires cache-control:private instead or
+  // no caching will occur on the client side.  Also add tests for it!
+  ConstStringStarVector varies;
+  GoogleString new_vary =
+      type->IsImage() ? HttpAttributes::kAccept : HttpAttributes::kUserAgent;
+  if (headers->Lookup(HttpAttributes::kVary, &varies)) {
+    // Need to add to the existing Vary header.  But first, check that the vary
+    // header doesn't already encompass new_vary.
+    for (int i = 0, s = varies.size(); i < s; ++i) {
+      StringPiece vary(*varies[i]);
+      if (StringPiece("*") == vary ||
+          StringCaseEqual(HttpAttributes::kUserAgent, vary) ||
+          (type->IsImage() &&
+           StringCaseEqual(HttpAttributes::kAccept, vary))) {
+        // Current Vary: header captures necessary vary information.
+        return;
+      }
+    }
+  }
+  headers->Add(HttpAttributes::kVary, new_vary);
 }
 
 GoogleString InPlaceRewriteContext::UserAgentCacheKey(
@@ -662,6 +691,10 @@ void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
   if (!InPlaceOptimizeForBrowserEnabled()) {
     return;
   }
+  // TODO(jmaessen): filter->EncodeUserAgentIntoResourceContext(context)
+  // actually calls the same method twice here.  In both cases we are also
+  // dealing with possible mobile user agents and SetUserAgentScreenResolution,
+  // which requires a different set of vary: headers.
   const ContentType* type = NameExtensionToContentType(url_);
   if (type == NULL) {
     // Get ImageRewriteFilter with any image type.
@@ -677,6 +710,26 @@ void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
     RewriteFilter* filter = GetRewriteFilter(*type);
     if (filter != NULL) {
       filter->EncodeUserAgentIntoResourceContext(context);
+    }
+  }
+  // If we care about generating webp images, the above calls will have set
+  // context->libwebp_level() != LIBWEBP_NONE.  InPlaceRewriteContext can only
+  // serve webp resources if the browser sends the Accept: image/webp header
+  // since the url cannot change based on content type.  This doesn't permit us
+  // to serve webp lossless / alpha, as some older Opera versions send this
+  // header but do not include such support.  This also means that some
+  // webp-capable browsers (such as the stock Android browser) that don't send
+  // Accept: image/webp will receive jpeg images.  Thus, if we thought WEBP
+  // images were a possibility we disable webp generation unless we actually saw
+  // the Accept: header, and we disable webp lossless entirely (falling back to
+  // webp).
+  // TODO(jmaessen): When non-webp-lossless capable versions of Opera are old
+  // enough, enable lossless encoding if it was requested.
+  if (context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
+    if (driver_->request_properties()->SupportsWebpInPlace()) {
+      context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+    } else {
+      context->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
     }
   }
 }

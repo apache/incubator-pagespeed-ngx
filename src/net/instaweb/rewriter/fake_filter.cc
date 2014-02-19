@@ -17,6 +17,7 @@
 // Author: jkarlin@google.com (Josh Karlin)
 
 #include "net/instaweb/rewriter/public/fake_filter.h"
+#include <memory>
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -35,7 +36,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/html/html_element.h"
-#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -133,9 +133,7 @@ void FakeFilter::ClearStats() {
 
 void FakeFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
-  if (driver_->user_agent() == UserAgentMatcher::kTestUserAgentWebP) {
-    context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
-  }
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, context);
   ++num_calls_to_encode_user_agent_;
 }
 

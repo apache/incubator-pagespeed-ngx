@@ -57,7 +57,7 @@ bool LessBySupportMapValue(const SupportMap::value_type& pair1,
 }
 
 SupportMap ConvertCriticalKeysProtoToSupportMap(
-    const CriticalKeys& critical_keys) {
+    const CriticalKeys& critical_keys, int legacy_support_value) {
   SupportMap support_map;
   // Start by reading in the support data.
   for (int i = 0; i < critical_keys.key_evidence_size(); ++i) {
@@ -217,7 +217,8 @@ void UpdateCriticalKeys(bool require_prior_support,
                         const StringSet& new_set, int support_value,
                         CriticalKeys* critical_keys) {
   DCHECK(critical_keys != NULL);
-  SupportMap support_map = ConvertCriticalKeysProtoToSupportMap(*critical_keys);
+  SupportMap support_map =
+      ConvertCriticalKeysProtoToSupportMap(*critical_keys, support_value);
   DecaySupportMap(support_value, &support_map);
   // Update maximum_possible_support.  Initial value must account for legacy
   // data.
@@ -326,95 +327,86 @@ void WriteCriticalKeysToPropertyCache(
   }
 }
 
-bool ShouldBeacon(const CriticalKeys& proto, const RewriteDriver& driver) {
-  // When downstream cache integration is enabled, and there is a rebeaconing
-  // key already specified in the config, we should only rebeacon when there
-  // is a matching key in the beacon requesting header.
-  if (driver.options()->IsDownstreamCacheIntegrationEnabled() &&
-      driver.options()->IsDownstreamCacheRebeaconingKeyConfigured()) {
-    return driver.options()->MatchesDownstreamCacheRebeaconingKey(
-        driver.request_headers()->Lookup1(kPsaShouldBeacon));
-  }
-  int64 now_ms = driver.timer()->NowMs();
-  return now_ms >= proto.next_beacon_timestamp_ms();
-}
-
-void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
-                                     NonceGenerator* nonce_generator,
-                                     RewriteDriver* driver,
-                                     bool using_candidate_key_detection,
-                                     BeaconMetadata* result) {
+void PrepareForBeaconInsertionHelper(
+    const StringSet& keys, CriticalKeys* proto, int support_interval,
+    NonceGenerator* nonce_generator, RewriteDriver* driver,
+    BeaconMetadata* result) {
   result->status = kDoNotBeacon;
-  if (!ShouldBeacon(*proto, *driver)) {
-    return;
-  }
-
-  if (driver->options()->IsDownstreamCacheIntegrationEnabled()) {
-    // We can only get here if downstream cache integration was enabled, but
-    // no downstream cache rebeaconing key was specified. So, put out a
-    // warning message. Note that we do not put out this message on a per
-    // request basis, because it will clutter up the logs. Instead we do it
-    // only once every beaconing interval.
-    driver->message_handler()->Message(
-        kWarning,
-        "You seem to have downstream caching configured on your server. "
+  bool changed = false;
+  int64 now_ms = driver->timer()->NowMs();
+  if (driver->options()->IsDownstreamCacheIntegrationEnabled() &&
+      driver->options()->IsDownstreamCacheRebeaconingKeyConfigured()) {
+    // When downstream cache integration is enabled, and there is a rebeaconing
+    // key already specified in the config, we should only rebeacon when there
+    // is a matching key in the beacon requesting header.
+    if (driver->options()->MatchesDownstreamCacheRebeaconingKey(
+            driver->request_headers()->Lookup1(kPsaShouldBeacon))) {
+      changed = true;  // We need to re-beacon.
+    }
+  } else {
+    if (now_ms >= proto->next_beacon_timestamp_ms()) {
+      changed = true;  // Timestamp definitely changed.
+      if (driver->options()->IsDownstreamCacheIntegrationEnabled()) {
+        // We can only get here if downstream cache integration was enabled, but
+        // no downstream cache rebeaconing key was specified. So, put out a
+        // warning message. Note that we do not put out this message on a per
+        // request basis, because it will clutter up the logs. Instead we do it
+        // only once every beaconing interval.
+        driver->message_handler()->Message(kWarning, "You seem to have "
+        "downstream caching configured on your server. "
         "DownstreamCacheRebeaconingKey should also be set for this to work "
         "correctly. Refer to "
-        "https://developers.google.com/speed/pagespeed/module/downstream-caching#beaconing "
+        "https://developers.google.com/speed/pagespeed/module/downstream-caching#beaconing"
         "for more details.");
-  }
-  // We need to rebeacon so update the timestamp for the next time to
-  // rebeacon. If we are using candidate key detection, then check how many
-  // valid beacons we have received since the last time the candidate keys
-  // changed to determine if we are doing high frequency vs low frequency
-  // beaconing.
-  // TODO(jmaessen): Add noise to inter-beacon interval.  How? Currently first
-  // visit to page after next_beacon_timestamp_ms will beacon.
-  int64 beacon_reinstrument_time_ms =
-      driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs;
-  if ((proto->nonces_recently_expired() > kNonceExpirationLimit) ||
-      (using_candidate_key_detection &&
-       (proto->valid_beacons_received() >= kHighFreqBeaconCount))) {
-    beacon_reinstrument_time_ms *= kLowFreqBeaconMult;
-  }
-  int64 now_ms = driver->timer()->NowMs();
-  proto->set_next_beacon_timestamp_ms(now_ms + beacon_reinstrument_time_ms);
-
-  AddNonceToCriticalSelectors(now_ms, nonce_generator, proto, &result->nonce);
-  result->status = kBeaconWithNonce;
-}
-
-bool UpdateCandidateKeys(const StringSet& keys, CriticalKeys* proto,
-                         bool clear_rebeacon_timestamp) {
-  // Check to see if candidate keys are already known to pcache.  Insert
-  // previously-unknown candidates with a support of 0, to indicate that beacon
-  // results for those keys will be considered valid.  Other keys returned in a
-  // beacon result will simply be ignored, avoiding DoSing the pcache.  New
-  // candidate keys cause us to re-beacon.
-  SupportMap support_map = ConvertCriticalKeysProtoToSupportMap(*proto);
-  bool support_map_changed = false;
-  for (StringSet::const_iterator i = keys.begin(), end = keys.end(); i != end;
-       ++i) {
-    if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
-      support_map_changed = true;
+      }
+    }
+    if (!keys.empty()) {
+      // Check to see if candidate keys are already known to pcache.  Insert
+      // previously-unknown candidates with a support of 0, to indicate that
+      // beacon results for those keys will be considered valid.  Other keys
+      // returned in a beacon result will simply be ignored, avoiding DoSing the
+      // pcache.  New candidate keys cause us to re-beacon.
+      SupportMap support_map =
+          ConvertCriticalKeysProtoToSupportMap(*proto, support_interval);
+      bool support_map_changed = false;
+      for (StringSet::const_iterator i = keys.begin(), end = keys.end();
+           i != end; ++i) {
+        if (support_map.insert(pair<GoogleString, int>(*i, 0)).second) {
+          support_map_changed = true;
+        }
+      }
+      if (support_map_changed) {
+        // The candidate keys changed, so we need to go into high frequency
+        // beaconing mode. Reset the number of beacons received to signal this.
+        proto->set_valid_beacons_received(0);
+        // Update the proto value with the new set of keys. Note that we are not
+        // changing the calculated set of critical keys, so we don't need to
+        // update the state in the RewriteDriver.
+        WriteSupportMapToCriticalKeysProto(support_map, proto);
+        changed = true;
+      }
     }
   }
-  if (support_map_changed) {
-    // The candidate keys changed, so we need to go into high frequency
-    // beaconing mode. Reset the number of beacons received to signal this.
-    proto->set_valid_beacons_received(0);
-    // Clear the rebeaconing timestamp to force rebeaconing if requested.
-    if (clear_rebeacon_timestamp) {
-      proto->clear_next_beacon_timestamp_ms();
+  if (changed) {
+    // We need to rebeacon so update the timestamp for the next time to
+    // rebeacon. If we are using candidate key detection, then check how many
+    // valid beacons we have received since the last time the candidate keys
+    // changed to determine if we are doing high frequency vs low frequency
+    // beaconing.
+    // TODO(jmaessen): Add noise to inter-beacon interval.  How? Currently first
+    // visit to page after next_beacon_timestamp_ms will beacon.
+    int64 beacon_reinstrument_time_ms =
+        driver->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs;
+    if ((proto->nonces_recently_expired() > kNonceExpirationLimit) ||
+        (!keys.empty() &&
+         (proto->valid_beacons_received() >= kHighFreqBeaconCount))) {
+      beacon_reinstrument_time_ms *= kLowFreqBeaconMult;
     }
-    // Update the proto value with the new set of keys. Note that we are not
-    // changing the calculated set of critical keys, so we don't need to
-    // update the state in the RewriteDriver.
-    WriteSupportMapToCriticalKeysProto(support_map, proto);
-    return true;
-  }
+    proto->set_next_beacon_timestamp_ms(now_ms + beacon_reinstrument_time_ms);
 
-  return false;
+    AddNonceToCriticalSelectors(now_ms, nonce_generator, proto, &result->nonce);
+    result->status = kBeaconWithNonce;
+  }
 }
 
 }  // namespace net_instaweb

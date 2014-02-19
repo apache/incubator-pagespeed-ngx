@@ -299,11 +299,9 @@ TEST_F(ImageAnalysisTest, PhotoTransparency) {
     ASSERT_TRUE(ReadTestFile(kGifTestDir, kGifImages[i].file_name, "gif",
                              &image_string));
 
-    bool has_transparency = false;
-    bool is_photo = false;
-    EXPECT_TRUE(AnalyzeImage(IMAGE_GIF, image_string.data(),
-                             image_string.length(), &message_handler_,
-                             &has_transparency, &is_photo));
+    bool has_transparency, is_photo;
+    AnalyzeImage(IMAGE_GIF, image_string.data(), image_string.length(),
+                 &message_handler_, &has_transparency, &is_photo);
     EXPECT_EQ(kGifImages[i].has_transparency, has_transparency);
     EXPECT_EQ(kGifImages[i].is_photo, is_photo);
   }

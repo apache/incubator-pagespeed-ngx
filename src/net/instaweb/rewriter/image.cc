@@ -1138,9 +1138,7 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
   }
 
   bool ok = false;
-  bool has_transparency = false;
-  bool is_photo = false;
-  bool compress_color_losslessly = false;
+  bool has_transparency, is_photo, compress_color_losslessly;
   ImageType output_type = IMAGE_UNKNOWN;
 
   AnalyzeImage(ImageTypeToImageFormat(input_type),

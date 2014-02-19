@@ -188,10 +188,6 @@ class CriticalImagesFinder {
   RenderedImages* JsonMapToRenderedImagesMap(const GoogleString& str,
                                              const RewriteOptions* options);
 
-  // Returns true if it's time to inject a beacon onto the page. The default
-  // finder doesn't use beaconing, so it always returns false.
-  virtual bool ShouldBeacon(RewriteDriver* driver) { return false; }
-
   // Check property cache state and prepare to insert beacon.  Returns the
   // metadata where result.status == kDoNotBeacon if no beaconing should occur,
   // and result.nonce contains the nonce if required (default implementation
@@ -201,15 +197,6 @@ class CriticalImagesFinder {
     result.status = kBeaconNoNonce;
     return result;
   }
-
-  // For implementations that use beaconing, update the candidate images in the
-  // property cache. New images are a signal that we should beacon more often
-  // for a few requests. The beaconing argument should indicate if the current
-  // request is injecting a beacon. If so, we don't need to trigger a beacon on
-  // the next request even if the candidate images have changed.
-  virtual void UpdateCandidateImagesForBeaconing(const StringSet& images,
-                                                 RewriteDriver* driver,
-                                                 bool beaconing) {}
 
  protected:
   // Completes a critical image set update operation and writes the data back to

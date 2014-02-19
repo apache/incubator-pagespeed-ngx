@@ -131,9 +131,9 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   // Returns true if kInPlaceOptimizeForBrowser is enabled and we
   // actually need to do browser specific rewriting based on options.
   bool InPlaceOptimizeForBrowserEnabled() const;
-  // Returns true if the "Vary: User-Agent" header should be added for the
-  // rewritten resource.
-  bool ShouldAddVaryUserAgent() const;
+  // Add a Vary: user-agent or Vary: Accept header as appropriate
+  // if the fetch result may be browser dependent.
+  void AddVaryIfRequired(ResponseHeaders* headers) const;
 
   RewriteDriver* driver_;
   GoogleString url_;

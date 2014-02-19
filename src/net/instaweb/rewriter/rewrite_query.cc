@@ -164,7 +164,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   scoped_ptr<RequestProperties> request_properties;
   if (request_headers != NULL) {
     request_properties.reset(server_context->NewRequestProperties());
-    request_properties->set_user_agent(
+    request_properties->SetUserAgent(
         request_headers->Lookup1(HttpAttributes::kUserAgent));
   }
 

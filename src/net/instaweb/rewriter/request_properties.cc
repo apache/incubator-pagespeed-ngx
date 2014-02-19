@@ -31,19 +31,21 @@ RequestProperties::RequestProperties(UserAgentMatcher* matcher)
       supports_image_inlining_(kNotSet),
       supports_js_defer_(kNotSet),
       supports_lazyload_images_(kNotSet),
-      supports_webp_(kNotSet),
+      supports_webp_in_place_(kNotSet),
+      supports_webp_rewritten_urls_(kNotSet),
       supports_webp_lossless_alpha_(kNotSet) {
 }
 
 RequestProperties::~RequestProperties() {
 }
 
-void RequestProperties::set_user_agent(const StringPiece& user_agent_string) {
-  device_properties_->set_user_agent(user_agent_string);
+void RequestProperties::SetUserAgent(const StringPiece& user_agent_string) {
+  device_properties_->SetUserAgent(user_agent_string);
 }
 
 void RequestProperties::ParseRequestHeaders(
     const RequestHeaders& request_headers) {
+  device_properties_->ParseRequestHeaders(request_headers);
   downstream_caching_directives_->ParseCapabilityListFromRequestHeaders(
                                       request_headers);
 }
@@ -103,15 +105,26 @@ bool RequestProperties::SupportsJsDefer(bool allow_mobile) const {
   return (supports_js_defer_ == kTrue);
 }
 
-bool RequestProperties::SupportsWebp() const {
-  if (supports_webp_ == kNotSet) {
-    supports_webp_ =
+bool RequestProperties::SupportsWebpInPlace() const {
+  if (supports_webp_in_place_ == kNotSet) {
+    supports_webp_in_place_ =
         (downstream_caching_directives_->SupportsWebp() &&
-         device_properties_->SupportsWebp()) ?
+         device_properties_->SupportsWebpInPlace()) ?
         kTrue :
         kFalse;
   }
-  return (supports_webp_ == kTrue);
+  return (supports_webp_in_place_ == kTrue);
+}
+
+bool RequestProperties::SupportsWebpRewrittenUrls() const {
+  if (supports_webp_rewritten_urls_ == kNotSet) {
+    supports_webp_rewritten_urls_ =
+        (downstream_caching_directives_->SupportsWebp() &&
+         device_properties_->SupportsWebpRewrittenUrls()) ?
+        kTrue :
+        kFalse;
+  }
+  return (supports_webp_rewritten_urls_ == kTrue);
 }
 
 bool RequestProperties::SupportsWebpLosslessAlpha() const {
@@ -180,7 +193,8 @@ void RequestProperties::LogDeviceInfo(
       SupportsLazyloadImages(),
       SupportsCriticalImagesBeacon(),
       SupportsJsDefer(enable_aggressive_rewriters_for_mobile),
-      SupportsWebp(),
+      SupportsWebpInPlace(),
+      SupportsWebpRewrittenUrls(),
       SupportsWebpLosslessAlpha(),
       IsBot(),
       SupportsSplitHtml(enable_aggressive_rewriters_for_mobile),

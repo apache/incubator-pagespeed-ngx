@@ -25,6 +25,8 @@
 
 namespace net_instaweb {
 
+class RequestHeaders;
+
 // This class keeps track of the device properties of the client, which are
 // for the most part learned from the UserAgent string.
 class DeviceProperties {
@@ -32,13 +34,26 @@ class DeviceProperties {
   explicit DeviceProperties(UserAgentMatcher* matcher);
   virtual ~DeviceProperties();
 
-  void set_user_agent(const StringPiece& user_agent_string);
+  void SetUserAgent(const StringPiece& user_agent_string);
+  // Set device-based properties that are capture in the request headers
+  // (eg. the Accept: header).
+  void ParseRequestHeaders(const RequestHeaders& request_headers);
   bool SupportsImageInlining() const;
   bool SupportsLazyloadImages() const;
   bool SupportsCriticalCss() const;
   bool SupportsCriticalImagesBeacon() const;
   bool SupportsJsDefer(bool enable_mobile) const;
-  bool SupportsWebp() const;
+  // SupportsWebpInPlace indicates we saw an Accept: image/webp header, and can
+  // rewrite the request in place (using Vary: accept in the result headers,
+  // etc.).
+  bool SupportsWebpInPlace() const;
+  // SupportsWebpRewrittenUrls indicates that the device can handle webp so long
+  // as the url changes - either we know this based on user agent, or we got an
+  // Accept header.  We can't tell a proxy cache to distinguish this case using
+  // Vary: accept in the result headers, as we can't guarantee we'll see such a
+  // header, ever.  So we need to Vary: user-agent or cache-control: private,
+  // and thus restrict it to rewritten urls.
+  bool SupportsWebpRewrittenUrls() const;
   bool SupportsWebpLosslessAlpha() const;
   bool IsBot() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
@@ -85,13 +100,15 @@ class DeviceProperties {
   bool HasPreferredImageQualities() const;
 
   GoogleString user_agent_;
+  GoogleString accept_header_;
   UserAgentMatcher* ua_matcher_;
 
   mutable LazyBool supports_critical_css_;
   mutable LazyBool supports_image_inlining_;
   mutable LazyBool supports_js_defer_;
   mutable LazyBool supports_lazyload_images_;
-  mutable LazyBool supports_webp_;
+  mutable LazyBool accepts_webp_;
+  mutable LazyBool supports_webp_rewritten_urls_;
   mutable LazyBool supports_webp_lossless_alpha_;
   mutable LazyBool is_bot_;
   mutable LazyBool is_mobile_user_agent_;

@@ -145,7 +145,8 @@ class RewriteDriver : public HtmlParse {
   // Headers not in this list will be ignored so there is no need to
   // copy them over.
   // TODO(sligocki): Use these in ProxyInterface flow.
-  static const char* kPassThroughRequestAttributes[7];
+  // TODO(jmaessen): Use a NULL terminator or a static const arraysize.
+  static const char* kPassThroughRequestAttributes[8];
 
   // This string identifies, for the PropertyCache, a group of properties
   // that are computed from the DOM, and thus can, if desired, be rewritten

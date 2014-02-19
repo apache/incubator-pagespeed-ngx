@@ -1585,8 +1585,8 @@ void ImageRewriteFilter::GetDimensions(
   // the desired image dimensions. Don't use rendered image dimensions
   // when beaconing, since it would cause improper instrumentation.
   if (driver_->options()->Enabled(
-          RewriteOptions::kResizeToRenderedImageDimensions) &&
-      !CriticalImagesBeaconFilter::ShouldApply(driver_)) {
+      RewriteOptions::kResizeToRenderedImageDimensions) &&
+      !CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(driver_)) {
     StringPiece src_value(src->DecodedValueOrNull());
     if (!src_value.empty()) {
       GoogleUrl src_gurl(driver_->base_url(), src_value);

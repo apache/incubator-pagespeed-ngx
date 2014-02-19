@@ -258,7 +258,7 @@ void ImageUrlEncoder::SetLibWebpLevel(
   ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
   if (request_properties.SupportsWebpLosslessAlpha()) {
     libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
-  } else if (request_properties.SupportsWebp()) {
+  } else if (request_properties.SupportsWebpRewrittenUrls()) {
     libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
   }
   resource_context->set_libwebp_level(libwebp_level);

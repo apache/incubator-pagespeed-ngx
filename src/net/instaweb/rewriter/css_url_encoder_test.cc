@@ -125,7 +125,7 @@ TEST_F(CssUrlEncoderTest, TestSetInliningImages) {
   ResourceContext resource_context;
   UserAgentMatcher user_agent_matcher;
   request_properties.reset(new RequestProperties(&user_agent_matcher));
-  request_properties->set_user_agent(user_agent_string);
+  request_properties->SetUserAgent(user_agent_string);
 
   encoder_.SetInliningImages(*request_properties, &resource_context);
 
@@ -133,7 +133,7 @@ TEST_F(CssUrlEncoderTest, TestSetInliningImages) {
 
   user_agent_string = "MSIE 6.0";  // An older UA to check inlining is not set.
   request_properties.reset(new RequestProperties(&user_agent_matcher));
-  request_properties->set_user_agent(user_agent_string);
+  request_properties->SetUserAgent(user_agent_string);
 
   encoder_.SetInliningImages(*request_properties, &resource_context);
 

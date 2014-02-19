@@ -136,7 +136,6 @@ check [ "$(tr -d '\r' < $FETCH_FILE | \
 check $WGET_DUMP -O $FETCHED $URL?PageSpeed=off
 check_file_size $FETCHED -gt $THRESHOLD_SIZE
 
-
 # Individual filter tests, in alphabetical order
 
 test_filter add_instrumentation adds 2 script tags
@@ -455,6 +454,10 @@ REWRITE_URL="$IMG_REWRITE?PageSpeedFilters=rewrite_images"
 URL="$REWRITE_URL,convert_jpeg_to_webp&$IMAGES_QUALITY=75&$WEBP_QUALITY=65"
 check run_wget_with_args \
   --header 'X-PSA-Blocking-Rewrite: psatest' --user-agent=webp $URL
+check_file_size "$WGET_DIR/*256x192*Puzzle*webp" -le 5140   # resized, webp'd
+rm -rf $WGET_DIR
+check run_wget_with_args \
+  --header 'X-PSA-Blocking-Rewrite: psatest' --header='Accept: image/webp' $URL
 check_file_size "$WGET_DIR/*256x192*Puzzle*webp" -le 5140   # resized, webp'd
 
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg

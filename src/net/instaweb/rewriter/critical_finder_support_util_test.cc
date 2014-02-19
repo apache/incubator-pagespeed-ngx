@@ -42,10 +42,9 @@ class CriticalFinderSupportUtilTest : public RewriteTestBase {
   void TestPrepareForBeaconInsertionHelper(const StringSet& keys,
                                            BeaconStatus expected_status) {
     BeaconMetadata result;
-    UpdateCandidateKeys(keys, &critical_keys_proto_, true);
     PrepareForBeaconInsertionHelper(
-        &critical_keys_proto_, factory()->nonce_generator(), rewrite_driver(),
-        true /* using_candidate_key_detection */, &result);
+        keys, &critical_keys_proto_, kSupportInterval,
+        factory()->nonce_generator(), rewrite_driver(), &result);
     EXPECT_EQ(expected_status, result.status);
     // Clear the count of expired nonces. We aren't actually sending back the
     // nonces in our test, so they can expire and put us into low frequency
