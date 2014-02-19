@@ -301,6 +301,7 @@
         '<(DEPTH)/pagespeed/kernel/image/jpeg_utils_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/pixel_format_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/png_optimizer_test.cc',
+        '<(DEPTH)/pagespeed/kernel/image/scanline_interface_test.cc',
         '<(DEPTH)/pagespeed/kernel/image/webp_optimizer_test.cc',
         '<(DEPTH)/pagespeed/kernel/js/js_minify_test.cc',
         '<(DEPTH)/pagespeed/kernel/js/js_tokenizer_test.cc',
