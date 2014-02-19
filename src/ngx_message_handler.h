@@ -70,7 +70,6 @@ class NgxMessageHandler : public GoogleMessageHandler {
 
  private:
   ngx_uint_t GetNgxLogLevel(MessageType type);
-  GoogleString Format(const char* msg, va_list args);
 
   scoped_ptr<AbstractMutex> mutex_;
   GoogleString pid_string_;

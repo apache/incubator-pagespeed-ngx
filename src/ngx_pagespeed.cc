@@ -2124,15 +2124,15 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         url.c_str());
     const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
         ctx->driver->options());
-    scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
-    copy_request_headers_from_ngx(r, request_headers.get());
+    RequestHeaders request_headers;
+    copy_request_headers_from_ngx(r, &request_headers);
     // This URL was not found in cache (neither the input resource nor
     // a ResourceNotCacheable entry) so we need to get it into cache
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
         url,
-        request_headers.release(),
+        request_headers,
         options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),

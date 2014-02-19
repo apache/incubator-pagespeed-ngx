@@ -52,6 +52,11 @@ http {
   # critical images to be inlined, so we just disable the option here.
   pagespeed CriticalImagesBeaconEnabled false;
 
+  # By default, resources will not be used for inlining without explicit
+  # authorization. Supported values are off or a comma-separated list of strings
+  # from {Script,Stylesheet}.
+  pagespeed InlineResourcesWithoutExplicitAuthorization off;
+
   pagespeed Statistics on;
   pagespeed StatisticsLogging on;
   pagespeed LogDir "@@TEST_TMP@@/logdir";
@@ -369,7 +374,7 @@ http {
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed RewriteLevel PassThrough;
-    pagespeed InlineUnauthorizedResourcesExperimental true;
+    pagespeed InlineResourcesWithoutExplicitAuthorization Script,Stylesheet;
     pagespeed CssInlineMaxBytes 1000000;
   }
 

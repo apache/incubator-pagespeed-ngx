@@ -148,14 +148,4 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   }
 }
 
-// TODO(sligocki): It'd be nice not to do so much string copying.
-GoogleString NgxMessageHandler::Format(const char* msg, va_list args) {
-  GoogleString buffer;
-
-  // Ignore the name of this routine: it formats with vsnprintf.
-  // See base/stringprintf.cc.
-  StringAppendV(&buffer, msg, args);
-  return buffer;
-}
-
 }  // namespace net_instaweb
