@@ -257,10 +257,8 @@ class JsCombineFilterTest : public RewriteTestBase {
     // the combination, and the second and third using eval.
     ASSERT_EQ(3, scripts.size());
     VerifyCombinedOnDomain(domain, domain, scripts[0], combined_name);
-    if (!minified) {
-      VerifyUse(scripts[1], kJsUrl1);
-      VerifyUse(scripts[2], kJsUrl2);
-    }
+    VerifyUse(scripts[1], kJsUrl1);
+    VerifyUse(scripts[2], kJsUrl2);
 
     // Now check the actual contents. These might change slightly
     // during implementation changes, requiring update of the test;
@@ -382,20 +380,27 @@ TEST_F(JsCombineFilterTest, CombineJsAvoidRewritingIntrospectiveJavascripOn) {
 }
 
 TEST_F(JsFilterAndCombineFilterTest, ReconstructNoTimeout) {
-  // Nested fetch should not timeout on reconstruction.
+  // Nested fetch should not timeout on reconstruction. Note that we still
+  // need this to work even though we no longer create nesting; for migration
+  // reasons.
   GoogleString rel_url =
       Encode("", "jc", "FA3Pqioukh",
              MultiUrl("a.js.pagespeed.jm.FUEwDOA7jh.js",
                       "b.js.pagespeed.jm.Y1kknPfzVs.js"), "js");
   GoogleString url = StrCat(kTestDomain, rel_url);
-  const char kVar1[] = "mod_pagespeed_S$0tgbTH0O";
-  const char kVar2[] = "mod_pagespeed_ose8Vzgyj9";
+  const char kLegacyVar1[] = "mod_pagespeed_S$0tgbTH0O";
+  const char kLegacyVar2[] = "mod_pagespeed_ose8Vzgyj9";
 
   // First rewrite the page, to see what the evals look like.
+  // These should actually just look like a.js + b.js these days.
+  GoogleString simple_rel_url =
+      Encode("", "jc", "HrCUtQsDp_", MultiUrl("a.js", "b.js"), "js");
+  const char kVar1[] = "mod_pagespeed_KecOGCIjKt";
+  const char kVar2[] = "mod_pagespeed_dzsx6RqvJJ";
   ValidateExpected("no_timeout",
                    StrCat("<script src=", kJsUrl1, "></script>",
                           "<script src=", kJsUrl2, "></script>"),
-                   StrCat("<script src=\"", rel_url, "\"></script>",
+                   StrCat("<script src=\"", simple_rel_url, "\"></script>",
                           "<script>eval(", kVar1, ");</script>",
                           "<script>eval(", kVar2, ");</script>"));
 
@@ -427,18 +432,20 @@ TEST_F(JsFilterAndCombineFilterTest, ReconstructNoTimeout) {
   driver->WaitForShutDown();
   driver->Cleanup();
 
-  // Make sure we have the right hashes!
+  // Make sure we have the right hashes. Note that we fetched an old style
+  // URL, that had both .js and .jm in it, so the variable names are the old
+  // ones, not new ones.
   EXPECT_NE(GoogleString::npos,
-            async_fetch.buffer().find(kVar1));
+            async_fetch.buffer().find(kLegacyVar1));
   EXPECT_NE(GoogleString::npos,
-            async_fetch.buffer().find(kVar2));
+            async_fetch.buffer().find(kLegacyVar2));
 }
 
 TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
-  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "FA3Pqioukh",  // combined hash
-                "S$0tgbTH0O",  // hash of a.js,Mjm.FUEwDOA7jh.js
-                "ose8Vzgyj9",  // hash of b.js,Mjm.Y1kknPfzVs.js
+  TestCombineJs(MultiUrl("a.js", "b.js"),
+                "HrCUtQsDp_",  // combined hash
+                "KecOGCIjKt",  // var name for a.js (same as in CombineJs)
+                "dzsx6RqvJJ",  // var name for b.js (same as in CombineJs)
                 true, kTestDomain);
 }
 
@@ -474,8 +481,8 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
   SimulateJsResourceOnDomain("http://b.com/", kJsUrl1, kJsText1);
   SimulateJsResourceOnDomain("http://b.com/", kJsUrl2, kJsText2);
 
-  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true,
+  TestCombineJs(MultiUrl("a.js", "b.js"),
+                "HrCUtQsDp_", "KecOGCIjKt", "dzsx6RqvJJ", true,
                 "http://b.com/");
 }
 
@@ -544,82 +551,6 @@ TEST_F(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
   EXPECT_EQ(Encode(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
             scripts[1].url);
   ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
-}
-
-TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
-  // Testcase for case where we have cached metadata for results of JS rewrite,
-  // but not its contents easily available.
-  SimulateJsResource(kJsUrl1, kJsText1);
-  SimulateJsResource(kJsUrl2, kJsText2);
-
-  // Fetch the result of the JS filter (which runs first) filter applied,
-  // to pre-cache them.
-  GoogleString out_url1(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"));
-  GoogleString content;
-  EXPECT_TRUE(FetchResourceUrl(out_url1, &content));
-  EXPECT_STREQ(kMinifiedJs1, content);
-
-  GoogleString out_url2(Encode(kTestDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"));
-  EXPECT_TRUE(FetchResourceUrl(out_url2, &content));
-  EXPECT_STREQ(kMinifiedJs2, content);
-
-  // Make sure the data isn't available in the HTTP cache (while the metadata
-  // still is).
-  lru_cache()->Delete(out_url1);
-  lru_cache()->Delete(out_url2);
-
-  // Now try to get a combination.
-  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "FA3Pqioukh",
-                "S$0tgbTH0O",
-                "ose8Vzgyj9",
-                true /*minified*/, kTestDomain);
-}
-
-TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCachedWithDeadline) {
-  // Testcase for the case where we have cached metadata for results of JS
-  // rewrites, but not their data, and where we can hit a fetch deadline
-  // during their reconstruction.
-
-  SimulateJsResource(kJsUrl1, kJsText1);
-  SimulateJsResource(kJsUrl2, kJsText2);
-
-  // Fetch the result of the JS filter (which runs first) filter applied,
-  // to pre-cache them.
-  GoogleString out_url1(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"));
-  GoogleString content;
-  EXPECT_TRUE(FetchResourceUrl(out_url1, &content));
-  EXPECT_STREQ(kMinifiedJs1, content);
-
-  GoogleString out_url2(Encode(kTestDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"));
-  EXPECT_TRUE(FetchResourceUrl(out_url2, &content));
-  EXPECT_STREQ(kMinifiedJs2, content);
-
-  // Make sure the data isn't available in the HTTP cache (while the metadata
-  // still is).
-  lru_cache()->Delete(out_url1);
-  lru_cache()->Delete(out_url2);
-
-  // Force the fetch-path deadline to trigger, if applicable. This should not
-  // actually change the options signature.
-  GoogleString old_signature = options()->signature();
-  options()->ClearSignatureForTesting();
-  options()->set_test_instant_fetch_rewrite_deadline(true);
-  server_context()->ComputeSignature(options());
-  EXPECT_EQ(old_signature, options()->signature());
-
-  // Now try to get a combination.
-  // Besides deadlines for nested drivers in HTML, this also covers them
-  // triggering in nested rewrites for fetch, which can cause correctness
-  // troubles by messing with resource names.
-  //
-  // TODO(morlovich): Consider unwinding .pagespeed. resource names in
-  //                  JsCombineFilter's VarName?
-  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "FA3Pqioukh",
-                "S$0tgbTH0O",
-                "ose8Vzgyj9",
-                true, kTestDomain);
 }
 
 // Various things that prevent combining

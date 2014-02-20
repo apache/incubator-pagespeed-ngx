@@ -1087,6 +1087,13 @@ void RewriteDriver::AddPreRenderFilters() {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));
   }
+  if (!flush_subresources_enabled &&
+      rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
+    // Combine external JS resources. Done after minification and analytics
+    // detection, as it converts script sources into string literals, making
+    // them opaque to analysis.
+    EnableRewriteFilter(RewriteOptions::kJavascriptCombinerId);
+  }
   if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript) ||
       rewrite_options->Enabled(
           RewriteOptions::kCanonicalizeJavascriptLibraries)) {
@@ -1098,13 +1105,6 @@ void RewriteDriver::AddPreRenderFilters() {
       // interaction.
       EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
     }
-  }
-  if (!flush_subresources_enabled &&
-      rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
-    // Combine external JS resources. Done after minification and analytics
-    // detection, as it converts script sources into string literals, making
-    // them opaque to analysis.
-    EnableRewriteFilter(RewriteOptions::kJavascriptCombinerId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run

@@ -25,7 +25,9 @@
 
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 
+#include <map>
 #include <vector>
+#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -34,6 +36,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -50,6 +53,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/stl_util.h"
 
 namespace net_instaweb {
 
@@ -70,6 +75,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   }
 
   virtual ~JsCombiner() {
+    STLDeleteValues(&code_blocks_);
   }
 
   virtual bool ResourceCombinable(
@@ -106,6 +112,16 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
       return false;
     }
 
+    if (options->Enabled(
+            RewriteOptions::kCanonicalizeJavascriptLibraries)) {
+      JavascriptCodeBlock* code_block = BlockForResource(resource);
+      if (!code_block->ComputeJavascriptLibrary().empty()) {
+        // TODO(morlovich): We may be double-counting some stats here.
+        *failure_reason = "Will be handled as standard library";
+        return false;
+      }
+    }
+
     // TODO(morlovich): define a pragma that javascript authors can
     // include in their source to prevent inclusion in a js combination
     return true;
@@ -128,6 +144,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
 
   virtual void Clear() {
     ResourceCombiner::Clear();
+    STLDeleteValues(&code_blocks_);
     combined_js_size_ = 0;
   }
 
@@ -156,6 +173,8 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   }
 
  private:
+  typedef std::map<const Resource*, JavascriptCodeBlock*> CodeBlockMap;
+
   virtual const ContentType* CombinationContentType() {
     return &kContentTypeJavascript;
   }
@@ -163,6 +182,8 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   virtual bool WritePiece(int index, const Resource* input,
                           OutputResource* combination, Writer* writer,
                           MessageHandler* handler);
+
+  JavascriptCodeBlock* BlockForResource(const Resource* input);
 
   JsCombineFilter* filter_;
   int64 combined_js_size_;
@@ -175,6 +196,9 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   StringPiece attribute_charset_;
   // The charset of the combination so far.
   StringPiece combined_charset_;
+
+  scoped_ptr<JavascriptRewriteConfig> config_;
+  CodeBlockMap code_blocks_;
 
   DISALLOW_COPY_AND_ASSIGN(JsCombiner);
 };
@@ -231,10 +255,24 @@ class JsCombineFilter::Context : public RewriteContext {
   }
 
  protected:
+  virtual void PartitionAsync(OutputPartitions* partitions,
+                              OutputResourceVector* outputs) {
+    // Partitioning here requires JS minification, so we want to
+    // move it to a different thread.
+    Driver()->AddLowPriorityRewriteTask(MakeFunction(
+        this, &Context::PartitionImpl, &Context::PartitionCancel,
+        partitions, outputs));
+  }
+
+  void PartitionCancel(OutputPartitions* partitions,
+                       OutputResourceVector* outputs) {
+    CrossThreadPartitionDone(false);
+  }
+
   // Divide the slots into partitions according to which js files can
   // be combined together.
-  virtual bool Partition(OutputPartitions* partitions,
-                         OutputResourceVector* outputs) {
+  void PartitionImpl(OutputPartitions* partitions,
+                     OutputResourceVector* outputs) {
     MessageHandler* handler = Driver()->message_handler();
     CachedResult* partition = NULL;
     CHECK_EQ(static_cast<int>(elements_.size()), num_slots());
@@ -270,7 +308,7 @@ class JsCombineFilter::Context : public RewriteContext {
       }
     }
     FinalizePartition(partitions, partition, outputs);
-    return (partitions->partition_size() != 0);
+    CrossThreadPartitionDone(partitions->partition_size() != 0);
   }
 
   // Actually write the new resource.
@@ -335,6 +373,12 @@ class JsCombineFilter::Context : public RewriteContext {
   }
   virtual const char* id() const { return filter_->id(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
+
+  virtual GoogleString CacheKeySuffix() const {
+    // Force recompute on update: not critical, but if we don't we may keep
+    // using nested URLs for a while.
+    return "v3";
+  }
 
  private:
   // If we can combine, put the result into outputs and then reset
@@ -405,6 +449,19 @@ class JsCombineFilter::Context : public RewriteContext {
 bool JsCombineFilter::JsCombiner::WritePiece(
     int index, const Resource* input, OutputResource* combination,
     Writer* writer, MessageHandler* handler) {
+  // Minify if needed.
+  StringPiece not_escaped = input->contents();
+
+  // TODO(morlovich): And now we're not updating some stats instead.
+  // Factor out that bit in JsFilter.
+  const RewriteOptions* options = rewrite_driver_->options();
+  if (options->Enabled(RewriteOptions::kRewriteJavascript)) {
+    JavascriptCodeBlock* code_block = BlockForResource(input);
+    if (code_block->successfully_rewritten()) {
+      not_escaped = code_block->rewritten_code();
+    }
+  }
+
   // We write out code of each script into a variable.
   writer->Write(StrCat("var ",
                        JsCombineFilter::VarName(
@@ -412,13 +469,33 @@ bool JsCombineFilter::JsCombiner::WritePiece(
                        " = "),
                 handler);
 
-  StringPiece original = input->contents();
   GoogleString escaped;
-  JavascriptCodeBlock::ToJsStringLiteral(original, &escaped);
+  JavascriptCodeBlock::ToJsStringLiteral(not_escaped, &escaped);
 
   writer->Write(escaped, handler);
   writer->Write(";\n", handler);
   return true;
+}
+
+JavascriptCodeBlock* JsCombineFilter::JsCombiner::BlockForResource(
+    const Resource* input) {
+  std::pair<CodeBlockMap::iterator, bool> insert_result =
+      code_blocks_.insert(CodeBlockMap::value_type(input, NULL));
+
+  if (insert_result.second) {
+    // Actually inserted, so we need a value.
+    if (config_.get() == NULL) {
+      config_.reset(JavascriptFilter::InitializeConfig(rewrite_driver_));
+    }
+
+    scoped_ptr<JavascriptCodeBlock> new_block(
+        new JavascriptCodeBlock(
+                input->contents(), config_.get(), input->url(),
+                rewrite_driver_->message_handler()));
+    new_block->Rewrite();
+    insert_result.first->second = new_block.release();
+  }
+  return insert_result.first->second;
 }
 
 JsCombineFilter::JsCombineFilter(RewriteDriver* driver)

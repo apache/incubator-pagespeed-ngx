@@ -286,18 +286,20 @@ void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
   }
 }
 
-// Set up config_ if it has not already been initialized.  We must do this
-// lazily because at filter creation time many of the options have not yet been
-// set up correctly.
-void JavascriptFilter::InitializeConfig() {
-  DCHECK(config_.get() == NULL);
-  config_.reset(
-      new JavascriptRewriteConfig(
-          driver_->server_context()->statistics(),
-          driver_->options()->Enabled(RewriteOptions::kRewriteJavascript),
-          driver_->options()->use_experimental_js_minifier(),
-          driver_->options()->javascript_library_identification(),
-          driver_->server_context()->js_tokenizer_patterns()));
+JavascriptRewriteConfig* JavascriptFilter::InitializeConfig(
+    RewriteDriver* driver) {
+  return new JavascriptRewriteConfig(
+                 driver->server_context()->statistics(),
+                 driver->options()->Enabled(RewriteOptions::kRewriteJavascript),
+                 driver->options()->use_experimental_js_minifier(),
+                 driver->options()->javascript_library_identification(),
+                 driver->server_context()->js_tokenizer_patterns());
+}
+
+void JavascriptFilter::InitializeConfigIfNecessary() {
+  if (config_.get() == NULL) {
+      config_.reset(InitializeConfig(driver_));
+  }
 }
 
 void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
