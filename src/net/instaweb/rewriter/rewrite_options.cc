@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_rw_lock.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -2790,7 +2791,8 @@ bool RewriteOptions::IsValidOptionName(StringPiece name) {
   return (LookupOptionByName(name) != NULL);
 }
 
-bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
+bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set,
+                                        MessageHandler* handler) {
   bool ret = true;
   for (RewriteOptions::OptionSet::const_iterator iter = option_set.begin();
        iter != option_set.end(); ++iter) {
@@ -2798,6 +2800,9 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
     OptionSettingResult result = SetOptionFromName(
         iter->first, iter->second, &msg);
     if (result != kOptionOk) {
+      handler->Message(
+          kWarning, "Failed to set %s to %s (%s)",
+          iter->first.c_str(), iter->second.c_str(), msg.c_str());
       ret = false;
     }
   }
@@ -2904,9 +2909,20 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
       set_experiment_ga_slot(slot);
     }
   } else if (StringCaseEqual(name, kExperimentSpec)) {
-    if (!AddExperimentSpec(arg, handler)) {
+    ExperimentSpec* spec = AddExperimentSpec(arg, handler);
+    if (spec == NULL) {
       *msg = "not a valid experiment spec";
       result = RewriteOptions::kOptionValueInvalid;
+    } else {
+      // To test the validity of options in the experiment spec we have to apply
+      // them to a RewriteOptions.  Try to apply them now, so if there are
+      // configuration errors we can report them early instead of on each
+      // request.
+      scoped_ptr<RewriteOptions> clone(Clone());
+      if (!clone->SetOptionsFromName(spec->filter_options(), handler)) {
+        *msg = "experiment spec has invalid options= component";
+        result = RewriteOptions::kOptionValueInvalid;
+      }
     }
   } else if (StringCaseEqual(name, kForbidFilters)) {
     if (!ForbidFiltersByCommaSeparatedList(arg, handler)) {
@@ -3333,6 +3349,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     distributable_filters_.insert(filter_id.as_string());
   }
 
+  experiment_id_ = src.experiment_id_;
   for (int i = 0, n = src.experiment_specs_.size(); i < n; ++i) {
     ExperimentSpec* spec = src.experiment_specs_[i]->Clone();
     InsertExperimentSpecInVector(spec);
@@ -3347,7 +3364,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     AddCustomFetchHeader(nv->name, nv->value);
   }
 
-  experiment_id_ = src.experiment_id_;
   for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
     StringPiece element;
     StringPiece attribute;
@@ -3773,27 +3789,16 @@ GoogleString RewriteOptions::ExperimentSpec::ToString() const {
     StrAppend(&out, ";level=", RewriteOptions::ToString(rewrite_level_));
   }
 
-  if (css_inline_max_bytes_ != kDefaultCssInlineMaxBytes) {
-    StrAppend(&out, ";inline_css=",
-              IntegerToString(css_inline_max_bytes_));
-  }
-  if (js_inline_max_bytes_ != kDefaultJsInlineMaxBytes) {
-    StrAppend(&out, ";inline_js=",
-              IntegerToString(js_inline_max_bytes_));
-  }
-  if (image_inline_max_bytes_ != kDefaultImageInlineMaxBytes) {
-    StrAppend(&out, ";inline_image=",
-              IntegerToString(image_inline_max_bytes_));
-  }
   if (use_default_) {
     StrAppend(&out, ";default");
   }
 
+  // TODO(jefftk): Put these in the form "rewrite_images" instead of "ri".
   const char* sep = ";enabled=";
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
     Filter filter = static_cast<Filter>(i);
     if (enabled_filters_.IsSet(filter)) {
-      StrAppend(&out, sep, FilterName(filter));
+      StrAppend(&out, sep, FilterId(filter));
       sep = ",";
     }
   }
@@ -3802,7 +3807,7 @@ GoogleString RewriteOptions::ExperimentSpec::ToString() const {
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
     Filter filter = static_cast<Filter>(i);
     if (disabled_filters_.IsSet(filter)) {
-      StrAppend(&out, sep, FilterName(filter));
+      StrAppend(&out, sep, FilterId(filter));
       sep = ",";
     }
   }
@@ -3836,21 +3841,12 @@ GoogleString RewriteOptions::ToExperimentDebugString() const {
     output += "not set; ";
   } else if (experiment_id_ == experiment::kNoExperiment) {
     output += "no experiment; ";
-  }
-  for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
-    Filter filter = static_cast<Filter>(f);
-    if (Enabled(filter)) {
-      output += FilterId(filter);
-      output += ",";
+  } else {
+    ExperimentSpec* spec = GetExperimentSpec(experiment_id_);
+    if (spec != NULL) {
+      output += spec->ToString();
     }
   }
-  output += "css:";
-  output += Integer64ToString(css_inline_max_bytes());
-  output += ",im:";
-  output += Integer64ToString(ImageInlineMaxBytes());
-  output += ",js:";
-  output += Integer64ToString(js_inline_max_bytes());
-  output += ";";
   return output;
 }
 
@@ -3892,7 +3888,7 @@ void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,
 }
 
 // We expect experiment_specs_.size() to be small (not more than 2 or 3)
-// so there is no need to optimize this
+// so there is no need to optimize this.
 RewriteOptions::ExperimentSpec* RewriteOptions::GetExperimentSpec(
     int id) const {
   for (int i = 0, n = experiment_specs_.size(); i < n; ++i) {
@@ -3911,10 +3907,13 @@ bool RewriteOptions::AvailableExperimentId(int id) {
   return (GetExperimentSpec(id) == NULL);
 }
 
-bool RewriteOptions::AddExperimentSpec(const StringPiece& spec,
-                                       MessageHandler* handler) {
+RewriteOptions::ExperimentSpec* RewriteOptions::AddExperimentSpec(
+    const StringPiece& spec, MessageHandler* handler) {
   ExperimentSpec* f_spec = new ExperimentSpec(spec, this, handler);
-  return InsertExperimentSpecInVector(f_spec);
+  if (!InsertExperimentSpecInVector(f_spec)) {
+    return NULL;  // InsertExperimentSpecInVector deletes f_spec on failure.
+  }
+  return f_spec;
 }
 
 bool RewriteOptions::InsertExperimentSpecInVector(ExperimentSpec* spec) {
@@ -3967,10 +3966,9 @@ bool RewriteOptions::SetupExperimentRewriters() {
   // spec doesn't specify forbidden filters so no need to call ForbidFilters().
   // We need these for the experiment to work properly.
   SetRequiredExperimentFilters();
-  set_css_inline_max_bytes(spec->css_inline_max_bytes());
-  set_js_inline_max_bytes(spec->js_inline_max_bytes());
-  set_image_inline_max_bytes(spec->image_inline_max_bytes());
-  SetOptionsFromName(spec->filter_options());
+  // Options were already checked during config parsing.
+  NullMessageHandler null_message_handler;
+  SetOptionsFromName(spec->filter_options(), &null_message_handler);
   return true;
 }
 
@@ -3990,9 +3988,6 @@ RewriteOptions::ExperimentSpec::ExperimentSpec(const StringPiece& spec,
       ga_variable_slot_(options->experiment_ga_slot()),
       percent_(0),
       rewrite_level_(kPassThrough),
-      css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
-      js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
-      image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
       use_default_(false) {
   Initialize(spec, handler);
 }
@@ -4003,9 +3998,6 @@ RewriteOptions::ExperimentSpec::ExperimentSpec(int id)
       ga_variable_slot_(kDefaultExperimentSlot),
       percent_(0),
       rewrite_level_(kPassThrough),
-      css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
-      js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
-      image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
       use_default_(false) {
 }
 
@@ -4022,9 +4014,6 @@ void RewriteOptions::ExperimentSpec::Merge(const ExperimentSpec& spec) {
   ga_variable_slot_ = spec.ga_variable_slot_;
   percent_ = spec.percent_;
   rewrite_level_ = spec.rewrite_level_;
-  css_inline_max_bytes_ = spec.css_inline_max_bytes_;
-  js_inline_max_bytes_ = spec.js_inline_max_bytes_;
-  image_inline_max_bytes_ = spec.image_inline_max_bytes_;
   use_default_ = spec.use_default_;
 }
 
@@ -4092,21 +4081,9 @@ void RewriteOptions::ExperimentSpec::Initialize(const StringPiece& spec,
       if (options.length() > 0) {
         AddCommaSeparatedListToOptionSet(options, &filter_options_, handler);
       }
-    } else if (StringCaseStartsWith(piece, "inline_css")) {
-      StringPiece max_bytes = PieceAfterEquals(piece);
-      if (max_bytes.length() > 0) {
-        StringToInt64(max_bytes, &css_inline_max_bytes_);
-      }
-    } else if (StringCaseStartsWith(piece, "inline_images")) {
-      StringPiece max_bytes = PieceAfterEquals(piece);
-      if (max_bytes.length() > 0) {
-        StringToInt64(max_bytes, &image_inline_max_bytes_);
-      }
-    } else if (StringCaseStartsWith(piece, "inline_js")) {
-      StringPiece max_bytes = PieceAfterEquals(piece);
-      if (max_bytes.length() > 0) {
-        StringToInt64(max_bytes, &js_inline_max_bytes_);
-      }
+    } else {
+      handler->Message(kWarning, "Skipping unknown experiment setting: %s",
+                       piece.as_string().c_str());
     }
   }
 }

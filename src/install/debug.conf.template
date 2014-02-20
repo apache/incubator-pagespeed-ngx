@@ -1075,8 +1075,8 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #EXPERIMENT_GA ModPagespeedRunExperiment on
 #EXPERIMENT_GA ModPagespeedAnalyticsID "123-45-6734"
 #EXPERIMENT_GA ModPagespeedExperimentVariable 2
-#EXPERIMENT_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#EXPERIMENT_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
+#EXPERIMENT_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images,rewrite_javascript;disable=convert_jpeg_to_progressive;percent=50;options=AvoidRenamingIntrospectiveJavascript=off,JsInlineMaxBytes=4"
+#EXPERIMENT_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images,rewrite_javascript;percent=50;options=AvoidRenamingIntrospectiveJavascript=on"
 
 #EXPERIMENT_NO_GA # This is used for testing the experiment framework still
 #EXPERIMENT_NO_GA # works when no analytics ID is specified.  It should assign
@@ -1086,8 +1086,8 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #EXPERIMENT_NO_GA # experiment id.
 #EXPERIMENT_NO_GA ModPagespeedRunExperiment on
 #EXPERIMENT_NO_GA ModPagespeedExperimentVariable 2
-#EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
+#EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images,rewrite_javascript;disable=convert_jpeg_to_progressive;percent=50;options=AvoidRenamingIntrospectiveJavascript=off,JsInlineMaxBytes=4;invalid=this-should-print-a-warning"
+#EXPERIMENT_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images,rewrite_javascript;percent=50;options=AvoidRenamingIntrospectiveJavascript=on"
 
 # Support for embedded configurations, where image flags in the
 # VirtualHost serving HTML is not the same as the one serving resources,

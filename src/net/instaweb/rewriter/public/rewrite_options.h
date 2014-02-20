@@ -685,9 +685,8 @@ class RewriteOptions {
   // These options can be specified by a spec string that looks like:
   // "id=<number greater than 0>;level=<rewrite level>;enabled=
   // <comma-separated-list of filters to enable>;disabled=
-  // <comma-separated-list of filters to disable>;css_inline_threshold=
-  // <max size of css to inline>;image_inline_threshold=<max size of
-  // image to inline>;js_inline_threshold=<max size of js to inline>.
+  // <comma-separated-list of filters to disable>;options=
+  // <comma-separated-list of option=value pairs to set>.
   class ExperimentSpec {
    public:
     // Creates a ExperimentSpec parsed from spec.
@@ -718,9 +717,6 @@ class RewriteOptions {
     FilterSet enabled_filters() const { return enabled_filters_; }
     FilterSet disabled_filters() const { return disabled_filters_; }
     OptionSet filter_options() const { return filter_options_; }
-    int64 css_inline_max_bytes() const { return css_inline_max_bytes_; }
-    int64 js_inline_max_bytes() const { return js_inline_max_bytes_; }
-    int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
     bool use_default() const { return use_default_; }
     GoogleString ToString() const;
 
@@ -746,9 +742,6 @@ class RewriteOptions {
     FilterSet enabled_filters_;
     FilterSet disabled_filters_;
     OptionSet filter_options_;
-    int64 css_inline_max_bytes_;
-    int64 js_inline_max_bytes_;
-    int64 image_inline_max_bytes_;
     // Use whatever RewriteOptions' settings are without experiments
     // for this experiment.
     bool use_default_;
@@ -919,10 +912,10 @@ class RewriteOptions {
   // with that id.
   bool AvailableExperimentId(int id);
 
-  // Creates a ExperimentSpec from spec and adds it to the configuration.
-  // Returns true if it was added successfully.
-  virtual bool AddExperimentSpec(const StringPiece& spec,
-                                 MessageHandler* handler);
+  // Creates a ExperimentSpec from spec and adds it to the configuration,
+  // returning it on success and NULL on failure.
+  virtual ExperimentSpec* AddExperimentSpec(const StringPiece& spec,
+                                            MessageHandler* handler);
 
   // Sets which side of the experiment these RewriteOptions are on.
   // Cookie-setting must be done separately.
@@ -1160,7 +1153,7 @@ class RewriteOptions {
 
   // Set all of the options to their values specified in the option set.
   // Returns true if all options in the set were successful, false if not.
-  bool SetOptionsFromName(const OptionSet& option_set);
+  bool SetOptionsFromName(const OptionSet& option_set, MessageHandler* handler);
 
   // Sets Option 'name' to 'value'. Returns whether it succeeded and logs
   // any warnings to 'handler'.

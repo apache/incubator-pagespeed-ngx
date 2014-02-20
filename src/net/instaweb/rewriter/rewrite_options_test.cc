@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/null_thread_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/message_handler_test_base.h"
 
 namespace net_instaweb {
 
@@ -145,6 +146,26 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
     NullMessageHandler handler;
     GoogleString spec_string(spec);
     return options_.AddExperimentSpec(spec_string, &handler);
+  }
+
+  void SetupTestExperimentSpecs() {
+    options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+    options_.set_running_experiment(true);
+
+    EXPECT_TRUE(AddExperimentSpec("id=1;percent=15;enable=defer_javascript;"
+                                  "options=CssInlineMaxBytes=1024"));
+    EXPECT_TRUE(AddExperimentSpec(
+        "id=2;percent=15;enable=resize_images;options=BogusOption=35"));
+    EXPECT_TRUE(AddExperimentSpec("id=3;percent=15;enable=defer_javascript"));
+    EXPECT_TRUE(AddExperimentSpec("id=4;percent=15;enable=defer_javascript;"
+                                  "options=CssInlineMaxBytes=Cabbage"));
+    EXPECT_TRUE(AddExperimentSpec(
+        "id=5;percent=15;enable=defer_javascript;"
+        "options=Potato=Carrot,5=10,6==9,CssInlineMaxBytes=1024"));
+    EXPECT_TRUE(AddExperimentSpec(
+        "id=6;percent=15;enable=defer_javascript;"
+        "options=JsOutlineMinBytes=4096,JpegRecompresssionQuality=50,"
+        "CssInlineMaxBytes=100,JsInlineMaxBytes=123"));
   }
 
   void TestSetOptionFromName(bool test_log_variant);
@@ -1448,7 +1469,7 @@ TEST_F(RewriteOptionsTest, ExperimentSpecTest) {
   EXPECT_FALSE(options_.AddExperimentSpec("id=0", &handler));
   EXPECT_TRUE(options_.AddExperimentSpec(
       "id=7;percent=10;level=CoreFilters;enabled=sprite_images;"
-      "disabled=inline_css;inline_js=600000", &handler));
+      "disabled=inline_css;options=InlineJavascriptMaxBytes=600000", &handler));
 
   // Extra spaces to test whitespace handling.
   EXPECT_TRUE(options_.AddExperimentSpec("id=2;    percent=15;ga=UA-2222-1;"
@@ -1553,28 +1574,23 @@ TEST_F(RewriteOptionsTest, ExperimentPrintTest) {
   EXPECT_TRUE(options_.AddExperimentSpec("id=7;percent=15;level=AllFilters;",
                                          &handler));
   EXPECT_TRUE(options_.AddExperimentSpec("id=2;percent=15;enabled=rewrite_css;"
-                                         "inline_css=4096;ga_id=122333-4",
-                                         &handler));
+                                         "options=InlineCssMaxBytes=4096,"
+                                         "InlineJsMaxBytes=4;"
+                                         "ga_id=122333-4", &handler));
   options_.SetExperimentState(-7);
-  // This should be the core filters.
-  EXPECT_EQ("ah,cc,jc,gp,jp,jw,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
-            "ri,cf,jm,cu,cp,md,css:2048,im:3072,js:2048;",
-            options_.ToExperimentDebugString());
+  // No experiment changes.
+  EXPECT_EQ("", options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetExperimentState(1);
-  EXPECT_EQ("Experiment: 1; ah,ai,ca,cc,jc,gp,jp,jw,mc,pj,ec,ei,es,fc,if,hw,ci,"
-            "ii,il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,"
-            "css:2048,im:3072,js:2048;",
+  EXPECT_EQ("Experiment: 1; id=1;ga=UA-111111-1;percent=15;default",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetExperimentState(7);
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetExperimentState(2);
-  // This should be the filters we need to run an experiment (add_head,
-  // add_instrumentation, html_writer, insert_ga) plus rewrite_css.
-  // The image inline threshold is 0 because ImageInlineMaxBytes()
-  // only returns the threshold if inline_images is enabled.
-  EXPECT_EQ("Experiment: 2; ah,ai,ca,hw,ig,cf,css:4096,im:0,js:2048;",
+  // Note the options= section.
+  EXPECT_EQ("Experiment: 2; id=2;ga=122333-4;percent=15;enabled=cf;"
+            "options=InlineCssMaxBytes=4096,InlineJsMaxBytes=4",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 2", options_.ToExperimentString());
 
@@ -1582,60 +1598,45 @@ TEST_F(RewriteOptionsTest, ExperimentPrintTest) {
   EXPECT_EQ("122333-4", options_.ga_id());
 }
 
-TEST_F(RewriteOptionsTest, ExperimentUndoOptionsTest) {
-  NullMessageHandler handler;
-  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options_.set_running_experiment(true);
-
-  // Default for this is kDefaultImageInlineMaxBytes.
-  EXPECT_EQ(RewriteOptions::kDefaultImageInlineMaxBytes,
-            options_.ImageInlineMaxBytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
-      "id=1;percent=15;enable=inline_images;"
-      "inline_images=1024", &handler));
-  options_.SetExperimentState(1);
-  EXPECT_EQ(1024L, options_.ImageInlineMaxBytes());
-  EXPECT_TRUE(options_.AddExperimentSpec(
-      "id=2;percent=15;enable=inline_images", &handler));
-  options_.SetExperimentState(2);
-  EXPECT_EQ(RewriteOptions::kDefaultImageInlineMaxBytes,
-            options_.ImageInlineMaxBytes());
-}
-
-TEST_F(RewriteOptionsTest, ExperimentOptionsTest) {
-  NullMessageHandler handler;
-  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  options_.set_running_experiment(true);
-
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestDefaultUnchanged) {
+  SetupTestExperimentSpecs();
   // Default for this is 2048.
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(AddExperimentSpec(
-      "id=1;percent=15;enable=defer_javascript;"
-      "options=CssInlineMaxBytes=1024"));
+}
+
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestCssInlineChange) {
+  SetupTestExperimentSpecs();
   options_.SetExperimentState(1);
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(AddExperimentSpec(
-      "id=2;percent=15;enable=resize_images;options=BogusOption=35"));
-  EXPECT_TRUE(AddExperimentSpec(
-      "id=3;percent=15;enable=defer_javascript"));
+}
+
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestCssInlineChangeToDefault) {
+  SetupTestExperimentSpecs();
   options_.SetExperimentState(3);
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(AddExperimentSpec(
-      "id=4;percent=15;enable=defer_javascript;"
-      "options=CssInlineMaxBytes=Cabbage"));
+}
+
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestCssInlineChangeToInvalid) {
+  SetupTestExperimentSpecs();
   options_.SetExperimentState(4);
   EXPECT_EQ(2048L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(AddExperimentSpec(
-      "id=5;percent=15;enable=defer_javascript;"
-      "options=Potato=Carrot,5=10,6==9,CssInlineMaxBytes=1024"));
+}
+
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestCssInlineWithIllegalOptions) {
+  SetupTestExperimentSpecs();
   options_.SetExperimentState(5);
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
-  EXPECT_TRUE(AddExperimentSpec(
-      "id=6;percent=15;enable=defer_javascript;"
-      "options=JsOutlineMinBytes=4096,JpegRecompresssionQuality=50,"
-      "CssInlineMaxBytes=100,JsInlineMaxBytes=123"));
+}
+
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestMultipleOptions) {
+  SetupTestExperimentSpecs();
   options_.SetExperimentState(6);
   EXPECT_EQ(100L, options_.css_inline_max_bytes());
+  EXPECT_EQ(123L, options_.js_inline_max_bytes());
+}
+
+TEST_F(RewriteOptionsTest, ExperimentOptionsTestToString) {
+  SetupTestExperimentSpecs();
 
   // Just compare the experiments, not the rest of the OptionsToString output.
   GoogleString options_string = options_.OptionsToString();
@@ -1647,24 +1648,24 @@ TEST_F(RewriteOptionsTest, ExperimentOptionsTest) {
       experiments.push_back(lines[i]);
     }
   }
-  EXPECT_STREQ("Experiment id=1;percent=15;enabled=Defer Javascript;"
+  EXPECT_STREQ("Experiment id=1;percent=15;enabled=dj;"
                "options=CssInlineMaxBytes=1024",
                experiments[0]);
-  EXPECT_STREQ("Experiment id=2;percent=15;enabled=Resize Images;"
+  EXPECT_STREQ("Experiment id=2;percent=15;enabled=ri;"
                "options=BogusOption=35",
                experiments[1]);
-  EXPECT_STREQ("Experiment id=3;percent=15;enabled=Defer Javascript",
+  EXPECT_STREQ("Experiment id=3;percent=15;enabled=dj",
                experiments[2]);
-  EXPECT_STREQ("Experiment id=4;percent=15;enabled=Defer Javascript;"
+  EXPECT_STREQ("Experiment id=4;percent=15;enabled=dj;"
                "options=CssInlineMaxBytes=Cabbage",
                experiments[3]);
-  EXPECT_STREQ("Experiment id=5;percent=15;enabled=Defer Javascript;"
+  EXPECT_STREQ("Experiment id=5;percent=15;enabled=dj;"
                "options=5=10,"
                "6=9,"
                "CssInlineMaxBytes=1024,"
                "Potato=Carrot",
                experiments[4]);
-  EXPECT_STREQ("Experiment id=6;percent=15;enabled=Defer Javascript;"
+  EXPECT_STREQ("Experiment id=6;percent=15;enabled=dj;"
                "options=CssInlineMaxBytes=100,"
                "JpegRecompresssionQuality=50,"
                "JsInlineMaxBytes=123,"
@@ -1720,13 +1721,16 @@ TEST_F(RewriteOptionsTest, ExperimentOptionLifetimeTest) {
 }
 
 TEST_F(RewriteOptionsTest, SetOptionsFromName) {
+  TestMessageHandler handler;
   RewriteOptions::OptionSet option_set;
   option_set.insert(RewriteOptions::OptionStringPair(
       "CssInlineMaxBytes", "1024"));
-  EXPECT_TRUE(options_.SetOptionsFromName(option_set));
+  EXPECT_TRUE(options_.SetOptionsFromName(option_set, &handler));
+  EXPECT_TRUE(handler.messages().empty());
   option_set.insert(RewriteOptions::OptionStringPair(
       "Not an Option", "nothing"));
-  EXPECT_FALSE(options_.SetOptionsFromName(option_set));
+  EXPECT_FALSE(options_.SetOptionsFromName(option_set, &handler));
+  EXPECT_FALSE(handler.messages().empty());
 }
 
 // TODO(sriharis):  Add thorough ComputeSignature tests
