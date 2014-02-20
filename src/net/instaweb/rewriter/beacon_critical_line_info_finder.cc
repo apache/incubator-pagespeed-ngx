@@ -68,9 +68,9 @@ BeaconMetadata BeaconCriticalLineInfoFinder::PrepareForBeaconInsertion(
   }
   // Call the generic version of PrepareForBeaconInsertion in
   // critical_finder_support_util to decide if we should beacon.
-  net_instaweb::PrepareForBeaconInsertionHelper(empty, proto, SupportInterval(),
-                                                nonce_generator_,
-                                                driver, &metadata);
+  net_instaweb::PrepareForBeaconInsertionHelper(
+      proto, nonce_generator_, driver,
+      false /* using_candidate_key_detection */, &metadata);
   if (metadata.status != kDoNotBeacon) {
     DCHECK(cohort() != NULL);
     UpdateInPropertyCache(*proto, cohort(), kBeaconCriticalLineInfoPropertyName,

@@ -41,7 +41,6 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 
 namespace {
@@ -193,9 +192,9 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     StrAppend(&str, "'", beacon_url, "',");
     StrAppend(&str, "'", url, "',");
     StrAppend(&str, "'", options_signature_hash, "',");
-    StrAppend(&str, BoolToString(
-        CriticalImagesBeaconFilter::IncludeRenderedImagesInBeacon(
-            rewrite_driver())), ",");
+    StrAppend(&str, BoolToString(rewrite_driver()->options()->Enabled(
+                        RewriteOptions::kResizeToRenderedImageDimensions)),
+              ",");
     StrAppend(&str, "'", ExpectedNonce(), "');");
     return str;
   }

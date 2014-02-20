@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -52,15 +53,18 @@ class CriticalImagesBeaconFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "CriticalImagesBeacon"; }
 
-  // Returns true if this filter is going to include rendered image dimensions
-  // in the beacon.
-  static bool IncludeRenderedImagesInBeacon(RewriteDriver* rewrite_driver);
+  // Returns true if this filter is going to inject a beacon. Filters that need
+  // to disabled when beaconing run, like the rendered_image_dimensions filter,
+  // can check this function.
+  static bool ShouldApply(RewriteDriver* rewrite_driver);
 
  private:
   // Clear all state associated with filter.
   void Clear();
 
   BeaconMetadata beacon_metadata_;
+  StringSet image_url_hashes_;
+  bool insert_beacon_js_;
   // The total number of times the beacon is added.
   Variable* critical_images_beacon_added_count_;
 

@@ -1145,8 +1145,12 @@ class BeaconTest : public ServerContextTest {
   void InsertImageBeacon(StringPiece user_agent) {
     // Simulate effects on pcache of image beacon insertion.
     rewrite_driver()->set_property_page(MockPageForUA(user_agent));
+    // Some of the critical image tests send enough beacons with the same set of
+    // images that we can go into low frequency beaconing mode, so advance time
+    // by the low frequency rebeacon interval.
     factory()->mock_timer()->AdvanceMs(
-        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs);
+        options()->beacon_reinstrument_time_sec() * Timer::kSecondMs *
+        kLowFreqBeaconMult);
     last_beacon_metadata_ =
         server_context()->critical_images_finder()->
             PrepareForBeaconInsertion(rewrite_driver());

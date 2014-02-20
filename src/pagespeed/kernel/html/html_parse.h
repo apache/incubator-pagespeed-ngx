@@ -283,6 +283,11 @@ class HtmlParse {
     return element->AddAttribute(MakeName(keyword), value,
                                  HtmlElement::DOUBLE_QUOTE);
   }
+  void AddAttribute(HtmlElement* element, StringPiece name,
+                    const StringPiece& value) {
+    return element->AddAttribute(MakeName(name), value,
+                                 HtmlElement::DOUBLE_QUOTE);
+  }
   void AddEscapedAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     const StringPiece& escaped_value) {
     return element->AddEscapedAttribute(MakeName(keyword), escaped_value,

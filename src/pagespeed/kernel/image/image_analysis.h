@@ -81,7 +81,7 @@ bool IsPhoto(ScanlineReaderInterface* reader, MessageHandler* handler);
 
 // Indicates whether the image looks like a photo and whether it has a
 // non-opaque alpha channel.
-void AnalyzeImage(ImageFormat image_type,
+bool AnalyzeImage(ImageFormat image_type,
                   const void* image_buffer,
                   size_t buffer_length,
                   MessageHandler* handler,

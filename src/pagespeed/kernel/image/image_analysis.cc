@@ -250,7 +250,7 @@ bool IsPhoto(ScanlineReaderInterface* reader, MessageHandler* handler) {
   return metric >= kPhotoMetricThreshold;
 }
 
-void AnalyzeImage(ImageFormat image_type,
+bool AnalyzeImage(ImageFormat image_type,
                   const void* image_buffer,
                   size_t buffer_length,
                   MessageHandler* handler,
@@ -260,14 +260,14 @@ void AnalyzeImage(ImageFormat image_type,
   scoped_ptr<ScanlineReaderInterface> reader(
       CreateScanlineReader(image_type, image_buffer, buffer_length, handler));
   if (reader.get() == NULL) {
-    return;
+    return false;
   }
 
   // Initialize the optimizer which will remove alpha channel if it is
   // completely opaque.
   PixelFormatOptimizer optimizer(handler);
   if (!optimizer.Initialize(reader.get()).Success()) {
-    return;
+    return false;
   }
 
   // Report the interesting information of the optimized image.
@@ -277,6 +277,7 @@ void AnalyzeImage(ImageFormat image_type,
   if (is_photo != NULL) {
     *is_photo = IsPhoto(&optimizer, handler);
   }
+  return true;
 }
 
 }  // namespace image_compression
