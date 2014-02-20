@@ -384,6 +384,7 @@
         'apache/header_util_test.cc',
         'apache/speed_test.cc',
         'system/add_headers_fetcher_test.cc',
+        'system/in_place_resource_recorder_test.cc',
         'system/loopback_route_fetcher_test.cc',
         'system/serf_url_async_fetcher_test.cc',
         'system/system_caches_test.cc',

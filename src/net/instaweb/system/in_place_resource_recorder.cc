@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
 
@@ -107,6 +108,24 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
   DCHECK(!response_headers_considered_);
   response_headers_considered_ = true;
   status_code_ = response_headers->status_code();
+
+  // For 4xx and 5xx we can't IPRO, but we can also cache the failure so we
+  // don't retry recording for a bit.
+  if (response_headers->IsErrorStatus()) {
+    cache_->RememberFetchFailed(url_, handler_);
+    failure_ = true;
+    return;
+  }
+
+  // We can't optimize anything that's not a 200, so say recording failed
+  // for such statuses. However, we don't cache the failure here: for statuses
+  // like 304 and 206 an another response is likely to be a 200 soon. We group
+  // the other stuff with them here since it's the conservative default.
+  if (status_code_ != HttpStatus::kOK) {
+    failure_ = true;
+    return;
+  }
+
   // First, check if IPRO applies considering the content type.
   // Note: in a proxy setup it might be desireable to cache HTML and
   // non-rewritable Content-Types to avoid re-fetching from the origin server.
