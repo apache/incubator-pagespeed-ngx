@@ -36,8 +36,6 @@
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
 
-#include "apr_time.h"
-
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -248,11 +246,11 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
 
   // When we don't have a date header, invent one.
   const char* date = headers->Lookup1(HttpAttributes::kDate);
-  
+
   if (date == NULL) {
     headers->SetDate(ngx_current_msec);
   }
-  
+
   // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
   headers->ComputeCaching();
 }
@@ -2797,6 +2795,8 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   if (cfg_m->driver_factory == NULL) {
     return NGX_OK;
   }
+
+  SystemRewriteDriverFactory::InitApr();
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below

@@ -28,7 +28,6 @@ extern "C" {
 
 #include <set>
 
-#include "apr_pools.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
