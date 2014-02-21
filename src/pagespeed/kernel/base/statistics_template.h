@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string.h"
@@ -223,7 +224,7 @@ class ScalarStatisticsTemplate
 
  protected:
   virtual CountHistogram* NewHistogram(const StringPiece& name) {
-    return new CountHistogram;
+    return new CountHistogram(new NullMutex);
   }
 
   virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,

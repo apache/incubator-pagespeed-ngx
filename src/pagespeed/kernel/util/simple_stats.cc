@@ -46,6 +46,10 @@ SimpleStats::~SimpleStats() {
   thread_system_ = NULL;
 }
 
+CountHistogram* SimpleStats::NewHistogram(const StringPiece& name) {
+  return new CountHistogram(thread_system_->NewMutex());
+}
+
 SimpleStatsVariable* SimpleStats::NewVariable(
     const StringPiece& name, int index) {
   return new SimpleStatsVariable(thread_system_->NewMutex());

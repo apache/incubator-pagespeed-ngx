@@ -24,7 +24,7 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -218,7 +218,8 @@ class Histogram {
 // Trivial implementation. But Count() returns a meaningful value.
 class CountHistogram : public Histogram {
  public:
-  CountHistogram() : count_(0) {}
+  // Takes ownership of mutex.
+  explicit CountHistogram(AbstractMutex* mutex);
   virtual ~CountHistogram();
   virtual void Add(double value) {
     ScopedMutex hold(lock());
@@ -236,7 +237,7 @@ class CountHistogram : public Histogram {
   virtual GoogleString GetName() const { return ""; }
 
  protected:
-  virtual AbstractMutex* lock() { return &mutex_; }
+  virtual AbstractMutex* lock() { return mutex_.get(); }
   virtual double AverageInternal() { return 0.0; }
   virtual double PercentileInternal(const double perc) { return 0.0; }
   virtual double StandardDeviationInternal() { return 0.0; }
@@ -247,7 +248,7 @@ class CountHistogram : public Histogram {
   virtual double BucketCount(int index) { return 0.0; }
 
  private:
-  NullMutex mutex_;
+  scoped_ptr<AbstractMutex> mutex_;
   int count_;
 
   DISALLOW_COPY_AND_ASSIGN(CountHistogram);
