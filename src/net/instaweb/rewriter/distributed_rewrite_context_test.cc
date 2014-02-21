@@ -373,6 +373,7 @@ TEST_F(DistributedRewriteContextTest, TwoFiltersDelayedFetches) {
 
   ValidateNoChanges("trimmable1", CssLinkHref("a.css"));
   OtherCallFetcherCallbacks();
+  rewrite_driver_->WaitForShutDown();
   ValidateExpected(
       "delayed_fetches", CssLinkHref("a.css"),
       CssLinkHref(
