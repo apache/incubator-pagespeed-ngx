@@ -156,8 +156,8 @@ deps = {
   # TODO(morlovich): This is picked up from new revision to workaround
   # SVN weirdness; it should go away when that's sorted or we update
   # past that.
-  "src/third_party/chromium/src/chrome/tools/build":
-    File(Var("chromium_trunk") + "/src/build/util/version.py@252481"),
+  "src/third_party/chromium/src/build/util":
+    File(Var("chromium_trunk") + "/src/build/util/@252481"),
 
   "src/third_party/chromium/src/net/base":
      Var("chromium_trunk") + "/src/net/base@" +

@@ -22,4 +22,4 @@ script_dir = os.path.dirname(__file__)
 chrome_src = os.path.normpath(os.path.join(script_dir, os.pardir, 'third_party',
                                            'chromium', 'src'))
 
-execfile(os.path.join(chrome_src, 'chrome', 'tools', 'build', 'version.py'))
+execfile(os.path.join(chrome_src, 'build', 'util', 'version.py'))
