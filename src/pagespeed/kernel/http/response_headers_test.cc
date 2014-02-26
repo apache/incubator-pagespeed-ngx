@@ -169,7 +169,7 @@ class ResponseHeadersTest : public testing::Test {
                        ResponseHeaders::ValidatorOption has_validator) {
     RequestHeaders::Properties properties;
     properties.has_cookie = has_cookie;
-    // TODO(jmarantz): add properties.has_cookie2 = has_cookie2;
+    properties.has_cookie2 = has_cookie2;
     return response_headers_.IsProxyCacheable(
         properties, respect_vary, has_validator);
   }
@@ -1050,6 +1050,55 @@ TEST_F(ResponseHeadersTest, TestCachingVaryCookieHtml) {
   EXPECT_FALSE(IsVaryCacheable(
       true,   // has_cookie
       false,  // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kNoValidator));
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryCookie2Html) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Vary: Cookie2\r\n\r\n\r\n"));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      true,    // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_TRUE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      true,    // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kHasValidator));
+  EXPECT_TRUE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kIgnoreVaryOnResources,
+      ResponseHeaders::kHasValidator));
+
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      true,    // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      false,   // has_cookie2
+      ResponseHeaders::kRespectVaryOnResources,
+      ResponseHeaders::kNoValidator));
+  EXPECT_FALSE(IsVaryCacheable(
+      false,   // has_cookie
+      true,    // has_cookie2
       ResponseHeaders::kIgnoreVaryOnResources,
       ResponseHeaders::kNoValidator));
   EXPECT_FALSE(IsVaryCacheable(

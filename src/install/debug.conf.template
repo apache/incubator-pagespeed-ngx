@@ -166,6 +166,37 @@ ModPagespeedEnableFilters add_instrumentation
 ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/instant/" \
                          "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/"
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cookie/" >
+    # Add Vary:Cookie.  This should prevent us from optimizing the
+    # vary_cookie.css even though ModPagespeedRespectVary is off.
+    # apache/system_test.sh does the fetches test with and without cookies.
+    Header append Vary Cookie
+    ModPagespeedRespectVary off
+    ModPagespeedInPlaceWaitForOptimized on
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cookie2/" >
+    # Add Vary:Cookie2.  This should prevent us from optimizing the
+    # vary_cookie2.css even though ModPagespeedRespectVary is off.
+    # apache/system_test.sh does the fetches test with and without cookie2.
+    Header append Vary Cookie2
+    ModPagespeedRespectVary off
+    ModPagespeedInPlaceWaitForOptimized on
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/vary/" >
+  ModPagespeedRespectVary on
+
+  <FilesMatch "\.(js|css)$">
+    Header append Vary User-Agent
+  </FilesMatch>
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/vary/no_respect/" >
+  ModPagespeedDisableFilters add_instrumentation,inline_css
+  ModPagespeedRespectVary off
+</Directory>
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >
     # Files in this directory should be served uncacheable.
     Header set Cache-control "no-cache"

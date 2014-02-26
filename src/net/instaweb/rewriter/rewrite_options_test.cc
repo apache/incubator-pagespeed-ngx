@@ -2105,10 +2105,21 @@ TEST_F(RewriteOptionsTest, BandwidthMode) {
   scoped_ptr<RewriteOptions> vhost_options(new RewriteOptions(&thread_system_));
   vhost_options->SetRewriteLevel(RewriteOptions::kOptimizeForBandwidth);
   EXPECT_FALSE(vhost_options->Enabled(RewriteOptions::kCombineCss));
-  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kConvertGifToPng));
+  EXPECT_TRUE(vhost_options->Enabled(
+      RewriteOptions::kConvertJpegToProgressive));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kConvertJpegToWebp));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kConvertPngToJpeg));
+  EXPECT_TRUE(vhost_options->Enabled(
+      RewriteOptions::kInPlaceOptimizeForBrowser));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kJpegSubsampling));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRecompressJpeg));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRecompressPng));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRecompressWebp));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRewriteCss));
   EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kStripImageColorProfile));
+  EXPECT_TRUE(vhost_options->Enabled(RewriteOptions::kStripImageMetaData));
   EXPECT_TRUE(vhost_options->Enabled(
       RewriteOptions::kInPlaceOptimizeForBrowser));
   EXPECT_TRUE(vhost_options->in_place_rewriting_enabled());

@@ -1504,10 +1504,8 @@ goog.iter.join = function(iterable, deliminator) {
 goog.iter.map = function(iterable, f, opt_obj) {
   var iterator = goog.iter.toIterator(iterable), newIter = new goog.iter.Iterator;
   newIter.next = function() {
-    for (;;) {
-      var val = iterator.next();
-      return f.call(opt_obj, val, void 0, iterator);
-    }
+    var val = iterator.next();
+    return f.call(opt_obj, val, void 0, iterator);
   };
   return newIter;
 };

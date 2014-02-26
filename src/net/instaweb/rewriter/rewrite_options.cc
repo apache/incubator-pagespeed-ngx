@@ -581,20 +581,13 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // on this level enables "preserve" mode which has the effect of
 // making combine_css et al turn itself off.
 //
-// Note that RewriteOptions::kConvertPngToJpeg is not present.  It does
-// improve average bandwidth savings by 1% on our suite of tests but it
-// comes with aesthetic risk (stipple-patterns converted to lossy jpeg)
-// so we'll leave it off for now.
-//
-// TODO(huibao): make better data-driven decisions on which images can
-// be converted to a lossy format and put kConvertPngToJpeg back in.
-//
 // TODO(huibao): experiment with doing webp conversions (lossy & lossless)
 // by default for images of bounded size.
 const RewriteOptions::Filter kOptimizeForBandwidthFilterSet[] = {
   RewriteOptions::kConvertGifToPng,                // rewrite_images
   RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
   RewriteOptions::kConvertJpegToWebp,              // rewrite_images
+  RewriteOptions::kConvertPngToJpeg,               // rewrite_images
   RewriteOptions::kInPlaceOptimizeForBrowser,
   RewriteOptions::kJpegSubsampling,                // rewrite_images
   RewriteOptions::kRecompressJpeg,                 // rewrite_images

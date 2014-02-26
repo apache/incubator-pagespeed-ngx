@@ -421,7 +421,11 @@ bool ResponseHeaders::IsProxyCacheable(
             (has_request_validator == kNoValidator)) {
           return false;
         }
-        // TODO(jmarantz): add/test handling for Cookie2 for completeness.
+      } else if (StringCaseEqual(HttpAttributes::kCookie2, val)) {
+        if (req_properties.has_cookie2 || !is_html_like ||
+            (has_request_validator == kNoValidator)) {
+          return false;
+        }
       } else if ((respect_vary == kRespectVaryOnResources) || is_html_like) {
         // We never cache HTML with other Vary headers, and we don't
         // do so for resources either if respect_vary is set.

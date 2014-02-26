@@ -152,6 +152,61 @@ if [ $statistics_enabled = "1" ]; then
   rm -f "$TEMPDIR/alt_stat_url.$$"
 
 
+
+  # Even though we don't have a cookie, we will conservatively avoid
+  # optimizing resources with Vary:Cookie set on the response, so we
+  # will not get the instant response, of "body{background:#9370db}":
+  # 24 bytes, but will get the full original text:
+  #     "body {\n    background: MediumPurple;\n}\n"
+  # This will happen whether or not we send a cookie.
+  #
+  # Testing this requires proving we'll never optimize something, which
+  # can't be distinguished from the not-yet-optimized case, except by the
+  # ipro_not_rewritable stat, so we loop by scraping that stat and seeing
+  # when it changes.
+
+  # Executes commands until ipro_no_rewrite_count changes.  The
+  # command-line options are all passed to WGET_DUMP.  Leaves command
+  # wget output in $IPRO_OUTPUT.
+  function ipro_expect_no_rewrite() {
+    ipro_no_rewrite_count_start=$(scrape_stat ipro_not_rewritable)
+    ipro_no_rewrite_count=$ipro_no_rewrite_count_start
+    iters=0
+    while [ $ipro_no_rewrite_count -eq $ipro_no_rewrite_count_start ]; do
+      if [ $iters -ne 0 ]; then
+        sleep 0.1
+        if [ $iters -gt 100 ]; then
+          echo TIMEOUT
+          exit 1
+        fi
+      fi
+      IPRO_OUTPUT=$($WGET_DUMP "$@")
+      ipro_no_rewrite_count=$(scrape_stat ipro_not_rewritable)
+      iters=$((iters + 1))
+    done
+  }
+
+  start_test ipro with vary:cookie with no cookie set
+  ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie/vary_cookie.css
+  check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
+  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie'
+
+  start_test ipro with vary:cookie with cookie set
+  ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie/vary_cookie.css \
+    --header=Cookie:cookie-data
+  check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
+  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie'
+
+  start_test ipro with vary:cookie2 with no cookie2 set
+  ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie2/vary_cookie2.css
+  check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
+  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
+
+  start_test ipro with vary:cookie2 with cookie2 set
+  ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie2/vary_cookie2.css \
+    --header=Cookie2:cookie2-data
+  check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
+  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
 else
   start_test 404s are served.  Statistics are disabled so not checking them.
   OUT=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
@@ -161,6 +216,22 @@ else
   OUT=$($WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
   check_from "$OUT" fgrep -q "404 Not Found"
 fi
+
+# Tests that an origin header with a Vary header other than Vary:Accept-Encoding
+# loses that header when we are not respecting vary.
+start_test Vary:User-Agent on resources is held by our cache.
+URL="$TEST_ROOT/vary/no_respect/index.html"
+fetch_until -save $URL 'grep -c \.pagespeed\.cf\.' 1
+
+# Extract out the rewritten CSS file from the HTML saved by fetch_until
+# above (see -save and definition of fetch_until).  Fetch that CSS
+# file with headers and make sure the Vary is stripped.
+CSS_URL=$(grep stylesheet $FETCH_UNTIL_OUTFILE | cut -d\" -f 4)
+CSS_URL="$TEST_ROOT/vary/no_respect/$(basename $CSS_URL)"
+echo CSS_URL=$CSS_URL
+CSS_OUT=$($WGET_DUMP $CSS_URL)
+check_from "$CSS_OUT" fgrep -q "Vary: Accept-Encoding"
+check_not_from "$CSS_OUT" fgrep -q "User-Agent"
 
 
 # Test that loopback route fetcher works with vhosts not listening on

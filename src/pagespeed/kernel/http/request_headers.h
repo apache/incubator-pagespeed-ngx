@@ -38,14 +38,17 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   // headers, potentially carrying them through cache lookups.  The request
   // headers themselves can be expensive and we don't need (for example) the
   // entire contents of cookies to understand whether there were cookies.  In
-  // fact we can store the request properties we need in a single int (for now).
+  // fact we can store the request properties we need in the space of a single
+  // int (for now).
   struct Properties {
     Properties()                 // The default constructor assumes all
         : has_cookie(true),      // anti-caching signals are present.
+          has_cookie2(true),
           has_authorization(false) {  // But we assume no authorization
                                       // unless populated.
     }
     bool has_cookie;
+    bool has_cookie2;
     bool has_authorization;
   };
 
