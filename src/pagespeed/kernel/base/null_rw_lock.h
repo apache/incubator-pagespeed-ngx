@@ -19,22 +19,23 @@
 #ifndef PAGESPEED_KERNEL_BASE_NULL_RW_LOCK_H_
 #define PAGESPEED_KERNEL_BASE_NULL_RW_LOCK_H_
 
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
 // Implements an empty mutex for single-threaded programs that need to work
 // with interfaces that require mutexes.
-class NullRWLock : public ThreadSystem::RWLock {
+class LOCKABLE NullRWLock : public ThreadSystem::RWLock {
  public:
   NullRWLock() {}
   virtual ~NullRWLock();
-  virtual bool TryLock();
-  virtual void Lock();
-  virtual void Unlock();
-  virtual bool ReaderTryLock();
-  virtual void ReaderLock();
-  virtual void ReaderUnlock();
+  virtual bool TryLock() EXCLUSIVE_TRYLOCK_FUNCTION(true);
+  virtual void Lock() EXCLUSIVE_LOCK_FUNCTION();
+  virtual void Unlock() UNLOCK_FUNCTION();
+  virtual bool ReaderTryLock() SHARED_TRYLOCK_FUNCTION(true);
+  virtual void ReaderLock() SHARED_LOCK_FUNCTION();
+  virtual void ReaderUnlock() UNLOCK_FUNCTION();
   virtual void DCheckReaderLocked();
 };
 

@@ -29,6 +29,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
@@ -152,18 +153,18 @@ class Sector {
   // Mutex ops.
 
   // The sector lock should be held while doing any metadata accesses.
-  void Lock();
-  void Unlock();
+  AbstractMutex* mutex() const LOCK_RETURNED(mutex_) { return mutex_.get(); }
 
-  // Block successor list ops. The should be called if sector lock held.
+  // Block successor list ops.
   // ------------------------------------------------------------
-  BlockNum GetBlockSuccessor(BlockNum block) {
+  BlockNum GetBlockSuccessor(BlockNum block) EXCLUSIVE_LOCKS_REQUIRED(mutex()) {
     DCHECK_GE(block, 0);
     DCHECK_LT(block, static_cast<BlockNum>(data_blocks_));
     return block_successors_[block];
   }
 
-  void SetBlockSuccessor(BlockNum block, BlockNum next) {
+  void SetBlockSuccessor(BlockNum block, BlockNum next)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex()) {
     DCHECK_GE(block, 0);
     DCHECK_LT(block, static_cast<BlockNum>(data_blocks_));
 
@@ -175,7 +176,8 @@ class Sector {
 
   // Links blocks in the vector in order, with later blocks being
   // marked as successors of later ones.
-  void LinkBlockSuccessors(const BlockVector& blocks) {
+  void LinkBlockSuccessors(const BlockVector& blocks)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex()) {
     for (size_t pos = 0; pos < blocks.size(); ++pos) {
       if (pos == (blocks.size() - 1)) {
         SetBlockSuccessor(blocks[pos], kInvalidBlock);
@@ -194,15 +196,14 @@ class Sector {
   //
   // Note that this doesn't attempt to free blocks that are in use by some
   // entries.
-  //
-  // Assumes the lock is held.
-  int AllocBlocksFromFreeList(int goal, BlockVector* blocks);
+  int AllocBlocksFromFreeList(int goal, BlockVector* blocks)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
   // Puts all the passed in blocks onto this sector's freelist.
   // Does not read successors for passed in blocks, but does set them
   // for freelist membership.
-  // Assumes the lock is held.
-  void ReturnBlocksToFreeList(const BlockVector& blocks);
+  void ReturnBlocksToFreeList(const BlockVector& blocks)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
   // Cache directory ops.
   // ------------------------------------------------------------
@@ -246,9 +247,8 @@ class Sector {
 
   // Appends the list of blocks used by the entry to 'blocks'.
   // Returns the number of items appended.
-  //
-  // Assumes sector lock is held.
-  int BlockListForEntry(CacheEntry* entry, BlockVector* out_blocks);
+  int BlockListForEntry(CacheEntry* entry, BlockVector* out_blocks)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
   // Statistics stuff
   // ------------------------------------------------------------
@@ -276,7 +276,7 @@ class Sector {
   AbstractSharedMemSegment* segment_;
   scoped_ptr<AbstractMutex> mutex_;
   SectorHeader* sector_header_;
-  BlockNum* block_successors_;
+  BlockNum* block_successors_ PT_GUARDED_BY(mutex());
   char* directory_base_;
   char* blocks_base_;
   size_t sector_offset_;  // offset of the sector within the SHM segment

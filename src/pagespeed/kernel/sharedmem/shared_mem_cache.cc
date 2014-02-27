@@ -127,6 +127,7 @@
 #include <utility>                      // for pair
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/base64_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -319,9 +320,9 @@ template<size_t kBlockSize>
 GoogleString SharedMemCache<kBlockSize>::DumpStats() {
   SectorStats aggregate;
   for (size_t c = 0; c < sectors_.size(); ++c) {
-    sectors_[c]->Lock();
+    sectors_[c]->mutex()->Lock();
     aggregate.Add(*sectors_[c]->sector_stats());
-    sectors_[c]->Unlock();
+    sectors_[c]->mutex()->Unlock();
   }
 
   return aggregate.Dump(entries_per_sector_* num_sectors_,
@@ -335,7 +336,7 @@ void SharedMemCache<kBlockSize>::AddSectorToSnapshot(
   CHECK_LT(sector_num, num_sectors_);
 
   Sector<kBlockSize>* sector = sectors_[sector_num];
-  sector->Lock();
+  sector->mutex()->Lock();
 
   EntryNum cur = sector->OldestEntryNum();
   while (cur != kInvalidEntry) {
@@ -365,7 +366,7 @@ void SharedMemCache<kBlockSize>::AddSectorToSnapshot(
     cur = cur_entry->lru_prev;
   }
 
-  sector->Unlock();
+  sector->mutex()->Unlock();
 }
 
 template<size_t kBlockSize>
@@ -431,7 +432,7 @@ void SharedMemCache<kBlockSize>::PutRawHash(
 
   Sector<kBlockSize>* sector = sectors_[pos.sector];
   SectorStats* stats = sector->sector_stats();
-  sector->Lock();
+  sector->mutex()->Lock();
   ++stats->num_put;
 
   // See if our key already exists. Note that if it does, we will attempt to
@@ -449,7 +450,7 @@ void SharedMemCache<kBlockSize>::PutRawHash(
         PutIntoEntry(sector, cand_key, last_use_timestamp_ms, value);
       } else {
         ++stats->num_put_concurrent_create;
-        sector->Unlock();
+        sector->mutex()->Unlock();
       }
       return;
     }
@@ -475,7 +476,7 @@ void SharedMemCache<kBlockSize>::PutRawHash(
   if (best_key == kInvalidEntry) {
     // All slots busy. Giving up.
     ++stats->num_put_concurrent_full_set;
-    sector->Unlock();
+    sector->mutex()->Unlock();
     return;
   }
 
@@ -515,7 +516,7 @@ void SharedMemCache<kBlockSize>::PutIntoEntry(
       sector->ReturnBlocksToFreeList(blocks);
       entry->creating = false;
       MarkEntryFree(sector, entry_num);
-      sector->Unlock();
+      sector->mutex()->Unlock();
       return;
     }
   }
@@ -542,7 +543,7 @@ void SharedMemCache<kBlockSize>::PutIntoEntry(
     entry->first_block = kInvalidBlock;
   }
 
-  sector->Unlock();
+  sector->mutex()->Unlock();
 
   // Now we can write out the data. We can do it w/o the lock held
   // since we've already removed them from the freelist, and the LRU/directory
@@ -554,9 +555,9 @@ void SharedMemCache<kBlockSize>::PutIntoEntry(
   }
 
   // We're done, clear creating bit.
-  sector->Lock();
+  sector->mutex()->Lock();
   entry->creating = false;
-  sector->Unlock();
+  sector->mutex()->Unlock();
 }
 
 template<size_t kBlockSize>
@@ -566,7 +567,7 @@ void SharedMemCache<kBlockSize>::Get(const GoogleString& key,
   Position pos;
   ExtractPosition(raw_hash, &pos);
   Sector<kBlockSize>* sector = sectors_[pos.sector];
-  sector->Lock();
+  sector->mutex()->Lock();
   SectorStats* stats = sector->sector_stats();
   ++stats->num_get;
 
@@ -580,7 +581,7 @@ void SharedMemCache<kBlockSize>::Get(const GoogleString& key,
     }
   }
 
-  sector->Unlock();
+  sector->mutex()->Unlock();
   ValidateAndReportResult(key, kNotFound, callback);
 }
 
@@ -593,7 +594,7 @@ void SharedMemCache<kBlockSize>::GetFromEntry(
   CacheEntry* entry = sector->EntryAt(entry_num);
   if (entry->creating) {
     // For now, consider concurrent creation a miss.
-    sector->Unlock();
+    sector->mutex()->Unlock();
     ValidateAndReportResult(key, kNotFound, callback);
     return;
   }
@@ -605,7 +606,7 @@ void SharedMemCache<kBlockSize>::GetFromEntry(
   sector->BlockListForEntry(entry, &blocks);
 
   // Drop the lock as the entry is now opened for reading.
-  sector->Unlock();
+  sector->mutex()->Unlock();
 
   // Collect the contents.
   SharedString* out = callback->value();
@@ -622,9 +623,9 @@ void SharedMemCache<kBlockSize>::GetFromEntry(
 
   // Now reduce the reference count.
   // TODO(morlovich): atomic ops?
-  sector->Lock();
+  sector->mutex()->Lock();
   --entry->open_count;
-  sector->Unlock();
+  sector->mutex()->Unlock();
   ValidateAndReportResult(key, kAvailable, callback);
 }
 
@@ -635,7 +636,7 @@ void SharedMemCache<kBlockSize>::Delete(const GoogleString& key) {
   ExtractPosition(raw_hash, &pos);
 
   Sector<kBlockSize>* sector = sectors_[pos.sector];
-  sector->Lock();
+  sector->mutex()->Lock();
 
   for (int p = 0; p < kAssociativity; ++p) {
     EntryNum cand_key = pos.keys[p];
@@ -645,7 +646,7 @@ void SharedMemCache<kBlockSize>::Delete(const GoogleString& key) {
     }
   }
 
-  sector->Unlock();
+  sector->mutex()->Unlock();
 }
 
 template<size_t kBlockSize>
@@ -658,14 +659,14 @@ void SharedMemCache<kBlockSize>::DeleteEntry(Sector<kBlockSize>* sector,
   sector->ReturnBlocksToFreeList(blocks);
   entry->creating = false;
   MarkEntryFree(sector, entry_num);
-  sector->Unlock();
+  sector->mutex()->Unlock();
 }
 
 template<size_t kBlockSize>
 void SharedMemCache<kBlockSize>::SanityCheck() {
   for (int i = 0; i < num_sectors_; ++i) {
     Sector<kBlockSize>* sector = sectors_[i];
-    sector->Lock();
+    sector->mutex()->Lock();
 
     // Make sure that all blocks are accounted for exactly once.
 
@@ -694,7 +695,7 @@ void SharedMemCache<kBlockSize>::SanityCheck() {
       CHECK_EQ(1, i->second);
     }
 
-    sector->Unlock();
+    sector->mutex()->Unlock();
   }
 }
 
@@ -819,9 +820,9 @@ void SharedMemCache<kBlockSize>::EnsureReadyForWriting(
   // Now just wait for previous readers to leave.
   while (entry->open_count > 0) {
     ++sector->sector_stats()->num_put_spins;
-    sector->Unlock();
+    sector->mutex()->Unlock();
     timer_->SleepUs(50);
-    sector->Lock();
+    sector->mutex()->Lock();
   }
 }
 

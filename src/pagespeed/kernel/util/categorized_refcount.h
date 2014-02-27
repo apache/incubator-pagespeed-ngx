@@ -77,6 +77,8 @@ class CategorizedRefcount {
  public:
   // Note: set_mutex must be called before calling any other method on this
   // class.
+  // TODO(jud): Instead of holding the mutex in this class, pass in the mutex to
+  // each function so that thread safety annotation can be used.
   explicit CategorizedRefcount(ObjectType* object)
       : total_refcount_(0), object_(object), mutex_(NULL) {
     for (int i = 0; i < ObjectType::kNumRefCategories; ++i) {

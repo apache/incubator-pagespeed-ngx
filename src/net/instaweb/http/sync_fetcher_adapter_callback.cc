@@ -29,52 +29,31 @@ namespace net_instaweb {
 
 class MessageHandler;
 
-namespace {
+bool SyncFetcherAdapterCallback::ProtectedWriter::Write(
+    const StringPiece& buf, MessageHandler* handler) {
+  bool ret = true;
 
-// This class wraps around an external Writer and passes through calls to
-// that Writer as long as ->release() has not been called on the
-// SyncFetcherAdapterCallback passed to the constructor. See the comments for
-// SyncFetcherAdapterCallback::response_headers() and writer() in the header for
-// why we need this.
-class ProtectedWriter : public Writer {
- public:
-  ProtectedWriter(SyncFetcherAdapterCallback* callback, Writer* orig_writer)
-      : callback_(callback),
-        orig_writer_(orig_writer) {
+  // If the callback has not timed out and been released, then pass
+  // the data through.
+  if (callback_->LockIfNotReleased()) {
+    ret = orig_writer_->Write(buf, handler);
+    callback_->Unlock();
   }
+  return ret;
+}
 
-  virtual bool Write(const StringPiece& buf, MessageHandler* handler) {
-    bool ret = true;
+bool SyncFetcherAdapterCallback::ProtectedWriter::Flush(
+    MessageHandler* handler) {
+  bool ret = true;
 
-    // If the callback has not timed out and been released, then pass
-    // the data through.
-    if (callback_->LockIfNotReleased()) {
-      ret = orig_writer_->Write(buf, handler);
-      callback_->Unlock();
-    }
-    return ret;
+  // If the callback has not timed out and been released, then pass
+  // the flush through.
+  if (callback_->LockIfNotReleased()) {
+    ret = orig_writer_->Flush(handler);
+    callback_->Unlock();
   }
-
-  virtual bool Flush(MessageHandler* handler) {
-    bool ret = true;
-
-    // If the callback has not timed out and been released, then pass
-    // the flush through.
-    if (callback_->LockIfNotReleased()) {
-      ret = orig_writer_->Flush(handler);
-      callback_->Unlock();
-    }
-    return ret;
-  }
-
- private:
-  SyncFetcherAdapterCallback* callback_;
-  Writer* orig_writer_;
-
-  DISALLOW_COPY_AND_ASSIGN(ProtectedWriter);
-};
-
-}  // namespace
+  return ret;
+}
 
 SyncFetcherAdapterCallback::SyncFetcherAdapterCallback(
     ThreadSystem* thread_system, Writer* writer,

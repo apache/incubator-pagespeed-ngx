@@ -380,7 +380,7 @@ RewriteDriver* RewriteDriver::Clone() {
   return result;
 }
 
-void RewriteDriver::Clear() {
+void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   HtmlParse::Clear();
 
   // If this was a fetch, fetch_rewrites_ may still hold a reference to a
@@ -522,8 +522,9 @@ void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
   TryCheckForCompletion(wait_mode, end_time_ms, done);
 }
 
-void RewriteDriver::TryCheckForCompletion(
-    WaitMode wait_mode, int64 end_time_ms, Function* done) {
+void RewriteDriver::TryCheckForCompletion(WaitMode wait_mode, int64 end_time_ms,
+                                          Function* done)
+    NO_THREAD_SAFETY_ANALYSIS {
   scheduler_->DCheckLocked();
   int64 now_ms = server_context_->timer()->NowMs();
   int64 sleep_ms;
@@ -550,7 +551,8 @@ void RewriteDriver::TryCheckForCompletion(
                      wait_mode, end_time_ms, done));
   } else {
     // Done. Note that we may get deleted by our callback, so we have to
-    // make sure to save the mutex pointer.
+    // make sure to save the mutex pointer. The thread annotation can't deal
+    // with this aliasing, hence the need for NO_THREAD_SAFETY_ANALYSIS above.
     AbstractMutex* mutex = rewrite_mutex();
     waiting_ = kNoWait;
     mutex->Unlock();
@@ -631,9 +633,6 @@ void RewriteDriver::FlushAsync(Function* callback) {
     }
   }
 
-  // Note that no actual resource Rewriting can occur until this point
-  // is reached, where we initiate all the RewriteContexts.
-  DCHECK(initiated_rewrites_.empty());
   int num_rewrites = rewrites_.size();
 
   // Copy all of the RewriteContext* into the initiated_rewrites_ set
@@ -647,6 +646,11 @@ void RewriteDriver::FlushAsync(Function* callback) {
     // initiated_rewrites_.empty(), is a READ and it's OK to have
     // concurrent READs.
     ScopedMutex lock(rewrite_mutex());
+
+    // Note that no actual resource Rewriting can occur until this point
+    // is reached, where we initiate all the RewriteContexts.
+    DCHECK(initiated_rewrites_.empty());
+
     DCHECK_EQ(ref_counts_.QueryCountMutexHeld(kRefPendingRewrites),
               num_rewrites);
     initiated_rewrites_.insert(rewrites_.begin(), rewrites_.end());
@@ -852,7 +856,8 @@ void RewriteDriver::Terminate() {
   }
 }
 
-void RewriteDriver::SetServerContext(ServerContext* server_context) {
+void RewriteDriver::SetServerContext(ServerContext* server_context)
+    NO_THREAD_SAFETY_ANALYSIS {
   DCHECK(server_context_ == NULL);
   server_context_ = server_context;
   scheduler_ = server_context_->scheduler();
@@ -2454,7 +2459,10 @@ bool RewriteDriver::GetPurgeUrl(const GoogleUrl& page_url,
   return (!purge_url->empty() && !purge_method->empty());
 }
 
-bool RewriteDriver::ShouldPurgeRewrittenResponse() {
+// This function uses a few variables gaurded by rewrite_mutex() without locking
+// it, but we should not have concurrent responses at this point so thread
+// safety analysis is disabled.
+bool RewriteDriver::ShouldPurgeRewrittenResponse() NO_THREAD_SAFETY_ANALYSIS {
   if (options()->downstream_cache_purge_location_prefix().empty()) {
     // Downstream caching is not enabled.
     return false;
@@ -3002,8 +3010,11 @@ bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
     }
   }
   rewrites_.push_back(rewrite_context);
-  ref_counts_.AddRef(kRefPendingRewrites);
-  ++possibly_quick_rewrites_;
+  {
+    ScopedMutex lock(rewrite_mutex());
+    ref_counts_.AddRefMutexHeld(kRefPendingRewrites);
+    ++possibly_quick_rewrites_;
+  }
   return true;
 }
 

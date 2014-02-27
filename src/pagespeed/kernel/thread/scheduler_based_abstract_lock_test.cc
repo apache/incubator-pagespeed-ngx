@@ -23,15 +23,16 @@
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_timer.h"
-#include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/thread/mock_scheduler.h"
 #include "pagespeed/kernel/thread/scheduler.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
@@ -324,34 +325,32 @@ class ThreadedSchedulerBasedLockTest : public SchedulerBasedAbstractLockTest {
         startup_condvar_(scheduler_.mutex()->NewCondvar()),
         helper_thread_method_(
             &ThreadedSchedulerBasedLockTest::DoNothingHelper) { }
-  void SleepUntilMs(int64 end_ms) {
+  void SleepUntilMs(int64 end_ms) EXCLUSIVE_LOCKS_REQUIRED(scheduler_.mutex()) {
     int64 now_ms = timer_.NowMs();
     while (now_ms < end_ms) {
       scheduler_.ProcessAlarmsOrWaitUs((end_ms - now_ms) * Timer::kMsUs);
       now_ms = timer_.NowMs();
     }
   }
-  void SleepMs(int64 sleep_ms) {
-    AbstractMutex* mutex = scheduler_.mutex();
-    ScopedMutex lock(mutex);
+  void SleepMs(int64 sleep_ms) LOCKS_EXCLUDED(scheduler_.mutex()) {
+    ScopedMutex lock(scheduler_.mutex());
     int64 now_ms = timer_.NowMs();
     SleepUntilMs(now_ms + sleep_ms);
   }
   // Start helper, then sleep for sleep_ms and return.
-  void SleepForHelper(int64 sleep_ms) {
-    AbstractMutex* mutex = scheduler_.mutex();
+  void SleepForHelper(int64 sleep_ms) LOCKS_EXCLUDED(scheduler_.mutex()) {
     int64 now_ms;
     {
-      ScopedMutex lock(mutex);
+      ScopedMutex lock(scheduler_.mutex());
       now_ms = timer_.NowMs();
     }
     StartHelper();
     {
-      ScopedMutex lock(mutex);
+      ScopedMutex lock(scheduler_.mutex());
       SleepUntilMs(now_ms + sleep_ms);
     }
   }
-  void StartHelper() {
+  void StartHelper() LOCKS_EXCLUDED(scheduler_.mutex()) {
     helper_thread_.reset(
         new ThreadedSchedulerBasedLockTest::HelperThread(this));
     helper_thread_->Start();
@@ -387,7 +386,7 @@ class ThreadedSchedulerBasedLockTest : public SchedulerBasedAbstractLockTest {
                                "threaded_scheduler_based_lock_test_helper",
                                ThreadSystem::kJoinable),
           test_(test) { }
-    virtual void Run() {
+    virtual void Run() LOCKS_EXCLUDED(test_->scheduler_.mutex()) {
       {
         ScopedMutex lock(test_->scheduler_.mutex());
         test_->ready_to_start_.set_value(true);

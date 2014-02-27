@@ -48,6 +48,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/categorized_refcount.h"
@@ -662,7 +663,8 @@ class RewriteDriver : public HtmlParse {
   // parsing, although the Rewrite might continue after deadlines expire
   // and the rewritten HTML must be flushed.  Returns InitiateRewrite returns
   // false if the system is not healthy enough to support resource rewrites.
-  bool InitiateRewrite(RewriteContext* rewrite_context);
+  bool InitiateRewrite(RewriteContext* rewrite_context)
+      LOCKS_EXCLUDED(rewrite_mutex());
   void InitiateFetch(RewriteContext* rewrite_context);
 
   // Provides a mechanism for a RewriteContext to notify a
@@ -714,7 +716,8 @@ class RewriteDriver : public HtmlParse {
   // As above, but with a time bound, and taking a mode parameter to decide
   // between WaitForCompletion or WaitForShutDown behavior.
   // If timeout_ms <= 0, no time bound will be used.
-  void BoundedWaitFor(WaitMode mode, int64 timeout_ms);
+  void BoundedWaitFor(WaitMode mode, int64 timeout_ms)
+      LOCKS_EXCLUDED(rewrite_mutex());
 
   // If this is set to true, during a Flush of HTML the system will
   // wait for results of all rewrites rather than just waiting for
@@ -1119,23 +1122,24 @@ class RewriteDriver : public HtmlParse {
   bool DistributeFetch(const StringPiece& url, const StringPiece& filter_id,
                        AsyncFetch* async_fetch);
 
-  // Checks whether outstanding rewrites are completed in a satisfactory
-  // fashion with respect to given wait_mode and timeout, and invokes
-  // done->Run() (with rewrite_mutex released) when either finished or timed
-  // out. Assumes rewrite_mutex held. May relinquish it temporarily to invoke
-  // done.
+  // Checks whether outstanding rewrites are completed in a satisfactory fashion
+  // with respect to given wait_mode and timeout, and invokes done->Run() (with
+  // rewrite_mutex released) when either finished or timed out. May relinquish
+  // rewrite_mutex() temporarily to invoke done.
   void CheckForCompletionAsync(WaitMode wait_mode, int64 timeout_ms,
-                               Function* done);
+                               Function* done)
+      EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
-  // A single check attempt for the above. Will either invoke callback
-  // (with rewrite_mutex released) or ask scheduler to check again.
-  // Assumes rewrite_mutex held. May relinquish it temporarily to invoke
-  // done.
+  // A single check attempt for the above. Will either invoke callback (with
+  // rewrite_mutex released) or ask scheduler to check again. May relinquish
+  // rewrite_mutex() temporarily to invoke done.
   void TryCheckForCompletion(WaitMode wait_mode, int64 end_time_ms,
-                             Function* done);
+                             Function* done)
+      EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
-  // Termination predicate for above; assumes locks held.
-  bool IsDone(WaitMode wait_mode, bool deadline_reached);
+  // Termination predicate for above.
+  bool IsDone(WaitMode wait_mode, bool deadline_reached)
+      EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
   // Always wait for pending async events during shutdown or while waiting for
   // the completion of all rewriting (except in fast_blocking_rewrite mode).
@@ -1163,8 +1167,7 @@ class RewriteDriver : public HtmlParse {
   void QueueFinishParseAfterFlush(Function* user_callback);
   void FinishParseAfterFlush(Function* user_callback);
 
-  // Must be called with rewrites_mutex_ held.
-  bool RewritesComplete() const;
+  bool RewritesComplete() const EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
   // Sets the base GURL in response to a base-tag being parsed.  This
   // should only be called by ScanFilter.
@@ -1179,7 +1182,9 @@ class RewriteDriver : public HtmlParse {
   void SetDecodedUrlFromBase();
 
   // The rewrite_mutex is owned by the scheduler.
-  AbstractMutex* rewrite_mutex() { return scheduler_->mutex(); }
+  AbstractMutex* rewrite_mutex() const LOCK_RETURNED(scheduler_->mutex()) {
+    return scheduler_->mutex();
+  }
 
   // Parses an arbitrary block of an html file
   virtual void ParseTextInternal(const char* content, int size);
@@ -1275,12 +1280,12 @@ class RewriteDriver : public HtmlParse {
   //
   //   SignalIfRequired(should_signal_cookie);
   //
-  // Precondition: rewrite_mutex() is held.
-  // WARNING: SignalIfRequired() drops the lock temporarily, so 'this'
-  // could get deleted after it returns, so it should not be accessed
+  // WARNING: SignalIfRequired() drops the lock on rewrite_mutex() temporarily,
+  // so 'this' could get deleted after it returns, so it should not be accessed
   // afterwards.
-  bool PrepareShouldSignal();
-  void SignalIfRequired(bool result_of_prepare_should_signal);
+  bool PrepareShouldSignal() EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
+  void SignalIfRequired(bool result_of_prepare_should_signal)
+      EXCLUSIVE_LOCKS_REQUIRED(rewrite_mutex());
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -1359,7 +1364,7 @@ class RewriteDriver : public HtmlParse {
 
   friend class CategorizedRefcount<RewriteDriver, RefCategory>;
 
-  // protected by rewrite_mutex()
+  // Protected by rewrite_mutex().
   CategorizedRefcount<RewriteDriver, RefCategory> ref_counts_;
 
   // Interface to CategorizedRefcount
@@ -1376,15 +1381,15 @@ class RewriteDriver : public HtmlParse {
 
   // Indicates that the rewrite driver is currently parsing the HTML,
   // and thus should not be recycled under FinishParse() is called.
-  bool parsing_;  // protected by rewrite_mutex()
+  bool parsing_ GUARDED_BY(rewrite_mutex());
 
   // If not kNoWait, indicates that WaitForCompletion or similar method
   // have been called, and an another thread is waiting for us to notify it of
   // everything having been finished in a given mode.
-  WaitMode waiting_;  // protected by rewrite_mutex()
+  WaitMode waiting_ GUARDED_BY(rewrite_mutex());
 
   // This is set to true if the current wait's deadline has expired.
-  bool waiting_deadline_reached_;  // protected by rewrite_mutex()
+  bool waiting_deadline_reached_ GUARDED_BY(rewrite_mutex());
 
   // If this is true, the usual HTML streaming interface will let rendering
   // of every flush window fully complete before proceeding rather than
@@ -1468,10 +1473,10 @@ class RewriteDriver : public HtmlParse {
   // RewriteThread, but have not gotten to the point where
   // RewriteComplete() has been called.  This set is cleared
   // one the rewrite_deadline_ms has passed.
-  RewriteContextSet initiated_rewrites_;  // protected by rewrite_mutex()
+  RewriteContextSet initiated_rewrites_ GUARDED_BY(rewrite_mutex());
 
   // Number of total initiated rewrites for the request.
-  int64 num_initiated_rewrites_;          // protected by rewrite_mutex()
+  int64 num_initiated_rewrites_ GUARDED_BY(rewrite_mutex());
 
   // Number of total detached rewrites for the request, i.e. rewrites whose
   // results did not make it to the response. This is different from
@@ -1480,7 +1485,7 @@ class RewriteDriver : public HtmlParse {
   // currently in the detached state for the current flush window,
   // while this variable is total that ever got detached over all of the
   // document.
-  int64 num_detached_rewrites_;           // protected by rewrite_mutex()
+  int64 num_detached_rewrites_ GUARDED_BY(rewrite_mutex());
 
   // Contains the RewriteContext* that were still running at the deadline.
   // They are said to be in a "detached" state although the RewriteContexts
@@ -1489,10 +1494,10 @@ class RewriteDriver : public HtmlParse {
   // they complete, the RewriteDriver must stay alive and not be Recycled
   // or deleted.  WaitForCompletion() blocks until all detached_rewrites
   // have been retired.
-  RewriteContextSet detached_rewrites_;   // protected by rewrite_mutex()
+  RewriteContextSet detached_rewrites_ GUARDED_BY(rewrite_mutex());
 
   // Rewrites that may possibly be satisfied from metadata cache alone.
-  int possibly_quick_rewrites_;           // protected by rewrite_mutex()
+  int possibly_quick_rewrites_ GUARDED_BY(rewrite_mutex());
 
   // List of RewriteContext objects for fetch to delete. We do it in
   // clear as a simplification.

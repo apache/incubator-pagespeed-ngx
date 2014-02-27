@@ -23,6 +23,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 
 namespace net_instaweb {
@@ -44,12 +45,13 @@ class ThreadsafeCache : public CacheInterface {
   virtual ~ThreadsafeCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
-  virtual void Delete(const GoogleString& key);
+  virtual void Put(const GoogleString& key, SharedString* value)
+      LOCKS_EXCLUDED(mutex_);
+  virtual void Delete(const GoogleString& key) LOCKS_EXCLUDED(mutex_);
   virtual CacheInterface* Backend() { return cache_; }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
-  virtual bool IsHealthy() const;
-  virtual void ShutDown();
+  virtual bool IsHealthy() const LOCKS_EXCLUDED(mutex_);
+  virtual void ShutDown() LOCKS_EXCLUDED(mutex_);
 
   static GoogleString FormatName(StringPiece cache);
   virtual GoogleString Name() const { return FormatName(cache_->Name()); }

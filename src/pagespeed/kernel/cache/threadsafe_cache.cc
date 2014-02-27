@@ -21,6 +21,7 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/cache/delegating_cache_callback.h"
 
@@ -37,17 +38,16 @@ namespace {
 
 class ThreadsafeCallback : public DelegatingCacheCallback {
  public:
-  ThreadsafeCallback(AbstractMutex* mutex,
-                     CacheInterface::Callback* callback)
-      : DelegatingCacheCallback(callback),
-        mutex_(mutex) {
+  ThreadsafeCallback(AbstractMutex* mutex, CacheInterface::Callback* callback)
+      EXCLUSIVE_LOCK_FUNCTION(mutex)
+      : DelegatingCacheCallback(callback), mutex_(mutex) {
     mutex_->Lock();
   }
 
   virtual ~ThreadsafeCallback() {
   }
 
-  virtual void Done(CacheInterface::KeyState state) {
+  virtual void Done(CacheInterface::KeyState state) UNLOCK_FUNCTION(mutex_) {
     mutex_->Unlock();
     DelegatingCacheCallback::Done(state);
   }

@@ -44,6 +44,7 @@
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
 #include "pagespeed/kernel/base/string_hash.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/wildcard.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
 
@@ -1396,7 +1397,8 @@ class RewriteOptions {
   //
   // This function ignores requests to move the invalidation timestamp
   // backwards.  It returns true if the timestamp was actually changed.
-  bool UpdateCacheInvalidationTimestampMs(int64 timestamp_ms);
+  bool UpdateCacheInvalidationTimestampMs(int64 timestamp_ms)
+      LOCKS_EXCLUDED(cache_invalidation_timestamp_.mutex());
 
   // How much inactivity of HTML input will result in PSA introducing a flush.
   // Values <= 0 disable the feature.
@@ -2715,6 +2717,11 @@ class RewriteOptions {
     // but we use locked access to src_base->value().
     virtual void Merge(const OptionBase* src_base);
 
+    // We provide a more specific Merge here so that we can use an unaliased
+    // name for src to provide lock annotation.
+    void Merge(const MutexedOptionInt64MergeWithMax* src)
+        LOCKS_EXCLUDED(src->mutex());
+
     // The value() must only be taken when the mutex is held.  This is
     // only called by RewriteOptions::UpdateCacheInvalidationTimestampMs
     // and MutexedOptionInt64MergeWithMax::Merge, which are holding
@@ -2725,7 +2732,7 @@ class RewriteOptions {
     // a lock and can't take it again.  When writing the invalidation
     // timestamp at initial configuration time, we don't need the
     // lock.
-    void checked_set(const int64& value) {
+    void checked_set(const int64& value) EXCLUSIVE_LOCKS_REQUIRED(mutex()) {
       mutex_->DCheckLocked();
       Option<int64>::set(value);
     }
@@ -2743,7 +2750,9 @@ class RewriteOptions {
     // Also note that this mutex, when installed, is also used to
     // lock access to RewriteOptions::signature(), which depends on
     // the cache invalidation timestamp.
-    ThreadSystem::RWLock* mutex() const { return mutex_.get(); }
+    ThreadSystem::RWLock* mutex() const LOCK_RETURNED(mutex_) {
+      return mutex_.get();
+    }
 
     // Takes ownership of mutex.  Note that by default, mutex()
     // has a NullRWLock.  Only by calling set_mutex do we add locking

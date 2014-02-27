@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_cache_data.h"
 
 namespace net_instaweb {
@@ -138,21 +139,23 @@ class SharedMemCache : public CacheInterface {
   // Releases lock when done.
   void GetFromEntry(const GoogleString& key,
                     SharedMemCacheData::Sector<kBlockSize>* sector,
-                    SharedMemCacheData::EntryNum entry_num,
-                    Callback* callback);
+                    SharedMemCacheData::EntryNum entry_num, Callback* callback)
+      UNLOCK_FUNCTION(sector->mutex());
 
   // Finish a put into the given entry. Lock is expected to be held at entry,
   // will be released when done. The hash in the entry must also be already
   // correct at time of entry.
   void PutIntoEntry(SharedMemCacheData::Sector<kBlockSize>* sector,
                     SharedMemCacheData::EntryNum entry_num,
-                    int64 last_use_timestamp_ms,
-                    SharedString* value);
+                    int64 last_use_timestamp_ms, SharedString* value)
+      EXCLUSIVE_LOCKS_REQUIRED(sector->mutex())
+      UNLOCK_FUNCTION(sector->mutex());
 
   // Finish a delete, with the entry matching and sector lock held.
   // Releases lock when done.
   void DeleteEntry(SharedMemCacheData::Sector<kBlockSize>* sector,
-                   SharedMemCacheData::EntryNum entry_num);
+                   SharedMemCacheData::EntryNum entry_num)
+      UNLOCK_FUNCTION(sector->mutex());
 
   // Attempts to allocate at least the given number of blocks, and appends any
   // blocks it manages to allocate to *blocks. Returns whether successful.
@@ -161,7 +164,8 @@ class SharedMemCache : public CacheInterface {
   // so the caller may have to clean them up. When successful, this method may
   // allocate more memory than is requested.
   bool TryAllocateBlocks(SharedMemCacheData::Sector<kBlockSize>* sector,
-                         int goal, SharedMemCacheData::BlockVector* blocks);
+                         int goal, SharedMemCacheData::BlockVector* blocks)
+      EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   // Marks the given entry free in the directory, and unlinks it from the LRU.
   // Note that this does not touch the entry's blocks.
@@ -188,7 +192,8 @@ class SharedMemCache : public CacheInterface {
   // Makes sure we have exclusive write access to the entry, with no concurrent
   // readers. Must be called with sector lock held.
   void EnsureReadyForWriting(SharedMemCacheData::Sector<kBlockSize>* sector,
-                             SharedMemCacheData::CacheEntry* entry);
+                             SharedMemCacheData::CacheEntry* entry)
+      EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   AbstractSharedMem* shm_runtime_;
   const Hasher* hasher_;

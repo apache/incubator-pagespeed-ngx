@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/timer.h"
 
 namespace net_instaweb {
@@ -106,7 +107,7 @@ class FunctionAlarm : public Scheduler::Alarm {
   }
  private:
   typedef void (Function::*FunctionAction)();
-  void DropMutexActAndCleanup(FunctionAction act) {
+  void DropMutexActAndCleanup(FunctionAction act) NO_THREAD_SAFETY_ANALYSIS {
     AbstractMutex* mutex = scheduler_->mutex();  // Save across delete.
     mutex->Unlock();
     ((function_)->*(act))();

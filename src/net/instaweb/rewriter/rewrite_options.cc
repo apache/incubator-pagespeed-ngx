@@ -3465,6 +3465,11 @@ void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
   // This option must be a MutexedOptionInt64 everywhere, so this cast is safe.
   const MutexedOptionInt64MergeWithMax* src =
       static_cast<const MutexedOptionInt64MergeWithMax*>(src_base);
+  Merge(src);
+}
+
+void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
+    const MutexedOptionInt64MergeWithMax* src) {
   bool src_was_set;
   int64 src_value;
   {

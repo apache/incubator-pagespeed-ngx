@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/platform.h"
 
@@ -213,7 +214,7 @@ void SharedMemTestBase::TwoKidsChild2() {
 // increments. This test does not guarantee that it will detect a failure
 // (the schedule might just end up such that things work out), but it's
 // been found to be effective in practice.
-void SharedMemTestBase::TestMutex() {
+void SharedMemTestBase::TestMutex() NO_THREAD_SAFETY_ANALYSIS {
   size_t mutex_size = shmem_runtime_->SharedMutexSize();
   scoped_ptr<AbstractSharedMemSegment> seg(
       shmem_runtime_->CreateSegment(kTestSegment, mutex_size + 4, &handler_));

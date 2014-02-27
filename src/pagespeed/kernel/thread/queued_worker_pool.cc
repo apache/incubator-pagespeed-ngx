@@ -26,10 +26,11 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/function.h"
-#include "pagespeed/kernel/thread/queued_worker.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/base/waveform.h"
+#include "pagespeed/kernel/thread/queued_worker.h"
 
 namespace net_instaweb {
 
@@ -229,7 +230,8 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
   }
 }
 
-bool QueuedWorkerPool::AreBusy(const SequenceSet& sequences) {
+bool QueuedWorkerPool::AreBusy(const SequenceSet& sequences)
+    NO_THREAD_SAFETY_ANALYSIS {
   // This is the only operation that accesses multiple workers at once.
   // We order our lock acquisitions by address comparisons to get
   // 2-phase locking, and thus avoid deadlock... With the ordering

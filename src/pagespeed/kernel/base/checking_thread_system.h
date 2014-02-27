@@ -25,6 +25,7 @@
 #include "pagespeed/kernel/base/atomic_int32.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
@@ -51,14 +52,14 @@ class CheckingThreadSystem : public ThreadSystem {
   // is created and use the wrapped mutex to create the condvar).  This class
   // can be used to wrap unchecked mutexes provided by other
   // CheckingThreadSystems.
-  class Mutex : public ThreadSystem::CondvarCapableMutex {
+  class LOCKABLE Mutex : public ThreadSystem::CondvarCapableMutex {
    public:
     explicit Mutex(ThreadSystem::CondvarCapableMutex* mutex) : mutex_(mutex) { }
     virtual ~Mutex();
 
-    virtual bool TryLock();
-    virtual void Lock();
-    virtual void Unlock();
+    virtual bool TryLock() EXCLUSIVE_TRYLOCK_FUNCTION(true);
+    virtual void Lock() EXCLUSIVE_LOCK_FUNCTION();
+    virtual void Unlock() UNLOCK_FUNCTION();
     // This implementation of DCheckLocked CHECK-fails if lock is not held.
     virtual void DCheckLocked();
 
@@ -82,17 +83,17 @@ class CheckingThreadSystem : public ThreadSystem {
   // RWLock to provide read/write capable locks. This class
   // can be used to wrap unchecked mutexes provided by other
   // CheckingThreadSystems.
-  class RWLock : public ThreadSystem::RWLock {
+  class LOCKABLE RWLock : public ThreadSystem::RWLock {
    public:
     explicit RWLock(ThreadSystem::RWLock* lock) : lock_(lock) { }
     virtual ~RWLock();
 
-    virtual bool TryLock();
-    virtual void Lock();
-    virtual void Unlock();
-    virtual bool ReaderTryLock();
-    virtual void ReaderLock();
-    virtual void ReaderUnlock();
+    virtual bool TryLock() EXCLUSIVE_TRYLOCK_FUNCTION(true);
+    virtual void Lock() EXCLUSIVE_LOCK_FUNCTION();
+    virtual void Unlock() UNLOCK_FUNCTION();
+    virtual bool ReaderTryLock() SHARED_TRYLOCK_FUNCTION(true);
+    virtual void ReaderLock() SHARED_LOCK_FUNCTION();
+    virtual void ReaderUnlock() UNLOCK_FUNCTION();
 
     // This implementation of DCheckLocked CHECK-fails if lock is not held.
     virtual void DCheckLocked();

@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
@@ -54,22 +55,22 @@ class SyncFetcherAdapterCallback : public AsyncFetch {
   // to be deleted as soon as it's safe to do so, which may be immediately
   // at the point of call, or from some asynchronous event.
   // The object should not be used by the owner after Release() has been called.
-  void Release();
+  void Release() LOCKS_EXCLUDED(mutex_);
 
-  bool IsDone() const;
+  bool IsDone() const LOCKS_EXCLUDED(mutex_);
 
   // Version of IsDone() that may only be called if you already hold the mutex.
-  bool IsDoneLockHeld() const;
-  bool success() const;
-  bool released() const;
+  bool IsDoneLockHeld() const EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  bool success() const LOCKS_EXCLUDED(mutex_);
+  bool released() const LOCKS_EXCLUDED(mutex_);
 
   // If this fetcher hasn't yet been Released(), returns true with mutex_ held.
   // Otherwise, returns false with the mutex_ released. These methods
   // should be used to guard accesses to writer() and response_headers().
-  bool LockIfNotReleased();
+  bool LockIfNotReleased() EXCLUSIVE_TRYLOCK_FUNCTION(true, mutex_);
 
   // Releases mutex acquired by a successful LockIfNotReleased() call.
-  void Unlock();
+  void Unlock() UNLOCK_FUNCTION(mutex_);
 
   // Waits on condition variable associated with the mutex, with timeout
   // of timeout_ms. The wake up condition is Done() being called, but this
@@ -77,10 +78,10 @@ class SyncFetcherAdapterCallback : public AsyncFetch {
   // the caller should use a while loop conditioned on done_lock_held().
   // Should not be called if this callback is already released, and expects
   // mutex already held.
-  void TimedWait(int64 timeout_ms);
+  void TimedWait(int64 timeout_ms) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
  protected:
-  virtual void HandleDone(bool success);
+  virtual void HandleDone(bool success) LOCKS_EXCLUDED(mutex_);
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
     return writer_->Write(content, handler);
@@ -92,14 +93,34 @@ class SyncFetcherAdapterCallback : public AsyncFetch {
   }
 
  private:
+  // This class wraps around an external Writer and passes through calls to that
+  // Writer as long as ->release() has not been called on the
+  // SyncFetcherAdapterCallback passed to the constructor. See the comments at
+  // the top of SyncFetcherAdapterCallback for why we need this.
+  class ProtectedWriter : public Writer {
+   public:
+    ProtectedWriter(SyncFetcherAdapterCallback* callback, Writer* orig_writer)
+        : callback_(callback), orig_writer_(orig_writer) {}
+
+    virtual bool Write(const StringPiece& buf, MessageHandler* handler)
+        LOCKS_EXCLUDED(callback_->mutex_);
+    virtual bool Flush(MessageHandler* handler)
+        LOCKS_EXCLUDED(callback_->mutex_);
+
+   private:
+    SyncFetcherAdapterCallback* callback_;
+    Writer* orig_writer_ GUARDED_BY(callback_->mutex_);
+
+    DISALLOW_COPY_AND_ASSIGN(ProtectedWriter);
+  };
   virtual ~SyncFetcherAdapterCallback();
 
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   scoped_ptr<ThreadSystem::Condvar> cond_;
 
-  bool done_;
-  bool success_;
-  bool released_;
+  bool done_ GUARDED_BY(mutex_);
+  bool success_ GUARDED_BY(mutex_);
+  bool released_ GUARDED_BY(mutex_);
   scoped_ptr<Writer> writer_;
 
   DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapterCallback);

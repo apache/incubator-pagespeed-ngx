@@ -20,19 +20,20 @@
 #define PAGESPEED_KERNEL_BASE_ABSTRACT_MUTEX_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
 // Abstract interface for implementing a mutex.
-class AbstractMutex {
+class LOCKABLE AbstractMutex {
  public:
   virtual ~AbstractMutex();
   // Attempt to take mutex, true on success, false if held by another thread.
-  virtual bool TryLock() = 0;
+  virtual bool TryLock() EXCLUSIVE_TRYLOCK_FUNCTION(true) = 0;
   // Block until mutex is available, then take the mutex.
-  virtual void Lock() = 0;
+  virtual void Lock() EXCLUSIVE_LOCK_FUNCTION() = 0;
   // Release the mutex, permitting a blocked lock operation (if any) to proceed.
-  virtual void Unlock() = 0;
+  virtual void Unlock() UNLOCK_FUNCTION() = 0;
   // Optionally checks that lock is held (for invariant checking purposes).
   // Default implementation does no checking.
   virtual void DCheckLocked();
@@ -42,22 +43,21 @@ class AbstractMutex {
 };
 
 // Helper class for lexically scoped mutexing.
-class ScopedMutex {
+class SCOPED_LOCKABLE ScopedMutex {
  public:
-  explicit ScopedMutex(AbstractMutex* mutex) : mutex_(mutex) {
+  explicit ScopedMutex(AbstractMutex* mutex) EXCLUSIVE_LOCK_FUNCTION(mutex)
+      : mutex_(mutex) {
     mutex_->Lock();
   }
 
-  void Release() {
+  void Release() UNLOCK_FUNCTION() {
     if (mutex_ != NULL) {
       mutex_->Unlock();
       mutex_ = NULL;
     }
   }
 
-  ~ScopedMutex() {
-    Release();
-  }
+  ~ScopedMutex() UNLOCK_FUNCTION() { Release(); }
 
  private:
   AbstractMutex* mutex_;

@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/sharedmem/shared_dynamic_string_map.h"
 #include "pagespeed/kernel/util/platform.h"
@@ -106,7 +107,7 @@ SharedDynamicStringMap* SharedDynamicStringMapTestBase::ParentInit() {
   return map;
 }
 
-void SharedDynamicStringMapTestBase::TestSimple() {
+void SharedDynamicStringMapTestBase::TestSimple() NO_THREAD_SAFETY_ANALYSIS {
   scoped_ptr<SharedDynamicStringMap> map(ParentInit());
   GoogleString output;
   StringWriter writer(&output);

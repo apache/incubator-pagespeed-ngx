@@ -30,8 +30,9 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
-#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/stl_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
@@ -39,7 +40,7 @@ namespace net_instaweb {
 // This object is a wrapping delegate around an existing AbstractMutex.
 // We need it because AttachToSharedMutex is supposed to return fresh
 // objects passing ownership to the caller.
-class InProcessSharedMem::DelegateMutex : public AbstractMutex {
+class LOCKABLE InProcessSharedMem::DelegateMutex : public AbstractMutex {
  public:
   // Does not take ownership of actual.
   explicit DelegateMutex(AbstractMutex* actual) : actual_(actual) {
@@ -48,17 +49,13 @@ class InProcessSharedMem::DelegateMutex : public AbstractMutex {
   virtual ~DelegateMutex() {
   }
 
-  virtual bool TryLock() {
+  virtual bool TryLock() EXCLUSIVE_TRYLOCK_FUNCTION(true) {
     return actual_->TryLock();
   }
 
-  virtual void Lock() {
-    actual_->Lock();
-  }
+  virtual void Lock() EXCLUSIVE_LOCK_FUNCTION() { actual_->Lock(); }
 
-  virtual void Unlock() {
-    actual_->Unlock();
-  }
+  virtual void Unlock() UNLOCK_FUNCTION() { actual_->Unlock(); }
 
   virtual void DCheckLocked() {
     actual_->DCheckLocked();

@@ -171,6 +171,12 @@ class SyncFetcherAdapterTest : public testing::Test {
   void Wait(SyncFetcherAdapterCallback* callback, int64 timeout_ms) {
     bool locked_ok = callback->LockIfNotReleased();
     ASSERT_TRUE(locked_ok);
+    // The thread safety annotation analysis doesn't recognize the ASSERT_TRUE
+    // as guaranteeing that the lock is held, so provide a dummy check here to
+    // provide that guarantee for the compiler.
+    if (!locked_ok) {
+      return;
+    }
     // Should always succeed since we don't call ->Release
     // on callback until end of this method.
     int64 now_ms = timer_->NowMs();

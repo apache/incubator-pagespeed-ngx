@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
@@ -237,11 +238,13 @@ class CountHistogram : public Histogram {
   virtual GoogleString GetName() const { return ""; }
 
  protected:
-  virtual AbstractMutex* lock() { return mutex_.get(); }
+  virtual AbstractMutex* lock() LOCK_RETURNED(mutex_) { return mutex_.get(); }
   virtual double AverageInternal() { return 0.0; }
   virtual double PercentileInternal(const double perc) { return 0.0; }
   virtual double StandardDeviationInternal() { return 0.0; }
-  virtual double CountInternal() { return count_; }
+  virtual double CountInternal() EXCLUSIVE_LOCKS_REQUIRED(lock()) {
+    return count_;
+  }
   virtual double MaximumInternal() { return 0.0; }
   virtual double MinimumInternal() { return 0.0; }
   virtual double BucketStart(int index) { return 0.0; }
@@ -249,7 +252,7 @@ class CountHistogram : public Histogram {
 
  private:
   scoped_ptr<AbstractMutex> mutex_;
-  int count_;
+  int count_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(CountHistogram);
 };

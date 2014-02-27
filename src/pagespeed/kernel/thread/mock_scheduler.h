@@ -20,6 +20,7 @@
 #define PAGESPEED_KERNEL_THREAD_MOCK_SCHEDULER_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/thread/queued_worker_pool.h"
 #include "pagespeed/kernel/thread/scheduler.h"
@@ -41,31 +42,35 @@ class MockScheduler : public Scheduler {
                 MockTimer* timer);
   virtual ~MockScheduler();
 
-  virtual void RegisterWorker(QueuedWorkerPool::Sequence* w);
-  virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w);
+  virtual void RegisterWorker(QueuedWorkerPool::Sequence* w)
+      LOCKS_EXCLUDED(mutex());
+  virtual void UnregisterWorker(QueuedWorkerPool::Sequence* w)
+      LOCKS_EXCLUDED(mutex());
 
   // Blocks until all work in registered workers is done.
-  void AwaitQuiescence();
+  void AwaitQuiescence() LOCKS_EXCLUDED(mutex());
 
   // Similar to BlockingTimedWaitUs but takes the lock for convenience.
-  // Must be called without mutex held.
-  void AdvanceTimeMs(int64 timeout_ms) {
+  void AdvanceTimeMs(int64 timeout_ms) LOCKS_EXCLUDED(mutex()) {
     AdvanceTimeUs(timeout_ms * Timer::kMsUs);
   }
-  void AdvanceTimeUs(int64 timeout_us);
+  void AdvanceTimeUs(int64 timeout_us) LOCKS_EXCLUDED(mutex());
 
   // Sets the current absolute time using absolute numbers.
-  // Must be called without mutex held.
-  void SetTimeUs(int64 time_us);
+  void SetTimeUs(int64 time_us) LOCKS_EXCLUDED(mutex());
 
  protected:
-  virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
+  virtual void AwaitWakeupUntilUs(int64 wakeup_time_us)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
  private:
-  inline void SetTimeUsMutexHeld(int64 time_us);
+  inline void SetTimeUsMutexHeld(int64 time_us)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex());
 
+  // TODO(jud): Verify if this variable should be GUARDED_BY(mutex()). The
+  // CHECK_LE in SetTimeUs currently has an unlocked access to it.
   MockTimer* timer_;
-  QueuedWorkerPool::SequenceSet workers_;
+  QueuedWorkerPool::SequenceSet workers_ GUARDED_BY(mutex());
 
   DISALLOW_COPY_AND_ASSIGN(MockScheduler);
 };

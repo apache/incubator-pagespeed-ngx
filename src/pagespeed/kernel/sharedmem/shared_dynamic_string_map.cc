@@ -22,6 +22,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/rolling_hash.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/writer.h"
 
 namespace net_instaweb {
@@ -118,7 +119,8 @@ void SharedDynamicStringMap::ClearSegment(MessageHandler* message_handler) {
   shm_runtime_->DestroySegment(segment_name_, message_handler);
 }
 
-int SharedDynamicStringMap::IncrementElement(const StringPiece& string) {
+int SharedDynamicStringMap::IncrementElement(const StringPiece& string)
+    NO_THREAD_SAFETY_ANALYSIS {
   if (segment_.get() == NULL) {
     return 0;
   }
@@ -155,9 +157,9 @@ int SharedDynamicStringMap::LookupElement(const StringPiece& string) const {
   return (entry == -1) ? 0 : entry_pointer->value;
 }
 
-int SharedDynamicStringMap::FindEntry(const StringPiece& string,
-                                      bool lock,
-                                      Entry** entry_pointer_pointer) const {
+int SharedDynamicStringMap::FindEntry(const StringPiece& string, bool lock,
+                                      Entry** entry_pointer_pointer) const
+    NO_THREAD_SAFETY_ANALYSIS {
   // lock should always be set to true for writes, and having lock set to false
   // for a read can occasionally result in a mistake - see header file.
   uint64 hash = RollingHash(string.data(), 0, string.size());
