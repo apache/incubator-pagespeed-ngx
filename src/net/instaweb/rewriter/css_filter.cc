@@ -195,9 +195,9 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       rewrite_inline_attribute_(NULL),
       rewrite_inline_css_kind_(kInsideStyleTag),
       in_text_size_(-1) {
-  css_base_gurl_.Reset(filter_->decoded_base_url());
-  DCHECK(css_base_gurl_.IsWebValid());
-  css_trim_gurl_.Reset(css_base_gurl_);
+  initial_css_base_gurl_.Reset(filter_->decoded_base_url());
+  DCHECK(initial_css_base_gurl_.IsWebValid());
+  initial_css_trim_gurl_.Reset(initial_css_base_gurl_);
 
   if (parent != NULL) {
     // If the context is nested.
@@ -209,11 +209,74 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
 CssFilter::Context::~Context() {
 }
 
+// The base URL used when absolutifying sub-resources must be the input
+// URL of this rewrite.
+//
+// The only exception is the case of inline CSS, where we define the
+// input URL to be a data: URL. In this case the base URL is the URL of
+// the HTML page, which we save to initial_... in the constructor.
+//
+// When our input is the output of CssCombiner, the initial_css_base_gurl_ here
+// is stale (it's the first input to the combination). It ought to be
+// the URL of the output of the combination. Similarly css_trim_gurl
+// needs to be set from the ultimate output resource and not just
+// initial_css_trim_gurl_. This matters because for a cross-directory
+// combine we can end up moving a few directories up, and further a UrlNamer
+// might even end up moving some things to a separate cookieless domain.
+//
+// Note that we have to do it functionally and not in RewriteSingle since these
+// may be invoked from AbsolutifyIfNeeded, which may be invoked from a
+// different thread when doing fallback due to a deadline. This also means that
+// initial_css_base_gurl_ and initial_css_trim_gurl_ must indeed just be
+// initials and not be mutated.
+void CssFilter::Context::GetCssBaseUrlToUse(
+    const ResourcePtr& input_resource, GoogleUrl* css_base_gurl_to_use) {
+  if (!IsDataUrl(input_resource->url())) {
+    css_base_gurl_to_use->Reset(input_resource->url());
+  } else {
+    css_base_gurl_to_use->Reset(initial_css_base_gurl_);
+  }
+}
+
+void CssFilter::Context::GetCssTrimUrlToUse(
+    const ResourcePtr& input_resource,
+    const StringPiece& output_url_base,
+    GoogleUrl* css_trim_gurl_to_use) {
+  if (!IsDataUrl(input_resource->url())) {
+    css_trim_gurl_to_use->Reset(output_url_base);
+  } else {
+    css_trim_gurl_to_use->Reset(initial_css_trim_gurl_);
+  }
+}
+
+void CssFilter::Context::GetCssTrimUrlToUse(
+    const ResourcePtr& input_resource,
+    const OutputResourcePtr& output_resource,
+    GoogleUrl* css_trim_gurl_to_use) {
+  if (!IsDataUrl(input_resource->url())) {
+    css_trim_gurl_to_use->Reset(output_resource->UrlEvenIfHashNotSet());
+  } else {
+    css_trim_gurl_to_use->Reset(initial_css_trim_gurl_);
+  }
+}
+
 bool CssFilter::Context::AbsolutifyIfNeeded(
+    const StringPiece& output_url_base,
     const StringPiece& input_contents, Writer* writer,
     MessageHandler* handler) {
+  DCHECK_EQ(1, num_slots());
+  ResourcePtr input_resource(slot(0)->resource());
+  DCHECK(input_resource.get() != NULL);
+
+  GoogleUrl css_base_gurl_to_use;
+  GetCssBaseUrlToUse(input_resource, &css_base_gurl_to_use);
+
+  GoogleUrl css_trim_gurl_to_use;
+  GetCssTrimUrlToUse(input_resource, output_url_base, &css_trim_gurl_to_use);
+
   bool ret = false;
-  switch (driver_->ResolveCssUrls(css_base_gurl_, css_trim_gurl_.Spec(),
+  switch (driver_->ResolveCssUrls(css_base_gurl_to_use,
+                                  css_trim_gurl_to_use.Spec(),
                                   input_contents, writer, handler)) {
     case RewriteDriver::kNoResolutionNeeded:
     case RewriteDriver::kWriteFailed:
@@ -307,14 +370,13 @@ void CssFilter::Context::SetupExternalRewrite(HtmlElement* element,
                                               const GoogleUrl& base_gurl,
                                               const GoogleUrl& trim_gurl) {
   rewrite_element_ = element;
-  css_base_gurl_.Reset(base_gurl);
-  css_trim_gurl_.Reset(trim_gurl);
+  initial_css_base_gurl_.Reset(base_gurl);
+  initial_css_trim_gurl_.Reset(trim_gurl);
 }
 
 void CssFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-
   int drop_percentage = Options()->rewrite_random_drop_percentage();
   if (drop_percentage > 0) {
     SimpleRandom* simple_random = FindServerContext()->simple_random();
@@ -328,26 +390,15 @@ void CssFilter::Context::RewriteSingle(
   input_resource_ = input_resource;
   output_resource_ = output_resource;
   StringPiece input_contents = input_resource_->contents();
-  // The base URL used when absolutifying sub-resources must be the input
-  // URL of this rewrite.
-  //
-  // The only exception is the case of inline CSS, where we define the
-  // input URL to be a data: URL. In this case the base URL is the URL of
-  // the HTML page set in the constructor.
-  //
-  // When our input is the output of CssCombiner, the css_base_gurl_ here
-  // is stale (it's the first input to the combination). It ought to be
-  // the URL of the output of the combination. Similarly the css_trim_gurl_
-  // needs to be set from the ultimate output resource.
-  if (!IsDataUrl(input_resource_->url())) {
-    css_base_gurl_.Reset(input_resource_->url());
-    css_trim_gurl_.Reset(output_resource_->UrlEvenIfHashNotSet());
-    TracePrintf("RewriteCss: %s", input_resource_->url().c_str());
-  }
   in_text_size_ = input_contents.size();
   has_utf8_bom_ = StripUtf8Bom(&input_contents);
+
+  GoogleUrl css_base_gurl_to_use;
+  GetCssBaseUrlToUse(input_resource, &css_base_gurl_to_use);
+  GoogleUrl css_trim_gurl_to_use;
+  GetCssTrimUrlToUse(input_resource, output_resource_, &css_trim_gurl_to_use);
   bool parsed = RewriteCssText(
-      css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
+      css_base_gurl_to_use, css_trim_gurl_to_use, input_contents, in_text_size_,
       IsInlineAttribute() /* text_is_declarations */,
       driver_->message_handler());
 
@@ -418,25 +469,27 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
     // successfully, thus, flattening is safe.
     bool has_unparseables = (parser.unparseable_sections_seen_mask() !=
                              Css::Parser::kNoError);
-    RewriteCssFromRoot(in_text, in_text_size,
+    RewriteCssFromRoot(css_base_gurl, css_trim_gurl, in_text, in_text_size,
                        has_unparseables, stylesheet.release());
   }
 
   if (!parsed &&
       driver_->options()->Enabled(RewriteOptions::kFallbackRewriteCssUrls)) {
-    parsed = FallbackRewriteUrls(in_text);
+    parsed = FallbackRewriteUrls(css_base_gurl, css_trim_gurl, in_text);
   }
 
   return parsed;
 }
 
-void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
+void CssFilter::Context::RewriteCssFromRoot(const GoogleUrl& css_base_gurl,
+                                            const GoogleUrl& css_trim_gurl,
+                                            const StringPiece& contents,
                                             int64 in_text_size,
                                             bool has_unparseables,
                                             Css::Stylesheet* stylesheet) {
   DCHECK_EQ(in_text_size_, in_text_size);
 
-  hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_,
+  hierarchy_.InitializeRoot(css_base_gurl, css_trim_gurl,
                             contents, has_unparseables,
                             driver_->options()->css_flatten_max_bytes(),
                             stylesheet, driver_->message_handler());
@@ -456,15 +509,24 @@ void CssFilter::Context::RewriteCssFromNested(RewriteContext* parent,
 // Fallback to rewriting URLs using CssTagScanner because of failure to parse.
 // Note: We do not flatten CSS during fallback processing.
 // TODO(sligocki): Allow recursive rewriting of @imported CSS files.
-bool CssFilter::Context::FallbackRewriteUrls(const StringPiece& in_text) {
+bool CssFilter::Context::FallbackRewriteUrls(
+    const GoogleUrl& css_base_gurl, const GoogleUrl& css_trim_gurl,
+    const StringPiece& in_text) {
   fallback_mode_ = true;
+
+  // We need permanent copies of these since fallback transformers
+  // keep pointers.
+  base_gurl_for_fallback_.reset(new GoogleUrl());
+  base_gurl_for_fallback_->Reset(css_base_gurl);
+  trim_gurl_for_fallback_.reset(new GoogleUrl());
+  trim_gurl_for_fallback_->Reset(css_trim_gurl);
 
   bool ret = false;
   // In order to rewrite CSS using only the CssTagScanner, we run two scans.
   // Here we just record all URLs found with the CssUrlCounter.
   // The second run will be in Harvest() after all the subresources have been
   // rewritten.
-  CssUrlCounter url_counter(&css_base_gurl_, driver_->message_handler());
+  CssUrlCounter url_counter(&css_base_gurl, driver_->message_handler());
   if (url_counter.Count(in_text)) {
     // TransformUrls will succeed only if all the URLs in the CSS file
     // were parseable. If we encounter any unparseable URLs, we will not
@@ -474,10 +536,11 @@ bool CssFilter::Context::FallbackRewriteUrls(const StringPiece& in_text) {
     // Setup absolutifier used by fallback_transformer_. Only enable it if
     // we need to absolutify resources. Otherwise leave it as NULL.
     bool proxy_mode;
-    if (driver_->ShouldAbsolutifyUrl(css_base_gurl_, css_trim_gurl_,
+    if (driver_->ShouldAbsolutifyUrl(css_base_gurl, css_trim_gurl,
                                      &proxy_mode)) {
       absolutifier_.reset(new RewriteDomainTransformer(
-          &css_base_gurl_, &css_trim_gurl_, driver_));
+          base_gurl_for_fallback_.get(), trim_gurl_for_fallback_.get(),
+          driver_));
       if (proxy_mode) {
         absolutifier_->set_trim_urls(false);
       }
@@ -488,7 +551,7 @@ bool CssFilter::Context::FallbackRewriteUrls(const StringPiece& in_text) {
     // into it. When they are rendered they will set the map used by
     // AssociationTransformer.
     fallback_transformer_.reset(new AssociationTransformer(
-        &css_base_gurl_, driver_->options(), absolutifier_.get(),
+        base_gurl_for_fallback_.get(), driver_->options(), absolutifier_.get(),
         driver_->message_handler()));
 
     const StringIntMap& url_counts = url_counter.url_counts();
@@ -552,17 +615,24 @@ void CssFilter::Context::Harvest() {
       }
     }
 
+    GoogleUrl css_base_gurl_to_use;
+    GetCssBaseUrlToUse(input_resource_, &css_base_gurl_to_use);
+
+    GoogleUrl css_trim_gurl_to_use;
+    GetCssTrimUrlToUse(input_resource_, output_resource_,
+                       &css_trim_gurl_to_use);
+
     // May need to absolutify @import and/or url() URLs. Note we must invoke
     // ShouldAbsolutifyUrl first because we need 'proxying' to be calculated.
     bool absolutified_urls = false;
     bool proxying = false;
-    bool should_absolutify = driver_->ShouldAbsolutifyUrl(css_base_gurl_,
-                                                          css_trim_gurl_,
+    bool should_absolutify = driver_->ShouldAbsolutifyUrl(css_base_gurl_to_use,
+                                                          css_trim_gurl_to_use,
                                                           &proxying);
     if (should_absolutify) {
       absolutified_urls =
           CssMinify::AbsolutifyImports(hierarchy_.mutable_stylesheet(),
-                                       css_base_gurl_);
+                                       css_base_gurl_to_use);
     }
 
     // If we have determined that we need to absolutify URLs, or if we are
@@ -575,7 +645,7 @@ void CssFilter::Context::Harvest() {
       if (!css_rewritten_ || hierarchy_.unparseable_detected()) {
         absolutified_urls |= CssMinify::AbsolutifyUrls(
             hierarchy_.mutable_stylesheet(),
-            css_base_gurl_,
+            css_base_gurl_to_use,
             !css_rewritten_,                   /* handle_parseable_sections */
             hierarchy_.unparseable_detected(), /* handle_unparseable_sections */
             driver_,
@@ -584,8 +654,8 @@ void CssFilter::Context::Harvest() {
     }
 
     ok = SerializeCss(
-        in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_,
-        css_trim_gurl_, previously_optimized || absolutified_urls,
+        in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_to_use,
+        css_trim_gurl_to_use, previously_optimized || absolutified_urls,
         IsInlineAttribute() /* stylesheet_is_declarations */, has_utf8_bom_,
         &out_text, driver_->message_handler());
   }
@@ -724,7 +794,8 @@ GoogleString CssFilter::Context::CacheKeySuffix() const {
     switch (rewrite_inline_css_kind_) {
       case kInsideStyleTag: {
         const Hasher* hasher = FindServerContext()->lock_hasher();
-        StrAppend(&suffix, "_@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
+        StrAppend(&suffix, "_@",
+                  hasher->Hash(initial_css_base_gurl_.AllExceptLeaf()));
         break;
       }
 

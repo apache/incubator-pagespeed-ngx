@@ -277,7 +277,8 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Specialization to absolutify URLs in input resource in case of rewrite
   // fail or deadline exceeded.
-  virtual bool AbsolutifyIfNeeded(const StringPiece& input_contents,
+  virtual bool AbsolutifyIfNeeded(const StringPiece& output_url_base,
+                                  const StringPiece& input_contents,
                                   Writer* writer, MessageHandler* handler);
 
   CssResourceSlotFactory* slot_factory() { return &slot_factory_; }
@@ -301,6 +302,17 @@ class CssFilter::Context : public SingleRewriteContext {
       const ResourceContext* resource_context) const;
 
  private:
+  void GetCssBaseUrlToUse(const ResourcePtr& input_resource,
+                          GoogleUrl* css_base_gurl_to_use);
+
+  void GetCssTrimUrlToUse(const ResourcePtr& input_resource,
+                          const StringPiece& output_url_base,
+                          GoogleUrl* css_base_gurl_to_use);
+
+  void GetCssTrimUrlToUse(const ResourcePtr& input_resource,
+                          const OutputResourcePtr& output_resource,
+                          GoogleUrl* css_base_gurl_to_use);
+
   bool RewriteCssText(const GoogleUrl& css_base_gurl,
                       const GoogleUrl& css_trim_gurl,
                       const StringPiece& in_text,
@@ -309,7 +321,9 @@ class CssFilter::Context : public SingleRewriteContext {
                       MessageHandler* handler);
 
   // Starts nested rewrite jobs for any imports or images contained in the CSS.
-  void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
+  void RewriteCssFromRoot(const GoogleUrl& css_base_gurl,
+                          const GoogleUrl& css_trim_gurl,
+                          const StringPiece& in_text, int64 in_text_size,
                           bool has_unparseables, Css::Stylesheet* stylesheet);
 
   // Fall back to using CssTagScanner to find the URLs and rewrite them
@@ -317,7 +331,9 @@ class CssFilter::Context : public SingleRewriteContext {
   // resource in Harvest(). Called if CSS Parser fails to parse doc.
   // Returns whether or not fallback rewriting succeeds. Fallback can fail
   // if URLs in CSS are not parseable.
-  bool FallbackRewriteUrls(const StringPiece& in_text);
+  bool FallbackRewriteUrls(const GoogleUrl& css_base_gurl,
+                           const GoogleUrl& css_trim_gurl,
+                           const StringPiece& in_text);
 
   // Tries to write out a (potentially edited) stylesheet out to out_text,
   // and returns whether we should consider the result as an improvement.
@@ -384,8 +400,10 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Information needed for nested rewrites or finishing up serialization.
   int64 in_text_size_;
-  GoogleUrl css_base_gurl_;
-  GoogleUrl css_trim_gurl_;
+  GoogleUrl initial_css_base_gurl_;
+  GoogleUrl initial_css_trim_gurl_;
+  scoped_ptr<GoogleUrl> base_gurl_for_fallback_;
+  scoped_ptr<GoogleUrl> trim_gurl_for_fallback_;
   ResourcePtr input_resource_;
   OutputResourcePtr output_resource_;
 

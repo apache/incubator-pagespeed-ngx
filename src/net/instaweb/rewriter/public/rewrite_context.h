@@ -405,7 +405,8 @@ class RewriteContext {
   // But contexts may need to specialize this to actually absolutify
   // subresources if the fetched resource is served on a different path
   // than the input resource.
-  virtual bool AbsolutifyIfNeeded(const StringPiece& input_contents,
+  virtual bool AbsolutifyIfNeeded(const StringPiece& output_url_base,
+                                  const StringPiece& input_contents,
                                   Writer* writer, MessageHandler* handler);
 
   // Called on the parent to initiate all nested tasks.  This is so

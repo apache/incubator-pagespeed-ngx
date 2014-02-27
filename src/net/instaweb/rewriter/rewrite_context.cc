@@ -866,6 +866,7 @@ class RewriteContext::FetchContext {
       : rewrite_context_(rewrite_context),
         async_fetch_(fetch),
         output_resource_(output_resource),
+        original_output_url_(output_resource->UrlEvenIfHashNotSet()),
         handler_(handler),
         deadline_alarm_(NULL),
         success_(false),
@@ -1059,7 +1060,7 @@ class RewriteContext::FetchContext {
           async_fetch_->set_content_length(contents.size());
           async_fetch_->HeadersComplete();
           ok = rewrite_context_->AbsolutifyIfNeeded(
-              contents, async_fetch_, handler_);
+              original_output_url_, contents, async_fetch_, handler_);
         } else {
           GoogleString url = input_resource->url();
           handler_->Warning(
@@ -1110,7 +1111,9 @@ class RewriteContext::FetchContext {
     }
     async_fetch_->set_content_length(contents.size());
     async_fetch_->HeadersComplete();
-    bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
+
+    bool ok = rewrite_context_->AbsolutifyIfNeeded(original_output_url_,
+                                                   contents, async_fetch_,
                                                    handler_);
     // Like FetchDone, we success false if not a 200.
     ok &= headers->status_code() == HttpStatus::kOK;
@@ -1148,6 +1151,11 @@ class RewriteContext::FetchContext {
   RewriteContext* rewrite_context_;
   AsyncFetch* async_fetch_;
   OutputResourcePtr output_resource_;
+
+  // Roughly the URL we were requested under (may have wrong hash or extension);
+  // for use in absolutification. We need this since we may be doing a fallback
+  // simultaneously to a rewrite which may be mutating output_resource_.
+  GoogleString original_output_url_;
   MessageHandler* handler_;
   GoogleString requested_hash_;  // hash we were requested as. May be empty.
   QueuedAlarm* deadline_alarm_;
@@ -3026,7 +3034,8 @@ bool RewriteContext::FetchContextDetached() {
   return fetch_->detached();
 }
 
-bool RewriteContext::AbsolutifyIfNeeded(const StringPiece& input_contents,
+bool RewriteContext::AbsolutifyIfNeeded(const StringPiece& /*output_url_base*/,
+                                        const StringPiece& input_contents,
                                         Writer* writer,
                                         MessageHandler* handler) {
   return writer->Write(input_contents, handler);
