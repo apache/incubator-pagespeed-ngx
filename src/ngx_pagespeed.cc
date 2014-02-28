@@ -341,8 +341,6 @@ ngx_int_t copy_response_headers_to_ngx(
     // copy here?
     } else if (STR_EQ_LITERAL(name, "Connection")) {
       continue;
-    } else if (STR_EQ_LITERAL(name, "Vary")) {
-      continue;
     } else if (STR_EQ_LITERAL(name, "Keep-Alive")) {
       continue;
     } else if (STR_EQ_LITERAL(name, "Transfer-Encoding")) {
@@ -672,6 +670,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   NgxRewriteDriverFactory::Initialize();
 
   cfg_m->driver_factory = new NgxRewriteDriverFactory(
+      *process_context,
       new SystemThreadSystem(),
       "" /* hostname, not used */,
       -1 /* port, not used */);
@@ -2134,6 +2133,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),
+        options->implicit_cache_ttl_ms(),
         server_context->http_cache(),
         server_context->statistics(),
         message_handler);

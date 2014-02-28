@@ -55,6 +55,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   // We take ownership of the thread system.
   explicit NgxRewriteDriverFactory(
+      const ProcessContext& process_context,
       SystemThreadSystem* system_thread_system, StringPiece hostname, int port);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
