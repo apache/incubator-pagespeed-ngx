@@ -1320,6 +1320,7 @@
       'target_name': 'instaweb_system',
       'type': '<(library)',
       'dependencies': [
+        'instaweb_console',
         'instaweb_util',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/apr/apr.gyp:include',
@@ -1328,7 +1329,6 @@
       'sources': [
         'system/apr_mem_cache.cc',
         'system/apr_thread_compatible_pool.cc',
-        'system/handlers.cc',
         'system/in_place_resource_recorder.cc',
         'system/system_cache_path.cc',
         'system/system_caches.cc',

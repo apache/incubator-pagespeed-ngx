@@ -28,16 +28,19 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class ContentType;
 class Histogram;
-class SharedMemStatistics;
 class RewriteDriver;
 class RewriteDriverFactory;
 class RewriteStats;
+class SharedMemStatistics;
 class Statistics;
+class SystemCaches;
 class SystemRewriteDriverFactory;
 class SystemRewriteOptions;
 class UrlAsyncFetcherStats;
 class Variable;
+class Writer;
 
 // A server context with features specific to a PSOL port on a unix system.
 class SystemServerContext : public ServerContext {
@@ -97,6 +100,32 @@ class SystemServerContext : public ServerContext {
   // config overlays into actual RewriteOptions objects.  It will also compute
   // signatures when done, and by default that's the only thing it does.
   virtual void CollapseConfigOverlaysAndComputeSignatures();
+
+  // Handler which serves PSOL console.
+  // Note: ConsoleHandler always succeeds.
+  void ConsoleHandler(SystemRewriteOptions* options, Writer* writer);
+
+  // Deprecated handler for graphs in the PSOL console.
+  void StatisticsGraphsHandler(Writer* writer);
+
+  // Handler for /mod_pagespeed_statistics and
+  // /ngx_pagespeed_statistics, as well as
+  // /...pagespeed__global_statistics.  If the latter,
+  // is_global_request should be true.
+  //
+  // Returns NULL on success, otherwise the returned error string
+  // should be passed along to the user and the contents of writer and
+  // content_type should be ignored.
+  //
+  // In systems without a spdy-specific config, spdy_config should be
+  // null.
+  const char* StatisticsHandler(
+      SystemCaches* caches,
+      Statistics* stats,
+      SystemRewriteOptions* spdy_config,  // May be NULL
+      StringPiece query_params,
+      ContentType* content_type,
+      Writer* writer);
 
  protected:
   // Flush the cache by updating the cache flush timestamp in the global

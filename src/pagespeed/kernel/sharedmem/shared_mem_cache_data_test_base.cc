@@ -113,13 +113,12 @@ void SharedMemCacheDataTestBase::ExtractAndSanityCheckLRU(
             static_cast<size_t>(sector->sector_stats()->used_entries));
 }
 
-void SharedMemCacheDataTestBase::TestFreeList() {
+void SharedMemCacheDataTestBase::TestFreeList() NO_THREAD_SAFETY_ANALYSIS {
   AbstractSharedMemSegment* seg_raw_ptr = NULL;
   Sector<kBlockSize>* sector_raw_ptr = NULL;
   ASSERT_TRUE(ParentInit(&seg_raw_ptr, &sector_raw_ptr));
   scoped_ptr<AbstractSharedMemSegment> seg(seg_raw_ptr);
   scoped_ptr<Sector<kBlockSize> > sector(sector_raw_ptr);
-  sector->mutex()->Lock();
 
   // Ask for more than the sector has; get exactly as many as it has.
   EXPECT_EQ(0, sector->sector_stats()->used_blocks);
@@ -166,12 +165,10 @@ void SharedMemCacheDataTestBase::TestFreeList() {
   SanityCheckBlockVector(blocks, 0, kBlocks - 1);
   EXPECT_EQ(kBlocks, sector->sector_stats()->used_blocks);
 
-  sector->mutex()->Unlock();
-
   ParentCleanup();
 }
 
-void SharedMemCacheDataTestBase::TestFreeListChild() {
+void SharedMemCacheDataTestBase::TestFreeListChild() NO_THREAD_SAFETY_ANALYSIS {
   AbstractSharedMemSegment* seg_raw_ptr = NULL;
   Sector<kBlockSize>* sector_raw_ptr = NULL;
   if (!ChildInit(&seg_raw_ptr, &sector_raw_ptr)) {
@@ -187,9 +184,7 @@ void SharedMemCacheDataTestBase::TestFreeListChild() {
     to_free.push_back(b);
   }
 
-  sector->mutex()->Lock();
   sector->ReturnBlocksToFreeList(to_free);
-  sector->mutex()->Unlock();
 }
 
 void SharedMemCacheDataTestBase::TestLRU() {

@@ -48,7 +48,6 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -649,7 +648,7 @@ void instaweb_static_handler(request_rec* request,
 
 apr_status_t instaweb_statistics_handler(
     request_rec* request, ApacheServerContext* server_context,
-    ApacheRewriteDriverFactory* factory, MessageHandler* message_handler) {
+    ApacheRewriteDriverFactory* factory) {
   // A request is always global if we don't have per-vhost stats, otherwise it's
   // only global if it came to /...global_statistics.
   bool is_global_request =
@@ -659,15 +658,13 @@ apr_status_t instaweb_statistics_handler(
   ContentType content_type;
   GoogleString output;
   StringWriter writer(&output);
-  const char* error_message = StatisticsHandler(
-      factory,
-      server_context,
+  const char* error_message = server_context->StatisticsHandler(
+      factory->caches(),
+      is_global_request ? factory->statistics() : server_context->statistics(),
       server_context->SpdyGlobalConfig(),
-      is_global_request,
       request->args,  /* query params */
       &content_type,
-      &writer,
-      message_handler);
+      &writer);
 
   if (error_message != NULL) {
     server_context->ReportStatisticsNotFound(error_message, request);
@@ -862,14 +859,13 @@ apr_status_t instaweb_handler(request_rec* request) {
   // mod_pagespeed_statistics or mod_pagespeed_global_statistics.
   if (request_handler_str == kStatisticsHandler ||
       request_handler_str == kGlobalStatisticsHandler) {
-    ret = instaweb_statistics_handler(request, server_context, factory,
-                                      message_handler);
+    ret = instaweb_statistics_handler(request, server_context, factory);
 
   // TODO(sligocki): Merge this into kConsoleHandler.
   } else if (request_handler_str == kTempStatisticsGraphsHandler) {
     GoogleString output;
     StringWriter writer(&output);
-    StatisticsGraphsHandler(global_config, &writer, message_handler);
+    server_context->StatisticsGraphsHandler(&writer);
     write_handler_response(output, request);
     ret = OK;
   } else if (request_handler_str == kConsoleHandler) {
@@ -884,7 +880,7 @@ apr_status_t instaweb_handler(request_rec* request) {
 
     GoogleString output;
     StringWriter writer(&output);
-    ConsoleHandler(server_context, options, &writer, message_handler);
+    server_context->ConsoleHandler(options, &writer);
     write_handler_response(output, request);
     ret = OK;
 
