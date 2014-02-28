@@ -50,11 +50,11 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/system/public/system_thread_system.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -2286,21 +2286,23 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
       file_contents.CopyToString(&output);
       break;
     }
-    case RequestRouting::kStatistics:
-      error_message = StatisticsHandler(
-          factory,
-          server_context,
+    case RequestRouting::kStatistics: {
+      bool is_global_request =
+          !factory->use_per_vhost_statistics() ||
+          StringCaseStartsWith(
+              request_uri_path, "/ngx_pagespeed_global_statistics");
+      error_message = server_context->StatisticsHandler(
+          factory->caches(),
+          is_global_request ?
+              factory->statistics() : server_context->statistics(),
           NULL,  // No SPDY-specific config in ngx_pagespeed.
-          !factory->use_per_vhost_statistics() || StringCaseStartsWith(
-              request_uri_path, "/ngx_pagespeed_global_statistics"),
           StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
           &content_type,
-          &writer,
-          message_handler);
+          &writer);
       break;
+    }
     case RequestRouting::kConsole:
-      ConsoleHandler(
-          server_context, server_context->config(), &writer, message_handler);
+      server_context->ConsoleHandler(server_context->config(), &writer);
       break;
     case RequestRouting::kMessages: {
       GoogleString log;
