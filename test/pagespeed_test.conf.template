@@ -525,6 +525,17 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name ipro-for-browser.example.com;
+    root "@@SERVER_ROOT@@/mod_pagespeed_example";
+    pagespeed EnableFilters rewrite_images,rewrite_css;
+    pagespeed EnableFilters convert_to_webp_lossless;
+    pagespeed EnableFilters in_place_optimize_for_browser;
+    pagespeed InPlaceResourceOptimization on;
+    pagespeed FileCachePath "@@FILE_CACHE@@_ipro_for_browser";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name respectvary.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -709,6 +720,11 @@ http {
 
     location /mod_pagespeed_test/ipro/nocache/test_image_dont_reuse.png {
       add_header Cache-Control no-cache;
+    }
+
+    location /mod_pagespeed_test/ipro/no-cache-control-header {
+      add_header Cache-Control "";
+      pagespeed ImplicitCacheTtlMs 333000;
     }
   }
 

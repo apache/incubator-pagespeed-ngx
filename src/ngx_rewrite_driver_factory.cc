@@ -69,8 +69,9 @@ const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
 class SharedCircularBuffer;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(
+    const ProcessContext& process_context,
     SystemThreadSystem* system_thread_system, StringPiece hostname, int port)
-    : SystemRewriteDriverFactory(system_thread_system,
+    : SystemRewriteDriverFactory(process_context, system_thread_system,
         NULL /* default shared memory runtime */, hostname, port),
       main_conf_(NULL),
       threads_started_(false),
