@@ -63,7 +63,6 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -74,6 +73,7 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/wildcard.h"
 
 namespace net_instaweb {
@@ -403,8 +403,8 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
 // time.
 class TestRequestContext : public RequestContext {
  public:
-  explicit TestRequestContext(LoggingInfo* logging_info)
-      : RequestContext(new NullMutex, NULL),
+  TestRequestContext(ThreadSystem* threads, LoggingInfo* logging_info)
+      : RequestContext(threads->NewMutex(), NULL),
         logging_info_copy_(logging_info) {}
 
   virtual AbstractLogRecord* NewSubordinateLogRecord(
@@ -426,7 +426,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   static const int kHtmlCacheTimeSec = 5000;
 
   CacheHtmlFlowTest() : test_request_context_(TestRequestContextPtr(
-      new TestRequestContext(&cache_html_logging_info_))) {
+      new TestRequestContext(server_context()->thread_system(),
+                             &cache_html_logging_info_))) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
 
