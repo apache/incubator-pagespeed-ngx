@@ -340,7 +340,7 @@ http {
     server_name customhostheader.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@_test";
     root "@@SERVER_ROOT@@/mod_pagespeed_test";
-    
+
     pagespeed on;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_images;
@@ -961,6 +961,37 @@ http {
 
     location /mod_pagespeed_test/ipro/instant/deadline/ {
       pagespeed InPlaceRewriteDeadlineMs -1;
+    }
+
+    location /mod_pagespeed_test/ipro/cookie/ {
+      # Add Vary:Cookie.  This should prevent us from optimizing the
+      # vary_cookie.css even though PagespeedRespectVary is off.
+      # test/nginx_system_test.sh does the fetches test with and w/o cookies.
+      add_header Vary Cookie;
+      pagespeed RespectVary off;
+      pagespeed InPlaceWaitForOptimized on;
+    }
+
+    location /mod_pagespeed_test/ipro/cookie2/ {
+      # Add Vary:Cookie2.  This should prevent us from optimizing the
+      # vary_cookie2.css even though PagespeedRespectVary is off.
+      # test/nginx_system_test.sh does the fetches test with and w/o cookie2.
+      add_header Vary Cookie2;
+      pagespeed RespectVary off;
+      pagespeed InPlaceWaitForOptimized on;
+    }
+
+    location /mod_pagespeed_test/vary/ {
+      pagespeed RespectVary on;
+    }
+
+    location ~ /mod_pagespeed_test/vary/\.(js|css)$ {
+        add_header Vary User-Agent;
+    }
+
+    location /mod_pagespeed_test/vary/no_respect/ {
+      pagespeed DisableFilters add_instrumentation,inline_css;
+      pagespeed RespectVary off;
     }
 
     location /mod_pagespeed_test/experimental_js_minifier/ {
