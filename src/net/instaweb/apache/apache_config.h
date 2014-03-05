@@ -35,7 +35,7 @@ class ApacheConfig : public SystemRewriteOptions {
 
   ApacheConfig(const StringPiece& description, ThreadSystem* thread_system);
   explicit ApacheConfig(ThreadSystem* thread_system);
-  ~ApacheConfig() {}
+  virtual ~ApacheConfig();
 
   bool fetch_from_mod_spdy() const {
     return fetch_from_mod_spdy_.value();

@@ -55,6 +55,9 @@ ApacheConfig::ApacheConfig(ThreadSystem* thread_system)
   Init();
 }
 
+ApacheConfig::~ApacheConfig() {
+}
+
 void ApacheConfig::Init() {
   DCHECK(apache_properties_ != NULL)
       << "Call ApacheConfig::Initialize() before construction";
