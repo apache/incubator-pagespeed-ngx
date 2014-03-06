@@ -15,7 +15,10 @@
 #ifndef PAGESPEED_KERNEL_JS_JS_MINIFY_H_
 #define PAGESPEED_KERNEL_JS_JS_MINIFY_H_
 
+#include <vector>
+
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/source_map.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_keywords.h"
@@ -43,6 +46,14 @@ class JsMinifyingTokenizer {
   // outlive the JsMinifyingTokenizer object).
   JsMinifyingTokenizer(const JsTokenizerPatterns* patterns, StringPiece input);
 
+  // Version that sets source mappings as well.
+  // Note: Source Maps are only correct for ASCII text. Line and column numbers
+  // will be incorrect if there are multi-byte chars in input.
+  // TODO(sligocki): Fix this.
+  JsMinifyingTokenizer(
+      const JsTokenizerPatterns* patterns, StringPiece input,
+      std::vector<net_instaweb::source_map::Mapping>* mappings);
+
   ~JsMinifyingTokenizer();
 
   // Gets the next token type from the input,
@@ -53,6 +64,10 @@ class JsMinifyingTokenizer {
   bool has_error() const { return tokenizer_.has_error(); }
 
  private:
+  JsKeywords::Type NextTokenHelper(
+      StringPiece* token_out,
+      net_instaweb::source_map::Mapping* token_out_position);
+
   // Determines whether we need to include whitespace to separate the given
   // token from the previous token.
   bool WhitespaceNeededBefore(JsKeywords::Type type, StringPiece token);
@@ -63,6 +78,9 @@ class JsMinifyingTokenizer {
   StringPiece prev_token_;
   JsKeywords::Type next_type_;
   StringPiece next_token_;
+  std::vector<net_instaweb::source_map::Mapping>* mappings_;
+  net_instaweb::source_map::Mapping current_position_;
+  net_instaweb::source_map::Mapping next_position_;
 
   DISALLOW_COPY_AND_ASSIGN(JsMinifyingTokenizer);
 };
@@ -75,6 +93,12 @@ class JsMinifyingTokenizer {
 // unmodified.
 bool MinifyUtf8Js(const JsTokenizerPatterns* patterns,
                   StringPiece input, GoogleString* output);
+
+// Minify JS and returns a source mapping.
+bool MinifyUtf8JsWithSourceMap(
+    const JsTokenizerPatterns* patterns,
+    StringPiece input, GoogleString* output,
+    std::vector<net_instaweb::source_map::Mapping>* mappings);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Below is the old JsMinify implementation.  It has several known issues that

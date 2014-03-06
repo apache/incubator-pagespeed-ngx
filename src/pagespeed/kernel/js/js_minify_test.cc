@@ -14,6 +14,7 @@
 
 #include "pagespeed/kernel/js/js_minify.h"
 
+
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
@@ -22,6 +23,8 @@
 #include "pagespeed/kernel/js/js_keywords.h"
 
 namespace {
+
+using net_instaweb::StrAppend;
 
 // This sample code comes from Douglas Crockford's jsmin example.
 const char* kBeforeCompilation =
@@ -147,7 +150,6 @@ class JsMinifyTest : public testing::Test {
     EXPECT_STREQ(expected, actual);
   }
 
- private:
   pagespeed::js::JsTokenizerPatterns patterns_;
 };
 
@@ -555,6 +557,225 @@ TEST_F(JsMinifyTest, MinifyJQuery) {
 
 TEST_F(JsMinifyTest, MinifyPrototype) {
   CheckFileMinification("prototype.original", "prototype.minified");
+}
+
+// Simple method for serializing Mappings so that they can be compared against
+// gold versions.
+GoogleString MappingsToString(
+    const std::vector<net_instaweb::source_map::Mapping>& mappings) {
+  GoogleString result("{");
+  for (int i = 0, n = mappings.size(); i < n; ++i) {
+    StrAppend(&result, "(",
+              net_instaweb::IntegerToString(mappings[i].gen_line), ", ",
+              net_instaweb::IntegerToString(mappings[i].gen_col),  ", ");
+    StrAppend(&result,
+              net_instaweb::IntegerToString(mappings[i].src_file), ", ",
+              net_instaweb::IntegerToString(mappings[i].src_line), ", ",
+              net_instaweb::IntegerToString(mappings[i].src_col),  "), ");
+  }
+  result += "}";
+  return result;
+}
+
+TEST_F(JsMinifyTest, SourceMapsSimple) {
+  const char js_before[] =
+      "/* Simple hello world program. */\n"
+      "alert( 'Hello, World!' );\n";
+  const char expected_js_after[] =
+      "alert('Hello, World!');";
+  const char expected_map[] =
+      "{"
+      "(0, 0, 0, 1, 0), "    // alert
+      "(0, 5, 0, 1, 5), "    // (
+      "(0, 6, 0, 1, 7), "    // 'Hello, World!'
+      "(0, 21, 0, 1, 23), "  // )
+      "(0, 22, 0, 1, 24), "  // ;
+      "}";
+
+  GoogleString output;
+  std::vector<net_instaweb::source_map::Mapping> mappings;
+  EXPECT_TRUE(pagespeed::js::MinifyUtf8JsWithSourceMap(
+      &patterns_, js_before, &output, &mappings));
+
+  EXPECT_EQ(expected_js_after, output);
+
+  EXPECT_EQ(expected_map, MappingsToString(mappings));
+}
+
+TEST_F(JsMinifyTest, SourceMapsComplex) {
+  GoogleString output;
+  std::vector<net_instaweb::source_map::Mapping> mappings;
+  EXPECT_TRUE(pagespeed::js::MinifyUtf8JsWithSourceMap(
+      &patterns_, kBeforeCompilation, &output, &mappings));
+
+  EXPECT_EQ(kAfterCompilationNew, output);
+
+  // TODO(sligocki): Combine adjacent sections of this mapping if no chars were
+  // removed from those sections.
+  const char expected_map[] =
+      "{"
+      "(0, 0, 0, 14, 0), "  // var
+      "(0, 3, 0, 14, 3), "  // [space]
+      "(0, 4, 0, 14, 4), "  // is
+      "(0, 6, 0, 14, 7), "  // =
+      "(0, 7, 0, 14, 9), "  // {
+
+      "(0, 8, 0, 15, 4), "  // ie
+      "(0, 10, 0, 15, 6), "  // :
+      "(0, 11, 0, 15, 13), "  // navigator
+      "(0, 20, 0, 15, 22), "  // .
+      "(0, 21, 0, 15, 23), "  // appName
+      "(0, 28, 0, 15, 31), "  // ==
+      "(0, 30, 0, 15, 34), "  // 'Microsoft Internet Explorer'
+      "(0, 59, 0, 15, 63), "  // ,
+
+      "(0, 60, 0, 16, 4), "  // java
+      "(0, 64, 0, 16, 8), "  // :
+      "(0, 65, 0, 16, 13), "  // navigator
+      "(0, 74, 0, 16, 22), "  // .
+      "(0, 75, 0, 16, 23), "  // javaEnabled
+      "(0, 86, 0, 16, 34), "  // (
+      "(0, 87, 0, 16, 35), "  // )
+      "(0, 88, 0, 16, 36), "  // ,
+
+      "(0, 89, 0, 17, 4), "  // ns
+      "(0, 91, 0, 17, 6), "  // :
+      "(0, 92, 0, 17, 13), "  // navigator
+      "(0, 101, 0, 17, 22), "  // .
+      "(0, 102, 0, 17, 23), "  // appName
+      "(0, 109, 0, 17, 31), "  // ==
+      "(0, 111, 0, 17, 34), "  // 'Netscape'
+      "(0, 121, 0, 17, 44), "  // ,
+
+      "(0, 122, 0, 18, 4), "  // ua
+      "(0, 124, 0, 18, 6), "  // :
+      "(0, 125, 0, 18, 13), "  // navigator
+      "(0, 134, 0, 18, 22), "  // .
+      "(0, 135, 0, 18, 23), "  // userAgent
+      "(0, 144, 0, 18, 32), "  // .
+      "(0, 145, 0, 18, 33), "  // toLowerCase
+      "(0, 156, 0, 18, 44), "  // (
+      "(0, 157, 0, 18, 45), "  // )
+      "(0, 158, 0, 18, 46), "  // ,
+
+      "(0, 159, 0, 19, 4), "  // version
+      "(0, 166, 0, 19, 11), "  // :
+      "(0, 167, 0, 19, 13), "  // parseFloat
+      "(0, 177, 0, 19, 23), "  // (
+      "(0, 178, 0, 19, 24), "  // navigator
+      "(0, 187, 0, 19, 33), "  // .
+      "(0, 188, 0, 19, 34), "  // appVersion
+      "(0, 198, 0, 19, 44), "  // .
+      "(0, 199, 0, 19, 45), "  // substr
+      "(0, 205, 0, 19, 51), "  // (
+      "(0, 206, 0, 19, 52), "  // 21
+      "(0, 208, 0, 19, 54), "  // )
+      "(0, 209, 0, 19, 55), "  // )
+      "(0, 210, 0, 19, 57), "  // ||
+      "(0, 212, 0, 20, 13), "  // parseFloat
+      "(0, 222, 0, 20, 23), "  // (
+      "(0, 223, 0, 20, 24), "  // navigator
+      "(0, 232, 0, 20, 33), "  // .
+      "(0, 233, 0, 20, 34), "  // appVersion
+      "(0, 243, 0, 20, 44), "  // )
+      "(0, 244, 0, 20, 45), "  // ,
+
+      "(0, 245, 0, 21, 4), "  // win
+      "(0, 248, 0, 21, 7), "  // :
+      "(0, 249, 0, 21, 13), "  // navigator
+      "(0, 258, 0, 21, 22), "  // .
+      "(0, 259, 0, 21, 23), "  // platform
+      "(0, 267, 0, 21, 32), "  // ==
+      "(0, 269, 0, 21, 35), "  // 'Win32'
+      "(0, 276, 0, 22, 0), "  // }
+      "(0, 277, 0, 22, 1), "  // [newline]
+
+      "(1, 0, 0, 23, 0), "  // is
+      "(1, 2, 0, 23, 2), "  // .
+      "(1, 3, 0, 23, 3), "  // mac
+      "(1, 6, 0, 23, 7), "  // =
+      "(1, 7, 0, 23, 9), "  // is
+      "(1, 9, 0, 23, 11), "  // .
+      "(1, 10, 0, 23, 12), "  // ua
+      "(1, 12, 0, 23, 14), "  // .
+      "(1, 13, 0, 23, 15), "  // indexOf
+      "(1, 20, 0, 23, 22), "  // (
+      "(1, 21, 0, 23, 23), "  // 'mac'
+      "(1, 26, 0, 23, 28), "  // )
+      "(1, 27, 0, 23, 30), "  // >=
+      "(1, 29, 0, 23, 33), "  // 0
+      "(1, 30, 0, 23, 34), "  // ;
+
+      "(1, 31, 0, 24, 0), "  // if
+      "(1, 33, 0, 24, 3), "  // (
+      "(1, 34, 0, 24, 4), "  // is
+      "(1, 36, 0, 24, 6), "  // .
+      "(1, 37, 0, 24, 7), "  // ua
+      "(1, 39, 0, 24, 9), "  // .
+      "(1, 40, 0, 24, 10), "  // indexOf
+      "(1, 47, 0, 24, 17), "  // (
+      "(1, 48, 0, 24, 18), "  // 'opera'
+      "(1, 55, 0, 24, 25), "  // )
+      "(1, 56, 0, 24, 27), "  // >=
+      "(1, 58, 0, 24, 30), "  // 0
+      "(1, 59, 0, 24, 31), "  // )
+      "(1, 60, 0, 24, 33), "  // {
+
+      "(1, 61, 0, 25, 4), "  // is
+      "(1, 63, 0, 25, 6), "  // .
+      "(1, 64, 0, 25, 7), "  // ie
+      "(1, 66, 0, 25, 10), "  // =
+      "(1, 67, 0, 25, 12), "  // is
+      "(1, 69, 0, 25, 14), "  // .
+      "(1, 70, 0, 25, 15), "  // ns
+      "(1, 72, 0, 25, 18), "  // =
+      "(1, 73, 0, 25, 20), "  // false
+      "(1, 78, 0, 25, 25), "  // ;
+
+      "(1, 79, 0, 26, 4), "  // is
+      "(1, 81, 0, 26, 6), "  // .
+      "(1, 82, 0, 26, 7), "  // opera
+      "(1, 87, 0, 26, 13), "  // =
+      "(1, 88, 0, 26, 15), "  // true
+      "(1, 92, 0, 26, 19), "  // ;
+      "(1, 93, 0, 27, 0), "  // }
+
+      "(1, 94, 0, 28, 0), "  // if
+      "(1, 96, 0, 28, 3), "  // (
+      "(1, 97, 0, 28, 4), "  // is
+      "(1, 99, 0, 28, 6), "  // .
+      "(1, 100, 0, 28, 7), "  // ua
+      "(1, 102, 0, 28, 9), "  // .
+      "(1, 103, 0, 28, 10), "  // indexOf
+      "(1, 110, 0, 28, 17), "  // (
+      "(1, 111, 0, 28, 18), "  // 'gecko'
+      "(1, 118, 0, 28, 25), "  // )
+      "(1, 119, 0, 28, 27), "  // >=
+      "(1, 121, 0, 28, 30), "  // 0
+      "(1, 122, 0, 28, 31), "  // )
+      "(1, 123, 0, 28, 33), "  // {
+
+      "(1, 124, 0, 29, 4), "  // is
+      "(1, 126, 0, 29, 6), "  // .
+      "(1, 127, 0, 29, 7), "  // ie
+      "(1, 129, 0, 29, 10), "  // =
+      "(1, 130, 0, 29, 12), "  // is
+      "(1, 132, 0, 29, 14), "  // .
+      "(1, 133, 0, 29, 15), "  // ns
+      "(1, 135, 0, 29, 18), "  // =
+      "(1, 136, 0, 29, 20), "  // false
+      "(1, 141, 0, 29, 25), "  // ;
+
+      "(1, 142, 0, 30, 4), "  // is
+      "(1, 144, 0, 30, 6), "  // .
+      "(1, 145, 0, 30, 7), "  // gecko
+      "(1, 150, 0, 30, 13), "  // =
+      "(1, 151, 0, 30, 15), "  // true
+      "(1, 155, 0, 30, 19), "  // ;
+      "(1, 156, 0, 31, 0), "  // }
+      "}";
+
+  EXPECT_EQ(expected_map, MappingsToString(mappings));
 }
 
 }  // namespace

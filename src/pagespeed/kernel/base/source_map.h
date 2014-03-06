@@ -33,7 +33,7 @@ namespace net_instaweb {
 namespace source_map {
 
 // Declares a mapping between a line # and column # in generated file
-// with the corresponding to source file #, line # and column #.
+// with the corresponding source file #, line # and column #.
 struct Mapping {
   int gen_line;
   int gen_col;
@@ -42,6 +42,7 @@ struct Mapping {
   int src_line;
   int src_col;
 
+  Mapping() : gen_line(0), gen_col(0), src_file(0), src_line(0), src_col(0) {}
   Mapping(int gen_line_arg, int gen_col_arg,
           int src_file_arg, int src_line_arg, int src_col_arg)
       : gen_line(gen_line_arg),

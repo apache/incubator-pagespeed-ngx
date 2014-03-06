@@ -15,6 +15,7 @@
 #include "pagespeed/kernel/js/js_minify.h"
 
 #include "base/logging.h"
+#include "pagespeed/kernel/base/source_map.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_keywords.h"
@@ -556,28 +557,81 @@ bool IsNameNumberOrKeyword(JsKeywords::Type type) {
   }
 }
 
+// Updates *line and *col numbers based on the next incremental chunk of text.
+// Note: This only works correctly for ASCII text. If text contains multi-byte
+// UTF-8 chars, our updates will be incorrect.
+void UpdateLineAndCol(StringPiece text, int* line, int* col) {
+  for (int i = 0, n = text.size(); i < n; ++i) {
+    if (text[i] == '\n') {
+      // TODO(sligocki): We should allow all Unicode newline chars.
+      *line += 1;
+      *col = 0;
+    } else {
+      // TODO(sligocki): Count number of Unicode chars, not number of bytes.
+      *col += 1;
+    }
+  }
+}
+
 }  // namespace
 
 JsMinifyingTokenizer::JsMinifyingTokenizer(
     const JsTokenizerPatterns* patterns, StringPiece input)
     : tokenizer_(patterns, input), whitespace_(kNoWhitespace),
       prev_type_(JsKeywords::kEndOfInput), prev_token_(),
-      next_type_(JsKeywords::kEndOfInput), next_token_() {}
+      next_type_(JsKeywords::kEndOfInput), next_token_(),
+      mappings_(NULL) {}
+
+JsMinifyingTokenizer::JsMinifyingTokenizer(
+    const JsTokenizerPatterns* patterns, StringPiece input,
+    std::vector<net_instaweb::source_map::Mapping>* mappings)
+    : tokenizer_(patterns, input), whitespace_(kNoWhitespace),
+      prev_type_(JsKeywords::kEndOfInput), prev_token_(),
+      next_type_(JsKeywords::kEndOfInput), next_token_(),
+      mappings_(mappings),
+      current_position_(0, 0, 0, 0, 0), next_position_(0, 0, 0, 0, 0) {}
 
 JsMinifyingTokenizer::~JsMinifyingTokenizer() {}
 
 JsKeywords::Type JsMinifyingTokenizer::NextToken(StringPiece* token_out) {
+  net_instaweb::source_map::Mapping token_out_position;
+  const JsKeywords::Type type = NextTokenHelper(token_out, &token_out_position);
+  if (mappings_ != NULL && type != JsKeywords::kEndOfInput) {
+    mappings_->push_back(token_out_position);
+  }
+  // Update generated file line and col # with the output token.
+  // Note: We use a helper function to avoid having to add this before every
+  // return in NextTokenHelper.
+  UpdateLineAndCol(*token_out, &current_position_.gen_line,
+                   &current_position_.gen_col);
+  return type;
+}
+
+JsKeywords::Type JsMinifyingTokenizer::NextTokenHelper(
+    StringPiece* token_out, net_instaweb::source_map::Mapping* position_out) {
   if (next_type_ != JsKeywords::kEndOfInput) {
     prev_type_ = next_type_;
     prev_token_ = next_token_;
     *token_out = next_token_;
+    *position_out = next_position_;
+    // next_position_.gen_line and .gen_col are out of date because they were
+    // computed in the previous call to NextTokenHelper().
+    position_out->gen_line = current_position_.gen_line;
+    position_out->gen_col = current_position_.gen_col;
+
     next_type_ = JsKeywords::kEndOfInput;
     next_token_.clear();
     return prev_type_;
   }
+  net_instaweb::source_map::Mapping first_position = current_position_;
   while (true) {
     StringPiece token;
     const JsKeywords::Type type = tokenizer_.NextToken(&token);
+    // Position of start of token
+    net_instaweb::source_map::Mapping token_position = current_position_;
+    // Update source file line and col # with the consumed input token.
+    UpdateLineAndCol(token, &current_position_.src_line,
+                     &current_position_.src_col);
     if (type == JsKeywords::kWhitespace) {
       if (whitespace_ == kNoWhitespace) {
         whitespace_ = kSpace;
@@ -589,6 +643,7 @@ JsKeywords::Type JsMinifyingTokenizer::NextToken(StringPiece* token_out) {
       prev_type_ = type;
       prev_token_ = "\n";
       *token_out = prev_token_;
+      *position_out = first_position;  // Beginning of whitespace/comments.
       return type;
     } else if (type == JsKeywords::kComment) {
       // Emit comments that look like they might be IE conditional compilation
@@ -600,6 +655,7 @@ JsKeywords::Type JsMinifyingTokenizer::NextToken(StringPiece* token_out) {
       if (token.size() >= 6 && token.starts_with("/*@") &&
           token.ends_with("@*/")) {
         *token_out = token;
+        *position_out = first_position;  // Beginning of whitespace/comments.
         return type;
       } else if (whitespace_ == kNoWhitespace) {
         whitespace_ = kSpace;
@@ -611,6 +667,8 @@ JsKeywords::Type JsMinifyingTokenizer::NextToken(StringPiece* token_out) {
           WhitespaceNeededBefore(type, token)) {
         next_type_ = type;
         next_token_ = token;
+        next_position_ = token_position;
+        *position_out = first_position;  // Beginning of whitespace/comments.
         if (whitespace == kLinebreak) {
           *token_out = "\n";
           return JsKeywords::kLineSeparator;
@@ -622,6 +680,7 @@ JsKeywords::Type JsMinifyingTokenizer::NextToken(StringPiece* token_out) {
       prev_type_ = type;
       prev_token_ = token;
       *token_out = token;
+      *position_out = token_position;
       return type;
     }
   }
@@ -662,7 +721,14 @@ bool JsMinifyingTokenizer::WhitespaceNeededBefore(
 
 bool MinifyUtf8Js(const JsTokenizerPatterns* patterns,
                   StringPiece input, GoogleString* output) {
-  JsMinifyingTokenizer tokenizer(patterns, input);
+  return MinifyUtf8JsWithSourceMap(patterns, input, output, NULL);
+}
+
+bool MinifyUtf8JsWithSourceMap(
+    const JsTokenizerPatterns* patterns,
+    StringPiece input, GoogleString* output,
+    std::vector<net_instaweb::source_map::Mapping>* mappings) {
+  JsMinifyingTokenizer tokenizer(patterns, input, mappings);
   while (true) {
     StringPiece token;
     switch (tokenizer.NextToken(&token)) {
