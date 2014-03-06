@@ -1337,6 +1337,9 @@ goog.math.nearlyEquals = function(a, b, opt_tolerance) {
 goog.math.standardAngle = function(angle) {
   return goog.math.modulo(angle, 360);
 };
+goog.math.standardAngleInRadians = function(angle) {
+  return goog.math.modulo(angle, 2 * Math.PI);
+};
 goog.math.toRadians = function(angleDegrees) {
   return angleDegrees * Math.PI / 180;
 };

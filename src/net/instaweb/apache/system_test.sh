@@ -1629,7 +1629,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     check_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
     # We should also inherit the blocking rewrite key.
-    check_from "$SECONDARY_CONFIG" egrep -q "blrw[[:space:]]+psatest"
+    check_from "$SECONDARY_CONFIG" egrep -q "\(blrw\)[[:space:]]+psatest"
 
     echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
     SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)

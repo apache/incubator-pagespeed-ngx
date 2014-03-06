@@ -37,9 +37,11 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_rw_lock.h"
 #include "net/instaweb/util/public/stl_util.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
+#include "pagespeed/kernel/base/time_util.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -3671,22 +3673,24 @@ bool RewriteOptions::IsEqual(const RewriteOptions& that) const {
 }
 
 GoogleString RewriteOptions::ToString(const ResourceCategorySet &x) {
-  GoogleString result = "InlineUnauth:";
+  GoogleString result = "";
+  const char* delim = "";
   for (ResourceCategorySet::const_iterator entry = x.begin();
        entry != x.end();
        ++entry) {
-    result += semantic_type::GetCategoryString(*entry) + ",";
+    StrAppend(&result, delim, semantic_type::GetCategoryString(*entry));
+    delim = ",";
   }
   return result;
 }
 
 GoogleString RewriteOptions::ToString(RewriteLevel level) {
   switch (level) {
-    case kPassThrough: return "Pass Through";
-    case kOptimizeForBandwidth: return "Optimize For Bandwidth";
-    case kCoreFilters: return "Core Filters";
-    case kTestingCoreFilters: return "Testing Core Filters";
-    case kAllFilters: return "All Filters";
+    case kPassThrough:                 return "Pass Through";
+    case kOptimizeForBandwidth:        return "Optimize For Bandwidth";
+    case kCoreFilters:                 return "Core Filters";
+    case kTestingCoreFilters:          return "Testing Core Filters";
+    case kAllFilters:                  return "All Filters";
   }
   return "?";
 }
@@ -3732,14 +3736,28 @@ GoogleString RewriteOptions::OptionsToString() const {
       StrAppend(&output, FilterId(filter), "\t", FilterName(filter), "\n");
     }
   }
+
+  // Print the options.  Use two passes so we can line up the values, given that
+  // the names have different widths.
   output += "\nOptions\n";
+  StringVector names, values;
+  int max_width = 0;
   for (int i = 0, n = all_options_.size(); i < n; ++i) {
     // Only including options with values overridden from the default.
     OptionBase* option = all_options_[i];
     if (option->was_set()) {
-      StrAppend(&output, "  ", option->id(), "\t", option->ToString(), "\n");
+      GoogleString name_and_id = StrCat(option->option_name(),
+                                        " (", option->id(), ")");
+      max_width = std::max(max_width, static_cast<int>(name_and_id.size()));
+      names.push_back(name_and_id);
+      values.push_back(option->ToString());
     }
   }
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    GoogleString spaces(max_width - names[i].size() + 2, ' ');
+    StrAppend(&output, "  ", names[i], spaces, values[i], "\n");
+  }
+
   output += "\nDomain Lawyer\n";
   StrAppend(&output, domain_lawyer_->ToString("  "));
   // TODO(mmohabey): Incorporate ToString() from the file_load_policy,
@@ -3768,6 +3786,14 @@ GoogleString RewriteOptions::OptionsToString() const {
   for (int i = 0, n = experiment_specs_.size(); i < n; ++i) {
     RewriteOptions::ExperimentSpec* spec = experiment_specs_[i];
     StrAppend(&output, "Experiment ", spec->ToString(), "\n");
+  }
+
+  int64 cache_invalidation_ms = cache_invalidation_timestamp();
+  GoogleString time_string;
+  if ((cache_invalidation_ms > 0) &&
+      ConvertTimeToString(cache_invalidation_ms, &time_string)) {
+    StrAppend(&output, "\nInvalidation Timestamp: ",
+              time_string, "\n");
   }
 
   return output;

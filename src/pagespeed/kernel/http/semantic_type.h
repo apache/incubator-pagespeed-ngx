@@ -39,12 +39,12 @@ namespace semantic_type {
 // kJavascript, and we'll ignore the extension (mp3) and actual contents of the
 // file (which will look like css).
 enum Category {
-  kScript,
-  kImage,
-  kStylesheet,
-  kOtherResource,
   kHyperlink,
+  kImage,
+  kOtherResource,
   kPrefetch,
+  kScript,
+  kStylesheet,
   kUndefined
 };
 

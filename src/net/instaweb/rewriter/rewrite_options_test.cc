@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/message_handler_test_base.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 
 namespace net_instaweb {
 
@@ -2413,6 +2414,50 @@ TEST_F(RewriteOptionsTest, MergeInlineResourcesWithoutExplicitAuthorization) {
       "script,stylesheet", "stylesheet", false, true);
   VerifyInlineUnauthorizedResourceTypeMerges(
       "script,stylesheet", "", true, true);
+}
+
+TEST_F(RewriteOptionsTest, OptionsToString) {
+  options_.SetRewriteLevel(RewriteOptions::kPassThrough);
+  options_.UpdateCacheInvalidationTimestampMs(MockTimer::kApr_5_2010_ms);
+  options_.EnableFilter(RewriteOptions::kSpriteImages);
+  options_.set_inline_only_critical_images(true);
+  RewriteOptions::ResourceCategorySet resources;
+  resources.insert(semantic_type::kImage);
+  resources.insert(semantic_type::kScript);
+  options_.set_inline_unauthorized_resource_types(resources);
+  options_.set_lazyload_images_blank_url("1.gif");
+  NullMessageHandler handler;
+  options_.WriteableDomainLawyer()->AddOriginDomainMapping(
+      "origin.com", "from.com", "host.com", &handler);
+
+  // These two options must be set to override settings established in
+  // RewriteOptions' constructor when running on valgrind, otherwise
+  // we'll see different results from OptionsForString.
+  options_.set_rewrite_deadline_ms(100);
+  options_.set_in_place_rewrite_deadline_ms(200);
+
+  EXPECT_STREQ(StrCat(
+      "Version: ", IntegerToString(RewriteOptions::kOptionsVersion), ": on\n"
+      "\n"
+      "Filters\n"
+      "hw\tFlushes html\n"  // TODO(jmarantz): remove from base config?
+      "is\tSprite Images\n"
+      "\n"
+      "Options\n"
+      "  CacheInvalidationTimestamp (it)                      1270493486000\n"
+      "  InlineOnlyCriticalImages (ioci)                      True\n"
+      "  InlineResourcesWithoutExplicitAuthorization (irwea)  Image,Script\n"
+      "  InPlaceRewriteDeadlineMs (iprdm)                     200\n"
+      "  LazyloadImagesBlankUrl (llbu)                        1.gif\n"
+      "  RewriteDeadlinePerFlushMs (rdm)                      100\n"
+      "  RewriteLevel (l)                                     Pass Through\n"
+      "\n"
+      "Domain Lawyer\n"
+      "  http://from.com/ Auth OriginDomain:http://origin.com/\n"
+      "  http://origin.com/ HostHeader:host.com\n"
+     "\n"
+      "Invalidation Timestamp: Mon, 05 Apr 2010 18:51:26 GMT\n"),
+               options_.OptionsToString());
 }
 
 }  // namespace net_instaweb
