@@ -252,8 +252,9 @@ TEST_F(PurgeContextTest, InvalidationSharing) {
 
 TEST_F(PurgeContextTest, EmptyPurgeFile) {
   // The currently documented mechanism to flush the entire cache is
-  // to simply touch CACHE_DIR/cache.flush.  That should continue to
-  // work as advertised.
+  // to simply touch CACHE_DIR/cache.flush.  This mode of operation
+  // requires disabling purging in the context.
+  purge_context1_->set_enable_purge(false);
   scheduler_.AdvanceTimeMs(10 * Timer::kSecondMs);
   ASSERT_TRUE(file_system_.WriteFile(kPurgeFile, "", &message_handler_));
   EXPECT_FALSE(PollAndTest1("b", timer_.NowMs() - 1));
@@ -329,9 +330,10 @@ TEST_F(PurgeContextTest,  FileWriteConflictWithInterveningUpdate) {
 TEST_F(PurgeContextTest, InvalidTimestampInPurgeRecord) {
   ASSERT_TRUE(file_system_.WriteFile(
       kPurgeFile,
-      "-1\n"                // timestamp in past
+      "-1\n"                // Valid initial timestamp
       "x\n"                 // not enough tokens
       "2000000000000 y\n"   // timestamp(ms) in far future
+      "-2 z\n"              // timestamp(ms) in far past
       "500 a\n",            // valid record should be parsed.
       &message_handler_));
   EXPECT_FALSE(PollAndTest1("a", 500));

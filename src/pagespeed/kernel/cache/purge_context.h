@@ -121,6 +121,13 @@ class PurgeContext {
   // IsValid calls can then be made using the PurgeSet captured by the callback.
   void SetUpdateCallback(PurgeSetCallback* cb);
 
+  // Indicates whether individual URL purging is supported.  If false,
+  // then we only take the cache.flush file timestamp to do full cache
+  // flushes.  If true, then we read and parse the contents of the file
+  // to find the global invalidation time and cache-flush times for
+  // the individual entries.
+  void set_enable_purge(bool x) { enable_purge_ = x; }
+
  private:
   friend class PurgeContextTest;
 
@@ -206,7 +213,11 @@ class PurgeContext {
 
   // Ensures a timestamp has reasonable syntax and is not (too far) in the
   // future.
-  int64 ParseAndValidateTimestamp(StringPiece time_string, int64 now_ms);
+  //
+  // The parsed timestamp is placed in *timestamp_ms, and true/false is
+  // used to indicate parsing & validation success.
+  bool ParseAndValidateTimestamp(StringPiece time_string, int64 now_ms,
+                                 int64* timestamp_ms);
 
   GoogleString filename_;
   scoped_ptr<NamedLock> interprocess_lock_;
@@ -218,10 +229,11 @@ class PurgeContext {
   PurgeSet pending_purges_;                // protected by mutex_
   BoolCallbackVector pending_callbacks_;   // protected by mutex_
   int64 last_file_check_ms_;               // protected_by mutex_
+  int num_consecutive_failures_;           // protected_by mutex_
   bool waiting_for_interprocess_lock_;     // protected_by mutex_
   bool reading_;                           // protected_by mutex_
-  int num_consecutive_failures_;           // protected_by mutex_
 
+  bool enable_purge_;          // When false, can only flush entire cache.
   int max_bytes_in_cache_;
 
   int64 request_batching_delay_ms_;

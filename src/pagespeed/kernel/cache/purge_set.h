@@ -55,6 +55,10 @@ class PurgeSet {
   // dependent on that.
   static const int64 kClockSkewAllowanceMs = 10 * Timer::kMinuteMs;
 
+  // Initial value used for the global timestamp.  This means there
+  // is no valid timestamp.
+  static const int64 kInitialTimestampMs = -1;
+
   // The default constructor makes a 1-byte invalidation set.  Use
   // set_max_size after construction.  The default constructor is
   // needed for CopyOnWrite.
@@ -145,8 +149,6 @@ class PurgeSet {
   };
 
   friend class InvalidationTimestampHelper;
-
-  static const int64 kInitialTimestampMs = -1;
 
   void EvictNotify(int64 evicted_record_timestamp_ms);
 
