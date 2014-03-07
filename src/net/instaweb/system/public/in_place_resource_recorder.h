@@ -17,7 +17,10 @@
 #ifndef NET_INSTAWEB_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
 #define NET_INSTAWEB_SYSTEM_PUBLIC_IN_PLACE_RESOURCE_RECORDER_H_
 
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/inflating_fetch.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -38,10 +41,20 @@ class Variable;
 // (IPRO) flow to get resources into the cache.
 class InPlaceResourceRecorder : public Writer {
  public:
+  enum HeadersKind {
+    // Headers should only be used to determine if context was gzip'd by
+    // a reverse proxy.
+    kPreliminaryHeaders,
+
+    // Headers are complete.
+    kFullHeaders
+  };
+
   // Does not take ownership of request_headers, cache nor handler.
   // Like other callbacks, InPlaceResourceRecorder is self-owned and will
   // delete itself when DoneAndSetHeaders() is called.
   InPlaceResourceRecorder(
+      const RequestContextPtr& request_context,
       StringPiece url, const RequestHeaders& request_headers, bool respect_vary,
       int max_response_bytes, int max_concurrent_recordings,
       int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* statistics,
@@ -72,12 +85,20 @@ class InPlaceResourceRecorder : public Writer {
   // going on and skip IPRO for that reason.  In that case we don't mark the
   // resource as not ipro-cacheable.
   //
-  // If you have the final headers before processing the content you should call
-  // ConsiderResponseHeaders() yourself.  Otherwise DoneAndSetHeaders() will
-  // call it for you.
+  // You must call ConsiderResponseHeaders() with whatever information is
+  // available before payload. If it's only enough to determine if content
+  // is gzip'ed, pass in kPreliminaryHeaders. If it's the complete final
+  // headers, pass in kFullHeaders.
+  //
+  // Call DoneAndSetHeaders() after the entire payload and headers are
+  // available. Note that only Content-Encoding: from ConsiderResponseHeaders
+  // will be used to determine whether to gunzip content or not. This is done
+  // since in Apache we can only capture the full headers after mod_deflate has
+  // already run, while content is captured before.
   //
   // Does not take ownership of response_headers.
-  void ConsiderResponseHeaders(ResponseHeaders* response_headers);
+  void ConsiderResponseHeaders(HeadersKind headers_kind,
+                               ResponseHeaders* response_headers);
 
   // Call if something went wrong. The results will not be added to cache.  You
   // still need to call DoneAndSetHeaders().
@@ -101,7 +122,17 @@ class InPlaceResourceRecorder : public Writer {
   int64 implicit_cache_ttl_ms() { return implicit_cache_ttl_ms_; }
 
  private:
+  class HTTPValueFetch : public AsyncFetchUsingWriter {
+   public:
+    HTTPValueFetch(const RequestContextPtr& request_context, HTTPValue* value)
+        : AsyncFetchUsingWriter(request_context, value) {}
+    virtual void HandleDone(bool /*ok*/) {}
+    virtual void HandleHeadersComplete() {}
+  };
+
   bool IsIproContentType(ResponseHeaders* response_headers);
+
+  void DroppedDueToSize();
 
   const GoogleString url_;
   const RequestHeaders::Properties request_properties_;
@@ -111,6 +142,8 @@ class InPlaceResourceRecorder : public Writer {
   const int64 implicit_cache_ttl_ms_;
 
   HTTPValue resource_value_;
+  HTTPValueFetch write_to_resource_value_;
+  InflatingFetch inflating_fetch_;
 
   HTTPCache* cache_;
   MessageHandler* handler_;
@@ -130,8 +163,12 @@ class InPlaceResourceRecorder : public Writer {
   // Something went wrong and this resource shouldn't be saved.
   bool failure_;
 
-  // Track that ConsiderResponseHeaders() is called exactly once.
-  bool response_headers_considered_;
+  // Track that ConsiderResponseHeaders() is called with full headers
+  // exactly once.
+  bool full_response_headers_considered_;
+
+  // Track that ConsiderResponseHeaders() is called before DoneAndSetHeaders()
+  bool consider_response_headers_called_;
 
   DISALLOW_COPY_AND_ASSIGN(InPlaceResourceRecorder);
 };

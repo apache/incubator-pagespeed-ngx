@@ -19,7 +19,6 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -41,6 +40,7 @@ const char kNumDroppedDueToSize[] = "ipro_recorder_dropped_due_to_size";
 AtomicInt32 InPlaceResourceRecorder::active_recordings_(0);
 
 InPlaceResourceRecorder::InPlaceResourceRecorder(
+    const RequestContextPtr& request_context,
     StringPiece url, const RequestHeaders& request_headers, bool respect_vary,
     int max_response_bytes, int max_concurrent_recordings,
     int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* stats,
@@ -51,6 +51,8 @@ InPlaceResourceRecorder::InPlaceResourceRecorder(
       max_response_bytes_(max_response_bytes),
       max_concurrent_recordings_(max_concurrent_recordings),
       implicit_cache_ttl_ms_(implicit_cache_ttl_ms),
+      write_to_resource_value_(request_context, &resource_value_),
+      inflating_fetch_(&write_to_resource_value_),
       cache_(cache), handler_(handler),
       num_resources_(stats->GetVariable(kNumResources)),
       num_inserted_into_cache_(stats->GetVariable(kNumInsertedIntoCache)),
@@ -60,7 +62,8 @@ InPlaceResourceRecorder::InPlaceResourceRecorder(
       num_dropped_due_to_size_(stats->GetVariable(kNumDroppedDueToSize)),
       status_code_(-1),
       failure_(false),
-      response_headers_considered_(false) {
+      full_response_headers_considered_(false),
+      consider_response_headers_called_(false) {
   num_resources_->Add(1);
   if (limit_active_recordings() &&
       active_recordings_.BarrierIncrement(1) > max_concurrent_recordings_) {
@@ -87,26 +90,44 @@ void InPlaceResourceRecorder::InitStats(Statistics* statistics) {
 
 bool InPlaceResourceRecorder::Write(const StringPiece& contents,
                                     MessageHandler* handler) {
+  DCHECK(consider_response_headers_called_);
   if (failure_) {
     return false;
   }
+
+  // Write into resource_value_ decompressing if needed.
+  failure_ = !inflating_fetch_.Write(contents, handler_);
   if (max_response_bytes_ == 0 ||
-      resource_value_.size() + contents.size() < max_response_bytes_) {
-    return resource_value_.Write(contents, handler_);
+      resource_value_.contents_size() < max_response_bytes_) {
+    return !failure_;
   } else {
-    failure_ = true;
-    num_dropped_due_to_size_->Add(1);
-    cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
+    DroppedDueToSize();
     VLOG(1) << "IPRO: MaxResponseBytes exceeded while recording " << url_;
     return false;
   }
 }
 
 void InPlaceResourceRecorder::ConsiderResponseHeaders(
+    HeadersKind headers_kind,
     ResponseHeaders* response_headers) {
   CHECK(response_headers != NULL) << "Response headers cannot be NULL";
-  DCHECK(!response_headers_considered_);
-  response_headers_considered_ = true;
+  DCHECK(!full_response_headers_considered_);
+
+  if (!consider_response_headers_called_) {
+    consider_response_headers_called_ = true;
+    // In first call, set up headers for potential deflating. We basically only
+    // care about Content-Encoding, plus AsyncFetch gets unhappy with 0
+    // status code.
+    inflating_fetch_.response_headers()->CopyFrom(*response_headers);
+    write_to_resource_value_.response_headers()->set_status_code(
+        HttpStatus::kOK);
+  }
+
+  if (headers_kind != kFullHeaders) {
+    return;
+  }
+  full_response_headers_considered_ = true;
+
   status_code_ = response_headers->status_code();
 
   // For 4xx and 5xx we can't IPRO, but we can also cache the failure so we
@@ -156,35 +177,38 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
     VLOG(1) << "IPRO: Content-Length header indicates that ["
             << url_ << "] is too large to record (" << content_length
             << " bytes)";
-    cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
-    num_dropped_due_to_size_->Add(1);
-    failure_ = true;
+    DroppedDueToSize();
     return;
   }
 }
 
+void InPlaceResourceRecorder::DroppedDueToSize() {
+  cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
+  num_dropped_due_to_size_->Add(1);
+  failure_ = true;
+}
+
 void InPlaceResourceRecorder::DoneAndSetHeaders(
     ResponseHeaders* response_headers) {
-  if (!failure_ && !response_headers_considered_) {
-    ConsiderResponseHeaders(response_headers);
+  if (!failure_ && !full_response_headers_considered_) {
+    ConsiderResponseHeaders(kFullHeaders, response_headers);
   }
+
   if (failure_) {
     num_failed_->Add(1);
   } else {
-    // If a content length was specified, sanity check it.
-    int64 content_length;
-    if (response_headers->FindContentLength(&content_length) &&
-        static_cast<int64>(resource_value_.contents_size()) != content_length) {
-      handler_->Message(
-          kWarning, "IPRO: Mismatched content length for [%s]", url_.c_str());
-      num_failed_->Add(1);
-    } else {
-      resource_value_.SetHeaders(response_headers);
-      cache_->Put(url_, request_properties_, respect_vary_, &resource_value_,
-                  handler_);
-      // TODO(sligocki): Start IPRO rewrite.
-      num_inserted_into_cache_->Add(1);
-    }
+    // We don't consider content-encoding to be valid here, since it can
+    // be captured post-mod_deflate with pre-deflate content. Also note
+    // that content-length doesn't have to be accurate either, since it can be
+    // due to compression; we do still use it for quickly reject since
+    // if gzip'd is too large uncompressed is likely too large, too.
+    response_headers->RemoveAll(HttpAttributes::kContentEncoding);
+    response_headers->RemoveAll(HttpAttributes::kContentLength);
+    resource_value_.SetHeaders(response_headers);
+    cache_->Put(url_, request_properties_, respect_vary_, &resource_value_,
+                handler_);
+    // TODO(sligocki): Start IPRO rewrite.
+    num_inserted_into_cache_->Add(1);
   }
   delete this;
 }

@@ -411,6 +411,7 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
     // InPlaceResourceRecorder as we want any ?ModPagespeed query-params to
     // be stripped from the cache key before we store the result in HTTPCache.
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
+        request_context,
         stripped_gurl->Spec(),
         request_headers,
         options->respect_vary(),

@@ -155,14 +155,6 @@ ModPagespeedEnableFilters add_instrumentation
     Header always set X-TestHeader "hello"
 </Directory>
 
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/wait/" >
-    ModPagespeedInPlaceWaitForOptimized on
-</Directory>
-
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/deadline/" >
-    ModPagespeedInPlaceRewriteDeadlineMs -1
-</Directory>
-
 ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/instant/" \
                          "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/"
 
@@ -182,6 +174,10 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
     Header append Vary Cookie2
     ModPagespeedRespectVary off
     ModPagespeedInPlaceWaitForOptimized on
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/mod_deflate/" >
+    AddOutputFilterByType DEFLATE text/css
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/vary/" >
@@ -409,7 +405,7 @@ ModPagespeedCompressMetadataCache true
 # different depending on whether we are running system tests as root
 # or as a normal user.  Note that fetches must be done with
 #    http_proxy=SECONDARY_HOST:SECONDARY_PORT.
-Listen @@APACHE_SECONDARY_PORT@@
+Listen localhost:@@APACHE_SECONDARY_PORT@@
 NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName secondary.example.com
@@ -681,6 +677,40 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/images"
   ModPagespeed unplugged
 </VirtualHost>
+
+# Proxy + IPRO a gzip'd file for testing Issue 896.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ipro-proxy.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_ipro_proxy"
+
+  ModPagespeed on
+  ModPagespeedInPlaceResourceOptimization on
+  ModPagespeedEnableFilters rewrite_domains
+
+  ProxyPass / http://localhost:@@APACHE_TERTIARY_PORT@@/mod_pagespeed_test/ipro/mod_deflate/
+  ProxyPassReverse / http://localhost:@@APACHE_TERTIARY_PORT@@/mod_pagespeed_test/ipro/mod_deflate/
+  AddOutputFilterByType DEFLATE text/css
+</VirtualHost>
+
+# Backend for ipro-proxy.exampe.com
+Listen 127.0.0.1:@@APACHE_TERTIARY_PORT@@
+NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@
+<VirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@>
+  ServerName ipro-proxy-backend.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeed unplugged
+  AddOutputFilterByType DEFLATE text/css
+</VirtualHost>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/wait/" >
+    ModPagespeedInPlaceWaitForOptimized on
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/deadline/" >
+    ModPagespeedInPlaceRewriteDeadlineMs -1
+</Directory>
 
 # Enable per-vhost statistics so that tests can be somewhat independent.
 ModPagespeedUsePerVHostStatistics on

@@ -867,6 +867,8 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
   CHECK(recorder != NULL);
 
+  bool first = true;
+
   // Iterate through all buckets, saving content in the recorder and passing
   // the buckets along when there is a flush.  Abort early if we hit EOS or the
   // recorder fails.
@@ -876,6 +878,14 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
          recorder->failed());
        bucket = APR_BUCKET_NEXT(bucket)) {
     if (!APR_BUCKET_IS_METADATA(bucket)) {
+      if (first) {
+        first = false;
+        ResponseHeaders response_headers;
+        ApacheRequestToResponseHeaders(*request, &response_headers, NULL);
+        recorder->ConsiderResponseHeaders(
+            InPlaceResourceRecorder::kPreliminaryHeaders, &response_headers);
+      }
+
       // Content bucket.
       const char* buf = NULL;
       size_t bytes = 0;
