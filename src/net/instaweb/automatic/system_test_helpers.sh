@@ -95,12 +95,13 @@ user_agent = Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML,
 EOF
 
 HOSTNAME=$1
-EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
+PRIMARY_SERVER=http://$HOSTNAME
+EXAMPLE_ROOT=$PRIMARY_SERVER/mod_pagespeed_example
 # TODO(sligocki): Should we be rewriting the statistics page by default?
 # Currently we are, so disable that so that it doesn't spoil our stats.
-STATISTICS_URL="http://$HOSTNAME/mod_pagespeed_statistics?PageSpeed=off"
-BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/W.bad.pagespeed.cf.hash.css
-MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
+STATISTICS_URL="$PRIMARY_SERVER/mod_pagespeed_statistics?PageSpeed=off"
+BAD_RESOURCE_URL=$PRIMARY_SERVER/mod_pagespeed/W.bad.pagespeed.cf.hash.css
+MESSAGE_URL=$PRIMARY_SERVER/mod_pagespeed_message
 
 # The following shake-and-bake ensures that we set REWRITTEN_TEST_ROOT based on
 # the TEST_ROOT in effect when we start up, if any, but if it was not set before
@@ -108,7 +109,7 @@ MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 # this from other test scripts that use different host prefixes for rewritten
 # content.
 REWRITTEN_TEST_ROOT=${TEST_ROOT:-}
-TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
+TEST_ROOT=$PRIMARY_SERVER/mod_pagespeed_test
 REWRITTEN_TEST_ROOT=${REWRITTEN_TEST_ROOT:-$TEST_ROOT}
 
 # This sets up similar naming for https requests.
@@ -139,7 +140,7 @@ export ftp_proxy=${3:-}
 export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.
-BAD_RND_RESOURCE_URL="http://$HOSTNAME/mod_pagespeed/bad$(date +%N).\
+BAD_RND_RESOURCE_URL="$PRIMARY_SERVER/mod_pagespeed/bad$(date +%N).\
 pagespeed.cf.hash.css"
 
 combine_css_filename=\

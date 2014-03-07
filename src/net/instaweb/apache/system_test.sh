@@ -362,7 +362,7 @@ check fgrep -q '<base href="https://' $FETCHED
 
 # This is dependent upon having a /mod_pagespeed_beacon handler.
 test_filter add_instrumentation beacons load.
-check run_wget_with_args http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
+check run_wget_with_args $PRIMARY_SERVER/mod_pagespeed_beacon?ets=load:13
 check fgrep -q "204 No Content" $WGET_OUTPUT
 check fgrep -q 'Cache-Control: max-age=0, no-cache' $WGET_OUTPUT
 
@@ -1465,7 +1465,7 @@ start_test Send custom fetch headers on resource re-fetches.
 PLAIN_HEADER="header=value"
 X_OTHER_HEADER="x-other=False"
 
-URL="http://$HOSTNAME/mod_pagespeed_log_request_headers.js.pagespeed.jm.0.js"
+URL="$PRIMARY_SERVER/mod_pagespeed_log_request_headers.js.pagespeed.jm.0.js"
 WGET_OUT=$($WGET_DUMP $URL)
 check_from "$WGET_OUT" grep "$PLAIN_HEADER"
 check_from "$WGET_OUT" grep "$X_OTHER_HEADER"
@@ -1520,7 +1520,7 @@ flushes,image_ongoing_rewrites"
 
 
   start_test Statistics console is available.
-  CONSOLE_URL=http://$HOSTNAME/pagespeed_console
+  CONSOLE_URL=$PRIMARY_SERVER/pagespeed_console
   CONSOLE_HTML=$OUTDIR/console.html
   $WGET_DUMP $CONSOLE_URL > $CONSOLE_HTML
   check grep -q "console" $CONSOLE_HTML
@@ -2239,7 +2239,7 @@ fi
 
 WGET_ARGS=""
 start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
-URL="http://$HOSTNAME/modpagespeed_http/not_really_a_font.woff"
+URL="$PRIMARY_SERVER/modpagespeed_http/not_really_a_font.woff"
 echo $WGET_DUMP $URL ....
 OUT1=$($WGET_DUMP $URL)
 check_from "$OUT1" egrep -q "This is not really font data"
@@ -2260,7 +2260,7 @@ start_test proxying from external domain should optimize images in-place.
 # Puzzle.jpg on disk is 241260 bytes, but we will optimize it with default
 # settings to 216942, but for this test let's look for anything below 230k.
 # Note that wc -c will include the headers.
-URL="http://$HOSTNAME/modpagespeed_http/Puzzle.jpg"
+URL="$PRIMARY_SERVER/modpagespeed_http/Puzzle.jpg"
 fetch_until -save $URL "wc -c" 230000 "--save-headers" "-lt"
 
 # We should see the origin etag in the wget output due to -save.  Note that
@@ -2285,12 +2285,12 @@ check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
 
 echo Ensure that rewritten images strip cookies present at origin
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -c 'Set-Cookie'
-ORIGINAL_HEADERS=$($WGET_DUMP http://$TEST_PROXY_ORIGIN/do_not_modify/Puzzle.jpg \
-    | head)
+ORIGINAL_HEADERS=$($WGET_DUMP \
+    http://$TEST_PROXY_ORIGIN/do_not_modify/Puzzle.jpg | head)
 check_from "$ORIGINAL_HEADERS" fgrep -c 'Set-Cookie'
 
 start_test proxying HTML from external domain should not work
-URL="http://$HOSTNAME/modpagespeed_http/evil.html"
+URL="$PRIMARY_SERVER/modpagespeed_http/evil.html"
 OUT=$($WGET_DUMP $URL)
 check [ $? = 8 ]
 check_not_from "$OUT" fgrep -q 'Set-Cookie:'
