@@ -52,8 +52,8 @@
         '<(css_parser_root)/third_party/utf/runestrstr.c',
         '<(css_parser_root)/third_party/utf/runetype.c',
         # TODO(sligocki): What is the correct format for this?
-        # runetypebody-5.0.0.c should not be compiled by itself, only #included.
-        #'<(css_parser_root)/third_party/utf/runetypebody-5.0.0.c',
+        # runetypebody.c should not be compiled by itself, only #included.
+        #'<(css_parser_root)/third_party/utf/runetypebody.c',
         '<(css_parser_root)/third_party/utf/utf.h',
         '<(css_parser_root)/third_party/utf/utfdef.h',
         '<(css_parser_root)/third_party/utf/utfecpy.c',

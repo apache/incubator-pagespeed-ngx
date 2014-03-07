@@ -67,4 +67,4 @@ isideographicrune(Rune c)
 	return 0;
 }
 
-#include "third_party/utf/runetypebody-5.0.0.c"
+#include "third_party/utf/runetypebody.c"
