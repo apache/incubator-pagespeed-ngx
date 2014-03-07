@@ -232,13 +232,18 @@ RewriteQuery::Status RewriteQuery::Scan(
   return status;
 }
 
+bool RewriteQuery::MightBeCustomOption(StringPiece name) {
+  // TODO(jmarantz): switch to case-insenstive comparisons for these prefixes.
+  return name.starts_with(kModPagespeed) || name.starts_with(kPageSpeed) ||
+      StringCaseEqual(name, HttpAttributes::kXPsaClientOptions);
+}
+
 template <class HeaderT>
 bool RewriteQuery::HeadersMayHaveCustomOptions(const QueryParams& params,
                                                const HeaderT* headers) {
   if (headers != NULL) {
     for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
-      StringPiece name = headers->Name(i);
-      if (name.starts_with(kModPagespeed) || name.starts_with(kPageSpeed)) {
+      if (MightBeCustomOption(headers->Name(i))) {
         return true;
       }
     }
@@ -250,9 +255,7 @@ bool RewriteQuery::MayHaveCustomOptions(
     const QueryParams& params, const RequestHeaders* req_headers,
     const ResponseHeaders* resp_headers) {
   for (int i = 0, n = params.size(); i < n; ++i) {
-    StringPiece name(params.name(i));
-    if (name.starts_with(kModPagespeed) || name.starts_with(kPageSpeed) ||
-        StringCaseEqual(name, HttpAttributes::kXPsaClientOptions)) {
+    if (MightBeCustomOption(params.name(i))) {
       return true;
     }
   }

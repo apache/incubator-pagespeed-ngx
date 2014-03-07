@@ -47,6 +47,11 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
           has_authorization(false) {  // But we assume no authorization
                                       // unless populated.
     }
+    Properties(bool cookie, bool cookie2, bool authorization)
+        : has_cookie(cookie),
+          has_cookie2(cookie2),
+          has_authorization(authorization) {
+    }
     bool has_cookie;
     bool has_cookie2;
     bool has_authorization;

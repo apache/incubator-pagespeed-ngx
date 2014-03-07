@@ -314,17 +314,18 @@ void SystemServerContext::CollapseConfigOverlaysAndComputeSignatures() {
 }
 
 // Handler which serves PSOL console.
-void SystemServerContext::ConsoleHandler(SystemRewriteOptions* options,
+void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
                                          Writer* writer) {
   MessageHandler* handler = message_handler();
-  bool statistics_enabled = options->statistics_enabled();
-  bool logging_enabled = options->statistics_logging_enabled();
-  bool log_dir_set = !options->log_dir().empty();
+  bool statistics_enabled = options.statistics_enabled();
+  bool logging_enabled = options.statistics_logging_enabled();
+  bool log_dir_set = !options.log_dir().empty();
   if (statistics_enabled && logging_enabled && log_dir_set) {
+    // TODO(jmarantz): change StaticAssetManager to take options by const ref.
     StringPiece console_js = static_asset_manager()->GetAsset(
-        StaticAssetManager::kConsoleJs, options);
+        StaticAssetManager::kConsoleJs, &options);
     StringPiece console_css = static_asset_manager()->GetAsset(
-        StaticAssetManager::kConsoleCss, options);
+        StaticAssetManager::kConsoleCss, &options);
 
     // TODO(sligocki): Move static content to a data2cc library.
     writer->Write("<!DOCTYPE html>\n"
@@ -353,7 +354,7 @@ void SystemServerContext::ConsoleHandler(SystemRewriteOptions* options,
                   "    </div>\n"
                   "    <script src='https://www.google.com/jsapi'></script>\n"
                   "    <script>var pagespeedStatisticsUrl = '", handler);
-    writer->Write(options->statistics_handler_path(), handler);
+    writer->Write(options.statistics_handler_path(), handler);
     writer->Write("'</script>\n"
                   "    <script>", handler);
     writer->Write(console_js, handler);

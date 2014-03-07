@@ -103,6 +103,10 @@ class RewriteQuery {
   static GoogleString GenerateResourceOption(StringPiece filter_id,
                                              RewriteDriver* driver);
 
+  // Indicates whether the specified name is likely to identify a
+  // custom header or query param.
+  static bool MightBeCustomOption(StringPiece name);
+
  private:
   friend class RewriteQueryTest;
   FRIEND_TEST(RewriteQueryTest, ClientOptionsEmptyHeader);

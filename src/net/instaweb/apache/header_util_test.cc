@@ -15,8 +15,10 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/header_util.h"
+#include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 #include "apr_pools.h"                                               // NOLINT
 #include "http_request.h"                                            // NOLINT
@@ -39,11 +41,17 @@ extern "C" {
 namespace net_instaweb {
 
 class HeaderUtilTest : public testing::Test {
+ public:
+  void PredicateMatchingA(StringPiece name, bool* ok) {
+    *ok = (name == "a");
+  }
+
  protected:
   virtual void SetUp() {
     apr_initialize();
     atexit(apr_terminate);
     apr_pool_create(&pool_, NULL);
+    request_.headers_in = apr_table_make(pool_, 10);
     request_.headers_out = apr_table_make(pool_, 10);
   }
 
@@ -126,6 +134,23 @@ TEST_F(HeaderUtilTest, DisableCachingRelatedHeaders) {
                       ", must-revalidate, ",
                       HttpAttributes::kNoStore),
                GetCacheControl());
+}
+
+TEST_F(HeaderUtilTest, SelectiveRequestHeaders) {
+  apr_table_set(request_.headers_in, "a", "b");
+  apr_table_set(request_.headers_in, "c", "d");
+  RequestHeaders all, selective;
+  ApacheRequestToRequestHeaders(request_, &all);
+  EXPECT_STREQ("b", all.Lookup1("a"));
+  EXPECT_STREQ("d", all.Lookup1("c"));
+  EXPECT_EQ(2, all.NumAttributes());
+  HeaderUtilTest* test = this;
+  scoped_ptr<HeaderPredicateFn> predicate(NewPermanentCallback(
+      test, &HeaderUtilTest::PredicateMatchingA));
+  ApacheRequestToRequestHeaders(request_, &selective, predicate.get());
+  EXPECT_STREQ("b", selective.Lookup1("a"));
+  EXPECT_TRUE(selective.Lookup1("c") == NULL);
+  EXPECT_EQ(1, selective.NumAttributes());
 }
 
 }  // namespace net_instaweb

@@ -783,19 +783,6 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   callback->CallRun();
 }
 
-const char* RewriteDriver::kPassThroughRequestAttributes[8] = {
-  HttpAttributes::kAccept,
-  HttpAttributes::kIfModifiedSince,
-  HttpAttributes::kReferer,
-  HttpAttributes::kUserAgent,
-  // Note: These headers are listed so that the headers we see contain them,
-  // but should immediately be detected and removed by RewriteQuery::Scan().
-  RewriteQuery::kModPagespeed,
-  RewriteQuery::kPageSpeed,
-  RewriteQuery::kModPagespeedFilters,
-  RewriteQuery::kPageSpeedFilters
-};
-
 const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kBeaconCohort[] = "beacon_cohort";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";

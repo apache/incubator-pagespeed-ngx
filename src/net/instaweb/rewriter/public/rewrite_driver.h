@@ -140,15 +140,6 @@ class RewriteDriver : public HtmlParse {
     kIntendedForGeneral
   };
 
-  // A list of HTTP request headers.  These are the headers which
-  // should be passed through from the client request into the
-  // ResponseHeaders request_headers sent to the rewrite driver.
-  // Headers not in this list will be ignored so there is no need to
-  // copy them over.
-  // TODO(sligocki): Use these in ProxyInterface flow.
-  // TODO(jmaessen): Use a NULL terminator or a static const arraysize.
-  static const char* kPassThroughRequestAttributes[8];
-
   // This string identifies, for the PropertyCache, a group of properties
   // that are computed from the DOM, and thus can, if desired, be rewritten
   // on every HTML request.

@@ -168,10 +168,9 @@ bool RequestHeaders::IsXmlHttpRequest() const {
 }
 
 RequestHeaders::Properties RequestHeaders::GetProperties() const {
-  Properties properties;
-  properties.has_cookie = Has(HttpAttributes::kCookie);
-  properties.has_cookie2 = Has(HttpAttributes::kCookie2);
-  properties.has_authorization = Has(HttpAttributes::kAuthorization);
+  Properties properties(Has(HttpAttributes::kCookie),
+                        Has(HttpAttributes::kCookie2),
+                        Has(HttpAttributes::kAuthorization));
   return properties;
 }
 

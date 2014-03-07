@@ -18,14 +18,16 @@
 
 #include <cstdio>
 #include <memory>
+#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/caching_headers.h"
 
 #include "apr_strings.h"
@@ -37,9 +39,18 @@ namespace net_instaweb {
 
 namespace {
 
+typedef std::pair<RequestHeaders*, HeaderPredicateFn*> RequestPredicatePair;
+
 int AddAttributeCallback(void *rec, const char *key, const char *value) {
-  RequestHeaders* request_headers = static_cast<RequestHeaders*>(rec);
-  request_headers->Add(key, value);
+  RequestPredicatePair* rpp = static_cast<RequestPredicatePair*>(rec);
+  bool ok = true;
+  if (rpp->second != NULL) {
+    ok = false;  // Default to false if the predicate doesn't set *ok.
+    rpp->second->Run(key, &ok);
+  }
+  if (ok) {
+    rpp->first->Add(key, value);
+  }
   return 1;
 }
 
@@ -53,13 +64,15 @@ int AddResponseAttributeCallback(void *rec, const char *key,
 }  // namespace
 
 void ApacheRequestToRequestHeaders(const request_rec& request,
-                                   RequestHeaders* request_headers) {
+                                   RequestHeaders* request_headers,
+                                   HeaderPredicateFn* predicate) {
+  RequestPredicatePair rpp(request_headers, predicate);
   if (request.proto_num >= 1000) {
     // proto_num is the version number of protocol; 1.1 = 1001
     request_headers->set_major_version(request.proto_num / 1000);
     request_headers->set_minor_version(request.proto_num % 1000);
   }
-  apr_table_do(AddAttributeCallback, request_headers, request.headers_in, NULL);
+  apr_table_do(AddAttributeCallback, &rpp, request.headers_in, NULL);
 }
 
 void ApacheRequestToResponseHeaders(const request_rec& request,

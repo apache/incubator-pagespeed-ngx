@@ -17,6 +17,11 @@
 #ifndef NET_INSTAWEB_APACHE_HEADER_UTIL_H_
 #define NET_INSTAWEB_APACHE_HEADER_UTIL_H_
 
+#include <cstddef>
+
+#include "pagespeed/kernel/base/callback.h"
+#include "pagespeed/kernel/base/string_util.h"
+
 struct request_rec;
 
 namespace net_instaweb {
@@ -24,9 +29,29 @@ namespace net_instaweb {
 class RequestHeaders;
 class ResponseHeaders;
 
-// Converts Apache header structure into RequestHeaders.
+// Defines a predicate function used to select which request-headers
+// to copy.  The callback sets the bool* arg (.second) to true if
+// it wants to include the header.
+//
+// The StringPiece is the name of the header.
+typedef Callback2<StringPiece, bool*> HeaderPredicateFn;
+
+// Converts Apache header structure into RequestHeaders, selecting
+// only those for which the predicate sets its bool* argument to true.
+// If the predicate is NULL, then all the headers are transferred.
+//
+// The predicate should be created with NewPermanentCallback and stored
+// in a scoped_ptr<Callback2>, so that it is deleted after this function
+// completes.
 void ApacheRequestToRequestHeaders(const request_rec& request,
-                                   RequestHeaders* request_headers);
+                                   RequestHeaders* request_headers,
+                                   HeaderPredicateFn* predicate);
+
+// Fully converts apache request header structure into RequestHeaders.
+inline void ApacheRequestToRequestHeaders(const request_rec& request,
+                                          RequestHeaders* request_headers) {
+  return ApacheRequestToRequestHeaders(request, request_headers, NULL);
+}
 
 // Converts Apache header structure (request.headers_out) into ResponseHeaders
 // headers. If err_headers is not NULL then request.err_headers_out is copied

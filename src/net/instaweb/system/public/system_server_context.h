@@ -103,7 +103,7 @@ class SystemServerContext : public ServerContext {
 
   // Handler which serves PSOL console.
   // Note: ConsoleHandler always succeeds.
-  void ConsoleHandler(SystemRewriteOptions* options, Writer* writer);
+  void ConsoleHandler(const SystemRewriteOptions& options, Writer* writer);
 
   // Deprecated handler for graphs in the PSOL console.
   void StatisticsGraphsHandler(Writer* writer);
