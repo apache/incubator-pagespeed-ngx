@@ -550,8 +550,11 @@ InstawebContext* build_context_for_request(request_rec* request) {
       RewriteOptions* merged_options = factory->NewRewriteOptions();
       merged_options->Merge(*options);
       merged_options->Merge(*query_options.get());
-      // Don't run any experiments if we're handling a query params request.
-      merged_options->set_running_experiment(false);
+      // Don't run any experiments if we're handling a query params request
+      // unless EnrollExperiment is on.
+      if (!merged_options->enroll_experiment()) {
+        merged_options->set_running_experiment(false);
+      }
       server_context->ComputeSignature(merged_options);
       custom_options.reset(merged_options);
       options = merged_options;

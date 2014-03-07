@@ -30,18 +30,32 @@ OUT=$($WGET_DUMP $EXTEND_CACHE)
 check_from "$OUT" fgrep "PageSpeedExperiment="
 
 start_test PageSpeedFilters query param should disable experiments.
-OUT=$($WGET_DUMP '$EXTEND_CACHE?PageSpeed=on&PageSpeedFilters=rewrite_css')
+OUT=$($WGET_DUMP "$EXTEND_CACHE?PageSpeed=on&PageSpeedFilters=rewrite_css")
 check_not_from "$OUT" fgrep 'PageSpeedExperiment='
 
 start_test ModPagespeedFilters query param should also disable experiments.
 OUT=$($WGET_DUMP \
-  '$EXTEND_CACHE?ModPagespeed=on&ModPagespeedFilters=rewrite_css')
+  "$EXTEND_CACHE?ModPagespeed=on&ModPagespeedFilters=rewrite_css")
 check_not_from "$OUT" fgrep 'PageSpeedExperiment='
+
+start_test experiment assignment can be forced
+OUT=$($WGET_DUMP \
+  "$EXTEND_CACHE?PageSpeedEnrollExperiment=2")
+check_from "$OUT" fgrep 'PageSpeedExperiment=2'
+
+start_test experiment assignment can be forced to a 0% experiment
+OUT=$($WGET_DUMP \
+  "$EXTEND_CACHE?PageSpeedEnrollExperiment=3")
+check_from "$OUT" fgrep 'PageSpeedExperiment=3'
+
+start_test experiment assignment can be forced even if already assigned
+OUT=$($WGET_DUMP --header Cookie:PageSpeedExperiment=7 \
+  "$EXTEND_CACHE?PageSpeedEnrollExperiment=2")
+check_from "$OUT" fgrep 'PageSpeedExperiment=2'
 
 start_test If the user is already assigned, no need to assign them again.
 OUT=$($WGET_DUMP --header='Cookie: PageSpeedExperiment=2' $EXTEND_CACHE)
 check_not_from "$OUT" fgrep 'PageSpeedExperiment='
-
 
 start_test The beacon should include the experiment id.
 OUT=$($WGET_DUMP --header='Cookie: PageSpeedExperiment=2' $EXTEND_CACHE)

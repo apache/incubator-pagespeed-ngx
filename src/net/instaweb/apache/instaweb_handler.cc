@@ -320,8 +320,11 @@ ApacheConfig* get_custom_options(ApacheServerContext* server_context,
     }
     custom_options->Merge(*query_options_success.first);
     delete query_options_success.first;
-    // Don't run any experiments if we're handling a customized request.
-    custom_options->set_running_experiment(false);
+    // Don't run any experiments if we're handling a customized request, unless
+    // EnrollExperiment is on.
+    if (!custom_options->enroll_experiment()) {
+      custom_options->set_running_experiment(false);
+    }
   }
 
   return custom_options;

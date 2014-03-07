@@ -138,6 +138,17 @@ TEST_F(ExperimentUtilTest, DetermineExperimentState) {
   EXPECT_TRUE(in_b > .25 * runs);
 }
 
+TEST_F(ExperimentUtilTest, AnyActiveExperiments) {
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=2;percent=0", &handler));
+  ASSERT_TRUE(options.AddExperimentSpec("id=8;percent=0", &handler));
+  EXPECT_FALSE(AnyActiveExperiments(&options));
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=1", &handler));
+  EXPECT_TRUE(AnyActiveExperiments(&options));
+}
+
 // Check that SetExperimentCookie sets the cookie on the appropriate
 // domain, and with the correct expiration.
 TEST_F(ExperimentUtilTest, SetExperimentCookie) {

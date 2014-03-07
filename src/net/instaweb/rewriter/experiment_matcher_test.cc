@@ -119,4 +119,120 @@ TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoExptCookie) {
   ASSERT_FALSE(need_cookie);
 }
 
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentEnrollExperiment) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  options.set_enroll_experiment_id(0);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
+
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
+
+  // User should be force-assigned to id=0, even though 0 is for 0% of users and
+  // they're already in group 1.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_TRUE(need_cookie);
+  ASSERT_EQ(0, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentEnrollNotSet) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  options.set_enroll_experiment_id(experiment::kExperimentNotSet);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
+
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
+
+  // User should be assigned to id=1, even though they're already in group 0.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_TRUE(need_cookie);
+  ASSERT_EQ(1, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentEnrollBadNum) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  options.set_enroll_experiment_id(2);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=100", &handler));
+
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=0");
+
+  // User should remain in group 0 because forcing a nonexistent experiment
+  // should do nothing.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_FALSE(need_cookie);
+  ASSERT_EQ(0, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperiments) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
+
+  // No cookie should be set because there's no active experiment.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_FALSE(need_cookie);
+  ASSERT_EQ(experiment::kExperimentNotSet, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperimentsKeep) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
+
+  req_headers.Add(HttpAttributes::kCookie, "PageSpeedExperiment=1");
+
+  // Even though there's no active experiment, keep the user in group 1.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_FALSE(need_cookie);
+  ASSERT_EQ(1, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperimentsUnset) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  options.set_enroll_experiment_id(experiment::kExperimentNotSet);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
+
+  // Normally no cookie would be set because there's no active experiment, but
+  // we forced kExperimentNotSet which is for resetting cookie values so set the
+  // cookie to 0.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_TRUE(need_cookie);
+  ASSERT_EQ(0, options.experiment_id());
+}
+
+TEST_F(ExperimentMatcherTest, ClassifyIntoExperimentNoActiveExperimentsEnroll) {
+  RequestHeaders req_headers;
+  RewriteOptions options(thread_system_.get());
+  options.set_running_experiment(true);
+  options.set_enroll_experiment_id(1);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddExperimentSpec("id=1;percent=0", &handler));
+
+  // We should still be able to force-assign users to percent=0 categories.
+  bool need_cookie =
+      experiment_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_TRUE(need_cookie);
+  ASSERT_EQ(1, options.experiment_id());
+}
+
+
 }  // namespace net_instaweb

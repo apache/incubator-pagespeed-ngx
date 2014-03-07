@@ -976,8 +976,11 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     custom_options->Merge(*options);
     query_options->Freeze();
     custom_options->Merge(*query_options);
-    // Don't run any experiments if this is a special query-params request.
-    custom_options->set_running_experiment(false);
+    // Don't run any experiments if this is a special query-params request,
+    // unless EnrollExperiment is on.
+    if (!custom_options->enroll_experiment()) {
+      custom_options->set_running_experiment(false);
+    }
   }
 
   if (request_headers->IsXmlHttpRequest()) {

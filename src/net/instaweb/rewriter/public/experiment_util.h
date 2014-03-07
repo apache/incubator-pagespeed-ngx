@@ -36,12 +36,22 @@ class RewriteOptions;
 
 namespace experiment {
 
-// kNoExperiment indicates there is an actual cookie set, but the cookie
-// says: don't run experiments on this user.  E.g. if you're running an A/B
-// experiment on 40% of the traffic, 20% is in A, 20% is in B, and
-// 60% is in NoExperiment.
 enum ExperimentState {
-  kExperimentNotSet = -1,  // Indicates no experiment cookie was set.
+  // You can force enrollment in any experiment setting including
+  // kExperimentNotSet and kNoExperiment, which means we need a value to
+  // indicate "don't force enrollment in any experiment".  This is the default,
+  // and shouldn't appear outside of enroll_experiment_id in the options.
+  //
+  // Someone with enroll_experiment_id=<ForceNoExperiment> will still be
+  // enrolled in an experiment if appropriate, but one will be randomly assigned
+  // instead of explicitly specified.
+  kForceNoExperiment = -2,
+  // No experiment cookie was set, or if one was (by EnrollExperiment) then
+  // assign them to an experiment category as if they had no cookie.
+  kExperimentNotSet = -1,
+  // There is a cookie set, but the cookie says: don't run experiments
+  // on this user.  E.g. if you're running an A/B experiment on 40% of the
+  // traffic, 20% is in A, 20% is in B, and 60% is in NoExperiment.
   kNoExperiment = 0,
 };
 
@@ -65,6 +75,9 @@ void SetExperimentCookie(ResponseHeaders* headers, int state,
 
 // Determines which side of the experiment this request should end up on.
 int DetermineExperimentState(const RewriteOptions* options);
+
+// Are there any experiments defined with percent > 0?
+bool AnyActiveExperiments(const RewriteOptions* options);
 
 // The string value of a Experiment State.  We don't want to use "ToString"
 // in case we change how we want the cookies to look.

@@ -118,6 +118,7 @@ const char RewriteOptions::kEnableLazyLoadHighResImages[] =
 const char RewriteOptions::kEnablePrioritizingScripts[] =
     "EnablePrioritizingScripts";
 const char RewriteOptions::kEnabled[] = "EnableRewriting";
+const char RewriteOptions::kEnrollExperiment[] = "EnrollExperiment";
 const char RewriteOptions::kExperimentCookieDurationMs[] =
     "ExperimentCookieDurationMs";
 const char RewriteOptions::kExperimentSlot[] = "ExperimentSlot";
@@ -1768,6 +1769,12 @@ void RewriteOptions::AddProperties() {
       kExperimentSlot,
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
+  AddBaseProperty(
+      experiment::kForceNoExperiment, &RewriteOptions::enroll_experiment_id_,
+      "eeid",
+      kEnrollExperiment,
+      kQueryScope,
+      "Assign users to a specific experiment setting.");
   AddBaseProperty(
       false, &RewriteOptions::report_unload_time_, "rut",
       kReportUnloadTime,
@@ -3943,7 +3950,7 @@ RewriteOptions::ExperimentSpec* RewriteOptions::AddExperimentSpec(
 bool RewriteOptions::InsertExperimentSpecInVector(ExperimentSpec* spec) {
   // See RewriteOptions::GetExperimentStateStr for why we can't have more than
   // 26.
-  if (!AvailableExperimentId(spec->id()) || spec->percent() <= 0 ||
+  if (!AvailableExperimentId(spec->id()) || spec->percent() < 0 ||
       experiment_percent_ + spec->percent() > 100 ||
       experiment_specs_.size() + 1 > 26) {
     delete spec;
@@ -4010,7 +4017,7 @@ RewriteOptions::ExperimentSpec::ExperimentSpec(const StringPiece& spec,
     : id_(experiment::kExperimentNotSet),
       ga_id_(options->ga_id()),
       ga_variable_slot_(options->experiment_ga_slot()),
-      percent_(0),
+      percent_(-1),
       rewrite_level_(kPassThrough),
       use_default_(false) {
   Initialize(spec, handler);
@@ -4020,7 +4027,7 @@ RewriteOptions::ExperimentSpec::ExperimentSpec(int id)
     : id_(id),
       ga_id_(""),
       ga_variable_slot_(kDefaultExperimentSlot),
-      percent_(0),
+      percent_(-1),
       rewrite_level_(kPassThrough),
       use_default_(false) {
 }

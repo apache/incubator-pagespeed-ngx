@@ -119,6 +119,15 @@ int DetermineExperimentState(const RewriteOptions* options) {
   return ret;
 }
 
+bool AnyActiveExperiments(const RewriteOptions* options) {
+  for (int i = 0, n = options->num_experiments(); i < n ; ++i) {
+    if (options->experiment_spec(i)->percent() > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 int CookieStringToState(const StringPiece& cookie_str) {
   int ret;
   if (!StringToInt(cookie_str, &ret)) {

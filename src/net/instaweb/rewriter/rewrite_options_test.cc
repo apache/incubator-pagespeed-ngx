@@ -28,8 +28,6 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_thread_system.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/message_handler_test_base.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 
@@ -881,6 +879,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kEnableLazyLoadHighResImages);
   PassLookupOptionByName(RewriteOptions::kEnablePrioritizingScripts);
   PassLookupOptionByName(RewriteOptions::kEnabled);
+  PassLookupOptionByName(RewriteOptions::kEnrollExperiment);
   PassLookupOptionByName(RewriteOptions::kExperimentCookieDurationMs);
   PassLookupOptionByName(RewriteOptions::kExperimentSlot);
   PassLookupOptionByName(RewriteOptions::kFetcherTimeOutMs);

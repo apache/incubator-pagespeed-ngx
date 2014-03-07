@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -37,13 +38,13 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "pagespeed/kernel/base/dense_hash_map.h"
 #include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_hash.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/wildcard.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
@@ -243,6 +244,7 @@ class RewriteOptions {
   static const char kEnableLazyLoadHighResImages[];
   static const char kEnablePrioritizingScripts[];
   static const char kEnabled[];
+  static const char kEnrollExperiment[];
   static const char kExperimentCookieDurationMs[];
   static const char kExperimentSlot[];
   static const char kFetcherTimeOutMs[];
@@ -949,6 +951,10 @@ class RewriteOptions {
   }
 
   int num_experiments() const { return experiment_specs_.size(); }
+
+  bool enroll_experiment() const {
+    return enroll_experiment_id() != experiment::kForceNoExperiment;
+  }
 
   // Store that when we see <element attribute=X> we should treat X as a URL
   // pointing to a resource of the type indicated by category.  For example,
@@ -2082,8 +2088,12 @@ class RewriteOptions {
   void set_experiment_ga_slot(int x) {
     set_option(x, &experiment_ga_slot_);
   }
-
   int experiment_ga_slot() const { return experiment_ga_slot_.value(); }
+
+  void set_enroll_experiment_id(int x) {
+    set_option(x, &enroll_experiment_id_);
+  }
+  int enroll_experiment_id() const { return enroll_experiment_id_.value(); }
 
   void set_report_unload_time(bool x) {
     set_option(x, &report_unload_time_);
@@ -3423,6 +3433,9 @@ class RewriteOptions {
   // The experiment framework reports to Google Analytice in a custom variable
   // slot.  Specify which one to use.
   Option<int> experiment_ga_slot_;
+  // For testing purposes you can force users to be enrolled in a specific
+  // experiment.  This makes most sense in a query param.
+  Option<int> enroll_experiment_id_;
 
   // Increase the percentage of hits to 10% (current max) that have
   // site speed tracking in Google Analytics.
