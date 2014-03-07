@@ -372,7 +372,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
 	    -e "s!@@APACHE_TERTIARY_PORT@@!$(APACHE_TERTIARY_PORT)!g" \
-	    -e "s!@@TEST_PROXY_ORIGIN@@!$(TEST_PROXY_ORIGIN)!g" \
+	    -e "s!@@TEST-PROXY-ORIGIN@@!$(TEST_PROXY_ORIGIN)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s!@@MOD_PAGESPEED_LOG@@!$(MOD_PAGESPEED_LOG)!g" \
 	    -e "s!@@SSL_CERT_DIR@@!$(SSL_CERT_DIR)!g" \
