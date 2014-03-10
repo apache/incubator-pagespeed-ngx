@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/image_types.pb.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -29,7 +30,6 @@
 
 namespace net_instaweb {
 class Histogram;
-class ImageDim;
 class MessageHandler;
 class Timer;
 class Variable;
@@ -180,6 +180,15 @@ class Image {
     return image_type_;
   }
 
+  // If we had arbitrary license to convert to any webp format, what's the
+  // minimal webp library support that would be required for this image?
+  ResourceContext::LibWebpLevel MinimalWebpSupport() {
+    if (!rewrite_attempted_) {
+      ComputeOutputContents();
+    }
+    return minimal_webp_support_;
+  }
+
   // Changes the size of the image to the given width and height.  This will run
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
@@ -235,6 +244,7 @@ class Image {
   GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
   bool rewrite_attempted_;        // Indicates if we tried rewriting for this.
+  ResourceContext::LibWebpLevel minimal_webp_support_;
 
  private:
   friend class ImageTestingPeer;

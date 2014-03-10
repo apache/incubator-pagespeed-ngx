@@ -30,6 +30,7 @@ namespace net_instaweb {
 class GoogleUrl;
 class RequestProperties;
 class RewriteDriver;
+class RewriteOptions;
 class MessageHandler;
 
 // This class implements the encoding of image urls with optional additional
@@ -81,8 +82,9 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   // TODO(poojatandon): Pass a user agent object with its webp-cabaple bits
   // pre-analyzed (not just the string from the request headers), since
   // checking webp level related code doesn't belong here.
-  static void  SetLibWebpLevel(const RequestProperties& request_properties,
-                               ResourceContext* resource_context);
+  static void SetLibWebpLevel(const RewriteOptions& options,
+                              const RequestProperties& request_properties,
+                              ResourceContext* resource_context);
 
   // Sets webp and mobile capability in resource context.
   //

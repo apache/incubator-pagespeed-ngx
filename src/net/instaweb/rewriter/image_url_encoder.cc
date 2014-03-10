@@ -253,13 +253,23 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
 }
 
 void ImageUrlEncoder::SetLibWebpLevel(
+    const RewriteOptions& options,
     const RequestProperties& request_properties,
     ResourceContext* resource_context) {
   ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
-  if (request_properties.SupportsWebpLosslessAlpha()) {
-    libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
-  } else if (request_properties.SupportsWebpRewrittenUrls()) {
-    libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
+  // We do enabled checks before Setting the Webp Level, since it avoids writing
+  // two metadata cache keys for same output if webp rewriting is disabled.
+  if (request_properties.SupportsWebpRewrittenUrls() &&
+      (options.Enabled(RewriteOptions::kRecompressWebp) ||
+       options.Enabled(RewriteOptions::kConvertToWebpLossless) ||
+       options.Enabled(RewriteOptions::kConvertJpegToWebp))) {
+    if (request_properties.SupportsWebpLosslessAlpha() &&
+        (options.Enabled(RewriteOptions::kRecompressWebp) ||
+         options.Enabled(RewriteOptions::kConvertToWebpLossless))) {
+      libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
+    } else {
+      libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
+    }
   }
   resource_context->set_libwebp_level(libwebp_level);
 }
@@ -291,8 +301,6 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
     return;
   }
 
-  // TODO(poojatandon): Do enabled checks before Setting the Webp Level, since
-  // it avoids writing two metadata cache keys for same output.
   if (driver.options()->serve_rewritten_webp_urls_to_any_agent() &&
       !driver.fetch_url().empty() &&
       IsWebpRewrittenUrl(driver.decoded_base_url())) {
@@ -301,7 +309,7 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
     // webp, support webp lossless as well.
     context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
   } else {
-    SetLibWebpLevel(*driver.request_properties(), context);
+    SetLibWebpLevel(*options, *driver.request_properties(), context);
   }
 
   if (options->Enabled(RewriteOptions::kDelayImages) &&

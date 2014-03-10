@@ -29,7 +29,9 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/fake_filter.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -104,6 +106,49 @@ class FakeFetch : public AsyncFetch {
   WorkerTestBase::SyncPoint* sync_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeFetch);
+};
+
+class FakeImageFilter : public FakeFilter {
+ public:
+  class Context : public FakeFilter::Context {
+   public:
+    Context(FakeImageFilter* filter, RewriteDriver* driver,
+            RewriteContext* parent, ResourceContext* resource_context)
+        : FakeFilter::Context(filter, driver, parent, resource_context),
+          filter_(filter) { }
+
+    virtual void DoRewriteSingle(const ResourcePtr input,
+                                 OutputResourcePtr output) {
+      CachedResult* cached = output->EnsureCachedResultCreated();
+      cached->set_minimal_webp_support(filter_->minimal_webp_support());
+      FakeFilter::Context::DoRewriteSingle(input, output);
+    }
+
+   private:
+    FakeImageFilter* filter_;
+    DISALLOW_COPY_AND_ASSIGN(Context);
+  };
+
+  explicit FakeImageFilter(RewriteDriver* rewrite_driver)
+      : FakeFilter(RewriteOptions::kImageCompressionId,
+                   rewrite_driver, semantic_type::kImage),
+        minimal_webp_support_(ResourceContext::LIBWEBP_LOSSY_ONLY) { }
+
+  void set_minimal_webp_support(ResourceContext::LibWebpLevel level) {
+    minimal_webp_support_ = level;
+  }
+  ResourceContext::LibWebpLevel minimal_webp_support() {
+    return minimal_webp_support_;
+  }
+  RewriteContext* MakeFakeContext(
+      RewriteDriver* driver, RewriteContext* parent,
+      ResourceContext* resource_context) {
+    return new FakeImageFilter::Context(this, driver, parent, resource_context);
+  }
+
+ private:
+  ResourceContext::LibWebpLevel minimal_webp_support_;
+  DISALLOW_COPY_AND_ASSIGN(FakeImageFilter);
 };
 
 class InPlaceRewriteContextTest : public RewriteTestBase {
@@ -217,8 +262,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     mock_url_fetcher()->SetResponse(
         redirect_url_, redirect_headers, redirect_body_);
 
-    img_filter_ = new FakeFilter(RewriteOptions::kImageCompressionId,
-                                 rewrite_driver(), semantic_type::kImage);
+    img_filter_ = new FakeImageFilter(rewrite_driver());
     js_filter_ = new FakeFilter(RewriteOptions::kJavascriptMinId,
                                 rewrite_driver(), semantic_type::kScript);
     css_filter_ = new FakeFilter(RewriteOptions::kCssFilterId, rewrite_driver(),
@@ -370,9 +414,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
 
   void SetupDistributedTest(const StringPiece& distributed_filter) {
     SetupSharedCache();
-    other_img_filter_ =
-        new FakeFilter(RewriteOptions::kImageCompressionId,
-                       other_rewrite_driver(), semantic_type::kImage);
+    other_img_filter_ = new FakeImageFilter(other_rewrite_driver());
     other_rewrite_driver()->AppendRewriteFilter(other_img_filter_);
     options()->ClearSignatureForTesting();
     other_options()->ClearSignatureForTesting();
@@ -455,8 +497,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   bool optimize_for_browser() { return optimize_for_browser_; }
   void set_optimize_for_browser(bool x) { optimize_for_browser_ = x; }
 
-  FakeFilter* img_filter_;
-  FakeFilter* other_img_filter_;
+  FakeImageFilter* img_filter_;
+  FakeImageFilter* other_img_filter_;
   FakeFilter* js_filter_;
   FakeFilter* css_filter_;
 
@@ -1847,6 +1889,29 @@ TEST_F(InPlaceRewriteContextTest, AcceptHeaderMerging) {
   // ASSERT_EQ(2, accepts.size());
   // EXPECT_STREQ("Origin", *accepts[0]);
   // EXPECT_STREQ(HttpAttributes::kAccept, *accepts[1]);
+}
+
+TEST_F(InPlaceRewriteContextTest, NoAcceptHeaderForLossless) {
+  // If the image filters says we can only convert to webp lossless + alpha, or
+  // can't convert to webp at all, we should not see a Vary: header.
+  options()->set_in_place_wait_for_optimized(true);
+  set_optimize_for_browser(true);
+  Init();
+  SetAcceptWebp();
+
+  // First check lossless case.
+  img_filter_->set_minimal_webp_support(
+      ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
+  FetchAndCheckResponse(cache_png_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kVary));
+
+  // Then check lossy case where conversion failed (but jpeg was still
+  // optimized).
+  img_filter_->set_minimal_webp_support(ResourceContext::LIBWEBP_NONE);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kVary));
 }
 
 TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {

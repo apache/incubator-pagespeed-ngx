@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
@@ -106,8 +105,7 @@ void FakeFilter::StartElementImpl(HtmlElement* element) {
       }
       ResourceSlotPtr slot(
           driver_->GetSlot(input_resource, element, attributes[i].url));
-      Context* context =
-          new Context(this, driver_, NULL /* not nested */, NULL);
+      RewriteContext* context = MakeRewriteContext();
       context->AddSlot(slot);
       driver_->InitiateRewrite(context);
     }
@@ -121,7 +119,7 @@ RewriteContext* FakeFilter::MakeNestedRewriteContext(
     resource_context->CopyFrom(*parent->resource_context());
   }
   RewriteContext* context =
-      new FakeFilter::Context(this, NULL, parent, resource_context);
+      MakeFakeContext(NULL, parent, resource_context);
   context->AddSlot(slot);
   return context;
 }

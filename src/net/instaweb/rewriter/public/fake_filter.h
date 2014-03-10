@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 
@@ -53,7 +54,8 @@ class FakeFilter : public RewriteFilter {
     void RewriteSingle(const ResourcePtr& input,
                        const OutputResourcePtr& output);
 
-    void DoRewriteSingle(const ResourcePtr input, OutputResourcePtr output);
+    virtual void DoRewriteSingle(
+        const ResourcePtr input, OutputResourcePtr output);
     GoogleString UserAgentCacheKey(
         const ResourceContext* resource_context) const;
 
@@ -62,6 +64,7 @@ class FakeFilter : public RewriteFilter {
 
    private:
     FakeFilter* filter_;
+    DISALLOW_COPY_AND_ASSIGN(Context);
   };
 
   FakeFilter(const char* id, RewriteDriver* rewrite_driver,
@@ -81,10 +84,16 @@ class FakeFilter : public RewriteFilter {
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual void StartElementImpl(HtmlElement* element);
   virtual RewriteContext* MakeRewriteContext() {
-    return new FakeFilter::Context(this, driver_, NULL, NULL);
+    return MakeFakeContext(driver_, NULL /* not nested */, NULL);
   }
   virtual RewriteContext* MakeNestedRewriteContext(RewriteContext* parent,
                                                    const ResourceSlotPtr& slot);
+  // Factory for context so a subclass can override FakeFilter::Context.
+  virtual RewriteContext* MakeFakeContext(
+      RewriteDriver* driver, RewriteContext* parent,
+      ResourceContext* resource_context) {
+    return new FakeFilter::Context(this, driver, parent, resource_context);
+  }
   int num_rewrites() const { return num_rewrites_; }
   int num_encode_user_agent() const { return num_calls_to_encode_user_agent_; }
   void ClearStats();
@@ -114,6 +123,7 @@ class FakeFilter : public RewriteFilter {
   const ContentType* output_content_type_;
   mutable int num_calls_to_encode_user_agent_;
   semantic_type::Category category_;
+  DISALLOW_COPY_AND_ASSIGN(FakeFilter);
 };
 
 }  // namespace net_instaweb

@@ -952,6 +952,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         rewrite_context->TracePrintf("%s", msg.c_str());
       }
     }
+    cached->set_minimal_webp_support(image->MinimalWebpSupport());
     cached->set_size(rewrite_result == kRewriteOk ? image->output_size() :
                      image->input_size());
 
@@ -1767,7 +1768,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // CopyFrom parent_context is not sufficient because parent_context checks
     // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
-    ImageUrlEncoder::SetLibWebpLevel(*driver_->request_properties(),
+    ImageUrlEncoder::SetLibWebpLevel(
+        *driver_->options(), *driver_->request_properties(),
         cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,

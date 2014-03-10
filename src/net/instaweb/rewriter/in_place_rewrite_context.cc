@@ -297,11 +297,19 @@ void InPlaceRewriteContext::Harvest() {
         nested_context->slot(0)->was_optimized()) {
       ResourcePtr nested_resource = nested_context->slot(0)->resource();
       CachedResult* partition = output_partition(0);
+      CachedResult* nested_partition = nested_context->output_partition(0);
       VLOG(1) << "In-place rewrite succeeded for " << url_
               << " and the rewritten resource is "
               << nested_resource->url();
       partition->set_url(nested_resource->url());
       partition->set_optimizable(true);
+      CHECK(nested_partition != NULL);
+      // TODO(jmaessen): Does any more state need to find its way into the
+      // enclosing CachedResult from the nested one?
+      if (nested_partition->has_minimal_webp_support()) {
+        partition->set_minimal_webp_support(
+            nested_partition->minimal_webp_support());
+      }
       if (partitions()->other_dependency_size() == 1) {
         // If there is only one other dependency, then the InputInfo is
         // already covered in the first partition. We're clearing this here
@@ -325,7 +333,6 @@ void InPlaceRewriteContext::Harvest() {
         is_rewritten_ = true;
         // EndWrite updated the hash in output_resource_.
         output_resource_->full_name().hash().CopyToString(&rewritten_hash_);
-        FixFetchFallbackHeaders(output_resource_->response_headers());
 
         // Use the most conservative Cache-Control considering the input.
         // TODO(jkarlin): Is ApplyInputCacheControl needed here?
@@ -369,15 +376,14 @@ void InPlaceRewriteContext::FetchTryFallback(const GoogleString& url,
   }
 }
 
-void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
-  // TODO(jmaessen): This is being called twice (and passing the conditional
-  // both times) for every IPRO request in testing.  Why is that?
+void InPlaceRewriteContext::FixFetchFallbackHeaders(
+    const CachedResult& cached_result, ResponseHeaders* headers) {
   if (is_rewritten_) {
     if (!rewritten_hash_.empty()) {
       headers->Replace(HttpAttributes::kEtag, HTTPCache::FormatEtag(StrCat(
                                                   id(), "-", rewritten_hash_)));
     }
-    AddVaryIfRequired(headers);
+    AddVaryIfRequired(cached_result, headers);
     headers->set_implicit_cache_ttl_ms(Options()->implicit_cache_ttl_ms());
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
@@ -632,7 +638,8 @@ bool InPlaceRewriteContext::InPlaceOptimizeForBrowserEnabled() const {
 // some fiddly options checking.  We need to treat webp lossless differently, so
 // we can't just look at the extension and content type; right now we just
 // disable lossless.
-void InPlaceRewriteContext::AddVaryIfRequired(ResponseHeaders* headers) const {
+void InPlaceRewriteContext::AddVaryIfRequired(
+    const CachedResult& cached_result, ResponseHeaders* headers) const {
   if (!InPlaceOptimizeForBrowserEnabled() || num_output_partitions() != 1) {
     // No browser-dependent rewrites => no need for vary
     return;
@@ -640,15 +647,38 @@ void InPlaceRewriteContext::AddVaryIfRequired(ResponseHeaders* headers) const {
   const ContentType* type = headers->DetermineContentType();
   // Returns true if we may return different rewritten content based
   // on the user agent.
-  if (!type->IsImage() && !type->IsCss()) {
-    // No browser-dependent content types involved => no need for vary
+  const char* new_vary = NULL;
+  if (type->IsImage()) {
+    // If it's an image, conservatively assume we might convert to webp.
+    // Fix this up if we discover that this can't happen.
+    new_vary = HttpAttributes::kAccept;
+    if (Options()->Enabled(RewriteOptions::kSquashImagesForMobileScreen)) {
+      new_vary = HttpAttributes::kUserAgent;
+    } else if (!Options()->Enabled(RewriteOptions::kConvertJpegToWebp)) {
+      // Lossy webp conversion won't happen, so no need to vary.
+      new_vary = NULL;
+    } else if (cached_result.minimal_webp_support() !=
+               ResourceContext::LIBWEBP_LOSSY_ONLY) {
+      // Can't do a lossy-only conversion, so we won't convert to webp in
+      // place.
+      new_vary = NULL;
+    }
+  } else if (type->IsCss()) {
+    // If it's CSS, constituent images can be rewritten in a UA-dependent
+    // manner.  But we don't necessarily see Accept:image/webp on the request,
+    // so we must Vary: User-Agent.
+    if (Options()->Enabled(RewriteOptions::kRewriteCss) &&
+        (Options()->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+         Options()->Enabled(RewriteOptions::kConvertToWebpLossless))) {
+      new_vary = HttpAttributes::kUserAgent;
+    }
+  }
+  if (new_vary == NULL) {
     return;
   }
   // TODO(jmaessen): Handle IE.  This requires cache-control:private instead or
   // no caching will occur on the client side.  Also add tests for it!
   ConstStringStarVector varies;
-  GoogleString new_vary =
-      type->IsImage() ? HttpAttributes::kAccept : HttpAttributes::kUserAgent;
   if (headers->Lookup(HttpAttributes::kVary, &varies)) {
     // Need to add to the existing Vary header.  But first, check that the vary
     // header doesn't already encompass new_vary.
@@ -724,7 +754,8 @@ void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
   // the Accept: header, and we disable webp lossless entirely (falling back to
   // webp).
   // TODO(jmaessen): When non-webp-lossless capable versions of Opera are old
-  // enough, enable lossless encoding if it was requested.
+  // enough, enable lossless encoding if it was requested.  But note similar
+  // nonsense will required for other new webp features such as animated webp.
   if (context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
     if (driver_->request_properties()->SupportsWebpInPlace()) {
       context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);

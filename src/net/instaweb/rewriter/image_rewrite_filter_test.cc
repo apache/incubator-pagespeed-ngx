@@ -33,7 +33,6 @@
 #include "net/instaweb/http/public/log_record_test_helper.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -73,6 +72,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer, etc
+#include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
 namespace net_instaweb {
@@ -88,8 +88,9 @@ namespace {
 // Filenames of resource files.
 const char kBikePngFile[] = "BikeCrashIcn.png";  // photo; no alpha
 const char kChefGifFile[] = "IronChef2.gif";     // photo; no alpha
-const char kCuppaOPngFile[] = "CuppaO.png";      // graphic; no alpha
-const char kCuppaTPngFile[] = "CuppaT.png";      // graphic; alpha
+const char kCuppaPngFile[] = "Cuppa.png";        // graphic; no alpha
+const char kCuppaOPngFile[] = "CuppaO.png";      // graphic; no alpha; no opt
+const char kCuppaTPngFile[] = "CuppaT.png";      // graphic; alpha; no opt
 const char kLargePngFile[] = "Large.png";        // blank image; gray scale
 const char kPuzzleJpgFile[] = "Puzzle.jpg";      // photo; no alpha
 const char kRedbrushAlphaPngFile[] = "RedbrushAlpha-0.5.png";  // photo; alpha
@@ -882,6 +883,23 @@ class ImageRewriteTest : public RewriteTestBase {
     ClearStats();
     rewrite_driver()->SetUserAgent(user_agent);
     return FetchResourceUrl(url, content, response);
+  }
+
+  void IProFetchAndValidate(
+      StringPiece url, StringPiece user_agent, StringPiece accept,
+      ResponseHeaders* response) {
+    if (!user_agent.empty()) {
+      rewrite_driver()->SetUserAgent(user_agent);
+    }
+    RequestHeaders request;
+    if (!accept.empty()) {
+      request.Add(HttpAttributes::kAccept, accept);
+    }
+    GoogleString content_ignored;
+    response->Clear();
+    EXPECT_TRUE(FetchResourceUrl(url, &request, &content_ignored, response));
+    const char* etag = response->Lookup1(HttpAttributes::kEtag);
+    EXPECT_STREQ("W/\"PSA-aj-0\"", etag);
   }
 
  private:
@@ -3307,5 +3325,69 @@ TEST_F(ImageRewriteTest, RewriteMultipleAttributes) {
           ">"));
 }
 
+TEST_F(ImageRewriteTest, IproCorrectVaryHeaders) {
+  // See https://code.google.com/p/modpagespeed/issues/detail?id=817
+  // Here we're particularly looking for some issues that the ipro-specific
+  // testing doesn't catch because it uses a fake version of the image rewrite
+  // filter.
+  options()->set_image_preserve_urls(true);
+  options()->set_in_place_rewriting_enabled(true);
+  options()->set_in_place_wait_for_optimized(true);
+  EXPECT_TRUE(options()->EnableFiltersByCommaSeparatedList(
+      "rewrite_images,convert_jpeg_to_webp,convert_to_webp_lossless,"
+      "convert_png_to_jpeg,in_place_optimize_for_browser", message_handler()));
+  rewrite_driver()->AddFilters();
+
+  GoogleString puzzleUrl = StrCat(kTestDomain, kPuzzleJpgFile);
+  GoogleString bikeUrl   = StrCat(kTestDomain, kBikePngFile);
+  GoogleString cuppaUrl  = StrCat(kTestDomain, kCuppaPngFile);
+  AddFileToMockFetcher(puzzleUrl, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  AddFileToMockFetcher(bikeUrl, kBikePngFile, kContentTypePng, 100);
+  AddFileToMockFetcher(cuppaUrl, kCuppaPngFile, kContentTypePng, 100);
+  ResponseHeaders response_headers;
+
+  // We test 3 kinds of image (photo, photographic png, non-photographic png)
+  // with two pairs of browsers: simple and maximally webp-capable (including
+  // Accept: image/webp).
+
+  // puzzle is unconditionally webp-convertible and thus gets a vary: header.
+  IProFetchAndValidate(puzzleUrl, "webp-la", "image/webp", &response_headers);
+  EXPECT_EQ(&kContentTypeWebp, response_headers.DetermineContentType()) <<
+      response_headers.DetermineContentType()->mime_type();
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers.Lookup1(HttpAttributes::kVary));
+  IProFetchAndValidate(puzzleUrl, "", "", &response_headers);
+  EXPECT_EQ(&kContentTypeJpeg, response_headers.DetermineContentType()) <<
+      response_headers.DetermineContentType()->mime_type();
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers.Lookup1(HttpAttributes::kVary));
+
+  // Similarly, bike is photographic and will be jpeg or webp-converted and have
+  // a Vary: header.
+  IProFetchAndValidate(bikeUrl, "webp-la", "image/webp", &response_headers);
+  EXPECT_EQ(&kContentTypeWebp, response_headers.DetermineContentType()) <<
+      response_headers.DetermineContentType()->mime_type();
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers.Lookup1(HttpAttributes::kVary));
+  IProFetchAndValidate(bikeUrl, "", "", &response_headers);
+  EXPECT_EQ(&kContentTypeJpeg, response_headers.DetermineContentType()) <<
+      response_headers.DetermineContentType()->mime_type();
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers.Lookup1(HttpAttributes::kVary));
+
+  // Finally, cuppa has an alpha channel and is non-photographic, so it
+  // shouldn't be converted to webp and should remain a png.  Thus it should
+  // lack a Vary: header.
+  IProFetchAndValidate(cuppaUrl, "webp-la", "image/webp", &response_headers);
+  EXPECT_EQ(&kContentTypePng, response_headers.DetermineContentType()) <<
+      response_headers.DetermineContentType()->mime_type();
+  EXPECT_FALSE(response_headers.Has(HttpAttributes::kVary)) <<
+      response_headers.Lookup1(HttpAttributes::kVary);
+  IProFetchAndValidate(cuppaUrl, "", "", &response_headers);
+  EXPECT_EQ(&kContentTypePng, response_headers.DetermineContentType()) <<
+      response_headers.DetermineContentType()->mime_type();
+  EXPECT_FALSE(response_headers.Has(HttpAttributes::kVary)) <<
+      response_headers.Lookup1(HttpAttributes::kVary);
+}
 
 }  // namespace net_instaweb

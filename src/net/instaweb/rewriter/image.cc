@@ -481,7 +481,8 @@ Image::Image(const StringPiece& original_contents)
       original_contents_(original_contents),
       output_contents_(),
       output_valid_(false),
-      rewrite_attempted_(false) { }
+      rewrite_attempted_(false),
+      minimal_webp_support_(ResourceContext::LIBWEBP_NONE) { }
 
 ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
@@ -997,7 +998,6 @@ bool ImageImpl::ComputeOutputContents() {
   }
   rewrite_attempted_ = true;
   if (!output_valid_) {
-    bool ok = true;
     StringPiece contents;
     bool resized;
 
@@ -1019,86 +1019,91 @@ bool ImageImpl::ComputeOutputContents() {
     //   option in one shot. If that fails, we back off by each of the stages.
     // * We return as soon as any applicable conversion succeeds. We
     //   do not compare the sizes of alternative conversions.
-    if (ok) {
-      // If we can't optimize the image, we'll fail.
-      ok = false;
-      // We copy the data to a string eagerly as we're very likely to need it
-      // (only unrecognized formats don't require it, in which case we probably
-      // don't get this far in the first place).
-      // TODO(jmarantz): The PageSpeed library should, ideally, take StringPiece
-      // args rather than const string&.  We would save lots of string-copying
-      // if we made that change.
-      GoogleString string_for_image(contents.data(), contents.size());
-      scoped_ptr<PngReaderInterface> png_reader;
-      switch (image_type()) {
-        case IMAGE_UNKNOWN:
-          break;
-        case IMAGE_WEBP:
-        case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
-          if (resized || options_->recompress_webp) {
-            ok = MayConvert() &&
-                ReduceWebpImageQuality(string_for_image,
-                                       options_->webp_quality,
-                                       &output_contents_);
+    // If we can't optimize the image, we'll fail.
+    bool ok = false;
+    // We copy the data to a string eagerly as we're very likely to need it
+    // (only unrecognized formats don't require it, in which case we probably
+    // don't get this far in the first place).
+    // TODO(jmarantz): The PageSpeed library should, ideally, take StringPiece
+    // args rather than const string&.  We would save lots of string-copying
+    // if we made that change.
+    GoogleString string_for_image(contents.data(), contents.size());
+    scoped_ptr<PngReaderInterface> png_reader;
+    switch (image_type()) {
+      case IMAGE_UNKNOWN:
+        break;
+      case IMAGE_WEBP:
+      case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
+        minimal_webp_support_ =
+            (image_type_ == IMAGE_WEBP) ?
+            ResourceContext::LIBWEBP_LOSSY_ONLY :
+            ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
+        if (resized || options_->recompress_webp) {
+          ok = MayConvert() &&
+              ReduceWebpImageQuality(string_for_image,
+                                     options_->webp_quality,
+                                     &output_contents_);
+        }
+        // TODO(pulkitg): Convert a webp image to jpeg image if
+        // web_preferred_ is false.
+        break;
+      case IMAGE_JPEG:
+        minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_ONLY;
+        if (MayConvert() &&
+            options_->convert_jpeg_to_webp &&
+            (options_->preferred_webp != WEBP_NONE)) {
+          ok = ConvertJpegToWebp(string_for_image, options_->webp_quality,
+                                 &output_contents_);
+          VLOG(1) << "Image conversion: " << ok
+                  << " jpeg->webp for " << url_.c_str();
+          if (!ok) {
+            // Image is not going to be webp-converted!
+            minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
+            PS_LOG_INFO(handler_, "Failed to create webp!");
           }
-          // TODO(pulkitg): Convert a webp image to jpeg image if
-          // web_preferred_ is false.
-          break;
-        case IMAGE_JPEG:
-          if (MayConvert() &&
-              options_->convert_jpeg_to_webp &&
-              (options_->preferred_webp != WEBP_NONE)) {
-            ok = ConvertJpegToWebp(string_for_image, options_->webp_quality,
-                                   &output_contents_);
-            VLOG(1) << "Image conversion: " << ok
-                    << " jpeg->webp for " << url_.c_str();
-            if (!ok) {
-              PS_LOG_INFO(handler_, "Failed to create webp!");
-            }
-          }
-          if (ok) {
-            image_type_ = IMAGE_WEBP;
-          } else if (MayConvert() &&
-                     (resized || options_->recompress_jpeg)) {
-            JpegCompressionOptions jpeg_options;
-            ConvertToJpegOptions(*options_.get(), &jpeg_options);
-            ok = OptimizeJpegWithOptions(string_for_image, &output_contents_,
-                                         jpeg_options, handler_.get());
-            VLOG(1) << "Image conversion: " << ok
-                    << " jpeg->jpeg for " << url_.c_str();
-          }
-          break;
-        case IMAGE_PNG:
+        }
+        if (ok) {
+          image_type_ = IMAGE_WEBP;
+        } else if (MayConvert() &&
+                   (resized || options_->recompress_jpeg)) {
+          JpegCompressionOptions jpeg_options;
+          ConvertToJpegOptions(*options_.get(), &jpeg_options);
+          ok = OptimizeJpegWithOptions(string_for_image, &output_contents_,
+                                       jpeg_options, handler_.get());
+          VLOG(1) << "Image conversion: " << ok
+                  << " jpeg->jpeg for " << url_.c_str();
+        }
+        break;
+      case IMAGE_PNG:
+        png_reader.reset(new PngReader(handler_.get()));
+        ok = ComputeOutputContentsFromPngReader(
+            string_for_image,
+            png_reader.get(),
+            (resized || options_->recompress_png) /* fall_back_to_png */,
+            kPngString,
+            IMAGE_PNG,
+            Image::ConversionVariables::FROM_PNG);
+        break;
+      case IMAGE_GIF:
+        ImageType current_image_type = IMAGE_GIF;
+        if (resized) {
+          // If the GIF image has been resized, it has already been
+          // converted to a PNG image.
           png_reader.reset(new PngReader(handler_.get()));
-          ok = ComputeOutputContentsFromPngReader(
-              string_for_image,
-              png_reader.get(),
-              (resized || options_->recompress_png) /* fall_back_to_png */,
-              kPngString,
-              IMAGE_PNG,
-              Image::ConversionVariables::FROM_PNG);
+          current_image_type = IMAGE_PNG;
+        } else if (options_->convert_gif_to_png || low_quality_enabled_) {
+          png_reader.reset(new GifReader(handler_.get()));
+        } else {
           break;
-        case IMAGE_GIF:
-          ImageType current_image_type = IMAGE_GIF;
-          if (resized) {
-            // If the GIF image has been resized, it has already been
-            // converted to a PNG image.
-            png_reader.reset(new PngReader(handler_.get()));
-            current_image_type = IMAGE_PNG;
-          } else if (options_->convert_gif_to_png || low_quality_enabled_) {
-            png_reader.reset(new GifReader(handler_.get()));
-          }
-          if (png_reader.get() != NULL) {
-            ok = ComputeOutputContentsFromPngReader(
-                string_for_image,
-                png_reader.get(),
-                options_->convert_gif_to_png /* fall_back_to_png */,
-                kGifString,
-                current_image_type,
-                Image::ConversionVariables::FROM_GIF);
-          }
-          break;
-      }
+        }
+        ok = ComputeOutputContentsFromPngReader(
+            string_for_image,
+            png_reader.get(),
+            options_->convert_gif_to_png /* fall_back_to_png */,
+            kGifString,
+            current_image_type,
+            Image::ConversionVariables::FROM_GIF);
+        break;
     }
     output_valid_ = ok;
   }
@@ -1146,13 +1151,16 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
   AnalyzeImage(ImageTypeToImageFormat(input_type),
                string_for_image.data(), string_for_image.length(),
                handler_.get(), &has_transparency, &is_photo);
-
+  // By default, a lossless image conversion is eligible for lossless webp
+  // conversion.
+  minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
   if (is_photo && options_->convert_png_to_jpeg &&
       (input_type == IMAGE_PNG ||
        (input_type == IMAGE_GIF && options_->convert_gif_to_png))) {
     // Can be converted to lossy format.
     if (!has_transparency) {
       // No alpha; can be converted to WebP lossy or JPEG.
+      minimal_webp_support_ = ResourceContext::LIBWEBP_LOSSY_ONLY;
       if (options_->preferred_webp != Image::WEBP_NONE &&
           options_->convert_jpeg_to_webp &&
           options_->webp_quality > 0) {
@@ -1162,7 +1170,6 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
         output_type = IMAGE_JPEG;
       }
     } else {
-      // Has alpha; can be converted to WebP alpha.
       if (options_->allow_webp_alpha &&
           options_->convert_jpeg_to_webp &&
           options_->webp_quality > 0) {
@@ -1186,6 +1193,8 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     // TODO(huibao): Re-evaluate why we need to try a different format, if the
     // conversion to WebP failed.
     if (!ok) {
+      // We can't convert to webp at all, so register that fact.
+      minimal_webp_support_ = ResourceContext::LIBWEBP_NONE;
       // If the conversion to WebP failed, we will try converting the image to
       // jpeg or png.
       if (output_type == IMAGE_WEBP) {

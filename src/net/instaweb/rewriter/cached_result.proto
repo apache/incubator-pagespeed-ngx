@@ -91,6 +91,7 @@ message InputInfo {
 // is a sequence of input URLs and a filter id. The input array
 // tells us which inputs are used to construct this output; it must be
 // interpreted using the URL-sequence that was used to form the key.
+// Next free tag: 23
 message CachedResult {
   // Tags 1-7 are for internal use by output_resource.
 
@@ -149,7 +150,7 @@ message CachedResult {
   // this CachedResult is based off of.
   repeated InputInfo input = 14;
 
-  // The image type is actually a net_instaweb::Image::Type.  It permits image
+  // The image type is actually a net_instaweb::ImageType.  It permits image
   // inlining to create an appropriate data: url from this and the inlined_data.
   // It's set only if inlined_data contains an image.
   optional int32 inlined_image_type = 15;
@@ -158,7 +159,7 @@ message CachedResult {
   // if DelayImagesFilter is enabled.
   optional bytes low_resolution_inlined_data = 16;
 
-  // The image type is actually a net_instaweb::Image::Type.  It permits image
+  // The image type is actually a net_instaweb::ImageType.  It permits image
   // inlining to create an appropriate data: url from this and the
   // low_resolution_inlined_data. It's set only if low_resolution_inlined_data
   // contains an image.
@@ -179,6 +180,19 @@ message CachedResult {
   // Stores any debug messages for this result, which are injected into the
   // HTML as comments if the debug filter is enabled.
   repeated string debug_message = 21;
+
+  // Indicate what level of webp support the given image would require if
+  // arbitrary webp conversion were enabled.  Note that if we attempt webp
+  // conversion unsuccessfully, this *could* (but need not) be WEBP_NONE.
+  // Otherwise it will be LIBWEBP_LOSSY_ONLY for photographic images lacking an
+  // alpha channel and LIBWEBP_LOSSY_LOSSLESS_ALPHA otherwise.  This can include
+  // assessments such as whether the image appears photographic or
+  // computer-generated, whether it actually uses its alpha channel, and
+  // (eventually) whether the image is animated.
+  // The conservative value of this field is LIBWEBP_LOSSY_ONLY, since this
+  // currently requries IPRO to add a Vary:Accept header to the optimized image.
+  optional ResourceContext.LibWebpLevel
+    minimal_webp_support = 22 [ default = LIBWEBP_LOSSY_ONLY ];
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general
@@ -206,6 +220,7 @@ message OutputPartitions {
 
 // Encapsulates all the data needed to rewrite a resource.  Any filter needing
 // additional information should add it as optional fields here.
+//   Next free tag: 8
 message ResourceContext {
   optional ImageDim desired_image_dims = 1;
   optional bool attempt_webp = 2 [ default = false, deprecated = true ];

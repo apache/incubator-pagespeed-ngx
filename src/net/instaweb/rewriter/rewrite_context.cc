@@ -1051,7 +1051,11 @@ class RewriteContext::FetchContext {
           // fetch path.
 
           response_headers->CopyFrom(*input_resource->response_headers());
-          rewrite_context_->FixFetchFallbackHeaders(response_headers);
+          const CachedResult* cached_result =
+              rewrite_context_->output_partition(0);
+          CHECK(cached_result != NULL);
+          rewrite_context_->FixFetchFallbackHeaders(*cached_result,
+                                                    response_headers);
           // Use the most conservative Cache-Control considering all inputs.
           // Note that this is needed because FixFetchFallbackHeaders might
           // actually relax things a bit if the input was no-cache.
@@ -1100,7 +1104,11 @@ class RewriteContext::FetchContext {
   void FetchFallbackDoneImpl(const StringPiece& contents,
                              const ResponseHeaders* headers) {
     async_fetch_->response_headers()->CopyFrom(*headers);
-    rewrite_context_->FixFetchFallbackHeaders(async_fetch_->response_headers());
+    CHECK_EQ(1, rewrite_context_->num_output_partitions());
+    const CachedResult* cached_result = rewrite_context_->output_partition(0);
+    CHECK(cached_result != NULL);
+    rewrite_context_->FixFetchFallbackHeaders(*cached_result,
+                                              async_fetch_->response_headers());
     // Use the most conservative Cache-Control considering all inputs.
     ApplyInputCacheControl(async_fetch_->response_headers());
     if (!detached_) {
@@ -2993,7 +3001,8 @@ const RewriteOptions* RewriteContext::Options() const {
   return Driver()->options();
 }
 
-void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
+void RewriteContext::FixFetchFallbackHeaders(
+    const CachedResult& cached_result, ResponseHeaders* headers) {
   if (headers->Sanitize()) {
     headers->ComputeCaching();
   }
