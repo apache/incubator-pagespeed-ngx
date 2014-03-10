@@ -1199,8 +1199,7 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
 void SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
                                 MessageHandler* message_handler,
                                 AsyncFetch* async_fetch) {
-  async_fetch = EnableInflation(
-      async_fetch, &inflation_content_type_blacklist_);
+  async_fetch = EnableInflation(async_fetch);
   SerfFetch* fetch = new SerfFetch(url, async_fetch, message_handler, timer_);
 
   request_count_->Add(1);

@@ -113,25 +113,18 @@ void InflatingFetch::HandleHeadersComplete() {
   ConstStringStarVector v;
   if (!IsCompressionAllowedInRequest() &&
       response_headers()->Lookup(HttpAttributes::kContentEncoding, &v)) {
-    // If we couldn't determine content type, or the content type is not in the
-    // list of the content-types that we shouldn't inflate -- proceed.
-    const ContentType* ct = response_headers()->DetermineContentType();
-    // Note, if the set contains NULL then undetermined content types will also
-    // not be inflated.
-    if (inflation_content_type_blacklist_.count(ct) == 0) {
-      // Look for an encoding to strip.  We only look at the *last* encoding.
-      // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
-      for (int i = v.size() - 1; i >= 0; --i) {
-        if (v[i] != NULL) {
-          const StringPiece& value = *v[i];
-          if (!value.empty()) {
-            if (StringCaseEqual(value, HttpAttributes::kGzip)) {
-              InitInflater(GzipInflater::kGzip, value);
-            } else if (StringCaseEqual(value, HttpAttributes::kDeflate)) {
-              InitInflater(GzipInflater::kDeflate, value);
-            }
-            break;  // Stop on the last non-empty value.
+    // Look for an encoding to strip.  We only look at the *last* encoding.
+    // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+    for (int i = v.size() - 1; i >= 0; --i) {
+      if (v[i] != NULL) {
+        const StringPiece& value = *v[i];
+        if (!value.empty()) {
+          if (StringCaseEqual(value, HttpAttributes::kGzip)) {
+            InitInflater(GzipInflater::kGzip, value);
+          } else if (StringCaseEqual(value, HttpAttributes::kDeflate)) {
+            InitInflater(GzipInflater::kDeflate, value);
           }
+          break;  // Stop on the last non-empty value.
         }
       }
     }
