@@ -199,12 +199,24 @@ int HtmlTagIndex::FindHtmlTag(const char* tag, int length) const {
         case C2('d', 't'): return kHtmlTagDt;
         case C2('e', 'm'): return kHtmlTagEm;
         // Beware of matching "h\x11" or "H\x11" in case-insensitive mode.
-        case C2('h', '1'): if (tag[1] == '1') return kHtmlTagH1; break;
-        case C2('h', '2'): if (tag[1] == '2') return kHtmlTagH2; break;
-        case C2('h', '3'): if (tag[1] == '3') return kHtmlTagH3; break;
-        case C2('h', '4'): if (tag[1] == '4') return kHtmlTagH4; break;
-        case C2('h', '5'): if (tag[1] == '5') return kHtmlTagH5; break;
-        case C2('h', '6'): if (tag[1] == '6') return kHtmlTagH6; break;
+        case C2('h', '1'):
+          if (tag[1] == '1') return kHtmlTagH1;
+          break;
+        case C2('h', '2'):
+          if (tag[1] == '2') return kHtmlTagH2;
+          break;
+        case C2('h', '3'):
+          if (tag[1] == '3') return kHtmlTagH3;
+          break;
+        case C2('h', '4'):
+          if (tag[1] == '4') return kHtmlTagH4;
+          break;
+        case C2('h', '5'):
+          if (tag[1] == '5') return kHtmlTagH5;
+          break;
+        case C2('h', '6'):
+          if (tag[1] == '6') return kHtmlTagH6;
+          break;
         case C2('h', 'r'): return kHtmlTagHr;
         case C2('l', 'i'): return kHtmlTagLi;
         case C2('o', 'l'): return kHtmlTagOl;
