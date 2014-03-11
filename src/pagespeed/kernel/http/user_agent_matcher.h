@@ -74,11 +74,6 @@ class UserAgentMatcher {
   virtual ~UserAgentMatcher();
 
   bool IsIe(const StringPiece& user_agent) const;
-  bool IsIe6(const StringPiece& user_agent) const;
-  bool IsIe7(const StringPiece& user_agent) const;
-  bool IsIe6or7(const StringPiece& user_agent) const {
-    return IsIe6(user_agent) || IsIe7(user_agent);
-  }
   bool IsIe9(const StringPiece& user_agent) const;
 
   virtual bool SupportsImageInlining(const StringPiece& user_agent) const;

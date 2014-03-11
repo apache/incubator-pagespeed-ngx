@@ -356,14 +356,6 @@ bool UserAgentMatcher::IsIe(const StringPiece& user_agent) const {
   return user_agent.find(" MSIE ") != GoogleString::npos;
 }
 
-bool UserAgentMatcher::IsIe6(const StringPiece& user_agent) const {
-  return user_agent.find(" MSIE 6.") != GoogleString::npos;
-}
-
-bool UserAgentMatcher::IsIe7(const StringPiece& user_agent) const {
-  return user_agent.find(" MSIE 7.") != GoogleString::npos;
-}
-
 bool UserAgentMatcher::IsIe9(const StringPiece& user_agent) const {
   return user_agent.find(" MSIE 9.") != GoogleString::npos;
 }

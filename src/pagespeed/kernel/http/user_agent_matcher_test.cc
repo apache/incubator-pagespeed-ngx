@@ -25,26 +25,13 @@ class UserAgentMatcherTest : public UserAgentMatcherTestBase {
 
 TEST_F(UserAgentMatcherTest, IsIeTest) {
   EXPECT_TRUE(user_agent_matcher_->IsIe(kIe6UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->IsIe6(kIe6UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe7(kIe6UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->IsIe6or7(kIe6UserAgent));
-
   EXPECT_TRUE(user_agent_matcher_->IsIe(kIe7UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->IsIe7(kIe7UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe6(kIe7UserAgent));
-  EXPECT_TRUE(user_agent_matcher_->IsIe6or7(kIe7UserAgent));
-
   EXPECT_TRUE(user_agent_matcher_->IsIe(kIe8UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe6(kIe8UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe7(kIe8UserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe6or7(kIe8UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->IsIe(kIe9UserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, IsNotIeTest) {
   EXPECT_FALSE(user_agent_matcher_->IsIe(kFirefoxUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe6(kFirefoxUserAgent));
-  EXPECT_FALSE(user_agent_matcher_->IsIe6or7(
-      kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_->IsIe(kChromeUserAgent));
 }
 
