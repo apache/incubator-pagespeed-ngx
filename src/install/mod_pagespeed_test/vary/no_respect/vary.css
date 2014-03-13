@@ -1,1 +1,45 @@
+# The content is repeated to make sure it is gzippable.  If it is not
+# gzippable, then Apache 2.4 will not add Vary:Accept-Encoding (clever 2.4)
+# and one of our system tests will fail.
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
+body { background: MediumPurple; }
 body { background: MediumPurple; }
