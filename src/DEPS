@@ -13,7 +13,11 @@
 # limitations under the License.
 
 vars = {
-  "chromium_trunk": "http://src.chromium.org/svn/trunk",
+  # chromium.org and googlecode.com will redirect https URLs for directories
+  # that don't end with a trailing slash to http. We therefore try to make sure
+  # all https URLs include the trailing slash, but it's unclear if SVN actually
+  # respects this.
+  "chromium_trunk": "https://src.chromium.org/svn/trunk/",
   # We don't include @ inside the revision here as is customary since
   # we want to pass this into a -D flag
   "chromium_revision_num": "161115",
@@ -23,38 +27,41 @@ vars = {
   # chromium base, but sometimes it's easier to update it separately.
   "chromium_webp_android_revision": "@200538",
 
-  "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/trunk",
+  "libpagespeed_svn_root": "https://page-speed.googlecode.com/svn/",
+  "libpagespeed_trunk": "https://page-speed.googlecode.com/svn/lib/trunk/",
   "libpagespeed_revision": "@2439",
 
-  "modspdy_src": "http://mod-spdy.googlecode.com/svn/trunk/src",
+  "modspdy_src": "https://mod-spdy.googlecode.com/svn/trunk/src/",
   "modspdy_revision": "@387",
 
-  "serf_src": "http://serf.googlecode.com/svn/tags/1.1.0",
+  "serf_src": "https://serf.googlecode.com/svn/tags/1.1.0/",
   "serf_revision": "@head",
 
-  "apr_src": "http://svn.apache.org/repos/asf/apr/apr/tags/1.4.2",
+  "apr_src": "https://svn.apache.org/repos/asf/apr/apr/tags/1.4.2/",
   "apr_revision": "@head",
 
-  "aprutil_src": "http://svn.apache.org/repos/asf/apr/apr-util/tags/1.3.9",
+  "aprutil_src": "https://svn.apache.org/repos/asf/apr/apr-util/tags/1.3.9/",
   "aprutil_revision": "@head",
 
-  "apache_httpd_src": "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.15",
+  "apache_httpd_src":
+    "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.15/",
   "apache_httpd_revision": "@head",
 
-  # TOD(morlovich) We can't actually run with 2.4.1; but 2.4.2 isn't tagged yet
+  # TODO(morlovich) We can't actually run with 2.4.1; but 2.4.2 isn't tagged yet
   # and the headers are certainly good enough.
   "apache_httpd24_src":
-    "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1",
+    "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1/",
   "apache_httpd24_revision": "@head",
 
-  "jsoncpp_src": "https://svn.code.sf.net/p/jsoncpp/code/trunk",
+  "jsoncpp_src": "https://svn.code.sf.net/p/jsoncpp/code/trunk/",
   "jsoncpp_revision": "@247",
 
-  "gflags_root": "http://google-gflags.googlecode.com/svn/tags/gflags-1.5/src",
+  "gflags_root":
+    "https://gflags.googlecode.com/svn/tags/gflags-1.5/src/",
   "gflags_revision": "@head",
 
-  "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
+  "google_sparsehash_root":
+    "https://sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src/",
   "google_sparsehash_revision": "@head",
 
   # Comment this out to disable HTTPS fetching via serf.  See also the
@@ -64,9 +71,9 @@ vars = {
   # 'gclient' command, without having to edit the gyp & DEPS files.
   #
   # The revision we are picking here is to a specific commit found on
-  # http://git.chromium.org/gitweb/?p=chromium/deps/openssl.git;a=summary :
+  # https://git.chromium.org/gitweb/?p=chromium/deps/openssl.git;a=summary :
   # 2013-11-18 agl@chromium.org Also remove chacha_vec.c from x86.
-  "openssl_src": "http://git.chromium.org/chromium/deps/openssl.git",
+  "openssl_src": "https://git.chromium.org/chromium/deps/openssl.git",
   "openssl_revision": "@74e3032cd121a9275486e6b5653da87b3285cf7d",
 }
 
@@ -75,57 +82,59 @@ deps = {
   # Fetch dependent DEPS so we can sync our other dependencies relative
   # to them.
   Var("chromium_deps_root"):
-    File(Var("chromium_trunk") + "/src/DEPS@" + Var("chromium_revision_num")),
+    File(Var("chromium_trunk") + "src/DEPS@" + Var("chromium_revision_num")),
 
   # Other dependencies.
   "src/build/temp_gyp":
-    Var("libpagespeed_trunk") + "/src/build/temp_gyp" +
+    Var("libpagespeed_trunk") + "src/build/temp_gyp/" +
       Var("libpagespeed_revision"),
 
   # We check 'build/android' out of Chromium repo to get
   # 'android/cpufeatures.gypi', which is needed to compile libwebp.
   "src/build/android":
-    Var("chromium_trunk") + "/src/build/android" +
-    Var("chromium_webp_android_revision"),
+    Var("chromium_trunk") + "src/build/android/" +
+        Var("chromium_webp_android_revision"),
   "src/build/ios":
-    Var("chromium_trunk") + "/src/build/ios@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/build/ios/@" + Var("chromium_revision_num"),
   "src/build/internal":
-    Var("chromium_trunk") + "/src/build/internal@" +
+    Var("chromium_trunk") + "src/build/internal/@" +
       Var("chromium_revision_num"),
   "src/build/linux":
-    Var("chromium_trunk") + "/src/build/linux@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/build/linux/@" + Var("chromium_revision_num"),
   "src/build/mac":
-    Var("chromium_trunk") + "/src/build/mac@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/build/mac/@" + Var("chromium_revision_num"),
   "src/build/win":
-    Var("chromium_trunk") + "/src/build/win@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/build/win/@" + Var("chromium_revision_num"),
 
   # TODO(huibao): Remove references to libpagespeed.
-  "src/third_party/giflib": Var("libpagespeed_svn_root") + "/deps/giflib-4.1.6",
-  "src/third_party/icu": Var("libpagespeed_svn_root") + "/deps/icu461",
-  "src/third_party/optipng": Var("libpagespeed_svn_root") + "/deps/optipng-0.7.4",
-  "src/third_party/zlib": Var("libpagespeed_svn_root") + "/deps/zlib-1.2.5",
+  "src/third_party/giflib":
+    Var("libpagespeed_svn_root") + "deps/giflib-4.1.6/",
+  "src/third_party/icu": Var("libpagespeed_svn_root") + "deps/icu461/",
+  "src/third_party/optipng":
+    Var("libpagespeed_svn_root") + "deps/optipng-0.7.4/",
+  "src/third_party/zlib": Var("libpagespeed_svn_root") + "deps/zlib-1.2.5/",
 
   # Yasm assember is required for libjpeg_turbo.
   "src/third_party/libjpeg_turbo/yasm":
-    Var("chromium_trunk") + "/src/third_party/yasm@" +
+    Var("chromium_trunk") + "src/third_party/yasm/@" +
         Var("chromium_revision_num"),
 
   "src/third_party/libjpeg_turbo/yasm/source/patched-yasm":
-    Var("chromium_trunk") + "/deps/third_party/yasm/patched-yasm@" +
+    Var("chromium_trunk") + "deps/third_party/yasm/patched-yasm/@" +
         Var("chromium_revision_num"),
 
   "src/third_party/libjpeg_turbo/src":
-    Var("chromium_trunk") + "/deps/third_party/libjpeg_turbo@" +
+    Var("chromium_trunk") + "deps/third_party/libjpeg_turbo/@" +
         Var("chromium_revision_num"),
 
   "src/googleurl": From(Var("chromium_deps_root")),
 
   "src/googleurl_noconv":
-    (Var("libpagespeed_trunk") + "/src/googleurl_noconv" +
-     Var("libpagespeed_revision")),
+    Var("libpagespeed_trunk") + "src/googleurl_noconv/" +
+        Var("libpagespeed_revision"),
 
   "src/testing":
-    Var("chromium_trunk") + "/src/testing@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/testing/@" + Var("chromium_revision_num"),
   "src/testing/gtest": From(Var("chromium_deps_root")),
   "src/testing/gmock": From(Var("chromium_deps_root")),
 
@@ -136,47 +145,47 @@ deps = {
     Var("aprutil_src") + Var("aprutil_revision"),
 
   "src/third_party/httpd/src/include":
-    Var("apache_httpd_src") + "/include" + Var("apache_httpd_revision"),
+    Var("apache_httpd_src") + "include/" + Var("apache_httpd_revision"),
 
   "src/third_party/httpd/src/os":
-    Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
+    Var("apache_httpd_src") + "os/" + Var("apache_httpd_revision"),
 
   "src/third_party/httpd24/src/include":
-    Var("apache_httpd24_src") + "/include" + Var("apache_httpd24_revision"),
+    Var("apache_httpd24_src") + "include/" + Var("apache_httpd24_revision"),
 
   "src/third_party/httpd24/src/os":
-    Var("apache_httpd24_src") + "/os" + Var("apache_httpd24_revision"),
+    Var("apache_httpd24_src") + "os/" + Var("apache_httpd24_revision"),
 
   "src/third_party/chromium/src/base":
-    Var("chromium_trunk") + "/src/base@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/base/@" + Var("chromium_revision_num"),
 
   "src/third_party/chromium/src/build":
-    Var("chromium_trunk") + "/src/build@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/build/@" + Var("chromium_revision_num"),
 
   # TODO(morlovich): This is picked up from new revision to workaround
   # SVN weirdness; it should go away when that's sorted or we update
   # past that.
   "src/third_party/chromium/src/build/util":
-    File(Var("chromium_trunk") + "/src/build/util/@252481"),
+    File(Var("chromium_trunk") + "src/build/util/@252481"),
 
   "src/third_party/chromium/src/net/base":
-     Var("chromium_trunk") + "/src/net/base@" +
-     Var("chromium_revision_num"),
+     Var("chromium_trunk") + "src/net/base/@" +
+         Var("chromium_revision_num"),
 
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
   "src/third_party/protobuf":
-    (Var("chromium_trunk") + "/src/third_party/protobuf@" +
+    (Var("chromium_trunk") + "src/third_party/protobuf/@" +
       Var("chromium_revision_num")),
 
   # Json cpp.
   "src/third_party/jsoncpp/src":
-    Var("jsoncpp_src") + "/jsoncpp/src" + Var("jsoncpp_revision"),
+    Var("jsoncpp_src") + "jsoncpp/src/" + Var("jsoncpp_revision"),
 
   "src/third_party/jsoncpp/include":
-    Var("jsoncpp_src") + "/jsoncpp/include" + Var("jsoncpp_revision"),
+    Var("jsoncpp_src") + "jsoncpp/include/" + Var("jsoncpp_revision"),
 
   # Serf
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
@@ -185,22 +194,23 @@ deps = {
 
   # We check libwebp out of Chromium repo to get the .gyp file.
   "src/third_party/libwebp":
-     Var("chromium_trunk") + "/src/third_party/libwebp" +
-     Var("chromium_webp_android_revision"),
+     Var("chromium_trunk") + "src/third_party/libwebp/" +
+         Var("chromium_webp_android_revision"),
 
   "src/tools/clang":
-    (Var("chromium_trunk") + "/src/tools/clang@" +
+    (Var("chromium_trunk") + "src/tools/clang/@" +
       Var("chromium_revision_num")),
 
   "src/tools/gyp": From(Var("chromium_deps_root")),
 
   "src/third_party/modp_b64":
-    Var("chromium_trunk") + "/src/third_party/modp_b64@" +
+    Var("chromium_trunk") + "src/third_party/modp_b64/@" +
     Var("chromium_revision_num"),
 
   # RE2.
   "src/third_party/re2/src":
-    Var("chromium_trunk") + "/src/third_party/re2@" + Var("chromium_revision_num"),
+    Var("chromium_trunk") + "src/third_party/re2/@" +
+        Var("chromium_revision_num"),
 
   # Comment to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
