@@ -6,6 +6,7 @@ exec make \
     APACHE_DOC_ROOT=/var/www/html \
     APACHE_LOG=/var/log/httpd/error_log \
     APACHE_MODULES=/etc/httpd/modules \
+    APACHE_CONF=/etc/httpd/conf/httpd.conf \
     APACHE_PIDFILE=/var/run/httpd.pid \
     APACHE_PROGRAM=/usr/sbin/httpd \
     APACHE_ROOT=/etc/httpd \

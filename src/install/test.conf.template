@@ -1,0 +1,6 @@
+<Directory "APACHE_DOC_ROOT/do_not_modify" >
+  Header set Cache-control "max-age=300"
+  Header set Set-cookie "test-cookie"
+</Directory>
+
+Redirect 204 /no_content

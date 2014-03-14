@@ -33,7 +33,7 @@ SUDO=${SUDO:-}
 SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
 # TODO(jkarlin): Should we just use a vhost instead?  If so, remember to update
 # all scripts that use TEST_PROXY_ORIGIN.
-TEST_PROXY_ORIGIN=${TEST_PROXY_ORIGIN:-modpagespeed.com}
+PAGESPEED_TEST_HOST=${PAGESPEED_TEST_HOST:-modpagespeed.com}
 
 # Run General system tests.
 #
@@ -821,7 +821,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Issue 582 this used to fail with a 403 (Forbidden).
   start_test Reverse proxy a pagespeed URL.
 
-  PROXY_PATH="http://$TEST_PROXY_ORIGIN/mod_pagespeed_example/styles"
+  PROXY_PATH="http://$PAGESPEED_TEST_HOST/mod_pagespeed_example/styles"
   ORIGINAL="${PROXY_PATH}/yellow.css"
   FILTERED="${PROXY_PATH}/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
   WGET_ARGS="--save-headers"
@@ -2284,10 +2284,11 @@ fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
 check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
 
 echo Ensure that rewritten images strip cookies present at origin
-check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -c 'Set-Cookie'
-ORIGINAL_HEADERS=$($WGET_DUMP \
-    http://$TEST_PROXY_ORIGIN/do_not_modify/Puzzle.jpg | head)
-check_from "$ORIGINAL_HEADERS" fgrep -c 'Set-Cookie'
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q -i 'Set-Cookie'
+$WGET -O $FETCH_UNTIL_OUTFILE --save-headers \
+  http://$PAGESPEED_TEST_HOST/do_not_modify/Puzzle.jpg
+ORIGINAL_HEADERS=$(extract_headers $FETCH_UNTIL_OUTFILE)
+check_from "$ORIGINAL_HEADERS" fgrep -q -i 'Set-Cookie'
 
 start_test proxying HTML from external domain should not work
 URL="$PRIMARY_SERVER/modpagespeed_http/evil.html"
@@ -2296,9 +2297,9 @@ check [ $? = 8 ]
 check_not_from "$OUT" fgrep -q 'Set-Cookie:'
 
 start_test Fetching the HTML directly from the origin is fine including cookie.
-URL="http://$TEST_PROXY_ORIGIN/do_not_modify/evil.html"
+URL="http://$PAGESPEED_TEST_HOST/do_not_modify/evil.html"
 OUT=$($WGET_DUMP $URL)
-check_from "$OUT" fgrep -q 'Set-Cookie: test-cookie'
+check_from "$OUT" fgrep -q -i 'Set-Cookie: test-cookie'
 
 start_test IPRO-optimized resources should have fixed size, not chunked.
 URL="$EXAMPLE_ROOT/images/Puzzle.jpg"

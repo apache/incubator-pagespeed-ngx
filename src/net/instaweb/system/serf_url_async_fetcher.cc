@@ -1189,7 +1189,8 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
     active_fetches_.Add(fetch);
     active_count_->Add(1);
   } else {
-    LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
+    fetch->message_handler()->Message(kWarning, "Fetch failed to start: %s",
+                                      fetch->str_url());
     fetch->CallbackDone(false);
     delete fetch;
   }

@@ -52,7 +52,7 @@ ModPagespeedRetainComment " google_ad_section*"
 
 # Test proxying of non-.pagespeed. resources.
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
-                           http://@@TEST-PROXY-ORIGIN@@/do_not_modify
+                           http://@@PAGESPEED-TEST-HOST@@/do_not_modify
 
 # Turn on "KeepAlive" so we can test it in system_test.sh.
 KeepAlive On
@@ -66,7 +66,7 @@ ModPagespeedDefaultSharedMemoryCacheKB 0
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch" >
   ModPagespeedDisableFilters inline_images
-  ModPagespeedDomain https://@@TEST-PROXY-ORIGIN@@
+  ModPagespeedDomain https://@@PAGESPEED-TEST-HOST@@
   ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/https_gstatic_dot_com \
       https://www.gstatic.com/psa/static
 </Directory>
@@ -611,18 +611,18 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   LoadModule proxy_http_module @@APACHE_MODULES@@/mod_proxy_http.so
 </IfModule>
 
-# Proxy @@TEST-PROXY-ORIGIN@@ for testing Issue 582.
+# Proxy @@PAGESPEED-TEST-HOST@@ for testing Issue 582.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName @@TEST-PROXY-ORIGIN@@
+  ServerName @@PAGESPEED-TEST-HOST@@
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
 
   ModPagespeed off
-  ServerAlias @@TEST-PROXY-ORIGIN@@
+  ServerAlias @@PAGESPEED-TEST-HOST@@
 
-  ProxyPass / http://@@TEST-PROXY-ORIGIN@@/
-  ProxyPassReverse / http://@@TEST-PROXY-ORIGIN@@/
+  ProxyPass / http://@@PAGESPEED-TEST-HOST@@/
+  ProxyPassReverse / http://@@PAGESPEED-TEST-HOST@@/
 </VirtualHost>
 
 # The following three VHosts are created for Issue 599.

@@ -51,11 +51,11 @@ namespace {
 
 // Default domain to test URL fetches from.  If the default site is
 // down, the tests can be directed to a backup host by setting the
-// environment variable FETCH_TEST_DOMAIN.  Note that this relies on
+// environment variable PAGESPEED_TEST_HOST.  Note that this relies on
 // 'mod_pagespeed_examples/' and 'do_not_modify/' being available
 // relative to the domain, by copying them into /var/www from
 // MOD_PAGESPEED_SVN_PATH/src/install.
-const char kFetchTestDomain[] = "//modpagespeed.com";
+const char kFetchHost[] = "modpagespeed.com";
 
 // The threaded async fetching tests are a bit flaky and quite slow, especially
 // on valgrind.  Ideally that should be fixed but until it becomes a priority,
@@ -140,10 +140,11 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   }
 
   virtual void SetUp() {
-    StringPiece fetch_test_domain(getenv("FETCH_TEST_DOMAIN"));
-    if (fetch_test_domain.empty()) {
-      fetch_test_domain = kFetchTestDomain;
+    StringPiece test_host(getenv("PAGESPEED_TEST_HOST"));
+    if (test_host.empty()) {
+      test_host = kFetchHost;
     }
+    GoogleString fetch_test_domain = StrCat("//", test_host);
     apr_pool_create(&pool_, NULL);
     timer_.reset(Platform::CreateTimer());
     statistics_.reset(new SimpleStats(thread_system_.get()));
@@ -671,7 +672,11 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedNoDetail) {
     return;
   }
   ConnectionRefusedTest();
-  EXPECT_EQ(1, message_handler_.SeriousMessages());
+
+  // Depending on the timing of the failure, we may get 1 or two serious
+  // messages.
+  EXPECT_LE(1, message_handler_.SeriousMessages());
+  EXPECT_GE(2, message_handler_.SeriousMessages());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
@@ -681,7 +686,11 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
   }
   serf_url_async_fetcher_->set_list_outstanding_urls_on_error(true);
   ConnectionRefusedTest();
-  EXPECT_EQ(2, message_handler_.SeriousMessages());
+
+  // Depending on the timing of the failure, we may get 1 or two serious
+  // messages.
+  EXPECT_LE(1, message_handler_.SeriousMessages());
+  EXPECT_GE(2, message_handler_.SeriousMessages());
 }
 
 // Test that the X-Original-Content-Length header is properly set

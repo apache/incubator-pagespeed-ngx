@@ -63,8 +63,8 @@ APACHE_PROGRAM           = /usr/sbin/apache2
 
 # For testing proxying of an external domain, this represents the domain we
 # are proxying from.
-TEST_PROXY_ORIGIN ?= modpagespeed.com
-export TEST_PROXY_ORIGIN
+PAGESPEED_TEST_HOST ?= modpagespeed.com
+export PAGESPEED_TEST_HOST
 
 # The installation directory for executables
 BINDIR = /usr/bin
@@ -372,7 +372,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
 	    -e "s!@@APACHE_TERTIARY_PORT@@!$(APACHE_TERTIARY_PORT)!g" \
-	    -e "s!@@TEST-PROXY-ORIGIN@@!$(TEST_PROXY_ORIGIN)!g" \
+	    -e "s!@@PAGESPEED-TEST-HOST@@!$(PAGESPEED_TEST_HOST)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s!@@MOD_PAGESPEED_LOG@@!$(MOD_PAGESPEED_LOG)!g" \
 	    -e "s!@@SSL_CERT_DIR@@!$(SSL_CERT_DIR)!g" \
@@ -545,6 +545,18 @@ apache_install_conf :
 	    $(OPT_PER_VHOST_STATS_TEST) \
 	    $(OPT_NO_PER_VHOST_STATS_TEST) \
 	    $(OPT_STATS_LOGGING_TEST)
+
+# Sets up a machine to run as a server for running mod_pagespeed tests.
+# The tests include the fetching and proxying of a variety of content,
+# including some of the /mod_pagespeed_example directory, plus some other
+# content in /do_not_modify and /no_content.
+setup_test_machine :
+	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+	APACHE_CONF=$(APACHE_CONF) \
+	MOD_PAGESPEED_ROOT=$(MOD_PAGESPEED_ROOT) \
+	APACHE_CONF_D=$(APACHE_CONF_D) \
+	./setup_test_machine.sh
+	sudo $(APACHE_CONTROL_PROGRAM) restart
 
 apache_debug_restart :
 	$(APACHE_CONTROL_PROGRAM) restart
