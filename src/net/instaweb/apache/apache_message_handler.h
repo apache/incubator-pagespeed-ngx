@@ -56,7 +56,7 @@ class ApacheMessageHandler : public MessageHandler {
     pid_string_ = StrCat("[", Integer64ToString(pid), "]");
   }
   // Dump contents of SharedCircularBuffer.
-  bool Dump(Writer* writer);
+  virtual bool Dump(Writer* writer);
 
  protected:
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);

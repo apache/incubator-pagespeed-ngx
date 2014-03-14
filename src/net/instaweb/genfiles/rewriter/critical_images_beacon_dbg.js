@@ -653,8 +653,11 @@ goog.string.toMap = function(s) {
   }
   return rv;
 };
-goog.string.contains = function(s, ss) {
-  return-1 != s.indexOf(ss);
+goog.string.contains = function(str, subString) {
+  return-1 != str.indexOf(subString);
+};
+goog.string.caseInsensitiveContains = function(str, subString) {
+  return goog.string.contains(str.toLowerCase(), subString.toLowerCase());
 };
 goog.string.countOf = function(s, ss) {
   return s && ss ? s.split(ss).length - 1 : 0;

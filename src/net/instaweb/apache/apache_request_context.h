@@ -23,6 +23,7 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
 #define NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
 
+#include "base/logging.h"
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -38,6 +39,9 @@ class Timer;
 
 class ApacheRequestContext : public SystemRequestContext {
  public:
+  // Constructs a request suitable for querying options, but not for
+  // initiating fetches.  To prepare a context for fetches, call
+  // SetupSpdyConnectionIfNeeded after construction.
   ApacheRequestContext(AbstractMutex* logging_mutex,
                        Timer* timer,
                        int local_port,
@@ -48,8 +52,14 @@ class ApacheRequestContext : public SystemRequestContext {
   // fails if it is not. Returns NULL if rc is NULL.
   static ApacheRequestContext* DynamicCast(RequestContext* rc);
 
+  // Creates the data structures needed to do SPDY loopback fetches, if
+  // required based on the current connection state.
+  void SetupSpdyConnectionIfNeeded(request_rec* req);
+
   bool use_spdy_fetcher() const { return use_spdy_fetcher_; }
   spdy_slave_connection_factory* spdy_connection_factory() {
+    DCHECK(!use_spdy_fetcher_ || (spdy_connection_factory_ != NULL))
+        << "Must call SetupSpdyConnectionIfNeeded before fetching";
     return spdy_connection_factory_;
   }
 

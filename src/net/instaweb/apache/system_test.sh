@@ -268,7 +268,7 @@ fi
 # Test /mod_pagespeed_message exists.
 start_test Check if /mod_pagespeed_message page exists.
 OUT=$($WGET --save-headers -q -O - $MESSAGE_URL | head -1)
-check_from "$OUT" fgrep "HTTP/1.1 200 OK"
+check_from "$OUT" egrep -q 'HTTP/1[.]. 200 OK'
 
 # Note: There is a similar test in system_test.sh
 #
@@ -300,6 +300,8 @@ function response_header_test() {
     mkdir -p $OUTDIR
 
     # Get the file
+    echo $WGET -q -S -O - \
+      "$TEST_ROOT/response_headers.html?$query" '>&' $OUTDIR/header_out
     check $WGET -q -S -O - \
       "$TEST_ROOT/response_headers.html?$query" >& $OUTDIR/header_out
 

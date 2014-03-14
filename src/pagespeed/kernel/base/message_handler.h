@@ -27,6 +27,8 @@
 
 namespace net_instaweb {
 
+class Writer;
+
 enum MessageType {
   kInfo,
   kWarning,
@@ -97,6 +99,11 @@ class MessageHandler {
                             va_list args) = 0;
   virtual void FileMessageVImpl(MessageType type, const char* filename,
                                 int line, const char* msg, va_list args) = 0;
+
+  // Dumps recent messages, or returns false if this was not possible.
+  // The default implementation returns false, but derived classes may
+  // add a circular buffer to implement this, e.g. SharedCircularBuffer.
+  virtual bool Dump(Writer* writer);
 
  protected:
   GoogleString Format(const char* msg, va_list args);

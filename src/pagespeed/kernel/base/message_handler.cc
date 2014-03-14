@@ -147,4 +147,8 @@ GoogleString MessageHandler::Format(const char* msg, va_list args) {
   return buffer;
 }
 
+bool MessageHandler::Dump(Writer* writer) {
+  return false;
+}
+
 }  // namespace net_instaweb

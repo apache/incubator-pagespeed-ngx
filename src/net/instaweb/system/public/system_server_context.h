@@ -28,6 +28,7 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class AsyncFetch;
 class ContentType;
 class Histogram;
 class RewriteDriver;
@@ -103,7 +104,10 @@ class SystemServerContext : public ServerContext {
 
   // Handler which serves PSOL console.
   // Note: ConsoleHandler always succeeds.
-  void ConsoleHandler(const SystemRewriteOptions& options, Writer* writer);
+  void ConsoleHandler(const SystemRewriteOptions& options, AsyncFetch* fetch);
+
+  // Displays recent Info/Warning/Error messages.
+  void MessageHistoryHandler(AsyncFetch* fetch);
 
   // Deprecated handler for graphs in the PSOL console.
   void StatisticsGraphsHandler(Writer* writer);

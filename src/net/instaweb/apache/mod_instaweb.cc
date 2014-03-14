@@ -30,7 +30,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_request_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -42,8 +41,6 @@
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
@@ -56,11 +53,11 @@
 #include "net/instaweb/system/public/loopback_route_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/system/public/system_rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -223,7 +220,7 @@ bool check_pagespeed_applicable(request_rec* request,
   // rewrittten, could in turn spawn more requests which could cascade into a
   // bad situation.  To mod_pagespeed, any fetched HTML is an error condition,
   // so there's no reason to rewrite it anyway.
-  if (is_pagespeed_subrequest(request)) {
+  if (InstawebHandler::is_pagespeed_subrequest(request)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: User-Agent appears to be "
                   "mod_pagespeed");
@@ -364,61 +361,6 @@ class ScopedTimer {
   int64 start_time_us_;
 };
 
-
-const RewriteOptions* compute_request_options(
-    request_rec* request,
-    ApacheServerContext* server_context,
-    ApacheRewriteDriverFactory* factory,
-    ApacheRequestContext* apache_request,
-    RequestContextPtr request_context,
-    scoped_ptr<RewriteOptions>* custom_options,
-    bool *use_custom_options) {
-  ApacheConfig* directory_options = static_cast<ApacheConfig*>
-      ap_get_module_config(request->per_dir_config, &pagespeed_module);
-
-  bool using_spdy = request_context->using_spdy();
-  const RewriteOptions* host_options = server_context->global_options();
-  if (using_spdy && server_context->SpdyGlobalConfig() != NULL) {
-    host_options = server_context->SpdyGlobalConfig();
-  }
-  const RewriteOptions* options = host_options;
-
-  server_context->FlushCacheIfNecessary();
-
-  if ((directory_options != NULL) && directory_options->modified()) {
-    custom_options->reset(factory->NewRewriteOptions());
-    (*custom_options)->Merge(*host_options);
-    (*custom_options)->Merge(*directory_options);
-    server_context->ComputeSignature(custom_options->get());
-    options = custom_options->get();
-    *use_custom_options = true;
-  }
-  return options;
-}
-
-const RewriteOptions* get_request_options(
-    request_rec* request,
-    scoped_ptr<RewriteOptions>* custom_options) {
-  ApacheServerContext* server_context =
-      InstawebContext::ServerContextFromServerRec(request->server);
-  // Escape ASAP if we're in unplugged mode.
-  if (server_context->global_config()->unplugged()) {
-    return NULL;
-  }
-  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
-
-  ApacheRequestContext* apache_request =
-      server_context->NewApacheRequestContext(request);
-  RequestContextPtr request_context(apache_request);
-  bool use_custom_options = false;
-  return compute_request_options(
-       request, server_context, factory, apache_request, request_context,
-       custom_options,
-       &use_custom_options);
-}
-
-
-
 // Builds a new context for an HTML request, returning NULL if we decide
 // that we should not handle the request for various reasons.
 // TODO(sligocki): Move most of these checks into non-Apache specific code.
@@ -429,17 +371,10 @@ InstawebContext* build_context_for_request(request_rec* request) {
   if (server_context->global_config()->unplugged()) {
     return NULL;
   }
-  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
-  scoped_ptr<RewriteOptions> custom_options;
 
-  ApacheRequestContext* apache_request =
-      server_context->NewApacheRequestContext(request);
-  RequestContextPtr request_context(apache_request);
-  bool use_custom_options = false;
-
-  const RewriteOptions* options = compute_request_options(
-       request, server_context, factory, apache_request, request_context,
-       &custom_options, &use_custom_options);
+  InstawebHandler instaweb_handler(request);
+  const RewriteOptions* options = instaweb_handler.options();
+  instaweb_handler.SetupSpdyConnectionIfNeeded();
 
   if (request->unparsed_uri == NULL) {
     // TODO(jmarantz): consider adding Debug message if unparsed_uri is NULL,
@@ -505,118 +440,13 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
-  // Determine the absolute URL for this request.
-  const char* absolute_url = InstawebContext::MakeRequestUrl(
-      *server_context->global_config(), request);
-  apache_request->set_url(absolute_url);
-
-  // The final URL.  This is same as absolute_url but with ModPagespeed* query
-  // params, if any, stripped.
-  GoogleString final_url;
-
-  scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
-  ResponseHeaders response_headers;
-  {
-    // TODO(mmohabey): Add a hook which strips off the PageSpeed* query
-    // (instead of stripping them here) params before content generation.
-    GoogleUrl gurl(absolute_url);
-    ApacheRequestToRequestHeaders(*request, request_headers.get());
-
-    // Copy headers_out and err_headers_out into response_headers.
-    // Note that err_headers_out will come after the headers_out in the list of
-    // headers. Because of this, err_headers_out will effectively override
-    // headers_out when we call GetQueryOptions as it applies the header options
-    // in order.
-    ApacheRequestToResponseHeaders(*request, &response_headers,
-                                   &response_headers);
-    int num_response_attributes = response_headers.NumAttributes();
-    ServerContext::OptionsBoolPair query_options_success =
-        server_context->GetQueryOptions(&gurl, request_headers.get(),
-                                        &response_headers);
-
-    if (!query_options_success.second) {
-      ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
-                    "Request not rewritten because PageSpeed "
-                    "query-params or headers are invalid.");
-      return NULL;
-    }
-    if (query_options_success.first != NULL) {
-      use_custom_options = true;
-      // TODO(sriharis): Can we use ServerContext::GetCustomOptions(
-      //   request_headers.get(), NULL, query_options_success.first) here?
-      // The only issue will be the XmlHttpRequest disabling of filters that
-      // insert js, that is done there.
-      scoped_ptr<RewriteOptions> query_options(query_options_success.first);
-      RewriteOptions* merged_options = factory->NewRewriteOptions();
-      merged_options->Merge(*options);
-      merged_options->Merge(*query_options.get());
-      // Don't run any experiments if we're handling a query params request
-      // unless EnrollExperiment is on.
-      if (!merged_options->enroll_experiment()) {
-        merged_options->set_running_experiment(false);
-      }
-      server_context->ComputeSignature(merged_options);
-      custom_options.reset(merged_options);
-      options = merged_options;
-
-      if (gurl.IsWebValid()) {
-        // Set final url to gurl which has PageSpeed* query params
-        // stripped.
-        final_url = gurl.Spec().as_string();
-      }
-
-      // Write back the modified response headers if any have been stripped by
-      // GetQueryOptions (which indicates that options were found).
-      // Note: GetQueryOptions should not add or mutate headers, only remove
-      // them.
-      DCHECK(response_headers.NumAttributes() <= num_response_attributes);
-      if (response_headers.NumAttributes() < num_response_attributes) {
-        // Something was stripped, but we don't know if it came from
-        // headers_out or err_headers_out.  We need to treat them separately.
-        if (apr_is_empty_table(request->err_headers_out)) {
-          // We know that response_headers were all from request->headers_out
-          apr_table_clear(request->headers_out);
-          ResponseHeadersToApacheRequest(response_headers, request);
-        } else if (apr_is_empty_table(request->headers_out)) {
-          // We know that response_headers were all from err_headers_out
-          apr_table_clear(request->err_headers_out);
-          ErrorHeadersToApacheRequest(response_headers, request);
-        } else {
-          // We don't know which table changed, so scan them individually and
-          // write them both back. This should be a rare case and could be
-          // optimized a bit if we find that we're spending time here.
-          ResponseHeaders tmp_err_resp_headers, tmp_resp_headers;
-          ThreadSystem* thread_system = server_context->thread_system();
-          ApacheConfig unused_opts1("unused_options1", thread_system),
-                       unused_opts2("unused_options2", thread_system);
-
-          ApacheRequestToResponseHeaders(*request, &tmp_resp_headers,
-                                         &tmp_err_resp_headers);
-
-          // Use ScanHeader's parsing logic to find and strip the PageSpeed
-          // options from the headers. Use NULL for device_properties as no
-          // device property information is needed for the stripping.
-          RewriteQuery::ScanHeader(
-              &tmp_err_resp_headers, NULL /* device_properties */,
-              &unused_opts1, factory->message_handler());
-          RewriteQuery::ScanHeader(
-              &tmp_resp_headers, NULL  /* device_properties */, &unused_opts2,
-              factory->message_handler());
-
-          // Write the stripped headers back to the Apache record.
-          apr_table_clear(request->err_headers_out);
-          apr_table_clear(request->headers_out);
-          ResponseHeadersToApacheRequest(tmp_resp_headers, request);
-          ErrorHeadersToApacheRequest(tmp_err_resp_headers, request);
-        }
-      }
-    }
+  const GoogleUrl& stripped_gurl = instaweb_handler.stripped_gurl();
+  if (!stripped_gurl.IsWebValid()) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                  "Request not rewritten because: invalid URL %s.",
+                  stripped_gurl.spec_c_str());
+    return NULL;
   }
-
-  if (final_url.empty()) {
-    final_url = absolute_url;
-  }
-  ServerContext::ScanSplitHtmlRequest(request_context, options, &final_url);
 
   // TODO(sligocki): Move inside PSOL.
   // Is PageSpeed turned off? We check after parsing query params so that
@@ -627,6 +457,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
+  GoogleString final_url;
+  stripped_gurl.Spec().CopyToString(&final_url);
+
   // TODO(sligocki): Move inside PSOL.
   // Do Disallow statements restrict us from rewriting this URL?
   if (!options->IsAllowed(final_url)) {
@@ -635,9 +468,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
+  instaweb_handler.RemoveStrippedResponseHeadersFromApacheReequest();
+  ServerContext::ScanSplitHtmlRequest(instaweb_handler.request_context(),
+                                      options, &final_url);
+
   InstawebContext* context = new InstawebContext(
-      request, request_headers.release(), *content_type, server_context,
-      final_url, request_context, use_custom_options, *options);
+      request,
+      instaweb_handler.ReleaseRequestHeaders(),
+      *content_type, server_context,
+      final_url, instaweb_handler.request_context(),
+      instaweb_handler.use_custom_options(),
+      *options);
 
   // TODO(sligocki): Move inside PSOL.
   InstawebContext::ContentEncoding encoding = context->content_encoding();
@@ -821,8 +662,8 @@ apr_status_t instaweb_fix_headers_filter(
   // ServerContext::ApplyInputCacheControl
   DisableCachingRelatedHeaders(request);
 
-  scoped_ptr<RewriteOptions> custom_options;
-  const RewriteOptions* options = get_request_options(request, &custom_options);
+  InstawebHandler instaweb_handler(request);
+  const RewriteOptions* options = instaweb_handler.options();
   if (!options->IsDownstreamCacheIntegrationEnabled()) {
     // Downstream cache integration is not enabled. Disable original
     // Cache-Control headers.
@@ -977,7 +818,7 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
 
       // We now have the final headers.  If they don't let us cache then we'll
       // abort even though we've already buffered up the whole resource.
-      AboutToBeDoneWithRecorder(request, recorder);
+      InstawebHandler::AboutToBeDoneWithRecorder(request, recorder);
       recorder->DoneAndSetHeaders(&response_headers);  // Deletes recorder.
     }
   }
@@ -1207,7 +1048,8 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
   log_message_handler::Install(pool);
 
   // Use instaweb to handle generated resources.
-  ap_hook_handler(instaweb_handler, NULL, NULL, APR_HOOK_FIRST - 1);
+  ap_hook_handler(InstawebHandler::instaweb_handler, NULL, NULL,
+                  APR_HOOK_FIRST - 1);
 
   // Try to provide more accurate IP information for requests we create.
   ap_hook_post_read_request(pagespeed_modify_request, NULL, NULL,
@@ -1260,13 +1102,13 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
   // mod_rewrite registers at APR_HOOK_FIRST.  We'd like to leave
   // space for user modules at APR_HOOK_FIRST-1, so we go to
   // APR_HOOK_FIRST - 2.
-  ap_hook_translate_name(save_url_hook, NULL, NULL,
+  ap_hook_translate_name(InstawebHandler::save_url_hook, NULL, NULL,
                          APR_HOOK_FIRST - 2);
 
   // By default, apache imposes limitations on URL segments of around
   // 256 characters that appear to correspond to filename limitations.
   // To prevent that, we hook map_to_storage for our own purposes.
-  ap_hook_map_to_storage(instaweb_map_to_storage, NULL, NULL,
+  ap_hook_map_to_storage(InstawebHandler::instaweb_map_to_storage, NULL, NULL,
                          APR_HOOK_FIRST - 2);
 
   // Hook which will let us connect to optional functions mod_spdy

@@ -34,11 +34,9 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -52,20 +50,12 @@
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/escaping.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "pagespeed/kernel/base/callback.h"
-#include "pagespeed/kernel/html/html_keywords.h"
 
 #include "http_config.h"
 #include "http_core.h"
@@ -98,241 +88,166 @@ const char kResourceUrlYes[] = "<YES>";
 // instance).
 const size_t kMaxPostSizeBytes = 131072;
 
-// Links an apache request_rec* to an AsyncFetch, adding the ability to
-// block based on a condition variable.
-class ApacheFetch : public AsyncFetchUsingWriter {
- public:
-  ApacheFetch(const GoogleString& mapped_url,
-              ServerContext* server_context,
-              request_rec* request,
-              const RequestContextPtr& request_context,
-              const RewriteOptions* options)
-      : AsyncFetchUsingWriter(request_context, &apache_writer_),
-        mapped_url_(mapped_url),
-        apache_writer_(request),
-        server_context_(server_context),
-        mutex_(server_context->thread_system()->NewMutex()),
-        condvar_(mutex_->NewCondvar()),
-        done_(false),
-        handle_error_(true),
-        status_ok_(false),
-        options_(options) {
-    // We are proxying content, and the caching in the http configuration
-    // should not apply; we want to use the caching from the proxy.
-    apache_writer_.set_disable_downstream_header_filters(true);
-    apache_writer_.set_strip_cookies(true);
-    ApacheRequestToRequestHeaders(*request, request_headers());
-    request_headers()->RemoveAll(HttpAttributes::kCookie);
-    request_headers()->RemoveAll(HttpAttributes::kCookie2);
-  }
+}  // namespace
 
-  virtual ~ApacheFetch() {
-  }
+ApacheFetch::ApacheFetch(const GoogleString& mapped_url,
+                         ServerContext* server_context,
+                         request_rec* request,
+                         const RequestContextPtr& request_context,
+                         const RewriteOptions* options)
+    : AsyncFetchUsingWriter(request_context, &apache_writer_),
+      mapped_url_(mapped_url),
+      apache_writer_(request),
+      server_context_(server_context),
+      mutex_(server_context->thread_system()->NewMutex()),
+      condvar_(mutex_->NewCondvar()),
+      done_(false),
+      handle_error_(true),
+      status_ok_(false),
+      is_proxy_(false),
+      options_(options) {
+  // We are proxying content, and the caching in the http configuration
+  // should not apply; we want to use the caching from the proxy.
+  apache_writer_.set_disable_downstream_header_filters(true);
+  apache_writer_.set_strip_cookies(true);
+  ApacheRequestToRequestHeaders(*request, request_headers());
+  request_headers()->RemoveAll(HttpAttributes::kCookie);
+  request_headers()->RemoveAll(HttpAttributes::kCookie2);
+}
 
-  // When used for in-place resource optimization in mod_pagespeed, we have
-  // disabled fetching resources that are not in cache, otherwise we may wind
-  // up doing a loopback fetch to the same Apache server.  So the
-  // CacheUrlAsyncFetcher will return a 501 or 404 but we do not want to
-  // send that to the client.  So for ipro we suppress resporting errors
-  // in this flow.
-  //
-  // TODO(jmarantz): consider allowing serf fetches in ipro when running as
-  // a reverse-proxy.
-  void set_handle_error(bool x) { handle_error_ = x; }
+ApacheFetch::~ApacheFetch() {
+}
 
-  virtual void HandleHeadersComplete() {
-    int status_code = response_headers()->status_code();
-    status_ok_ = (status_code != 0) && (status_code < 400);
-    if (handle_error_ || status_ok_) {
-      // TODO(sligocki): Add X-Mod-Pagespeed header.
-      if (content_length_known()) {
-        apache_writer_.set_content_length(content_length());
-      }
-      apache_writer_.OutputHeaders(response_headers());
+void ApacheFetch::HandleHeadersComplete() {
+  int status_code = response_headers()->status_code();
+  status_ok_ = (status_code != 0) && (status_code < 400);
+
+  if (handle_error_ || status_ok_) {
+    CHECK(response_headers()->Has(HttpAttributes::kContentType));
+
+    int64 now_ms = server_context_->timer()->NowMs();
+    response_headers()->SetDate(now_ms);
+    response_headers()->SetLastModified(now_ms);
+
+    // http://msdn.microsoft.com/en-us/library/ie/gg622941(v=vs.85).aspx
+    // Script and styleSheet elements will reject responses with
+    // incorrect MIME types if the server sends the response header
+    // "X-Content-Type-Options: nosniff". This is a security feature
+    // that helps prevent attacks based on MIME-type confusion.
+    if (!is_proxy_) {
+      response_headers()->Add("X-Content-Type-Options", "nosniff");
     }
-  }
 
-  virtual void HandleDone(bool success) {
+    // TODO(sligocki): Add X-Mod-Pagespeed header.
+    if (content_length_known()) {
+      apache_writer_.set_content_length(content_length());
+    }
+
+    // Default cache-control to nocache.
+    if (!response_headers()->Has(HttpAttributes::kCacheControl)) {
+      response_headers()->Add(HttpAttributes::kCacheControl,
+                              HttpAttributes::kNoCacheMaxAge0);
+    }
+    response_headers()->ComputeCaching();
+
+    apache_writer_.OutputHeaders(response_headers());
+  }
+}
+
+void ApacheFetch::HandleDone(bool success) {
+  ScopedMutex lock(mutex_.get());
+  done_ = true;
+  if (status_ok_ && !success) {
+    server_context_->message_handler()->Message(
+        kWarning,
+        "Response for url %s issued with status %d %s but "
+        "failed to complete.",
+        mapped_url_.c_str(), response_headers()->status_code(),
+        response_headers()->reason_phrase());
+  }
+  condvar_->Signal();
+}
+
+void ApacheFetch::Wait() {
+  int64 timeout_ms = options_->blocking_fetch_timeout_ms();
+  MessageHandler* handler = server_context_->message_handler();
+  Timer* timer = server_context_->timer();
+  int64 start_ms = timer->NowMs();
+  {
     ScopedMutex lock(mutex_.get());
-    done_ = true;
-    if (status_ok_ && !success) {
-      server_context_->message_handler()->Message(
-          kWarning,
-          "Response for url %s issued with status %d %s but "
-          "failed to complete.",
-          mapped_url_.c_str(), response_headers()->status_code(),
-          response_headers()->reason_phrase());
-    }
-    condvar_->Signal();
-  }
-
-  // Blocks indefinitely waiting for the proxy fetch to complete.
-  // Every 'blocking_fetch_timeout_ms', log a message so that if
-  // we get stuck there's noise in the logs, but we don't expect this
-  // to happen because underlying fetch/cache timeouts should fire.
-  //
-  // Note that enforcing a timeout in this function makes debugging
-  // difficult.
-  void Wait() {
-    int64 timeout_ms = options_->blocking_fetch_timeout_ms();
-    MessageHandler* handler = server_context_->message_handler();
-    Timer* timer = server_context_->timer();
-    int64 start_ms = timer->NowMs();
-    {
-      ScopedMutex lock(mutex_.get());
-      while (!done_) {
-        condvar_->TimedWait(timeout_ms);
-        if (!done_) {
-          int64 elapsed_ms = timer->NowMs() - start_ms;
-          handler->Message(
-              kWarning, "Waiting for in-place ProxyFetch on URL %s for %g sec",
-              mapped_url_.c_str(), elapsed_ms / 1000.0);
-        }
+    while (!done_) {
+      condvar_->TimedWait(timeout_ms);
+      if (!done_) {
+        int64 elapsed_ms = timer->NowMs() - start_ms;
+        handler->Message(
+            kWarning, "Waiting for completion of URL %s for %g sec",
+            mapped_url_.c_str(), elapsed_ms / 1000.0);
       }
     }
   }
+}
 
-  bool status_ok() const { return status_ok_; }
+bool ApacheFetch::IsCachedResultValid(const ResponseHeaders& headers) {
+  return OptionsAwareHTTPCacheCallback::IsCacheValid(
+      mapped_url_, *options_, request_context(), headers);
+}
 
-  virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
-    return OptionsAwareHTTPCacheCallback::IsCacheValid(
-        mapped_url_, *options_, request_context(), headers);
+InstawebHandler::InstawebHandler(request_rec* request)
+    : request_(request),
+      server_context_(InstawebContext::ServerContextFromServerRec(
+          request->server)),
+      rewrite_driver_(NULL),
+      num_response_attributes_(0) {
+  apache_request_context_ = server_context_->NewApacheRequestContext(request);
+  request_context_.reset(apache_request_context_);
+  options_ = server_context_->global_config();
+  if (apache_request_context_->using_spdy() &&
+      (server_context_->SpdyGlobalConfig() != NULL)) {
+    options_ = server_context_->SpdyGlobalConfig();
   }
+  request_headers_.reset(new RequestHeaders);
+  ApacheRequestToRequestHeaders(*request, request_headers_.get());
+  original_url_ = InstawebContext::MakeRequestUrl(*options_, request);
+  apache_request_context_->set_url(original_url_);
+  ComputeCustomOptions();
+}
 
- private:
-  GoogleString mapped_url_;
-  ApacheWriter apache_writer_;
-  ServerContext* server_context_;
-  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
-  scoped_ptr<ThreadSystem::Condvar> condvar_;
-  bool done_;
-  bool handle_error_;
-  bool status_ok_;
-  const RewriteOptions* options_;
+InstawebHandler::~InstawebHandler() {
+}
 
-  DISALLOW_COPY_AND_ASSIGN(ApacheFetch);
-};
+void InstawebHandler::SetupSpdyConnectionIfNeeded() {
+  apache_request_context_->SetupSpdyConnectionIfNeeded(request_);
+}
 
-// Context for handling a request, computing options and request headers in
-// the constructor.
-//
-// TODO(jmarantz): consider making all methods in this file that are not used as
-// Apache entry-points be members of this class.  The downside is that it does
-// some initialization and computation that is not necessary for some of the
-// entry-points.
-class InstawebHandler {
- public:
-  InstawebHandler(request_rec* request,
-                  const RequestContextPtr& request_context)  // can be null
-      : request_(request),
-        request_context_(request_context),
-        server_context_(InstawebContext::ServerContextFromServerRec(
-            request->server)),
-        rewrite_driver_(NULL) {
-    bool using_spdy = false;
-    if (request_context.get() != NULL) {
-      using_spdy = request_context->using_spdy();
-    }
-    options_ = server_context_->global_config();
-    if (using_spdy && (server_context_->SpdyGlobalConfig() != NULL)) {
-      options_ = server_context_->SpdyGlobalConfig();
-    }
+// Makes a driver from the request_context and options.  Note that
+// this can only be called once, as it potentially mutates the options
+// as it transfers ownership of custom_options.
+RewriteDriver* InstawebHandler::MakeDriver() {
+  DCHECK(rewrite_driver_ == NULL)
+      << "We can only call MakeDriver once per InstawebHandler:"
+      << original_url_;
 
-    // Do a little dance to get correct options for this request.
-    // TODO(sligocki): Put this filtering in ResourceFetch.
-    // TODO(jmarantz): Or maybe just pass through everything?
-    request_headers_.reset(new RequestHeaders);
-    scoped_ptr<HeaderPredicateFn> predicate(NewPermanentCallback(
-        this, &InstawebHandler::PassThroughRequestAttributePredicate));
-    ApacheRequestToRequestHeaders(
-        *request, request_headers_.get(), predicate.get());
-    original_url_ = InstawebContext::MakeRequestUrl(*options_, request);
-    ComputeCustomOptions();
-  }
+  rewrite_driver_ = ResourceFetch::GetDriver(
+      stripped_gurl_, custom_options_.release(), server_context_,
+      request_context_);
 
-  void PassThroughRequestAttributePredicate(StringPiece name, bool* ok) {
-    if (RewriteQuery::MightBeCustomOption(name)) {
-      *ok = true;
-    } else {
-      // A list of HTTP request headers.  These are the headers which
-      // should be passed through from the client request into the
-      // ResponseHeaders request_headers sent to the rewrite driver.
-      // Headers not in this list will be ignored so there is no need to
-      // copy them over.
-      // TODO(sligocki): Use these in ProxyInterface flow.
-      *ok = (StringCaseEqual(name, HttpAttributes::kAccept) ||
-             StringCaseEqual(name, HttpAttributes::kIfModifiedSince) ||
-             StringCaseEqual(name, HttpAttributes::kReferer) ||
-             StringCaseEqual(name, HttpAttributes::kUserAgent) ||
-             StringCaseEqual(name, HttpAttributes::kXPsaBlockingRewrite));
-    }
-  }
+  // If there were custom options, the ownership of the memory has
+  // now been transferred to the driver, but options_ still points
+  // to the same object, so it can still be used as long as the
+  // driver is alive.  However, for Karma, and in case some other
+  // option-merging is added to the driver someday, let's use the
+  // pointer from the driver now.
+  options_ = SystemRewriteOptions::DynamicCast(rewrite_driver_->options());
+  return rewrite_driver_;
+}
 
-  // Makes a driver from the request_context and options.  Note that
-  // this can only be called once, as it potentially mutates the options
-  // as it transfers ownership of custom_options.
-  RewriteDriver* MakeDriver() {
-    DCHECK(rewrite_driver_ == NULL)
-        << "We can only call MakeDriver once per InstawebHandler:"
-        << original_url_;
+ApacheFetch* InstawebHandler::MakeFetch(const GoogleString& url) {
+  return new ApacheFetch(url, server_context_, request_, request_context_,
+                         options_);
+}
 
-    rewrite_driver_ = ResourceFetch::GetDriver(
-        stripped_gurl_, custom_options_.release(), server_context_,
-        request_context_);
-
-    // If there were custom options, the ownership of the memory has
-    // now been transferred to the driver, but options_ still points
-    // to the same object, so it can still be used as long as the
-    // driver is alive.  However, for Karma, and in case some other
-    // option-merging is added to the driver someday, let's use the
-    // pointer from the driver now.
-    options_ = SystemRewriteOptions::DynamicCast(rewrite_driver_->options());
-    return rewrite_driver_;
-  }
-
-  ApacheFetch* MakeFetch(const GoogleString& url) {
-    return new ApacheFetch(url, server_context_, request_, request_context_,
-                           options_);
-  }
-
-  bool HandleAsProxy();
-  bool HandleAsInPlace();
-  void HandleAsPagespeedResource();
-
-  // Returns the options, whether they were custom-computed due to htaccess
-  // file, query params, or headers, or were the default options for the vhost.
-  const SystemRewriteOptions* options() { return options_; }
-
- private:
-  // Evaluate custom_options based upon global_options, directory-specific
-  // options and query-param/request-header options. Stores computed options
-  // in custom_options_ if needed.  Sets options_ to point to the correct
-  // options to use.
-  void ComputeCustomOptions();
-
-  request_rec* request_;
-  RequestContextPtr request_context_;
-  ApacheServerContext* server_context_;
-  scoped_ptr<RequestHeaders> request_headers_;
-  GoogleString original_url_;
-  GoogleUrl stripped_gurl_;  // Any PageSpeed query params are removed.
-  scoped_ptr<SystemRewriteOptions> custom_options_;
-
-  // These options_ can be in one of three states:
-  //   - they can point to the config's global_options
-  //   - they can point to the custom_options_
-  //   - after driver creation, they can point to the rewrite_driver_->options()
-  // Thus this set of options is not owned by this class.
-  //
-  // In all three of these states, the pointer and semantics will always be
-  // the same.  Only the ownership changes.
-  const SystemRewriteOptions* options_;
-  RewriteDriver* rewrite_driver_;
-
-  DISALLOW_COPY_AND_ASSIGN(InstawebHandler);
-};
-
-bool IsCompressibleContentType(const char* content_type) {
+/* static */
+bool InstawebHandler::IsCompressibleContentType(const char* content_type) {
   if (content_type == NULL) {
     return false;
   }
@@ -362,20 +277,11 @@ bool IsCompressibleContentType(const char* content_type) {
   return res;
 }
 
-// Default handler when the file is not found
-void instaweb_404_handler(const GoogleString& url, request_rec* request) {
-  request->status = HTTP_NOT_FOUND;
-  ap_set_content_type(request, "text/html; charset=utf-8");
-  ap_rputs("<html><head><title>Not Found</title></head>", request);
-  ap_rputs("<body><h1>Apache server with mod_pagespeed</h1>OK", request);
-  ap_rputs("<hr>NOT FOUND:", request);
-  ap_rputs(url.c_str(), request);
-  ap_rputs("</body></html>", request);
-}
-
-void send_out_headers_and_body(request_rec* request,
-                               const ResponseHeaders& response_headers,
-                               const GoogleString& output) {
+/* static */
+void InstawebHandler::send_out_headers_and_body(
+    request_rec* request,
+    const ResponseHeaders& response_headers,
+    const GoogleString& output) {
   // We always disable downstream header filters when sending out
   // pagespeed resources, since we've captured them in the origin fetch.
   ResponseHeadersToApacheRequest(response_headers, request);
@@ -422,9 +328,19 @@ void InstawebHandler::ComputeCustomOptions() {
   // Note: We do not generally get response headers in the resource flow,
   // so NULL is passed in instead.
   stripped_gurl_.Reset(original_url_);
+
+  // Copy headers_out and err_headers_out into response_headers.
+  // Note that err_headers_out will come after the headers_out in the list of
+  // headers. Because of this, err_headers_out will effectively override
+  // headers_out when we call GetQueryOptions as it applies the header options
+  // in order.
+  ApacheRequestToResponseHeaders(*request_, &response_headers_,
+                                 &response_headers_);
+  num_response_attributes_ = response_headers_.NumAttributes();
+
   ServerContext::OptionsBoolPair query_options_success =
       server_context_->GetQueryOptions(&stripped_gurl_, request_headers_.get(),
-                                       NULL);
+                                       &response_headers_);
   if (!query_options_success.second) {
     server_context_->message_handler()->Message(
         kWarning, "Invalid PageSpeed query params or headers for "
@@ -447,6 +363,57 @@ void InstawebHandler::ComputeCustomOptions() {
   }
   if (custom_options_.get() != NULL) {
     options_ = custom_options_.get();
+  }
+}
+
+void InstawebHandler::RemoveStrippedResponseHeadersFromApacheReequest() {
+  // Write back the modified response headers if any have been stripped by
+  // GetQueryOptions (which indicates that options were found).
+  // Note: GetQueryOptions should not add or mutate headers, only remove
+  // them.
+  DCHECK(response_headers_.NumAttributes() <= num_response_attributes_);
+  if (response_headers_.NumAttributes() < num_response_attributes_) {
+    // Something was stripped, but we don't know if it came from
+    // headers_out or err_headers_out.  We need to treat them separately.
+    if (apr_is_empty_table(request_->err_headers_out)) {
+      // We know that response_headers were all from request->headers_out
+      apr_table_clear(request_->headers_out);
+      ResponseHeadersToApacheRequest(response_headers_, request_);
+    } else if (apr_is_empty_table(request_->headers_out)) {
+      // We know that response_headers were all from err_headers_out
+      apr_table_clear(request_->err_headers_out);
+      ErrorHeadersToApacheRequest(response_headers_, request_);
+    } else {
+      // We don't know which table changed, so scan them individually and
+      // write them both back. This should be a rare case and could be
+      // optimized a bit if we find that we're spending time here.
+      ResponseHeaders tmp_err_resp_headers, tmp_resp_headers;
+      ThreadSystem* thread_system = server_context_->thread_system();
+      ApacheConfig unused_opts1("unused_options1", thread_system),
+          unused_opts2("unused_options2", thread_system);
+
+      ApacheRequestToResponseHeaders(*request_, &tmp_resp_headers,
+                                     &tmp_err_resp_headers);
+
+      // Use ScanHeader's parsing logic to find and strip the PageSpeed
+      // options from the headers. Use NULL for device_properties as no
+      // device property information is needed for the stripping.
+      RewriteQuery::ScanHeader(
+          &tmp_err_resp_headers, NULL /* device_properties */,
+          &unused_opts1, server_context_->message_handler());
+      RewriteQuery::ScanHeader(
+          &tmp_resp_headers, NULL  /* device_properties */, &unused_opts2,
+          server_context_->message_handler());
+
+      // Write the stripped headers back to the Apache record.
+      apr_table_clear(request_->err_headers_out);
+      apr_table_clear(request_->headers_out);
+      ResponseHeadersToApacheRequest(tmp_resp_headers, request_);
+      ErrorHeadersToApacheRequest(tmp_err_resp_headers, request_);
+      // Note that the ordering here matches the comment above the
+      // call to ApacheRequestToResponseHeaders in
+      // ComputeCustomOptions.
+    }
   }
 }
 
@@ -568,6 +535,7 @@ bool InstawebHandler::HandleAsProxy() {
       is_proxy) {
     RewriteDriver* driver = MakeDriver();
     scoped_ptr<ApacheFetch> apache_fetch(MakeFetch(mapped_url));
+    apache_fetch->set_is_proxy(true);
     driver->SetRequestHeaders(*apache_fetch->request_headers());
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, apache_fetch.get(), driver, NULL, NULL);
@@ -581,10 +549,10 @@ bool InstawebHandler::HandleAsProxy() {
 // Determines whether the url can be handled as a mod_pagespeed or in-place
 // optimized resource, and handles it, returning true.  Success status is
 // written to the status code in the response headers.
-bool handle_as_resource(ApacheServerContext* server_context,
-                        request_rec* request,
-                        GoogleUrl* gurl,
-                        const GoogleString& url) {
+/* static */
+bool InstawebHandler::handle_as_resource(ApacheServerContext* server_context,
+                                         request_rec* request,
+                                         GoogleUrl* gurl) {
   if (!gurl->IsWebValid()) {
     return false;
   }
@@ -593,11 +561,8 @@ bool handle_as_resource(ApacheServerContext* server_context,
   // construct the options that we use to decide whether IPRO is enabled.
   server_context->FlushCacheIfNecessary();
 
-  ApacheRequestContext* apache_request_context =
-      server_context->NewApacheRequestContext(request);
-  apache_request_context->set_url(url);
-  RequestContextPtr request_context(apache_request_context);
-  InstawebHandler instaweb_handler(request, request_context);
+  InstawebHandler instaweb_handler(request);
+  instaweb_handler.SetupSpdyConnectionIfNeeded();
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   const RewriteOptions* options = instaweb_handler.options();
 
@@ -609,7 +574,7 @@ bool handle_as_resource(ApacheServerContext* server_context,
   } else if (instaweb_handler.HandleAsProxy()) {
     handled = true;
   } else if (options->in_place_rewriting_enabled() && options->enabled() &&
-             options->IsAllowed(url)) {
+             options->IsAllowed(gurl->Spec())) {
     handled = instaweb_handler.HandleAsInPlace();
   }
 
@@ -618,10 +583,14 @@ bool handle_as_resource(ApacheServerContext* server_context,
 
 // Write response headers and send out headers and output, including the option
 // for a custom Content-Type.
-void write_handler_response(const StringPiece& output,
-                            request_rec* request,
-                            ContentType content_type,
-                            const StringPiece& cache_control) {
+//
+// TODO(jmarantz): consider deleting this helper method putting all responses
+// through ApacheFetch.
+/* static */
+void InstawebHandler::write_handler_response(const StringPiece& output,
+                                             request_rec* request,
+                                             ContentType content_type,
+                                             const StringPiece& cache_control) {
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.set_major_version(1);
@@ -642,7 +611,9 @@ void write_handler_response(const StringPiece& output,
   send_out_headers_and_body(request, response_headers, output.as_string());
 }
 
-void write_handler_response(const StringPiece& output, request_rec* request) {
+/* static */
+void InstawebHandler::write_handler_response(const StringPiece& output,
+                                             request_rec* request) {
   write_handler_response(output, request,
                          kContentTypeHtml, HttpAttributes::kNoCacheMaxAge0);
 }
@@ -652,8 +623,9 @@ void write_handler_response(const StringPiece& output, request_rec* request) {
 // we stow the original request URL in a note. This method reads that note
 // and thus should return the URL that the browser actually requested (rather
 // than a mod_rewrite altered URL).
-const char* get_instaweb_resource_url(request_rec* request,
-                                      ApacheServerContext* server_context) {
+/* static */
+const char* InstawebHandler::get_instaweb_resource_url(
+    request_rec* request, ApacheServerContext* server_context) {
   const char* resource = apr_table_get(request->notes, kResourceUrlNote);
 
   // If our translate_name hook, save_url_hook, failed to run because some
@@ -661,7 +633,7 @@ const char* get_instaweb_resource_url(request_rec* request,
   // main reason we try to do this early is to save our URL before mod_rewrite
   // mutates it.
   if (resource == NULL) {
-    save_url_in_note(request, server_context);
+    InstawebHandler::save_url_in_note(request, server_context);
     resource = apr_table_get(request->notes, kResourceUrlNote);
   }
 
@@ -673,6 +645,8 @@ const char* get_instaweb_resource_url(request_rec* request,
   return url;
 }
 
+namespace {
+
 // Used by log_request_headers for testing only.
 struct HeaderLoggingData {
   HeaderLoggingData(StringWriter* writer_in, MessageHandler* handler_in)
@@ -681,11 +655,14 @@ struct HeaderLoggingData {
   MessageHandler* handler;
 };
 
+}  // namespace
+
 // Helper function to support the LogRequestHeadersHandler.  Called once for
 // each header to write header data in a form suitable for javascript inlining.
 // Used only for tests.
-int log_request_headers(void* logging_data,
-                        const char* key, const char* value) {
+/* static */
+int InstawebHandler::log_request_headers(void* logging_data,
+                                         const char* key, const char* value) {
   HeaderLoggingData* hld = static_cast<HeaderLoggingData*>(logging_data);
   StringWriter* writer = hld->writer;
   MessageHandler* handler = hld->handler;
@@ -705,8 +682,9 @@ int log_request_headers(void* logging_data,
   return 1;  // Continue iteration.
 }
 
-void instaweb_static_handler(request_rec* request,
-                             ApacheServerContext* server_context) {
+/* static */
+void InstawebHandler::instaweb_static_handler(
+    request_rec* request, ApacheServerContext* server_context) {
   StaticAssetManager* static_asset_manager =
       server_context->static_asset_manager();
   StringPiece request_uri_path = request->parsed_uri.path;
@@ -725,7 +703,8 @@ void instaweb_static_handler(request_rec* request,
   }
 }
 
-apr_status_t instaweb_statistics_handler(
+/* static */
+apr_status_t InstawebHandler::instaweb_statistics_handler(
     request_rec* request, ApacheServerContext* server_context,
     ApacheRewriteDriverFactory* factory) {
   // A request is always global if we don't have per-vhost stats, otherwise it's
@@ -759,8 +738,10 @@ apr_status_t instaweb_statistics_handler(
 // params from a request URL. For parsing the query params from a POST body, use
 // parse_body_from_post(). Return true if successful, otherwise, returns false
 // and sets ret to the appropriate status.
-bool parse_query_params(const request_rec* request, GoogleString* data,
-                        apr_status_t* ret) {
+/* static */
+bool InstawebHandler::parse_query_params(const request_rec* request,
+                                         GoogleString* data,
+                                         apr_status_t* ret) {
   // Add a dummy host (www.example.com) to the request URL to make it absolute
   // so that GoogleUrl can be used for parsing.
   GoogleUrl base("http://www.example.com");
@@ -777,8 +758,9 @@ bool parse_query_params(const request_rec* request, GoogleString* data,
 
 // Read the body from a POST request and append to data. Return true if
 // successful, otherwise, returns false and sets ret to the appropriate status.
-bool parse_body_from_post(const request_rec* request, GoogleString* data,
-                          apr_status_t* ret) {
+bool InstawebHandler::parse_body_from_post(const request_rec* request,
+                                           GoogleString* data,
+                                           apr_status_t* ret) {
   if (request->method_number != M_POST) {
     *ret = HTTP_METHOD_NOT_ALLOWED;
     return false;
@@ -866,8 +848,9 @@ bool parse_body_from_post(const request_rec* request, GoogleString* data,
   return true;
 }
 
-apr_status_t instaweb_beacon_handler(request_rec* request,
-                                     ApacheServerContext* server_context) {
+/* static */
+apr_status_t InstawebHandler::instaweb_beacon_handler(
+    request_rec* request, ApacheServerContext* server_context) {
   GoogleString data;
   apr_status_t ret = DECLINED;
   if (request->method_number == M_GET) {
@@ -898,8 +881,9 @@ apr_status_t instaweb_beacon_handler(request_rec* request,
   return HTTP_NO_CONTENT;
 }
 
-bool IsBeaconUrl(const RewriteOptions::BeaconUrl& beacons,
-                 const GoogleUrl& gurl) {
+/* static */
+bool InstawebHandler::IsBeaconUrl(const RewriteOptions::BeaconUrl& beacons,
+                                  const GoogleUrl& gurl) {
   // Check if the full path without query parameters equals the beacon URL,
   // either the http or https version (we're too lazy to check specifically).
   // This handles both GETs, which include query parameters, and POSTs,
@@ -913,15 +897,15 @@ bool IsBeaconUrl(const RewriteOptions::BeaconUrl& beacons,
           gurl.PathSansQuery() == beacons.https_in);
 }
 
-}  // namespace
-
-bool is_pagespeed_subrequest(request_rec* request) {
+/* static */
+bool InstawebHandler::is_pagespeed_subrequest(request_rec* request) {
   StringPiece user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
   return (user_agent.find(kModPagespeedSubrequestUserAgent) != user_agent.npos);
 }
 
-apr_status_t instaweb_handler(request_rec* request) {
+/* static */
+apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
@@ -947,34 +931,15 @@ apr_status_t instaweb_handler(request_rec* request) {
     write_handler_response(output, request);
     ret = OK;
   } else if (request_handler_str == kConsoleHandler) {
-    // Note that InstawebHandler's constructor needs a request context to
-    // determine whether this is a SPDY request, but doesn't do anything
-    // else with that, and for the Console we don't care about SPDY, so
-    // we don't want to go through the cost of creating a full
-    // ApacheRequestContext.
-    //
-    // TODO(jmarantz): Is it better just to create the context and simplfy
-    // InstawebHandler?
-    RequestContextPtr null_request_context;
-    InstawebHandler instaweb_handler(request, null_request_context);
-    GoogleString output;
-    StringWriter writer(&output);
-    server_context->ConsoleHandler(*instaweb_handler.options(), &writer);
-    write_handler_response(output, request);
+    InstawebHandler instaweb_handler(request);
+    scoped_ptr<ApacheFetch> apache_fetch(instaweb_handler.MakeFetch());
+    server_context->ConsoleHandler(*instaweb_handler.options(),
+                                   apache_fetch.get());
     ret = OK;
   } else if (request_handler_str == kMessageHandler) {
-    // Request for page /mod_pagespeed_message.
-    GoogleString html, log;
-    StringWriter html_writer(&html), log_writer(&log);
-    if (message_handler->Dump(&log_writer)) {
-      // Write pre-tag for Dump to keep good format.
-      HtmlKeywords::WritePre(log, &html_writer, message_handler);
-    } else {
-      html =
-          "Writing to mod_pagespeed_message failed. \n"
-          "Please check if it's enabled in pagespeed.conf.\n";
-    }
-    write_handler_response(html, request);
+    InstawebHandler instaweb_handler(request);
+    scoped_ptr<ApacheFetch> apache_fetch(instaweb_handler.MakeFetch());
+    server_context->MessageHistoryHandler(apache_fetch.get());
     ret = OK;
   } else if (request_handler_str == kLogRequestHeadersHandler) {
     // For testing CustomFetchHeader.
@@ -1027,7 +992,7 @@ apr_status_t instaweb_handler(request_rec* request) {
         instaweb_static_handler(request, server_context);
         ret = OK;
       } else if (!is_pagespeed_subrequest(request) &&
-                 handle_as_resource(server_context, request, &gurl, url)) {
+                 handle_as_resource(server_context, request, &gurl)) {
         ret = OK;
       }
     }
@@ -1091,14 +1056,16 @@ apr_status_t instaweb_handler(request_rec* request) {
 //
 // Additionally we store whether or not this request is a pagespeed
 // resource or not in kResourceUrlNote.
-apr_status_t save_url_hook(request_rec *request) {
+/* static */
+apr_status_t InstawebHandler::save_url_hook(request_rec *request) {
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
   return save_url_in_note(request, server_context);
 }
 
-apr_status_t save_url_in_note(request_rec *request,
-                              ApacheServerContext* server_context) {
+/* static */
+apr_status_t InstawebHandler::save_url_in_note(
+    request_rec *request, ApacheServerContext* server_context) {
   // Escape ASAP if we're in unplugged mode.
   if (server_context->global_config()->unplugged()) {
     return DECLINED;
@@ -1141,7 +1108,8 @@ apr_status_t save_url_in_note(request_rec *request,
 }
 
 // Override core_map_to_storage for pagespeed resources.
-apr_status_t instaweb_map_to_storage(request_rec* request) {
+/* static */
+apr_status_t InstawebHandler::instaweb_map_to_storage(request_rec* request) {
   if (request->proxyreq == PROXYREQ_REVERSE) {
     // If Apache is acting as a reverse proxy for this request there is no
     // point in walking the directory because it doesn't apply to this
@@ -1230,8 +1198,9 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
   return OK;
 }
 
-void AboutToBeDoneWithRecorder(request_rec* request,
-                               InPlaceResourceRecorder* recorder) {
+/* static */
+void InstawebHandler::AboutToBeDoneWithRecorder(
+    request_rec* request, InPlaceResourceRecorder* recorder) {
   apr_pool_cleanup_kill(request->pool, recorder, DeleteInPlaceRecorder);
 }
 

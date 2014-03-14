@@ -127,6 +127,15 @@ class ApacheServerContext : public SystemServerContext {
   // let mod_pagespeed behave as an origin fetcher.
   virtual bool ProxiesHtml() const { return false; }
 
+  // Creates a request context which is suitable for resolving
+  // options, but is not yet suitable for establishing a context from
+  // which to do fetches.  Establishing that context is slightly
+  // expensive so we want to only do that in request-paths that can
+  // lead to spdy fetches.
+  //
+  // To enable a rewrite context for fetching, call
+  //   apache_request_context->SetupSpdyConnectionIfNeeded(request);
+  // after the object is context is constructed.
   ApacheRequestContext* NewApacheRequestContext(request_rec* request);
 
   // Reports an error status to the HTTP resource request, and logs

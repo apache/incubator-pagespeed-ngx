@@ -55,7 +55,15 @@ ApacheRequestContext::ApacheRequestContext(
                                       HttpAttributes::kXPsaOptimizeForSpdy);
     set_using_spdy(value != NULL);
   }
+}
 
+ApacheRequestContext::~ApacheRequestContext() {
+  if (spdy_connection_factory_ != NULL) {
+    mod_spdy_destroy_slave_connection_factory(spdy_connection_factory_);
+  }
+}
+
+void ApacheRequestContext::SetupSpdyConnectionIfNeeded(request_rec* req) {
   // Independent of whether we are serving a SPDY request, we will want
   // to be able to do back door mod_spdy fetches if configured to do so.
   if (use_spdy_fetcher_) {
@@ -63,12 +71,6 @@ ApacheRequestContext::ApacheRequestContext(
     // do per-request.  Verify this with profiling.
     spdy_connection_factory_ =
         mod_spdy_create_slave_connection_factory(req->connection);
-  }
-}
-
-ApacheRequestContext::~ApacheRequestContext() {
-  if (spdy_connection_factory_ != NULL) {
-    mod_spdy_destroy_slave_connection_factory(spdy_connection_factory_);
   }
 }
 

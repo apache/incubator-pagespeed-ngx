@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -46,9 +47,12 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
 
@@ -315,12 +319,14 @@ void SystemServerContext::CollapseConfigOverlaysAndComputeSignatures() {
 
 // Handler which serves PSOL console.
 void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
-                                         Writer* writer) {
+                                         AsyncFetch* fetch) {
   MessageHandler* handler = message_handler();
   bool statistics_enabled = options.statistics_enabled();
   bool logging_enabled = options.statistics_logging_enabled();
   bool log_dir_set = !options.log_dir().empty();
+  fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
   if (statistics_enabled && logging_enabled && log_dir_set) {
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
     // TODO(jmarantz): change StaticAssetManager to take options by const ref.
     StringPiece console_js = static_asset_manager()->GetAsset(
         StaticAssetManager::kConsoleJs, &options);
@@ -328,7 +334,7 @@ void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
         StaticAssetManager::kConsoleCss, &options);
 
     // TODO(sligocki): Move static content to a data2cc library.
-    writer->Write("<!DOCTYPE html>\n"
+    fetch->Write("<!DOCTYPE html>\n"
                   "<html>\n"
                   "  <head>\n"
                   "    <title>PageSpeed Console</title>\n"
@@ -338,8 +344,8 @@ void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
                   "      }\n"
                   "    </style>\n"
                   "    <style>", handler);
-    writer->Write(console_css, handler);
-    writer->Write("</style>\n"
+    fetch->Write(console_css, handler);
+    fetch->Write("</style>\n"
                   "  </head>\n"
                   "  <body>\n"
                   "    <div id='top-bar'>\n"
@@ -354,31 +360,32 @@ void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
                   "    </div>\n"
                   "    <script src='https://www.google.com/jsapi'></script>\n"
                   "    <script>var pagespeedStatisticsUrl = '", handler);
-    writer->Write(options.statistics_handler_path(), handler);
-    writer->Write("'</script>\n"
+    fetch->Write(options.statistics_handler_path(), handler);
+    fetch->Write("'</script>\n"
                   "    <script>", handler);
-    writer->Write(console_js, handler);
-    writer->Write("</script>\n"
+    fetch->Write(console_js, handler);
+    fetch->Write("</script>\n"
                   "  </body>\n"
                   "</html>\n", handler);
   } else {
-    writer->Write("<!DOCTYPE html>\n"
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+    fetch->Write("<!DOCTYPE html>\n"
                   "<p>\n"
                   "  Failed to load PageSpeed Console because:\n"
                   "</p>\n"
                   "<ul>\n", handler);
     if (!statistics_enabled) {
-      writer->Write("  <li>Statistics is not enabled.</li>\n",
+      fetch->Write("  <li>Statistics is not enabled.</li>\n",
                     handler);
     }
     if (!logging_enabled) {
-      writer->Write("  <li>StatisticsLogging is not enabled."
+      fetch->Write("  <li>StatisticsLogging is not enabled."
                     "</li>\n", handler);
     }
     if (!log_dir_set) {
-      writer->Write("  <li>LogDir is not set.</li>\n", handler);
+      fetch->Write("  <li>LogDir is not set.</li>\n", handler);
     }
-    writer->Write("</ul>\n"
+    fetch->Write("</ul>\n"
                   "<p>\n"
                   "  In order to use the console you must configure these\n"
                   "  options. See the <a href='https://developers.google.com/"
@@ -386,6 +393,7 @@ void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
                   "  for more details.\n"
                   "</p>\n", handler);
   }
+  fetch->Done(true);
 }
 
 // TODO(sligocki): integrate this into the pagespeed_console.
@@ -538,6 +546,25 @@ const char* SystemServerContext::StatisticsHandler(
     }
   }
   return NULL;  // No errors.
+}
+
+void SystemServerContext::MessageHistoryHandler(AsyncFetch* fetch) {
+  // Request for page /mod_pagespeed_message.
+  GoogleString log;
+  StringWriter log_writer(&log);
+  ResponseHeaders* response_headers = fetch->response_headers();
+  if (message_handler()->Dump(&log_writer)) {
+    // Write pre-tag for Dump to keep good format.
+    response_headers->SetStatusAndReason(HttpStatus::kOK);
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    HtmlKeywords::WritePre(log, fetch, message_handler());
+  } else {
+    response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+    fetch->Write("Writing to mod_pagespeed_message failed. \n"
+                 "Please check if it's enabled in pagespeed.conf.\n",
+                 message_handler());
+  }
+  fetch->Done(true);
 }
 
 }  // namespace net_instaweb
