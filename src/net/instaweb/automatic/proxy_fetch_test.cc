@@ -95,17 +95,21 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     post_lookup_called_ = true;
   }
   void CheckPageNotNullPostLookupTask(
-      ProxyFetchPropertyCallbackCollector* collector) {
+      ProxyFetchPropertyCallbackCollector* collector,
+      WorkerTestBase::SyncPoint* sync_point) {
     EXPECT_TRUE(collector->fallback_property_page() != NULL);
+    sync_point->Notify();
   }
 
   void AddCheckPageNotNullPostLookupTask(
-      ProxyFetchPropertyCallbackCollector* collector) {
+      ProxyFetchPropertyCallbackCollector* collector,
+      WorkerTestBase::SyncPoint* sync_point) {
     collector->AddPostLookupTask(MakeFunction(
         this,
         &ProxyFetchPropertyCallbackCollectorTest::
             CheckPageNotNullPostLookupTask,
-        collector));
+        collector,
+        sync_point));
   }
 
  protected:
@@ -447,8 +451,9 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
           static_cast<ProxyFetchPropertyCallbackCollectorTest*>(this),
           &ProxyFetchPropertyCallbackCollectorTest::
               AddCheckPageNotNullPostLookupTask,
-          collector.get()));
+          collector.get(), &sync_point));
   page_callback->Done(true);
+  sync_point.Wait();
   collector->ConnectProxyFetch(mock_proxy_fetch);
   mock_proxy_fetch->Done(true);
 }
