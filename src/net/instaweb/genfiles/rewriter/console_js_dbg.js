@@ -1494,6 +1494,9 @@ goog.iter.filter = function(iterable, f, opt_obj) {
   };
   return newIter;
 };
+goog.iter.filterFalse = function(iterable, f, opt_obj) {
+  return goog.iter.filter(iterable, goog.functions.not(f), opt_obj);
+};
 goog.iter.range = function(startOrStop, opt_stop, opt_step) {
   var start = 0, stop = startOrStop, step = opt_step || 1;
   1 < arguments.length && (start = startOrStop, stop = opt_stop);
@@ -1780,6 +1783,14 @@ goog.iter.GroupByIterator_.prototype.groupItems_ = function(targetKey) {
 };
 goog.iter.groupBy = function(iterable, opt_keyFunc) {
   return new goog.iter.GroupByIterator_(iterable, opt_keyFunc);
+};
+goog.iter.starMap = function(iterable, f, opt_obj) {
+  var iterator = goog.iter.toIterator(iterable), iter = new goog.iter.Iterator;
+  iter.next = function() {
+    var args = goog.iter.toArray(iterator.next());
+    return f.apply(opt_obj, goog.array.concat(args, void 0, iterator));
+  };
+  return iter;
 };
 goog.iter.tee = function(iterable, opt_num) {
   var iterator = goog.iter.toIterator(iterable), buffers = goog.array.map(goog.array.range(goog.isNumber(opt_num) ? opt_num : 2), function() {
