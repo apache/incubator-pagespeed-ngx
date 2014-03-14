@@ -505,8 +505,8 @@ char* ps_init_dir(const StringPiece& directive,
   }
 
   // chown if owner differs from nginx worker user.
-  ngx_core_conf_t* ccf =
-      (ngx_core_conf_t*)(ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
+  ngx_core_conf_t* ccf = reinterpret_cast<ngx_core_conf_t*>(
+      ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
   CHECK(ccf != NULL);
   struct stat gs_stat;
   if (stat(gs_path.c_str(), &gs_stat) != 0) {
@@ -1364,7 +1364,8 @@ bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
     return false;  // No X-Forwarded-Proto header found.
   }
 
-  StringPiece x_forwarded_proto = str_to_string_piece(*x_forwarded_proto_header);
+  StringPiece x_forwarded_proto =
+      str_to_string_piece(*x_forwarded_proto_header);
   if (!STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "http") &&
       !STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "https")) {
     LOG(WARNING) << "Unsupported X-Forwarded-Proto: " << x_forwarded_proto
@@ -1527,7 +1528,8 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
 
   if (is_pagespeed_subrequest(r)) {
     return RequestRouting::kPagespeedSubrequest;
-  } else if (url.PathSansLeaf() == NgxRewriteDriverFactory::kStaticAssetPrefix) {
+  } else if (url.PathSansLeaf() ==
+             NgxRewriteDriverFactory::kStaticAssetPrefix) {
     return RequestRouting::kStaticContent;
   } else if (url.PathSansQuery() == "/ngx_pagespeed_statistics" ||
              url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
@@ -1564,7 +1566,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
-  if (!html_rewrite && r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+  if (!html_rewrite &&
+      r->method != NGX_HTTP_GET &&
+      r->method != NGX_HTTP_HEAD) {
     return NGX_DECLINED;
   }
 

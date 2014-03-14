@@ -40,7 +40,8 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static void Initialize();
   static void Terminate();
 
-  NgxRewriteOptions(const StringPiece& description, ThreadSystem* thread_system);
+  NgxRewriteOptions(const StringPiece& description,
+                    ThreadSystem* thread_system);
   explicit NgxRewriteOptions(ThreadSystem* thread_system);
   virtual ~NgxRewriteOptions() { }
 
