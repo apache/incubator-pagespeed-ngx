@@ -2193,6 +2193,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // (or at least a note that it cannot be cached stored there).
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
+        RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
         url,
         request_headers.release(),
         options->respect_vary(),
@@ -2256,7 +2257,9 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     // Unlike in Apache we get the final response headers before we get the
     // content.  This means we can consider them earlier and abort the
     // request if need be without buffering everything.
-    recorder->ConsiderResponseHeaders(ctx->ipro_response_headers);
+    recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kPreliminaryHeaders,
+        ctx->ipro_response_headers);
   }
 
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
