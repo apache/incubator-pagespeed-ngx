@@ -844,6 +844,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kBeaconReinstrumentTimeSec);
   PassLookupOptionByName(RewriteOptions::kBeaconUrl);
   PassLookupOptionByName(RewriteOptions::kBlinkMaxHtmlSizeRewritable);
+  PassLookupOptionByName(RewriteOptions::kCacheFragment);
   PassLookupOptionByName(RewriteOptions::kCacheInvalidationTimestamp);
   PassLookupOptionByName(RewriteOptions::kCacheSmallImagesUnrewritten);
   PassLookupOptionByName(RewriteOptions::kClientDomainRewrite);

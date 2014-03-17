@@ -118,6 +118,21 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
+  // The hostname specified in this request.  There are two ways of specifying
+  // the host -- with the Host header, or on the initial request line.  The
+  // caller should make sure to look in both places.
+  //
+  // If a system doesn't want to fragment the cache by host, it may have set
+  // this value to the empty string.
+  const GoogleString& hostname_for_cache_fragmentation() const {
+    return hostname_for_cache_fragmentation_;
+  }
+  void set_hostname_for_cache_fragmentation(
+      StringPiece hostname_for_cache_fragmentation) {
+    hostname_for_cache_fragmentation.CopyToString(
+        &hostname_for_cache_fragmentation_);
+  }
+
   // Indicates whether the request-headers tell us that a browser can
   // render webp images.
   void set_accepts_webp(bool x) { accepts_webp_ = x; }
@@ -353,6 +368,7 @@ class RequestContext : public RefCounted<RequestContext> {
 
   bool using_spdy_;
   bool accepts_webp_;
+  GoogleString hostname_for_cache_fragmentation_;
 
   SplitRequestType split_request_type_;;
   int64 request_id_;

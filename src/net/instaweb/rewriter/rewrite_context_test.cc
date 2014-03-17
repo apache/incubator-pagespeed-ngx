@@ -3433,7 +3433,8 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   HTTPCache* l2_only_cache = new HTTPCache(&l2_cache, timer(), hasher(),
                                            statistics());
   l2_only_cache->Put(
-      AbsolutifyUrl(kPath), RequestHeaders::Properties(),
+      AbsolutifyUrl(kPath), rewrite_driver_->CacheFragment(),
+      RequestHeaders::Properties(),
       ResponseHeaders::GetVaryOption(options()->respect_vary()),
       &response_headers, kDataIn, message_handler());
   delete l2_only_cache;
@@ -3836,7 +3837,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   // Note that we don't overwrite the stale response for the css and serve a
   // valid 200 response to the rewrriten resource.
   AdvanceTimeMs(kTtlMs * 10);
-  lru_cache()->Delete(abs_rewritten_url);
+  lru_cache()->Delete(HttpCacheKey(abs_rewritten_url));
   mock_url_fetcher()->SetResponse(AbsolutifyUrl(kPath), bad_headers, "");
 
   ValidateNoChanges("forward_500_fallback_served", CssLinkHref(kPath));
@@ -3862,7 +3863,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   options()->ComputeSignature();
 
   ClearStats();
-  lru_cache()->Delete(abs_rewritten_url);
+  lru_cache()->Delete(HttpCacheKey(abs_rewritten_url));
   ValidateNoChanges("forward_500_no_fallback", CssLinkHref(kPath));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());

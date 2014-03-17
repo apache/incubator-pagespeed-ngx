@@ -1383,6 +1383,7 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
       server_context()->lock_hasher(),
       server_context()->lock_manager(),
       server_context()->http_cache(),
+      CacheFragment(),
       cache_url_async_fetcher_async_op_hooks_.get(),
       base_fetcher);
   RewriteStats* stats = server_context_->rewrite_stats();
@@ -1683,7 +1684,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   void Find() {
     ServerContext* server_context = driver_->server_context();
     HTTPCache* http_cache = server_context->http_cache();
-    http_cache->Find(canonical_url_, handler_, this);
+    http_cache->Find(canonical_url_, driver_->CacheFragment(), handler_, this);
   }
 
   bool IsCacheValid(const GoogleString& key, const ResponseHeaders& headers) {
@@ -1724,7 +1725,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         response_headers->CopyFrom(*output_resource_->response_headers());
         ServerContext* server_context = driver_->server_context();
         HTTPCache* http_cache = server_context->http_cache();
-        http_cache->Put(canonical_url_, RequestHeaders::Properties(),
+        http_cache->Put(canonical_url_, driver_->CacheFragment(),
+                        RequestHeaders::Properties(),
                         (ResponseHeaders::GetVaryOption(
                             driver_->options()->respect_vary())),
                         response_headers, content, handler_);
@@ -3402,7 +3404,8 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
         (http_cache->force_caching() || meta_data->IsProxyCacheable())) {
       // This URL should already be mapped to the canonical rewrite domain,
       // But we should store its unsharded form in the cache.
-      http_cache->Put(output->HttpCacheKey(), RequestHeaders::Properties(),
+      http_cache->Put(output->HttpCacheKey(), CacheFragment(),
+                      RequestHeaders::Properties(),
                       ResponseHeaders::GetVaryOption(options()->respect_vary()),
                       &output->value_, handler);
     }
@@ -3459,6 +3462,17 @@ bool RewriteDriver::MetadataRequested(
   }
   return request_headers.HasValue(HttpAttributes::kXPsaRequestMetadata,
                                   expected_key);
+}
+
+const GoogleString& RewriteDriver::CacheFragment() const {
+  CHECK(options_ != NULL);
+  const GoogleString& fragment = options_->cache_fragment();
+  if (!fragment.empty()) {
+    return fragment;
+  }
+  CHECK(request_context_.get() != NULL) << "NULL request context in "
+                                        << "RewriteDriver::CacheFragment";
+  return request_context_->hostname_for_cache_fragmentation();
 }
 
 }  // namespace net_instaweb

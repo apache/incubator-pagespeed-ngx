@@ -950,6 +950,8 @@ TEST_F(DistributedRewriteContextTest, ReturnMetadataOnRequest) {
   options()->set_distributed_rewrite_servers("example.com");
   static const char kDistributedKey[] = "1234123";
   options()->set_distributed_rewrite_key(kDistributedKey);
+  static const char kCacheFragment[] = "a-cache-fragment";
+  options()->set_cache_fragment(kCacheFragment);
   InitTrimFilters(kRewrittenResource);
   InitResources();
 
@@ -998,7 +1000,7 @@ TEST_F(DistributedRewriteContextTest, ReturnMetadataOnRequest) {
   // reconstruction path and return the right URL and the metadata.
   ClearStats();
   lru_cache()->Clear();
-  http_cache()->Delete(encoded_url);
+  http_cache()->Delete(encoded_url, kCacheFragment);
   EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, bad_encoded_url,
                                      encoded_url, kGetRequest));
   // We should fetch once and insert the input, optimized, and metadata into
@@ -1019,6 +1021,8 @@ TEST_F(DistributedRewriteContextTest, HeadMetadata) {
   options()->set_distributed_rewrite_servers("example.com");
   static const char kDistributedKey[] = "1234123";
   options()->set_distributed_rewrite_key(kDistributedKey);
+  static const char kCacheFragment[] = "a-cache-fragment";
+  options()->set_cache_fragment(kCacheFragment);
   InitTrimFilters(kRewrittenResource);
   InitResources();
 
@@ -1042,7 +1046,7 @@ TEST_F(DistributedRewriteContextTest, HeadMetadata) {
 
   // Bad .pagespeed. hash and empty cache but should still reconstruct properly.
   lru_cache()->Clear();
-  http_cache()->Delete(encoded_url);
+  http_cache()->Delete(encoded_url, kCacheFragment);
   EXPECT_TRUE(FetchValidatedMetadata(kDistributedKey, bad_encoded_url,
                                      encoded_url, kHeadRequest));
 }

@@ -51,11 +51,13 @@ class WriteThroughHTTPCache : public HTTPCache {
   virtual void SetIgnoreFailurePuts();
 
   // Implements HTTPCache::Find().
-  virtual void Find(const GoogleString& key, MessageHandler* handler,
+  virtual void Find(const GoogleString& key,
+                    const GoogleString& fragment,
+                    MessageHandler* handler,
                     Callback* callback);
 
   // Implements HTTPCache::Delete().
-  virtual void Delete(const GoogleString& key);
+  virtual void Delete(const GoogleString& key, const GoogleString& fragment);
 
   // Implements HTTPCache::set_force_caching().
   virtual void set_force_caching(bool force);
@@ -83,15 +85,18 @@ class WriteThroughHTTPCache : public HTTPCache {
 
   // Implements HTTPCache::RememberNotCacheable().
   virtual void RememberNotCacheable(const GoogleString& key,
+                                    const GoogleString& fragment,
                                     bool is_200_status_code,
                                     MessageHandler * handler);
 
   // Implements HTTPCache::RememberFetchFailed().
   virtual void RememberFetchFailed(const GoogleString& key,
+                                   const GoogleString& fragment,
                                    MessageHandler * handler);
 
   // Implements HTTPCache::RememberFetchDropped().
   virtual void RememberFetchDropped(const GoogleString& key,
+                                    const GoogleString& fragment,
                                     MessageHandler * handler);
 
   // By default, all data goes into both cache1 and cache2.  But
@@ -108,11 +113,14 @@ class WriteThroughHTTPCache : public HTTPCache {
 
  protected:
   // Implements HTTPCache::PutInternal().
-  virtual void PutInternal(const GoogleString& key, int64 start_us,
+  virtual void PutInternal(const GoogleString& key,
+                           const GoogleString& fragment,
+                           int64 start_us,
                            HTTPValue* value);
 
  private:
-  void PutInCache1(const GoogleString& key, HTTPValue* value);
+  void PutInCache1(
+      const GoogleString& key, const GoogleString& fragment, HTTPValue* value);
 
   scoped_ptr<HTTPCache> cache1_;
   scoped_ptr<HTTPCache> cache2_;

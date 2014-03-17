@@ -36,6 +36,7 @@ class SystemRequestContext : public RequestContext {
  public:
   SystemRequestContext(AbstractMutex* logging_mutex,
                        Timer* timer,
+                       StringPiece hostname,
                        int local_port,
                        StringPiece local_ip);
 

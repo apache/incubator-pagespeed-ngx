@@ -73,11 +73,13 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   CacheUrlAsyncFetcher(const Hasher* lock_hasher,
                        NamedLockManager* lock_manager,
                        HTTPCache* cache,
+                       const GoogleString& fragment,
                        AsyncOpHooks* async_op_hooks,
                        UrlAsyncFetcher* fetcher)
       : lock_hasher_(lock_hasher),
         lock_manager_(lock_manager),
         http_cache_(cache),
+        fragment_(fragment),
         fetcher_(fetcher),
         async_op_hooks_(async_op_hooks),
         backend_first_byte_latency_(NULL),
@@ -188,6 +190,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   const Hasher* lock_hasher_;
   NamedLockManager* lock_manager_;
   HTTPCache* http_cache_;
+  GoogleString fragment_;
   UrlAsyncFetcher* fetcher_;  // may be NULL.
   AsyncOpHooks* async_op_hooks_;
 

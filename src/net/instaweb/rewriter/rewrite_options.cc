@@ -67,6 +67,7 @@ const char RewriteOptions::kBlinkMaxHtmlSizeRewritable[] =
     "BlinkMaxHtmlSizeRewritable";
 const char RewriteOptions::kCacheInvalidationTimestamp[] =
     "CacheInvalidationTimestamp";
+const char RewriteOptions::kCacheFragment[] = "CacheFragment";
 const char RewriteOptions::kCacheSmallImagesUnrewritten[] =
     "CacheSmallImagesUnrewritten";
 const char RewriteOptions::kClientDomainRewrite[] = "ClientDomainRewrite";
@@ -2062,6 +2063,15 @@ void RewriteOptions::AddProperties() {
       kServeWebpToAnyAgent,
       kDirectoryScope,
       "Serve rewritten .webp images to any user-agent");
+
+  AddBaseProperty(
+      "",
+      &RewriteOptions::cache_fragment_,
+      "ckp",
+      kCacheFragment,
+      kDirectoryScope,
+      "Set a cache fragment to allow servers with different hostnames to "
+      "share a cache.  Allowed: letters, numbers, underscores, and hyphens.");
 
   // Test-only, so no enum.
   AddRequestProperty(
@@ -4275,5 +4285,25 @@ bool RewriteOptions::IsUrlCacheInvalidationEntriesSorted() const {
   }
   return true;
 }
+
+bool RewriteOptions::CacheFragmentOption::SetFromString(
+    StringPiece value, GoogleString* error_detail) {
+  // The main thing here is that the fragment not contain '/' (the separator
+  // used by HTTPCache) or '.' (so that a fragment can't be confused for a Host:
+  // header) but use a whitelist to be on the safe side.
+  for (int i = 0, n = value.length(); i < n; ++i) {
+    const char c = value.data()[i];
+    if (!IsAsciiAlphaNumeric(c) && c != '-' && c != '_') {
+      *error_detail = ("A CacheFragment must be only letters, numbers, "
+                       "underscores and hyphens.  Found '");
+      *error_detail += c;
+      *error_detail += "'.";
+      return false;
+    }
+  }
+  set(value.as_string());
+  return true;
+}
+
 
 }  // namespace net_instaweb

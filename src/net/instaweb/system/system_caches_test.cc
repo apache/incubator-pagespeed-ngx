@@ -208,9 +208,10 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     TestGet(server_context->metadata_cache(), "a",
             CacheInterface::kAvailable, "b");
 
-    TestHttpPut(server_context->http_cache(), "http://www.example.com", "a");
+    TestHttpPut(server_context->http_cache(), "http://www.example.com",
+                "fragment", "a");
     TestHttpGet(server_context->http_cache(), "http://www.example.com",
-                HTTPCache::kFound, "a");
+                "fragment", HTTPCache::kFound, "a");
     return server_context.release();
   }
 
@@ -232,19 +233,22 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     EXPECT_EQ(expected_value, callback.value());
   }
 
-  void TestHttpPut(HTTPCache* cache, StringPiece key, StringPiece value) {
+  void TestHttpPut(HTTPCache* cache, StringPiece key,
+                   StringPiece fragment, StringPiece value) {
     ResponseHeaders headers;
     SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
-    cache->Put(key.as_string(), RequestHeaders::Properties(),
+    cache->Put(key.as_string(), fragment.as_string(),
+               RequestHeaders::Properties(),
                ResponseHeaders::kRespectVaryOnResources, &headers, value,
                factory()->message_handler());
   }
 
-  void TestHttpGet(HTTPCache* cache, StringPiece key,
+  void TestHttpGet(HTTPCache* cache, StringPiece key, StringPiece fragment,
                    HTTPCache::FindResult expected_state,
                    StringPiece expected_value) {
     HTTPBlockingCallback callback(thread_system_.get());
-    cache->Find(key.as_string(), factory()->message_handler(), &callback);
+    cache->Find(key.as_string(), fragment.as_string(),
+                factory()->message_handler(), &callback);
     callback.Block();
     EXPECT_EQ(expected_state, callback.result());
     EXPECT_EQ(expected_value, callback.value());
@@ -659,12 +663,12 @@ TEST_F(SystemCachesTest, FileShare) {
           CacheInterface::kAvailable, "value");
   TestGet(servers[2]->metadata_cache(), "b", CacheInterface::kNotFound, "");
 
-  TestHttpPut(servers[0]->http_cache(), "http://b.org", "value");
-  TestHttpGet(servers[0]->http_cache(), "http://b.org",
+  TestHttpPut(servers[0]->http_cache(), "http://b.org", "fragment", "value");
+  TestHttpGet(servers[0]->http_cache(), "http://b.org", "fragment",
               HTTPCache::kFound, "value");
-  TestHttpGet(servers[1]->http_cache(), "http://b.org",
+  TestHttpGet(servers[1]->http_cache(), "http://b.org", "fragment",
               HTTPCache::kFound, "value");
-  TestHttpGet(servers[2]->http_cache(), "http://b.org",
+  TestHttpGet(servers[2]->http_cache(), "http://b.org", "fragment",
               HTTPCache::kNotFound, "");
 
   // Lock managers have similar sharing semantics
@@ -821,12 +825,12 @@ TEST_F(SystemCachesTest, MemCachedShare) {
   TestGet(servers[2]->metadata_cache(), "b",
           CacheInterface::kAvailable, "value");
 
-  TestHttpPut(servers[0]->http_cache(), "http://b.org", "value");
-  TestHttpGet(servers[0]->http_cache(), "http://b.org",
+  TestHttpPut(servers[0]->http_cache(), "http://b.org", "fragment", "value");
+  TestHttpGet(servers[0]->http_cache(), "http://b.org", "fragment",
               HTTPCache::kFound, "value");
-  TestHttpGet(servers[1]->http_cache(), "http://b.org",
+  TestHttpGet(servers[1]->http_cache(), "http://b.org", "fragment",
               HTTPCache::kFound, "value");
-  TestHttpGet(servers[2]->http_cache(), "http://b.org",
+  TestHttpGet(servers[2]->http_cache(), "http://b.org", "fragment",
               HTTPCache::kFound, "value");
 
   STLDeleteElements(&servers);

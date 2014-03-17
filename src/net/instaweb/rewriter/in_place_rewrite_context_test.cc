@@ -323,7 +323,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     if (write_to_cache) {
       response_headers.ComputeCaching();
       http_cache()->Put(
-          url, request_headers_.GetProperties(),
+          url, rewrite_driver_->CacheFragment(),
+          request_headers_.GetProperties(),
           ResponseHeaders::GetVaryOption(options()->respect_vary()),
           &response_headers, body, message_handler());
     }
@@ -1187,7 +1188,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   CheckWarmCache("etag_mismatch");
 
   // Delete the rewritten resource from cache to check if reconstruction works.
-  lru_cache()->Delete(rewritten_jpg_url_);
+  lru_cache()->Delete(HttpCacheKey(rewritten_jpg_url_));
 
   ResetHeadersAndStats();
   // Original resource is served with the date set to start time.

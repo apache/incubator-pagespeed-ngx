@@ -1084,6 +1084,10 @@ class RewriteDriver : public HtmlParse {
     return defer_instrumentation_script_;
   }
 
+  // We fragment the cache based on the hostname we got from the request, unless
+  // that was overridden in the options with a cache_fragment.
+  const GoogleString& CacheFragment() const;
+
  protected:
   virtual void DetermineEnabledFiltersImpl();
 

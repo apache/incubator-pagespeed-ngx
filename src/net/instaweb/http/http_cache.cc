@@ -128,9 +128,11 @@ bool HTTPCache::IsExpired(const ResponseHeaders& headers) {
 class HTTPCacheCallback : public CacheInterface::Callback {
  public:
   HTTPCacheCallback(const GoogleString& key,
+                    const GoogleString& fragment,
                     MessageHandler* handler,
                     HTTPCache::Callback* callback, HTTPCache* http_cache)
       : key_(key),
+        fragment_(fragment),
         handler_(handler),
         callback_(callback),
         http_cache_(http_cache) {
@@ -213,9 +215,9 @@ class HTTPCacheCallback : public CacheInterface::Callback {
           }
           if (handler_ != NULL) {
             handler_->Message(kInfo,
-                              "HTTPCache key=%s: remembering %s status "
-                              "for %ld seconds.",
-                              key_.c_str(), status,
+                              "HTTPCache key=%s fragment=%s: remembering %s "
+                              "status for %ld seconds.",
+                              key_.c_str(), fragment_.c_str(), status,
                               static_cast<long>(  // NOLINT
                                   remember_not_found_time_ms / 1000));
           }
@@ -246,7 +248,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
 
     // TODO(gee): Perhaps all of this belongs in TimingInfo.
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
-    http_cache_->UpdateStats(key_, backend_state, result,
+    http_cache_->UpdateStats(key_, fragment_, backend_state, result,
                              !callback_->fallback_http_value()->Empty(),
                              is_expired, elapsed_us, handler_);
     callback_->ReportLatencyMs(elapsed_us/1000);
@@ -260,6 +262,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
 
  private:
   GoogleString key_;
+  GoogleString fragment_;
   RequestHeaders::Properties req_properties_;
   MessageHandler* handler_;
   HTTPCache::Callback* callback_;
@@ -270,14 +273,15 @@ class HTTPCacheCallback : public CacheInterface::Callback {
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheCallback);
 };
 
-void HTTPCache::Find(const GoogleString& key, MessageHandler* handler,
-                     Callback* callback) {
-  HTTPCacheCallback* cb = new HTTPCacheCallback(key, handler, callback, this);
-  cache_->Get(key, cb);
+void HTTPCache::Find(const GoogleString& key, const GoogleString& fragment,
+                     MessageHandler* handler, Callback* callback) {
+  HTTPCacheCallback* cb = new HTTPCacheCallback(
+      key, fragment, handler, callback, this);
+  cache_->Get(CompositeKey(key, fragment), cb);
 }
 
 void HTTPCache::UpdateStats(
-    const GoogleString& key,
+    const GoogleString& key, const GoogleString& fragment,
     CacheInterface::KeyState backend_state, FindResult result,
     bool has_fallback, bool is_expired, int64 delta_us,
     MessageHandler* handler) {
@@ -296,32 +300,36 @@ void HTTPCache::UpdateStats(
       cache_fallbacks_->Add(1);
     }
     if (is_expired) {
-      handler->Message(kInfo, "Cache entry is expired: %s", key.c_str());
+      handler->Message(kInfo, "Cache entry is expired: %s (fragment=%s)",
+                       key.c_str(), fragment.c_str());
       cache_expirations_->Add(1);
     }
   }
 }
 
 void HTTPCache::RememberNotCacheable(const GoogleString& key,
+                                     const GoogleString& fragment,
                                      bool is_200_status_code,
                                      MessageHandler* handler) {
   RememberFetchFailedorNotCacheableHelper(
-      key, handler,
+      key, fragment, handler,
       is_200_status_code ? HttpStatus::kRememberNotCacheableAnd200StatusCode :
                            HttpStatus::kRememberNotCacheableStatusCode,
       remember_not_cacheable_ttl_seconds_);
 }
 
 void HTTPCache::RememberFetchFailed(const GoogleString& key,
+                                    const GoogleString& fragment,
                                     MessageHandler* handler) {
-  RememberFetchFailedorNotCacheableHelper(key, handler,
+  RememberFetchFailedorNotCacheableHelper(key, fragment, handler,
       HttpStatus::kRememberFetchFailedStatusCode,
       remember_fetch_failed_ttl_seconds_);
 }
 
 void HTTPCache::RememberFetchDropped(const GoogleString& key,
+                                     const GoogleString& fragment,
                                     MessageHandler* handler) {
-  RememberFetchFailedorNotCacheableHelper(key, handler,
+  RememberFetchFailedorNotCacheableHelper(key, fragment, handler,
       HttpStatus::kRememberFetchFailedStatusCode,
       remember_fetch_dropped_ttl_seconds_);
 }
@@ -333,21 +341,22 @@ void HTTPCache::set_max_cacheable_response_content_length(int64 value) {
   }
 }
 
-void HTTPCache::RememberFetchFailedorNotCacheableHelper(const GoogleString& key,
+void HTTPCache::RememberFetchFailedorNotCacheableHelper(
+    const GoogleString& key, const GoogleString& fragment,
     MessageHandler* handler, HttpStatus::Code code, int64 ttl_sec) {
   ResponseHeaders headers;
   headers.set_status_code(code);
   int64 now_ms = timer_->NowMs();
   headers.SetDateAndCaching(now_ms, ttl_sec * 1000);
   headers.ComputeCaching();
-  Put(key, RequestHeaders::Properties(),
+  Put(key, fragment, RequestHeaders::Properties(),
       ResponseHeaders::kRespectVaryOnResources,
       &headers, "", handler);
 }
 
 HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
-    const GoogleString& key, int64 start_us, const StringPiece* content,
-    ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler) {
+    int64 start_us, const StringPiece* content, ResponseHeaders* headers,
+    HTTPValue* value, MessageHandler* handler) {
   if ((headers->status_code() != HttpStatus::kOK) &&
       ignore_failure_puts_.value()) {
     return NULL;
@@ -389,9 +398,10 @@ HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
   return value;
 }
 
-void HTTPCache::PutInternal(const GoogleString& key, int64 start_us,
-                            HTTPValue* value) {
-  cache_->Put(key, value->share());
+void HTTPCache::PutInternal(
+    const GoogleString& key, const GoogleString& fragment,
+    int64 start_us, HTTPValue* value) {
+  cache_->Put(CompositeKey(key, fragment), value->share());
   if (cache_time_us_ != NULL) {
     int64 delta_us = timer_->NowUs() - start_us;
     cache_time_us_->Add(delta_us);
@@ -402,7 +412,7 @@ void HTTPCache::PutInternal(const GoogleString& key, int64 start_us,
 // We do not check cache invalidation in Put. It is assumed that the date header
 // will be greater than the cache_invalidation_timestamp, if any, in domain
 // config.
-void HTTPCache::Put(const GoogleString& key,
+void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
                     RequestHeaders::Properties req_properties,
                     ResponseHeaders::VaryOption respect_vary_on_resources,
                     HTTPValue* value, MessageHandler* handler) {
@@ -418,15 +428,16 @@ void HTTPCache::Put(const GoogleString& key,
       !(headers.IsProxyCacheable(req_properties, respect_vary_on_resources,
                                  ResponseHeaders::kHasValidator) &&
         IsCacheableBodySize(value->contents_size()))) {
-    LOG(DFATAL) << "trying to Put uncacheable data for key " << key;
+    LOG(DFATAL) << "trying to Put uncacheable data for key=" << key
+                << " fragment=" << fragment;
     return;
   }
   // Apply header changes.
-  HTTPValue* new_value = ApplyHeaderChangesForPut(key, start_us, NULL,
-                                                  &headers, value, handler);
+  HTTPValue* new_value = ApplyHeaderChangesForPut(
+      start_us, NULL, &headers, value, handler);
   // Put into underlying cache.
   if (new_value != NULL) {
-    PutInternal(key, start_us, new_value);
+    PutInternal(key, fragment, start_us, new_value);
     // Delete new_value if it is newly allocated.
     if (new_value != value) {
       delete new_value;
@@ -434,7 +445,7 @@ void HTTPCache::Put(const GoogleString& key,
   }
 }
 
-void HTTPCache::Put(const GoogleString& key,
+void HTTPCache::Put(const GoogleString& key, const GoogleString& fragment,
                     RequestHeaders::Properties req_properties,
                     ResponseHeaders::VaryOption respect_vary_on_resources,
                     ResponseHeaders* headers,
@@ -455,10 +466,10 @@ void HTTPCache::Put(const GoogleString& key,
   // Takes ownership of the returned HTTPValue, which is guaranteed to have been
   // allocated by ApplyHeaderChangesForPut.
   scoped_ptr<HTTPValue> value(ApplyHeaderChangesForPut(
-      key, start_us, &content, headers, NULL, handler));
+      start_us, &content, headers, NULL, handler));
   // Put into underlying cache.
   if (value.get() != NULL) {
-    PutInternal(key, start_us, value.get());
+    PutInternal(key, fragment, start_us, value.get());
   }
 }
 
@@ -487,9 +498,9 @@ bool HTTPCache::MayCacheUrl(const GoogleString& url,
   return true;
 }
 
-void HTTPCache::Delete(const GoogleString& key) {
+void HTTPCache::Delete(const GoogleString& key, const GoogleString& fragment) {
   cache_deletes_->Add(1);
-  return cache_->Delete(key);
+  return cache_->Delete(CompositeKey(key, fragment));
 }
 
 void HTTPCache::InitStats(Statistics* statistics) {

@@ -1127,7 +1127,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   EXPECT_EQ(HttpStatus::kNotFound, headers.status_code());
 
   // Delete the 404 from cache and again set up for 200 response.
-  lru_cache()->Delete(request_url_);
+  lru_cache()->Delete(HttpCacheKey(request_url_));
   SetupForFlushEarlyFlow();
 
   // Flush early flow is again not triggered as the status code is not

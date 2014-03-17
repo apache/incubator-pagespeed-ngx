@@ -427,7 +427,7 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
   EXPECT_EQ(set_text, get_text);
 
   // Remove from the cache so we can actually test a HEAD fetch.
-  http_cache()->Delete(url);
+  http_cache()->Delete(url, rewrite_driver_->CacheFragment());
 
   ClearStats();
 

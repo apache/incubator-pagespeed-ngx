@@ -41,11 +41,13 @@ AtomicInt32 InPlaceResourceRecorder::active_recordings_(0);
 
 InPlaceResourceRecorder::InPlaceResourceRecorder(
     const RequestContextPtr& request_context,
-    StringPiece url, const RequestHeaders::Properties request_properties, bool respect_vary,
+    StringPiece url, StringPiece fragment,
+    const RequestHeaders::Properties request_properties, bool respect_vary,
     int max_response_bytes, int max_concurrent_recordings,
     int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* stats,
     MessageHandler* handler)
     : url_(url.data(), url.size()),
+      fragment_(fragment.data(), fragment.size()),
       request_properties_(request_properties),
       respect_vary_(ResponseHeaders::GetVaryOption(respect_vary)),
       max_response_bytes_(max_response_bytes),
@@ -133,7 +135,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
   // For 4xx and 5xx we can't IPRO, but we can also cache the failure so we
   // don't retry recording for a bit.
   if (response_headers->IsErrorStatus()) {
-    cache_->RememberFetchFailed(url_, handler_);
+    cache_->RememberFetchFailed(url_, fragment_, handler_);
     failure_ = true;
     return;
   }
@@ -156,7 +158,8 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
       !(content_type->IsImage() ||
         content_type->IsCss() ||
         content_type->type() == ContentType::kJavascript)) {
-    cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
+    cache_->RememberNotCacheable(
+        url_, fragment_, status_code_ == 200, handler_);
     failure_ = true;
     return;
   }
@@ -164,7 +167,8 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
       request_properties_, respect_vary_,
       ResponseHeaders::kNoValidator);
   if (!is_cacheable) {
-    cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
+    cache_->RememberNotCacheable(
+        url_, fragment_, status_code_ == 200, handler_);
     num_not_cacheable_->Add(1);
     failure_ = true;
     return;
@@ -183,7 +187,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
 }
 
 void InPlaceResourceRecorder::DroppedDueToSize() {
-  cache_->RememberNotCacheable(url_, status_code_ == 200, handler_);
+  cache_->RememberNotCacheable(url_, fragment_, status_code_ == 200, handler_);
   num_dropped_due_to_size_->Add(1);
   failure_ = true;
 }
@@ -205,8 +209,8 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
     response_headers->RemoveAll(HttpAttributes::kContentEncoding);
     response_headers->RemoveAll(HttpAttributes::kContentLength);
     resource_value_.SetHeaders(response_headers);
-    cache_->Put(url_, request_properties_, respect_vary_, &resource_value_,
-                handler_);
+    cache_->Put(url_, fragment_, request_properties_, respect_vary_,
+                &resource_value_, handler_);
     // TODO(sligocki): Start IPRO rewrite.
     num_inserted_into_cache_->Add(1);
   }

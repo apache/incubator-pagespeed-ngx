@@ -495,6 +495,7 @@ bool InstawebHandler::HandleAsInPlace() {
     InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
         request_context_,
         stripped_gurl_.Spec(),
+        driver->CacheFragment(),
         request_properties,
         options_->respect_vary(),
         options_->ipro_max_response_bytes(),

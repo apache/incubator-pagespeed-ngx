@@ -1439,9 +1439,9 @@ TEST_F(CssCombineFilterTest, TwoCombinationsTwice) {
             output_css_links[2]->url_);
 
   // Get rid of the "modern" cache key, while keeping the old one.
-  lru_cache()->Delete(
+  lru_cache()->Delete(HttpCacheKey(
       ",htest.com,_a.css+,htest.com,_b.css+,htest.com,_404.css+"
-      ",htest.com,_c.css+,htest.com,_d.css:cc");
+      ",htest.com,_c.css+,htest.com,_d.css:cc"));
 
   // Now do it again...
   BarrierTestHelper("two_comb", input_css_links, &output_css_links);

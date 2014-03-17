@@ -2061,7 +2061,7 @@ TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
   server_context()->ComputeSignature(options());
 
   // Delay the http cache lookup for the image so that it is not rewritten.
-  delay_cache()->DelayKey(img_url);
+  delay_cache()->DelayKey(HttpCacheKey(img_url));
 
   SetupWriter();
   rewrite_driver()->StartParse(kTestDomain);
@@ -2070,7 +2070,7 @@ TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
       "<style>body{background:url(a.jpg)}</style>");
   rewrite_driver()->Flush();
   rewrite_driver()->ParseText("</body></html>");
-  delay_cache()->ReleaseKey(img_url);
+  delay_cache()->ReleaseKey(HttpCacheKey(img_url));
   rewrite_driver()->FinishParse();
 
   EXPECT_EQ("<html><body><style>body{background:url(a.jpg)}</style>"

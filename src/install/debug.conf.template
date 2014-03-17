@@ -451,6 +451,8 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_css,rewrite_images
+  # Share a cache keyspace with origin.example.com.
+  ModPagespeedCacheFragment "example"
 </VirtualHost>
 
 # Sets up a logical origin for CDNs to fetch content from, on origin.example.com.
@@ -462,6 +464,8 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_css,rewrite_images
+  # Share a cache keyspace with www.example.com.
+  ModPagespeedCacheFragment "example"
 </VirtualHost>
 
 # Sets up a logical cdn, which is where we tell browsers to fetch resources from.
@@ -1168,6 +1172,9 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   ModPagespeedDisableFilters inline_css,extend_cache,inline_javascript
   ModPagespeedDomain embed-config-resources.example.com
 
+  # Share a cache keyspace with embed-config-resources.example.com.
+  ModPagespeedCacheFragment "embed-config"
+
   ModPagespeedLoadFromFile "http://embed-config-resources.example.com/" \
       "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
 </VirtualHost>
@@ -1182,6 +1189,9 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   # Note that we do not set the jpeg quality here, but take
   # it from image URL query parameters that we synthesize in
   # from embed-config-html.example.com.
+
+  # Share a cache keyspace with embed-config-html.example.com.
+  ModPagespeedCacheFragment "embed-config"
 
   ModPagespeedLoadFromFile "http://embed-config-resources.example.com/" \
       "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
@@ -1285,6 +1295,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
 #ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
+#ALL_DIRECTIVES ModPagespeedCacheFragment share-a-cache-please
 #ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true

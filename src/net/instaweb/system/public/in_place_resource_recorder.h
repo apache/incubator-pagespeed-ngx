@@ -55,7 +55,8 @@ class InPlaceResourceRecorder : public Writer {
   // delete itself when DoneAndSetHeaders() is called.
   InPlaceResourceRecorder(
       const RequestContextPtr& request_context,
-      StringPiece url, RequestHeaders::Properties request_properties,
+      StringPiece url, StringPiece fragment,
+      RequestHeaders::Properties request_properties,
       bool respect_vary, int max_response_bytes, int max_concurrent_recordings,
       int64 implicit_cache_ttl_ms, HTTPCache* cache, Statistics* statistics,
       MessageHandler* handler);
@@ -135,6 +136,7 @@ class InPlaceResourceRecorder : public Writer {
   void DroppedDueToSize();
 
   const GoogleString url_;
+  const GoogleString fragment_;
   const RequestHeaders::Properties request_properties_;
   const ResponseHeaders::VaryOption respect_vary_;
   const unsigned int max_response_bytes_;

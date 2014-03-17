@@ -724,6 +724,12 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   GoogleString ExpectedNonce();
 
+  // When reaching into a cache that backs an HTTP cache you need a cache key
+  // that includes the fragment.
+  GoogleString HttpCacheKey(StringPiece url) {
+    return HTTPCache::CompositeKey(url, rewrite_driver_->CacheFragment());
+  }
+
   // The mock fetchers & stats are global across all Factories used in the
   // tests.
   MockUrlFetcher mock_url_fetcher_;

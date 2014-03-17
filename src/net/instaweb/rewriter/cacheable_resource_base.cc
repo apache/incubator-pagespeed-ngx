@@ -227,20 +227,24 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
         // But we must be careful in the mod_pagespeed ipro flow,
         // where we must avoid storing any resource obtained with a
         // Cookie.  For now we don't implement this.
-        http_cache()->Put(resource_->cache_key(), RequestHeaders::Properties(),
+        http_cache()->Put(resource_->cache_key(), driver_->CacheFragment(),
+                          RequestHeaders::Properties(),
                           resource_->respect_vary(), value, message_handler_);
         return true;
       } else {
         http_cache()->RememberNotCacheable(
-            resource_->cache_key(), headers->status_code() == HttpStatus::kOK,
+            resource_->cache_key(), driver_->CacheFragment(),
+            headers->status_code() == HttpStatus::kOK,
             message_handler_);
       }
     } else {
       if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
         http_cache()->RememberFetchDropped(resource_->cache_key(),
+                                           driver_->CacheFragment(),
                                            message_handler_);
       } else {
         http_cache()->RememberFetchFailed(resource_->cache_key(),
+                                          driver_->CacheFragment(),
                                           message_handler_);
       }
     }
@@ -716,7 +720,8 @@ void CacheableResourceBase::LoadAndCallback(
                                 callback, this);
 
   cache_callback->set_is_background(is_background_fetch());
-  http_cache()->Find(cache_key(), message_handler(), cache_callback);
+  http_cache()->Find(cache_key(), rewrite_driver()->CacheFragment(),
+                     message_handler(), cache_callback);
 }
 
 void CacheableResourceBase::Freshen(Resource::FreshenCallback* callback,
@@ -733,7 +738,8 @@ void CacheableResourceBase::Freshen(Resource::FreshenCallback* callback,
       this, callback);
   // Lookup the cache before doing the fetch since the response may have already
   // been fetched elsewhere.
-  http_cache->Find(cache_key(), handler, freshen_callback);
+  http_cache->Find(cache_key(), rewrite_driver()->CacheFragment(),
+                   handler, freshen_callback);
 }
 
 bool CacheableResourceBase::UpdateInputInfoForFreshen(

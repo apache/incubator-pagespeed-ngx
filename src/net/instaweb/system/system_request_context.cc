@@ -22,10 +22,13 @@ namespace net_instaweb {
 
 SystemRequestContext::SystemRequestContext(
     AbstractMutex* logging_mutex, Timer* timer,
+    StringPiece hostname_for_cache_fragmentation,
     int local_port, StringPiece local_ip)
     : RequestContext(logging_mutex, timer),
       local_port_(local_port),
-      local_ip_(local_ip.as_string()) {}
+      local_ip_(local_ip.as_string()) {
+  set_hostname_for_cache_fragmentation(hostname_for_cache_fragmentation);
+}
 
 SystemRequestContext* SystemRequestContext::DynamicCast(RequestContext* rc) {
   if (rc == NULL) {

@@ -48,12 +48,14 @@ namespace {
 
 class CachePutFetch : public SharedAsyncFetch {
  public:
-  CachePutFetch(const GoogleString& url, AsyncFetch* base_fetch,
+  CachePutFetch(const GoogleString& url, const GoogleString& fragment,
+                AsyncFetch* base_fetch,
                 ResponseHeaders::VaryOption respect_vary,
                 bool default_cache_html, HTTPCache* cache,
                 Histogram* backend_first_byte_latency, MessageHandler* handler)
       : SharedAsyncFetch(base_fetch),
         url_(url),
+        fragment_(fragment),
         respect_vary_(respect_vary),
         default_cache_html_(default_cache_html),
         cache_(cache),
@@ -144,8 +146,8 @@ class CachePutFetch : public SharedAsyncFetch {
     SharedAsyncFetch::HandleDone(success);
     // Add result to cache.
     if (insert_into_cache) {
-      cache_->Put(url_, req_properties_, respect_vary_, &cache_value_,
-                  handler_);
+      cache_->Put(url_, fragment_, req_properties_, respect_vary_,
+                  &cache_value_, handler_);
     }
     delete this;
   }
@@ -153,6 +155,7 @@ class CachePutFetch : public SharedAsyncFetch {
  private:
   AsyncFetch* base_fetch_;
   const GoogleString url_;
+  const GoogleString fragment_;
   ResponseHeaders::VaryOption respect_vary_;
   bool default_cache_html_;
   HTTPCache* cache_;
@@ -216,6 +219,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   CacheFindCallback(const Hasher* lock_hasher,
                     NamedLockManager* lock_manager,
                     const GoogleString& url,
+                    const GoogleString& fragment,
                     AsyncFetch* base_fetch,
                     CacheUrlAsyncFetcher* owner,
                     CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks,
@@ -227,6 +231,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         url_(url),
         base_fetch_(base_fetch),
         cache_(owner->http_cache()),
+        fragment_(fragment),
         async_op_hooks_(async_op_hooks),
         fetcher_(owner->fetcher()),
         backend_first_byte_latency_(
@@ -257,7 +262,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   virtual void Done(HTTPCache::FindResult find_result) {
     switch (find_result) {
       case HTTPCache::kFound: {
-        VLOG(1) << "Found in cache: " << url_;
+        VLOG(1) << "Found in cache: " << url_ << " (" << fragment_ << ")";
         http_value()->ExtractHeaders(response_headers(), handler_);
         response_headers()->ComputeCaching();
         bool is_imminently_expiring =
@@ -310,7 +315,8 @@ class CacheFindCallback : public HTTPCache::Callback {
       // TODO(sligocki): Should we mark resources as such in this class?
       case HTTPCache::kRecentFetchFailed:
       case HTTPCache::kRecentFetchNotCacheable:
-        VLOG(1) << "RecentFetchFailedOrNotCacheable: " << url_;
+        VLOG(1) << "RecentFetchFailedOrNotCacheable: "
+                << url_ << " (" << fragment_ << ")";
         if (!ignore_recent_fetch_failed_) {
           base_fetch_->Done(false);
           break;
@@ -322,7 +328,8 @@ class CacheFindCallback : public HTTPCache::Callback {
           FALLTHROUGH_INTENDED;
         }
       case HTTPCache::kNotFound: {
-        VLOG(1) << "Did not find in cache: " << url_;
+        VLOG(1) << "Did not find in cache: "
+                << url_ << " (" << fragment_ << ")";
         if (fetcher_ == NULL) {
           // Set status code to indicate reason we failed Fetch.
           DCHECK(!base_fetch_->headers_complete());
@@ -367,7 +374,7 @@ class CacheFindCallback : public HTTPCache::Callback {
 
   virtual bool IsCacheValid(const GoogleString& key,
                             const ResponseHeaders& headers) {
-    // base_fetch_ is assumed to have the key (URL).
+    // base_fetch_ already has the key (URL + fragment).
     return base_fetch_->IsCachedResultValid(headers);
   }
 
@@ -481,7 +488,7 @@ class CacheFindCallback : public HTTPCache::Callback {
 
   AsyncFetch* WrapCachePutFetchAndConditionalFetch(AsyncFetch* base_fetch) {
     CachePutFetch* put_fetch = new CachePutFetch(
-        url_, base_fetch, respect_vary_, default_cache_html_, cache_,
+        url_, fragment_, base_fetch, respect_vary_, default_cache_html_, cache_,
         backend_first_byte_latency_, handler_);
     DCHECK_EQ(response_headers(), base_fetch_->response_headers());
 
@@ -510,6 +517,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   RequestHeaders request_headers_;
   AsyncFetch* base_fetch_;
   HTTPCache* cache_;
+  GoogleString fragment_;
   CacheUrlAsyncFetcher::AsyncOpHooks* async_op_hooks_;
   UrlAsyncFetcher* fetcher_;
   Histogram* backend_first_byte_latency_;
@@ -551,11 +559,12 @@ void CacheUrlAsyncFetcher::Fetch(
                 lock_hasher_,
                 lock_manager_,
                 url,
+                fragment_,
                 base_fetch,
                 this,
                 async_op_hooks_,
                 handler);
-        http_cache_->Find(url, handler, find_callback);
+        http_cache_->Find(url, fragment_, handler, find_callback);
       }
       return;
 

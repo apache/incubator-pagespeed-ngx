@@ -2899,7 +2899,7 @@ void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
 void RewriteContext::FetchTryFallback(const GoogleString& url,
                                       const StringPiece& hash) {
   FindServerContext()->http_cache()->Find(
-      url,
+      url, Driver()->CacheFragment(),
       FindServerContext()->message_handler(),
       new HTTPCacheCallback(
           this, &RewriteContext::FetchFallbackCacheDone));

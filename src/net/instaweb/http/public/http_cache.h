@@ -213,12 +213,14 @@ class HTTPCache {
   // Non-blocking Find.  Calls callback when done.  'handler' must all
   // stay valid until callback->Done() is called.
   virtual void Find(const GoogleString& key,
+                    const GoogleString& fragment,
                     MessageHandler* handler,
                     Callback* callback);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
   void Put(const GoogleString& key,
+           const GoogleString& fragment,
            RequestHeaders::Properties req_properties,
            ResponseHeaders::VaryOption respect_vary_on_resources,
            HTTPValue* value,
@@ -229,13 +231,14 @@ class HTTPCache {
   // If you call this method, you must be certain that the outgoing
   // request was not sent with Authorization:.
   void Put(const GoogleString& key,
+           const GoogleString& fragment,
            RequestHeaders::Properties req_properties,
            ResponseHeaders::VaryOption respect_vary_on_resources,
            ResponseHeaders* headers,
            const StringPiece& content, MessageHandler* handler);
 
   // Deletes an element in the cache.
-  virtual void Delete(const GoogleString& key);
+  virtual void Delete(const GoogleString& key, const GoogleString& fragment);
 
   virtual void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
@@ -253,6 +256,7 @@ class HTTPCache {
   // Note that we remember whether the response was originally a "200 OK" so
   // that we can check if the cache TTL can be overridden.
   virtual void RememberNotCacheable(const GoogleString& key,
+                                    const GoogleString& fragment,
                                     bool is_200_status_code,
                                     MessageHandler* handler);
 
@@ -262,12 +266,14 @@ class HTTPCache {
   // The not-cacheable setting will be 'remembered' for
   // remember_fetch_failed_ttl_seconds_.
   virtual void RememberFetchFailed(const GoogleString& key,
+                                   const GoogleString& fragment,
                                    MessageHandler* handler);
 
   // Tell the HTTP Cache to remember that we had to give up on doing a
   // background fetch due to load. This will remember it for
   // remember_fetch_load_shed_ttl_seconds_.
   virtual void RememberFetchDropped(const GoogleString& key,
+                                    const GoogleString& fragment,
                                     MessageHandler* handler);
 
   // Indicates if the response is within the cacheable size limit. Clients of
@@ -344,8 +350,17 @@ class HTTPCache {
   virtual GoogleString Name() const { return FormatName(cache_->Name()); }
   static GoogleString FormatName(StringPiece cache);
 
+  static GoogleString CompositeKey(StringPiece key, StringPiece fragment) {
+    DCHECK(fragment.find("/") == StringPiece::npos);
+
+    // Return "fragment/key" if there's a fragment, otherwise just return "key".
+    return StrCat(fragment, fragment.empty() ? "" : "/", key);
+  }
+
  protected:
-  virtual void PutInternal(const GoogleString& key, int64 start_us,
+  virtual void PutInternal(const GoogleString& key,
+                           const GoogleString& fragment,
+                           int64 start_us,
                            HTTPValue* value);
 
  private:
@@ -358,15 +373,15 @@ class HTTPCache {
   // is NULL then it builds and returns a new HTTPValue. If content is NULL
   // then content is extracted from value.
   HTTPValue* ApplyHeaderChangesForPut(
-      const GoogleString& key, int64 start_us, const StringPiece* content,
-      ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler);
-  void UpdateStats(const GoogleString& key,
+      int64 start_us, const StringPiece* content, ResponseHeaders* headers,
+      HTTPValue* value, MessageHandler* handler);
+  void UpdateStats(const GoogleString& key, const GoogleString& fragment,
                    CacheInterface::KeyState backend_state, FindResult result,
                    bool has_fallback, bool is_expired, int64 delta_us,
                    MessageHandler* handler);
   void RememberFetchFailedorNotCacheableHelper(
-      const GoogleString& key, MessageHandler* handler, HttpStatus::Code code,
-      int64 ttl_sec);
+      const GoogleString& key, const GoogleString& fragment,
+      MessageHandler* handler, HttpStatus::Code code, int64 ttl_sec);
 
   CacheInterface* cache_;  // Owned by the caller.
   Timer* timer_;

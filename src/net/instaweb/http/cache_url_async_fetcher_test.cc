@@ -237,6 +237,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         conditional_etag_url_("http://www.example.com/cond_etag.jpg"),
         implicit_cache_url_("http://www.example.com/implicit_cache.jpg"),
         vary_url_("http://www.example.com/vary"),
+        fragment_("www.example.com"),
         cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
         vary_body_("vary"),
         etag_("123456790ABCDEF"),
@@ -258,6 +259,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
             &mock_hasher_,
             &lock_manager_,
             http_cache_.get(),
+            fragment_,
             &mock_async_op_hooks_,
             &counting_fetcher_));
     // Enable serving of stale content if the fetch fails.
@@ -344,7 +346,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   HTTPCache::FindResult FindWithCallback(
       const GoogleString& key, HTTPValue* value, ResponseHeaders* headers,
       MessageHandler* handler, Callback* callback) {
-    http_cache_->Find(key, handler, callback);
+    http_cache_->Find(key, fragment_, handler, callback);
     EXPECT_TRUE(callback->called_);
     if (callback->result_ == HTTPCache::kFound) {
       value->Link(callback->http_value());
@@ -610,6 +612,8 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   const GoogleString conditional_etag_url_;
   const GoogleString implicit_cache_url_;
   const GoogleString vary_url_;
+
+  const GoogleString fragment_;
 
   ResponseHeaders mutable_vary_headers_;
 
@@ -1396,7 +1400,7 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedNoIgnore) {
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 
-  http_cache_->RememberFetchFailed(bad_url_, &handler_);
+  http_cache_->RememberFetchFailed(bad_url_, fragment_, &handler_);
   EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
 
   // bad_url_, is not fetched the second time.
@@ -1418,7 +1422,7 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedIgnore) {
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 
-  http_cache_->RememberFetchFailed(bad_url_, &handler_);
+  http_cache_->RememberFetchFailed(bad_url_, fragment_, &handler_);
   EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
 
   // bad_url_, is fetched again the second time.
@@ -1730,6 +1734,7 @@ TEST_F(CacheUrlAsyncFetcherTest, NotInCache) {
       &mock_hasher_,
       &lock_manager_,
       http_cache_.get(),
+      fragment_,
       &mock_async_op_hooks_,
       NULL);
   StringAsyncFetch fetch(
@@ -1749,6 +1754,7 @@ TEST_F(CacheUrlAsyncFetcherTest, NotInCachePost) {
       &mock_hasher_,
       &lock_manager_,
       http_cache_.get(),
+      fragment_,
       &mock_async_op_hooks_,
       NULL);
   StringAsyncFetch fetch(
@@ -1758,7 +1764,8 @@ TEST_F(CacheUrlAsyncFetcherTest, NotInCachePost) {
   // Put result in cache.
   ResponseHeaders headers;
   DefaultResponseHeaders(kContentTypeCss, 100, &headers);
-  http_cache_->Put(cache_url_, fetch.request_headers()->GetProperties(),
+  http_cache_->Put(cache_url_, fragment_,
+                   fetch.request_headers()->GetProperties(),
                    ResponseHeaders::kRespectVaryOnResources,
                    &headers, ".a { color: red; }", &handler_);
   fetcher.Fetch(cache_url_, &handler_, &fetch);

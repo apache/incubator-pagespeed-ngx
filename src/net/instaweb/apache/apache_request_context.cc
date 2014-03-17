@@ -21,18 +21,20 @@
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/util/public/string_util.h"
 
 #include "httpd.h"  // NOLINT
 
 namespace net_instaweb {
 
 ApacheRequestContext::ApacheRequestContext(
-    AbstractMutex* logging_mutex,
-    Timer* timer,
-    int local_port,
-    StringPiece local_ip,
-    request_rec* req)
-    : SystemRequestContext(logging_mutex, timer, local_port, local_ip),
+    AbstractMutex* logging_mutex, Timer* timer, request_rec* req)
+    : SystemRequestContext(
+          logging_mutex,
+          timer,
+          req->hostname,
+          req->connection->local_addr->port,
+          req->connection->local_ip),
       use_spdy_fetcher_(ModSpdyFetcher::ShouldUseOn(req)),
       spdy_connection_factory_(NULL) {
   // Note that at the time we create a RequestContext we have full

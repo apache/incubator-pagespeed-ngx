@@ -238,6 +238,9 @@ class ImageRewriteTest : public RewriteTestBase {
   // Simple image rewrite test to check resource fetching functionality.
   void RewriteImage(const GoogleString& tag_string,
                     const ContentType& content_type) {
+    static const char kCacheFragment[] = "a-cache-fragment";
+    options()->set_cache_fragment(kCacheFragment);
+
     // Capture normal headers for comparison. We need to do it now
     // since the clock -after- rewrite is non-deterministic, but it must be
     // at the initial value at the time of the rewrite.
@@ -272,8 +275,8 @@ class ImageRewriteTest : public RewriteTestBase {
     HTTPCacheStringCallback cache_callback(
         options(), rewrite_driver()->request_context(),
         &rewritten_image, &rewritten_headers);
-    http_cache()->Find(img_gurl.Spec().as_string(), message_handler(),
-                       &cache_callback);
+    http_cache()->Find(img_gurl.Spec().as_string(), kCacheFragment,
+                       message_handler(), &cache_callback);
     cache_callback.ExpectFound();
 
     // Make sure the headers produced make sense.
@@ -996,7 +999,7 @@ TEST_F(ImageRewriteTest, AddDimTest) {
   EXPECT_EQ(1, rewrite_latency_failed->Count());
 
   // Force any image read to be a fetch.
-  lru_cache()->Delete(StrCat(kTestDomain, kBikePngFile));
+  lru_cache()->Delete(HttpCacheKey(StrCat(kTestDomain, kBikePngFile)));
 
   // .. Now make sure we cached dimension insertion properly, and can do it
   // without re-fetching the image.

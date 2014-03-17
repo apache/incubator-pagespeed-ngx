@@ -407,7 +407,7 @@ TEST_F(CacheableResourceBaseTest, SameUrlDifferentKey) {
 
   // Delete resource's cache entry to make sure that #2 is really using
   // something different.
-  lru_cache()->Delete(kTestUrl);
+  lru_cache()->Delete(HttpCacheKey(kTestUrl));
 
   // Re-fetch r1, to make sure the delete worked
   resource_->Reset();
@@ -483,7 +483,7 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
   // now turn the hook on.
   resource_->Reset();
   resource_->set_do_prepare_request(true);
-  lru_cache()->Delete(kTestUrl);
+  lru_cache()->Delete(HttpCacheKey(kTestUrl));
   MockResourceCallback callback2(ResourcePtr(resource_.get()),
                                  server_context()->thread_system());
   RequestContextPtr request_context2(
@@ -513,7 +513,7 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
                                  server_context()->thread_system());
 
   resource_->Reset();
-  lru_cache()->Delete(kTestUrl);
+  lru_cache()->Delete(HttpCacheKey(kTestUrl));
   resource_->LoadAsync(Resource::kReportFailureIfNotCacheable,
                        RequestContext::NewTestRequestContext(
                            server_context()->thread_system()),
@@ -525,7 +525,7 @@ TEST_F(CacheableResourceBaseTest, PrepareHooks) {
   // Note: can't check response_headers here since resource wasn't loaded.
 
   // Now try with a PrepareResponseHeaders removing cache-control: private
-  lru_cache()->Delete(kTestUrl);
+  lru_cache()->Delete(HttpCacheKey(kTestUrl));
   resource_->set_do_prepare_response(true);
   MockResourceCallback callback4(ResourcePtr(resource_.get()),
                                  server_context()->thread_system());

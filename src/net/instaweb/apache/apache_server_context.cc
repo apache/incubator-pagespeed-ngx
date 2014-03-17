@@ -204,8 +204,6 @@ ApacheRequestContext* ApacheServerContext::NewApacheRequestContext(
   return new ApacheRequestContext(
       thread_system()->NewMutex(),
       timer(),
-      request->connection->local_addr->port,
-      request->connection->local_ip,
       request);
 }
 

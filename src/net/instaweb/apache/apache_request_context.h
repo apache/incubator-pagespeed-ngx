@@ -26,7 +26,6 @@
 #include "base/logging.h"
 #include "net/instaweb/system/public/system_request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
 
 struct request_rec;
 struct spdy_slave_connection_factory;
@@ -42,11 +41,8 @@ class ApacheRequestContext : public SystemRequestContext {
   // Constructs a request suitable for querying options, but not for
   // initiating fetches.  To prepare a context for fetches, call
   // SetupSpdyConnectionIfNeeded after construction.
-  ApacheRequestContext(AbstractMutex* logging_mutex,
-                       Timer* timer,
-                       int local_port,
-                       StringPiece local_ip,
-                       request_rec* req);
+  ApacheRequestContext(
+      AbstractMutex* logging_mutex, Timer* timer, request_rec* req);
 
   // Returns rc as an ApacheRequestContext* if it is one and CHECK
   // fails if it is not. Returns NULL if rc is NULL.

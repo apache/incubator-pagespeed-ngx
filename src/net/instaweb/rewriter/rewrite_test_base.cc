@@ -561,7 +561,8 @@ void RewriteTestBase::TestServeFiles(
   ResponseHeaders headers;
   server_context_->SetDefaultLongCacheHeaders(content_type, &headers);
   HTTPCache* http_cache = server_context_->http_cache();
-  http_cache->Put(expected_rewritten_path, RequestHeaders::Properties(),
+  http_cache->Put(expected_rewritten_path, rewrite_driver_->CacheFragment(),
+                  RequestHeaders::Properties(),
                   ResponseHeaders::GetVaryOption(options()->respect_vary()),
                   &headers, rewritten_content, message_handler());
   EXPECT_EQ(0U, lru_cache()->num_hits());
@@ -1031,7 +1032,8 @@ HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
     ResponseHeaders* headers) {
   HttpCallback callback(CreateRequestContext());
   callback.set_response_headers(headers);
-  http_cache->Find(key, message_handler(), &callback);
+  http_cache->Find(
+      key, rewrite_driver_->CacheFragment(), message_handler(), &callback);
   CHECK(callback.done());
   value_out->Link(callback.http_value());
   return callback.result();

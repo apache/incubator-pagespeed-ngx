@@ -211,6 +211,7 @@ class RewriteOptions {
   static const char kBeaconReinstrumentTimeSec[];
   static const char kBeaconUrl[];
   static const char kBlinkMaxHtmlSizeRewritable[];
+  static const char kCacheFragment[];
   static const char kCacheInvalidationTimestamp[];
   static const char kCacheSmallImagesUnrewritten[];
   static const char kClientDomainRewrite[];
@@ -2296,6 +2297,13 @@ class RewriteOptions {
     return serve_rewritten_webp_urls_to_any_agent_.value();
   }
 
+  void set_cache_fragment(const StringPiece& p) {
+    set_option(p.as_string(), &cache_fragment_);
+  }
+  const GoogleString& cache_fragment() const {
+    return cache_fragment_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -2861,6 +2869,13 @@ class RewriteOptions {
   Option<GoogleString> x_header_value_;
 
  private:
+  // We need to check for valid settings with CacheFragment.
+  class CacheFragmentOption : public Option<GoogleString> {
+   public:
+    virtual bool SetFromString(StringPiece value_string,
+                               GoogleString* error_detail);
+  };
+
   struct OptionIdCompare;
 
   // Enum type used to record what action must be taken to resolve conflicts
@@ -3694,6 +3709,10 @@ class RewriteOptions {
   // b. low-res image is not small enough compared to the full-res version.
   Option<int64> max_low_res_image_size_bytes_;
   Option<int> max_low_res_to_full_res_image_size_percentage_;
+
+  // If set, how to fragment the http cache.  Otherwise the server's hostname,
+  // from the Host header, is used.
+  CacheFragmentOption cache_fragment_;
 
   // Be sure to update constructor when new fields are added so that they are
   // added to all_options_, which is used for Merge, and eventually, Compare.
