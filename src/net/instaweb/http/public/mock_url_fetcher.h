@@ -168,6 +168,11 @@ class MockUrlFetcher : public UrlAsyncFetcher {
     error_message_ = msg;
   }
 
+  void set_strip_query_params(bool strip_query_params) {
+    ScopedMutex lock(mutex_.get());
+    strip_query_params_ = strip_query_params;
+  }
+
  private:
   class HttpResponse {
    public:
@@ -212,6 +217,8 @@ class MockUrlFetcher : public UrlAsyncFetcher {
   bool verify_pagespeed_header_off_;   // Verify PageSpeed:off in request?
   bool split_writes_;           // Should we turn one write into multiple?
   bool supports_https_;         // Should we claim HTTPS support?
+  bool strip_query_params_;     // Should we strip query params before lookup?
+
   GoogleString error_message_;  // If non empty, we write out this on error
   Timer* timer_;                // Timer to use for updating header dates.
   GoogleString last_referer_;   // Referer string.

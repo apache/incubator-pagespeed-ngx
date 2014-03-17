@@ -603,7 +603,8 @@ void InstawebHandler::write_handler_response(const StringPiece& output,
   // incorrect MIME types if the server sends the response header
   // "X-Content-Type-Options: nosniff". This is a security feature
   // that helps prevent attacks based on MIME-type confusion.
-  response_headers.Add("X-Content-Type-Options", "nosniff");
+  response_headers.Add(HttpAttributes::kXContentTypeOptions,
+                       HttpAttributes::kNosniff);
   AprTimer timer;
   int64 now_ms = timer.NowMs();
   response_headers.SetDate(now_ms);

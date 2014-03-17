@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/source_map.h"
 #include "pagespeed/kernel/js/js_minify.h"
 
 namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
@@ -103,6 +104,35 @@ JavascriptCodeBlock::JavascriptCodeBlock(
 
 JavascriptCodeBlock::~JavascriptCodeBlock() { }
 
+// Is this URL sanitary to be appended (in a line comment) to the JS doc?
+bool JavascriptCodeBlock::IsSanitarySourceMapUrl(StringPiece url) {
+  for (int i = 0, n = url.size(); i < n; ++i) {
+    if (!IsNonControlAscii(url[i])) {
+      // This is a bit broader than necessary. JS line comments can only be
+      // terminated by Unicode line/paragraph separators (Zl/Zp). Instead of
+      // searching for all of these, we simply check any non-standard chars.
+      // Specifically, we reject any URL with control chars (0x00-0x1F,0x7F)
+      // or any non-ASCII UTF-8 chars (Bytes 0x80-0xFF).
+      // Because URLs passed in here are .pagespeed. rewritten URLs, we do
+      // not expect any of them to be of this form anyway, so this case
+      // shouldn't be hit.
+      return false;
+    }
+  }
+  return true;
+}
+
+void JavascriptCodeBlock::AppendSourceMapUrl(StringPiece url) {
+  DCHECK(rewritten_);
+  DCHECK(successfully_rewritten_);
+  if (!IsSanitarySourceMapUrl(url)) {
+    LOG(DFATAL) << "Unsanitary source map URL could not be added to JS " << url;
+    return;
+  }
+
+  StrAppend(&rewritten_code_, "\n//# sourceMappingURL=", url, "\n");
+}
+
 StringPiece JavascriptCodeBlock::ComputeJavascriptLibrary() const {
   // TODO(jmaessen): when we compute minified version and find
   // a match, consider adding the un-minified hash to the library
@@ -155,7 +185,7 @@ bool JavascriptCodeBlock::Rewrite() {
     return successfully_rewritten_;
   }
 
-  if (MinifyJs(original_code_, &rewritten_code_)) {
+  if (MinifyJs(original_code_, &rewritten_code_, &source_mappings_)) {
     // Minification succeeded. The fact that it succeeded doesn't imply that
     // it actually saved anything; we increment num_reducing_uses when there
     // were actual savings.
@@ -194,10 +224,12 @@ void JavascriptCodeBlock::SwapRewrittenString(GoogleString* other) {
   successfully_rewritten_ = false;
 }
 
-bool JavascriptCodeBlock::MinifyJs(StringPiece input, GoogleString* output) {
+bool JavascriptCodeBlock::MinifyJs(
+    StringPiece input, GoogleString* output,
+    std::vector<source_map::Mapping>* source_mappings) {
   if (config_->use_experimental_minifier()) {
-    return pagespeed::js::MinifyUtf8Js(config_->js_tokenizer_patterns(),
-                                       input, output);
+    return pagespeed::js::MinifyUtf8JsWithSourceMap(
+        config_->js_tokenizer_patterns(), input, output, source_mappings);
   } else {
     return pagespeed::js::MinifyJs(input, output);
   }

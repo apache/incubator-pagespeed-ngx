@@ -21,6 +21,8 @@
 
 #include <cstddef>
 
+#include <vector>
+
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
@@ -37,6 +39,8 @@ class JavascriptLibraryIdentification;
 class MessageHandler;
 class Statistics;
 class Variable;
+
+namespace source_map { struct Mapping; }
 
 // Class wrapping up configuration information for javascript
 // rewriting, in order to minimize footprint of later changes
@@ -163,6 +167,23 @@ class JavascriptCodeBlock {
     return rewritten_code_;
   }
 
+  // Returns the contents of a source map from original to rewritten.
+  // PRECONDITION: Rewrite() must have been called first and
+  // successfully_rewritten() must be true.
+  const std::vector<source_map::Mapping>& SourceMappings() const {
+    DCHECK(rewritten_);
+    DCHECK(successfully_rewritten_);
+    return source_mappings_;
+  }
+
+  // Annotate rewritten_code() with a source map URL.
+  //
+  // Call this after Rewrite() and before rewritten_code() if you want to
+  // append a comment to the minified JS indicating  the URL for the source map.
+  // Note: Source map URL may not be appended if url is unsanitary, but
+  // this probably shouldn't happen in practice.
+  void AppendSourceMapUrl(StringPiece url);
+
   // Is the current block a JS library that can be redirected to a canonical
   // URL?  If so, return that canonical URL (storage owned by the underlying
   // config object passed in at construction), otherwise return an empty
@@ -207,13 +228,18 @@ class JavascriptCodeBlock {
   const GoogleString& message_id() const { return message_id_; }
 
  private:
+  // Is this URL sanitary to be appended (in a line comment) to the JS doc?
+  static bool IsSanitarySourceMapUrl(StringPiece url);
+
   // Temporary wrapper around calling new or old version of JS minifier.
-  bool MinifyJs(StringPiece input, GoogleString* output);
+  bool MinifyJs(StringPiece input, GoogleString* output,
+                std::vector<source_map::Mapping>* source_mappings);
 
   JavascriptRewriteConfig* config_;
   const GoogleString message_id_;  // ID to stick at begining of message.
   const GoogleString original_code_;
   GoogleString rewritten_code_;
+  std::vector<source_map::Mapping> source_mappings_;
 
   // Used to make sure we don't rewrite twice and that results aren't looked at
   // before produced.

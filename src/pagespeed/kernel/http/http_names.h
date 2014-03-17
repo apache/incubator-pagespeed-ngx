@@ -36,10 +36,12 @@ struct HttpAttributes {
   static const char kAccessControlAllowCredentials[];
   static const char kAge[];
   static const char kAllow[];
+  static const char kAttachment[];
   static const char kAuthorization[];
   static const char kCacheControl[];
   static const char kConnection[];
   static const char kContentEncoding[];
+  static const char kContentDisposition[];
   static const char kContentLanguage[];
   static const char kContentLength[];
   static const char kContentType[];
@@ -61,6 +63,7 @@ struct HttpAttributes {
   static const char kNoCache[];
   static const char kNoCacheMaxAge0[];
   static const char kNoStore[];
+  static const char kNosniff[];
   static const char kOrigin[];
   static const char kPragma[];
   static const char kPrivate[];
@@ -82,6 +85,7 @@ struct HttpAttributes {
   static const char kWarning[];
   static const char kXmlHttpRequest[];
   static const char kXAssociatedContent[];
+  static const char kXContentTypeOptions[];
   static const char kXForwardedFor[];
   static const char kXForwardedProto[];
   static const char kXGooglePagespeedClientId[];

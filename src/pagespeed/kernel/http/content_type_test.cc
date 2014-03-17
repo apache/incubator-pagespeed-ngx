@@ -53,6 +53,7 @@ TEST_F(ContentTypeTest, TestExtensions) {
   EXPECT_EQ(ContentType::kWebp,       ExtToType(".webp"));
   EXPECT_EQ(ContentType::kIco,        ExtToType(".ico"));
   EXPECT_EQ(ContentType::kJson,       ExtToType(".json"));
+  EXPECT_EQ(ContentType::kSourceMap,  ExtToType(".map"));
   EXPECT_EQ(ContentType::kPdf,        ExtToType(".pdf"));
   EXPECT_EQ(ContentType::kOctetStream, ExtToType(".bin"));
   EXPECT_EQ(ContentType::kVideo,      ExtToType(".mpg"));
@@ -77,6 +78,7 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/javascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("text/ecmascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/ecmascript"));
+  EXPECT_EQ(ContentType::kJson,       MimeToType("application/json"));
   EXPECT_EQ(ContentType::kCss,        MimeToType("text/css"));
   EXPECT_EQ(ContentType::kText,       MimeToType("text/plain"));
   EXPECT_EQ(ContentType::kXml,        MimeToType("application/xml"));
@@ -122,6 +124,7 @@ TEST_F(ContentTypeTest, ConstantSanityCheck) {
   EXPECT_EQ(ContentType::kText, kContentTypeText.type());
   EXPECT_EQ(ContentType::kXml, kContentTypeXml.type());
   EXPECT_EQ(ContentType::kJson, kContentTypeJson.type());
+  EXPECT_EQ(ContentType::kSourceMap, kContentTypeSourceMap.type());
   EXPECT_EQ(ContentType::kPng, kContentTypePng.type());
   EXPECT_EQ(ContentType::kGif, kContentTypeGif.type());
   EXPECT_EQ(ContentType::kJpeg, kContentTypeJpeg.type());

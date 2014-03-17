@@ -375,6 +375,12 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
 GoogleString RewriteQuery::GenerateResourceOption(
     StringPiece filter_id, RewriteDriver* driver) {
   const RewriteFilter* filter = driver->FindFilter(filter_id);
+  // TODO(sligocki): We do not seem to be detecting Apache crashes in the
+  // system_test. We should detect and fail when these crashes occur.
+  CHECK(filter != NULL)
+      << "Filter ID " << filter_id << " is not registered in RewriteDriver. "
+      << "You must register it with a call to RegisterRewriteFilter() in "
+      << "RewriteDriver::SetServerContext().";
   StringPiece prefix("");
   GoogleString value;
   const RewriteOptions* options = driver->options();

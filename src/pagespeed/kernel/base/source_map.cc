@@ -183,7 +183,9 @@ bool Encode(StringPiece generated_url,
   if (success) {
     Json::Value json;
     json["version"] = 3;
-    json["file"] = PercentEncode(generated_url).c_str();
+    if (!generated_url.empty()) {
+      json["file"] = PercentEncode(generated_url).c_str();
+    }
     // Sources array with one value.
     json["sources"][0] = PercentEncode(source_url).c_str();
     // Note: We do not provide names functionality.

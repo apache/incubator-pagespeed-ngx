@@ -683,6 +683,60 @@ TEST(SplitStringPieceToIntegerVectorTest, SplitStringPieceToIntegerVector) {
   EXPECT_EQ(0, ints.size());
 }
 
+TEST(IsAsciiTest, IsAscii) {
+  // 0x00 - 0x7F are considered ASCII.
+  EXPECT_TRUE(IsAscii('\0'));
+  EXPECT_TRUE(IsAscii('\t'));
+  EXPECT_TRUE(IsAscii('\n'));
+  EXPECT_TRUE(IsAscii('\r'));
+  EXPECT_TRUE(IsAscii('\x13'));
+  EXPECT_TRUE(IsAscii('\x1F'));
+  EXPECT_TRUE(IsAscii(' '));
+  EXPECT_TRUE(IsAscii('a'));
+  EXPECT_TRUE(IsAscii('~'));
+  EXPECT_TRUE(IsAscii('\x7F'));
+
+  // 0x80 - 0xFF are non-ASCII.
+  EXPECT_FALSE(IsAscii('\x80'));
+  EXPECT_FALSE(IsAscii('\x81'));
+  EXPECT_FALSE(IsAscii('\xFF'));
+
+  // All UTF-8 chars are non-ASCII.
+  const char unicode[] = "☃";
+  for (int i = 0, n = STATIC_STRLEN(unicode); i < n; ++i) {
+    EXPECT_FALSE(IsAscii(unicode[i])) << unicode[i];
+  }
+}
+
+TEST(IsAsciiTest, IsNonControlAscii) {
+  // 0x00 - 0x1F are control chars (including TAB, LF and CR).
+  EXPECT_FALSE(IsNonControlAscii('\0'));
+  EXPECT_FALSE(IsNonControlAscii('\t'));
+  EXPECT_FALSE(IsNonControlAscii('\n'));
+  EXPECT_FALSE(IsNonControlAscii('\r'));
+  EXPECT_FALSE(IsNonControlAscii('\x13'));
+  EXPECT_FALSE(IsNonControlAscii('\x1F'));
+
+  // 0x20 (Space) - 0x7E (~) are non-control ASCII
+  EXPECT_TRUE(IsNonControlAscii(' '));
+  EXPECT_TRUE(IsNonControlAscii('a'));
+  EXPECT_TRUE(IsNonControlAscii('~'));
+
+  // 0x7F (ESC) is control char.
+  EXPECT_FALSE(IsNonControlAscii('\x7F'));
+
+  // 0x80 - 0xFF are non-ASCII.
+  EXPECT_FALSE(IsNonControlAscii('\x80'));
+  EXPECT_FALSE(IsNonControlAscii('\x81'));
+  EXPECT_FALSE(IsNonControlAscii('\xFF'));
+
+  // All UTF-8 chars are non-ASCII.
+  const char unicode[] = "☃";
+  for (int i = 0, n = STATIC_STRLEN(unicode); i < n; ++i) {
+    EXPECT_FALSE(IsNonControlAscii(unicode[i])) << unicode[i];
+  }
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

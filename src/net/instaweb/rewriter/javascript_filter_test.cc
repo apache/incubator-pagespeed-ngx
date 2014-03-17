@@ -26,21 +26,23 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/hasher.h"
 
 namespace {
 
@@ -158,6 +160,9 @@ class JavascriptFilterTest : public RewriteTestBase,
                     GenerateHtml(kOrigJsName),
                     GenerateHtml(expected_rewritten_path_.c_str()));
   }
+
+  void SourceMapTest(StringPiece input_js, StringPiece expected_output_js,
+                     StringPiece expected_mapping_vlq);
 
   GoogleString expected_rewritten_path_;
 
@@ -971,6 +976,202 @@ TEST_P(JavascriptFilterTest, StripInlineWhitespaceFlush) {
   const GoogleString expected =
       StringPrintf(kHtmlFormat, expected_rewritten_path_.c_str());
   EXPECT_EQ(expected, output_buffer_);
+}
+
+TEST_P(JavascriptFilterTest, Aris) {
+  InitFilters();
+
+  const char introspective_js[] =
+      "var script_tags = document.getElementsByTagName('script');";
+  SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
+                                introspective_js, 100);
+
+  ValidateNoChanges("introspective", GenerateHtml("introspective.js"));
+}
+
+TEST_P(JavascriptFilterTest, ArisSourceMaps) {
+  options()->EnableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  InitFilters();
+
+  const char introspective_js[] =
+      "var script_tags = document.getElementsByTagName('script');";
+  SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
+                                introspective_js, 100);
+
+  ValidateNoChanges("introspective", GenerateHtml("introspective.js"));
+}
+
+TEST_P(JavascriptFilterTest, ArisCombineJs) {
+  options()->EnableFilter(RewriteOptions::kCombineJavascript);
+  InitFilters();
+
+  const char introspective_js[] =
+      "var script_tags = document.getElementsByTagName('script');";
+  SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
+                                introspective_js, 100);
+  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript,
+                                kJsData, 100);
+  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript,
+                                kJsData, 100);
+
+  const char html_before[] =
+      "<script type='text/javascript' src='introspective.js'></script>\n"
+      "<script type='text/javascript' src='a.js'></script>\n"
+      "<script type='text/javascript' src='b.js'></script>\n";
+  const char html_after[] =
+      "<script type='text/javascript' src='introspective.js'></script>\n"
+      "<script src=\"a.js+b.js.pagespeed.jc.0.js\"></script>"
+      "<script>eval(mod_pagespeed_0);</script>\n"
+      "<script>eval(mod_pagespeed_0);</script>\n";
+  ValidateExpected("introspective", html_before, html_after);
+}
+
+void JavascriptFilterTest::SourceMapTest(StringPiece input_js,
+                                         StringPiece expected_output_js,
+                                         StringPiece expected_mapping_vlq) {
+  UseMd5Hasher();
+  options()->EnableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  InitFilters();
+
+  SetResponseWithDefaultHeaders("input.js", kContentTypeJavascript,
+                                input_js, 100);
+
+  GoogleString expected_map = StrCat(
+      ")]}'\n{\"mappings\":\"", expected_mapping_vlq, "\",\"names\":[],"
+      "\"sources\":[\"http://test.com/input.js\"],\"version\":3}\n");
+
+  GoogleString source_map_url =
+      Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
+             hasher()->Hash(expected_map), "input.js", "map");
+
+  GoogleString expected_output = expected_output_js.as_string();
+  if (options()->use_experimental_js_minifier()) {
+    StrAppend(&expected_output, "\n"
+              "//# sourceMappingURL=", source_map_url, "\n");
+  }
+
+  const GoogleString rewritten_js_name =
+      Encode("", RewriteOptions::kJavascriptMinId,
+             hasher()->Hash(expected_output), "input.js", "js");
+  ValidateExpected("source_maps",
+                   GenerateHtml("input.js"),
+                   GenerateHtml(rewritten_js_name.c_str()));
+
+
+  GoogleString output_js;
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, rewritten_js_name),
+                               &output_js));
+  EXPECT_EQ(expected_output, output_js);
+
+  if (options()->use_experimental_js_minifier()) {
+    GoogleString map;
+    EXPECT_TRUE(FetchResourceUrl(source_map_url, &map));
+    EXPECT_EQ(expected_map, map);
+
+    // Test Resource flow without HTML flow.
+    ServeResourceFromManyContexts(source_map_url, expected_map);
+
+    // Test fetching Source Map with wrong/out-of-date hash.
+    GoogleString different_hash_url =
+        Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
+               "Different", "input.js", "map");
+    EXPECT_TRUE(FetchResourceUrl(different_hash_url, &map));
+    // TODO(sligocki): Get this working. Currently we do the standard resource
+    // reconstruction path, serving the same map even though the hash is diff.
+    // EXPECT_FALSE(FetchResourceUrl(different_hash_url, &map));
+    // EXPECT_EQ("", map);
+  }
+}
+
+TEST_P(JavascriptFilterTest, SourceMapsSimple) {
+  const char input_js[] = "  foo  bar  ";
+  const char expected_output_js[] = "foo bar";
+  const char vlq[] =
+      // Comment format: (gen_line, gen_col, src_file, src_line, src_col) token
+      "AAAE,"  // (0,  0,  0,  0,  2)  foo
+      "GAAG,"  // (0, +3, +0, +0, +3)  [space]
+      "CAAE";  // (0, +1, +0, +0, +2)  bar
+  SourceMapTest(input_js, expected_output_js, vlq);
+}
+
+TEST_P(JavascriptFilterTest, SourceMapsMedium) {
+  const char input_js[] =
+      "alert     (    'hello, world!'    ) \n"
+      " /* removed */ <!-- removed --> \n"
+      " // single-line-comment\n"
+      "document.write( \"<!-- comment -->\" );";
+  const char expected_output_js[] =
+      "alert('hello, world!')\n"
+      "document.write(\"<!-- comment -->\");";
+  const char vlq[] =
+      // Comment format: (gen_line, gen_col, src_file, src_line, src_col) token
+      "AAAA,"   // (0,   0,  0,  0,   0)  alert
+      "KAAU,"   // (0,  +5, +0, +0, +10)  (
+      "CAAK,"   // (0,  +1, +0, +0,  +5)  'hello, world!'
+      "eAAmB,"  // (0, +15, +0, +0, +19)  )
+      "CAAC;"   // (0,  +1, +0, +0,  +1)  [newline]
+      "AAGnC,"  // (1,   0, +0, +3, -35)  document
+      "QAAQ,"   // (1,  +8, +0, +0,  +8)  .
+      "CAAC,"   // (1,  +1, +0, +0,  +1)  write
+      "KAAK,"   // (1,  +5, +0, +0,  +5)  (
+      "CAAE,"   // (1,  +1, +0, +0,  +2)  "<!-- comment -->"
+      "kBAAmB," // (1, +18, +0, +0, +19)  )
+      "CAAC";   // (1,  +1, +0, +0,  +1)  ;
+  SourceMapTest(input_js, expected_output_js, vlq);
+}
+
+TEST_P(JavascriptFilterTest, NoSourceMapJsCombine) {
+  options()->EnableFilter(RewriteOptions::kCombineJavascript);
+  options()->EnableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  InitFilters();
+
+  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript,
+                                kJsData, 100);
+  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript,
+                                kJsData, 100);
+
+  const char combined_name[] = "a.js+b.js.pagespeed.jc.0.js";
+
+  const char html_before[] =
+      "<script type='text/javascript' src='a.js'></script>\n"
+      "<script type='text/javascript' src='b.js'></script>\n";
+  GoogleString html_after = StrCat(
+      "<script src=\"", combined_name, "\"></script>"
+      "<script>eval(mod_pagespeed_0);</script>\n"
+      "<script>eval(mod_pagespeed_0);</script>\n");
+  ValidateExpected("introspective", html_before, html_after);
+
+  // Note: There is no //# ScriptSourceMap in combine output.
+  GoogleString expected_output = StrCat(
+      "var mod_pagespeed_0 = \"", kJsMinData, "\";\n"
+      "var mod_pagespeed_0 = \"", kJsMinData, "\";\n");
+  GoogleString output_js;
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, combined_name), &output_js));
+  EXPECT_EQ(expected_output, output_js);
+}
+
+TEST_P(JavascriptFilterTest, SourceMapUnsanitaryUrl) {
+  if (!options()->use_experimental_js_minifier()) return;
+
+  options()->EnableFilter(RewriteOptions::kIncludeJsSourceMaps);
+  InitFilters();
+  // Most servers will ignore unknown query params.
+  mock_url_fetcher()->set_strip_query_params(true);
+
+  SetResponseWithDefaultHeaders("input.js", kContentTypeJavascript,
+                                kJsData, 100);
+
+  GoogleString unsanitary_url =
+      Encode(kTestDomain, RewriteOptions::kJavascriptMinId,
+             "0", "input.js?evil=\n", "js");
+
+  GoogleString output_js;
+  EXPECT_TRUE(FetchResourceUrl(unsanitary_url, &output_js));
+  // Note: The important thing is that there's no newline in the mapping URL.
+  GoogleString expected_output_js = StrCat(
+      kJsMinData, "\n//# sourceMappingURL="
+      "http://test.com/input.js,qevil=.pagespeed.sm.0.map\n");
+  EXPECT_EQ(expected_output_js, output_js);
 }
 
 // We test with use_experimental_minifier == GetParam() as both true and false.

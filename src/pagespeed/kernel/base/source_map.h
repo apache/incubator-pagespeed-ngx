@@ -56,7 +56,7 @@ struct Mapping {
 // Encodes generated_url, source_url and mappings into encoded_source_map
 // which will be the contents of a JSON Source Map v3 file.
 // Bool returned answers question "Did this succeed?"
-bool Encode(StringPiece generated_url,
+bool Encode(StringPiece generated_url,  // optional: "" to ignore.
             StringPiece source_url,
             // mappings MUST already be sorted by gen_line and then gen_col.
             const std::vector<Mapping>& mappings,

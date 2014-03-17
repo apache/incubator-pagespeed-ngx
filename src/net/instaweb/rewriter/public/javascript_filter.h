@@ -97,6 +97,10 @@ class JavascriptFilter : public RewriteFilter {
   // been set up correctly.
   void InitializeConfigIfNecessary();
 
+  // Used to distinguish requests for jm (Minified JavaScript) and
+  // sm (JavaScript Source Map) resources.
+  virtual bool output_source_map() const { return false; }
+
   ScriptType script_type_;
   // some_missing_scripts indicates that we stopped processing a script and
   // therefore can't assume we know all of the Javascript on a page.
@@ -105,6 +109,20 @@ class JavascriptFilter : public RewriteFilter {
   ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptFilter);
+};
+
+class JavascriptSourceMapFilter : public JavascriptFilter {
+ public:
+  explicit JavascriptSourceMapFilter(RewriteDriver* rewrite_driver);
+  virtual ~JavascriptSourceMapFilter();
+
+  virtual const char* Name() const { return "Javascript_Source_Map"; }
+  virtual const char* id() const {
+    return RewriteOptions::kJavascriptMinSourceMapId;
+  }
+
+ private:
+  virtual bool output_source_map() const { return true; }
 };
 
 }  // namespace net_instaweb

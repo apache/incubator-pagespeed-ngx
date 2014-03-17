@@ -140,6 +140,7 @@ class RewriteOptions {
     kFlushSubresources,
     kHandleNoscriptRedirect,
     kHtmlWriterFilter,
+    kIncludeJsSourceMaps,
     kInlineCss,
     kInlineGoogleFontCss,
     kInlineImages,
@@ -479,6 +480,7 @@ class RewriteOptions {
   static const char kJavascriptCombinerId[];
   static const char kJavascriptInlineId[];
   static const char kJavascriptMinId[];
+  static const char kJavascriptMinSourceMapId[];
   static const char kLocalStorageCacheId[];
   static const char kPrioritizeCriticalCssId[];
 

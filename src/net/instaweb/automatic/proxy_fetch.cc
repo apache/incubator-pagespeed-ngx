@@ -1219,6 +1219,7 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
     case ContentType::kPdf:
     case ContentType::kOther:
     case ContentType::kJson:
+    case ContentType::kSourceMap:
     case ContentType::kVideo:
     case ContentType::kAudio:
     case ContentType::kOctetStream:

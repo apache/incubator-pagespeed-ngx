@@ -19,6 +19,7 @@
 #ifndef PAGESPEED_KERNEL_BASE_STRING_UTIL_H_
 #define PAGESPEED_KERNEL_BASE_STRING_UTIL_H_
 
+#include <cctype>                      // for isascii
 #include <cstddef>
 #include <map>
 #include <set>
@@ -436,6 +437,17 @@ GoogleString JoinCollection(const C& collection, StringPiece sep) {
 // Converts a boolean to string.
 inline const char* BoolToString(bool b) {
   return (b ? "true" : "false");
+}
+
+// Using isascii with signed chars is unfortunately undefined.
+inline bool IsAscii(char c) {
+  return isascii(static_cast<unsigned char>(c));
+}
+
+// Tests if c is a standard (non-control) ASCII char 0x20-0x7E.
+// Note: This does not include TAB (0x09), LF (0x0A) or CR (0x0D).
+inline bool IsNonControlAscii(char c) {
+  return ('\x20' <= c) && (c <= '\x7E');
 }
 
 

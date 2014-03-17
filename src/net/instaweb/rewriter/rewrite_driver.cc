@@ -878,6 +878,7 @@ void RewriteDriver::SetServerContext(ServerContext* server_context)
   RegisterRewriteFilter(cache_extender);
   RegisterRewriteFilter(image_combiner);
   RegisterRewriteFilter(new LocalStorageCacheFilter(this));
+  RegisterRewriteFilter(new JavascriptSourceMapFilter(this));
 
   // These filters are needed to rewrite and trim urls in modified CSS files.
   domain_rewriter_.reset(new DomainRewriteFilter(this, statistics()));

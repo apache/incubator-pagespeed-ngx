@@ -354,6 +354,7 @@ const char RewriteOptions::kImageCompressionId[] = "ic";
 const char RewriteOptions::kInPlaceRewriteId[] = "aj";  // Comes from ajax.
 const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
+const char RewriteOptions::kJavascriptMinSourceMapId[] = "sm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
@@ -611,6 +612,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDelayImages,  // AKA inline_preview_images
+  RewriteOptions::kIncludeJsSourceMaps,
   RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLazyloadImages,
@@ -754,6 +756,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "hn", "Handles Noscript Redirects" },
   { RewriteOptions::kHtmlWriterFilter,
     "hw", "Flushes html" },
+  { RewriteOptions::kIncludeJsSourceMaps,
+    RewriteOptions::kJavascriptMinSourceMapId, "Include JS Source Maps" },
   { RewriteOptions::kInlineCss,
     RewriteOptions::kCssInlineId, "Inline Css" },
   { RewriteOptions::kInlineGoogleFontCss,

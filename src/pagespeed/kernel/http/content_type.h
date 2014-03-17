@@ -46,6 +46,7 @@ struct ContentType {
     kWebp,
     kIco,
     kJson,
+    kSourceMap,
     kPdf,
     kVideo,
     kAudio,
@@ -107,6 +108,7 @@ extern const ContentType& kContentTypeCss;
 extern const ContentType& kContentTypeText;
 extern const ContentType& kContentTypeXml;
 extern const ContentType& kContentTypeJson;
+extern const ContentType& kContentTypeSourceMap;
 // Images:
 extern const ContentType& kContentTypePng;
 extern const ContentType& kContentTypeGif;

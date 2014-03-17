@@ -51,6 +51,7 @@ MockUrlFetcher::MockUrlFetcher()
       verify_pagespeed_header_off_(false),
       split_writes_(false),
       supports_https_(false),
+      strip_query_params_(false),
       timer_(NULL),
       thread_system_(Platform::CreateThreadSystem()),
       // TODO(hujie): We should pass in the mutex at all call-sites instead of
@@ -125,7 +126,7 @@ void MockUrlFetcher::RemoveResponse(const StringPiece& url) {
 }
 
 void MockUrlFetcher::Fetch(
-    const GoogleString& url, MessageHandler* message_handler,
+    const GoogleString& url_in, MessageHandler* message_handler,
     AsyncFetch* fetch) {
   const RequestHeaders& request_headers = *fetch->request_headers();
   ResponseHeaders* response_headers = fetch->response_headers();
@@ -139,6 +140,7 @@ void MockUrlFetcher::Fetch(
   bool omit_empty_writes;
   bool fail_on_unexpected;
   bool split_writes;
+  bool strip_query_params;
   GoogleString error_message;
   Timer* timer;
   {
@@ -153,12 +155,20 @@ void MockUrlFetcher::Fetch(
     fail_on_unexpected = fail_on_unexpected_;
     error_message = error_message_;
     split_writes = split_writes_;
+    strip_query_params = strip_query_params_;
   }
   if (enabled) {
+    GoogleString url = url_in;  // editable version
+    GoogleUrl gurl(url);
+    EXPECT_TRUE(gurl.IsAnyValid());
+
+    if (strip_query_params) {
+      url = gurl.AllExceptQuery().as_string();
+      gurl.Reset(url);
+    }
     // Verify that the url and Host: header match.
     if (verify_host_header) {
       const char* host_header = request_headers.Lookup1(HttpAttributes::kHost);
-      GoogleUrl gurl(url);
       EXPECT_STREQ(gurl.HostAndPort(), host_header);
     }
     if (verify_pagespeed_header_off) {
