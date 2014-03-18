@@ -51,6 +51,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/rendered_image.pb.h"
@@ -342,13 +343,14 @@ class ServerContextTest : public RewriteTestBase {
     GoogleUrl gurl(url);
     RewriteOptions* copy_options = domain_options != NULL ?
         domain_options->Clone() : NULL;
-    ServerContext::OptionsBoolPair query_options_success =
-        server_context()->GetQueryOptions(&gurl,
-                                          request_headers, NULL);
-    EXPECT_TRUE(query_options_success.second);
+    RewriteQuery rewrite_query;
+    bool success = server_context()->GetQueryOptions(&gurl,
+                                                     request_headers, NULL,
+                                                     &rewrite_query);
+    EXPECT_TRUE(success);
     RewriteOptions* options =
         server_context()->GetCustomOptions(request_headers, copy_options,
-                                           query_options_success.first);
+                                           rewrite_query.ReleaseOptions());
     return options;
   }
 
@@ -400,8 +402,9 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
+  RewriteQuery rewrite_query;
   EXPECT_FALSE(server_context()->GetQueryOptions(
-      &gurl, &request_headers, NULL).second);
+      &gurl, &request_headers, NULL, &rewrite_query));
 
   // The default url_namer does not yield any name-derived options, and we
   // have not specified any URL params or request-headers, and kXRequestedWith
@@ -494,8 +497,9 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
+  RewriteQuery rewrite_query;
   EXPECT_FALSE(server_context()->GetQueryOptions(
-      &gurl, &request_headers, NULL).second);
+      &gurl, &request_headers, NULL, &rewrite_query));
 
   request_headers.Add(
       HttpAttributes::kXRequestedWith, "bogus");

@@ -338,23 +338,22 @@ void InstawebHandler::ComputeCustomOptions() {
                                  &response_headers_);
   num_response_attributes_ = response_headers_.NumAttributes();
 
-  ServerContext::OptionsBoolPair query_options_success =
-      server_context_->GetQueryOptions(&stripped_gurl_, request_headers_.get(),
-                                       &response_headers_);
-  if (!query_options_success.second) {
+  RewriteQuery rewrite_query;
+  if (!server_context_->GetQueryOptions(&stripped_gurl_, request_headers_.get(),
+                                        &response_headers_, &rewrite_query)) {
     server_context_->message_handler()->Message(
         kWarning, "Invalid PageSpeed query params or headers for "
         "request %s. Serving with default options.",
         stripped_gurl_.spec_c_str());
   }
-  if (query_options_success.first != NULL) {
+  const RewriteOptions* query_options = rewrite_query.options();
+  if (query_options != NULL) {
     if (custom_options_.get() == NULL) {
       custom_options_.reset(
           server_context_->apache_factory()->NewRewriteOptions());
       custom_options_->Merge(*options_);
     }
-    custom_options_->Merge(*query_options_success.first);
-    delete query_options_success.first;
+    custom_options_->Merge(*query_options);
     // Don't run any experiments if we're handling a customized request, unless
     // EnrollExperiment is on.
     if (!custom_options_->enroll_experiment()) {

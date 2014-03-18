@@ -72,6 +72,7 @@ class RewriteDriverPool;
 class RewriteFilter;
 class RewriteOptions;
 class RewriteOptionsManager;
+class RewriteQuery;
 class RewriteStats;
 class Scheduler;
 class StaticAssetManager;
@@ -366,18 +367,22 @@ class ServerContext {
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();
 
-  // Returns any options set in query-params or in the headers. Possible
-  // return-value scenarios for the pair are:
-  // * first==*, .second==false:  query-params or headers failed in parse.
-  //   We return 405 in this case (see ProxyInterface::ProxyRequest).
-  // * first==NULL, .second==true: No query-params or headers are present.
-  //   This is treated as if there are no query param (or header) options.
-  // * first!=NULL, .second==true: Use query-params.
-  // It also strips off the ModPageSpeed query parameters and headers from the
+  // Runs the rewrite_query parser for any options set in query-params
+  // or in the headers. If all the pagespeed options that were parsed
+  // were valid, they are available in rewrite_query->options().
+  //
+  // True is returned in two cases:
+  //    - Valid PageSpeed query params or headers were parsed
+  //    - No PageSpeed query-parameters or headers were found.
+  // False is returned if there were PageSpeed-related options but they were
+  // not valid.
+  //
+  // It also strips off the PageSpeed query parameters and headers from the
   // request_url, request headers, and response headers respectively.
-  OptionsBoolPair GetQueryOptions(GoogleUrl* request_url,
-                                  RequestHeaders* request_headers,
-                                  ResponseHeaders* response_headers);
+  bool GetQueryOptions(GoogleUrl* request_url,
+                       RequestHeaders* request_headers,
+                       ResponseHeaders* response_headers,
+                       RewriteQuery* rewrite_query);
 
   // Checks the url for the split html ATF/BTF query param. If present, it
   // strips the param from the url, and sets a bit in the request context

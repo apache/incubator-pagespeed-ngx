@@ -895,32 +895,15 @@ RewriteOptions* ServerContext::NewOptions() {
   return factory_->NewRewriteOptions();
 }
 
-ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
+bool ServerContext::GetQueryOptions(
     GoogleUrl* request_url, RequestHeaders* request_headers,
-    ResponseHeaders* response_headers) {
-  scoped_ptr<RewriteOptions> query_options;
-  bool success = false;
-  switch (RewriteQuery::Scan(global_options()->add_options_to_urls(),
-                             factory(), this, request_url, request_headers,
-                             response_headers, &query_options,
-                             message_handler_)) {
-    case RewriteQuery::kInvalid:
-      query_options.reset(NULL);
-      break;
-    case RewriteQuery::kNoneFound:
-      query_options.reset(NULL);
-      success = true;
-      break;
-    case RewriteQuery::kSuccess:
-      success = true;
-      break;
-    default:
-      query_options.reset(NULL);
-  }
+    ResponseHeaders* response_headers,
+    RewriteQuery* rewrite_query) {
   // Note: success==false is treated as an error (we return 405 in
-  // proxy_interface.cc), while query_options==NULL merely means there are no
-  // query options.
-  return OptionsBoolPair(query_options.release(), success);
+  // proxy_interface.cc).
+  return RewriteQuery::IsOK(rewrite_query->Scan(
+      global_options()->add_options_to_urls(), factory(), this, request_url,
+      request_headers, response_headers, message_handler_));
 }
 
 bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,

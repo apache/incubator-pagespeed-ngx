@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -184,12 +185,10 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   // Stripping PageSpeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
   // TODO(gee): Move this into RewriteOptionsManager #tech-debt
-  ServerContext::OptionsBoolPair query_options_success =
-      server_context_->GetQueryOptions(gurl.get(),
-                                       async_fetch->request_headers(),
-                                       NULL);
-
-  if (!query_options_success.second) {
+  RewriteQuery query;
+  if (!server_context_->GetQueryOptions(gurl.get(),
+                                        async_fetch->request_headers(),
+                                        NULL, &query)) {
     async_fetch->response_headers()->SetStatusAndReason(
         HttpStatus::kMethodNotAllowed);
     async_fetch->Write("Invalid PageSpeed query-params/request headers",
@@ -205,7 +204,7 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   request_data->is_resource_fetch = is_resource_fetch;
   request_data->request_url.reset(released_gurl);
   request_data->async_fetch = async_fetch;
-  request_data->query_options = query_options_success.first;
+  request_data->query_options = query.ReleaseOptions();
   request_data->handler = handler;
 
   server_context_->rewrite_options_manager()->GetRewriteOptions(

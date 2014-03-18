@@ -24,7 +24,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -36,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace {
 
@@ -108,6 +108,12 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   return status;
 }
 
+RewriteQuery::RewriteQuery() {
+}
+
+RewriteQuery::~RewriteQuery() {
+}
+
 // Scan for option-sets in query-params. We will only allow a limited number of
 // options to be set. In particular, some options are risky to set per query,
 // such as image inline threshold, which exposes a DOS vulnerability and a risk
@@ -120,11 +126,10 @@ RewriteQuery::Status RewriteQuery::Scan(
     GoogleUrl* request_url,
     RequestHeaders* request_headers,
     ResponseHeaders* response_headers,
-    scoped_ptr<RewriteOptions>* options,
     MessageHandler* handler) {
-  options->reset(NULL);
-
   Status status = kNoneFound;
+  query_params_.Clear();
+  options_.reset(NULL);
 
   // To support serving resources from servers that don't share the
   // same settings as the ones generating HTML, we can put whitelisted
@@ -132,17 +137,23 @@ RewriteQuery::Status RewriteQuery::Scan(
   // setting (a) only for .pagespeed. resources, not HTML, and (b)
   // only when allow_related_options is true.
   ResourceNamer namer;
+  bool return_after_parsing = false;
   if (allow_related_options && namer.Decode(request_url->LeafSansQuery()) &&
       namer.has_options()) {
     const RewriteFilter* rewrite_filter =
         server_context->FindFilterForDecoding(namer.id());
     if (rewrite_filter != NULL) {
-      options->reset(factory->NewRewriteOptionsForQuery());
-      status = ParseResourceOption(namer.options(), options->get(),
+      options_.reset(factory->NewRewriteOptionsForQuery());
+      status = ParseResourceOption(namer.options(), options_.get(),
                                    rewrite_filter);
       if (status != kSuccess) {
-        options->reset(NULL);
-        return status;
+        options_.reset(NULL);
+
+        // We want query_params() to be populated after calling
+        // RewriteQuery::Scan, even if any URL-embedded configuration
+        // parameters are invalid.  So we delay our early exit until
+        // after the query_params_.Parse call below.
+        return_after_parsing = true;
       }
     }
   }
@@ -151,14 +162,14 @@ RewriteQuery::Status RewriteQuery::Scan(
   // any more work.  Note that when options are correctly embedded in the URL,
   // we will have a success-status here.  But we still allow a hand-added
   // query-param to override the embedded options.
-  QueryParams query_params;
-  query_params.Parse(request_url->Query());
-  if (!MayHaveCustomOptions(query_params, request_headers, response_headers)) {
+  query_params_.Parse(request_url->Query());
+  if (return_after_parsing ||
+      !MayHaveCustomOptions(query_params_, request_headers, response_headers)) {
     return status;
   }
 
-  if (options->get() == NULL) {
-    options->reset(factory->NewRewriteOptionsForQuery());
+  if (options_.get() == NULL) {
+    options_.reset(factory->NewRewriteOptionsForQuery());
   }
 
   scoped_ptr<RequestProperties> request_properties;
@@ -169,23 +180,25 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   QueryParams temp_query_params;
-  for (int i = 0; i < query_params.size(); ++i) {
-    const GoogleString* value = query_params.value(i);
+  for (int i = 0; i < query_params_.size(); ++i) {
+    const GoogleString* value = query_params_.value(i);
     if (value != NULL) {
       switch (ScanNameValue(
-          query_params.name(i), *value, request_properties.get(),
-          options->get(), handler)) {
+          query_params_.name(i), *value, request_properties.get(),
+          options_.get(), handler)) {
         case kNoneFound:
-          temp_query_params.Add(query_params.name(i), *value);
+          temp_query_params.Add(query_params_.name(i), *value);
           break;
         case kSuccess:
           status = kSuccess;
           break;
         case kInvalid:
-          return kInvalid;
+          status = kInvalid;
+          options_.reset(NULL);
+          return status;
       }
     } else {
-      temp_query_params.Add(query_params.name(i), NULL);
+      temp_query_params.Add(query_params_.name(i), NULL);
     }
   }
   if (status == kSuccess) {
@@ -197,18 +210,20 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<RequestHeaders>(
-      request_headers, request_properties.get(), options->get(), handler)) {
+      request_headers, request_properties.get(), options_.get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
       status = kSuccess;
       break;
     case kInvalid:
-      return kInvalid;
+      status = kInvalid;
+      options_.reset(NULL);
+      return status;
   }
 
   switch (ScanHeader<ResponseHeaders>(
-      response_headers, request_properties.get(), options->get(),
+      response_headers, request_properties.get(), options_.get(),
       handler)) {
     case kNoneFound:
       break;
@@ -216,7 +231,9 @@ RewriteQuery::Status RewriteQuery::Scan(
       status = kSuccess;
       break;
     case kInvalid:
-      return kInvalid;
+      status = kInvalid;
+      options_.reset(NULL);
+      return status;
   }
 
   // Set a default rewrite level in case the mod_pagespeed server has no
@@ -225,10 +242,18 @@ RewriteQuery::Status RewriteQuery::Scan(
   // PageSpeedFilters=..., then the call to
   // DisableAllFiltersNotExplicitlyEnabled() below will make the 'level'
   // irrelevant.
-  if (status == kSuccess) {
-    options->get()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  switch (status) {
+    case kSuccess:
+      options_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+      break;
+    case kNoneFound:
+      options_.reset(NULL);
+      break;
+    case kInvalid:
+      LOG(DFATAL) << "Invalid responses always use early exit";
+      options_.reset(NULL);
+      break;
   }
-
   return status;
 }
 

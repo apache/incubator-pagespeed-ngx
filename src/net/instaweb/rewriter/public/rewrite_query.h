@@ -17,15 +17,16 @@
 
 #include "net/instaweb/rewriter/public/device_properties.h"
 #include "net/instaweb/util/public/gtest_prod.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
 class GoogleUrl;
 class MessageHandler;
-class QueryParams;
 class RequestHeaders;
 class RequestProperties;
 class ResponseHeaders;
@@ -54,6 +55,9 @@ class RewriteQuery {
     kNoneFound
   };
 
+  RewriteQuery();
+  ~RewriteQuery();
+
   // Scans request_url's query parameters and request_headers for "ModPagespeed"
   // and "PageSpeed" flags, creating and populating *'options' if any were found
   // they were all parsed successfully.  If any were parsed unsuccessfully
@@ -73,14 +77,13 @@ class RewriteQuery {
   // declared in the RelatedOptions() and RelatedFilters() methods of
   // the filter identified in the .pagespeed. URL.  See GenerateResourceOption
   // for how they get into URLs in the first place.
-  static Status Scan(bool allow_related_options,
-                     RewriteDriverFactory* factory,
-                     ServerContext* server_context,
-                     GoogleUrl* request_url,
-                     RequestHeaders* request_headers,
-                     ResponseHeaders* response_headers,
-                     scoped_ptr<RewriteOptions>* options,
-                     MessageHandler* handler);
+  Status Scan(bool allow_related_options,
+              RewriteDriverFactory* factory,
+              ServerContext* server_context,
+              GoogleUrl* request_url,
+              RequestHeaders* request_headers,
+              ResponseHeaders* response_headers,
+              MessageHandler* handler);
 
   // Performs the request and response header scanning for Scan(). If any
   // "ModPagespeed" or "PageSpeed" options are found in the headers they are
@@ -106,6 +109,16 @@ class RewriteQuery {
   // Indicates whether the specified name is likely to identify a
   // custom header or query param.
   static bool MightBeCustomOption(StringPiece name);
+
+  const QueryParams& query_params() const { return query_params_; }
+  const RewriteOptions* options() const { return options_.get(); }
+  RewriteOptions* ReleaseOptions() { return options_.release(); }
+
+  // Determines whether the status code is one that is acceptable for
+  // processing requests.
+  static bool IsOK(Status status) {
+    return (status == kNoneFound) || (status == kSuccess);
+  }
 
  private:
   friend class RewriteQueryTest;
@@ -177,6 +190,11 @@ class RewriteQuery {
   static bool ParseImageQualityPreference(
       const GoogleString* preference_name,
       DeviceProperties::ImageQualityPreference* preference);
+
+  QueryParams query_params_;
+  scoped_ptr<RewriteOptions> options_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteQuery);
 };
 
 }  // namespace net_instaweb
