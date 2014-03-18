@@ -98,6 +98,9 @@ TEST_F(UserAgentMatcherTest, BlinkBlackListForDesktop) {
   EXPECT_EQ(UserAgentMatcher::kBlinkBlackListForDesktop,
             user_agent_matcher_->GetBlinkRequestType(
                 kFirefox1UserAgent, &headers));
+  EXPECT_EQ(UserAgentMatcher::kBlinkBlackListForDesktop,
+            user_agent_matcher_->GetBlinkRequestType(
+                kFirefox3UserAgent, &headers));
 }
 
 TEST_F(UserAgentMatcherTest, DoesNotSupportBlink) {
@@ -171,6 +174,8 @@ TEST_F(UserAgentMatcherTest, NotSupportsJsDefer) {
       kIe8UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(
       kFirefox1UserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(
+      kFirefox3UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(
       kNokiaUserAgent, false));
   EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(

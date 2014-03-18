@@ -81,6 +81,9 @@ const char UserAgentMatcherTestBase::kDoCoMoMobileUserAgent[] =
 const char UserAgentMatcherTestBase::kFirefox1UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.0.7) "
     "Gecko/20060909 Firefox/1.5.0.7 MG (Novarra-Vision/6.1)";
+const char UserAgentMatcherTestBase::kFirefox3UserAgent[] =
+    "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) "
+    "Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10";
 const char UserAgentMatcherTestBase::kFirefox5UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i586; de; rv:5.0) Gecko/20100101 Firefox/5.0";
 const char UserAgentMatcherTestBase::kFirefoxNokiaN800[] =
@@ -88,8 +91,8 @@ const char UserAgentMatcherTestBase::kFirefoxNokiaN800[] =
     "Mozilla/5.0 (X11; U; Linux armv6l; en-US; rv:1.9a6pre) Gecko/20070810 "
     "Firefox/3.0a1 Tablet browser 0.1.16 RX-34_2007SE_4.2007.38-2";
 const char UserAgentMatcherTestBase::kFirefoxUserAgent[] =
-    "Mozilla/5.0 (X11; U; Linux x86_64; zh-CN; rv:1.9.2.10) "
-    "Gecko/20100922 Ubuntu/10.10 (maverick) Firefox/3.6.10";
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:27.0) "
+    "Gecko/20100101 Firefox/27.0";
 const char UserAgentMatcherTestBase::kFLYUserAgent[] =
     "FLY-2040i/BSI AU.Browser/2.0 QO3C1 MMP/1.0";
 const char UserAgentMatcherTestBase::kGenericAndroidUserAgent[] =
@@ -370,6 +373,7 @@ const char* const
 UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kAndroidChrome21UserAgent,
   UserAgentMatcherTestBase::kFirefox1UserAgent,
+  UserAgentMatcherTestBase::kFirefox3UserAgent,
   UserAgentMatcherTestBase::kIe6UserAgent,
   UserAgentMatcherTestBase::kIe8UserAgent,
   UserAgentMatcherTestBase::kNokiaUserAgent,

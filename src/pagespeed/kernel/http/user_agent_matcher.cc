@@ -81,7 +81,7 @@ const char* kLazyloadImagesBlacklist[] = {
 };
 
 // For Panels and deferJs the list is same as of now.
-// we only allow Firefox3+, IE8+, safari and Chrome
+// we only allow Firefox4+, IE8+, safari and Chrome
 // We'll be updating this as and when required.
 // The blacklist is checked first, then if not in there, the whitelist is
 // checked.
@@ -104,6 +104,7 @@ const char* kDeferJSWhitelist[] = {
 const char* kPanelSupportDesktopBlacklist[] = {
   "*Firefox/1.*",
   "*Firefox/2.*",
+  "*Firefox/3.*",
   "*MSIE 5.*",
   "*MSIE 6.*",
   "*MSIE 7.*",
