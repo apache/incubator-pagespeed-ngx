@@ -13,6 +13,7 @@ goog.define = function(name, defaultValue) {
 goog.DEBUG = !0;
 goog.LOCALE = "en";
 goog.TRUSTED_SITE = !0;
+goog.STRICT_MODE_COMPATIBLE = !1;
 goog.provide = function(name) {
   goog.exportPath_(name);
 };
@@ -342,8 +343,8 @@ goog.inherits = function(childCtor, parentCtor) {
 };
 goog.base = function(me, opt_methodName, var_args) {
   var caller = arguments.callee.caller;
-  if (goog.DEBUG && !caller) {
-    throw Error("arguments.caller not defined.  goog.base() expects not to be running in strict mode. See http://www.ecma-international.org/ecma-262/5.1/#sec-C");
+  if (goog.STRICT_MODE_COMPATIBLE || goog.DEBUG && !caller) {
+    throw Error("arguments.caller not defined.  goog.base() cannot be used with strict mode code. See http://www.ecma-international.org/ecma-262/5.1/#sec-C");
   }
   if (caller.superClass_) {
     return caller.superClass_.constructor.apply(me, Array.prototype.slice.call(arguments, 1));

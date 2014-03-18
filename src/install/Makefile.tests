@@ -199,14 +199,15 @@ apache_debug_memcached_test :
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 	@echo PASS
 
-apache_debug_memcached_test_run : apache_install_conf apache_debug_restart
+apache_debug_memcached_test_run :
+	$(MAKE) apache_install_conf OPT_MEMCACHED_TEST="MEMCACHED_TEST=1"
+	$(MAKE) apache_debug_restart
 	$(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	env \
 	    CACHE_FLUSH_TEST=on \
 	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	    APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	    OPT_MEMCACHED_TEST="MEMCACHED_TEST=1" \
 	        $(MOD_PAGESPEED_ROOT)/net/instaweb/apache/system_test.sh \
 	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
