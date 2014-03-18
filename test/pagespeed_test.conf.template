@@ -218,6 +218,7 @@ http {
     pagespeed ExperimentSpec
       "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
     pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
+    pagespeed ExperimentSpec "id=3;default;percent=0";
   }
   server {
     listen @@SECONDARY_PORT@@;
@@ -229,6 +230,7 @@ http {
     pagespeed ExperimentSpec
       "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
     pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
+    pagespeed ExperimentSpec "id=3;default;percent=0";
   }
 
   server {
@@ -531,7 +533,7 @@ http {
     pagespeed EnableFilters convert_to_webp_lossless;
     pagespeed EnableFilters in_place_optimize_for_browser;
     pagespeed InPlaceResourceOptimization on;
-    pagespeed FileCachePath "@@FILE_CACHE@@_ipro_for_browser";
+    pagespeed FileCachePath "@@IPRO_CACHE@@";
   }
 
   server {
@@ -787,6 +789,29 @@ http {
     add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
   }
 
+  # Proxy + IPRO a gzip'd file for testing Issue 896.
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name ipro-proxy.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@_ipro_proxy";
+
+    pagespeed on;
+    pagespeed InPlaceResourceOptimization on;
+    pagespeed EnableFilters rewrite_domains;
+
+    location / {
+      proxy_pass
+       "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/mod_deflate/";
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name compressed-css.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed InPlaceResourceOptimization on;
+  }
+
   server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
@@ -794,6 +819,11 @@ http {
 
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
       add_header "" "";
+    }
+
+    # Backend for ipro-proxy.example.com
+    location /mod_pagespeed_test/ipro/mod_deflate/ {
+      pagespeed off;
     }
 
     location /mod_pagespeed_test/cachable_rewritten_html/ {
@@ -955,7 +985,16 @@ http {
 
     location /mod_pagespeed_test/ipro/instant/wait/ {
       pagespeed InPlaceWaitForOptimized on;
-      # TODO: Valgrind runs pass only if the below line is uncommented.
+
+      # TODO(jefftk): When running with valgrind we need to raise the rewrite
+      # deadline or else we get "Deadline exceeded for rewrite of resource".
+      # I had thought InPlaceWaitForOptimized was supposed to disable the
+      # rewrite deadline, but it seems not to.
+      #
+      # InPlaceWaitForOptimized is definitely doing something, though: when I
+      # remove the InPlaceRewriteDeadlineMs line below and run without valgrind,
+      # purple.css is optimized via ipro on the first request but if I set
+      # InPlaceWaitForOptimized to off then it is not.
       pagespeed InPlaceRewriteDeadlineMs 1000;
     }
 
@@ -1040,6 +1079,7 @@ http {
   # set up gzip
   gzip  on;
   gzip_vary on;
+  gzip_proxied any;
   # Turn on gzip for all content types that should benefit from it.
   gzip_types application/ecmascript;
   gzip_types application/javascript;

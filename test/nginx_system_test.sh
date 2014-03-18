@@ -127,6 +127,7 @@ check_simple mkdir "$FILE_CACHE"
 
 # And directories that don't.
 SECONDARY_CACHE="$TEST_TMP/file-cache/secondary/"
+IPRO_CACHE="$TEST_TMP/file-cache/ipro/"
 SHM_CACHE="$TEST_TMP/file-cache/intermediate/directories/with_shm/"
 
 VALGRIND_OPTIONS=""
@@ -162,6 +163,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@ACCESS_LOG@@#'"$ACCESS_LOG"'#' \
   | sed 's#@@FILE_CACHE@@#'"$FILE_CACHE/"'#' \
   | sed 's#@@SECONDARY_CACHE@@#'"$SECONDARY_CACHE/"'#' \
+  | sed 's#@@IPRO_CACHE@@#'"$IPRO_CACHE/"'#' \
   | sed 's#@@SHM_CACHE@@#'"$SHM_CACHE/"'#' \
   | sed 's#@@SERVER_ROOT@@#'"$SERVER_ROOT"'#' \
   | sed 's#@@PRIMARY_PORT@@#'"$PRIMARY_PORT"'#' \
@@ -276,7 +278,7 @@ fi
 set -- "$PRIMARY_HOSTNAME"
 source $SYSTEM_TEST_FILE
 
-STATISTICS_URL=http://$HOSTNAME/ngx_pagespeed_statistics
+STATISTICS_URL=$PRIMARY_SERVER/ngx_pagespeed_statistics
 
 # Define a mechanism to start a test before the cache-flush and finish it
 # after the cache-flush.  This mechanism is preferable to flushing cache
@@ -398,7 +400,7 @@ echo "Final 404s: $NUM_404_FINAL"
 check [ $(expr $NUM_404_FINAL - $NUM_404) -eq 1 ]
 
 # Check that the stat doesn't get bumped on non-404s.
-URL="http://$HOSTNAME/mod_pagespeed_example/styles/"
+URL="$PRIMARY_SERVER/mod_pagespeed_example/styles/"
 URL+="W.rewrite_css_images.css.pagespeed.cf.Hash.css"
 OUT=$(wget -O - -q $URL)
 check_from "$OUT" grep background-image
@@ -489,6 +491,28 @@ if [ "$HOSTNAME" = "localhost:$PRIMARY_PORT" ] ; then
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
   check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
 fi
+
+WGET_ARGS=""
+function gunzip_grep_0ff() {
+  gunzip - | fgrep -q "color:#00f"
+  echo $?
+}
+
+start_test ipro with mod_deflate
+CSS_FILE="http://compressed-css.example.com/"
+CSS_FILE+="mod_pagespeed_test/ipro/mod_deflate/big.css"
+http_proxy=$SECONDARY_HOSTNAME fetch_until -gzip $CSS_FILE gunzip_grep_0ff 0
+
+start_test ipro with reverse proxy of compressed content
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until -gzip http://ipro-proxy.example.com/big.css \
+    gunzip_grep_0ff 0
+
+# Also test the .pagespeed. version, to make sure we didn't accidentally gunzip
+# stuff above when we shouldn't have.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -q -O - \
+      http://ipro-proxy.example.com/A.big.css.pagespeed.cf.0.css)
+check_from "$OUT" fgrep -q "big{color:#00f}"
 
 start_test Accept bad query params and headers
 
@@ -1031,7 +1055,7 @@ test_filter add_instrumentation beacons load.
 # respond with that as well. Check that we got a 204.
 BEACON_URL="http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 OUT=$(wget -q  --save-headers -O - --no-http-keep-alive \
-      "http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13&url=$BEACON_URL")
+      "$PRIMARY_SERVER/ngx_pagespeed_beacon?ets=load:13&url=$BEACON_URL")
 check_from "$OUT" grep '^HTTP/1.1 204'
 # The $'...' tells bash to interpret c-style escapes, \r in this case.
 check_from "$OUT" grep $'^Cache-Control: max-age=0, no-cache\r$'
@@ -1185,6 +1209,7 @@ echo "Clear out our existing state before we begin the test."
 check touch "$FILE_CACHE/cache.flush"
 check touch "$FILE_CACHE/othercache.flush"
 check touch "$SECONDARY_CACHE/cache.flush"
+check touch "$IPRO_CACHE/cache.flush"
 sleep 1
 
 CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/update.css"
@@ -1614,14 +1639,30 @@ URL="$EXP_EXTEND_CACHE?PageSpeed=on&PageSpeedFilters=rewrite_css"
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
 check_not_from "$OUT" fgrep 'PageSpeedExperiment='
 
+start_test experiment assignment can be forced
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      "$EXP_EXTEND_CACHE?PageSpeedEnrollExperiment=2")
+check_from "$OUT" fgrep 'PageSpeedExperiment=2'
+
+start_test experiment assignment can be forced to a 0% experiment
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      "$EXP_EXTEND_CACHE?PageSpeedEnrollExperiment=3")
+check_from "$OUT" fgrep 'PageSpeedExperiment=3'
+
+start_test experiment assignment can be forced even if already assigned
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      --header Cookie:PageSpeedExperiment=7 \
+      "$EXP_EXTEND_CACHE?PageSpeedEnrollExperiment=2")
+check_from "$OUT" fgrep 'PageSpeedExperiment=2'
+
 start_test If the user is already assigned, no need to assign them again.
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=2' \
-      $EXP_EXTEND_CACHE)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      --header='Cookie: PageSpeedExperiment=2' $EXP_EXTEND_CACHE)
 check_not_from "$OUT" fgrep 'PageSpeedExperiment='
 
 start_test The beacon should include the experiment id.
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=2' \
-      $EXP_EXTEND_CACHE)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      --header='Cookie: PageSpeedExperiment=2' $EXP_EXTEND_CACHE)
 BEACON_CODE="pagespeed.addInstrumentationInit('/ngx_pagespeed_beacon', 'load',"
 BEACON_CODE+=" '&exptid=2', 'http://experiment.example.com/"
 BEACON_CODE+="mod_pagespeed_example/extend_cache.html');"
@@ -1634,8 +1675,8 @@ BEACON_CODE+="mod_pagespeed_example/extend_cache.html');"
 check_from "$OUT" grep "$BEACON_CODE"
 
 start_test The no-experiment group beacon should not include an experiment id.
-OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: PageSpeedExperiment=0' \
-     $EXP_EXTEND_CACHE)
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      --header='Cookie: PageSpeedExperiment=0' $EXP_EXTEND_CACHE)
 check_not_from "$OUT" grep 'pagespeed_beacon.*exptid'
 
 # We expect id=7 to be index=a and id=2 to be index=b because that's the
@@ -2055,29 +2096,28 @@ http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
 # User-Agent:  Accept:  Image type   Result
 # -----------  -------  ----------   ----------------------------------
 #    IE         N/A     photo        image/jpeg, Cache-Control: private *
-#     :         N/A     synthetic    image/png,  Cache-Control: private *
+#     :         N/A     synthetic    image/png,  no vary
 #  Old Opera     no     photo        image/jpeg, Vary: Accept
-#     :          no     synthetic    image/png,  Vary: Accept +
+#     :          no     synthetic    image/png,  no vary
 #     :         webp    photo        image/webp, Vary: Accept, Lossy
-#     :         webp    synthetic    image/png,  Cache-Control: private +
+#     :         webp    synthetic    image/png,  no vary
 #  Chrome or     no     photo        image/jpeg, Vary: Accept
-# Firefox or     no     synthetic    image/png,  Vary: Accept
+# Firefox or     no     synthetic    image/png,  no vary
 #  New Opera    webp    photo        image/webp, Vary: Accept, Lossy
-#     :         webp    synthetic    image/webp, Cache-Control: private +
-#                                    Lossless webp image returned
+#     :         webp    synthetic    image/webp, no vary
 # TODO(jmaessen): * cases currently send Vary: Accept.  Fix (in progress).
 # + has been rejected for now in favor of image/png, Vary: Accept.
-# TODO(jmaessen): eliminate Vary: Accept headers from synthetic images that
-# are never going to be considered for webp conversion.  This may prove
-# irrelevant if we instead decide to support Lossless via Vary: Accept and
-# abandon old Opera versions.
+# TODO(jmaessen): Send image/webp lossless for synthetic and alpha-channel
+# images.  Will require reverting to Vary: Accept for these.  Stuff like
+# animated webp will have to remain unconverted still in IPRO mode, or switch
+# to cc: private, but right now animated webp support is still pending anyway.
 function test_ipro_for_browser_webp() {
   IN_UA_PRETTY="$1"; shift
   IN_UA="$1"; shift
   IN_ACCEPT="$1"; shift
   IMAGE_TYPE="$1"; shift
   OUT_CONTENT_TYPE="$1"; shift
-  OUT_VARY="$1"; shift
+  OUT_VARY="${1-}"; shift
   OUT_CC="${1-}"; shift
   WGET_ARGS="--save-headers \
              ${IN_UA:+--user-agent $IN_UA} \
@@ -2095,7 +2135,7 @@ function test_ipro_for_browser_webp() {
   else
     TEST_ID+=" Accept:$IN_ACCEPT, "
   fi
-  TEST_ID+=" $IMAGE_TYPE.  Expect image/${IMAGE_TYPE}, "
+  TEST_ID+=" $IMAGE_TYPE.  Expect image/${OUT_CONTENT_TYPE}, "
   if [ -z "$OUT_VARY" ]; then
     TEST_ID+=" no vary, "
   else
@@ -2132,12 +2172,12 @@ test_ipro_for_browser_webp "" "webp-la" ""     photo jpeg "Accept"
 test_ipro_for_browser_webp "None" ""    "webp" photo webp "Accept"
 test_ipro_for_browser_webp "" "webp"    "webp" photo webp "Accept"
 test_ipro_for_browser_webp "" "webp-la" "webp" photo webp "Accept"
-test_ipro_for_browser_webp "None" ""    ""     synth png  "Accept"
-test_ipro_for_browser_webp "" "webp"    ""     synth png  "Accept"
-test_ipro_for_browser_webp "" "webp-la" ""     synth png  "Accept"
-test_ipro_for_browser_webp "None" ""    "webp" synth png  "Accept"
-test_ipro_for_browser_webp "" "webp"    "webp" synth png  "Accept"
-test_ipro_for_browser_webp "" "webp-la" "webp" synth png  "Accept"
+test_ipro_for_browser_webp "None" ""    ""     synth png
+test_ipro_for_browser_webp "" "webp"    ""     synth png
+test_ipro_for_browser_webp "" "webp-la" ""     synth png
+test_ipro_for_browser_webp "None" ""    "webp" synth png
+test_ipro_for_browser_webp "" "webp"    "webp" synth png
+test_ipro_for_browser_webp "" "webp-la" "webp" synth png
 ##############################################################################
 
 # Wordy UAs need to be stored in the WGETRC file to avoid death by quoting.
@@ -2151,28 +2191,28 @@ IE11_UA="Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
 echo "user_agent = $IE11_UA" > $WGETRC
 #                            (no accept) Type  Out  Vary
 test_ipro_for_browser_webp "IE 11" "" "" photo jpeg "Accept"
-test_ipro_for_browser_webp "IE 11" "" "" synth png  "Accept"
+test_ipro_for_browser_webp "IE 11" "" "" synth png
 
 # Older Opera did not support webp.
 OPERA_UA="Opera/9.80 (Windows NT 5.2; U; en) Presto/2.7.62 Version/11.01"
 echo "user_agent = $OPERA_UA" > $WGETRC
 #                                (no accept) Type  Out  Vary
 test_ipro_for_browser_webp "Old Opera" "" "" photo jpeg "Accept"
-test_ipro_for_browser_webp "Old Opera" "" "" synth png  "Accept"
+test_ipro_for_browser_webp "Old Opera" "" "" synth png
 # Slightly newer opera supports only lossy webp, sends header.
 OPERA_UA="Opera/9.80 (Windows NT 6.0; U; en) Presto/2.8.99 Version/11.10"
 echo "user_agent = $OPERA_UA" > $WGETRC
 #                                           Accept Type  Out  Vary
 test_ipro_for_browser_webp "Newer Opera" "" "webp" photo webp "Accept"
-test_ipro_for_browser_webp "Newer Opera" "" "webp" synth png  "Accept"
+test_ipro_for_browser_webp "Newer Opera" "" "webp" synth png
 
 function test_decent_browsers() {
   echo "user_agent = $2" > $WGETRC
   #                          UA      Accept Type      Out  Vary
   test_ipro_for_browser_webp "$1" "" ""     photo     jpeg "Accept"
-  test_ipro_for_browser_webp "$1" "" ""     synthetic  png "Accept"
+  test_ipro_for_browser_webp "$1" "" ""     synthetic  png
   test_ipro_for_browser_webp "$1" "" "webp" photo     webp "Accept"
-  test_ipro_for_browser_webp "$1" "" "webp" synthetic  png "Accept"
+  test_ipro_for_browser_webp "$1" "" "webp" synthetic  png
 }
 CHROME_UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_1) AppleWebKit/537.36 "
 CHROME_UA+="(KHTML, like Gecko) Chrome/32.0.1700.102 Safari/537.36"
