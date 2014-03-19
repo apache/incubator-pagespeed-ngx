@@ -463,7 +463,7 @@ ngx_command_t ps_commands[] = {
     NULL },
 
   { ngx_string("pagespeed"),
-    NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_loc_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
@@ -799,18 +799,27 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 }
 
 char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
-  ps_loc_conf_t* parent_cfg_l = static_cast<ps_loc_conf_t*>(parent);
-
-  // The variant of the pagespeed directive that is acceptable in location
-  // blocks is only acceptable in location blocks, so we should never be merging
-  // in options from a server or main block.
-  CHECK(parent_cfg_l->options == NULL);
-
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(child);
   if (cfg_l->options == NULL) {
     // No directory specific options.
     return NGX_CONF_OK;
   }
+
+  // While you can't put a "location" block inside a "location" block you can
+  // put an "if" block inside a "location" block, which is implemented by making
+  // a pretend "location" block.  In this case we may have pagespeed options
+  // from the parent "location" block as well as from the current locationish
+  // "if" block.
+  ps_loc_conf_t* parent_cfg_l = static_cast<ps_loc_conf_t*>(parent);
+  if (parent_cfg_l->options != NULL) {
+    // Rebase our options off of the ones defined in the parent location block.
+    ps_merge_options(parent_cfg_l->options, &cfg_l->options);
+    return NGX_CONF_OK;
+  }
+
+  // Pagespeed options are defined in this location block, and it either has no
+  // parent (typical case) or is an if block whose parent location block defines
+  // no pagespeed options.  Base our options off of those in the server block.
 
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));

@@ -198,6 +198,45 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name if-in-server.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    set $inline_javascript "No";
+
+    if ($http_x_custom_header_inline_js) {
+      # TODO(jefftk): Turn on NGX_HTTP_SIF_CONF and figure out how to get
+      # pagespeed directives inside of a server location block to be respected,
+      # then uncomment the following line and duplicate the if-in-location test
+      # for if-in-server.
+      #pagespeed EnableFilters inline_javascript;
+      set $inline_javascript "Yes";
+    }
+
+    add_header "X-Inline-Javascript" $inline_javascript;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name if-in-location.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+
+    location / {
+      set $inline_javascript "No";
+      pagespeed RewriteLevel PassThrough;
+
+      if ($http_x_custom_header_inline_js) {
+        pagespeed EnableFilters inline_javascript;
+        set $inline_javascript "Yes";
+      }
+
+      add_header "X-Inline-Javascript" $inline_javascript;
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name mpd.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
