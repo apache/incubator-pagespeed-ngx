@@ -419,10 +419,11 @@ IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
 JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
 WEBP_QUALITY="PageSpeedWebpRecompressionQuality"
 start_test quality of jpeg output images with generic quality flag
-IMG_REWRITE="$TEST_ROOT/image_rewriting/rewrite_images.html"
-REWRITE_URL="$IMG_REWRITE?PageSpeedFilters=rewrite_images"
-URL="$REWRITE_URL&$IMAGES_QUALITY=75"
+URL="$TEST_ROOT/image_rewriting/rewrite_images.html"
+WGET_ARGS="--header PageSpeedFilters:rewrite_images "
+WGET_ARGS+="--header ${IMAGES_QUALITY}:75 "
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
+WGET_ARGS=""
 # This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
 # size is 8157B, while on 64 it is 8155B. Initial investigation showed no
 # visible differences between the generated images.
@@ -435,10 +436,12 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimiz
 check_file_size "$WGET_DIR/*256x192*Puzzle*" -le 8157   # resized
 
 start_test quality of jpeg output images
-IMG_REWRITE="$TEST_ROOT/jpeg_rewriting/rewrite_images.html"
-REWRITE_URL="$IMG_REWRITE?PageSpeedFilters=rewrite_images"
-URL="$REWRITE_URL,recompress_jpeg&$IMAGES_QUALITY=85&$JPEG_QUALITY=70"
+URL="$TEST_ROOT/jpeg_rewriting/rewrite_images.html"
+WGET_ARGS="--header PageSpeedFilters:rewrite_images "
+WGET_ARGS+="--header ${IMAGES_QUALITY}:85 "
+WGET_ARGS+="--header ${JPEG_QUALITY}:70"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
+WGET_ARGS=""
 #
 # If this this test fails because the image size is 7673 bytes it means
 # that image_rewrite_filter.cc decided it was a good idea to convert to
