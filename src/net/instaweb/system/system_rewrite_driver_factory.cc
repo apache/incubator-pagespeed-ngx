@@ -45,6 +45,7 @@
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
+#include "third_party/domain_registry_provider/src/domain_registry/domain_registry.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/null_shared_mem.h"
@@ -197,6 +198,9 @@ void SystemRewriteDriverFactory::RootInit() {
   }
 
   caches_->RootInit();
+
+  // Required for SystemRequestContext to be able to call GetRegistryLength().
+  InitializeDomainRegistry();
 }
 
 void SystemRewriteDriverFactory::ChildInit() {

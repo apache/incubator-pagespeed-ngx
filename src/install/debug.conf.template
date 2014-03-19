@@ -451,8 +451,6 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_css,rewrite_images
-  # Share a cache keyspace with origin.example.com.
-  ModPagespeedCacheFragment "example"
 </VirtualHost>
 
 # Sets up a logical origin for CDNs to fetch content from, on origin.example.com.
@@ -464,8 +462,6 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_css,rewrite_images
-  # Share a cache keyspace with www.example.com.
-  ModPagespeedCacheFragment "example"
 </VirtualHost>
 
 # Sets up a logical cdn, which is where we tell browsers to fetch resources from.
@@ -1162,7 +1158,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #
 # Note that we test with two distinct caches.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName embed-config-html.example.com
+  ServerName embed-config-html.example.org
 
   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
@@ -1190,7 +1186,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   # it from image URL query parameters that we synthesize in
   # from embed-config-html.example.com.
 
-  # Share a cache keyspace with embed-config-html.example.com.
+  # Share a cache keyspace with embed-config-html.example.org.
   ModPagespeedCacheFragment "embed-config"
 
   ModPagespeedLoadFromFile "http://embed-config-resources.example.com/" \

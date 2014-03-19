@@ -1325,6 +1325,8 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/third_party/apr/apr.gyp:include',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
+        '<(DEPTH)/third_party/domain_registry_provider/src/domain_registry/'
+               + 'domain_registry.gyp:init_registry_tables_lib',
       ],
       'sources': [
         'system/apr_mem_cache.cc',

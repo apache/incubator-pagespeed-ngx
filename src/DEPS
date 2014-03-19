@@ -75,6 +75,10 @@ vars = {
   # 2013-11-18 agl@chromium.org Also remove chacha_vec.c from x86.
   "openssl_src": "https://git.chromium.org/chromium/deps/openssl.git",
   "openssl_revision": "@74e3032cd121a9275486e6b5653da87b3285cf7d",
+
+  "domain_registry_provider_src":
+     "https://domain-registry-provider.googlecode.com/svn/trunk/",
+  "domain_registry_provider_revision": "@31",
 }
 
 deps = {
@@ -216,6 +220,11 @@ deps = {
   # references in src/third_party/serf/serf.gyp.
   #
   "src/third_party/openssl": Var("openssl_src") + Var("openssl_revision"),
+
+  # Domain Registry Provider gives us the Public Suffix List.
+  "src/third_party/domain_registry_provider":
+    Var("domain_registry_provider_src") +
+    Var("domain_registry_provider_revision")
 }
 
 

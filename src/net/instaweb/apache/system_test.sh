@@ -869,7 +869,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # We use a regex matching "gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73" rather than
   # spelling it out to avoid test regolds when we add image filter IDs.
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
-      http://embed-config-html.example.com/embed_config.html \
+      http://embed-config-html.example.org/embed_config.html \
       'grep -c \.pagespeed\.' 3
 
   # with the default rewriters in vhost embed-config-resources.example.com

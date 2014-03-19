@@ -34,6 +34,8 @@ class Timer;
 
 class SystemRequestContext : public RequestContext {
  public:
+  // There are two ways a request may specify the hostname: with the Host
+  // header or on the initial request line.  Callers need to check both places.
   SystemRequestContext(AbstractMutex* logging_mutex,
                        Timer* timer,
                        StringPiece hostname,
@@ -51,6 +53,14 @@ class SystemRequestContext : public RequestContext {
   int local_port() const { return local_port_; }
   const GoogleString& local_ip() const { return local_ip_; }
   StringPiece url() const { return url_; }
+
+  // The public suffix of a hostname is the bit shared between multiple
+  // organizations.  For example, anyone can register under ".com", ".co.uk", or
+  // ".appspot.com".  The minimal private suffix goes one dotted section
+  // further, and is the name you would register when getting a domain:
+  // "google.com", "google.co.uk", "mysite.appspot.com".  See
+  // system_request_context_test for more examples.
+  static StringPiece MinimalPrivateSuffix(StringPiece hostname);
 
  protected:
   virtual ~SystemRequestContext() {}

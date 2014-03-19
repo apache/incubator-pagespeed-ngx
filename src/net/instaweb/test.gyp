@@ -368,6 +368,8 @@
         '<(DEPTH)/third_party/apr/apr.gyp:apr',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:aprutil',
         '<(DEPTH)/third_party/httpd/httpd.gyp:include',
+        '<(DEPTH)/third_party/domain_registry_provider/src/domain_registry/'
+               + 'domain_registry.gyp:init_registry_tables_lib',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
@@ -388,6 +390,7 @@
         'system/loopback_route_fetcher_test.cc',
         'system/serf_url_async_fetcher_test.cc',
         'system/system_caches_test.cc',
+        'system/system_request_context_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/mem_debug.cc',
       ],
     },

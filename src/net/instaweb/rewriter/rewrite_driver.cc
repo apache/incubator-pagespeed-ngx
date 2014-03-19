@@ -3473,7 +3473,7 @@ const GoogleString& RewriteDriver::CacheFragment() const {
   }
   CHECK(request_context_.get() != NULL) << "NULL request context in "
                                         << "RewriteDriver::CacheFragment";
-  return request_context_->hostname_for_cache_fragmentation();
+  return request_context_->minimal_private_suffix();
 }
 
 }  // namespace net_instaweb
