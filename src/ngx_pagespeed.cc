@@ -239,15 +239,18 @@ void copy_response_headers_from_ngx(const ngx_http_request_t* r,
 
   headers->set_status_code(r->headers_out.status);
 
+  if (r->headers_out.location != NULL) {
+    headers->Add(HttpAttributes::kLocation,
+                 str_to_string_piece(r->headers_out.location->value));
+  }
+
   // Manually copy over the content type because it's not included in
   // request_->headers_out.headers.
   headers->Add(HttpAttributes::kContentType,
                str_to_string_piece(r->headers_out.content_type));
 
-  // When we don't have a date header, invent one.
-  const char* date = headers->Lookup1(HttpAttributes::kDate);
-
-  if (date == NULL) {
+  // When we don't have a date header, set one with the current time.
+  if (headers->Lookup1(HttpAttributes::kDate) == NULL) {
     headers->SetDate(ngx_current_msec);
   }
 
@@ -505,8 +508,8 @@ char* ps_init_dir(const StringPiece& directive,
   }
 
   // chown if owner differs from nginx worker user.
-  ngx_core_conf_t* ccf =
-      (ngx_core_conf_t*)(ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
+  ngx_core_conf_t* ccf = reinterpret_cast<ngx_core_conf_t*>(
+      ngx_get_conf(cf->cycle->conf_ctx, ngx_core_module));
   CHECK(ccf != NULL);
   struct stat gs_stat;
   if (stat(gs_path.c_str(), &gs_stat) != 0) {
@@ -1320,14 +1323,25 @@ bool ps_determine_options(ngx_http_request_t* r,
     *options = global_options->Clone();
   }
 
-  // Modify our options in response to request options or experiment settings,
-  // if we need to.  If there are request options then ignore the experiment
-  // because we don't want experiments to be contaminated with unexpected
-  // settings.
-  if (request_options != NULL) {
+  // Modify our options in response to request options if specified.
+  bool have_request_options = request_options != NULL;
+  if (have_request_options) {
     (*options)->Merge(*request_options);
     delete request_options;
-  } else if ((*options)->running_experiment() && html_rewrite) {
+    request_options = NULL;
+  }
+
+  // If we're running an experiment and processing html then modify our options
+  // in response to the experiment.  Except we generally don't want experiments
+  // to be contaminated with unexpected settings, so ignore experiments if we
+  // have request-specific options.  Unless EnrollExperiment is on, probably set
+  // by a query parameter, in which case we want to go ahead and apply the
+  // experimental settings even if it means bad data, because we're just seeing
+  // what it looks like.
+  if ((*options)->running_experiment() &&
+      html_rewrite &&
+      (!have_request_options ||
+       (*options)->enroll_experiment())) {
     bool ok = ps_set_experiment_state_and_cookie(
         r, request_headers, *options, url->Host());
     if (!ok) {
@@ -1364,7 +1378,8 @@ bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
     return false;  // No X-Forwarded-Proto header found.
   }
 
-  StringPiece x_forwarded_proto = str_to_string_piece(*x_forwarded_proto_header);
+  StringPiece x_forwarded_proto =
+      str_to_string_piece(*x_forwarded_proto_header);
   if (!STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "http") &&
       !STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "https")) {
     LOG(WARNING) << "Unsupported X-Forwarded-Proto: " << x_forwarded_proto
@@ -1490,11 +1505,6 @@ void ps_release_request_context(void* data) {
     ctx->recorder = NULL;
   }
 
-  if (ctx->ipro_response_headers != NULL) {
-    delete ctx->ipro_response_headers;
-    ctx->ipro_response_headers = NULL;
-  }
-
   ps_release_base_fetch(ctx);
   delete ctx;
 }
@@ -1527,7 +1537,8 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
 
   if (is_pagespeed_subrequest(r)) {
     return RequestRouting::kPagespeedSubrequest;
-  } else if (url.PathSansLeaf() == NgxRewriteDriverFactory::kStaticAssetPrefix) {
+  } else if (url.PathSansLeaf() ==
+             NgxRewriteDriverFactory::kStaticAssetPrefix) {
     return RequestRouting::kStaticContent;
   } else if (url.PathSansQuery() == "/ngx_pagespeed_statistics" ||
              url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
@@ -1564,7 +1575,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   CHECK(!(html_rewrite && (ctx == NULL || ctx->html_rewrite == false)));
 
-  if (!html_rewrite && r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+  if (!html_rewrite &&
+      r->method != NGX_HTTP_GET &&
+      r->method != NGX_HTTP_HEAD) {
     return NGX_DECLINED;
   }
 
@@ -1619,7 +1632,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx = new ps_request_ctx_t();
 
     ctx->r = r;
-    ctx->ipro_response_headers = NULL;
     ctx->write_pending = false;
     ctx->html_rewrite = false;
     ctx->in_place = false;
@@ -2093,12 +2105,40 @@ ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
-  if (ctx == NULL || !ctx->in_place) {
+  if (ctx == NULL) {
+    return ngx_http_next_header_filter(r);
+  }
+
+  if (ctx->recorder != NULL) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "ps in place check header filter recording: %V", &r->uri);
+
+    CHECK(!ctx->in_place);
+
+    // We didn't find this resource in cache originally, so we're recording it
+    // as it passes us by.  At this point the headers from things that run
+    // before us are set but not things that run after us, which means here is
+    // where we need to check whether there's a "Content-Encoding: gzip".  If we
+    // waited to do this in ps_in_place_body_filter we wouldn't be able to tell
+    // the difference between response headers that have "C-E: gz" because we're
+    // proxying for an upstream that gzipped the content and response headers
+    // that have it because the gzip filter (which runs after us) is going to
+    // produce gzipped output.
+    //
+    // The recorder will do this checking, so pass it the headers.
+    ResponseHeaders response_headers;
+    copy_response_headers_from_ngx(r, &response_headers);
+    ctx->recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kPreliminaryHeaders, &response_headers);
+    return ngx_http_next_header_filter(r);
+  }
+
+  if (!ctx->in_place) {
     return ngx_http_next_header_filter(r);
   }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                 "ps in place check header filter: %V", &r->uri);
+                 "ps in place check header filter initial: %V", &r->uri);
 
   int status_code = r->headers_out.status;
   bool status_ok = (status_code != 0) && (status_code < 400);
@@ -2139,7 +2179,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     ctx->recorder = new InPlaceResourceRecorder(
         RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
         url,
-        request_headers,
+        request_headers.GetProperties(),
         options->respect_vary(),
         options->ipro_max_response_bytes(),
         options->ipro_max_concurrent_recordings(),
@@ -2149,6 +2189,9 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         message_handler);
     // set in memory flag for in place_body_filter
     r->filter_need_in_memory = 1;
+
+    // We don't have the response headers at all yet because we haven't yet gone
+    // to the backend.
   } else {
     server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
     message_handler->Message(kInfo,
@@ -2174,44 +2217,11 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
                  "ps in place body filter: %V", &r->uri);
 
   InPlaceResourceRecorder* recorder = ctx->recorder;
-
-  if (ctx->ipro_response_headers == NULL) {
-    // Prepare response headers.
-    ctx->ipro_response_headers = new ResponseHeaders();
-
-    // TODO(oschaaf): We don't get a Date response header here.
-    // Currently, we invent one and set it to the current date/time.
-    // We need to investigate why we don't receive it.
-    ctx->ipro_response_headers->set_major_version(r->http_version / 1000);
-    ctx->ipro_response_headers->set_minor_version(r->http_version % 1000);
-    copy_headers_from_table(r->headers_out.headers, ctx->ipro_response_headers);
-    ctx->ipro_response_headers->set_status_code(r->headers_out.status);
-    ctx->ipro_response_headers->Add(HttpAttributes::kContentType,
-                str_to_string_piece(r->headers_out.content_type));
-    if (r->headers_out.location != NULL) {
-      ctx->ipro_response_headers->Add(HttpAttributes::kLocation,
-                  str_to_string_piece(r->headers_out.location->value));
-    }
-    StringPiece date =
-        ctx->ipro_response_headers->Lookup1(HttpAttributes::kDate);
-    if (date.empty()) {
-      ctx->ipro_response_headers->SetDate(ngx_current_msec);
-    }
-    ctx->ipro_response_headers->ComputeCaching();
-
-    // Unlike in Apache we get the final response headers before we get the
-    // content.  This means we can consider them earlier and abort the
-    // request if need be without buffering everything.
-    recorder->ConsiderResponseHeaders(
-        InPlaceResourceRecorder::kPreliminaryHeaders,
-        ctx->ipro_response_headers);
-  }
-
   for (ngx_chain_t* cl = in; cl; cl = cl->next) {
     if (ngx_buf_size(cl->buf)) {
        CHECK(ngx_buf_in_memory(cl->buf));
-       StringPiece contents(reinterpret_cast<char *>(cl->buf->pos),
-                                 ngx_buf_size(cl->buf));
+       StringPiece contents(reinterpret_cast<char*>(cl->buf->pos),
+                            ngx_buf_size(cl->buf));
        recorder->Write(contents, recorder->handler());
     }
 
@@ -2220,7 +2230,9 @@ ngx_int_t ps_in_place_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     }
 
     if (cl->buf->last_buf || recorder->failed()) {
-      ctx->recorder->DoneAndSetHeaders(ctx->ipro_response_headers);
+      ResponseHeaders response_headers;
+      copy_response_headers_from_ngx(r, &response_headers);
+      ctx->recorder->DoneAndSetHeaders(&response_headers);
       ctx->recorder = NULL;
       break;
     }
@@ -2314,7 +2326,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
       break;
     }
     case RequestRouting::kConsole:
-      server_context->ConsoleHandler(server_context->config(), &writer);
+      server_context->ConsoleHandler(*server_context->config(), &writer);
       break;
     case RequestRouting::kMessages: {
       GoogleString log;

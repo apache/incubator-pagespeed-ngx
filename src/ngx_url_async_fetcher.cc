@@ -221,7 +221,7 @@ namespace net_instaweb {
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
-    async_fetch = EnableInflation(async_fetch, NULL);
+    async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, fetch_timeout_, log_);
     ScopedMutex lock(mutex_);
