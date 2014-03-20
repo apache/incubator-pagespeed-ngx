@@ -163,6 +163,11 @@ DEFINE_bool(in_place_preemptive_rewrite_javascript, true,
             "If set, issue preemptive rewrites of javascript on the HTML path "
             "when configured to use IPRO. If --js_preserve_urls is not set, "
             "this flag has no effect.");
+DEFINE_bool(private_not_vary_for_ie, true,
+            "If set, use Cache-Control: private rather than Vary: Accept when "
+            "serving IPRO resources to IE.  This avoids the need for an "
+            "if-modified-since request from IE, but prevents proxy caching of "
+            "these resources.");
 DEFINE_bool(image_preserve_urls, false, "Boolean to indicate whether image"
             "URLs should be preserved.");
 DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
@@ -949,6 +954,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("in_place_preemptive_rewrite_javascript")) {
     options->set_in_place_preemptive_rewrite_javascript(
         FLAGS_in_place_preemptive_rewrite_javascript);
+  }
+  if (WasExplicitlySet("private_not_vary_for_ie")) {
+    options->set_private_not_vary_for_ie(FLAGS_private_not_vary_for_ie);
   }
   if (WasExplicitlySet("serve_ghost_click_buster_with_split_html")) {
     options->set_serve_ghost_click_buster_with_split_html(

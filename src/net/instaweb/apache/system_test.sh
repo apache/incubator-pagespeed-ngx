@@ -2172,7 +2172,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
         fgrep -q "Vary: $OUT_VARY"
     fi
     check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
-      fgrep -q "Cache-Control: ${OUT_CC:-max-age=}"
+      grep -q "Cache-Control: ${OUT_CC:-max-age=[0-9]*}$"
     # TODO: check file type of webp.  Irrelevant for now.
   }
 
@@ -2198,12 +2198,15 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   WGETRC=$TEMPDIR/wgetrc-ua
   export WGETRC
 
-  # IE 11 does not cache Vary: Accept.  For now we send it nonetheless.  See
-  # TODO above.
-  IE11_UA="Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
+  # IE 9 and later must re-validate Vary: Accept.  We should send CC: private.
+  IE9_UA="Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))"
+  IE11_UA="Mozilla/5.0 (Windows NT 6.1; WOW64; ***********; rv:11.0) like Gecko"
+  echo "user_agent = $IE9_UA" > $WGETRC
+  #                           (no accept)  Type  Out  Vary CC
+  test_ipro_for_browser_webp "IE 9"  "" "" photo jpeg ""   "max-age=[0-9]*,private"
+  test_ipro_for_browser_webp "IE 9"  "" "" synth png
   echo "user_agent = $IE11_UA" > $WGETRC
-  #                            (no accept) Type  Out  Vary
-  test_ipro_for_browser_webp "IE 11" "" "" photo jpeg "Accept"
+  test_ipro_for_browser_webp "IE 11" "" "" photo jpeg ""   "max-age=[0-9]*,private"
   test_ipro_for_browser_webp "IE 11" "" "" synth png
 
   # Older Opera did not support webp.
@@ -2286,7 +2289,7 @@ fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
 check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
 
 echo Ensure that rewritten images strip cookies present at origin
-check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q -i 'Set-Cookie'
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -qi 'Set-Cookie'
 $WGET -O $FETCH_UNTIL_OUTFILE --save-headers \
   http://$PAGESPEED_TEST_HOST/do_not_modify/Puzzle.jpg
 ORIGINAL_HEADERS=$(extract_headers $FETCH_UNTIL_OUTFILE)

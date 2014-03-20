@@ -45,6 +45,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"  // for Writer
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -383,7 +384,6 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(
       headers->Replace(HttpAttributes::kEtag, HTTPCache::FormatEtag(StrCat(
                                                   id(), "-", rewritten_hash_)));
     }
-    AddVaryIfRequired(cached_result, headers);
     headers->set_implicit_cache_ttl_ms(Options()->implicit_cache_ttl_ms());
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
@@ -424,6 +424,7 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(
                                        expire_at_ms - date_ms);
     }
     headers->SetDateAndCaching(now_ms, expire_at_ms - now_ms);
+    AddVaryIfRequired(cached_result, headers);
   }
 }
 
@@ -676,8 +677,20 @@ void InPlaceRewriteContext::AddVaryIfRequired(
   if (new_vary == NULL) {
     return;
   }
-  // TODO(jmaessen): Handle IE.  This requires cache-control:private instead or
-  // no caching will occur on the client side.  Also add tests for it!
+  if (Options()->private_not_vary_for_ie() &&
+      driver_->user_agent_matcher()->IsIe(driver_->user_agent())) {
+    // IE stores Vary: Accept resources in its cache, but must revalidate them
+    // every single time they're fetched (except for older IE, which doesn't
+    // cache them at all).  To avoid the re-validation cost (which imposes load
+    // on the server unless a proxy cache deals with it) we by default serve
+    // these resource cache-control: private to IE.  This will invalidate all
+    // Vary: capable proxy caches along the way, though.  In practice this is
+    // usually not be a big deal: few proxies handle Vary: Accept, though some
+    // CDNs do, and none we've heard of handle Vary: User-Agent without special
+    // configuration.
+    headers->Add(HttpAttributes::kCacheControl, HttpAttributes::kPrivate);
+    return;
+  }
   ConstStringStarVector varies;
   if (headers->Lookup(HttpAttributes::kVary, &varies)) {
     // Need to add to the existing Vary header.  But first, check that the vary

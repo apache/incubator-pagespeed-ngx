@@ -783,7 +783,7 @@ class RewriteDriver : public HtmlParse {
 
   // Sets the device type chosen for the current property_page.
   void set_device_type(UserAgentMatcher::DeviceType x) { device_type_ = x; }
-  UserAgentMatcher::DeviceType device_type() const { return device_type_; }
+  UserAgentMatcher::DeviceType device_type() { return device_type_; }
 
   // Tries to register the given rewrite context as working on
   // its partition key. If this context is the first one to try to handle it,

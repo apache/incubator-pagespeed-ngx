@@ -316,6 +316,7 @@ class RewriteOptions {
   static const char kOverrideCachingTtlMs[];
   static const char kPersistBlinkBlacklist[];
   static const char kPreserveUrlRelativity[];
+  static const char kPrivateNotVaryForIE[];
   static const char kProactivelyFreshenUserFacingRequest[];
   static const char kProactiveResourceFreshening[];
   static const char kProgressiveJpegMinBytes[];
@@ -1492,16 +1493,16 @@ class RewriteOptions {
     return add_options_to_urls_.value();
   }
 
-  void set_in_place_rewriting_enabled(bool x) {
-    set_option(x, &in_place_rewriting_enabled_);
-  }
-
   void set_oblivious_pagespeed_urls(bool x) {
     set_option(x, &oblivious_pagespeed_urls_);
   }
 
   bool oblivious_pagespeed_urls() const {
     return oblivious_pagespeed_urls_.value();
+  }
+
+  void set_in_place_rewriting_enabled(bool x) {
+    set_option(x, &in_place_rewriting_enabled_);
   }
 
   bool in_place_rewriting_enabled() const {
@@ -1551,6 +1552,13 @@ class RewriteOptions {
   }
   bool in_place_preemptive_rewrite_javascript() const {
     return CheckBandwidthOption(in_place_preemptive_rewrite_javascript_);
+  }
+
+  void set_private_not_vary_for_ie(bool x) {
+    set_option(x, &private_not_vary_for_ie_);
+  }
+  bool private_not_vary_for_ie() const {
+    return private_not_vary_for_ie_.value();
   }
 
   void set_combine_across_paths(bool x) {
@@ -3381,6 +3389,12 @@ class RewriteOptions {
   // If set, preemptively rewrite images in JS files on the HTML serving path
   // when IPRO of JS is enabled.
   Option<bool> in_place_preemptive_rewrite_javascript_;
+  // Use cache-control:private rather than vary:accept when serving IPRO
+  // resources to IE.  This avoids the need for an if-modified-since request
+  // from IE on each cache hit.  The flip side is no proxy cache will store it
+  // (though few or no proxy caches will store Vary: accept data in any case
+  // unless they are specially configured to do so).
+  Option<bool> private_not_vary_for_ie_;
   Option<bool> combine_across_paths_;
   Option<bool> log_background_rewrites_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?

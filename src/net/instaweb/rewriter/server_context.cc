@@ -460,7 +460,7 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
       directives = no_store ? ",no-cache,no-store" : ",no-cache";
     }
     headers->SetDateAndCaching(headers->date_ms(), max_age, directives);
-    headers->RemoveAll(HttpAttributes::kEtag);
+    headers->Remove(HttpAttributes::kEtag, kResourceEtagValue);
     headers->ComputeCaching();
   }
 }

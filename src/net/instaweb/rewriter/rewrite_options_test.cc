@@ -957,6 +957,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kOverrideCachingTtlMs);
   PassLookupOptionByName(RewriteOptions::kPersistBlinkBlacklist);
   PassLookupOptionByName(RewriteOptions::kPreserveUrlRelativity);
+  PassLookupOptionByName(RewriteOptions::kPrivateNotVaryForIE);
   PassLookupOptionByName(RewriteOptions::kProactivelyFreshenUserFacingRequest);
   PassLookupOptionByName(RewriteOptions::kProactiveResourceFreshening);
   PassLookupOptionByName(RewriteOptions::kProgressiveJpegMinBytes);

@@ -48,6 +48,7 @@
 #include "net/instaweb/util/worker_test_base.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
 namespace net_instaweb {
 
@@ -1564,7 +1565,7 @@ TEST_F(InPlaceRewriteContextTest, NonCacheableUrlRewriting) {
   FetchAndCheckResponse(nocache_js_url_, StrCat(cache_body_, ":", "jm"),
                         true /* success */,
                         Timer::kYearMs /* ttl (ms) */,
-                        NULL /* etag */,
+                        etag_ /* etag */,
                         timer()->NowMs());
 
   // Shouldn't be cacheable at all.
@@ -1604,7 +1605,7 @@ TEST_F(InPlaceRewriteContextTest, PrivateCacheableUrlRewriting) {
   FetchAndCheckResponse(private_cache_js_url_, StrCat(cache_body_, ":", "jm"),
                         true /* success */,
                         1000 /* ttl (s) */,
-                        NULL /* etag */,
+                        etag_ /* etag */,
                         timer()->NowMs());
   // Should be cacheable.
   EXPECT_TRUE(response_headers_.IsBrowserCacheable());
@@ -1780,6 +1781,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // the nested RewriteContext will not check for rewritten content if input
   // is ready. Keep that in mind when checking lru_cache hits/misses.
   options()->set_in_place_wait_for_optimized(true);
+  options()->set_private_not_vary_for_ie(true);
   set_optimize_for_browser(true);
   Init();
 
@@ -1810,7 +1812,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // and rewrite content (cache miss).
   // Vary: Accept header should be be added.
   ResetHeadersAndStats();
-  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
   user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
@@ -1828,15 +1830,30 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   EXPECT_STREQ(HttpAttributes::kAccept,
                response_headers_.Lookup1(HttpAttributes::kVary));
 
+  // The third fetch uses an IE 9 user agent string, which should result in a
+  // Cache-Control: private resource and no Vary header.
+  ResetHeadersAndStats();
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
+  user_agent_ = UserAgentMatcherTestBase::kIe9UserAgent;
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  CheckWarmCache("no_webp_to_ie");
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kVary));
+  ConstStringStarVector cache_controls;
+  EXPECT_TRUE(response_headers_.Lookup(
+      HttpAttributes::kCacheControl, &cache_controls));
+  ASSERT_EQ(2, cache_controls.size());
+  EXPECT_STREQ(HttpAttributes::kPrivate, *cache_controls[1]);
+
   // Fetch again still with kTestUserAgentWebP, but omits the Accept:webp
   // header.  Metadata cache hits.  No input fetch and rewriting.
   // Vary: Accept header should be be added.
   ResetHeadersAndStats();
-  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
   user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
-  CheckWarmCache("no_webp");
+  CheckWarmCache("no_webp_without_accept");
   EXPECT_STREQ(HttpAttributes::kAccept,
                response_headers_.Lookup1(HttpAttributes::kVary));
 
@@ -1850,6 +1867,45 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   CheckWarmCache("back_to_webp");
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+}
+
+TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNoPrivateForIE) {
+  // Similar to test above, but set private_not_vary_for_ie to false and omit
+  // detailed checking of cache hit statistics, focusing just on a behavioral
+  // test.
+  options()->set_in_place_wait_for_optimized(true);
+  options()->set_private_not_vary_for_ie(false);
+  set_optimize_for_browser(true);
+  Init();
+
+  // First fetch with kTestUserAgentWebP.
+  // Vary: Accept header should be added.
+  user_agent_ = UserAgentMatcher::kTestUserAgentWebP;
+  SetAcceptWebp();
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // The second fetch uses a different user agent, kTestUserAgentNoWebP.
+  // Vary: Accept header should be be added.
+  ResetHeadersAndStats();
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
+  user_agent_ = UserAgentMatcher::kTestUserAgentNoWebP;
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  EXPECT_STREQ(HttpAttributes::kAccept,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // The third fetch uses an IE 9 user agent string, which should *also* have a
+  // Vary: Accept header since private_not_vary_for_ie == false.
+  ResetHeadersAndStats();
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
+  user_agent_ = UserAgentMatcherTestBase::kIe9UserAgent;
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
   EXPECT_STREQ(HttpAttributes::kAccept,
                response_headers_.Lookup1(HttpAttributes::kVary));
 }

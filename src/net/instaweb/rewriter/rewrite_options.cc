@@ -224,6 +224,7 @@ const char RewriteOptions::kObliviousPagespeedUrls[] = "ObliviousPagespeedUrls";
 const char RewriteOptions::kOverrideCachingTtlMs[] = "OverrideCachingTtlMs";
 const char RewriteOptions::kPersistBlinkBlacklist[] = "PersistBlinkBlacklist";
 const char RewriteOptions::kPreserveUrlRelativity[] = "PreserveUrlRelativity";
+const char RewriteOptions::kPrivateNotVaryForIE[] = "PrivateNotVaryForIE";
 const char RewriteOptions::kProactivelyFreshenUserFacingRequest[] =
     "ProactivelyFreshenUserFacingRequest";
 const char RewriteOptions::kProactiveResourceFreshening[] =
@@ -1358,6 +1359,14 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "If set, issue preemptive rewrites of JS on the HTML path when "
       "configured to use IPRO.");
+  AddBaseProperty(
+      true, &RewriteOptions::private_not_vary_for_ie_,
+      "pnvie", kPrivateNotVaryForIE,
+      kDirectoryScope,
+      "If set, serve in-place optimized resources as Cache-Control: private "
+      "rather than Vary: Accept.  Avoids an extra fetch on cache hit, but "
+      "prevents proxy caching of these resources.  Only relevant if your "
+      "proxy caches Vary: Accept");
   AddBaseProperty(
       true, &RewriteOptions::combine_across_paths_, "cp",
       kCombineAcrossPaths,
