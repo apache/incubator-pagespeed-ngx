@@ -273,6 +273,15 @@ const char UserAgentMatcherTestBase::kTestingWebp[] =
 const char UserAgentMatcherTestBase::kTestingWebpLosslessAlpha[] =
     "webp-la";
 
+// The user-agent strings for IE 11 seen below were all actual UA strings
+// observed in the real world.  Yes, the asterisks are actually in the UA.
+const char* const
+UserAgentMatcherTestBase::kIe11UserAgents[] = {
+  "Windows-RSS-Platform/2.0 (IE 11.0; Windows NT 6.1)",
+  "Mozilla/5.0 (compatible; IE 11.0; Win32; Trident/7.0)",
+  "Mozilla/5.0 (Windows NT 6.1; WOW64; ***********; rv:11.0) like Gecko"
+};
+
 const char* const UserAgentMatcherTestBase::kMobileUserAgents[] = {
   UserAgentMatcherTestBase::kALCATELMobileUserAgent,
   UserAgentMatcherTestBase::kAlcatelUserAgent,
@@ -360,13 +369,19 @@ UserAgentMatcherTestBase::kImageInliningSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kIPhoneUserAgent,
   UserAgentMatcherTestBase::kOpera8UserAgent,
   UserAgentMatcherTestBase::kSafariUserAgent,
+  UserAgentMatcherTestBase::kIe11UserAgents[0],
+  UserAgentMatcherTestBase::kIe11UserAgents[1],
+  UserAgentMatcherTestBase::kIe11UserAgents[2],
 };
 
 const char* const UserAgentMatcherTestBase::kSplitHtmlSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kChromeUserAgent,
   UserAgentMatcherTestBase::kFirefoxUserAgent,
   UserAgentMatcherTestBase::kIe9UserAgent,
-  UserAgentMatcherTestBase::kSafariUserAgent
+  UserAgentMatcherTestBase::kSafariUserAgent,
+  UserAgentMatcherTestBase::kIe11UserAgents[0],
+  UserAgentMatcherTestBase::kIe11UserAgents[1],
+  UserAgentMatcherTestBase::kIe11UserAgents[2],
 };
 
 const char* const
@@ -381,6 +396,8 @@ UserAgentMatcherTestBase::kSplitHtmlUnSupportedUserAgents[] = {
   UserAgentMatcherTestBase::kPSPUserAgent,
 };
 
+const int UserAgentMatcherTestBase::kIe11UserAgentsArraySize =
+    arraysize(kIe11UserAgents);
 const int UserAgentMatcherTestBase::kMobileUserAgentsArraySize =
     arraysize(kMobileUserAgents);
 const int UserAgentMatcherTestBase::kDesktopUserAgentsArraySize =

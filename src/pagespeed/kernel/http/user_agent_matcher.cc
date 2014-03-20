@@ -50,10 +50,10 @@ const char* kImageInliningWhitelist[] = {
   "*iPhone*",
   "*iPod*",
   "*itouch*",
-  "*MSIE *",
   "*Opera*",
   "*Safari*",
   "*Wget*",
+  // Plus IE, see use in the code.
   // The following user agents are used only for internal testing
   "google command line rewriter",
   "webp",
@@ -89,8 +89,8 @@ const char* kLazyloadImagesBlacklist[] = {
 const char* kPanelSupportDesktopWhitelist[] = {
   "*Chrome/*",
   "*Firefox/*",
-  "*MSIE *",
   "*Safari*",
+  // Plus IE, see code below.
   "*Wget*",
   // The following user agents are used only for internal testing
   "prefetch_link_script_tag",
@@ -171,7 +171,7 @@ const char* kWebpLosslessAlphaBlacklist[] = {
 const char* kInsertDnsPrefetchWhitelist[] = {
   "*Chrome/*",
   "*Firefox/*",
-  "*MSIE *",
+  // Plus IE, see code below.
   "*Wget*",
   // The following user agents are used only for internal testing
   "prefetch_image_tag",
@@ -234,9 +234,22 @@ const char* kSupportsPrefetchImageTag[] = {
 
 const char* kSupportsPrefetchLinkScriptTag[] = {
   "*Firefox/*",
-  "*MSIE *",
+  // Plus IE, see code below
   // User agent used only for internal testing
   "prefetch_link_script_tag",
+};
+
+// IE 11 and later user agent strings are deliberately difficult.  That would be
+// great if random pages never put the browser into backward compatibility mode,
+// and all the outstanding caching bugs were fixed, but neither is true and so
+// we need to be able to spot IE 11 and treat it as IE even though we're not
+// supposed to need to do so ever again.  See
+// http://blogs.msdn.com/b/ieinternals/archive/2013/09/21/internet-explorer-11-user-agent-string-ua-string-sniffing-compatibility-with-gecko-webkit.aspx
+const char* kIeUserAgents[] = {
+  "*MSIE *",                // Should match any IE before 11.
+  "*rv:11.?) like Gecko*",  // Other revisions (eg 12.0) are FireFox
+  "*IE 1*",                 // Initial numeral avoids Samsung UA
+  "*Trident/7*",            // Opera sometimes pretends to be earlier Trident
 };
 
 // Match either 'CriOS' (iOS Chrome) or 'Chrome'. ':?' marks a non-capturing
@@ -277,6 +290,9 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kImageInliningWhitelist); i < n; ++i) {
     supports_image_inlining_.Allow(kImageInliningWhitelist[i]);
   }
+  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
+    supports_image_inlining_.Allow(kIeUserAgents[i]);
+  }
   for (int i = 0, n = arraysize(kImageInliningBlacklist); i < n; ++i) {
     supports_image_inlining_.Disallow(kImageInliningBlacklist[i]);
   }
@@ -288,6 +304,10 @@ UserAgentMatcher::UserAgentMatcher()
 
     // Explicitly allowed blink UAs should also allow defer_javascript.
     defer_js_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
+    blink_desktop_whitelist_.Allow(kIeUserAgents[i]);
+    defer_js_whitelist_.Allow(kIeUserAgents[i]);
   }
   for (int i = 0, n = arraysize(kDeferJSWhitelist); i < n; ++i) {
     defer_js_whitelist_.Allow(kDeferJSWhitelist[i]);
@@ -321,8 +341,14 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kSupportsPrefetchLinkScriptTag); i < n; ++i) {
     supports_prefetch_link_script_tag_.Allow(kSupportsPrefetchLinkScriptTag[i]);
   }
+  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
+    supports_prefetch_link_script_tag_.Allow(kIeUserAgents[i]);
+  }
   for (int i = 0, n = arraysize(kInsertDnsPrefetchWhitelist); i < n; ++i) {
     supports_dns_prefetch_.Allow(kInsertDnsPrefetchWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
+    supports_dns_prefetch_.Allow(kIeUserAgents[i]);
   }
   for (int i = 0, n = arraysize(kInsertDnsPrefetchBlacklist); i < n; ++i) {
     supports_dns_prefetch_.Disallow(kInsertDnsPrefetchBlacklist[i]);
@@ -336,6 +362,9 @@ UserAgentMatcher::UserAgentMatcher()
   }
   for (int i = 0, n = arraysize(kTabletUserAgentWhitelist); i < n; ++i) {
     tablet_user_agents_.Allow(kTabletUserAgentWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
+    ie_user_agents_.Allow(kIeUserAgents[i]);
   }
   GoogleString known_devices_pattern_string = "(";
   for (int i = 0, n = arraysize(kKnownScreenDimensions); i < n; ++i) {
@@ -354,7 +383,7 @@ UserAgentMatcher::~UserAgentMatcher() {
 }
 
 bool UserAgentMatcher::IsIe(const StringPiece& user_agent) const {
-  return user_agent.find(" MSIE ") != GoogleString::npos;
+  return ie_user_agents_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::IsIe9(const StringPiece& user_agent) const {

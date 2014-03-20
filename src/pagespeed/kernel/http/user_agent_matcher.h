@@ -73,6 +73,11 @@ class UserAgentMatcher {
   UserAgentMatcher();
   virtual ~UserAgentMatcher();
 
+  // Before calling IsIe, ask if you're doing the right thing: are you doing
+  // something that will mess up IE 11 in standards mode?  Are you in a position
+  // where you can't tell what compatibility mode IE 11 is in?  Right now we use
+  // this only to force edge compatibility mode and to work around a persistent
+  // IE Vary: caching bug.
   bool IsIe(const StringPiece& user_agent) const;
   bool IsIe9(const StringPiece& user_agent) const;
 
@@ -152,6 +157,7 @@ class UserAgentMatcher {
   FastWildcardGroup supports_dns_prefetch_;
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup tablet_user_agents_;
+  FastWildcardGroup ie_user_agents_;
 
   const RE2 chrome_version_pattern_;
   scoped_ptr<RE2> known_devices_pattern_;
