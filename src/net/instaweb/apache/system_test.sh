@@ -2317,6 +2317,16 @@ check [ "$CONTENT_LENGTH" -lt 90000 ];
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
     fgrep -q 'Transfer-Encoding: chunked'
 
+start_test IPRO 304 with etags
+# Reuses $URL and $FETCH_UNTIL_OUTFILE from previous test.
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag:'
+ETAG=$(extract_headers $FETCH_UNTIL_OUTFILE | awk '/Etag:/ {print $2}')
+echo $WGET_DUMP --header "If-None-Match: $ETAG" $URL
+OUTFILE=$OUTDIR/etags
+# Note: -o gets debug info which is the only place that 304 message is sent.
+$WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
+check fgrep -q "awaiting response... 304" $OUTFILE
+
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to
 # ?PageSpeed=off. This should also insert an entry into the property cache so

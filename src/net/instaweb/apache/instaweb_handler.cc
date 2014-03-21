@@ -123,7 +123,12 @@ void ApacheFetch::HandleHeadersComplete() {
   status_ok_ = (status_code != 0) && (status_code < 400);
 
   if (handle_error_ || status_ok_) {
-    CHECK(response_headers()->Has(HttpAttributes::kContentType));
+    // 304 and 204 responses aren't expected to have Content-Types.
+    // All other responses should.
+    if (status_code != HttpStatus::kNotModified &&
+        status_code != HttpStatus::kNoContent) {
+      DCHECK(response_headers()->Has(HttpAttributes::kContentType));
+    }
 
     int64 now_ms = server_context_->timer()->NowMs();
     response_headers()->SetDate(now_ms);
