@@ -273,20 +273,22 @@ NamedLockManager* SystemCaches::GetLockManager(SystemRewriteOptions* config) {
   return GetCache(config)->lock_manager();
 }
 
-CacheInterface* SystemCaches::LookupShmMetadataCache(const GoogleString& name) {
+SystemCaches::MetadataShmCacheInfo* SystemCaches::LookupShmMetadataCache(
+    const GoogleString& name) {
   if (name.empty()) {
     return NULL;
   }
   MetadataShmCacheMap::iterator i = metadata_shm_caches_.find(name);
   if (i != metadata_shm_caches_.end()) {
-    return i->second->cache_to_use;
+    return i->second;
   }
   return NULL;
 }
 
-CacheInterface* SystemCaches::GetShmMetadataCacheOrDefault(
+SystemCaches::MetadataShmCacheInfo* SystemCaches::GetShmMetadataCacheOrDefault(
     SystemRewriteOptions* config) {
-  CacheInterface* shm_cache = LookupShmMetadataCache(config->file_cache_path());
+  MetadataShmCacheInfo* shm_cache =
+      LookupShmMetadataCache(config->file_cache_path());
   if (shm_cache != NULL) {
     return shm_cache;  // Explicitly configured.
   }
@@ -340,7 +342,10 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
   SystemCachePath* caches_for_path = GetCache(config);
   CacheInterface* lru_cache = caches_for_path->lru_cache();
   CacheInterface* file_cache = caches_for_path->file_cache();
-  CacheInterface* shm_metadata_cache = GetShmMetadataCacheOrDefault(config);
+  MetadataShmCacheInfo* shm_metadata_cache_info =
+      GetShmMetadataCacheOrDefault(config);
+  CacheInterface* shm_metadata_cache = (shm_metadata_cache_info != NULL) ?
+      shm_metadata_cache_info->cache_to_use : NULL;
   MemcachedInterfaces memcached = GetMemcached(config);
   CacheInterface* property_store_cache = NULL;
   CacheInterface* http_l2 = file_cache;
@@ -420,15 +425,27 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
       // would be worse.
       // TODO(jefftk): add support for checkpointing the state of the shm cache
       // which would remove the need to write through to the file cache.
-      if (shm_metadata_cache ==
-          LookupShmMetadataCache(kDefaultSharedMemoryPath)) {
+      MetadataShmCacheInfo* default_cache_info =
+          LookupShmMetadataCache(kDefaultSharedMemoryPath);
+      if (default_cache_info != NULL &&
+          shm_metadata_cache == default_cache_info->cache_to_use) {
         // They're running the SHM cache because it's the default.  Go L1/L2 to
         // be conservative.
         metadata_l1 = shm_metadata_cache;
         metadata_l2 = file_cache;
       } else {
-        // They've explicitly configured an SHM cache; ignore the file cache.
-        metadata_l2 = shm_metadata_cache;
+        // They've explicitly configured an SHM cache; the file cache will only
+        // be used as a fallback for very large objects.
+        FallbackCache* metadata_fallback =
+            new FallbackCache(
+                shm_metadata_cache, file_cache,
+                shm_metadata_cache_info->cache_backend->MaxValueSize(),
+                factory_->message_handler());
+        // SharedMemCache uses hash-produced fixed size keys internally, so its
+        // value size limit isn't affected by key length changes.
+        metadata_fallback->set_account_for_key_size(false);
+        server_context->DeleteCacheOnDestruction(metadata_fallback);
+        metadata_l2 = metadata_fallback;
 
         // TODO(jmarantz): do we really want to use the shm-cache as a
         // pcache?  The potential for inconsistent data across a

@@ -88,6 +88,11 @@ class SharedMemCache : public CacheInterface {
                                 int* blocks_per_sector_out,
                                 int64* size_cap_out);
 
+  // Returns the largest size of an object this cache can store.
+  size_t MaxValueSize() const {
+    return (blocks_per_sector_ * kBlockSize) / 8;
+  }
+
   // Returns some statistics as plaintext.
   // TODO(morlovich): Potentially periodically push these to the main
   // Statistics system (or pull to it from these).

@@ -127,6 +127,26 @@ TEST_F(FallbackCacheTest, JustUnderThreshold) {
   EXPECT_EQ(0, large_cache_.size_bytes()) << "fallback not used.";
 }
 
+TEST_F(FallbackCacheTest, NotCountingKeys) {
+  // By default, we do count the keys.
+  const char kKey[] = "a";
+  const GoogleString kValue(kTestValueSizeThreshold - 1, 'b');
+  CheckPut(kKey, kValue);
+  CheckGet(kKey, kValue);
+  // This should go into large cache (as it's 1 byte over limit due to the
+  // key + 1 byte for marker).
+  EXPECT_NE(0, large_cache_.size_bytes()) << "fallback used";
+
+  small_cache_.Clear();
+  large_cache_.Clear();
+
+  // If we don't count the key, it should fit in snuggly.
+  fallback_cache_.set_account_for_key_size(false);
+  CheckPut(kKey, kValue);
+  CheckGet(kKey, kValue);
+  EXPECT_EQ(0, large_cache_.size_bytes()) << "fallback not used.";
+}
+
 // Basic operation with huge values, only one of which will fit
 // in the fallback cache at a time.
 TEST_F(FallbackCacheTest, HugeValue) {

@@ -164,13 +164,14 @@ class SystemCaches {
 
   // Returns any shared memory metadata cache configured for the given name, or
   // NULL.
-  CacheInterface* LookupShmMetadataCache(const GoogleString& name);
+  MetadataShmCacheInfo* LookupShmMetadataCache(const GoogleString& name);
 
   // Returns the shared metadata cache explicitly configured for this config if
   // it exists, otherwise return the default one, creating it if necessary.
   // Returns NULL if shared memory isn't supported or if the default cache is
   // disabled and this server context didn't explicitly configure its own.
-  CacheInterface* GetShmMetadataCacheOrDefault(SystemRewriteOptions* config);
+  MetadataShmCacheInfo* GetShmMetadataCacheOrDefault(
+      SystemRewriteOptions* config);
 
   // Establishes common cohorts for the property cache.
   void SetupPcacheCohorts(ServerContext* server_context,

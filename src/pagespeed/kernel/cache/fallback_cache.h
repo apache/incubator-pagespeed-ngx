@@ -40,7 +40,9 @@ class FallbackCache : public CacheInterface {
  public:
   // FallbackCache does not take ownership of either cache that's passed in.
   //
-  // The threshold is compared against the key-size + value-size on put.
+  // The threshold is compared against the value-size + key size (default on,
+  // disable via set_account_for_key_size) on put. The threshold is inclusive:
+  // up to that many bytes will be stored into small_object_cache.
   FallbackCache(CacheInterface* small_object_cache,
                 CacheInterface* large_object_cache,
                 int threshold_bytes,
@@ -72,6 +74,10 @@ class FallbackCache : public CacheInterface {
   }
   static GoogleString FormatName(StringPiece small, StringPiece large);
 
+  // If true (the default) the space for the key will be added to the
+  // value size when checking whether a store exceeds threshold_bytes.
+  void set_account_for_key_size(bool x) { account_for_key_size_ = x; }
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,
@@ -80,6 +86,7 @@ class FallbackCache : public CacheInterface {
   CacheInterface* small_object_cache_;
   CacheInterface* large_object_cache_;
   int threshold_bytes_;
+  bool account_for_key_size_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(FallbackCache);

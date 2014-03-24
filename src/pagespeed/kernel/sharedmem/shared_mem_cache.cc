@@ -416,12 +416,12 @@ void SharedMemCache<kBlockSize>::PutRawHash(
     int64 last_use_timestamp_ms,
     SharedString* value) {
   // See also ::ComputeDimensions
-  const size_t kMaxSize = (blocks_per_sector_ * kBlockSize) / 8;
+  const size_t kMaxSize = MaxValueSize();
 
   size_t value_size = static_cast<size_t>(value->size());
   if (value_size > kMaxSize) {
     handler_->Message(
-      kWarning, "Unable to insert object of size: %s, cache limit is: %s",
+      kInfo, "Unable to insert object of size: %s, cache limit is: %s",
       FormatSize(value->size()).c_str(),
       FormatSize(kMaxSize).c_str());
     return;

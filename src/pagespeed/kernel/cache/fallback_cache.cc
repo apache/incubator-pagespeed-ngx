@@ -111,6 +111,7 @@ FallbackCache::FallbackCache(CacheInterface* small_object_cache,
     : small_object_cache_(small_object_cache),
       large_object_cache_(large_object_cache),
       threshold_bytes_(threshold_bytes),
+      account_for_key_size_(true),
       message_handler_(handler) {
 }
 
@@ -136,7 +137,13 @@ void FallbackCache::MultiGet(MultiGetRequest* request) {
 }
 
 void FallbackCache::Put(const GoogleString& key, SharedString* value) {
-  if ((static_cast<int>(key.size()) + value->size()) >= threshold_bytes_) {
+  int store_size = value->size();
+  if (account_for_key_size_) {
+    store_size += static_cast<int>(key.size());
+  }
+  store_size += 1;  // For kInSmallObjectCache marker.
+
+  if (store_size > threshold_bytes_) {
     SharedString forwarding_value;
     forwarding_value.Assign(&kInLargeObjectCache, 1);
     small_object_cache_->Put(key, &forwarding_value);

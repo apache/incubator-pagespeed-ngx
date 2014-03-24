@@ -455,7 +455,8 @@ TEST_F(SystemCachesTest, BasicShmAndLru) {
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
-  EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
+  EXPECT_STREQ(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                        FileCacheWithStats()),
                server_context->metadata_cache()->Name());
   // HTTP cache is unaffected.
   EXPECT_STREQ(
@@ -477,7 +478,8 @@ TEST_F(SystemCachesTest, BasicShmAndNoLru) {
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
-  EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
+  EXPECT_STREQ(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                        FileCacheWithStats()),
                server_context->metadata_cache()->Name());
   // HTTP cache is unaffected.
   EXPECT_STREQ(HttpCache(FileCacheWithStats()),
@@ -506,7 +508,8 @@ TEST_F(SystemCachesTest, DoubleShmCreate) {
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
   // We don't use the LRU when shm cache is on.
-  EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
+  EXPECT_STREQ(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                        FileCacheWithStats()),
                server_context->metadata_cache()->Name());
   // HTTP cache is unaffected.
   EXPECT_STREQ(
@@ -712,7 +715,8 @@ TEST_F(SystemCachesTest, ShmShare) {
   std::vector<ServerContext*> servers;
   for (int i = 0; i < 3; ++i) {
     servers.push_back(SetupServerContext(configs[i]));
-    EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
+    EXPECT_STREQ(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                          FileCacheWithStats()),
                  servers[i]->metadata_cache()->Name());
   }
 
@@ -766,7 +770,8 @@ TEST_F(SystemCachesTest, ShmDefault) {
   EXPECT_STREQ(WriteThrough(Stats("shm_cache", "SharedMemCache<64>"),
                             FileCacheWithStats()),
                servers[1]->metadata_cache()->Name());
-  EXPECT_STREQ(Stats("shm_cache", "SharedMemCache<64>"),
+  EXPECT_STREQ(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                        FileCacheWithStats()),
                servers[2]->metadata_cache()->Name());
 
 
