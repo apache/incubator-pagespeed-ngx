@@ -22,7 +22,6 @@
 #include "pagespeed/kernel/html/empty_html_filter.h"
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/fast_wildcard_group.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -39,7 +38,8 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
   // Interface that allows policy injection into a RemoveCommentsFilter
   // instance. We cannot use RewriteOptions directly here since
   // RemoveCommentsFilter does not want to take on all of the
-  // RewriteOptions dependencies.
+  // RewriteOptions dependencies. If you want a simple data-structure based
+  // implementation, there is a sample one in the unit test.
   class OptionsInterface {
    public:
     OptionsInterface() {}
@@ -51,25 +51,6 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
 
    private:
     DISALLOW_COPY_AND_ASSIGN(OptionsInterface);
-  };
-
-  // Basic default implementation.
-  class OptionsImpl : public OptionsInterface {
-   public:
-    OptionsImpl() {}
-
-    void RetainComment(const StringPiece& comment) {
-      retain_comments_.Allow(comment);
-    }
-
-    virtual bool IsRetainedComment(const StringPiece& comment) const {
-      return retain_comments_.Match(comment, false);
-    }
-
-   private:
-    FastWildcardGroup retain_comments_;
-
-    DISALLOW_COPY_AND_ASSIGN(OptionsImpl);
   };
 
   explicit RemoveCommentsFilter(HtmlParse* html_parse)
