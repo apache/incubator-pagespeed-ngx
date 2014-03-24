@@ -146,6 +146,7 @@ class FreshenMetadataUpdateManager;
 class RewriteContext {
  public:
   typedef std::vector<InputInfo*> InputInfoStarVector;
+  static const char kNumRewritesAbandonedForLockContention[];
   static const char kNumDeadlineAlarmInvocations[];
   static const char kNumDistributedRewriteSuccesses[];
   static const char kNumDistributedRewriteFailures[];
@@ -978,10 +979,18 @@ class RewriteContext {
   // We would *not* want to do that if one of the Rewrites completed
   // with status kTooBusy or if we've just read these very partitions from
   // the metadata cache.
+  //
+  // Because both failure (kTooBusy) and success (we just read this from cache)
+  // lead to ok_to_write_output_partitions_ being turned off, this is not copied
+  // from nested rewrite contexts.  In the success case we want the parent to
+  // write iff it has made changes, which is what it will do if we copy nothing;
+  // in the failure case we also set was_too_busy_, which does get copied to the
+  // parent.
   bool ok_to_write_output_partitions_;
 
   // True if the rewrite was incomplete due to heavy load; if this is true
-  // ok_to_write_output_partitions_ must be false.
+  // ok_to_write_output_partitions_ must be false.  This is copied from nested
+  // rewrite contexts because if one rewrite fails none should be saved.
   bool was_too_busy_;
 
   // We mark a job as "slow" when we cannot render it entirely from the
@@ -1026,6 +1035,7 @@ class RewriteContext {
   // Map to dedup partitions other dependency field.
   StringIntMap other_dependency_map_;
 
+  Variable* const num_rewrites_abandoned_for_lock_contention_;
   Variable* const num_distributed_rewrite_failures_;
   Variable* const num_distributed_rewrite_successes_;
   Variable* const num_distributed_metadata_failures_;

@@ -1439,9 +1439,12 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   # Fetch the HTML to initiate rewriting and caching of the image.
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $HTML_URL -O $OUTFILE
 
-  # First IPRO resource request after a short wait: it will have the full TTL.
+  # First IPRO resource request after a short wait: it will never be optimized
+  # because our non-load-from-file flow doesn't support that, but it will have
+  # the full TTL.
   sleep 2
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
+  check test $(wc -c "$OUTFILE" | cut -d' ' -f1) -gt 15000 # not optimized
   RESOURCE_MAX_AGE=$( \
     extract_headers $OUTFILE | \
     grep 'Cache-Control:' | tr -d '\r' | \
@@ -1449,14 +1452,17 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   check test -n "$RESOURCE_MAX_AGE"
   check test $RESOURCE_MAX_AGE -eq 333
 
-  # Second IPRO resource request after a short wait: the TTL will be reduced.
+  # Second IPRO resource request after a short wait: it will still be optimized
+  # and the TTL will be reduced.
   sleep 2
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
+  check test $(wc -c "$OUTFILE" | cut -d' ' -f1) -lt 15000 # optimized
   RESOURCE_MAX_AGE=$( \
     extract_headers $OUTFILE | \
     grep 'Cache-Control:' | tr -d '\r' | \
     sed -e 's/^ *Cache-Control: *//' | sed -e 's/^.*max-age=\([0-9]*\).*$/\1/')
   check test -n "$RESOURCE_MAX_AGE"
+
   check test $RESOURCE_MAX_AGE -lt 333
   check test $RESOURCE_MAX_AGE -gt 300
 

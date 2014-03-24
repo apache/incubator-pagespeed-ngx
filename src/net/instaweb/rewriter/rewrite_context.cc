@@ -1212,12 +1212,15 @@ RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
 }
 
 void RewriteContext::InitStats(Statistics* stats) {
+  stats->AddVariable(kNumRewritesAbandonedForLockContention);
   stats->AddVariable(kNumDistributedRewriteSuccesses);
   stats->AddVariable(kNumDistributedRewriteFailures);
   stats->AddVariable(kNumDistributedMetadataFailures);
   RewriteContext::FetchContext::InitStats(stats);
 }
 
+const char RewriteContext::kNumRewritesAbandonedForLockContention[] =
+    "num_rewrites_abandoned_for_lock_contention";
 const char RewriteContext::kNumDeadlineAlarmInvocations[] =
     "num_deadline_alarm_invocations";
 const char RewriteContext::kNumDistributedRewriteFailures[] =
@@ -1256,6 +1259,9 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     rewrite_uncacheable_(false),
     dependent_request_trace_(NULL),
     block_distribute_rewrite_(false),
+    num_rewrites_abandoned_for_lock_contention_(
+        Driver()->statistics()->GetVariable(
+            kNumRewritesAbandonedForLockContention)),
     num_distributed_rewrite_failures_(
         Driver()->statistics()->GetVariable(kNumDistributedRewriteFailures)),
     num_distributed_rewrite_successes_(
@@ -1643,8 +1649,8 @@ void RewriteContext::OutputCacheMiss() {
   } else if (server_context->TryLockForCreation(Lock())) {
     FetchInputs();
   } else {
-    // TODO(jmarantz): bump stat for abandoned rewrites due to lock contention.
-    ok_to_write_output_partitions_ = false;
+    num_rewrites_abandoned_for_lock_contention_->Add(1);
+    MarkTooBusy();
     Activate();
   }
 }
