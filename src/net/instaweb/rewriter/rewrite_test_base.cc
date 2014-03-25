@@ -128,6 +128,7 @@ const char RewriteTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
 const char RewriteTestBase::kConfiguredBeaconingKey[] =
     "configured_beaconing_key";
 const char RewriteTestBase::kWrongBeaconingKey[] = "wrong_beaconing_key";
+const char kMessagePatternShrinkImage[] = "*Shrinking image*";
 
 RewriteTestBase::RewriteTestBase()
     : test_distributed_fetcher_(this),
@@ -380,6 +381,9 @@ void RewriteTestBase::ServeResourceFromNewContext(
   new_rewrite_driver->SetUserAgent(current_user_agent_);
 
   new_factory->SetupWaitFetcher();
+
+  MockMessageHandler* handler = new_factory->mock_message_handler();
+  handler->AddPatternToSkipPrinting(kMessagePatternShrinkImage);
 
   // TODO(sligocki): We should set default request headers.
   ExpectStringAsyncFetch response_contents(true, CreateRequestContext());

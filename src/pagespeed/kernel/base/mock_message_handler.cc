@@ -41,7 +41,7 @@ void MockMessageHandler::MessageVImpl(MessageType type,
                                       const char* msg,
                                       va_list args) {
   ScopedMutex hold_mutex(mutex_.get());
-  if (ShouldPrintMessage(msg)) {
+  if (ShouldPrintMessage(Format(msg, args).c_str())) {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   } else {
     ++skipped_message_counts_[type];
@@ -53,7 +53,7 @@ void MockMessageHandler::FileMessageVImpl(MessageType type,
                                           const char* filename, int line,
                                           const char* msg, va_list args) {
   ScopedMutex hold_mutex(mutex_.get());
-  if (ShouldPrintMessage(msg)) {
+  if (ShouldPrintMessage(Format(msg, args).c_str())) {
     GoogleMessageHandler::FileMessageVImpl(type, filename, line, msg, args);
   } else {
     ++skipped_message_counts_[type];

@@ -66,6 +66,7 @@ using pagespeed::image_compression::ScopedPngStruct;
 using pagespeed::image_compression::kMessagePatternAnimatedGif;
 using pagespeed::image_compression::kMessagePatternFailedToRead;
 using pagespeed::image_compression::kMessagePatternLibpngError;
+using pagespeed::image_compression::kMessagePatternLibpngFailure;
 using pagespeed::image_compression::kMessagePatternLibpngWarning;
 using pagespeed::image_compression::kMessagePatternUnexpectedEOF;
 
@@ -537,6 +538,7 @@ class PngOptimizerTest : public testing::Test {
     message_handler_.AddPatternToSkipPrinting(kMessagePatternBadGifLine);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternFailedToRead);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngError);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngFailure);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngWarning);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
   }
@@ -1172,6 +1174,7 @@ TEST_F(PngScanlineReaderRawTest, ReadAfterReset) {
 
 TEST_F(PngScanlineReaderRawTest, InvalidPngs) {
   message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngError);
+  message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngFailure);
   message_handler_.AddPatternToSkipPrinting(kMessagePatternLibpngWarning);
   message_handler_.AddPatternToSkipPrinting(kMessagePatternUnexpectedEOF);
   PngScanlineReaderRaw reader(&message_handler_);

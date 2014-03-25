@@ -36,6 +36,7 @@ using pagespeed::image_compression::IMAGE_JPEG;
 using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::JpegScanlineReader;
 using pagespeed::image_compression::kJpegTestDir;
+using pagespeed::image_compression::kMessagePatternLibJpegFailure;
 using pagespeed::image_compression::ReadImage;
 using pagespeed::image_compression::ReadTestFile;
 using pagespeed::image_compression::ReadTestFileWithExt;
@@ -78,6 +79,7 @@ TEST(JpegReaderTest, InvalidJpegs) {
     ReadTestFileWithExt(kJpegTestDir, kInvalidFiles[i], &src_data);
     MockMessageHandler message_handler(new NullMutex);
     JpegScanlineReader reader(&message_handler);
+    message_handler.AddPatternToSkipPrinting(kMessagePatternLibJpegFailure);
     if (i < kInvalidFileCount-1) {
       ASSERT_FALSE(reader.Initialize(src_data.c_str(), src_data.length()));
     } else {

@@ -48,15 +48,17 @@ const char kResizedTestDir[] = "resized/";
 
 // Message to ignore.
 const char kMessagePatternAnimatedGif[] =
-    "Unable to optimize image with * frames.";
-const char kMessagePatternFailedToOpen[] = "Failed to open*";
-const char kMessagePatternFailedToRead[] = "Failed to read*";
-const char kMessagePatternLibpngError[] = "libpng error:*";
-const char kMessagePatternLibpngWarning[] = "libpng warning:*";
-const char kMessagePatternPixelFormat[] = "Pixel format:*";
-const char kMessagePatternStats[] = "Stats:*";
-const char kMessagePatternUnexpectedEOF[] = "Unexpected EOF.";
-const char kMessagePatternWritingToWebp[] = "Writing to webp:*";
+    "*Unable to optimize image with * frames.";
+const char kMessagePatternFailedToOpen[] = "*Failed to open*";
+const char kMessagePatternFailedToRead[] = "*Failed to read*";
+const char kMessagePatternLibJpegFailure[] = "*libjpeg failed to*";
+const char kMessagePatternLibpngError[] = "*libpng error:*";
+const char kMessagePatternLibpngFailure[] = "*libpng failed to*";
+const char kMessagePatternLibpngWarning[] = "*libpng warning:*";
+const char kMessagePatternPixelFormat[] = "*Pixel format:*";
+const char kMessagePatternStats[] = "*Stats:*";
+const char kMessagePatternUnexpectedEOF[] = "*Unexpected EOF*";
+const char kMessagePatternWritingToWebp[] = "*Writing to webp:*";
 
 struct ImageCompressionInfo {
  public:

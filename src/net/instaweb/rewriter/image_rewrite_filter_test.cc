@@ -108,8 +108,11 @@ const int kIgnoreSize = -1;
 const char kCriticalImagesCohort[] = "critical_images";
 
 // Message to ignore.
-const char kMessagePatternFailedToEncodeWebp[] = "Could not encode webp data*";
-const char kMessagePatternWebpTimeOut[] = "WebP conversion timed out!";
+const char kMessagePatternFailedToEncodeWebp[] = "*Could not encode webp data*";
+const char kMessagePatternRecompressing[] = "*Recompressing image*";
+const char kMessagePatternResizedImage[] = "*Resized image*";
+const char kMessagePatternShrinkingImage[] = "*Shrinking image*";
+const char kMessagePatternWebpTimeOut[] = "*WebP conversion timed out*";
 
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
@@ -197,6 +200,9 @@ class ImageRewriteTest : public RewriteTestBase {
     MockMessageHandler* handler = message_handler();
     handler->AddPatternToSkipPrinting(kMessagePatternFailedToEncodeWebp);
     handler->AddPatternToSkipPrinting(kMessagePatternPixelFormat);
+    handler->AddPatternToSkipPrinting(kMessagePatternRecompressing);
+    handler->AddPatternToSkipPrinting(kMessagePatternResizedImage);
+    handler->AddPatternToSkipPrinting(kMessagePatternShrinkingImage);
     handler->AddPatternToSkipPrinting(kMessagePatternStats);
     handler->AddPatternToSkipPrinting(kMessagePatternWebpTimeOut);
     handler->AddPatternToSkipPrinting(kMessagePatternWritingToWebp);

@@ -67,9 +67,10 @@ const char kProgressiveHeader[] = "\xFF\xC2";
 const int kProgressiveHeaderStartIndex = 158;
 const char kMessagePatternDataTruncated[] = "*data truncated*";
 const char kMessagePatternFailedToCreateWebp[] = "*Failed to create webp*";
-const char kMessagePatternFailedToEncodeWebp[] = "Could not encode webp data*";
-const char kMessagePatternNoWebpDimension[] = "*Couldn't find * dimensions*";
+const char kMessagePatternFailedToEncodeWebp[] = "*Could not encode webp data*";
+const char kMessagePatternNoDimension[] = "*Couldn't find * dimensions*";
 const char kMessagePatternTimedOut[] = "*conversion timed out*";
+const char kMessagePatternFailedToDecoode[] = "*failed to decode the image*";
 
 class ConversionVarChecker {
  public:
@@ -225,9 +226,10 @@ class ImageTest : public ImageTestBase {
     message_handler_.AddPatternToSkipPrinting(kMessagePatternDataTruncated);
     message_handler_.AddPatternToSkipPrinting(
         kMessagePatternFailedToCreateWebp);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternFailedToDecoode);
     message_handler_.AddPatternToSkipPrinting(
         kMessagePatternFailedToEncodeWebp);
-    message_handler_.AddPatternToSkipPrinting(kMessagePatternNoWebpDimension);
+    message_handler_.AddPatternToSkipPrinting(kMessagePatternNoDimension);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternPixelFormat);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternStats);
     message_handler_.AddPatternToSkipPrinting(kMessagePatternTimedOut);
