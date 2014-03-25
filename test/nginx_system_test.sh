@@ -258,7 +258,6 @@ PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
 PAGESPEED_EXPECTED_FAILURES="
-~IPRO-optimized resources should have fixed size, not chunked.~
 "
 
 # Some tests are flakey under valgrind. For now, add them to the expected failures
@@ -2398,6 +2397,13 @@ CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
 check [ "$CONTENT_LENGTH" -lt 90000 ];
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
     fgrep -q 'Transfer-Encoding: chunked'
+
+start_test PageSpeed resources should have a content length.
+URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
+OUT=$($WGET_DUMP --save-headers $URL)
+check_from "$OUT" egrep -q $'^Content-Length: ([0-9])*\r$'
+check_not_from "$OUT" egrep -iq $'^Transfer-Encoding: chunked\r$'
+check_not_from "$OUT" egrep -iq $'^Connection: close\r$'
 
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to
