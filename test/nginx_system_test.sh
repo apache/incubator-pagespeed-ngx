@@ -271,6 +271,28 @@ function run_post_cache_flush() {
 
 # nginx-specific system tests
 
+start_test Test pagespeed directive inside if block inside location block.
+
+URL="http://if-in-location.example.com/"
+URL+="mod_pagespeed_example/inline_javascript.html"
+
+# When we specify the X-Custom-Header-Inline-Js that triggers an if block in the
+# config which turns on inline_javascript.
+WGET_ARGS="--header=X-Custom-Header-Inline-Js:Yes"
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until $URL 'grep -c document.write' 1
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $WGET_ARGS $URL)
+check_from "$OUT" fgrep "X-Inline-Javascript: Yes"
+check_not_from "$OUT" fgrep "inline_javascript.js"
+
+# Without that custom header we don't trigger the if block, and shouldn't get
+# any inline javascript.
+WGET_ARGS=""
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $WGET_ARGS $URL)
+check_from "$OUT" fgrep "X-Inline-Javascript: No"
+check_from "$OUT" fgrep "inline_javascript.js"
+check_not_from "$OUT" fgrep "document.write"
+
 # Tests related to rewritten response (downstream) caching.
 
 if [ "$NATIVE_FETCHER" = "on" ]; then
