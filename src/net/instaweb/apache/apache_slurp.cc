@@ -103,7 +103,8 @@ GoogleString RemoveModPageSpeedQueryParams(
 
   for (int i = 0; i < query_params.size(); ++i) {
     StringPiece name = query_params.name(i);
-    if (name.starts_with(RewriteQuery::kModPagespeed)) {
+    if (name.starts_with(RewriteQuery::kModPagespeed) ||
+        name.starts_with(RewriteQuery::kPageSpeed)) {
       rewrite_query_params = true;
     } else {
       const GoogleString* value = query_params.EscapedValue(i);
