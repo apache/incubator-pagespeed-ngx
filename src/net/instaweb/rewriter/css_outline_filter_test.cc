@@ -209,6 +209,12 @@ TEST_F(CssOutlineFilterTest, EmptyStyle) {
   ValidateNoChanges("empty_style", "<style></style>");
 }
 
+TEST_F(CssOutlineFilterTest, DoNotOutlineScoped) {
+  // <style scoped> exists (with very limited support) but <link scoped>
+  // doesn't, so we shouldn't be outlining scoped styles.
+  ValidateNoChanges("scoped", "<style scoped>* {display: none;}</style>");
+}
+
 // http://code.google.com/p/modpagespeed/issues/detail?id=416
 TEST_F(CssOutlineFilterTest, RewriteDomain) {
   AddRewriteDomainMapping("cdn.com", kTestDomain);

@@ -112,6 +112,14 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertGoodStyle) {
   ValidateStyleToLink("<style>@import url(assets/styles.css)</style>", kLink);
 }
 
+TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertScoped) {
+  // <style scoped> can't be converted to a link.
+  // (https://code.google.com/p/modpagespeed/issues/detail?id=918)
+  AddFilter(RewriteOptions::kInlineImportToLink);
+  ValidateStyleUnchanged("<style type=\"text/css\" scoped>"
+                         "@import url(assets/styles.css);</style>");
+}
+
 TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithMultipleImports) {
   AddFilter(RewriteOptions::kInlineImportToLink);
   ValidateStyleToLink(

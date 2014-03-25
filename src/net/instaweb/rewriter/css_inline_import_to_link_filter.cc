@@ -213,13 +213,16 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
   // * The element isn't empty.
   // * The element is rewritable.
   // * It doesn't already have an href or rel attribute, since we add these.
+  // * It doesn't have a scoped attribute, since scoped styles can't be
+  //   done with a <link>
   // * Its contents comprise one or more valid @import statement.
   // * Each @import actually imports something (the url isn't empty).
   // * Each @import's media, if any, are the same as style's, if any.
   if (style_characters_ != NULL &&
       driver_->IsRewritable(style_element_) &&
       style_element_->FindAttribute(HtmlName::kHref) == NULL &&
-      style_element_->FindAttribute(HtmlName::kRel) == NULL) {
+      style_element_->FindAttribute(HtmlName::kRel) == NULL &&
+      style_element_->FindAttribute(HtmlName::kScoped) == NULL) {
     // Parse imports until we hit the end of them; if there's anything else
     // in the CSS we bail out.
     // TODO(matterbury): leave any *remaining* CSS (after any imports) as an
