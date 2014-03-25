@@ -456,8 +456,10 @@ const char* SystemServerContext::StatisticsHandler(
     // default logging granularity.
     granularity_ms = 3000;
     for (int i = 0; i < params.size(); ++i) {
-      const GoogleString value =
-          (params.value(i) == NULL) ? "" : *params.value(i);
+      GoogleString value;
+      if (!params.UnescapedValue(i, &value)) {
+        value.clear();
+      }
       StringPiece name = params.name(i);
       if (name == "json") {
         json_output = true;

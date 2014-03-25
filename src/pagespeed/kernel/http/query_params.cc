@@ -21,22 +21,45 @@
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
 void QueryParams::Parse(const StringPiece& text) {
   CHECK_EQ(0, size());
-  AddFromNameValuePairs(text, "&", '=', false);
+  map_.AddFromNameValuePairs(text, "&", '=', false);
+}
+
+bool QueryParams::UnescapedValue(int index, GoogleString* unescaped_val) const {
+  const GoogleString* val = map_.value(index);
+  if (val == NULL) {
+    return false;
+  }
+  // TODO(jmarantz): make GoogleUrl::Unescape check for invalid encodings.
+  *unescaped_val = GoogleUrl::Unescape(*val);
+  return true;
+}
+
+bool QueryParams::Lookup1Unescaped(const StringPiece& name,
+                                   GoogleString* unescaped_val) const {
+  const GoogleString* val = map_.Lookup1(name);
+  if (val == NULL) {
+    return false;
+  }
+  // TODO(jmarantz): make GoogleUrl::Unescape check for invalid encodings.
+  *unescaped_val = GoogleUrl::Unescape(*val);
+  return true;
 }
 
 GoogleString QueryParams::ToString() const {
   GoogleString str;
   const char* prefix="";
   for (int i = 0; i < size(); ++i) {
-    if (value(i) == NULL) {
+    const GoogleString* escaped_value = EscapedValue(i);
+    if (escaped_value == NULL) {
       StrAppend(&str, prefix, name(i));
     } else {
-      StrAppend(&str, prefix, name(i), "=", *(value(i)));
+      StrAppend(&str, prefix, name(i), "=", *escaped_value);
     }
     prefix = "&";
   }

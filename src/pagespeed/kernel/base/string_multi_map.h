@@ -43,7 +43,7 @@ template<class StringCompare> class StringMultiMap {
     Clear();
   }
 
-  bool empty() {
+  bool empty() const {
     return vector_.empty();
   }
 

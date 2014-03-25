@@ -106,12 +106,12 @@ GoogleString RemoveModPageSpeedQueryParams(
     if (name.starts_with(RewriteQuery::kModPagespeed)) {
       rewrite_query_params = true;
     } else {
-      const GoogleString* value = query_params.value(i);
+      const GoogleString* value = query_params.EscapedValue(i);
       StringPiece value_piece;  // NULL data by default.
       if (value != NULL) {
         value_piece = *value;
       }
-      stripped_query_params.Add(name, value_piece);
+      stripped_query_params.AddEscaped(name, value_piece);
     }
   }
 

@@ -160,7 +160,8 @@ TEST_F(GoogleFontServiceInputResourceTest, UANormalization) {
       ".NET CLR 2.0.50727; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)";
 
   GoogleUrl url(kRoboto);
-  scoped_ptr<GoogleUrl> url_plus_ua(url.CopyAndAddQueryParam("UA", kIE7a));
+  scoped_ptr<GoogleUrl> url_plus_ua(
+      url.CopyAndAddEscapedQueryParam("UA", GoogleUrl::Escape(kIE7a)));
   ResponseHeaders response_headers;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &response_headers);
   response_headers.SetDateAndCaching(

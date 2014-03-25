@@ -73,7 +73,7 @@ GoogleFontServiceInputResource* GoogleFontServiceInputResource::Make(
 
   StringPiece url_plus_ua_spec;
   scoped_ptr<GoogleUrl> url_plus_ua(
-      parsed_url.CopyAndAddQueryParam("X-PS-UA", ua));
+      parsed_url.CopyAndAddEscapedQueryParam("X-PS-UA", GoogleUrl::Escape(ua)));
   url_plus_ua_spec = url_plus_ua->Spec();
 
   GoogleString cache_key;

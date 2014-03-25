@@ -64,7 +64,7 @@ void RedirectOnSizeLimitFilter::InsertScriptIfNeeded(HtmlElement* element,
       driver()->size_limit_exceeded()) {
     // TODO(jefftk): after 2013-06-10 change kModPagespeed to kPageSpeed.
     scoped_ptr<GoogleUrl> url_with_psa_off(
-        driver()->google_url().CopyAndAddQueryParam(
+        driver()->google_url().CopyAndAddEscapedQueryParam(
             RewriteQuery::kModPagespeed, "off"));
     GoogleString url_str;
     EscapeToJsStringLiteral(url_with_psa_off->Spec(), false, &url_str);

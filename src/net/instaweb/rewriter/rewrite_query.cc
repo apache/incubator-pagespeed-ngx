@@ -181,13 +181,20 @@ RewriteQuery::Status RewriteQuery::Scan(
 
   QueryParams temp_query_params;
   for (int i = 0; i < query_params_.size(); ++i) {
-    const GoogleString* value = query_params_.value(i);
-    if (value != NULL) {
+    GoogleString unescaped_value;
+    if (query_params_.UnescapedValue(i, &unescaped_value)) {
+      // The Unescaper changes "+" to " ", which is not what we want, and
+      // is not what happens for response headers and request headers, so
+      // let's fix it now.
+      GlobalReplaceSubstring(" " , "+", &unescaped_value);
       switch (ScanNameValue(
-          query_params_.name(i), *value, request_properties.get(),
+          query_params_.name(i), unescaped_value, request_properties.get(),
           options_.get(), handler)) {
         case kNoneFound:
-          temp_query_params.Add(query_params_.name(i), *value);
+          // If this is not a PageSpeed-related query-parameter, then save it
+          // in its escaped form.
+          temp_query_params.AddEscaped(query_params_.name(i),
+                                       *query_params_.EscapedValue(i));
           break;
         case kSuccess:
           status = kSuccess;
@@ -198,7 +205,7 @@ RewriteQuery::Status RewriteQuery::Scan(
           return status;
       }
     } else {
-      temp_query_params.Add(query_params_.name(i), NULL);
+      temp_query_params.AddEscaped(query_params_.name(i), NULL);
     }
   }
   if (status == kSuccess) {

@@ -38,7 +38,6 @@
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_to_filename_encoder.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
@@ -400,8 +399,7 @@ RenderedImages* CriticalImagesFinder::JsonMapToRenderedImagesMap(
     const RewriteOptions* options) {
   Json::Reader reader;
   Json::Value json_rendered_image_map;
-  if (!reader.parse(UrlToFilenameEncoder::Unescape(str),
-                    json_rendered_image_map)) {
+  if (!reader.parse(str, json_rendered_image_map)) {
     LOG(WARNING) << "Unable to parse Json data for rendered images";
     return NULL;
   }

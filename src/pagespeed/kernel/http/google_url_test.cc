@@ -41,10 +41,12 @@ class GoogleUrlTest : public testing::Test {
     gurl_with_port_(kUrlWithPort)
   {}
 
-  void TestCopyAndAddQueryParamCase(const char* before, const char* after) {
+  void TestCopyAndAddEscapedQueryParamCase(const char* before,
+                                           const char* after) {
     GoogleUrl before_url(before);
     StringPiece before_url_original(before_url.UncheckedSpec());
-    scoped_ptr<GoogleUrl> after_url(before_url.CopyAndAddQueryParam("r", "s"));
+    scoped_ptr<GoogleUrl> after_url(
+        before_url.CopyAndAddEscapedQueryParam("r", "s"));
     EXPECT_EQ(after_url->UncheckedSpec(), after);
     EXPECT_TRUE(after_url->IsWebValid());
     EXPECT_EQ(before_url_original, before_url.UncheckedSpec());
@@ -102,6 +104,10 @@ class GoogleUrlTest : public testing::Test {
     url.Relativize(kNetPath, url);
     url.Relativize(kAbsolutePath, url);
     url.Relativize(kRelativePath, url);
+  }
+
+  void TestEscapeUnescape(StringPiece value) {
+    EXPECT_STREQ(value, GoogleUrl::Unescape(GoogleUrl::Escape(value)));
   }
 
   GoogleUrl gurl_;
@@ -192,21 +198,21 @@ TEST_F(GoogleUrlTest, TestDecode) {
   EXPECT_EQ("http://www.example.com/S-8%2525", url4.Spec());
 }
 
-TEST_F(GoogleUrlTest, TestCopyAndAddQueryParam) {
-  TestCopyAndAddQueryParamCase("http://a.com/b/c/d.ext",
-                               "http://a.com/b/c/d.ext?r=s");
+TEST_F(GoogleUrlTest, TestCopyAndAddEscapedQueryParam) {
+  TestCopyAndAddEscapedQueryParamCase("http://a.com/b/c/d.ext",
+                                      "http://a.com/b/c/d.ext?r=s");
 
-  TestCopyAndAddQueryParamCase("http://a.com/b/c/d.ext?p=q",
-                               "http://a.com/b/c/d.ext?p=q&r=s");
+  TestCopyAndAddEscapedQueryParamCase("http://a.com/b/c/d.ext?p=q",
+                                      "http://a.com/b/c/d.ext?p=q&r=s");
 
-  TestCopyAndAddQueryParamCase("http://a.com",
-                               "http://a.com/?r=s");
+  TestCopyAndAddEscapedQueryParamCase("http://a.com",
+                                      "http://a.com/?r=s");
 
-  TestCopyAndAddQueryParamCase("http://a.com?p=q",
-                               "http://a.com/?p=q&r=s");
+  TestCopyAndAddEscapedQueryParamCase("http://a.com?p=q",
+                                      "http://a.com/?p=q&r=s");
 
-  TestCopyAndAddQueryParamCase("http://a.com/b/c/d.ext?p=q#ref",
-                               "http://a.com/b/c/d.ext?p=q&r=s#ref");
+  TestCopyAndAddEscapedQueryParamCase("http://a.com/b/c/d.ext?p=q#ref",
+                                      "http://a.com/b/c/d.ext?p=q&r=s#ref");
 }
 
 TEST_F(GoogleUrlTest, TestAllExceptQuery) {
@@ -498,6 +504,43 @@ TEST_F(GoogleUrlTest, TestNoCrash) {
   RunAllMethods("file:///var/log/");
   RunAllMethods("ftp://ftp.example.com/");
 
+}
+
+TEST_F(GoogleUrlTest, Query) {
+  // First try very simple names and values.
+  GoogleUrl gurl("http://example.com/a?b=c&d=e");
+  ASSERT_TRUE(gurl.IsWebValid());
+  EXPECT_STREQ("b=c&d=e", gurl.Query());
+
+  // Now use a URL that will require escaping.
+  gurl.Reset("http://example.com/a?b=<value requiring escapes>");
+  ASSERT_TRUE(gurl.IsWebValid());
+  EXPECT_STREQ("b=%3Cvalue%20requiring%20escapes%3E", gurl.Query());
+  EXPECT_STREQ("b=<value requiring escapes>",
+               GoogleUrl::Unescape(gurl.Query()));
+}
+
+TEST_F(GoogleUrlTest, Unescape) {
+  EXPECT_STREQ("", GoogleUrl::Unescape(""));
+  EXPECT_STREQ("noescaping", GoogleUrl::Unescape("noescaping"));
+  EXPECT_STREQ("http://example.com:8080/src/example.html?a=b&a=c,d",
+               GoogleUrl::Unescape(
+                   "http%3A%2f%2Fexample.com%3A8080%2Fsrc%2Fexample.html"
+                   "%3Fa%3Db%26a%3dc%2Cd"));
+  EXPECT_STREQ("%:%1z%zZ%a%", GoogleUrl::Unescape("%%3a%1z%zZ%a%"));
+}
+
+TEST_F(GoogleUrlTest, Escape) {
+  EXPECT_STREQ("Hello1234-5678_910~", GoogleUrl::Escape("Hello1234-5678_910~"));
+
+  // Note, even commas are escaped :(.
+  EXPECT_STREQ("Hello%2c+World%21", GoogleUrl::Escape("Hello, World!"));
+
+  TestEscapeUnescape("Hello, World!");
+  TestEscapeUnescape("Hello1234-5678_910~");
+  TestEscapeUnescape("noescaping");
+  TestEscapeUnescape("http://example.com:8080/src/example.html?a=b&a=c,d");
+  TestEscapeUnescape("%:%1z%zZ%a%");
 }
 
 }  // namespace net_instaweb

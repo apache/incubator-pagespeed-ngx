@@ -138,11 +138,11 @@ bool GoogleUrl::IsAnyValid() const {
   return gurl_.is_valid();
 }
 
-GoogleUrl* GoogleUrl::CopyAndAddQueryParam(const StringPiece& name,
-                                           const StringPiece& value) const {
+GoogleUrl* GoogleUrl::CopyAndAddEscapedQueryParam(
+    const StringPiece& name, const StringPiece& escaped_value) const {
   QueryParams query_params;
   query_params.Parse(Query());
-  query_params.Add(name, value);
+  query_params.AddEscaped(name, escaped_value);
   GoogleString query_params_string = query_params.ToString();
   url_canon::Replacements<char> replace_query;
   url_parse::Component query;
@@ -528,6 +528,104 @@ StringPiece GoogleUrl::Relativize(UrlRelativity url_relativity,
   }
 
   return result;
+}
+
+namespace {
+
+// Parsing states for GoogleUrl::Unescape
+enum UnescapeState {
+  NORMAL,   // We are not in the middle of parsing an escape.
+  ESCAPE1,  // We just parsed % .
+  ESCAPE2   // We just parsed %X for some hex digit X.
+};
+
+int HexStringToInt(const GoogleString& value) {
+  uint32 good_val = 0;
+  for (int c = 0, n = value.size(); c < n; ++c) {
+    bool ok = AccumulateHexValue(value[c], &good_val);
+    if (!ok) {
+      return -1;
+    }
+  }
+  return static_cast<int>(good_val);
+}
+
+}  // namespace
+
+GoogleString GoogleUrl::UnescapeHelper(const StringPiece& escaped_url,
+                                       bool convert_plus_to_space) {
+  GoogleString unescaped_url, escape_text;
+  unsigned char escape_value;
+  UnescapeState state = NORMAL;
+  int iter = 0;
+  int n = escaped_url.size();
+  while (iter < n) {
+    char c = escaped_url[iter];
+    switch (state) {
+      case NORMAL:
+        if (c == '%') {
+          escape_text.clear();
+          state = ESCAPE1;
+        } else {
+          if ((c == '+') && convert_plus_to_space) {
+            c = ' ';
+          }
+          unescaped_url.push_back(c);
+        }
+        ++iter;
+        break;
+      case ESCAPE1:
+        if (IsHexDigit(c)) {
+          escape_text.push_back(c);
+          state = ESCAPE2;
+          ++iter;
+        } else {
+          // Unexpected, % followed by non-hex chars, pass it through.
+          unescaped_url.push_back('%');
+          state = NORMAL;
+        }
+        break;
+      case ESCAPE2:
+        if (IsHexDigit(c)) {
+          escape_text.push_back(c);
+          escape_value = HexStringToInt(escape_text);
+          unescaped_url.push_back(escape_value);
+          state = NORMAL;
+          ++iter;
+        } else {
+          // Unexpected, % followed by non-hex chars, pass it through.
+          unescaped_url.push_back('%');
+          unescaped_url.append(escape_text);
+          state = NORMAL;
+        }
+        break;
+    }
+  }
+  // Unexpected, % followed by end of string, pass it through.
+  if (state == ESCAPE1 || state == ESCAPE2) {
+    unescaped_url.push_back('%');
+    unescaped_url.append(escape_text);
+  }
+  return unescaped_url;
+}
+
+GoogleString GoogleUrl::Escape(const StringPiece& unescaped) {
+  GoogleString escaped;
+  for (const char* p = unescaped.data(), *e = p + unescaped.size();
+       p < e; ++p) {
+    // See http://en.wikipedia.org/wiki/Query_string#URL_encoding
+    char c = *p;
+    if (IsAsciiAlphaNumeric(c) || (c == '.') || (c == '~') || (c == '_') ||
+        (c == '-')) {
+      escaped.push_back(c);
+    } else if (c == ' ') {
+      escaped.push_back('+');
+    } else {
+      StrAppend(&escaped, StringPrintf(
+          "%%%02x", static_cast<unsigned int>(static_cast<unsigned char>(c))));
+    }
+  }
+  return escaped;
 }
 
 }  // namespace net_instaweb

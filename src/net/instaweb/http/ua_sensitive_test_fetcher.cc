@@ -55,7 +55,8 @@ void UserAgentSensitiveTestFetcher::Fetch(const GoogleString& url,
   ua_string = (specified_ua == NULL ? "unknown" : specified_ua);
 
   scoped_ptr<GoogleUrl> with_ua(
-    parsed_url.CopyAndAddQueryParam("UA", ua_string));
+      parsed_url.CopyAndAddEscapedQueryParam(
+          "UA", GoogleUrl::Escape(ua_string)));
   base_fetcher_->Fetch(with_ua->Spec().as_string(), message_handler, fetch);
 }
 

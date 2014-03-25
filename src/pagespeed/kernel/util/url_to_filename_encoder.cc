@@ -19,8 +19,8 @@
 #include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 #include "base/logging.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/http/google_url.h"
 
 namespace net_instaweb {
 
@@ -72,7 +72,10 @@ void UrlToFilenameEncoder::EncodeSegment(const StringPiece& filename_prefix,
                                          const StringPiece& escaped_ending,
                                          char dir_separator,
                                          GoogleString* encoded_filename) {
-  GoogleString filename_ending = Unescape(escaped_ending);
+  // We want to unescape URLs so that an %-encodings are cleaned up. However,
+  // we do not want to convert "+" to " " in this context, since
+  // "+" is fine in a filename, and " " will be escaped here to ",20" below.
+  GoogleString filename_ending = GoogleUrl::UnescapeIgnorePlus(escaped_ending);
 
   char encoded[3];
   int encoded_len;
@@ -147,81 +150,6 @@ void UrlToFilenameEncoder::EncodeSegment(const StringPiece& filename_prefix,
     encoded_filename->push_back(dir_separator);
     encoded_filename->append(segment);
   }
-}
-
-namespace {
-
-// Parsing states for UrlToFilenameEncoder::Unescape
-enum UnescapeState {
-  NORMAL,   // We are not in the middle of parsing an escape.
-  ESCAPE1,  // We just parsed % .
-  ESCAPE2   // We just parsed %X for some hex digit X.
-};
-
-int HexStringToInt(const GoogleString& value) {
-  uint32 good_val = 0;
-  for (int c = 0, n = value.size(); c < n; ++c) {
-    bool ok = AccumulateHexValue(value[c], &good_val);
-    if (!ok) {
-      return -1;
-    }
-  }
-  return static_cast<int>(good_val);
-}
-
-}  // namespace
-
-GoogleString UrlToFilenameEncoder::Unescape(const StringPiece& escaped_url) {
-  GoogleString unescaped_url, escape_text;
-  unsigned char escape_value;
-  UnescapeState state = NORMAL;
-  int iter = 0;
-  int n = escaped_url.size();
-  while (iter < n) {
-    char c = escaped_url[iter];
-    switch (state) {
-      case NORMAL:
-        if (c == '%') {
-          escape_text.clear();
-          state = ESCAPE1;
-        } else {
-          unescaped_url.push_back(c);
-        }
-        ++iter;
-        break;
-      case ESCAPE1:
-        if (IsHexDigit(c)) {
-          escape_text.push_back(c);
-          state = ESCAPE2;
-          ++iter;
-        } else {
-          // Unexpected, % followed by non-hex chars, pass it through.
-          unescaped_url.push_back('%');
-          state = NORMAL;
-        }
-        break;
-      case ESCAPE2:
-        if (IsHexDigit(c)) {
-          escape_text.push_back(c);
-          escape_value = HexStringToInt(escape_text);
-          unescaped_url.push_back(escape_value);
-          state = NORMAL;
-          ++iter;
-        } else {
-          // Unexpected, % followed by non-hex chars, pass it through.
-          unescaped_url.push_back('%');
-          unescaped_url.append(escape_text);
-          state = NORMAL;
-        }
-        break;
-    }
-  }
-  // Unexpected, % followed by end of string, pass it through.
-  if (state == ESCAPE1 || state == ESCAPE2) {
-    unescaped_url.push_back('%');
-    unescaped_url.append(escape_text);
-  }
-  return unescaped_url;
 }
 
 }  // namespace net_instaweb

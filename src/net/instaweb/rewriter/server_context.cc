@@ -71,7 +71,6 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_to_filename_encoder.h"
 
 namespace net_instaweb {
 
@@ -109,11 +108,14 @@ const char* kExcludedAttributes[] = {
 
 StringSet* CommaSeparatedStringToSet(StringPiece str) {
   StringPieceVector str_values;
+  // Note that 'str' must be unescaped before calling this function, because
+  // "," is technically supposed to be escaped in URL query parameters, per
+  // http://en.wikipedia.org/wiki/Query_string#URL_encoding.
   SplitStringPieceToVector(str, ",", &str_values, true);
   StringSet* set = new StringSet();
   for (StringPieceVector::const_iterator it = str_values.begin();
        it != str_values.end(); ++it) {
-    set->insert(UrlToFilenameEncoder::Unescape(*it));
+    set->insert(it->as_string());
   }
   return set;
 }
@@ -563,19 +565,16 @@ bool ServerContext::HandleBeacon(StringPiece params,
   // prevent attempting to parse the other.
   QueryParams query_params;
   query_params.Parse(params);
-  const GoogleString* query_param_str;
+  GoogleString query_param_str;
   GoogleUrl url_query_param;
 
-  query_param_str = query_params.Lookup1(kBeaconUrlQueryParam);
-  if (query_param_str != NULL) {
-    // The url parameter sent by the beacon is encoded with EncodeURIComponent,
-    // so decode it.
-    url_query_param.Reset(UrlToFilenameEncoder::Unescape(*query_param_str));
+  if (query_params.Lookup1Unescaped(kBeaconUrlQueryParam, &query_param_str)) {
+    url_query_param.Reset(query_param_str);
 
     if (!url_query_param.IsWebValid()) {
       message_handler_->Message(kWarning,
                                 "Invalid URL parameter in beacon: %s",
-                                query_param_str->c_str());
+                                query_param_str.c_str());
       return false;
     }
   } else {
@@ -587,13 +586,12 @@ bool ServerContext::HandleBeacon(StringPiece params,
   bool status = true;
 
   // Extract the onload time from the ets query param.
-  query_param_str = query_params.Lookup1(kBeaconEtsQueryParam);
-  if (query_param_str != NULL) {
+  if (query_params.Lookup1Unescaped(kBeaconEtsQueryParam, &query_param_str)) {
     int value = -1;
 
-    size_t index = query_param_str->find(":");
-    if (index != GoogleString::npos && index < query_param_str->size()) {
-      GoogleString load_time_str = query_param_str->substr(index + 1);
+    size_t index = query_param_str.find(":");
+    if (index != GoogleString::npos && index < query_param_str.size()) {
+      GoogleString load_time_str = query_param_str.substr(index + 1);
       if (!(StringToInt(load_time_str, &value) && value >= 0)) {
         status = false;
       } else {
@@ -612,9 +610,9 @@ bool ServerContext::HandleBeacon(StringPiece params,
   }
   // Make sure the beacon has the options hash, which is included in the
   // property cache key.
-  const GoogleString* options_hash_param =
-      query_params.Lookup1(kBeaconOptionsHashQueryParam);
-  if (options_hash_param == NULL) {
+  GoogleString options_hash_param;
+  if (!query_params.Lookup1Unescaped(kBeaconOptionsHashQueryParam,
+                                     &options_hash_param)) {
     return status;
   }
 
@@ -623,37 +621,36 @@ bool ServerContext::HandleBeacon(StringPiece params,
   // Beacon property callback takes ownership of both critical images sets.
   scoped_ptr<StringSet> html_critical_images_set;
   scoped_ptr<StringSet> css_critical_images_set;
-  query_param_str = query_params.Lookup1(kBeaconCriticalImagesQueryParam);
-  if (query_param_str != NULL) {
+  if (query_params.Lookup1Unescaped(kBeaconCriticalImagesQueryParam,
+                                    &query_param_str)) {
     html_critical_images_set.reset(
-        CommaSeparatedStringToSet(*query_param_str));
+        CommaSeparatedStringToSet(query_param_str));
   }
 
   scoped_ptr<StringSet> critical_css_selector_set;
-  query_param_str = query_params.Lookup1(kBeaconCriticalCssQueryParam);
-  if (query_param_str != NULL) {
+  if (query_params.Lookup1Unescaped(kBeaconCriticalCssQueryParam,
+                                    &query_param_str)) {
     critical_css_selector_set.reset(
-        CommaSeparatedStringToSet(*query_param_str));
+        CommaSeparatedStringToSet(query_param_str));
   }
 
   scoped_ptr<RenderedImages> rendered_images;
-  query_param_str = query_params.Lookup1(kBeaconRenderedDimensionsQueryParam);
-  if (query_param_str != NULL) {
+  if (query_params.Lookup1Unescaped(kBeaconRenderedDimensionsQueryParam,
+                                    &query_param_str)) {
     rendered_images.reset(
         critical_images_finder_->JsonMapToRenderedImagesMap(
-            *query_param_str, global_options()));
+            query_param_str, global_options()));
   }
 
   scoped_ptr<StringSet> xpaths_set;
-  query_param_str = query_params.Lookup1(kBeaconXPathsQueryParam);
-  if (query_param_str != NULL) {
-    xpaths_set.reset(CommaSeparatedStringToSet(*query_param_str));
+  if (query_params.Lookup1Unescaped(kBeaconXPathsQueryParam,
+                                    &query_param_str)) {
+    xpaths_set.reset(CommaSeparatedStringToSet(query_param_str));
   }
 
   StringPiece nonce;
-  query_param_str = query_params.Lookup1(kBeaconNonceQueryParam);
-  if (query_param_str != NULL) {
-    nonce.set(query_param_str->data(), query_param_str->size());
+  if (query_params.Lookup1Unescaped(kBeaconNonceQueryParam, &query_param_str)) {
+    nonce.set(query_param_str.data(), query_param_str.size());
   }
 
   // Store the critical information in the property cache. This is done by
@@ -671,7 +668,7 @@ bool ServerContext::HandleBeacon(StringPiece params,
     BeaconPropertyCallback* beacon_property_cb = new BeaconPropertyCallback(
         this,
         url_query_param.Spec(),
-        *options_hash_param,
+        options_hash_param,
         device_type,
         request_context,
         html_critical_images_set.release(),
@@ -916,13 +913,13 @@ bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
   // TODO(bharathbhushan): Can we use the results of any earlier query parse?
   query_params.Parse(gurl.Query());
 
-  const GoogleString* value = query_params.Lookup1(HttpAttributes::kXSplit);
-  if (value == NULL) {
+  GoogleString value;
+  if (!query_params.Lookup1Unescaped(HttpAttributes::kXSplit, &value)) {
     return false;
   }
-  if (HttpAttributes::kXSplitBelowTheFold == (*value)) {
+  if (HttpAttributes::kXSplitBelowTheFold == value) {
     ctx->set_split_request_type(RequestContext::SPLIT_BELOW_THE_FOLD);
-  } else if (HttpAttributes::kXSplitAboveTheFold == (*value)) {
+  } else if (HttpAttributes::kXSplitAboveTheFold == value) {
     ctx->set_split_request_type(RequestContext::SPLIT_ABOVE_THE_FOLD);
   }
   query_params.RemoveAll(HttpAttributes::kXSplit);

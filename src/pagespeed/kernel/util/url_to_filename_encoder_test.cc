@@ -235,6 +235,8 @@ TEST_F(UrlToFilenameEncoderTest, DoesEscapeCorrectly) {
   Validate("~joebob/my_neeto-website+with_stuff.asp?id=138&content=true",
            "" + escape_ + "7Ejoebob/my_neeto-website+with_stuff.asp" + escape_ +
            "3Fid=138" + escape_ + "26content=true" + escape_);
+  Validate("embedded space", "embedded,20space,");
+  Validate("embedded+plus", "embedded+plus,");
 
   ValidateAllSegmentsSmall("index.html");
   ValidateAllSegmentsSmall("search?q=dogs&go=&form=QBLH&qs=n");
@@ -355,16 +357,6 @@ TEST_F(UrlToFilenameEncoderTest, BackslashSeparator) {
   // Check that the backslash got inserted at the correct spot.
   EXPECT_EQ('\\', escaped_word[
       UrlToFilenameEncoder::kMaximumSubdirectoryLength]);
-}
-
-TEST_F(UrlToFilenameEncoderTest, Unescape) {
-  EXPECT_EQ("", UrlToFilenameEncoder::Unescape(""));
-  EXPECT_EQ("noescaping", UrlToFilenameEncoder::Unescape("noescaping"));
-  EXPECT_EQ("http://example.com:8080/src/example.html?a=b&a=c,d",
-            UrlToFilenameEncoder::Unescape(
-                "http%3A%2f%2Fexample.com%3A8080%2Fsrc%2Fexample.html"
-                "%3Fa%3Db%26a%3dc%2Cd"));
-  EXPECT_EQ("%:%1z%zZ%a%", UrlToFilenameEncoder::Unescape("%%3a%1z%zZ%a%"));
 }
 
 TEST_F(UrlToFilenameEncoderTest, DoesNotEscapeAlphanum) {
