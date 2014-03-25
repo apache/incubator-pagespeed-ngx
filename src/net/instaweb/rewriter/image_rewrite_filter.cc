@@ -95,13 +95,27 @@ int64 DetermineImageOptions(
 int64 GetPageWidth(const int64 page_height,
                    const int64 image_width,
                    const int64 image_height) {
-  return (page_height * image_width + image_height / 2) / image_height;
+  if (image_height > 0) {
+    return (page_height * image_width + image_height / 2) / image_height;
+  } else {
+    // The client should ensure that "image_height > 0". If this condition is
+    // not met, we protect against division by 0 by returning 0 so that resize
+    // attempts will fail.
+    return 0;
+  }
 }
 
 int64 GetPageHeight(const int64 page_width,
                     const int64 image_height,
                     const int64 image_width) {
-  return (page_width * image_height + image_width / 2) / image_width;
+  if (image_height > 0) {
+    return (page_width * image_height + image_width / 2) / image_width;
+  } else {
+    // The client should ensure that "image_width > 0". If this condition is
+    // not met, we protect against division by 0 by returning 0 so that resize
+    // attempts will fail.
+    return 0;
+  }
 }
 
 void SetDesiredDimensionsIfRequired(ImageDim* desired_dim,
@@ -690,6 +704,11 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
   // Begin by resizing the image if necessary
   ImageDim image_dim;
   image->Dimensions(&image_dim);
+
+  DCHECK(image_dim.width() > 0 && image_dim.height() > 0);
+  if (image_dim.width() == 0 || image_dim.height() == 0) {
+    return false;
+  }
 
   // Here we are computing the size of the image as described by the html on the
   // page or as desired by mobile screen resolutions. If we succeed in doing so,

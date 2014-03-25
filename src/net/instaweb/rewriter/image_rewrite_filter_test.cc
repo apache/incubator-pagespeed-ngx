@@ -91,6 +91,7 @@ const char kChefGifFile[] = "IronChef2.gif";     // photo; no alpha
 const char kCuppaPngFile[] = "Cuppa.png";        // graphic; no alpha
 const char kCuppaOPngFile[] = "CuppaO.png";      // graphic; no alpha; no opt
 const char kCuppaTPngFile[] = "CuppaT.png";      // graphic; alpha; no opt
+const char kEmptyScreenGifFile[] = "red_empty_screen.gif";  // Empty screen
 const char kLargePngFile[] = "Large.png";        // blank image; gray scale
 const char kPuzzleJpgFile[] = "Puzzle.jpg";      // photo; no alpha
 const char kRedbrushAlphaPngFile[] = "RedbrushAlpha-0.5.png";  // photo; alpha
@@ -3287,6 +3288,29 @@ TEST_F(ImageRewriteTest, ResizeUsingRenderedDimensions) {
   TestForRenderedDimensions(finder, 400, 400, 100, 100,
                             " width=\"100\" height=\"100\"",
                             expected_rewritten_url, 0);
+}
+
+TEST_F(ImageRewriteTest, ResizeEmptyImageUsingRenderedDimensions) {
+  MockCriticalImagesFinder* finder = new MockCriticalImagesFinder(statistics());
+  server_context()->set_critical_images_finder(finder);
+  options()->EnableFilter(RewriteOptions::kResizeToRenderedImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  rewrite_driver()->AddFilters();
+
+  RenderedImages* rendered_images = new RenderedImages;
+  RenderedImages_Image* images = rendered_images->add_image();
+  images->set_src(StrCat(kTestDomain, kEmptyScreenGifFile));
+  images->set_rendered_width(1);  // Only set width, but not height.
+
+  finder->set_rendered_images(rendered_images);
+
+#ifdef NDEBUG
+  TestSingleRewrite(kEmptyScreenGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, false);
+#else
+  EXPECT_DEATH(TestSingleRewrite(kEmptyScreenGifFile, kContentTypeGif,
+                                 kContentTypeGif, "", "", false, false), "");
+#endif
 }
 
 TEST_F(ImageRewriteTest, PreserveUrlRelativity) {
