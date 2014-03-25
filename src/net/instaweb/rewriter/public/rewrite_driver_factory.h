@@ -40,7 +40,6 @@ class CriticalImagesFinder;
 class CriticalLineInfoFinder;
 class CriticalSelectorFinder;
 class FileSystem;
-class FilenameEncoder;
 class FlushEarlyInfoFinder;
 class ExperimentMatcher;
 class Hasher;
@@ -103,7 +102,6 @@ class RewriteDriverFactory {
   void set_message_handler(MessageHandler* message_handler);
   void set_file_system(FileSystem* file_system);
   void set_hasher(Hasher* hasher);
-  void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_nonce_generator(NonceGenerator* nonce_generator);
   void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
@@ -149,7 +147,6 @@ class RewriteDriverFactory {
   // TODO(sligocki): Remove hasher() and force people to make a NewHasher when
   // they need one.
   Hasher* hasher();
-  FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
   UrlNamer* url_namer();
   UserAgentMatcher* user_agent_matcher();
   StaticAssetManager* static_asset_manager();
@@ -446,7 +443,6 @@ class RewriteDriverFactory {
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
-  scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<NonceGenerator> nonce_generator_;
   scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<UserAgentMatcher> user_agent_matcher_;

@@ -19,8 +19,9 @@
 #include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 #include <cstdio>
-#include <vector>
 
+#include "base/logging.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -42,7 +43,7 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
   }
 
   void CheckSegmentLength(const StringPiece& escaped_word) {
-    std::vector<StringPiece> components;
+    StringPieceVector components;
     SplitStringPieceToVector(escaped_word, "/", &components, false);
     for (size_t i = 0; i < components.size(); ++i) {
       EXPECT_GE(UrlToFilenameEncoder::kMaximumSubdirectoryLength,
@@ -50,16 +51,15 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     }
   }
 
-  void CheckValidChars(const StringPiece& escaped_word, char invalid_slash) {
+  void CheckValidChars(const StringPiece& escaped_word) {
     // These characters are invalid in Windows.  We add in ', as that's pretty
     // inconvenient in a Unix filename.
     //
     // See http://msdn.microsoft.com/en-us/library/aa365247(VS.85).aspx
-    const GoogleString kInvalidChars = "<>:\"|?*'";
+    const StringPiece kInvalidChars("<>:\"\\|?*'");
     for (size_t i = 0; i < escaped_word.size(); ++i) {
       char c = escaped_word[i];
-      EXPECT_EQ(GoogleString::npos, kInvalidChars.find(c));
-      EXPECT_NE(invalid_slash, c);
+      EXPECT_EQ(StringPiece::npos, kInvalidChars.find(c));
       EXPECT_NE('\0', c);  // only invalid character in Posix
       EXPECT_GT(0x7E, c);  // only English printable characters
     }
@@ -70,8 +70,8 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     UrlToFilenameEncoder::EncodeSegment("", in_word, '/', &escaped_word);
     EXPECT_EQ(gold_word, escaped_word);
     CheckSegmentLength(escaped_word);
-    CheckValidChars(escaped_word, '\\');
-    UrlToFilenameEncoder::Decode(escaped_word, '/', &url);
+    CheckValidChars(escaped_word);
+    Decode(escaped_word, &url);
     EXPECT_EQ(in_word, url);
   }
 
@@ -79,9 +79,9 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     GoogleString escaped_word, url;
     UrlToFilenameEncoder::EncodeSegment("", in_word, '/', &escaped_word);
     CheckSegmentLength(escaped_word);
-    CheckValidChars(escaped_word, '\\');
-    UrlToFilenameEncoder::Decode(escaped_word, '/', &url);
-    EXPECT_EQ(in_word, url);
+    CheckValidChars(escaped_word);
+    EXPECT_TRUE(Decode(escaped_word, &url));
+    EXPECT_STREQ(in_word, url);
   }
 
   void ValidateNoChange(const GoogleString& word) {
@@ -95,6 +95,87 @@ class UrlToFilenameEncoderTest : public ::testing::Test {
     const char escape = UrlToFilenameEncoder::kEscapeChar;
     snprintf(escaped, sizeof(escaped), "%c%02X%c", escape, ch, escape);
     Validate(GoogleString(1, ch), escaped);
+  }
+
+  // Decodes a filename that was encoded with EncodeSegment,
+  // yielding back the original URL.
+  //
+  // Note: this decoder is not the exact inverse of the
+  // UrlToFilenameEncoder::EncodeSegment, because it does not take
+  // into account a prefix.
+  bool Decode(const StringPiece& encoded_filename,
+              GoogleString* decoded_url) {
+    const char kDirSeparator = '/';
+    enum State {
+      kStart,
+      kEscape,
+      kFirstDigit,
+      kTruncate,
+      kEscapeDot
+    };
+    State state = kStart;
+    char hex_buffer[3] = { '\0', '\0', '\0' };
+    for (int i = 0, n = encoded_filename.size(); i < n; ++i) {
+      char ch = encoded_filename[i];
+      switch (state) {
+        case kStart:
+          if (ch == UrlToFilenameEncoder::kEscapeChar) {
+            state = kEscape;
+          } else if (ch == kDirSeparator) {
+            decoded_url->push_back('/');  // URLs only use '/' not '\\'
+          } else {
+            decoded_url->push_back(ch);
+          }
+          break;
+        case kEscape:
+          if (IsHexDigit(ch)) {
+            hex_buffer[0] = ch;
+            state = kFirstDigit;
+          } else if (ch == UrlToFilenameEncoder::kTruncationChar) {
+            state = kTruncate;
+          } else if (ch == '.') {
+            decoded_url->push_back('.');
+            state = kEscapeDot;  // Look for at most one more dot.
+          } else if (ch == kDirSeparator) {
+            // Consider url "//x".  This was once encoded to "/,/x,".
+            // This code is what skips the first Escape.
+            decoded_url->push_back('/');  // URLs only use '/' not '\\'
+            state = kStart;
+          } else {
+            return false;
+          }
+          break;
+        case kFirstDigit:
+          if (IsHexDigit(ch)) {
+            hex_buffer[1] = ch;
+            uint32 hex_value = 0;
+            bool ok = AccumulateHexValue(hex_buffer[0], &hex_value);
+            ok = ok && AccumulateHexValue(hex_buffer[1], &hex_value);
+            DCHECK(ok) << "Should not have gotten here unless both were hex";
+            decoded_url->push_back(static_cast<char>(hex_value));
+            state = kStart;
+          } else {
+            return false;
+          }
+          break;
+        case kTruncate:
+          if (ch == kDirSeparator) {
+            // Skip this separator, it was only put in to break up long
+            // path segments, but is not part of the URL.
+            state = kStart;
+          } else {
+            return false;
+          }
+          break;
+        case kEscapeDot:
+          decoded_url->push_back(ch);
+          state = kStart;
+          break;
+      }
+    }
+
+    // All legal encoded filenames end in kEscapeChar.
+    return (state == kEscape);
   }
 
   GoogleString escape_;
@@ -154,6 +235,11 @@ TEST_F(UrlToFilenameEncoderTest, DoesEscapeCorrectly) {
   Validate("~joebob/my_neeto-website+with_stuff.asp?id=138&content=true",
            "" + escape_ + "7Ejoebob/my_neeto-website+with_stuff.asp" + escape_ +
            "3Fid=138" + escape_ + "26content=true" + escape_);
+
+  ValidateAllSegmentsSmall("index.html");
+  ValidateAllSegmentsSmall("search?q=dogs&go=&form=QBLH&qs=n");
+  ValidateAllSegmentsSmall(
+      "~joebob/my_neeto-website+with_stuff.asp?id=138&content=true");
 }
 
 TEST_F(UrlToFilenameEncoderTest, EscapeSecondSlash) {
@@ -188,6 +274,7 @@ TEST_F(UrlToFilenameEncoderTest, LongTail) {
   EXPECT_LT(UrlToFilenameEncoder::kMaximumSubdirectoryLength,
             sizeof(long_word));
   Validate(long_word, gold_long_word);
+  ValidateAllSegmentsSmall(long_word);
 }
 
 TEST_F(UrlToFilenameEncoderTest, LongTailQuestion) {
@@ -222,6 +309,7 @@ TEST_F(UrlToFilenameEncoderTest, LongTailQuestion) {
   EXPECT_LT(UrlToFilenameEncoder::kMaximumSubdirectoryLength,
             sizeof(long_word));
   Validate(long_word, gold_long_word);
+  ValidateAllSegmentsSmall(long_word);
 }
 
 TEST_F(UrlToFilenameEncoderTest, CornerCasesNearMaxLenNoEscape) {
@@ -246,8 +334,10 @@ TEST_F(UrlToFilenameEncoderTest, CornerCasesNearMaxLenWithEscape) {
 }
 
 TEST_F(UrlToFilenameEncoderTest, LeafBranchAlias) {
-  Validate("/a/b/c", "/a/b/c" + escape_);        // c is leaf file "c,"
-  Validate("/a/b/c/d", "/a/b/c/d" + escape_);    // c is directory "c"
+  // c is leaf file "c,"
+  Validate("/a/b/c", "/a/b/c" + escape_);
+  // c is directory "c"
+  Validate("/a/b/c/d", "/a/b/c/d" + escape_);
   Validate("/a/b/c/d/", "/a/b/c/d/" + escape_);
 }
 
@@ -275,6 +365,36 @@ TEST_F(UrlToFilenameEncoderTest, Unescape) {
                 "http%3A%2f%2Fexample.com%3A8080%2Fsrc%2Fexample.html"
                 "%3Fa%3Db%26a%3dc%2Cd"));
   EXPECT_EQ("%:%1z%zZ%a%", UrlToFilenameEncoder::Unescape("%%3a%1z%zZ%a%"));
+}
+
+TEST_F(UrlToFilenameEncoderTest, DoesNotEscapeAlphanum) {
+  ValidateAllSegmentsSmall("");
+  ValidateAllSegmentsSmall("abcdefg");
+  ValidateAllSegmentsSmall("abcdefghijklmnopqrstuvwxyz");
+  ValidateAllSegmentsSmall("ZYXWVUT");
+  ValidateAllSegmentsSmall("ZYXWVUTSRQPONMLKJIHGFEDCBA");
+  ValidateAllSegmentsSmall("01234567689");
+  ValidateAllSegmentsSmall("/-_");
+  ValidateAllSegmentsSmall(
+      "abcdefghijklmnopqrstuvwxyzZYXWVUTSRQPONMLKJIHGFEDCBA01234567689/-_");
+}
+
+TEST_F(UrlToFilenameEncoderTest, DoesEscapeNonAlphanum) {
+  ValidateAllSegmentsSmall(".");
+  ValidateAllSegmentsSmall("`~!@#$%^&*()_=+[{]}\\|;:'\",<.>?");
+}
+
+TEST_F(UrlToFilenameEncoderTest, LongTailDots) {
+  // Here the '.' in the last path segment expands to x2E, making
+  // it hits 128 chars before the input segment gets that big.
+  static char long_word[] =
+      "~joebob/briggs/1234567.1234567.1234567.1234567.1234567."
+      "1234567.1234567.1234567.1234567.1234567.1234567.1234567."
+      "1234567.1234567.1234567.1234567.1234567.1234567.1234567."
+      "1234567.1234567.1234567.1234567.1234567.1234567.1234567."
+      "1234567.1234567.1234567.1234567.1234567.1234567.1234567."
+      "1234567.1234567.1234567.1234567.1234567.1234567.1234567.";
+  ValidateAllSegmentsSmall(long_word);
 }
 
 }  // namespace

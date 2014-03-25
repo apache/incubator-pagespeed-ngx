@@ -324,7 +324,6 @@
         '<(DEPTH)/pagespeed/kernel/util/categorized_refcount_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/copy_on_write_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/file_system_lock_manager_test.cc',
-        '<(DEPTH)/pagespeed/kernel/util/filename_encoder_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/gzip_inflater_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/hashed_nonce_generator_test.cc',
         '<(DEPTH)/pagespeed/kernel/util/input_file_nonce_generator_test.cc',

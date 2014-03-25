@@ -252,7 +252,6 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
     : thread_system_(factory->thread_system()),
       rewrite_stats_(NULL),
       file_system_(factory->file_system()),
-      filename_encoder_(NULL),
       url_namer_(NULL),
       user_agent_matcher_(NULL),
       scheduler_(factory->scheduler()),

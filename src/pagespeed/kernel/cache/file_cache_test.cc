@@ -36,7 +36,6 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
-#include "pagespeed/kernel/util/filename_encoder.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 
@@ -54,7 +53,6 @@ class FileCacheTest : public CacheTestBase {
         kTargetInodeLimit(10) {
     FileCache::InitStats(&stats_);
     cache_.reset(new FileCache(GTestTempDir(), &file_system_, &worker_,
-                               &filename_encoder_,
                                new FileCache::CachePolicy(
                                    &mock_timer_, &hasher_, kCleanIntervalMs,
                                    kTargetSize, kTargetInodeLimit),
@@ -107,7 +105,6 @@ class FileCacheTest : public CacheTestBase {
   SlowWorker worker_;
   MockTimer mock_timer_;
   MemFileSystem file_system_;
-  FilenameEncoder filename_encoder_;
   const int64 kCleanIntervalMs;
   const int64 kTargetSize;
   const int64 kTargetInodeLimit;

@@ -46,7 +46,6 @@
 #include "net/instaweb/util/public/checking_thread_system.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
@@ -218,10 +217,6 @@ void RewriteDriverFactory::set_hasher(Hasher* hasher) {
 
 void RewriteDriverFactory::set_timer(Timer* timer) {
   timer_.reset(timer);
-}
-
-void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
-  filename_encoder_.reset(e);
 }
 
 void RewriteDriverFactory::set_nonce_generator(NonceGenerator* gen) {
@@ -512,7 +507,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   server_context->set_url_namer(url_namer());
   server_context->SetRewriteOptionsManager(NewRewriteOptionsManager());
   server_context->set_user_agent_matcher(user_agent_matcher());
-  server_context->set_filename_encoder(filename_encoder());
   server_context->set_file_system(file_system());
   server_context->set_filename_prefix(filename_prefix_);
   server_context->set_hasher(hasher());

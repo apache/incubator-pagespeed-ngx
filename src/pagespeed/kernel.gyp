@@ -363,7 +363,6 @@
       'type': '<(library)',
       'sources': [
         'kernel/util/file_system_lock_manager.cc',
-        'kernel/util/filename_encoder.cc',
         'kernel/util/gzip_inflater.cc',
         'kernel/util/hashed_nonce_generator.cc',
         'kernel/util/input_file_nonce_generator.cc',

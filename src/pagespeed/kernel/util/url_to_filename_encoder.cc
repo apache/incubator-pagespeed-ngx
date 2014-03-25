@@ -24,17 +24,6 @@
 
 namespace net_instaweb {
 
-namespace {
-
-// Convenience functions.
-bool IsHexDigit(char c) {
-  return ('0' <= c && c <= '9') ||
-         ('A' <= c && c <= 'F') ||
-         ('a' <= c && c <= 'f');
-}
-
-}
-
 // The escape character choice is made here -- all code and tests in this
 // directory are based off of this constant.  However, lots of tests
 // have dependencies on this, so it cannot be changed without re-running those
@@ -158,83 +147,6 @@ void UrlToFilenameEncoder::EncodeSegment(const StringPiece& filename_prefix,
     encoded_filename->push_back(dir_separator);
     encoded_filename->append(segment);
   }
-}
-
-// Note: this decoder is not the exact inverse of the EncodeSegment above,
-// because it does not take into account a prefix.
-bool UrlToFilenameEncoder::Decode(const StringPiece& encoded_filename,
-                                  char dir_separator,
-                                  GoogleString* decoded_url) {
-  enum State {
-    kStart,
-    kEscape,
-    kFirstDigit,
-    kTruncate,
-    kEscapeDot
-  };
-  State state = kStart;
-  char hex_buffer[3] = { '\0', '\0', '\0' };
-  for (int i = 0, n = encoded_filename.size(); i < n; ++i) {
-    char ch = encoded_filename[i];
-    switch (state) {
-      case kStart:
-        if (ch == kEscapeChar) {
-          state = kEscape;
-        } else if (ch == dir_separator) {
-          decoded_url->push_back('/');  // URLs only use '/' not '\\'
-        } else {
-          decoded_url->push_back(ch);
-        }
-        break;
-      case kEscape:
-        if (IsHexDigit(ch)) {
-          hex_buffer[0] = ch;
-          state = kFirstDigit;
-        } else if (ch == kTruncationChar) {
-          state = kTruncate;
-        } else if (ch == '.') {
-          decoded_url->push_back('.');
-          state = kEscapeDot;  // Look for at most one more dot.
-        } else if (ch == dir_separator) {
-          // Consider url "//x".  This was once encoded to "/,/x,".
-          // This code is what skips the first Escape.
-          decoded_url->push_back('/');  // URLs only use '/' not '\\'
-          state = kStart;
-        } else {
-          return false;
-        }
-        break;
-      case kFirstDigit:
-        if (IsHexDigit(ch)) {
-          hex_buffer[1] = ch;
-          uint32 hex_value = 0;
-          bool ok = AccumulateHexValue(hex_buffer[0], &hex_value);
-          ok = ok && AccumulateHexValue(hex_buffer[1], &hex_value);
-          DCHECK(ok) << "Should not have gotten here unless both were hex";
-          decoded_url->push_back(static_cast<char>(hex_value));
-          state = kStart;
-        } else {
-          return false;
-        }
-        break;
-      case kTruncate:
-        if (ch == dir_separator) {
-          // Skip this separator, it was only put in to break up long
-          // path segments, but is not part of the URL.
-          state = kStart;
-        } else {
-          return false;
-        }
-        break;
-      case kEscapeDot:
-        decoded_url->push_back(ch);
-        state = kStart;
-        break;
-    }
-  }
-
-  // All legal encoded filenames end in kEscapeChar.
-  return (state == kEscape);
 }
 
 namespace {

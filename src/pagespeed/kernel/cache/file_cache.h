@@ -27,7 +27,6 @@
 namespace net_instaweb {
 
 class FileSystem;
-class FilenameEncoder;
 class Hasher;
 class MessageHandler;
 class SharedString;
@@ -54,8 +53,8 @@ class FileCache : public CacheInterface {
   };
 
   FileCache(const GoogleString& path, FileSystem* file_system,
-            SlowWorker* worker, FilenameEncoder* filename_encoder,
-            CachePolicy* policy, Statistics* stats, MessageHandler* handler);
+            SlowWorker* worker, CachePolicy* policy, Statistics* stats,
+            MessageHandler* handler);
   virtual ~FileCache();
 
   static void InitStats(Statistics* statistics);
@@ -116,7 +115,6 @@ class FileCache : public CacheInterface {
   const GoogleString path_;
   FileSystem* file_system_;
   SlowWorker* worker_;
-  FilenameEncoder* filename_encoder_;
   MessageHandler* message_handler_;
   const scoped_ptr<CachePolicy> cache_policy_;
   int64 next_clean_ms_;

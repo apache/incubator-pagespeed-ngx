@@ -64,8 +64,7 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
       config->file_cache_clean_inode_limit());
   file_cache_backend_ = new FileCache(
       config->file_cache_path(), factory->file_system(), NULL,
-      factory->filename_encoder(), policy, factory->statistics(),
-      factory->message_handler());
+      policy, factory->statistics(), factory->message_handler());
   factory->TakeOwnership(file_cache_backend_);
   file_cache_ = new CacheStats(kFileCache, file_cache_backend_,
                                factory->timer(), factory->statistics());

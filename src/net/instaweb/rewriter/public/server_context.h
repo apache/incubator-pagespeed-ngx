@@ -55,7 +55,6 @@ class CriticalSelectorFinder;
 class RequestProperties;
 class ExperimentMatcher;
 class FileSystem;
-class FilenameEncoder;
 class FlushEarlyInfoFinder;
 class Function;
 class GoogleUrl;
@@ -179,8 +178,6 @@ class ServerContext {
   const Hasher* contents_hasher() const { return &contents_hasher_; }
   FileSystem* file_system() { return file_system_; }
   void set_file_system(FileSystem* fs ) { file_system_ = fs; }
-  FilenameEncoder* filename_encoder() const { return filename_encoder_; }
-  void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
   UrlNamer* url_namer() const { return url_namer_; }
   void set_url_namer(UrlNamer* n) { url_namer_ = n; }
   RewriteOptionsManager* rewrite_options_manager() const {
@@ -655,7 +652,6 @@ class ServerContext {
   RewriteStats* rewrite_stats_;
   GoogleString file_prefix_;
   FileSystem* file_system_;
-  FilenameEncoder* filename_encoder_;
   UrlNamer* url_namer_;
   scoped_ptr<RewriteOptionsManager> rewrite_options_manager_;
   UserAgentMatcher* user_agent_matcher_;

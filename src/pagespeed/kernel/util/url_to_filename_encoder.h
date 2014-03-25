@@ -93,12 +93,6 @@ class UrlToFilenameEncoder {
       char dir_separator,
       GoogleString* encoded_filename);
 
-  // Decodes a filename that was encoded with EncodeSegment,
-  // yielding back the original URL.
-  static bool Decode(const StringPiece& encoded_filename,
-                     char dir_separator,
-                     GoogleString* decoded_url);
-
   // Unescape a url, converting all %XX to the the actual char 0xXX.
   // For example, this will convert "foo%21bar" to "foo!bar".
   //

@@ -35,7 +35,6 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -43,6 +42,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 namespace net_instaweb {
 
@@ -147,8 +147,8 @@ StringPiece OutputResource::suffix() const {
 
 GoogleString OutputResource::DumpFileName() const {
   GoogleString filename;
-  server_context_->filename_encoder()->Encode(
-      server_context_->filename_prefix(), url(), &filename);
+  UrlToFilenameEncoder::EncodeSegment(
+      server_context_->filename_prefix(), url(), '/', &filename);
   return filename;
 }
 

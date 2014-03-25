@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -40,6 +39,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/url_to_filename_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
@@ -89,9 +89,9 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
     StringPiece domain = gurl.Host();
     GoogleString path = gurl.PathAndLeaf().as_string();
 
-    FilenameEncoder encoder;
     const GoogleString prefix = StrCat(root_dir, domain);
-    encoder.Encode(prefix, path, filename);  // Writes encoded filename.
+    // Writes encoded filename.
+    UrlToFilenameEncoder::EncodeSegment(prefix, path, '/', filename);
   }
   return ret;
 }

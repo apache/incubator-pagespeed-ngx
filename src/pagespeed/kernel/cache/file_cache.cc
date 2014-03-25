@@ -36,7 +36,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
-#include "pagespeed/kernel/util/filename_encoder.h"
+#include "pagespeed/kernel/util/url_to_filename_encoder.h"
 
 namespace net_instaweb {
 
@@ -86,14 +86,12 @@ const char FileCache::kCleanLockName[] = "!clean!lock!";
 // and setters below.
 FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
                      SlowWorker* worker,
-                     FilenameEncoder* filename_encoder,
                      CachePolicy* policy,
                      Statistics* stats,
                      MessageHandler* handler)
     : path_(path),
       file_system_(file_system),
       worker_(worker),
-      filename_encoder_(filename_encoder),
       message_handler_(handler),
       cache_policy_(policy),
       path_length_limit_(file_system_->MaxPathLength(path)),
@@ -165,13 +163,13 @@ bool FileCache::EncodeFilename(const GoogleString& key,
   // TODO(abliss): unify and make explicit everyone's assumptions
   // about trailing slashes.
   EnsureEndsInSlash(&prefix);
-  filename_encoder_->Encode(prefix, key, filename);
+  UrlToFilenameEncoder::EncodeSegment(prefix, key, '/', filename);
 
   // Make sure the length isn't too big for filesystem to handle; if it is
   // just name the object using a hash.
   if (static_cast<int>(filename->length()) > path_length_limit_) {
-    filename_encoder_->Encode(prefix, cache_policy_->hasher->Hash(key),
-                              filename);
+    UrlToFilenameEncoder::EncodeSegment(
+        prefix, cache_policy_->hasher->Hash(key), '/', filename);
   }
 
   return true;

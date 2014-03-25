@@ -281,6 +281,13 @@ inline bool IsAsciiAlphaNumeric(char ch) {
           ((ch >= '0') && (ch <= '9')));
 }
 
+// Convenience functions.
+inline bool IsHexDigit(char c) {
+  return ('0' <= c && c <= '9') ||
+         ('A' <= c && c <= 'F') ||
+         ('a' <= c && c <= 'f');
+}
+
 // In-place removal of leading and trailing HTML whitespace.  Returns true if
 // any whitespace was trimmed.
 bool TrimWhitespace(StringPiece* str);
