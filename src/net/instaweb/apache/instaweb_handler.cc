@@ -343,15 +343,14 @@ void InstawebHandler::ComputeCustomOptions() {
                                  &response_headers_);
   num_response_attributes_ = response_headers_.NumAttributes();
 
-  RewriteQuery rewrite_query;
   if (!server_context_->GetQueryOptions(&stripped_gurl_, request_headers_.get(),
-                                        &response_headers_, &rewrite_query)) {
+                                        &response_headers_, &rewrite_query_)) {
     server_context_->message_handler()->Message(
         kWarning, "Invalid PageSpeed query params or headers for "
         "request %s. Serving with default options.",
         stripped_gurl_.spec_c_str());
   }
-  const RewriteOptions* query_options = rewrite_query.options();
+  const RewriteOptions* query_options = rewrite_query_.options();
   if (query_options != NULL) {
     if (custom_options_.get() == NULL) {
       custom_options_.reset(

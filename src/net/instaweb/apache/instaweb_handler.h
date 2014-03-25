@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -45,6 +46,7 @@ class ApacheRequestContext;
 class ApacheRewriteDriverFactory;
 class ApacheServerContext;
 class InPlaceResourceRecorder;
+class QueryParams;
 class RequestHeaders;
 class RewriteDriver;
 class ServerContext;
@@ -129,6 +131,7 @@ class InstawebHandler {
   const GoogleUrl& stripped_gurl() const { return stripped_gurl_; }
   const RequestContextPtr request_context() const { return request_context_; }
   bool use_custom_options() const { return custom_options_.get() != NULL; }
+  const QueryParams& query_params() { return rewrite_query_.query_params(); }
 
   void SetupSpdyConnectionIfNeeded();
   void RemoveStrippedResponseHeadersFromApacheReequest();
@@ -286,6 +289,7 @@ class InstawebHandler {
   const SystemRewriteOptions* options_;
   RewriteDriver* rewrite_driver_;
   int num_response_attributes_;
+  RewriteQuery rewrite_query_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebHandler);
 };
