@@ -117,6 +117,8 @@ ngx_int_t copy_response_headers_to_ngx(
     const ResponseHeaders& pagespeed_headers,
     PreserveCachingHeaders preserve_caching_headers);
 
+StringPiece ps_determine_host(ngx_http_request_t* r);
+
 }  // namespace net_instaweb
 
 #endif  // NGX_PAGESPEED_H_

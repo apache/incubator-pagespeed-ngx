@@ -1092,8 +1092,8 @@ cat "$SERVER_ROOT/mod_pagespeed_test/embed_config.html" | \
 # spelling it out to avoid test regolds when we add image filter IDs.
 WGET_ARGS="--save-headers"
 http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
-    http://embed-config-html.example.com/embed-config.html \
-    'fgrep -c .pagespeed.' 3
+    http://embed-config-html.example.org/embed-config.html \
+    'grep -c \.pagespeed\.' 3
 
 # with the default rewriters in vhost embed-config-resources.example.com
 # the image will be >200k.  But by enabling resizing & compression 73
@@ -2159,7 +2159,7 @@ function test_ipro_for_browser_webp() {
       fgrep -q "Vary: $OUT_VARY"
   fi
   check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
-    fgrep -q "Cache-Control: ${OUT_CC:-max-age=}"
+    grep -q "Cache-Control: ${OUT_CC:-max-age=[0-9]*}$"
   # TODO: check file type of webp.  Irrelevant for now.
 }
 
@@ -2185,12 +2185,15 @@ OLD_WGETRC=$WGETRC
 WGETRC=$TEMPDIR/wgetrc-ua
 export WGETRC
 
-# IE 11 does not cache Vary: Accept.  For now we send it nonetheless.  See
-# TODO above.
-IE11_UA="Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
+# IE 9 and later must re-validate Vary: Accept.  We should send CC: private.
+IE9_UA="Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))"
+IE11_UA="Mozilla/5.0 (Windows NT 6.1; WOW64; ***********; rv:11.0) like Gecko"
+echo "user_agent = $IE9_UA" > $WGETRC
+#                           (no accept)  Type  Out  Vary CC
+test_ipro_for_browser_webp "IE 9"  "" "" photo jpeg ""   "max-age=[0-9]*,private"
+test_ipro_for_browser_webp "IE 9"  "" "" synth png
 echo "user_agent = $IE11_UA" > $WGETRC
-#                            (no accept) Type  Out  Vary
-test_ipro_for_browser_webp "IE 11" "" "" photo jpeg "Accept"
+test_ipro_for_browser_webp "IE 11" "" "" photo jpeg ""   "max-age=[0-9]*,private"
 test_ipro_for_browser_webp "IE 11" "" "" synth png
 
 # Older Opera did not support webp.
@@ -2388,6 +2391,12 @@ check test -n "$RESOURCE_MAX_AGE"
 check test $RESOURCE_MAX_AGE -lt 333
 check test $RESOURCE_MAX_AGE -gt 300
 
+# TODO(jmaessen, jefftk): Port proxying tests, which rely on pointing a
+# MapProxyDomain construct at a static server.  Perhaps localhost:8050 will
+# serve, but the tests need to use different urls then.  For mod_pagespeed these
+# tests immediately precede "IPRO-optimized resources should have fixed size,
+# not chunked." in system_test.sh.
+
 start_test IPRO-optimized resources should have fixed size, not chunked.
 URL="$EXAMPLE_ROOT/images/Puzzle.jpg"
 URL+="?PageSpeedJpegRecompressionQuality=75"
@@ -2398,6 +2407,16 @@ CONTENT_LENGTH=$(extract_headers $FETCH_UNTIL_OUTFILE | \
 check [ "$CONTENT_LENGTH" -lt 90000 ];
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
     fgrep -q 'Transfer-Encoding: chunked'
+
+start_test IPRO 304 with etags
+# Reuses $URL and $FETCH_UNTIL_OUTFILE from previous test.
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'ETag:'
+ETAG=$(extract_headers $FETCH_UNTIL_OUTFILE | awk '/ETag:/ {print $2}')
+echo $WGET_DUMP --header "If-None-Match: $ETAG" $URL
+OUTFILE=$OUTDIR/etags
+# Note: -o gets debug info which is the only place that 304 message is sent.
+$WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
+check fgrep -q "awaiting response... 304" $OUTFILE
 
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to
