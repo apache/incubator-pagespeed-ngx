@@ -24,10 +24,11 @@
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 
 namespace net_instaweb {
 
@@ -38,6 +39,7 @@ class HttpDumpUrlAsyncWriterTest : public FetcherTest {
   HttpDumpUrlAsyncWriterTest()
       : root_dir_(GTestTempDir() + "/http_dump_url_async_writer_test/"),
         mock_timer_(new NullMutex(), 0),
+        file_system_(thread_system_.get(), &mock_timer_),
         dump_fetcher_(root_dir_, counting_fetcher(), &file_system_,
                       &mock_timer_) {
   }
@@ -46,7 +48,7 @@ class HttpDumpUrlAsyncWriterTest : public FetcherTest {
 
   GoogleString root_dir_;
   MockTimer mock_timer_;
-  StdioFileSystem file_system_;
+  MemFileSystem file_system_;
   HttpDumpUrlAsyncWriter dump_fetcher_;
 };
 
