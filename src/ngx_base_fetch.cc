@@ -106,11 +106,10 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   const ResponseHeaders* pagespeed_headers = response_headers();
 
-  // TODO(chaizhenhua): Add and check.
-  // if (content_length_known()) {
-  //   headers_out->content_length = NULL;
-  //   headers_out->content_length_n = content_length();
-  // }
+  if (content_length_known()) {
+     headers_out->content_length = NULL;
+     headers_out->content_length_n = content_length();
+  }
 
   return copy_response_headers_to_ngx(request_, *pagespeed_headers,
                                       preserve_caching_headers_);
