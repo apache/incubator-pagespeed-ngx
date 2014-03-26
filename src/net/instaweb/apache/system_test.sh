@@ -208,6 +208,18 @@ if [ $statistics_enabled = "1" ]; then
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
   check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
 
+  start_test authorized resources do not get cached and optimized.
+  URL="$TEST_ROOT/auth/medium_purple.css"
+  AUTH="Authorization:Basic dXNlcjE6cGFzc3dvcmQ="
+  not_cacheable_start=$(scrape_stat ipro_recorder_not_cacheable)
+  echo $WGET_DUMP --header="$AUTH" "$URL"
+  OUT=$($WGET_DUMP --header="$AUTH" "$URL")
+  check_from "$OUT" fgrep -q 'background: MediumPurple;'
+  not_cacheable=$(scrape_stat ipro_recorder_not_cacheable)
+  check [ $not_cacheable = $((not_cacheable_start + 1)) ]
+  URL=""
+  AUTH=""
+
   if [ "$SECONDARY_HOSTNAME" != "" ]; then
     function gunzip_grep_0ff() {
       gunzip - | fgrep -q "color:#00f"

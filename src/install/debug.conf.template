@@ -712,6 +712,17 @@ NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@
     ModPagespeedInPlaceRewriteDeadlineMs -1
 </Directory>
 
+# Test to make sure that user-authenticated resources do not get cached and
+# optimized.
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/auth" >
+  AllowOverride AuthConfig
+  AuthType Basic
+  AuthName "Restricted Files"
+  AuthBasicProvider file
+  AuthUserFile @@APACHE_DOC_ROOT@@/mod_pagespeed_test/auth/passwd.conf
+  Require user user1
+</Directory>
+
 # Enable per-vhost statistics so that tests can be somewhat independent.
 ModPagespeedUsePerVHostStatistics on
 <Location /mod_pagespeed_global_statistics>

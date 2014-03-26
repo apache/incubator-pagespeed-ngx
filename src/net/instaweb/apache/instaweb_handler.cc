@@ -470,8 +470,8 @@ bool InstawebHandler::HandleAsInPlace() {
   RequestHeaders::Properties request_properties(
       apr_table_get(request_->headers_in, HttpAttributes::kCookie) != NULL,
       apr_table_get(request_->headers_in, HttpAttributes::kCookie2) != NULL,
-      apr_table_get(request_->headers_in, HttpAttributes::kAuthorization)
-      != NULL);
+      (apr_table_get(request_->headers_in, HttpAttributes::kAuthorization)
+       != NULL) || (request_->user != NULL));
 
   RewriteDriver* driver = MakeDriver();
   scoped_ptr<ApacheFetch> fetch(MakeFetch(original_url_));
