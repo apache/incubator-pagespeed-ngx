@@ -72,6 +72,7 @@ SystemRequestContext* NgxServerContext::NewRequestContext(
 
   return new SystemRequestContext(thread_system()->NewMutex(),
                                   timer(),
+                                  ps_determine_host(r),
                                   local_port,
                                   str_to_string_piece(local_ip));
 }

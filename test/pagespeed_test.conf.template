@@ -494,7 +494,7 @@ http {
   # Note that we test with two distinct caches.
   server {
     listen @@SECONDARY_PORT@@;
-    server_name embed-config-html.example.com;
+    server_name embed-config-html.example.org;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     root "@@SERVER_ROOT@@/mod_pagespeed_test";
@@ -503,6 +503,9 @@ http {
     pagespeed JpegRecompressionQuality 73;
     pagespeed DisableFilters inline_css,extend_cache,inline_javascript;
     pagespeed Domain embed-config-resources.example.com;
+
+    # Share a cache keyspace with embed-config-resources.example.com.
+    pagespeed CacheFragment "embed-config";
 
     pagespeed LoadFromFile "http://embed-config-resources.example.com/"
       "@@SERVER_ROOT@@/mod_pagespeed_example/";
@@ -519,7 +522,10 @@ http {
 
     # Note that we do not set the jpeg quality here, but take
     # it from image URL query parameters that we synthesize in
-    # from embed-config-html.example.com.
+    # from embed-config-html.example.org.
+
+    # Share a cache keyspace with embed-config-html.example.org.
+    pagespeed CacheFragment "embed-config";
 
     pagespeed LoadFromFile "http://embed-config-resources.example.com/"
       "@@SERVER_ROOT@@/mod_pagespeed_example/";
@@ -587,6 +593,7 @@ http {
     pagespeed MapRewriteDomain cdn.example.com origin.example.com;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_css,rewrite_images;
+    pagespeed CacheFragment "example";
   }
   server {
     # Sets up a logical origin for CDNs to fetch content from, on
@@ -599,6 +606,7 @@ http {
     pagespeed MapRewriteDomain cdn.example.com origin.example.com;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_css,rewrite_images;
+    pagespeed CacheFragment "example";
   }
   server {
     # Sets up a logical cdn, which is where we tell browsers to fetch resources
