@@ -398,7 +398,6 @@ class RewriteOptions {
   static const char kSslCertDirectory[];
   static const char kSslCertFile[];
   static const char kStatisticsEnabled[];
-  static const char kStatisticsHandlerPath[];
   static const char kStatisticsLoggingChartsCSS[];
   static const char kStatisticsLoggingChartsJS[];
   static const char kStatisticsLoggingEnabled[];

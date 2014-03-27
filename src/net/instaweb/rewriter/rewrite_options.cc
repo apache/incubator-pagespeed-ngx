@@ -324,7 +324,6 @@ const char RewriteOptions::kSlurpReadOnly[] = "SlurpReadOnly";
 const char RewriteOptions::kSslCertDirectory[] = "SslCertDirectory";
 const char RewriteOptions::kSslCertFile[] = "SslCertFile";
 const char RewriteOptions::kStatisticsEnabled[] = "Statistics";
-const char RewriteOptions::kStatisticsHandlerPath[] = "StatisticsHandlerPath";
 const char RewriteOptions::kStatisticsLoggingChartsCSS[] =
     "StatisticsLoggingChartsCSS";
 const char RewriteOptions::kStatisticsLoggingChartsJS[] =

@@ -1072,7 +1072,6 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
   FailLookupOptionByName(RewriteOptions::kSlurpFlushLimit);
   FailLookupOptionByName(RewriteOptions::kSlurpReadOnly);
   FailLookupOptionByName(RewriteOptions::kStatisticsEnabled);
-  FailLookupOptionByName(RewriteOptions::kStatisticsHandlerPath);
   FailLookupOptionByName(RewriteOptions::kStatisticsLoggingEnabled);
   FailLookupOptionByName(RewriteOptions::kStatisticsLoggingChartsCSS);
   FailLookupOptionByName(RewriteOptions::kStatisticsLoggingChartsJS);

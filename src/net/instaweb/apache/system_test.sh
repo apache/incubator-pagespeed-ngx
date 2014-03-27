@@ -1456,7 +1456,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   # the full TTL.
   sleep 2
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
-  check test $(wc -c "$OUTFILE" | cut -d' ' -f1) -gt 15000 # not optimized
+  check_file_size "$OUTFILE" -gt 15000 # not optimized
   RESOURCE_MAX_AGE=$( \
     extract_headers $OUTFILE | \
     grep 'Cache-Control:' | tr -d '\r' | \
@@ -1468,7 +1468,7 @@ blocking_rewrite_another.html?PageSpeedFilters=rewrite_images"
   # and the TTL will be reduced.
   sleep 2
   http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
-  check test $(wc -c "$OUTFILE" | cut -d' ' -f1) -lt 15000 # optimized
+  check_file_size "$OUTFILE" -lt 15000 # optimized
   RESOURCE_MAX_AGE=$( \
     extract_headers $OUTFILE | \
     grep 'Cache-Control:' | tr -d '\r' | \
