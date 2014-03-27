@@ -101,7 +101,8 @@ EXAMPLE_ROOT=$PRIMARY_SERVER/mod_pagespeed_example
 # Currently we are, so disable that so that it doesn't spoil our stats.
 STATISTICS_URL="$PRIMARY_SERVER/mod_pagespeed_statistics?PageSpeed=off"
 BAD_RESOURCE_URL=$PRIMARY_SERVER/mod_pagespeed/W.bad.pagespeed.cf.hash.css
-MESSAGE_URL=$PRIMARY_SERVER/mod_pagespeed_message
+MESSAGE_URL=$PRIMARY_SERVER/pagespeed_admin/message_history
+CONSOLE_URL=$PRIMARY_SERVER/pagespeed_admin/console
 
 # The following shake-and-bake ensures that we set REWRITTEN_TEST_ROOT based on
 # the TEST_ROOT in effect when we start up, if any, but if it was not set before

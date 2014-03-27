@@ -732,6 +732,45 @@ ModPagespeedUsePerVHostStatistics on
   SetHandler mod_pagespeed_global_statistics
 </Location>
 
+# Declare legacy handlers.  The modern one is declared in
+# pagespeed.conf.template, which handles all these functions, but
+# these are declared so we can test that the handlers still work so
+# that people upgrading to a new release don't lose funcitonality.
+<Location /mod_pagespeed_statistics>
+    Order allow,deny
+    # You may insert other "Allow from" lines to add hosts you want to
+    # allow to look at generated statistics.  Another possibility is
+    # to comment out the "Order" and "Allow" options from the config
+    # file, to allow any client that can reach your server to examine
+    # statistics.  This might be appropriate in an experimental setup or
+    # if the Apache server is protected by a reverse proxy that will
+    # filter URLs in some fashion.
+    Allow from localhost
+    Allow from 127.0.0.1
+    SetHandler mod_pagespeed_statistics
+</Location>
+<Location /pagespeed_console>
+    Order allow,deny
+    Allow from localhost
+    Allow from 127.0.0.1
+    SetHandler pagespeed_console
+</Location>
+<Location /mod_pagespeed_message>
+    Order allow,deny
+    Allow from localhost
+    Allow from 127.0.0.1
+    SetHandler mod_pagespeed_message
+</Location>
+
+# The handler for "pagespeed_admin" is fixed in name, but you can put
+# it on any URL path, and everything should work.
+<Location /alt/admin/path>
+    Order allow,deny
+    Allow from localhost
+    Allow from 127.0.0.1
+    SetHandler pagespeed_admin
+</Location>
+
 # Use a separate vhost so that statistics are separate.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName ipro.example.com

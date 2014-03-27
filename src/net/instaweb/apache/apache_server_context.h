@@ -92,7 +92,9 @@ class ApacheServerContext : public SystemServerContext {
   // Returns special configuration that should be used for SPDY sessions
   // instead of global_config(). Returns NULL if global_config() should be
   // used instead.
-  ApacheConfig* SpdyGlobalConfig() { return spdy_specific_config_.get(); }
+  virtual const ApacheConfig* SpdyGlobalConfig() const {
+    return spdy_specific_config_.get();
+  }
 
   // Pool to pass to NewRewriteDriverFromPool to get a RewriteDriver configured
   // with SPDY-specific options. May be NULL in case there is no spdy-specific

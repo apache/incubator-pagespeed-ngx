@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -51,6 +52,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
@@ -75,13 +77,15 @@ SystemServerContext::SystemServerContext(
     RewriteDriverFactory* factory, StringPiece hostname, int port)
     : ServerContext(factory),
       initialized_(false),
+      use_per_vhost_statistics_(false),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
       cache_flush_count_(NULL),         // Lazy-initialized under mutex.
       cache_flush_timestamp_ms_(NULL),  // Lazy-initialized under mutex.
       html_rewrite_time_us_histogram_(NULL),
       local_statistics_(NULL),
-      hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))) {
+      hostname_identifier_(StrCat(hostname, ":", IntegerToString(port))),
+      system_caches_(NULL) {
   global_system_rewrite_options()->set_description(hostname_identifier_);
 }
 
@@ -216,8 +220,10 @@ Variable* SystemServerContext::statistics_404_count() {
 
 void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
   DCHECK(!initialized_);
+  use_per_vhost_statistics_ = factory->use_per_vhost_statistics();
   if (!initialized_ && !global_options()->unplugged()) {
     initialized_ = true;
+    system_caches_ = factory->caches();
     set_lock_manager(factory->caches()->GetLockManager(
         global_system_rewrite_options()));
     UrlAsyncFetcher* fetcher =
@@ -317,63 +323,171 @@ void SystemServerContext::CollapseConfigOverlaysAndComputeSignatures() {
   ComputeSignature(global_system_rewrite_options());
 }
 
+const SystemRewriteOptions* SystemServerContext::SpdyGlobalConfig() const {
+  // Subclasses can override to point to the SPDY configuration.
+  // ../apache/apache_server_context.h does.
+  return NULL;
+}
+
+// TODO(jmarantz): consider factoring the code below to a new class AdminSite
+// so that it can be more easily unit-tested.
+namespace {
+
+// This style fragment is copied from ../rewriter/console.css because it's
+// kind of nice.  However if we import the whole console.css into admin pages
+// it looks terrible.
+//
+// TODO(jmarantz): Get UX help to style the whole admin site better.
+// TODO(jmarantz): Factor this out into its own CSS file.
+const char kATagStyle[] =
+    "a {text-decoration:none; color:#15c; cursor:pointer;}"
+    "a:visited {color: #61c;}"
+    "a:hover {text-decoration:underline;}"
+    "a:active {text-decoration:underline; color:#d14836;}"
+    "a.secondary {text-decoration:none; color: #2D9AE3;}";
+
+struct Tab {
+  const char* label;
+  const char* title;
+  const char* admin_link;       // relative from /pagespeed_admin/
+  const char* statistics_link;  // relative from /mod_pagespeed_statistics
+  const char* space;            // html for inter-link spacing.
+};
+
+const char kShortBreak[] = " ";
+const char kLongBreak[] = " &nbsp;&nbsp; ";
+
+// TODO(jmarantz): disable or recolor links to pages that are not available
+// based on the current config.
+const Tab kTabs[] = {
+  {"Statistics", "Statistics", "statistics", "?", kLongBreak},
+  {"Configuration", "Configuration", "config", "?config", kShortBreak},
+  {"(SPDY)", "SPDY Configuration", "spdy_config", "?spdy_config", kLongBreak},
+  {"Histograms", "Histograms", "histograms", "?histograms", kLongBreak},
+  {"Caches", "Caches", "cache", "?cache", kLongBreak},
+  {"Console", "Console", "console", NULL, kLongBreak},
+  {"Message History", "Message History", "message_history", NULL, kLongBreak},
+};
+
+// Controls the generation of an HTML Admin page.  Constructing it
+// establishes the content-type as HTML and response code 200, and
+// puts in a banner with links to all the admin pages, ready for
+// appending more <body> elements.  Destructing AdminHtml closes the
+// body and completes the fetch.
+class AdminHtml {
+ public:
+  AdminHtml(StringPiece current_link, StringPiece head_extra,
+            SystemServerContext::AdminSource source, AsyncFetch* fetch,
+            MessageHandler* handler)
+      : fetch_(fetch),
+        handler_(handler) {
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+    fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
+    fetch->response_headers()->Add("PageSpeed", "off");
+
+    // Generate some navigational links to the right to help
+    // our users get to other modes.
+    fetch->Write("<!DOCTYPE html>\n<html><head>", handler_);
+    fetch->Write(StrCat("<style>", kATagStyle, "</style>"), handler_);
+
+    GoogleString buf;
+    for (int i = 0, n = arraysize(kTabs); i < n; ++i) {
+      const Tab& tab = kTabs[i];
+      const char* link = NULL;
+      switch (source) {
+        case SystemServerContext::kPageSpeedAdmin:
+          link = tab.admin_link;
+          break;
+        case SystemServerContext::kStatistics:
+          link = tab.statistics_link;
+          break;
+        case SystemServerContext::kOther:
+          link = NULL;
+          break;
+      }
+      if (link != NULL) {
+        StringPiece style;
+        if (tab.admin_link == current_link) {
+          style = " style='color:darkblue;text-decoration:underline;'";
+          fetch->Write(StrCat("<title>PageSpeed ", tab.title, "</title>"),
+                       handler_);
+        }
+        StrAppend(&buf,
+                  "<a href='", link, "'", style, ">", tab.label, "</a>",
+                  tab.space);
+      }
+    }
+
+    fetch->Write(StrCat(head_extra, "</head>"), handler_);
+    fetch->Write(
+        StrCat("<body><div style='font-size:16px;font-family:sans-serif;'>\n"
+               "<b>Pagespeed Admin</b>", kLongBreak, "\n"),
+        handler_);
+    fetch->Write(buf, handler_);
+    fetch->Write("</div><hr/>\n", handler_);
+    fetch->Flush(handler_);
+  }
+
+  ~AdminHtml() {
+    fetch_->Write("</body></html>", handler_);
+    fetch_->Done(true);
+  }
+
+ private:
+  AsyncFetch* fetch_;
+  MessageHandler* handler_;
+};
+
+}  // namespace
+
 // Handler which serves PSOL console.
 void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
+                                         AdminSource source,
+                                         const QueryParams& query_params,
                                          AsyncFetch* fetch) {
+  if (query_params.Has("json")) {
+    ConsoleJsonHandler(query_params, fetch);
+    return;
+  }
+
   MessageHandler* handler = message_handler();
   bool statistics_enabled = options.statistics_enabled();
   bool logging_enabled = options.statistics_logging_enabled();
   bool log_dir_set = !options.log_dir().empty();
-  fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
-  if (statistics_enabled && logging_enabled && log_dir_set) {
-    fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
-    // TODO(jmarantz): change StaticAssetManager to take options by const ref.
-    StringPiece console_js = static_asset_manager()->GetAsset(
-        StaticAssetManager::kConsoleJs, &options);
-    StringPiece console_css = static_asset_manager()->GetAsset(
-        StaticAssetManager::kConsoleCss, &options);
 
-    // TODO(sligocki): Move static content to a data2cc library.
-    fetch->Write("<!DOCTYPE html>\n"
-                  "<html>\n"
-                  "  <head>\n"
-                  "    <title>PageSpeed Console</title>\n"
-                  "    <style>\n"
-                  "      #title {\n"
-                  "        font-size: 300%;\n"
-                  "      }\n"
-                  "    </style>\n"
-                  "    <style>", handler);
-    fetch->Write(console_css, handler);
-    fetch->Write("</style>\n"
-                  "  </head>\n"
-                  "  <body>\n"
-                  "    <div id='top-bar'>\n"
-                  "      <span id='title'>PageSpeed Console</span>\n"
-                  "    </div>\n"
-                  "\n"
-                  "    <div id='suggestions'>\n"
-                  "      <p>\n"
-                  "        Notable issues:\n"
-                  "      </p>\n"
-                  "      <div id='pagespeed-graphs-container'></div>\n"
-                  "    </div>\n"
-                  "    <script src='https://www.google.com/jsapi'></script>\n"
-                  "    <script>var pagespeedStatisticsUrl = '", handler);
-    fetch->Write(options.statistics_handler_path(), handler);
-    fetch->Write("'</script>\n"
-                  "    <script>", handler);
+  // TODO(jmarantz): change StaticAssetManager to take options by const ref.
+  // TODO(sligocki): Move static content to a data2cc library.
+  // TODO(jmarantz): clean up and minify the CSS, as we now have a partial
+  // "CSS reset" to allow the top bar to look correct in all tabs.
+  StringPiece console_js = static_asset_manager()->GetAsset(
+      StaticAssetManager::kConsoleJs, &options);
+  StringPiece console_css = static_asset_manager()->GetAsset(
+      StaticAssetManager::kConsoleCss, &options);
+  GoogleString head_markup = StrCat(
+      "<style>#title {font-size: 300%;}</style>\n",
+      "<style>", console_css, "</style>\n");
+  AdminHtml admin_html("console", head_markup, source, fetch,
+                       message_handler());
+  if (statistics_enabled && logging_enabled && log_dir_set) {
+    fetch->Write("<div class='console_div' id='suggestions'>\n"
+                 "  <div class='console_div' id='pagespeed-graphs-container'>"
+                 "</div>\n</div>\n"
+                 "<script src='https://www.google.com/jsapi'></script>\n"
+                 "<script>var pagespeedStatisticsUrl = '';</script>\n"
+                 "<script>", handler);
+    // From the admin page, the console JSON is relative, so it can
+    // be set to ''.  Formerly it was set to options.statistics_handler_path(),
+    // but there does not appear to be a disadvantage to always handling it
+    // from whatever URL served this console HTML.
+    //
+    // TODO(jmarantz): Change the JS to remove pagespeedStatisticsUrl.
     fetch->Write(console_js, handler);
-    fetch->Write("</script>\n"
-                  "  </body>\n"
-                  "</html>\n", handler);
+    fetch->Write("</script>\n", handler);
   } else {
-    fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
-    fetch->Write("<!DOCTYPE html>\n"
-                  "<p>\n"
-                  "  Failed to load PageSpeed Console because:\n"
-                  "</p>\n"
-                  "<ul>\n", handler);
+    fetch->Write("<p>\n"
+                 "  Failed to load PageSpeed Console because:\n"
+                 "</p>\n"
+                 "<ul>\n", handler);
     if (!statistics_enabled) {
       fetch->Write("  <li>Statistics is not enabled.</li>\n",
                     handler);
@@ -393,7 +507,6 @@ void SystemServerContext::ConsoleHandler(const SystemRewriteOptions& options,
                   "  for more details.\n"
                   "</p>\n", handler);
   }
-  fetch->Done(true);
 }
 
 // TODO(sligocki): integrate this into the pagespeed_console.
@@ -426,27 +539,41 @@ void SystemServerContext::StatisticsGraphsHandler(Writer* writer) {
   writer->Write("</script>", message_handler());
 }
 
-const char* SystemServerContext::StatisticsHandler(
-    SystemCaches* caches,
-    Statistics* stats,
-    SystemRewriteOptions* spdy_config,
-    StringPiece query_params,
-    ContentType* content_type,
-    Writer* writer) {
-  int64 start_time, end_time, granularity_ms;
-  std::set<GoogleString> var_titles;
-  QueryParams params;
-  params.Parse(query_params);
-
-  // Parse various mode query params.
-  bool print_normal_config = params.Has("config");
-  bool print_spdy_config = params.Has("spdy_config");
+void SystemServerContext::StatisticsHandler(
+    bool is_global_request,
+    AdminSource source,
+    AsyncFetch* fetch) {
+  if (!use_per_vhost_statistics_) {
+    is_global_request = true;
+  }
+  AdminHtml admin_html("statistics", "", source, fetch, message_handler());
   MessageHandler* handler = message_handler();
+  Statistics* stats = is_global_request ? factory()->statistics()
+      : statistics();
+  // Write <pre></pre> for Dump to keep good format.
+  fetch->Write("<pre>", handler);
+  stats->Dump(fetch, handler);
+  fetch->Write("</pre>", handler);
+}
 
-  // JSON statistics handling is done only if we have a console logger.
-  bool json_output = false;
-  *content_type = kContentTypeHtml;
-  if (stats->console_logger() != NULL) {
+void SystemServerContext::ConsoleJsonHandler(
+    const QueryParams& params, AsyncFetch* fetch) {
+  StatisticsLogger* console_logger = statistics()->console_logger();
+  if (console_logger == NULL) {
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+    fetch->response_headers()->Add(HttpAttributes::kContentType, "text/plain");
+    fetch->Write(
+        "console_logger must be enabled to use '?json' query parameter.",
+        message_handler());
+  } else {
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+
+    fetch->response_headers()->Add(HttpAttributes::kContentType,
+                                   kContentTypeJson.mime_type());
+
+    int64 start_time, end_time, granularity_ms;
+    std::set<GoogleString> var_titles;
+
     // Default values for start_time, end_time, and granularity_ms in case the
     // query does not include these parameters.
     start_time = 0;
@@ -457,116 +584,195 @@ const char* SystemServerContext::StatisticsHandler(
     granularity_ms = 3000;
     for (int i = 0; i < params.size(); ++i) {
       GoogleString value;
-      if (!params.UnescapedValue(i, &value)) {
-        value.clear();
-      }
-      StringPiece name = params.name(i);
-      if (name == "json") {
-        json_output = true;
-        *content_type = kContentTypeJson;
-      } else if (name =="start_time") {
-        StringToInt64(value, &start_time);
-      } else if (name == "end_time") {
-        StringToInt64(value, &end_time);
-      } else if (name == "var_titles") {
-        std::vector<StringPiece> variable_names;
-        SplitStringPieceToVector(value, ",", &variable_names, true);
-        for (size_t i = 0; i < variable_names.size(); ++i) {
-          var_titles.insert(variable_names[i].as_string());
+      if (params.UnescapedValue(i, &value)) {
+        StringPiece name = params.name(i);
+        if (name =="start_time") {
+          StringToInt64(value, &start_time);
+        } else if (name == "end_time") {
+          StringToInt64(value, &end_time);
+        } else if (name == "var_titles") {
+          std::vector<StringPiece> variable_names;
+          SplitStringPieceToVector(value, ",", &variable_names, true);
+          for (size_t i = 0; i < variable_names.size(); ++i) {
+            var_titles.insert(variable_names[i].as_string());
+          }
+        } else if (name == "granularity") {
+          StringToInt64(value, &granularity_ms);
         }
-      } else if (name == "granularity") {
-        StringToInt64(value, &granularity_ms);
       }
     }
-  } else {
-    if (params.Has("json")) {
-      return "console_logger must be enabled to use '?json' query parameter.";
-    }
+    console_logger->DumpJSON(var_titles, start_time, end_time, granularity_ms,
+                             fetch, message_handler());
   }
-  if (json_output) {
-    stats->console_logger()->DumpJSON(var_titles, start_time, end_time,
-                                      granularity_ms, writer,
-                                      handler);
-  } else {
-    // Generate some navigational links to the right to help
-    // our users get to other modes.
-    writer->Write(
-        "<div style='float:right'>View "
-        "<a href='?config'>Configuration</a>, "
-        "<a href='?spdy_config'>SPDY Configuration</a>, "
-        "<a href='?'>Statistics</a> "
-        "(<a href='?memcached'>with memcached Stats</a>). "
-        "</div>",
-        handler);
-
-    // Only print stats or configuration, not both.
-    if (!print_normal_config && !print_spdy_config) {
-      bool is_global_request = (stats != statistics());
-      writer->Write(is_global_request ?
-                    "Global Statistics" : "VHost-Specific Statistics",
-                    handler);
-
-      // Write <pre></pre> for Dump to keep good format.
-      writer->Write("<pre>", handler);
-      stats->Dump(writer, handler);
-      writer->Write("</pre>", handler);
-      stats->RenderHistograms(writer, handler);
-
-      int flags = SystemCaches::kDefaultStatFlags;
-      if (is_global_request) {
-        flags |= SystemCaches::kGlobalView;
-      }
-
-      if (params.Has("memcached")) {
-        flags |= SystemCaches::kIncludeMemcached;
-      }
-
-      GoogleString backend_stats;
-      caches->PrintCacheStats(
-          static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
-      if (!backend_stats.empty()) {
-        HtmlKeywords::WritePre(backend_stats, writer, handler);
-      }
-    }
-
-    if (print_normal_config) {
-      writer->Write("Configuration:<br>", handler);
-      HtmlKeywords::WritePre(
-          global_system_rewrite_options()->OptionsToString(),
-          writer, handler);
-    }
-
-    if (print_spdy_config) {
-      if (spdy_config == NULL) {
-        writer->Write("SPDY-specific configuration missing, using default.",
-                      handler);
-      } else {
-        writer->Write("SPDY-specific configuration:<br>", handler);
-        HtmlKeywords::WritePre(spdy_config->OptionsToString(), writer,
-                               handler);
-      }
-    }
-  }
-  return NULL;  // No errors.
+  fetch->Done(true);
 }
 
-void SystemServerContext::MessageHistoryHandler(AsyncFetch* fetch) {
+void SystemServerContext::PrintHistograms(bool is_global_request,
+                                          AdminSource source,
+                                          AsyncFetch* fetch) {
+  Statistics* stats = is_global_request ? factory()->statistics()
+      : statistics();
+  AdminHtml admin_html("histograms", "", source, fetch, message_handler());
+  stats->RenderHistograms(fetch, message_handler());
+}
+
+void SystemServerContext::PrintCaches(bool is_global, AdminSource source,
+                                      AsyncFetch* fetch) {
+  AdminHtml admin_html("cache", "", source, fetch, message_handler());
+  int flags = SystemCaches::kDefaultStatFlags;
+
+  if (is_global) {
+    flags |= SystemCaches::kGlobalView;
+  }
+
+  // TODO(jmarantz): Consider whether it makes sense to disable either
+  // of these flags to limit the content when someone asks for info about the
+  // cache.
+  flags |= SystemCaches::kIncludeMemcached;
+
+  if (system_caches_ != NULL) {
+    GoogleString backend_stats;
+    system_caches_->PrintCacheStats(
+        static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
+    if (!backend_stats.empty()) {
+      HtmlKeywords::WritePre(backend_stats, fetch, message_handler());
+    }
+  }
+}
+
+void SystemServerContext::PrintNormalConfig(AdminSource source,
+                                            AsyncFetch* fetch) {
+  AdminHtml admin_html("config", "", source, fetch, message_handler());
+  HtmlKeywords::WritePre(
+      global_system_rewrite_options()->OptionsToString(),
+      fetch, message_handler());
+}
+
+void SystemServerContext::PrintSpdyConfig(AdminSource source,
+                                          AsyncFetch* fetch) {
+  AdminHtml admin_html("spdy_config", "", source, fetch, message_handler());
+  const SystemRewriteOptions* spdy_config = SpdyGlobalConfig();
+  if (spdy_config == NULL) {
+    fetch->Write("SPDY-specific configuration missing.", message_handler());
+  } else {
+    HtmlKeywords::WritePre(spdy_config->OptionsToString(), fetch,
+                           message_handler());
+  }
+}
+
+void SystemServerContext::MessageHistoryHandler(AdminSource source,
+                                                AsyncFetch* fetch) {
   // Request for page /mod_pagespeed_message.
   GoogleString log;
   StringWriter log_writer(&log);
-  ResponseHeaders* response_headers = fetch->response_headers();
+  AdminHtml("message_history", "", source, fetch, message_handler());
   if (message_handler()->Dump(&log_writer)) {
     // Write pre-tag for Dump to keep good format.
-    response_headers->SetStatusAndReason(HttpStatus::kOK);
-    response_headers->Add(HttpAttributes::kContentType, "text/html");
     HtmlKeywords::WritePre(log, fetch, message_handler());
   } else {
-    response_headers->SetStatusAndReason(HttpStatus::kNotFound);
-    fetch->Write("Writing to mod_pagespeed_message failed. \n"
-                 "Please check if it's enabled in pagespeed.conf.\n",
+    fetch->Write("<p>Writing to mod_pagespeed_message failed. \n"
+                 "Please check if it's enabled in pagespeed.conf.</p>\n",
                  message_handler());
   }
-  fetch->Done(true);
+}
+
+void SystemServerContext::AdminPage(
+    bool is_global, const GoogleUrl& stripped_gurl,
+    const QueryParams& query_params, AsyncFetch* fetch) {
+  // The handler is "pagespeed_admin", so we must dispatch off of
+  // the remainder of the URL.  For
+  // "http://example.com/pagespeed_admin/foo?a=b" we want to pull out
+  // "foo".
+  //
+  // Note that the comments here referring to "/pagespeed_admin" reflect
+  // only the default admin path in Apache for fresh installs.  In fact
+  // we can put the handler on any path, and this code should still work;
+  // all the paths here are specified relative to the incoming URL.
+  StringPiece path = stripped_gurl.PathSansQuery();   // "/pagespeed_admin/foo"
+  path = path.substr(1);                              // "pagespeed_admin/foo"
+
+  // If there are no slashes at all in the path, e.g. it's "pagespeed_admin",
+  // then the relative references to "config" etc will not work.  We need
+  // to serve the admin pages on "/pagespeed_admin/".  So if we got to this
+  // point and there are no slashes, then we can just redirect immediately
+  // by adding a slash.
+  //
+  // If the user has mapped the pagespeed_admin handler to a path with
+  // an embbedded slash, say "pagespeed/myadmin", then it's hard to tell
+  // whether we should redirect, because we don't know what the the
+  // intended path is.  In this case, we'll fall through to a leaf
+  // analysis on "myadmin", fail to find a match, and print a "Did You Mean"
+  // page.  It's not as good as a redirect but since we can't tell an
+  // omitted slash from a typo it's the best we can do.
+  if (path.find('/') == StringPiece::npos) {
+    // If the URL is "/pagespeed_admin", then redirect to "/pagespeed_admin/" so
+    // that relative URL references will work.
+    ResponseHeaders* response_headers = fetch->response_headers();
+    response_headers->SetStatusAndReason(HttpStatus::kMovedPermanently);
+    GoogleString admin_with_slash = StrCat(stripped_gurl.AllExceptQuery(), "/");
+    response_headers->Add(HttpAttributes::kLocation, admin_with_slash);
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    GoogleString escaped_url;
+    HtmlKeywords::Escape(admin_with_slash, &escaped_url);
+    fetch->Write(StrCat("Redirecting to URL ", escaped_url), message_handler());
+    fetch->Done(true);
+  } else {
+    StringPiece leaf = stripped_gurl.LeafSansQuery();
+    if ((leaf == "statistics") || (leaf.empty())) {
+      StatisticsHandler(is_global, kPageSpeedAdmin, fetch);
+    } else if (leaf == "config") {
+      PrintNormalConfig(kPageSpeedAdmin, fetch);
+    } else if (leaf == "spdy_config") {
+      PrintSpdyConfig(kPageSpeedAdmin, fetch);
+    } else if (leaf == "console") {
+      // TODO(jmarantz): add vhost-local and aggregate message buffers.
+      ConsoleHandler(*global_system_rewrite_options(), kPageSpeedAdmin,
+                     query_params, fetch);
+    } else if (leaf == "message_history") {
+      MessageHistoryHandler(kPageSpeedAdmin, fetch);
+    } else if (leaf == "cache") {
+      PrintCaches(is_global, kPageSpeedAdmin, fetch);
+    } else if (leaf == "histograms") {
+      PrintHistograms(is_global, kPageSpeedAdmin, fetch);
+    } else {
+      fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+      fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
+      fetch->Write("Unknown admin page: ", message_handler());
+      HtmlKeywords::WritePre(leaf, fetch, message_handler());
+
+      // It's possible that the handler is installed on /a/b/c, and we
+      // are now reporting "unknown admin page: c".  This is kind of a guess,
+      // but provide a nice link here to what might be the correct admin page.
+      //
+      // This is just a guess, so we don't want to redirect.
+      fetch->Write("<br/>Did you mean to visit: ", message_handler());
+      GoogleString escaped_url;
+      HtmlKeywords::Escape(StrCat(stripped_gurl.AllExceptQuery(), "/"),
+                           &escaped_url);
+      fetch->Write(StrCat("<a href='", escaped_url, "'>", escaped_url,
+                          "</a>\n"),
+                   message_handler());
+      fetch->Done(true);
+    }
+  }
+}
+
+void SystemServerContext::StatisticsPage(bool is_global,
+                                         const QueryParams& query_params,
+                                         AsyncFetch* fetch) {
+  if (query_params.Has("json")) {
+    ConsoleJsonHandler(query_params, fetch);
+  } else if (query_params.Has("config")) {
+    PrintNormalConfig(kStatistics, fetch);
+  } else if (query_params.Has("spdy_config")) {
+    PrintSpdyConfig(kStatistics, fetch);
+  } else if (query_params.Has("histograms")) {
+    PrintHistograms(is_global, kStatistics, fetch);
+  } else if (query_params.Has("cache")) {
+    PrintCaches(is_global, kStatistics, fetch);
+  } else {
+    StatisticsHandler(is_global, kStatistics, fetch);
+  }
 }
 
 }  // namespace net_instaweb

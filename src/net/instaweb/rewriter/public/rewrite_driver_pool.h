@@ -38,7 +38,7 @@ class RewriteDriverPool  {
   // Deletes all drivers in the pool.
   virtual ~RewriteDriverPool();
 
-  virtual RewriteOptions* TargetOptions() const = 0;
+  virtual const RewriteOptions* TargetOptions() const = 0;
 
   // Return a driver from freelist, or NULL.
   RewriteDriver* PopDriver();

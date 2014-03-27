@@ -27,7 +27,7 @@
 /*------------------------------------------------------------------
   eric meyer's reset
   ------------------------------------------------------------------*/
-html,body,div,span,applet,object,iframe,
+span,applet,object,iframe,
 h1,h2,h3,h4,h5,h6,p,blockquote,pre,
 a,abbr,acronym,address,big,cite,code,
 del,dfn,em,font,img,ins,kbd,q,s,samp,
@@ -99,7 +99,7 @@ input.small[type="text"] {
 @global Type
 ------------------------------------------------------------------*/
 body,body input,body button,body td {
-  font-family: "Arial", "Helvetica", sans-serif;
+  font-family: sans-serif;
   color: #222;
   font-size:13px;
   -webkit-tap-highlight-color: rgba(0,0,0,0);

@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/escaping.h"
@@ -67,6 +68,8 @@ namespace net_instaweb {
 
 namespace {
 
+const char kAdminHandler[] = "pagespeed_admin";
+const char kGlobalAdminHandler[] = "pagespeed_global_admin";
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
 const char kTempStatisticsGraphsHandler[] =
     "mod_pagespeed_temp_statistics_graphs";
@@ -218,6 +221,13 @@ InstawebHandler::InstawebHandler(request_rec* request)
 }
 
 InstawebHandler::~InstawebHandler() {
+  WaitForFetch();
+}
+
+void InstawebHandler::WaitForFetch() {
+  if (fetch_.get() != NULL) {
+    fetch_->Wait();
+  }
 }
 
 void InstawebHandler::SetupSpdyConnectionIfNeeded() {
@@ -247,8 +257,10 @@ RewriteDriver* InstawebHandler::MakeDriver() {
 }
 
 ApacheFetch* InstawebHandler::MakeFetch(const GoogleString& url) {
-  return new ApacheFetch(url, server_context_, request_, request_context_,
-                         options_);
+  DCHECK(fetch_.get() == NULL);
+  fetch_.reset(new ApacheFetch(url, server_context_, request_, request_context_,
+                               options_));
+  return fetch_.get();
 }
 
 /* static */
@@ -474,16 +486,15 @@ bool InstawebHandler::HandleAsInPlace() {
        != NULL) || (request_->user != NULL));
 
   RewriteDriver* driver = MakeDriver();
-  scoped_ptr<ApacheFetch> fetch(MakeFetch(original_url_));
-  fetch->set_handle_error(false);
+  MakeFetch(original_url_);
+  fetch_->set_handle_error(false);
   driver->FetchInPlaceResource(stripped_gurl_, false /* proxy_mode */,
-                               fetch.get());
-
-  fetch->Wait();
-  if (fetch->status_ok()) {
+                               fetch_.get());
+  WaitForFetch();
+  if (fetch_->status_ok()) {
     server_context_->rewrite_stats()->ipro_served()->Add(1);
     handled = true;
-  } else if ((fetch->response_headers()->status_code() ==
+  } else if ((fetch_->response_headers()->status_code() ==
               CacheUrlAsyncFetcher::kNotInCacheStatus) &&
              !request_->header_only) {
     server_context_->rewrite_stats()->ipro_not_in_cache()->Add(1);
@@ -538,12 +549,12 @@ bool InstawebHandler::HandleAsProxy() {
                                               &host_header, &is_proxy) &&
       is_proxy) {
     RewriteDriver* driver = MakeDriver();
-    scoped_ptr<ApacheFetch> apache_fetch(MakeFetch(mapped_url));
-    apache_fetch->set_is_proxy(true);
-    driver->SetRequestHeaders(*apache_fetch->request_headers());
+    MakeFetch(mapped_url);
+    fetch_->set_is_proxy(true);
+    driver->SetRequestHeaders(*fetch_->request_headers());
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
-        mapped_url, apache_fetch.get(), driver, NULL, NULL);
-    apache_fetch->Wait();
+        mapped_url, fetch_.get(), driver, NULL, NULL);
+    WaitForFetch();
     handled = true;
   }
 
@@ -706,37 +717,6 @@ void InstawebHandler::instaweb_static_handler(
   } else {
     server_context->ReportResourceNotFound(request->parsed_uri.path, request);
   }
-}
-
-/* static */
-apr_status_t InstawebHandler::instaweb_statistics_handler(
-    request_rec* request, ApacheServerContext* server_context,
-    ApacheRewriteDriverFactory* factory) {
-  // A request is always global if we don't have per-vhost stats, otherwise it's
-  // only global if it came to /...global_statistics.
-  bool is_global_request =
-      !factory->use_per_vhost_statistics() ||
-      (strcmp(request->handler, kGlobalStatisticsHandler) == 0);
-
-  ContentType content_type;
-  GoogleString output;
-  StringWriter writer(&output);
-  const char* error_message = server_context->StatisticsHandler(
-      factory->caches(),
-      is_global_request ? factory->statistics() : server_context->statistics(),
-      server_context->SpdyGlobalConfig(),
-      request->args,  /* query params */
-      &content_type,
-      &writer);
-
-  if (error_message != NULL) {
-    server_context->ReportStatisticsNotFound(error_message, request);
-    return OK;
-  }
-
-  write_handler_response(
-      output, request, content_type, HttpAttributes::kNoCacheMaxAge0);
-  return OK;
 }
 
 // Append the query params from a request into data. This just parses the query
@@ -924,10 +904,21 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
   StringPiece request_handler_str = request->handler;
 
-  // mod_pagespeed_statistics or mod_pagespeed_global_statistics.
-  if (request_handler_str == kStatisticsHandler ||
-      request_handler_str == kGlobalStatisticsHandler) {
-    ret = instaweb_statistics_handler(request, server_context, factory);
+  bool is_global_statistics = (request_handler_str == kGlobalStatisticsHandler);
+  if (request_handler_str == kStatisticsHandler || is_global_statistics) {
+    InstawebHandler instaweb_handler(request);
+    server_context->StatisticsPage(is_global_statistics,
+                                   instaweb_handler.query_params(),
+                                   instaweb_handler.MakeFetch());
+    return OK;
+  } else if ((request_handler_str == kAdminHandler) ||
+             (request_handler_str == kGlobalAdminHandler)) {
+    InstawebHandler instaweb_handler(request);
+    server_context->AdminPage((request_handler_str == kGlobalAdminHandler),
+                              instaweb_handler.stripped_gurl(),
+                              instaweb_handler.query_params(),
+                              instaweb_handler.MakeFetch());
+    ret = OK;
   } else if (request_handler_str == kTempStatisticsGraphsHandler) {
     // TODO(sligocki): Merge this into kConsoleHandler.
     GoogleString output;
@@ -937,14 +928,15 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     ret = OK;
   } else if (request_handler_str == kConsoleHandler) {
     InstawebHandler instaweb_handler(request);
-    scoped_ptr<ApacheFetch> apache_fetch(instaweb_handler.MakeFetch());
     server_context->ConsoleHandler(*instaweb_handler.options(),
-                                   apache_fetch.get());
+                                   SystemServerContext::kOther,
+                                   instaweb_handler.query_params(),
+                                   instaweb_handler.MakeFetch());
     ret = OK;
   } else if (request_handler_str == kMessageHandler) {
     InstawebHandler instaweb_handler(request);
-    scoped_ptr<ApacheFetch> apache_fetch(instaweb_handler.MakeFetch());
-    server_context->MessageHistoryHandler(apache_fetch.get());
+    server_context->MessageHistoryHandler(SystemServerContext::kOther,
+                                          instaweb_handler.MakeFetch());
     ret = OK;
   } else if (request_handler_str == kLogRequestHeadersHandler) {
     // For testing CustomFetchHeader.
@@ -1090,6 +1082,7 @@ apr_status_t InstawebHandler::save_url_in_note(
     StringPiece leaf = gurl.LeafSansQuery();
     if (leaf == kStatisticsHandler || leaf == kConsoleHandler ||
         leaf == kGlobalStatisticsHandler || leaf == kMessageHandler ||
+        leaf == kAdminHandler ||
         gurl.PathSansLeaf() == ApacheRewriteDriverFactory::kStaticAssetPrefix ||
         IsBeaconUrl(server_context->global_options()->beacon_url(), gurl) ||
         server_context->IsPagespeedResource(gurl)) {

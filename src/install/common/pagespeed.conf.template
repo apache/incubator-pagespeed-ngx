@@ -312,30 +312,34 @@
     #
     # ModPagespeedStatistics off
 
-    # This page lets you view statistics about the mod_pagespeed module.
-    <Location /mod_pagespeed_statistics>
+    # These handlers are central entry-points into the admin pages.
+    # By default, pagespeed_admin and pagespeed_global_admin present
+    # the same data, and differ only when
+    # ModPagespeedUsePerVHostStatistics is enabled.  In that case,
+    # /pagespeed_global_admin sees aggregated data across all vhosts,
+    # and the /pagespeed_admin sees data only for a particular vhost.
+    #
+    # You may insert other "Allow from" lines to add hosts you want to
+    # allow to look at generated statistics.  Another possibility is
+    # to comment out the "Order" and "Allow" options from the config
+    # file, to allow any client that can reach your server to access
+    # and change server state, such as statistics, caches, and
+    # messages.  This might be appropriate in an experimental setup.
+    <Location /pagespeed_admin>
         Order allow,deny
-        # You may insert other "Allow from" lines to add hosts you want to
-        # allow to look at generated statistics.  Another possibility is
-        # to comment out the "Order" and "Allow" options from the config
-        # file, to allow any client that can reach your server to examine
-        # statistics.  This might be appropriate in an experimental setup or
-        # if the Apache server is protected by a reverse proxy that will
-        # filter URLs in some fashion.
         Allow from localhost
         Allow from 127.0.0.1
-        SetHandler mod_pagespeed_statistics
+        SetHandler pagespeed_admin
+    </Location>
+    <Location /pagespeed_global_admin>
+        Order allow,deny
+        Allow from localhost
+        Allow from 127.0.0.1
+        SetHandler pagespeed_global_admin
     </Location>
 
     # Enable logging of mod_pagespeed statistics, needed for the console.
     ModPagespeedStatisticsLogging on
-
-    <Location /pagespeed_console>
-        Order allow,deny
-        Allow from localhost
-        Allow from 127.0.0.1
-        SetHandler pagespeed_console
-    </Location>
 
     # Page /mod_pagespeed_message lets you view the latest messages from
     # mod_pagespeed, regardless of log-level in your httpd.conf
@@ -344,11 +348,4 @@
     # its default value is 100k bytes.
     # Set it to 0 if you want to disable this feature.
     ModPagespeedMessageBufferSize 100000
-
-    <Location /mod_pagespeed_message>
-        Order allow,deny
-        Allow from localhost
-        Allow from 127.0.0.1
-        SetHandler mod_pagespeed_message
-    </Location>
 </IfModule>

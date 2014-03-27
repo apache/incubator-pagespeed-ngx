@@ -1518,9 +1518,7 @@ if [ $statistics_logging_enabled = "1" ]; then
 
   start_test Statistics logging JSON handler works.
   JSON=$OUTDIR/console_json.json
-  # $STATISTICS_URL ends in ?PageSpeed=off, so we need & for now.
-  # If we remove the query from $STATISTICS_URL, s/&/?/.
-  STATS_JSON_URL="$STATISTICS_URL&json&granularity=0&var_titles=num_\
+  STATS_JSON_URL="$CONSOLE_URL?json&granularity=0&var_titles=num_\
 flushes,image_ongoing_rewrites"
   echo "$WGET_DUMP $STATS_JSON_URL > $JSON"
   $WGET_DUMP $STATS_JSON_URL > $JSON
@@ -1556,8 +1554,10 @@ readonly SPDY_CONFIG_URL="$STATISTICS_URL&spdy_config"
 
 echo $WGET_DUMP $CONFIG_URL
 CONFIG=$($WGET_DUMP $CONFIG_URL)
-check_from "$CONFIG" egrep -q "Configuration:"
-check_not_from "$CONFIG" egrep -q "SPDY-specific configuration:"
+spdy_config_title="<title>PageSpeed SPDY Configuration</title>"
+config_title="<title>PageSpeed Configuration</title>"
+check_from "$CONFIG" fgrep -q "$config_title"
+check_not_from "$CONFIG" fgrep -q "$spdy_config_title"
 # Regular config should have a shard line:
 check_from "$CONFIG" egrep -q "http://nonspdy.example.com/ Auth Shards:{http:"
 check_from "$CONFIG" egrep -q "//s1.example.com/, http://s2.example.com/}"
@@ -1566,8 +1566,8 @@ check_from "$CONFIG" egrep -q "Combine Css"
 
 echo $WGET_DUMP $SPDY_CONFIG_URL
 SPDY_CONFIG=$($WGET_DUMP $SPDY_CONFIG_URL)
-check_not_from "$SPDY_CONFIG" egrep -q "Configuration:"
-check_from "$SPDY_CONFIG" egrep -q "SPDY-specific configuration:"
+check_not_from "$SPDY_CONFIG" fgrep -q "$config_title"
+check_from "$SPDY_CONFIG" fgrep -q "$spdy_config_title"
 
 # SPDY config should have neither shards, nor combine CSS.
 check_not_from "$SPDY_CONFIG" egrep -q "http://nonspdy.example.com"
@@ -1649,8 +1649,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     start_test Config with VHost inheritance off
     echo $WGET_DUMP $SECONDARY_CONFIG_URL
     SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-    check_from "$SECONDARY_CONFIG" egrep -q "Configuration:"
-    check_not_from "$SECONDARY_CONFIG" egrep -q "SPDY-specific configuration:"
+    check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
+    check_not_from "$SECONDARY_CONFIG" fgrep -q "$spdy_config_title"
     # No inherit, no sharding.
     check_not_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
@@ -1659,15 +1659,15 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
     echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
     SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-    check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Configuration:"
+    check_not_from "$SECONDARY_SPDY_CONFIG" fgrep -q "$config_title"
     check_from "$SECONDARY_SPDY_CONFIG" \
       egrep -q "SPDY-specific configuration missing"
   else
     start_test Config with VHost inheritance on
     echo $WGET_DUMP $SECONDARY_CONFIG_URL
     SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-    check_from "$SECONDARY_CONFIG" egrep -q "Configuration:"
-    check_not_from "$SECONDARY_CONFIG" egrep -q "SPDY-specific configuration:"
+    check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
+    check_not_from "$SECONDARY_CONFIG" fgrep -q "$spdy_config_title"
     # Sharding is applied in this host, thanks to global inherit flag.
     check_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
@@ -1676,8 +1676,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
     echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
     SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-    check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Configuration:"
-    check_from "$SECONDARY_SPDY_CONFIG" egrep -q "SPDY-specific configuration:"
+    check_not_from "$SECONDARY_SPDY_CONFIG" fgrep -q "$config_title"
+    check_from "$SECONDARY_SPDY_CONFIG" fgrep -q "$spdy_config_title"
     # Disabling of combine CSS should get inherited.
     check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Combine Css"
   fi
@@ -2393,6 +2393,27 @@ if [ $statistics_enabled = "1" ]; then
 else
   echo skipping CompressedCache test because stats is $statistics_enabled
 fi
+
+# Check all the pagespeed_admin pages, both in its default location and an
+# alternate.
+start_test pagespeed_admin and alternate_admin_path
+function check_admin_banner() {
+  path="$1"
+  title="$2"
+  echo $WGET_DUMP $PRIMARY_SERVER/$path '|' head -25 ...
+  OUT=$($WGET_DUMP $PRIMARY_SERVER/$path | head -25)
+  check_from "$OUT" fgrep -q "<title>PageSpeed $title</title>"
+}
+for admin_path in pagespeed_admin pagespeed_global_admin alt/admin/path; do
+  check_admin_banner $admin_path/statistics "Statistics"
+  check_admin_banner $admin_path/config "Configuration"
+  check_admin_banner $admin_path/spdy_config "SPDY Configuration"
+  check_admin_banner $admin_path/histograms "Histograms"
+  check_admin_banner $admin_path/cache "Caches"
+  check_admin_banner $admin_path/console "Console"
+  check_admin_banner $admin_path/message_history "Message History"
+done
+
 
 # TODO(matterbury): Uncomment these lines when the test is fixed.
 :<< COMMENTING_BLOCK

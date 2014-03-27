@@ -242,7 +242,7 @@ class GlobalOptionsRewriteDriverPool : public RewriteDriverPool {
       : server_context_(context) {
   }
 
-  virtual RewriteOptions* TargetOptions() const {
+  virtual const RewriteOptions* TargetOptions() const {
     return server_context_->global_options();
   }
 
@@ -748,7 +748,7 @@ RewriteDriver* ServerContext::NewRewriteDriverFromPool(
     RewriteDriverPool* pool, const RequestContextPtr& request_ctx) {
   RewriteDriver* rewrite_driver = NULL;
 
-  RewriteOptions* options = pool->TargetOptions();
+  const RewriteOptions* options = pool->TargetOptions();
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
     while ((rewrite_driver = pool->PopDriver()) != NULL) {

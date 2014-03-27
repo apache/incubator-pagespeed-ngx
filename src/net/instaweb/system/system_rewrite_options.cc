@@ -92,10 +92,6 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty(true, &SystemRewriteOptions::statistics_enabled_, "ase",
                     RewriteOptions::kStatisticsEnabled,
                     "Whether to collect cross-process statistics.");
-  AddSystemProperty("/pagespeed_statistics",
-                    &SystemRewriteOptions::statistics_handler_path_, "ashp",
-                    RewriteOptions::kStatisticsHandlerPath,
-                    "Absolute path URL to statistics handler.");
   AddSystemProperty("", &SystemRewriteOptions::statistics_logging_charts_css_,
                     "aslcc", RewriteOptions::kStatisticsLoggingChartsCSS,
                     "Where to find an offline copy of the Google Charts Tools "

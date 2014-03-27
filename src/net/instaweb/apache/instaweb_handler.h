@@ -25,13 +25,13 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/http/google_url.h"
-#include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
 #include "apr_pools.h"  // for apr_status_t
@@ -163,6 +163,9 @@ class InstawebHandler {
   // whether the result is success or failure.
   void HandleAsPagespeedResource();
 
+  // Waits for an outstanding fetch (obtained by MakeFetch) to complete.
+  void WaitForFetch();
+
   RequestHeaders* ReleaseRequestHeaders() { return request_headers_.release(); }
 
   // Returns the options, whether they were custom-computed due to htaccess
@@ -290,6 +293,7 @@ class InstawebHandler {
   RewriteDriver* rewrite_driver_;
   int num_response_attributes_;
   RewriteQuery rewrite_query_;
+  scoped_ptr<ApacheFetch> fetch_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebHandler);
 };

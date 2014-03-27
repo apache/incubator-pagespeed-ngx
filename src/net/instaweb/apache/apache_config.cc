@@ -62,11 +62,6 @@ void ApacheConfig::Init() {
   DCHECK(apache_properties_ != NULL)
       << "Call ApacheConfig::Initialize() before construction";
   InitializeOptions(apache_properties_);
-
-  // Apache-specific default.
-  // TODO(sligocki): Get rid of this line and let both Apache and Nginx use
-  // /pagespeed_statistics as the handler.
-  statistics_handler_path_.set_default(kModPagespeedStatisticsHandlerPath);
 }
 
 void ApacheConfig::AddProperties() {

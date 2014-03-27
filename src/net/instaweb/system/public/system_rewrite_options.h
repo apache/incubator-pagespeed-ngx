@@ -86,12 +86,6 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_statistics_enabled(bool x) {
     set_option(x, &statistics_enabled_);
   }
-  const GoogleString& statistics_handler_path() const {
-    return statistics_handler_path_.value();
-  }
-  void set_statistics_handler_path(const GoogleString& x) {
-    set_option(x, &statistics_handler_path_);
-  }
   bool statistics_logging_enabled() const {
     return statistics_logging_enabled_.value();
   }
@@ -256,10 +250,6 @@ class SystemRewriteOptions : public RewriteOptions {
   // for multiple directories.  Should only be used for debugging.
   StringPiece description() const { return description_; }
   void set_description(const StringPiece& x) { x.CopyToString(&description_); }
-
- protected:
-  // Apache and Nginx options classes need access to this.
-  Option<GoogleString> statistics_handler_path_;
 
  private:
   // We have some special parsing error-checking requirements for

@@ -46,7 +46,7 @@ class SpdyOptionsRewriteDriverPool : public RewriteDriverPool {
       : apache_server_context_(context) {
   }
 
-  virtual RewriteOptions* TargetOptions() const {
+  virtual const RewriteOptions* TargetOptions() const {
     DCHECK(apache_server_context_->SpdyGlobalConfig() != NULL);
     return apache_server_context_->SpdyGlobalConfig();
   }
@@ -161,11 +161,11 @@ bool ApacheServerContext::PoolDestroyed() {
 
 bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
   bool flushed = SystemServerContext::UpdateCacheFlushTimestampMs(timestamp_ms);
-  if (SpdyGlobalConfig() != NULL) {
+  if (spdy_specific_config_.get() != NULL) {
     // We need to make sure to update the invalidation timestamp in the
     // SPDY configuration as well, so it also gets any cache flushes.
     flushed |=
-        SpdyGlobalConfig()->UpdateCacheInvalidationTimestampMs(timestamp_ms);
+        spdy_specific_config_->UpdateCacheInvalidationTimestampMs(timestamp_ms);
   }
   return flushed;
 }
