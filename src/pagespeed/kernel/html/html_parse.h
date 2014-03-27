@@ -517,6 +517,7 @@ class HtmlParse {
   GoogleString id_;  // Per-request identifier string used in error messages.
   int line_number_;
   bool deleted_current_;
+  bool skip_increment_;
   bool determine_enabled_filters_called_;
   bool need_sanity_check_;
   bool coalesce_characters_;

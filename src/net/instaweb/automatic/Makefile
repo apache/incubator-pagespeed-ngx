@@ -136,6 +136,8 @@ BASE_LIBS = \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/css_parser/libcss_parser.a \
   third_party/css_parser/libutf.a \
+  third_party/domain_registry_provider/src/domain_registry/libassert_lib.a \
+  third_party/domain_registry_provider/src/domain_registry/libdomain_registry_lib.a \
   third_party/domain_registry_provider/src/domain_registry/libinit_registry_tables_lib.a \
   third_party/gflags/libgflags.a \
   third_party/giflib/libdgiflib.a \

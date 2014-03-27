@@ -51,6 +51,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       message_handler_(message_handler),
       line_number_(1),
       deleted_current_(false),
+      skip_increment_(false),
       determine_enabled_filters_called_(false),
       need_sanity_check_(false),
       coalesce_characters_(true),
@@ -284,7 +285,11 @@ void HtmlParse::ApplyFilter(HtmlFilter* filter) {
     line_number_ = event->line_number();
     event->Run(filter);
     deleted_current_ = false;
-    ++current_;
+    if (skip_increment_) {
+      skip_increment_ = false;
+    } else {
+      ++current_;
+    }
   }
   filter->Flush();
 
@@ -721,13 +726,24 @@ bool HtmlParse::DeleteNode(HtmlNode* node) {
       }
 
       // Check if we're about to delete the current event.
-      bool move_current = (p == current_);
+      bool about_to_delete_current = (p == current_);
+      if (about_to_delete_current && current_ == queue_.begin()) {
+        skip_increment_ = true;
+      }
       p = queue_.erase(p);
-      if (move_current) {
-        current_ = p;  // p is the event *after* the old current.
-        --current_;    // Go to *previous* event so that we don't skip p.
+      if (about_to_delete_current) {
+        DCHECK(!deleted_current_);
         deleted_current_ = true;
-        line_number_ = (*current_)->line_number();
+        if (skip_increment_) {
+          // We can't move current back to before the 'begin', so we
+          // need to avoid incrementing it.
+          line_number_ = -1;
+          current_ = queue_.end();
+        } else {
+          current_ = p;  // p is the event *after* the old current.
+          --current_;    // Go to *previous* event so that we don't skip p.
+          line_number_ = (*current_)->line_number();
+        }
       }
       delete event;
     }
