@@ -2357,9 +2357,8 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
           cfg_s->server_context->NewRequestContext(r));
       NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
       server_context->ConsoleHandler(*server_context->config(), &fetch);
-      status = static_cast<HttpStatus::Code>(
-          fetch.response_headers()->status_code());
-      break;
+      send_out_headers_and_body(r, *fetch.response_headers(), output);
+      return NGX_OK;
     }
     case RequestRouting::kMessages: {
       GoogleString log;
