@@ -71,6 +71,7 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
+#include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
@@ -2313,6 +2314,10 @@ class NgxPagespeedConsoleAsyncFetch : public AsyncFetchUsingWriter {
       : AsyncFetchUsingWriter(request_context, writer) { }
   virtual void HandleDone(bool status) { }
   virtual void HandleHeadersComplete() { }
+
+  void FlushToNgx(const GoogleString& output, ngx_http_request_t* r) {
+    send_out_headers_and_body(r, *response_headers(), output);
+  }
 };
 
 }  // namespace
@@ -2325,6 +2330,13 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
           server_context->factory());
   NgxMessageHandler* message_handler = factory->ngx_message_handler();
   StringPiece request_uri_path = str_to_string_piece(r->uri);
+
+  GoogleString url_string = ps_determine_url(r);
+  GoogleUrl url(url_string);
+  QueryParams query_params;
+  if (url.IsWebValid()) {
+    query_params.Parse(url.Query());
+  }
 
   GoogleString output;
   StringWriter writer(&output);
@@ -2347,28 +2359,30 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
     }
     case RequestRouting::kStatistics: {
       bool is_global_request =
-          !factory->use_per_vhost_statistics() ||
           StringCaseStartsWith(
               request_uri_path, "/ngx_pagespeed_global_statistics");
-      error_message = server_context->StatisticsHandler(
-          factory->caches(),
-          is_global_request ?
-              factory->statistics() : server_context->statistics(),
-          NULL,  // No SPDY-specific config in ngx_pagespeed.
-          StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
-          &content_type,
-          &writer);
-      break;
+      ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+      RequestContextPtr request_context(
+          cfg_s->server_context->NewRequestContext(r));
+      NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
+      server_context->StatisticsPage(
+          is_global_request,
+          query_params,
+          &fetch);
+      fetch.FlushToNgx(output, r);
+      return NGX_OK;
     }
     case RequestRouting::kConsole: {
       ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
       RequestContextPtr request_context(
           cfg_s->server_context->NewRequestContext(r));
       NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
-      server_context->ConsoleHandler(*server_context->config(), &fetch);
-      status = static_cast<HttpStatus::Code>(
-          fetch.response_headers()->status_code());
-      break;
+      server_context->ConsoleHandler(*server_context->config(),
+                                     SystemServerContext::kStatistics,
+                                     query_params,
+                                     &fetch);
+      fetch.FlushToNgx(output, r);
+      return NGX_OK;
     }
     case RequestRouting::kMessages: {
       GoogleString log;

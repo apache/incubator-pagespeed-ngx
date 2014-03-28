@@ -1049,6 +1049,13 @@ http {
       pagespeed InPlaceRewriteDeadlineMs -1;
     }
 
+    # Test to make sure that user-authenticated resources do not get cached and
+    # optimized.
+    location /mod_pagespeed_test/auth/ {
+       auth_basic "Restricted";
+       auth_basic_user_file "@@SERVER_ROOT@@mod_pagespeed_test/auth/passwd.conf";
+    }
+
     location /mod_pagespeed_test/ipro/cookie/ {
       # Add Vary:Cookie.  This should prevent us from optimizing the
       # vary_cookie.css even though PagespeedRespectVary is off.
