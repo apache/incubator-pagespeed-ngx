@@ -105,7 +105,8 @@ class ApacheFetch : public AsyncFetchUsingWriter {
   bool handle_error_;
   bool status_ok_;
   bool is_proxy_;
-  const RewriteOptions* options_;
+  const RewriteOptions* options_;    // Not valid after a driver is destroyed.
+  int64 blocking_fetch_timeout_ms_;  // Need in Wait()
 
   DISALLOW_COPY_AND_ASSIGN(ApacheFetch);
 };

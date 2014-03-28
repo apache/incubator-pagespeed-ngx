@@ -108,7 +108,8 @@ ApacheFetch::ApacheFetch(const GoogleString& mapped_url,
       handle_error_(true),
       status_ok_(false),
       is_proxy_(false),
-      options_(options) {
+      options_(options),
+      blocking_fetch_timeout_ms_(options_->blocking_fetch_timeout_ms()) {
   // We are proxying content, and the caching in the http configuration
   // should not apply; we want to use the caching from the proxy.
   apache_writer_.set_disable_downstream_header_filters(true);
@@ -177,14 +178,13 @@ void ApacheFetch::HandleDone(bool success) {
 }
 
 void ApacheFetch::Wait() {
-  int64 timeout_ms = options_->blocking_fetch_timeout_ms();
   MessageHandler* handler = server_context_->message_handler();
   Timer* timer = server_context_->timer();
   int64 start_ms = timer->NowMs();
   {
     ScopedMutex lock(mutex_.get());
     while (!done_) {
-      condvar_->TimedWait(timeout_ms);
+      condvar_->TimedWait(blocking_fetch_timeout_ms_);
       if (!done_) {
         int64 elapsed_ms = timer->NowMs() - start_ms;
         handler->Message(
