@@ -70,7 +70,6 @@ struct apr_memcache2_server_t
 #else
     apr_memcache2_conn_t *conn;
 #endif
-    apr_pool_t *p; /** Pool to use for private allocations */
 #if APR_HAS_THREADS
     apr_thread_mutex_t *lock;
 #endif
@@ -103,7 +102,6 @@ struct apr_memcache2_t
     apr_uint16_t nalloc; /**< Number of Servers Allocated */
     apr_uint16_t ntotal; /**< Number of Servers Added */
     apr_memcache2_server_t **live_servers; /**< Array of Servers */
-    apr_pool_t *p; /** Pool to use for allocations */
     void *hash_baton;
     apr_memcache2_hash_func hash_func;
     void *server_baton;

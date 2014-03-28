@@ -506,7 +506,6 @@ APU_DECLARE(apr_status_t) apr_memcache2_server_create(apr_pool_t *p,
 
     server = apr_palloc(np, sizeof(apr_memcache2_server_t));
 
-    server->p = np;
     server->host = apr_pstrdup(np, host);
     server->port = port;
     server->status = APR_MC_SERVER_DEAD;
@@ -546,7 +545,6 @@ APU_DECLARE(apr_status_t) apr_memcache2_create(apr_pool_t *p,
     apr_memcache2_t *mc;
 
     mc = apr_palloc(p, sizeof(apr_memcache2_t));
-    mc->p = p;
     mc->nalloc = max_servers;
     mc->ntotal = 0;
     mc->live_servers = apr_palloc(p, mc->nalloc * sizeof(struct apr_memcache2_server_t *));
