@@ -64,6 +64,7 @@ struct FilterMap {
 "flatten_css_imports",               RewriteOptions::kFlattenCssImports
 "flush_subresources",                RewriteOptions::kFlushSubresources
 "in_place_optimize_for_browser",     RewriteOptions::kInPlaceOptimizeForBrowser
+"include_js_source_maps",            RewriteOptions::kIncludeJsSourceMaps
 "inline_css",                        RewriteOptions::kInlineCss
 "inline_google_font_css",            RewriteOptions::kInlineGoogleFontCss
 "inline_images",                     RewriteOptions::kInlineImages

@@ -1,45 +1,45 @@
 <html>
   <head>
-    <title>rewrite_javascript example</title>
+    <title>Experimental JS Parser and Source Maps test</title>
   </head>
   <body>
-    <p>
-      Expected: Internal 0 External 1 External 2<br/>
-      Actual:
-      <script type="text/javascript" id="int1">
-        // This comment will be removed
-        var state = 0;
-        document.write("Internal " + state);
-        state = 1
-      </script>
-      <script src="../../mod_pagespeed_example/rewrite_javascript.js" type="text/javascript" id="ext1">
-      </script>
-      <script src="../../mod_pagespeed_example/rewrite_javascript.js" id="ext2">
-        /* Note that the contents and comments of a script block are preserved
-        if a src is specified.  Since they are not executed, it is assumed the
-        code will be using the script block contents as data. */
-        document.write("Internal script; state = " + state); state = 42
-      </script>
-    </p><p>
-      External script url:
-      <script type="text/javascript">
-        /* This comment will also be removed */
-        document.write(document.getElementById("ext1").src);
-      </script>
-    </p><p>
-      Comment in internal script:
-      <script type="text/javascript">
-        // This comment will be removed too.
-        var source = document.getElementById("int1").innerHTML;
-        document.write(source.match("comment") ? "yes" : "no");
-      </script>
-    </p><p>
-      Comment in external script:
-      <script type="text/javascript">
-        /* Of course, this comment will be removed as well. */
-        var source = document.getElementById("ext2").innerHTML;
-        document.write(source.match("comment") ? "yes" : "no");
-      </script>
-    </p>
+    <div id="content"></div>
+
+    <script>
+      // This script is just an example used for system testing. We don't
+      // really care if it is accurate or not.
+      // This script will be minified, but no source map will be added.
+      // Also, this comment will be removed.
+      /* This one will also be removed. */
+
+      console.log("Inline script start");
+
+      // The -is- object is used to identify the browser.  Every browser edition
+      // identifies itself, but there is no standard way of doing it, and some
+      // of the identification is deceptive. This is because the authors of web
+      // browsers are liars. For example, Microsoft's IE browsers claim to be
+      // Mozilla 4. Netscape 6 claims to be version 5.
+      var is = {
+        ie:      navigator.appName == 'Microsoft Internet Explorer',
+        java:    navigator.javaEnabled(),
+        ns:      navigator.appName == 'Netscape',
+        ua:      navigator.userAgent.toLowerCase(),
+        version: parseFloat(navigator.appVersion.substr(21)) ||
+                 parseFloat(navigator.appVersion),
+        win:     navigator.platform == 'Win32'
+      }
+      is.mac = is.ua.indexOf('mac') >= 0;
+      if (is.ua.indexOf('opera') >= 0) {
+        is.ie = is.ns = false;
+        is.opera = true;
+      }
+      if (is.ua.indexOf('gecko') >= 0) {
+        is.ie = is.ns = false;
+        is.gecko = true;
+      }
+
+      console.log("Inline script finish");
+    </script>
+    <script src="script.js">/* This is preserved */</script>
   </body>
 </html>

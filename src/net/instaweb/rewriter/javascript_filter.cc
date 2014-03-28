@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -149,13 +150,21 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     if (Options()->Enabled(RewriteOptions::kIncludeJsSourceMaps) &&
         // Source map will be empty if we can't construct it correctly.
         !code_block.SourceMappings().empty()) {
+      // Note: We append PageSpeed=off query parameter to make sure that
+      // the source URL doesn't get rewritten with IPRO.
+      GoogleUrl original_gurl(input->url());
+      scoped_ptr<GoogleUrl> source_gurl(
+          original_gurl.CopyAndAddEscapedQueryParam(RewriteQuery::kPageSpeed,
+                                                    "off"));
+
       GoogleString source_map_text;
       // Note: We omit rewritten URL because of a chicken-and-egg problem.
       // rewritten URL depends on rewritten content, which depends on
       // source map URL, which depends on source map contents.
       // (So source map contents can't depend on rewritten URL!)
-      source_map::Encode("" /* Omit rewritten URL */, input->url(),
+      source_map::Encode("" /* Omit rewritten URL */, source_gurl->Spec(),
                          code_block.SourceMappings(), &source_map_text);
+
       // TODO(sligocki): Perhaps we should not insert source maps into the
       // cache on every JS rewrite request because they will generally not
       // be used? Note that will make things more complicated because we

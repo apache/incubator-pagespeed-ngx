@@ -1038,7 +1038,8 @@ void JavascriptFilterTest::SourceMapTest(StringPiece input_js,
 
   GoogleString expected_map = StrCat(
       ")]}'\n{\"mappings\":\"", expected_mapping_vlq, "\",\"names\":[],"
-      "\"sources\":[\"http://test.com/input.js\"],\"version\":3}\n");
+      "\"sources\":[\"http://test.com/input.js?PageSpeed=off\"],"
+      "\"version\":3}\n");
 
   GoogleString source_map_url =
       Encode(kTestDomain, RewriteOptions::kJavascriptMinSourceMapId,
