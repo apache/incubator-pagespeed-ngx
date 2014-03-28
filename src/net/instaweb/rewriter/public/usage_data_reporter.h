@@ -64,7 +64,7 @@ class UsageDataReporter {
 
   // Report bandwidth.
   virtual void ReportBandwidth(int64 project_id, const GoogleUrl& url,
-                               int64 bandwidth) {}
+                               int64 bandwidth, StringPiece referer) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UsageDataReporter);
