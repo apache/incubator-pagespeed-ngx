@@ -120,6 +120,20 @@ class SystemServerContext : public ServerContext {
   void ConsoleHandler(const SystemRewriteOptions& options, AdminSource source,
                       const QueryParams& query_params, AsyncFetch* fetch);
 
+  // Handler for /mod_pagespeed_statistics and
+  // /ngx_pagespeed_statistics, as well as
+  // /...pagespeed__global_statistics.  If the latter,
+  // is_global_request should be true.
+  //
+  // Returns NULL on success, otherwise the returned error string
+  // should be passed along to the user and the contents of writer and
+  // content_type should be ignored.
+  //
+  // In systems without a spdy-specific config, spdy_config should be
+  // null.
+  void StatisticsHandler(bool is_global_request, AdminSource source,
+                         AsyncFetch* fetch);
+
   // Displays recent Info/Warning/Error messages.
   void MessageHistoryHandler(AdminSource source, AsyncFetch* fetch);
 
@@ -161,20 +175,6 @@ class SystemServerContext : public ServerContext {
 
   // Returns JSON used by the PageSpeed Console JavaScript.
   void ConsoleJsonHandler(const QueryParams& params, AsyncFetch* fetch);
-
-  // Handler for /mod_pagespeed_statistics and
-  // /ngx_pagespeed_statistics, as well as
-  // /...pagespeed__global_statistics.  If the latter,
-  // is_global_request should be true.
-  //
-  // Returns NULL on success, otherwise the returned error string
-  // should be passed along to the user and the contents of writer and
-  // content_type should be ignored.
-  //
-  // In systems without a spdy-specific config, spdy_config should be
-  // null.
-  void StatisticsHandler(bool is_global_request, AdminSource source,
-                         AsyncFetch* fetch);
 
   // Print details fo the SPDY configuration.
   void PrintSpdyConfig(AdminSource source, AsyncFetch* fetch);
