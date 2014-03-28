@@ -37,6 +37,7 @@
 #include "ngx_server_context.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -48,6 +49,7 @@
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
@@ -908,18 +910,9 @@ int ps_determine_port(ngx_http_request_t* r) {
 
   return port;
 }
+}  // namespace
 
-GoogleString ps_determine_url(ngx_http_request_t* r) {
-  int port = ps_determine_port(r);
-  GoogleString port_string;
-  if ((ps_is_https(r) && (port == 443 || port == -1)) ||
-      (!ps_is_https(r) && (port == 80 || port == -1))) {
-    // No port specifier needed for requests on default ports.
-    port_string = "";
-  } else {
-    port_string = StrCat(":", IntegerToString(port));
-  }
-
+StringPiece ps_determine_host(ngx_http_request_t* r) {
   StringPiece host = str_to_string_piece(r->headers_in.server);
   if (host.size() == 0) {
     // If host is unspecified, perhaps because of a pure HTTP 1.0 "GET /path",
@@ -934,6 +927,23 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
     }
     host = str_to_string_piece(s);
   }
+  return host;
+}
+
+namespace {
+
+GoogleString ps_determine_url(ngx_http_request_t* r) {
+  int port = ps_determine_port(r);
+  GoogleString port_string;
+  if ((ps_is_https(r) && (port == 443 || port == -1)) ||
+      (!ps_is_https(r) && (port == 80 || port == -1))) {
+    // No port specifier needed for requests on default ports.
+    port_string = "";
+  } else {
+    port_string = StrCat(":", IntegerToString(port));
+  }
+
+  StringPiece host = ps_determine_host(r);
 
   return StrCat(ps_is_https(r) ? "https://" : "http://",
                 host, port_string, str_to_string_piece(r->unparsed_uri));
@@ -1214,11 +1224,9 @@ RewriteOptions* ps_determine_request_options(
   // make cache key consistent for both lookup and storing in cache.
   //
   // Sets option from request headers and url.
-  ServerContext::OptionsBoolPair query_options_success =
-      cfg_s->server_context->GetQueryOptions(url, request_headers,
-                                             response_headers);
-  bool get_query_options_success = query_options_success.second;
-  if (!get_query_options_success) {
+  RewriteQuery rewrite_query;
+  if (!cfg_s->server_context->GetQueryOptions(
+          url, request_headers, response_headers, &rewrite_query)) {
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -1228,7 +1236,7 @@ RewriteOptions* ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
-  return query_options_success.first;
+  return rewrite_query.ReleaseOptions();
 }
 
 // Check whether this visitor is already in an experiment.  If they're not,
@@ -1307,11 +1315,12 @@ bool ps_determine_options(ngx_http_request_t* r,
   // rebased on the directory options or the global options.
   RewriteOptions* request_options = ps_determine_request_options(
       r, request_headers, response_headers, cfg_s, url);
+  bool have_request_options = request_options != NULL;
 
   // Because the caller takes ownership of any options we return, the only
   // situation in which we can avoid allocating a new RewriteOptions is if the
   // global options are ok as are.
-  if (directory_options == NULL && request_options == NULL &&
+  if (!have_request_options && directory_options == NULL &&
       !global_options->running_experiment()) {
     return true;
   }
@@ -1324,7 +1333,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   }
 
   // Modify our options in response to request options if specified.
-  bool have_request_options = request_options != NULL;
   if (have_request_options) {
     (*options)->Merge(*request_options);
     delete request_options;
@@ -2179,6 +2187,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     ctx->recorder = new InPlaceResourceRecorder(
         RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
         url,
+        ctx->driver->CacheFragment(),
         request_headers.GetProperties(),
         options->respect_vary(),
         options->ipro_max_response_bytes(),
@@ -2282,6 +2291,23 @@ ngx_int_t send_out_headers_and_body(
   return ngx_http_output_filter(r, out);
 }
 
+namespace {
+
+// TODO(jefftk): This class is a temporary shim to just support console fetch,
+// but we eventually want to convert everything in ps_simple_handler to use
+// something akin to NgxBaseFetch (which sends results direct to nginx).  This
+// is work in progress (but well along) in the mod_pagespeed world.
+class NgxPagespeedConsoleAsyncFetch : public AsyncFetchUsingWriter {
+ public:
+  NgxPagespeedConsoleAsyncFetch(const RequestContextPtr& request_context,
+                                Writer* writer)
+      : AsyncFetchUsingWriter(request_context, writer) { }
+  virtual void HandleDone(bool status) { }
+  virtual void HandleHeadersComplete() { }
+};
+
+}  // namespace
+
 ngx_int_t ps_simple_handler(ngx_http_request_t* r,
                             NgxServerContext* server_context,
                             RequestRouting::Response response_category) {
@@ -2325,9 +2351,16 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
           &writer);
       break;
     }
-    case RequestRouting::kConsole:
-      server_context->ConsoleHandler(*server_context->config(), &writer);
+    case RequestRouting::kConsole: {
+      ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+      RequestContextPtr request_context(
+          cfg_s->server_context->NewRequestContext(r));
+      NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
+      server_context->ConsoleHandler(*server_context->config(), &fetch);
+      status = static_cast<HttpStatus::Code>(
+          fetch.response_headers()->status_code());
       break;
+    }
     case RequestRouting::kMessages: {
       GoogleString log;
       StringWriter log_writer(&log);
