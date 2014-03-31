@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/arena.h"
 #include "pagespeed/kernel/base/printf_format.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/symbol_table.h"
@@ -533,7 +534,7 @@ class HtmlParse {
   bool log_rewrite_timing_;  // Should we time the speed of parsing?
   bool running_filters_;
   int64 parse_start_time_us_;
-  HtmlEvent* delayed_start_literal_;
+  scoped_ptr<HtmlEvent> delayed_start_literal_;
   Timer* timer_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlParse);

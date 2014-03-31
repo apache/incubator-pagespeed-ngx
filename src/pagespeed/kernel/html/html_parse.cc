@@ -60,7 +60,6 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       log_rewrite_timing_(false),
       running_filters_(false),
       parse_start_time_us_(0),
-      delayed_start_literal_(NULL),
       timer_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
@@ -197,7 +196,7 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 
 bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
-  delayed_start_literal_ = NULL;
+  delayed_start_literal_.reset();
   determine_enabled_filters_called_ = false;
   url.CopyToString(&url_);
   GoogleUrl gurl(url);
@@ -245,8 +244,8 @@ void HtmlParse::BeginFinishParse() {
   DCHECK(url_valid_) << "Invalid to call FinishParse on invalid input";
   if (url_valid_) {
     lexer_->FinishParse();
-    DCHECK(delayed_start_literal_ == NULL);
-    delayed_start_literal_ = NULL;
+    DCHECK(delayed_start_literal_.get() == NULL);
+    delayed_start_literal_.reset();
     AddEvent(new HtmlEndDocumentEvent(line_number_));
   }
 }
@@ -336,7 +335,7 @@ void HtmlParse::DelayLiteralTag() {
     // tag.  We are not going to process this within the current
     // flush window, but instead wait till the EndElement arrives
     // from the lexer.
-    delayed_start_literal_ = event;
+    delayed_start_literal_.reset(event);
     queue_.erase(current_);
   }
   current_ = queue_.end();
@@ -979,7 +978,7 @@ void HtmlParse::FatalErrorHere(const char* msg, ...) {
 void HtmlParse::CloseElement(
     HtmlElement* element, HtmlElement::CloseStyle close_style,
     int line_number) {
-  if (delayed_start_literal_ != NULL) {
+  if (delayed_start_literal_.get() != NULL) {
     HtmlElement* element = delayed_start_literal_->GetElementIfStartEvent();
     DCHECK(element != NULL);
     bool insert_at_begin = true;
@@ -1000,7 +999,8 @@ void HtmlParse::CloseElement(
       if (node != NULL) {
         if (p != queue_.begin()) {
           --p;
-          element->set_begin(queue_.insert(p, delayed_start_literal_));
+          element->set_begin(
+              queue_.insert(p, delayed_start_literal_.release()));
           insert_at_begin = false;
         }
       } else {
@@ -1018,10 +1018,10 @@ void HtmlParse::CloseElement(
       }
     }
     if (insert_at_begin) {
-      queue_.push_front(delayed_start_literal_);
+      queue_.push_front(delayed_start_literal_.release());
       element->set_begin(queue_.begin());
     }
-    delayed_start_literal_ = NULL;
+    DCHECK(delayed_start_literal_.get() == NULL);
   }
 
   HtmlEndElementEvent* end_event =
