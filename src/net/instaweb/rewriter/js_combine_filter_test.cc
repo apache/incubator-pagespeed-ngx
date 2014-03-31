@@ -680,8 +680,7 @@ TEST_F(JsCombineFilterTest, TestNonBarriers) {
   VerifyUse(scripts[2], kJsUrl2);
 }
 
-// Flush in the middle of first one --- should not change first one;
-// should combine the next two
+// Flush in the middle of first one will not prevent us from combining it.
 TEST_F(JsCombineFilterTest, TestFlushMiddle1) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
@@ -695,14 +694,15 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle1) {
   html_parse()->FinishParse();
 
   ASSERT_EQ(4, scripts.size());
-  EXPECT_EQ(kJsUrl1, scripts[0].url);
-  VerifyCombined(scripts[1], MultiUrl(kJsUrl2, kJsUrl3));
+  VerifyCombined(scripts[0], MultiUrl(kJsUrl1, kJsUrl2, kJsUrl3));
+  VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
   VerifyUse(scripts[3], kJsUrl3);
 }
 
-// Flush in the middle of a second tag - should back it out and realize
-// that the single entry left should not be touched
+// Flush in the middle of a second tag - the flush will just spit out the
+// first script tag, and we'll hold back the second one till after we
+// see the "</script>", which will then be combined with the third.
 TEST_F(JsCombineFilterTest, TestFlushMiddle2) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
@@ -715,11 +715,11 @@ TEST_F(JsCombineFilterTest, TestFlushMiddle2) {
   html_parse()->ParseText(StrCat("<script src=", kJsUrl3, "></script>"));
   html_parse()->FinishParse();
 
-  // Nothing should have gotten combined
-  EXPECT_EQ(StrCat(StrCat("<script src=", kJsUrl1, "></script>"),
-                   StrCat("<script src=", kJsUrl2, "></script>"),
-                   StrCat("<script src=", kJsUrl3, "></script>")),
-            output_buffer_);
+  ASSERT_EQ(4, scripts.size());
+  EXPECT_STREQ(kJsUrl1, scripts[0].url);
+  VerifyCombined(scripts[1], MultiUrl(kJsUrl2, kJsUrl3));
+  VerifyUse(scripts[2], kJsUrl2);
+  VerifyUse(scripts[3], kJsUrl3);
 }
 
 // Flush in the middle of a third tag -- first two should be combined.

@@ -434,7 +434,8 @@ TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
   html_parse()->Flush();
   html_parse()->ParseText("</script> </div>");
   html_parse()->FinishParse();
-  EXPECT_EQ("<div><script src=\"script.js\"> </script> </div>", output_buffer_);
+  EXPECT_STREQ("<div><script>function id(x) { return x; }\n</script> </div>",
+               output_buffer_);
 }
 
 TEST_F(JsInlineFilterTest, NoFlushSplittingScriptTag) {
@@ -451,8 +452,8 @@ TEST_F(JsInlineFilterTest, NoFlushSplittingScriptTag) {
   html_parse()->ParseText("<div><script src=\"script.js\">     ");
   html_parse()->ParseText("     </script> </div>");
   html_parse()->FinishParse();
-  EXPECT_EQ("<div><script>function id(x) { return x; }\n</script> </div>",
-            output_buffer_);
+  EXPECT_STREQ("<div><script>function id(x) { return x; }\n</script> </div>",
+               output_buffer_);
 }
 
 }  // namespace

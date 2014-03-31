@@ -60,6 +60,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       log_rewrite_timing_(false),
       running_filters_(false),
       parse_start_time_us_(0),
+      delayed_start_literal_(NULL),
       timer_(NULL) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
@@ -196,6 +197,7 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 
 bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
+  delayed_start_literal_ = NULL;
   determine_enabled_filters_called_ = false;
   url.CopyToString(&url_);
   GoogleUrl gurl(url);
@@ -243,6 +245,8 @@ void HtmlParse::BeginFinishParse() {
   DCHECK(url_valid_) << "Invalid to call FinishParse on invalid input";
   if (url_valid_) {
     lexer_->FinishParse();
+    DCHECK(delayed_start_literal_ == NULL);
+    delayed_start_literal_ = NULL;
     AddEvent(new HtmlEndDocumentEvent(line_number_));
   }
 }
@@ -276,6 +280,7 @@ void HtmlParse::DetermineEnabledFiltersImpl() {
 void HtmlParse::ApplyFilter(HtmlFilter* filter) {
   if (coalesce_characters_ && need_coalesce_characters_) {
     CoalesceAdjacentCharactersNodes();
+    DelayLiteralTag();
     need_coalesce_characters_ = false;
   }
 
@@ -316,6 +321,25 @@ void HtmlParse::CoalesceAdjacentCharactersNodes() {
       prev = node;
     }
   }
+}
+
+void HtmlParse::DelayLiteralTag() {
+  if (queue_.empty()) {
+    return;
+  }
+  current_ = queue_.end();
+  --current_;
+  HtmlEvent* event = *current_;
+  HtmlElement* element = event->GetElementIfStartEvent();
+  if ((element != NULL) && IsLiteralTag(element->keyword())) {
+    // The current stream ends with the beginning of a literal
+    // tag.  We are not going to process this within the current
+    // flush window, but instead wait till the EndElement arrives
+    // from the lexer.
+    delayed_start_literal_ = event;
+    queue_.erase(current_);
+  }
+  current_ = queue_.end();
 }
 
 void HtmlParse::CheckEventParent(HtmlEvent* event, HtmlElement* expect,
@@ -955,6 +979,51 @@ void HtmlParse::FatalErrorHere(const char* msg, ...) {
 void HtmlParse::CloseElement(
     HtmlElement* element, HtmlElement::CloseStyle close_style,
     int line_number) {
+  if (delayed_start_literal_ != NULL) {
+    HtmlElement* element = delayed_start_literal_->GetElementIfStartEvent();
+    DCHECK(element != NULL);
+    bool insert_at_begin = true;
+    if (!queue_.empty()) {
+      // We have been holding back "<script>" until the lexer tells us the
+      // tag is closed here.  But we want to insert the <script> tag *before*
+      // the previous characters block, if any.
+      //
+      // Most of the time we just need queue_.push_front (bool insert_at_begin
+      // above) but when InsertComment is called from Flush, which happens
+      // in the debug filter, we must put the <script> after that, so
+      // walk back from current, past the Character block, if any.  We
+      // don't expect anything other than a Character block here.
+      HtmlEventListIterator p = queue_.end();
+      --p;
+      HtmlEvent* event = *p;
+      HtmlCharactersNode* node = event->GetCharactersNode();
+      if (node != NULL) {
+        if (p != queue_.begin()) {
+          --p;
+          element->set_begin(queue_.insert(p, delayed_start_literal_));
+          insert_at_begin = false;
+        }
+      } else {
+        // I don't think it's possible to get here, but let's find out if
+        // we do.  Note that we use an 'info' log as this is not actionable
+        // from a site owner's perspective, and I think we are doing the right
+        // thing anyway, but I'd like to hit this with a unit test if we can
+        // find a case.
+        GoogleString buf;
+        event->ToString(&buf);
+        InfoHere("Deferred literal tag, expected a characters node : %s",
+                 buf.c_str());
+        LOG(DFATAL) << "Deferred literal tag, expected a characters node: "
+                    << buf;
+      }
+    }
+    if (insert_at_begin) {
+      queue_.push_front(delayed_start_literal_);
+      element->set_begin(queue_.begin());
+    }
+    delayed_start_literal_ = NULL;
+  }
+
   HtmlEndElementEvent* end_event =
       new HtmlEndElementEvent(element, line_number);
   element->set_close_style(close_style);

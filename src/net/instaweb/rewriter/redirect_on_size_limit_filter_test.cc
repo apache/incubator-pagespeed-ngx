@@ -140,7 +140,7 @@ TEST_F(RedirectOnSizeLimitFilterTest, TestFlushBeforeLimit) {
 
   CheckOutput(57, 79, true, input,
       StringPrintf("<html><input type=\"text\"/>"
-                   "<script type=\"text/javascript\">alert('123');</script>%s"
+                   "%s<script type=\"text/javascript\">alert('123');</script>"
                    "</html>", kScript));
 
   CheckOutput(79, 113, true, input,
@@ -184,13 +184,14 @@ TEST_F(RedirectOnSizeLimitFilterTest, TestFlushBeforeLimit) {
 
 TEST_F(RedirectOnSizeLimitFilterTest, TestEscapingAndFlush) {
   SetupDriver(100);
-  GoogleString output = StringPrintf(
+  static const char kOutput[] =
       "<html>"
       "<input type=\"text\"/>"
-      "<script type=\"text/javascript\">alert('123');</script>"
       "<script type=\"text/javascript\">"
       "window.location=\"http://test.com/in.html?\\'(&ModPagespeed=off\";"
-      "</script></html>");
+      "</script>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "</html>";
 
   html_parse()->StartParse("http://test.com/in.html?'(");
   html_parse()->ParseText(
@@ -203,7 +204,7 @@ TEST_F(RedirectOnSizeLimitFilterTest, TestEscapingAndFlush) {
       "<table><tr><td>blah</td></tr></table></html>");
   html_parse()->FinishParse();
 
-  EXPECT_EQ(output, output_);
+  EXPECT_STREQ(kOutput, output_);
 }
 
 }  // namespace net_instaweb

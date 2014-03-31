@@ -503,6 +503,13 @@ class HtmlParse {
     return string_table_.string_bytes_allocated();
   }
 
+  // If a FLUSH occurs in the middle of a script, style, or other tag
+  // whose contents can only be a Characters block, then we will buffer
+  // up the start of the script tag and not emit it and the Characters block
+  // until after we see the close script tag.  This function enforces that
+  // right before calling the Filters.
+  void DelayLiteralTag();
+
   FilterVector event_listeners_;
   SymbolTableSensitive string_table_;
   FilterVector filters_;
@@ -526,6 +533,7 @@ class HtmlParse {
   bool log_rewrite_timing_;  // Should we time the speed of parsing?
   bool running_filters_;
   int64 parse_start_time_us_;
+  HtmlEvent* delayed_start_literal_;
   Timer* timer_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlParse);
