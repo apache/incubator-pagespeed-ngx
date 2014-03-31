@@ -120,7 +120,7 @@
                 '<(LIB_DIR)/pagespeed/libpagespeed_html_gperf.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_http_core.a',
                 '<(LIB_DIR)/pagespeed/libpagespeed_base_core.a',
-                '<(LIB_DIR)/build/temp_gyp/libgoogleurl.a',
+                '<(LIB_DIR)/url/liburl_lib.a',
                 '<(LIB_DIR)/base/libbase.a',
                 '<(LIB_DIR)/base/libbase_static.a',
                 '<(LIB_DIR)/third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a',

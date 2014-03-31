@@ -1,24 +1,572 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-# Copyright 2009 Google Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright (c) 2012 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-# This script is wrapper for the Chromium version of gyp_chromium.
+# This script is wrapper for Chromium that adds some support for how GYP
+# is invoked by Chromium beyond what can be done in the gclient hooks.
 
+# This was copied from the chromium repository at revision 256281. The only
+# change was adding back support and making default Makefile generation, instead
+# of ninja support. This was removed as discussed in crbug.com/348686.
+
+import glob
+import gyp_helper
+import json
 import os
+import pipes
+import shlex
+import shutil
+import subprocess
+import string
+import sys
+import tempfile
 
-script_dir = os.path.dirname(__file__)
-chrome_src = os.path.normpath(os.path.join(script_dir, os.pardir, 'third_party', 'chromium', 'src'))
+script_dir = os.path.dirname(os.path.realpath(__file__))
+chrome_src = os.path.abspath(os.path.join(script_dir, os.pardir))
 
-execfile(os.path.join(chrome_src, 'build', 'gyp_chromium'))
+sys.path.insert(0, os.path.join(chrome_src, 'tools', 'gyp', 'pylib'))
+import gyp
+
+# Assume this file is in a one-level-deep subdirectory of the source root.
+SRC_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Add paths so that pymod_do_main(...) can import files.
+sys.path.insert(1, os.path.join(chrome_src, 'tools'))
+sys.path.insert(1, os.path.join(chrome_src, 'tools', 'generate_shim_headers'))
+sys.path.insert(1, os.path.join(chrome_src, 'tools', 'grit'))
+sys.path.insert(1, os.path.join(chrome_src, 'chrome', 'tools', 'build'))
+sys.path.insert(1, os.path.join(chrome_src, 'native_client', 'build'))
+sys.path.insert(1, os.path.join(chrome_src, 'native_client_sdk', 'src',
+    'build_tools'))
+sys.path.insert(1, os.path.join(chrome_src, 'remoting', 'tools', 'build'))
+sys.path.insert(1, os.path.join(chrome_src, 'third_party', 'liblouis'))
+sys.path.insert(1, os.path.join(chrome_src, 'third_party', 'WebKit',
+    'Source', 'build', 'scripts'))
+
+# On Windows, Psyco shortens warm runs of build/gyp_chromium by about
+# 20 seconds on a z600 machine with 12 GB of RAM, from 90 down to 70
+# seconds.  Conversely, memory usage of build/gyp_chromium with Psyco
+# maxes out at about 158 MB vs. 132 MB without it.
+#
+# Psyco uses native libraries, so we need to load a different
+# installation depending on which OS we are running under. It has not
+# been tested whether using Psyco on our Mac and Linux builds is worth
+# it (the GYP running time is a lot shorter, so the JIT startup cost
+# may not be worth it).
+if sys.platform == 'win32':
+  try:
+    sys.path.insert(0, os.path.join(chrome_src, 'third_party', 'psyco_win32'))
+    import psyco
+  except:
+    psyco = None
+else:
+  psyco = None
+
+
+def GetSupplementalFiles():
+  """Returns a list of the supplemental files that are included in all GYP
+  sources."""
+  return glob.glob(os.path.join(chrome_src, '*', 'supplement.gypi'))
+
+
+def FormatKeyForGN(key):
+  """Returns the given GYP key reformatted for GN.
+
+  GYP dictionary keys can be almost anything, but in GN they are identifiers
+  and must follow the same rules. This reformats such keys to be valid GN
+  identifiers."""
+  return ''.join([c if c in string.ascii_letters else '_' for c in key])
+
+
+def EscapeStringForGN(s):
+  """Converts a string to a GN string literal."""
+  for old, new in [('\\', '\\\\'), ('$', '\\$'), ('"', '\\"')]:
+    s = s.replace(old, new)
+  return '"' + s + '"'
+
+
+def ProcessGypDefinesItems(items):
+  """Converts a list of strings to a list of key-value pairs."""
+  result = []
+  for item in items:
+    tokens = item.split('=', 1)
+    # Some GYP variables have hyphens, which we don't support.
+    key = FormatKeyForGN(tokens[0])
+    if len(tokens) == 2:
+      result += [(key, tokens[1])]
+    else:
+      # No value supplied, treat it as a boolean and set it. Note that we
+      # use the string '1' here so we have a consistent definition whether
+      # you do 'foo=1' or 'foo'.
+      result += [(key, '1')]
+  return result
+
+
+def GetGypVarsForGN(supplemental_files):
+  """Returns a dictionary of all GYP vars that we will be passing to GN."""
+  # Find the .gyp directory in the user's home directory.
+  home_dot_gyp = os.environ.get('GYP_CONFIG_DIR', None)
+  if home_dot_gyp:
+    home_dot_gyp = os.path.expanduser(home_dot_gyp)
+  if not home_dot_gyp:
+    home_vars = ['HOME']
+    if sys.platform in ('cygwin', 'win32'):
+      home_vars.append('USERPROFILE')
+    for home_var in home_vars:
+      home = os.getenv(home_var)
+      if home != None:
+        home_dot_gyp = os.path.join(home, '.gyp')
+        if not os.path.exists(home_dot_gyp):
+          home_dot_gyp = None
+        else:
+          break
+
+  if home_dot_gyp:
+    include_gypi = os.path.join(home_dot_gyp, "include.gypi")
+    if os.path.exists(include_gypi):
+      supplemental_files += [include_gypi]
+
+  # GYP defines from the supplemental.gypi files.
+  supp_items = []
+  for supplement in supplemental_files:
+    with open(supplement, 'r') as f:
+      try:
+        file_data = eval(f.read(), {'__builtins__': None}, None)
+      except SyntaxError, e:
+        e.filename = os.path.abspath(supplement)
+        raise
+      variables = file_data.get('variables', [])
+      for v in variables:
+        supp_items += [(FormatKeyForGN(v), str(variables[v]))]
+
+  # GYP defines from the environment.
+  env_items = ProcessGypDefinesItems(
+      shlex.split(os.environ.get('GYP_DEFINES', '')))
+
+  # GYP defines from the command line. We can't use optparse since we want
+  # to ignore all arguments other than "-D".
+  cmdline_input_items = []
+  for i in range(len(sys.argv))[1:]:
+    if sys.argv[i].startswith('-D'):
+      if sys.argv[i] == '-D' and i + 1 < len(sys.argv):
+        cmdline_input_items += [sys.argv[i + 1]]
+      elif len(sys.argv[i]) > 2:
+        cmdline_input_items += [sys.argv[i][2:]]
+  cmdline_items = ProcessGypDefinesItems(cmdline_input_items)
+
+  vars_dict = dict(supp_items + env_items + cmdline_items)
+  # It's not possible to set a default value for cpu_arch in GN, so do it here
+  # for now (http://crbug.com/344767).
+  if vars_dict.get('OS') == 'android' and not 'target_arch' in vars_dict:
+    vars_dict['target_arch'] = 'arm'
+  return vars_dict
+
+
+def GetOutputDirectory():
+  """Returns the output directory that GYP will use."""
+  # GYP generator flags from the command line. We can't use optparse since we
+  # want to ignore all arguments other than "-G".
+  needle = '-Goutput_dir='
+  cmdline_input_items = []
+  for item in sys.argv[1:]:
+    if item.startswith(needle):
+      return item[len(needle):]
+
+  env_items = shlex.split(os.environ.get('GYP_GENERATOR_FLAGS', ''))
+  needle = 'output_dir='
+  for item in env_items:
+    if item.startswith(needle):
+      return item[len(needle):]
+
+  return "out"
+
+
+def GetArgsStringForGN(vars_dict):
+  """Returns the args to pass to GN.
+  Based on a subset of the GYP variables that have been rewritten a bit."""
+  gn_args = ''
+
+  # Note: These are the additional flags passed to various builds by builders
+  # on the main waterfall. We'll probably need to add these at some point:
+  #   mac_strip_release=1         http://crbug.com/330301
+  #   linux_dump_symbols=0        http://crbug.com/330300
+  #   host_os=linux  Probably can skip, GN knows the host OS.
+  #   order_text_section=<path>   http://crbug.com/330299
+  #   chromium_win_pch=0          http://crbug.com/297678
+  #   chromium_ios_signing=0      http://crbug.com/330302
+  #   use_allocator=tcmalloc      http://crbug.com/330303, 345554
+  #   release_extra_flags=...     http://crbug.com/330305
+
+  # These tuples of (key, value, gn_arg_string) use the gn_arg_string for
+  # gn when the key is set to the given value in the GYP arguments.
+  remap_cases = [
+      ('android_webview_build', '1', 'is_android_webview_build=true'),
+      ('branding', 'Chrome', 'is_chrome_branded=true'),
+      ('build_for_tool', 'drmemory', 'disable_iterator_debugging=true'),
+      ('build_for_tool', 'tsan', 'disable_iterator_debugging=true'),
+      ('buildtype', 'Official', 'is_official_build=true'),
+      ('component', 'shared_library', 'is_component_build=true'),
+      ('clang', '1', 'is_clang=true'),
+      ('clang_use_chrome_plugins', '0', 'clang_use_chrome_plugins=false'),
+      ('disable_glibcxx_debug', '1', 'disable_iterator_debugging=true'),
+      ('enable_mdns', '0', 'enable_mdns=false'),
+      ('enable_mdns', '1', 'enable_mdns=true'),
+      ('enable_plugins', '0', 'enable_plugins=false'),
+      ('enable_plugins', '1', 'enable_plugins=true'),
+      ('target_arch', 'ia32', 'cpu_arch="x86"'),
+      ('target_arch', 'x64', 'cpu_arch="x64" force_win64=true'),
+      ('target_arch', 'arm', 'cpu_arch="arm"'),
+      ('target_arch', 'mipsel', 'cpu_arch="mipsel"'),
+      ('fastbuild', '0', 'symbol_level=2'),
+      ('fastbuild', '1', 'symbol_level=1'),
+      ('fastbuild', '2', 'symbol_level=0'),
+      ('OS', 'ios', 'os="ios"'),
+      ('OS', 'android', 'os="android"'),
+      ('chromeos', '1', 'os="chromeos"'),
+      ('use_aura', '1', 'use_aura=true'),
+      ('use_goma', '1', 'use_goma=true'),
+      ('use_openssl', '0', 'use_openssl=false'),
+      ('use_openssl', '1', 'use_openssl=true'),
+      ('asan', '1', 'is_asan=true'),
+      ('lsan', '1', 'is_lsan=true'),
+      ('msan', '1', 'is_msan=true'),
+      ('tsan', '1', 'is_tsan=true'),
+  ]
+  for i in remap_cases:
+    if i[0] in vars_dict and vars_dict[i[0]] == i[1]:
+      gn_args += ' ' + i[2]
+
+  # These string arguments get passed directly as GN strings.
+  for v in ['android_src', 'arm_float_abi', 'ios_deployment_target',
+            'ios_sdk_path', 'windows_sdk_path']:
+    if v in vars_dict:
+      gn_args += ' ' + v + '=' + EscapeStringForGN(vars_dict[v])
+
+  # gomadir is renamed goma_dir in the GN build.
+  if 'gomadir' in vars_dict:
+    gn_args += ' goma_dir=%s' % EscapeStringForGN(vars_dict['gomadir'])
+
+  # Set the "use_ios_simulator" flag if the ios_sdk_path is set.
+  if 'ios_sdk_path' in vars_dict:
+    if os.path.basename(vars_dict['ios_sdk_path']).lower().startswith(
+        'iphonesimulator'):
+      gn_args += ' use_ios_simulator=true'
+    else:
+      gn_args += ' use_ios_simulator=false'
+
+  # These arguments get passed directly as integers (avoiding the quoting and
+  # escaping of the string ones above).
+  for v in ['arm_version']:
+    if v in vars_dict:
+      gn_args += ' %s=%s' % (v, vars_dict[v])
+
+  # Some other flags come from GYP environment variables.
+  gyp_msvs_version = os.environ.get('GYP_MSVS_VERSION', '')
+  if gyp_msvs_version:
+    gn_args += ' visual_studio_version=' + EscapeStringForGN(gyp_msvs_version)
+  gyp_msvs_override_path = os.environ.get('GYP_MSVS_OVERRIDE_PATH', '')
+  if gyp_msvs_override_path:
+    gn_args += ' visual_studio_path=' + \
+        EscapeStringForGN(gyp_msvs_override_path)
+
+  # Set the GYP flag so BUILD files know they're being invoked in GYP mode.
+  gn_args += ' is_gyp=true'
+
+  gyp_outdir = GetOutputDirectory()
+  gn_args += ' gyp_output_dir=\"%s\"' % gyp_outdir
+
+  return gn_args.strip()
+
+
+def additional_include_files(supplemental_files, args=[]):
+  """
+  Returns a list of additional (.gypi) files to include, without duplicating
+  ones that are already specified on the command line. The list of supplemental
+  include files is passed in as an argument.
+  """
+  # Determine the include files specified on the command line.
+  # This doesn't cover all the different option formats you can use,
+  # but it's mainly intended to avoid duplicating flags on the automatic
+  # makefile regeneration which only uses this format.
+  specified_includes = set()
+  for arg in args:
+    if arg.startswith('-I') and len(arg) > 2:
+      specified_includes.add(os.path.realpath(arg[2:]))
+
+  result = []
+  def AddInclude(path):
+    if os.path.realpath(path) not in specified_includes:
+      result.append(path)
+
+  # Always include common.gypi.
+  AddInclude(os.path.join(script_dir, 'common.gypi'))
+
+  # Optionally add supplemental .gypi files if present.
+  for supplement in supplemental_files:
+    AddInclude(supplement)
+
+  return result
+
+
+def RunGN(vars_dict):
+  """Runs GN, returning True if it succeeded, printing an error and returning
+  false if not."""
+
+  # The binaries in platform-specific subdirectories in src/tools/gn/bin.
+  gnpath = SRC_DIR + '/tools/gn/bin/'
+  if sys.platform in ('cygwin', 'win32'):
+    gnpath += 'win/gn.exe'
+  elif sys.platform.startswith('linux'):
+    # On Linux we have 32-bit and 64-bit versions.
+    if subprocess.check_output(["getconf", "LONG_BIT"]).find("64") >= 0:
+      gnpath += 'linux/gn'
+    else:
+      gnpath += 'linux/gn32'
+  elif sys.platform == 'darwin':
+    gnpath += 'mac/gn'
+  else:
+    print 'Unknown platform for GN: ', sys.platform
+    return False
+
+  print 'Generating gyp files from GN...'
+
+  # Need to pass both the source root (the bots don't run this command from
+  # within the source tree) as well as set the is_gyp value so the BUILD files
+  # to know they're being run under GYP.
+  args = [gnpath, 'gyp', '-q',
+          '--root=' + chrome_src,
+          '--args=' + GetArgsStringForGN(vars_dict),
+          '--output=//' + GetOutputDirectory() + '/gn_build/']
+  return subprocess.call(args) == 0
+
+
+def GetDesiredVsToolchainHashes():
+  """Load a list of SHA1s corresponding to the toolchains that we want installed
+  to build with."""
+  sha1path = os.path.join(script_dir, 'toolchain_vs2013.hash')
+  with open(sha1path, 'rb') as f:
+    return f.read().strip().splitlines()
+
+
+def DownloadVsToolChain():
+  """Download the Visual Studio toolchain on Windows.
+
+  If on Windows, request that depot_tools install/update the automatic
+  toolchain, and then use it (unless opted-out) and return a tuple containing
+  the x64 and x86 paths. Otherwise return None.
+  """
+  vs2013_runtime_dll_dirs = None
+  depot_tools_win_toolchain = \
+      bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
+  if sys.platform in ('win32', 'cygwin') and depot_tools_win_toolchain:
+    import find_depot_tools
+    depot_tools_path = find_depot_tools.add_depot_tools_to_path()
+    temp_handle, data_file = tempfile.mkstemp(suffix='.json')
+    os.close(temp_handle)
+    get_toolchain_args = [
+        sys.executable,
+        os.path.join(depot_tools_path,
+                    'win_toolchain',
+                    'get_toolchain_if_necessary.py'),
+        '--output-json', data_file,
+      ] + GetDesiredVsToolchainHashes()
+    subprocess.check_call(get_toolchain_args)
+
+    with open(data_file, 'r') as tempf:
+      toolchain_data = json.load(tempf)
+    os.unlink(data_file)
+
+    toolchain = toolchain_data['path']
+    version = toolchain_data['version']
+    version_is_pro = version[-1] != 'e'
+    win8sdk = toolchain_data['win8sdk']
+    wdk = toolchain_data['wdk']
+    # TODO(scottmg): The order unfortunately matters in these. They should be
+    # split into separate keys for x86 and x64. (See CopyVsRuntimeDlls call
+    # below). http://crbug.com/345992
+    vs2013_runtime_dll_dirs = toolchain_data['runtime_dirs']
+
+    os.environ['GYP_MSVS_OVERRIDE_PATH'] = toolchain
+    os.environ['GYP_MSVS_VERSION'] = version
+    # We need to make sure windows_sdk_path is set to the automated
+    # toolchain values in GYP_DEFINES, but don't want to override any
+    # otheroptions.express
+    # values there.
+    gyp_defines_dict = gyp.NameValueListToDict(gyp.ShlexEnv('GYP_DEFINES'))
+    gyp_defines_dict['windows_sdk_path'] = win8sdk
+    os.environ['GYP_DEFINES'] = ' '.join('%s=%s' % (k, pipes.quote(str(v)))
+        for k, v in gyp_defines_dict.iteritems())
+    os.environ['WINDOWSSDKDIR'] = win8sdk
+    os.environ['WDK_DIR'] = wdk
+    # Include the VS runtime in the PATH in case it's not machine-installed.
+    runtime_path = ';'.join(vs2013_runtime_dll_dirs)
+    os.environ['PATH'] = runtime_path + ';' + os.environ['PATH']
+    print('Using automatic toolchain in %s (%s edition).' % (
+              toolchain, 'Pro' if version_is_pro else 'Express'))
+  return vs2013_runtime_dll_dirs
+
+
+def CopyVsRuntimeDlls(output_dir, runtime_dirs):
+  """Copies the VS runtime DLLs from the given |runtime_dirs| to the output
+  directory so that even if not system-installed, built binaries are likely to
+  be able to run.
+
+  This needs to be run after gyp has been run so that the expected target
+  output directories are already created.
+  """
+  assert sys.platform.startswith(('win32', 'cygwin'))
+
+  def copy_runtime(target_dir, source_dir, dll_pattern):
+    """Copy both the msvcr and msvcp runtime DLLs, only if the target doesn't
+    exist, but the target directory does exist."""
+    for which in ('p', 'r'):
+      dll = dll_pattern % which
+      target = os.path.join(target_dir, dll)
+      source = os.path.join(source_dir, dll)
+      # If gyp generated to that output dir, and the runtime isn't already
+      # there, then copy it over.
+      if (os.path.isdir(target_dir) and
+          (not os.path.isfile(target) or
+            os.stat(target).st_mtime != os.stat(source).st_mtime)):
+        print 'Copying %s to %s...' % (source, target)
+        if os.path.exists(target):
+          os.unlink(target)
+        shutil.copy2(source, target)
+
+  x86, x64 = runtime_dirs
+  out_debug = os.path.join(output_dir, 'Debug')
+  out_debug_nacl64 = os.path.join(output_dir, 'Debug', 'x64')
+  out_release = os.path.join(output_dir, 'Release')
+  out_release_nacl64 = os.path.join(output_dir, 'Release', 'x64')
+  out_debug_x64 = os.path.join(output_dir, 'Debug_x64')
+  out_release_x64 = os.path.join(output_dir, 'Release_x64')
+
+  if os.path.exists(out_debug) and not os.path.exists(out_debug_nacl64):
+    os.makedirs(out_debug_nacl64)
+  if os.path.exists(out_release) and not os.path.exists(out_release_nacl64):
+    os.makedirs(out_release_nacl64)
+  copy_runtime(out_debug,          x86, 'msvc%s120d.dll')
+  copy_runtime(out_release,        x86, 'msvc%s120.dll')
+  copy_runtime(out_debug_x64,      x64, 'msvc%s120d.dll')
+  copy_runtime(out_release_x64,    x64, 'msvc%s120.dll')
+  copy_runtime(out_debug_nacl64,   x64, 'msvc%s120d.dll')
+  copy_runtime(out_release_nacl64, x64, 'msvc%s120.dll')
+
+
+if __name__ == '__main__':
+  args = sys.argv[1:]
+
+  if int(os.environ.get('GYP_CHROMIUM_NO_ACTION', 0)):
+    print 'Skipping gyp_chromium due to GYP_CHROMIUM_NO_ACTION env var.'
+    sys.exit(0)
+
+  # Use the Psyco JIT if available.
+  if psyco:
+    psyco.profile()
+    print "Enabled Psyco JIT."
+
+  # Fall back on hermetic python if we happen to get run under cygwin.
+  # TODO(bradnelson): take this out once this issue is fixed:
+  #    http://code.google.com/p/gyp/issues/detail?id=177
+  if sys.platform == 'cygwin':
+    import find_depot_tools
+    depot_tools_path = find_depot_tools.add_depot_tools_to_path()
+    python_dir = sorted(glob.glob(os.path.join(depot_tools_path,
+                                               'python2*_bin')))[-1]
+    env = os.environ.copy()
+    env['PATH'] = python_dir + os.pathsep + env.get('PATH', '')
+    p = subprocess.Popen(
+       [os.path.join(python_dir, 'python.exe')] + sys.argv,
+       env=env, shell=False)
+    p.communicate()
+    sys.exit(p.returncode)
+
+  gyp_helper.apply_chromium_gyp_env()
+
+  # This could give false positives since it doesn't actually do real option
+  # parsing.  Oh well.
+  gyp_file_specified = False
+  for arg in args:
+    if arg.endswith('.gyp'):
+      gyp_file_specified = True
+      break
+
+  # If we didn't get a file, check an env var, and then fall back to
+  # assuming 'all.gyp' from the same directory as the script.
+  if not gyp_file_specified:
+    gyp_file = os.environ.get('CHROMIUM_GYP_FILE')
+    if gyp_file:
+      # Note that CHROMIUM_GYP_FILE values can't have backslashes as
+      # path separators even on Windows due to the use of shlex.split().
+      args.extend(shlex.split(gyp_file))
+    else:
+      args.append(os.path.join(script_dir, 'all.gyp'))
+
+  # There shouldn't be a circular dependency relationship between .gyp files,
+  # but in Chromium's .gyp files, on non-Mac platforms, circular relationships
+  # currently exist.  The check for circular dependencies is currently
+  # bypassed on other platforms, but is left enabled on the Mac, where a
+  # violation of the rule causes Xcode to misbehave badly.
+  # TODO(mark): Find and kill remaining circular dependencies, and remove this
+  # option.  http://crbug.com/35878.
+  # TODO(tc): Fix circular dependencies in ChromiumOS then add linux2 to the
+  # list.
+  if sys.platform not in ('darwin',):
+    args.append('--no-circular-check')
+
+  # Default to make if no generator has
+  # explicitly been set.
+  if not os.environ.get('GYP_GENERATORS'):
+    os.environ['GYP_GENERATORS'] = 'make'
+  elif sys.platform == 'darwin' and not os.environ.get('GYP_GENERATORS') and \
+      not 'OS=ios' in os.environ.get('GYP_DEFINES', []):
+    os.environ['GYP_GENERATORS'] = 'make'
+
+  vs2013_runtime_dll_dirs = DownloadVsToolChain()
+
+  # If CHROMIUM_GYP_SYNTAX_CHECK is set to 1, it will invoke gyp with --check
+  # to enfore syntax checking.
+  syntax_check = os.environ.get('CHROMIUM_GYP_SYNTAX_CHECK')
+  if syntax_check and int(syntax_check):
+    args.append('--check')
+
+  supplemental_includes = GetSupplementalFiles()
+  gn_vars_dict = GetGypVarsForGN(supplemental_includes)
+
+  # Automatically turn on crosscompile support for platforms that need it.
+  # (The Chrome OS build sets CC_host / CC_target which implicitly enables
+  # this mode.)
+  if all(('ninja' in os.environ.get('GYP_GENERATORS', ''),
+          gn_vars_dict.get('OS') in ['android', 'ios'],
+          'GYP_CROSSCOMPILE' not in os.environ)):
+    os.environ['GYP_CROSSCOMPILE'] = '1'
+
+  # TODO(brettw) bug 350974 either turn back on GN or delete all of this code.
+  #if not RunGN(gn_vars_dict):
+  #  sys.exit(1)
+  args.extend(
+      ['-I' + i for i in additional_include_files(supplemental_includes, args)])
+
+  args.extend(['-D', 'gyp_output_dir=' + GetOutputDirectory()])
+
+  print 'Updating projects from gyp files...'
+  sys.stdout.flush()
+
+  # Off we go...
+  gyp_rc = gyp.main(args)
+
+  # Check for landmines (reasons to clobber the build). This must be run here,
+  # rather than a separate runhooks step so that any environment modifications
+  # from above are picked up.
+  print 'Running build/landmines.py...'
+  subprocess.check_call(
+      [sys.executable, os.path.join(script_dir, 'landmines.py')])
+
+  if vs2013_runtime_dll_dirs:
+    x64_runtime, x86_runtime = vs2013_runtime_dll_dirs
+    CopyVsRuntimeDlls(os.path.join(chrome_src, GetOutputDirectory()),
+                      (x86_runtime, x64_runtime))
+
+  sys.exit(gyp_rc)

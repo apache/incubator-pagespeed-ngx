@@ -21,7 +21,7 @@
 
 #include "pagespeed/kernel/base/string.h"
 
-#include "base/string_piece.h"
+#include "base/strings/string_piece.h"
 #include "third_party/base64/base64.h"
 
 namespace net_instaweb {

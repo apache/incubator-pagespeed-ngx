@@ -102,6 +102,14 @@ prepare_files:
 	    >> webutil/html/$$f; \
 	  rm -f original/webutil/html/$$f; \
 	done
+	mkdir -p webutil/css; \
+	for f in `ls original/webutil/css/`; do \
+	  cp apache-license.txt webutil/css/$$f; \
+	  sed 's@#include "base/macros.h"@#include "base/css_macros.h"@' \
+	    < original/webutil/css/$$f \
+	    >> webutil/css/$$f; \
+	  rm -f original/webutil/css/$$f; \
+	done
 # The rest of the files just need to have licenses added.
 	for f in `cd original/ && find . -type f`; do \
 	  mkdir -p `dirname $$f`; \

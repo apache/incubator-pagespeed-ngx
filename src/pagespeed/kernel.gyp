@@ -259,7 +259,7 @@
       ],
       'dependencies': [
         'pagespeed_base_core',
-        '<(DEPTH)/build/temp_gyp/googleurl.gyp:googleurl',
+        '<(DEPTH)/url/url.gyp:url_lib',
       ],
     },
     {

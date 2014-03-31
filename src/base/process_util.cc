@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Chromium's process_util.cc pulls a lot of file related functions into the
+// Chromium's process.cc pulls a lot of file related functions into the
 // base package. We don't need them, so strip down all the code.
 
 #include "base/logging.h"
-#include "base/process_util.h"
+#include "base/process/process.h"
 
 namespace base {
 

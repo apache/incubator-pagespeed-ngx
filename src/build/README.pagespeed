@@ -1,0 +1,12 @@
+The following files in this directory were copied from chromium's repository at
+revision 256281 (https://src.chromium.org/svn/trunk/src/build/?p=256281).
+
+filename_rules.gypi
+get_landmines.py
+grit_action.gypi
+gyp_chromium (with minor local modifications described at the top)
+gyp_helper.py
+java.gypi
+landmine_utils.py
+landmines.py
+release.gypi

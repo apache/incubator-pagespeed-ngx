@@ -939,7 +939,7 @@ TEST_F(PngOptimizerTest, ScopedPngStruct) {
   ASSERT_DEATH(ScopedPngStruct t =
                ScopedPngStruct(static_cast<ScopedPngStruct::Type>(-1),
                                &message_handler_),
-               "Check failed: type==READ || type==WRITE");
+               "Check failed: type == READ \\|\\| type == WRITE");
 #endif
 }
 

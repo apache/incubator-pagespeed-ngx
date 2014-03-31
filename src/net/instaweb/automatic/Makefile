@@ -42,7 +42,6 @@ BUILDTYPE = Release
 BASE_LIBS = \
   base/libbase.a \
   base/libbase_static.a \
-  build/temp_gyp/libgoogleurl.a \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libinstaweb_add_instrumentation_data2c.a \
   net/instaweb/libinstaweb_add_instrumentation_opt_data2c.a \
@@ -157,7 +156,8 @@ BASE_LIBS = \
   third_party/protobuf/libprotobuf_lite.a \
   third_party/re2/libre2.a \
   third_party/serf/libserf.a \
-  third_party/zlib/libzlib.a
+  third_party/zlib/libzlib.a \
+  url/liburl_lib.a
 
 # The 'gclient' build flow uses 'xcodebuild' on Mac and 'make' on Linux.
 # To make matters worse, it puts all the intermediate libraries in the same
@@ -236,7 +236,7 @@ all : build_libraries
 # Flags used to compile static_rewriter.cc.  Note that these are not
 # the flags used to compile pagespeed_automatic, which is compiled
 # with either BUILDTYPE=Release or BUILDTYPE=Debug
-CXXFLAGS = -g
+CXXFLAGS = -g -DCHROMIUM_REVISION=256281
 
 $(OUTPUT_DIR)/pagespeed_automatic.a : $(LIBS)
 	@echo Merging libraries ...

@@ -19,19 +19,11 @@
 #include <string>
 #include <vector>
 
-// TODO(sligocki): Add this to Chromium string_util.h
+#include "base/strings/string_util.h"
+
 inline void JoinStrings(const std::vector<std::string>& parts,
                         const char* delim, std::string* result) {
-  if (parts.size() != 0) {
-    result->append(parts[0]);
-    std::vector<std::string>::const_iterator iter = parts.begin();
-    ++iter;
-
-    for (; iter != parts.end(); ++iter) {
-      result->append(delim);
-      result->append(*iter);
-    }
-  }
+  *result = JoinString(parts, delim);
 }
 
 #endif  // STRINGS_JOIN_H_

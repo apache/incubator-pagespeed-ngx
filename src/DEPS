@@ -20,12 +20,8 @@ vars = {
   "chromium_trunk": "https://src.chromium.org/svn/trunk/",
   # We don't include @ inside the revision here as is customary since
   # we want to pass this into a -D flag
-  "chromium_revision_num": "161115",
+  "chromium_revision_num": "256281",
   "chromium_deps_root": "src/third_party/chromium_deps",
-
-  # Version of libwebp and android we use. This should normally match the
-  # chromium base, but sometimes it's easier to update it separately.
-  "chromium_webp_android_revision": "@200538",
 
   "libpagespeed_svn_root": "https://page-speed.googlecode.com/svn/",
   "libpagespeed_trunk": "https://page-speed.googlecode.com/svn/lib/trunk/",
@@ -96,8 +92,8 @@ deps = {
   # We check 'build/android' out of Chromium repo to get
   # 'android/cpufeatures.gypi', which is needed to compile libwebp.
   "src/build/android":
-    Var("chromium_trunk") + "src/build/android/" +
-        Var("chromium_webp_android_revision"),
+    Var("chromium_trunk") + "src/build/android/@" +
+        Var("chromium_revision_num"),
   "src/build/ios":
     Var("chromium_trunk") + "src/build/ios/@" + Var("chromium_revision_num"),
   "src/build/internal":
@@ -131,12 +127,6 @@ deps = {
     Var("chromium_trunk") + "deps/third_party/libjpeg_turbo/@" +
         Var("chromium_revision_num"),
 
-  "src/googleurl": From(Var("chromium_deps_root")),
-
-  "src/googleurl_noconv":
-    Var("libpagespeed_trunk") + "src/googleurl_noconv/" +
-        Var("libpagespeed_revision"),
-
   "src/testing":
     Var("chromium_trunk") + "src/testing/@" + Var("chromium_revision_num"),
   "src/testing/gtest": From(Var("chromium_deps_root")),
@@ -167,8 +157,10 @@ deps = {
     Var("chromium_trunk") + "src/build/@" + Var("chromium_revision_num"),
 
   "src/third_party/chromium/src/net/base":
-     Var("chromium_trunk") + "src/net/base/@" +
-         Var("chromium_revision_num"),
+     Var("chromium_trunk") + "src/net/base@" + Var("chromium_revision_num"),
+
+  "src/third_party/chromium/src/url":
+    Var("chromium_trunk") + "src/url@" + Var("chromium_revision_num"),
 
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
@@ -192,8 +184,8 @@ deps = {
 
   # We check libwebp out of Chromium repo to get the .gyp file.
   "src/third_party/libwebp":
-     Var("chromium_trunk") + "src/third_party/libwebp/" +
-         Var("chromium_webp_android_revision"),
+     Var("chromium_trunk") + "src/third_party/libwebp/@" +
+         Var("chromium_revision_num"),
 
   "src/tools/clang":
     (Var("chromium_trunk") + "src/tools/clang/@" +

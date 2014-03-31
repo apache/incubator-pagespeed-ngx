@@ -16,8 +16,8 @@
 #ifndef STRINGS_STRUTIL_H_
 #define STRINGS_STRUTIL_H_
 
-//#include "third_party/chromium/src/base/string_util.h"
-#include "base/string_util.h"
+//#include "third_party/chromium/src/base/strings/string_util.h"
+#include "base/strings/string_util.h"
 
 // Like the CONSIDER macro above except that it supports enums from another
 // class -- e.g., if:   enum Status { VERIFIED, NOT_VERIFIED, WHITE_LISTED }

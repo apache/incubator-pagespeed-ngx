@@ -15,7 +15,7 @@
 {
   'variables': {
     # This should normally be passed in by gclient's hooks
-    'chromium_revision%': 161115,
+    'chromium_revision%': 256281,
 
     # Make sure we link statically so everything gets linked into a
     # single shared object.

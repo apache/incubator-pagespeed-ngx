@@ -13,7 +13,5 @@
     #     dom_stats
     #     pgo_instrument
     #     pgo_optimize
-    #     purify
   ],
 }
-

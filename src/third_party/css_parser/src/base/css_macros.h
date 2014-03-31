@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BASE_MACROS_H_
-#define BASE_MACROS_H_
+#ifndef BASE_CSS_MACROS_H_
+#define BASE_CSS_MACROS_H_
 
 //#include "third_party/chromium/src/base/basictypes.h"
 #include "base/basictypes.h"
@@ -62,4 +62,4 @@
 #define FALLTHROUGH_INTENDED do { } while (0)
 #endif
 
-#endif  // BASE_MACROS_H_
+#endif  // BASE_CSS_MACROS_H_
