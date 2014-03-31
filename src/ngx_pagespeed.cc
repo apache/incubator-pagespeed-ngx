@@ -1676,6 +1676,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
       }
     }
     ctx->recorder = NULL;
+    ctx->url_string = url_string;
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -2165,6 +2166,9 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   NgxServerContext* server_context = cfg_s->server_context;
   MessageHandler* message_handler = cfg_s->handler;
   GoogleString url = ps_determine_url(r);
+  // The URL we use for cache key is a bit different since it may
+  // have PageSpeed query params removed.
+  GoogleString cache_url = ctx->url_string;
 
   // continue process
   if (status_ok) {
@@ -2185,7 +2189,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         kInfo,
         "Could not rewrite resource in-place "
         "because URL is not in cache: %s",
-        url.c_str());
+        cache_url.c_str());
     const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
         ctx->driver->options());
     RequestHeaders request_headers;
@@ -2196,7 +2200,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
         RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
-        url,
+        cache_url,
         ctx->driver->CacheFragment(),
         request_headers.GetProperties(),
         options->respect_vary(),
