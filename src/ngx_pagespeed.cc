@@ -283,15 +283,24 @@ ngx_int_t copy_response_headers_to_ngx(
     const GoogleString& name_gs = pagespeed_headers.Name(i);
     const GoogleString& value_gs = pagespeed_headers.Value(i);
 
-    if (preserve_caching_headers != kDontPreserveHeaders) {
+    if (preserve_caching_headers == kPreserveAllCachingHeaders) {
       if (StringCaseEqual(name_gs, "ETag") ||
           StringCaseEqual(name_gs, "Expires") ||
           StringCaseEqual(name_gs, "Date") ||
           StringCaseEqual(name_gs, "Last-Modified") ||
           StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
-      }
-    }
+      }      
+    } else if (preserve_caching_headers == kPreserveOnlyCacheControl) {
+      // Retain the original Cache-Control header, but send the recomputed
+      // values for all other cache-related headers.
+      if (StringCaseEqual(name_gs, "ETag") ||
+          StringCaseEqual(name_gs, "Expires") ||
+          StringCaseEqual(name_gs, "Date") ||
+          StringCaseEqual(name_gs, "Last-Modified")) {
+        continue;
+      }      
+    } // else we don't preserve any headers
 
     ngx_str_t name, value;
 
@@ -1642,6 +1651,9 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     }
   }
 
+  bool pagespeed_resource =
+      !html_rewrite && cfg_s->server_context->IsPagespeedResource(url);
+
   if (html_rewrite) {
     ps_release_base_fetch(ctx);
   } else {
@@ -1654,6 +1666,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
     ctx->html_rewrite = false;
     ctx->in_place = false;
     ctx->pagespeed_connection = NULL;
+    ctx->preserve_caching_headers = kDontPreserveHeaders;
+
     // See build_context_for_request() in mod_instaweb.cc
     // TODO(jefftk): Is this the right place to be modifying caching headers for
     // html fetches?  Or should that be done later, in the headers flow for
@@ -1664,7 +1678,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
       // Downstream cache integration is not enabled. Disable original
       // Cache-Control headers.
       ctx->preserve_caching_headers = kDontPreserveHeaders;
-    } else {
+    } else if (!pagespeed_resource) {
       ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
       // Downstream cache integration is enabled. If a rebeaconing key has been
       // configured and there is a ShouldBeacon header with the correct key,
@@ -1675,6 +1689,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
         ctx->preserve_caching_headers = kDontPreserveHeaders;
       }
     }
+
     ctx->recorder = NULL;
     ctx->url_string = url_string;
 
@@ -1709,7 +1724,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
               false /* requires_blink_cohort (no longer unused) */,
               &page_callback_added));
 
-  if (!html_rewrite && cfg_s->server_context->IsPagespeedResource(url)) {
+  if (pagespeed_resource) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
     ResourceFetch::Start(
