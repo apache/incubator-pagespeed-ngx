@@ -42,6 +42,8 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/cache/cache_spammer.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
@@ -59,7 +61,8 @@ class AprMemCacheTest : public CacheTestBase {
  protected:
   AprMemCacheTest()
       : timer_(new NullMutex, MockTimer::kApr_5_2010_ms),
-        lru_cache_(new LRUCache(kLRUCacheSize)) {
+        lru_cache_(new LRUCache(kLRUCacheSize)),
+        thread_system_(Platform::CreateThreadSystem()) {
     AprMemCache::InitStats(&statistics_);
   }
 
@@ -135,6 +138,7 @@ class AprMemCacheTest : public CacheTestBase {
   scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCache> servers_;
   scoped_ptr<FallbackCache> cache_;
+  scoped_ptr<ThreadSystem> thread_system_;
   GoogleString server_spec_;
 };
 
@@ -395,6 +399,21 @@ TEST_F(AprMemCacheTest, HealthCheck) {
     timer_.AdvanceMs(2);
   }
   EXPECT_TRUE(servers_->IsHealthy());
+}
+
+TEST_F(AprMemCacheTest, ThreadSafe) {
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
+
+  GoogleString large_pattern(kLargeWriteSize, 'a');
+  large_pattern += "%d";
+  CacheSpammer::RunTests(5 /* num_threads */,
+                         200 /* num_iters */,
+                         10 /* num_inserts */,
+                         false, true, large_pattern.c_str(),
+                         servers_.get(),
+                         thread_system_.get());
 }
 
 // Tests that a very low timeout out value causes a simple Get to fail.

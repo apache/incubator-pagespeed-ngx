@@ -35,6 +35,10 @@ class SharedString;
 // that cache callbacks will be run in a thread that is dependent
 // on the cache implementation.  This wrapper class just guarantees
 // the thread safety of the cache itself, not the callbacks.
+//
+// WARNING: THIS IMPLEMENTATION HOLDS A LOCK ACROSS THE VALIDATOR.
+// TODO(jmarantz): redesign the interface between this class and
+// the cache it protects.
 class ThreadsafeCache : public CacheInterface {
  public:
   // Does not takes ownership of cache.  Takes ownership of mutex.

@@ -21,14 +21,13 @@
 #include "pagespeed/kernel/cache/threadsafe_cache.h"
 
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/dynamic_annotations.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/util/platform.h"
@@ -42,71 +41,6 @@ const int kNumInserts = 10;
 
 namespace net_instaweb {
 
-class CacheSpammer : public ThreadSystem::Thread {
- public:
-  CacheSpammer(ThreadSystem* runtime,
-               ThreadSystem::ThreadFlags flags,
-               CacheInterface* cache,
-               bool expecting_evictions,
-               bool do_deletes,
-               const char* value_pattern,
-               int index)
-      : Thread(runtime, "cache_spammer", flags),
-        cache_(cache),
-        expecting_evictions_(expecting_evictions),
-        do_deletes_(do_deletes),
-        value_pattern_(value_pattern),
-        index_(index) {
-  }
-
- protected:
-  virtual void Run() {
-    const char name_pattern[] = "name%d";
-    SharedString inserts[kNumInserts];
-    for (int j = 0; j < kNumInserts; ++j) {
-      inserts[j].Assign(StringPrintf(value_pattern_, j));
-    }
-
-    int iter_limit = RunningOnValgrind() ? kNumIters / 100 : kNumIters;
-    for (int i = 0; i < iter_limit; ++i) {
-      for (int j = 0; j < kNumInserts; ++j) {
-        cache_->Put(StringPrintf(name_pattern, j), &inserts[j]);
-      }
-      for (int j = 0; j < kNumInserts; ++j) {
-        // Ignore the result.  Thread interactions will make it hard to
-        // predict if the Get will succeed or not.
-        GoogleString key = StringPrintf(name_pattern, j);
-        CacheTestBase::Callback callback;
-        cache_->Get(key, &callback);
-        bool found = (callback.called() &&
-                      (callback.state() == CacheInterface::kAvailable));
-
-        // We cannot assume that a Get succeeds if there are evictions
-        // or deletions going on.  But we are still verifying that the code
-        // will not crash, and that after the threads have all quiesced,
-        // that the cache is still sane.
-        EXPECT_TRUE(found || expecting_evictions_ || do_deletes_)
-            << "Failed on key " << key << " i=" << i << " j=" << j
-            << " thread=" << index_;
-      }
-      if (do_deletes_) {
-        for (int j = 0; j < kNumInserts; ++j) {
-          cache_->Delete(StringPrintf(name_pattern, j));
-        }
-      }
-    }
-  }
-
- private:
-  CacheInterface* cache_;
-  bool expecting_evictions_;
-  bool do_deletes_;
-  const char* value_pattern_;
-  int index_;
-
-  DISALLOW_COPY_AND_ASSIGN(CacheSpammer);
-};
-
 class ThreadsafeCacheTest : public testing::Test {
  protected:
   ThreadsafeCacheTest()
@@ -117,26 +51,9 @@ class ThreadsafeCacheTest : public testing::Test {
 
   void TestHelper(bool expecting_evictions, bool do_deletes,
                   const char* value_pattern) {
-    CacheSpammer* spammers[kNumThreads];
-
-    // First, create all the threads.
-    for (int i = 0; i < kNumThreads; ++i) {
-      spammers[i] = new CacheSpammer(
-          thread_runtime_.get(), ThreadSystem::kJoinable,
-          &threadsafe_cache_,  // lru_cache_.get() will make this fail.
-          expecting_evictions, do_deletes, value_pattern, i);
-    }
-
-    // Then, start them.
-    for (int i = 0; i < kNumThreads; ++i) {
-      spammers[i]->Start();
-    }
-
-    // Finally, wait for them to complete by joining them.
-    for (int i = 0; i < kNumThreads; ++i) {
-      spammers[i]->Join();
-      delete spammers[i];
-    }
+    CacheSpammer::RunTests(kNumThreads, kNumIters, kNumInserts,
+                           expecting_evictions, do_deletes, value_pattern,
+                           &threadsafe_cache_, thread_runtime_.get());
     lru_cache_->SanityCheck();
   }
 

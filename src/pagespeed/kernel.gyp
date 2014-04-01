@@ -153,6 +153,7 @@
         'kernel/base/file_system_test_base.cc',
         'kernel/base/gtest.cc',
         'kernel/base/message_handler_test_base.cc',
+        'kernel/cache/cache_spammer.cc',
         'kernel/http/user_agent_matcher_test_base.cc',
         'kernel/sharedmem/shared_circular_buffer_test_base.cc',
         'kernel/sharedmem/shared_dynamic_string_map_test_base.cc',
