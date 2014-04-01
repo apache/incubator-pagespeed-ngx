@@ -34,7 +34,12 @@ class CacheSpammer : public ThreadSystem::Thread {
  public:
   virtual ~CacheSpammer();
 
-  // value_pattern will be used as a format must have a single %d.
+  // value_pattern will be used as a format string, and must have a single %d.
+  // num_threads indicates how many threads will run in parallel.
+  // num_iters indicates how many times each thread will run a big loop.
+  // num_inserts sets the number of keys inserted and looked up in the loop.
+  //
+  // num_iters will be divided down by 100 when running on valgrind.
   static void RunTests(int num_threads, int num_iters, int num_inserts,
                        bool expecting_evictions, bool do_deletes,
                        const char* value_pattern,
