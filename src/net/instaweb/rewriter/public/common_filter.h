@@ -131,6 +131,12 @@ class CommonFilter : public EmptyHtmlFilter {
                                     GoogleString* mime_type,
                                     GoogleString* charset);
 
+  // Returns true if the image element is not in a <noscript> block and it has
+  // a) no onload attribute or
+  // b) an onload attribute exists with the value being equal to the
+  //    CriticalImagesBeaconFilter::kImageOnloadCode.
+  bool CanAddPagespeedOnloadToImage(const HtmlElement&);
+
   // Add this filter to the logged list of applied rewriters. The intended
   // semantics of this are that it should only include filters that modified the
   // content of the response to the request being processed.

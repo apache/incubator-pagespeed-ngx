@@ -236,9 +236,11 @@ pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
 /**
  * Loads the given element if it is visible. Otherwise, adds it to the deferred
  * queue. Note that if force_load_ is true, the visibility check is skipped.
+ * Also sets the onload handler to the image beaconing onload code if required.
  * @param {Element} element The element to check for visibility.
  */
-pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
+pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon =
+    function(element) {
   // Override this element's attributes if they haven't already been overridden.
   this.overrideAttributeFunctionsInternal_(element);
 
@@ -268,6 +270,16 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
         }
         // Remove attributes that are no longer needed.
         element.removeAttribute('onload');
+        if (element.tagName && element.tagName == 'IMG') {
+          // If CriticalImages is defined, we should add the per-image
+          // checkImageForCriticality logic because the lazyload_images_filter
+          // would have removed this.
+          if (pagespeed.CriticalImages) {
+            pagespeedutils.addHandler(element, 'load', function(e) {
+               pagespeed.CriticalImages.checkImageForCriticality(this);
+            });
+          }
+        }
         element.removeAttribute('pagespeed_lazy_src');
         element.removeAttribute('pagespeed_lazy_replaced_functions');
         // If there was a next sibling, insert element before it.
@@ -283,8 +295,8 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
   }, 0);
 };
 
-pagespeed.LazyloadImages.prototype['loadIfVisible'] =
-    pagespeed.LazyloadImages.prototype.loadIfVisible;
+pagespeed.LazyloadImages.prototype['loadIfVisibleAndMaybeBeacon'] =
+    pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon;
 
 /**
  * Loads all the images irrespective of whether or not they are in the
@@ -308,7 +320,7 @@ pagespeed.LazyloadImages.prototype.loadVisible_ = function() {
   var len = old_deferred.length;
   this.deferred_ = [];
   for (var i = 0; i < len; ++i) {
-    this.loadIfVisible(old_deferred[i]);
+    this.loadIfVisibleAndMaybeBeacon(old_deferred[i]);
   }
 };
 

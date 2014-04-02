@@ -491,6 +491,11 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
       if (pagespeed_high_res_src_attr != NULL &&
           pagespeed_high_res_src_attr->DecodedValueOrNull() != NULL &&
           onload != NULL && onload->DecodedValueOrNull() != NULL) {
+        // TODO(anupama, jud): If split_html, critical-image-beaconing and
+        // inline_preview_images are all enabled at the same time, the
+        // image-onload-criticality-check will get wiped out by the below
+        // line, resulting in possibly inaccurate critical-images data being
+        // sent to the server. Fix this.
         element->DeleteAttribute(HtmlName::kOnload);
       }
     }

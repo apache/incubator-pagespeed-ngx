@@ -40,8 +40,13 @@ namespace net_instaweb {
 const char CriticalImagesBeaconFilter::kCriticalImagesBeaconAddedCount[] =
     "critical_images_beacon_filter_script_added_count";
 
+// Onload code for img elements to detect whether they are critical or not.
+const char* CriticalImagesBeaconFilter::kImageOnloadCode =
+    "pagespeed.CriticalImages.checkImageForCriticality(this);";
+
 CriticalImagesBeaconFilter::CriticalImagesBeaconFilter(RewriteDriver* driver)
-    : CommonFilter(driver) {
+    : CommonFilter(driver),
+      added_beacon_js_(false) {
   Clear();
   Statistics* stats = driver->server_context()->statistics();
   critical_images_beacon_added_count_ = stats->GetVariable(
@@ -89,10 +94,15 @@ void CriticalImagesBeaconFilter::EndDocument() {
       driver_->server_context()->critical_images_finder();
   finder->UpdateCandidateImagesForBeaconing(image_url_hashes_, driver_,
                                             insert_beacon_js_);
-  if (!insert_beacon_js_) {
-    Clear();
+  Clear();
+}
+
+void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
+    HtmlElement* element) {
+  if (!insert_beacon_js_ || added_beacon_js_) {
     return;
   }
+  added_beacon_js_ = true;
   StaticAssetManager* static_asset_manager =
       driver_->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
@@ -116,10 +126,12 @@ void CriticalImagesBeaconFilter::EndDocument() {
   StrAppend(&js, BoolToString(driver_->options()->Enabled(
                      RewriteOptions::kResizeToRenderedImageDimensions)),
             ",'", beacon_metadata_.nonce, "');");
-  Clear();
   HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
   driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-  InsertNodeAtBodyEnd(script);
+  // Always add the beacon js before the current node, because the current node
+  // might be an img node that needs the beacon js for its
+  // checkImageForCriticality onload handler.
+  driver_->InsertNodeBeforeNode(element, script);
   static_asset_manager->AddJsToElement(js, script, driver_);
   critical_images_beacon_added_count_->Add(1);
 }
@@ -129,6 +141,7 @@ void CriticalImagesBeaconFilter::Clear() {
   beacon_metadata_.nonce.clear();
   image_url_hashes_.clear();
   insert_beacon_js_ = false;
+  added_beacon_js_ = false;
 }
 
 void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
@@ -153,6 +166,16 @@ void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
         image_url_hashes_.insert(hash_str);
         if (insert_beacon_js_) {
           driver_->AddAttribute(element, HtmlName::kPagespeedUrlHash, hash_str);
+          if (element->keyword() == HtmlName::kImg &&
+              CanAddPagespeedOnloadToImage(*element)) {
+            // Add an onload handler only if one is not already specified on the
+            // non-rewritten page.
+            driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+            // If beacon javascript has not been added yet, we need to add it
+            // before the current node because we are going to use the js for
+            // the image criticality check on image-onload.
+            MaybeAddBeaconJavascript(element);
+          }
         }
       }
     }

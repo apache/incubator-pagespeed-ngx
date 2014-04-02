@@ -65,7 +65,7 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     // Enable a filter that uses critical images, which in turn will enable
     // beacon insertion.
     factory()->set_use_beacon_results_in_filters(true);
-    options()->EnableFilter(RewriteOptions::kLazyloadImages);
+    options()->EnableFilter(RewriteOptions::kDelayImages);
     RewriteTestBase::SetUp();
     https_mode_ = false;
     // Setup the property cache. The DetermineEnable logic for the
@@ -110,6 +110,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 
   void PrepareInjection() {
     rewrite_driver()->AddFilters();
+    AddFileToMockFetcher(image_gurl_.Spec(), kChefGifFile,
+                         kContentTypeJpeg, 100);
   }
 
   void AddImageTags(GoogleString* html) {
@@ -126,8 +128,6 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
   }
 
   void SetupAndProcessUrl() {
-    AddFileToMockFetcher(image_gurl_.Spec(), kChefGifFile,
-                         kContentTypeJpeg, 100);
     GoogleString html = "<head></head><body>";
     AddImageTags(&html);
     StrAppend(&html, "</body>");
@@ -206,6 +206,16 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 TEST_F(CriticalImagesBeaconFilterTest, ScriptInjection) {
   RunInjection();
   VerifyInjection(1);
+
+  // Verify that image onload criticality check has been added.
+  int img_begin = output_buffer_.find("IronChef2");
+  EXPECT_TRUE(img_begin != GoogleString::npos);
+  int img_end = output_buffer_.substr(img_begin).find(">");
+  EXPECT_TRUE(img_end != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.substr(img_begin, img_end).find(
+      "onload=\"pagespeed.CriticalImages."
+      "checkImageForCriticality(this);\"") !=
+      GoogleString::npos);
   VerifyWithNoImageRewrite();
 }
 
@@ -237,7 +247,7 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
   options()->EnableFilter(RewriteOptions::kInlineImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->EnableFilter(RewriteOptions::kConvertGifToPng);
-  options()->DisableFilter(RewriteOptions::kLazyloadImages);
+  options()->DisableFilter(RewriteOptions::kDelayImages);
   RunInjection();
   VerifyInjection(1);
 
@@ -245,6 +255,16 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
   EXPECT_TRUE(output_buffer_.find(hash_str) != GoogleString::npos);
   EXPECT_EQ(-1, logging_info()->num_html_critical_images());
   EXPECT_EQ(-1, logging_info()->num_css_critical_images());
+}
+
+TEST_F(CriticalImagesBeaconFilterTest, NoScriptInjectionWithNoScript) {
+  PrepareInjection();
+  GoogleString html = "<head></head><body><noscript>";
+  AddImageTags(&html);
+  StrAppend(&html, "</noscript></body>");
+  ParseUrl(GetTestUrl(), html);
+  VerifyNoInjection(0);
+  VerifyWithNoImageRewrite();
 }
 
 TEST_F(CriticalImagesBeaconFilterTest, DontRebeaconBeforeTimeout) {

@@ -444,7 +444,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
             split_html_enabled, StrCat(
                 "<img pagespeed_lazy_src=\"", rewritten_img_url_1_.data(),
                 "\" src=\"/psajs/1.0.gif\"",
-                " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>",
+                " onload=\"", LazyloadImagesFilter::kImageOnloadCode, "\"/>",
                 "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
                 "pagespeed.lazyLoadImages.overrideAttributeFunctions();",
                 "</script>"), is_ie);
@@ -643,11 +643,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
         "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
         " src=\"/psajs/1.0.gif\""
-        " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
+        " onload=\"%s\"/>"
         "Hello, mod_pagespeed!"
         "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
         "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-        "</body></html>", rewritten_css_url_1_.c_str(), kMockHashValue));
+        "</body></html>", rewritten_css_url_1_.c_str(), kMockHashValue,
+        LazyloadImagesFilter::kImageOnloadCode));
 
     GoogleString kMobileOutputHtml = StrCat(
         "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
@@ -676,11 +677,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "</script>"
         "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
         " src=\"/psajs/1.0.gif\""
-        " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
+        " onload=\"%s\"/>"
         "Hello, mod_pagespeed!"
         "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
         "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-        "</body></html>", kMockHashValue));
+        "</body></html>", kMockHashValue,
+        LazyloadImagesFilter::kImageOnloadCode));
 
     ResponseHeaders headers;
     headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
@@ -1486,11 +1488,12 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       "</script>"
       "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
       " src=\"/psajs/1.0.gif\""
-      " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
+      " onload=\"%s\"/>"
       "Hello, mod_pagespeed!"
       "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
       "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-      "</body></html>", kMockHashValue));
+      "</body></html>", kMockHashValue,
+      LazyloadImagesFilter::kImageOnloadCode));
 
   ResponseHeaders headers;
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());

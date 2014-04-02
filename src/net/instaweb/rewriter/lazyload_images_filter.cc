@@ -47,7 +47,7 @@ const char kJquerySlider[] = "jquery.sexyslider";
 }  // namespace
 
 const char* LazyloadImagesFilter::kImageOnloadCode =
-    "pagespeed.lazyLoadImages.loadIfVisible(this);";
+    "pagespeed.lazyLoadImages.loadIfVisibleAndMaybeBeacon(this);";
 
 const char* LazyloadImagesFilter::kLoadAllImages =
     "pagespeed.lazyLoadImages.loadAllImages();";
@@ -199,7 +199,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
   AbstractLogRecord* log_record = driver_->log_record();
-  if (element->FindAttribute(HtmlName::kOnload) != NULL ||
+  if (!CanAddPagespeedOnloadToImage(*element) ||
       element->FindAttribute(HtmlName::kDataSrc) != NULL ||
       element->FindAttribute(HtmlName::kPagespeedLazySrc) != NULL) {
     log_record->LogLazyloadFilter(
@@ -258,7 +258,12 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
   log_record->LogLazyloadFilter(
       RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
       RewriterApplication::APPLIED_OK, false, false);
-  // Set the onload appropriately.
+  // Add an onload function to load the image if it is visible and then do
+  // the criticality check. Since we check CanAddPagespeedOnloadToImage
+  // before coming here, the only onload handler that we would delete would
+  // be the one added by our very own beaconing code. We re-introduce this
+  // beaconing onload logic via kImageOnloadCode.
+  element->DeleteAttribute(HtmlName::kOnload);
   driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
   ++num_images_lazily_loaded_;
 }

@@ -111,7 +111,7 @@ pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
   }
   return top_diff <= this.buffer_ && 0 <= bottom_diff + this.buffer_;
 };
-pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
+pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon = function(element) {
   this.overrideAttributeFunctionsInternal_(element);
   var context = this;
   window.setTimeout(function() {
@@ -122,6 +122,9 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
         parent_node && parent_node.removeChild(element);
         element._getAttribute && (element.getAttribute = element._getAttribute);
         element.removeAttribute("onload");
+        element.tagName && "IMG" == element.tagName && pagespeed.CriticalImages && pagespeedutils.addHandler(element, "load", function() {
+          pagespeed.CriticalImages.checkImageForCriticality(this);
+        });
         element.removeAttribute("pagespeed_lazy_src");
         element.removeAttribute("pagespeed_lazy_replaced_functions");
         parent_node && parent_node.insertBefore(element, next_sibling);
@@ -132,7 +135,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
     }
   }, 0);
 };
-pagespeed.LazyloadImages.prototype.loadIfVisible = pagespeed.LazyloadImages.prototype.loadIfVisible;
+pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon = pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon;
 pagespeed.LazyloadImages.prototype.loadAllImages = function() {
   this.force_load_ = !0;
   this.loadVisible_();
@@ -142,7 +145,7 @@ pagespeed.LazyloadImages.prototype.loadVisible_ = function() {
   var old_deferred = this.deferred_, len = old_deferred.length;
   this.deferred_ = [];
   for (var i = 0;i < len;++i) {
-    this.loadIfVisible(old_deferred[i]);
+    this.loadIfVisibleAndMaybeBeacon(old_deferred[i]);
   }
 };
 pagespeed.LazyloadImages.prototype.hasAttribute_ = function(element, attribute) {

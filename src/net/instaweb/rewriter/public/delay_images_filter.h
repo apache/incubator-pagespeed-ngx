@@ -71,7 +71,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DELAY_IMAGES_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_DELAY_IMAGES_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -82,18 +82,21 @@ class RewriteDriver;
 class StaticAssetManager;
 class Statistics;
 
-class DelayImagesFilter : public EmptyHtmlFilter {
+class DelayImagesFilter : public CommonFilter {
  public:
   static const char kDelayImagesSuffix[];
   static const char kDelayImagesInlineSuffix[];
-  static const char kOnloadFunction[];
+  static const char kImageOnloadCode[];
+  static const char kImageOnloadJsSnippet[];
 
   explicit DelayImagesFilter(RewriteDriver* driver);
   virtual ~DelayImagesFilter();
 
-  virtual void StartDocument();
+  virtual void StartDocumentImpl();
+  virtual void StartElementImpl(HtmlElement* element) { }
+  virtual void EndElementImpl(HtmlElement* element);
+
   virtual void EndDocument();
-  virtual void EndElement(HtmlElement* element);
 
   virtual const char* Name() const { return "DelayImages"; }
 
@@ -103,6 +106,10 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   static void Terminate();
 
  private:
+  // Add the js snippet to be used for image-onload if it has not already been
+  // added.
+  void MaybeAddImageOnloadJsSnippet(HtmlElement* element);
+
   // Insert low resolution images, and the script needed to load them if any.
   void InsertLowResImagesAndJs(HtmlElement* element, bool insert_after_element);
 
@@ -131,6 +138,8 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   bool lazyload_highres_images_;
 
   bool is_script_inserted_;
+
+  bool added_image_onload_js_;
 
   DISALLOW_COPY_AND_ASSIGN(DelayImagesFilter);
 };

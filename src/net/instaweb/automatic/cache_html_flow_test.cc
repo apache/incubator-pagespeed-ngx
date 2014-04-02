@@ -41,6 +41,7 @@
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
+#include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/mock_critical_css_finder.h"
@@ -284,32 +285,6 @@ const char kFlushSubresourcesHtmlInput[] =
              "<img src=\"image4\">"
           "</div>"
       "</div>"
-    "</body></html>";
-
-const char kLazyLoadHtml[] =
-    "<html>"
-    "<head>"
-    "</head>"
-    "<body>%s\n"
-    "<div id=\"header\"> This is the header </div>"
-    "<div id=\"container\" class>"
-      "<h2 id=\"beforeItems\"> This is before Items </h2>"
-      "<div class=\"item\">%s"
-         "<img pagespeed_lazy_src=\"image1\" src=\"/psajs/1.0.gif\" "
-         "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
-         "<img pagespeed_lazy_src=\"image2\" src=\"/psajs/1.0.gif\" "
-         "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
-         "</div>"
-         "<div class=\"item\">"
-           "<img pagespeed_lazy_src=\"image3\" src=\"/psajs/1.0.gif\" "
-           "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
-           "<div class=\"item\">"
-             "<img pagespeed_lazy_src=\"image4\" src=\"/psajs/1.0.gif\" "
-             "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
-          "</div>"
-      "</div>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-      "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
     "</body></html>";
 
 const char kNoBlinkUrl[] =
@@ -911,6 +886,12 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     CheckStats(0, 1, 0, 1, 1, 0);
   }
 
+  GoogleString GetImageOnloadScriptBlock() const {
+    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+                  DelayImagesFilter::kImageOnloadJsSnippet,
+                  "</script>");
+  }
+
   LoggingInfo cache_html_logging_info_;
   ResponseHeaders response_headers_;
   GoogleString noblink_output_;
@@ -1103,6 +1084,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "<!--GooglePanel begin panel-id-1.0-->"
       "<!--GooglePanel end panel-id-1.0-->"
       "<div class=\"item1\">%s"  // Inlined Image tag with script.
+      "%s"  // image-onload js snippet.
       "<img src=\"image2\">"
       "</div>"
       "<!--GooglePanel begin panel-id-0.0-->"
@@ -1121,6 +1103,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
 
   GoogleString inlined_image_wildcard =
       StringPrintf(kBlinkOutputWithInlinePreviewImages, kTestUrl, kTestUrl,
+                  GetImageOnloadScriptBlock().c_str(),
                    "<img pagespeed_high_res_src=\"image1\" "
                    "src=\"data:image/jpeg;base64*",
                    GetJsDisableScriptSnippet(options_.get()).c_str(),

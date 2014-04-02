@@ -37,6 +37,7 @@ class Variable;
 // rewriting or inlining.
 class CriticalImagesBeaconFilter : public CommonFilter {
  public:
+  static const char* kImageOnloadCode;
   // Counters.
   static const char kCriticalImagesBeaconAddedCount[];
 
@@ -62,11 +63,17 @@ class CriticalImagesBeaconFilter : public CommonFilter {
   // Clear all state associated with filter.
   void Clear();
 
+  // Adds the beaconing javascript just before the current element if it has
+  // not already been added and insert_beacon_js_ is true.
+  void MaybeAddBeaconJavascript(HtmlElement* element);
+
   BeaconMetadata beacon_metadata_;
   StringSet image_url_hashes_;
   bool insert_beacon_js_;
   // The total number of times the beacon is added.
   Variable* critical_images_beacon_added_count_;
+
+  bool added_beacon_js_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalImagesBeaconFilter);
 };

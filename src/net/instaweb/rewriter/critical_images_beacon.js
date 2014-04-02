@@ -48,6 +48,20 @@ pagespeed.CriticalImages.Beacon_ = function(
   this.checkRenderedImageSizes_ = checkRenderedImageSizes;
   /** @private {!Object.<string, boolean>} */
   this.imgLocations_ = {};
+
+  // TODO(jud): Consider using goog.structs.Set instead of using an array + map
+  // combination below.
+  /**
+   * Array of critical image URL hash keys.
+   * @private {!Array.<string>}
+   */
+  this.criticalImages_ = [];
+  /**
+   * Object used to store the keys from this.criticalImages_ so that we get a
+   * unique list of them.
+   * @private {!Object.<string, boolean>}
+   */
+  this.criticalImagesKeys_ = {};
 };
 
 
@@ -116,11 +130,65 @@ pagespeed.CriticalImages.Beacon_.prototype.isCritical_ = function(element) {
 
 
 /**
- * Checks the position of images and input tags and beacons back images that are
- * visible on initial page load.
+ * Inserts the image key string into criticalImages_ and criticalImagesKeys_
+ * if it is critical (visible).
+ * @param {!Element} element The DOM element to check for visibility.
+ * @private
+ */
+pagespeed.CriticalImages.Beacon_.prototype.insertIfImageIsCritical_ =
+    function(element) {
+  var key = element.getAttribute('pagespeed_url_hash');
+  if (key && !(key in this.criticalImagesKeys_) &&
+      this.isCritical_(element)) {
+    this.criticalImages_.push(key);
+    this.criticalImagesKeys_[key] = true;
+  }
+};
+
+
+/**
+ * Checks position of image element on onload of the image to decide whether
+ * it is visible or not and adds it to a map if critical.
+ * @param {!Element} element The DOM element to check for visibility.
+ */
+pagespeed.CriticalImages.Beacon_.prototype.checkImageForCriticality =
+    function(element) {
+  // TODO(jud): Remove the check for getBoundingClientRect below, either by
+  // making elLocation_ work correctly if it isn't defined, or updating the
+  // user agent whitelist to exclude UAs that don't support it correctly.
+  if (element.getBoundingClientRect) {
+    this.insertIfImageIsCritical_(element);
+  }
+};
+
+
+/**
+ * Checks position of image element on onload of the image to decide whether
+ * it is visible or not and adds it to a map if critical.
+ * @param {Element} element The DOM element to check for visibility.
+ * @export
+ */
+pagespeed.CriticalImages.checkImageForCriticality = function(element) {
+  pagespeed.CriticalImages.beaconObj_.checkImageForCriticality(element);
+};
+
+/**
+ * Check position of images and input tags and beacon back all visible images.
+ * This method is triggered on page onload and goes over all image elements
+ * available at this point, and merges this set with the set of visible image
+ * elements detected via image onload logic (via checkImageForCriticality).
+ * Images detected at image-onload time are more accurate in detecting initial
+ * images of slideshow-like features.
  * @private
  */
 pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
+  // Start with a fresh imgLocations_ map so that anything that did not get a
+  // chance to get detected at image-onload time because of accidental overlap
+  // between image locations will now have a chance to get identified. Note that
+  // in case of slideshows, this can cause duplicate images to be detected, but
+  // the correct first slideshow image would already have been detected at image
+  // onload time.
+  this.imgLocations_ = {}
   // Generate a list of the elements that can be considered critical.
   var tags = [goog.dom.TagName.IMG, goog.dom.TagName.INPUT];
   var elemsToCheck = [];
@@ -139,28 +207,19 @@ pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
   // whitelist to exclude UAs that don't support it correctly.
   if (!elemsToCheck[0].getBoundingClientRect) { return; }
 
-  var criticalImgs = [];
-  // Use an object to store the keys for criticalImgs so that we get a unique
-  // list of them.
-  var criticalImgsKeys = {};
-
   for (var i = 0, element; element = elemsToCheck[i]; ++i) {
-    var key = element.getAttribute('pagespeed_url_hash');
-    if (key && !(key in criticalImgsKeys) && this.isCritical_(element)) {
-      criticalImgs.push(key);
-      criticalImgsKeys[key] = true;
-    }
+    this.insertIfImageIsCritical_(element);
   }
   var data = 'oh=' + this.optionsHash_;
   if (this.nonce_) {
     data += '&n=' + this.nonce_;
   }
 
-  var isDataAvailable = criticalImgs.length != 0;
+  var isDataAvailable = this.criticalImages_.length != 0;
   if (isDataAvailable) {
-    data += '&ci=' + encodeURIComponent(criticalImgs[0]);
-    for (var i = 1; i < criticalImgs.length; ++i) {
-      var tmp = ',' + encodeURIComponent(criticalImgs[i]);
+    data += '&ci=' + encodeURIComponent(this.criticalImages_[0]);
+    for (var i = 1; i < this.criticalImages_.length; ++i) {
+      var tmp = ',' + encodeURIComponent(this.criticalImages_[i]);
       if (data.length + tmp.length <= pagespeedutils.MAX_POST_SIZE) {
         data += tmp;
       }
@@ -235,6 +294,8 @@ pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
 /** @private string */
 pagespeed.CriticalImages.beaconData_ = '';
 
+/** @private Object Beacon object */
+pagespeed.CriticalImages.beaconObj_;
 
 /**
  * Gets the data sent in the beacon after pagespeed.CriticalImages.Run()
@@ -262,6 +323,7 @@ pagespeed.CriticalImages.Run = function(
     beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce) {
   var beacon = new pagespeed.CriticalImages.Beacon_(
       beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce);
+  pagespeed.CriticalImages.beaconObj_ = beacon;
   var beaconOnload = function() {
     // Attempt not to block other onload events on the page by wrapping in
     // setTimeout().

@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/enums.pb.h"
@@ -245,6 +246,16 @@ bool CommonFilter::ExtractMetaTagDetails(const HtmlElement& element,
   }
 
   return result;
+}
+
+bool CommonFilter::CanAddPagespeedOnloadToImage(const HtmlElement& element) {
+  const HtmlElement::Attribute* onload_attribute =
+      element.FindAttribute(HtmlName::kOnload);
+  return (noscript_element() == NULL &&
+          (onload_attribute == NULL ||
+           (onload_attribute->DecodedValueOrNull() != NULL &&
+            strcmp(onload_attribute->DecodedValueOrNull(),
+                   CriticalImagesBeaconFilter::kImageOnloadCode) == 0)));
 }
 
 void CommonFilter::LogFilterModifiedContent() {

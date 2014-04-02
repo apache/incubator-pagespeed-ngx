@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -102,16 +103,22 @@ class SplitHtmlHelperFilterTest : public RewriteTestBase {
 
   GoogleString GetLazyloadImageTag(const GoogleString& url, bool no_transform) {
     return StrCat("<img pagespeed_lazy_src='", url, "'",
-                  no_transform ? " pagespeed_no_transform=" : "",
-                  " src=\"/psajs/1.0.gif\" "
-                  "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">");
+        no_transform ? " pagespeed_no_transform=" : "",
+        " src=\"/psajs/1.0.gif\" "
+        "onload=\"", LazyloadImagesFilter::kImageOnloadCode, "\">");
   }
 
   GoogleString GetInlinePreviewImageTag(const GoogleString& url,
                                         const GoogleString& low_res_src) {
     return StrCat(
         "<img pagespeed_high_res_src=\"", url, "\" src=\"", low_res_src,
-        "\" onload=\"", DelayImagesFilter::kOnloadFunction, "\">");
+        "\" onload=\"", DelayImagesFilter::kImageOnloadCode, "\">");
+  }
+
+  GoogleString GetImageOnloadScriptBlock() const {
+    return StrCat("<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+                  DelayImagesFilter::kImageOnloadJsSnippet,
+                  "</script>");
   }
 
   RequestHeaders request_headers_;
@@ -461,6 +468,7 @@ TEST_F(SplitHtmlHelperFilterTest, AtfRequestWithInlinePreview) {
   GoogleString output_html = StrCat(
       "<html>\n<body>"
       "<div id='a'>",
+      GetImageOnloadScriptBlock(),
         GetInlinePreviewImageTag("1.jpeg", kSampleJpegData),
       "</div>"
       "<div id='b'><img src=\"2.jpeg\"></div>"
@@ -524,6 +532,7 @@ TEST_F(SplitHtmlHelperFilterTest, AtfNestedPanelsRequestWithInlinePreview) {
   GoogleString output_html = StrCat(
       "<html>\n<body>"
       "<div id='a'>",
+      GetImageOnloadScriptBlock(),
         GetInlinePreviewImageTag("1.jpeg", kSampleJpegData),
       "</div>"
       "<div id='b'>"
