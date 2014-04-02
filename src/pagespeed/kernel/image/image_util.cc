@@ -16,7 +16,7 @@
 
 // Author: Huibao Lin
 
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace pagespeed {
 
@@ -28,8 +28,6 @@ static const char kInvalidPixelFormat[] = "Invalid pixel format";
 }  // namespace
 
 namespace image_compression {
-
-using image_compression::ScanlineStatus;
 
 const char* ImageFormatToMimeTypeString(ImageFormat image_type) {
   switch (image_type) {
@@ -64,6 +62,17 @@ const char* GetPixelFormatString(PixelFormat pixel_format) {
     // No default so compiler will complain if any enum is not processed.
   }
   return kInvalidPixelFormat;
+}
+
+int GetBytesPerPixel(PixelFormat pixel_format) {
+  switch (pixel_format) {
+    case UNSUPPORTED: return 0;
+    case RGB_888:     return 3;
+    case RGBA_8888:   return 4;
+    case GRAY_8:      return 1;
+    // No default so compiler will complain if any enum is not processed.
+  }
+  return 0;
 }
 
 }  // namespace image_compression

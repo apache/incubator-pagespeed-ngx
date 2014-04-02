@@ -35,6 +35,8 @@ extern "C" {
 #include "base/logging.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
@@ -109,6 +111,32 @@ ScanlineStatus ImageConverter::ConvertImageWithStatus(
 
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
+
+ScanlineStatus ImageConverter::ConvertMultipleFrameImage(
+    MultipleFrameReader* reader,
+    MultipleFrameWriter* writer) {
+  const ImageSpec* image_spec = NULL;
+  const FrameSpec* frame_spec = NULL;
+  const void* scan_row = NULL;
+
+  ScanlineStatus status;
+  if (reader->GetImageSpec(&image_spec, &status) &&
+      writer->PrepareImage(image_spec, &status)) {
+    while (reader->HasMoreFrames() &&
+           reader->PrepareNextFrame(&status) &&
+           reader->GetFrameSpec(&frame_spec, &status) &&
+           writer->PrepareNextFrame(frame_spec, &status)) {
+      while (reader->HasMoreScanlines() &&
+             reader->ReadNextScanline(&scan_row, &status) &&
+             writer->WriteNextScanline(scan_row, &status)) {
+        // intentional empty loop body
+      }
+    }
+  }
+  writer->FinalizeWrite(&status);
+  return status;
+}
+
 
 bool ImageConverter::ConvertPngToJpeg(
     const PngReaderInterface& png_struct_reader,

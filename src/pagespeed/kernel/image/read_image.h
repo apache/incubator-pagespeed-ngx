@@ -21,7 +21,7 @@
 
 #include <cstddef>
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
 namespace net_instaweb {
@@ -32,12 +32,19 @@ namespace pagespeed {
 
 namespace image_compression {
 
+class MultipleFrameReader;
+class MultipleFrameWriter;
+class ScanlineReaderInterface;
+class ScanlineWriterInterface;
+
 using net_instaweb::MessageHandler;
+
+////////// Scanline API
 
 // TODO(huibao): Add an overload function
 // CreateScanlineReader(const void* image_buffer, size_t buffer_length).
 
-// Return a scanline image reader. The following formats are supported:
+// Returns a scanline image reader. The following formats are supported:
 // IMAGE_PNG, IMAGE_GIF, IMAGE_JPEG, and IMAGE_WEBP
 ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
                                               const void* image_buffer,
@@ -54,8 +61,10 @@ inline ScanlineReaderInterface* CreateScanlineReader(ImageFormat image_type,
                               handler, &status);
 }
 
-// Return a scanline image writer. The following formats are supported:
-// IMAGE_PNG, IMAGE_JPEG, and IMAGE_WEBP.
+// Returns a scanline image writer. The following formats are
+// supported: IMAGE_PNG, IMAGE_JPEG, and IMAGE_WEBP. This function
+// also calls the InitWithStatus() and InitializeWriteWithStatus()
+// methods of the writer.
 ScanlineWriterInterface* CreateScanlineWriter(
     ImageFormat image_type,     // Type of the image to write
     PixelFormat pixel_format,   // Pixel format, RGB_888 etc
@@ -78,8 +87,38 @@ inline ScanlineWriterInterface* CreateScanlineWriter(ImageFormat image_type,
                               config, image_data, handler, &status);
 }
 
+////////// ImageFrame API
+
+// Returns a MultipleFrameReader after calling its Initialize()
+// method. The following formats are supported: IMAGE_PNG, IMAGE_GIF,
+// IMAGE_JPEG, and IMAGE_WEBP.
+//
+// The caller retains ownership of 'image_buffer', 'handler', and
+// 'status'.
+MultipleFrameReader* CreateImageFrameReader(
+    ImageFormat image_type,
+    const void* image_buffer,
+    size_t buffer_length,
+    MessageHandler* handler,
+    ScanlineStatus* status);
+
+// Returns a new MultipleFrameWriter after calling its Initialize()
+// method. The following formats are supported: IMAGE_PNG,
+// IMAGE_JPEG, and IMAGE_WEBP.
+//
+// The caller retains ownership of 'config', 'image_data', 'handler',
+// and 'status'.
+MultipleFrameWriter* CreateImageFrameWriter(
+    ImageFormat image_type,     // Type of the image to write
+    const void* config,         // Configuration for the output image
+    GoogleString* image_data,   // Image destination for future writer output
+    MessageHandler* handler,    // Message handler
+    ScanlineStatus* status);    // Status code
+
+////////// Utilities
+
 // Decode the image stream and return the image information. Use non-null
-// pointers to retrieve the informatin you need, and use null pointers to
+// pointers to retrieve the information you need, and use null pointers to
 // ignore other information.
 //
 // If the input "pixels" is set to a null pointer, the function will finish
@@ -92,6 +131,10 @@ inline ScanlineWriterInterface* CreateScanlineWriter(ImageFormat image_type,
 // the number of bytes between the starting points of adjacent rows. Garbage
 // bytes may be padded to the end of rows in order to make "stride" a multiplier
 // of 4.
+//
+// This function uses the scanline API and supports non-animated
+// images of the following formats: IMAGE_GIF, IMAGE_PNG, IMAGE_JPEG,
+// and IMAGE_WEBP.
 bool ReadImage(ImageFormat image_type,
                const void* image_buffer,
                size_t buffer_length,

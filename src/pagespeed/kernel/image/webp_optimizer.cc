@@ -233,7 +233,7 @@ ScanlineStatus WebpScanlineWriter::InitWithStatus(const size_t width,
 }
 
 ScanlineStatus WebpScanlineWriter::WriteNextScanlineWithStatus(
-    void *scanline_bytes) {
+    const void* const scanline_bytes) {
   if ((position_bytes_ == NULL) ||
       (position_bytes_ + stride_bytes_ > rgb_end_)) {
     PS_DLOG_INFO(message_handler_, \
@@ -251,7 +251,8 @@ ScanlineStatus WebpScanlineWriter::WriteNextScanlineWithStatus(
   const int kNumRgbChannels = 3;
   if (should_expand_gray_to_rgb_) {
     // Replicate the luminance to RGB.
-    uint8_t* in_bytes = reinterpret_cast<uint8_t*>(scanline_bytes);
+    const uint8_t* const in_bytes =
+        reinterpret_cast<const uint8_t*>(scanline_bytes);
     for (int idx_in = 0, idx_out = 0;
          idx_in < picture_.width;
          ++idx_in, idx_out += kNumRgbChannels) {

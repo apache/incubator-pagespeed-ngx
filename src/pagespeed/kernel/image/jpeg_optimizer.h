@@ -23,6 +23,7 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
@@ -135,7 +136,8 @@ class JpegScanlineWriter : public ScanlineWriterInterface {
   // field set to false.
   virtual ScanlineStatus InitializeWriteWithStatus(const void* params,
                                                    GoogleString *compressed);
-  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes);
+  virtual ScanlineStatus WriteNextScanlineWithStatus(
+      const void *scanline_bytes);
   virtual ScanlineStatus FinalizeWriteWithStatus();
 
  private:

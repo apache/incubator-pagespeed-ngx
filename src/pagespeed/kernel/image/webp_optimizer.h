@@ -24,6 +24,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
@@ -87,7 +88,8 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
   // WebpConfiguration* and should not be NULL.
   virtual ScanlineStatus InitializeWriteWithStatus(const void* params,
                                                    GoogleString* const out);
-  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes);
+  virtual ScanlineStatus WriteNextScanlineWithStatus(
+      const void *scanline_bytes);
 
   // Note that even after WriteNextScanline() has been called,
   // InitializeWrite() and FinalizeWrite() may be called repeatedly to

@@ -1264,10 +1264,11 @@ ScanlineStatus PngScanlineWriter::InitializeWriteWithStatus(
 
 // Write a scanline with the data provided. Return false in case of error.
 ScanlineStatus PngScanlineWriter::WriteNextScanlineWithStatus(
-    void *scanline_bytes) {
+    const void* const scanline_bytes) {
   if (was_initialized_ && row_ < height_) {
     png_write_row(png_struct_.png_ptr(),
-                  reinterpret_cast<png_bytep>(scanline_bytes));
+                  reinterpret_cast<png_bytep>(
+                      const_cast<void*>(scanline_bytes)));
     ++row_;
     return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }

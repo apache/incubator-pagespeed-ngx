@@ -17,7 +17,7 @@
 // Author: Huibao Lin
 
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 namespace {
 
@@ -27,19 +27,21 @@ static const char kInvalidPixelFormat[] = "Invalid pixel format";
 // Enums
 using pagespeed::image_compression::ImageFormat;
 using pagespeed::image_compression::PixelFormat;
+
 // Image formats.
 using pagespeed::image_compression::IMAGE_UNKNOWN;
 using pagespeed::image_compression::IMAGE_JPEG;
 using pagespeed::image_compression::IMAGE_PNG;
 using pagespeed::image_compression::IMAGE_GIF;
 using pagespeed::image_compression::IMAGE_WEBP;
+
 // Pixel formats.
 using pagespeed::image_compression::UNSUPPORTED;
 using pagespeed::image_compression::RGB_888;
 using pagespeed::image_compression::RGBA_8888;
 using pagespeed::image_compression::GRAY_8;
 
-TEST(ScanlineInterfaceTest, ImageFormatToMimeTypeString) {
+TEST(ImageUtilTest, ImageFormatToMimeTypeString) {
   EXPECT_STREQ("image/unknown", ImageFormatToMimeTypeString(IMAGE_UNKNOWN));
   EXPECT_STREQ("image/jpeg", ImageFormatToMimeTypeString(IMAGE_JPEG));
   EXPECT_STREQ("image/png", ImageFormatToMimeTypeString(IMAGE_PNG));
@@ -52,7 +54,7 @@ TEST(ScanlineInterfaceTest, ImageFormatToMimeTypeString) {
                ImageFormatToMimeTypeString(static_cast<ImageFormat>(5)));
 }
 
-TEST(ScanlineInterfaceTest, ImageFormatToString) {
+TEST(ImageUtilTest, ImageFormatToString) {
   EXPECT_STREQ("IMAGE_UNKNOWN", ImageFormatToString(IMAGE_UNKNOWN));
   EXPECT_STREQ("IMAGE_JPEG", ImageFormatToString(IMAGE_JPEG));
   EXPECT_STREQ("IMAGE_PNG", ImageFormatToString(IMAGE_PNG));
@@ -64,7 +66,7 @@ TEST(ScanlineInterfaceTest, ImageFormatToString) {
                ImageFormatToMimeTypeString(static_cast<ImageFormat>(5)));
 }
 
-TEST(ScanlineInterfaceTest, GetPixelFormatString) {
+TEST(ImageUtilTest, GetPixelFormatString) {
   EXPECT_STREQ("UNSUPPORTED", GetPixelFormatString(UNSUPPORTED));
   EXPECT_STREQ("RGB_888", GetPixelFormatString(RGB_888));
   EXPECT_STREQ("RGBA_8888", GetPixelFormatString(RGBA_8888));
@@ -73,6 +75,15 @@ TEST(ScanlineInterfaceTest, GetPixelFormatString) {
                GetPixelFormatString(static_cast<PixelFormat>(-1)));
   EXPECT_STREQ(kInvalidPixelFormat,
                GetPixelFormatString(static_cast<PixelFormat>(4)));
+}
+
+TEST(ImageUtilTest, GetBytesPerPixel) {
+  EXPECT_EQ(0, GetBytesPerPixel(UNSUPPORTED));
+  EXPECT_EQ(3, GetBytesPerPixel(RGB_888));
+  EXPECT_EQ(4, GetBytesPerPixel(RGBA_8888));
+  EXPECT_EQ(1, GetBytesPerPixel(GRAY_8));
+  EXPECT_EQ(0, GetBytesPerPixel(static_cast<PixelFormat>(-1)));
+  EXPECT_EQ(0, GetBytesPerPixel(static_cast<PixelFormat>(4)));
 }
 
 }  // namespace

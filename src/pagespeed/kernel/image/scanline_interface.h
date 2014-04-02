@@ -22,33 +22,12 @@
 #include <cstddef>
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
 namespace pagespeed {
 
 namespace image_compression {
-
-enum ImageFormat {
-  IMAGE_UNKNOWN,
-  IMAGE_JPEG,
-  IMAGE_PNG,
-  IMAGE_GIF,
-  IMAGE_WEBP
-};
-
-enum PixelFormat {
-  UNSUPPORTED,  // Not supported.
-  RGB_888,      // RGB triplets, 24 bits per pixel.
-  RGBA_8888,    // RGB triplet plus alpha channel, 32 bits per pixel.
-  GRAY_8        // Grayscale, 8 bits per pixel.
-};
-
-// Returns the MIME-type string corresponding to the given ImageFormat.
-const char* ImageFormatToMimeTypeString(ImageFormat image_type);
-// Returns a string representation of the given ImageFormat.
-const char* ImageFormatToString(ImageFormat image_type);
-// Returns a string representation of the given PixelFormat.
-const char* GetPixelFormatString(PixelFormat pixel_format);
 
 class ScanlineReaderInterface {
  public:
@@ -118,8 +97,9 @@ class ScanlineWriterInterface {
 
   // Writes the current scan line with data provided. Returns false
   // if the write fails.
-  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes) = 0;
-  inline bool WriteNextScanline(void *scanline_bytes) {
+  virtual ScanlineStatus WriteNextScanlineWithStatus(
+      const void *scanline_bytes) = 0;
+  inline bool WriteNextScanline(const void *scanline_bytes) {
     return WriteNextScanlineWithStatus(scanline_bytes).Success();
   }
 

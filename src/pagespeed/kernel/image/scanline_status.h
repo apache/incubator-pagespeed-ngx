@@ -28,43 +28,47 @@ namespace pagespeed {
 
 namespace image_compression {
 
-#if defined(PAGESPEED_SCANLINE_STATUS) ||                \
-  defined(PAGESPEED_SCANLINE_STATUS_SOURCE) ||           \
-  defined(PAGESPEED_SCANLINE_STATUS_ENUM_NAME) ||        \
+#if defined(PAGESPEED_SCANLINE_STATUS) ||               \
+  defined(PAGESPEED_SCANLINE_STATUS_SOURCE) ||          \
+  defined(PAGESPEED_SCANLINE_STATUS_ENUM_NAME) ||       \
   defined(PAGESPEED_SCANLINE_STATUS_ENUM_STRING)
 #error "Preprocessor macro collision."
 #endif
 
-#define PAGESPEED_SCANLINE_STATUS(_X)                  \
-    _X(SCANLINE_STATUS_UNINITIALIZED),                 \
-    _X(SCANLINE_STATUS_SUCCESS),                       \
-    _X(SCANLINE_STATUS_UNSUPPORTED_FORMAT),            \
-    _X(SCANLINE_STATUS_UNSUPPORTED_FEATURE),           \
-    _X(SCANLINE_STATUS_PARSE_ERROR),                   \
-    _X(SCANLINE_STATUS_MEMORY_ERROR),                  \
-    _X(SCANLINE_STATUS_INTERNAL_ERROR),                \
-    _X(SCANLINE_STATUS_TIMEOUT_ERROR),                 \
-    _X(SCANLINE_STATUS_INVOCATION_ERROR),              \
-                                                       \
+#define PAGESPEED_SCANLINE_STATUS(_X)           \
+    _X(SCANLINE_STATUS_UNINITIALIZED),          \
+    _X(SCANLINE_STATUS_SUCCESS),                \
+    _X(SCANLINE_STATUS_UNSUPPORTED_FORMAT),     \
+    _X(SCANLINE_STATUS_UNSUPPORTED_FEATURE),    \
+    _X(SCANLINE_STATUS_PARSE_ERROR),            \
+    _X(SCANLINE_STATUS_MEMORY_ERROR),           \
+    _X(SCANLINE_STATUS_INTERNAL_ERROR),         \
+    _X(SCANLINE_STATUS_TIMEOUT_ERROR),          \
+    _X(SCANLINE_STATUS_INVOCATION_ERROR),       \
+                                                \
     _X(NUM_SCANLINE_STATUS)
 
 // Note the source of the error message by means of an enum rather
 // than a string.
-#define PAGESPEED_SCANLINE_STATUS_SOURCE(_X)  \
-  _X(SCANLINE_UNKNOWN),                      \
-    _X(SCANLINE_PNGREADER),                  \
-    _X(SCANLINE_PNGREADERRAW),               \
-    _X(SCANLINE_GIFREADER),                  \
-    _X(SCANLINE_GIFREADERRAW),               \
-    _X(SCANLINE_JPEGREADER),                 \
-    _X(SCANLINE_WEBPREADER),                 \
-    _X(SCANLINE_RESIZER),                    \
-    _X(SCANLINE_PNGWRITER),                  \
-    _X(SCANLINE_JPEGWRITER),                 \
-    _X(SCANLINE_WEBPWRITER),                 \
-    _X(SCANLINE_UTIL),                       \
-    _X(SCANLINE_PIXEL_FORMAT_OPTIMIZER),     \
-                                             \
+#define PAGESPEED_SCANLINE_STATUS_SOURCE(_X)    \
+    _X(SCANLINE_UNKNOWN),                       \
+    _X(SCANLINE_PNGREADER),                     \
+    _X(SCANLINE_PNGREADERRAW),                  \
+    _X(SCANLINE_GIFREADER),                     \
+    _X(SCANLINE_GIFREADERRAW),                  \
+    _X(SCANLINE_JPEGREADER),                    \
+    _X(SCANLINE_WEBPREADER),                    \
+    _X(SCANLINE_RESIZER),                       \
+    _X(SCANLINE_PNGWRITER),                     \
+    _X(SCANLINE_JPEGWRITER),                    \
+    _X(SCANLINE_WEBPWRITER),                    \
+    _X(SCANLINE_UTIL),                          \
+    _X(SCANLINE_PIXEL_FORMAT_OPTIMIZER),        \
+    _X(FRAME_TO_SCANLINE_READER_ADAPTER),       \
+    _X(FRAME_TO_SCANLINE_WRITER_ADAPTER),       \
+    _X(SCANLINE_TO_FRAME_READER_ADAPTER),       \
+    _X(SCANLINE_TO_FRAME_WRITER_ADAPTER),       \
+                                                \
     _X(NUM_SCANLINE_SOURCE)
 
 #define PAGESPEED_SCANLINE_STATUS_ENUM_NAME(_Y) _Y
@@ -85,7 +89,7 @@ enum ScanlineStatusSource {
 // "FunctionThatFailed()" or "failure message".
 class ScanlineStatus {
  public:
-  ScanlineStatus() : type_(SCANLINE_STATUS_UNINITIALIZED),
+  ScanlineStatus() : type_(SCANLINE_STATUS_SUCCESS),
                      source_(SCANLINE_UNKNOWN),
                      details_() {}
 
@@ -141,6 +145,25 @@ class ScanlineStatus {
     return GoogleString(SourceStr()) + "/" + TypeStr() + " " + details();
   }
 
+  // Determines whether the source of this status is a reader of some
+  // sort.
+  bool ComesFromReader() const {
+    switch (source_) {
+      case SCANLINE_PNGREADER:
+      case SCANLINE_PNGREADERRAW:
+      case SCANLINE_GIFREADER:
+      case SCANLINE_GIFREADERRAW:
+      case SCANLINE_JPEGREADER:
+      case SCANLINE_WEBPREADER:
+      case FRAME_TO_SCANLINE_READER_ADAPTER:
+      case SCANLINE_TO_FRAME_READER_ADAPTER:
+        return true;
+      default:
+        return false;
+    }
+    return false;
+  }
+
  private:
   ScanlineStatusType type_;
   ScanlineStatusSource source_;
@@ -158,8 +181,8 @@ class ScanlineStatus {
 // Convenience macro for simultaneously logging error descriptions and
 // creating a ScanlineStatus with that error description. _LOGGER is
 // meant to be one of the PS_LOG* macros defined in message_handler.h.
-#define PS_LOGGED_STATUS(_LOGGER, _HANDLER, _TYPE, _SOURCE, ...)     \
-  (_LOGGER(_HANDLER, #_SOURCE "/" #_TYPE " " __VA_ARGS__),          \
+#define PS_LOGGED_STATUS(_LOGGER, _HANDLER, _TYPE, _SOURCE, ...)        \
+  (_LOGGER(_HANDLER, #_SOURCE "/" #_TYPE " " __VA_ARGS__),              \
    ScanlineStatus::New(_TYPE, _SOURCE, __VA_ARGS__))
 
 }  // namespace image_compression

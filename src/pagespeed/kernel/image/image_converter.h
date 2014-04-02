@@ -35,6 +35,8 @@ namespace image_compression {
 
 using net_instaweb::MessageHandler;
 
+class MultipleFrameReader;
+class MultipleFrameWriter;
 class PngReaderInterface;
 class ScanlineReaderInterface;
 class ScanlineWriterInterface;
@@ -48,14 +50,22 @@ class ImageConverter {
     IMAGE_WEBP
   };
 
-  // Converts image one line at a time, between different image formats.
+  // Converts image one line at a time, between different image
+  // formats. Both 'reader' and 'writer' must be non-NULL.
   static ScanlineStatus ConvertImageWithStatus(
       ScanlineReaderInterface* reader,
       ScanlineWriterInterface* writer);
+
   inline static bool ConvertImage(ScanlineReaderInterface* reader,
                                   ScanlineWriterInterface* writer) {
     return ConvertImageWithStatus(reader, writer).Success();
   }
+
+  // Converts image frame by frame, and then line by line within each
+  // frame, between different image formats. Both 'reader' and
+  // 'writer' must be non-NULL.
+  static ScanlineStatus ConvertMultipleFrameImage(MultipleFrameReader* reader,
+                                                  MultipleFrameWriter* writer);
 
   static bool ConvertPngToJpeg(
       const PngReaderInterface& png_struct_reader,

@@ -35,6 +35,7 @@ extern "C" {
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 
@@ -366,7 +367,8 @@ class PngScanlineWriter : public ScanlineWriterInterface {
                                                    GoogleString* png_image);
 
   // Write a scanline with the data provided. Return false in case of error.
-  virtual ScanlineStatus WriteNextScanlineWithStatus(void *scanline_bytes);
+  virtual ScanlineStatus WriteNextScanlineWithStatus(
+      const void *scanline_bytes);
 
   // Finalize write structure once all scanlines are written.
   // If FinalizeWriter() is called before all of the scanlines have been

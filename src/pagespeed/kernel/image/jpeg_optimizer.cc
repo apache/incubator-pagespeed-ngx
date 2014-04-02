@@ -534,8 +534,11 @@ ScanlineStatus JpegScanlineWriter::InitializeWriteWithStatus(
 }
 
 ScanlineStatus JpegScanlineWriter::WriteNextScanlineWithStatus(
-    void *scanline_bytes) {
-  JSAMPROW row_pointer[1] = { static_cast<JSAMPLE*>(scanline_bytes) };
+    const void* const scanline_bytes) {
+  JSAMPROW row_pointer[1] = {
+    static_cast<JSAMPLE*>(
+        const_cast<void*>(scanline_bytes))
+  };
   unsigned int result = jpeg_write_scanlines(&data_->jpeg_compress_,
                                              row_pointer, 1);
   if (result == 1) {
