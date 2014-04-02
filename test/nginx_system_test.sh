@@ -304,6 +304,28 @@ function run_post_cache_flush() {
 
 # nginx-specific system tests
 
+start_test Test pagespeed directive inside if block inside location block.
+
+URL="http://if-in-location.example.com/"
+URL+="mod_pagespeed_example/inline_javascript.html"
+
+# When we specify the X-Custom-Header-Inline-Js that triggers an if block in the
+# config which turns on inline_javascript.
+WGET_ARGS="--header=X-Custom-Header-Inline-Js:Yes"
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until $URL 'grep -c document.write' 1
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $WGET_ARGS $URL)
+check_from "$OUT" fgrep "X-Inline-Javascript: Yes"
+check_not_from "$OUT" fgrep "inline_javascript.js"
+
+# Without that custom header we don't trigger the if block, and shouldn't get
+# any inline javascript.
+WGET_ARGS=""
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $WGET_ARGS $URL)
+check_from "$OUT" fgrep "X-Inline-Javascript: No"
+check_from "$OUT" fgrep "inline_javascript.js"
+check_not_from "$OUT" fgrep "document.write"
+
 # Tests related to rewritten response (downstream) caching.
 
 if [ "$NATIVE_FETCHER" = "on" ]; then
@@ -489,6 +511,18 @@ if [ "$HOSTNAME" = "localhost:$PRIMARY_PORT" ] ; then
     --header=Cookie2:cookie2-data
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
   check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
+
+  start_test authorized resources do not get cached and optimized.
+  URL="$TEST_ROOT/auth/medium_purple.css"
+  AUTH="Authorization:Basic dXNlcjE6cGFzc3dvcmQ="
+  not_cacheable_start=$(scrape_stat ipro_recorder_not_cacheable)
+  echo $WGET_DUMP --header="$AUTH" "$URL"
+  OUT=$($WGET_DUMP --header="$AUTH" "$URL")
+  check_from "$OUT" fgrep -q 'background: MediumPurple;'
+  not_cacheable=$(scrape_stat ipro_recorder_not_cacheable)
+  check [ $not_cacheable = $((not_cacheable_start + 1)) ]
+  URL=""
+  AUTH=""
 fi
 
 WGET_ARGS=""
@@ -716,7 +750,15 @@ fetch_until $URL 'fgrep -c file.exception.ssp.css' 1
 start_test statistics load
 
 OUT=$($WGET_DUMP $STATISTICS_URL)
-check_from "$OUT" grep 'VHost-Specific Statistics'
+check_from "$OUT" grep 'PageSpeed Statistics'
+
+start_test statistics handler full-featured
+OUT=$($WGET_DUMP $STATISTICS_URL?config)
+check_from "$OUT" grep "InPlaceResourceOptimization (ipro)"
+
+start_test statistics handler properly sets JSON content-type
+OUT=$($WGET_DUMP $STATISTICS_URL?json)
+check_from "$OUT" grep "Content-Type: application/javascript"
 
 start_test scrape stats works
 
@@ -770,14 +812,50 @@ start_test UseExperimentalJsMinifier
 URL="$TEST_ROOT/experimental_js_minifier/index.html"
 URL+="?PageSpeedFilters=rewrite_javascript"
 # External scripts rewritten.
-fetch_until -save -recursive \
-  $URL 'grep -c src=.*rewrite_javascript\.js\.pagespeed\.jm\.' 2
-check_not grep removed $WGET_DIR/*.pagespeed.jm.*  # No comments should remain.
-check_file_size $FETCH_FILE -lt 1560               # Net savings
-check grep -q preserved $FETCH_FILE                # Preserves certain comments.
+fetch_until -save -recursive $URL 'grep -c src=.*\.pagespeed\.jm\.' 1
+check_not grep "removed" $WGET_DIR/*   # No comments should remain.
+check grep -q "preserved" $WGET_DIR/*  # Contents of <script src=> element kept.
+ORIGINAL_HTML_SIZE=1484
+check_file_size $FETCH_FILE -lt $ORIGINAL_HTML_SIZE  # Net savings
 # Rewritten JS is cache-extended.
 check grep -qi "Cache-control: max-age=31536000" $WGET_OUTPUT
 check grep -qi "Expires:" $WGET_OUTPUT
+
+start_test Source map tests
+URL="$TEST_ROOT/experimental_js_minifier/index.html"
+URL+="?PageSpeedFilters=rewrite_javascript,include_js_source_maps"
+# All rewriting still happening as expected.
+fetch_until -save -recursive $URL 'grep -c src=.*\.pagespeed\.jm\.' 1
+check_not grep "removed" $WGET_DIR/*  # No comments should remain.
+check_file_size $FETCH_FILE -lt $ORIGINAL_HTML_SIZE  # Net savings
+check grep -qi "Cache-control: max-age=31536000" $WGET_OUTPUT
+check grep -qi "Expires:" $WGET_OUTPUT
+
+# No source map for inline JS
+check_not grep sourceMappingURL $FETCH_FILE
+# Yes source_map for external JS
+check grep -q sourceMappingURL $WGET_DIR/script.js.pagespeed.*
+SOURCE_MAP_URL=$(grep sourceMappingURL $WGET_DIR/script.js.pagespeed.* |
+                 grep -o 'http://.*')
+OUTFILE=$OUTDIR/source_map
+check $WGET_DUMP -O $OUTFILE $SOURCE_MAP_URL
+check grep -qi "Cache-control: max-age=31536000" $OUTFILE  # Long cache
+check grep -q "script.js?PageSpeed=off" $OUTFILE  # Has source URL.
+check grep -q '"mappings":' $OUTFILE  # Has mappings.
+
+start_test IPRO source map tests
+URL="$TEST_ROOT/experimental_js_minifier/script.js"
+URL+="?PageSpeedFilters=rewrite_javascript,include_js_source_maps"
+# Fetch until IPRO removes comments.
+fetch_until -save $URL 'grep -c removed' 0
+# Yes source_map for external JS
+check grep -q sourceMappingURL $FETCH_FILE
+SOURCE_MAP_URL=$(grep sourceMappingURL $FETCH_FILE | grep -o 'http://.*')
+OUTFILE=$OUTDIR/source_map
+check $WGET_DUMP -O $OUTFILE $SOURCE_MAP_URL
+check grep -qi "Cache-control: max-age=31536000" $OUTFILE  # Long cache
+check grep -q "script.js?PageSpeed=off" $OUTFILE  # Has source URL.
+check grep -q '"mappings":' $OUTFILE  # Has mappings.
 
 start_test aris disables js combining for introspective js and only i-js
 URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
@@ -2369,9 +2447,12 @@ OUTFILE=$OUTDIR/ipro_resource_output
 # Fetch the HTML to initiate rewriting and caching of the image.
 http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $HTML_URL -O $OUTFILE
 
-# First IPRO resource request after a short wait: it will have the full TTL.
+# First IPRO resource request after a short wait: never be optimized
+# because our non-load-from-file flow doesn't support that, but it will have
+# the full TTL.
 sleep 2
 http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
+check_file_size "$OUTFILE" -gt 15000 # not optimized
 RESOURCE_MAX_AGE=$( \
   extract_headers $OUTFILE | \
   grep 'Cache-Control:' | tr -d '\r' | \
@@ -2379,14 +2460,16 @@ RESOURCE_MAX_AGE=$( \
 check test -n "$RESOURCE_MAX_AGE"
 check test $RESOURCE_MAX_AGE -eq 333
 
-# Second IPRO resource request after a short wait: the TTL will be reduced.
-sleep 2
+# Second IPRO resource request after a short wait: it will still be optimized
+# and the TTL will be reduced.
 http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $RESOURCE_URL -O $OUTFILE
+check_file_size "$OUTFILE" -lt 15000 # optimized
 RESOURCE_MAX_AGE=$( \
   extract_headers $OUTFILE | \
   grep 'Cache-Control:' | tr -d '\r' | \
   sed -e 's/^ *Cache-Control: *//' | sed -e 's/^.*max-age=\([0-9]*\).*$/\1/')
 check test -n "$RESOURCE_MAX_AGE"
+
 check test $RESOURCE_MAX_AGE -lt 333
 check test $RESOURCE_MAX_AGE -gt 300
 

@@ -71,6 +71,7 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
+#include "pagespeed/kernel/http/query_params.h"
 #include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 
@@ -463,7 +464,7 @@ ngx_command_t ps_commands[] = {
     NULL },
 
   { ngx_string("pagespeed"),
-    NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1|
+    NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ps_loc_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
@@ -799,18 +800,27 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 }
 
 char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
-  ps_loc_conf_t* parent_cfg_l = static_cast<ps_loc_conf_t*>(parent);
-
-  // The variant of the pagespeed directive that is acceptable in location
-  // blocks is only acceptable in location blocks, so we should never be merging
-  // in options from a server or main block.
-  CHECK(parent_cfg_l->options == NULL);
-
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(child);
   if (cfg_l->options == NULL) {
     // No directory specific options.
     return NGX_CONF_OK;
   }
+
+  // While you can't put a "location" block inside a "location" block you can
+  // put an "if" block inside a "location" block, which is implemented by making
+  // a pretend "location" block.  In this case we may have pagespeed options
+  // from the parent "location" block as well as from the current locationish
+  // "if" block.
+  ps_loc_conf_t* parent_cfg_l = static_cast<ps_loc_conf_t*>(parent);
+  if (parent_cfg_l->options != NULL) {
+    // Rebase our options off of the ones defined in the parent location block.
+    ps_merge_options(parent_cfg_l->options, &cfg_l->options);
+    return NGX_CONF_OK;
+  }
+
+  // Pagespeed options are defined in this location block, and it either has no
+  // parent (typical case) or is an if block whose parent location block defines
+  // no pagespeed options.  Base our options off of those in the server block.
 
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
@@ -1666,6 +1676,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
       }
     }
     ctx->recorder = NULL;
+    ctx->url_string = url_string;
 
     // Set up a cleanup handler on the request.
     ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -2155,6 +2166,9 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
   NgxServerContext* server_context = cfg_s->server_context;
   MessageHandler* message_handler = cfg_s->handler;
   GoogleString url = ps_determine_url(r);
+  // The URL we use for cache key is a bit different since it may
+  // have PageSpeed query params removed.
+  GoogleString cache_url = ctx->url_string;
 
   // continue process
   if (status_ok) {
@@ -2175,7 +2189,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
         kInfo,
         "Could not rewrite resource in-place "
         "because URL is not in cache: %s",
-        url.c_str());
+        cache_url.c_str());
     const SystemRewriteOptions* options = SystemRewriteOptions::DynamicCast(
         ctx->driver->options());
     RequestHeaders request_headers;
@@ -2186,7 +2200,7 @@ ngx_int_t ps_in_place_check_header_filter(ngx_http_request_t* r) {
     // We do that using an Apache output filter.
     ctx->recorder = new InPlaceResourceRecorder(
         RequestContextPtr(cfg_s->server_context->NewRequestContext(r)),
-        url,
+        cache_url,
         ctx->driver->CacheFragment(),
         request_headers.GetProperties(),
         options->respect_vary(),
@@ -2304,6 +2318,10 @@ class NgxPagespeedConsoleAsyncFetch : public AsyncFetchUsingWriter {
       : AsyncFetchUsingWriter(request_context, writer) { }
   virtual void HandleDone(bool status) { }
   virtual void HandleHeadersComplete() { }
+
+  void FlushToNgx(const GoogleString& output, ngx_http_request_t* r) {
+    send_out_headers_and_body(r, *response_headers(), output);
+  }
 };
 
 }  // namespace
@@ -2316,6 +2334,13 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
           server_context->factory());
   NgxMessageHandler* message_handler = factory->ngx_message_handler();
   StringPiece request_uri_path = str_to_string_piece(r->uri);
+
+  GoogleString url_string = ps_determine_url(r);
+  GoogleUrl url(url_string);
+  QueryParams query_params;
+  if (url.IsWebValid()) {
+    query_params.Parse(url.Query());
+  }
 
   GoogleString output;
   StringWriter writer(&output);
@@ -2338,28 +2363,30 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
     }
     case RequestRouting::kStatistics: {
       bool is_global_request =
-          !factory->use_per_vhost_statistics() ||
           StringCaseStartsWith(
               request_uri_path, "/ngx_pagespeed_global_statistics");
-      error_message = server_context->StatisticsHandler(
-          factory->caches(),
-          is_global_request ?
-              factory->statistics() : server_context->statistics(),
-          NULL,  // No SPDY-specific config in ngx_pagespeed.
-          StringPiece(reinterpret_cast<char*>(r->args.data), r->args.len),
-          &content_type,
-          &writer);
-      break;
+      ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+      RequestContextPtr request_context(
+          cfg_s->server_context->NewRequestContext(r));
+      NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
+      server_context->StatisticsPage(
+          is_global_request,
+          query_params,
+          &fetch);
+      fetch.FlushToNgx(output, r);
+      return NGX_OK;
     }
     case RequestRouting::kConsole: {
       ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
       RequestContextPtr request_context(
           cfg_s->server_context->NewRequestContext(r));
       NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
-      server_context->ConsoleHandler(*server_context->config(), &fetch);
-      status = static_cast<HttpStatus::Code>(
-          fetch.response_headers()->status_code());
-      break;
+      server_context->ConsoleHandler(*server_context->config(),
+                                     SystemServerContext::kStatistics,
+                                     query_params,
+                                     &fetch);
+      fetch.FlushToNgx(output, r);
+      return NGX_OK;
     }
     case RequestRouting::kMessages: {
       GoogleString log;

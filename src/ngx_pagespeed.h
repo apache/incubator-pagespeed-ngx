@@ -103,6 +103,10 @@ typedef struct {
   RewriteDriver* driver;
   InPlaceResourceRecorder* recorder;
   ResponseHeaders* ipro_response_headers;
+
+  // We need to remember the URL here as well since we may modify what NGX
+  // gets by stripping our special query params and honoring X-Forwarded-Proto.
+  GoogleString url_string;
 } ps_request_ctx_t;
 
 

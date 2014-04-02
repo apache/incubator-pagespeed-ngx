@@ -70,8 +70,6 @@ const char* const main_only_options[] = {
   "UseNativeFetcher"
 };
 
-const char kNgxPagespeedStatisticsHandlerPath[] = "/ngx_pagespeed_statistics";
-
 }  // namespace
 
 RewriteOptions::Properties* NgxRewriteOptions::ngx_properties_ = NULL;
@@ -91,11 +89,6 @@ void NgxRewriteOptions::Init() {
   DCHECK(ngx_properties_ != NULL)
       << "Call NgxRewriteOptions::Initialize() before construction";
   InitializeOptions(ngx_properties_);
-
-  // Nginx-specific default.
-  // TODO(sligocki): Get rid of this line and let both Apache and Nginx use
-  // /pagespeed_statistics as the handler.
-  statistics_handler_path_.set_default(kNgxPagespeedStatisticsHandlerPath);
 }
 
 void NgxRewriteOptions::AddProperties() {
