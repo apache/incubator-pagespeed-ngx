@@ -920,12 +920,13 @@ class ImageCombineFilter::Context : public RewriteContext {
     StringSet no_sprite;
     FindUnspritable(&no_sprite);
     CollectSlots(partitions, outputs, &no_sprite);
-    CrossThreadPartitionDone(partitions->partition_size() != 0);
+    CrossThreadPartitionDone(partitions->partition_size() != 0 ?
+                                 kRewriteOk : kRewriteFailed);
   }
 
   void PartitionCancel(OutputPartitions* partitions,
                        OutputResourceVector* outputs) {
-    CrossThreadPartitionDone(false);
+    CrossThreadPartitionDone(kTooBusy);
   }
 
  private:

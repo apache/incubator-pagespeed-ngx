@@ -266,7 +266,7 @@ class JsCombineFilter::Context : public RewriteContext {
 
   void PartitionCancel(OutputPartitions* partitions,
                        OutputResourceVector* outputs) {
-    CrossThreadPartitionDone(false);
+    CrossThreadPartitionDone(kTooBusy);
   }
 
   // Divide the slots into partitions according to which js files can
@@ -308,7 +308,8 @@ class JsCombineFilter::Context : public RewriteContext {
       }
     }
     FinalizePartition(partitions, partition, outputs);
-    CrossThreadPartitionDone(partitions->partition_size() != 0);
+    CrossThreadPartitionDone(partitions->partition_size() != 0 ?
+                                 kRewriteOk : kRewriteFailed);
   }
 
   // Actually write the new resource.

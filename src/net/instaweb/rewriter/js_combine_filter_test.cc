@@ -1153,4 +1153,38 @@ TEST_F(JsCombineFilterTest, NoPreserveUrlRelativity) {
       << combine_url;
 }
 
+TEST_F(JsCombineFilterTest, LoadShedPartition) {
+  // We want both primary and secondary contexts to use the same cache, as we'll
+  // need to use secondary to look at results of primary.
+  SetupSharedCache();
+
+  // Arrange for partition to get canceled, by outright shutting down the
+  // thread where it's supposed to run.
+  server_context()->low_priority_rewrite_workers()->ShutDown();
+
+  // That obviously results in no rewrites.
+  ValidateNoChanges(
+      "pagespeed_load_shed",
+      StrCat("<script src=", kJsUrl1, "></script>",
+             "<script src=", kJsUrl2, "></script>"));
+
+  // Flip over to the alternate server, since we broke the primary one's
+  // threads.
+  SetActiveServer(kSecondary);
+
+  // Need to re-enable stuff since the fixture only turned it on on primary.
+  AddFilter(RewriteOptions::kCombineJavascript);
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  Parse("pagespeed_try_again",
+        StrCat("<script src=", kJsUrl1, "></script>"
+               "<script src=", kJsUrl2, "></script>"));
+
+  ASSERT_EQ(3, scripts.size());  // Combine URL script + 2 eval scripts.
+  StringPiece combine_url(scripts[0].url);
+  EXPECT_TRUE(combine_url.starts_with("a.js+b.js.pagespeed.jc"))
+      << combine_url;
+}
+
 }  // namespace net_instaweb

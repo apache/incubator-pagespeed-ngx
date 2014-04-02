@@ -366,11 +366,11 @@ class RewriteContext {
   // Call this from the main rewrite sequence to report results of
   // PartitionAsync. If the client is not in the main rewrite sequence,
   // use CrossThreadPartitionDone() instead.
-  void PartitionDone(bool result);
+  void PartitionDone(RewriteResult result);
 
   // Helper for queuing invocation of PartitionDone to run in the
   // main rewrite sequence.
-  void CrossThreadPartitionDone(bool result);
+  void CrossThreadPartitionDone(RewriteResult result);
 
   // Takes a completed rewrite partition and rewrites it.  When
   // complete, implementations should call RewriteDone(kRewriteOk) if

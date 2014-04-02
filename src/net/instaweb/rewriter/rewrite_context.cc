@@ -2063,7 +2063,21 @@ void RewriteContext::StartRewriteForHtml() {
   PartitionAsync(partitions_.get(), &outputs_);
 }
 
-void RewriteContext::PartitionDone(bool result) {
+void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
+  bool result = false;
+  switch (result_or_busy) {
+    case kRewriteFailed:
+      result = false;
+      break;
+    case kRewriteOk:
+      result = true;
+      break;
+    case kTooBusy:
+      MarkTooBusy();
+      result = false;
+      break;
+  }
+
   if (!result) {
     partitions_->clear_partition();
     outputs_.clear();
@@ -2581,10 +2595,10 @@ bool RewriteContext::Partition(OutputPartitions* partitions,
 
 void RewriteContext::PartitionAsync(OutputPartitions* partitions,
                                     OutputResourceVector* outputs) {
-  PartitionDone(Partition(partitions, outputs));
+  PartitionDone(Partition(partitions, outputs) ? kRewriteOk : kRewriteFailed);
 }
 
-void RewriteContext::CrossThreadPartitionDone(bool result) {
+void RewriteContext::CrossThreadPartitionDone(RewriteResult result) {
   Driver()->AddRewriteTask(
       MakeFunction(this, &RewriteContext::PartitionDone, result));
 }
