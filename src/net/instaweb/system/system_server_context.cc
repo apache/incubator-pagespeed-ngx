@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -40,6 +41,8 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/property_store.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/split_statistics.h"
@@ -47,6 +50,7 @@
 #include "net/instaweb/util/public/statistics_logger.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
@@ -616,6 +620,125 @@ void SystemServerContext::PrintHistograms(bool is_global_request,
   stats->RenderHistograms(fetch, message_handler());
 }
 
+namespace {
+
+static const char kToggleScript[] =
+    "<script type='text/javascript'>\n"
+    "function toggleDetail(id) {\n"
+    "  var toggle_button = document.getElementById(id + '_toggle');\n"
+    "  var summary_div = document.getElementById(id + '_summary');\n"
+    "  var detail_div = document.getElementById(id + '_detail');\n"
+    "  if (toggle_button.checked) {\n"
+    "    summary_div.style.display = 'none';\n"
+    "    detail_div.style.display = 'block';\n"
+    "  } else {\n"
+    "    summary_div.style.display = 'block';\n"
+    "    detail_div.style.display = 'none';\n"
+    "  }\n"
+    "}\n"
+    "</script>\n";
+
+static const char kTableStart[] =
+    "<table style='font-family:sans-serif;font-size:0.9em'>\n"
+    "  <thead>\n"
+    "    <tr style='font-weight:bold'>\n"
+    "      <td>Cache</td><td>Detail</td><td>Structure</td>\n"
+    "    </tr>\n"
+    "  </thead>\n"
+    "  <tbody>";
+
+static const char kTableEnd[] =
+    "  </tbody>\n"
+    "</table>";
+
+// Takes a complicated descriptor like
+//    "HTTPCache(Fallback(small=Batcher(cache=Stats(parefix=memcached_async,"
+//    "cache=Async(AprMemCache)),parallelism=1,max=1000),large=Stats("
+//    "prefix=file_cache,cache=FileCache)))"
+// and strips away the crap most users don't want to see, as they most
+// likely did not configure it, and return
+//    "Async AprMemCache FileCache"
+GoogleString HackCacheDescriptor(StringPiece name) {
+  GoogleString out;
+  // There's a lot of complicated syntax in the cache name giving the
+  // detailed hierarchical structure.  This is really hard to read and
+  // overly cryptic; it's designed for unit tests.  But let's extract
+  // a few keywords out of this to understand the main pointers.
+  static const char* kCacheKeywords[] = {
+    "Compressed", "Async", "SharedMemCache", "LRUCache", "AprMemCache",
+    "FileCache"
+  };
+  const char* delim = "";
+  for (int i = 0, n = arraysize(kCacheKeywords); i < n; ++i) {
+    if (name.find(kCacheKeywords[i]) != StringPiece::npos) {
+      StrAppend(&out, delim, kCacheKeywords[i]);
+      delim = " ";
+    }
+  }
+  if (out.empty()) {
+    name.CopyToString(&out);
+  }
+  return out;
+}
+
+// Takes a complicated descriptor like
+//    "HTTPCache(Fallback(small=Batcher(cache=Stats(prefix=memcached_async,"
+//    "cache=Async(AprMemCache)),parallelism=1,max=1000),large=Stats("
+//    "prefix=file_cache,cache=FileCache)))"
+// and injects HTML line-breaks and indentation based on the parent depth,
+// yielding HTML that renders like this (with &nbsp; and <br/>)
+//    HTTPCache(
+//       Fallback(
+//          small=Batcher(
+//             cache=Stats(
+//                prefix=memcached_async,
+//                cache=Async(
+//                   AprMemCache)),
+//             parallelism=1,
+//             max=1000),
+//          large=Stats(
+//             prefix=file_cache,
+//             cache=FileCache)))
+GoogleString IndentCacheDescriptor(StringPiece name) {
+  GoogleString out, buf;
+  int depth = 0;
+  for (int i = 0, n = name.size(); i < n; ++i) {
+    StrAppend(&out, HtmlKeywords::Escape(name.substr(i, 1), &buf));
+    switch (name[i]) {
+      case '(':
+        ++depth;
+        FALLTHROUGH_INTENDED;
+      case ',':
+        out += "<br/>";
+        for (int j = 0; j < depth; ++j) {
+          out += "&nbsp; &nbsp;";
+        }
+        break;
+      case ')':
+        --depth;
+        break;
+    }
+  }
+  return out;
+}
+
+GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
+  GoogleString out, escaped;
+  StrAppend(&out, "<tr style='vertical-align:top;'><td>", label,
+            "</td><td><input id='", label,
+            "_toggle' type='checkbox' onclick='toggleDetail(\"", label,
+            "\")'/></td><td><code id='", label, "_summary'>");
+  StrAppend(&out, HtmlKeywords::Escape(HackCacheDescriptor(descriptor),
+                                       &escaped));
+  StrAppend(&out, "</code><code id='", label,
+            "_detail' style='display:none;'>");
+  StrAppend(&out, IndentCacheDescriptor(descriptor));
+  StrAppend(&out, "</code></td></tr>\n");
+  return out;
+}
+
+}  // namespace
+
 void SystemServerContext::PrintCaches(bool is_global, AdminSource source,
                                       AsyncFetch* fetch) {
   AdminHtml admin_html("cache", "", source, fetch, message_handler());
@@ -631,12 +754,29 @@ void SystemServerContext::PrintCaches(bool is_global, AdminSource source,
   flags |= SystemCaches::kIncludeMemcached;
 
   if (system_caches_ != NULL) {
+    fetch->Write(kTableStart, message_handler());
+    CacheInterface* fsmdc = filesystem_metadata_cache();
+    fetch->Write(StrCat(
+        CacheInfoHtmlSnippet("HTTP Cache", http_cache()->Name()),
+        CacheInfoHtmlSnippet("Metadata Cache", metadata_cache()->Name()),
+        CacheInfoHtmlSnippet("Property Cache",
+                             page_property_cache()->property_store()->Name()),
+        CacheInfoHtmlSnippet("FileSystem Metadata Cache",
+                             (fsmdc == NULL) ? "none" : fsmdc->Name())),
+                 message_handler());
+    fetch->Write(kTableEnd, message_handler());
+
     GoogleString backend_stats;
     system_caches_->PrintCacheStats(
         static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
     if (!backend_stats.empty()) {
       HtmlKeywords::WritePre(backend_stats, fetch, message_handler());
     }
+
+    // Practice what we preach: put the blocking JS in the tail.
+    // TODO(jmarantz): use static asset manager to compile & deliver JS
+    // externally.
+    fetch->Write(kToggleScript, message_handler());
   }
 }
 
