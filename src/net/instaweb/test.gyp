@@ -143,6 +143,7 @@
         'rewriter/dom_stats_filter_test.cc',
         'rewriter/domain_lawyer_test.cc',
         'rewriter/domain_rewrite_filter_test.cc',
+        'rewriter/downstream_cache_purger_test.cc',
         'rewriter/downstream_caching_directives_test.cc',
         'rewriter/experiment_matcher_test.cc',
         'rewriter/experiment_util_test.cc',

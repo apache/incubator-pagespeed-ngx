@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
+#include "net/instaweb/rewriter/public/downstream_cache_purger.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -48,6 +49,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/response_headers.h"
@@ -1084,6 +1086,26 @@ class RewriteDriver : public HtmlParse {
     return defer_instrumentation_script_;
   }
 
+  // Sets the num_initiated_rewrites_. This should only be called from test
+  // code.
+  void set_num_initiated_rewrites(int64 x) {
+    ScopedMutex lock(rewrite_mutex());
+    num_initiated_rewrites_ = x;
+  }
+  int64 num_initiated_rewrites() const {
+    ScopedMutex lock(rewrite_mutex());
+    return num_initiated_rewrites_;
+  }
+  // Sets the num_detached_rewrites_. This should only be called from test code.
+  void set_num_detached_rewrites(int64 x) {
+    ScopedMutex lock(rewrite_mutex());
+    num_detached_rewrites_ = x;
+  }
+  int64 num_detached_rewrites() const {
+    ScopedMutex lock(rewrite_mutex());
+    return num_detached_rewrites_;
+  }
+
   // We fragment the cache based on the hostname we got from the request, unless
   // that was overridden in the options with a cache_fragment.
   const GoogleString& CacheFragment() const;
@@ -1243,23 +1265,6 @@ class RewriteDriver : public HtmlParse {
   // this async fetch request is completed.
   void PossiblyPurgeCachedResponseAndReleaseDriver();
 
-  // Check rewrite options specified for downstream caching behavior and
-  // amount of rewriting initiated and completed to decide whether the
-  // fully rewritten response is significantly better than the stored
-  // version and whether the currently stored version ought to be purged.
-  bool ShouldPurgeRewrittenResponse();
-
-  // Construct the purge URL and decide on the purge HTTP method (GET, PURGE
-  // etc.) based on the rewrite options.
-  static bool GetPurgeUrl(const GoogleUrl& google_url,
-                          const RewriteOptions* options,
-                          GoogleString* purge_url,
-                          GoogleString* purge_method);
-
-  // Initiates a purge request fetch.
-  void PurgeDownstreamCache(const GoogleString& purge_url,
-                            const GoogleString& purge_method);
-
   // Log statistics to the AbstractLogRecord.
   void LogStats();
 
@@ -1416,10 +1421,6 @@ class RewriteDriver : public HtmlParse {
   // If it is set to true, then lazyload script is flushed with flush early
   // flow.
   bool is_lazyload_script_flushed_;
-
-  // Set to true if we are keeping the driver alive to make a purge request to
-  // a downstream cache, so we don't keep trying to do it.
-  bool made_downstream_purge_attempt_;
 
   // Tracks whether any filter that uses the dom cohort of the property cache is
   // enabled. Writes to the property cache for this cohort are predicated on
@@ -1628,6 +1629,9 @@ class RewriteDriver : public HtmlParse {
   // If false, add pagespeed_no_defer attribute to the script inserted by
   // add_instrumentation filter.
   bool defer_instrumentation_script_;
+
+  // Downstream cache object used for issuing purges.
+  DownstreamCachePurger downstream_cache_purger_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

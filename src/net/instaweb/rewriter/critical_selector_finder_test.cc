@@ -413,7 +413,7 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // unless the reinstrumentation time interval is exceeded, beacon injection
   // should not happen.
   ResetDriver();
-  SetDownstreamCacheDirectives("", kConfiguredBeaconingKey);
+  SetDownstreamCacheDirectives("", "", kConfiguredBeaconingKey);
   SetShouldBeaconHeader(kConfiguredBeaconingKey);
   VerifyNoBeaconing();
   // Advance the timer past the beacon interval.
@@ -422,13 +422,13 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // When the reinstrumentation time interval is exceeded, beacon injection
   // should happen as usual.
   ResetDriver();
-  SetDownstreamCacheDirectives("", kConfiguredBeaconingKey);
+  SetDownstreamCacheDirectives("", "", kConfiguredBeaconingKey);
   SetShouldBeaconHeader(kConfiguredBeaconingKey);
   VerifyBeaconing();
 
   // Beacon injection should not happen when rebeaconing key is not configured.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", "");
+  SetDownstreamCacheDirectives("", "localhost:80", "");
   SetShouldBeaconHeader(kConfiguredBeaconingKey);
   VerifyNoBeaconing();
 
@@ -436,14 +436,14 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // absent and both downstream caching and the associated rebeaconing key
   // are configured.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetDownstreamCacheDirectives("", "localhost:80", kConfiguredBeaconingKey);
   SetDummyRequestHeaders();
   VerifyNoBeaconing();
 
   // Beacon injection should not happen when the PS-ShouldBeacon header is
   // incorrect.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetDownstreamCacheDirectives("", "localhost:80", kConfiguredBeaconingKey);
   SetShouldBeaconHeader(kWrongBeaconingKey);
   VerifyNoBeaconing();
 
@@ -451,7 +451,7 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // when the pcache value has not expired and the reinstrumentation time
   // interval has not been exceeded.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetDownstreamCacheDirectives("", "localhost:80", kConfiguredBeaconingKey);
   SetShouldBeaconHeader(kConfiguredBeaconingKey);
   VerifyBeaconing();
 
@@ -462,7 +462,7 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // passed when downstream caching is enabled but rebeaconing key is not
   // configured.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", "");
+  SetDownstreamCacheDirectives("", "localhost:80", "");
   SetShouldBeaconHeader(kConfiguredBeaconingKey);
   VerifyBeaconing();
 
@@ -472,7 +472,7 @@ TEST_F(CriticalSelectorFinderTest, RebeaconBeforeTimeoutWithHeader) {
   // Beacon injection should not happen when the PS-ShouldBeacon header is
   // incorrect even if the reinstrumentation time interval has been exceeded.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", kConfiguredBeaconingKey);
+  SetDownstreamCacheDirectives("", "localhost:80", kConfiguredBeaconingKey);
   SetShouldBeaconHeader(kWrongBeaconingKey);
   VerifyNoBeaconing();
 }

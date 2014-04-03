@@ -303,7 +303,7 @@ TEST_F(CriticalImagesBeaconFilterTest, BeaconReinstrumentationWithHeader) {
   // when the pcache value has not expired and the reinstrumentation time
   // interval has not been exceeded.
   ResetDriver();
-  SetDownstreamCacheDirectives("localhost:80", "random_rebeaconing_key");
+  SetDownstreamCacheDirectives("", "localhost:80", "random_rebeaconing_key");
   RequestHeaders new_request_headers;
   new_request_headers.Add(kPsaShouldBeacon, "random_rebeaconing_key");
   rewrite_driver()->SetRequestHeaders(new_request_headers);

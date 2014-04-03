@@ -278,11 +278,14 @@ void RewriteTestBase::SetDummyRequestHeaders() {
 }
 
 void RewriteTestBase::SetDownstreamCacheDirectives(
-    StringPiece downstream_cache_location,
+    StringPiece downstream_cache_purge_method,
+    StringPiece downstream_cache_purge_location_prefix,
     StringPiece rebeaconing_key) {
   options_->ClearSignatureForTesting();
+  options_->set_downstream_cache_rewritten_percentage_threshold(95);
+  options_->set_downstream_cache_purge_method(downstream_cache_purge_method);
   options_->set_downstream_cache_purge_location_prefix(
-      downstream_cache_location);
+      downstream_cache_purge_location_prefix);
   options_->set_downstream_cache_rebeaconing_key(rebeaconing_key);
   options_->ComputeSignature();
 }

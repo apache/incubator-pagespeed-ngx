@@ -44,7 +44,6 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/critical_keys.pb.h"
@@ -81,6 +80,7 @@
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/downstream_cache_purger.h"
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -135,7 +135,6 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/fallback_property_page.h"
@@ -246,7 +245,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flushed_early_(false),
       flushing_early_(false),
       is_lazyload_script_flushed_(false),
-      made_downstream_purge_attempt_(false),
       write_property_cache_dom_cohort_(false),
       should_skip_parsing_(kNotSet),
       response_headers_(NULL),
@@ -284,7 +282,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       request_context_(NULL),
       start_time_ms_(0),
       tried_to_distribute_fetch_(false),
-      defer_instrumentation_script_(false)
+      defer_instrumentation_script_(false),
+      downstream_cache_purger_(this)
       // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
@@ -389,7 +388,7 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
 
   DCHECK(!flush_requested_);
   release_driver_ = false;
-  made_downstream_purge_attempt_ = false;
+  downstream_cache_purger_.Clear();
   write_property_cache_dom_cohort_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.IsAnyValid());
@@ -1756,33 +1755,6 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   GoogleString canonical_url_;
 };
 
-class StringAsyncFetchWithAsyncCountUpdates : public StringAsyncFetch {
- public:
-  StringAsyncFetchWithAsyncCountUpdates(const RequestContextPtr& ctx,
-                                        RewriteDriver* driver)
-      : StringAsyncFetch(ctx),
-        driver_(driver) {
-    driver_->increment_async_events_count();
-  }
-
-  virtual ~StringAsyncFetchWithAsyncCountUpdates() { }
-
-  virtual void HandleDone(bool success) {
-    if (response_headers()->status_code() == HttpStatus::kOK) {
-      driver_->server_context()->rewrite_stats()->
-          successful_downstream_cache_purges()->Add(1);
-    }
-    StringAsyncFetch::HandleDone(success);
-    driver_->decrement_async_events_count();
-    delete this;
-  }
-
- private:
-  RewriteDriver* driver_;
-
-  DISALLOW_COPY_AND_ASSIGN(StringAsyncFetchWithAsyncCountUpdates);
-};
-
 // A fetch that writes back to the base fetch, takes care of a few stats,
 // and can recover from an early (before HeadersComplete) fetcher error by
 // ignoring subsequent writes and calling FetchResources() on the driver once
@@ -2439,99 +2411,16 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
   DropReference(kRefDeletingRewrites);
 }
 
-bool RewriteDriver::GetPurgeUrl(const GoogleUrl& page_url,
-                                const RewriteOptions* options,
-                                GoogleString* purge_url,
-                                GoogleString* purge_method) {
-  *purge_url = StrCat(options->downstream_cache_purge_location_prefix(),
-                      page_url.PathAndLeaf());
-  *purge_method = options->downstream_cache_purge_method();
-  return (!purge_url->empty() && !purge_method->empty());
-}
-
-// This function uses a few variables gaurded by rewrite_mutex() without locking
-// it, but we should not have concurrent responses at this point so thread
-// safety analysis is disabled.
-bool RewriteDriver::ShouldPurgeRewrittenResponse() NO_THREAD_SAFETY_ANALYSIS {
-  if (options()->downstream_cache_purge_location_prefix().empty()) {
-    // Downstream caching is not enabled.
-    return false;
-  }
-  if (num_initiated_rewrites_ == 0) {
-    // No rewrites were initiated. Could happen if the rewriters
-    // enabled don't apply on the page, or apply instantly (e.g.
-    // collapse whitespace).
-    return false;
-  }
-  // Figure out what percentage of the rewriting was done before the
-  // response was served out, so that we can initiate a cache purge if there
-  // was significant amount of rewriting remaining to be done.
-  float served_rewritten_percentage =
-      ((num_initiated_rewrites_ - num_detached_rewrites_) * 100.0) /
-       num_initiated_rewrites_;
-  if (served_rewritten_percentage <
-      options()->downstream_cache_rewritten_percentage_threshold()) {
-    message_handler()->Message(
-        kInfo,
-        "Should purge \"%s\" which was served with only %d%% rewriting done.",
-        google_url().spec_c_str(),
-        static_cast<int>(served_rewritten_percentage));
-    return true;
-  }
-  return false;
-}
-
-void RewriteDriver::PurgeDownstreamCache(const GoogleString& purge_url,
-                                         const GoogleString& purge_method) {
-  // TODO(anupama): Use purge_method actually.
-  StringAsyncFetchWithAsyncCountUpdates* dummy_fetch =
-      new StringAsyncFetchWithAsyncCountUpdates(request_context(), this);
-  // Add a purge-related header so that the purge request does not
-  // get us into a loop.
-  dummy_fetch->request_headers()->CopyFrom(*request_headers());
-  dummy_fetch->request_headers()->Add(kPsaPurgeRequest, "1");
-  if (purge_method == "PURGE") {
-    dummy_fetch->request_headers()->set_method(RequestHeaders::kPurge);
-  }
-  made_downstream_purge_attempt_ = true;
-
-  message_handler()->Message(kInfo, "Purge url is %s", purge_url.c_str());
-  async_fetcher()->Fetch(purge_url, message_handler(), dummy_fetch);
-}
 
 void RewriteDriver::PossiblyPurgeCachedResponseAndReleaseDriver() {
   DCHECK(!externally_managed_);
   // We might temporarily (due to purging) revive the object here, so
   // better clear the "we were told it's dead!" bit.
   release_driver_ = false;
-
-  GoogleString purge_url;
-  GoogleString purge_method;
-  // If request headers have not been set or this is a looped back purge
-  // request, do not issue purge calls and return immediately. If not,
-  // check whether the rewritten response needs to be purged, and whether
-  // valid purge URL and method are available and decide whether to
-  // purge or to release the driver right away. If a purge fetch request
-  // is issued, the driver will be released when the async event count
-  // is decremented at the end of the fetch.
-  if (request_headers() != NULL &&
-      request_headers()->Lookup1(kPsaPurgeRequest) == NULL &&
-      !made_downstream_purge_attempt_ &&
-      google_url().IsWebValid() &&
-      ShouldPurgeRewrittenResponse() &&
-      RewriteDriver::GetPurgeUrl(google_url(), options(),
-                                 &purge_url, &purge_method)) {
-    // Purge old version from cache since we will have a better rewritten
-    // version available on the next request. The purge request will
-    // use the same request headers as the request (and hence the same
-    // UserAgent etc.).
-    // Note: we need to bump the stats before calling the method, since
-    // we could in principle get deleted by it.
-    server_context_->rewrite_stats()->downstream_cache_purge_attempts()->Add(1);
-    PurgeDownstreamCache(purge_url, purge_method);
-  } else {
-    server_context_->ReleaseRewriteDriver(this);
+  if (downstream_cache_purger_.MaybeIssuePurge(google_url())) {
+    return;
   }
+  server_context_->ReleaseRewriteDriver(this);
 }
 
 RewriteContext* RewriteDriver::RegisterForPartitionKey(

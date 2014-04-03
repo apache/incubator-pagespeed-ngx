@@ -942,6 +942,7 @@
         'rewriter/critical_line_info_finder.cc',
         'rewriter/device_properties.cc',
         'rewriter/domain_lawyer.cc',
+        'rewriter/downstream_cache_purger.cc',
         'rewriter/downstream_caching_directives.cc',
         'rewriter/flush_early_info_finder.cc',
         'rewriter/output_resource.cc',

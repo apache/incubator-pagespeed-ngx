@@ -167,7 +167,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Enable downstream caching feature and set up the downstream cache
   // rebeaconing key.
   void SetDownstreamCacheDirectives(
-    StringPiece downstream_cache_location,
+    StringPiece downstream_cache_purge_method,
+    StringPiece downstream_cache_purge_location_prefix,
     StringPiece rebeaconing_key);
 
   // Set ShouldBeacon request header to the specified value.
