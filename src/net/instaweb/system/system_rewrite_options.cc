@@ -85,7 +85,8 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kMemcachedThreads,
                     "Number of background threads to use to run "
                         "memcached fetches");
-  AddSystemProperty(0, &SystemRewriteOptions::memcached_timeout_us_, "amo",
+  AddSystemProperty(500 * Timer::kMsUs,  // half a second
+                    &SystemRewriteOptions::memcached_timeout_us_, "amo",
                     RewriteOptions::kMemcachedTimeoutUs,
                     "Maximum time in microseconds to allow for memcached "
                         "transactions");
