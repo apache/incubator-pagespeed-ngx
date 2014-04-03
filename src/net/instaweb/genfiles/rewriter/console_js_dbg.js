@@ -1418,7 +1418,7 @@ goog.math.isFiniteNumber = function(num) {
 goog.math.log10Floor = function(num) {
   if (0 < num) {
     var x = Math.round(Math.log(num) * Math.LOG10E);
-    return x - (Math.pow(10, x) > num);
+    return x - (parseFloat("1e" + x) > num);
   }
   return 0 == num ? -Infinity : NaN;
 };

@@ -373,7 +373,9 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
     server_context->DeleteCacheOnDestruction(memcached.blocking);
 
     // Use the blocking version of our memcached server for the
-    // filesystem metadata cache AND the property store cache.
+    // filesystem metadata cache AND the property store cache.  Note
+    // that if there is a shared-memory cache, then we will override
+    // this setting and use it for the filesystem metadata cache below.
     server_context->set_filesystem_metadata_cache(
         memcached.blocking);
     property_store_cache = memcached.blocking;
@@ -414,6 +416,22 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
       // memcached that would like to use our metadata.
       metadata_l1 = shm_metadata_cache;
       metadata_l2 = memcached.async;
+
+      // Because memcached shares the metadata cache across machines,
+      // we need a filesystem metadata cache to validate LoadFromFile
+      // entries.  We default to using memcached for that, even though
+      // the LoadFromFile metadata is usually local to the machine,
+      // unless the user specifes an NFS directory in LoadFromFile.
+      // This is OK because it is keyed to the machine name.  But if
+      // we have a shm cache, then use it instead for the metadata
+      // cache.
+      //
+      // Note that we don't need to use a writethrough or fallback
+      // strategy as the data is reasonably inexpensive to recompute
+      // on a restart, unlike the metadata_cache which has
+      // optimization results, and the payloads are all small (message
+      // InputInfo in ../rewriter/cached_result.proto).
+      server_context->set_filesystem_metadata_cache(shm_metadata_cache);
     } else {
       // We can either write through to the file cache or not.  Not writing
       // through is nice in that we can save a lot of disk writes, but if

@@ -314,6 +314,14 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
         HttpCache(
             Fallback(mem_cache, Stats("file_cache", FileCacheName()))),
         server_context->http_cache()->Name());
+    ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
+
+    // That the code that queries the FSMDC from the validator in RewriteContext
+    // does a Get and needs the response to be available inline.
+    EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
+    EXPECT_STREQ(
+        Fallback(BlockingMemCacheWithStats(), FileCacheWithStats()),
+        server_context->filesystem_metadata_cache()->Name());
   }
 
   // Wrapper functions to format expected cache descriptor strings with
@@ -399,6 +407,7 @@ TEST_F(SystemCachesTest, BasicFileAndLruCache) {
           HttpCache(Stats("lru_cache", ThreadsafeLRU())),
           HttpCache(FileCacheWithStats())),
       server_context->http_cache()->Name());
+  EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
 TEST_F(SystemCachesTest, BasicFileOnlyCache) {
@@ -414,6 +423,7 @@ TEST_F(SystemCachesTest, BasicFileOnlyCache) {
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(HttpCache(FileCacheWithStats()),
                server_context->http_cache()->Name());
+  EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
 TEST_F(SystemCachesTest, UnusableShmAndLru) {
@@ -440,6 +450,7 @@ TEST_F(SystemCachesTest, UnusableShmAndLru) {
           HttpCache(Stats("lru_cache", ThreadsafeLRU())),
           HttpCache(FileCacheWithStats())),
       server_context->http_cache()->Name());
+  EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
 TEST_F(SystemCachesTest, BasicShmAndLru) {
@@ -463,6 +474,7 @@ TEST_F(SystemCachesTest, BasicShmAndLru) {
       WriteThroughHTTP(HttpCache(Stats("lru_cache", ThreadsafeLRU())),
                        HttpCache(FileCacheWithStats())),
       server_context->http_cache()->Name());
+  EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
 TEST_F(SystemCachesTest, BasicShmAndNoLru) {
@@ -484,6 +496,7 @@ TEST_F(SystemCachesTest, BasicShmAndNoLru) {
   // HTTP cache is unaffected.
   EXPECT_STREQ(HttpCache(FileCacheWithStats()),
                server_context->http_cache()->Name());
+  EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
 TEST_F(SystemCachesTest, DoubleShmCreate) {
@@ -517,6 +530,7 @@ TEST_F(SystemCachesTest, DoubleShmCreate) {
           HttpCache(Stats("lru_cache", ThreadsafeLRU())),
           HttpCache(FileCacheWithStats())),
       server_context->http_cache()->Name());
+  EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
 TEST_F(SystemCachesTest, BasicMemCachedAndLru) {
@@ -543,6 +557,11 @@ TEST_F(SystemCachesTest, BasicMemCachedAndLru) {
           HttpCache(Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
                              FileCacheWithStats()))),
       server_context->http_cache()->Name());
+  ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
+  EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
+  EXPECT_STREQ(
+      Fallback(BlockingMemCacheWithStats(), FileCacheWithStats()),
+      server_context->filesystem_metadata_cache()->Name());
 }
 
 TEST_F(SystemCachesTest, BasicMemCachedAndNoLru_0_Threads) {
@@ -616,6 +635,11 @@ TEST_F(SystemCachesTest, BasicMemCachedShmNoLru) {
           Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
                    FileCacheWithStats())),
       server_context->http_cache()->Name());
+  ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
+  EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
+  EXPECT_STREQ(
+      Stats("shm_cache", "SharedMemCache<64>"),
+      server_context->filesystem_metadata_cache()->Name());
 }
 
 TEST_F(SystemCachesTest, BasicFileLockManager) {
