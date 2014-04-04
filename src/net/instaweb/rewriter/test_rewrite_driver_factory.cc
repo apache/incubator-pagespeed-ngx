@@ -259,9 +259,6 @@ RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
   // as otherwise when running under Valgrind some tests will finish
   // with different HTML headers than expected.
   options->set_rewrite_deadline_ms(20);
-  // TODO(sligocki): Once this becomes default on in RewriteOptions, remove
-  // this set here.
-  options->set_preserve_url_relativity(true);
   return options;
 }
 
