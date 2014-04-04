@@ -21,8 +21,6 @@ syntax = "proto2";
 
 import "net/instaweb/spriter/public/image_spriter.proto";
 
-option optimize_for = LITE_RUNTIME;
-
 package net_instaweb;
 
 message ImageDim {

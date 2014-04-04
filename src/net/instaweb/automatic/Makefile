@@ -80,8 +80,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_extended_instrumentation_opt_data2c.a \
   net/instaweb/libinstaweb_flush_early_pb.a \
   net/instaweb/libinstaweb_ghost_click_buster_opt_data2c.a \
-  net/instaweb/libinstaweb_htmlparse_core.a \
-  net/instaweb/libinstaweb_http.a \
   net/instaweb/libinstaweb_image_types_pb.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
@@ -153,7 +151,7 @@ BASE_LIBS = \
   third_party/libwebp/libwebp_utils.a \
   third_party/openssl/libopenssl.a \
   third_party/optipng/libopngreduc.a \
-  third_party/protobuf/libprotobuf_lite.a \
+  third_party/protobuf/libprotobuf_full_do_not_use.a \
   third_party/re2/libre2.a \
   third_party/serf/libserf.a \
   third_party/zlib/libzlib.a \

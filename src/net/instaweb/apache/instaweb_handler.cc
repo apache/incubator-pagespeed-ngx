@@ -572,10 +572,6 @@ bool InstawebHandler::handle_as_resource(ApacheServerContext* server_context,
     return false;
   }
 
-  // Flushing the cache mutates global_options, so this has to happen before we
-  // construct the options that we use to decide whether IPRO is enabled.
-  server_context->FlushCacheIfNecessary();
-
   InstawebHandler instaweb_handler(request);
   instaweb_handler.SetupSpdyConnectionIfNeeded();
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
@@ -900,6 +896,12 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     return DECLINED;
   }
 
+  // Flushing the cache mutates global_options, so this has to happen before we
+  // construct the options that we use to decide whether IPRO is enabled.  Note
+  // that the global_config might be altered by this, but the pointer will not
+  // change.
+  server_context->FlushCacheIfNecessary();
+
   ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
   StringPiece request_handler_str = request->handler;
@@ -909,6 +911,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     InstawebHandler instaweb_handler(request);
     server_context->StatisticsPage(is_global_statistics,
                                    instaweb_handler.query_params(),
+                                   instaweb_handler.options(),
                                    instaweb_handler.MakeFetch());
     return OK;
   } else if ((request_handler_str == kAdminHandler) ||
@@ -917,6 +920,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
     server_context->AdminPage((request_handler_str == kGlobalAdminHandler),
                               instaweb_handler.stripped_gurl(),
                               instaweb_handler.query_params(),
+                              instaweb_handler.options(),
                               instaweb_handler.MakeFetch());
     ret = OK;
   } else if (request_handler_str == kTempStatisticsGraphsHandler) {

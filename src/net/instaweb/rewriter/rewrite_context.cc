@@ -2823,7 +2823,7 @@ bool RewriteContext::PrepareFetch(
 }
 
 bool RewriteContext::LookupMetadataForOutputResource(
-    const GoogleString& url,
+    StringPiece url,
     RewriteDriver* driver,
     GoogleString* error_out,
     CacheLookupResultCallback* callback) {

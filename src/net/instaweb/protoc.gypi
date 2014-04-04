@@ -35,7 +35,7 @@
     },
   ],
   'dependencies': [
-    '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+    '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
     '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
   ],
   'include_dirs': [
@@ -43,7 +43,7 @@
     '<(DEPTH)',
   ],
   'export_dependent_settings': [
-    '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+    '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
   ],
   'hard_dependency': 1,
   'all_dependent_settings': {

@@ -451,8 +451,8 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_base_core',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/re2/re2.gyp:re2_bench_util',
       ],
       'include_dirs': [

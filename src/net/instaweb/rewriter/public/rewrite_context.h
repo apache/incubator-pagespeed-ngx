@@ -264,7 +264,7 @@ class RewriteContext {
   //
   // Note: this method is meant for debugging use only.
   static bool LookupMetadataForOutputResource(
-      const GoogleString& url,
+      StringPiece url,
       RewriteDriver* driver,
       GoogleString* error_out,
       CacheLookupResultCallback* callback);

@@ -631,11 +631,11 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_spriter',
-        '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/testing/gmock.gyp:gmock',
         'instaweb_spriter_pb',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
+        '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
       ],
       'sources': [
@@ -800,7 +800,7 @@
       ],
       'dependencies': [
         '<(DEPTH)/pagespeed/kernel.gyp:util',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
       ],
       'includes': [
         'gperf.gypi',
@@ -820,7 +820,7 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_http',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_sharedmem',
         '<(DEPTH)/pagespeed/kernel.gyp:util',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
@@ -931,7 +931,7 @@
         'instaweb_rewriter_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_cache',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
       ],
       'sources': [
         'config/rewrite_options_manager.cc',
@@ -1066,7 +1066,7 @@
         '<(instaweb_root)',
         '<(DEPTH)',
         '<(DEPTH)/third_party/css_parser/src',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
@@ -1362,7 +1362,7 @@
       'dependencies': [
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         'instaweb_rewriter',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
+        '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
        ],
       'sources': [
         'rewriter/process_context.cc',

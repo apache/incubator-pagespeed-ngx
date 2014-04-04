@@ -45,6 +45,7 @@ namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
 namespace net_instaweb {
 
 class AbstractMutex;
+class AsyncFetch;
 class CacheHtmlInfoFinder;
 class CacheInterface;
 class CachePropertyStore;
@@ -632,6 +633,16 @@ class ServerContext {
   const pagespeed::js::JsTokenizerPatterns* js_tokenizer_patterns() const {
     return js_tokenizer_patterns_;
   }
+
+  // Shows cached data related to a URL.  Ownership of options is transferred
+  // to this function.
+  void ShowCacheHandler(StringPiece url, AsyncFetch* fetch,
+                        RewriteOptions* options);
+
+  // Returns an HTML form for entering a URL for ShowCacheHandler.  If
+  // the user_agent is non-null, then it's used to prepopulate the
+  // "User Agent" field in the form.
+  GoogleString ShowCacheForm(const char* user_agent) const;
 
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the

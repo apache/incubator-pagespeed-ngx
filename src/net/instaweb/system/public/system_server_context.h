@@ -34,6 +34,7 @@ class Histogram;
 class QueryParams;
 class RewriteDriver;
 class RewriteDriverFactory;
+class RewriteOptions;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
@@ -130,7 +131,8 @@ class SystemServerContext : public ServerContext {
   // point for all the administrator pages including stats,
   // message-histogram, console, etc.
   void AdminPage(bool is_global, const GoogleUrl& stripped_gurl,
-                 const QueryParams& query_params, AsyncFetch* fetch);
+                 const QueryParams& query_params, const RewriteOptions* options,
+                 AsyncFetch* fetch);
 
   // Handle a request for the legacy /*_pagespeed_statistics page, which also
   // serves as a launching point for a subset of the admin pages.  Because the
@@ -138,6 +140,7 @@ class SystemServerContext : public ServerContext {
   // have granted public access to /mod_pagespeed_statistics, but we don't
   // want that to automatically imply access to the server cache.
   void StatisticsPage(bool is_global, const QueryParams& query_params,
+                      const RewriteOptions* options,
                       AsyncFetch* fetch);
 
  protected:
@@ -184,7 +187,10 @@ class SystemServerContext : public ServerContext {
 
   // Print statistics about the caches.  In the future this will also
   // be a launching point for examining cache entries and purging them.
-  void PrintCaches(bool is_global, AdminSource source, AsyncFetch* fetch);
+  void PrintCaches(bool is_global, AdminSource source,
+                   const QueryParams& query_params,
+                   const RewriteOptions* options,
+                   AsyncFetch* fetch);
 
   // Print histograms showing the dynamics of server activity.
   void PrintHistograms(bool is_global_request, AdminSource source,

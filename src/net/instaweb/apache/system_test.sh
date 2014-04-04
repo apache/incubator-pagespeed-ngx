@@ -1078,6 +1078,44 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   fi
 fi
 
+start_test ShowCache without URL gets a form, inputs, preloaded UA.
+ADMIN_CACHE=$PRIMARY_SERVER/pagespeed_admin/cache
+OUT=$($WGET_DUMP $ADMIN_CACHE)
+check_from "$OUT" fgrep -q "<form "
+check_from "$OUT" fgrep -q "<input "
+check_from "$OUT" fgrep -q "Cache-Control: max-age=0, no-cache"
+# Preloaded user_agent value field leading with "Mozilla" set in
+# ../automatic/system_test_helpers.sh to help test a "normal" flow.
+check_from "$OUT" fgrep -q 'name=user_agent value="Mozilla'
+
+start_test ShowCache with bogus URL gives a 404
+wget $PRIMARY_SERVER/pagespeed_cache?url=bogus_format >& /dev/null
+check [ $? = 8 ]
+
+start_test ShowCache with valid, present URL, with unique options.
+options="PageSpeedImageInlineMaxBytes=6765"
+fetch_until -save $EXAMPLE_ROOT/rewrite_images.html?$options \
+    'grep -c Puzzle\.jpg\.pagespeed\.ic\.' 1
+URL_TAIL=$(grep Puzzle $FETCH_UNTIL_OUTFILE | cut -d \" -f 2)
+SHOW_CACHE_URL=$EXAMPLE_ROOT/$URL_TAIL
+SHOW_CACHE_QUERY=$ADMIN_CACHE?url=$SHOW_CACHE_URL\&$options
+OUT=$($WGET_DUMP $SHOW_CACHE_QUERY)
+check_from "$OUT" fgrep -q cache_ok:true
+check_from "$OUT" fgrep -q mod_pagespeed_example/images/Puzzle.jpg
+
+function show_cache_after_flush() {
+  start_test ShowCache with same URL and matching options misses after flush
+  OUT=$($WGET_DUMP $SHOW_CACHE_QUERY)
+  check_from "$OUT" fgrep -q cache_ok:false
+}
+
+on_cache_flush show_cache_after_flush
+
+start_test ShowCache with same URL but new options misses.
+options="PageSpeedImageInlineMaxBytes=6766"
+OUT=$($WGET_DUMP $ADMIN_CACHE?url=$SHOW_CACHE_URL\&$options)
+check_from "$OUT" fgrep -q cache_ok:false
+
 # TODO(sligocki): start_test ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" = "on" ]; then

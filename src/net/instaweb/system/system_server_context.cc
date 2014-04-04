@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/add_headers_fetcher.h"
@@ -58,6 +59,7 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 
 namespace net_instaweb {
@@ -387,7 +389,7 @@ class AdminHtml {
         handler_(handler) {
     fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
     fetch->response_headers()->Add(HttpAttributes::kContentType, "text/html");
-    fetch->response_headers()->Add("PageSpeed", "off");
+    fetch->response_headers()->Add(RewriteQuery::kPageSpeed, "off");
 
     // Generate some navigational links to the right to help
     // our users get to other modes.
@@ -740,43 +742,63 @@ GoogleString CacheInfoHtmlSnippet(StringPiece label, StringPiece descriptor) {
 }  // namespace
 
 void SystemServerContext::PrintCaches(bool is_global, AdminSource source,
+                                      const QueryParams& query_params,
+                                      const RewriteOptions* options,
                                       AsyncFetch* fetch) {
-  AdminHtml admin_html("cache", "", source, fetch, message_handler());
-  int flags = SystemCaches::kDefaultStatFlags;
+  GoogleString url;
+  if ((query_params.Lookup1Unescaped("url", &url)) &&
+      (source == kPageSpeedAdmin)) {
+    // Delegate to ShowCacheHandler to get the cached value for that
+    // URL, which it may do asynchronously, so we cannot use the
+    // AdminSite abstraction which closes the connection in its
+    // destructor.
+    ShowCacheHandler(url, fetch, options->Clone());
+  } else {
+    AdminHtml admin_html("cache", "", source, fetch, message_handler());
 
-  if (is_global) {
-    flags |= SystemCaches::kGlobalView;
-  }
-
-  // TODO(jmarantz): Consider whether it makes sense to disable either
-  // of these flags to limit the content when someone asks for info about the
-  // cache.
-  flags |= SystemCaches::kIncludeMemcached;
-
-  if (system_caches_ != NULL) {
-    fetch->Write(kTableStart, message_handler());
-    CacheInterface* fsmdc = filesystem_metadata_cache();
-    fetch->Write(StrCat(
-        CacheInfoHtmlSnippet("HTTP Cache", http_cache()->Name()),
-        CacheInfoHtmlSnippet("Metadata Cache", metadata_cache()->Name()),
-        CacheInfoHtmlSnippet("Property Cache",
-                             page_property_cache()->property_store()->Name()),
-        CacheInfoHtmlSnippet("FileSystem Metadata Cache",
-                             (fsmdc == NULL) ? "none" : fsmdc->Name())),
-                 message_handler());
-    fetch->Write(kTableEnd, message_handler());
-
-    GoogleString backend_stats;
-    system_caches_->PrintCacheStats(
-        static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
-    if (!backend_stats.empty()) {
-      HtmlKeywords::WritePre(backend_stats, fetch, message_handler());
+    // Present a small form to enter a URL.
+    if (source == kPageSpeedAdmin) {
+      const char* user_agent = fetch->request_headers()->Lookup1(
+          HttpAttributes::kUserAgent);
+      fetch->Write(ShowCacheForm(user_agent), message_handler());
     }
 
-    // Practice what we preach: put the blocking JS in the tail.
-    // TODO(jmarantz): use static asset manager to compile & deliver JS
-    // externally.
-    fetch->Write(kToggleScript, message_handler());
+    // Display configured cache information.
+    if (system_caches_ != NULL) {
+      int flags = SystemCaches::kDefaultStatFlags;
+      if (is_global) {
+        flags |= SystemCaches::kGlobalView;
+      }
+
+      // TODO(jmarantz): Consider whether it makes sense to disable
+      // either of these flags to limit the content when someone asks
+      // for info about the cache.
+      flags |= SystemCaches::kIncludeMemcached;
+
+      fetch->Write(kTableStart, message_handler());
+      CacheInterface* fsmdc = filesystem_metadata_cache();
+      fetch->Write(StrCat(
+          CacheInfoHtmlSnippet("HTTP Cache", http_cache()->Name()),
+          CacheInfoHtmlSnippet("Metadata Cache", metadata_cache()->Name()),
+          CacheInfoHtmlSnippet("Property Cache",
+                               page_property_cache()->property_store()->Name()),
+          CacheInfoHtmlSnippet("FileSystem Metadata Cache",
+                               (fsmdc == NULL) ? "none" : fsmdc->Name())),
+                   message_handler());
+      fetch->Write(kTableEnd, message_handler());
+
+      GoogleString backend_stats;
+      system_caches_->PrintCacheStats(
+          static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
+      if (!backend_stats.empty()) {
+        HtmlKeywords::WritePre(backend_stats, fetch, message_handler());
+      }
+
+      // Practice what we preach: put the blocking JS in the tail.
+      // TODO(jmarantz): use static asset manager to compile & deliver JS
+      // externally.
+      fetch->Write(kToggleScript, message_handler());
+    }
   }
 }
 
@@ -818,7 +840,9 @@ void SystemServerContext::MessageHistoryHandler(AdminSource source,
 
 void SystemServerContext::AdminPage(
     bool is_global, const GoogleUrl& stripped_gurl,
-    const QueryParams& query_params, AsyncFetch* fetch) {
+    const QueryParams& query_params,
+    const RewriteOptions* options,
+    AsyncFetch* fetch) {
   // The handler is "pagespeed_admin", so we must dispatch off of
   // the remainder of the URL.  For
   // "http://example.com/pagespeed_admin/foo?a=b" we want to pull out
@@ -871,7 +895,7 @@ void SystemServerContext::AdminPage(
     } else if (leaf == "message_history") {
       MessageHistoryHandler(kPageSpeedAdmin, fetch);
     } else if (leaf == "cache") {
-      PrintCaches(is_global, kPageSpeedAdmin, fetch);
+      PrintCaches(is_global, kPageSpeedAdmin, query_params, options, fetch);
     } else if (leaf == "histograms") {
       PrintHistograms(is_global, kPageSpeedAdmin, fetch);
     } else {
@@ -899,6 +923,7 @@ void SystemServerContext::AdminPage(
 
 void SystemServerContext::StatisticsPage(bool is_global,
                                          const QueryParams& query_params,
+                                         const RewriteOptions* options,
                                          AsyncFetch* fetch) {
   if (query_params.Has("json")) {
     ConsoleJsonHandler(query_params, fetch);
@@ -909,7 +934,7 @@ void SystemServerContext::StatisticsPage(bool is_global,
   } else if (query_params.Has("histograms")) {
     PrintHistograms(is_global, kStatistics, fetch);
   } else if (query_params.Has("cache")) {
-    PrintCaches(is_global, kStatistics, fetch);
+    PrintCaches(is_global, kStatistics, query_params, options, fetch);
   } else {
     StatisticsHandler(is_global, kStatistics, fetch);
   }

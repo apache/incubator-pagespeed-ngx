@@ -24,12 +24,14 @@
 
 #include "base/logging.h"               // for operator<<, etc
 #include "net/instaweb/config/rewrite_options_manager.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/beacon_critical_line_info_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
@@ -43,6 +45,7 @@
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
@@ -71,6 +74,8 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "pagespeed/kernel/base/string_writer.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 
 namespace net_instaweb {
 
@@ -1114,6 +1119,188 @@ const CacheInterface* ServerContext::pcache_cache_backend() {
     return NULL;
   }
   return cache_property_store_->cache_backend();
+}
+
+namespace {
+
+class MetadataCacheResultCallback
+    : public RewriteContext::CacheLookupResultCallback {
+ public:
+  // Will cleanup the driver
+  MetadataCacheResultCallback(ServerContext* server_context,
+                              RewriteDriver* driver,
+                              AsyncFetch* fetch,
+                              MessageHandler* handler)
+      : server_context_(server_context),
+        driver_(driver),
+        fetch_(fetch),
+        handler_(handler) {
+  }
+
+  virtual ~MetadataCacheResultCallback() {}
+
+  virtual void Done(const GoogleString& cache_key,
+                    RewriteContext::CacheLookupResult* in_result) {
+    scoped_ptr<RewriteContext::CacheLookupResult> result(in_result);
+    driver_->Cleanup();
+
+    ResponseHeaders* response_headers = fetch_->response_headers();
+    response_headers->SetStatusAndReason(HttpStatus::kOK);
+    response_headers->Add(HttpAttributes::kCacheControl,
+                          HttpAttributes::kNoStore);
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    response_headers->Add(RewriteQuery::kPageSpeed, "off");
+    GoogleString cache_dump;
+    StringWriter cache_writer(&cache_dump);
+    cache_writer.Write(StrCat("Metadata cache key:", cache_key, "\n"),
+                       handler_);
+    cache_writer.Write(StrCat("cache_ok:",
+                              (result->cache_ok ? "true" : "false"),
+                         "\n"), handler_);
+    cache_writer.Write(
+        StrCat("can_revalidate:", (result->can_revalidate ? "true" : "false"),
+        "\n"), handler_);
+    if (result->partitions.get() != NULL) {
+      const OutputPartitions* partitions = result->partitions.get();
+      // Display the input info which has the minimum expiration time of all
+      // the inputs.
+      //
+      // TODO(morlovich): consider killing this minimum thing: IMHO it only
+      // makes the output harder to read (alternatively it needs some better
+      // formatting).
+      int min_partition_index = -1;
+      int min_input_index = -1;
+      int64 min_input_expiration_ms = kint64max;
+      for (int j = 0, m = partitions->partition_size(); j < m; ++j) {
+        const CachedResult& partition = partitions->partition(j);
+        for (int k = 0, l = partition.input_size(); k < l; ++k) {
+          const InputInfo& input_info = partition.input(k);
+          if (input_info.type() == InputInfo::CACHED &&
+              input_info.has_expiration_time_ms() &&
+              input_info.expiration_time_ms() < min_input_expiration_ms) {
+             min_input_expiration_ms = input_info.expiration_time_ms();
+             min_partition_index = j;
+             min_input_index = k;
+          }
+        }
+      }
+      if (min_partition_index != -1 && min_input_index != -1) {
+        const InputInfo& input_info =
+            partitions->partition(min_partition_index).input(min_input_index);
+        cache_writer.Write(
+            StrCat("partition_min_expiration_input {\n",
+            input_info.DebugString(), "}\n"),
+            handler_);
+      }
+
+      // Display the other dependency field which has the minimum expiration
+      // time of all the dependencies.
+      int64 min_other_expiration_ms = kint64max;
+      int min_other_index = -1;
+      for (int i = 0, n = partitions->other_dependency_size(); i < n; ++i) {
+        const InputInfo& input_info = partitions->other_dependency(i);
+        if (input_info.type() == InputInfo::CACHED &&
+            input_info.has_expiration_time_ms() &&
+            input_info.expiration_time_ms() < min_other_expiration_ms) {
+           min_other_expiration_ms = input_info.expiration_time_ms();
+           min_other_index = i;
+        }
+      }
+      if (min_other_index != -1) {
+        cache_writer.Write(
+            StrCat("partition_min_expiration_other_dependency {\n",
+            partitions->other_dependency(min_other_index).DebugString(),
+            "}\n"), handler_);
+      }
+
+      cache_writer.Write(
+          StrCat("partitions:", result->partitions->DebugString(), "\n"),
+          handler_);
+    } else {
+      cache_writer.Write("partitions is NULL\n", handler_);
+    }
+    for (int i = 0, n = result->revalidate.size(); i < n; ++i) {
+      cache_writer.Write(StrCat("Revalidate entry ", IntegerToString(i),
+                           result->revalidate[i]->DebugString(), "\n"),
+                    handler_);
+    }
+    HtmlKeywords::WritePre(cache_dump, fetch_, handler_);
+    fetch_->Done(true);
+    delete this;
+  }
+
+ private:
+  ServerContext* server_context_;
+  RewriteDriver* driver_;
+  AsyncFetch* fetch_;
+  MessageHandler* handler_;
+};
+
+}  // namespace
+
+GoogleString ServerContext::ShowCacheForm(const char* user_agent) const {
+  GoogleString ua_default;
+  if (user_agent != NULL) {
+    GoogleString buf;
+    ua_default = StrCat("value=\"", HtmlKeywords::Escape(user_agent, &buf),
+                        "\" ");
+  }
+
+  // The styling on this form could use some love, but the 110/103 sizing
+  // is to make those input fields decently wide to fit large URLs and UAs
+  // and to roughly line up.
+  GoogleString out = StrCat(
+      "<form method=get>\n",
+      "  URL: <input type=text name=url size=110 /><br>\n"
+      "  User-Agent: <input type=text size=103 name=user_agent ",
+      ua_default,
+      "/></br> \n",
+      "  <input type=submit />\n"
+      "</form>\n");
+  return out;
+}
+
+void ServerContext::ShowCacheHandler(
+    StringPiece url, AsyncFetch* fetch, RewriteOptions* options_arg) {
+  scoped_ptr<RewriteOptions> options(options_arg);
+  const char* user_agent = fetch->request_headers()->Lookup1(
+      HttpAttributes::kUserAgent);
+  if (url.empty()) {
+    // If the url was not supplied, provide the user with a form to set it.
+    ResponseHeaders* response_headers = fetch->response_headers();
+    response_headers->SetStatusAndReason(HttpStatus::kOK);
+    response_headers->Add(HttpAttributes::kCacheControl,
+                          HttpAttributes::kNoStore);
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    fetch->Write(StrCat("<html><body>",
+                        ShowCacheForm(user_agent),
+                        "</body></html>"),
+                 message_handler_);
+    fetch->Done(true);
+  } else if (!GoogleUrl(url).IsWebValid()) {
+    ResponseHeaders* response_headers = fetch->response_headers();
+    response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+    response_headers->Add(HttpAttributes::kContentType, "text/html");
+    fetch->Write("<html><body>Invalid URL</body></html>", message_handler_);
+    fetch->Done(false);
+  } else {
+    RewriteDriver* driver = NewCustomRewriteDriver(
+        options.release(), fetch->request_context());
+    if (user_agent != NULL) {
+      driver->SetUserAgent(user_agent);
+    }
+    GoogleString error_out;
+    MetadataCacheResultCallback* callback = new MetadataCacheResultCallback(
+        this, driver, fetch, message_handler_);
+    if (!RewriteContext::LookupMetadataForOutputResource(
+            url, driver, &error_out, callback)) {
+      driver->Cleanup();
+      delete callback;
+      fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+      fetch->Write(error_out, message_handler_);
+      fetch->Done(false);
+    }
+  }
 }
 
 }  // namespace net_instaweb

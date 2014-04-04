@@ -507,6 +507,29 @@
       ],
     },
     {
+      # We use a library called protobuf_full_do_not_use because it enables
+      # protobuf introspection, which in turn enables us to show an admin page
+      # with detail about the contents of caches.  This makes 64-bit Release
+      # libmod_pagespeed.so 639k larger (8.5M vs 7.9M).  If we decide this is
+      # not worth it, we could write and maintain hand-serializers for the
+      # protobufs of interest, or find some less expensive way to display
+      # the contents of protobufs in a human-readable form.
+      #
+      # The 'do_not_use' part of this name is only in reference to official
+      # builds of Chrome.
+      'target_name': 'proto_util',
+      'type': '<(library)',
+      'dependencies': [
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_full_do_not_use',
+      ],
+      'export_dependent_settings': [
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_full_do_not_use',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+    },
+    {
       'target_name': 'pthread_system',
       'type': '<(library)',
       'sources': [
