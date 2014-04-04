@@ -84,7 +84,6 @@ class AssociationTransformerTest : public ::testing::Test {
       : thread_system_(Platform::CreateThreadSystem()) {
     RewriteOptions::Initialize();
     options_.reset(new RewriteOptions(thread_system_.get()));
-    options_->set_preserve_url_relativity(true);
   }
 
   ~AssociationTransformerTest() {

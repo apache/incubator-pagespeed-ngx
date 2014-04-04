@@ -264,9 +264,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     options->ClearSignatureForTesting();
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     options->set_in_place_rewriting_enabled(true);
-    // TODO(sligocki): Once this becomes default on in RewriteOptions, remove
-    // this set here.
-    options->set_preserve_url_relativity(true);
     server_context()->ComputeSignature(options);
     ProxyInterfaceTestBase::SetUp();
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
