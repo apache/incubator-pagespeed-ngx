@@ -17,9 +17,9 @@ should not be changed in any way either.
 <p>Missing script</p>
 <script src="missing.js"></script>
 <p>External script (1, with closing tag)</p>
-<script src="extScript.js.pagespeed.jm.0.js" type="text/javascript"></script>
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js" type="text/javascript"></script>
 <p>External script (2, self-closed)</p>
-<script src="extScript.js.pagespeed.jm.0.js" type="application/ecmascript"/>
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js" type="application/ecmascript"/>
 <p>The following closing tag ought to be spurious, but Firefox and Chrome
    don't seem to accept self-closed script tags, even with a src.
    In Safari, by contrast, this paragraph will appear.</p>
@@ -27,12 +27,12 @@ should not be changed in any way either.
 <p>Mix of internal and external scripts.  Note that given a src= attribute,
    the body of the script appears to be ignored in Safari, Chrome, and
    Firefox.</p>
-<script src="extScript.js.pagespeed.jm.0.js">
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js">
 document.write("Internal script; state = " + state);
 state = 42
 </script>
 <p>Attempt at nesting scripts.</p>
-<script src="extScript.js.pagespeed.jm.0.js">
+<script src="http://file.name/extScript.js.pagespeed.jm.0.js">
 <em>In the body!</em>
 <script>
 document.write("Now we're in very deep indeed.");

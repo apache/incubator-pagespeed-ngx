@@ -143,7 +143,7 @@ GoogleUrl* GoogleUrl::CopyAndAddEscapedQueryParam(
   QueryParams query_params;
   query_params.Parse(Query());
   query_params.AddEscaped(name, escaped_value);
-  GoogleString query_params_string = query_params.ToString();
+  GoogleString query_params_string = query_params.ToEscapedString();
   url_canon::Replacements<char> replace_query;
   url_parse::Component query;
   query.len = query_params_string.size();

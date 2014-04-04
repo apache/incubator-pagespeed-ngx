@@ -58,7 +58,7 @@ TEST_F(QueryParamsTest, TestParse) {
   EXPECT_EQ(GoogleString(""), *(query_params_.EscapedValue(3)));
   EXPECT_EQ(GoogleString("a"), query_params_.name(4));
   EXPECT_EQ(GoogleString("3"), *(query_params_.EscapedValue(4)));
-  EXPECT_EQ(kQueryString, query_params_.ToString());
+  EXPECT_EQ(kQueryString, query_params_.ToEscapedString());
 }
 
 TEST_F(QueryParamsTest, TestLookup) {
@@ -80,22 +80,22 @@ TEST_F(QueryParamsTest, TestLookup) {
 
 TEST_F(QueryParamsTest, TestRemove) {
   query_params_.RemoveAll("a");
-  EXPECT_EQ("b&c=2&d=", query_params_.ToString());
+  EXPECT_EQ("b&c=2&d=", query_params_.ToEscapedString());
   EXPECT_EQ(3, query_params_.size());
   query_params_.RemoveAll("b");
-  EXPECT_EQ("c=2&d=", query_params_.ToString());
+  EXPECT_EQ("c=2&d=", query_params_.ToEscapedString());
   EXPECT_EQ(2, query_params_.size());
   query_params_.RemoveAll("c");
-  EXPECT_EQ("d=", query_params_.ToString());
+  EXPECT_EQ("d=", query_params_.ToEscapedString());
   EXPECT_EQ(1, query_params_.size());
   query_params_.RemoveAll("d");
-  EXPECT_EQ("", query_params_.ToString());
+  EXPECT_EQ("", query_params_.ToEscapedString());
   EXPECT_EQ(0, query_params_.size());
 }
 
 TEST_F(QueryParamsTest, TestClear) {
   query_params_.Clear();
-  EXPECT_EQ("", query_params_.ToString());
+  EXPECT_EQ("", query_params_.ToEscapedString());
   EXPECT_EQ(0, query_params_.size());
 }
 

@@ -51,7 +51,7 @@ bool QueryParams::Lookup1Unescaped(const StringPiece& name,
   return true;
 }
 
-GoogleString QueryParams::ToString() const {
+GoogleString QueryParams::ToEscapedString() const {
   GoogleString str;
   const char* prefix="";
   for (int i = 0; i < size(); ++i) {

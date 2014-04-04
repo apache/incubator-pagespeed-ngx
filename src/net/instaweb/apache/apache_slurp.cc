@@ -124,7 +124,7 @@ GoogleString RemoveModPageSpeedQueryParams(
     CHECK(question_mark != GoogleString::npos);
     stripped_url.append(uri.data(), question_mark);  // does not include "?" yet
     if (stripped_query_params.size() != 0) {
-      StrAppend(&stripped_url, "?", stripped_query_params.ToString());
+      StrAppend(&stripped_url, "?", stripped_query_params.ToEscapedString());
     }
   } else {
     stripped_url = uri;

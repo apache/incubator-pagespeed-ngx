@@ -929,7 +929,7 @@ bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,
   }
   query_params.RemoveAll(HttpAttributes::kXSplit);
   GoogleString query_string = query_params.empty() ? "" :
-        StrCat("?", query_params.ToString());
+        StrCat("?", query_params.ToEscapedString());
   *url = StrCat(gurl.AllExceptQuery(), query_string, gurl.AllAfterQuery());
   return true;
 }

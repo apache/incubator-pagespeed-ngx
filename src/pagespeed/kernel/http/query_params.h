@@ -40,7 +40,7 @@ class QueryParams {
   void Parse(const StringPiece& query_string);
 
   // Generates an escaped query-string.
-  GoogleString ToString() const;
+  GoogleString ToEscapedString() const;
 
   int size() const { return map_.num_values(); }
   bool empty() const { return map_.empty(); }

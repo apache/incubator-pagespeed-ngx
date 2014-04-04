@@ -211,7 +211,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   if (status == kSuccess) {
     // Remove the ModPagespeed* or PageSpeed* for url.
     GoogleString temp_params = temp_query_params.empty() ? "" :
-        StrCat("?", temp_query_params.ToString());
+        StrCat("?", temp_query_params.ToEscapedString());
     request_url->Reset(StrCat(request_url->AllExceptQuery(), temp_params,
                               request_url->AllAfterQuery()));
   }
