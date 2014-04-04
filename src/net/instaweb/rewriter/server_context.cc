@@ -1292,8 +1292,7 @@ void ServerContext::ShowCacheHandler(
     GoogleString error_out;
     MetadataCacheResultCallback* callback = new MetadataCacheResultCallback(
         this, driver, fetch, message_handler_);
-    if (!RewriteContext::LookupMetadataForOutputResource(
-            url, driver, &error_out, callback)) {
+    if (!driver->LookupMetadataForOutputResource(url, &error_out, callback)) {
       driver->Cleanup();
       delete callback;
       fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);

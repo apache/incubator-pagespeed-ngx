@@ -51,7 +51,6 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -83,6 +82,8 @@
 #include "pagespeed/kernel/base/callback.h"
 
 namespace net_instaweb {
+
+class RewriteFilter;
 
 namespace {
 
@@ -2822,33 +2823,14 @@ bool RewriteContext::PrepareFetch(
   return ret;
 }
 
-bool RewriteContext::LookupMetadataForOutputResource(
-    StringPiece url,
+bool RewriteContext::LookupMetadataForOutputResourceImpl(
+    OutputResourcePtr output_resource,
+    const GoogleUrl& gurl,
+    RewriteContext* rewrite_context,
     RewriteDriver* driver,
     GoogleString* error_out,
     CacheLookupResultCallback* callback) {
-  RewriteFilter* filter = NULL;
-  GoogleUrl gurl(url);
-
-  if (!gurl.IsWebValid()) {
-    *error_out = "Unable to parse URL.";
-    return false;
-  }
-
-  driver->SetBaseUrlForFetch(gurl.Spec());
-  OutputResourcePtr output_resource(
-      driver->DecodeOutputResource(gurl, &filter));
-
-  if (output_resource.get() == NULL || filter == NULL) {
-    *error_out = "Unable to decode resource.";
-    return false;
-  }
-
-  scoped_ptr<RewriteContext> context(filter->MakeRewriteContext());
-  if (context.get() == NULL) {
-    *error_out = "Unable to create RewriteContext.";
-    return false;
-  }
+  scoped_ptr<RewriteContext> context(rewrite_context);
 
   StringAsyncFetch dummy_fetch(driver->request_context());
   if (!context->PrepareFetch(output_resource, &dummy_fetch,

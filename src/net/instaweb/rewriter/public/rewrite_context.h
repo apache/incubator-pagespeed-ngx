@@ -28,7 +28,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -249,25 +248,6 @@ class RewriteContext {
   bool Fetch(const OutputResourcePtr& output_resource,
              AsyncFetch* fetch,
              MessageHandler* message_handler);
-
-  // Attempts to lookup the metadata cache info that would be used for the
-  // output resource at url with the RewriteOptions set on driver.
-  //
-  // If there is a problem with the URL, returns false, and *error_out
-  // will contain an error message.
-  //
-  // If it can determine the metadata cache key successfully, returns true,
-  // and eventually callback will be invoked with the metadata cache key
-  // and the decoding results.
-  //
-  // Do not use the driver passed to this method for anything else.
-  //
-  // Note: this method is meant for debugging use only.
-  static bool LookupMetadataForOutputResource(
-      StringPiece url,
-      RewriteDriver* driver,
-      GoogleString* error_out,
-      CacheLookupResultCallback* callback);
 
   // If true, we have determined that this job can't be rendered just
   // from metadata cache (including all prerequisites).
@@ -619,6 +599,17 @@ class RewriteContext {
 
   // Should the context call LockForCreation before checking the cache?
   virtual bool CreationLockBeforeStartFetch() { return true; }
+
+  // Backend to RewriteDriver::LookupMetadataForOutputResource, with
+  // the RewriteContext of appropriate type and the OutputResource already
+  // created. Takes ownership of rewrite_context.
+  static bool LookupMetadataForOutputResourceImpl(
+      OutputResourcePtr output_resource,
+      const GoogleUrl& gurl,
+      RewriteContext* rewrite_context,
+      RewriteDriver* driver,
+      GoogleString* error_out,
+      CacheLookupResultCallback* callback);
 
  private:
   class DistributedRewriteCallback;

@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -82,7 +83,6 @@ class RequestProperties;
 class RequestTrace;
 class ResourceContext;
 class ResourceNamer;
-class RewriteContext;
 class RewriteDriverPool;
 class RewriteFilter;
 class SplitHtmlConfig;
@@ -403,6 +403,22 @@ class RewriteDriver : public HtmlParse {
                                 ResourceNamer* name_out,
                                 OutputResourceKind* kind_out,
                                 RewriteFilter** filter_out) const;
+
+  // Attempts to lookup the metadata cache info that would be used for the
+  // output resource at url with the RewriteOptions set on this driver.
+  //
+  // If there is a problem with the URL, returns false, and *error_out
+  // will contain an error message.
+  //
+  // If it can determine the metadata cache key successfully, returns true,
+  // and eventually callback will be invoked with the metadata cache key
+  // and the decoding results.
+  //
+  // After calling this method, the driver should not be used for anything else.
+  bool LookupMetadataForOutputResource(
+      StringPiece url,
+      GoogleString* error_out,
+      RewriteContext::CacheLookupResultCallback* callback);
 
   // Decodes the incoming pagespeed url to original url(s).
   bool DecodeUrl(const GoogleUrl& url,

@@ -3365,4 +3365,51 @@ const GoogleString& RewriteDriver::CacheFragment() const {
   return request_context_->minimal_private_suffix();
 }
 
+bool RewriteDriver::LookupMetadataForOutputResource(
+    StringPiece url, GoogleString* error_out,
+    RewriteContext::CacheLookupResultCallback* callback) {
+  RewriteFilter* filter = NULL;
+  GoogleUrl gurl(url);
+
+  if (!gurl.IsWebValid()) {
+    *error_out = "Unable to parse URL.";
+    return false;
+  }
+
+  // The setup is different depending on if url is .pagespeed. resource or an
+  // in-place rewritten one.
+  bool is_pagespeed_resource = server_context_->IsPagespeedResource(gurl);
+
+  SetBaseUrlForFetch(gurl.Spec());
+  OutputResourcePtr output_resource;
+
+  if (is_pagespeed_resource) {
+    output_resource.reset(DecodeOutputResource(gurl, &filter));
+  } else {
+    StringPiece base = gurl.AllExceptLeaf();
+    ResourceNamer namer;
+    output_resource.reset(
+        new OutputResource(
+            server_context(), base, base, base, namer, options(),
+            kRewrittenResource));
+  }
+
+  if (output_resource.get() == NULL ||
+      (filter == NULL && is_pagespeed_resource)) {
+    *error_out = "Unable to decode resource.";
+    return false;
+  }
+
+  scoped_ptr<RewriteContext> context;
+  if (is_pagespeed_resource) {
+    context.reset(filter->MakeRewriteContext());
+  } else {
+    context.reset(new InPlaceRewriteContext(this, gurl.Spec()));
+  }
+
+  return RewriteContext::LookupMetadataForOutputResourceImpl(
+             output_resource, gurl, context.release(),
+             this, error_out, callback);
+}
+
 }  // namespace net_instaweb
