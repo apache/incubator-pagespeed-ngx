@@ -109,7 +109,6 @@ class JsCombineFilter : public RewriteFilter {
   Context* MakeContext();
 
   JsCombiner* combiner() const;
-  ServerContext* server_context() const { return server_context_; }
 
   ScriptTagScanner script_scanner_;
   int script_depth_;  // how many script elements we are inside

@@ -166,12 +166,12 @@ void NestedFilter::StartElementImpl(HtmlElement* element) {
   if (attr != NULL) {
     ResourcePtr resource = CreateInputResource(attr->DecodedValueOrNull());
     if (resource.get() != NULL) {
-      ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
+      ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
 
       // This 'new' is paired with a delete in RewriteContext::FinishFetch()
-      Context* context = new Context(driver_, this, chain_);
+      Context* context = new Context(driver(), this, chain_);
       context->AddSlot(slot);
-      driver_->InitiateRewrite(context);
+      driver()->InitiateRewrite(context);
     }
   }
 }
@@ -314,7 +314,7 @@ void CombiningFilter::StartElementImpl(HtmlElement* element) {
       ResourcePtr resource(CreateInputResource(href->DecodedValueOrNull()));
       if (resource.get() != NULL) {
         if (context_.get() == NULL) {
-          context_.reset(new Context(driver_, this, scheduler_));
+          context_.reset(new Context(driver(), this, scheduler_));
         }
         context_->AddElement(element, href, resource);
       }

@@ -360,7 +360,6 @@ class CssFilter::Context : public SingleRewriteContext {
   int64 ImageInlineMaxBytes() const;
 
   CssFilter* filter_;
-  RewriteDriver* driver_;
   scoped_ptr<CssImageRewriter> css_image_rewriter_;
   CssResourceSlotFactory slot_factory_;
   CssHierarchy hierarchy_;

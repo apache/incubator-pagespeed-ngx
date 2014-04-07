@@ -58,7 +58,7 @@ SplitHtmlBeaconFilter::SplitHtmlBeaconFilter(RewriteDriver* driver)
 }
 
 void SplitHtmlBeaconFilter::DetermineEnabled() {
-  set_is_enabled(ShouldApply(driver_));
+  set_is_enabled(ShouldApply(driver()));
 }
 
 void SplitHtmlBeaconFilter::InitStats(Statistics* statistics) {
@@ -105,26 +105,26 @@ bool SplitHtmlBeaconFilter::ShouldApply(RewriteDriver* driver) {
 }
 
 void SplitHtmlBeaconFilter::EndDocument() {
-  BeaconMetadata beacon_metadata = driver_->server_context()
+  BeaconMetadata beacon_metadata = driver()->server_context()
                                        ->critical_line_info_finder()
-                                       ->PrepareForBeaconInsertion(driver_);
+                                       ->PrepareForBeaconInsertion(driver());
   if (beacon_metadata.status == kDoNotBeacon) {
     return;
   }
   StaticAssetManager* static_asset_manager =
-      driver_->server_context()->static_asset_manager();
+      driver()->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
-      StaticAssetManager::kSplitHtmlBeaconJs, driver_->options());
+      StaticAssetManager::kSplitHtmlBeaconJs, driver()->options());
 
   // Create the init string to append at the end of the static JS.
-  const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
+  const RewriteOptions::BeaconUrl& beacons = driver()->options()->beacon_url();
   const GoogleString* beacon_url =
-      driver_->IsHttps() ? &beacons.https : &beacons.http;
+      driver()->IsHttps() ? &beacons.https : &beacons.http;
   GoogleString html_url;
-  EscapeToJsStringLiteral(driver_->google_url().Spec(), false, /* no quotes */
+  EscapeToJsStringLiteral(driver()->google_url().Spec(), false, /* no quotes */
                           &html_url);
-  GoogleString options_signature_hash = driver_->server_context()->hasher()
-      ->Hash(driver_->options()->signature());
+  GoogleString options_signature_hash = driver()->server_context()->hasher()
+      ->Hash(driver()->options()->signature());
 
   StrAppend(&js, "\npagespeed.splitHtmlBeaconInit(");
   StrAppend(&js, "'", *beacon_url, "', ");
@@ -132,10 +132,10 @@ void SplitHtmlBeaconFilter::EndDocument() {
   StrAppend(&js, "'", options_signature_hash, "', ");
   StrAppend(&js, "'", beacon_metadata.nonce, "');");
 
-  HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
+  HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script);
-  static_asset_manager->AddJsToElement(js, script, driver_);
-  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  static_asset_manager->AddJsToElement(js, script, driver());
+  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   split_html_beacon_added_count_->Add(1);
 }
 

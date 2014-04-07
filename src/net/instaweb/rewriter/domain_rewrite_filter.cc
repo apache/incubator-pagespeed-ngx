@@ -53,13 +53,13 @@ DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {}
 
 void DomainRewriteFilter::StartDocumentImpl() {
-  bool rewrite_hyperlinks = driver_->options()->domain_rewrite_hyperlinks();
+  bool rewrite_hyperlinks = driver()->options()->domain_rewrite_hyperlinks();
 
   if (rewrite_hyperlinks) {
     // TODO(nikhilmadan): Rewrite the domain for cookies.
     // Rewrite the Location header for redirects.
-    UpdateLocationHeader(driver_->base_url(), driver_,
-                         driver_->mutable_response_headers());
+    UpdateLocationHeader(driver()->base_url(), driver(),
+                         driver()->mutable_response_headers());
   }
 }
 
@@ -93,7 +93,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
     return;
   }
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
   bool element_is_embed_or_frame_or_iframe = (
       element->keyword() == HtmlName::kEmbed ||
       element->keyword() == HtmlName::kFrame ||
@@ -104,7 +104,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
     if (attributes[i].category != semantic_type::kImage &&
         attributes[i].category != semantic_type::kScript &&
         attributes[i].category != semantic_type::kStylesheet &&
-        !driver_->options()->domain_rewrite_hyperlinks()) {
+        !driver()->options()->domain_rewrite_hyperlinks()) {
       continue;
     }
     StringPiece val(attributes[i].url->DecodedValueOrNull());
@@ -118,7 +118,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
         !element_is_embed_or_frame_or_iframe &&
         attributes[i].category != semantic_type::kHyperlink &&
         attributes[i].category != semantic_type::kPrefetch);
-    if (Rewrite(val, driver_->base_url(), driver_,
+    if (Rewrite(val, driver()->base_url(), driver(),
                 apply_sharding, &rewritten_val) == kRewroteDomain) {
       attributes[i].url->SetValue(rewritten_val);
       rewrite_count_->Add(1);
@@ -151,7 +151,7 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
 
   if (!options->IsAllowed(orig_spec) ||
       // Don't rewrite a domain from an already-rewritten resource.
-      server_context_->IsPagespeedResource(orig_url)) {
+      server_context()->IsPagespeedResource(orig_url)) {
     // Even though domain is unchanged, we need to store absolute URL in
     // rewritten_url.
     orig_url.Spec().CopyToString(rewritten_url);
@@ -198,12 +198,12 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
 }
 
 void DomainRewriteFilter::EndDocument() {
-  if (!driver_->options()->client_domain_rewrite()) {
+  if (!driver()->options()->client_domain_rewrite()) {
     return;
   }
-  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+  const DomainLawyer* lawyer = driver()->options()->domain_lawyer();
   ConstStringStarVector from_domains;
-  lawyer->FindDomainsRewrittenTo(driver_->base_url(), &from_domains);
+  lawyer->FindDomainsRewrittenTo(driver()->base_url(), &from_domains);
 
   if (from_domains.empty()) {
     return;
@@ -217,16 +217,17 @@ void DomainRewriteFilter::EndDocument() {
     }
   }
 
-  HtmlElement* script_node = driver_->NewElement(NULL, HtmlName::kScript);
+  HtmlElement* script_node = driver()->NewElement(NULL, HtmlName::kScript);
   InsertNodeAtBodyEnd(script_node);
   StaticAssetManager* static_asset_manager =
-      driver_->server_context()->static_asset_manager();
+      driver()->server_context()->static_asset_manager();
   GoogleString js =
       StrCat(static_asset_manager->GetAsset(
-                 StaticAssetManager::kClientDomainRewriter, driver_->options()),
+                 StaticAssetManager::kClientDomainRewriter,
+                 driver()->options()),
              "pagespeed.clientDomainRewriterInit([",
              comma_separated_from_domains, "]);");
-  static_asset_manager->AddJsToElement(js, script_node, driver_);
+  static_asset_manager->AddJsToElement(js, script_node, driver());
 }
 
 }  // namespace net_instaweb

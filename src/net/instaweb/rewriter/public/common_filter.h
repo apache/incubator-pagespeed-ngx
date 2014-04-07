@@ -62,6 +62,7 @@ class CommonFilter : public EmptyHtmlFilter {
   // (un-rewritten) resource's URL.
   const GoogleUrl& decoded_base_url() const;
 
+  RewriteDriver* driver() const { return driver_; }
   HtmlElement* noscript_element() const { return noscript_element_; }
 
   // Insert a node at the best available location in or near the closing body
@@ -104,8 +105,6 @@ class CommonFilter : public EmptyHtmlFilter {
   // the base tag is reached, it will return false until the filter sees the
   // base tag.  After the filter sees the base tag, it will return true.
   bool BaseUrlIsValid() const;
-
-  RewriteDriver* driver() const { return driver_; }
 
   // Returns whether the current options specify the "debug" filter.
   // If set, then other filters can annotate output HTML with HTML
@@ -155,6 +154,9 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual bool IntendedForInlining() const { return false; }
 
  protected:
+  ServerContext* server_context() const { return server_context_; }
+  const RewriteOptions* rewrite_options() { return rewrite_options_; }
+
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change
   // the name from Blah to BlahImpl.
@@ -165,13 +167,14 @@ class CommonFilter : public EmptyHtmlFilter {
   // ID string used in logging. Inheritors should supply whatever short ID
   // string they use.
   virtual const char* LoggingId() { return Name(); }
-  // Protected pointers for inheritors to use.
+
+ private:
+  // These fields are gettable by inheritors.
   RewriteDriver* driver_;
   ServerContext* server_context_;
   const RewriteOptions* rewrite_options_;
-
- private:
   HtmlElement* noscript_element_;
+  // These are private.
   HtmlElement* end_body_point_;
   bool seen_base_;
 

@@ -124,7 +124,7 @@ void SplitHtmlHelperFilter::StartElementImpl(HtmlElement* element) {
     }
   }
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     if (attributes[i].category == semantic_type::kImage &&
         attributes[i].url->DecodedValueOrNull() != NULL &&

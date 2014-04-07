@@ -1245,7 +1245,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     resource_context_(resource_context),
     num_pending_nested_(0),
     parent_(parent),
-    driver_(driver),
+    driver_((driver == NULL) ? parent->Driver() : driver),
     num_predecessors_(0),
     chained_(false),
     rewrite_done_(false),
@@ -1269,6 +1269,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
         Driver()->statistics()->GetVariable(kNumDistributedRewriteSuccesses)),
     num_distributed_metadata_failures_(
         Driver()->statistics()->GetVariable(kNumDistributedMetadataFailures)) {
+  DCHECK((driver == NULL) != (parent == NULL));  // Exactly one is non-NULL.
   partitions_.reset(new OutputPartitions);
 }
 
@@ -2183,15 +2184,14 @@ void RewriteContext::FinalizeRewriteForHtml() {
 }
 
 void RewriteContext::RetireRewriteForHtml(bool permit_render) {
+  DCHECK(driver_ != NULL);
   if (parent_ != NULL) {
-    DCHECK(driver_ == NULL);
     Propagate(permit_render);
     parent_->NestedRewriteDone(this);
   } else {
     // The RewriteDriver is waiting for this to complete.  Defer to the
     // RewriteDriver to schedule the Rendering of this context on the main
     // thread.
-    CHECK(driver_ != NULL);
     driver_->RewriteComplete(this, permit_render);
   }
 }
@@ -2453,7 +2453,7 @@ void RewriteContext::RunSuccessors() {
     }
   }
   successors_.clear();
-  if (driver_ != NULL) {
+  if (parent_ == NULL) {
     DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
     Driver()->AddRewriteTask(
         new MemberFunction1<RewriteDriver, RewriteContext*>(
@@ -2985,14 +2985,6 @@ void RewriteContext::DetachFetch() {
   CHECK(IsFetchRewrite());
   fetch_->set_detached(true);
   Driver()->DetachFetch();
-}
-
-RewriteDriver* RewriteContext::Driver() const {
-  const RewriteContext* rc;
-  for (rc = this; rc->driver_ == NULL; rc = rc->parent_) {
-    CHECK(rc != NULL);
-  }
-  return rc->driver_;
 }
 
 ServerContext* RewriteContext::FindServerContext() const {

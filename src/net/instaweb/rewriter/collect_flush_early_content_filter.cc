@@ -158,7 +158,8 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   if (driver()->flushing_early() &&
       driver()->options()->flush_more_resources_early_if_time_permits()) {
     resource_tag_scanner::UrlCategoryVector attributes;
-    resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+    resource_tag_scanner::ScanElement(
+        element, driver()->options(), &attributes);
     // We only want to flush early if there is a single flushable resource.
     HtmlElement::Attribute* resource_url = NULL;
     for (int i = 0, n = attributes.size(); i < n; ++i) {
@@ -208,7 +209,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
         element->FindAttribute(attribute_name);
     semantic_type::Category category =
         resource_tag_scanner::CategorizeAttribute(
-            element, resource_url, driver_->options());
+            element, resource_url, driver()->options());
     if (element->keyword() == HtmlName::kScript &&
         category != semantic_type::kScript) {
       return;

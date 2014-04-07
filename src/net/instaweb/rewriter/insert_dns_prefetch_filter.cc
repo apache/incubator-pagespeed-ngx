@@ -68,7 +68,7 @@ InsertDnsPrefetchFilter::~InsertDnsPrefetchFilter() {
 
 void InsertDnsPrefetchFilter::DetermineEnabled() {
   set_is_enabled(true);
-  driver_->set_write_property_cache_dom_cohort(true);
+  driver()->set_write_property_cache_dom_cohort(true);
 }
 
 void InsertDnsPrefetchFilter::Clear() {
@@ -146,7 +146,7 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
     return;
   }
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     switch (attributes[i].category) {
       // The categories below are downloaded by the browser to display the page.
@@ -212,12 +212,12 @@ void InsertDnsPrefetchFilter::EndElementImpl(HtmlElement* element) {
           driver()->AddAttribute(link, HtmlName::kRel, tag_to_insert);
           driver()->AddAttribute(link, HtmlName::kHref, StrCat("//", *it));
           driver()->AppendChild(element, link);
-          driver_->log_record()->SetRewriterLoggingStatus(
+          driver()->log_record()->SetRewriterLoggingStatus(
               RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch),
               RewriterApplication::APPLIED_OK);
         }
       } else {
-        driver_->log_record()->SetRewriterLoggingStatus(
+        driver()->log_record()->SetRewriterLoggingStatus(
             RewriteOptions::FilterId(RewriteOptions::kInsertDnsPrefetch),
             RewriterApplication::NOT_APPLIED);
       }

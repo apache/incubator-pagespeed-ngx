@@ -138,7 +138,6 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   void AddVaryIfRequired(const CachedResult& cached_result,
                          ResponseHeaders* headers) const;
 
-  RewriteDriver* driver_;
   GoogleString url_;
   // Boolean indicating whether or not the resource was rewritten successfully.
   bool is_rewritten_;

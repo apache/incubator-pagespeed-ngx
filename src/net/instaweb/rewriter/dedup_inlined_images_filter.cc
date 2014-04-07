@@ -49,7 +49,7 @@ DedupInlinedImagesFilter::DedupInlinedImagesFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       script_inserted_(false),
       snippet_id_(0) {
-  Statistics* stats = server_context_->statistics();
+  Statistics* stats = server_context()->statistics();
   num_dedup_inlined_images_candidates_found_ =
       stats->GetVariable(kCandidatesFound);
   num_dedup_inlined_images_candidates_replaced_ =
@@ -90,7 +90,7 @@ void DedupInlinedImagesFilter::StartElementImpl(HtmlElement* element) {
   if (!script_inserted_) {
     StringPiece src;
     if (IsDedupCandidate(element, &src)) {
-      GoogleString hash = server_context_->hasher()->Hash(src);
+      GoogleString hash = server_context()->hasher()->Hash(src);
       if (hash_to_id_map_.find(hash) != hash_to_id_map_.end()) {
         InsertOurScriptElement(element);
       }
@@ -102,7 +102,7 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
   StringPiece src;
   if (IsDedupCandidate(element, &src)) {
     num_dedup_inlined_images_candidates_found_->Add(1);
-    GoogleString hash = server_context_->hasher()->Hash(src);
+    GoogleString hash = server_context()->hasher()->Hash(src);
     if (hash_to_id_map_.find(hash) == hash_to_id_map_.end()) {
       // The first time we've seen it: we need to ensure it has an id.
       // TODO(matterbury): We could check if an id is used more than once and
@@ -114,7 +114,7 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
       if (id == NULL || id[0] == '\0') {
         GoogleString img_id("pagespeed_img_" + hash);
         hash_to_id_map_[hash] = img_id;
-        driver_->AddAttribute(element, HtmlName::kId, img_id);
+        driver()->AddAttribute(element, HtmlName::kId, img_id);
       } else {
         hash_to_id_map_[hash] = id;
       }
@@ -134,12 +134,12 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
       //   </script>
       GoogleString snippet("pagespeed.dedupInlinedImages.");
       StrAppend(&snippet, "inlineImg(\"", img_id, "\",\"", script_id, "\");");
-      HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-      driver_->InsertElementAfterElement(element, script);
-      driver_->server_context()->static_asset_manager()->AddJsToElement(
-          snippet, script, driver_);
-      driver_->AddAttribute(script, HtmlName::kId, script_id);
-      script->AddAttribute(driver_->MakeName(HtmlName::kPagespeedNoDefer),
+      HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+      driver()->InsertElementAfterElement(element, script);
+      driver()->server_context()->static_asset_manager()->AddJsToElement(
+          snippet, script, driver());
+      driver()->AddAttribute(script, HtmlName::kId, script_id);
+      script->AddAttribute(driver()->MakeName(HtmlName::kPagespeedNoDefer),
                            NULL, HtmlElement::NO_QUOTE);
       element->DeleteAttribute(HtmlName::kSrc);
     }
@@ -165,17 +165,18 @@ bool DedupInlinedImagesFilter::IsDedupCandidate(HtmlElement* element,
 
 void DedupInlinedImagesFilter::InsertOurScriptElement(HtmlElement* before) {
   StaticAssetManager* static_asset_manager =
-      server_context_->static_asset_manager();
+      server_context()->static_asset_manager();
   StringPiece dedup_inlined_images_js =
       static_asset_manager->GetAsset(
-          StaticAssetManager::kDedupInlinedImagesJs, driver_->options());
+          StaticAssetManager::kDedupInlinedImagesJs, driver()->options());
   const GoogleString& initialized_js = StrCat(dedup_inlined_images_js,
                                               kDiiInitializer);
-  HtmlElement* script_element = driver_->NewElement(before->parent(),
-                                                    HtmlName::kScript);
-  driver_->InsertElementBeforeElement(before, script_element);
-  static_asset_manager->AddJsToElement(initialized_js, script_element, driver_);
-  script_element->AddAttribute(driver_->MakeName(HtmlName::kPagespeedNoDefer),
+  HtmlElement* script_element = driver()->NewElement(before->parent(),
+                                                     HtmlName::kScript);
+  driver()->InsertElementBeforeElement(before, script_element);
+  static_asset_manager->AddJsToElement(
+      initialized_js, script_element, driver());
+  script_element->AddAttribute(driver()->MakeName(HtmlName::kPagespeedNoDefer),
                                NULL, HtmlElement::NO_QUOTE);
   script_inserted_ = true;
 }

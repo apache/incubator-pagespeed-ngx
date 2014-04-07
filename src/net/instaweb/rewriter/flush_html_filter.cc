@@ -60,7 +60,7 @@ void FlushHtmlFilter::Flush() {
 
 void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     switch (attributes[i].category) {
       case semantic_type::kStylesheet:
@@ -80,10 +80,10 @@ void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
 
 void FlushHtmlFilter::EndElementImpl(HtmlElement* element) {
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
   if (!attributes.empty() && score_ >= kFlushScoreThreshold) {
     score_ = 0;
-    driver_->RequestFlush();
+    driver()->RequestFlush();
   }
 }
 

@@ -1217,7 +1217,7 @@ ImageCombineFilter::Context* ImageCombineFilter::MakeNestedContext(
 }
 
 RewriteContext* ImageCombineFilter::MakeRewriteContext() {
-  return new Context(driver_, this);
+  return new Context(driver(), this);
 }
 
 void ImageCombineFilter::AddFilesReducedStat(int reduced) {

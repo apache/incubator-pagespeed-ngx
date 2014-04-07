@@ -241,7 +241,7 @@ class NestedFilter : public RewriteFilter {
   };
 
   RewriteContext* MakeRewriteContext() {
-    return new Context(driver_, this, chain_);
+    return new Context(driver(), this, chain_);
   }
 
   void StartElementImpl(HtmlElement* element);
@@ -362,14 +362,14 @@ class CombiningFilter : public RewriteFilter {
   virtual void StartElementImpl(HtmlElement* element);
   virtual void Flush() {
     if (context_.get() != NULL) {
-      driver_->InitiateRewrite(context_.release());
+      driver()->InitiateRewrite(context_.release());
     }
   }
 
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "Combining"; }
   RewriteContext* MakeRewriteContext() {
-    return new Context(driver_, this, scheduler_);
+    return new Context(driver(), this, scheduler_);
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
 

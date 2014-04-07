@@ -37,7 +37,6 @@
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_beacon_filter.h"
 #include "net/instaweb/rewriter/public/split_html_config.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -147,13 +146,10 @@ const char SplitHtmlFilter::kMetaReferer[] =
 // instance is found or the current panel instance ends.
 SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
     : SuppressPreheadFilter(rewrite_driver),
-      rewrite_driver_(rewrite_driver),
-      config_(NULL),
       options_(rewrite_driver->options()),
       disable_filter_(true),
       last_script_index_before_panel_stub_(-1),
       panel_seen_(false),
-      static_asset_manager_(NULL),
       script_tag_scanner_(rewrite_driver) {
 }
 
@@ -174,18 +170,17 @@ bool SplitHtmlFilter::IsAllowedCrossDomainRequest(StringPiece cross_origin) {
 }
 
 void SplitHtmlFilter::DetermineEnabled() {
-  config_ = rewrite_driver_->split_html_config();
-  disable_filter_ = !rewrite_driver_->request_properties()->SupportsSplitHtml(
-      rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile()) ||
-      SplitHtmlBeaconFilter::ShouldApply(rewrite_driver_) ||
+  disable_filter_ = !driver()->request_properties()->SupportsSplitHtml(
+      driver()->options()->enable_aggressive_rewriters_for_mobile()) ||
+      SplitHtmlBeaconFilter::ShouldApply(driver()) ||
       // Disable this filter if a two chunked response is requested and we have
       // no critical line info.
-      (config_->critical_line_info() == NULL &&
+      (config()->critical_line_info() == NULL &&
        options_->serve_split_html_in_two_chunks());
   if (!disable_filter_ &&
-      rewrite_driver_->request_context()->split_request_type() ==
+      driver()->request_context()->split_request_type() ==
       RequestContext::SPLIT_ABOVE_THE_FOLD) {
-    rewrite_driver_->set_defer_instrumentation_script(true);
+    driver()->set_defer_instrumentation_script(true);
   }
   // Always enable this filter since it is a writer filter.
   set_is_enabled(true);
@@ -196,27 +191,25 @@ void SplitHtmlFilter::StartDocument() {
   panel_seen_ = false;
   last_script_index_before_panel_stub_ = -1;
 
-  state_.reset(new SplitHtmlState(config_));
+  state_.reset(new SplitHtmlState(config()));
 
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
-  static_asset_manager_ =
-      rewrite_driver_->server_context()->static_asset_manager();
   if (disable_filter_) {
     InvokeBaseHtmlFilterStartDocument();
     return;
   }
 
-  original_writer_ = rewrite_driver_->writer();
+  original_writer_ = driver()->writer();
   // TODO(nikhilmadan): RewriteOptions::serve_split_html_in_two_chunks is
   // currently incompatible with cache html. Fix this.
   serve_response_in_two_chunks_ = options_->serve_split_html_in_two_chunks()
       && !disable_filter_ &&
-      rewrite_driver_->request_context()->split_request_type() !=
+      driver()->request_context()->split_request_type() !=
       RequestContext::SPLIT_FULL;
   if (serve_response_in_two_chunks_) {
     ResponseHeaders* response_headers =
-        rewrite_driver_->mutable_response_headers();
-    if (rewrite_driver_->request_context()->split_request_type() ==
+        driver()->mutable_response_headers();
+    if (driver()->request_context()->split_request_type() ==
         RequestContext::SPLIT_BELOW_THE_FOLD) {
       flush_head_enabled_ = false;
       original_writer_ = &null_writer_;
@@ -233,11 +226,11 @@ void SplitHtmlFilter::StartDocument() {
       response_headers->RemoveAll(HttpAttributes::kPragma);
       response_headers->ComputeCaching();
     }
-    if (rewrite_driver_->request_context()->split_request_type() !=
+    if (driver()->request_context()->split_request_type() !=
         RequestContext::SPLIT_BELOW_THE_FOLD &&
         options_->serve_xhr_access_control_headers()) {
       const RequestHeaders* request_headers =
-          rewrite_driver_->request_headers();
+          driver()->request_headers();
       if (request_headers != NULL) {
         // Origin header should be seen if it is a cross-origin request.
         StringPiece cross_origin =
@@ -253,7 +246,7 @@ void SplitHtmlFilter::StartDocument() {
   }
   json_writer_.reset(new JsonWriter(original_writer_,
                                     &element_json_stack_));
-  url_ = rewrite_driver_->google_url().Spec();
+  url_ = driver()->google_url().Spec();
   script_written_ = false;
   inside_pagespeed_no_defer_script_ = false;
 
@@ -285,12 +278,12 @@ void SplitHtmlFilter::EndDocument() {
 }
 
 void SplitHtmlFilter::WriteString(const StringPiece& str) {
-  rewrite_driver_->writer()->Write(str, rewrite_driver_->message_handler());
+  driver()->writer()->Write(str, driver()->message_handler());
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   if (!serve_response_in_two_chunks_ ||
-      rewrite_driver_->request_context()->split_request_type() ==
+      driver()->request_context()->split_request_type() ==
       RequestContext::SPLIT_BELOW_THE_FOLD) {
     GoogleString non_critical_json = fast_writer_.write(json);
     BlinkUtil::StripTrailingNewline(&non_critical_json);
@@ -298,25 +291,25 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
     if (!serve_response_in_two_chunks_) {
       WriteString(StringPrintf(
           kSplitSuffixJsFormatString,
-          GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
+          GetBlinkJsUrl(options_, static_asset_manager()).c_str(),
           kLoadHiResImages,
           last_script_index_before_panel_stub_,
           non_critical_json.c_str(),
-          rewrite_driver_->flushing_cached_html() ? "true" : "false"));
+          driver()->flushing_cached_html() ? "true" : "false"));
     } else {
       WriteString(non_critical_json);
     }
     if (!json.empty()) {
-      rewrite_driver_->log_record()->SetRewriterLoggingStatus(
+      driver()->log_record()->SetRewriterLoggingStatus(
           RewriteOptions::FilterId(RewriteOptions::kSplitHtml),
           RewriterApplication::APPLIED_OK);
-      ScopedMutex lock(rewrite_driver_->log_record()->mutex());
-      rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
+      ScopedMutex lock(driver()->log_record()->mutex());
+      driver()->log_record()->logging_info()->mutable_split_html_info()
           ->set_json_size(non_critical_json.size());
     }
   } else {
     scoped_ptr<GoogleUrl> gurl(
-        rewrite_driver_->google_url().CopyAndAddEscapedQueryParam(
+        driver()->google_url().CopyAndAddEscapedQueryParam(
             HttpAttributes::kXSplit, HttpAttributes::kXSplitBelowTheFold));
     GoogleString escaped_url;
     EscapeToJsStringLiteral(gurl->PathAndLeaf(), false, &escaped_url);
@@ -326,7 +319,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
         GenerateCriticalLineConfigString().c_str(),
         json.empty() ? "" : "1",
         kLoadHiResImages,
-        GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
+        GetBlinkJsUrl(options_, static_asset_manager()).c_str(),
         last_script_index_before_panel_stub_));
   }
   HtmlWriterFilter::Flush();
@@ -334,8 +327,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
 
 GoogleString SplitHtmlFilter::GenerateCriticalLineConfigString() {
   GoogleString out;
-  for (int i = 0; i < config_->critical_line_info()->panels_size(); ++i) {
-    const Panel& panel = config_->critical_line_info()->panels(i);
+  for (int i = 0; i < config()->critical_line_info()->panels_size(); ++i) {
+    const Panel& panel = config()->critical_line_info()->panels(i);
     StrAppend(&out, panel.start_xpath());
     if (panel.has_end_marker_xpath()) {
       StrAppend(&out, ":", panel.end_marker_xpath());
@@ -373,25 +366,25 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
     state_->set_current_panel_id(GetPanelIdForInstance(element));
   }
   if (!serve_response_in_two_chunks_ ||
-      rewrite_driver_->request_context()->split_request_type() !=
+      driver()->request_context()->split_request_type() !=
       RequestContext::SPLIT_BELOW_THE_FOLD) {
-    original_writer_ = rewrite_driver_->writer();
+    original_writer_ = driver()->writer();
   }
   set_writer(json_writer_.get());
 }
 
 void SplitHtmlFilter::InsertPanelStub(HtmlElement* element,
                                       const GoogleString& panel_id) {
-  HtmlCommentNode* comment = rewrite_driver_->NewCommentNode(
+  HtmlCommentNode* comment = driver()->NewCommentNode(
       element->parent(),
       StrCat(RewriteOptions::kPanelCommentPrefix, " begin ", panel_id));
-  rewrite_driver_->InsertNodeBeforeCurrent(comment);
+  driver()->InsertNodeBeforeCurrent(comment);
   Comment(comment);
   // Append end stub to json.
-  comment = rewrite_driver_->NewCommentNode(
+  comment = driver()->NewCommentNode(
       element->parent(),
       StrCat(RewriteOptions::kPanelCommentPrefix, " end ", panel_id));
-  rewrite_driver_->InsertNodeBeforeCurrent(comment);
+  driver()->InsertNodeBeforeCurrent(comment);
   Comment(comment);
 }
 
@@ -409,8 +402,8 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
   if (options_->serve_ghost_click_buster_with_split_html()) {
     StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">");
     StringPiece ghost_click_buster_js =
-        static_asset_manager_->GetAsset(StaticAssetManager::kGhostClickBusterJs,
-                                        options_);
+        static_asset_manager()->GetAsset(
+            StaticAssetManager::kGhostClickBusterJs, options_);
     StrAppend(&defer_js_with_blink, ghost_click_buster_js);
     StrAppend(&defer_js_with_blink, "</script>");
   }
@@ -418,7 +411,7 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
     StrAppend(&defer_js_with_blink, "</head>");
   }
 
-  HtmlCharactersNode* blink_script_node = rewrite_driver_->NewCharactersNode(
+  HtmlCharactersNode* blink_script_node = driver()->NewCharactersNode(
       element, defer_js_with_blink);
   Characters(blink_script_node);
   script_written_ = true;
@@ -504,7 +497,7 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
       // Add meta referer.
       if (options_->hide_referer_using_meta()) {
         HtmlCharactersNode* meta_node =
-            rewrite_driver_->NewCharactersNode(element, kMetaReferer);
+            driver()->NewCharactersNode(element, kMetaReferer);
         Characters(meta_node);
       }
     }
@@ -555,7 +548,7 @@ void SplitHtmlFilter::AppendJsonData(Json::Value* dictionary,
 
 void SplitHtmlFilter::MarkElementWithPanelId(HtmlElement* element,
                                          const GoogleString& panel_id) {
-  element->AddAttribute(rewrite_driver_->MakeName(BlinkUtil::kPanelId),
+  element->AddAttribute(driver()->MakeName(BlinkUtil::kPanelId),
                         panel_id, HtmlElement::DOUBLE_QUOTE);
 }
 
@@ -577,7 +570,7 @@ GoogleString SplitHtmlFilter::GetPanelIdForInstance(HtmlElement* element) {
 
 const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(
       const RewriteOptions* options,
-      StaticAssetManager* static_asset_manager) {
+      const StaticAssetManager* static_asset_manager) {
   return static_asset_manager->GetAssetUrl(StaticAssetManager::kBlinkJs,
                                            options);
 }

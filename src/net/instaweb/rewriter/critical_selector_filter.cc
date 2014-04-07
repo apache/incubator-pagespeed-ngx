@@ -255,9 +255,9 @@ void CriticalSelectorFilter::RenderSummary(
   if (summary.is_external) {
     StringWriter writer(&resolved_css);
     GoogleUrl input_css_base(summary.base);
-    if (driver_->ResolveCssUrls(
-            input_css_base, driver_->base_url().Spec(), summary.data,
-            &writer, driver_->message_handler()) == RewriteDriver::kSuccess) {
+    if (driver()->ResolveCssUrls(
+            input_css_base, driver()->base_url().Spec(), summary.data,
+            &writer, driver()->message_handler()) == RewriteDriver::kSuccess) {
       css_to_use = &resolved_css;
     }
   }
@@ -267,13 +267,13 @@ void CriticalSelectorFilter::RenderSummary(
   if (char_node != NULL) {
     *char_node->mutable_contents() = *css_to_use;
   } else {
-    HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
-    driver_->InsertNodeBeforeNode(element, style_element);
+    HtmlElement* style_element = driver()->NewElement(NULL, HtmlName::kStyle);
+    driver()->InsertNodeBeforeNode(element, style_element);
 
     HtmlCharactersNode* content =
-        driver_->NewCharactersNode(style_element, *css_to_use);
-    driver_->AppendChild(style_element, content);
-    *is_element_deleted = driver_->DeleteNode(element);
+        driver()->NewCharactersNode(style_element, *css_to_use);
+    driver()->AppendChild(style_element, content);
+    *is_element_deleted = driver()->DeleteNode(element);
     element = style_element;
   }
 
@@ -305,8 +305,8 @@ void CriticalSelectorFilter::RenderSummary(
     }
 
     if (!relevant_media.empty()) {
-      driver_->AddAttribute(element, HtmlName::kMedia,
-                            css_util::StringifyMediaVector(relevant_media));
+      driver()->AddAttribute(element, HtmlName::kMedia,
+                             css_util::StringifyMediaVector(relevant_media));
     } else {
       // None of the media applied to the screen, so remove the entire element.
       drop_entire_element = true;
@@ -314,18 +314,18 @@ void CriticalSelectorFilter::RenderSummary(
   }
 
   if (drop_entire_element) {
-    driver_->DeleteNode(element);
+    driver()->DeleteNode(element);
   } else if (char_node == NULL) {
     const GoogleString& url = summary.location;
     if (IsCssFlushedEarly(url)) {
       ApplyCssFlushedEarly(element,
-                           driver_->server_context()->hasher()->Hash(url),
+                           driver()->server_context()->hasher()->Hash(url),
                            element->AttributeValue(HtmlName::kMedia));
-    } else if (driver_->flushing_early()) {
+    } else if (driver()->flushing_early()) {
       // Add an attribute so the flush early filter can flush these
       // elements early.
-      driver_->AddAttribute(element, HtmlName::kDataPagespeedFlushStyle,
-                            driver_->server_context()->hasher()->Hash(url));
+      driver()->AddAttribute(element, HtmlName::kDataPagespeedFlushStyle,
+                             driver()->server_context()->hasher()->Hash(url));
     }
   }
 
@@ -377,7 +377,7 @@ void CriticalSelectorFilter::RenderDone() {
     return;
   }
 
-  if (!css_elements_.empty() && any_rendered_ && !driver_->flushing_early()) {
+  if (!css_elements_.empty() && any_rendered_ && !driver()->flushing_early()) {
     HtmlElement* noscript_element = NULL;
     Compact(&css_elements_);
     for (int i = 0, n = css_elements_.size(); i < n; ++i) {
@@ -395,28 +395,28 @@ void CriticalSelectorFilter::RenderDone() {
       // inside noscript).
       if (i == 0 || (css_elements_[i]->inside_noscript() !=
                      css_elements_[i - 1]->inside_noscript())) {
-        noscript_element = driver_->NewElement(NULL, HtmlName::kNoscript);
+        noscript_element = driver()->NewElement(NULL, HtmlName::kNoscript);
         if (!css_elements_[i]->inside_noscript()) {
-          driver_->AddAttribute(noscript_element, HtmlName::kClass,
-                                kNoscriptStylesClass);
+          driver()->AddAttribute(noscript_element, HtmlName::kClass,
+                                 kNoscriptStylesClass);
         }
         InsertNodeAtBodyEnd(noscript_element);
       }
       css_elements_[i]->AppendTo(noscript_element);
     }
 
-    HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     InsertNodeAtBodyEnd(script);
     GoogleString js =
-        driver_->server_context()->static_asset_manager()->GetAsset(
-            StaticAssetManager::kCriticalCssLoaderJs, driver_->options());
-    if (!driver_->options()
+        driver()->server_context()->static_asset_manager()->GetAsset(
+            StaticAssetManager::kCriticalCssLoaderJs, driver()->options());
+    if (!driver()->options()
              ->test_only_prioritize_critical_css_dont_apply_original_css()) {
       StrAppend(&js, "pagespeed.CriticalCssLoader.Run();");
     }
-    driver_->server_context()->static_asset_manager()->AddJsToElement(
-        js, script, driver_);
+    driver()->server_context()->static_asset_manager()->AddJsToElement(
+        js, script, driver());
   }
 
   STLDeleteElements(&css_elements_);
@@ -427,12 +427,12 @@ void CriticalSelectorFilter::DetermineEnabled() {
   // in the property cache. Unfortunately, we also cannot run safely in case of
   // IE, since we do not understand IE conditional comments well enough to
   // replicate their behavior in the load-everything section.
-  const StringSet& critical_selectors = driver_->server_context()
-      ->critical_selector_finder()->GetCriticalSelectors(driver_);
+  const StringSet& critical_selectors = driver()->server_context()
+      ->critical_selector_finder()->GetCriticalSelectors(driver());
   bool ua_supports_critical_css =
-      driver_->request_properties()->SupportsCriticalCss();
+      driver()->request_properties()->SupportsCriticalCss();
   bool can_run = ua_supports_critical_css && !critical_selectors.empty();
-  driver_->log_record()->LogRewriterHtmlStatus(
+  driver()->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
       (can_run ? RewriterHtmlApplication::ACTIVE
                : (ua_supports_critical_css
@@ -455,19 +455,19 @@ void CriticalSelectorFilter::RememberFullCss(
   CssElement* save = NULL;
   if (char_node != NULL) {
     CssStyleElement* save_inline =
-        new CssStyleElement(driver_, element, noscript);
+        new CssStyleElement(driver(), element, noscript);
     save_inline->AppendCharactersNode(char_node);
     save = save_inline;
   } else {
-    save = new CssElement(driver_, element, noscript);
+    save = new CssElement(driver(), element, noscript);
   }
   css_elements_[pos] = save;
 }
 
 bool CriticalSelectorFilter::IsCssFlushedEarly(const GoogleString& url) const {
-  if (!driver_->flushed_early() ||
-      !driver_->options()->enable_flush_early_critical_css() ||
-      driver_->flush_early_info() == NULL) {
+  if (!driver()->flushed_early() ||
+      !driver()->options()->enable_flush_early_critical_css() ||
+      driver()->flush_early_info() == NULL) {
     return false;
   }
 
@@ -476,7 +476,7 @@ bool CriticalSelectorFilter::IsCssFlushedEarly(const GoogleString& url) const {
   GoogleString escaped_url;
   HtmlKeywords::Escape(url, &escaped_url);
   // TODO(slamm): Replace with cheaper and more robust solution.
-  return (driver_->flush_early_info()->resource_html().find(
+  return (driver()->flush_early_info()->resource_html().find(
       StrCat("\"", escaped_url, "\"")) != GoogleString::npos);
 }
 
@@ -491,25 +491,25 @@ void CriticalSelectorFilter::ApplyCssFlushedEarly(
   if (!is_flush_script_added_) {
     is_flush_script_added_ = true;
     HtmlElement* script =
-        driver_->NewElement(element->parent(), HtmlName::kScript);
+        driver()->NewElement(element->parent(), HtmlName::kScript);
     // TODO(slamm): Remove this attribute and update webdriver test as needed.
-    driver_->AddAttribute(script, HtmlName::kId, kMoveScriptId);
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-    driver_->InsertNodeBeforeNode(element, script);
-    driver_->server_context()->static_asset_manager()->AddJsToElement(
-        kApplyFlushEarlyCss, script, driver_);
+    driver()->AddAttribute(script, HtmlName::kId, kMoveScriptId);
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    driver()->InsertNodeBeforeNode(element, script);
+    driver()->server_context()->static_asset_manager()->AddJsToElement(
+        kApplyFlushEarlyCss, script, driver());
   }
 
   HtmlElement* script_element =
-      driver_->NewElement(element->parent(), HtmlName::kScript);
-  driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
-  driver_->ReplaceNode(element, script_element);
+      driver()->NewElement(element->parent(), HtmlName::kScript);
+  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+  driver()->ReplaceNode(element, script_element);
 
   GoogleString js_data = StringPrintf(kInvokeFlushEarlyCssTemplate,
                                       style_id.c_str(),
                                       (media != NULL ? media : ""));
-  driver_->server_context()->static_asset_manager()->AddJsToElement(
-      js_data, script_element, driver_);
+  driver()->server_context()->static_asset_manager()->AddJsToElement(
+      js_data, script_element, driver());
 }
 
 }  // namespace net_instaweb

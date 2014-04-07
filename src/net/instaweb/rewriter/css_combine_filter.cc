@@ -353,7 +353,7 @@ class CssCombineFilter::Context : public RewriteContext {
 // make this convention consistent and fix all code.
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
-      css_tag_scanner_(driver_),
+      css_tag_scanner_(driver),
       end_document_found_(false),
       css_links_(0),
       css_combine_opportunities_(driver->statistics()->GetVariable(
@@ -398,7 +398,7 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
                                               &num_nonstandard_attributes)) {
     ++css_links_;
     // Element is a <link rel="stylesheet" ...>.
-    if (driver_->HasChildrenInFlushWindow(element)) {
+    if (driver()->HasChildrenInFlushWindow(element)) {
       LOG(DFATAL) << "HTML lexer allowed children in <link>.";
       NextCombination("children in flush window");
       return;
@@ -438,10 +438,10 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
 void CssCombineFilter::NextCombination(StringPiece debug_failure_reason) {
   if (!context_->empty()) {
     if (DebugMode() && !debug_failure_reason.empty()) {
-      driver_->InsertComment(StrCat("combine_css: Could not combine over "
-                                    "barrier: ", debug_failure_reason));
+      driver()->InsertComment(StrCat("combine_css: Could not combine over "
+                                     "barrier: ", debug_failure_reason));
     }
-    driver_->InitiateRewrite(context_.release());
+    driver()->InitiateRewrite(context_.release());
     context_.reset(MakeContext());
   }
   context_->Reset();
@@ -491,7 +491,7 @@ CssCombineFilter::CssCombiner* CssCombineFilter::combiner() {
 }
 
 CssCombineFilter::Context* CssCombineFilter::MakeContext() {
-  return new Context(driver_, this);
+  return new Context(driver(), this);
 }
 
 RewriteContext* CssCombineFilter::MakeRewriteContext() {
@@ -499,7 +499,7 @@ RewriteContext* CssCombineFilter::MakeRewriteContext() {
 }
 
 void CssCombineFilter::DetermineEnabled() {
-  set_is_enabled(!driver_->flushed_cached_html());
+  set_is_enabled(!driver()->flushed_cached_html());
 }
 
 }  // namespace net_instaweb

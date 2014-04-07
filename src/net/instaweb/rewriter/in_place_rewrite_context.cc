@@ -138,7 +138,7 @@ void RecordingFetch::HandleHeadersComplete() {
 void RecordingFetch::FreeDriver() {
   // This cleans up the context and frees the driver. Leaving this context
   // around causes problems in the html flow in particular.
-  context_->driver_->FetchComplete();
+  context_->Driver()->FetchComplete();
 }
 
 bool RecordingFetch::ShouldStream() const {
@@ -218,7 +218,7 @@ void RecordingFetch::HandleDone(bool success) {
     }
     context_->StartFetchReconstructionParent();
     if (streaming_) {
-      context_->driver_->FetchComplete();
+      context_->Driver()->FetchComplete();
     }
   }
   delete this;
@@ -245,7 +245,7 @@ bool RecordingFetch::CanInPlaceRewrite() {
   if (type->type() == ContentType::kCss ||
       type->type() == ContentType::kJavascript ||
       type->IsImage()) {
-    RewriteDriver* driver = context_->driver_;
+    RewriteDriver* driver = context_->Driver();
     HTTPCache* const cache = driver->server_context()->http_cache();
     if (response_headers()->IsProxyCacheable(
             request_headers()->GetProperties(),
@@ -266,7 +266,6 @@ bool RecordingFetch::CanInPlaceRewrite() {
 InPlaceRewriteContext::InPlaceRewriteContext(RewriteDriver* driver,
                                        const StringPiece& url)
     : SingleRewriteContext(driver, NULL, new ResourceContext),
-      driver_(driver),
       url_(url.data(), url.size()),
       is_rewritten_(true),
       proxy_mode_(true) {
@@ -326,10 +325,10 @@ void InPlaceRewriteContext::Harvest() {
         output_resource_->response_headers()->CopyFrom(
             *(nested_resource->response_headers()));
         Writer* writer = output_resource_->BeginWrite(
-            driver_->message_handler());
+            Driver()->message_handler());
         writer->Write(nested_resource->contents(),
-                      driver_->message_handler());
-        output_resource_->EndWrite(driver_->message_handler());
+                      Driver()->message_handler());
+        output_resource_->EndWrite(Driver()->message_handler());
 
         is_rewritten_ = true;
         // EndWrite updated the hash in output_resource_.
@@ -360,7 +359,7 @@ void InPlaceRewriteContext::FetchTryFallback(const GoogleString& url,
     async_fetch()->response_headers()->SetStatusAndReason(
         HttpStatus::kNotModified);
     async_fetch()->Done(true);
-    driver_->FetchComplete();
+    Driver()->FetchComplete();
   } else {
     if (url == url_) {
       // If the fallback url is the same as the original url, no rewriting is
@@ -455,19 +454,19 @@ void InPlaceRewriteContext::FetchCallbackDone(bool success) {
 
 RewriteFilter* InPlaceRewriteContext::GetRewriteFilter(
     const ContentType& type) {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = Driver()->options();
   if (type.type() == ContentType::kCss &&
       options->Enabled(RewriteOptions::kRewriteCss)) {
-    return driver_->FindFilter(RewriteOptions::kCssFilterId);
+    return Driver()->FindFilter(RewriteOptions::kCssFilterId);
   }
   if (type.type() == ContentType::kJavascript &&
       options->Enabled(RewriteOptions::kRewriteJavascript)) {
-    return driver_->FindFilter(RewriteOptions::kJavascriptMinId);
+    return Driver()->FindFilter(RewriteOptions::kJavascriptMinId);
   }
   if (type.IsImage() && options->ImageOptimizationEnabled()) {
     // TODO(nikhilmadan): This converts one image format to another. We
     // shouldn't do inter-conversion since we can't change the file extension.
-    return driver_->FindFilter(RewriteOptions::kImageCompressionId);
+    return Driver()->FindFilter(RewriteOptions::kImageCompressionId);
   }
   return NULL;
 }
@@ -597,12 +596,12 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
                            fetch_message_handler());
     if (resource->UseHttpCache()) {
       if (proxy_mode_) {
-        cache_fetcher_.reset(driver_->CreateCacheFetcher());
+        cache_fetcher_.reset(Driver()->CreateCacheFetcher());
         // Since we are proxying resources to user, we want to fetch it even
         // if there is a kRecentFetchNotCacheable message in the cache.
         cache_fetcher_->set_ignore_recent_fetch_failed(true);
       } else {
-        cache_fetcher_.reset(driver_->CreateCacheOnlyFetcher());
+        cache_fetcher_.reset(Driver()->CreateCacheOnlyFetcher());
         // Since we are not proxying resources to user, we can respect
         // kRecentFetchNotCacheable messages.
         cache_fetcher_->set_ignore_recent_fetch_failed(false);
@@ -678,7 +677,7 @@ void InPlaceRewriteContext::AddVaryIfRequired(
     return;
   }
   if (Options()->private_not_vary_for_ie() &&
-      driver_->user_agent_matcher()->IsIe(driver_->user_agent())) {
+      Driver()->user_agent_matcher()->IsIe(Driver()->user_agent())) {
     // IE stores Vary: Accept resources in its cache, but must revalidate them
     // every single time they're fetched (except for older IE, which doesn't
     // cache them at all).  To avoid the re-validation cost (which imposes load
@@ -770,7 +769,7 @@ void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
   // enough, enable lossless encoding if it was requested.  But note similar
   // nonsense will required for other new webp features such as animated webp.
   if (context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
-    if (driver_->request_properties()->SupportsWebpInPlace()) {
+    if (Driver()->request_properties()->SupportsWebpInPlace()) {
       context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
     } else {
       context->set_libwebp_level(ResourceContext::LIBWEBP_NONE);

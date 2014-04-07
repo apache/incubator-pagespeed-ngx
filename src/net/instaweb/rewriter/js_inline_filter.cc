@@ -63,9 +63,9 @@ class JsInlineFilter::Context : public InlineRewriteContext {
 JsInlineFilter::JsInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       size_threshold_bytes_(driver->options()->js_inline_max_bytes()),
-      script_tag_scanner_(driver_),
+      script_tag_scanner_(driver),
       should_inline_(false) {
-  Statistics* stats = server_context_->statistics();
+  Statistics* stats = server_context()->statistics();
   num_js_inlined_ = stats->GetVariable(kNumJsInlined);
 }
 
@@ -93,7 +93,7 @@ void JsInlineFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void JsInlineFilter::EndElementImpl(HtmlElement* element) {
-  if (should_inline_ && driver_->IsRewritable(element)) {
+  if (should_inline_ && driver()->IsRewritable(element)) {
     DCHECK(element->keyword() == HtmlName::kScript);
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kSrc);
     CHECK(attr != NULL);
@@ -119,7 +119,7 @@ bool JsInlineFilter::ShouldInline(const ResourcePtr& resource) const {
     return false;
   }
 
-  if (driver_->options()->avoid_renaming_introspective_javascript() &&
+  if (driver()->options()->avoid_renaming_introspective_javascript() &&
       JavascriptCodeBlock::UnsafeToRename(contents)) {
     return false;
   }
@@ -198,24 +198,24 @@ void JsInlineFilter::RenderInline(
   // we have to hide the CDATA delimiters behind Javascript comments.
   // See http://lachy.id.au/log/2006/11/xhtml-script
   // and http://code.google.com/p/modpagespeed/issues/detail?id=125
-  if (driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
+  if (driver()->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
     // CDATA sections cannot be nested because they end with the first
     // occurrence of "]]>", so if the script contains that string
     // anywhere (and we're in XHTML) we can't inline.
     // TODO(mdsteele): We should consider escaping somehow.
     if (escaped_contents.find("]]>") == StringPiece::npos) {
       HtmlCharactersNode* node =
-          driver_->NewCharactersNode(element, "//<![CDATA[\n");
+          driver()->NewCharactersNode(element, "//<![CDATA[\n");
       node->Append(escaped_contents);
       node->Append("\n//]]>");
-      driver_->AppendChild(element, node);
+      driver()->AppendChild(element, node);
       element->DeleteAttribute(HtmlName::kSrc);
     }
   } else {
     // If we're not in XHTML, we can simply paste in the external script
     // verbatim.
-    driver_->AppendChild(
-        element, driver_->NewCharactersNode(element, escaped_contents));
+    driver()->AppendChild(
+        element, driver()->NewCharactersNode(element, escaped_contents));
     element->DeleteAttribute(HtmlName::kSrc);
   }
   num_js_inlined_->Add(1);
@@ -226,11 +226,11 @@ void JsInlineFilter::Characters(HtmlCharactersNode* characters) {
     HtmlElement* script_element = characters->parent();
     DCHECK(script_element != NULL);
     DCHECK_EQ(HtmlName::kScript, script_element->keyword());
-    if (driver_->IsRewritable(script_element) &&
+    if (driver()->IsRewritable(script_element) &&
         OnlyWhitespace(characters->contents())) {
       // If it's just whitespace inside the script tag, it's (probably) safe to
       // just remove it.
-      driver_->DeleteNode(characters);
+      driver()->DeleteNode(characters);
     } else {
       // This script tag isn't empty, despite having a src field.  The contents
       // won't be executed by the browser, but will still be in the DOM; some

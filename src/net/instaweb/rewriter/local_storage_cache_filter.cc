@@ -59,7 +59,7 @@ LocalStorageCacheFilter::LocalStorageCacheFilter(RewriteDriver* rewrite_driver)
     : RewriteFilter(rewrite_driver),
       script_inserted_(false),
       script_needs_inserting_(false) {
-  Statistics* stats = server_context_->statistics();
+  Statistics* stats = server_context()->statistics();
   num_local_storage_cache_candidates_found_ =
       stats->GetVariable(kCandidatesFound);
   num_local_storage_cache_stored_total_ =
@@ -128,8 +128,8 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
     const char* url = element->AttributeValue(HtmlName::kPagespeedLscUrl);
     if (url != NULL) {
       num_local_storage_cache_candidates_found_->Add(1);
-      GoogleString hash = GenerateHashFromUrlAndElement(driver_, url, element);
-      if (IsHashInCookie(driver_, kLscCookieName, hash, &cookie_hashes_)) {
+      GoogleString hash = GenerateHashFromUrlAndElement(driver(), url, element);
+      if (IsHashInCookie(driver(), kLscCookieName, hash, &cookie_hashes_)) {
         num_local_storage_cache_stored_total_->Add(1);
         StringPiece given_url(url);
         GoogleUrl abs_url(base_url(), given_url);
@@ -144,13 +144,13 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
           StrAppend(&snippet, "inlineCss(\"", lsc_url, "\");");
         }
         HtmlElement* script_element =
-            driver_->NewElement(element->parent(), HtmlName::kScript);
+            driver()->NewElement(element->parent(), HtmlName::kScript);
         script_element->AddAttribute(
-            driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL,
+            driver()->MakeName(HtmlName::kPagespeedNoDefer), NULL,
                               HtmlElement::NO_QUOTE);
-        if (driver_->ReplaceNode(element, script_element)) {
-          driver_->AppendChild(script_element,
-                               driver_->NewCharactersNode(element, snippet));
+        if (driver()->ReplaceNode(element, script_element)) {
+          driver()->AppendChild(script_element,
+                                driver()->NewCharactersNode(element, snippet));
         }
       }
     }
@@ -159,17 +159,18 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
 
 void LocalStorageCacheFilter::InsertOurScriptElement(HtmlElement* before) {
   StaticAssetManager* static_asset_manager =
-      driver_->server_context()->static_asset_manager();
+      driver()->server_context()->static_asset_manager();
   StringPiece local_storage_cache_js =
       static_asset_manager->GetAsset(
-          StaticAssetManager::kLocalStorageCacheJs, driver_->options());
+          StaticAssetManager::kLocalStorageCacheJs, driver()->options());
   const GoogleString& initialized_js = StrCat(local_storage_cache_js,
                                               kLscInitializer);
-  HtmlElement* script_element = driver_->NewElement(before->parent(),
-                                                    HtmlName::kScript);
-  driver_->InsertNodeBeforeNode(before, script_element);
-  static_asset_manager->AddJsToElement(initialized_js, script_element, driver_);
-  script_element->AddAttribute(driver_->MakeName(HtmlName::kPagespeedNoDefer),
+  HtmlElement* script_element = driver()->NewElement(before->parent(),
+                                                     HtmlName::kScript);
+  driver()->InsertNodeBeforeNode(before, script_element);
+  static_asset_manager->AddJsToElement(
+      initialized_js, script_element, driver());
+  script_element->AddAttribute(driver()->MakeName(HtmlName::kPagespeedNoDefer),
                                NULL, HtmlElement::NO_QUOTE);
   script_inserted_ = true;
 }

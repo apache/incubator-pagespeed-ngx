@@ -95,7 +95,7 @@ FakeFilter::~FakeFilter() {}
 
 void FakeFilter::StartElementImpl(HtmlElement* element) {
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, rewrite_options_, &attributes);
+  resource_tag_scanner::ScanElement(element, rewrite_options(), &attributes);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     if (attributes[i].category == category_) {
       ResourcePtr input_resource(
@@ -104,10 +104,10 @@ void FakeFilter::StartElementImpl(HtmlElement* element) {
         return;
       }
       ResourceSlotPtr slot(
-          driver_->GetSlot(input_resource, element, attributes[i].url));
+          driver()->GetSlot(input_resource, element, attributes[i].url));
       RewriteContext* context = MakeRewriteContext();
       context->AddSlot(slot);
-      driver_->InitiateRewrite(context);
+      driver()->InitiateRewrite(context);
     }
   }
 }
@@ -131,7 +131,7 @@ void FakeFilter::ClearStats() {
 
 void FakeFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, context);
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver(), context);
   ++num_calls_to_encode_user_agent_;
 }
 

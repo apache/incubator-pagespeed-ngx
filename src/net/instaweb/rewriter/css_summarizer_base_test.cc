@@ -62,7 +62,7 @@ class MinifyExcerptFilter : public CssSummarizerBase {
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const {
     StringWriter write_out(out);
-    CssMinify::Stylesheet(*stylesheet, &write_out, driver_->message_handler());
+    CssMinify::Stylesheet(*stylesheet, &write_out, driver()->message_handler());
     if (out->length() > 10) {
       out->resize(10);
     }
@@ -100,13 +100,13 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     } else {
       // Replace link with style. Note: real one should also keep media,
       // test code does not have to.
-      HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
-      driver_->InsertNodeBeforeNode(element, style_element);
+      HtmlElement* style_element = driver()->NewElement(NULL, HtmlName::kStyle);
+      driver()->InsertNodeBeforeNode(element, style_element);
 
       HtmlCharactersNode* content =
-          driver_->NewCharactersNode(style_element, summary.data);
-      driver_->AppendChild(style_element, content);
-      EXPECT_TRUE(driver_->DeleteNode(element));
+          driver()->NewCharactersNode(style_element, summary.data);
+      driver()->AppendChild(style_element, content);
+      EXPECT_TRUE(driver()->DeleteNode(element));
       *is_element_deleted = true;
     }
   }
@@ -125,8 +125,8 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     const SummaryInfo& sum = GetSummaryForStyle(pos);
     GoogleString annotation = StrCat("WillNotRender:", IntegerToString(pos),
                                      " --- ", EncodeState(sum.state));
-    driver_->InsertNodeBeforeNode(
-        element, driver_->NewCommentNode(NULL, annotation));
+    driver()->InsertNodeBeforeNode(
+        element, driver()->NewCommentNode(NULL, annotation));
   }
 
   virtual void SummariesDone() {

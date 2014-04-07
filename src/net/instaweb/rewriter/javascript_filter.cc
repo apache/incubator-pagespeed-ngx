@@ -84,7 +84,7 @@ JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       script_type_(kNoScript),
       some_missing_scripts_(false),
-      script_tag_scanner_(driver_) { }
+      script_tag_scanner_(driver) { }
 
 JavascriptFilter::~JavascriptFilter() { }
 
@@ -340,7 +340,7 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
     case ScriptTagScanner::kUnknownScript: {
       GoogleString script_dump;
       element->ToString(&script_dump);
-      driver_->InfoHere("Unrecognized script:'%s'", script_dump.c_str());
+      driver()->InfoHere("Unrecognized script:'%s'", script_dump.c_str());
       break;
     }
     case ScriptTagScanner::kNonScript:
@@ -354,7 +354,7 @@ void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
       RewriteInlineScript(characters);
       break;
     case kExternalScript:
-      CleanupWhitespaceScriptBody(driver_, characters);
+      CleanupWhitespaceScriptBody(driver(), characters);
       break;
     case kNoScript:
       break;
@@ -373,7 +373,7 @@ JavascriptRewriteConfig* JavascriptFilter::InitializeConfig(
 
 void JavascriptFilter::InitializeConfigIfNecessary() {
   if (config_.get() == NULL) {
-      config_.reset(InitializeConfig(driver_));
+      config_.reset(InitializeConfig(driver()));
   }
 }
 
@@ -381,19 +381,19 @@ void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
   // Log rewriter activity
   // First buffer up script data and minify it.
   GoogleString* script = body_node->mutable_contents();
-  MessageHandler* message_handler = driver_->message_handler();
+  MessageHandler* message_handler = driver()->message_handler();
   JavascriptCodeBlock code_block(
-      *script, config_.get(), driver_->UrlLine(), message_handler);
+      *script, config_.get(), driver()->UrlLine(), message_handler);
   code_block.Rewrite();
   StringPiece library_url = code_block.ComputeJavascriptLibrary();
   if (!library_url.empty()) {
     // TODO(jmaessen): outline and use canonical url.
-    driver_->InfoHere("Script is inlined version of %s",
-                      library_url.as_string().c_str());
+    driver()->InfoHere("Script is inlined version of %s",
+                       library_url.as_string().c_str());
   }
   if (code_block.successfully_rewritten()) {
     // Replace the old script string with the new, minified one.
-    if ((driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
+    if ((driver()->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
         (script->find("<![CDATA[") != StringPiece::npos) &&
         !code_block.rewritten_code().starts_with(
             "<![CDATA")) {  // See Issue 542.
@@ -408,7 +408,7 @@ void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
       // Note: code_block and rewritten_script are INVALID after this point.
     }
     config_->num_uses()->Add(1);
-    driver_->log_record()->SetRewriterLoggingStatus(
+    driver()->log_record()->SetRewriterLoggingStatus(
         id(), RewriterApplication::APPLIED_OK);
   } else {
     config_->did_not_shrink()->Add(1);
@@ -422,14 +422,14 @@ void JavascriptFilter::RewriteExternalScript(
   ResourcePtr resource = CreateInputResource(script_url);
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(
-        driver_->GetSlot(resource, script_in_progress, script_src));
-    if (driver_->options()->js_preserve_urls()) {
+        driver()->GetSlot(resource, script_in_progress, script_src));
+    if (driver()->options()->js_preserve_urls()) {
       slot->set_disable_rendering(true);
     }
-    Context* jrc = new Context(driver_, NULL, config_.get(),
+    Context* jrc = new Context(driver(), NULL, config_.get(),
                                false /* output_source_map */);
     jrc->AddSlot(slot);
-    driver_->InitiateRewrite(jrc);
+    driver()->InitiateRewrite(jrc);
   }
 }
 
@@ -450,7 +450,7 @@ RewriteContext* JavascriptFilter::MakeRewriteContext() {
   // disabled for this resource (eg because we've recognized it as a library).
   // This usually happens because the underlying JS content or rewrite
   // configuration changed since the client fetched a rewritten page.
-  return new Context(driver_, NULL, config_.get(), output_source_map());
+  return new Context(driver(), NULL, config_.get(), output_source_map());
 }
 
 RewriteContext* JavascriptFilter::MakeNestedRewriteContext(

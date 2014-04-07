@@ -76,11 +76,11 @@ void CriticalImagesBeaconFilter::DetermineEnabled() {
   DCHECK(beacon_metadata_.nonce.empty());
   DCHECK(!insert_beacon_js_);
 
-  if (driver_->request_properties()->SupportsCriticalImagesBeacon()) {
+  if (driver()->request_properties()->SupportsCriticalImagesBeacon()) {
     // Check whether we need to beacon, and store the nonce we get.
     CriticalImagesFinder* finder =
-        driver_->server_context()->critical_images_finder();
-    beacon_metadata_ = finder->PrepareForBeaconInsertion(driver_);
+        driver()->server_context()->critical_images_finder();
+    beacon_metadata_ = finder->PrepareForBeaconInsertion(driver());
     insert_beacon_js_ = (beacon_metadata_.status != kDoNotBeacon);
   }
 }
@@ -91,8 +91,8 @@ void CriticalImagesBeaconFilter::InitStats(Statistics* statistics) {
 
 void CriticalImagesBeaconFilter::EndDocument() {
   CriticalImagesFinder* finder =
-      driver_->server_context()->critical_images_finder();
-  finder->UpdateCandidateImagesForBeaconing(image_url_hashes_, driver_,
+      driver()->server_context()->critical_images_finder();
+  finder->UpdateCandidateImagesForBeaconing(image_url_hashes_, driver(),
                                             insert_beacon_js_);
   Clear();
 }
@@ -104,35 +104,35 @@ void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
   }
   added_beacon_js_ = true;
   StaticAssetManager* static_asset_manager =
-      driver_->server_context()->static_asset_manager();
+      driver()->server_context()->static_asset_manager();
   GoogleString js = static_asset_manager->GetAsset(
-      StaticAssetManager::kCriticalImagesBeaconJs, driver_->options());
+      StaticAssetManager::kCriticalImagesBeaconJs, driver()->options());
 
   // Create the init string to append at the end of the static JS.
-  const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
+  const RewriteOptions::BeaconUrl& beacons = driver()->options()->beacon_url();
   const GoogleString* beacon_url =
-      driver_->IsHttps() ? &beacons.https : &beacons.http;
+      driver()->IsHttps() ? &beacons.https : &beacons.http;
   GoogleString html_url;
-  EscapeToJsStringLiteral(driver_->google_url().Spec(),
+  EscapeToJsStringLiteral(driver()->google_url().Spec(),
                           false, /* no quotes */
                           &html_url);
   GoogleString options_signature_hash =
-      driver_->server_context()->hasher()->Hash(
-          driver_->options()->signature());
+      driver()->server_context()->hasher()->Hash(
+          driver()->options()->signature());
   StrAppend(&js,
             "\npagespeed.CriticalImages.Run('",
             *beacon_url, "','", html_url, "','",
             options_signature_hash, "',");
-  StrAppend(&js, BoolToString(driver_->options()->Enabled(
+  StrAppend(&js, BoolToString(driver()->options()->Enabled(
                      RewriteOptions::kResizeToRenderedImageDimensions)),
             ",'", beacon_metadata_.nonce, "');");
-  HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+  driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   // Always add the beacon js before the current node, because the current node
   // might be an img node that needs the beacon js for its
   // checkImageForCriticality onload handler.
-  driver_->InsertNodeBeforeNode(element, script);
-  static_asset_manager->AddJsToElement(js, script, driver_);
+  driver()->InsertNodeBeforeNode(element, script);
+  static_asset_manager->AddJsToElement(js, script, driver());
   critical_images_beacon_added_count_->Add(1);
 }
 
@@ -151,26 +151,27 @@ void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
   }
   // TODO(jud): Verify this logic works correctly with input tags, then remove
   // the check for img tag here.
-  if (element->keyword() == HtmlName::kImg && driver_->IsRewritable(element)) {
+  if (element->keyword() == HtmlName::kImg && driver()->IsRewritable(element)) {
     // Add a pagespeed_url_hash attribute to the image with the hash of the
     // original URL. This is what the beacon will send back as the identifier
     // for critical images.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     if (src != NULL && src->DecodedValueOrNull() != NULL) {
       StringPiece url(src->DecodedValueOrNull());
-      GoogleUrl gurl(driver_->base_url(), url);
+      GoogleUrl gurl(driver()->base_url(), url);
       if (gurl.IsAnyValid()) {
         unsigned int hash_val = HashString<CasePreserve, unsigned int>(
             gurl.spec_c_str(), strlen(gurl.spec_c_str()));
         GoogleString hash_str = UintToString(hash_val);
         image_url_hashes_.insert(hash_str);
         if (insert_beacon_js_) {
-          driver_->AddAttribute(element, HtmlName::kPagespeedUrlHash, hash_str);
+          driver()->AddAttribute(
+              element, HtmlName::kPagespeedUrlHash, hash_str);
           if (element->keyword() == HtmlName::kImg &&
               CanAddPagespeedOnloadToImage(*element)) {
             // Add an onload handler only if one is not already specified on the
             // non-rewritten page.
-            driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+            driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
             // If beacon javascript has not been added yet, we need to add it
             // before the current node because we are going to use the js for
             // the image criticality check on image-onload.

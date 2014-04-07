@@ -41,7 +41,7 @@ CssMoveToHeadFilter::CssMoveToHeadFilter(RewriteDriver* driver)
           driver->options()->Enabled(RewriteOptions::kMoveCssToHead)),
       move_css_above_scripts_(
           driver->options()->Enabled(RewriteOptions::kMoveCssAboveScripts)) {
-  Statistics* stats = driver_->statistics();
+  Statistics* stats = driver->statistics();
   css_elements_moved_ = stats->GetVariable(kCssElementsMoved);
 }
 
@@ -81,17 +81,17 @@ void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
 
       if (element_is_head_) {
         // Move styles to end of head.
-        driver_->MoveCurrentInto(move_to_element_);
+        driver()->MoveCurrentInto(move_to_element_);
       } else {
         // Move styles directly before that first script.
-        driver_->MoveCurrentBefore(move_to_element_);
+        driver()->MoveCurrentBefore(move_to_element_);
       }
     }
   }
 }
 
 void CssMoveToHeadFilter::DetermineEnabled() {
-  set_is_enabled(!driver_->flushed_cached_html());
+  set_is_enabled(!driver()->flushed_cached_html());
 }
 
 }  // namespace net_instaweb

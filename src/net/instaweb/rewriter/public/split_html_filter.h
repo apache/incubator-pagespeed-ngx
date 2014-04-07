@@ -21,7 +21,9 @@
 
 #include <vector>
 
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/json.h"
@@ -34,7 +36,6 @@
 namespace net_instaweb {
 
 class HtmlElement;
-class RewriteDriver;
 class RewriteOptions;
 class SplitHtmlConfig;
 class SplitHtmlState;
@@ -66,11 +67,18 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
 
   static const GoogleString& GetBlinkJsUrl(
       const RewriteOptions* options,
-      StaticAssetManager* static_asset_manager);
+      const StaticAssetManager* static_asset_manager);
 
   virtual const char* Name() const { return "SplitHtmlFilter"; }
 
  private:
+  const SplitHtmlConfig* config() const {
+    return driver()->split_html_config();
+  }
+  const StaticAssetManager* static_asset_manager() const {
+    return driver()->server_context()->static_asset_manager();
+  }
+
   void ServeNonCriticalPanelContents(const Json::Value& json);
 
   // Sets panel-id attribute to the element. This is not used by client-side
@@ -118,8 +126,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   // The only wildcard supported is '*' which means allow all domains.
   bool IsAllowedCrossDomainRequest(StringPiece cross_origin);
 
-  RewriteDriver* rewrite_driver_;
-  const SplitHtmlConfig* config_;  // Owned by rewrite_driver_.
   scoped_ptr<SplitHtmlState> state_;
   const RewriteOptions* options_;
   std::vector<ElementJsonPair> element_json_stack_;
@@ -135,7 +141,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool serve_response_in_two_chunks_;
   int last_script_index_before_panel_stub_;
   bool panel_seen_;
-  StaticAssetManager* static_asset_manager_;  // Owned by rewrite_driver_.
   ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);

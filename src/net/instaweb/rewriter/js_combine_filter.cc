@@ -589,7 +589,7 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   // Worst-case scenario is if we somehow ended up with nested scripts.
   // In this case, we just give up entirely.
   if (script_depth_ > 0) {
-    driver_->WarningHere("Nested <script> elements");
+    driver()->WarningHere("Nested <script> elements");
     context_->Reset();
     return;
   }
@@ -646,7 +646,7 @@ GoogleString JsCombineFilter::VarName(const ServerContext* server_context,
 }
 
 JsCombineFilter::Context* JsCombineFilter::MakeContext() {
-  return new Context(driver_, this);
+  return new Context(driver(), this);
 }
 
 RewriteContext* JsCombineFilter::MakeRewriteContext() {
@@ -663,14 +663,14 @@ JsCombineFilter::JsCombiner* JsCombineFilter::combiner() const {
 // reset the context.
 void JsCombineFilter::NextCombination() {
   if (!context_->empty()) {
-    driver_->InitiateRewrite(context_.release());
+    driver()->InitiateRewrite(context_.release());
     context_.reset(MakeContext());
   }
   context_->Reset();
 }
 
 void JsCombineFilter::DetermineEnabled() {
-  set_is_enabled(!driver_->flushed_cached_html());
+  set_is_enabled(!driver()->flushed_cached_html());
 }
 
 }  // namespace net_instaweb

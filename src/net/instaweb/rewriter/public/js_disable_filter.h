@@ -29,7 +29,6 @@ namespace net_instaweb {
 
 class HtmlElement;
 class RewriteDriver;
-class RewriteOptions;
 
 // Disables javscript by converting input html:
 //   <script src="1.js">var a = 1...</script>
@@ -69,7 +68,6 @@ class JsDisableFilter : public CommonFilter {
   // http://webdesign.about.com/od/metataglibraries/p/x-ua-compatible-meta-tag.htm
   void InsertMetaTagForIE(HtmlElement* element);
 
-  RewriteDriver* rewrite_driver_;
   ScriptTagScanner script_tag_scanner_;
   int index_;
   bool ie_meta_tag_written_;

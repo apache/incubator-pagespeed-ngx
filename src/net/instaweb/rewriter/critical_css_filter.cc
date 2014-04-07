@@ -163,7 +163,7 @@ CriticalCssFilter::~CriticalCssFilter() {
 }
 
 void CriticalCssFilter::DetermineEnabled() {
-  bool is_ie = driver_->user_agent_matcher()->IsIe(driver_->user_agent());
+  bool is_ie = driver()->user_agent_matcher()->IsIe(driver()->user_agent());
   if (is_ie) {
     // Disable critical CSS for IE because conditional-comments are not handled
     // by the filter.
@@ -175,7 +175,7 @@ void CriticalCssFilter::DetermineEnabled() {
     // Short of full conditional-comment support, the filter could also detect
     // whether conditional-comments are present (while computing critical CSS)
     // and only disable the filter for IE if they are.
-    driver_->log_record()->LogRewriterHtmlStatus(
+    driver()->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
   }
@@ -187,11 +187,11 @@ void CriticalCssFilter::StartDocumentImpl() {
   // However, the property cache is unavailable in DetermineEnabled
   // where disabling is possible.
   CHECK(finder_);
-  critical_css_result_ = finder_->GetCriticalCss(driver_);
+  critical_css_result_ = finder_->GetCriticalCss(driver());
 
   const bool is_property_cache_miss = critical_css_result_ == NULL;
 
-  driver_->log_record()->LogRewriterHtmlStatus(
+  driver()->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
       (is_property_cache_miss ?
        RewriterHtmlApplication::PROPERTY_CACHE_MISS :
@@ -223,11 +223,11 @@ void CriticalCssFilter::StartDocumentImpl() {
 void CriticalCssFilter::EndDocument() {
   // Don't add link/style tags here, if we are in flushing early driver. We'll
   // get chance to collect and add them again through flushed early driver.
-  if (num_replaced_links_ > 0 && !driver_->flushing_early()) {
+  if (num_replaced_links_ > 0 && !driver()->flushing_early()) {
     HtmlElement* noscript_element =
-        driver_->NewElement(NULL, HtmlName::kNoscript);
-    driver_->AddAttribute(noscript_element, HtmlName::kClass,
-                          CriticalSelectorFilter::kNoscriptStylesClass);
+        driver()->NewElement(NULL, HtmlName::kNoscript);
+    driver()->AddAttribute(noscript_element, HtmlName::kClass,
+                           CriticalSelectorFilter::kNoscriptStylesClass);
     InsertNodeAtBodyEnd(noscript_element);
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),
@@ -235,8 +235,8 @@ void CriticalCssFilter::EndDocument() {
       (*it)->AppendTo(noscript_element);
     }
 
-    HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     InsertNodeAtBodyEnd(script);
 
     int num_unreplaced_links_ = num_links_ - num_replaced_links_;
@@ -250,14 +250,14 @@ void CriticalCssFilter::EndDocument() {
                      total_overhead_size,
                      num_replaced_links_,
                      num_unreplaced_links_));
-    driver_->server_context()->static_asset_manager()->AddJsToElement(
-        critical_css_script, script, driver_);
+    driver()->server_context()->static_asset_manager()->AddJsToElement(
+        critical_css_script, script, driver());
 
-    driver_->log_record()->SetCriticalCssInfo(
+    driver()->log_record()->SetCriticalCssInfo(
         total_critical_size_, total_original_size_, total_overhead_size);
   }
-  if (has_critical_css_ && driver_->DebugMode()) {
-    driver_->InsertComment(StringPrintf(
+  if (has_critical_css_ && driver()->DebugMode()) {
+    driver()->InsertComment(StringPrintf(
         "Additional Critical CSS stats:\n"
         "  num_repeated_style_blocks=%d\n"
         "  repeated_style_blocks_size=%d\n"
@@ -281,7 +281,7 @@ void CriticalCssFilter::StartElementImpl(HtmlElement* element) {
   if (has_critical_css_ && element->keyword() == HtmlName::kStyle) {
     // Capture the style block because full CSS will be copied to end
     // of document if critical CSS rules are used.
-    current_style_element_ = new CssStyleElement(driver_, element);
+    current_style_element_ = new CssStyleElement(driver(), element);
     num_repeated_style_blocks_ += 1;
   }
 }
@@ -322,7 +322,7 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
   }
 
   num_links_++;
-  css_elements_.push_back(new CssElement(driver_, element));
+  css_elements_.push_back(new CssElement(driver(), element));
 
   const GoogleString url = DecodeUrl(href->DecodedValueOrNull());
   if (url.empty()) {
@@ -338,17 +338,18 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  const GoogleString& style_id = driver_->server_context()->hasher()->Hash(url);
+  const GoogleString& style_id =
+      driver()->server_context()->hasher()->Hash(url);
 
   GoogleString escaped_url;
   HtmlKeywords::Escape(url, &escaped_url);
   // If the resource has already been flushed early, just apply it here. This
   // can be checked by looking up the url in the DOM cohort. If the url is
   // present in the DOM cohort, it is guaranteed to have been flushed early.
-  if (driver_->flushed_early() &&
-      driver_->options()->enable_flush_early_critical_css() &&
-      driver_->flush_early_info() != NULL &&
-      driver_->flush_early_info()->resource_html().find(escaped_url) !=
+  if (driver()->flushed_early() &&
+      driver()->options()->enable_flush_early_critical_css() &&
+      driver()->flush_early_info() != NULL &&
+      driver()->flush_early_info()->resource_html().find(escaped_url) !=
           GoogleString::npos) {
     // In this case we have already added the CSS rules to the head as
     // part of flushing early. Now, find the rule, remove the disabled tag
@@ -359,20 +360,20 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
     if (!is_move_link_script_added_) {
       is_move_link_script_added_ = true;
       HtmlElement* script =
-          driver_->NewElement(element->parent(), HtmlName::kScript);
+          driver()->NewElement(element->parent(), HtmlName::kScript);
       // TODO(slamm): Remove this attribute and update webdriver test as needed.
-      driver_->AddAttribute(script, HtmlName::kId,
-                            CriticalSelectorFilter::kMoveScriptId);
-      driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
-      driver_->InsertNodeBeforeNode(element, script);
-      driver_->server_context()->static_asset_manager()->AddJsToElement(
-          CriticalSelectorFilter::kApplyFlushEarlyCss, script, driver_);
+      driver()->AddAttribute(script, HtmlName::kId,
+                             CriticalSelectorFilter::kMoveScriptId);
+      driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+      driver()->InsertNodeBeforeNode(element, script);
+      driver()->server_context()->static_asset_manager()->AddJsToElement(
+          CriticalSelectorFilter::kApplyFlushEarlyCss, script, driver());
     }
 
     HtmlElement* script_element =
-        driver_->NewElement(element->parent(), HtmlName::kScript);
-    driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
-    if (!driver_->ReplaceNode(element, script_element)) {
+        driver()->NewElement(element->parent(), HtmlName::kScript);
+    driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+    if (!driver()->ReplaceNode(element, script_element)) {
       LogRewrite(RewriterApplication::REPLACE_FAILED);
       return;
     }
@@ -380,22 +381,22 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
         CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
         style_id.c_str(), media);
 
-    driver_->server_context()->static_asset_manager()->AddJsToElement(js_data,
-        script_element, driver_);
+    driver()->server_context()->static_asset_manager()->AddJsToElement(
+        js_data, script_element, driver());
   } else {
     // Replace link with critical CSS rules.
     HtmlElement* style_element =
-        driver_->NewElement(element->parent(), HtmlName::kStyle);
-    if (!driver_->ReplaceNode(element, style_element)) {
+        driver()->NewElement(element->parent(), HtmlName::kStyle);
+    if (!driver()->ReplaceNode(element, style_element)) {
       LogRewrite(RewriterApplication::REPLACE_FAILED);
       return;
     }
 
-    driver_->AppendChild(style_element, driver_->NewCharactersNode(
+    driver()->AppendChild(style_element, driver()->NewCharactersNode(
         element, link_rules->critical_rules()));
     // If the link tag has a media attribute, copy it over to the style.
     if (media != NULL && strcmp(media, "") != 0) {
-      driver_->AddEscapedAttribute(
+      driver()->AddEscapedAttribute(
           style_element, HtmlName::kMedia, media);
     }
 
@@ -403,9 +404,9 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
     // can identify the element and flush these elements early as link tags.
     // By flushing the inlined link style tags early, the content can be
     // downloaded early before the HTML arrives.
-    if (driver_->flushing_early()) {
-      driver_->AddAttribute(style_element, HtmlName::kDataPagespeedFlushStyle,
-                            style_id);
+    if (driver()->flushing_early()) {
+      driver()->AddAttribute(style_element, HtmlName::kDataPagespeedFlushStyle,
+                             style_id);
     }
   }
 
@@ -415,8 +416,8 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
   int original_size = link_rules->original_size();
   total_critical_size_ += critical_size;
   total_original_size_ += original_size;
-  if (driver_->DebugMode()) {
-    driver_->InsertComment(StringPrintf(
+  if (driver()->DebugMode()) {
+    driver()->InsertComment(StringPrintf(
         "Critical CSS applied:\n"
         "critical_size=%d\n"
         "original_size=%d\n"
@@ -429,18 +430,18 @@ void CriticalCssFilter::EndElementImpl(HtmlElement* element) {
 }
 
 GoogleString CriticalCssFilter::DecodeUrl(const GoogleString& url) {
-  GoogleUrl gurl(driver_->base_url(), url);
+  GoogleUrl gurl(driver()->base_url(), url);
   if (!gurl.IsWebValid()) {
     return "";
   }
   StringVector decoded_urls;
   // Decode the url if it is pagespeed encoded.
-  if (driver_->DecodeUrl(gurl, &decoded_urls)) {
+  if (driver()->DecodeUrl(gurl, &decoded_urls)) {
     if (decoded_urls.size() == 1) {
       return decoded_urls.at(0);
     } else {
-      driver_->InfoHere("Critical CSS: Unable to process combined URL: %s",
-                        url.data());
+      driver()->InfoHere("Critical CSS: Unable to process combined URL: %s",
+                         url.data());
       return "";
     }
   }
@@ -451,8 +452,8 @@ const CriticalCssResult_LinkRules* CriticalCssFilter::GetLinkRules(
     const GoogleString& decoded_url) {
   UrlIndexes::const_iterator it = url_indexes_.find(decoded_url);
   if (it == url_indexes_.end()) {
-    driver_->InfoHere("Critical CSS rules not found for URL: %s",
-                      decoded_url.data());
+    driver()->InfoHere("Critical CSS rules not found for URL: %s",
+                       decoded_url.data());
     return NULL;
   }
 
@@ -461,7 +462,7 @@ const CriticalCssResult_LinkRules* CriticalCssFilter::GetLinkRules(
 }
 
 void CriticalCssFilter::LogRewrite(int status) {
-  driver_->log_record()->SetRewriterLoggingStatus(
+  driver()->log_record()->SetRewriterLoggingStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
       static_cast<RewriterApplication::Status>(status));
 }

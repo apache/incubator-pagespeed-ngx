@@ -68,7 +68,7 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // to the unoptimized page.
   virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
       const {
-    return driver_->options()->HasInlineUnauthorizedResourceType(
+    return driver()->options()->HasInlineUnauthorizedResourceType(
                semantic_type::kStylesheet) ?
            RewriteDriver::kInlineUnauthorizedResources :
            RewriteDriver::kInlineOnlyAuthorizedResources;

@@ -52,6 +52,7 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
 
  protected:
   virtual void Clear();
+  RewriteDriver* driver() const { return driver_; }
 
  private:
   friend class SuppressPreheadFilterTest;

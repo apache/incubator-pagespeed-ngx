@@ -46,12 +46,10 @@ namespace net_instaweb {
 
 CssImageRewriter::CssImageRewriter(CssFilter::Context* root_context,
                                    CssFilter* filter,
-                                   RewriteDriver* driver,
                                    CacheExtender* cache_extender,
                                    ImageRewriteFilter* image_rewriter,
                                    ImageCombineFilter* image_combiner)
     : filter_(filter),
-      driver_(driver),
       root_context_(root_context),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.
@@ -69,7 +67,7 @@ CssImageRewriter::~CssImageRewriter() {}
 
 bool CssImageRewriter::RewritesEnabled(
     int64 image_inline_max_bytes) const {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   return (image_inline_max_bytes > 0 ||
           options->ImageOptimizationEnabled() ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
@@ -81,14 +79,14 @@ bool CssImageRewriter::RewriteImport(
     RewriteContext* parent,
     CssHierarchy* hierarchy) {
   GoogleUrl import_url(hierarchy->url());
-  ResourcePtr resource = driver_->CreateInputResource(import_url);
+  ResourcePtr resource = driver()->CreateInputResource(import_url);
   if (resource.get() == NULL) {
     return false;
   }
 
   parent->AddNestedContext(
       filter_->MakeNestedFlatteningContextInNewSlot(
-          resource, driver_->UrlLine(), root_context_, parent, hierarchy));
+          resource, driver()->UrlLine(), root_context_, parent, hierarchy));
   return true;
 }
 
@@ -97,8 +95,8 @@ void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
                                     const GoogleUrl& original_url,
                                     RewriteContext* parent,
                                     Css::Values* values, size_t value_index) {
-  const RewriteOptions* options = driver_->options();
-  ResourcePtr resource = driver_->CreateInputResource(original_url);
+  const RewriteOptions* options = driver()->options();
+  ResourcePtr resource = driver()->CreateInputResource(original_url);
   if (resource.get() == NULL) {
     return;
   }
@@ -116,7 +114,7 @@ void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
 void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
                                    int64 image_inline_max_bytes,
                                    RewriteContext* parent) {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   if (options->ImageOptimizationEnabled() || image_inline_max_bytes > 0) {
     // If this isn't an IPRO rewrite or we've enabled preemptive IPRO CSS
     // rewrites.
@@ -128,7 +126,7 @@ void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
     }
   }
 
-  if (driver_->MayCacheExtendImages()) {
+  if (driver()->MayCacheExtendImages()) {
     parent->AddNestedContext(
         cache_extender_->MakeNestedContext(parent, slot));
   }
@@ -140,10 +138,10 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
                                   RewriteContext* parent,
                                   CssHierarchy* hierarchy,
                                   MessageHandler* handler) {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 
-  if (!driver_->FlattenCssImportsEnabled()) {
+  if (!driver()->FlattenCssImportsEnabled()) {
     // If flattening is disabled completely, mark this hierarchy as having
     // failed flattening, so that later RollUps do the right thing (nothing).
     // This is not something we need to log in the statistics or in debug.

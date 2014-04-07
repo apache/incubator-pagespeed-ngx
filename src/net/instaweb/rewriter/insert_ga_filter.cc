@@ -86,7 +86,7 @@ InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
       found_snippet_(false),
       increase_speed_tracking_(
           rewrite_driver->options()->increase_speed_tracking()) {
-  Statistics* stats = driver_->statistics();
+  Statistics* stats = driver()->statistics();
   inserted_ga_snippets_count_ = stats->GetVariable(kInsertedGaSnippets);
   DCHECK(!ga_id_.empty()) << "Enabled ga insertion, but did not provide ga id.";
 }
@@ -103,10 +103,10 @@ void InsertGAFilter::StartDocumentImpl() {
   added_analytics_js_ = false;
   added_experiment_snippet_ = false;
   buffer_.clear();
-  if (driver_->options()->running_experiment()) {
-    driver_->message_handler()->Message(
+  if (driver()->options()->running_experiment()) {
+    driver()->message_handler()->Message(
         kInfo, "run_experiment: %s",
-        driver_->options()->ToExperimentDebugString().c_str());
+        driver()->options()->ToExperimentDebugString().c_str());
   }
 }
 
@@ -154,13 +154,13 @@ bool InsertGAFilter::FoundSnippetInBuffer() const {
 // data when the track_timings api goes live (maybe).
 GoogleString InsertGAFilter::ConstructExperimentSnippet() const {
   GoogleString experiment = "";
-  if (driver_->options()->running_experiment()) {
-    int experiment_state = driver_->options()->experiment_id();
+  if (driver()->options()->running_experiment()) {
+    int experiment_state = driver()->options()->experiment_id();
     if (experiment_state != experiment::kExperimentNotSet &&
         experiment_state != experiment::kNoExperiment) {
       experiment = StringPrintf(kExperimentSnippetFmt,
-          driver_->options()->experiment_ga_slot(),
-          driver_->options()->ToExperimentString().c_str());
+          driver()->options()->experiment_ga_slot(),
+          driver()->options()->ToExperimentString().c_str());
     }
   }
   return experiment;
@@ -169,19 +169,19 @@ GoogleString InsertGAFilter::ConstructExperimentSnippet() const {
 void InsertGAFilter::AddScriptNode(HtmlElement* current_element,
                                    GoogleString text,
                                    bool insert_immediately_after_current) {
-  HtmlElement* script_element = driver_->NewElement(current_element,
-                                                    HtmlName::kScript);
+  HtmlElement* script_element = driver()->NewElement(current_element,
+                                                     HtmlName::kScript);
   script_element->set_close_style(HtmlElement::EXPLICIT_CLOSE);
-  driver_->AddAttribute(script_element, HtmlName::kType,
-                        "text/javascript");
+  driver()->AddAttribute(script_element, HtmlName::kType,
+                         "text/javascript");
   HtmlNode* snippet =
-      driver_->NewCharactersNode(script_element, text);
+      driver()->NewCharactersNode(script_element, text);
   if (insert_immediately_after_current) {
-    driver_->InsertNodeAfterCurrent(script_element);
+    driver()->InsertNodeAfterCurrent(script_element);
   } else {
-    driver_->AppendChild(current_element, script_element);
+    driver()->AppendChild(current_element, script_element);
   }
-  driver_->AppendChild(script_element, snippet);
+  driver()->AppendChild(script_element, snippet);
 }
 
 GoogleString InsertGAFilter::MakeFullExperimentSnippet() const {
@@ -214,10 +214,10 @@ void InsertGAFilter::HandleEndBody(HtmlElement* body) {
   // yet, so add one now.
 
   // Domain for this html page.
-  GoogleString domain = driver_->google_url().Host().as_string();
+  GoogleString domain = driver()->google_url().Host().as_string();
   // HTTP vs. HTTPS - these are usually determined on the fly by js
   // in the ga snippet, but it's faster to determine it here.
-  const char* kUrlPrefix = driver_->google_url().SchemeIs("https") ?
+  const char* kUrlPrefix = driver()->google_url().SchemeIs("https") ?
       "https://ssl" : "http://www";
   GoogleString js_text = StringPrintf(kGAJsSnippet, ga_id_.c_str(),
                                       domain.c_str(), kUrlPrefix);

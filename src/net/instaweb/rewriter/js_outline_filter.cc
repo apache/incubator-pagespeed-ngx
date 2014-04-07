@@ -45,7 +45,7 @@ JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
       inline_chars_(NULL),
       server_context_(driver->server_context()),
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
-      script_tag_scanner_(driver_) { }
+      script_tag_scanner_(driver) { }
 
 JsOutlineFilter::~JsOutlineFilter() {}
 
@@ -58,8 +58,8 @@ void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
   // No tags allowed inside script element.
   if (inline_element_ != NULL) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
-    driver_->ErrorHere("Tag '%s' found inside script.",
-                       CEscape(element->name_str()).c_str());
+    driver()->ErrorHere("Tag '%s' found inside script.",
+                        CEscape(element->name_str()).c_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
     inline_chars_ = NULL;
   }
@@ -81,8 +81,8 @@ void JsOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     if (element != inline_element_) {
       // No other tags allowed inside script element.
-      driver_->ErrorHere("Tag '%s' found inside script.",
-                         CEscape(element->name_str()).c_str());
+      driver()->ErrorHere("Tag '%s' found inside script.",
+                          CEscape(element->name_str()).c_str());
     } else if (inline_chars_ != NULL &&
                inline_chars_->contents().size() >= size_threshold_bytes_) {
       OutlineScript(inline_element_, inline_chars_->contents());
@@ -111,7 +111,7 @@ bool JsOutlineFilter::WriteResource(const GoogleString& content,
   // We don't provide charset here since in generally we can just inherit
   // from the page.
   // TODO(morlovich) check for proper behavior in case of embedded BOM.
-  return driver_->Write(
+  return driver()->Write(
       ResourceVector(), content, &kContentTypeJavascript, StringPiece(),
       resource);
 }
@@ -119,26 +119,26 @@ bool JsOutlineFilter::WriteResource(const GoogleString& content,
 // Create file with script content and remove that element from DOM.
 void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
                                     const GoogleString& content) {
-  if (driver_->IsRewritable(inline_element)) {
+  if (driver()->IsRewritable(inline_element)) {
     // Create script file from content.
-    MessageHandler* handler = driver_->message_handler();
+    MessageHandler* handler = driver()->message_handler();
     // Create outline resource at the document location, not base URL location
     OutputResourcePtr resource(
-        driver_->CreateOutputResourceWithUnmappedUrl(
-            driver_->google_url(), kFilterId, "_", kOutlinedResource));
+        driver()->CreateOutputResourceWithUnmappedUrl(
+            driver()->google_url(), kFilterId, "_", kOutlinedResource));
     if (resource.get() != NULL &&
         WriteResource(content, resource.get(), handler)) {
-      HtmlElement* outline_element = driver_->CloneElement(inline_element);
-      driver_->AddAttribute(outline_element, HtmlName::kSrc,
-                            resource->url());
+      HtmlElement* outline_element = driver()->CloneElement(inline_element);
+      driver()->AddAttribute(outline_element, HtmlName::kSrc,
+                             resource->url());
       // Add <script src=...> element to DOM.
-      driver_->InsertNodeBeforeNode(inline_element, outline_element);
+      driver()->InsertNodeBeforeNode(inline_element, outline_element);
       // Remove original script element from DOM.
-      if (!driver_->DeleteNode(inline_element)) {
-        driver_->FatalErrorHere("Failed to delete inline script element");
+      if (!driver()->DeleteNode(inline_element)) {
+        driver()->FatalErrorHere("Failed to delete inline script element");
       }
     } else {
-      driver_->ErrorHere("Failed to write outlined script resource.");
+      driver()->ErrorHere("Failed to write outlined script resource.");
     }
   }
 }

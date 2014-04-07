@@ -93,8 +93,8 @@ void AddInstrumentationFilter::AddHeadScript(HtmlElement* element) {
     added_head_script_ = true;
     // TODO(abliss): add an actual element instead, so other filters can
     // rewrite this JS
-    HtmlCharactersNode* script = driver_->NewCharactersNode(NULL, kHeadScript);
-    driver_->InsertNodeBeforeCurrent(script);
+    HtmlCharactersNode* script = driver()->NewCharactersNode(NULL, kHeadScript);
+    driver()->InsertNodeBeforeCurrent(script);
     instrumentation_script_added_count_->Add(1);
   }
 }
@@ -113,16 +113,16 @@ void AddInstrumentationFilter::EndElementImpl(HtmlElement* element) {
     if (!added_head_script_) {
       AddHeadScript(element);
     }
-    if (driver_->options()->report_unload_time() &&
+    if (driver()->options()->report_unload_time() &&
         !added_unload_script_) {
       GoogleString js = GetScriptJs(kUnloadTag);
-      HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-      if (!driver_->defer_instrumentation_script()) {
-        driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+      HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+      if (!driver()->defer_instrumentation_script()) {
+        driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
       }
-      driver_->InsertNodeBeforeCurrent(script);
-      driver_->server_context()->static_asset_manager()->AddJsToElement(
-          js, script, driver_);
+      driver()->InsertNodeBeforeCurrent(script);
+      driver()->server_context()->static_asset_manager()->AddJsToElement(
+          js, script, driver());
       added_unload_script_ = true;
     }
   }
@@ -132,50 +132,50 @@ void AddInstrumentationFilter::EndDocument() {
   // We relied on the existence of a <head> element.  This should have been
   // assured by add_head_filter.
   if (!found_head_) {
-    LOG(WARNING) << "No <head> found for URL " << driver_->url();
+    LOG(WARNING) << "No <head> found for URL " << driver()->url();
     return;
   }
   GoogleString js = GetScriptJs(kLoadTag);
-  HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-  if (!driver_->defer_instrumentation_script()) {
-    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+  HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
+  if (!driver()->defer_instrumentation_script()) {
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   }
   InsertNodeAtBodyEnd(script);
-  driver_->server_context()->static_asset_manager()->AddJsToElement(js, script,
-                                                                    driver_);
+  driver()->server_context()->static_asset_manager()->AddJsToElement(js, script,
+                                                                     driver());
 }
 
 GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
   GoogleString js;
   StaticAssetManager* static_asset_manager =
-      driver_->server_context()->static_asset_manager();
+      driver()->server_context()->static_asset_manager();
   // Only add the static JS once.
   if (!added_unload_script_) {
-    if (driver_->options()->enable_extended_instrumentation()) {
+    if (driver()->options()->enable_extended_instrumentation()) {
       js = static_asset_manager->GetAsset(
-          StaticAssetManager::kExtendedInstrumentationJs, driver_->options());
+          StaticAssetManager::kExtendedInstrumentationJs, driver()->options());
     }
     StrAppend(&js, static_asset_manager->GetAsset(
-        StaticAssetManager::kAddInstrumentationJs, driver_->options()));
+        StaticAssetManager::kAddInstrumentationJs, driver()->options()));
   }
 
   GoogleString js_event = (event == kLoadTag) ? "load" : "beforeunload";
 
-  const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
+  const RewriteOptions::BeaconUrl& beacons = driver()->options()->beacon_url();
   const GoogleString* beacon_url =
-      driver_->IsHttps() ? &beacons.https : &beacons.http;
+      driver()->IsHttps() ? &beacons.https : &beacons.http;
   GoogleString extra_params;
-  if (driver_->options()->running_experiment()) {
-    int experiment_state = driver_->options()->experiment_id();
+  if (driver()->options()->running_experiment()) {
+    int experiment_state = driver()->options()->experiment_id();
     if (experiment_state != experiment::kExperimentNotSet &&
         experiment_state != experiment::kNoExperiment) {
       StrAppend(&extra_params, "&exptid=",
-                IntegerToString(driver_->options()->experiment_id()));
+                IntegerToString(driver()->options()->experiment_id()));
     }
   }
 
   const RequestContext::TimingInfo& timing_info =
-      driver_->request_context()->timing_info();
+      driver()->request_context()->timing_info();
   int64 header_fetch_ms;
   if (timing_info.GetFetchHeaderLatencyMs(&header_fetch_ms)) {
     // If time taken to fetch the http header is not set, then the response
@@ -194,20 +194,20 @@ GoogleString AddInstrumentationFilter::GetScriptJs(StringPiece event) {
   }
 
   // Append the http response code.
-  if (driver_->response_headers() != NULL &&
-      driver_->response_headers()->status_code() > 0 &&
-      driver_->response_headers()->status_code() != HttpStatus::kOK) {
+  if (driver()->response_headers() != NULL &&
+      driver()->response_headers()->status_code() > 0 &&
+      driver()->response_headers()->status_code() != HttpStatus::kOK) {
     StrAppend(&extra_params, "&rc=", IntegerToString(
-        driver_->response_headers()->status_code()));
+        driver()->response_headers()->status_code()));
   }
   // Append the request id.
-  if (driver_->request_context()->request_id() > 0) {
+  if (driver()->request_context()->request_id() > 0) {
     StrAppend(&extra_params, "&id=", Integer64ToString(
-        driver_->request_context()->request_id()));
+        driver()->request_context()->request_id()));
   }
 
   GoogleString html_url;
-  EscapeToJsStringLiteral(driver_->google_url().Spec(),
+  EscapeToJsStringLiteral(driver()->google_url().Spec(),
                           false, /* no quotes */
                           &html_url);
 

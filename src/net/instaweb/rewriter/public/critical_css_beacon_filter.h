@@ -69,7 +69,7 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   // to the server and eventually inlined into the HTML.
   virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
       const {
-    return driver_->options()->HasInlineUnauthorizedResourceType(
+    return driver()->options()->HasInlineUnauthorizedResourceType(
                semantic_type::kStylesheet) ?
            RewriteDriver::kInlineUnauthorizedResources :
            RewriteDriver::kInlineOnlyAuthorizedResources;

@@ -54,7 +54,7 @@ class JsInlineFilter : public CommonFilter {
   // to the unoptimized page.
   virtual RewriteDriver::InlineAuthorizationPolicy AllowUnauthorizedDomain()
       const {
-    return driver_->options()->HasInlineUnauthorizedResourceType(
+    return driver()->options()->HasInlineUnauthorizedResourceType(
                semantic_type::kScript) ?
            RewriteDriver::kInlineUnauthorizedResources :
            RewriteDriver::kInlineOnlyAuthorizedResources;

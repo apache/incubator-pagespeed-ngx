@@ -274,7 +274,7 @@ const char CssSummarizerBase::kNumCssNotUsedForCriticalCssComputation[] =
 CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
     : RewriteFilter(driver),
       progress_lock_(driver->server_context()->thread_system()->NewMutex()) {
-  Statistics* stats = server_context_->statistics();
+  Statistics* stats = server_context()->statistics();
   num_css_used_for_critical_css_computation_ =
       stats->GetVariable(kNumCssUsedForCriticalCssComputation);
   num_css_not_used_for_critical_css_computation_ =
@@ -456,10 +456,10 @@ void CssSummarizerBase::StartInlineRewrite(
   Context* context =
       CreateContextAndSummaryInfo(style, false /* not external */,
                                   slot, slot->LocationString(),
-                                  driver_->decoded_base(),
+                                  driver()->decoded_base(),
                                   StringPiece() /* rel, none since inline */);
   context->SetupInlineRewrite(style, text);
-  driver_->InitiateRewrite(context);
+  driver()->InitiateRewrite(context);
 }
 
 void CssSummarizerBase::StartExternalRewrite(
@@ -471,7 +471,7 @@ void CssSummarizerBase::StartExternalRewrite(
     summaries_.push_back(SummaryInfo());
     summaries_.back().state = kSummaryResourceCreationFailed;
     const char* url = src->DecodedValueOrNull();
-    summaries_.back().location = (url != NULL ? url : driver_->UrlLine());
+    summaries_.back().location = (url != NULL ? url : driver()->UrlLine());
 
     bool is_element_deleted = false;  // unused after call because no slot here
     WillNotRenderSummary(summaries_.size() - 1, link, NULL /* char_node */,
@@ -479,17 +479,17 @@ void CssSummarizerBase::StartExternalRewrite(
 
     // TODO(morlovich): Stat?
     if (DebugMode()) {
-      driver_->InsertComment(StrCat(
+      driver()->InsertComment(StrCat(
           Name(), ": ", kCreateResourceFailedDebugMsg));
     }
     return;
   }
-  ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
+  ResourceSlotPtr slot(driver()->GetSlot(input_resource, link, src));
   Context* context = CreateContextAndSummaryInfo(
       link, true /* external*/, slot, input_resource->url() /* location*/,
       input_resource->url() /* base */, rel);
   context->SetupExternalRewrite(link);
-  driver_->InitiateRewrite(context);
+  driver()->InitiateRewrite(context);
 }
 
 ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
@@ -500,8 +500,8 @@ ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url,
-                                                        server_context_));
-  return new InlineCssSlot(input_resource, driver_->UrlLine());
+                                                        server_context()));
+  return new InlineCssSlot(input_resource, driver()->UrlLine());
 }
 
 CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(
@@ -525,7 +525,7 @@ CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(
 
   ++outstanding_rewrites_;
 
-  Context* context = new Context(id, this, driver_);
+  Context* context = new Context(id, this, driver());
   context->AddSlot(slot);
   return context;
 }

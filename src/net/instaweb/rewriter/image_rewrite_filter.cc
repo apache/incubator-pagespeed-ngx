@@ -321,7 +321,6 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
       : SingleRewriteContext(driver, parent, resource_context),
         css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
-        driver_(driver),
         is_css_(is_css),
         html_index_(html_index),
         in_noscript_element_(in_noscript_element),
@@ -349,7 +348,6 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
 
   int64 css_image_inline_max_bytes_;
   ImageRewriteFilter* filter_;
-  RewriteDriver* driver_;
   bool is_css_;
   const int html_index_;
   bool in_noscript_element_;
@@ -458,7 +456,7 @@ void ImageRewriteFilter::Context::EncodeUserAgentIntoResourceContext(
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       image_counter_(0) {
-  Statistics* stats = server_context_->statistics();
+  Statistics* stats = server_context()->statistics();
   image_rewrites_ = stats->GetVariable(kImageRewrites);
   image_resized_using_rendered_dimensions_ =
       stats->GetVariable(kImageResizedUsingRenderedDimensions);
@@ -628,7 +626,7 @@ void ImageRewriteFilter::AddRelatedOptions(StringPieceVector* target) {
 void ImageRewriteFilter::StartDocumentImpl() {
   image_counter_ = 0;
   inlinable_urls_.clear();
-  driver_->log_record()->LogRewriterHtmlStatus(
+  driver()->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::kImageCompressionId, RewriterHtmlApplication::ACTIVE);
 }
 
@@ -643,7 +641,7 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
   // greater than max_image_bytes_in_css_for_webp. This is because webp does not
   // support progressive which causes a perceptible delay in the loading of
   // large background images.
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   if ((resource_context.libwebp_level() != ResourceContext::LIBWEBP_NONE) &&
       // TODO(vchudnov): Consider whether we want to treat CSS images
       // differently.
@@ -725,10 +723,10 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
     } else {
       message = "Couldn't resize";
     }
-    driver_->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
-                    message, url.c_str(),
-                    image_dim.width(), image_dim.height(),
-                    desired_dim->width(), desired_dim->height());
+    driver()->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
+                     message, url.c_str(),
+                     image_dim.width(), image_dim.height(),
+                     desired_dim->width(), desired_dim->height());
   }
 
   // Cache image dimensions, including any resizing we did.
@@ -748,7 +746,7 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
                                       const GoogleString& url,
                                       Image* image,
                                       ImageDim* desired_dim) {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   if (!options->Enabled(RewriteOptions::kResizeImages) &&
       !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions)) {
     return false;
@@ -810,10 +808,10 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       const OutputResourcePtr& result) {
   rewrite_context->TracePrintf("Image rewrite: %s",
                                input_resource->url().c_str());
-  MessageHandler* message_handler = driver_->message_handler();
+  MessageHandler* message_handler = driver()->message_handler();
   StringVector urls;
   ResourceContext resource_context;
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
 
   resource_context.CopyFrom(*rewrite_context->resource_context());
 
@@ -845,8 +843,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
                                     rewrite_context->is_css_);
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
-               server_context_->filename_prefix(), image_options,
-               driver_->timer(), message_handler));
+               server_context()->filename_prefix(), image_options,
+               driver()->timer(), message_handler));
 
   // Initialize logging data.
   ImageType original_image_type = image->image_type();
@@ -859,7 +857,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (original_image_type == IMAGE_UNKNOWN) {
     image_rewrites_dropped_intentionally_->Add(1);
     image_rewrites_dropped_mime_type_unknown_->Add(1);
-    driver_->InfoAt(
+    driver()->InfoAt(
         rewrite_context, "%s: Image MIME type could not be "
         "discovered from reading magic bytes; rewriting dropped.",
         input_resource->url().c_str());
@@ -880,7 +878,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   }
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
-    Timer* timer = server_context_->timer();
+    Timer* timer = server_context()->timer();
     int64 rewrite_time_start_ms = GetCurrentCpuTimeMs(timer);
     CachedResult* cached = result->EnsureCachedResultCreated();
     is_resized = ResizeImageIfNecessary(
@@ -910,12 +908,13 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         // This needs to happen before Write to persist.
         SaveIfInlinable(image->Contents(), image->image_type(), cached);
 
-        server_context_->MergeNonCachingResponseHeaders(input_resource, result);
-        if (driver_->Write(
+        server_context()->MergeNonCachingResponseHeaders(
+            input_resource, result);
+        if (driver()->Write(
                 ResourceVector(1, input_resource), image->Contents(),
                 output_type, StringPiece() /* no charset for images */,
                 result.get())) {
-          driver_->InfoAt(
+          driver()->InfoAt(
               rewrite_context,
               "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
               input_resource->url().c_str(),
@@ -940,7 +939,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
               "Server fails writing image content for `%s'; "
               "rewriting dropped.",
               input_resource->url().c_str()));
-          driver_->InfoAt(rewrite_context, "%s", msg.c_str());
+          driver()->InfoAt(rewrite_context, "%s", msg.c_str());
           rewrite_context->TracePrintf("%s", msg.c_str());
         }
       } else if (is_resized) {
@@ -953,7 +952,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
             static_cast<unsigned>(image->output_size())));
-        driver_->InfoAt(rewrite_context, "%s", msg.c_str());
+        driver()->InfoAt(rewrite_context, "%s", msg.c_str());
         rewrite_context->TracePrintf("%s", msg.c_str());
         ImageDim* dims = cached->mutable_image_file_dims();
         dims->clear_width();
@@ -967,7 +966,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
             input_resource->url().c_str(),
             static_cast<unsigned>(image->input_size()),
             static_cast<unsigned>(image->output_size())));
-        driver_->InfoAt(rewrite_context, "%s", msg.c_str());
+        driver()->InfoAt(rewrite_context, "%s", msg.c_str());
         rewrite_context->TracePrintf("%s", msg.c_str());
       }
     }
@@ -1022,15 +1021,15 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
           options->image_jpeg_num_progressive_scans();
 
       scoped_ptr<Image> low_image;
-      if (driver_->options()->use_blank_image_for_inline_preview()) {
+      if (driver()->options()->use_blank_image_for_inline_preview()) {
         image_options->use_transparent_for_blank_image = true;
         low_image.reset(BlankImageWithOptions(image_width, image_height,
-            IMAGE_PNG, server_context_->filename_prefix(),
+            IMAGE_PNG, server_context()->filename_prefix(),
             timer, message_handler, image_options));
         low_image->EnsureLoaded(true);
       } else {
         low_image.reset(NewImage(image->Contents(), input_resource->url(),
-            server_context_->filename_prefix(), image_options,
+            server_context()->filename_prefix(), image_options,
             timer, message_handler));
       }
       low_image->SetTransformToLowRes();
@@ -1098,7 +1097,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
   ImageDim image_dim;
   low_image->Dimensions(&image_dim);
   if (image_dim.width() >= kDelayImageWidthForMobile) {
-    const RewriteOptions* options = driver_->options();
+    const RewriteOptions* options = driver()->options();
     Image::CompressionOptions* image_options =
         new Image::CompressionOptions();
     image_options->jpeg_quality = options->image_recompress_quality();
@@ -1124,14 +1123,14 @@ void ImageRewriteFilter::ResizeLowQualityImage(
         options->Enabled(RewriteOptions::kRecompressWebp);
     scoped_ptr<Image> image(
         NewImage(low_image->Contents(), input_resource->url(),
-                 server_context_->filename_prefix(), image_options,
-                 driver_->timer(), driver_->message_handler()));
+                 server_context()->filename_prefix(), image_options,
+                 driver()->timer(), driver()->message_handler()));
     image->SetTransformToLowRes();
     ImageDim resized_dim;
     resized_dim.set_width(kDelayImageWidthForMobile);
     resized_dim.set_height((static_cast<int64>(resized_dim.width()) *
                             image_dim.height()) / image_dim.width());
-    MessageHandler* message_handler = driver_->message_handler();
+    MessageHandler* message_handler = driver()->message_handler();
     bool resized = image->ResizeTo(resized_dim);
     StringPiece contents = image->Contents();
     StringPiece old_contents = low_image->Contents();
@@ -1171,7 +1170,7 @@ void ImageRewriteFilter::SaveIfInlinable(const StringPiece& contents,
   // be inlined (because it's too big to inline in html, say, and doesn't occur
   // in css).
   int64 image_inline_max_bytes =
-      driver_->options()->MaxImageInlineMaxBytes();
+      driver()->options()->MaxImageInlineMaxBytes();
   if (static_cast<int64>(contents.size()) < image_inline_max_bytes) {
     cached->set_inlined_data(contents.data(), contents.size());
     cached->set_inlined_image_type(static_cast<int>(image_type));
@@ -1194,7 +1193,7 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
 void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                               HtmlElement::Attribute* src) {
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   bool is_resized_using_rendered_dimensions = false;
 
   // In case of RewriteOptions::image_preserve_urls() we do not want to use
@@ -1221,20 +1220,20 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     // If the image will be inlined and the local storage cache is enabled, add
     // the LSC marker attribute to this element so that the LSC filter knows to
     // insert the relevant javascript functions.
-    if (driver_->request_properties()->SupportsImageInlining()) {
+    if (driver()->request_properties()->SupportsImageInlining()) {
       LocalStorageCacheFilter::InlineState state;
       LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
-                                                   driver_,
+                                                   driver(),
                                                    true /* ignore cookie */,
                                                    element, &state);
     }
     Context* context = new Context(0 /* No CSS inlining, it's html */,
-                                   this, driver_, NULL /*not nested */,
+                                   this, driver(), NULL /*not nested */,
                                    resource_context.release(),
                                    false /*not css */, image_counter_++,
                                    noscript_element() != NULL,
                                    is_resized_using_rendered_dimensions);
-    ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
+    ResourceSlotPtr slot(driver()->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
 
     // Note that in RewriteOptions::Merge we turn off image_preserve_urls
@@ -1246,7 +1245,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
         !options->Enabled(RewriteOptions::kInlineImages)) {
       slot->set_disable_rendering(true);
     }
-    driver_->InitiateRewrite(context);
+    driver()->InitiateRewrite(context);
   }
 }
 
@@ -1254,11 +1253,11 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     int64 css_image_inline_max_bytes,
     const CachedResult* cached, ResourceSlot* slot) {
   GoogleString data_url;
-  if (driver_->request_properties()->SupportsImageInlining() &&
+  if (driver()->request_properties()->SupportsImageInlining() &&
       TryInline(css_image_inline_max_bytes, cached, slot, &data_url)) {
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
-    const RewriteOptions* options = driver_->options();
+    const RewriteOptions* options = driver()->options();
     DCHECK(!options->cache_small_images_unrewritten())
         << "Modifying a URL slot despite "
         << "image_inlining_identify_and_cache_without_rewriting set.";
@@ -1361,7 +1360,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     return false;
   }
 
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   bool rewrote_url = false;
   bool image_inlined = false;
   const bool is_critical_image = IsHtmlCriticalImage(src_value);
@@ -1370,19 +1369,19 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
   // copies implicitly.
   GoogleString data_url;
-  if (driver_->request_properties()->SupportsImageInlining() &&
-      (!driver_->options()->inline_only_critical_images() ||
+  if (driver()->request_properties()->SupportsImageInlining() &&
+      (!driver()->options()->inline_only_critical_images() ||
        is_critical_image) &&
-      TryInline(driver_->options()->ImageInlineMaxBytes(),
+      TryInline(driver()->options()->ImageInlineMaxBytes(),
                 cached, slot, &data_url)) {
-    const RewriteOptions* options = driver_->options();
+    const RewriteOptions* options = driver()->options();
     DCHECK(!options->cache_small_images_unrewritten())
         << "Modifying a URL slot despite "
         << "image_inlining_identify_and_cache_without_rewriting set.";
     src->SetValue(data_url);
     // Note the use of the ORIGINAL url not the data url.
     LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
-                                              driver_, element);
+                                              driver(), element);
     // AddLscAttributes uses the width and height attributes so must be called
     // before we delete them with:
     DeleteMatchingImageDimsAfterInline(cached, element);
@@ -1393,12 +1392,12 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
   if (!image_inlined && !slot->disable_rendering()) {
     // Not inlined means we cannot store it in local storage.
-    LocalStorageCacheFilter::RemoveLscAttributes(element, driver_);
+    LocalStorageCacheFilter::RemoveLscAttributes(element, driver());
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(ResourceSlot::RelativizeOrPassthrough(
-          driver_->options(), cached->url(), slot->url_relativity(),
-          driver_->base_url()));
+          driver()->options(), cached->url(), slot->url_relativity(),
+          driver()->base_url()));
       image_rewrite_uses_->Add(1);
       rewrote_url = true;
     }
@@ -1413,8 +1412,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       // that we DO attempt to include image dimensions even if we otherwise
       // choose not to optimize an image.
       const ImageDim& file_dims = cached->image_file_dims();
-      driver_->AddAttribute(element, HtmlName::kWidth, file_dims.width());
-      driver_->AddAttribute(element, HtmlName::kHeight, file_dims.height());
+      driver()->AddAttribute(element, HtmlName::kWidth, file_dims.width());
+      driver()->AddAttribute(element, HtmlName::kHeight, file_dims.height());
     }
   }
 
@@ -1427,11 +1426,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
        element->keyword() == HtmlName::kInput)) {
     try_low_res_src_insertion = true;
     int max_preview_image_index =
-        driver_->options()->max_inlined_preview_images_index();
+        driver()->options()->max_inlined_preview_images_index();
     if (!image_inlined &&
         !slot->disable_rendering() &&
         is_critical_image &&
-        driver_->request_properties()->SupportsImageInlining() &&
+        driver()->request_properties()->SupportsImageInlining() &&
         cached->has_low_resolution_inlined_data() &&
         (max_preview_image_index < 0 ||
          image_index < max_preview_image_index)) {
@@ -1446,20 +1445,21 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         GoogleString data_url;
         DataUrl(*content_type, BASE64, cached->low_resolution_inlined_data(),
                 &data_url);
-        driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
-        driver_->increment_num_inline_preview_images();
+        driver()->AddAttribute(
+            element, HtmlName::kPagespeedLowResSrc, data_url);
+        driver()->increment_num_inline_preview_images();
         low_res_src_inserted = true;
       } else {
-        driver_->message_handler()->Message(kError,
-                                            "Invalid low res image type: %d",
-                                            low_res_image_type);
+        driver()->message_handler()->Message(kError,
+                                             "Invalid low res image type: %d",
+                                             low_res_image_type);
       }
     }
   }
 
   // Absolutify the image url for logging.
-  GoogleUrl image_gurl(driver_->base_url(), src_value);
-  driver_->log_record()->LogImageRewriteActivity(
+  GoogleUrl image_gurl(driver()->base_url(), src_value);
+  driver()->log_record()->LogImageRewriteActivity(
       LoggingId(),
       image_gurl.spec_c_str(),
       (rewrote_url ?
@@ -1478,14 +1478,14 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
 bool ImageRewriteFilter::IsHtmlCriticalImage(StringPiece image_url) const {
   CriticalImagesFinder* finder =
-      driver_->server_context()->critical_images_finder();
-  if (!finder->IsMeaningful(driver_)) {
+      driver()->server_context()->critical_images_finder();
+  if (!finder->IsMeaningful(driver())) {
     // Default to all images being critical if we don't have meaningful critical
     // image information.
     return true;
   }
-  GoogleUrl image_gurl(driver_->base_url(), image_url);
-  return finder->IsHtmlCriticalImage(image_gurl.spec_c_str(), driver_);
+  GoogleUrl image_gurl(driver()->base_url(), image_url);
+  return finder->IsHtmlCriticalImage(image_gurl.spec_c_str(), driver());
 }
 
 bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {
@@ -1604,18 +1604,18 @@ void ImageRewriteFilter::GetDimensions(
   // If the image has rendered dimensions stored in the property cache, update
   // the desired image dimensions. Don't use rendered image dimensions
   // when beaconing, since it would cause improper instrumentation.
-  if (driver_->options()->Enabled(
+  if (driver()->options()->Enabled(
           RewriteOptions::kResizeToRenderedImageDimensions) &&
-      !CriticalImagesBeaconFilter::ShouldApply(driver_)) {
+      !CriticalImagesBeaconFilter::ShouldApply(driver())) {
     StringPiece src_value(src->DecodedValueOrNull());
     if (!src_value.empty()) {
-      GoogleUrl src_gurl(driver_->base_url(), src_value);
+      GoogleUrl src_gurl(driver()->base_url(), src_value);
       if (src_gurl.IsWebOrDataValid()) {
         std::pair<int32, int32> dimensions;
         CriticalImagesFinder* finder =
-            driver_->server_context()->critical_images_finder();
+            driver()->server_context()->critical_images_finder();
         if (finder->GetRenderedImageDimensions(
-                driver_, src_gurl, &dimensions)) {
+                driver(), src_gurl, &dimensions)) {
           if (dimensions.first != 0 && dimensions.second != 0) {
             rendered_width = dimensions.first;
             rendered_height = dimensions.second;
@@ -1680,7 +1680,7 @@ bool ImageRewriteFilter::TryInline(
   // This is the decision point for whether or not an image is suitable for
   // inlining. After this point, we may skip inlining an image, but not
   // because of properties of the image.
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   if (options->cache_small_images_unrewritten()) {
     // Skip rewriting, record the URL for storage in the property cache,
     // suppress future rewrites to this slot, and return immediately.
@@ -1708,7 +1708,7 @@ bool ImageRewriteFilter::TryInline(
 
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   // Don't rewrite if the image is broken by a flush.
-  if (driver_->HasChildrenInFlushWindow(element)) {
+  if (driver()->HasChildrenInFlushWindow(element)) {
     return;
   }
   // Don't rewrite if there is a pagespeed_no_transform attribute.
@@ -1719,7 +1719,7 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   }
   // Rewrite any image-valued attributes we find.
   resource_tag_scanner::UrlCategoryVector attributes;
-  resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+  resource_tag_scanner::ScanElement(element, driver()->options(), &attributes);
   for (int i = 0, n = attributes.size(); i < n; ++i) {
     if (attributes[i].category != semantic_type::kImage ||
         attributes[i].url->DecodedValueOrNull() == NULL) {
@@ -1735,7 +1735,7 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
       LocalStorageCacheFilter::InlineState state;
       if (LocalStorageCacheFilter::AddStorableResource(
               attributes[i].url->DecodedValueOrNull(),
-              driver_,
+              driver(),
               false /* check cookie */,
               element, &state)) {
         continue;
@@ -1752,19 +1752,19 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
 
 void ImageRewriteFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, context);
-  CssUrlEncoder::SetInliningImages(*driver_->request_properties(), context);
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver(), context);
+  CssUrlEncoder::SetInliningImages(*driver()->request_properties(), context);
   if (SquashImagesForMobileScreenEnabled()) {
-    ImageUrlEncoder::SetUserAgentScreenResolution(driver_, context);
+    ImageUrlEncoder::SetUserAgentScreenResolution(driver(), context);
   }
-  ImageUrlEncoder::SetSmallScreen(*driver_, context);
+  ImageUrlEncoder::SetSmallScreen(*driver(), context);
 }
 
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   ResourceContext* resource_context = new ResourceContext;
   EncodeUserAgentIntoResourceContext(resource_context);
   return new Context(0 /*No CSS inlining, it's html */,
-                     this, driver_, NULL /*not nested */,
+                     this, driver(), NULL /*not nested */,
                      resource_context, false /*not css */,
                      kNotCriticalIndex,
                      false /*not in noscript */,
@@ -1788,7 +1788,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
     ImageUrlEncoder::SetLibWebpLevel(
-        *driver_->options(), *driver_->request_properties(),
+        *driver()->options(), *driver()->request_properties(),
         cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
@@ -1818,10 +1818,10 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
 }
 
 bool ImageRewriteFilter::SquashImagesForMobileScreenEnabled() const {
-  const RewriteOptions* options = driver_->options();
+  const RewriteOptions* options = driver()->options();
   return options->Enabled(RewriteOptions::kResizeImages) &&
       options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
-      driver_->request_properties()->IsMobile();
+      driver()->request_properties()->IsMobile();
 }
 
 bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(

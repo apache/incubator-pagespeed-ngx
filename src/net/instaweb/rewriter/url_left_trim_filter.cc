@@ -60,7 +60,8 @@ void UrlLeftTrimFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() != HtmlName::kBase &&
       BaseUrlIsValid()) {
     resource_tag_scanner::UrlCategoryVector attributes;
-    resource_tag_scanner::ScanElement(element, driver_->options(), &attributes);
+    resource_tag_scanner::ScanElement(
+        element, driver()->options(), &attributes);
     for (int i = 0, n = attributes.size(); i < n; ++i) {
       TrimAttribute(attributes[i].url);
     }
@@ -175,8 +176,8 @@ void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
     GoogleString trimmed_val;
     size_t orig_size = val.size();
     if (!val.empty() &&
-        Trim(driver_->base_url(), val, &trimmed_val,
-             driver_->message_handler())) {
+        Trim(driver()->base_url(), val, &trimmed_val,
+             driver()->message_handler())) {
       attr->SetValue(trimmed_val);
       trim_count_->Add(1);
       trim_saved_bytes_->Add(orig_size - trimmed_val.size());

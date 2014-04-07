@@ -42,7 +42,7 @@ namespace net_instaweb {
 MetaTagFilter::MetaTagFilter(RewriteDriver* rewrite_driver)
     : CommonFilter(rewrite_driver),
       response_headers_(NULL) {
-  Statistics* stats = driver_->statistics();
+  Statistics* stats = driver()->statistics();
   converted_meta_tag_count_ = stats->GetVariable(kConvertedMetaTags);
 }
 
@@ -55,7 +55,7 @@ MetaTagFilter::~MetaTagFilter() {}
 void MetaTagFilter::StartDocumentImpl() {
   // This pointer will be nulled at first Flush to guarantee that we don't
   // write it after that (won't work).
-  response_headers_ = driver_->mutable_response_headers();
+  response_headers_ = driver()->mutable_response_headers();
 }
 
 

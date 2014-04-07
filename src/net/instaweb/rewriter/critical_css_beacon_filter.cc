@@ -207,9 +207,9 @@ void CriticalCssBeaconFilter::SummariesDone() {
     AppendSelectorsInitJs(&script, selectors);
   }
   HtmlElement* script_element = driver()->NewElement(NULL, HtmlName::kScript);
-  driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+  driver()->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
   InsertNodeAtBodyEnd(script_element);
-  asset_manager->AddJsToElement(script, script_element, driver_);
+  asset_manager->AddJsToElement(script, script_element, driver());
 
   if (critical_css_beacon_added_count_ != NULL) {
     critical_css_beacon_added_count_->Add(1);
@@ -217,7 +217,7 @@ void CriticalCssBeaconFilter::SummariesDone() {
 }
 
 void CriticalCssBeaconFilter::DetermineEnabled() {
-  set_is_enabled(driver_->request_properties()->SupportsCriticalCssBeacon());
+  set_is_enabled(driver()->request_properties()->SupportsCriticalCssBeacon());
 }
 
 void CriticalCssBeaconFilter::FindSelectorsFromRuleset(

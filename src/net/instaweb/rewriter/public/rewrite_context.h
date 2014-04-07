@@ -298,7 +298,9 @@ class RewriteContext {
   // not a deep tree.  Same with Driver() and Options().
   ServerContext* FindServerContext() const;
   const RewriteOptions* Options() const;
-  RewriteDriver* Driver() const;
+  RewriteDriver* Driver() const {
+    return driver_;
+  }
 
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
@@ -933,9 +935,8 @@ class RewriteContext {
   // That way it can stay around and 'own' all the resources associated
   // with all the resources it spawns, directly or indirectly.
   //
-  // Nested RewriteContexts have a null driver_ but can always get to a
-  // driver by walking up the parent tree, which we generally expect
-  // to be very shallow.
+  // Nested RewriteContexts obtain their driver from their parent, but
+  // store it here to permit Driver() to be a simple getter.
   RewriteDriver* driver_;
 
   // Track the number of ResourceContexts that must be run before this one.
