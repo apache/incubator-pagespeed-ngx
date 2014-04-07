@@ -71,6 +71,13 @@
     'defines': [
       'CHROMIUM_REVISION=<(chromium_revision)',
     ],
+
+    # ABI-incompatible changes are trouble when you have a library, so turn off
+    # _GLIBCXX_DEBUG --- it makes various STL objects have different types and
+    # sizes.
+    'defines!': [
+      '_GLIBCXX_DEBUG=1'
+    ],
   },
   'conditions': [
     ['build_nacl==1', {
