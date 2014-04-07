@@ -7,7 +7,6 @@ COMPILE_OPTS = -g -Wall -Werror -Wno-sign-compare -Wno-return-type \
 #GPERF = false  # Must explicitly set GPERF
 #GPERF_OPTS = --ignore-case -L C++ -S 1 -t -C -c -E -G -o
 
-SRC_DIR = /home/sligocki/src/css_parsing
 PAGE_SPEED_DIR = $(SRC_DIR)/pagespeed/src
 CHROMIUM_DIR = $(PAGE_SPEED_DIR)/third_party/chromium/src
 GFLAGS_ROOT = $(SRC_DIR)/gflags-1.3/install
