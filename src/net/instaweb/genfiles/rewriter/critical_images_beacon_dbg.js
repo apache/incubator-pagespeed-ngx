@@ -1307,6 +1307,10 @@ pagespeed.CriticalImages.checkImageForCriticality = function(element) {
   pagespeed.CriticalImages.beaconObj_.checkImageForCriticality(element);
 };
 goog.exportSymbol("pagespeed.CriticalImages.checkImageForCriticality", pagespeed.CriticalImages.checkImageForCriticality);
+pagespeed.CriticalImages.checkCriticalImages = function() {
+  pagespeed.CriticalImages.beaconObj_.checkCriticalImages_();
+};
+goog.exportSymbol("pagespeed.CriticalImages.checkCriticalImages", pagespeed.CriticalImages.checkCriticalImages);
 pagespeed.CriticalImages.Beacon_.prototype.checkCriticalImages_ = function() {
   this.imgLocations_ = {};
   for (var tags = [goog.dom.TagName.IMG, goog.dom.TagName.INPUT], elemsToCheck = [], i = 0;i < tags.length;++i) {
@@ -1350,10 +1354,10 @@ pagespeed.CriticalImages.getBeaconData = function() {
   return pagespeed.CriticalImages.beaconData_;
 };
 goog.exportSymbol("pagespeed.CriticalImages.getBeaconData", pagespeed.CriticalImages.getBeaconData);
-pagespeed.CriticalImages.Run = function(beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce) {
+pagespeed.CriticalImages.Run = function(beaconUrl, htmlUrl, optionsHash, sendBeaconAtOnload, checkRenderedImageSizes, nonce) {
   var beacon = new pagespeed.CriticalImages.Beacon_(beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce);
   pagespeed.CriticalImages.beaconObj_ = beacon;
-  pagespeedutils.addHandler(window, "load", function() {
+  sendBeaconAtOnload && pagespeedutils.addHandler(window, "load", function() {
     window.setTimeout(function() {
       beacon.checkCriticalImages_();
     }, 0);

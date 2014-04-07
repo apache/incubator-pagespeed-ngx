@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/escaping.h"
+#include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -42,6 +43,9 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+
+using testing::HasSubstr;
+using testing::Not;
 
 namespace {
 
@@ -147,20 +151,19 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
   void VerifyInjection(int expected_beacon_count) {
     EXPECT_EQ(expected_beacon_count, statistics()->GetVariable(
         CriticalImagesBeaconFilter::kCriticalImagesBeaconAddedCount)->Get());
-    EXPECT_TRUE(output_buffer_.find(CreateInitString()) != GoogleString::npos);
+    EXPECT_THAT(output_buffer_, HasSubstr(CreateInitString()));
   }
 
   void VerifyNoInjection(int expected_beacon_count) {
     EXPECT_EQ(expected_beacon_count, statistics()->GetVariable(
         CriticalImagesBeaconFilter::kCriticalImagesBeaconAddedCount)->Get());
-    EXPECT_TRUE(output_buffer_.find("pagespeed.CriticalImages.Run") ==
-                GoogleString::npos);
+    EXPECT_THAT(output_buffer_, Not(HasSubstr("pagespeed.CriticalImages.Run")));
   }
 
   void VerifyWithNoImageRewrite() {
     const GoogleString hash_str = ImageUrlHash(kChefGifFile);
-    EXPECT_TRUE(output_buffer_.find(
-        StrCat("pagespeed_url_hash=\"", hash_str)) != GoogleString::npos);
+    EXPECT_THAT(output_buffer_,
+                HasSubstr(StrCat("pagespeed_url_hash=\"", hash_str)));
   }
 
   void AssumeHttps() {
@@ -192,6 +195,9 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     StrAppend(&str, "'", beacon_url, "',");
     StrAppend(&str, "'", url, "',");
     StrAppend(&str, "'", options_signature_hash, "',");
+    StrAppend(&str, BoolToString(!rewrite_driver()->options()->Enabled(
+                        RewriteOptions::kLazyloadImages)),
+              ",");
     StrAppend(&str, BoolToString(rewrite_driver()->options()->Enabled(
                         RewriteOptions::kResizeToRenderedImageDimensions)),
               ",");
@@ -323,6 +329,15 @@ TEST_F(CriticalImagesBeaconFilterTest, Googlebot) {
   rewrite_driver()->SetUserAgent(UserAgentMatcherTestBase::kGooglebotUserAgent);
   RunInjection();
   VerifyNoInjection(0);
+}
+
+// Verify that the init string is set correctly to not run the beacon's onload
+// handler when lazyload is enabled. The lazyload JS will take care of running
+// the beacon when all images have been loaded.
+TEST_F(CriticalImagesBeaconFilterTest, LazyloadEnabled) {
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  RunInjection();
+  VerifyInjection(1);
 }
 
 }  // namespace net_instaweb

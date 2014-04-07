@@ -119,13 +119,20 @@ void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
   GoogleString options_signature_hash =
       driver()->server_context()->hasher()->Hash(
           driver()->options()->signature());
+  // If lazyload is enabled, it will run the beacon after it has loaded all the
+  // images. Otherwise, run it at page onload.
+  GoogleString send_beacon_at_onload = BoolToString(
+      !driver()->options()->Enabled(RewriteOptions::kLazyloadImages));
+  GoogleString resize_rendered_image_dimensions_enabled =
+      BoolToString(driver()->options()->Enabled(
+          RewriteOptions::kResizeToRenderedImageDimensions));
   StrAppend(&js,
             "\npagespeed.CriticalImages.Run('",
             *beacon_url, "','", html_url, "','",
             options_signature_hash, "',");
-  StrAppend(&js, BoolToString(driver()->options()->Enabled(
-                     RewriteOptions::kResizeToRenderedImageDimensions)),
-            ",'", beacon_metadata_.nonce, "');");
+  StrAppend(&js, send_beacon_at_onload, ",",
+            resize_rendered_image_dimensions_enabled, ",'",
+            beacon_metadata_.nonce, "');");
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   // Always add the beacon js before the current node, because the current node

@@ -172,6 +172,18 @@ pagespeed.CriticalImages.checkImageForCriticality = function(element) {
   pagespeed.CriticalImages.beaconObj_.checkImageForCriticality(element);
 };
 
+
+/**
+ * Check all images to see if they are critical and beacon when finished. Should
+ * be called either at page onload, or when the onload handler for all images
+ * has finished running if lazyload_images is enabled.
+ * @export
+ */
+pagespeed.CriticalImages.checkCriticalImages = function() {
+  pagespeed.CriticalImages.beaconObj_.checkCriticalImages_();
+};
+
+
 /**
  * Check position of images and input tags and beacon back all visible images.
  * This method is triggered on page onload and goes over all image elements
@@ -313,6 +325,10 @@ pagespeed.CriticalImages.getBeaconData = function() {
  * @param {string} beaconUrl The URL on the server to send the beacon to.
  * @param {string} htmlUrl URL of the page the beacon is being inserted on.
  * @param {string} optionsHash The hash of the rewrite options.
+ * @param {boolean} sendBeaconAtOnload Controls whether the beacon should be
+ *     sent at page onload. This should be set to false if lazyload is also
+ *     enabled, since we want to wait to check all images on the page until they
+ *     have finished running their onload handlers.
  * @param {boolean} checkRenderedImageSizes The bool to show if resizing is
  *     being done using the rendered dimensions. If yes we capture the rendered
  *     dimensions and send it back with the beacon.
@@ -320,18 +336,20 @@ pagespeed.CriticalImages.getBeaconData = function() {
  * @export
  */
 pagespeed.CriticalImages.Run = function(
-    beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce) {
+    beaconUrl, htmlUrl, optionsHash, sendBeaconAtOnload,
+    checkRenderedImageSizes, nonce) {
   var beacon = new pagespeed.CriticalImages.Beacon_(
       beaconUrl, htmlUrl, optionsHash, checkRenderedImageSizes, nonce);
   pagespeed.CriticalImages.beaconObj_ = beacon;
-  var beaconOnload = function() {
-    // Attempt not to block other onload events on the page by wrapping in
-    // setTimeout().
-    // TODO(jud): checkCriticalImages_ should not run until after lazyload
-    // images completes. This will allow us to reduce the complexity of managing
-    // the interaction between the beacon and the lazyload jS, and to do a more
-    // efficient check for image visibility.
-    window.setTimeout(function() { beacon.checkCriticalImages_(); }, 0);
-  };
-  pagespeedutils.addHandler(window, 'load', beaconOnload);
+  // If lazyload is enabled on the page, then it will handle calling the beacon
+  // when all images have finished loading. Otherwise, call at onload when all
+  // images are loaded.
+  if (sendBeaconAtOnload) {
+    var beaconOnload = function() {
+      // Attempt not to block other onload events on the page by wrapping in
+      // setTimeout().
+      window.setTimeout(function() { beacon.checkCriticalImages_(); }, 0);
+    };
+    pagespeedutils.addHandler(window, 'load', beaconOnload);
+  }
 };

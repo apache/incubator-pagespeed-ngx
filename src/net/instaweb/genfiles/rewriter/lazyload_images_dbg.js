@@ -60,6 +60,13 @@ pagespeed.LazyloadImages = function(blankImageSrc) {
   this.last_scroll_time_ = 0;
   this.min_scroll_time_ = 200;
   this.onload_done_ = !1;
+  this.imgs_to_load_before_beaconing_ = 0;
+};
+pagespeed.LazyloadImages.prototype.countDeferredImgs_ = function() {
+  for (var deferredImgCount = 0, imgs = document.getElementsByTagName("img"), i = 0, img;img = imgs[i];i++) {
+    -1 != img.src.indexOf(this.blank_image_src_) && this.hasAttribute_(img, "pagespeed_lazy_src") && deferredImgCount++;
+  }
+  return deferredImgCount;
 };
 pagespeed.LazyloadImages.prototype.viewport_ = function() {
   var scrollY = 0;
@@ -124,6 +131,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon = function(elemen
         element.removeAttribute("onload");
         element.tagName && "IMG" == element.tagName && pagespeed.CriticalImages && pagespeedutils.addHandler(element, "load", function() {
           pagespeed.CriticalImages.checkImageForCriticality(this);
+          context.onload_done_ && (context.imgs_to_load_before_beaconing_--, 0 == context.imgs_to_load_before_beaconing_ && pagespeed.CriticalImages.checkCriticalImages());
         });
         element.removeAttribute("pagespeed_lazy_src");
         element.removeAttribute("pagespeed_lazy_replaced_functions");
@@ -152,8 +160,7 @@ pagespeed.LazyloadImages.prototype.hasAttribute_ = function(element, attribute) 
   return element.getAttribute_ ? null != element.getAttribute_(attribute) : null != element.getAttribute(attribute);
 };
 pagespeed.LazyloadImages.prototype.overrideAttributeFunctions = function() {
-  for (var images = document.getElementsByTagName("img"), i = 0;i < images.length;++i) {
-    var element = images[i];
+  for (var images = document.getElementsByTagName("img"), i = 0, element;element = images[i];i++) {
     this.hasAttribute_(element, "pagespeed_lazy_src") && this.overrideAttributeFunctionsInternal_(element);
   }
 };
@@ -172,6 +179,7 @@ pagespeed.lazyLoadInit = function(loadAfterOnload, blankImageSrc) {
     context.onload_done_ = !0;
     context.force_load_ = loadAfterOnload;
     context.buffer_ = 200;
+    pagespeed.CriticalImages && (context.imgs_to_load_before_beaconing_ = context.countDeferredImgs_(), 0 == context.imgs_to_load_before_beaconing_ && pagespeed.CriticalImages.checkCriticalImages());
     context.loadVisible_();
   });
   0 != blankImageSrc.indexOf("data") && ((new Image).src = blankImageSrc);
