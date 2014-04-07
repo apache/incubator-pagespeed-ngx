@@ -30,7 +30,7 @@
 // scoped_array.  This ifdef enables PageSpeed Insights to incrementally
 // upgrade to a new version of Chromium that does not have scoped_array,
 // but does have an array specialization for scoped_ptr.
-#if !defined(CHROMIUM_REVISION) || CHROMIUM_REVISION <= 194649
+#if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION <= 194649
 #define INSTAWEB_HAVE_SCOPED_ARRAY
 #endif
 

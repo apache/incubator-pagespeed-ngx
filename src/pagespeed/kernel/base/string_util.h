@@ -26,25 +26,22 @@
 #include <vector>
 
 #include "base/logging.h"
-#if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 205050
-#  include "base/strings/stringprintf.h"
-#else
-#  include "base/stringprintf.h"
-#endif
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 
 
 #include <cstdlib>  // NOLINT
 #include <string>  // NOLINT
-#if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 205050
+#if !defined(CHROMIUM_REVISION) || CHROMIUM_REVISION >= 205050
 #  include "base/strings/string_number_conversions.h"
 #  include "base/strings/string_piece.h"
 #  include "base/strings/string_util.h"
+#  include "base/strings/stringprintf.h"
 #else
 #  include "base/string_number_conversions.h"
 #  include "base/string_piece.h"
 #  include "base/string_util.h"
+#  include "base/stringprintf.h"
 #endif
 
 using base::StringAppendF;
