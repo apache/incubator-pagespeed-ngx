@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/writer.h"
 
 namespace {
@@ -163,10 +164,21 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
 }
 
 void Histogram::Render(int index, Writer* writer, MessageHandler* handler) {
-  ScopedMutex hold(lock());
   writer->Write(StringPrintf("<div id='hist_%d' style='display:none'>", index),
                 handler);
-  WriteRawHistogramData(writer, handler);
+
+  // Don't hold a lock while calling the writer, as this can deadlock if
+  // the writer itself winds up invoking pagespeed, causing the histogram
+  // to be locked.  So buffer each histogram and release the lock before
+  // passing it to writer.
+  GoogleString buf;
+  {
+    ScopedMutex hold(lock());
+    StringWriter string_writer(&buf);
+    WriteRawHistogramData(&string_writer, handler);
+  }
+
+  writer->Write(buf, handler);
   writer->Write("</div>\n", handler);
 }
 
