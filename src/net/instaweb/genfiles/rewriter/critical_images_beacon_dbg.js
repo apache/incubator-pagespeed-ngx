@@ -316,7 +316,7 @@ goog.getMsg = function(str, opt_values) {
   var values = opt_values || {}, key;
   for (key in values) {
     var value = ("" + values[key]).replace(/\$/g, "$$$$");
-    str = str.replace(RegExp("\\{\\$" + key + "\\}", "gi"), value);
+    str = str.replace(new RegExp("\\{\\$" + key + "\\}", "gi"), value);
   }
   return str;
 };
@@ -669,11 +669,11 @@ goog.string.removeAt = function(s, index, stringLength) {
   return resultStr;
 };
 goog.string.remove = function(s, ss) {
-  var re = RegExp(goog.string.regExpEscape(ss), "");
+  var re = new RegExp(goog.string.regExpEscape(ss), "");
   return s.replace(re, "");
 };
 goog.string.removeAll = function(s, ss) {
-  var re = RegExp(goog.string.regExpEscape(ss), "g");
+  var re = new RegExp(goog.string.regExpEscape(ss), "g");
   return s.replace(re, "");
 };
 goog.string.regExpEscape = function(s) {
@@ -743,7 +743,7 @@ goog.string.toSelectorCase = function(str) {
 };
 goog.string.toTitleCase = function(str, opt_delimiters) {
   var delimiters = goog.isString(opt_delimiters) ? goog.string.regExpEscape(opt_delimiters) : "\\s";
-  return str.replace(RegExp("(^" + (delimiters ? "|[" + delimiters + "]+" : "") + ")([a-z])", "g"), function(all, p1, p2) {
+  return str.replace(new RegExp("(^" + (delimiters ? "|[" + delimiters + "]+" : "") + ")([a-z])", "g"), function(all, p1, p2) {
     return p1 + p2.toUpperCase();
   });
 };

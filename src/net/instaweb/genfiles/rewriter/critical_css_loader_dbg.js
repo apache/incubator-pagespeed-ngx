@@ -316,7 +316,7 @@ goog.getMsg = function(str, opt_values) {
   var values = opt_values || {}, key;
   for (key in values) {
     var value = ("" + values[key]).replace(/\$/g, "$$$$");
-    str = str.replace(RegExp("\\{\\$" + key + "\\}", "gi"), value);
+    str = str.replace(new RegExp("\\{\\$" + key + "\\}", "gi"), value);
   }
   return str;
 };
