@@ -62,7 +62,8 @@ class RewriteQuery {
   // and "PageSpeed" flags, creating and populating *'options' if any were found
   // they were all parsed successfully.  If any were parsed unsuccessfully
   // kInvalid is returned.  If none found, kNoneFound is returned. It also
-  // removes the flags from the query_params of the url and the request_headers.
+  // removes the flags from the query_params of the url and the request_headers
+  // and populates pagespeed_query_params() with the removed query parameters.
   //
   // First queries are processed, then request headers, then response headers.
   // Therefore parameters set by response headers take precedence over request
@@ -111,6 +112,9 @@ class RewriteQuery {
   static bool MightBeCustomOption(StringPiece name);
 
   const QueryParams& query_params() const { return query_params_; }
+  const QueryParams& pagespeed_query_params() const {
+    return pagespeed_query_params_;
+  }
   const RewriteOptions* options() const { return options_.get(); }
   RewriteOptions* ReleaseOptions() { return options_.release(); }
 
@@ -192,6 +196,7 @@ class RewriteQuery {
       DeviceProperties::ImageQualityPreference* preference);
 
   QueryParams query_params_;
+  QueryParams pagespeed_query_params_;
   scoped_ptr<RewriteOptions> options_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteQuery);

@@ -129,6 +129,7 @@ RewriteQuery::Status RewriteQuery::Scan(
     MessageHandler* handler) {
   Status status = kNoneFound;
   query_params_.Clear();
+  pagespeed_query_params_.Clear();
   options_.reset(NULL);
 
   // To support serving resources from servers that don't share the
@@ -179,6 +180,7 @@ RewriteQuery::Status RewriteQuery::Scan(
         request_headers->Lookup1(HttpAttributes::kUserAgent));
   }
 
+  pagespeed_query_params_.Clear();
   QueryParams temp_query_params;
   for (int i = 0; i < query_params_.size(); ++i) {
     GoogleString unescaped_value;
@@ -197,6 +199,10 @@ RewriteQuery::Status RewriteQuery::Scan(
                                        *query_params_.EscapedValue(i));
           break;
         case kSuccess:
+          // If it is a PageSpeed-related query parameter, also save it so we
+          // can add it back if we receive a redirection response to our fetch.
+          pagespeed_query_params_.AddEscaped(query_params_.name(i),
+                                            *query_params_.EscapedValue(i));
           status = kSuccess;
           break;
         case kInvalid:

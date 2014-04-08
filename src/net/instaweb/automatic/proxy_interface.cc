@@ -47,6 +47,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/http/query_params.h"
 
 namespace net_instaweb {
 
@@ -71,6 +72,7 @@ struct ProxyInterface::RequestData {
   AsyncFetch* async_fetch;
   RewriteOptions* query_options;
   MessageHandler* handler;
+  GoogleString pagespeed_query_params;
 };
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
@@ -206,6 +208,8 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   request_data->async_fetch = async_fetch;
   request_data->query_options = query.ReleaseOptions();
   request_data->handler = handler;
+  request_data->pagespeed_query_params =
+      query.pagespeed_query_params().ToEscapedString();
 
   server_context_->rewrite_options_manager()->GetRewriteOptions(
       *released_gurl,
@@ -234,6 +238,7 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
   AsyncFetch* async_fetch = request_data->async_fetch;
   RewriteOptions* query_options = request_data->query_options;
   MessageHandler* handler = request_data->handler;
+  GoogleString pagespeed_query_params = request_data->pagespeed_query_params;
 
   RewriteOptions* options = server_context_->GetCustomOptions(
       async_fetch->request_headers(), domain_options, query_options);
@@ -359,6 +364,10 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     driver->SetRequestHeaders(*async_fetch->request_headers());
     // TODO(mmohabey): Factor out the below checks so that they are not
     // repeated in BlinkUtil::IsBlinkRequest().
+
+    // Copy over any stripped query parameters so we can re-add them if we
+    // receive a redirection response to our fetch request.
+    driver->set_pagespeed_query_params(pagespeed_query_params);
 
     if (driver->options() != NULL && driver->options()->enabled() &&
         property_callback != NULL &&

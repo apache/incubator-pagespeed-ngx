@@ -1122,6 +1122,13 @@ class RewriteDriver : public HtmlParse {
     return num_detached_rewrites_;
   }
 
+  void set_pagespeed_query_params(StringPiece x) {
+    x.CopyToString(&pagespeed_query_params_);
+  }
+  StringPiece pagespeed_query_params() const {
+    return pagespeed_query_params_;
+  }
+
   // We fragment the cache based on the hostname we got from the request, unless
   // that was overridden in the options with a cache_fragment.
   const GoogleString& CacheFragment() const;
@@ -1648,6 +1655,9 @@ class RewriteDriver : public HtmlParse {
 
   // Downstream cache object used for issuing purges.
   DownstreamCachePurger downstream_cache_purger_;
+
+  // Any PageSpeed options stripped from the original URL.
+  GoogleString pagespeed_query_params_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

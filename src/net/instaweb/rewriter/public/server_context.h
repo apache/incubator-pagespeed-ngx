@@ -376,7 +376,8 @@ class ServerContext {
   // not valid.
   //
   // It also strips off the PageSpeed query parameters and headers from the
-  // request_url, request headers, and response headers respectively.
+  // request_url, request headers, and response headers respectively. Stripped
+  // query params are copied into rewrite_query->pagespeed_query_params().
   bool GetQueryOptions(GoogleUrl* request_url,
                        RequestHeaders* request_headers,
                        ResponseHeaders* response_headers,

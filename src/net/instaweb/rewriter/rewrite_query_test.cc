@@ -957,4 +957,20 @@ TEST_F(RewriteQueryTest, NoCustomOptionsWithCacheControlPrivate) {
   EXPECT_TRUE(options == NULL);
 }
 
+TEST_F(RewriteQueryTest, StrippedQueryParamsAreExtracted) {
+  GoogleUrl gurl("http://test.com/?a=b&"
+                 "ModPagespeedFilters=debug&"
+                 "x=y&"
+                 "ModPagespeedCssFlattenMaxBytes=123");
+  EXPECT_EQ(RewriteQuery::kSuccess,
+            rewrite_query_.Scan(allow_related_options_, factory(),
+                                server_context(), &gurl, NULL, NULL,
+                                message_handler()));
+  EXPECT_STREQ("http://test.com/?a=b&x=y", gurl.Spec());
+  EXPECT_EQ(2, rewrite_query_.pagespeed_query_params().size());
+  EXPECT_STREQ("ModPagespeedFilters=debug&"
+               "ModPagespeedCssFlattenMaxBytes=123",
+               rewrite_query_.pagespeed_query_params().ToEscapedString());
+}
+
 }  // namespace net_instaweb

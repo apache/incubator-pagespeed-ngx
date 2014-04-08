@@ -571,14 +571,30 @@ const RewriteOptions* ProxyFetch::Options() {
 void ProxyFetch::HandleHeadersComplete() {
   // If domain rewrite filter is enabled we need to also rewrite the location
   // headers when origin is serving redirects.
+  // TODO(matterbury): Consider other 3xx responses.
+  // [but note that doing this for 304 Not Modified is probably a dumb idea]
   if (response_headers() != NULL &&
-      driver_->options()->Enabled(RewriteOptions::kRewriteDomains) &&
-      driver_->domain_rewriter() != NULL &&
       (response_headers()->status_code() == HttpStatus::kFound ||
        response_headers()->status_code() == HttpStatus::kMovedPermanently)) {
-    GoogleUrl gurl(url_);
-    driver_->domain_rewriter()->UpdateLocationHeader(gurl, driver_,
-                                                     response_headers());
+    const char* loc = response_headers()->Lookup1(HttpAttributes::kLocation);
+    if (loc != NULL && !driver_->pagespeed_query_params().empty()) {
+      GoogleUrl base_url(url_);
+      GoogleUrl locn_url(base_url, loc);
+      // Only add them back if we're being redirected back to the same domain.
+      if (base_url.Origin() == locn_url.Origin()) {
+        // TODO(jmarantz): Add a method to GoogleUrl that makes this easy.
+        GoogleString new_loc(loc);
+        StrAppend(&new_loc, locn_url.has_query() ? "&" : "?",
+                  driver_->pagespeed_query_params());
+        response_headers()->Replace(HttpAttributes::kLocation, new_loc);
+      }
+    }
+    if (driver_->options()->Enabled(RewriteOptions::kRewriteDomains) &&
+        driver_->domain_rewriter() != NULL) {
+      GoogleUrl gurl(url_);
+      driver_->domain_rewriter()->UpdateLocationHeader(gurl, driver_,
+                                                       response_headers());
+    }
     response_headers()->ComputeCaching();
   }
 

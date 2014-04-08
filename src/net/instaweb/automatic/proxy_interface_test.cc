@@ -265,6 +265,45 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
         cohort, kPropertyName)->has_value());
   }
 
+  void TestQueryParameters(StringPiece original_domain,
+                           StringPiece redirect_domain,
+                           bool add_params_to_redirect,
+                           bool add_params_to_location) {
+    // Test to check if we re-add our query params when we get a redirect.
+    const char kParams[] = "PageSpeedCssInlineMaxBytes=99";
+    GoogleString original_url = StrCat(original_domain, "a/?x=y");
+    GoogleString redirect_url = StrCat(redirect_domain, "b/",
+                                       add_params_to_redirect ? "?x=y" : "");
+    GoogleString set_text, get_text;
+    RequestHeaders request_headers;
+    ResponseHeaders set_headers, get_headers;
+    NullMessageHandler handler;
+    GoogleString expected_location(redirect_url);
+    if (add_params_to_location) {
+      StrAppend(&expected_location,
+                add_params_to_redirect ? "&" : "?", kParams);
+    }
+
+    set_headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+    set_headers.Add(HttpAttributes::kLocation, redirect_url);
+    set_headers.SetStatusAndReason(HttpStatus::kFound);
+    set_text = "<html></html>";
+    mock_url_fetcher_.SetResponse(original_url, set_headers, set_text);
+    FetchFromProxy(StrCat(original_url, "&", kParams), request_headers, true,
+                   &get_text, &get_headers);
+
+    EXPECT_STREQ(StrCat("HTTP/1.0 302 Found\r\n"
+                        "Content-Type: text/html\r\n"
+                        "Location: ", expected_location, "\r\n"
+                        "X-Background-Fetch: 0\r\n"
+                        "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+                        "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+                        "Cache-Control: max-age=0, private\r\n"
+                        "X-Page-Speed: \r\n"
+                        "HeadersComplete: 1\r\n\r\n"),
+                 get_headers.ToString());
+  }
+
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
@@ -479,6 +518,42 @@ TEST_F(ProxyInterfaceTest, RedirectRequestWhenDomainRewriterEnabled) {
                "X-Page-Speed: \r\n"
                "HeadersComplete: 1\r\n\r\n",
                get_headers.ToString());
+}
+
+TEST_F(ProxyInterfaceTest, RedirectRequestRetainsQueryParams) {
+  // "Location: http://www.example.com/b/?x=y&PageSpeedCssInlineMaxBytes=99" is
+  // what we expect to see - note the PageSpeed query parameter IS copied over.
+  TestQueryParameters(/* original_domain= */ "http://www.example.com/",
+                      /* redirect_domain= */ "http://www.example.com/",
+                      /* add_params_to_redirect= */ true,
+                      /* add_params_to_location= */ true);
+}
+
+TEST_F(ProxyInterfaceTest, RedirectRequestRetainsOnlyPagespeedQueryParams) {
+  // "Location: http://www.example.com/b/?PageSpeedCssInlineMaxBytes=99" is
+  // what we expect to see - note the PageSpeed query parameter IS copied over.
+  TestQueryParameters(/* original_domain= */ "http://www.example.com/",
+                      /* redirect_domain= */ "http://www.example.com/",
+                      /* add_params_to_redirect= */ false,
+                      /* add_params_to_location= */ true);
+}
+
+TEST_F(ProxyInterfaceTest, RedirectToDiffDomainDiscardsQueryParams) {
+  // "Location: http://test.com/?x=y" is what we expect to see - note the
+  // PageSpeed query parameter is NOT copied over.
+  TestQueryParameters(/* original_domain= */ "http://www.example.com/",
+                      /* redirect_domain= */ kTestDomain,
+                      /* add_params_to_redirect= */ true,
+                      /* add_params_to_location= */ false);
+}
+
+TEST_F(ProxyInterfaceTest, RedirectToDiffDomainDiscardsPagespeedQueryParams) {
+  // "Location: http://test.com/" is what we expect to see - note the
+  // PageSpeed query parameter is NOT copied over.
+  TestQueryParameters(/* original_domain= */ "http://www.example.com/",
+                      /* redirect_domain= */ kTestDomain,
+                      /* add_params_to_redirect= */ false,
+                      /* add_params_to_location= */ false);
 }
 
 TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
