@@ -137,12 +137,7 @@ void FileCache::Get(const GoogleString& key, Callback* callback) {
 void FileCache::Put(const GoogleString& key, SharedString* value) {
   GoogleString filename;
   if (EncodeFilename(key, &filename)) {
-    GoogleString temp_filename;
-    if (file_system_->WriteTempFile(filename, value->Value(),
-                                    &temp_filename, message_handler_)) {
-      file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
-                               message_handler_);
-    }
+    file_system_->WriteFileAtomic(filename, value->Value(), message_handler_);
   }
   CleanIfNeeded();
 }

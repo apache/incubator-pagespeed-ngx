@@ -43,6 +43,7 @@
 #include "pagespeed/kernel/base/debug.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -266,12 +267,17 @@ FileSystem::OutputFile* StdioFileSystem::OpenTempFileHelper(
     if (f == NULL) {
       close(fd);
 #endif
+
+      // If we failed to open the temp file, silently clean it before returning.
       message_handler->Error(template_name, 0,
                              "re-opening temp file: %s", strerror(errno));
+      NullMessageHandler null_message_handler;
+      RemoveFile(template_name, &null_message_handler);
     } else {
       output_file = new StdioOutputFile(f, template_name);
     }
   }
+
   delete [] template_name;
   return output_file;
 }
