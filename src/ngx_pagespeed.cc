@@ -2372,6 +2372,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
       server_context->StatisticsPage(
           is_global_request,
           query_params,
+          cfg_s->server_context->global_options(),
           &fetch);
       fetch.FlushToNgx(output, r);
       return NGX_OK;
