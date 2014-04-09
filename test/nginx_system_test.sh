@@ -82,6 +82,7 @@ function keepalive_test() {
   done
 
   # Filter the curl output from unimportant messages
+  # 'Found bundle for host...' is emitted by newer versions of curl.
   OUT=$(cat "$TEST_TMP/$CURL_LOG_FILE"\
     | grep -v "^[<>]"\
     | grep -v "^{ \\[data not shown"\
@@ -92,6 +93,7 @@ function keepalive_test() {
     | grep -v "^\\* Connection.*left intact"\
     | grep -v "^} \\[data not shown"\
     | grep -v "^\\* upload completely sent off"\
+    | grep -v "^\\* Found bundle for host"\
     | grep -v "^\\* connected"\
     | grep -v "^\\* Found bundle for host"\
     | grep -v "^\\* Adding handle"\

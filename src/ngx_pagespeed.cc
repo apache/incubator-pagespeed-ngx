@@ -30,6 +30,7 @@
 
 #include "ngx_base_fetch.h"
 #include "ngx_caching_headers.h"
+#include "ngx_gzip_setter.h"
 #include "ngx_list_iterator.h"
 #include "ngx_message_handler.h"
 #include "ngx_rewrite_driver_factory.h"
@@ -599,6 +600,28 @@ char* ps_configure(ngx_conf_t* cf,
   ngx_uint_t i;
   for (i = 0 ; i < n_args ; i++) {
     args[i] = str_to_string_piece(value[i+1]);
+  }
+
+  // TODO(kspoelstra): could be moved into the config handler for ngx
+  if ((n_args == 1 && StringCaseEqual(args[0], "on"))
+      || (n_args == 2 && StringCaseEqual(args[0], "InPlaceResourceOptimization")
+          && StringCaseEqual(args[1], "on"))) {
+    // safe to call if the setter is disabled
+    g_gzip_setter.EnableGZipForLocation(cf);
+  }
+  if (n_args == 2 && args[0].compare("gzip") == 0) {
+    if (args[1].compare("on") == 0) {
+      g_gzip_setter.SetGZipForLocation(cf, 1);
+    } else if (args[1].compare("off") == 0) {
+      g_gzip_setter.SetGZipForLocation(cf, 0);
+    } else {
+      // we are more forgiving than we should be here
+      // we should return an error
+      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                    "pagespeed gzip %s is not a valid setting",
+                    args[1].data());
+    }
+    return NGX_CONF_OK;
   }
 
   // Some options require the worker process to be able to read and write to
@@ -2795,6 +2818,14 @@ ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
+// Called before configuration.
+ngx_int_t ps_pre_init(ngx_conf_t *cf) {
+  // Setup an intervention setter for gzip configuration and check
+  // gzip configuration command signatures.
+  g_gzip_setter.Init();
+  return NGX_OK;
+}
+
 ngx_int_t ps_init(ngx_conf_t* cf) {
   // Only put register pagespeed code to run if there was a "pagespeed"
   // configuration option set in the config file.  With "pagespeed off" we
@@ -2844,7 +2875,7 @@ ngx_http_module_t ps_etag_filter_module = {
 };
 
 ngx_http_module_t ps_module = {
-  NULL,  // preconfiguration
+  ps_pre_init,  // preconfiguration
   ps_init,  // postconfiguration
 
   ps_create_main_conf,
