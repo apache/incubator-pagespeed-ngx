@@ -70,11 +70,12 @@ class FileCache::CacheCleanFunction : public Function {
   DISALLOW_COPY_AND_ASSIGN(CacheCleanFunction);
 };
 
-const char FileCache::kDiskChecks[] = "file_cache_disk_checks";
-const char FileCache::kCleanups[] = "file_cache_cleanups";
-const char FileCache::kEvictions[] = "file_cache_evictions";
 const char FileCache::kBytesFreedInCleanup[] =
     "file_cache_bytes_freed_in_cleanup";
+const char FileCache::kCleanups[] = "file_cache_cleanups";
+const char FileCache::kDiskChecks[] = "file_cache_disk_checks";
+const char FileCache::kEvictions[] = "file_cache_evictions";
+const char FileCache::kWriteErrors[] = "file_cache_write_errors";
 
 // Filenames for the next scheduled clean time and the lockfile.  In
 // order to prevent these from colliding with actual cachefiles, they
@@ -100,7 +101,8 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       disk_checks_(stats->GetVariable(kDiskChecks)),
       cleanups_(stats->GetVariable(kCleanups)),
       evictions_(stats->GetVariable(kEvictions)),
-      bytes_freed_in_cleanup_(stats->GetVariable(kBytesFreedInCleanup)) {
+      bytes_freed_in_cleanup_(stats->GetVariable(kBytesFreedInCleanup)),
+      write_errors_(stats->GetVariable(kWriteErrors)) {
   next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
   EnsureEndsInSlash(&clean_time_path_);
   StrAppend(&clean_time_path_, kCleanTimeName);
@@ -112,10 +114,11 @@ FileCache::~FileCache() {
 }
 
 void FileCache::InitStats(Statistics* statistics) {
-  statistics->AddVariable(kDiskChecks);
-  statistics->AddVariable(kCleanups);
-  statistics->AddVariable(kEvictions);
   statistics->AddVariable(kBytesFreedInCleanup);
+  statistics->AddVariable(kCleanups);
+  statistics->AddVariable(kDiskChecks);
+  statistics->AddVariable(kEvictions);
+  statistics->AddVariable(kWriteErrors);
 }
 
 void FileCache::Get(const GoogleString& key, Callback* callback) {
@@ -136,8 +139,10 @@ void FileCache::Get(const GoogleString& key, Callback* callback) {
 
 void FileCache::Put(const GoogleString& key, SharedString* value) {
   GoogleString filename;
-  if (EncodeFilename(key, &filename)) {
-    file_system_->WriteFileAtomic(filename, value->Value(), message_handler_);
+  if (EncodeFilename(key, &filename) &&
+      !file_system_->WriteFileAtomic(filename, value->Value(),
+                                     message_handler_)) {
+    write_errors_->Add(1);
   }
   CleanIfNeeded();
 }
@@ -288,9 +293,11 @@ bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
           message_handler_).is_true()) {
     // Update the timestamp file..
     next_clean_ms_ = next_clean_time_ms;
-    file_system_->WriteFile(clean_time_path_.c_str(),
-                            Integer64ToString(next_clean_time_ms),
-                            message_handler_);
+    if (!file_system_->WriteFile(clean_time_path_.c_str(),
+                                 Integer64ToString(next_clean_time_ms),
+                                 message_handler_)) {
+      write_errors_->Add(1);
+    }
 
     // Now actually clean.
     to_return = Clean(cache_policy_->target_size_bytes,

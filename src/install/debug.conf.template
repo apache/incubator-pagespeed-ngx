@@ -1003,7 +1003,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 #PURGING_COVERAGE    ModPagespeedEnableCachePurge on
 #PURGING_COVERAGE    ModPagespeedCompressMetadataCache on
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
+#COVERAGE   ModPagespeedFileCachePath       "@@MOD_PAGESPEED_CACHE@@_load_test"
 #COVERAGE   ModPagespeedCompressMetadataCache true
 #COVERAGE   ModPagespeedRewriteLevel AllFilters
 #IPRO_PRESERVE_COVERAGE   ModPagespeedRewriteLevel OptimizeForBandwidth
@@ -1033,8 +1033,8 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #COVERAGE   ModPagespeedEnableFilters elide_attributes
 #DOMAIN_AUTH_COVERAGE   ModPagespeedDomain *
 #IUR_COVERAGE   ModPagespeedInlineUnauthorizedResourcesExperimental true
-#COVERAGE   ModPagespeedFileCacheSizeKb              102400
-#COVERAGE   ModPagespeedFileCacheCleanIntervalMs    3600000
+#COVERAGE   ModPagespeedFileCacheSizeKb             1024000
+#COVERAGE   ModPagespeedFileCacheCleanIntervalMs     120000
 #COVERAGE   ModPagespeedLRUCacheKbPerProcess           1024
 #COVERAGE   ModPagespeedLRUCacheByteLimit             16384
 #COVERAGE   ModPagespeedCssFlattenMaxBytes             2048

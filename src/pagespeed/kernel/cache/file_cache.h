@@ -78,13 +78,14 @@ class FileCache : public CacheInterface {
   const GoogleString& path() const { return path_; }
 
   // Variable names.
-  // Number of times we checked disk usage in preparation from cleanup.
-  static const char kDiskChecks[];
+  static const char kBytesFreedInCleanup[];
   // Number of times we actually cleaned cache because usage was high enough.
   static const char kCleanups[];
+  // Number of times we checked disk usage in preparation from cleanup.
+  static const char kDiskChecks[];
   // Files evicted from cache during cleanup.
   static const char kEvictions[];
-  static const char kBytesFreedInCleanup[];
+  static const char kWriteErrors[];
 
  private:
   class CacheCleanFunction;
@@ -130,6 +131,7 @@ class FileCache : public CacheInterface {
   Variable* cleanups_;
   Variable* evictions_;
   Variable* bytes_freed_in_cleanup_;
+  Variable* write_errors_;
 
   // The filename where we keep the next scheduled cleanup time in seconds.
   static const char kCleanTimeName[];
