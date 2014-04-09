@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/association_transformer.h"
+#include "net/instaweb/rewriter/public/css_absolutify.h"
 #include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter.h"
@@ -624,8 +625,8 @@ void CssFilter::Context::Harvest() {
                                                            &proxying);
     if (should_absolutify) {
       absolutified_urls =
-          CssMinify::AbsolutifyImports(hierarchy_.mutable_stylesheet(),
-                                       css_base_gurl_to_use);
+          CssAbsolutify::AbsolutifyImports(hierarchy_.mutable_stylesheet(),
+                                           css_base_gurl_to_use);
     }
 
     // If we have determined that we need to absolutify URLs, or if we are
@@ -636,7 +637,7 @@ void CssFilter::Context::Harvest() {
     // absolutify.
     if (should_absolutify || proxying) {
       if (!css_rewritten_ || hierarchy_.unparseable_detected()) {
-        absolutified_urls |= CssMinify::AbsolutifyUrls(
+        absolutified_urls |= CssAbsolutify::AbsolutifyUrls(
             hierarchy_.mutable_stylesheet(),
             css_base_gurl_to_use,
             !css_rewritten_,                   /* handle_parseable_sections */

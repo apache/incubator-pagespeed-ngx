@@ -18,17 +18,12 @@
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 
-#include <cstddef>
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/writer.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/writer.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/identifier.h"
 #include "webutil/css/media.h"
@@ -57,114 +52,6 @@ bool CssMinify::Declarations(const Css::Declarations& declarations,
   CssMinify minifier(writer, handler);
   minifier.JoinMinify(declarations, ";");
   return minifier.ok_;
-}
-
-bool CssMinify::AbsolutifyImports(Css::Stylesheet* stylesheet,
-                                  const GoogleUrl& base) {
-  bool result = false;
-  const Css::Imports& imports = stylesheet->imports();
-  Css::Imports::const_iterator iter;
-  for (iter = imports.begin(); iter != imports.end(); ++iter) {
-    Css::Import* import = *iter;
-    StringPiece url(import->link().utf8_data(), import->link().utf8_length());
-    GoogleUrl gurl(base, url);
-    if (gurl.IsWebValid() && gurl.Spec() != url) {
-      url = gurl.Spec();
-      import->set_link(UTF8ToUnicodeText(url.data(), url.length()));
-      result = true;
-    }
-  }
-  return result;
-}
-
-bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
-                               const GoogleUrl& base,
-                               bool handle_parseable_sections,
-                               bool handle_unparseable_sections,
-                               RewriteDriver* driver,
-                               MessageHandler* handler) {
-  RewriteDomainTransformer transformer(&base, &base, driver);
-  transformer.set_trim_urls(false);
-  bool result = false;
-
-  // Absolutify URLs in unparseable selectors and declarations.
-  Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
-  for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
-       ruleset_iter != rulesets.end(); ++ruleset_iter) {
-    Css::Ruleset* ruleset = *ruleset_iter;
-    // Check any unparseable sections for any URLs and absolutify as required.
-    if (handle_unparseable_sections) {
-      switch (ruleset->type()) {
-        case Css::Ruleset::RULESET: {
-          Css::Selectors& selectors(ruleset->mutable_selectors());
-          if (selectors.is_dummy()) {
-            StringPiece original_bytes = selectors.bytes_in_original_buffer();
-            GoogleString rewritten_bytes;
-            StringWriter writer(&rewritten_bytes);
-            if (CssTagScanner::TransformUrls(original_bytes, &writer,
-                                             &transformer, handler)) {
-              selectors.set_bytes_in_original_buffer(rewritten_bytes);
-              result = true;
-            }
-          }
-          break;
-        }
-        case Css::Ruleset::UNPARSED_REGION: {
-          Css::UnparsedRegion* unparsed = ruleset->mutable_unparsed_region();
-          StringPiece original_bytes = unparsed->bytes_in_original_buffer();
-          GoogleString rewritten_bytes;
-          StringWriter writer(&rewritten_bytes);
-          if (CssTagScanner::TransformUrls(original_bytes, &writer,
-                                           &transformer, handler)) {
-            unparsed->set_bytes_in_original_buffer(rewritten_bytes);
-            result = true;
-          }
-          break;
-        }
-      }
-    }
-    if (ruleset->type() == Css::Ruleset::RULESET) {
-      Css::Declarations& decls = ruleset->mutable_declarations();
-      for (Css::Declarations::iterator decl_iter = decls.begin();
-           decl_iter != decls.end(); ++decl_iter) {
-        Css::Declaration* decl = *decl_iter;
-        if (decl->prop() == Css::Property::UNPARSEABLE) {
-          if (handle_unparseable_sections) {
-            StringPiece original_bytes = decl->bytes_in_original_buffer();
-            GoogleString rewritten_bytes;
-            StringWriter writer(&rewritten_bytes);
-            if (CssTagScanner::TransformUrls(original_bytes, &writer,
-                                             &transformer, handler)) {
-              result = true;
-              decl->set_bytes_in_original_buffer(rewritten_bytes);
-            }
-          }
-        } else if (handle_parseable_sections) {
-          // [cribbed from css_image_rewriter.cc]
-          // Rewrite all URLs.
-          // Note: We must rewrite all URLs. Not just ones from declarations
-          // we expect to have URLs.
-          Css::Values* values = decl->mutable_values();
-          for (size_t value_index = 0; value_index < values->size();
-               ++value_index) {
-            Css::Value* value = values->at(value_index);
-            if (value->GetLexicalUnitType() == Css::Value::URI) {
-              result = true;
-              GoogleString url = UnicodeTextToUTF8(value->GetStringValue());
-              if (transformer.Transform(&url) ==
-                  CssTagScanner::Transformer::kSuccess) {
-                delete (*values)[value_index];
-                (*values)[value_index] =
-                    new Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return result;
 }
 
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)

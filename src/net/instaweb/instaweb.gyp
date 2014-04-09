@@ -1049,6 +1049,7 @@
       ],
       'sources': [
         'rewriter/association_transformer.cc',
+        'rewriter/css_absolutify.cc',
         'rewriter/css_combine_filter.cc',
         'rewriter/css_filter.cc',
         'rewriter/css_hierarchy.cc',
