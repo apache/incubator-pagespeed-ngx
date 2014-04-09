@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 
@@ -55,6 +56,9 @@ class SystemCachePath {
   // Per-machine file cache with any stats wrappers.
   CacheInterface* file_cache() { return file_cache_; }
 
+  // Access to backend for testing.  Do not use this directly in production
+  // as it lacks statistics wrappers, etc.
+  FileCache* file_cache_backend() { return file_cache_backend_; }
   NamedLockManager* lock_manager() { return lock_manager_; }
 
   // See comments in SystemCaches for calling conventions on these.
@@ -62,9 +66,34 @@ class SystemCachePath {
   void ChildInit(SlowWorker* cache_clean_worker);
   void GlobalCleanup(MessageHandler* handler);  // only called in root process
 
+  // When there are multiple configurations which specify the same cache
+  // path, we must merge the other settings: the cleaning interval, size, and
+  // inode count.
+  void MergeConfig(const SystemRewriteOptions* config);
+
  private:
   void FallBackToFileBasedLocking();
   GoogleString LockManagerSegmentName() const;
+
+  // Merge a value taken from a config file against the value already
+  // initialized in a cache policy, reporting a Warning if they were
+  // explicitly set and have conflicting values.  Whenever one of the
+  // values was taken from the options defaults, we select the explicit
+  // one without issuing a warning.
+  //
+  // For the interval, we take the minimum of the two values
+  // (take_larger==false), and for the sizes we take the larger
+  // (take_larger==true).
+  //
+  // If necessary, *policy_value is updated with the resolved value,
+  // which is computed from the old *policy_value and config_value.
+  //
+  // 'name' is used in a warning message printed whenever resolution was
+  // required.
+  void MergeEntries(int64 config_value, bool config_was_set,
+                    bool take_larger,
+                    const char* name,
+                    int64* policy_value, bool* has_explicit_policy);
 
   GoogleString path_;
 
@@ -76,6 +105,9 @@ class SystemCachePath {
   FileCache* file_cache_backend_;  // owned by file_cache_
   CacheInterface* lru_cache_;
   CacheInterface* file_cache_;
+  bool clean_interval_explicitly_set_;
+  bool clean_size_explicitly_set_;
+  bool clean_inode_limit_explicitly_set_;
 };
 
 // CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether

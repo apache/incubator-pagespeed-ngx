@@ -121,6 +121,19 @@ class SystemCaches {
   // set_thread_limit() before calling any other methods.
   void set_thread_limit(int thread_limit) { thread_limit_ = thread_limit; }
 
+  // Finds a Cache for the file_cache_path in the config.  If none exists,
+  // creates one, using all the other parameters in the SystemRewriteOptions.
+  // If multiple calls are made to get a file-cache with the same path, but
+  // with different cleaning parameters, the parameters are merged based
+  // on these rules:
+  //   1. An explicitly configured option is selected over a default without
+  //      warning.
+  //   2. When there are two explicit settings, the higher size is picked,
+  //      but the lower time-interval is picked.  A warning is issued to
+  //      the server log, as this situation should be resolved by the server
+  //      administrator.
+  SystemCachePath* GetCache(SystemRewriteOptions* config);
+
  private:
   typedef SharedMemCache<64> MetadataShmCache;
   struct MetadataShmCacheInfo {
@@ -144,12 +157,6 @@ class SystemCaches {
 
   // Create a new AprMemCache from the given hostname[:port] specification.
   AprMemCache* NewAprMemCache(const GoogleString& spec);
-
-  // Finds a Cache for the file_cache_path in the config.  If none exists,
-  // creates one, using all the other parameters in the SystemRewriteOptions.
-  // Currently, no checking is done that the other parameters (e.g. cache
-  // size, cleanup interval, etc.) are consistent.
-  SystemCachePath* GetCache(SystemRewriteOptions* config);
 
   // Looks up and, if necessary, constructs memcached interfaces for a
   // configuration.  Both blocking and (potentially) non-blocking

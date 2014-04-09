@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/system/public/apr_mem_cache.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
+#include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
@@ -65,6 +66,8 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
@@ -891,7 +894,7 @@ TEST_F(SystemCachesTest, FileCacheSettings) {
   EXPECT_EQ(kCachePath, file_cache->path());
   EXPECT_EQ(3 * Timer::kHourMs, file_cache->cache_policy()->clean_interval_ms);
   // Note: this is in bytes, the setting is in kb.
-  EXPECT_EQ(1024*1024, file_cache->cache_policy()->target_size);
+  EXPECT_EQ(1024*1024, file_cache->cache_policy()->target_size_bytes);
   EXPECT_EQ(50000, file_cache->cache_policy()->target_inode_count);
   EXPECT_TRUE(file_cache->worker() != NULL);
 }
@@ -949,6 +952,54 @@ TEST_F(SystemCachesTest, StatsStringMinimal) {
       static_cast<SystemCaches::StatFlags>(SystemCaches::kGlobalView |
                                            SystemCaches::kIncludeMemcached),
       &out);
+}
+
+TEST_F(SystemCachesTest, FileCacheNoConflictTwoPaths) {
+  options_->set_file_cache_path(kCachePath);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_NE(path1, path2);
+  EXPECT_EQ(0, message_handler()->MessagesOfType(kWarning));
+}
+
+TEST_F(SystemCachesTest, FileCacheFullConflictTwoPaths) {
+  options_->set_file_cache_path(kCachePath);
+  options_->set_file_cache_clean_size_kb(10);
+  options_->set_file_cache_clean_inode_limit(20);
+  options_->set_file_cache_clean_interval_ms(1000);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_file_cache_clean_size_kb(11);        // wins
+  options2.set_file_cache_clean_inode_limit(19);    // loses
+  options2.set_file_cache_clean_interval_ms(999);   // wins
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  ASSERT_EQ(path1, path2);
+  FileCache* file_cache = path1->file_cache_backend();
+  const FileCache::CachePolicy* policy = file_cache->cache_policy();
+  EXPECT_EQ(11*1024, policy->target_size_bytes);
+  EXPECT_EQ(20, policy->target_inode_count);
+  EXPECT_EQ(999, policy->clean_interval_ms);
+  EXPECT_EQ(3, message_handler()->MessagesOfType(kWarning));
+}
+
+TEST_F(SystemCachesTest, FileCacheNoConflictOnDefaults) {
+  options_->set_file_cache_path(kCachePath);
+  options_->set_file_cache_clean_inode_limit(20);
+  options_->set_file_cache_clean_interval_ms(1000);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_file_cache_clean_size_kb(11);        // wins
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  ASSERT_EQ(path1, path2);
+  FileCache* file_cache = path1->file_cache_backend();
+  const FileCache::CachePolicy* policy = file_cache->cache_policy();
+  EXPECT_EQ(11*1024, policy->target_size_bytes);
+  EXPECT_EQ(20, policy->target_inode_count);
+  EXPECT_EQ(1000, policy->clean_interval_ms);
+  EXPECT_EQ(0, message_handler()->MessagesOfType(kWarning));
 }
 
 // Tests for how we fallback when SHM setup ops fail.

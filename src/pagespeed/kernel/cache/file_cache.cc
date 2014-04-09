@@ -178,13 +178,13 @@ namespace {
 const int64 kEmptyDirCleanAgeSec = 60;
 }  // namespace
 
-bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
+bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
   // TODO(jud): this function can delete .lock and .outputlock files, is this
   // problematic?
   message_handler_->Message(kInfo,
                             "Checking cache size against target %s and inode "
                             "count against target %s",
-                            Integer64ToString(target_size).c_str(),
+                            Integer64ToString(target_size_bytes).c_str(),
                             Integer64ToString(target_inode_count).c_str());
   disk_checks_->Add(1);
 
@@ -198,7 +198,7 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
   // target_inode_count of 0 indicates no inode limit.
   int64 cache_size = dir_info.size_bytes;
   int64 cache_inode_count = dir_info.inode_count;
-  if (cache_size < target_size &&
+  if (cache_size < target_size_bytes &&
       (target_inode_count == 0 ||
        cache_inode_count < target_inode_count)) {
     message_handler_->Message(kInfo,
@@ -244,13 +244,13 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
   std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByAtime());
 
   // Set the target size to clean to.
-  target_size = (target_size * 3) / 4;
+  target_size_bytes = (target_size_bytes * 3) / 4;
   target_inode_count = (target_inode_count * 3) / 4;
 
   // Delete files until we are under our targets.
   std::vector<FileSystem::FileInfo>::iterator file_itr = dir_info.files.begin();
   while (file_itr != dir_info.files.end() &&
-         (cache_size > target_size ||
+         (cache_size > target_size_bytes ||
           (target_inode_count != 0 &&
            cache_inode_count > target_inode_count))) {
     FileSystem::FileInfo file = *file_itr;
@@ -293,7 +293,7 @@ bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
                             message_handler_);
 
     // Now actually clean.
-    to_return = Clean(cache_policy_->target_size,
+    to_return = Clean(cache_policy_->target_size_bytes,
                       cache_policy_->target_inode_count);
     file_system_->Unlock(clean_lock_path_, message_handler_);
   }
@@ -326,7 +326,7 @@ bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
   if (clean_time_ms < now_ms) {
     message_handler_->Message(
         kInfo, "Need to check cache size against target %s",
-        Integer64ToString(cache_policy_->target_size).c_str());
+        Integer64ToString(cache_policy_->target_size_bytes).c_str());
     to_return = true;
   }
   // If the "clean time" is later than now plus one interval, something

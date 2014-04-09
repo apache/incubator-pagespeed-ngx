@@ -40,14 +40,15 @@ class FileCache : public CacheInterface {
  public:
   struct CachePolicy {
     CachePolicy(Timer* timer, Hasher* hasher, int64 clean_interval_ms,
-                int64 target_size, int64 target_inode_count)
+                int64 target_size_bytes, int64 target_inode_count)
         : timer(timer), hasher(hasher), clean_interval_ms(clean_interval_ms),
-          target_size(target_size), target_inode_count(target_inode_count) {}
+          target_size_bytes(target_size_bytes),
+          target_inode_count(target_inode_count) {}
     const Timer* timer;
     const Hasher* hasher;
-    const int64 clean_interval_ms;
-    const int64 target_size;
-    const int64 target_inode_count;
+    int64 clean_interval_ms;
+    int64 target_size_bytes;
+    int64 target_inode_count;
    private:
     DISALLOW_COPY_AND_ASSIGN(CachePolicy);
   };
@@ -73,6 +74,7 @@ class FileCache : public CacheInterface {
   virtual void ShutDown() {}  // TODO(jmarantz): implement.
 
   const CachePolicy* cache_policy() const { return cache_policy_.get(); }
+  CachePolicy* mutable_cache_policy() { return cache_policy_.get(); }
   const GoogleString& path() const { return path_; }
 
   // Variable names.
@@ -94,7 +96,7 @@ class FileCache : public CacheInterface {
   // while. It's OK for others to write and read from the cache while this is
   // going on, but try to avoid Cleaning from two threads at the same time. A
   // target_inode_count of 0 means no inode limit is applied.
-  bool Clean(int64 target_size, int64 target_inode_count);
+  bool Clean(int64 target_size_bytes, int64 target_inode_count);
 
   // Clean the cache, taking care of interprocess locking, as well as
   // timestamp update. Returns true if the cache was actually cleaned.

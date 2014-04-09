@@ -120,15 +120,19 @@ void SystemCaches::ShutDown(MessageHandler* message_handler) {
 
 SystemCachePath* SystemCaches::GetCache(SystemRewriteOptions* config) {
   const GoogleString& path = config->file_cache_path();
+  SystemCachePath* system_cache_path = NULL;
   std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
-      PathCacheMap::value_type(path, static_cast<SystemCachePath*>(NULL)));
+      PathCacheMap::value_type(path, system_cache_path));
   PathCacheMap::iterator iter = result.first;
   if (result.second) {
-    iter->second =
+    iter->second = system_cache_path =
         new SystemCachePath(path, config, factory_, shared_mem_runtime_);
-    factory_->TakeOwnership(iter->second);
+    factory_->TakeOwnership(system_cache_path);
+  } else {
+    system_cache_path = iter->second;
+    system_cache_path->MergeConfig(config);
   }
-  return iter->second;
+  return system_cache_path;
 }
 
 AprMemCache* SystemCaches::NewAprMemCache(const GoogleString& spec) {

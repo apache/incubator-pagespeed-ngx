@@ -16,6 +16,7 @@
 
 #include "net/instaweb/system/public/system_cache_path.h"
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -27,6 +28,7 @@
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 
@@ -46,7 +48,12 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
       lock_manager_(NULL),
       file_cache_backend_(NULL),
       lru_cache_(NULL),
-      file_cache_(NULL) {
+      file_cache_(NULL),
+      clean_interval_explicitly_set_(
+          config->has_file_cache_clean_interval_ms()),
+      clean_size_explicitly_set_(config->has_file_cache_clean_size_kb()),
+      clean_inode_limit_explicitly_set_(
+          config->has_file_cache_clean_inode_limit()) {
   if (config->use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
         shm_runtime, LockManagerSegmentName(),
@@ -93,6 +100,67 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
 }
 
 SystemCachePath::~SystemCachePath() {
+}
+
+void SystemCachePath::MergeConfig(const SystemRewriteOptions* config) {
+  FileCache::CachePolicy* policy = file_cache_backend_->mutable_cache_policy();
+
+  // For the interval, we take the smaller of the specified intervals, so
+  // we get at least as much cache cleaning as each vhost owner wants.
+  MergeEntries(config->file_cache_clean_interval_ms(),
+               config->has_file_cache_clean_interval_ms(),
+               false /* take_larger */,
+               "IntervalMs",
+               &policy->clean_interval_ms,
+               &clean_interval_explicitly_set_);
+
+  // For the sizes, we take the maximum value, so that the owner of any
+  // vhost gets at least as much disk space as they asked for.  Note,
+  // an argument could be made either way, but there's really no right
+  // answer here, which is why MergeEntries prints a warning on a conflict.
+  MergeEntries(config->file_cache_clean_size_kb() * 1024,
+               config->has_file_cache_clean_size_kb(),
+               true, "SizeKb",
+               &policy->target_size_bytes,
+               &clean_size_explicitly_set_);
+  MergeEntries(config->file_cache_clean_inode_limit(),
+               config->has_file_cache_clean_inode_limit(),
+               true, "InodeLimit",
+               &policy->target_inode_count,
+               &clean_inode_limit_explicitly_set_);
+}
+
+void SystemCachePath::MergeEntries(int64 config_value, bool config_was_set,
+                                   bool take_larger,
+                                   const char* name,
+                                   int64* policy_value,
+                                   bool* policy_was_set) {
+  if (config_value != *policy_value) {
+    // If only one of these values was explicitly set, then just silently
+    // update to the explicitly set one.
+    if (config_was_set && !*policy_was_set) {
+      *policy_value = config_value;
+      *policy_was_set = true;
+    } else if (!config_was_set && *policy_was_set) {
+      // No action required; ignore default value coming from the new config.
+    } else {
+      DCHECK(config_was_set && *policy_was_set);
+      *policy_was_set = true;
+      factory_->message_handler()->Message(
+          kWarning,
+          "Conflicting settings %s!=%s for FileCacheClean%s for file-cache %s, "
+          "keeping the %s value",
+          Integer64ToString(config_value).c_str(),
+          Integer64ToString(*policy_value).c_str(),
+          name,
+          path_.c_str(),
+          take_larger ? "larger" : "smaller");
+      if ((take_larger && (config_value > *policy_value)) ||
+          (!take_larger && (config_value < *policy_value))) {
+        *policy_value = config_value;
+      }
+    }
+  }
 }
 
 void SystemCachePath::RootInit() {

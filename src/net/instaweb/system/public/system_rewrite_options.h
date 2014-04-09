@@ -41,17 +41,26 @@ class SystemRewriteOptions : public RewriteOptions {
   int64 file_cache_clean_interval_ms() const {
     return file_cache_clean_interval_ms_.value();
   }
+  bool has_file_cache_clean_interval_ms() const {
+    return file_cache_clean_interval_ms_.was_set();
+  }
   void set_file_cache_clean_interval_ms(int64 x) {
     set_option(x, &file_cache_clean_interval_ms_);
   }
   int64 file_cache_clean_size_kb() const {
     return file_cache_clean_size_kb_.value();
   }
+  bool has_file_cache_clean_size_kb() const {
+    return file_cache_clean_size_kb_.was_set();
+  }
   void set_file_cache_clean_size_kb(int64 x) {
     set_option(x, &file_cache_clean_size_kb_);
   }
   int64 file_cache_clean_inode_limit() const {
     return file_cache_clean_inode_limit_.value();
+  }
+  bool has_file_cache_clean_inode_limit() const {
+    return file_cache_clean_inode_limit_.was_set();
   }
   void set_file_cache_clean_inode_limit(int64 x) {
     set_option(x, &file_cache_clean_inode_limit_);
