@@ -43,6 +43,12 @@ class Timer;
 // TODO(sligocki): Rename to PagespeedResourceFetch or something else ...
 class ResourceFetch : public SharedAsyncFetch {
  public:
+  // For StartWithDriver().
+  enum CleanupMode {
+    kAutoCleanupDriver,
+    kDontAutoCleanupDriver
+  };
+
   // Start an async fetch for pagespeed resource. Response will be streamed
   // to async_fetch.
   //
@@ -55,6 +61,17 @@ class ResourceFetch : public SharedAsyncFetch {
                     bool using_spdy,
                     ServerContext* server_context,
                     AsyncFetch* async_fetch);
+
+  // Same as Start(), but takes the RewriteDriver to use.
+  // cleanup_mode determines whether ResourceFetch will call Cleanup()
+  // on the driver itself. If it's set to kAutoCleanupDriver, the driver should
+  // not be used by the caller after this call. Otherwise, it may be used by
+  // the caller, but it's responsible for calling Cleanup() once done with it.
+  static void StartWithDriver(const GoogleUrl& url,
+                              CleanupMode cleanup_mode,
+                              ServerContext* server_context,
+                              RewriteDriver* driver,
+                              AsyncFetch* async_fetch);
 
   // Fetch a pagespeed resource in a blocking fashion. Response will be
   // streamed back to async_fetch, but this function will not return until
@@ -89,26 +106,10 @@ class ResourceFetch : public SharedAsyncFetch {
   virtual void HandleDone(bool success);
 
  private:
-  enum CleanupMode {
-    kAutoCleanupDriver,
-    kDontAutoCleanupDriver
-  };
-
   ResourceFetch(const GoogleUrl& url, CleanupMode cleanup_mode,
                 RewriteDriver* driver, Timer* timer,
                 MessageHandler* handler, AsyncFetch* async_fetch);
   virtual ~ResourceFetch();
-
-  // Same as Start(), but takes the RewriteDriver to use.
-  // cleanup_mode determines whether ResourceFetch will call Cleanup()
-  // on the driver itself. If it's set to kAutoCleanupDriver, the driver should
-  // not be used by the caller after this call. Otherwise, it may be used by
-  // the caller, but it's responsible for calling Cleanup() once done with it.
-  static void StartWithDriver(const GoogleUrl& url,
-                              CleanupMode cleanup_mode,
-                              ServerContext* server_context,
-                              RewriteDriver* driver,
-                              AsyncFetch* async_fetch);
 
   // If we're running an experiment and the url specifies an experiment spec,
   // set custom_options to use that experiment spec.  If custom_options is NULL
