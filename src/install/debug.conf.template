@@ -834,6 +834,16 @@ ModPagespeedUsePerVHostStatistics on
 </Directory>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName downstreamcacheresource.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_images
+  ModPagespeedDownstreamCachePurgeLocationPrefix \
+    "http://localhost:@@APACHE_SECONDARY_PORT@@/purge"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName renderedimagebeacon.example.com
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"

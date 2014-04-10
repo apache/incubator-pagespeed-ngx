@@ -2419,6 +2419,16 @@ OUTFILE=$OUTDIR/etags
 $WGET -o $OUTFILE -O /dev/null --header "If-None-Match: $ETAG" $URL
 check fgrep -q "awaiting response... 304" $OUTFILE
 
+if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  start_test Downstream cache integration caching headers.
+  URL="http://downstreamcacheresource.example.com/mod_pagespeed_example/images/"
+  URL+="xCuppa.png.pagespeed.ic.0.png"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --save-headers $URL)
+  check_from "$OUT" egrep -iq $'^Cache-Control: .*\r$'
+  check_from "$OUT" egrep -iq $'^Expires: .*\r$'
+  check_from "$OUT" egrep -iq $'^Last-Modified: .*\r$'
+fi
+
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to
 # ?PageSpeed=off. This should also insert an entry into the property cache so
