@@ -329,6 +329,15 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name downstreamcacheresource.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+    pagespeed DownstreamCachePurgeLocationPrefix "http://localhost:@@SECONDARY_PORT@@/purge";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name renderedimagebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
