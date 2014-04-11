@@ -550,7 +550,9 @@ namespace {
 //    doc/en/speed/pagespeed/module/config_filters.html
 // The documentation there includes the filter groups "rewrite_images" and
 // "extend_cache" which expand to multiple filters, all of which need to be
-// listed here.
+// listed here.  config_filters.html both includes lists of filters in each
+// group and, redundantly, a table of all filters with one-liner documentation
+// and  which groups they are in.
 const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
@@ -586,8 +588,13 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // on this level enables "preserve" mode which has the effect of
 // making combine_css et al turn itself off.
 //
-// TODO(huibao): experiment with doing webp conversions (lossy & lossless)
-// by default for images of bounded size.
+// When you change this, remember to update the documentation:
+//    doc/en/speed/pagespeed/module/config_filters.html
+// The documentation there includes the filter groups "rewrite_images" and
+// "extend_cache" which expand to multiple filters, all of which need to be
+// listed here.  config_filters.html both includes lists of filters in each
+// group and, redundantly, a table of all filters with one-liner documentation
+// and  which groups they are in.
 const RewriteOptions::Filter kOptimizeForBandwidthFilterSet[] = {
   RewriteOptions::kConvertGifToPng,                // rewrite_images
   RewriteOptions::kConvertJpegToProgressive,       // rewrite_images
