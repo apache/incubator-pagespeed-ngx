@@ -32,7 +32,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
 #include "net/instaweb/rewriter/public/experiment_util.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -587,15 +586,9 @@ void ProxyFetch::HandleHeadersComplete() {
         StrAppend(&new_loc, locn_url.has_query() ? "&" : "?",
                   driver_->pagespeed_query_params());
         response_headers()->Replace(HttpAttributes::kLocation, new_loc);
+        response_headers()->ComputeCaching();
       }
     }
-    if (driver_->options()->Enabled(RewriteOptions::kRewriteDomains) &&
-        driver_->domain_rewriter() != NULL) {
-      GoogleUrl gurl(url_);
-      driver_->domain_rewriter()->UpdateLocationHeader(gurl, driver_,
-                                                       response_headers());
-    }
-    response_headers()->ComputeCaching();
   }
 
   // Figure out semantic info from response_headers_

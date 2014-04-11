@@ -487,6 +487,8 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
 }
 
 TEST_F(ProxyInterfaceTest, RedirectRequestWhenDomainRewriterEnabled) {
+  // A MapRewriteDomain should not change the Location of a redirect.
+
   // Test to check if we are handling Head requests correctly.
   GoogleString url = "http://www.example.com/";
   GoogleString set_text, get_text;
@@ -510,7 +512,7 @@ TEST_F(ProxyInterfaceTest, RedirectRequestWhenDomainRewriterEnabled) {
   // Headers and body are correct for a Get request.
   EXPECT_STREQ("HTTP/1.0 302 Found\r\n"
                "Content-Type: text/html\r\n"
-               "Location: http://www.example.com/\r\n"
+               "Location: http://m.example.com\r\n"
                "X-Background-Fetch: 0\r\n"
                "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
                "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
