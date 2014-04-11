@@ -43,7 +43,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
       Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 
-  virtual bool IsMeaningful(const RewriteDriver* driver) const;
+  virtual Availability Available(RewriteDriver* driver);
 
   virtual int PercentSeenForCritical() const {
     return kBeaconPercentSeenForCritical;

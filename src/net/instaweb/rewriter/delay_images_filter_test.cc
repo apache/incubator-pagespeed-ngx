@@ -26,6 +26,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -673,6 +674,7 @@ TEST_F(DelayImagesFilterTest, NoHeadTag) {
 TEST_F(DelayImagesFilterTest, PcacheMiss) {
   TestCriticalImagesFinder* finder =
       new TestCriticalImagesFinder(NULL, statistics());
+  finder->set_available(CriticalImagesFinder::kNoDataYet);
   server_context()->set_critical_images_finder(finder);
 
   AddFilter(RewriteOptions::kDelayImages);

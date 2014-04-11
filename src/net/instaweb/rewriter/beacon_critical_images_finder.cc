@@ -75,16 +75,14 @@ GoogleString BeaconCriticalImagesFinder::GetKeyForUrl(const GoogleString& url) {
   return UintToString(hash_val);
 }
 
-bool BeaconCriticalImagesFinder::IsMeaningful(
-    const RewriteDriver* driver) const {
-  CriticalImagesInfo* info = driver->critical_images_info();
-  // The finder is meaningful if the critical images info was set by the split
-  // html helper.
-  if (info != NULL && info->is_critical_image_info_present) {
-    return true;
+CriticalImagesFinder::Availability BeaconCriticalImagesFinder::Available(
+    RewriteDriver* driver) {
+  if (driver->options()->critical_images_beacon_enabled() &&
+      driver->server_context()->factory()->UseBeaconResultsInFilters()) {
+    return CriticalImagesFinder::Available(driver);
+  } else {
+    return CriticalImagesFinder::kDisabled;
   }
-  return driver->options()->critical_images_beacon_enabled() &&
-      driver->server_context()->factory()->UseBeaconResultsInFilters();
 }
 
 bool BeaconCriticalImagesFinder::ShouldBeacon(RewriteDriver* driver) {

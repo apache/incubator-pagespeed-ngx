@@ -472,6 +472,19 @@ CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
   return critical_images_info;
 }
 
+CriticalImagesFinder::Availability CriticalImagesFinder::Available(
+    RewriteDriver* driver) {
+  UpdateCriticalImagesSetInDriver(driver);
+  CriticalImagesInfo* info = driver->critical_images_info();
+  if (info != NULL && info->is_critical_image_info_present &&
+      info->proto.has_html_critical_image_support() &&
+      IsBeaconDataAvailable(info->proto.html_critical_image_support())) {
+    return kAvailable;
+  } else {
+    return kNoDataYet;
+  }
+}
+
 bool CriticalImagesFinder::IsCriticalImageInfoPresent(RewriteDriver* driver) {
   UpdateCriticalImagesSetInDriver(driver);
   return driver->critical_images_info()->is_critical_image_info_present;

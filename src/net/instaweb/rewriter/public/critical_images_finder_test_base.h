@@ -31,14 +31,23 @@ class RewriteDriver;
 class Statistics;
 
 // Provide stub implementation of abstract base class for testing purposes.
+// By default says that all images have been found non-critical.
 class TestCriticalImagesFinder : public CriticalImagesFinder {
  public:
   TestCriticalImagesFinder(const PropertyCache::Cohort* cohort,
                            Statistics* stats)
-      : CriticalImagesFinder(cohort, stats) {}
+      : CriticalImagesFinder(cohort, stats),
+        available_(kAvailable) {}
   virtual ~TestCriticalImagesFinder();
-  virtual bool IsMeaningful(const RewriteDriver* driver) const { return true; }
+  virtual Availability Available(RewriteDriver* driver) {
+    return available_;
+  }
+  void set_available(Availability available) {
+    available_ = available;
+  }
   virtual void ComputeCriticalImages(RewriteDriver* driver) {}
+ private:
+  Availability available_;
 };
 
 class CriticalImagesFinderTestBase : public RewriteTestBase {

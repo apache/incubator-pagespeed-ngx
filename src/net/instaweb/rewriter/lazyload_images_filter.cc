@@ -98,12 +98,24 @@ void LazyloadImagesFilter::Clear() {
 
 RewriterHtmlApplication::Status LazyloadImagesFilter::ShouldApply(
     RewriteDriver* driver) {
+  // Note: there's similar UA logic in
+  // DedupInlinedImagedFilter::DetermineEnabled, so if this logic changes that
+  // logic may well require alteration too.
   if (!driver->request_properties()->SupportsLazyloadImages()) {
     return RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED;
   }
   if (driver->flushing_early() ||
       (driver->request_headers() != NULL &&
        driver->request_headers()->IsXmlHttpRequest())) {
+    return RewriterHtmlApplication::DISABLED;
+  }
+  CriticalImagesFinder* finder =
+      driver->server_context()->critical_images_finder();
+  if (finder->Available(driver) == CriticalImagesFinder::kNoDataYet) {
+    // Don't lazyload images on a page that's waiting for critical image data.
+    // However, this page should later be rewritten when data arrives.  Contrast
+    // this with the case where beaconing is explicitly disabled, and all images
+    // are lazy loaded.
     return RewriterHtmlApplication::DISABLED;
   }
   return RewriterHtmlApplication::ACTIVE;
@@ -153,13 +165,10 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
-  if (noscript_element() != NULL) {
-    return;
-  }
-  if (skip_rewrite_ == element) {
-    skip_rewrite_ = NULL;
-    return;
-  } else if (skip_rewrite_ != NULL) {
+  if (noscript_element() != NULL || skip_rewrite_ != NULL) {
+    if (skip_rewrite_ == element) {
+      skip_rewrite_ = NULL;
+    }
     return;
   }
   if (abort_rewrite_) {
@@ -235,10 +244,13 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 
   CriticalImagesFinder* finder =
       driver()->server_context()->critical_images_finder();
-  // Note that if the platform lacks a CriticalImageFinder
-  // implementation, we consider all images to be non-critical and try
-  // to lazily load them.
-  if (finder->IsMeaningful(driver())) {
+  // Note that if the platform lacks a CriticalImageFinder implementation, we
+  // consider all images to be non-critical and try to lazily load them.
+  // Similarly, if we have disabled data gathering for lazy load, we again lazy
+  // load all images.  If, however, we simply haven't gathered enough data yet,
+  // we consider all images to be critical and disable lazy loading (in
+  // ShouldApply above) in order to provide better above-the-fold loading.
+  if (finder->Available(driver()) == CriticalImagesFinder::kAvailable) {
     // Decode the url since the critical images in the finder are not
     // rewritten.
     if (finder->IsHtmlCriticalImage(full_url.data(), driver())) {

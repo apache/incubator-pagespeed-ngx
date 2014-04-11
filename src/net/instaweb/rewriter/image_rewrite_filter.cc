@@ -1431,6 +1431,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         !slot->disable_rendering() &&
         is_critical_image &&
         driver()->request_properties()->SupportsImageInlining() &&
+        driver()->server_context()->critical_images_finder()->Available(
+            driver()) != CriticalImagesFinder::kNoDataYet &&
         cached->has_low_resolution_inlined_data() &&
         (max_preview_image_index < 0 ||
          image_index < max_preview_image_index)) {
@@ -1479,7 +1481,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 bool ImageRewriteFilter::IsHtmlCriticalImage(StringPiece image_url) const {
   CriticalImagesFinder* finder =
       driver()->server_context()->critical_images_finder();
-  if (!finder->IsMeaningful(driver())) {
+  if (finder->Available(driver()) != CriticalImagesFinder::kAvailable) {
     // Default to all images being critical if we don't have meaningful critical
     // image information.
     return true;

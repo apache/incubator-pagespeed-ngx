@@ -48,7 +48,7 @@ typedef std::map<GoogleString, std::pair<int32, int32> >
 // TODO(jud): Instead of a separate CriticalImagesInfo that gets populated from
 // the CriticalImages protobuf value, we could just store the protobuf value in
 // RewriteDriver and eliminate CriticalImagesInfo. Revisit this when updating
-// this class to support multiple beacon response.
+// this class to support multiple beacon responses.
 struct CriticalImagesInfo {
   CriticalImagesInfo()
       : is_critical_image_info_present(false) {}
@@ -64,6 +64,11 @@ struct CriticalImagesInfo {
 // This information may be used by DelayImagesFilter.
 class CriticalImagesFinder {
  public:
+  enum Availability {
+    kDisabled,   // Data will never be forthcoming
+    kNoDataYet,  // Data is expected but we don't have it yet
+    kAvailable,  // Data is available
+  };
   static const char kCriticalImagesValidCount[];
   static const char kCriticalImagesExpiredCount[];
   static const char kCriticalImagesNotFoundCount[];
@@ -79,8 +84,8 @@ class CriticalImagesFinder {
 
   // Checks whether IsHtmlCriticalImage will return meaningful results about
   // critical images. Users of IsHtmlCriticalImage should check this function
-  // and supply a default behavior if IsMeaningful returns false.
-  virtual bool IsMeaningful(const RewriteDriver* driver) const = 0;
+  // and supply default behaviors when Available != kAvailable.
+  virtual Availability Available(RewriteDriver* driver);
 
   // In order to handle varying critical image sets returned by the beacon, we
   // store a history of the last N critical images, and only declare an image
@@ -103,7 +108,7 @@ class CriticalImagesFinder {
   }
 
   // Checks whether the requested image is present in the critical set or not.
-  // Users of this function should also check IsMeaningful() to see if the
+  // Users of this function should also check Available() to see if the
   // implementation of this function returns meaningful results and provide a
   // default behavior if it does not.  If no critical set value has been
   // obtained, returns false (not critical).

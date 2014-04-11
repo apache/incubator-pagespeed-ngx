@@ -35,6 +35,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_FINDER_SUPPORT_UTIL_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_FINDER_SUPPORT_UTIL_H_
 
+#include "net/instaweb/rewriter/critical_keys.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
@@ -64,7 +65,6 @@ const int64 kLowFreqBeaconMult = 100;
 // correctly and so we drop into low frequency beaconing mode.
 const int64 kNonceExpirationLimit = 5;
 
-class CriticalKeys;
 class MessageHandler;
 class NonceGenerator;
 class RewriteDriver;
@@ -150,6 +150,12 @@ void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
 // request.
 bool UpdateCandidateKeys(const StringSet& keys, CriticalKeys* proto,
                          bool clear_rebeacon_timestamp);
+
+// Based on the CriticalKeys data seen so far, describe whether beacon metadata
+// is available.  This returns false until data is received.
+inline bool IsBeaconDataAvailable(const CriticalKeys& proto) {
+  return (proto.valid_beacons_received() > 0);
+}
 
 }  // namespace net_instaweb
 

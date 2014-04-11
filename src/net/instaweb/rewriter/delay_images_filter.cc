@@ -279,8 +279,7 @@ void DelayImagesFilter::DetermineEnabled() {
   }
   CriticalImagesFinder* finder =
       driver_->server_context()->critical_images_finder();
-  if (finder->IsMeaningful(driver_) &&
-      !finder->IsCriticalImageInfoPresent(driver_) &&
+  if ((finder->Available(driver_) == CriticalImagesFinder::kNoDataYet) &&
       !driver_->options()->Enabled(RewriteOptions::kSplitHtmlHelper)) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),

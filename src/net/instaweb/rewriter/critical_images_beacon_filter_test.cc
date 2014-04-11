@@ -27,11 +27,13 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/gmock.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -191,13 +193,15 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     GoogleString options_signature_hash =
         rewrite_driver()->server_context()->hasher()->Hash(
             rewrite_driver()->options()->signature());
+    bool lazyload_will_run_beacon =
+        rewrite_driver()->options()->Enabled(RewriteOptions::kLazyloadImages) &&
+        LazyloadImagesFilter::ShouldApply(rewrite_driver()) ==
+            RewriterHtmlApplication::ACTIVE;
     GoogleString str = "pagespeed.CriticalImages.Run(";
     StrAppend(&str, "'", beacon_url, "',");
     StrAppend(&str, "'", url, "',");
     StrAppend(&str, "'", options_signature_hash, "',");
-    StrAppend(&str, BoolToString(!rewrite_driver()->options()->Enabled(
-                        RewriteOptions::kLazyloadImages)),
-              ",");
+    StrAppend(&str, BoolToString(!lazyload_will_run_beacon), ",");
     StrAppend(&str, BoolToString(rewrite_driver()->options()->Enabled(
                         RewriteOptions::kResizeToRenderedImageDimensions)),
               ",");
@@ -336,8 +340,18 @@ TEST_F(CriticalImagesBeaconFilterTest, Googlebot) {
 // the beacon when all images have been loaded.
 TEST_F(CriticalImagesBeaconFilterTest, LazyloadEnabled) {
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  // On the first page access, there will be no critical image data and lazyload
+  // will be disabled.
   RunInjection();
   VerifyInjection(1);
+
+  // Advance time to force re-beaconing.  Now there are extant non-critical
+  // images, and lazyload ought to be enabled.
+  factory()->mock_timer()->AdvanceMs(
+      options()->beacon_reinstrument_time_sec() * 1000);
+  ResetDriver();
+  SetupAndProcessUrl();
+  VerifyInjection(2);
 }
 
 }  // namespace net_instaweb

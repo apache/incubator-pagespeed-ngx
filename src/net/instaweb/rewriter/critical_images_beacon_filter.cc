@@ -22,11 +22,13 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -121,8 +123,11 @@ void CriticalImagesBeaconFilter::MaybeAddBeaconJavascript(
           driver()->options()->signature());
   // If lazyload is enabled, it will run the beacon after it has loaded all the
   // images. Otherwise, run it at page onload.
-  GoogleString send_beacon_at_onload = BoolToString(
-      !driver()->options()->Enabled(RewriteOptions::kLazyloadImages));
+  bool lazyload_will_beacon =
+      driver()->options()->Enabled(RewriteOptions::kLazyloadImages) &&
+      LazyloadImagesFilter::ShouldApply(driver()) ==
+          RewriterHtmlApplication::ACTIVE;
+  GoogleString send_beacon_at_onload = BoolToString(!lazyload_will_beacon);
   GoogleString resize_rendered_image_dimensions_enabled =
       BoolToString(driver()->options()->Enabled(
           RewriteOptions::kResizeToRenderedImageDimensions));
@@ -178,7 +183,8 @@ void CriticalImagesBeaconFilter::EndElementImpl(HtmlElement* element) {
               CanAddPagespeedOnloadToImage(*element)) {
             // Add an onload handler only if one is not already specified on the
             // non-rewritten page.
-            driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+            driver()->AddAttribute(
+                element, HtmlName::kOnload, kImageOnloadCode);
             // If beacon javascript has not been added yet, we need to add it
             // before the current node because we are going to use the js for
             // the image criticality check on image-onload.

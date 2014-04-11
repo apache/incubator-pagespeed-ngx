@@ -23,15 +23,15 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
-#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 
@@ -69,8 +69,12 @@ void DedupInlinedImagesFilter::DetermineEnabled() {
   // We are treating this filter like a version of lazyload images because
   // they both replace an image with JavaScript, and in both cases we need
   // to disable the filter for certain classes of UA.
-  set_is_enabled(LazyloadImagesFilter::ShouldApply(driver()) ==
-                 RewriterHtmlApplication::ACTIVE);
+  if (!driver()->request_properties()->SupportsLazyloadImages() ||
+      driver()->flushing_early() ||
+      (driver()->request_headers() != NULL &&
+       driver()->request_headers()->IsXmlHttpRequest())) {
+    set_is_enabled(false);
+  }
 }
 
 void DedupInlinedImagesFilter::StartDocumentImpl() {
