@@ -290,7 +290,7 @@ ngx_int_t copy_response_headers_to_ngx(
           StringCaseEqual(name_gs, "Last-Modified") ||
           StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
-      }      
+      }
     } else if (preserve_caching_headers == kPreserveOnlyCacheControl) {
       // Retain the original Cache-Control header, but send the recomputed
       // values for all other cache-related headers.
@@ -299,7 +299,7 @@ ngx_int_t copy_response_headers_to_ngx(
           StringCaseEqual(name_gs, "Date") ||
           StringCaseEqual(name_gs, "Last-Modified")) {
         continue;
-      }      
+      }
     } // else we don't preserve any headers
 
     ngx_str_t name, value;

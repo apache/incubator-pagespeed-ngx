@@ -72,11 +72,11 @@ namespace net_instaweb {
         done_(false),
         content_length_(-1),
         content_length_known_(false) {
-            ngx_memzero(&url_, sizeof(url_));
-            log_ = log;
-            pool_ = NULL;
-            timeout_event_ = NULL;
-            connection_ = NULL;
+    ngx_memzero(&url_, sizeof(url_));
+    log_ = log;
+    pool_ = NULL;
+    timeout_event_ = NULL;
+    connection_ = NULL;
   }
 
   NgxFetch::~NgxFetch() {

@@ -109,6 +109,10 @@ case "$NGX_GCC_VER" in
   ;;
 esac
 
+if [ "$WNO_ERROR" = "YES" ]; then
+    CFLAGS="$CFLAGS -Wno-error"
+fi
+
 pagespeed_include="\
   $mod_pagespeed_dir \
   $mod_pagespeed_dir/third_party/chromium/src \
