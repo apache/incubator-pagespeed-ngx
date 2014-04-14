@@ -189,14 +189,8 @@ semantic_type::Category CategorizeAttribute(
     return semantic_type::kUndefined;
   }
 
-  // Handle spec-defined attributes.
-  semantic_type::Category spec_category =
-      CategorizeAttributeBySpec(element, attribute->keyword());
-  if (spec_category != semantic_type::kUndefined) {
-    return spec_category;
-  }
-
-  // Handle user-defined attributes.
+  // Handle user-defined attributes.  Do this first so spec-defined attributes
+  // can be overriden.
   for (int i = 0, n = options->num_url_valued_attributes(); i < n; ++i) {
     StringPiece element_i;
     StringPiece attribute_i;
@@ -207,6 +201,14 @@ semantic_type::Category CategorizeAttribute(
       return category_i;
     }
   }
+
+  // Handle spec-defined attributes.
+  semantic_type::Category spec_category =
+      CategorizeAttributeBySpec(element, attribute->keyword());
+  if (spec_category != semantic_type::kUndefined) {
+    return spec_category;
+  }
+
   return semantic_type::kUndefined;
 }
 

@@ -457,6 +457,21 @@ TEST_F(ResourceTagScannerTest, ImageUrlValuedAttribute) {
   EXPECT_EQ(semantic_type::kHyperlink, resource_category_[1]);
 }
 
+TEST_F(ResourceTagScannerTest, ImageUrlValuedAttributeOverride) {
+  options()->ClearSignatureForTesting();
+  options()->AddUrlValuedAttribute("a", "href", semantic_type::kImage);
+  options()->ComputeSignature();
+
+  // Detect the href of this a tag is an image..
+  ValidateNoChanges(
+      "HrefImage",
+      "<a href=find-image>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-image", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
 TEST_F(ResourceTagScannerTest, DoFindLongdesc) {
   ValidateNoChanges(
       "DoFindLongdesc",

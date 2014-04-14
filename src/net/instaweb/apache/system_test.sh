@@ -1804,16 +1804,18 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
       $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
   MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
-  check [ $MATCHES -eq 3 ]
+  check [ $MATCHES -eq 4 ]
 
   # Test to make sure dynamically defined url-valued attributes are rewritten by
   # rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition
   # to having one <img> URL, one <form> URL, and one <a> url it also has one
-  # <span src=...> URL, one <hr imgsrc=...> URL, and one <hr src=...> URL, all
-  # referencing src.example.com.  The first three should be rewritten because of
-  # hardcoded rules, the span.src and hr.imgsrc should be rewritten because of
-  # ModPagespeedUrlValuedAttribute directives, and the hr.src should be left
-  # unmodified.  The rewritten ones should all be rewritten to dst.example.com.
+  # <span src=...> URL, one <hr imgsrc=...> URL, one <hr src=...> URL, and one
+  # <blockquote cite=...> URL, all referencing src.example.com.  The first three
+  # should be rewritten because of hardcoded rules, the span.src and hr.imgsrc
+  # should be rewritten because of UrlValuedAttribute directives, the hr.src
+  # should be left unmodified, and the blockquote.src should be rewritten as an
+  # image because of a UrlValuedAttribute override.  The rewritten ones should
+  # all be rewritten to dst.example.com.
   HOST_NAME="http://url-attribute.example.com"
   TEST="$HOST_NAME/mod_pagespeed_test"
   REWRITE_DOMAINS="$TEST/rewrite_domains.html"
@@ -1824,7 +1826,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $REWRITE_DOMAINS)
   MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
-  check [ $MATCHES -eq 5 ]
+  check [ $MATCHES -eq 6 ]
   MATCHES=$(echo "$RESPONSE_OUT" | \
       fgrep -c '<hr src=http://src.example.com/hr-image>')
   check [ $MATCHES -eq 1 ]
@@ -1838,7 +1840,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   # There are nine resources that should be optimized.
   http_proxy=$SECONDARY_HOSTNAME \
-      fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.' 9
+      fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.' 10
 
   # Make sure <custom d=...> isn't modified at all, but that everything else is
   # recognized as a url and rewritten from ../foo to /foo.  This means that only
@@ -1848,9 +1850,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME \
       fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
 
-  # There are nine images that should be optimized, so grep including .ic.
+  # There are ten images that should be optimized, so grep including .ic.
   http_proxy=$SECONDARY_HOSTNAME \
-      fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 9
+      fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 10
 
   # This test checks that the ModPagespeedClientDomainRewrite directive
   # can turn on.

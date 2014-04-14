@@ -587,6 +587,10 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedUrlValuedAttribute img alt-src Image
   ModPagespeedUrlValuedAttribute video alt-a Image
   ModPagespeedUrlValuedAttribute video alt-b Image
+  ModPagespeedUrlValuedAttribute video alt-b Image
+
+  # Also test that we can redefine spec-defined attributes.
+  ModPagespeedUrlValuedAttribute blockquote cite Image
 </VirtualHost>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
