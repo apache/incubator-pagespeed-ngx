@@ -71,7 +71,8 @@ namespace net_instaweb {
         fetch_end_ms_(0),
         done_(false),
         content_length_(-1),
-        content_length_known_(false) {
+        content_length_known_(false),
+        resolver_ctx_(NULL) {
             ngx_memzero(&url_, sizeof(url_));
             log_ = log;
             pool_ = NULL;
@@ -213,6 +214,8 @@ namespace net_instaweb {
       return;
     }
 
+    release_resolver();
+
     if (timeout_event_ && timeout_event_->timer_set) {
       ngx_del_timer(timeout_event_);
       timeout_event_ = NULL;
@@ -288,7 +291,6 @@ namespace net_instaweb {
           kWarning, "NgxFetch: failed to resolve host [%.*s]",
           static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data);
       fetch->CallbackDone(false);
-      ngx_resolve_name_done(resolver_ctx);
       return;
     }
     ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
@@ -319,7 +321,7 @@ namespace net_instaweb {
         static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data,
         ip_address);
 
-    ngx_resolve_name_done(resolver_ctx);
+    fetch->release_resolver();
 
     if (fetch->InitRequest() != NGX_OK) {
       fetch->message_handler()->Message(kError, "NgxFetch: InitRequest failed");
