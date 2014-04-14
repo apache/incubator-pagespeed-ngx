@@ -191,12 +191,12 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
     me.removeNotProcessedAttributeTillNode(script_elem);
     var script = me.cloneScriptNode(script_elem);
     script.setAttribute("type", "text/javascript");
-    var useSyncScript = !1;
-    "async" in script ? (useSyncScript = !0, script.async = !1) : script.readyState && pagespeedutils.addHandler(script, "readystatechange", function() {
+    var useSyncScript = !0;
+    "async" in script ? script.async = !1 : script.readyState && (useSyncScript = !1, pagespeedutils.addHandler(script, "readystatechange", function() {
       if ("complete" == script.readyState || "loaded" == script.readyState) {
         script.onreadystatechange = null, me.log("Executed: " + url), me.runNext();
       }
-    });
+    }));
     script.setAttribute("src", url);
     var str = script_elem.innerHTML || script_elem.textContent || script_elem.data;
     str && script.appendChild(document.createTextNode(str));

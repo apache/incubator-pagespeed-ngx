@@ -644,11 +644,11 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
 
     var script = me.cloneScriptNode(script_elem);
     script.setAttribute('type', 'text/javascript');
-    var useSyncScript = false;
+    var useSyncScript = true;
     if ('async' in script) {
-      useSyncScript = true;
       script.async = false;
     } else if (script.readyState) {
+      useSyncScript = false;
       var stateChangeHandler = function() {
         if (script.readyState == 'complete' ||
             script.readyState == 'loaded') {
