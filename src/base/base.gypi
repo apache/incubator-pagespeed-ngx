@@ -41,7 +41,7 @@
         '<(chromium_root)/base/callback_internal.cc',
         '<(chromium_root)/base/command_line.cc',
         '<(chromium_root)/base/command_line.h',
-        '<(chromium_root)/base/cpu.cc',
+        '<(chromium_root)/base/cpu_patched.cc',
         '<(chromium_root)/base/cpu.h',
         '<(chromium_root)/base/debug/alias.cc',
         '<(chromium_root)/base/debug/alias.h',
@@ -195,6 +195,33 @@
     ],
   },
   'targets': [
+    # Older assemblers don't recognize the xgetbv opcode, and require explicit
+    # bytes instead.  These can be found by searching the web; example:
+    #   http://lxr.free-electrons.com/source/arch/x86/include/asm/xcr.h#L31
+    {
+      'target_name': 'cpu_patched',
+      'type': 'none',
+      'sources': [
+        '<(chromium_root)/base/cpu.cc',
+        '<(chromium_root)/base/cpu_patched.cc',
+      ],
+      'actions': [
+        {
+          'action_name': 'Patch cpu.cc',
+          'inputs': [
+            '<(chromium_root)/base/cpu.cc',
+          ],
+          'outputs': [
+            '<(chromium_root)/base/cpu_patched.cc',
+          ],
+          'action': [
+            'bash', '-c',
+            'sed \'s/"xgetbv"/".byte 0x0f, 0x01, 0xd0"/\' <@(_inputs) > <@(_outputs)'
+          ],
+          'message': 'Attempting to generate patched <@(_outputs) from <@(_inputs)',
+        },
+      ],
+    },
     {
       'target_name': 'base',
       'type': '<(component)',
@@ -203,6 +230,7 @@
       },
       'dependencies': [
         'base_static',
+        'cpu_patched',
         '<(DEPTH)/third_party/modp_b64/modp_b64.gyp:modp_b64',
         '<(chromium_root)/base/third_party/dynamic_annotations/dynamic_annotations.gyp:dynamic_annotations',
       ],
