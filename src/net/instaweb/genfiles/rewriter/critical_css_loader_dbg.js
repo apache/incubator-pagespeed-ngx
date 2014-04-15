@@ -1,10 +1,13 @@
 (function(){var goog = goog || {};
 goog.global = this;
+goog.isDef = function(val) {
+  return void 0 !== val;
+};
 goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
   var parts = name.split("."), cur = opt_objectToExportTo || goog.global;
   parts[0] in cur || !cur.execScript || cur.execScript("var " + parts[0]);
   for (var part;parts.length && (part = parts.shift());) {
-    parts.length || void 0 === opt_object ? cur = cur[part] ? cur[part] : cur[part] = {} : cur[part] = opt_object;
+    !parts.length && goog.isDef(opt_object) ? cur[part] = opt_object : cur = cur[part] ? cur[part] : cur[part] = {};
   }
 };
 goog.define = function(name, defaultValue) {
@@ -167,9 +170,6 @@ goog.typeOf = function(value) {
     }
   }
   return s;
-};
-goog.isDef = function(val) {
-  return void 0 !== val;
 };
 goog.isNull = function(val) {
   return null === val;
