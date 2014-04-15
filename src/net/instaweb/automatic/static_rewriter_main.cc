@@ -73,8 +73,8 @@ int main(int argc, char** argv) {
   } else if (!static_rewriter.ParseText(url, input_file_path, html_input_buffer,
                                         output_dir, &writer)) {
     fprintf(stderr, "StartParseId failed on url %s\n", url.c_str());
-  } else if (!file_system->WriteFile(
-      output_file_path.c_str(), html_output_buffer, message_handler)) {
+  } else if (!file_system->WriteFileAtomic(
+      output_file_path, html_output_buffer, message_handler)) {
     fprintf(stderr, "failed to write file %s\n", output_file_path.c_str());
   } else {
     exit_status = 0;

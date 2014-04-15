@@ -341,14 +341,9 @@ void PurgeContext::ModifyPurgeSet(PurgeSet* purges_from_file,
 }
 
 bool PurgeContext::WritePurgeFile(const GoogleString& buffer) {
-  GoogleString temp_filename;
-
   // Atomicly write file so we don't have to acquire the lock to read it.
   file_writes_->Add(1);
-  return (file_system_->WriteTempFile(filename_.c_str(), buffer,
-                                      &temp_filename, message_handler_) &&
-          file_system_->RenameFile(temp_filename.c_str(), filename_.c_str(),
-                                   message_handler_));
+  return file_system_->WriteFileAtomic(filename_, buffer, message_handler_);
 }
 
 // There is a non-zero chance that this thread will be unable to

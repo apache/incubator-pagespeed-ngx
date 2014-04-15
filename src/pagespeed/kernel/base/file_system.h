@@ -92,9 +92,7 @@ class FileSystem {
 
   class InputFile : public File {
    public:
-    // TODO(sligocki): Perhaps this should be renamed to avoid confusing
-    // that it returns a bool to indicate success like all other Read methods
-    // in our codebase.
+    // Note: This returns num bytes read, NOT a success bool.
     virtual int Read(char* buf, int size, MessageHandler* handler) = 0;
 
    protected:
@@ -106,9 +104,6 @@ class FileSystem {
    public:
     // Note: Write is not atomic. If Write fails, there is no indication of how
     // much data has already been written to the file.
-    //
-    // TODO(sligocki): Would we like a version that returns the amound written?
-    // If so, it should be named so that it is clear it is returning int.
     virtual bool Write(const StringPiece& buf, MessageHandler* handler) = 0;
     virtual bool Flush(MessageHandler* handler) = 0;
     virtual bool SetWorldReadable(MessageHandler* handler) = 0;
@@ -158,6 +153,7 @@ class FileSystem {
   virtual bool ReadFile(InputFile* input_file,
                         Writer* writer,
                         MessageHandler* handler);
+  // Non-atomic. Use WriteFileAtomic() for atomic version.
   virtual bool WriteFile(const char* filename,
                          const StringPiece& buffer,
                          MessageHandler* handler);
@@ -171,7 +167,6 @@ class FileSystem {
   // Write a temp file first and then copy to filename so that the file
   // cannot be read after being partially written.
   // Temp file name is based on filename.
-  // TODO(sligocki): Use thoughout code where appropriate.
   bool WriteFileAtomic(const StringPiece& filename,
                        const StringPiece& buffer,
                        MessageHandler* handler);

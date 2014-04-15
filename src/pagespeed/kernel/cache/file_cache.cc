@@ -154,7 +154,6 @@ void FileCache::Delete(const GoogleString& key) {
   }
   NullMessageHandler null_handler;  // Do not emit messages on delete failures.
   file_system_->RemoveFile(filename.c_str(), &null_handler);
-  return;
 }
 
 bool FileCache::EncodeFilename(const GoogleString& key,
@@ -293,9 +292,9 @@ bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
           message_handler_).is_true()) {
     // Update the timestamp file..
     next_clean_ms_ = next_clean_time_ms;
-    if (!file_system_->WriteFile(clean_time_path_.c_str(),
-                                 Integer64ToString(next_clean_time_ms),
-                                 message_handler_)) {
+    if (!file_system_->WriteFileAtomic(clean_time_path_,
+                                       Integer64ToString(next_clean_time_ms),
+                                       message_handler_)) {
       write_errors_->Add(1);
     }
 

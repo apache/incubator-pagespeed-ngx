@@ -2,6 +2,7 @@
 // Author: atulvasu@google.com (Atul Vasu)
 
 #include <algorithm>
+#include <cstdlib>
 
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -43,12 +44,15 @@ const char kOutputTemplate[] =
 
 namespace net_instaweb {
 
-void DataToC(int argc, char* argv[]) {
+bool DataToC(int argc, char* argv[]) {
   ParseCommandLineFlags(&argc, &argv, true);
   NullMessageHandler handler;
   StdioFileSystem file_system;
+
   GoogleString input;
   file_system.ReadFile(FLAGS_data_file.c_str(), &input, &handler);
+
+  // Transform input file contents into escaped C string.
   GoogleString joined = "";
   for (size_t i = 0; i < input.size(); i += 60) {
     // substr says if length exceeds it takes chars till end of string.
@@ -57,11 +61,17 @@ void DataToC(int argc, char* argv[]) {
   }
   GoogleString output = StringPrintf(kOutputTemplate, FLAGS_data_file.c_str(),
       FLAGS_varname.c_str(), joined.c_str());
-  file_system.WriteFile(FLAGS_c_file.c_str(), output, &handler);
+
+  file_system.RemoveFile(FLAGS_c_file.c_str(), &handler);
+  return file_system.WriteFileAtomic(FLAGS_c_file, output, &handler);
 }
 
 }  // namespace net_instaweb
 
 int main(int argc, char* argv[]) {
-  net_instaweb::DataToC(argc, argv);
+  if (net_instaweb::DataToC(argc, argv)) {
+    return EXIT_SUCCESS;
+  } else {
+    return EXIT_FAILURE;
+  }
 }
