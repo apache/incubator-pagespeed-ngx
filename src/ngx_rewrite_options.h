@@ -68,6 +68,24 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static const NgxRewriteOptions* DynamicCast(const RewriteOptions* instance);
   static NgxRewriteOptions* DynamicCast(RewriteOptions* instance);
 
+  const GoogleString& statistics_path() const {
+    return statistics_path_.value();
+  }
+  const GoogleString& global_statistics_path() const {
+    return global_statistics_path_.value();
+  }
+  const GoogleString& console_path() const {
+    return console_path_.value();
+  }
+  const GoogleString& messages_path() const {
+    return messages_path_.value();
+  }
+  const GoogleString& admin_path() const {
+    return admin_path_.value();
+  }
+  const GoogleString& global_admin_path() const {
+    return global_admin_path_.value();
+  }
 
  private:
   // Helper methods for ParseAndSetOptions().  Each can:
@@ -109,9 +127,19 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   static void add_ngx_option(typename OptionClass::ValueType default_value,
                              OptionClass NgxRewriteOptions::*offset,
                              const char* id,
-                             StringPiece option_name) {
-    AddProperty(default_value, offset, id, option_name, ngx_properties_);
+                             StringPiece option_name,
+                             OptionScope scope,
+                             const char* help) {
+    AddProperty(default_value, offset, id, option_name, scope, help,
+                ngx_properties_);
   }
+
+  Option<GoogleString> statistics_path_;
+  Option<GoogleString> global_statistics_path_;
+  Option<GoogleString> console_path_;
+  Option<GoogleString> messages_path_;
+  Option<GoogleString> admin_path_;
+  Option<GoogleString> global_admin_path_;
 
   // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
   // ignoring case.

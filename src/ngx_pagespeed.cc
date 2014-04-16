@@ -441,8 +441,11 @@ enum Response {
   kPagespeedDisabled,
   kBeacon,
   kStatistics,
+  kGlobalStatistics,
   kConsole,
   kMessages,
+  kAdmin,
+  kGlobalAdmin,
   kPagespeedSubrequest,
   kNotHeadOrGet,
   kErrorResponse,
@@ -1567,16 +1570,26 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
   } else if (url.PathSansLeaf() ==
              NgxRewriteDriverFactory::kStaticAssetPrefix) {
     return RequestRouting::kStaticContent;
-  } else if (url.PathSansQuery() == "/ngx_pagespeed_statistics" ||
-             url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
-    return RequestRouting::kStatistics;
-  } else if (url.PathSansQuery() == "/pagespeed_console") {
-    return RequestRouting::kConsole;
-  } else if (url.PathSansQuery() == "/ngx_pagespeed_message") {
-    return RequestRouting::kMessages;
   }
 
-  RewriteOptions* global_options = cfg_s->server_context->global_options();
+  NgxRewriteOptions* global_options = cfg_s->server_context->config();
+
+  StringPiece path = url.PathSansQuery();
+  if (path == global_options->statistics_path()) {
+    return RequestRouting::kStatistics;
+  } else if (path == global_options->global_statistics_path()) {
+    return RequestRouting::kGlobalStatistics;
+  } else if (path == global_options->console_path()) {
+    return RequestRouting::kConsole;
+  } else if (path == global_options->messages_path()) {
+    return RequestRouting::kMessages;
+  } else if (!global_options->admin_path().empty() &&
+             path.starts_with(global_options->admin_path())) {
+    return RequestRouting::kAdmin;
+  } else if (!global_options->global_admin_path().empty() &&
+             path.starts_with(global_options->global_admin_path())) {
+    return RequestRouting::kGlobalAdmin;
+  }
 
   const GoogleString* beacon_url;
   if (ps_is_https(r)) {
@@ -1592,7 +1605,9 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
   return RequestRouting::kResource;
 }
 
-ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
+ngx_int_t ps_resource_handler(ngx_http_request_t* r,
+                              bool html_rewrite,
+                              RequestRouting::Response response_category) {
   if (r != r->main) {
     return NGX_DECLINED;
   }
@@ -1653,6 +1668,12 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
 
   bool pagespeed_resource =
       !html_rewrite && cfg_s->server_context->IsPagespeedResource(url);
+  bool is_an_admin_handler =
+      response_category == RequestRouting::kStatistics ||
+      response_category == RequestRouting::kGlobalStatistics ||
+      response_category == RequestRouting::kConsole ||
+      response_category == RequestRouting::kAdmin ||
+      response_category == RequestRouting::kGlobalAdmin;
 
   if (html_rewrite) {
     ps_release_base_fetch(ctx);
@@ -1678,7 +1699,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
       // Downstream cache integration is not enabled. Disable original
       // Cache-Control headers.
       ctx->preserve_caching_headers = kDontPreserveHeaders;
-    } else if (!pagespeed_resource) {
+    } else if (!pagespeed_resource && !is_an_admin_handler) {
       ctx->preserve_caching_headers = kPreserveOnlyCacheControl;
       // Downstream cache integration is enabled. If a rebeaconing key has been
       // configured and there is a ShouldBeacon header with the correct key,
@@ -1731,6 +1752,42 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r, bool html_rewrite) {
         url,
         custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
+    return ps_async_wait_response(r);
+  } else if (is_an_admin_handler) {
+    QueryParams query_params;
+    query_params.Parse(url.Query());
+
+    PosixTimer timer;
+    int64 now_ms = timer.NowMs();
+    ctx->base_fetch->response_headers()->SetDateAndCaching(
+        now_ms, 0 /* max-age */, ", no-cache");
+
+    if (response_category == RequestRouting::kStatistics ||
+        response_category == RequestRouting::kGlobalStatistics) {
+      cfg_s->server_context->StatisticsPage(
+          response_category == RequestRouting::kGlobalStatistics,
+          query_params,
+          cfg_s->server_context->config(),
+          ctx->base_fetch);
+    } else if (response_category == RequestRouting::kConsole) {
+      cfg_s->server_context->ConsoleHandler(
+          *cfg_s->server_context->config(),
+          SystemServerContext::kStatistics,
+          query_params,
+          ctx->base_fetch);
+    } else if (response_category == RequestRouting::kAdmin ||
+               response_category == RequestRouting::kGlobalAdmin) {
+      cfg_s->server_context->AdminPage(
+          response_category == RequestRouting::kGlobalAdmin,
+          url,
+          query_params,
+          custom_options == NULL ? cfg_s->server_context->config()
+                                 : custom_options.get(),
+          ctx->base_fetch);
+    } else {
+      CHECK(false);
+    }
+
     return ps_async_wait_response(r);
   }
 
@@ -2038,7 +2095,8 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
-  ngx_int_t rc = ps_resource_handler(r, true /* html rewrite */);
+  ngx_int_t rc = ps_resource_handler(r, true /* html rewrite */,
+                                     RequestRouting::kResource);
   if (rc != NGX_OK) {
     ctx->html_rewrite = false;
     return ngx_http_next_header_filter(r);
@@ -2320,27 +2378,6 @@ ngx_int_t send_out_headers_and_body(
   return ngx_http_output_filter(r, out);
 }
 
-namespace {
-
-// TODO(jefftk): This class is a temporary shim to just support console fetch,
-// but we eventually want to convert everything in ps_simple_handler to use
-// something akin to NgxBaseFetch (which sends results direct to nginx).  This
-// is work in progress (but well along) in the mod_pagespeed world.
-class NgxPagespeedConsoleAsyncFetch : public AsyncFetchUsingWriter {
- public:
-  NgxPagespeedConsoleAsyncFetch(const RequestContextPtr& request_context,
-                                Writer* writer)
-      : AsyncFetchUsingWriter(request_context, writer) { }
-  virtual void HandleDone(bool status) { }
-  virtual void HandleHeadersComplete() { }
-
-  void FlushToNgx(const GoogleString& output, ngx_http_request_t* r) {
-    send_out_headers_and_body(r, *response_headers(), output);
-  }
-};
-
-}  // namespace
-
 ngx_int_t ps_simple_handler(ngx_http_request_t* r,
                             NgxServerContext* server_context,
                             RequestRouting::Response response_category) {
@@ -2375,34 +2412,6 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
       }
       file_contents.CopyToString(&output);
       break;
-    }
-    case RequestRouting::kStatistics: {
-      bool is_global_request =
-          StringCaseStartsWith(
-              request_uri_path, "/ngx_pagespeed_global_statistics");
-      ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-      RequestContextPtr request_context(
-          cfg_s->server_context->NewRequestContext(r));
-      NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
-      server_context->StatisticsPage(
-          is_global_request,
-          query_params,
-          cfg_s->server_context->global_options(),
-          &fetch);
-      fetch.FlushToNgx(output, r);
-      return NGX_OK;
-    }
-    case RequestRouting::kConsole: {
-      ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-      RequestContextPtr request_context(
-          cfg_s->server_context->NewRequestContext(r));
-      NgxPagespeedConsoleAsyncFetch fetch(request_context, &writer);
-      server_context->ConsoleHandler(*server_context->config(),
-                                     SystemServerContext::kStatistics,
-                                     query_params,
-                                     &fetch);
-      fetch.FlushToNgx(output, r);
-      return NGX_OK;
     }
     case RequestRouting::kMessages: {
       GoogleString log;
@@ -2643,12 +2652,16 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case RequestRouting::kBeacon:
       return ps_beacon_handler(r);
     case RequestRouting::kStaticContent:
-    case RequestRouting::kStatistics:
-    case RequestRouting::kConsole:
     case RequestRouting::kMessages:
       return ps_simple_handler(r, cfg_s->server_context, response_category);
+    case RequestRouting::kStatistics:
+    case RequestRouting::kGlobalStatistics:
+    case RequestRouting::kConsole:
+    case RequestRouting::kAdmin:
+    case RequestRouting::kGlobalAdmin:
     case RequestRouting::kResource:
-      return ps_resource_handler(r, false /* html rewrite */);
+      return ps_resource_handler(
+          r, false /* html rewrite */, response_category);
   }
 
   CHECK(0);

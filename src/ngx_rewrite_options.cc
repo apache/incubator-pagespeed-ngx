@@ -37,6 +37,13 @@ namespace net_instaweb {
 
 namespace {
 
+const char kStatisticsPath[] = "StatisticsPath";
+const char kGlobalStatisticsPath[] = "GlobalStatisticsPath";
+const char kConsolePath[] = "ConsolePath";
+const char kMessagesPath[] = "MessagesPath";
+const char kAdminPath[] = "AdminPath";
+const char kGlobalAdminPath[] = "GlobalAdminPath";
+
 // These options are copied from mod_instaweb.cc, where APACHE_CONFIG_OPTIONX
 // indicates that they can not be set at the directory/location level. They set
 // options in the RewriteDriverFactory, so they do not appear in RewriteOptions.
@@ -92,7 +99,26 @@ void NgxRewriteOptions::Init() {
 }
 
 void NgxRewriteOptions::AddProperties() {
-  // Nothing ngx-specific for now.
+  // Nginx-specific options.
+  add_ngx_option(
+      "", &NgxRewriteOptions::statistics_path_, "nsp", kStatisticsPath,
+      kProcessScope, "Set the statistics path. Ex: /ngx_pagespeed_statistics");
+  add_ngx_option(
+      "", &NgxRewriteOptions::global_statistics_path_, "ngsp",
+      kGlobalStatisticsPath, kProcessScope,
+      "Set the global statistics path. Ex: /ngx_pagespeed_global_statistics");
+  add_ngx_option(
+      "", &NgxRewriteOptions::console_path_, "ncp", kConsolePath, kProcessScope,
+      "Set the console path. Ex: /pagespeed_console");
+  add_ngx_option(
+      "", &NgxRewriteOptions::messages_path_, "nmp", kMessagesPath,
+      kProcessScope, "Set the messages path.  Ex: /ngx_pagespeed_message");
+  add_ngx_option(
+      "", &NgxRewriteOptions::admin_path_, "nap", kAdminPath,
+      kProcessScope, "Set the admin path.  Ex: /pagespeed_admin");
+  add_ngx_option(
+      "", &NgxRewriteOptions::global_admin_path_, "ngap", kGlobalAdminPath,
+      kProcessScope, "Set the global admin path.  Ex: /pagespeed_global_admin");
 
   MergeSubclassProperties(ngx_properties_);
 
