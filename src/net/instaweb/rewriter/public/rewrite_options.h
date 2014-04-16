@@ -1809,7 +1809,12 @@ class RewriteOptions {
   const GoogleString& downstream_cache_purge_location_prefix() const {
     return downstream_cache_purge_location_prefix_.value();
   }
-  void set_downstream_cache_purge_location_prefix(const StringPiece& p) {
+  void set_downstream_cache_purge_location_prefix(StringPiece p) {
+    // Remove any trailing slashes. Leaving them in causes the request to have
+    // multiple trailing slashes.
+    while (p.ends_with("/")) {
+      p.remove_suffix(1);
+    }
     set_option(p.as_string(), &downstream_cache_purge_location_prefix_);
   }
   bool IsDownstreamCacheIntegrationEnabled() const {
