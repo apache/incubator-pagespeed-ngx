@@ -17,6 +17,8 @@
 
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 
+#include <memory>
+
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -185,7 +187,7 @@ void SuppressPreheadFilter::EndDocument() {
   // http://tools.ietf.org/html/rfc6265#section-4.1.2.6
   flush_early_info->set_http_only_cookie_present(
       flush_early_info->http_only_cookie_present() ||
-      response_headers_.HasCookie("HttpOnly", NULL));
+      response_headers_.HasAnyCookiesWithAttribute("HttpOnly", NULL));
   if (!has_charset_) {
     FlushEarlyInfoFinder* finder =
         driver_->server_context()->flush_early_info_finder();

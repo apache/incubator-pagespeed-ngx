@@ -17,9 +17,7 @@
 #include "pagespeed/kernel/http/request_headers.h"
 
 #include "base/logging.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_multi_map.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/writer.h"
@@ -32,23 +30,21 @@ namespace net_instaweb {
 class MessageHandler;
 
 RequestHeaders::RequestHeaders() {
-  proto_.reset(new HttpRequestHeaders);
+  Headers<HttpRequestHeaders>::SetProto(new HttpRequestHeaders);
 }
 
 void RequestHeaders::Clear() {
   Headers<HttpRequestHeaders>::Clear();
-  map_.reset(NULL);
-  proto_->Clear();
+  mutable_proto()->Clear();
 }
 
 void RequestHeaders::CopyFromProto(const HttpRequestHeaders& p) {
-  map_.reset(NULL);
-  proto_->CopyFrom(p);
+  Headers<HttpRequestHeaders>::Clear();
+  Headers<HttpRequestHeaders>::CopyProto(p);
 }
 
 void RequestHeaders::CopyFrom(const RequestHeaders& other) {
-  map_.reset(NULL);
-  proto_->CopyFrom(*other.proto_);
+  CopyFromProto(*other.proto());
 }
 
 GoogleString RequestHeaders::ToString() const {
@@ -64,23 +60,24 @@ GoogleString RequestHeaders::ToString() const {
 // statements rather than array lookups just so we don't have to bother
 // initializing the array.
 void RequestHeaders::set_method(Method method) {
+  HttpRequestHeaders* proto = mutable_proto();
   switch (method) {
-    case kOptions:     proto_->set_method(HttpRequestHeaders::OPTIONS); break;
-    case kGet:         proto_->set_method(HttpRequestHeaders::GET);     break;
-    case kHead:        proto_->set_method(HttpRequestHeaders::HEAD);    break;
-    case kPost:        proto_->set_method(HttpRequestHeaders::POST);    break;
-    case kPut:         proto_->set_method(HttpRequestHeaders::PUT);     break;
-    case kDelete:      proto_->set_method(HttpRequestHeaders::DELETE);  break;
-    case kTrace:       proto_->set_method(HttpRequestHeaders::TRACE);   break;
-    case kConnect:     proto_->set_method(HttpRequestHeaders::CONNECT); break;
-    case kPatch:       proto_->set_method(HttpRequestHeaders::PATCH);   break;
-    case kPurge:       proto_->set_method(HttpRequestHeaders::PURGE);   break;
-    case kError:       proto_->set_method(HttpRequestHeaders::INVALID); break;
+    case kOptions:     proto->set_method(HttpRequestHeaders::OPTIONS); break;
+    case kGet:         proto->set_method(HttpRequestHeaders::GET);     break;
+    case kHead:        proto->set_method(HttpRequestHeaders::HEAD);    break;
+    case kPost:        proto->set_method(HttpRequestHeaders::POST);    break;
+    case kPut:         proto->set_method(HttpRequestHeaders::PUT);     break;
+    case kDelete:      proto->set_method(HttpRequestHeaders::DELETE);  break;
+    case kTrace:       proto->set_method(HttpRequestHeaders::TRACE);   break;
+    case kConnect:     proto->set_method(HttpRequestHeaders::CONNECT); break;
+    case kPatch:       proto->set_method(HttpRequestHeaders::PATCH);   break;
+    case kPurge:       proto->set_method(HttpRequestHeaders::PURGE);   break;
+    case kError:       proto->set_method(HttpRequestHeaders::INVALID); break;
   }
 }
 
 RequestHeaders::Method RequestHeaders::method() const {
-  switch (proto_->method()) {
+  switch (proto()->method()) {
     case HttpRequestHeaders::OPTIONS:     return kOptions;
     case HttpRequestHeaders::GET:         return kGet;
     case HttpRequestHeaders::HEAD:        return kHead;
@@ -98,7 +95,7 @@ RequestHeaders::Method RequestHeaders::method() const {
 }
 
 const char* RequestHeaders::method_string() const {
-  switch (proto_->method()) {
+  switch (proto()->method()) {
     case HttpRequestHeaders::OPTIONS:     return "OPTIONS";
     case HttpRequestHeaders::GET:         return "GET";
     case HttpRequestHeaders::HEAD:        return "HEAD";
@@ -116,11 +113,11 @@ const char* RequestHeaders::method_string() const {
 }
 
 const GoogleString& RequestHeaders::message_body() const {
-  return proto_->message_body();
+  return proto()->message_body();
 }
 
 void RequestHeaders::set_message_body(const GoogleString& data) {
-  proto_->set_message_body(data);
+  mutable_proto()->set_message_body(data);
 }
 
 // Serialize meta-data to a binary stream.

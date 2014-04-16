@@ -304,15 +304,29 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // format.
   bool GetCookieString(GoogleString* cookie_str) const;
 
-  // Returns true in the response headers have a cookie attribute with the given
-  // name. values gives the associated values.
-  // name=value results in "value" in values.
-  // name=      results in "" in values.
-  // name       results in nothing being added to values.
+  // Returns true if the response headers have a cookie with the given name.
+  // 'values' gives the associated values. 'attributes' gives the attributes.
+  // name            results in "" in values and nothing in attributes.
+  // name=; HttpOnly results in "" in values and "HttpOnly" in attributes.
+  // name=value      results in "value" in values and nothing in attributes.
+  // name=value; Expires=yaddayadda; HttpOnly results in "value" in values and
+  //                 " Expires=yaddayadda" and " HttpOnly" in attributes.
+  //                 Note that the attributes are not trimmed of whitespace.
   // The return value is true in all the above cases.
-  // It is a limitation of this API that a cookie value of "name=value;name" is
-  // indistinguishable from a cookie value of "name=value".
-  bool HasCookie(StringPiece name, StringPieceVector* values) const;
+  // It is a limitation of this API that a cookie with no value set is
+  // indistinguishable from a cookie with an empty value. Furthermore, if the
+  // cookie is set in multiple headers, values and attributes will be the union
+  // of those headers' contents.
+  // TODO(matterbury): Fix this to implement the correct behavior, which should
+  // take into account the domain and path of the cookie as part of uniqueness.
+  bool HasCookie(StringPiece name, StringPieceVector* values,
+                 StringPieceVector* attributes) const;
+
+  // Returns true if any cookies in the response headers have an attribute with
+  // the given name, returning the value for the first one found in
+  // '*attribute_value' iff it isn't NULL.
+  bool HasAnyCookiesWithAttribute(StringPiece attribute_name,
+                                  StringPiece* attribute_value);
 
  protected:
   virtual void UpdateHook();

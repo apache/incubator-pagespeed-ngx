@@ -1936,30 +1936,52 @@ TEST_F(ResponseHeadersTest, HasCookie) {
   response_headers_.Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
   response_headers_.Add(HttpAttributes::kSetCookie, "UA=chrome");
   response_headers_.Add(HttpAttributes::kSetCookie, "UA=ie");
-  response_headers_.Add(HttpAttributes::kSetCookie, "UA=");
-  response_headers_.Add(HttpAttributes::kSetCookie, "path=/");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=;path=/");
 
   StringPieceVector values;
-  EXPECT_FALSE(response_headers_.HasCookie("HttpOnly", NULL));
-  EXPECT_TRUE(response_headers_.HasCookie("UA", &values));
-  EXPECT_EQ(3, values.size());
+  StringPieceVector attributes;
+  StringPiece attribute_value;
+  EXPECT_FALSE(response_headers_.HasCookie("HttpOnly", NULL, NULL));
+  EXPECT_TRUE(response_headers_.HasCookie("UA", &values, &attributes));
+  ASSERT_EQ(3, values.size());
   EXPECT_EQ("chrome", values[0]);
   EXPECT_EQ("ie", values[1]);
   EXPECT_EQ("", values[2]);
+  ASSERT_EQ(1, attributes.size());
+  EXPECT_EQ("path=/", attributes[0]);
+  EXPECT_TRUE(response_headers_.FindValueForName(attributes, "path",
+                                                 &attribute_value));
+  EXPECT_EQ("/", attribute_value);
+  EXPECT_TRUE(response_headers_.HasAnyCookiesWithAttribute("path", NULL));
+  EXPECT_FALSE(response_headers_.HasAnyCookiesWithAttribute("HttpOnly", NULL));
 
   response_headers_.Add(HttpAttributes::kSetCookie, "JSESSIONID=123; HttpOnly");
-  EXPECT_TRUE(response_headers_.HasCookie("HttpOnly", NULL));
+  EXPECT_TRUE(response_headers_.HasAnyCookiesWithAttribute("HttpOnly", NULL));
+  EXPECT_FALSE(response_headers_.HasAnyCookiesWithAttribute("yaddayadda",
+                                                            NULL));
 
   response_headers_.RemoveAll(HttpAttributes::kSetCookie);
   values.clear();
-  EXPECT_FALSE(response_headers_.HasCookie("HttpOnly", NULL));
+  attributes.clear();
+  EXPECT_FALSE(response_headers_.HasCookie("JSESSIONID", NULL, NULL));
+  EXPECT_FALSE(response_headers_.HasAnyCookiesWithAttribute("HttpOnly", NULL));
 
-  response_headers_.Add(HttpAttributes::kSetCookie,
-                        "ID=ABC; HttpOnly; UA=chrome; UA=ie; UA=");
-  EXPECT_TRUE(response_headers_.HasCookie("HttpOnly", &values));
-  EXPECT_EQ(0, values.size());
-  EXPECT_TRUE(response_headers_.HasCookie("UA", &values));
-  EXPECT_EQ(3, values.size());
+  response_headers_.Add(HttpAttributes::kSetCookie, "ID=ABC; HttpOnly ;path=/");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=chrome");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=ie");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=");
+  EXPECT_TRUE(response_headers_.HasCookie("ID", &values, &attributes));
+  ASSERT_EQ(1, values.size());
+  EXPECT_EQ("ABC", values[0]);
+  ASSERT_EQ(2, attributes.size());
+  EXPECT_EQ(" HttpOnly ", attributes[0]);  // Note, not trimmed.
+  EXPECT_EQ("path=/", attributes[1]);
+  EXPECT_TRUE(response_headers_.FindValueForName(attributes, "HttpOnly", NULL));
+  values.clear();
+  attributes.clear();
+  EXPECT_TRUE(response_headers_.HasCookie("UA", &values, &attributes));
+  EXPECT_EQ(0, attributes.size());
+  ASSERT_EQ(3, values.size());
   EXPECT_EQ("chrome", values[0]);
   EXPECT_EQ("ie", values[1]);
   EXPECT_EQ("", values[2]);

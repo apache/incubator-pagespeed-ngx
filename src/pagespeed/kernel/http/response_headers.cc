@@ -18,14 +18,15 @@
 
 #include <algorithm>                    // for min
 #include <cstdio>     // for fprintf, stderr, snprintf
+#include <map>
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_multi_map.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/time_util.h"
@@ -54,7 +55,7 @@ const int64 ResponseHeaders::kDefaultMinCacheTtlMs;
 ResponseHeaders::ResponseHeaders()
     : implicit_cache_ttl_ms_(kDefaultImplicitCacheTtlMs),
       min_cache_ttl_ms_(kDefaultMinCacheTtlMs) {
-  proto_.reset(new HttpResponseHeaders);
+  Headers<HttpResponseHeaders>::SetProto(new HttpResponseHeaders);
   Clear();
 }
 
@@ -119,8 +120,8 @@ void ResponseHeaders::FixDateHeaders(int64 now_ms) {
     // and if we decide we need to alter the Date header then we'll have to
     // recompute Caching later anyway.
     has_date = ParseDateHeader(HttpAttributes::kDate, &date_ms);
-  } else if (proto_->has_date_ms()) {
-    date_ms = proto_->date_ms();
+  } else if (proto()->has_date_ms()) {
+    date_ms = proto()->date_ms();
   } else {
     has_date = false;
   }
@@ -163,8 +164,9 @@ void ResponseHeaders::FixDateHeaders(int64 now_ms) {
         // Page Speed's caching libraries will now compute the expires
         // for us based on the TTL and the date we just set, so we can
         // set a corrected expires header.
-        if (proto_->has_expiration_time_ms()) {
-          SetTimeHeader(HttpAttributes::kExpires, proto_->expiration_time_ms());
+        if (proto()->has_expiration_time_ms()) {
+          SetTimeHeader(HttpAttributes::kExpires,
+                        proto()->expiration_time_ms());
         }
         cache_fields_dirty_ = false;
         recompute_caching = false;
@@ -178,8 +180,8 @@ void ResponseHeaders::FixDateHeaders(int64 now_ms) {
 }
 
 void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
-  map_.reset(NULL);
-  *(proto_.get()) = *(other.proto_.get());
+  Headers<HttpResponseHeaders>::Clear();
+  Headers<HttpResponseHeaders>::CopyProto(*other.proto());
   cache_fields_dirty_ = other.cache_fields_dirty_;
   force_cache_ttl_ms_ = other.force_cache_ttl_ms_;
   force_cached_ = other.force_cached_;
@@ -190,16 +192,17 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
 void ResponseHeaders::Clear() {
   Headers<HttpResponseHeaders>::Clear();
 
-  proto_->set_browser_cacheable(false);  // accurate iff !cache_fields_dirty_
-  proto_->set_requires_proxy_revalidation(false);
-  proto_->set_requires_browser_revalidation(false);
-  proto_->clear_expiration_time_ms();
-  proto_->clear_date_ms();
-  proto_->clear_last_modified_time_ms();
-  proto_->clear_status_code();
-  proto_->clear_reason_phrase();
-  proto_->clear_header();
-  proto_->clear_is_implicitly_cacheable();
+  HttpResponseHeaders* proto = mutable_proto();
+  proto->set_browser_cacheable(false);  // accurate iff !cache_fields_dirty_
+  proto->set_requires_proxy_revalidation(false);
+  proto->set_requires_browser_revalidation(false);
+  proto->clear_expiration_time_ms();
+  proto->clear_date_ms();
+  proto->clear_last_modified_time_ms();
+  proto->clear_status_code();
+  proto->clear_reason_phrase();
+  proto->clear_header();
+  proto->clear_is_implicitly_cacheable();
   cache_fields_dirty_ = false;
   force_cache_ttl_ms_ = -1;
   force_cached_ = false;
@@ -207,53 +210,54 @@ void ResponseHeaders::Clear() {
 }
 
 int ResponseHeaders::status_code() const {
-  return proto_->status_code();
+  return proto()->status_code();
 }
 
 void ResponseHeaders::set_status_code(int code) {
-  proto_->set_status_code(code);
+  mutable_proto()->set_status_code(code);
 }
 
 bool ResponseHeaders::has_status_code() const {
-  return proto_->has_status_code();
+  return proto()->has_status_code();
 }
 
 const char* ResponseHeaders::reason_phrase() const {
-  return proto_->has_reason_phrase()
-      ? proto_->reason_phrase().c_str()
+  return proto()->has_reason_phrase()
+      ? proto()->reason_phrase().c_str()
       : "(null)";
 }
 
 void ResponseHeaders::set_reason_phrase(const StringPiece& reason_phrase) {
-  proto_->set_reason_phrase(reason_phrase.data(), reason_phrase.size());
+  mutable_proto()->set_reason_phrase(reason_phrase.data(),
+                                     reason_phrase.size());
 }
 
 int64 ResponseHeaders::last_modified_time_ms() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before last_modified_time_ms()";
-  return proto_->last_modified_time_ms();
+  return proto()->last_modified_time_ms();
 }
 
 int64 ResponseHeaders::date_ms() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before date_ms()";
-  return proto_->date_ms();
+  return proto()->date_ms();
 }
 
 int64 ResponseHeaders::cache_ttl_ms() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before cache_ttl_ms()";
-  return proto_->cache_ttl_ms();
+  return proto()->cache_ttl_ms();
 }
 
 bool ResponseHeaders::has_date_ms() const {
-  return proto_->has_date_ms();
+  return proto()->has_date_ms();
 }
 
 bool ResponseHeaders::is_implicitly_cacheable() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before is_implicitly_cacheable()";
-  return proto_->is_implicitly_cacheable();
+  return proto()->is_implicitly_cacheable();
 }
 
 // Return true if Content type field changed.
@@ -330,7 +334,7 @@ void ResponseHeaders::UpdateFrom(const Headers<HttpResponseHeaders>& other) {
 void ResponseHeaders::UpdateFromProto(const HttpResponseHeaders& proto) {
   Clear();
   cache_fields_dirty_ = true;
-  proto_->CopyFrom(proto);
+  Headers<HttpResponseHeaders>::CopyProto(proto);
 }
 
 bool ResponseHeaders::WriteAsBinary(Writer* writer, MessageHandler* handler) {
@@ -368,19 +372,19 @@ bool ResponseHeaders::IsBrowserCacheable() const {
   // without mutexing.
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before IsBrowserCacheable()";
-  return proto_->browser_cacheable();
+  return proto()->browser_cacheable();
 }
 
 bool ResponseHeaders::RequiresBrowserRevalidation() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before RequiresBrowserRevalidation()";
-  return proto_->requires_browser_revalidation();
+  return proto()->requires_browser_revalidation();
 }
 
 bool ResponseHeaders::RequiresProxyRevalidation() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before RequiresProxyRevalidation()";
-  return proto_->requires_proxy_revalidation();
+  return proto()->requires_proxy_revalidation();
 }
 
 bool ResponseHeaders::IsProxyCacheable(
@@ -390,7 +394,7 @@ bool ResponseHeaders::IsProxyCacheable(
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before IsProxyCacheable()";
 
-  if (!proto_->proxy_cacheable()) {
+  if (!proto()->proxy_cacheable()) {
     return false;
   }
 
@@ -441,7 +445,7 @@ bool ResponseHeaders::IsProxyCacheable(
 int64 ResponseHeaders::CacheExpirationTimeMs() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before CacheExpirationTimeMs()";
-  return proto_->expiration_time_ms();
+  return proto()->expiration_time_ms();
 }
 
 void ResponseHeaders::SetDateAndCaching(
@@ -479,7 +483,7 @@ bool ResponseHeaders::Sanitize() {
 }
 
 void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
-  proto->CopyFrom(*proto_.get());
+  Headers<HttpResponseHeaders>::CopyToProto(proto);
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
   StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
   RemoveFromHeaders(&names_to_sanitize[0], names_to_sanitize.size(), headers);
@@ -572,12 +576,14 @@ void ResponseHeaders::ComputeCaching() {
     return;
   }
 
+  HttpResponseHeaders* proto = mutable_proto();
+
   ConstStringStarVector values;
   int64 date;
   bool has_date = ParseDateHeader(HttpAttributes::kDate, &date);
   // Compute the timestamp if we can find it
   if (has_date) {
-    proto_->set_date_ms(date);
+    proto->set_date_ms(date);
   }
 
   // Computes caching info.
@@ -599,14 +605,14 @@ void ResponseHeaders::ComputeCaching() {
   // Note that if force caching is enabled, we consider a privately cacheable
   // resource as cacheable.
   bool is_browser_cacheable = computer.IsCacheable();
-  proto_->set_browser_cacheable(
+  proto->set_browser_cacheable(
       has_date &&
       computer.IsAllowedCacheableStatusCode() &&
       (force_caching_enabled || is_browser_cacheable));
-  proto_->set_requires_browser_revalidation(computer.MustRevalidate());
-  proto_->set_requires_proxy_revalidation(
-      computer.ProxyRevalidate() || proto_->requires_browser_revalidation());
-  if (proto_->browser_cacheable()) {
+  proto->set_requires_browser_revalidation(computer.MustRevalidate());
+  proto->set_requires_proxy_revalidation(
+      computer.ProxyRevalidate() || proto->requires_browser_revalidation());
+  if (proto->browser_cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce
     // the expiration_time_ms_.  This is, says, bmcquade@google.com,
     // typically use to indicate how long a resource has been sitting
@@ -639,9 +645,9 @@ void ResponseHeaders::ComputeCaching() {
       force_cached_ = true;
     }
 
-    proto_->set_cache_ttl_ms(cache_ttl_ms);
-    proto_->set_expiration_time_ms(proto_->date_ms() + cache_ttl_ms);
-    proto_->set_proxy_cacheable(force_cached_ || is_proxy_cacheable);
+    proto->set_cache_ttl_ms(cache_ttl_ms);
+    proto->set_expiration_time_ms(proto->date_ms() + cache_ttl_ms);
+    proto->set_proxy_cacheable(force_cached_ || is_proxy_cacheable);
 
     // Do not cache HTML or redirects with Set-Cookie / Set-Cookie2 header even
     // though they may have explicit caching directives. This is to prevent the
@@ -649,17 +655,17 @@ void ResponseHeaders::ComputeCaching() {
     if (((type != NULL && type->IsHtmlLike()) ||
          computer.IsRedirectStatusCode()) &&
         (Has(HttpAttributes::kSetCookie) || Has(HttpAttributes::kSetCookie2))) {
-      proto_->set_proxy_cacheable(false);
+      proto->set_proxy_cacheable(false);
     }
 
-    if (proto_->proxy_cacheable() && !force_cached_) {
+    if (proto->proxy_cacheable() && !force_cached_) {
       if (!computer.IsExplicitlyCacheable()) {
         // If the resource is proxy cacheable but it does not have explicit
         // caching headers and is not force cached, explicitly set the caching
         // headers.
         DCHECK(has_date);
         DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
-        proto_->set_is_implicitly_cacheable(true);
+        proto->set_is_implicitly_cacheable(true);
         SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
       } else if (min_cache_ttl_applied_) {
         DCHECK(has_date);
@@ -668,8 +674,8 @@ void ResponseHeaders::ComputeCaching() {
       }
     }
   } else {
-    proto_->set_expiration_time_ms(0);
-    proto_->set_proxy_cacheable(false);
+    proto->set_expiration_time_ms(0);
+    proto->set_proxy_cacheable(false);
   }
   cache_fields_dirty_ = false;
 }
@@ -846,7 +852,7 @@ void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "cache_fields_dirty_ = %s\n",
           BoolToString(cache_fields_dirty_));
   fprintf(stderr, "is_implicitly_cacheable = %s\n",
-          BoolToString(proto_->is_implicitly_cacheable()));
+          BoolToString(proto()->is_implicitly_cacheable()));
   fprintf(stderr, "implicit_cache_ttl_ms_ = %s\n",
           Integer64ToString(implicit_cache_ttl_ms()).c_str());
   fprintf(stderr, "min_cache_ttl_ms_ = %s\n",
@@ -855,17 +861,17 @@ void ResponseHeaders::DebugPrint() const {
           BoolToString(min_cache_ttl_applied_));
   if (!cache_fields_dirty_) {
     fprintf(stderr, "expiration_time_ms_ = %s\n",
-            Integer64ToString(proto_->expiration_time_ms()).c_str());
+            Integer64ToString(proto()->expiration_time_ms()).c_str());
     fprintf(stderr, "last_modified_time_ms_ = %s\n",
             Integer64ToString(last_modified_time_ms()).c_str());
     fprintf(stderr, "date_ms_ = %s\n",
-            Integer64ToString(proto_->date_ms()).c_str());
+            Integer64ToString(proto()->date_ms()).c_str());
     fprintf(stderr, "cache_ttl_ms_ = %s\n",
-            Integer64ToString(proto_->cache_ttl_ms()).c_str());
+            Integer64ToString(proto()->cache_ttl_ms()).c_str());
     fprintf(stderr, "browser_cacheable_ = %s\n",
-            BoolToString(proto_->browser_cacheable()));
+            BoolToString(proto()->browser_cacheable()));
     fprintf(stderr, "proxy_cacheable_ = %s\n",
-            BoolToString(proto_->proxy_cacheable()));
+            BoolToString(proto()->proxy_cacheable()));
   }
 }
 
@@ -917,6 +923,8 @@ int64 ResponseHeaders::SizeEstimate() const {
 }
 
 bool ResponseHeaders::GetCookieString(GoogleString* cookie_str) const {
+  // NOTE: Although our superclass has a cookie map we could use, we don't
+  // because we are interested in the raw header lines not the parsed results.
   cookie_str->clear();
   ConstStringStarVector cookies;
   if (!Lookup(HttpAttributes::kSetCookie, &cookies)) {
@@ -937,40 +945,43 @@ bool ResponseHeaders::GetCookieString(GoogleString* cookie_str) const {
 }
 
 bool ResponseHeaders::HasCookie(StringPiece name,
-                                StringPieceVector* values) const {
-  bool has_cookie = false;
+                                StringPieceVector* values,
+                                StringPieceVector* attributes) const {
+  const CookieMultimap* cookies = PopulateCookieMap(HttpAttributes::kSetCookie);
+  CookieMultimapConstIter from = cookies->lower_bound(name);
+  CookieMultimapConstIter to = cookies->upper_bound(name);
+  for (CookieMultimapConstIter iter = from; iter != to; ++iter) {
+    if (values != NULL) {
+      values->push_back(iter->second.first);
+    }
+    if (attributes != NULL) {
+      StringPieceVector items;
+      SplitStringPieceToVector(iter->second.second, ";", &items, true);
+      attributes->insert(attributes->end(), items.begin(), items.end());
+    }
+  }
+  return from != to;
+}
+
+bool ResponseHeaders::HasAnyCookiesWithAttribute(StringPiece attribute_name,
+                                                 StringPiece* attribute_value) {
   ConstStringStarVector cookies;
   if (Lookup(HttpAttributes::kSetCookie, &cookies)) {
     // Iterate through the cookies.
     for (int i = 0, n = cookies.size(); i < n; ++i) {
-      StringPieceVector cookie_pairs;
-      // Get the vector of name-value pairs of cookies.
-      SplitStringPieceToVector(*cookies[i], ";", &cookie_pairs, true);
-      for (int j = 0, npairs = cookie_pairs.size(); j < npairs; ++j) {
-        StringPiece::size_type index = cookie_pairs[j].find('=');
-        if (index == StringPiece::npos) {
-          StringPiece cookie_attribute = cookie_pairs[j];
-          TrimWhitespace(&cookie_attribute);
-          if (StringCaseEqual(cookie_attribute, name)) {
-            has_cookie = true;
-          }
-        } else {
-          StringPiece cookie_attribute = cookie_pairs[j].substr(0, index);
-          StringPiece cookie_value = cookie_pairs[j].substr(index + 1,
-              cookie_pairs[j].size() - index - 1);
-          TrimWhitespace(&cookie_attribute);
-          if (StringCaseEqual(cookie_attribute, name)) {
-            has_cookie = true;
-            if (values != NULL) {
-              TrimWhitespace(&cookie_value);
-              values->push_back(cookie_value);
-            }
-          }
+      StringPieceVector name_value_pairs;
+      SplitStringPieceToVector(*cookies[i], ";", &name_value_pairs, true);
+      // Ignore the first name=value which sets the actual cookie.
+      for (int i = 1, n = name_value_pairs.size(); i < n; ++i) {
+        StringPiece name;
+        ExtractNameAndValue(name_value_pairs[i], &name, attribute_value);
+        if (StringCaseEqual(attribute_name, name)) {
+          return true;
         }
       }
     }
   }
-  return has_cookie;
+  return false;
 }
 
 void ResponseHeaders::UpdateHook() {

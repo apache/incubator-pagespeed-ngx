@@ -3026,7 +3026,7 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
   bool proxying = url_namer->ProxyMode();
 
   if (proxying) {
-    result = !url_namer->IsProxyEncoded(input_base);
+    result = true;
   } else if (input_base.AllExceptLeaf() != output_base.AllExceptLeaf()) {
     result = true;
   } else {
