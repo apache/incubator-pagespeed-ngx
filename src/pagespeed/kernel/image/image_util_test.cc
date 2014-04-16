@@ -49,8 +49,6 @@ TEST(ImageUtilTest, ImageFormatToMimeTypeString) {
   EXPECT_STREQ("image/webp", ImageFormatToMimeTypeString(IMAGE_WEBP));
   EXPECT_STREQ("image/webp", ImageFormatToMimeTypeString(IMAGE_WEBP));
   EXPECT_STREQ(kInvalidImageFormat,
-               ImageFormatToMimeTypeString(static_cast<ImageFormat>(-1)));
-  EXPECT_STREQ(kInvalidImageFormat,
                ImageFormatToMimeTypeString(static_cast<ImageFormat>(5)));
 }
 
@@ -61,8 +59,6 @@ TEST(ImageUtilTest, ImageFormatToString) {
   EXPECT_STREQ("IMAGE_GIF", ImageFormatToString(IMAGE_GIF));
   EXPECT_STREQ("IMAGE_WEBP", ImageFormatToString(IMAGE_WEBP));
   EXPECT_STREQ(kInvalidImageFormat,
-               ImageFormatToMimeTypeString(static_cast<ImageFormat>(-1)));
-  EXPECT_STREQ(kInvalidImageFormat,
                ImageFormatToMimeTypeString(static_cast<ImageFormat>(5)));
 }
 
@@ -71,10 +67,6 @@ TEST(ImageUtilTest, GetPixelFormatString) {
   EXPECT_STREQ("RGB_888", GetPixelFormatString(RGB_888));
   EXPECT_STREQ("RGBA_8888", GetPixelFormatString(RGBA_8888));
   EXPECT_STREQ("GRAY_8", GetPixelFormatString(GRAY_8));
-  EXPECT_STREQ(kInvalidPixelFormat,
-               GetPixelFormatString(static_cast<PixelFormat>(-1)));
-  EXPECT_STREQ(kInvalidPixelFormat,
-               GetPixelFormatString(static_cast<PixelFormat>(4)));
 }
 
 TEST(ImageUtilTest, GetBytesPerPixel) {
@@ -82,8 +74,6 @@ TEST(ImageUtilTest, GetBytesPerPixel) {
   EXPECT_EQ(3, GetBytesPerPixel(RGB_888));
   EXPECT_EQ(4, GetBytesPerPixel(RGBA_8888));
   EXPECT_EQ(1, GetBytesPerPixel(GRAY_8));
-  EXPECT_EQ(0, GetBytesPerPixel(static_cast<PixelFormat>(-1)));
-  EXPECT_EQ(0, GetBytesPerPixel(static_cast<PixelFormat>(4)));
 }
 
 }  // namespace
