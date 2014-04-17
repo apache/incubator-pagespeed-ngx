@@ -57,6 +57,8 @@ KeepAlive On
 KeepAliveTimeout 60
 LogFormat "%v %X %P %h %l %u %t \"%r\" %>s %b" common
 
+ModPagespeedStaticAssetPrefix /mod_pagespeed_static/
+
 # We want to test some vhosts without a shared memory cache configured, and if
 # the default shared memory metadata cache is enabled we can't do that.  So
 # disable it globally and enable it where we need it.

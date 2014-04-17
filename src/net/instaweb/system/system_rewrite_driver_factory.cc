@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
@@ -79,6 +80,7 @@ SystemRewriteDriverFactory::SystemRewriteDriverFactory(
       message_buffer_size_(0),
       track_original_content_length_(false),
       list_outstanding_urls_on_error_(false),
+      static_asset_prefix_("/pagespeed_static/"),
       system_thread_system_(thread_system) {
   if (shared_mem_runtime == NULL) {
 #ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
@@ -179,6 +181,11 @@ NonceGenerator* SystemRewriteDriverFactory::DefaultNonceGenerator() {
 
 void SystemRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   caches_->SetupCaches(server_context, enable_property_cache());
+}
+
+void SystemRewriteDriverFactory::InitStaticAssetManager(
+    StaticAssetManager* static_asset_manager) {
+  static_asset_manager->set_library_url_prefix(static_asset_prefix_);
 }
 
 void SystemRewriteDriverFactory::ParentOrChildInit() {

@@ -33,7 +33,6 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
@@ -49,9 +48,6 @@ namespace net_instaweb {
 
 class ProcessContext;
 class SharedCircularBuffer;
-
-const char ApacheRewriteDriverFactory::kStaticAssetPrefix[] =
-    "/mod_pagespeed_static/";
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     const ProcessContext& process_context,
@@ -131,11 +127,6 @@ void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
       dynamic_cast<ApacheServerContext*>(server_context);
   CHECK(apache_server_context != NULL);
   apache_server_context->InitProxyFetchFactory();
-}
-
-void ApacheRewriteDriverFactory::InitStaticAssetManager(
-    StaticAssetManager* static_asset_manager) {
-  static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
 }
 
 QueuedWorkerPool* ApacheRewriteDriverFactory::CreateWorkerPool(

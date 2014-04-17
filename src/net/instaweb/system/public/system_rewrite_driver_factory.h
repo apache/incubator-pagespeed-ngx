@@ -38,6 +38,7 @@ class ProcessContext;
 class ServerContext;
 class SharedCircularBuffer;
 class SharedMemStatistics;
+class StaticAssetManager;
 class Statistics;
 class SystemCaches;
 class SystemRewriteOptions;
@@ -186,10 +187,18 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // Allow implementations to indicate that they don't support this.
   virtual bool use_per_vhost_statistics() const { return true; }
 
+  void set_static_asset_prefix(StringPiece s) {
+    s.CopyToString(&static_asset_prefix_);
+  }
+  const GoogleString& static_asset_prefix() { return static_asset_prefix_; }
+
  protected:
   // Initializes all the statistics objects created transitively by
   // SystemRewriteDriverFactory.  Only subclasses should call this.
   static void InitStats(Statistics* statistics);
+
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
   virtual void SetupCaches(ServerContext* server_context);
 
@@ -280,6 +289,9 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   typedef std::map<GoogleString, UrlAsyncFetcher*> FetcherMap;
   FetcherMap base_fetcher_map_;
   FetcherMap fetcher_map_;
+
+  // URL prefix for support files required by pagespeed.
+  GoogleString static_asset_prefix_;
 
   // The same as our parent's thread_system_, but without casting.
   SystemThreadSystem* system_thread_system_;

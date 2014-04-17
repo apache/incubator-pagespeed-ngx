@@ -42,17 +42,12 @@ class QueuedWorkerPool;
 class ServerContext;
 class SharedCircularBuffer;
 class SlowWorker;
-class StaticAssetManager;
 class Statistics;
 class Timer;
 
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
-  // Path prefix where we serve static assets (primarily images and js
-  // resources) needed by some filters.
-  static const char kStaticAssetPrefix[];
-
   ApacheRewriteDriverFactory(const ProcessContext& process_context,
                              server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
@@ -171,9 +166,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual void ShutDownFetchers();
 
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer);
-
-  // Initializes the StaticAssetManager.
-  virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
   virtual ServerContext* NewDecodingServerContext();
 

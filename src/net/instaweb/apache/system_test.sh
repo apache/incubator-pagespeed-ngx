@@ -464,7 +464,7 @@ start_test Split HTML
 SPLIT_HTML_ATF="$TEST_ROOT/split_html/split.html?x_split=atf"
 wget -O - $URL $SPLIT_HTML_ATF > $FETCHED
 check grep -q 'loadXMLDoc("1")' $FETCHED
-check grep -q '/mod_pagespeed_static/blink' $FETCHED
+check grep -q "/$PSA_JS_LIBRARY_URL_PREFIX/blink" $FETCHED
 check grep -q '<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->' $FETCHED
 check grep -q -v 'pagespeed_lazy_src' $FETCHED
 

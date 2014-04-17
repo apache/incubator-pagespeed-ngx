@@ -701,9 +701,8 @@ void InstawebHandler::instaweb_static_handler(
       server_context->static_asset_manager();
   StringPiece request_uri_path = request->parsed_uri.path;
   // Strip out the common prefix url before sending to StaticAssetManager.
-  StringPiece file_name =
-      request_uri_path.substr(
-          strlen(ApacheRewriteDriverFactory::kStaticAssetPrefix));
+  StringPiece file_name = request_uri_path.substr(
+      server_context->apache_factory()->static_asset_prefix().length());
   StringPiece file_contents;
   StringPiece cache_header;
   ContentType content_type;
@@ -989,7 +988,7 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
                       "Not rewriting non-GET %d of %s",
                       request->method_number, gurl.spec_c_str());
       } else if (gurl.PathSansLeaf() ==
-                 ApacheRewriteDriverFactory::kStaticAssetPrefix) {
+                 server_context->apache_factory()->static_asset_prefix()) {
         instaweb_static_handler(request, server_context);
         ret = OK;
       } else if (!is_pagespeed_subrequest(request) &&
@@ -1087,7 +1086,8 @@ apr_status_t InstawebHandler::save_url_in_note(
     if (leaf == kStatisticsHandler || leaf == kConsoleHandler ||
         leaf == kGlobalStatisticsHandler || leaf == kMessageHandler ||
         leaf == kAdminHandler ||
-        gurl.PathSansLeaf() == ApacheRewriteDriverFactory::kStaticAssetPrefix ||
+        gurl.PathSansLeaf() ==
+          server_context->apache_factory()->static_asset_prefix() ||
         IsBeaconUrl(server_context->global_options()->beacon_url(), gurl) ||
         server_context->IsPagespeedResource(gurl)) {
       bypass_mod_rewrite = true;

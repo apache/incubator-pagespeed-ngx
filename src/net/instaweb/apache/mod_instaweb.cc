@@ -167,6 +167,7 @@ const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
 const char kModPagespeedRunExperiment[] = "ModPagespeedRunExperiment";
 const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
+const char kModPagespeedStaticAssetPrefix[] = "ModPagespeedStaticAssetPrefix";
 const char kModPagespeedStatisticsLoggingFile[] =
     "ModPagespeedStatisticsLoggingFile";
 const char kModPagespeedTrackOriginalContentLength[] =
@@ -1448,6 +1449,11 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
           factory, cmd,
           &ApacheRewriteDriverFactory::set_use_per_vhost_statistics, arg);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedStaticAssetPrefix)) {
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
+      factory->set_static_asset_prefix(arg);
+    }
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1758,6 +1764,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of threads to use for computation-intensive portions of "
         "resource-rewriting. <= 0 to auto-detect"),
   APACHE_CONFIG_OPTION(kModPagespeedNumShards, "No longer used."),
+  APACHE_CONFIG_OPTION(kModPagespeedStaticAssetPrefix,
+         "Where to serve static support files for pagespeed filters from."),
   APACHE_CONFIG_OPTION(kModPagespeedTrackOriginalContentLength,
         "Add X-Original-Content-Length headers to rewritten resources"),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
