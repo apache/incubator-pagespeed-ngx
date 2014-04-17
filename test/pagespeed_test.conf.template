@@ -1111,6 +1111,14 @@ http {
       pagespeed UseExperimentalJsMinifier on;
     }
 
+    pagespeed FetchHttps enable;
+    location /mod_pagespeed_test/https_fetch/ {
+      pagespeed DisableFilters inline_images;
+      pagespeed MapProxyDomain
+          http://localhost:@@PRIMARY_PORT@@/https_gstatic_dot_com
+          https://www.gstatic.com/psa/static;
+    }
+
     pagespeed LoadFromFile
         "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/instant/"
         "@@SERVER_ROOT@@/mod_pagespeed_test/ipro/instant/";

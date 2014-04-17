@@ -2594,6 +2594,13 @@ check_not_from "$OUT" egrep -q '^Date: Thu, 01 Jan 1970 00:00:00 GMT'
 OUT=$($WGET_DUMP --header=Host:date.example.com \
     http://$SECONDARY_HOSTNAME/mod_pagespeed_example/combine_css.html)
 check_from "$OUT" egrep -q '^Date: Fri, 16 Oct 2009 23:05:07 GMT'
+WGET_ARGS=
+
+if [ "$NATIVE_FETCHER" != "on" ]; then
+  start_test Test that we can rewrite an HTTPS resource.
+  fetch_until $TEST_ROOT/https_fetch/https_fetch.html \
+    'grep -c /https_gstatic_dot_com/1.gif.pagespeed.ce' 1
+fi
 
 if $USE_VALGRIND; then
     # It is possible that there are still ProxyFetches outstanding
