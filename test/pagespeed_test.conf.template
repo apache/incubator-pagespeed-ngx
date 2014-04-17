@@ -27,6 +27,13 @@ http {
   proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
+  pagespeed StatisticsPath /ngx_pagespeed_statistics;
+  pagespeed GlobalStatisticsPath /ngx_pagespeed_global_statistics;
+  pagespeed ConsolePath /pagespeed_console;
+  pagespeed MessagesPath /ngx_pagespeed_message;
+  pagespeed AdminPath /pagespeed_admin;
+  pagespeed GlobalAdminPath /pagespeed_global_admin;
+
   root "@@SERVER_ROOT@@";
 
   # Block 5a: Decide on Cache-Control header value to use for outgoing
@@ -871,6 +878,11 @@ http {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location ~ ^/pagespeed_admin {
+      allow 127.0.0.1;
+      deny all;
+    }
 
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
       add_header "" "";
