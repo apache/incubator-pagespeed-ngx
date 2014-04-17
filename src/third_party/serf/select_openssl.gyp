@@ -27,10 +27,10 @@
           'target_name': 'select_openssl',
           'type': 'none',
           'dependencies': [
-            '<(DEPTH)/third_party/openssl/openssl.gyp:openssl',
+            '<(DEPTH)/third_party/serf/openssl.gyp:openssl',
           ],
           'export_dependent_settings': [
-            '<(DEPTH)/third_party/openssl/openssl.gyp:openssl',
+            '<(DEPTH)/third_party/serf/openssl.gyp:openssl',
           ],
         },
       ]

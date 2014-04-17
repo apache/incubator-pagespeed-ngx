@@ -149,7 +149,7 @@ BASE_LIBS = \
   third_party/libwebp/libwebp_dsp.a \
   third_party/libwebp/libwebp_enc.a \
   third_party/libwebp/libwebp_utils.a \
-  third_party/openssl/libopenssl.a \
+  third_party/serf/libopenssl.a \
   third_party/optipng/libopngreduc.a \
   third_party/protobuf/libprotobuf_full_do_not_use.a \
   third_party/re2/libre2.a \
