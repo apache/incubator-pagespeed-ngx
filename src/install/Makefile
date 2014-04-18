@@ -111,7 +111,7 @@ echo_vars :
 	@echo These configuration variables can be reset on the make command line,
 	@echo e.g. \"make config_file\"
 	@echo ""
-	@echo "   APACHE_CONF=$(APACHE_CONF)"
+	@echo "   APACHE_CONF_FILE=$(APACHE_CONF_FILE)"
 	@echo "   APACHE_MODULES=$(APACHE_MODULES)"
 	@echo "   APACHE_ROOT=$(APACHE_ROOT)"
 	@echo "   APACHE_START=$(APACHE_START)"
@@ -145,7 +145,7 @@ ifeq ($(MODS_ENABLED_DIR),)
 
 # This is a CentOS-like installation, where there is no explicit .load
 # file, and we instead pre-pend the LoadModule command to the .conf file.
-APACHE_CONF = $(APACHE_CONF_D)
+APACHE_CONF_DIR = $(APACHE_CONF_D)
 CONF_SOURCES = $(STAGING_DIR)/pagespeed.load $(STAGING_DIR)/pagespeed.conf
 
 else
@@ -162,7 +162,7 @@ MODS_ENABLED_INSTALL_COMMANDS = \
 	rm -f $(MODS_ENABLED_DIR)/deflate.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/deflate.load
 
-APACHE_CONF = $(MODS_AVAILABLE_DIR)
+APACHE_CONF_DIR = $(MODS_AVAILABLE_DIR)
 CONF_SOURCES = $(STAGING_DIR)/pagespeed.conf
 
 endif
@@ -436,7 +436,7 @@ staging : staging_except_module
 
 install_except_module : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
-	cat $(CONF_SOURCES) > $(APACHE_CONF)/pagespeed.conf
+	cat $(CONF_SOURCES) > $(APACHE_CONF_DIR)/pagespeed.conf
 	cp -f $(STAGING_DIR)/pagespeed_libraries.conf \
 	      $(APACHE_CONF_D)/pagespeed_libraries.conf
 	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example \
@@ -487,7 +487,7 @@ restart : stop
 	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    APACHE_ROOT=$(APACHE_ROOT) \
 	    STAGING_DIR=$(STAGING_DIR) \
-	    APACHE_CONF=$(APACHE_CONF) \
+	    APACHE_CONF_FILE=$(APACHE_CONF_FILE) \
 	    APACHE_MODULES=$(APACHE_MODULES) \
 	    MODS_ENABLED_DIR=$(MODS_ENABLED_DIR) \
 	    MODS_AVAILABLE_DIR=$(MODS_AVAILABLE_DIR) \
@@ -552,7 +552,7 @@ apache_install_conf :
 # content in /do_not_modify and /no_content.
 setup_test_machine :
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	APACHE_CONF=$(APACHE_CONF) \
+	APACHE_CONF_FILE=$(APACHE_CONF_FILE) \
 	MOD_PAGESPEED_ROOT=$(MOD_PAGESPEED_ROOT) \
 	APACHE_CONF_D=$(APACHE_CONF_D) \
 	./setup_test_machine.sh
@@ -595,7 +595,7 @@ apache_debug_proxy_test :
 apache_debug_slurp_test :
 
 APACHE_HTTPS_PORT=
-APACHE_DEBUG_PAGESPEED_CONF=$(APACHE_CONF)/pagespeed.conf
+APACHE_DEBUG_PAGESPEED_CONF=$(APACHE_CONF_DIR)/pagespeed.conf
 INSTALL_DATA_DIR=.
 
 include Makefile.tests

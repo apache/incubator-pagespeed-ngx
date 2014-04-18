@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <cstdlib>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -830,12 +831,12 @@ TEST_F(PngOptimizerTest, PartialAnimatedGif) {
   ASSERT_NE(static_cast<size_t>(0), in.length());
   // Loop, removing the last byte repeatedly to generate every
   // possible partial version of the animated gif.
-  while (true) {
-    if (in.size() == 0) {
-      break;
-    }
+  while (!in.empty()) {
     // Remove the last byte.
     in.erase(in.length() - 1);
+
+
+    // Since we have only a partial file, optimization should fail.
     EXPECT_FALSE(PngOptimizer::OptimizePng(*reader_, in, &out,
         &message_handler_));
 

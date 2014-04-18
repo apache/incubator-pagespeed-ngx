@@ -42,8 +42,8 @@ done
 # We need to add the following configuration snippet into the global conf file,
 # if not already present.
 conf_file="$APACHE_CONF_D/pagespeed_test.conf"
-if grep -q pagespeed_test.conf $APACHE_CONF; then
-  echo $conf_file is already included in $APACHE_CONF
+if grep -q pagespeed_test.conf $APACHE_CONF_FILE; then
+  echo $conf_file is already included in $APACHE_CONF_FILE
 else
   tmp_conf=/tmp/pagespeed_test.conf.$$
   tmp_file=/tmp/conf_snippet.$$
@@ -52,12 +52,12 @@ else
     > $tmp_conf
   sudo cp $tmp_conf "$conf_file"
   rm -f $tmp_conf
-  cp $APACHE_CONF $tmp_file
+  cp $APACHE_CONF_FILE $tmp_file
   include_line="Include \"$conf_file\""
   echo $include_line >> $tmp_file
-  sudo cp $tmp_file $APACHE_CONF
+  sudo cp $tmp_file $APACHE_CONF_FILE
   rm -f $tmp_file
-  echo "Added \'$include_line\' to end of $APACHE_CONF"
+  echo "Added \'$include_line\' to end of $APACHE_CONF_FILE"
 fi
 
 # TODO(jmarantz): the following lines are only valid for Ubuntu.  I am
