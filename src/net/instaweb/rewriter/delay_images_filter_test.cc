@@ -98,8 +98,8 @@ class DelayImagesFilterTest : public RewriteTestBase {
   GoogleString GetNoscript() const {
     return StringPrintf(
         kNoScriptRedirectFormatter,
-        "http://test.com/inline_preview_images.html?ModPagespeed=noscript",
-        "http://test.com/inline_preview_images.html?ModPagespeed=noscript");
+        "http://test.com/inline_preview_images.html?PageSpeed=noscript",
+        "http://test.com/inline_preview_images.html?PageSpeed=noscript");
   }
 
   GoogleString GenerateAddLowResScript(const GoogleString& url,

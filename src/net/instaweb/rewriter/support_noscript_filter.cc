@@ -51,10 +51,9 @@ void SupportNoscriptFilter::DetermineEnabled() {
 
 void SupportNoscriptFilter::StartElement(HtmlElement* element) {
   if (should_insert_noscript_ && element->keyword() == HtmlName::kBody) {
-    // TODO(jefftk): after 2013-06-10 change kModPagespeed to kPageSpeed.
     scoped_ptr<GoogleUrl> url_with_psa_off(
         rewrite_driver_->google_url().CopyAndAddEscapedQueryParam(
-            RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
+            RewriteQuery::kPageSpeed, RewriteQuery::kNoscriptValue));
     GoogleString escaped_url;
     HtmlKeywords::Escape(url_with_psa_off->Spec(), &escaped_url);
     // TODO(sriharis): Replace the usage of HtmlCharactersNode with HtmlElement

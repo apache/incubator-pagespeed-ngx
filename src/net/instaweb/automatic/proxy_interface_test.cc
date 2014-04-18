@@ -3401,9 +3401,11 @@ TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
   FetchFromProxy(kPageUrl, true, &text, &headers);
   // For the first request, we bail out of parsing and insert the redirect. We
   // also update the pcache.
-  EXPECT_EQ("<html><script type=\"text/javascript\">"
-            "window.location=\"http://test.com/page.html?ModPagespeed=off\";"
-            "</script></html>", text);
+  EXPECT_STREQ(
+      "<html><script type=\"text/javascript\">"
+      "window.location=\"http://test.com/page.html?PageSpeed=off\";"
+      "</script></html>",
+      text);
 
   headers.Clear();
   text.clear();

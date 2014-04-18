@@ -1255,7 +1255,7 @@ GoogleString ServerContext::ShowCacheForm(const char* user_agent) const {
       "  User-Agent: <input type=text size=103 name=user_agent ",
       ua_default,
       "/></br> \n",
-      "  <input type=submit />\n"
+      "   <input type=submit value='Show Metadata Cache Entry'/>"
       "</form>\n");
   return out;
 }

@@ -288,9 +288,8 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   void SendRedirectToPsaOff() {
     num_flush_early_requests_redirected_->IncBy(1);
     GoogleUrl gurl(url_);
-    // TODO(jefftk): after 2013-06-10 change kModPagespeed to kPageSpeed.
     scoped_ptr<GoogleUrl> url_with_psa_off(gurl.CopyAndAddEscapedQueryParam(
-        RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
+        RewriteQuery::kPageSpeed, RewriteQuery::kNoscriptValue));
     GoogleString escaped_url;
     EscapeToJsStringLiteral(url_with_psa_off->Spec(), false,
                             &escaped_url);

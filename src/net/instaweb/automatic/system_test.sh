@@ -653,7 +653,7 @@ echo run_wget_with_args $URL
 check run_wget_with_args $URL
 check grep -q text/psajs $FETCHED
 check grep -q /js_defer $FETCHED
-check grep -q "ModPagespeed=noscript" $FETCHED
+check grep -q "PageSpeed=noscript" $FETCHED
 
 # Checks that defer_javascript,debug injects 'pagespeed.deferJs' from
 # defer_js.js, but retains the comments.
@@ -667,7 +667,7 @@ check grep -q /js_defer_debug $FETCHED
 # The deferjs src url is in the format js_defer.<hash>.js. This strips out
 # everthing except the js filename and saves it to test fetching later.
 DEFERJSURL=`grep js_defer $FETCHED | sed 's/^.*js_defer/js_defer/;s/\.js.*$/\.js/g;'`
-check grep -q "ModPagespeed=noscript" $FETCHED
+check grep -q "PageSpeed=noscript" $FETCHED
 
 # Extract out the DeferJs url from the HTML above and fetch it.
 start_test Fetch the deferJs url with hash.
@@ -703,7 +703,7 @@ echo run_wget_with_args $URL
 check run_wget_with_args $URL
 check grep -q pagespeed.lazyLoad $FETCHED
 check_not grep '/\*' $FETCHED
-check grep -q "ModPagespeed=noscript" $FETCHED
+check grep -q "PageSpeed=noscript" $FETCHED
 # The lazyload placeholder image is in the format 1.<hash>.gif. This matches the
 # first src attribute set to the placeholder, and then strips out everything
 # except for the gif name for later testing of fetching this image.
@@ -727,7 +727,7 @@ check run_wget_with_args "$URL"
 check grep -q pagespeed.lazyLoad $FETCHED
 check_not grep -q '/\*' $FETCHED
 check_not grep -q 'goog.require' $FETCHED
-check grep -q "ModPagespeed=noscript" $FETCHED
+check grep -q "PageSpeed=noscript" $FETCHED
 
 # Checks that inline_preview_images injects compiled javascript
 test_filter inline_preview_images optimize mode
@@ -765,7 +765,7 @@ check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
 check_not grep -q "/\*" $FETCHED
-check grep -q "ModPagespeed=noscript" $FETCHED
+check grep -q "PageSpeed=noscript" $FETCHED
 
 # Checks that local_storage_cache,debug injects debug javascript from
 # local_storage_cache.js, adds the pagespeed_lsc_ attributes, inlines the data
@@ -783,7 +783,7 @@ check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
 check_not grep -q "/\*" $FETCHED
 check_not grep -q "goog.require" $FETCHED
-check grep -q "ModPagespeed=noscript" $FETCHED
+check grep -q "PageSpeed=noscript" $FETCHED
 
 # Checks that local_storage_cache doesn't send the inlined data for a resource
 # whose hash is in the magic cookie. First get the cookies from prior runs.
@@ -879,7 +879,7 @@ fetch_until $URL 'fgrep -ci //ajax.googleapis.com' 2
 # Test dedup_inlined_images
 test_filter dedup_inlined_images,inline_images
 fetch_until -save $URL 'fgrep -ocw inlineImg(' 4
-check grep -q "ModPagespeed=noscript" $FETCH_FILE
+check grep -q "PageSpeed=noscript" $FETCH_FILE
 
 # Make sure we don't blank url(data:...) in CSS.
 start_test CSS data URLs

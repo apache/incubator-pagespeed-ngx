@@ -241,7 +241,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   FlushEarlyFlowTest()
       : start_time_ms_(0),
         request_url_(kTestDomain),
-        noscript_redirect_url_(StrCat(kTestDomain, "?ModPagespeed=noscript")),
+        noscript_redirect_url_(StrCat(kTestDomain, "?PageSpeed=noscript")),
         max_age_300_("max-age=300"),
         request_start_time_ms_(-1),
         set_httponly_cookie_(false) {
@@ -614,7 +614,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "</body>"
         "</html>";
 
-    GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+    GoogleString redirect_url = StrCat(kTestDomain, "?PageSpeed=noscript");
     GoogleString kNotMobileOutputHtml = StrCat(
         "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
         "<html>"
@@ -748,7 +748,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
         "</body>"
         "</html>";
 
-    GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+    GoogleString redirect_url = StrCat(kTestDomain, "?PageSpeed=noscript");
     const char pre_connect_tag[] =
         "<link rel=\"stylesheet\" href=\"http://cdn.com/pre_connect?id=%s\"/>";
     const char image_tag[] =
@@ -974,8 +974,7 @@ TEST_F(FlushEarlyFlowTest, FallBackWithNonHtmlResourceIsRedirected) {
       HttpAttributes::kContentType, kContentTypePdf.mime_type());
   mock_url_fetcher_.SetResponse(url, response_headers, kFlushEarlyPdf);
 
-  noscript_redirect_url_ = StrCat(fallback_url,
-                                  "&amp;ModPagespeed=noscript");
+  noscript_redirect_url_ = StrCat(fallback_url, "&amp;PageSpeed=noscript");
   GoogleString kOutputHtml =
       StrCat(kPreHeadHtml,
              StringPrintf(
@@ -1005,7 +1004,7 @@ TEST_F(FlushEarlyFlowTest, FallBackWithNonHtmlResourceIsRedirected) {
   // will be used. Since the content type is different here, this request
   // should be redirected.
   FetchFromProxy(url, request_headers, true, &text, &headers);
-  redirect_url_ = StrCat(url, "&ModPagespeed=noscript");
+  redirect_url_ = StrCat(url, "&PageSpeed=noscript");
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false,
       true, false, true, false), text);
@@ -1093,8 +1092,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // unstable.
   request_url_ = "http://test.com/?q=1";
   SetupForFlushEarlyFlow();
-  redirect_url_ = StrCat(request_url_, "&ModPagespeed=noscript");
-  noscript_redirect_url_ = StrCat(request_url_, "&amp;ModPagespeed=noscript");
+  redirect_url_ = StrCat(request_url_, "&PageSpeed=noscript");
+  noscript_redirect_url_ = StrCat(request_url_, "&amp;PageSpeed=noscript");
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
@@ -1112,7 +1111,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
 
   SetFetchResponse404(request_url_);
   // Fetch again so that 404 is populated in response headers.
-  // It should redirect to ModPagespeed=noscript in this case.
+  // It should redirect to PageSpeed=noscript in this case.
   FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false,
@@ -1145,7 +1144,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
       text);
 
   // Fetch again so that 404 is populated in response headers.
-  // It should redirect to ModPagespeed=noscript in this case.
+  // It should redirect to PageSpeed=noscript in this case.
   SetFetchResponse404(request_url_);
   FetchFromProxy(request_url_, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
@@ -1314,7 +1313,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "</body>"
       "</html>";
 
-  GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+  GoogleString redirect_url = StrCat(kTestDomain, "?PageSpeed=noscript");
   GoogleString kOutputHtml = StringPrintf(
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"
@@ -1381,7 +1380,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
   StringSet* css_critical_images = new StringSet;
   css_critical_images->insert(StrCat(kTestDomain, "1.jpg"));
   SetCssCriticalImagesInFinder(css_critical_images);
-  GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+  GoogleString redirect_url = StrCat(kTestDomain, "?PageSpeed=noscript");
 
   GoogleString kOutputHtml = StringPrintf(
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
@@ -1468,7 +1467,7 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       "</body>"
       "</html>";
 
-  GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+  GoogleString redirect_url = StrCat(kTestDomain, "?PageSpeed=noscript");
   GoogleString kOutputHtml = StrCat(
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"

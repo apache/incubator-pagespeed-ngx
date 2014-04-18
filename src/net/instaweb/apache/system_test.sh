@@ -2444,13 +2444,13 @@ WGET_ARGS="--header=PageSpeedFilters:rewrite_images"
 WGET_EC="$WGET_DUMP $WGET_ARGS"
 echo $WGET_EC $URL
 LARGE_OUT=$($WGET_EC $URL)
-check_from "$LARGE_OUT" grep -q window.location=".*&ModPagespeed=off"
+check_from "$LARGE_OUT" grep -q window.location=".*&PageSpeed=off"
 
 # The file should now be in the property cache so make sure that the page is no
 # longer parsed. Use fetch_until because we need to wait for a potentially
 # non-blocking write to the property cache from the previous test to finish
 # before this will succeed.
-fetch_until -save $URL 'grep -c window.location=".*&ModPagespeed=off"' 0
+fetch_until -save $URL 'grep -c window.location=".*&PageSpeed=off"' 0
 check_not fgrep -q pagespeed.ic $FETCH_FILE
 
 function scrape_secondary_stat {

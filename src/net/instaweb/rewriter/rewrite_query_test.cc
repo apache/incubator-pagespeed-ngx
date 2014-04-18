@@ -676,7 +676,7 @@ TEST_F(RewriteQueryTest, NoscriptHeader) {
 TEST_F(RewriteQueryTest, NoscriptWithTrailingQuoteQueryParamEmptyValue) {
   const RewriteOptions* options = ParseAndScan(
       kHtmlUrl,
-      "ModPagespeed=noscript'", "");
+      "PageSpeed=noscript'", "");
   ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
@@ -688,7 +688,7 @@ TEST_F(RewriteQueryTest, NoscriptWithTrailingQuoteQueryParamEmptyValue) {
 TEST_F(RewriteQueryTest, NoscriptWithTrailingEscapedQuoteQueryParamEmptyValue) {
   const RewriteOptions* options = ParseAndScan(
       kHtmlUrl,
-      "ModPagespeed=noscript%5c%22", "");
+      "PageSpeed=noscript%5c%22", "");
   ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
@@ -700,7 +700,7 @@ TEST_F(RewriteQueryTest, NoscriptWithTrailingEscapedQuoteQueryParamEmptyValue) {
 TEST_F(RewriteQueryTest, NoscripWithTrailingQuotetHeader) {
   const RewriteOptions* options = ParseAndScan(
       kHtmlUrl, "",
-      "ModPagespeed:noscript'");
+      "PageSpeed:noscript'");
   ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);
@@ -712,7 +712,7 @@ TEST_F(RewriteQueryTest, NoscripWithTrailingQuotetHeader) {
 TEST_F(RewriteQueryTest, NoscripWithTrailingQuestionMarkHeader) {
   const RewriteOptions* options = ParseAndScan(
       kHtmlUrl, "",
-      "ModPagespeed:noscript?");
+      "PageSpeed:noscript?");
   ASSERT_TRUE(options != NULL);
   RewriteOptions::FilterVector filter_vector;
   options->GetEnabledFiltersRequiringScriptExecution(&filter_vector);

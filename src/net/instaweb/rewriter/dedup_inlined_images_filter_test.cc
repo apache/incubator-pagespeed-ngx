@@ -121,7 +121,7 @@ class DedupInlinedImagesTest : public RewriteTestBase,
                        const GoogleString& body_html_in,
                        const GoogleString& body_html_out) {
     GoogleString url(StrCat(
-        "http://test.com/", case_id, ".html?ModPagespeed=noscript"));
+        "http://test.com/", case_id, ".html?PageSpeed=noscript"));
     GoogleString html_in(StringPrintf(
         kHtmlWrapperFormat, head_html_in.c_str(), body_html_in.c_str()));
     GoogleString body_out(StrCat(StringPrintf(kNoScriptRedirectFormatter,

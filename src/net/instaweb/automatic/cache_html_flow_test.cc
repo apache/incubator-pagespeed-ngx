@@ -226,10 +226,10 @@ const char kHtmlInputForNoBlink[] =
 const char kBlinkOutputCommon[] =
     "<html><head></head><body>"
     "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-    "url='%s?ModPagespeed=noscript'\" />"
+    "url='%s?PageSpeed=noscript'\" />"
     "<style><!--table,div,span,font,p{display:none} --></style>"
     "<div style=\"display:block\">Please click "
-    "<a href=\"%s?ModPagespeed=noscript\">here</a> "
+    "<a href=\"%s?PageSpeed=noscript\">here</a> "
     "if you are not redirected within a few seconds.</div></noscript>"
     "\n<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
@@ -288,10 +288,9 @@ const char kFlushSubresourcesHtmlInput[] =
     "</body></html>";
 
 const char kNoBlinkUrl[] =
-    "http://test.com/noblink_text.html?ModPagespeed=noscript";
+    "http://test.com/noblink_text.html?PageSpeed=noscript";
 
-const char kNoScriptTextUrl[] =
-    "http://test.com/text.html?ModPagespeed=noscript";
+const char kNoScriptTextUrl[] = "http://test.com/text.html?PageSpeed=noscript";
 
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
@@ -1074,10 +1073,10 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
   const char kBlinkOutputWithInlinePreviewImages[] =
       "<html><head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url='%s?ModPagespeed=noscript'\" />"
+      "url='%s?PageSpeed=noscript'\" />"
       "<style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click "
-      "<a href=\"%s?ModPagespeed=noscript\">here</a> "
+      "<a href=\"%s?PageSpeed=noscript\">here</a> "
       "if you are not redirected within a few seconds.</div></noscript>"
       "\n<div id=\"header\"> This is the header </div>"
       "<div id=\"container\" class>"

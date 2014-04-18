@@ -33,7 +33,7 @@ namespace net_instaweb {
 namespace {
 
 static const char kScript[] = "<script type=\"text/javascript\">"
-    "window.location=\"http://test.com/in.html?ModPagespeed=off\";"
+    "window.location=\"http://test.com/in.html?PageSpeed=off\";"
     "</script>";
 
 }  // namespace
@@ -188,7 +188,7 @@ TEST_F(RedirectOnSizeLimitFilterTest, TestEscapingAndFlush) {
       "<html>"
       "<input type=\"text\"/>"
       "<script type=\"text/javascript\">"
-      "window.location=\"http://test.com/in.html?%27(&ModPagespeed=off\";"
+      "window.location=\"http://test.com/in.html?%27(&PageSpeed=off\";"
       "</script>"
       "<script type=\"text/javascript\">alert('123');</script>"
       "</html>";
