@@ -836,7 +836,7 @@ void SystemServerContext::MessageHistoryHandler(AdminSource source,
   // Request for page /mod_pagespeed_message.
   GoogleString log;
   StringWriter log_writer(&log);
-  AdminHtml("message_history", "", source, fetch, message_handler());
+  AdminHtml admin_html("message_history", "", source, fetch, message_handler());
   if (message_handler()->Dump(&log_writer)) {
     // Write pre-tag for Dump to keep good format.
     HtmlKeywords::WritePre(log, fetch, message_handler());
