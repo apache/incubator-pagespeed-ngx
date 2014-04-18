@@ -193,8 +193,9 @@ apache_debug_memcached_test :
 	# right ModPagespeedMemcachedServers setup.  MEMCACHED_PORT will
 	# be different on each run, which makes it easier for people to
 	# run system-tests and unit-tests in parallel with one another.
-	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh \
-		$(MAKE) apache_debug_memcached_test_run
+	env APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+		$(INSTALL_DATA_DIR)/run_program_with_memcached.sh \
+			$(MAKE) apache_debug_memcached_test_run
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 	@echo PASS

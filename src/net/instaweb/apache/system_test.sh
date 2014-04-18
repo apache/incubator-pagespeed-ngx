@@ -189,24 +189,24 @@ if [ $statistics_enabled = "1" ]; then
   start_test ipro with vary:cookie with no cookie set
   ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie/vary_cookie.css
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
-  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie'
+  check_from "$IPRO_OUTPUT" egrep -q 'Vary: (Accept-Encoding,)?Cookie'
 
   start_test ipro with vary:cookie with cookie set
   ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie/vary_cookie.css \
     --header=Cookie:cookie-data
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
-  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie'
+  check_from "$IPRO_OUTPUT" egrep -q 'Vary: (Accept-Encoding,)?Cookie'
 
   start_test ipro with vary:cookie2 with no cookie2 set
   ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie2/vary_cookie2.css
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
-  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
+  check_from "$IPRO_OUTPUT" egrep -q 'Vary: (Accept-Encoding,)?Cookie2'
 
   start_test ipro with vary:cookie2 with cookie2 set
   ipro_expect_no_rewrite $TEST_ROOT/ipro/cookie2/vary_cookie2.css \
     --header=Cookie2:cookie2-data
   check_from "$IPRO_OUTPUT" fgrep -q '    background: MediumPurple;'
-  check_from "$IPRO_OUTPUT" fgrep -q 'Vary: Cookie2'
+  check_from "$IPRO_OUTPUT" egrep -q 'Vary: (Accept-Encoding,)?Cookie2'
 
   start_test authorized resources do not get cached and optimized.
   URL="$TEST_ROOT/auth/medium_purple.css"
