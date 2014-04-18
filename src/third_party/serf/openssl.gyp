@@ -15,14 +15,18 @@
         '../../third_party/serf/openssl.gypi'
       ],
       'variables': {
-        'openssl_root': '<(DEPTH)/third_party/openssl/openssl',
+        'openssl_parent': '<(DEPTH)/third_party/openssl',
+        'openssl_root': '<(openssl_parent)/openssl',
         'openssl_include_dirs': [
-          '<(openssl_root)/..',
+          '<(openssl_parent)',
           '<(openssl_root)',
           '<(openssl_root)/crypto',
           '<(openssl_root)/crypto/asn1',
           '<(openssl_root)/crypto/evp',
           '<(openssl_root)/crypto/modes',
+          '<(openssl_root)/include',
+        ],
+        'openssl_public_include_dirs': [
           '<(openssl_root)/include',
         ],
       },
@@ -60,27 +64,31 @@
           'defines': [ '<@(openssl_mips_defines)' ],
           'defines!': [ 'OPENSSL_NO_ASM' ],
         }],
-        ['target_arch == "ia32"', {
+        ['target_arch == "ia32" and OS !="mac"', {
           'sources': [ '<@(openssl_x86_sources)' ],
           'sources!': [ '<@(openssl_x86_source_excludes)' ],
           'defines': [ '<@(openssl_x86_defines)' ],
           'defines!': [ 'OPENSSL_NO_ASM' ],
         }],
+        ['target_arch == "ia32" and OS == "mac"', {
+          'sources': [ '<@(openssl_mac_ia32_sources)' ],
+          'sources!': [ '<@(openssl_mac_ia32_source_excludes)' ],
+          'defines': [ '<@(openssl_mac_ia32_defines)' ],
+          'defines!': [ 'OPENSSL_NO_ASM' ],
+          'variables': {
+            # Ensure the 32-bit opensslconf.h header for OS X is used.
+            'openssl_include_dirs+': [ '<(openssl_parent)/config/mac/ia32' ],
+            'openssl_public_include_dirs+': [ '<(openssl_parent)/config/mac/ia32' ],
+          },
+          'xcode_settings': {
+            # Clang needs this to understand the inline assembly keyword 'asm'.
+            'GCC_C_LANGUAGE_STANDARD': 'gnu99',
+          },
+        }],
         ['target_arch == "x64"', {
           'sources': [ '<@(openssl_x86_64_sources)' ],
           'sources!': [ '<@(openssl_x86_64_source_excludes)' ],
           'conditions': [
-            ['OS != "android"', {
-              # Because rc4-x86_64.S has a problem,
-              # We use the C rc4 source instead of the ASM source.
-              # This hurts performance, but it's not a problem
-              # because no production code uses openssl on x86-64.
-              'sources/': [
-                ['exclude', '<(openssl_root)/crypto/rc4/asm/rc4-x86_64\\.S' ],
-                ['include', '<(openssl_root)/crypto/rc4/rc4_enc\\.c' ],
-                ['include', '<(openssl_root)/crypto/rc4/rc4_skey\\.c' ],
-              ],
-            }],
             ['<(gcc_version) < 46', {
               # Older versions of gcc don't recognize __int128 type.
               'sources/': [
@@ -93,7 +101,8 @@
           'defines!': [ 'OPENSSL_NO_ASM' ],
           'variables': {
             # Ensure the 64-bit opensslconf.h header is used.
-            'openssl_include_dirs+': [ '<(openssl_root)/../config/x64' ],
+            'openssl_include_dirs+': [ '<(openssl_parent)/config/x64' ],
+            'openssl_public_include_dirs+': [ '<(openssl_parent)/config/x64' ],
           },
         }],
         ['component == "shared_library"', {
@@ -118,7 +127,7 @@
       ],
       'direct_dependent_settings': {
         'include_dirs': [
-          '<(openssl_root)/include',
+          '<@(openssl_public_include_dirs)',
         ],
       },
     },

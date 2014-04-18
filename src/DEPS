@@ -68,9 +68,10 @@ vars = {
   #
   # The revision we are picking here is to a specific commit found on
   # https://git.chromium.org/gitweb/?p=chromium/deps/openssl.git;a=summary :
-  # 2013-11-18 agl@chromium.org Also remove chacha_vec.c from x86.
+  # 2014-14-11 brettw@chromium.org Fix typo in comment in GN buildfile.
+  # This commit is post-heartbleed.
   "openssl_src": "https://git.chromium.org/chromium/deps/openssl.git",
-  "openssl_revision": "@74e3032cd121a9275486e6b5653da87b3285cf7d",
+  "openssl_revision": "@a182ac9a61b910c3ab8ce5c5b7d0f04af57399ec",
 
   "domain_registry_provider_src":
      "https://domain-registry-provider.googlecode.com/svn/trunk/",
