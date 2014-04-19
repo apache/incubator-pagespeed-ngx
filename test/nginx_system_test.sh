@@ -93,6 +93,11 @@ function keepalive_test() {
     | grep -v "^} \\[data not shown"\
     | grep -v "^\\* upload completely sent off"\
     | grep -v "^\\* connected"\
+    | grep -v "^\\* Found bundle for host"\
+    | grep -v "^\\* Adding handle"\
+    | grep -v "^\\* Curl_addHandleToPipeline"\
+    | grep -v "^\\* - Conn "\
+    | grep -v "^\\* Server "\
     | grep -v "^\\*   Trying.*\\.\\.\\.")
 
   # Nothing should remain after that.
