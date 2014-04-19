@@ -150,7 +150,15 @@ http {
       set $bypass_cache "1";
     }
 
-    set_random $rand 0 100;
+    # For testing purposes, we never generate values that will result in a beacon 
+    # unless a test request it via "X-Allow-Beacon: yes" in its request header.
+    # This is for testing purposes, note that in a production environment, 
+    # you want 'set_random $rand 0 100;' unconditionally!
+    set $rand 5;
+
+    if ($http_x_allow_beacon ~ "yes") {
+      set_random $rand 0 100;
+    }
     set $should_beacon_header_val "";
     if ($rand ~* "^[0-4]$") {
       set $should_beacon_header_val "random_rebeaconing_key";
