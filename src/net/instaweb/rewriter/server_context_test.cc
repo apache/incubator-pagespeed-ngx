@@ -344,9 +344,9 @@ class ServerContextTest : public RewriteTestBase {
     RewriteOptions* copy_options = domain_options != NULL ?
         domain_options->Clone() : NULL;
     RewriteQuery rewrite_query;
-    bool success = server_context()->GetQueryOptions(&gurl,
-                                                     request_headers, NULL,
-                                                     &rewrite_query);
+    bool success =
+        server_context()->GetQueryOptions(NULL, &gurl, request_headers, NULL,
+                                          &rewrite_query);
     EXPECT_TRUE(success);
     RewriteOptions* options =
         server_context()->GetCustomOptions(request_headers, copy_options,
@@ -404,7 +404,7 @@ TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
   GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
   RewriteQuery rewrite_query;
   EXPECT_FALSE(server_context()->GetQueryOptions(
-      &gurl, &request_headers, NULL, &rewrite_query));
+      options.get(), &gurl, &request_headers, NULL, &rewrite_query));
 
   // The default url_namer does not yield any name-derived options, and we
   // have not specified any URL params or request-headers, and kXRequestedWith
@@ -499,7 +499,7 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
   GoogleUrl gurl("http://example.com/?PageSpeedFilters=bogus_filter");
   RewriteQuery rewrite_query;
   EXPECT_FALSE(server_context()->GetQueryOptions(
-      &gurl, &request_headers, NULL, &rewrite_query));
+      options.get(), &gurl, &request_headers, NULL, &rewrite_query));
 
   request_headers.Add(
       HttpAttributes::kXRequestedWith, "bogus");

@@ -18,6 +18,9 @@
 
 #include "pagespeed/kernel/http/request_headers.h"
 
+#include <map>
+#include <utility>
+
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -146,6 +149,34 @@ TEST_F(RequestHeadersTest, AcceptWebp) {
                        "*/*;q=0.8");
   EXPECT_FALSE(request_headers_.HasValue(HttpAttributes::kAccept,
                                          kWebpMimeType));
+}
+
+TEST_F(RequestHeadersTest, GetAllCookies) {
+  // No headers means no cookies.
+  request_headers_.Clear();
+  EXPECT_EQ(0, request_headers_.GetAllCookies().size());
+  // OK, so set some up.
+  request_headers_.Add(HttpAttributes::kCookie, "  a =  b    ;c=d; e=\" f \"");
+  request_headers_.Add(HttpAttributes::kCookie, "gggggggggggg=hhhhhhhhhhhhhhh");
+  request_headers_.Add(HttpAttributes::kCookie, "iiiii=llr; a=z; a=y; e=zomg");
+  request_headers_.Add(HttpAttributes::kCookie, "jjjjjjjjjjjjj  ; kk = ");
+  const RequestHeaders::CookieMultimap& cookies =
+      request_headers_.GetAllCookies();
+  EXPECT_EQ(10, cookies.size());
+  // Data driven rather than a bunch of hand coded EXPECT_EQ's.
+  const char* const kNames[] = {
+    "a", "a", "a", "c", "e", "e", "gggggggggggg", "iiiii", "jjjjjjjjjjjjj", "kk"
+  };
+  const char* const kValues[] = {
+    "b", "z", "y", "d", "\" f \"", "zomg", "hhhhhhhhhhhhhhh", "llr", "", ""
+  };
+  ASSERT_EQ(arraysize(kNames), cookies.size());
+  ASSERT_EQ(arraysize(kValues), cookies.size());
+  RequestHeaders::CookieMultimapConstIter iter = cookies.begin();
+  for (int i = 0, n = cookies.size(); i < n; ++i, ++iter) {
+    EXPECT_STREQ(kNames[i], iter->first);
+    EXPECT_STREQ(kValues[i], iter->second.first);
+  }
 }
 
 }  // namespace net_instaweb

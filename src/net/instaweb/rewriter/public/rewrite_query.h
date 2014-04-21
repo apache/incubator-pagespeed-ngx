@@ -22,12 +22,13 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/http/headers.h"
+#include "pagespeed/kernel/http/request_headers.h"
 
 namespace net_instaweb {
 
 class GoogleUrl;
 class MessageHandler;
-class RequestHeaders;
 class RequestProperties;
 class ResponseHeaders;
 class RewriteDriver;
@@ -78,7 +79,11 @@ class RewriteQuery {
   // declared in the RelatedOptions() and RelatedFilters() methods of
   // the filter identified in the .pagespeed. URL.  See GenerateResourceOption
   // for how they get into URLs in the first place.
+  //
+  // 'allow_options_to_be_specified_by_cookies' controls whether we parse
+  // cookies for options.
   Status Scan(bool allow_related_options,
+              bool allow_options_to_be_specified_by_cookies,
               RewriteDriverFactory* factory,
               ServerContext* server_context,
               GoogleUrl* request_url,
@@ -145,21 +150,26 @@ class RewriteQuery {
     kProxyModeNoTransform,
   };
 
-  // Returns true if the params/headers look like they might have some
-  // options.  This is used as a cheap pre-scan before doing the more
+  // Returns true if the params/headers/cookies look like they might have
+  // some options.  This is used as a cheap pre-scan before doing the more
   // expensive query processing.
-  static bool MayHaveCustomOptions(const QueryParams& params,
-                                   const RequestHeaders* req_headers,
-                                   const ResponseHeaders* resp_headers);
+  static bool MayHaveCustomOptions(
+      const QueryParams& params, const RequestHeaders* req_headers,
+      const ResponseHeaders* resp_headers,
+      const RequestHeaders::CookieMultimap& cookies);
 
   // As above, but only for headers.
   template <class HeaderT>
   static bool HeadersMayHaveCustomOptions(const QueryParams& params,
                                           const HeaderT* headers);
 
+  // As above, but only for cookies.
+  static bool CookiesMayHaveCustomOptions(
+      const RequestHeaders::CookieMultimap& cookies);
+
   // Examines a name/value pair for options.
   static Status ScanNameValue(const StringPiece& name,
-                              const GoogleString& value,
+                              const StringPiece& value,
                               RequestProperties* request_properties,
                               RewriteOptions* options,
                               MessageHandler* handler);

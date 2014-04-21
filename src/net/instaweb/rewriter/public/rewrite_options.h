@@ -205,6 +205,7 @@ class RewriteOptions {
   static const char kAccessControlAllowOrigins[];
   static const char kAddOptionsToUrls[];
   static const char kAllowLoggingUrlsInLogRecord[];
+  static const char kAllowOptionsToBeSetByCookies[];
   static const char kAlwaysRewriteCss[];
   static const char kAnalyticsID[];
   static const char kAvoidRenamingIntrospectiveJavascript[];
@@ -2269,6 +2270,13 @@ class RewriteOptions {
     return allow_logging_urls_in_log_record_.value();
   }
 
+  void set_allow_options_to_be_set_by_cookies(bool x) {
+    set_option(x, &allow_options_to_be_set_by_cookies_);
+  }
+  bool allow_options_to_be_set_by_cookies() const {
+    return allow_options_to_be_set_by_cookies_.value();
+  }
+
   void set_non_cacheables_for_cache_partial_html(const StringPiece& p) {
     set_option(p.as_string(), &non_cacheables_for_cache_partial_html_);
   }
@@ -3711,6 +3719,9 @@ class RewriteOptions {
 
   // Whether to allow logging urls as part of LogRecord.
   Option<bool> allow_logging_urls_in_log_record_;
+
+  // Whether to allow options to be set by cookies.
+  Option<bool> allow_options_to_be_set_by_cookies_;
 
   // Non cacheables used when partial HTML is cached.
   Option<GoogleString> non_cacheables_for_cache_partial_html_;

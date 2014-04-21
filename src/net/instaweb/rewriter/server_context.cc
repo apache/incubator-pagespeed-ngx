@@ -897,14 +897,18 @@ RewriteOptions* ServerContext::NewOptions() {
 }
 
 bool ServerContext::GetQueryOptions(
-    GoogleUrl* request_url, RequestHeaders* request_headers,
-    ResponseHeaders* response_headers,
+    const RewriteOptions* domain_options, GoogleUrl* request_url,
+    RequestHeaders* request_headers, ResponseHeaders* response_headers,
     RewriteQuery* rewrite_query) {
+  if (domain_options == NULL) {
+    domain_options = global_options();
+  }
   // Note: success==false is treated as an error (we return 405 in
   // proxy_interface.cc).
   return RewriteQuery::IsOK(rewrite_query->Scan(
-      global_options()->add_options_to_urls(), factory(), this, request_url,
-      request_headers, response_headers, message_handler_));
+      domain_options->add_options_to_urls(),
+      domain_options->allow_options_to_be_set_by_cookies(), factory(), this,
+      request_url, request_headers, response_headers, message_handler_));
 }
 
 bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,

@@ -15,11 +15,12 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 
 #include <algorithm>  // for std::binary_search
+#include <map>
+#include <utility>
 #include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -114,13 +115,14 @@ RewriteQuery::RewriteQuery() {
 RewriteQuery::~RewriteQuery() {
 }
 
-// Scan for option-sets in query-params. We will only allow a limited number of
-// options to be set. In particular, some options are risky to set per query,
-// such as image inline threshold, which exposes a DOS vulnerability and a risk
-// of poisoning our internal cache. Domain adjustments can potentially introduce
-// a security vulnerability.
+// Scan for option-sets in query parameters, request and response headers, and
+// Cookies. We only allow a limited number of options to be set. In particular,
+// some options are risky to set this way, such as image inline threshold,
+// which exposes a DOS vulnerability and a risk of poisoning our internal cache,
+// and domain adjustments, which can introduce a security vulnerability.
 RewriteQuery::Status RewriteQuery::Scan(
     bool allow_related_options,
+    bool allow_options_to_be_specified_by_cookies,
     RewriteDriverFactory* factory,
     ServerContext* server_context,
     GoogleUrl* request_url,
@@ -159,13 +161,21 @@ RewriteQuery::Status RewriteQuery::Scan(
     }
   }
 
+  // Extract all cookies iff we can use them to set options.
+  RequestHeaders::CookieMultimap no_cookies;
+  const RequestHeaders::CookieMultimap& all_cookies(
+      (allow_options_to_be_specified_by_cookies && request_headers != NULL)
+      ? request_headers->GetAllCookies()
+      : no_cookies);
+
   // See if anything looks even remotely like one of our options before doing
   // any more work.  Note that when options are correctly embedded in the URL,
   // we will have a success-status here.  But we still allow a hand-added
   // query-param to override the embedded options.
   query_params_.Parse(request_url->Query());
   if (return_after_parsing ||
-      !MayHaveCustomOptions(query_params_, request_headers, response_headers)) {
+      !MayHaveCustomOptions(query_params_, request_headers, response_headers,
+                            all_cookies)) {
     return status;
   }
 
@@ -178,6 +188,17 @@ RewriteQuery::Status RewriteQuery::Scan(
     request_properties.reset(server_context->NewRequestProperties());
     request_properties->SetUserAgent(
         request_headers->Lookup1(HttpAttributes::kUserAgent));
+  }
+
+  // Scan for options set in cookies. They can be overridden by QPs or headers.
+  RequestHeaders::CookieMultimapConstIter it = all_cookies.begin();
+  RequestHeaders::CookieMultimapConstIter end = all_cookies.end();
+  for (; it != end; ++it) {
+    if (ScanNameValue(it->first, it->second.first,
+                      request_properties.get(), options_.get(), handler)
+        == kSuccess) {
+      status = kSuccess;
+    }
   }
 
   pagespeed_query_params_.Clear();
@@ -236,8 +257,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<ResponseHeaders>(
-      response_headers, request_properties.get(), options_.get(),
-      handler)) {
+      response_headers, request_properties.get(), options_.get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -289,9 +309,22 @@ bool RewriteQuery::HeadersMayHaveCustomOptions(const QueryParams& params,
   return false;
 }
 
+bool RewriteQuery::CookiesMayHaveCustomOptions(
+    const RequestHeaders::CookieMultimap& cookies) {
+  RequestHeaders::CookieMultimapConstIter it = cookies.begin();
+  RequestHeaders::CookieMultimapConstIter end = cookies.end();
+  for (; it != end; ++it) {
+    if (MightBeCustomOption(it->first)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool RewriteQuery::MayHaveCustomOptions(
     const QueryParams& params, const RequestHeaders* req_headers,
-    const ResponseHeaders* resp_headers) {
+    const ResponseHeaders* resp_headers,
+    const RequestHeaders::CookieMultimap& cookies) {
   for (int i = 0, n = params.size(); i < n; ++i) {
     if (MightBeCustomOption(params.name(i))) {
       return true;
@@ -301,6 +334,9 @@ bool RewriteQuery::MayHaveCustomOptions(
     return true;
   }
   if (HeadersMayHaveCustomOptions(params, resp_headers)) {
+    return true;
+  }
+  if (CookiesMayHaveCustomOptions(cookies)) {
     return true;
   }
   if (req_headers != NULL &&
@@ -316,7 +352,7 @@ bool RewriteQuery::MayHaveCustomOptions(
 }
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
-    const StringPiece& name, const GoogleString& value,
+    const StringPiece& name, const StringPiece& value,
     RequestProperties* request_properties, RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;

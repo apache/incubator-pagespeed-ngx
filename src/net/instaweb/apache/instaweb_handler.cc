@@ -355,7 +355,9 @@ void InstawebHandler::ComputeCustomOptions() {
                                  &response_headers_);
   num_response_attributes_ = response_headers_.NumAttributes();
 
-  if (!server_context_->GetQueryOptions(&stripped_gurl_, request_headers_.get(),
+  if (!server_context_->GetQueryOptions((directory_options != NULL)
+                                        ? directory_options : options_,
+                                        &stripped_gurl_, request_headers_.get(),
                                         &response_headers_, &rewrite_query_)) {
     server_context_->message_handler()->Message(
         kWarning, "Invalid PageSpeed query params or headers for "

@@ -164,6 +164,11 @@ bool RequestHeaders::IsXmlHttpRequest() const {
   return false;
 }
 
+const Headers<HttpRequestHeaders>::CookieMultimap&
+RequestHeaders::GetAllCookies() const {
+  return *PopulateCookieMap(HttpAttributes::kCookie);
+}
+
 RequestHeaders::Properties RequestHeaders::GetProperties() const {
   Properties properties(Has(HttpAttributes::kCookie),
                         Has(HttpAttributes::kCookie2),

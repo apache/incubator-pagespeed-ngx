@@ -682,6 +682,24 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeed unplugged
 </VirtualHost>
 
+# For testing setting options by cookies.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName options-by-cookies-enabled.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_optionsbycookieson"
+  ModPagespeedAllowOptionsToBeSetByCookies true
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters collapse_whitespace
+  ModPagespeedDisableFilters remove_comments,add_instrumentation
+</VirtualHost>
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName options-by-cookies-disabled.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_optionsbycookiesoff"
+  ModPagespeedAllowOptionsToBeSetByCookies false
+  ModPagespeedDisableFilters add_instrumentation
+</VirtualHost>
+
 # Proxy + IPRO a gzip'd file for testing Issue 896.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName ipro-proxy.example.com
@@ -698,7 +716,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   AddOutputFilterByType DEFLATE text/css
 </VirtualHost>
 
-# Backend for ipro-proxy.exampe.com
+# Backend for ipro-proxy.example.com
 Listen 127.0.0.1:@@APACHE_TERTIARY_PORT@@
 NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@
 <VirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@>
@@ -1351,6 +1369,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
 #ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
+#ALL_DIRECTIVES ModPagespeedAllowOptionsToBeSetByCookies true
 #ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon"
 #ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush

@@ -216,7 +216,7 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
 
   // Parse the query options, headers, and cookies.
   RewriteQuery query;
-  if (!server_context_->GetQueryOptions(request_url,
+  if (!server_context_->GetQueryOptions(domain_options, request_url,
                                         async_fetch->request_headers(),
                                         NULL, &query)) {
     async_fetch->response_headers()->SetStatusAndReason(
