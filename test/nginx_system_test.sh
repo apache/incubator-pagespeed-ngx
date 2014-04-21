@@ -353,29 +353,20 @@ else
 
   # The 1st request results in a cache miss, non-rewritten response
   # produced by pagespeed code and a subsequent purge request.
-  # Because of the random bypassing of the cache (required for beaconing
-  # integration), this request could result in a BYPASS as well.
   start_test Check for case where rewritten cache should get purged.
   check_for_no_rewriting "--header=Host:proxy_cache.example.com"
-  check egrep -q "X-Cache: MISS|BYPASS" $OUT_HEADERS_FILE
+  check egrep -q "X-Cache: MISS" $OUT_HEADERS_FILE
   fetch_until $STATISTICS_URL \
-    'grep -c downstream_cache_purge_attempts:[[:space:]]*1' 1
-
-  while [ x"$(grep "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG)" == x"" ] ; do
-    echo "waiting for purge request to show up in access log"
-    sleep .2
-  done
+    'grep -c successful_downstream_cache_purges:[[:space:]]*1' 1
 
   check [ $(grep -ce "$PURGE_REQUEST_IN_ACCESS_LOG" $ACCESS_LOG) = 1 ];
 
   # The 2nd request results in a cache miss (because of the previous purge),
   # rewritten response produced by pagespeed code and no new purge requests.
-  # Because of the random bypassing of the cache (required for beaconing
-  # integration), this request could result in a BYPASS as well.
   start_test Check for case where rewritten cache should not get purged.
   check_for_rewriting "--header=Host:proxy_cache.example.com \
                       --header=X-PSA-Blocking-Rewrite:psatest"
-  check egrep -q "X-Cache: MISS|BYPASS" $OUT_HEADERS_FILE
+  check egrep -q "X-Cache: MISS" $OUT_HEADERS_FILE
   CURRENT_STATS=$($WGET_DUMP $STATISTICS_URL)
   check_from "$CURRENT_STATS" egrep -q \
     "downstream_cache_purge_attempts:[[:space:]]*1"
@@ -397,7 +388,8 @@ else
   # output is also marked as a cache-miss, indicating that the instrumentation
   # was done by the backend.
   start_test Check whether beaconing is accompanied by a BYPASS always.
-  WGET_ARGS="-S --header=Host:proxy_cache.example.com"
+  WGET_ARGS="-S --header=Host:proxy_cache.example.com \
+                --header=X-Allow-Beacon:yes"
   CACHABLE_HTML_LOC+="?PageSpeedFilters=lazyload_images"
   fetch_until -gzip $CACHABLE_HTML_LOC \
       "zgrep -c \"pagespeed\.CriticalImages\.Run\"" 1
