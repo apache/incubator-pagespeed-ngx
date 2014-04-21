@@ -205,6 +205,45 @@ ngx_int_t string_piece_to_buffer_chain(
 // modified from NgxBaseFetch::CopyHeadersFromTable()
 namespace {
 
+// Based on ngx_http_add_cache_control.
+ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
+  // First strip existing cache-control headers.
+  ngx_table_elt_t* header;
+  NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
+    if (STR_CASE_EQ_LITERAL(header->key, "Cache-Control")) {
+      // Response headers with hash of 0 are excluded from the response.
+      header->hash = 0;
+    }
+  }
+
+  // Now add our new cache control header.
+  if (r->headers_out.cache_control.elts == NULL) {
+    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+                                  1, sizeof(ngx_table_elt_t *));
+    if (rc != NGX_OK) {
+      return NGX_ERROR;
+    }
+  }
+  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+      ngx_array_push(&r->headers_out.cache_control));
+  if (cache_control_headers == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (cache_control_headers[0] == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0]->hash = 1;
+  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
+  cache_control_headers[0]->value.len = strlen(cache_control);
+  cache_control_headers[0]->value.data =
+      reinterpret_cast<u_char*>(cache_control);
+
+  return NGX_OK;
+}
+
 template<class Headers>
 void copy_headers_from_table(const ngx_list_t &from, Headers* to) {
   // Standard nginx idiom for iterating over a list.  See ngx_list.h
@@ -290,16 +329,13 @@ ngx_int_t copy_response_headers_to_ngx(
           StringCaseEqual(name_gs, "Last-Modified") ||
           StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
-      }      
+      }
     } else if (preserve_caching_headers == kPreserveOnlyCacheControl) {
       // Retain the original Cache-Control header, but send the recomputed
       // values for all other cache-related headers.
-      if (StringCaseEqual(name_gs, "ETag") ||
-          StringCaseEqual(name_gs, "Expires") ||
-          StringCaseEqual(name_gs, "Date") ||
-          StringCaseEqual(name_gs, "Last-Modified")) {
+      if (StringCaseEqual(name_gs, "Cache-Control")) {
         continue;
-      }      
+      }
     } // else we don't preserve any headers
 
     ngx_str_t name, value;
@@ -334,7 +370,10 @@ ngx_int_t copy_response_headers_to_ngx(
       return NGX_ERROR;
     }
 
-    if (STR_EQ_LITERAL(name, "Content-Type")) {
+    if (STR_EQ_LITERAL(name, "Cache-Control")) {
+      ps_set_cache_control(r, const_cast<char*>(value_gs.c_str()));
+      continue;
+    } else if (STR_EQ_LITERAL(name, "Content-Type")) {
       // Unlike all the other headers, content_type is just a string.
       headers_out->content_type.data = value_s;
       headers_out->content_type.len = value.len;
@@ -1936,45 +1975,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
     r->headers_out.etag = NULL;      \
   }
 #endif
-
-// Based on ngx_http_add_cache_control.
-ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
-  // First strip existing cache-control headers.
-  ngx_table_elt_t* header;
-  NgxListIterator it(&(r->headers_out.headers.part));
-  while ((header = it.Next()) != NULL) {
-    if (STR_CASE_EQ_LITERAL(header->key, "Cache-Control")) {
-      // Response headers with hash of 0 are excluded from the response.
-      header->hash = 0;
-    }
-  }
-
-  // Now add our new cache control header.
-  if (r->headers_out.cache_control.elts == NULL) {
-    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
-                                  1, sizeof(ngx_table_elt_t *));
-    if (rc != NGX_OK) {
-      return NGX_ERROR;
-    }
-  }
-  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
-      ngx_array_push(&r->headers_out.cache_control));
-  if (cache_control_headers == NULL) {
-    return NGX_ERROR;
-  }
-  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
-      ngx_list_push(&r->headers_out.headers));
-  if (cache_control_headers[0] == NULL) {
-    return NGX_ERROR;
-  }
-  cache_control_headers[0]->hash = 1;
-  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
-  cache_control_headers[0]->value.len = strlen(cache_control);
-  cache_control_headers[0]->value.data =
-      reinterpret_cast<u_char*>(cache_control);
-
-  return NGX_OK;
-}
 
 void ps_strip_html_headers(ngx_http_request_t* r) {
   // We're modifying content, so switch to 'Transfer-Encoding: chunked' and
