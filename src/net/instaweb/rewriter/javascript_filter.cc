@@ -235,6 +235,14 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
+  virtual bool OptimizationOnly() const {
+    if (output_source_map_) {
+      return false;  // Do not return original JS as fallback for source maps!
+    } else {
+      return true;   // Do return original JS as fallback for rewritten JS.
+    }
+  }
+
   virtual const char* id() const {
     if (output_source_map_) {
       return RewriteOptions::kJavascriptMinSourceMapId;
