@@ -479,6 +479,9 @@ http {
     pagespeed UrlValuedAttribute img alt-src Image;
     pagespeed UrlValuedAttribute video alt-a Image;
     pagespeed UrlValuedAttribute video alt-b Image;
+
+    # Also test that we can redefine spec-defined attributes.
+    pagespeed UrlValuedAttribute blockquote cite Image;
   }
 
   server {
