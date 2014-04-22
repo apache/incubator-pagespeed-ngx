@@ -154,7 +154,7 @@ void SystemRewriteOptions::AddProperties() {
                     "acfpi", RewriteOptions::kCacheFlushPollIntervalSec,
                     "Number of seconds to wait between polling for cache-flush "
                         "requests");
-  AddSystemProperty(false,
+  AddSystemProperty(true,
                     &SystemRewriteOptions::compress_metadata_cache_,
                     "cc", RewriteOptions::kCompressMetadataCache,
                     "Whether to compress cache entries before writing them to "
