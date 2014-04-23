@@ -628,6 +628,18 @@ http {
     pagespeed CacheFlushPollIntervalSec 1;
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters inline_css;
+
+    # Make a non-empty subdirectory config to make sure that
+    # cache.flush updates get transmitted to nested configurations.
+    #
+    # TODO(jmarantz): This test currently fails on ngx_pagespeed, meaning we
+    # don't handle cache flushing correctly here.  Uncomment the config below to
+    # expose the error.
+    #location /mod_pagespeed_test/cache_flush/ {
+    #  pagespeed RewriteLevel PassThrough;
+    #  pagespeed EnableFilters inline_css;
+    #  pagespeed DisableFilters add_instrumentation;
+    #}
   }
 
   server {

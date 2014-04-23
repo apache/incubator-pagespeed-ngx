@@ -1324,10 +1324,10 @@ check touch "$SECONDARY_CACHE/cache.flush"
 check touch "$IPRO_CACHE/cache.flush"
 sleep 1
 
-CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/update.css"
+CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/cache_flush/update.css"
 echo ".class myclass { color: $COLOR0; }" > "$CSS_FILE"
 
-URL_PATH="mod_pagespeed_test/cache_flush_test.html"
+URL_PATH="mod_pagespeed_test/cache_flush/cache_flush_test.html"
 
 URL="$SECONDARY_HOSTNAME/$URL_PATH"
 CACHE_A="--header=Host:cache_a.example.com"
