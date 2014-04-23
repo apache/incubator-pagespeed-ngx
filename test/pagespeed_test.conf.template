@@ -37,6 +37,7 @@ http {
   # TODO(jefftk): this option currently breaks IPRO after cache flushing.  This
   # was turned on by default with PSOL r3966 and needs to be fixed there.
   pagespeed CompressMetadataCache off;
+  pagespeed ProactiveResourceFreshening off;
 
   root "@@SERVER_ROOT@@";
 
