@@ -2019,7 +2019,7 @@ start_test lazyload_images,rewrite_images with critical images beacon
 HOST_NAME="http://imagebeacon.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
 # There are 3 images on rewrite_images.html.  Since beaconing is on but we've
-# lazyloaded by default.1951  # sent no beacon data, none should be lazy loaded.
+# sent no beacon data, none should be lazy loaded.
 # Run until we see beaconing on the page (should happen on first visit).
 http_proxy=$SECONDARY_HOSTNAME\
   fetch_until -save $URL \
