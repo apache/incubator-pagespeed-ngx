@@ -2369,6 +2369,7 @@ OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
        --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
 check_from "$OUT" grep -q '<!--'
 check_from "$OUT" grep -q '  '
+WGET_ARGS=""
 
 start_test JS gzip headers
 

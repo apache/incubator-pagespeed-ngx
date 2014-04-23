@@ -34,6 +34,10 @@ http {
   pagespeed AdminPath /pagespeed_admin;
   pagespeed GlobalAdminPath /pagespeed_global_admin;
 
+  # TODO(jefftk): this option currently breaks IPRO after cache flushing.  This
+  # was turned on by default with PSOL r3966 and needs to be fixed there.
+  pagespeed CompressMetadataCache off;
+
   root "@@SERVER_ROOT@@";
 
   # Block 5a: Decide on Cache-Control header value to use for outgoing
