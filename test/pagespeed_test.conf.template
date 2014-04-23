@@ -34,6 +34,10 @@ http {
   pagespeed AdminPath /pagespeed_admin;
   pagespeed GlobalAdminPath /pagespeed_global_admin;
 
+  # TODO(jefftk): this option currently breaks IPRO after cache flushing.  This
+  # was turned on by default with PSOL r3966 and needs to be fixed there.
+  pagespeed CompressMetadataCache off;
+
   root "@@SERVER_ROOT@@";
 
   # Block 5a: Decide on Cache-Control header value to use for outgoing
@@ -860,6 +864,24 @@ http {
     server_name date.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name options-by-cookies-enabled.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookieson";
+    pagespeed AllowOptionsToBeSetByCookies true;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters collapse_whitespace;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name options-by-cookies-disabled.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookiesoff";
+    pagespeed AllowOptionsToBeSetByCookies false;
+    pagespeed DisableFilters add_instrumentation;
   }
 
   # Proxy + IPRO a gzip'd file for testing Issue 896.

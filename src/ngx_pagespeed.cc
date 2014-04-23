@@ -1277,17 +1277,16 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 // Wrapper around GetQueryOptions()
 RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
+    const RewriteOptions* domain_options, /* may be null */
     RequestHeaders* request_headers,
     ResponseHeaders* response_headers,
     ps_srv_conf_t* cfg_s,
     GoogleUrl* url) {
-  // Stripping ModPagespeed query params before the property cache lookup to
-  // make cache key consistent for both lookup and storing in cache.
-  //
   // Sets option from request headers and url.
   RewriteQuery rewrite_query;
   if (!cfg_s->server_context->GetQueryOptions(
-          url, request_headers, response_headers, &rewrite_query)) {
+          domain_options, url, request_headers, response_headers,
+          &rewrite_query)) {
     // Failed to parse query params or request headers.  Treat this as if there
     // were no query params given.
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -1375,7 +1374,7 @@ bool ps_determine_options(ngx_http_request_t* r,
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   RewriteOptions* request_options = ps_determine_request_options(
-      r, request_headers, response_headers, cfg_s, url);
+      r, directory_options, request_headers, response_headers, cfg_s, url);
   bool have_request_options = request_options != NULL;
 
   // Because the caller takes ownership of any options we return, the only

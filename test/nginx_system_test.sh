@@ -1997,13 +1997,13 @@ OUT1=$(http_proxy=$SECONDARY_HOSTNAME \
           $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $URL)
 check_not_from "$OUT1" egrep -q 'pagespeed\.criticalCssBeaconInit'
 check_from "$OUT1" grep -q "Cache-Control: private, max-age=3000"
+
 # 2. We get an instrumented page if the correct key is present.
-OUT2=$(http_proxy=$SECONDARY_HOSTNAME \
-          $WGET_DUMP $WGET_ARGS \
-          --header 'X-PSA-Blocking-Rewrite: psatest'\
-          --header="PS-ShouldBeacon: random_rebeaconing_key" $URL)
-check_from "$OUT2" grep -q "Cache-Control: max-age=0, no-cache"
-check_from "$OUT2" egrep -q "pagespeed\.criticalCssBeaconInit"
+http_proxy=$SECONDARY_HOSTNAME \
+  fetch_until -save $URL 'grep -c criticalCssBeaconInit' 2 \
+  "--header=PS-ShouldBeacon:random_rebeaconing_key --save-headers"
+check grep -q "Cache-Control: max-age=0, no-cache" $FETCH_UNTIL_OUTFILE
+
 # 3. We do not get an instrumented page if the wrong key is present.
 WGET_ARGS="--header=\"PS-ShouldBeacon: wrong_rebeaconing_key\""
 OUT3=$(http_proxy=$SECONDARY_HOSTNAME \
@@ -2341,6 +2341,37 @@ test_decent_browsers "New Opera" \
 
 WGETRC=$OLD_WGETRC
 WGET_ARGS=""
+
+test_filter collapse_whitespace
+start_test Cookie options on: by default comments not removed, whitespace is
+HOST_NAME="http://options-by-cookies-enabled.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+check_from     "$OUT" grep -q '<!--'
+check_not_from "$OUT" grep -q '  '
+start_test Cookie options on: set option by cookie takes effect
+echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+       --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+check_not_from "$OUT" grep -q '<!--'
+check_not_from "$OUT" grep -q '  '
+start_test Cookie options off: by default comments nor whitespace removed
+HOST_NAME="http://options-by-cookies-disabled.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+check_from "$OUT" grep -q '<!--'
+check_from "$OUT" grep -q '  '
+start_test Cookie options off: set option by cookie has no effect
+echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+       --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+check_from "$OUT" grep -q '<!--'
+check_from "$OUT" grep -q '  '
+WGET_ARGS=""
+
+start_test JS gzip headers
 
 JS_URL="$HOSTNAME/pagespeed_static/js_defer.$HASH.js"
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
