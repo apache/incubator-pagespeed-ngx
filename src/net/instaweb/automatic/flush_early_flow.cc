@@ -60,6 +60,7 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/http/http.pb.h"
 
 namespace {
@@ -191,7 +192,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
       if (!flushed_early && headers_complete_called_) {
         base_fetch_->response_headers()->CopyFrom(*response_headers());
       }
-      if (flushed_early && non_ok_response_) {
+      if (ShouldSendRedirectToPsaOff()) {
         SendRedirectToPsaOff();
       } else {
         // Write out all the buffered content and call Flush and Done if it were
@@ -226,7 +227,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
       non_ok_response_ =
           ((response_headers()->status_code() != HttpStatus::kOK) ||
            !response_headers()->IsHtmlLike());
-      if (flushed_early_ && non_ok_response_) {
+      if (ShouldSendRedirectToPsaOff()) {
         SendRedirectToPsaOff();
         return;
       }
@@ -283,6 +284,14 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
     }
     base_fetch_->Done(success);
     delete this;
+  }
+
+  bool ShouldSendRedirectToPsaOff() EXCLUSIVE_LOCKS_REQUIRED(mutex_.get()) {
+    if (flushed_early_) {
+      return (non_ok_response_ ||
+              response_headers()->HasAnyCookiesWithAttribute("HttpOnly", NULL));
+    }
+    return false;
   }
 
   void SendRedirectToPsaOff() {

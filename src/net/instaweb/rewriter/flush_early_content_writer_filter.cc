@@ -68,12 +68,12 @@ const char FlushEarlyContentWriterFilter::kFlushEarlyStyleTemplate[] =
 // on some browsers like Firefox.
 const char FlushEarlyContentWriterFilter::kDisableLinkTag[] =
     "<script type=\"text/javascript\">"
-    "var links = document.getElementsByTagName('link');"
-    "for (var i = 0; i < links.length; ++i) {"
-    "  if (links[i].getAttribute('rel') == 'stylesheet') {"
-    "    links[i].disabled=true;"
+    "(function(){var links = document.getElementsByTagName('link');"
+    "for (var i = 0, e; e = links[i]; i++) {"
+    "  if (e.getAttribute('rel') == 'stylesheet') {"
+    "    e.disabled=true;"
     "  }"
-    "}</script>";
+    "}})();</script>";
 
 struct ResourceInfo {
  public:
