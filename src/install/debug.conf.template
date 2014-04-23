@@ -396,6 +396,14 @@ ModPagespeedRespectXForwardedProto on
 
 ModPagespeedCompressMetadataCache true
 
+# Make a non-empty subdirectory config to make sure that
+# cache.flush updates get transmitted to nested configurations.
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cache_flush/" >
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters inline_css
+  ModPagespeedDisableFilters add_instrumentation
+</Directory>
+
 # Another VirtualHost can be enabled by default as it does no harm.  This can
 # be used for testing alternate configuration settings in system tests without
 # restarting Apache.
@@ -428,6 +436,14 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 
   # Helps testing whether the configuration of reporting 'unload' time works.
   ModPagespeedReportUnloadTime on
+
+  # Make a non-empty subdirectory config to make sure that
+  # cache.flush updates get transmitted to nested configurations.
+  <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/cache_flush/" >
+    ModPagespeedRewriteLevel PassThrough
+    ModPagespeedEnableFilters inline_css
+    ModPagespeedDisableFilters add_instrumentation
+  </Directory>
 
 #REWRITE   # These lines are only needed for the mod_rewrite test, where
 #REWRITE   # we are just trying to prove that we remove mod_rewrite from

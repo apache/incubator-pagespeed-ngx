@@ -1161,9 +1161,9 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   $SUDO touch ${MOD_PAGESPEED_CACHE}_ipro_for_browser/cache.flush
   sleep 1
 
-  URL_PATH=cache_flush_test.html?PageSpeedFilters=inline_css
+  URL_PATH=cache_flush/cache_flush_test.html
   URL=$TEST_ROOT/$URL_PATH
-  CSS_FILE=$APACHE_DOC_ROOT/mod_pagespeed_test/update.css
+  CSS_FILE=$APACHE_DOC_ROOT/mod_pagespeed_test/cache_flush/update.css
   TMP_CSS_FILE=$TEMPDIR/update.css.$$
 
   # First, write color 0 into the css file and make sure it gets inlined into
