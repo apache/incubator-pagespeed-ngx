@@ -862,6 +862,24 @@ http {
     add_header "Date" "Date: Fri, 16 Oct 2009 23:05:07 GMT";
   }
 
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name options-by-cookies-enabled.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookieson";
+    pagespeed AllowOptionsToBeSetByCookies true;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters collapse_whitespace;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name options-by-cookies-disabled.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@_optionsbycookiesoff";
+    pagespeed AllowOptionsToBeSetByCookies false;
+    pagespeed DisableFilters add_instrumentation;
+  }
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;

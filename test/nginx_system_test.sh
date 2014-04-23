@@ -2342,6 +2342,36 @@ test_decent_browsers "New Opera" \
 WGETRC=$OLD_WGETRC
 WGET_ARGS=""
 
+test_filter collapse_whitespace
+start_test Cookie options on: by default comments not removed, whitespace is
+HOST_NAME="http://options-by-cookies-enabled.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+check_from     "$OUT" grep -q '<!--'
+check_not_from "$OUT" grep -q '  '
+start_test Cookie options on: set option by cookie takes effect
+echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+       --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+check_not_from "$OUT" grep -q '<!--'
+check_not_from "$OUT" grep -q '  '
+start_test Cookie options off: by default comments nor whitespace removed
+HOST_NAME="http://options-by-cookies-disabled.example.com"
+URL="$HOST_NAME/mod_pagespeed_test/forbidden.html"
+echo wget $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)"
+check_from "$OUT" grep -q '<!--'
+check_from "$OUT" grep -q '  '
+start_test Cookie options off: set option by cookie has no effect
+echo wget --header=Cookie:PageSpeedFilters=+remove_comments $URL
+OUT="$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --no-cookies \
+       --header=Cookie:PageSpeedFilters=+remove_comments $URL)"
+check_from "$OUT" grep -q '<!--'
+check_from "$OUT" grep -q '  '
+
+start_test JS gzip headers
+
 JS_URL="$HOSTNAME/pagespeed_static/js_defer.$HASH.js"
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
