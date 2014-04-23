@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/in_place_resource_recorder.h"
 #include "net/instaweb/system/public/serf_url_async_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
@@ -62,9 +61,6 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
-
-const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
-    "/ngx_pagespeed_static/";
 
 class SharedCircularBuffer;
 
@@ -149,11 +145,6 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   NgxRewriteOptions* options = new NgxRewriteOptions(thread_system());
   options->SetRewriteLevel(RewriteOptions::kCoreFilters);
   return options;
-}
-
-void NgxRewriteDriverFactory::InitStaticAssetManager(
-    StaticAssetManager* static_asset_manager) {
-  static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
 }
 
 bool NgxRewriteDriverFactory::InitNgxUrlAsyncFetchers() {

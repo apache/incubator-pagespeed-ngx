@@ -45,14 +45,11 @@ class NgxUrlAsyncFetcher;
 class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SlowWorker;
-class StaticAssetManager;
 class Statistics;
 class SystemThreadSystem;
 
 class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
-  static const char kStaticAssetPrefix[];
-
   // We take ownership of the thread system.
   explicit NgxRewriteDriverFactory(
       const ProcessContext& process_context,
@@ -68,9 +65,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
-  // Initializes the StaticAssetManager.
-  virtual void InitStaticAssetManager(
-      StaticAssetManager* static_asset_manager);
   virtual ServerContext* NewDecodingServerContext();
   bool InitNgxUrlAsyncFetchers();
   // Check resolver configured or not.

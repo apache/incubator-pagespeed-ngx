@@ -1606,8 +1606,9 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r,
 
   if (is_pagespeed_subrequest(r)) {
     return RequestRouting::kPagespeedSubrequest;
-  } else if (url.PathSansLeaf() ==
-             NgxRewriteDriverFactory::kStaticAssetPrefix) {
+  } else if (
+      url.PathSansLeaf() == dynamic_cast<NgxRewriteDriverFactory*>(
+          cfg_s->server_context->factory())->static_asset_prefix()) {
     return RequestRouting::kStaticContent;
   }
 
@@ -2408,8 +2409,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
     case RequestRouting::kStaticContent: {
       StringPiece file_contents;
       if (!server_context->static_asset_manager()->GetAsset(
-              request_uri_path.substr(
-                  strlen(NgxRewriteDriverFactory::kStaticAssetPrefix)),
+              request_uri_path.substr(factory->static_asset_prefix().length()),
               &file_contents, &content_type, &cache_control)) {
         return NGX_DECLINED;
       }
