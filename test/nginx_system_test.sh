@@ -259,7 +259,7 @@ if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   exit 2
 fi
 
-PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
+PSA_JS_LIBRARY_URL_PREFIX="pagespeed_static"
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
 PAGESPEED_EXPECTED_FAILURES="
@@ -1688,16 +1688,18 @@ HOST_NAME="http://domain-hyperlinks-on.example.com"
 RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
     $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
 MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
-check [ $MATCHES -eq 3 ]
+check [ $MATCHES -eq 4 ]
 
 # Test to make sure dynamically defined url-valued attributes are rewritten by
-# rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition
-# to having one <img> URL, one <form> URL, and one <a> url it also has one
-# <span src=...> URL, one <hr imgsrc=...> URL, and one <hr src=...> URL, all
-# referencing src.example.com.  The first three should be rewritten because of
-# hardcoded rules, the span.src and hr.imgsrc should be rewritten because of
-# UrlValuedAttribute directives, and the hr.src should be left
-# unmodified.  The rewritten ones should all be rewritten to dst.example.com.
+# rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition to
+# having one <img> URL, one <form> URL, and one <a> url it also has one <span
+# src=...> URL, one <hr imgsrc=...> URL, one <hr src=...> URL, and one
+# <blockquote cite=...> URL, all referencing src.example.com.  The first three
+# should be rewritten because of hardcoded rules, the span.src and hr.imgsrc
+# should be rewritten because of UrlValuedAttribute directives, the hr.src
+# should be left unmodified, and the blockquote.src should be rewritten as an
+# image because of a UrlValuedAttribute override.  The rewritten ones should all
+# be rewritten to dst.example.com.
 HOST_NAME="http://url-attribute.example.com"
 TEST="$HOST_NAME/mod_pagespeed_test"
 REWRITE_DOMAINS="$TEST/rewrite_domains.html"
@@ -1708,7 +1710,7 @@ start_test Rewrite domains in dynamically defined url-valued attributes.
 
 RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $REWRITE_DOMAINS)
 MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
-check [ $MATCHES -eq 5 ]
+check [ $MATCHES -eq 6 ]
 MATCHES=$(echo "$RESPONSE_OUT" | \
     fgrep -c '<hr src=http://src.example.com/hr-image>')
 check [ $MATCHES -eq 1 ]
@@ -1720,9 +1722,9 @@ function count_exact_matches() {
   fgrep -o "$1" | wc -l
 }
 
-# There are nine resources that should be optimized
+# There are ten resources that should be optimized
 http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.' 9
+    fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.' 10
 
 # Make sure <custom d=...> isn't modified at all, but that everything else is
 # recognized as a url and rewritten from ../foo to /foo.  This means that only
@@ -1732,9 +1734,9 @@ http_proxy=$SECONDARY_HOSTNAME \
 http_proxy=$SECONDARY_HOSTNAME \
     fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
 
-# There are nine images that should be optimized.
+# There are ten images that should be optimized.
 http_proxy=$SECONDARY_HOSTNAME \
-    fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 9
+    fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 10
 
 # Test the experiment framework (Furious).
 
@@ -2016,20 +2018,19 @@ WGET_ARGS=""
 start_test lazyload_images,rewrite_images with critical images beacon
 HOST_NAME="http://imagebeacon.example.com"
 URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
-# There are 3 images on rewrite_images.html. Check that they are all
-# lazyloaded by default.
+# There are 3 images on rewrite_images.html.  Since beaconing is on but we've
+# sent no beacon data, none should be lazy loaded.
+# Run until we see beaconing on the page (should happen on first visit).
 http_proxy=$SECONDARY_HOSTNAME\
-  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
-  $WGET_DIR/rewrite_images.html) = 1 ];
+  fetch_until -save $URL \
+  'fgrep -c "pagespeed.CriticalImages.Run"' 1
+check [ $(grep -c "pagespeed_lazy_src=" $FETCH_FILE) = 0 ];
 # We need the options hash and nonce to send a critical image beacon, so extract
 # it from injected beacon JS.
-OPTIONS_HASH=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
-               $WGET_DIR/rewrite_images.html)
-NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
-        $WGET_DIR/rewrite_images.html)
-OPTIONS_HASH=$(grep "^pagespeed\.CriticalImages\.Run" \
-  $WGET_DIR/rewrite_images.html | awk -F\' '{print $(NF-3)}')
+OPTIONS_HASH=$(
+  awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' $FETCH_FILE)
+NONCE=$(
+  awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' $FETCH_FILE)
 # Send a beacon response using POST indicating that Puzzle.jpg is a critical
 # image.
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
@@ -2041,7 +2042,7 @@ OUT=$(env http_proxy=$SECONDARY_HOSTNAME \
   wget -q --save-headers -O - --no-http-keep-alive \
   --post-data "$BEACON_DATA" "$BEACON_URL")
 check_from "$OUT" egrep -q "HTTP/1[.]. 204"
-# Now only 2 of the images should be lazyloaded, Cuppa.png should not be.
+# Now 2 of the images should be lazyloaded, Puzzle.jpg should not be.
 http_proxy=$SECONDARY_HOSTNAME \
   fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 2
 
@@ -2052,13 +2053,13 @@ http_proxy=$SECONDARY_HOSTNAME \
 # page without blocking.
 URL="$URL?id=4"
 http_proxy=$SECONDARY_HOSTNAME\
-  fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
-check [ $(grep -c "^pagespeed\.CriticalImages\.Run" \
-    "$WGET_DIR/rewrite_images.html?id=4") = 1 ];
-OPTIONS_HASH=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' \
-               "$WGET_DIR/rewrite_images.html?id=4")
-NONCE=$(awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' \
-       "$WGET_DIR/rewrite_images.html?id=4")
+  fetch_until -save $URL \
+  'fgrep -c "pagespeed.CriticalImages.Run"' 1
+check [ $(grep -c "pagespeed_lazy_src=" $FETCH_FILE) = 0 ];
+OPTIONS_HASH=$(
+  awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-3)}' $FETCH_FILE)
+NONCE=$(
+  awk -F\' '/^pagespeed\.CriticalImages\.Run/ {print $(NF-1)}' $FETCH_FILE)
 BEACON_URL="$HOST_NAME/ngx_pagespeed_beacon"
 BEACON_URL+="?url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
 BEACON_URL+="image_rewriting%2Frewrite_images.html%3Fid%3D4"
@@ -2149,7 +2150,7 @@ keepalive_test "keepalive-beacon-post.example.com" "/ngx_pagespeed_beacon"\
 
 start_test keepalive with static resources
 keepalive_test "keepalive-static.example.com"\
-  "/ngx_pagespeed_static/js_defer.0.js" ""
+  "/pagespeed_static/js_defer.0.js" ""
 
 # Test for MaxCombinedCssBytes. The html used in the test, 'combine_css.html',
 # has 4 CSS files in the following order.
@@ -2184,7 +2185,7 @@ CONNECTION=$(extract_headers $FETCH_UNTIL_OUTFILE | fgrep "Connection:")
 check_not_from "$CONNECTION" fgrep -qi "Keep-Alive, Keep-Alive"
 check_from "$CONNECTION" fgrep -qi "Keep-Alive"
 
-start_test ngx_pagespeed_static defer js served with correct headers.
+start_test pagespeed_static defer js served with correct headers.
 # First, determine which hash js_defer is served with. We need a correct hash
 # to get it served up with an Etag, which is one of the things we want to test.
 URL="$HOSTNAME/mod_pagespeed_example/defer_javascript.html?PageSpeed=on&PageSpeedFilters=defer_javascript"
@@ -2341,7 +2342,7 @@ test_decent_browsers "New Opera" \
 WGETRC=$OLD_WGETRC
 WGET_ARGS=""
 
-JS_URL="$HOSTNAME/ngx_pagespeed_static/js_defer.$HASH.js"
+JS_URL="$HOSTNAME/pagespeed_static/js_defer.$HASH.js"
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
@@ -2564,13 +2565,13 @@ WGET_ARGS="--header=PageSpeedFilters:rewrite_images"
 WGET_EC="$WGET_DUMP $WGET_ARGS"
 echo $WGET_EC $URL
 LARGE_OUT=$($WGET_EC $URL)
-check_from "$LARGE_OUT" grep -q window.location=".*&ModPagespeed=off"
+check_from "$LARGE_OUT" grep -q window.location=".*&PageSpeed=off"
 
 # The file should now be in the property cache so make sure that the page is no
 # longer parsed. Use fetch_until because we need to wait for a potentially
 # non-blocking write to the property cache from the previous test to finish
 # before this will succeed.
-fetch_until -save $URL 'grep -c window.location=".*&ModPagespeed=off"' 0
+fetch_until -save $URL 'grep -c window.location=".*&PageSpeed=off"' 0
 check_not fgrep -q pagespeed.ic $FETCH_FILE
 
 start_test messages load
