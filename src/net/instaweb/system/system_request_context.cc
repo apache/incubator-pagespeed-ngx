@@ -22,13 +22,30 @@
 
 namespace net_instaweb {
 
+namespace {
+
+GoogleString BracketIpv6(StringPiece local_ip) {
+  // See http://www.ietf.org/rfc/rfc2732.txt
+  // We assume the IP address is either IPv4 aa.bb.cc.dd or IPv6 with or without
+  // brackets.  We add brackets if we see a : indicating an IPv6 address.
+  GoogleString result;
+  if (!local_ip.starts_with("[") && local_ip.find(':') != StringPiece::npos) {
+    StrAppend(&result, "[", local_ip, "]");
+  } else {
+    local_ip.CopyToString(&result);
+  }
+  return result;
+}
+
+}  // namespace
+
 SystemRequestContext::SystemRequestContext(
     AbstractMutex* logging_mutex, Timer* timer,
     StringPiece hostname_for_cache_fragmentation,
     int local_port, StringPiece local_ip)
     : RequestContext(logging_mutex, timer),
       local_port_(local_port),
-      local_ip_(local_ip.as_string()) {
+      local_ip_(BracketIpv6(local_ip)) {
   set_minimal_private_suffix(MinimalPrivateSuffix(
       hostname_for_cache_fragmentation));
 }
