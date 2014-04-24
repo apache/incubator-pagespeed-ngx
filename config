@@ -173,7 +173,8 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_driver_factory.h \
     $ps_src/ngx_rewrite_options.h \
     $ps_src/ngx_server_context.h \
-    $ps_src/ngx_url_async_fetcher.h"
+    $ps_src/ngx_url_async_fetcher.h \
+    $psol_library_binaries"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ps_src/log_message_handler.cc \
     $ps_src/ngx_base_fetch.cc \
