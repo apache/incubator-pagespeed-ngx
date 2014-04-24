@@ -1523,7 +1523,7 @@ void RewriteOptions::AddProperties() {
       "Allows individual resources to be flushed; adding some overhead to "
       "the metadata cache");
   AddBaseProperty(
-      true, &RewriteOptions::proactive_resource_freshening_, "prf",
+      false, &RewriteOptions::proactive_resource_freshening_, "prf",
       kProactiveResourceFreshening,
       kServerScope,
       "If true, allows proactive freshening of inputs to the resource when "

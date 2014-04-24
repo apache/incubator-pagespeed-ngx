@@ -3622,8 +3622,8 @@ TEST_F(RewriteContextTest, TestFreshenForEmbeddedDependency) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
-  // proactive_resource_freshening is on by default, so there is no need to
-  // change it.
+  // proactive_resource_freshening is off by default, so turn it on.
+  options()->set_proactive_resource_freshening(true);
   options()->ComputeSignature();
   rewrite_driver()->AddFilters();
 
@@ -3723,9 +3723,8 @@ TEST_F(RewriteContextTest, TestNoFreshenForEmbeddedDependency) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
-  // Disable this option so urls not stored with nested metadata
-  // (e.g. rewrite_css), and thus will not freshen not be auto-freshened
-  // when almost stale.
+  // proactive resource freshening is off by default so no need to disable it.
+  EXPECT_FALSE(options()->proactive_resource_freshening());
   options()->set_proactive_resource_freshening(false);
   options()->ComputeSignature();
   rewrite_driver()->AddFilters();
