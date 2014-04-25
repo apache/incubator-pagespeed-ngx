@@ -214,6 +214,7 @@ int ResponseHeaders::status_code() const {
 }
 
 void ResponseHeaders::set_status_code(int code) {
+  cache_fields_dirty_ = true;
   mutable_proto()->set_status_code(code);
 }
 

@@ -264,15 +264,16 @@ class CacheFindCallback : public HTTPCache::Callback {
       case HTTPCache::kFound: {
         VLOG(1) << "Found in cache: " << url_ << " (" << fragment_ << ")";
         http_value()->ExtractHeaders(response_headers(), handler_);
-        response_headers()->ComputeCaching();
-        bool is_imminently_expiring =
-            IsImminentlyExpiring(*response_headers());
+
+        bool is_imminently_expiring = false;
 
         // Respond with a 304 if the If-Modified-Since / If-None-Match values
         // are equal to those in the request.
         if (ShouldReturn304()) {
           response_headers()->Clear();
           response_headers()->SetStatusAndReason(HttpStatus::kNotModified);
+          response_headers()->ComputeCaching();
+          is_imminently_expiring = IsImminentlyExpiring(*response_headers());
           base_fetch_->HeadersComplete();
         } else if (base_fetch_->request_headers()->method() !=
                    RequestHeaders::kHead) {
@@ -286,6 +287,8 @@ class CacheFindCallback : public HTTPCache::Callback {
           StringPiece contents;
           http_value()->ExtractContents(&contents);
           base_fetch_->set_content_length(contents.size());
+          response_headers()->ComputeCaching();
+          is_imminently_expiring = IsImminentlyExpiring(*response_headers());
           base_fetch_->HeadersComplete();
 
           // TODO(sligocki): We are writing all the content in one shot, this
@@ -293,6 +296,9 @@ class CacheFindCallback : public HTTPCache::Callback {
           // we should add an API for conveying that information, which can
           // be detected via AsyncFetch::content_length_known().
           base_fetch_->Write(contents, handler_);
+        } else {
+          response_headers()->ComputeCaching();
+          is_imminently_expiring = IsImminentlyExpiring(*response_headers());
         }
 
         if (fetcher_ != NULL &&

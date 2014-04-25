@@ -257,6 +257,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     // Add a response for permanent redirect.
     ResponseHeaders redirect_headers;
     redirect_headers.set_first_line(1, 1, 301, "Moved Permanently");
+    redirect_headers.ComputeCaching();
     redirect_headers.SetCacheControlMaxAge(36000);
     redirect_headers.Add(HttpAttributes::kCacheControl, "public");
     redirect_headers.Add(HttpAttributes::kContentType, "image/jpeg");
@@ -734,16 +735,17 @@ TEST_F(InPlaceRewriteContextTest, IngressDistributedRewriteNotFound) {
                         0);     // number of rewrites
 
   // Ingress task distributes and returns the 404 it gets back.
-  // Rewrite task misses metadata and http, writes 404 http and returns.
+  // Rewrite task misses metadata and http. The 404 isn't cacheable, so it's
+  // not written.
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
-  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
 
   // Ingress task distributes.
-  // Rewrite task misses ipro metadata but hits http, and returns that.
+  // Rewrite task misses ipro metadata + http, and returns that.
   ResetHeadersAndStats();
   FetchAndCheckResponse(orig_url, "", true, ServerContext::kGeneratedMaxAgeMs,
                         ServerContext::kResourceEtagValue, start_time_ms());
@@ -751,11 +753,11 @@ TEST_F(InPlaceRewriteContextTest, IngressDistributedRewriteNotFound) {
                         0,      // unsuccessful distributed fetches
                         0,      // number of ingress fetches
                         0);     // number of rewrites
-  EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
 }
 
