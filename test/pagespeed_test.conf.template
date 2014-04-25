@@ -892,6 +892,16 @@ http {
     pagespeed DisableFilters add_instrumentation;
   }
 
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name request-option-override.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RequestOptionOverride abc;
+    pagespeed RewriteLevel Passthrough;
+    pagespeed EnableFilters collapse_whitespace;
+    pagespeed DisableFilters remove_comments,add_instrumentation;
+  }
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
