@@ -88,7 +88,7 @@ deps = {
   # Other dependencies.
   "src/build/temp_gyp":
     Var("libpagespeed_trunk") + "src/build/temp_gyp/" +
-      Var("libpagespeed_revision"),
+        Var("libpagespeed_revision"),
 
   # We check 'build/android' out of Chromium repo to get
   # 'android/cpufeatures.gypi', which is needed to compile libwebp.
@@ -99,7 +99,7 @@ deps = {
     Var("chromium_trunk") + "src/build/ios/@" + Var("chromium_revision_num"),
   "src/build/internal":
     Var("chromium_trunk") + "src/build/internal/@" +
-      Var("chromium_revision_num"),
+        Var("chromium_revision_num"),
   "src/build/linux":
     Var("chromium_trunk") + "src/build/linux/@" + Var("chromium_revision_num"),
   "src/build/mac":
@@ -168,8 +168,8 @@ deps = {
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
   "src/third_party/protobuf":
-    (Var("chromium_trunk") + "src/third_party/protobuf/@" +
-      Var("chromium_revision_num")),
+    Var("chromium_trunk") + "src/third_party/protobuf/@" +
+        Var("chromium_revision_num"),
 
   # Json cpp.
   "src/third_party/jsoncpp/src":
@@ -189,14 +189,13 @@ deps = {
          Var("chromium_revision_num"),
 
   "src/tools/clang":
-    (Var("chromium_trunk") + "src/tools/clang/@" +
-      Var("chromium_revision_num")),
+    Var("chromium_trunk") + "src/tools/clang/@" + Var("chromium_revision_num"),
 
   "src/tools/gyp": From(Var("chromium_deps_root")),
 
   "src/third_party/modp_b64":
     Var("chromium_trunk") + "src/third_party/modp_b64/@" +
-    Var("chromium_revision_num"),
+        Var("chromium_revision_num"),
 
   # RE2.
   "src/third_party/re2/src":
@@ -211,14 +210,16 @@ deps = {
   # Domain Registry Provider gives us the Public Suffix List.
   "src/third_party/domain_registry_provider":
     Var("domain_registry_provider_src") +
-    Var("domain_registry_provider_revision")
+        Var("domain_registry_provider_revision")
 }
 
 
 deps_os = {
   "win": {
     "src/third_party/cygwin": From(Var("chromium_deps_root")),
-    "src/third_party/python_26": From(Var("chromium_deps_root")),
+    "src/third_party/python_26":
+      Var("chromium_trunk") + "tools/third_party/python_26/@" +
+          Var("chromium_revision_num"),
   },
   "mac": {
   },
