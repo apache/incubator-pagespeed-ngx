@@ -907,8 +907,9 @@ bool ServerContext::GetQueryOptions(
   // proxy_interface.cc).
   return RewriteQuery::IsOK(rewrite_query->Scan(
       domain_options->add_options_to_urls(),
-      domain_options->allow_options_to_be_set_by_cookies(), factory(), this,
-      request_url, request_headers, response_headers, message_handler_));
+      domain_options->allow_options_to_be_set_by_cookies(),
+      domain_options->request_option_override(), factory(), this, request_url,
+      request_headers, response_headers, message_handler_));
 }
 
 bool ServerContext::ScanSplitHtmlRequest(const RequestContextPtr& ctx,

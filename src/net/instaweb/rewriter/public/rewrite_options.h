@@ -346,6 +346,7 @@ class RewriteOptions {
   static const char kUseSmartDiffInBlink[];
   static const char kXModPagespeedHeaderValue[];
   static const char kXPsaBlockingRewrite[];
+  static const char kRequestOptionOverride[];
   // Options that require special handling, e.g. non-scalar values
   static const char kAllow[];
   static const char kBlockingRewriteRefererUrls[];
@@ -1693,6 +1694,13 @@ class RewriteOptions {
   }
   int beacon_reinstrument_time_sec() const {
     return beacon_reinstrument_time_sec_.value();
+  }
+
+  void set_request_option_override(StringPiece p) {
+    set_option(GoogleString(p.data(), p.size()), &request_option_override_);
+  }
+  const GoogleString& request_option_override() const {
+    return request_option_override_.value();
   }
 
   void set_lazyload_images_after_onload(bool x) {
@@ -3740,6 +3748,9 @@ class RewriteOptions {
   // b. low-res image is not small enough compared to the full-res version.
   Option<int64> max_low_res_image_size_bytes_;
   Option<int> max_low_res_to_full_res_image_size_percentage_;
+
+  // Pass this string in url to allow for pagespeed options.
+  Option<GoogleString> request_option_override_;
 
   // If set, how to fragment the http cache.  Otherwise the server's hostname,
   // from the Host header, is used.

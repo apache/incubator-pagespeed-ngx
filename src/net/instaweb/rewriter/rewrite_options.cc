@@ -342,6 +342,7 @@ const char RewriteOptions::kUseSelectorsForCriticalCss[] =
     "UseSelectorsForCriticalCss";
 const char RewriteOptions::kUseSharedMemLocking[] = "SharedMemoryLocks";
 const char RewriteOptions::kNullOption[] = "";
+const char RewriteOptions::kRequestOptionOverride[] = "RequestOptionOverride";
 
 // RewriteFilter prefixes
 const char RewriteOptions::kCacheExtenderId[] = "ce";
@@ -1593,6 +1594,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Wait until page onload before loading lazy images");
 
+  AddBaseProperty(
+      "", &RewriteOptions::request_option_override_, "roo",
+      kRequestOptionOverride,
+      kDirectoryScope,
+      "Token passed in URL to enable pagespeed options in params.");
   AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,

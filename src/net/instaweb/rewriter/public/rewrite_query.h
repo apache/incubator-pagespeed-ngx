@@ -84,6 +84,7 @@ class RewriteQuery {
   // cookies for options.
   Status Scan(bool allow_related_options,
               bool allow_options_to_be_specified_by_cookies,
+              const GoogleString& request_option_override,
               RewriteDriverFactory* factory,
               ServerContext* server_context,
               GoogleUrl* request_url,
@@ -101,6 +102,8 @@ class RewriteQuery {
   template <class HeaderT>
   static Status ScanHeader(HeaderT* headers,
                            RequestProperties* request_properties,
+                           bool allow_options,
+                           const GoogleString& request_option_override,
                            RewriteOptions* options,
                            MessageHandler* handler);
 
@@ -170,6 +173,7 @@ class RewriteQuery {
   // Examines a name/value pair for options.
   static Status ScanNameValue(const StringPiece& name,
                               const StringPiece& value,
+                              bool allow_options,
                               RequestProperties* request_properties,
                               RewriteOptions* options,
                               MessageHandler* handler);

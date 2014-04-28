@@ -68,6 +68,8 @@ template <class HeaderT>
 RewriteQuery::Status RewriteQuery::ScanHeader(
     HeaderT* headers,
     RequestProperties* request_properties,
+    bool allow_options,
+    const GoogleString& request_option_override,
     RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
@@ -76,13 +78,30 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
     return status;
   }
 
+  // Check to see if the override token exists.
+  if (!allow_options && !request_option_override.empty()) {
+    GoogleString mod_pagespeed_override =
+        StrCat(kModPagespeed, RewriteOptions::kRequestOptionOverride);
+    GoogleString page_speed_override =
+        StrCat(kPageSpeed, RewriteOptions::kRequestOptionOverride);
+    for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
+      const StringPiece name(headers->Name(i));
+      const GoogleString& value = headers->Value(i);
+      if (name == mod_pagespeed_override || name == page_speed_override) {
+        allow_options = (value == request_option_override);
+        break;
+      }
+    }
+  }
+
   // Tracks the headers that need to be removed.
   HeaderT headers_to_remove;
 
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
     const StringPiece name(headers->Name(i));
     const GoogleString& value = headers->Value(i);
-    switch (ScanNameValue(name, value, request_properties, options, handler)) {
+    switch (ScanNameValue(name, value, allow_options, request_properties,
+                          options, handler)) {
       case kNoneFound:
         break;
       case kSuccess:
@@ -123,6 +142,7 @@ RewriteQuery::~RewriteQuery() {
 RewriteQuery::Status RewriteQuery::Scan(
     bool allow_related_options,
     bool allow_options_to_be_specified_by_cookies,
+    const GoogleString& request_option_override,
     RewriteDriverFactory* factory,
     ServerContext* server_context,
     GoogleUrl* request_url,
@@ -190,11 +210,29 @@ RewriteQuery::Status RewriteQuery::Scan(
         request_headers->Lookup1(HttpAttributes::kUserAgent));
   }
 
+  // Check to see if options should be parsed.
+  // If the config disallows parsing, and the proper token is not provided,
+  // do not use the options passed in the url.
+  bool allow_options = true;
+  if (!request_option_override.empty()) {
+    allow_options = false;
+    GoogleString override_token;
+    GoogleString mod_pagespeed_override =
+        StrCat(kModPagespeed, RewriteOptions::kRequestOptionOverride);
+    GoogleString page_speed_override =
+        StrCat(kPageSpeed, RewriteOptions::kRequestOptionOverride);
+    if (query_params_.Lookup1Unescaped(mod_pagespeed_override,
+                                       &override_token) ||
+        query_params_.Lookup1Unescaped(page_speed_override, &override_token)) {
+      allow_options = (override_token == request_option_override);
+    }
+  }
+
   // Scan for options set in cookies. They can be overridden by QPs or headers.
   RequestHeaders::CookieMultimapConstIter it = all_cookies.begin();
   RequestHeaders::CookieMultimapConstIter end = all_cookies.end();
   for (; it != end; ++it) {
-    if (ScanNameValue(it->first, it->second.first,
+    if (ScanNameValue(it->first, it->second.first, allow_options,
                       request_properties.get(), options_.get(), handler)
         == kSuccess) {
       status = kSuccess;
@@ -211,8 +249,8 @@ RewriteQuery::Status RewriteQuery::Scan(
       // let's fix it now.
       GlobalReplaceSubstring(" " , "+", &unescaped_value);
       switch (ScanNameValue(
-          query_params_.name(i), unescaped_value, request_properties.get(),
-          options_.get(), handler)) {
+          query_params_.name(i), unescaped_value, allow_options,
+          request_properties.get(), options_.get(), handler)) {
         case kNoneFound:
           // If this is not a PageSpeed-related query-parameter, then save it
           // in its escaped form.
@@ -244,7 +282,8 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<RequestHeaders>(
-      request_headers, request_properties.get(), options_.get(), handler)) {
+      request_headers, request_properties.get(), allow_options,
+      request_option_override, options_.get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -257,7 +296,8 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
 
   switch (ScanHeader<ResponseHeaders>(
-      response_headers, request_properties.get(), options_.get(), handler)) {
+      response_headers, request_properties.get(), allow_options,
+      request_option_override, options_.get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -352,7 +392,7 @@ bool RewriteQuery::MayHaveCustomOptions(
 }
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
-    const StringPiece& name, const StringPiece& value,
+    const StringPiece& name, const StringPiece& value, bool allow_options,
     RequestProperties* request_properties, RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
@@ -383,6 +423,8 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
                        trimmed_value.as_string().c_str());
       status = kInvalid;
     }
+  } else if (!allow_options) {
+    status = kNoneFound;
   } else if (name == kModPagespeedFilters || name == kPageSpeedFilters) {
     // When using PageSpeedFilters query param, only the specified filters
     // should be enabled.

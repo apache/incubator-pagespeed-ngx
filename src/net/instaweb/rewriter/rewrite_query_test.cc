@@ -43,6 +43,7 @@ class RewriteQueryTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     allow_related_options_ = false;
     allow_options_to_be_set_by_cookies_ = false;
+    request_option_override_ = "";
     image_url_ = Encode(kTestDomain, "ic", "0", "image.jpg", "jpg");
   }
 
@@ -106,9 +107,9 @@ class RewriteQueryTest : public RewriteTestBase {
       }
     }
     rewrite_query_.Scan(allow_related_options_,
-                        allow_options_to_be_set_by_cookies_, factory(),
-                        server_context(), &url, request_headers,
-                        response_headers, &handler_);
+                        allow_options_to_be_set_by_cookies_,
+                        request_option_override_, factory(), server_context(),
+                        &url, request_headers, response_headers, &handler_);
     if (out_query != NULL) {
       out_query->assign(url.Query().data(), url.Query().size());
     }
@@ -149,10 +150,10 @@ class RewriteQueryTest : public RewriteTestBase {
   void Incremental(const StringPiece& query, RewriteOptions* options) {
     GoogleUrl gurl(StrCat("http://example.com/?ModPagespeedFilters=", query));
     ASSERT_EQ(RewriteQuery::kSuccess,
-              rewrite_query_.Scan(allow_related_options_,
-                                  allow_options_to_be_set_by_cookies_,
-                                  factory(), server_context(), &gurl,
-                                  NULL, NULL, message_handler()));
+              rewrite_query_.Scan(
+                  allow_related_options_, allow_options_to_be_set_by_cookies_,
+                  request_option_override_, factory(), server_context(), &gurl,
+                  NULL, NULL, message_handler()));
     options->Merge(*rewrite_query_.options());
   }
 
@@ -224,6 +225,7 @@ class RewriteQueryTest : public RewriteTestBase {
   RewriteQuery rewrite_query_;
   bool allow_related_options_;
   bool allow_options_to_be_set_by_cookies_;
+  GoogleString request_option_override_;
   GoogleString image_url_;
 };
 
@@ -821,6 +823,44 @@ TEST_F(RewriteQueryTest, JpegRecompressionQuality) {
   EXPECT_EQ(73, options->image_jpeg_recompress_quality());
 }
 
+TEST_F(RewriteQueryTest, RequestOptionOverrideWithIncorrectToken) {
+  const char kQuery[] =
+    "PageSpeedJpegRecompressionQuality=88&PageSpeedRequestOptionOverride=def";
+  GoogleString query, req;
+  request_option_override_ = "abc";
+  const RewriteOptions* options =
+      ParseAndScan(image_url_, kQuery, "", &query, &req);
+  EXPECT_TRUE(options == NULL);
+}
+
+TEST_F(RewriteQueryTest, RequestOptionOverride) {
+  const char kQuery[] =
+      "PageSpeedJpegRecompressionQuality=73&PageSpeedRequestOptionOverride=abc";
+  GoogleString query, req;
+  request_option_override_ = "abc";
+  const RewriteOptions* options =
+      ParseAndScan(image_url_, kQuery, "", &query, &req);
+  EXPECT_EQ(73, options->image_jpeg_recompress_quality());
+}
+
+TEST_F(RewriteQueryTest, RequestOptionOverrideProvidedWhenNotRequired) {
+  const char kQuery[] =
+      "PageSpeedJpegRecompressionQuality=73&PageSpeedRequestOptionOverride=abc";
+  GoogleString query, req;
+  const RewriteOptions* options =
+      ParseAndScan(image_url_, kQuery, "", &query, &req);
+  EXPECT_EQ(73, options->image_jpeg_recompress_quality());
+}
+
+TEST_F(RewriteQueryTest, RequestOptionOverrideNotProvidedWhenRequired) {
+  const char kQuery[] = "PageSpeedJpegRecompressionQuality=73";
+  GoogleString query, req;
+  request_option_override_ = "abc";
+  const RewriteOptions* options =
+      ParseAndScan(image_url_, kQuery, "", &query, &req);
+  EXPECT_TRUE(options == NULL);
+}
+
 TEST_F(RewriteQueryTest, GenerateEmptyResourceOption) {
   EXPECT_EQ("", RewriteQuery::GenerateResourceOption("ic", rewrite_driver()));
 }
@@ -1053,10 +1093,10 @@ TEST_F(RewriteQueryTest, StrippedQueryParamsAreExtracted) {
                  "x=y&"
                  "ModPagespeedCssFlattenMaxBytes=123");
   EXPECT_EQ(RewriteQuery::kSuccess,
-            rewrite_query_.Scan(allow_related_options_,
-                                allow_options_to_be_set_by_cookies_, factory(),
-                                server_context(), &gurl, NULL, NULL,
-                                message_handler()));
+            rewrite_query_.Scan(
+                allow_related_options_, allow_options_to_be_set_by_cookies_,
+                request_option_override_, factory(), server_context(), &gurl,
+                NULL, NULL, message_handler()));
   EXPECT_STREQ("http://test.com/?a=b&x=y", gurl.Spec());
   EXPECT_EQ(2, rewrite_query_.pagespeed_query_params().size());
   EXPECT_STREQ("ModPagespeedFilters=debug&"

@@ -966,6 +966,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   PassLookupOptionByName(RewriteOptions::kRejectBlacklisted);
   PassLookupOptionByName(RewriteOptions::kRejectBlacklistedStatusCode);
   PassLookupOptionByName(RewriteOptions::kReportUnloadTime);
+  PassLookupOptionByName(RewriteOptions::kRequestOptionOverride);
   PassLookupOptionByName(RewriteOptions::kRespectVary);
   PassLookupOptionByName(RewriteOptions::kRespectXForwardedProto);
   PassLookupOptionByName(RewriteOptions::kRewriteDeadlineMs);

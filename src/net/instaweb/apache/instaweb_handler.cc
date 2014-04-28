@@ -417,10 +417,12 @@ void InstawebHandler::RemoveStrippedResponseHeadersFromApacheReequest() {
       // device property information is needed for the stripping.
       RewriteQuery::ScanHeader(
           &tmp_err_resp_headers, NULL /* device_properties */,
+          true /* enable options */, "" /* request option override */,
           &unused_opts1, server_context_->message_handler());
-      RewriteQuery::ScanHeader(
-          &tmp_resp_headers, NULL  /* device_properties */, &unused_opts2,
-          server_context_->message_handler());
+      RewriteQuery::ScanHeader(&tmp_resp_headers, NULL /* device_properties */,
+                               true /* enable options */,
+                               "" /* request option override */, &unused_opts2,
+                               server_context_->message_handler());
 
       // Write the stripped headers back to the Apache record.
       apr_table_clear(request_->err_headers_out);
