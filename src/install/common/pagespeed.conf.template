@@ -189,7 +189,7 @@
     # If you are using a reverse proxy or CDN configured to cache content with
     # the Vary: Accept header you should turn this setting off.
     #
-    # ModPagespeed PrivateNotVaryForIE on
+    # ModPagespeedPrivateNotVaryForIE on
 
     # Settings for image optimization:
     #
