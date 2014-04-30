@@ -1053,34 +1053,6 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestDisabled) {
   EXPECT_TRUE(headers.Has(kPsaRewriterHeader));
 }
 
-TEST_F(FlushEarlyFlowTest, SuddenHttpOnlyCookie) {
-  // First do a proper request, w/o HTTP-Only cookie.
-  SetupForFlushEarlyFlow();
-  GoogleString text;
-  RequestHeaders request_headers;
-  ResponseHeaders headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          "prefetch_link_script_tag");
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
-
-  // Try again, with HTTP only cookies now.
-  mock_url_fetcher_.AddToResponse(
-      request_url_, HttpAttributes::kSetCookie, "secret=value; HttpOnly");
-
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_TRUE(headers.Has(kPsaRewriterHeader));
-  // The secret cookie shouldn't be mentioned in HTML.
-  EXPECT_EQ(GoogleString::npos, text.find("secret=value"));
-  EXPECT_EQ(GoogleString::npos, text.find("HttpOnly"));
-  EXPECT_NE(GoogleString::npos, text.find(noscript_redirect_url_));
-
-  // One more. This one will not result in a flush-early application, since we
-  // recorded the presence of an HttpCookie in the pcache.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_FALSE(headers.Has(kPsaRewriterHeader));
-}
-
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestUnsupportedUserAgent) {
   SetupForFlushEarlyFlow();
   GoogleString text;

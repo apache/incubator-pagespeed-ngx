@@ -85,8 +85,7 @@ void SuppressPreheadFilter::StartDocument() {
 void SuppressPreheadFilter::PreHeadDone(HtmlElement* element) {
   seen_first_head_ = true;
   set_writer(original_writer_);
-  if (driver_->flushed_early() &&
-      !response_headers_.HasAnyCookiesWithAttribute("HttpOnly", NULL)) {
+  if (driver_->flushed_early()) {
     SendCookies(element);
   }
 }
