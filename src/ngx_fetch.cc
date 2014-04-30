@@ -359,6 +359,20 @@ namespace net_instaweb {
       ngx_del_timer(timeout_event_);
       timeout_event_ = NULL;
     }
+
+    if (success) {
+      ConstStringStarVector v;
+      if (async_fetch_->response_headers()->Lookup(
+            StringPiece(HttpAttributes::kConnection), &v)) {
+        for (int i = 0; i < v.size(); i++) {
+          if (*v[i] == "keep-alive") {
+            connection_->SetKeepAlive();
+            break;
+          }
+        }
+      }
+    }
+
     if (connection_) {
       connection_->Close();
       connection_ = NULL;
