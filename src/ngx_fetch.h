@@ -42,6 +42,7 @@ namespace net_instaweb {
 typedef bool (*response_handler_pt)(ngx_connection_t* c);
 
 class NgxUrlAsyncFetcher;
+class NgxConnection;
 class NgxFetch : public PoolElement<NgxFetch> {
  public:
   NgxFetch(const GoogleString& url,
@@ -136,7 +137,7 @@ class NgxFetch : public PoolElement<NgxFetch> {
   ngx_http_request_t* r_;
   ngx_http_status_t* status_;
   ngx_event_t* timeout_event_;
-  ngx_connection_t* connection_;
+  NgxConnection* connection_;
   ngx_resolver_ctx_t* resolver_ctx_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxFetch);
