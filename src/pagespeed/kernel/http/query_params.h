@@ -25,19 +25,29 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
+
 // Parses and rewrites URL query parameters.
 class QueryParams {
  public:
   QueryParams() { }
 
-  // Parse a query param string, e.g. x=0&y=1&z=2.  We expect the "?"
-  // to be extracted (e.g. this string is the output of GoogleUrl::Query(),
-  // which might have percent-escaping in it).
+  // Parse the query part of the given URL, for example "x=0&y=1&z=2".
   //
-  // Note that the value can be NULL, indicating that the variables
-  // was not followed by a '='.  So given "a=0&b&c=", the values will
-  // be {"0", NULL, ""}.
-  void Parse(const StringPiece& query_string);
+  // Note that a query param value can be NULL, indicating that the name was not
+  // followed by a '='. So given "a=0&b&c=", the values will be {"0", NULL, ""}.
+  void ParseFromUrl(const GoogleUrl& gurl);
+
+  // Parse the given untrusted string containing just query parameters,
+  // for example "x=0&y=1&z=2". This is a wrapper method that constructs
+  // a GoogleUrl from a dummy URL with the given string appended as query
+  // params, then calls ParseFromUrl. Accordingly, the given string will
+  // be sanitized by the GoogleUrl constructor: anything after an embedded
+  // '#' will be discarded, '\t's & '\n's & '\r's will be discarded, control
+  // chars will be %-encoded, ' ' & '"' & '<' & '>' & DEL will be %-encoded,
+  // and, when building for open source, which uses chromium's version of
+  // url_canon, single-quote ("'") is also %-encoded.
+  void ParseFromUntrustedString(StringPiece query_param_string);
 
   // Generates an escaped query-string.
   GoogleString ToEscapedString() const;

@@ -192,7 +192,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   // any more work.  Note that when options are correctly embedded in the URL,
   // we will have a success-status here.  But we still allow a hand-added
   // query-param to override the embedded options.
-  query_params_.Parse(request_url->Query());
+  query_params_.ParseFromUrl(*request_url);
   if (return_after_parsing ||
       !MayHaveCustomOptions(query_params_, request_headers, response_headers,
                             all_cookies)) {

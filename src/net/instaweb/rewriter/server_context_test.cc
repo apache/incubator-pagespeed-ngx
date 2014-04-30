@@ -868,7 +868,7 @@ TEST_F(ServerContextTest, TestRememberDropped) {
 }
 
 TEST_F(ServerContextTest, TestNonCacheable) {
-  const GoogleString kContents = "ok";
+  const char kContents[] = "ok";
 
   // Make sure that when we get non-cacheable resources
   // we mark the fetch as not cacheable in the cache.
@@ -927,7 +927,7 @@ TEST_F(ServerContextTest, TestVaryOption) {
   // we mark the fetch as not-cacheable in the cache.
   options()->set_respect_vary(true);
   ResponseHeaders no_cache;
-  const GoogleString kContents = "ok";
+  const char kContents[] = "ok";
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
   no_cache.Add(HttpAttributes::kVary, HttpAttributes::kAcceptEncoding);
   no_cache.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
@@ -1179,9 +1179,7 @@ class BeaconTest : public ServerContextTest {
       StrAppend(&beacon_url, "&rd=", *rendered_images_json_map);
     }
     EXPECT_TRUE(server_context()->HandleBeacon(
-        beacon_url,
-        user_agent,
-        CreateRequestContext()));
+        beacon_url, user_agent, CreateRequestContext()));
 
     // Read the property cache value for critical images, and verify that it has
     // the expected value.
@@ -1301,9 +1299,9 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
 TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   InsertCssBeacon(UserAgentMatcherTestBase::kChromeUserAgent);
   StringSet critical_css_selector;
-  critical_css_selector.insert("#foo");
+  critical_css_selector.insert("%23foo");
   critical_css_selector.insert(".bar");
-  critical_css_selector.insert("#noncandidate");
+  critical_css_selector.insert("%23noncandidate");
   TestBeacon(NULL, &critical_css_selector, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ("#foo,.bar",
@@ -1315,7 +1313,7 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   critical_css_selector.clear();
   critical_css_selector.insert(".bar");
   critical_css_selector.insert("img");
-  critical_css_selector.insert("#noncandidate");
+  critical_css_selector.insert("%23noncandidate");
   TestBeacon(NULL, &critical_css_selector, NULL,
              UserAgentMatcherTestBase::kChromeUserAgent);
   EXPECT_STREQ("#foo,.bar,img",
@@ -1332,8 +1330,6 @@ TEST_F(BeaconTest, EmptyCriticalCss) {
 
 class ResourceFreshenTest : public ServerContextTest {
  protected:
-  static const char kContents[];
-
   virtual void SetUp() {
     ServerContextTest::SetUp();
     HTTPCache::InitStats(statistics());
@@ -1348,8 +1344,6 @@ class ResourceFreshenTest : public ServerContextTest {
   Variable* expirations_;
   ResponseHeaders response_headers_;
 };
-
-const char ResourceFreshenTest::kContents[] = "ok";
 
 // Many resources expire in 5 minutes, because that is our default for
 // when caching headers are not present.  This test ensures that iff
@@ -1399,7 +1393,6 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 // forced.  Nothing will ever be evicted due to time, so there is no
 // need to freshen.
 TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
-  const GoogleString kContents = "ok";
   http_cache()->set_force_caching(true);
   FetcherUpdateDateHeaders();
 
@@ -1427,7 +1420,6 @@ TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
 // Tests that freshining will not occur for short-lived resources,
 // which could impact the performance of the server.
 TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
-  const GoogleString kContents = "ok";
   FetcherUpdateDateHeaders();
 
   int max_age_sec =

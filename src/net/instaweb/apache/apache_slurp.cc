@@ -98,7 +98,7 @@ void SlurpDefaultHandler(request_rec* r) {
 GoogleString RemoveModPageSpeedQueryParams(
     const GoogleString& uri, const char* query_param_string) {
   QueryParams query_params, stripped_query_params;
-  query_params.Parse(query_param_string);
+  query_params.ParseFromUntrustedString(query_param_string);
   bool rewrite_query_params = false;
 
   for (int i = 0; i < query_params.size(); ++i) {

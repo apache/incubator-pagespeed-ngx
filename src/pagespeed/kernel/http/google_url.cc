@@ -141,15 +141,14 @@ bool GoogleUrl::IsAnyValid() const {
 GoogleUrl* GoogleUrl::CopyAndAddEscapedQueryParam(
     const StringPiece& name, const StringPiece& escaped_value) const {
   QueryParams query_params;
-  query_params.Parse(Query());
+  query_params.ParseFromUrl(*this);
   query_params.AddEscaped(name, escaped_value);
   GoogleString query_params_string = query_params.ToEscapedString();
   url_canon::Replacements<char> replace_query;
   url_parse::Component query;
   query.len = query_params_string.size();
   replace_query.SetQuery(query_params_string.c_str(), query);
-  GoogleUrl* result =
-      new GoogleUrl(gurl_.ReplaceComponents(replace_query));
+  GoogleUrl* result = new GoogleUrl(gurl_.ReplaceComponents(replace_query));
   return result;
 }
 
