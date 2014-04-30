@@ -1797,7 +1797,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     return ps_async_wait_response(r);
   } else if (is_an_admin_handler) {
     QueryParams query_params;
-    query_params.Parse(url.Query());
+    query_params.ParseFromUrl(url);
 
     PosixTimer timer;
     int64 now_ms = timer.NowMs();
@@ -2394,7 +2394,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
   GoogleUrl url(url_string);
   QueryParams query_params;
   if (url.IsWebValid()) {
-    query_params.Parse(url.Query());
+    query_params.ParseFromUrl(url);
   }
 
   GoogleString output;
