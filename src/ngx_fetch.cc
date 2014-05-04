@@ -123,6 +123,7 @@ namespace net_instaweb {
           ngx_del_timer(nc->c_->read);
         }
 
+        NgxConnection::connection_pool_mutex.Unlock();
         return nc;
       }
     }
@@ -162,6 +163,8 @@ namespace net_instaweb {
     c_->read->handler = NgxConnectionCloseHandler;
     c_->write->handler = NgxConnectionDumyHandler;
     c_->idle = 1;
+
+    // this connection should not be associated with current fetch
     c_->log = ngx_cycle->log;
     c_->read->log = ngx_cycle->log;
     c_->write->log = ngx_cycle->log;
@@ -185,6 +188,7 @@ namespace net_instaweb {
     char buf[1];
     int n;
 
+    // not a timedout event, we should check connection
     n = recv(c->fd, buf, 1, MSG_PEEK);
     if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
       if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -192,6 +196,8 @@ namespace net_instaweb {
         nc->Close();
         return;
       }
+
+      return;
     }
 
     nc->SetKeepAlive(false);
@@ -364,12 +370,21 @@ namespace net_instaweb {
       ConstStringStarVector v;
       if (async_fetch_->response_headers()->Lookup(
             StringPiece(HttpAttributes::kConnection), &v)) {
+        bool keepalive = false;
         for (int i = 0; i < v.size(); i++) {
           if (*v[i] == "keep-alive") {
-            connection_->SetKeepAlive();
+            keepalive = true;
+            break;
+
+          } else if (*v[i] == "close") {
             break;
           }
         }
+
+        // - enable keepalive if we find "keep-alive" header
+        // - disable keepalive, if it's with "Connection:close"
+        // - disable keepalive, if it's without "keep-alive" header
+        connection_->SetKeepAlive(keepalive);
       }
     }
 
