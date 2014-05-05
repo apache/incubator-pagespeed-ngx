@@ -131,8 +131,7 @@ void PurgeContext::ReadPurgeFile(PurgeSet* purges_from_file) {
   // that timestamp."
   if (!enable_purge_) {
     int64 timestamp_sec;
-    if (file_system_->Mtime(filename_.c_str(), &timestamp_sec,
-                             &null_handler)) {
+    if (file_system_->Mtime(filename_, &timestamp_sec, &null_handler)) {
       int64 timestamp_ms = timestamp_sec * Timer::kSecondMs;
       purges_from_file->UpdateGlobalInvalidationTimestampMs(timestamp_ms);
     }

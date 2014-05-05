@@ -47,7 +47,7 @@ int64 Backoff(int64 interval_ms, int64 max_interval_ms) {
     // TODO(jmaessen): LOG(ERROR) is deadlocking.  Why?  We're using cooperative
     // thread cancellation in the tests that hang, and it sometimes succeeds.
     if (false && interval_ms != max_interval_ms) {
-      LOG(ERROR) << "Reached maximum sleep time " << StackTraceString().c_str();
+      LOG(ERROR) << "Reached maximum sleep time " << StackTraceString();
     }
   }
   return new_interval_ms;
