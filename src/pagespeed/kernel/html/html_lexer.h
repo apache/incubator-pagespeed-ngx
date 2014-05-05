@@ -125,6 +125,7 @@ class HtmlLexer {
   inline void EvalAttrValSq(char c);
   inline void EvalAttrValDq(char c);
   inline void EvalLiteralTag(char c);
+  inline void EvalScriptTag(char c);
   inline void EvalDirective(char c);
   inline void EvalBogusComment(char c);
 
@@ -188,7 +189,7 @@ class HtmlLexer {
     TAG_CLOSE,             // "</x"
     TAG_CLOSE_TERMINATE,   // "</x "
     TAG_OPEN,              // "<x"
-    TAG_BRIEF_CLOSE,       // "<x/" or "<x /" or "<x y/" or "x y=/z" etc
+    TAG_BRIEF_CLOSE,       // "<x/" or "<x /" or "<x y/" etc
     COMMENT_START1,        // "<!"
     COMMENT_START2,        // "<!-"
     COMMENT_BODY,          // "<!--"
@@ -210,14 +211,15 @@ class HtmlLexer {
     TAG_ATTR_VAL,          // "<x y=x" value terminated by whitespace or >
     TAG_ATTR_VALDQ,        // '<x y="' value terminated by double-quote
     TAG_ATTR_VALSQ,        // "<x y='" value terminated by single-quote
-    LITERAL_TAG,           // "<script " or "<iframe "
+    LITERAL_TAG,           // "<style " or "<iframe ", etc.
+    SCRIPT_TAG,            // "<script "
     DIRECTIVE,             // "<!x"
     BOGUS_COMMENT,         // "<?foo>" or "</?foo>"
   };
 
   HtmlParse* html_parse_;
   State state_;
-  GoogleString token_;       // accmulates tag names and comments
+  GoogleString token_;       // accumulates tag names and comments
   GoogleString literal_;     // accumulates raw text to pass through
   GoogleString attr_name_;   // accumulates attribute name
   GoogleString attr_value_;  // accumulates attribute value
@@ -228,6 +230,11 @@ class HtmlLexer {
   int tag_start_line_;      // line at which we last transitioned to TAG state
   GoogleString id_;
   GoogleString literal_close_;  // specific tag go close, e.g </script>
+  bool script_html_comment_;   // inside <script> <!--
+  bool script_html_comment_script_;  // inside <script> <!-- <script>
+  // in some cases we have to drop what looks like attributes on a closing
+  // tag as part of error recovery.
+  bool discard_until_start_state_for_error_recovery_;
 
   ContentType content_type_;
   DocType doctype_;

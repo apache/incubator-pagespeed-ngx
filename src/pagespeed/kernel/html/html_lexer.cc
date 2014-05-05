@@ -161,6 +161,9 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
       element_(NULL),
       line_(1),
       tag_start_line_(-1),
+      script_html_comment_(false),
+      script_html_comment_script_(false),
+      discard_until_start_state_for_error_recovery_(false),
       size_limit_exceeded_(false),
       skip_parsing_(false),
       size_limit_(-1) {
@@ -181,6 +184,7 @@ void HtmlLexer::EvalStart(char c) {
     EmitLiteral();
     literal_ += c;
     state_ = TAG;
+    discard_until_start_state_for_error_recovery_ = false;
     tag_start_line_ = line_;
   } else {
     state_ = START;
@@ -222,6 +226,7 @@ void HtmlLexer::EvalTag(char c) {
     state_ = TAG_CLOSE_NO_NAME;
   } else if (IsLegalTagFirstChar(c)) {   // "<x"
     state_ = TAG_OPEN;
+    discard_until_start_state_for_error_recovery_ = false;
     token_ += c;
   } else if (c == '!') {
     state_ = COMMENT_START1;
@@ -269,7 +274,9 @@ void HtmlLexer::EvalTagBriefClose(char c) {
     // FinishAttribute is robust with attr_name_ being empty,
     // which happens if we just have <foo/>; we might need to actually
     // create the element itself, though.
-    MakeElement();
+    if (!discard_until_start_state_for_error_recovery_) {
+      MakeElement();
+    }
     FinishAttribute(c, has_attr_value_, true /* self-closing*/);
   } else {
     if (!attr_name_.empty()) {
@@ -533,11 +540,12 @@ void HtmlLexer::EvalCdataEnd2(char c) {
   }
 }
 
-// Handle the case where a literal tag (script, iframe) was started.
+// Handle the case where a literal tag (style, iframe) was started.
 // This is of lexical significance because we ignore all the special
-// characters until we see "</script>" or "</iframe>".
+// characters until we see "</style>" or "</iframe>", or similar for
+// other tags.
 void HtmlLexer::EvalLiteralTag(char c) {
-  // Look explicitly for </script> in the literal buffer.
+  // Look explicitly for </style, etc.> in the literal buffer.
   // TODO(jmarantz): check for whitespace in unexpected places.
   if (c == '>') {
     // expecting "</x>" for tag x.
@@ -547,14 +555,81 @@ void HtmlLexer::EvalLiteralTag(char c) {
     if ((literal_minus_close_size >= 0) &&
         StringCaseEqual(literal_.c_str() + literal_minus_close_size,
                         literal_close_)) {
-      // The literal actually starts after the "<script>", and we will
+      // The literal actually starts after the "<style>", and we will
       // also let it finish before, so chop it off.
       literal_.resize(literal_minus_close_size);
       EmitLiteral();
       token_.clear();
-      // Transform "</script>" into "script" to form close tag.
+      // Transform "</style>" into "style" to form close tag.
       token_.append(literal_close_.c_str() + 2, literal_close_.size() - 3);
       EmitTagClose(HtmlElement::EXPLICIT_CLOSE);
+    }
+  }
+}
+
+// This returns true if 'c' following a </script should get us out of either
+// script parsing or escaping level.
+static bool CanEndTag(char c) {
+  return (c == '\t' || c == '\r' || c == '\n' || c == '\f' || c == ' ' ||
+          c == '/' || c == '>');
+}
+
+void HtmlLexer::EvalScriptTag(char c) {
+  // We generally just buffer stuff into literal_ until we see </script ,
+  // but there is a special case we need to worry about unlike for other
+  // literal tags: a </script> wouldn't close us if we're both inside
+  // what looks like an HTML comment and saw a <script opening before.
+  // See http://wiki.whatwg.org/wiki/CDATA_Escapes and
+  // http://lists.w3.org/Archives/Public/public-html/2009Aug/0452.html
+  // for a bit of backstory.
+  if (c == '-') {
+    if (StringPiece(literal_).ends_with("<!--")) {
+      script_html_comment_ = true;
+    }
+  }
+
+  if (CanEndTag(c) && !literal_.empty()) {
+    StringPiece prev_fragment(literal_);
+    prev_fragment.remove_suffix(1);
+    if (StringCaseEndsWith(prev_fragment, "</script")) {
+      if (script_html_comment_script_) {
+        // Just close one escaping level, not <script>"
+        script_html_comment_script_ = false;
+      } else {
+        // Script actually closed, emit it.
+        script_html_comment_ = false;
+        script_html_comment_script_ = false;
+
+        // Drop the '</script' + c from literal, and also save the form
+        // of the '</script' for the close tag.
+        token_ = literal_.substr(
+            literal_.size() - STATIC_STRLEN("</script") + 1,
+            STATIC_STRLEN("script"));
+        literal_.resize(literal_.size() - STATIC_STRLEN("</script") - 1);
+        EmitLiteral();
+        EmitTagClose(HtmlElement::EXPLICIT_CLOSE);
+
+        // Now depending on the 'c' we may need to do some further
+        // parsing to recover from errors.
+        if (c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == ' ') {
+          // Weirdly, we're supposed to parse attributes here (on a closing
+          // tag!) and just throw them away.
+          discard_until_start_state_for_error_recovery_ = true;
+          state_ = TAG_ATTRIBUTE;
+        } else if (c == '/') {
+          discard_until_start_state_for_error_recovery_ = true;
+          state_ = TAG_BRIEF_CLOSE;
+        }
+      }
+    } else if (script_html_comment_ &&
+               StringCaseEndsWith(prev_fragment, "<script")) {
+      // Inside a comment, what looks like a 'terminated' <script>
+      // gets us into an another level of escaping.
+      script_html_comment_script_ = true;
+    } else if (c == '>' && StringPiece(literal_).ends_with("-->")) {
+      // --> exits both level of escaping.
+      script_html_comment_ = false;
+      script_html_comment_script_ = false;
     }
   }
 }
@@ -600,6 +675,12 @@ void HtmlLexer::EmitCdata() {
 // does not require an explicit termination in HTML, then we will
 // automatically emit a matching 'element close' event.
 void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
+  if (discard_until_start_state_for_error_recovery_) {
+    state_ = START;
+    literal_.clear();
+    return;
+  }
+
   DCHECK(element_ != NULL);
   DCHECK(token_.empty());
   HtmlName next_tag = element_->name();
@@ -637,7 +718,10 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
   }
   element_stack_.push_back(element_);
   if (IsLiteralTag(element_->keyword())) {
-    state_ = LITERAL_TAG;
+    state_ =
+        (element_->keyword() == HtmlName::kScript) ? SCRIPT_TAG : LITERAL_TAG;
+    script_html_comment_ = false;
+    script_html_comment_script_ = false;
     literal_close_ = StrCat("</", element_->name_str(), ">");
   } else {
     state_ = START;
@@ -652,8 +736,10 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
 }
 
 void HtmlLexer::EmitTagBriefClose() {
-  HtmlElement* element = PopElement();
-  CloseElement(element, HtmlElement::BRIEF_CLOSE);
+  if (!discard_until_start_state_for_error_recovery_)  {
+    HtmlElement* element = PopElement();
+    CloseElement(element, HtmlElement::BRIEF_CLOSE);
+  }
   state_ = START;
 }
 
@@ -665,6 +751,7 @@ HtmlElement* HtmlLexer::Parent() const {
 }
 
 void HtmlLexer::MakeElement() {
+  DCHECK(!discard_until_start_state_for_error_recovery_);
   if (element_ == NULL) {
     if (token_.empty()) {
       SyntaxError("Making element with empty tag name");
@@ -694,6 +781,9 @@ void HtmlLexer::StartParse(const StringPiece& id,
   size_limit_exceeded_ = false;
   skip_parsing_ = false;
   num_bytes_parsed_ = 0;
+  script_html_comment_ = false;
+  script_html_comment_script_ = false;
+  discard_until_start_state_for_error_recovery_ = false;
   // clear buffers
 }
 
@@ -739,7 +829,9 @@ void HtmlLexer::FinishParse() {
 }
 
 void HtmlLexer::MakeAttribute(bool has_value) {
-  html_parse_->message_handler()->Check(element_ != NULL, "element_ == NULL");
+  if (!discard_until_start_state_for_error_recovery_) {
+    html_parse_->message_handler()->Check(element_ != NULL, "element_ == NULL");
+  }
   HtmlName name = html_parse_->MakeName(attr_name_);
   attr_name_.clear();
   const char* value = NULL;
@@ -752,7 +844,10 @@ void HtmlLexer::MakeAttribute(bool has_value) {
     html_parse_->message_handler()->Check(attr_value_.empty(),
                                           "!attr_value_.empty()");
   }
-  element_->AddEscapedAttribute(name, value, attr_quote_);
+
+  if (!discard_until_start_state_for_error_recovery_) {
+    element_->AddEscapedAttribute(name, value, attr_quote_);
+  }
   attr_value_.clear();
   attr_quote_ = HtmlElement::NO_QUOTE;
   state_ = TAG_ATTRIBUTE;
@@ -760,7 +855,9 @@ void HtmlLexer::MakeAttribute(bool has_value) {
 
 // HTML5 spec state name: before attribute name state
 void HtmlLexer::EvalAttribute(char c) {
-  MakeElement();
+  if (!discard_until_start_state_for_error_recovery_) {
+    MakeElement();
+  }
   attr_name_.clear();
   attr_value_.clear();
   if (c == '>') {
@@ -980,6 +1077,7 @@ void HtmlLexer::Parse(const char* text, int size) {
       case TAG_ATTR_VALDQ:        EvalAttrValDq(c);           break;
       case TAG_ATTR_VALSQ:        EvalAttrValSq(c);           break;
       case LITERAL_TAG:           EvalLiteralTag(c);          break;
+      case SCRIPT_TAG:            EvalScriptTag(c);           break;
       case DIRECTIVE:             EvalDirective(c);           break;
       case BOGUS_COMMENT:         EvalBogusComment(c);        break;
     }
