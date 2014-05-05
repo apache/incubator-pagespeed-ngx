@@ -26,7 +26,9 @@
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/gif_reader.h"
+#include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
+#include "pagespeed/kernel/image/scanline_interface_frame_adapter.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 #include "pagespeed/kernel/image/test_utils.h"
 
@@ -40,8 +42,9 @@ using pagespeed::image_compression::kPngSuiteTestDir;
 using pagespeed::image_compression::kPngTestDir;
 using pagespeed::image_compression::kValidGifImageCount;
 using pagespeed::image_compression::kValidGifImages;
+using pagespeed::image_compression::FrameToScanlineReaderAdapter;
+using pagespeed::image_compression::GifFrameReader;
 using pagespeed::image_compression::GifReader;
-using pagespeed::image_compression::GifScanlineReaderRaw;
 using pagespeed::image_compression::ImageFormat;
 using pagespeed::image_compression::IMAGE_GIF;
 using pagespeed::image_compression::IMAGE_PNG;
@@ -292,7 +295,7 @@ class GifScanlineReaderRawTest : public testing::Test {
   GifScanlineReaderRawTest()
     : scanline_(NULL),
       message_handler_(new NullMutex),
-      reader_(&message_handler_) {
+      reader_(new GifFrameReader(&message_handler_)) {
   }
 
   bool Initialize(const char* file_name) {
@@ -314,7 +317,7 @@ class GifScanlineReaderRawTest : public testing::Test {
  protected:
   void* scanline_;
   MockMessageHandler message_handler_;
-  GifScanlineReaderRaw reader_;
+  FrameToScanlineReaderAdapter reader_;
   GoogleString input_image_;
 
  private:

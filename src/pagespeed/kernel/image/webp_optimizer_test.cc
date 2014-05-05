@@ -43,7 +43,6 @@ using pagespeed::image_compression::ScanlineReaderInterface;
 using pagespeed::image_compression::ScanlineWriterInterface;
 using pagespeed::image_compression::WebpConfiguration;
 using pagespeed::image_compression::WebpScanlineReader;
-using pagespeed::image_compression::WebpScanlineWriter;
 using pagespeed::image_compression::kMessagePatternPixelFormat;
 using pagespeed::image_compression::kMessagePatternStats;
 using pagespeed::image_compression::kMessagePatternWritingToWebp;

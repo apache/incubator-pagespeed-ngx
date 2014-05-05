@@ -22,7 +22,8 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/image/scanline_utils.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
+#include "pagespeed/kernel/image/image_util.h"
 
 extern "C" {
 #ifdef USE_SYSTEM_LIBPNG
@@ -645,30 +646,116 @@ class ScopedGifStruct {
   ScanlineStreamInput gif_input_;
 };
 
-GifScanlineReaderRaw::GifScanlineReaderRaw(
-    MessageHandler* handler)
-  : message_handler_(handler) {
+GifFrameReader::GifFrameReader(MessageHandler* handler)
+    : MultipleFrameReader(handler) {
   Reset();
 }
 
-GifScanlineReaderRaw::~GifScanlineReaderRaw() {
+GifFrameReader::~GifFrameReader() {
 }
 
-bool GifScanlineReaderRaw::Reset() {
-  pixel_format_ = UNSUPPORTED;
-  is_progressive_ = false;
-  width_ = 0;
-  height_ = 0;
-  row_ = 0;
-  pixel_size_ = 0;
-  bytes_per_row_ = 0;
+ScanlineStatus GifFrameReader::Reset() {
   was_initialized_ = false;
+  image_spec_.Reset();
+  frame_spec_.Reset();
+  next_frame_ = 0;
+
+  is_progressive_ = false;
+  row_ = 0;
+  bytes_per_row_ = 0;
 
   if (gif_struct_.get() != NULL) {
     gif_struct_->Reset();
   }
 
-  return true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+}
+
+ScanlineStatus GifFrameReader::Initialize(const void* image_buffer,
+                                          size_t buffer_length) {
+  if (was_initialized_) {
+    // Reset the reader if it has been initialized before.
+    Reset();
+  } else {
+    // Allocate and initialize gif_struct_, if that has not been done.
+    if (gif_struct_ == NULL) {
+      gif_struct_.reset(new ScopedGifStruct(message_handler()));
+      if (gif_struct_ == NULL) {
+        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                                SCANLINE_STATUS_MEMORY_ERROR,
+                                FRAME_GIFREADER,
+                                "Failed to allocate ScopedGifStruct.");
+      }
+    }
+    // Allocate and initialize gif_palette_, if that has not been done.
+    if (gif_palette_ == NULL) {
+      gif_palette_.reset(new PaletteRGBA[kGifPaletteSize]);
+      if (gif_palette_ == NULL) {
+        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
+                                SCANLINE_STATUS_MEMORY_ERROR,
+                                FRAME_GIFREADER,
+                                "Failed to allocate PaletteRGBA.");
+      }
+    }
+  }
+
+  // Set up data input for giflib.
+  if (!gif_struct_->Initialize(image_buffer, buffer_length)) {
+    Reset();
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            FRAME_GIFREADER,
+                            "Failed to iInitialize GIF reader.");
+  }
+  GifFileType* gif_file = gif_struct_->gif_file();
+
+  // Check whether the stream is a valid GIF and contains only one image.
+  // If it is, find out the position of the image record and the index of
+  // transparent color.
+  size_t image1_offset = 0;
+  int image1_transparent_index = -1;
+  ScanlineStatus process_status = ProcessSingleImageGif(
+      &image1_offset,
+      &image1_transparent_index);
+  if (!process_status.Success()) {
+    Reset();
+    return process_status;
+  }
+  image_spec_.num_frames = 1;
+  next_frame_ = 0;
+
+  // Point giflib to the start of the image record. Get the size and palette
+  // information of the image.
+  gif_struct_->set_offset(image1_offset);
+  if (DGifGetImageDesc(gif_file) == GIF_ERROR) {
+    Reset();
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
+                            SCANLINE_STATUS_INTERNAL_ERROR,
+                            FRAME_GIFREADER,
+                            "DGifGetImageDesc()");
+  }
+  ComputeOrExtendImageSize();
+
+  ScanlineStatus colormap_status = CreateColorMap(image1_transparent_index);
+  if (!colormap_status.Success()) {
+    Reset();
+    return colormap_status;
+  }
+
+  // Process the transparency information. The output format will be RGBA
+  // if the transparent color has been specified, or RGB otherwise.
+  if (image1_transparent_index >= 0) {
+    frame_spec_.pixel_format = RGBA_8888;
+    gif_palette_[image1_transparent_index].alpha_ = kAlphaTransparent;
+  } else {
+    frame_spec_.pixel_format = RGB_888;
+  }
+
+  is_progressive_ = (gif_file->Image.Interlace != 0);
+  bytes_per_row_ =
+      GetBytesPerPixel(frame_spec_.pixel_format) * image_spec_.width;
+  was_initialized_ = true;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
 // ProcessSingleImageGif() checks whether the GIF file is valid and whether it
@@ -689,7 +776,7 @@ bool GifScanlineReaderRaw::Reset() {
 //
 // Reference: http://www.w3.org/Graphics/GIF/spec-gif89a.txt
 //
-ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
+ScanlineStatus GifFrameReader::ProcessSingleImageGif(
     size_t* first_frame_offset,
     int* transparent_index) {
   *first_frame_offset = 0;
@@ -702,9 +789,9 @@ ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
   while (!found_terminator) {
     GifRecordType record_type = UNDEFINED_RECORD_TYPE;
     if (DGifGetRecordType(gif_file, &record_type) == GIF_ERROR) {
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                               SCANLINE_STATUS_PARSE_ERROR,
-                              SCANLINE_GIFREADERRAW,
+                              FRAME_GIFREADER,
                               "DGifGetRecordType()");
     }
 
@@ -714,18 +801,18 @@ ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
     switch (record_type) {
       case IMAGE_DESC_RECORD_TYPE:
         if (DGifGetImageDesc(gif_file) == GIF_ERROR) {
-          return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+          return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                   SCANLINE_STATUS_PARSE_ERROR,
-                                  SCANLINE_GIFREADERRAW,
+                                  FRAME_GIFREADER,
                                   "DGifGetImageDesc()");
         }
 
         // Currently we only support single frame GIF.
         ++num_frames;
         if (num_frames > 1) {
-          return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+          return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                   SCANLINE_STATUS_UNSUPPORTED_FEATURE,
-                                  SCANLINE_GIFREADERRAW,
+                                  FRAME_GIFREADER,
                                   "multiple-frame GIF");
         } else {
           *first_frame_offset = current_offset;
@@ -735,16 +822,16 @@ ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
         int code_size;
         GifByteType* code_block;
         if (DGifGetCode(gif_file, &code_size, &code_block) == GIF_ERROR) {
-          return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+          return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                   SCANLINE_STATUS_PARSE_ERROR,
-                                  SCANLINE_GIFREADERRAW,
+                                  FRAME_GIFREADER,
                                   "DGifGetCode()");
         }
         while (code_block != NULL) {
           if (DGifGetCodeNext(gif_file, &code_block) == GIF_ERROR) {
-            return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+            return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                     SCANLINE_STATUS_PARSE_ERROR,
-                                    SCANLINE_GIFREADERRAW,
+                                    FRAME_GIFREADER,
                                     "DGifGetCodeNext()");
           }
         }
@@ -756,10 +843,10 @@ ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
           // Variable "index" is initialized to "-1" so ReadExtension() will
           // assign a new value to it.
           int index = -1;
-          if (!ReadExtension(gif_file, NULL, NULL, &index, message_handler_)) {
-            return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+          if (!ReadExtension(gif_file, NULL, NULL, &index, message_handler())) {
+            return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                     SCANLINE_STATUS_PARSE_ERROR,
-                                    SCANLINE_GIFREADERRAW,
+                                    FRAME_GIFREADER,
                                     "ReadExtension()");
           }
 
@@ -786,9 +873,9 @@ ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
         break;
 
       default:
-        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                 SCANLINE_STATUS_PARSE_ERROR,
-                                SCANLINE_GIFREADERRAW,
+                                FRAME_GIFREADER,
                                 "unexpected record %d",
                                 record_type);
     }
@@ -796,7 +883,7 @@ ScanlineStatus GifScanlineReaderRaw::ProcessSingleImageGif(
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-ScanlineStatus GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
+ScanlineStatus GifFrameReader::CreateColorMap(int transparent_index) {
   GifFileType* gif_file = gif_struct_->gif_file();
 
   // Populate the color map.
@@ -804,17 +891,17 @@ ScanlineStatus GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
     gif_file->Image.ColorMap != NULL ?
     gif_file->Image.ColorMap : gif_file->SColorMap;
   if (color_map == NULL) {
-    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                             SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_GIFREADERRAW,
+                            FRAME_GIFREADER,
                             "missing colormap in image and screen");
   }
 
   GifColorType* palette_in = color_map->Colors;
   if (palette_in == NULL) {
-    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                             SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_GIFREADERRAW,
+                            FRAME_GIFREADER,
                             "Could not find colormap in the GIF image.");
   }
 
@@ -831,9 +918,9 @@ ScanlineStatus GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
   if (HasVisibleBackground()) {
     int background_index = gif_file->SBackGroundColor;
     if (background_index >= color_map->ColorCount) {
-      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                               SCANLINE_STATUS_INTERNAL_ERROR,
-                              SCANLINE_GIFREADERRAW,
+                              FRAME_GIFREADER,
                               "Invalid background color in the GIF image.");
     }
     gif_palette_[kPaletteBackgroundIndex].red_ =
@@ -853,133 +940,37 @@ ScanlineStatus GifScanlineReaderRaw::CreateColorMap(int transparent_index) {
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-// Some images have screen size smaller than that of the encoded pixels,
-// so we may need to extend the screen (image) size.
-void GifScanlineReaderRaw::ComputeOrExtendImageSize() {
-  width_ = gif_struct_->width();
-  if (width_ <= gif_struct_->last_col()) {
-    width_ = gif_struct_->last_col() + 1;
+void GifFrameReader::ComputeOrExtendImageSize() {
+  image_spec_.width = gif_struct_->width();
+  if (image_spec_.width <= gif_struct_->last_col()) {
+    image_spec_.width = gif_struct_->last_col() + 1;
   }
-  height_ = gif_struct_->height();
-  if (height_ <= gif_struct_->last_row()) {
-    height_ = gif_struct_->last_row() + 1;
+  image_spec_.height = gif_struct_->height();
+  if (image_spec_.height <= gif_struct_->last_row()) {
+    image_spec_.height = gif_struct_->last_row() + 1;
   }
 }
 
-bool GifScanlineReaderRaw::HasVisibleBackground() {
+bool GifFrameReader::HasVisibleBackground() const {
   return (gif_struct_->first_row() > 0 || gif_struct_->first_col() > 0 ||
-          gif_struct_->last_row() < static_cast<int>(GetImageHeight()) - 1 ||
-          gif_struct_->last_col() < static_cast<int>(GetImageWidth()) - 1);
-
-}
-
-// Initialize the reader with the given image stream. Note that image_buffer
-// must remain unchanged until the last call to ReadNextScanline().
-ScanlineStatus GifScanlineReaderRaw::InitializeWithStatus(
-    const void* image_buffer,
-    size_t buffer_length) {
-  if (was_initialized_) {
-    // Reset the reader if it has been initialized before.
-    Reset();
-  } else {
-    // Allocate and initialize gif_struct_, if that has not been done.
-    if (gif_struct_ == NULL) {
-      gif_struct_.reset(new ScopedGifStruct(message_handler_));
-      if (gif_struct_ == NULL) {
-        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
-                                SCANLINE_STATUS_MEMORY_ERROR,
-                                SCANLINE_GIFREADERRAW,
-                                "Failed to allocate ScopedGifStruct.");
-      }
-    }
-    // Allocate and initialize gif_palette_, if that has not been done.
-    if (gif_palette_ == NULL) {
-      gif_palette_.reset(new PaletteRGBA[kGifPaletteSize]);
-      if (gif_palette_ == NULL) {
-        return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
-                                SCANLINE_STATUS_MEMORY_ERROR,
-                                SCANLINE_GIFREADERRAW,
-                                "Failed to allocate PaletteRGBA.");
-      }
-    }
-  }
-
-  // Set up data input for giflib.
-  if (!gif_struct_->Initialize(image_buffer, buffer_length)) {
-    Reset();
-    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
-                            SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_GIFREADERRAW,
-                            "Failed to iInitialize GIF reader.");
-  }
-  GifFileType* gif_file = gif_struct_->gif_file();
-
-  // Check whether the stream is a valid GIF and contains only one image.
-  // If it is, find out the position of the image record and the index of
-  // transparent color.
-  size_t image1_offset = 0;
-  int image1_transparent_index = -1;
-  ScanlineStatus process_status = ProcessSingleImageGif(
-      &image1_offset,
-      &image1_transparent_index);
-  if (!process_status.Success()) {
-    Reset();
-    return process_status;
-  }
-
-  // Point giflib to the start of the image record. Get the size and palette
-  // information of the image.
-  gif_struct_->set_offset(image1_offset);
-  if (DGifGetImageDesc(gif_file) == GIF_ERROR) {
-    Reset();
-    return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
-                            SCANLINE_STATUS_INTERNAL_ERROR,
-                            SCANLINE_GIFREADERRAW,
-                            "DGifGetImageDesc()");
-  }
-  ComputeOrExtendImageSize();
-
-  ScanlineStatus colormap_status = CreateColorMap(image1_transparent_index);
-  if (!colormap_status.Success()) {
-    Reset();
-    return colormap_status;
-  }
-
-
-
-
-
-  // Process the transparency information. The output format will be RGBA
-  // if the transparent color has been specified, or RGB otherwise.
-  if (image1_transparent_index >= 0) {
-    pixel_format_ = RGBA_8888;
-    pixel_size_ = 4;
-    gif_palette_[image1_transparent_index].alpha_ = kAlphaTransparent;
-  } else {
-    pixel_format_ = RGB_888;
-    pixel_size_ = 3;
-  }
-
-  is_progressive_ = (gif_file->Image.Interlace != 0);
-  bytes_per_row_ = pixel_size_ * GetImageWidth();
-  was_initialized_ = true;
-  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+          gif_struct_->last_row() < static_cast<int>(image_spec_.height) - 1 ||
+          gif_struct_->last_col() < static_cast<int>(image_spec_.width) - 1);
 }
 
 // Decode a progressive GIF. The deinterlace code is based on the algorithm
 // in giflib.
-ScanlineStatus GifScanlineReaderRaw::DecodeProgressiveGif() {
+ScanlineStatus GifFrameReader::DecodeProgressiveGif() {
   GifFileType* gif_file = gif_struct_->gif_file();
   int actual_width = gif_struct_->last_col() - gif_struct_->first_col() + 1;
   for (int pass = 0; pass < kInterlaceNumPass; ++pass) {
     for (int y = gif_struct_->first_row() + kInterlaceOffsets[pass];
          y <= gif_struct_->last_row();
          y += kInterlaceJumps[pass]) {
-      GifPixelType* row_pointer = image_index_.get() + y * GetImageWidth();
+      GifPixelType* row_pointer = image_index_.get() + y * image_spec_.width;
       if (DGifGetLine(gif_file, row_pointer, actual_width) == GIF_ERROR) {
-        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                 SCANLINE_STATUS_INTERNAL_ERROR,
-                                SCANLINE_GIFREADERRAW,
+                                FRAME_GIFREADER,
                                 "DGifGetLine()");
       }
     }
@@ -987,12 +978,23 @@ ScanlineStatus GifScanlineReaderRaw::DecodeProgressiveGif() {
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
 }
 
-ScanlineStatus GifScanlineReaderRaw::ReadNextScanlineWithStatus(
-    void** out_scanline_bytes) {
-  if (!was_initialized_ || !HasMoreScanLines()) {
-    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler_,
+ScanlineStatus GifFrameReader::PrepareNextFrame() {
+  if (next_frame_ >= image_spec_.num_frames) {
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
-                            SCANLINE_GIFREADERRAW,
+                            FRAME_GIFREADER,
+                            "PrepareNextFrame: no more frames.");
+  }
+  ++next_frame_;
+  return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+}
+
+ScanlineStatus GifFrameReader::ReadNextScanline(
+    const void** out_scanline_bytes) {
+  if (!was_initialized_ || !HasMoreScanlines()) {
+    return PS_LOGGED_STATUS(PS_LOG_DFATAL, message_handler(),
+                            SCANLINE_STATUS_INVOCATION_ERROR,
+                            FRAME_GIFREADER,
                             "The GIF image was not initialized or does not "
                             "have more scanlines.");
   }
@@ -1005,15 +1007,16 @@ ScanlineStatus GifScanlineReaderRaw::ReadNextScanlineWithStatus(
   if (row_ == 0) {
     image_buffer_.reset(new GifPixelType[bytes_per_row_]);
     if (!is_progressive_) {
-      image_index_.reset(new GifPixelType[GetImageWidth()]);
+      image_index_.reset(new GifPixelType[image_spec_.width]);
     } else {
-      image_index_.reset(new GifPixelType[GetImageWidth() * GetImageHeight()]);
+      image_index_.reset(new GifPixelType[image_spec_.width *
+                                          image_spec_.height]);
 
       // For a progressive GIF, we have to decode the entire image before
       // rendering any row.
       ScanlineStatus status = DecodeProgressiveGif();
       if (!status.Success()) {
-        PS_LOG_INFO(message_handler_, "Failed to progressively decode GIF.");
+        PS_LOG_INFO(message_handler(), "Failed to progressively decode GIF.");
         Reset();
         return status;
       }
@@ -1021,9 +1024,9 @@ ScanlineStatus GifScanlineReaderRaw::ReadNextScanlineWithStatus(
 
     if (image_buffer_ == NULL || image_index_ == NULL) {
       Reset();
-      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler_,
+      return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
                               SCANLINE_STATUS_MEMORY_ERROR,
-                              SCANLINE_GIFREADERRAW,
+                              FRAME_GIFREADER,
                               "new GiPixelType[] for image_buffer_ "
                               "or image_index_");
     }
@@ -1034,6 +1037,7 @@ ScanlineStatus GifScanlineReaderRaw::ReadNextScanlineWithStatus(
   const PaletteRGBA* background_color = gif_palette_.get() +
                                         kPaletteBackgroundIndex;
   int pixel_index = 0;
+  size_t pixel_size = GetBytesPerPixel(frame_spec_.pixel_format);
   if (row_ >= gif_struct_->first_row() && row_ <= gif_struct_->last_row()) {
     // Find out the color index for the requested row.
     GifPixelType* index_buffer = NULL;
@@ -1044,35 +1048,35 @@ ScanlineStatus GifScanlineReaderRaw::ReadNextScanlineWithStatus(
       index_buffer = image_index_.get();
       if (DGifGetLine(gif_file, index_buffer, actual_width) == GIF_ERROR) {
         Reset();
-        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler_,
+        return PS_LOGGED_STATUS(PS_LOG_INFO, message_handler(),
                                 SCANLINE_STATUS_INTERNAL_ERROR,
-                                SCANLINE_GIFREADERRAW,
+                                FRAME_GIFREADER,
                                 "DGifGetLine()");
       }
     } else {
       // For a progressive GIF, we simply point the output to the corresponding
       // row, because the image has already been decoded.
-      index_buffer = image_index_.get() + row_ * GetImageWidth();
+      index_buffer = image_index_.get() + row_ * image_spec_.width;
     }
 
     for (; pixel_index < gif_struct_->first_col(); ++pixel_index) {
       // Pad background color to the beginning of the row.
-      memcpy(color_buffer, background_color, pixel_size_);
-      color_buffer += pixel_size_;
+      memcpy(color_buffer, background_color, pixel_size);
+      color_buffer += pixel_size;
     }
     for (; pixel_index <= gif_struct_->last_col(); ++pixel_index) {
       // Convert the color index to the actual color.
       int color_index = *(index_buffer++);
-      memcpy(color_buffer, gif_palette_.get() + color_index, pixel_size_);
-      color_buffer += pixel_size_;
+      memcpy(color_buffer, gif_palette_.get() + color_index, pixel_size);
+      color_buffer += pixel_size;
     }
   }
 
   // Pad background color to the end of the row if the current row contains
   // valid output pixels, or to the entire row if not.
-  for (; pixel_index < static_cast<int>(GetImageWidth()); ++pixel_index) {
-    memcpy(color_buffer, background_color, pixel_size_);
-    color_buffer += pixel_size_;
+  for (; pixel_index < static_cast<int>(image_spec_.width); ++pixel_index) {
+    memcpy(color_buffer, background_color, pixel_size);
+    color_buffer += pixel_size;
   }
 
   *out_scanline_bytes = static_cast<void*>(image_buffer_.get());

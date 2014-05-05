@@ -94,17 +94,16 @@ class ImageConverter {
   // this function will fail when attempting to convert an image with
   // transparent pixels. Returns is_opaque set to true iff the 'in'
   // image was opaque. On entry, '*webp_writer' must be NULL; on exit,
-  // it contains the WebpScanlineWriter instance that was used to
-  // write the WebP, and the caller is responsible for deleting
-  // it. Most clients will prefer to use the other form
-  // ConvertPngToWebp.
+  // it contains the webp writer that was used to write the WebP, and
+  // the caller is responsible for deleting it. Most clients will
+  // prefer to use the other form ConvertPngToWebp.
   static bool ConvertPngToWebp(
       const PngReaderInterface& png_struct_reader,
       const GoogleString& in,
       const WebpConfiguration& config,
       GoogleString* out,
       bool* is_opaque,
-      WebpScanlineWriter** webp_writer,
+      ScanlineWriterInterface** webp_writer,
       MessageHandler* handler);
 
   // Optimizes the given png image, also converts to jpeg and take the

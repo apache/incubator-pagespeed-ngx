@@ -40,6 +40,7 @@ extern "C" {
 #include "pagespeed/kernel/image/jpeg_optimizer.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/scanline_interface_frame_adapter.h"
 
 namespace {
 // In some cases, converting a PNG to JPEG results in a smaller
@@ -234,7 +235,7 @@ bool ImageConverter::ConvertPngToWebp(
     GoogleString* const out,
     bool* is_opaque,
     MessageHandler* handler) {
-    WebpScanlineWriter* webp_writer = NULL;
+    ScanlineWriterInterface* webp_writer = NULL;
     bool success = ConvertPngToWebp(png_struct_reader, in, webp_config,
                                     out, is_opaque, &webp_writer, handler);
     delete webp_writer;
@@ -247,7 +248,7 @@ bool ImageConverter::ConvertPngToWebp(
     const WebpConfiguration& webp_config,
     GoogleString* const out,
     bool* is_opaque,
-    WebpScanlineWriter** webp_writer,
+    ScanlineWriterInterface** webp_writer,
     MessageHandler* handler) {
   DCHECK(out->empty());
   out->clear();
@@ -287,7 +288,8 @@ bool ImageConverter::ConvertPngToWebp(
   size_t height = png_reader.GetImageHeight();
   PixelFormat format = png_reader.GetPixelFormat();
 
-  (*webp_writer) = new WebpScanlineWriter(handler);
+  (*webp_writer) =
+      new FrameToScanlineWriterAdapter(new WebpFrameWriter(handler));
 
   if (height > 0 && width > 0 && format != UNSUPPORTED) {
     if ((*webp_writer)->Init(width, height, format) &&
@@ -314,7 +316,7 @@ ImageConverter::ImageType ImageConverter::GetSmallestOfPngJpegWebp(
   ImageType best_lossy_image_type = IMAGE_NONE;
   ImageType best_image_type = IMAGE_NONE;
 
-  WebpScanlineWriter* webp_writer = NULL;
+  ScanlineWriterInterface* webp_writer = NULL;
   WebpConfiguration webp_config_lossless;
   bool is_opaque = false;
   if (!ConvertPngToWebp(png_struct_reader, in, webp_config_lossless,

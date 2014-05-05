@@ -116,6 +116,11 @@ class GoogleUrlTest : public testing::Test {
 
 // Document which sorts of strings are and are not valid.
 TEST_F(GoogleUrlTest, TestNotValid) {
+  GoogleUrl empty_url;
+  EXPECT_FALSE(empty_url.IsWebValid());
+  EXPECT_FALSE(empty_url.IsWebOrDataValid());
+  EXPECT_FALSE(empty_url.IsAnyValid());
+
   GoogleUrl invalid_url("Hello, world!");
   EXPECT_FALSE(invalid_url.IsWebValid());
 
@@ -518,6 +523,60 @@ TEST_F(GoogleUrlTest, Query) {
   EXPECT_STREQ("b=%3Cvalue%20requiring%20escapes%3E", gurl.Query());
   EXPECT_STREQ("b=<value requiring escapes>",
                GoogleUrl::Unescape(gurl.Query()));
+}
+
+TEST_F(GoogleUrlTest, URLQuery) {
+  // Test that the result of Query() is encoded as we expect (and rely on in
+  // QueryParams), so that we know if our assumptions become invalid:
+  // 1. HASHes ('#') cannot be in the result as that terminates the component.
+  // 2. TABs, NLs, & CRs are removed completely.
+  // 3. Control characters are % encoded.
+  // 4. SPACE (' '), DOUBLE QUOTE ('"'), LESS THAN ('<'), GREATER THAN ('>'),
+  //    and DEL ('\177') are % encoded.
+  // 5. In the open source build, which uses chromium's version of the URL
+  //    libraries, single-quote ("'") is also %-encoded.
+  // 6. HASH ('#') would be encoded but it cannot be in the result per 1 above.
+  // The code that does all this is:
+  // * ParsePath in url_parse.cc extracts the query part, starting at the
+  //   first '?' and ending at e.o.string or the first '#'.
+  // * url_canon::RemoveURLWhitespace strips tabs, newlines, & carriage returns
+  //   per the url_canon::IsRemovableURLWhitespace method.
+  // * url_canon::IsQueryChar results in the encoding of control characters,
+  //   the characters in [ "#<>], & DEL (& "'" in open source), however since
+  //   '#' terminates the query part it cannot be in the result.
+  const char kBadQueryString[] =
+      "\a\b\t\n\v\f\r !\"$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLM"
+      "NOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\177#extra";
+
+  GoogleString good_query_param1(kBadQueryString);
+  ASSERT_EQ(1, GlobalReplaceSubstring("#extra",  "", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\t",      "", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\n",      "", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\r",      "", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\a",   "%07", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\b",   "%08", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\v",   "%0B", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\f",   "%0C", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring(" ",    "%20", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\"",   "%22", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("<",    "%3C", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring(">",    "%3E", &good_query_param1));
+  ASSERT_EQ(1, GlobalReplaceSubstring("\177", "%7F", &good_query_param1));
+  GoogleString good_query_param2 = good_query_param1;
+  ASSERT_EQ(1, GlobalReplaceSubstring("'",    "%27", &good_query_param2));
+
+  // Despite all the ugliness in the query parameter, it's [now] a valid URL.
+  GoogleUrl gurl(StrCat("http://example.com/?", kBadQueryString));
+  ASSERT_TRUE(gurl.IsAnyValid());
+  ASSERT_TRUE(!gurl.Query().empty());
+
+  if (gurl.Query() != good_query_param1 && gurl.Query() != good_query_param2) {
+    EXPECT_TRUE(false)
+        << "gurl.Query() does not equal either of the expected values:\n"
+        << "  Actual: " << gurl.Query() << "\n"
+        << "Expected: " << good_query_param1 << "\n"
+        << "      Or: " << good_query_param2;
+  }
 }
 
 TEST_F(GoogleUrlTest, Unescape) {

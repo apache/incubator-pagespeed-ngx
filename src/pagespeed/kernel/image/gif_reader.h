@@ -25,7 +25,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/image/png_optimizer.h"
-#include "pagespeed/kernel/image/scanline_interface.h"
+#include "pagespeed/kernel/image/image_frame_interface.h"
 #include "pagespeed/kernel/image/scanline_status.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
@@ -74,7 +74,7 @@ class GifReader : public PngReaderInterface {
   DISALLOW_COPY_AND_ASSIGN(GifReader);
 };
 
-// GifScanlineReaderRaw decodes GIF images and outputs the raw pixel
+// GifFrameReader decodes GIF images and outputs the raw pixel
 // data, image size, pixel type, etc. The class accepts single frame
 // (non-animated) GIF. The output is RGB_888 if transparent color is
 // not specified, or RGBA_8888 otherwise. Animated GIFs are not
@@ -83,58 +83,74 @@ class GifReader : public PngReaderInterface {
 // Note: The input image stream must be valid throughout the life of
 //   the object. In other words, the image_buffer input you set to
 //   Initialize() cannot be changed until your last call to the
-//   ReadNextScanlineWithStatus(). That said, if you are sure that
+//   ReadNextScanline(). That said, if you are sure that
 //   your image is a progressive GIF, you can modify image_buffer
-//   after the first call to ReadNextScanlineWithStatus().
+//   after the first call to ReadNextScanline().
 //
-class GifScanlineReaderRaw : public ScanlineReaderInterface {
+// At the moment, this class only supports non-animate GIFs.
+// TODO(vchudnov): Support animated GIFs.
+class GifFrameReader : public MultipleFrameReader {
  public:
-  explicit GifScanlineReaderRaw(MessageHandler* handler);
-  virtual ~GifScanlineReaderRaw();
-  virtual bool Reset();
+  explicit GifFrameReader(MessageHandler* handler);
+  virtual ~GifFrameReader();
+
+  virtual ScanlineStatus Reset();
 
   // Initialize the reader with the given image stream. Note that
   // image_buffer must remain unchanged until the last call to
   // ReadNextScanlineWithStatus().
-  virtual ScanlineStatus InitializeWithStatus(const void* image_buffer,
-                                              size_t buffer_length);
+  virtual ScanlineStatus Initialize(const void* image_buffer,
+                                    size_t buffer_length);
+
+  virtual bool HasMoreFrames() const {
+    return (next_frame_ < image_spec_.num_frames);
+  }
+
+  virtual bool HasMoreScanlines() const {
+    return (row_ < image_spec_.height);
+  }
+
+  virtual ScanlineStatus PrepareNextFrame();
 
   // Return the next row of pixels. For non-progressive GIF,
-  // ReadNextScanlineWithStatus will decode one row of pixels each
-  // time when it is called, but for progressive GIF,
-  // ReadNextScanlineWithStatus will decode the entire image at the
-  // first time when it is called.
-  virtual ScanlineStatus ReadNextScanlineWithStatus(void** out_scanline_bytes);
+  // ReadNextScanline will decode one row of pixels each time when it
+  // is called, but for progressive GIF, ReadNextScanline will decode
+  // the entire image at the first time when it is called.
+  virtual ScanlineStatus ReadNextScanline(const void** out_scanline_bytes);
 
-  // Return the number of bytes in a row (without padding).
-  virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
-
-  virtual size_t GetImageHeight() { return height_; }
-  virtual size_t GetImageWidth() { return width_; }
-  virtual bool HasMoreScanLines() {
-    return (row_ < static_cast<int>(GetImageHeight()));
+  virtual ScanlineStatus GetFrameSpec(const FrameSpec** frame_spec) const {
+    *frame_spec = &frame_spec_;
+    return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
   }
-  virtual PixelFormat GetPixelFormat() { return pixel_format_; }
+
+  virtual ScanlineStatus GetImageSpec(const ImageSpec** image_spec) const {
+    *image_spec = &image_spec_;
+    return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
+  }
 
  private:
+  void ComputeOrExtendImageSize();
+
   // 'transparent_index' will be set to '-1' if no transparent color has been
   // defined.
-  ScanlineStatus ProcessSingleImageGif(size_t* offset, int* transparent_index);
-  ScanlineStatus CreateColorMap(int transparent_index);
+  ScanlineStatus ProcessSingleImageGif(size_t* first_frame_offset,
+                                       int* transparent_index);
   ScanlineStatus DecodeProgressiveGif();
-  void ComputeOrExtendImageSize();
-  bool HasVisibleBackground();
+  ScanlineStatus CreateColorMap(int transparent_index);
+  bool HasVisibleBackground() const;
 
- private:
-  PixelFormat pixel_format_;
+  bool was_initialized_;
+  ImageSpec image_spec_;
+  FrameSpec frame_spec_;
+  int next_frame_;
+
+  // The following are for the current frame.
+
   bool is_progressive_;
-  int width_;
-  int height_;
   // The current output row.
   int row_;
-  size_t pixel_size_;
   size_t bytes_per_row_;
-  bool was_initialized_;
+
   // Palette of the image. It has 257 entries. The last one stores the
   // background color.
   net_instaweb::scoped_array<PaletteRGBA> gif_palette_;
@@ -148,9 +164,8 @@ class GifScanlineReaderRaw : public ScanlineReaderInterface {
   // initialized in Initialize() and is updated in
   // ReadNextScanlineWithStatus().
   scoped_ptr<ScopedGifStruct> gif_struct_;
-  MessageHandler* message_handler_;
 
-  DISALLOW_COPY_AND_ASSIGN(GifScanlineReaderRaw);
+  DISALLOW_COPY_AND_ASSIGN(GifFrameReader);
 };
 
 }  // namespace image_compression

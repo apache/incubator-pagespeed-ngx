@@ -96,6 +96,10 @@ ScanlineStatus FrameToScanlineWriterAdapter::InitWithStatus(
     const PixelFormat pixel_format) {
   image_spec_.width = width;
   image_spec_.height = height;
+
+  // Non-animated images have only one frame.
+  image_spec_.num_frames = 1;
+
   frame_spec_.pixel_format = pixel_format;
   init_done_ = true;
   return ScanlineStatus(SCANLINE_STATUS_SUCCESS);
@@ -158,15 +162,15 @@ ScanlineStatus ScanlineToFrameReaderAdapter::Reset() {
 ScanlineStatus ScanlineToFrameReaderAdapter::Initialize(
     const void* const image_buffer,
     const size_t buffer_length) {
-  ScanlineStatus status = Reset();
-
-  if (status.Success()) {
-    status = impl_->InitializeWithStatus(image_buffer, buffer_length);
-  }
+  ScanlineStatus status = impl_->InitializeWithStatus(image_buffer,
+                                                      buffer_length);
 
   if (status.Success()) {
     image_spec_.width = impl_->GetImageWidth();
     image_spec_.height = impl_->GetImageHeight();
+
+    // Non-animated images have only one frame.
+    image_spec_.num_frames = 1;
   }
 
   state_ = status.Success() ? INITIALIZED : ERROR;
@@ -247,8 +251,8 @@ ScanlineStatus ScanlineToFrameWriterAdapter::PrepareNextFrame(
     return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
                             SCANLINE_STATUS_INVOCATION_ERROR,
                             SCANLINE_TO_FRAME_WRITER_ADAPTER,
-                            "prepare next frame should be called after "
-                            "prepare image, and only once");
+                            "PrepareNextFrame should be called after "
+                            "PrepareImage, and only once");
   }
 
   frame_spec_ = spec;
