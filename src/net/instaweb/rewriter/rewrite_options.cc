@@ -4026,14 +4026,13 @@ bool RewriteOptions::SetupExperimentRewriters() {
 
   set_experiment_ga_slot(spec->slot());
 
-  if (spec->use_default()) {
-    // We need these for the experiment to work properly.
-    SetRequiredExperimentFilters();
-    return true;
+  // 'default' means keep the current filters, otherwise clear them -and- set
+  // the level. Note that we cannot set the level if 'default' is on because
+  // the default level is PassThrough which breaks the idea of 'default'.
+  if (!spec->use_default()) {
+    ClearFilters();
+    SetRewriteLevel(spec->rewrite_level());
   }
-
-  ClearFilters();
-  SetRewriteLevel(spec->rewrite_level());
   EnableFilters(spec->enabled_filters());
   DisableFilters(spec->disabled_filters());
   // spec doesn't specify forbidden filters so no need to call ForbidFilters().

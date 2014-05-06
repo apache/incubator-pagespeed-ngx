@@ -1549,6 +1549,40 @@ TEST_F(RewriteOptionsTest, ExperimentSpecTest) {
                                           &handler));
 }
 
+TEST_F(RewriteOptionsTest, DefaultExperimentSpecTest) {
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.EnableFilter(RewriteOptions::kStripScripts);
+  options_.EnableFilter(RewriteOptions::kSpriteImages);
+  options_.set_ga_id("UA-111111-1");
+  // Check that we can combine 'default', 'enable' & 'disable', and 'options'.
+  // strip_scripts was expressly enabled in addition to core and should stay on.
+  // extend_cache_css is on because it's a core filter and should stay on.
+  // defer_javascript is off by default but turned on by our spec.
+  // local_storage_cache is off by default but turned on by our spec.
+  // inline_css is on by default but turned off by our spec.
+  // CssInlineMaxBytes is 1024 by default but set to 66 by our spec.
+  options_.SetExperimentState(experiment::kNoExperiment);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kLocalStorageCache));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineCss));
+  EXPECT_TRUE(options_.AddExperimentSpec(
+      "id=18;percent=0;default"
+      ";enable=defer_javascript,local_storage_cache"
+      ";disable=inline_css,sprite_images"
+      ";options=CssInlineMaxBytes=66", &handler));
+  options_.SetExperimentState(18);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kLocalStorageCache));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
+}
+
 TEST_F(RewriteOptionsTest, PreserveURLDefaults) {
   // This test serves as a warning. If you enable preserve URLs by default then
   // many unit tests will fail due to filters being omitted from the HTML path.
