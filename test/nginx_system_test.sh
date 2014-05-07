@@ -2622,6 +2622,16 @@ check_from "$OUT" egrep -iq $'^Cache-Control: .*\r$'
 check_from "$OUT" egrep -iq $'^Expires: .*\r$'
 check_from "$OUT" egrep -iq $'^Last-Modified: .*\r$'
 
+# Verify that we can control pagespeed settings via a response
+# header passed from an origin to a reverse proxy.
+start_test Honor response header direcives from origin
+URL="http://rproxy.rmcomments.example.com/"
+URL+="mod_pagespeed_example/remove_comments.html"
+echo http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL ...
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_from "$OUT" fgrep -q "remove_comments example"
+check_not_from "$OUT" fgrep -q "This comment will be removed"
+
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to
 # ?PageSpeed=off. This should also insert an entry into the property cache so

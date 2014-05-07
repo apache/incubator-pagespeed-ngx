@@ -353,6 +353,30 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name origin.rmcomments.example.com;
+#    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed off;
+    add_header PageSpeedFilters remove_comments;
+  }
+  server {
+    # Set up a reverse proxy (rproxy.) and origin (origin.) as vhosts for
+    # showing that we can configure PageSpeed via response headers.
+    listen @@SECONDARY_PORT@@;
+    server_name rproxy.rmcomments.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed DisableFilters add_instrumentation,remove_comments;
+    # Note that we don't enable remove_comments here; that setting
+    # comes from the response headers from origin.rmcomments.example.com
+    location / {
+      proxy_pass http://localhost:@@SECONDARY_PORT@@;
+      proxy_set_header X-Forwarded-For $remote_addr;
+      proxy_set_header Host origin.rmcomments.example.com;
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name renderedimagebeacon.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
